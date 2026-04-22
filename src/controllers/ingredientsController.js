@@ -27,14 +27,14 @@ const list = async (req, res) => {
       `;
       params = [];
     } else {
+      // Clients can read all ingredients (global catalogue)
       query = `
         SELECT i.*, u.nom as unite_nom
         FROM ingredients i
         JOIN unites u ON i.unite_id = u.id
-        WHERE i.client_id = $1
         ORDER BY i.nom
       `;
-      params = [req.user.id];
+      params = [];
     }
 
     const result = await pool.query(query, params);
@@ -52,8 +52,8 @@ const getById = async (req, res) => {
       `SELECT i.*, u.nom as unite_nom
        FROM ingredients i
        JOIN unites u ON i.unite_id = u.id
-       WHERE i.id = $1 AND i.client_id = $2`,
-      [id, req.user.id]
+       WHERE i.id = $1`,
+      [id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Ingrédient introuvable' });
