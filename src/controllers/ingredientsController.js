@@ -7,6 +7,8 @@ const mapIngredient = (row) => ({
   price: row.prix !== undefined ? parseFloat(row.prix) : undefined,
   unitId: row.unite_id,
   unitName: row.unite_nom,
+  categorieId: row.categorie_id || null,
+  categorieName: row.categorie_nom || null,
   clientId: row.client_id,
   clientName: row.client_nom,
   createdAt: row.created_at,
@@ -19,19 +21,21 @@ const list = async (req, res) => {
 
     if (req.user.role === 'super_admin') {
       query = `
-        SELECT i.*, u.nom as unite_nom, util.nom as client_nom
+        SELECT i.*, u.nom as unite_nom, util.nom as client_nom, c.nom as categorie_nom
         FROM ingredients i
         JOIN unites u ON i.unite_id = u.id
         JOIN utilisateurs util ON i.client_id = util.id
+        LEFT JOIN categories c ON i.categorie_id = c.id
         ORDER BY i.nom
       `;
       params = [];
     } else {
       // Clients can read all ingredients (global catalogue)
       query = `
-        SELECT i.*, u.nom as unite_nom
+        SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom
         FROM ingredients i
         JOIN unites u ON i.unite_id = u.id
+        LEFT JOIN categories c ON i.categorie_id = c.id
         ORDER BY i.nom
       `;
       params = [];
@@ -49,9 +53,10 @@ const getById = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT i.*, u.nom as unite_nom
+      `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom
        FROM ingredients i
        JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE i.id = $1`,
       [id]
     );
@@ -74,6 +79,7 @@ const create = async (req, res) => {
   const nom = req.body.name || req.body.nom;
   const prix = req.body.price !== undefined ? req.body.price : req.body.prix;
   const unite_id = req.body.unitId || req.body.unite_id;
+  const categorie_id = req.body.categorieId || req.body.categorie_id || null;
   const clientId = req.user.id;
 
   try {
@@ -86,15 +92,16 @@ const create = async (req, res) => {
     }
 
     const inserted = await pool.query(
-      `INSERT INTO ingredients (nom, prix, unite_id, client_id)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
-      [nom, prix, unite_id, clientId]
+      [nom, prix, unite_id, clientId, categorie_id]
     );
     const result = await pool.query(
-      `SELECT i.*, u.nom as unite_nom
+      `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom
        FROM ingredients i
        JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE i.id = $1`,
       [inserted.rows[0].id]
     );
@@ -115,6 +122,11 @@ const update = async (req, res) => {
   const nom = req.body.name || req.body.nom;
   const prix = req.body.price !== undefined ? req.body.price : req.body.prix;
   const unite_id = req.body.unitId || req.body.unite_id;
+  const categorie_id = req.body.categorieId !== undefined
+    ? req.body.categorieId
+    : req.body.categorie_id !== undefined
+      ? req.body.categorie_id
+      : undefined;
   const clientId = req.user.id;
 
   try {
@@ -133,19 +145,21 @@ const update = async (req, res) => {
        SET nom = COALESCE($1, nom),
            prix = COALESCE($2, prix),
            unite_id = COALESCE($3, unite_id),
+           categorie_id = CASE WHEN $6::boolean THEN $4 ELSE categorie_id END,
            updated_at = NOW()
-       WHERE id = $4 AND client_id = $5
+       WHERE id = $5 AND client_id = $7
        RETURNING id`,
-      [nom, prix, unite_id, id, clientId]
+      [nom, prix, unite_id, categorie_id ?? null, id, categorie_id !== undefined, clientId]
     );
 
     if (updated.rows.length === 0) {
       return res.status(404).json({ message: 'Ingrédient introuvable' });
     }
     const result = await pool.query(
-      `SELECT i.*, u.nom as unite_nom
+      `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom
        FROM ingredients i
        JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE i.id = $1`,
       [updated.rows[0].id]
     );

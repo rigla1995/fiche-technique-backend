@@ -7,6 +7,7 @@ const adminRoutes = require('./routes/admin');
 const unitesRoutes = require('./routes/unites');
 const ingredientsRoutes = require('./routes/ingredients');
 const produitsRoutes = require('./routes/produits');
+const categoriesRoutes = require('./routes/categories');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use('/admin', adminRoutes);
 app.use('/api/unites', unitesRoutes);
 app.use('/api/ingredients', ingredientsRoutes);
 app.use('/api/produits', produitsRoutes);
+app.use('/api/categories', categoriesRoutes);
 
 // English aliases (B5)
 app.use('/api/units', unitesRoutes);

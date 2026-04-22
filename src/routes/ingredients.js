@@ -31,6 +31,8 @@ router.put('/:id', authenticate, [
   body('prix').optional().isFloat({ min: 0 }),
   body('unitId').optional().isInt({ min: 1 }),
   body('unite_id').optional().isInt({ min: 1 }),
+  body('categorieId').optional({ nullable: true }).isInt({ min: 1 }),
+  body('categorie_id').optional({ nullable: true }).isInt({ min: 1 }),
 ], update);
 router.delete('/:id', authenticate, remove);
 
