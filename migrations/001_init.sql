@@ -65,6 +65,6 @@ INSERT INTO utilisateurs (nom, email, mot_de_passe, role)
 VALUES (
   'Super Admin',
   'admin@fiche-technique.tn',
-  '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+  '$2a$10$c3hmO5HKGc0y00uSrKU1kuJt3BRYoPqxCmTgg7FMeHIJjdUTaSmoq',
   'super_admin'
 ) ON CONFLICT (email) DO NOTHING;
