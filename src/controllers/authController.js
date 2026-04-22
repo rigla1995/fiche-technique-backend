@@ -80,12 +80,75 @@ const register = async (req, res) => {
 };
 
 const me = async (req, res) => {
-  res.json({
-    id: req.user.id,
-    name: req.user.nom,
-    email: req.user.email,
-    role: req.user.role,
-  });
+  try {
+    const result = await pool.query(
+      'SELECT id, nom, email, telephone, role FROM utilisateurs WHERE id = $1',
+      [req.user.id]
+    );
+    const u = result.rows[0];
+    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
 };
 
-module.exports = { login, register, me };
+const updateProfile = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const nom = req.body.name || req.body.nom;
+  const { email } = req.body;
+  const telephone = req.body.telephone || req.body.phone;
+  const newPassword = req.body.password || req.body.mot_de_passe;
+  const currentPassword = req.body.currentPassword || req.body.mot_de_passe_actuel;
+
+  try {
+    const userResult = await pool.query(
+      'SELECT * FROM utilisateurs WHERE id = $1',
+      [req.user.id]
+    );
+    const user = userResult.rows[0];
+
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Mot de passe actuel requis pour changer le mot de passe' });
+      }
+      const isValid = await bcrypt.compare(currentPassword, user.mot_de_passe);
+      if (!isValid) {
+        return res.status(400).json({ message: 'Mot de passe actuel incorrect' });
+      }
+    }
+
+    if (email && email !== user.email) {
+      const existing = await pool.query('SELECT id FROM utilisateurs WHERE email = $1 AND id != $2', [email, req.user.id]);
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ message: 'Cet email est déjà utilisé' });
+      }
+    }
+
+    const hashToSave = newPassword ? await bcrypt.hash(newPassword, 10) : null;
+
+    const result = await pool.query(
+      `UPDATE utilisateurs
+       SET nom = COALESCE($1, nom),
+           email = COALESCE($2, email),
+           telephone = COALESCE($3, telephone),
+           mot_de_passe = COALESCE($4, mot_de_passe),
+           updated_at = NOW()
+       WHERE id = $5
+       RETURNING id, nom, email, telephone, role`,
+      [nom || null, email || null, telephone || null, hashToSave, req.user.id]
+    );
+
+    const u = result.rows[0];
+    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { login, register, me, updateProfile };

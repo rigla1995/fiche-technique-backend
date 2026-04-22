@@ -7,6 +7,8 @@ const mapProduit = (row) => ({
   description: row.description,
   clientId: row.client_id,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
+  ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
+  subProductsCount: row.sub_products_count !== undefined ? parseInt(row.sub_products_count) : undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -36,6 +38,8 @@ const list = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT p.*,
+        (SELECT COUNT(*) FROM produit_ingredients WHERE produit_id = p.id) AS ingredients_count,
+        (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
         ROUND(
           COALESCE((
             SELECT SUM(pi.portion * i.prix)
