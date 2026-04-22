@@ -51,7 +51,8 @@ const create = async (req, res) => {
   }
 
   const nom = req.body.name || req.body.nom;
-  const { email, telephone } = req.body;
+  const { email } = req.body;
+  const telephone = req.body.telephone || req.body.phone;
   const providedPassword = req.body.password || req.body.mot_de_passe;
   const tempPassword = providedPassword || crypto.randomBytes(8).toString('hex');
 
@@ -85,7 +86,8 @@ const update = async (req, res) => {
 
   const { id } = req.params;
   const nom = req.body.name || req.body.nom;
-  const { email, telephone, active, actif } = req.body;
+  const { email, active, actif } = req.body;
+  const telephone = req.body.telephone || req.body.phone;
   const activeValue = active !== undefined ? active : actif;
 
   try {
