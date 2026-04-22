@@ -7,6 +7,7 @@ const mapIngredient = (row) => ({
   price: row.prix !== undefined ? parseFloat(row.prix) : undefined,
   unitId: row.unite_id,
   unitName: row.unite_nom,
+  unit: row.unite_id ? { id: row.unite_id, name: row.unite_nom } : null,
   categorieId: row.categorie_id || null,
   categorieName: row.categorie_nom || null,
   clientId: row.client_id,
