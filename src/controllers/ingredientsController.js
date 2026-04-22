@@ -85,11 +85,18 @@ const create = async (req, res) => {
       return res.status(400).json({ message: 'Unité invalide' });
     }
 
-    const result = await pool.query(
+    const inserted = await pool.query(
       `INSERT INTO ingredients (nom, prix, unite_id, client_id)
        VALUES ($1, $2, $3, $4)
-       RETURNING *`,
+       RETURNING id`,
       [nom, prix, unite_id, clientId]
+    );
+    const result = await pool.query(
+      `SELECT i.*, u.nom as unite_nom
+       FROM ingredients i
+       JOIN unites u ON i.unite_id = u.id
+       WHERE i.id = $1`,
+      [inserted.rows[0].id]
     );
     res.status(201).json(mapIngredient(result.rows[0]));
   } catch (err) {
@@ -121,20 +128,27 @@ const update = async (req, res) => {
       }
     }
 
-    const result = await pool.query(
+    const updated = await pool.query(
       `UPDATE ingredients
        SET nom = COALESCE($1, nom),
            prix = COALESCE($2, prix),
            unite_id = COALESCE($3, unite_id),
            updated_at = NOW()
        WHERE id = $4 AND client_id = $5
-       RETURNING *`,
+       RETURNING id`,
       [nom, prix, unite_id, id, clientId]
     );
 
-    if (result.rows.length === 0) {
+    if (updated.rows.length === 0) {
       return res.status(404).json({ message: 'Ingrédient introuvable' });
     }
+    const result = await pool.query(
+      `SELECT i.*, u.nom as unite_nom
+       FROM ingredients i
+       JOIN unites u ON i.unite_id = u.id
+       WHERE i.id = $1`,
+      [updated.rows[0].id]
+    );
     res.json(mapIngredient(result.rows[0]));
   } catch (err) {
     console.error(err);
