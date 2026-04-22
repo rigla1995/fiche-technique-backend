@@ -34,6 +34,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.use('/units', unitesRoutes);
 app.use('/ingredients', ingredientsRoutes);
 app.use('/products', produitsRoutes);
+app.use('/categories', categoriesRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Route introuvable' }));
 
