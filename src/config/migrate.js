@@ -4,18 +4,25 @@ const path = require('path');
 const pool = require('./database');
 
 async function migrate() {
-  const sqlPath = path.join(__dirname, '../../migrations/001_init.sql');
-  const sql = fs.readFileSync(sqlPath, 'utf-8');
+  const migrationsDir = path.join(__dirname, '../../migrations');
+  const files = fs.readdirSync(migrationsDir)
+    .filter(f => f.endsWith('.sql'))
+    .sort();
 
-  try {
-    await pool.query(sql);
-    console.log('Migration effectuée avec succès');
-  } catch (err) {
-    console.error('Erreur lors de la migration:', err.message);
-    process.exit(1);
-  } finally {
-    await pool.end();
+  for (const file of files) {
+    const sqlPath = path.join(migrationsDir, file);
+    const sql = fs.readFileSync(sqlPath, 'utf-8');
+    try {
+      await pool.query(sql);
+      console.log(`Migration appliquee: ${file}`);
+    } catch (err) {
+      console.error(`Erreur lors de la migration ${file}:`, err.message);
+      process.exit(1);
+    }
   }
+
+  await pool.end();
+  console.log('Toutes les migrations effectuees avec succes');
 }
 
 migrate();
