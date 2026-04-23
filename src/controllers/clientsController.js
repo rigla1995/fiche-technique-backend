@@ -9,6 +9,7 @@ const mapClient = (row) => ({
   email: row.email,
   phone: row.telephone,
   role: row.role,
+  compteType: row.compte_type || 'client',
   active: row.actif,
   createdAt: row.created_at,
 });
@@ -16,7 +17,7 @@ const mapClient = (row) => ({
 const list = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, nom, email, telephone, role, actif, created_at
+      `SELECT id, nom, email, telephone, role, compte_type, actif, created_at
        FROM utilisateurs WHERE role = 'client' ORDER BY nom`
     );
     res.json(result.rows.map(mapClient));
@@ -30,7 +31,7 @@ const getById = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT id, nom, email, telephone, role, actif, created_at
+      `SELECT id, nom, email, telephone, role, compte_type, actif, created_at
        FROM utilisateurs WHERE id = $1 AND role = 'client'`,
       [id]
     );
@@ -54,6 +55,7 @@ const create = async (req, res) => {
   const { email } = req.body;
   const telephone = req.body.telephone || req.body.phone;
   const providedPassword = req.body.password || req.body.mot_de_passe;
+  const compteType = req.body.compteType || req.body.compte_type || 'client';
   const tempPassword = providedPassword || crypto.randomBytes(8).toString('hex');
 
   try {
@@ -64,10 +66,10 @@ const create = async (req, res) => {
 
     const hash = await bcrypt.hash(tempPassword, 10);
     const result = await pool.query(
-      `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role)
-       VALUES ($1, $2, $3, $4, 'client')
-       RETURNING id, nom, email, telephone, role, actif, created_at`,
-      [nom, email, hash, telephone || null]
+      `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, compte_type)
+       VALUES ($1, $2, $3, $4, 'client', $5)
+       RETURNING id, nom, email, telephone, role, compte_type, actif, created_at`,
+      [nom, email, hash, telephone || null, compteType]
     );
     const responseData = mapClient(result.rows[0]);
     if (!providedPassword) responseData.temporaryPassword = tempPassword;
@@ -89,6 +91,7 @@ const update = async (req, res) => {
   const { email, active, actif } = req.body;
   const telephone = req.body.telephone || req.body.phone;
   const activeValue = active !== undefined ? active : actif;
+  const compteType = req.body.compteType || req.body.compte_type;
 
   try {
     const result = await pool.query(
@@ -97,10 +100,11 @@ const update = async (req, res) => {
            email = COALESCE($2, email),
            telephone = COALESCE($3, telephone),
            actif = COALESCE($4, actif),
+           compte_type = COALESCE($5, compte_type),
            updated_at = NOW()
-       WHERE id = $5 AND role = 'client'
-       RETURNING id, nom, email, telephone, role, actif, created_at`,
-      [nom || null, email || null, telephone || null, activeValue !== undefined ? activeValue : null, id]
+       WHERE id = $6 AND role = 'client'
+       RETURNING id, nom, email, telephone, role, compte_type, actif, created_at`,
+      [nom || null, email || null, telephone || null, activeValue !== undefined ? activeValue : null, compteType || null, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Client introuvable' });

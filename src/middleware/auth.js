@@ -11,7 +11,7 @@ const authenticate = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const result = await pool.query(
-      'SELECT id, nom, email, role, actif FROM utilisateurs WHERE id = $1',
+      'SELECT id, nom, email, role, compte_type, actif FROM utilisateurs WHERE id = $1',
       [decoded.userId]
     );
 
@@ -40,4 +40,14 @@ const requireClient = (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, requireSuperAdmin, requireClient };
+const requireEntreprise = (req, res, next) => {
+  if (req.user.role !== 'client') {
+    return res.status(403).json({ message: 'Accès réservé aux clients' });
+  }
+  if (req.user.compte_type !== 'entreprise') {
+    return res.status(403).json({ message: 'Fonctionnalité réservée aux comptes entreprise' });
+  }
+  next();
+};
+
+module.exports = { authenticate, requireSuperAdmin, requireClient, requireEntreprise };
