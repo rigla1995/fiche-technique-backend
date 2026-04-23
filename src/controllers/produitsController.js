@@ -42,16 +42,18 @@ const list = async (req, res) => {
         (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
         ROUND(
           COALESCE((
-            SELECT SUM(pi.portion * i.prix)
+            SELECT SUM(pi.portion * COALESCE(ipc.prix, i.prix, 0))
             FROM produit_ingredients pi
             JOIN ingredients i ON pi.ingredient_id = i.id
+            LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = p.client_id
             WHERE pi.produit_id = p.id
           ), 0) +
           COALESCE((
             SELECT SUM(psp.portion * (
-              SELECT COALESCE(SUM(pi2.portion * i2.prix), 0)
+              SELECT COALESCE(SUM(pi2.portion * COALESCE(ipc2.prix, i2.prix, 0)), 0)
               FROM produit_ingredients pi2
               JOIN ingredients i2 ON pi2.ingredient_id = i2.id
+              LEFT JOIN ingredient_prix_client ipc2 ON ipc2.ingredient_id = i2.id AND ipc2.client_id = p.client_id
               WHERE pi2.produit_id = psp.sous_produit_id
             ))
             FROM produit_sous_produits psp
@@ -430,15 +432,16 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
     throw new Error('Produit introuvable');
   }
 
-  // Coût des ingrédients directs
+  // Coût des ingrédients directs — prix client prioritaire
   const ingredients = await pool.query(
-    `SELECT pi.portion, i.prix as prix_unitaire, i.nom as ingredient_nom,
+    `SELECT pi.portion, COALESCE(ipc.prix, i.prix, 0) as prix_unitaire, i.nom as ingredient_nom,
             u.nom as unite_nom, pi.unite_id
      FROM produit_ingredients pi
      JOIN ingredients i ON pi.ingredient_id = i.id
      JOIN unites u ON pi.unite_id = u.id
+     LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
      WHERE pi.produit_id = $1`,
-    [produitId]
+    [produitId, clientId]
   );
 
   let coutIngredients = 0;
