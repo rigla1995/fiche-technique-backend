@@ -119,13 +119,39 @@ const exportExcel = async (req, res) => {
       rowIndex++;
     };
 
+    const addCategorySubHeader = (label) => {
+      sheet.mergeCells(`A${rowIndex}:E${rowIndex}`);
+      const cell = sheet.getCell(`A${rowIndex}`);
+      cell.value = `    🏷️ ${label}`;
+      cell.font = { name: 'Calibri', bold: true, size: 9, color: { argb: '2E5597' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EEF2FA' } };
+      cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      cell.border = border;
+      sheet.getRow(rowIndex).height = 15;
+      rowIndex++;
+    };
+
     // ─── INGRÉDIENTS DIRECTS ───
     if (coutData.ingredients.length > 0) {
       addSectionHeader('INGRÉDIENTS');
-      coutData.ingredients.forEach((ing, i) => addIngredientRow(ing, i % 2 === 1));
+      const ingByCategory = {};
+      coutData.ingredients.forEach((ing) => {
+        const cat = ing.categorie || 'Sans catégorie';
+        if (!ingByCategory[cat]) ingByCategory[cat] = [];
+        ingByCategory[cat].push(ing);
+      });
+      const sortedCats = Object.keys(ingByCategory).sort((a, b) => {
+        if (a === 'Sans catégorie') return 1;
+        if (b === 'Sans catégorie') return -1;
+        return a.localeCompare(b, 'fr');
+      });
+      sortedCats.forEach((cat) => {
+        addCategorySubHeader(cat);
+        ingByCategory[cat].forEach((ing, i) => addIngredientRow(ing, i % 2 === 1));
+      });
     }
 
-    // ─── SOUS-PRODUITS ───
+    // ─── PRODUITS UTILISABLES ───
     const renderSousProduit = (sp, depth = 0) => {
       const indent = '    '.repeat(depth + 1);
 
@@ -177,7 +203,7 @@ const exportExcel = async (req, res) => {
     };
 
     if (coutData.sous_produits.length > 0) {
-      addSectionHeader('SOUS-PRODUITS');
+      addSectionHeader('PRODUITS UTILISABLES');
       coutData.sous_produits.forEach((sp) => renderSousProduit(sp));
     }
 
@@ -211,7 +237,7 @@ const exportExcel = async (req, res) => {
       addSummaryRow('Coût ingrédients :', coutData.cout_ingredients, false, 'F0F4FF');
     }
     if (coutData.sous_produits.length > 0) {
-      addSummaryRow('Coût sous-produits :', coutData.cout_sous_produits, false, 'F0F4FF');
+      addSummaryRow('Coût produits utilisables :', coutData.cout_sous_produits, false, 'F0F4FF');
     }
     addSummaryRow('COÛT TOTAL :', coutData.cout_total, true, COLORS.totalBg);
 

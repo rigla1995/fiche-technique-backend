@@ -455,12 +455,14 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
   // Coût des ingrédients directs — prix client prioritaire
   const ingredients = await pool.query(
     `SELECT pi.portion, COALESCE(ipc.prix, i.prix, 0) as prix_unitaire, i.nom as ingredient_nom,
-            u.nom as unite_nom, pi.unite_id
+            u.nom as unite_nom, pi.unite_id, c.nom as categorie_nom
      FROM produit_ingredients pi
      JOIN ingredients i ON pi.ingredient_id = i.id
      JOIN unites u ON pi.unite_id = u.id
      LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
-     WHERE pi.produit_id = $1`,
+     LEFT JOIN categories c ON i.categorie_id = c.id
+     WHERE pi.produit_id = $1
+     ORDER BY COALESCE(c.nom, 'zzz'), i.nom`,
     [produitId, clientId]
   );
 
@@ -474,6 +476,7 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
       unite: row.unite_nom,
       prix_unitaire: parseFloat(row.prix_unitaire),
       cout: parseFloat(cout.toFixed(3)),
+      categorie: row.categorie_nom || null,
     };
   });
 
