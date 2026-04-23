@@ -149,10 +149,9 @@ const create = async (req, res) => {
     for (const ing of ingredients) {
       const ingredientId = ing.ingredientId || ing.ingredient_id;
       const { portion } = ing;
-      // Fetch unitId from ingredient if not provided
       const ingRow = await client.query(
-        'SELECT unite_id FROM ingredients WHERE id = $1 AND client_id = $2',
-        [ingredientId, req.user.id]
+        'SELECT unite_id FROM ingredients WHERE id = $1',
+        [ingredientId]
       );
       if (ingRow.rows.length === 0) continue;
       const uniteId = ing.unitId || ing.unite_id || ingRow.rows[0].unite_id;
@@ -219,8 +218,8 @@ const update = async (req, res) => {
         const ingredientId = ing.ingredientId || ing.ingredient_id;
         const { portion } = ing;
         const ingRow = await client.query(
-          'SELECT unite_id FROM ingredients WHERE id = $1 AND client_id = $2',
-          [ingredientId, req.user.id]
+          'SELECT unite_id FROM ingredients WHERE id = $1',
+          [ingredientId]
         );
         if (ingRow.rows.length === 0) continue;
         const uniteId = ing.unitId || ing.unite_id || ingRow.rows[0].unite_id;
@@ -300,10 +299,9 @@ const addIngredient = async (req, res) => {
       return res.status(404).json({ message: 'Produit introuvable' });
     }
 
-    // Vérifier que l'ingrédient appartient au client
     const ingredient = await pool.query(
-      'SELECT id FROM ingredients WHERE id = $1 AND client_id = $2',
-      [ingredient_id, req.user.id]
+      'SELECT id FROM ingredients WHERE id = $1',
+      [ingredient_id]
     );
     if (ingredient.rows.length === 0) {
       return res.status(400).json({ message: 'Ingrédient invalide' });
