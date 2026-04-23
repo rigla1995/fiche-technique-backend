@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { list, getById, create, update, remove, setClientPrice } = require('../controllers/ingredientsController');
+const { list, getById, create, update, remove, setClientPrice, toggleSelection, hasSelections } = require('../controllers/ingredientsController');
 const { authenticate, requireSuperAdmin, requireClient } = require('../middleware/auth');
 
 const validateCreate = [
@@ -39,5 +39,9 @@ router.delete('/:id', authenticate, remove);
 
 // Client sets their own purchase price for an ingredient
 router.put('/:id/price', authenticate, requireClient, setClientPrice);
+
+// Client ingredient selection (working list)
+router.get('/has-selections', authenticate, requireClient, hasSelections);
+router.post('/:id/select', authenticate, requireClient, toggleSelection);
 
 module.exports = router;

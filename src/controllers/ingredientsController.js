@@ -7,6 +7,8 @@ const mapIngredient = (row) => ({
   price: row.prix !== undefined && row.prix !== null ? parseFloat(row.prix) : null,
   clientPrice: row.client_prix !== undefined && row.client_prix !== null ? parseFloat(row.client_prix) : null,
   effectivePrice: row.effective_prix !== undefined && row.effective_prix !== null ? parseFloat(row.effective_prix) : null,
+  selected: !!row.selected,
+  selected: !!row.selected,
   unitId: row.unite_id,
   unitName: row.unite_nom,
   unit: row.unite_id ? { id: row.unite_id, name: row.unite_nom } : null,
@@ -36,11 +38,13 @@ const list = async (req, res) => {
       query = `
         SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
                ipc.prix as client_prix,
-               COALESCE(ipc.prix, i.prix) as effective_prix
+               COALESCE(ipc.prix, i.prix) as effective_prix,
+               (cis.ingredient_id IS NOT NULL) as selected
         FROM ingredients i
         JOIN unites u ON i.unite_id = u.id
         LEFT JOIN categories c ON i.categorie_id = c.id
         LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $1
+        LEFT JOIN client_ingredient_selections cis ON cis.ingredient_id = i.id AND cis.client_id = $1
         ORDER BY COALESCE(c.nom, 'zzz'), i.nom
       `;
       params = [req.user.id];
@@ -203,4 +207,40 @@ const setClientPrice = async (req, res) => {
   }
 };
 
-module.exports = { list, getById, create, update, remove, setClientPrice };
+
+const toggleSelection = async (req, res) => {
+  const clientId = req.user.id;
+  const ingredientId = parseInt(req.params.id);
+  try {
+    const existing = await pool.query(
+      'SELECT 1 FROM client_ingredient_selections WHERE client_id = $1 AND ingredient_id = $2',
+      [clientId, ingredientId]
+    );
+    if (existing.rows.length > 0) {
+      await pool.query('DELETE FROM client_ingredient_selections WHERE client_id = $1 AND ingredient_id = $2', [clientId, ingredientId]);
+      return res.json({ selected: false });
+    } else {
+      await pool.query('INSERT INTO client_ingredient_selections (client_id, ingredient_id) VALUES ($1, $2)', [clientId, ingredientId]);
+      return res.json({ selected: true });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const hasSelections = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT COUNT(*) FROM client_ingredient_selections WHERE client_id = $1',
+      [req.user.id]
+    );
+    const count = parseInt(result.rows[0].count);
+    res.json({ hasSelections: count > 0, count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { list, getById, create, update, remove, setClientPrice, toggleSelection, hasSelections };
