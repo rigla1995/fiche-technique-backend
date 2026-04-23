@@ -42,7 +42,8 @@ const login = async (req, res) => {
         name: utilisateur.nom,
         email: utilisateur.email,
         role: utilisateur.role,
-        compteType: utilisateur.compte_type || 'client',
+        compteType: utilisateur.compte_type || 'independant',
+        onboardingStep: utilisateur.onboarding_step ?? 0,
       },
     });
   } catch (err) {
@@ -83,11 +84,26 @@ const register = async (req, res) => {
 const me = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, nom, email, telephone, role, compte_type FROM utilisateurs WHERE id = $1',
+      'SELECT id, nom, email, telephone, role, compte_type, onboarding_step FROM utilisateurs WHERE id = $1',
       [req.user.id]
     );
     const u = result.rows[0];
-    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role, compteType: u.compte_type || 'client' });
+    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role, compteType: u.compte_type || 'independant', onboardingStep: u.onboarding_step ?? 0 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const advanceOnboarding = async (req, res) => {
+  const { step } = req.body;
+  if (typeof step !== 'number') return res.status(400).json({ message: 'step requis' });
+  try {
+    await pool.query(
+      'UPDATE utilisateurs SET onboarding_step = $1, updated_at = NOW() WHERE id = $2',
+      [step, req.user.id]
+    );
+    res.json({ onboardingStep: step });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -174,4 +190,4 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { login, register, me, updateProfile, upgradeToEntreprise };
+module.exports = { login, register, me, updateProfile, upgradeToEntreprise, advanceOnboarding };

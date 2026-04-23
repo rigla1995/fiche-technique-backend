@@ -9,7 +9,8 @@ const mapClient = (row) => ({
   email: row.email,
   phone: row.telephone,
   role: row.role,
-  compteType: row.compte_type || 'client',
+  compteType: row.compte_type || 'independant',
+  onboardingStep: row.onboarding_step ?? 0,
   active: row.actif,
   createdAt: row.created_at,
 });
@@ -17,7 +18,7 @@ const mapClient = (row) => ({
 const list = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, nom, email, telephone, role, compte_type, actif, created_at
+      `SELECT id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at
        FROM utilisateurs WHERE role = 'client' ORDER BY nom`
     );
     res.json(result.rows.map(mapClient));
@@ -31,7 +32,7 @@ const getById = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT id, nom, email, telephone, role, compte_type, actif, created_at
+      `SELECT id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at
        FROM utilisateurs WHERE id = $1 AND role = 'client'`,
       [id]
     );
@@ -51,12 +52,25 @@ const create = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
+  const compteType = req.body.compteType || req.body.compte_type || 'independant';
   const nom = req.body.name || req.body.nom;
-  const { email } = req.body;
-  const telephone = req.body.telephone || req.body.phone;
-  const providedPassword = req.body.password || req.body.mot_de_passe;
-  const compteType = req.body.compteType || req.body.compte_type || 'client';
-  const tempPassword = providedPassword || crypto.randomBytes(8).toString('hex');
+  const { email, telephone, adresse } = req.body;
+  const domaineId = req.body.domaineId || req.body.domaine_id || null;
+
+  if (!nom) return res.status(400).json({ message: 'Nom requis' });
+  if (!email) return res.status(400).json({ message: 'Email requis' });
+
+  // Check tel uniqueness
+  if (telephone) {
+    const telCheck = await pool.query(
+      'SELECT id FROM utilisateurs WHERE telephone = $1',
+      [telephone]
+    );
+    if (telCheck.rows.length > 0)
+      return res.status(409).json({ message: 'Ce numéro de téléphone est déjà utilisé' });
+  }
+
+  const tempPassword = crypto.randomBytes(8).toString('hex');
 
   try {
     const existing = await pool.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
@@ -65,14 +79,44 @@ const create = async (req, res) => {
     }
 
     const hash = await bcrypt.hash(tempPassword, 10);
-    const result = await pool.query(
-      `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, compte_type)
-       VALUES ($1, $2, $3, $4, 'client', $5)
-       RETURNING id, nom, email, telephone, role, compte_type, actif, created_at`,
-      [nom, email, hash, telephone || null, compteType]
+
+    // onboarding_step: 0 for independant (no onboarding), 1 for entreprise (must complete onboarding)
+    const onboardingStep = compteType === 'entreprise' ? 1 : 0;
+
+    const userResult = await pool.query(
+      `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, compte_type, onboarding_step)
+       VALUES ($1, $2, $3, $4, 'client', $5, $6)
+       RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
+      [nom, email, hash, telephone || null, compteType, onboardingStep]
     );
-    const responseData = mapClient(result.rows[0]);
-    if (!providedPassword) responseData.temporaryPassword = tempPassword;
+
+    const user = userResult.rows[0];
+
+    // Create profil_entreprise with the provided info
+    await pool.query(
+      `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (client_id) DO NOTHING`,
+      [user.id, nom, email, telephone || null, adresse || null]
+    );
+
+    // For independant: also create the first activity immediately
+    if (compteType === 'independant') {
+      const entrepriseResult = await pool.query(
+        'SELECT id FROM profil_entreprise WHERE client_id = $1',
+        [user.id]
+      );
+      if (entrepriseResult.rows.length > 0) {
+        await pool.query(
+          `INSERT INTO activites (entreprise_id, nom, email, telephone, adresse, domaine_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [entrepriseResult.rows[0].id, nom, email, telephone || null, adresse || null, domaineId || null]
+        );
+      }
+    }
+
+    const responseData = mapClient(user);
+    responseData.temporaryPassword = tempPassword;
     res.status(201).json(responseData);
   } catch (err) {
     console.error(err);
@@ -93,6 +137,16 @@ const update = async (req, res) => {
   const activeValue = active !== undefined ? active : actif;
   const compteType = req.body.compteType || req.body.compte_type;
 
+  // Check tel uniqueness (exclude current user)
+  if (telephone) {
+    const telCheck = await pool.query(
+      'SELECT id FROM utilisateurs WHERE telephone = $1 AND id != $2',
+      [telephone, id]
+    );
+    if (telCheck.rows.length > 0)
+      return res.status(409).json({ message: 'Ce numéro de téléphone est déjà utilisé' });
+  }
+
   try {
     const result = await pool.query(
       `UPDATE utilisateurs
@@ -103,7 +157,7 @@ const update = async (req, res) => {
            compte_type = COALESCE($5, compte_type),
            updated_at = NOW()
        WHERE id = $6 AND role = 'client'
-       RETURNING id, nom, email, telephone, role, compte_type, actif, created_at`,
+       RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
       [nom || null, email || null, telephone || null, activeValue !== undefined ? activeValue : null, compteType || null, id]
     );
     if (result.rows.length === 0) {
