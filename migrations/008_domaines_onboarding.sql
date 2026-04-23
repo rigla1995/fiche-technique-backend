@@ -27,7 +27,12 @@ ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS onboarding_step INTEGER NOT NU
 -- Set onboarding_step=1 for entreprise accounts (they need to complete onboarding)
 UPDATE utilisateurs SET onboarding_step = 1 WHERE compte_type = 'entreprise';
 
--- Unique constraints on telephone and adresse in profil_entreprise
-ALTER TABLE profil_entreprise ADD CONSTRAINT IF NOT EXISTS profil_entreprise_telephone_unique UNIQUE (telephone);
-
--- Note: address uniqueness is enforced at application level (text normalization issues)
+-- Unique constraint on telephone in profil_entreprise (safe idempotent form)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'profil_entreprise_telephone_unique'
+  ) THEN
+    ALTER TABLE profil_entreprise ADD CONSTRAINT profil_entreprise_telephone_unique UNIQUE (telephone);
+  END IF;
+END $$;
