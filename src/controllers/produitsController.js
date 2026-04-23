@@ -5,6 +5,7 @@ const mapProduit = (row) => ({
   id: row.id,
   name: row.nom,
   description: row.description,
+  type: row.type || 'vendable',
   clientId: row.client_id,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
   ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
@@ -135,6 +136,7 @@ const create = async (req, res) => {
 
   const nom = req.body.name || req.body.nom;
   const { description } = req.body;
+  const type = req.body.type === 'utilisable' ? 'utilisable' : 'vendable';
   const ingredients = req.body.ingredients || [];
   const subProducts = req.body.subProducts || [];
 
@@ -143,8 +145,8 @@ const create = async (req, res) => {
     await client.query('BEGIN');
 
     const result = await client.query(
-      'INSERT INTO produits (nom, description, client_id) VALUES ($1, $2, $3) RETURNING *',
-      [nom, description || null, req.user.id]
+      'INSERT INTO produits (nom, description, type, client_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nom, description || null, type, req.user.id]
     );
     const produitId = result.rows[0].id;
 
@@ -197,6 +199,7 @@ const update = async (req, res) => {
   const { id } = req.params;
   const nom = req.body.name || req.body.nom;
   const { description } = req.body;
+  const type = req.body.type === 'utilisable' ? 'utilisable' : req.body.type === 'vendable' ? 'vendable' : undefined;
   const ingredients = req.body.ingredients;
   const subProducts = req.body.subProducts;
 
@@ -206,8 +209,9 @@ const update = async (req, res) => {
 
     const result = await client.query(
       `UPDATE produits SET nom = COALESCE($1, nom), description = COALESCE($2, description),
-       updated_at = NOW() WHERE id = $3 AND client_id = $4 RETURNING *`,
-      [nom, description, id, req.user.id]
+       type = COALESCE($3, type),
+       updated_at = NOW() WHERE id = $4 AND client_id = $5 RETURNING *`,
+      [nom, description, type || null, id, req.user.id]
     );
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');

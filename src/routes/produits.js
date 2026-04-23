@@ -17,10 +17,12 @@ router.post('/', authenticate, requireClient, [
     if (!b.name && !b.nom) throw new Error('Nom requis');
     return true;
   }),
+  body('type').optional().isIn(['utilisable', 'vendable']),
 ], create);
 router.put('/:id', authenticate, requireClient, [
   body('name').optional().trim().notEmpty(),
   body('nom').optional().trim().notEmpty(),
+  body('type').optional().isIn(['utilisable', 'vendable']),
 ], update);
 router.delete('/:id', authenticate, requireClient, remove);
 
