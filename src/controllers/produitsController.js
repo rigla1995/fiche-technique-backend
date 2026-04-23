@@ -97,11 +97,21 @@ const getById = async (req, res) => {
 
     const sousProduits = await pool.query(
       `SELECT psp.id, psp.sous_produit_id, psp.portion,
-              p.nom as sous_produit_nom
+              p.nom as sous_produit_nom,
+              ROUND(
+                COALESCE((
+                  SELECT SUM(pi2.portion * COALESCE(ipc2.prix, i2.prix, 0))
+                  FROM produit_ingredients pi2
+                  JOIN ingredients i2 ON pi2.ingredient_id = i2.id
+                  LEFT JOIN ingredient_prix_client ipc2
+                    ON ipc2.ingredient_id = i2.id AND ipc2.client_id = $2
+                  WHERE pi2.produit_id = psp.sous_produit_id
+                ), 0), 3
+              ) AS cout_unitaire
        FROM produit_sous_produits psp
        JOIN produits p ON psp.sous_produit_id = p.id
        WHERE psp.produit_id = $1`,
-      [id]
+      [id, req.user.id]
     );
 
     res.json({
@@ -115,12 +125,18 @@ const getById = async (req, res) => {
         unitPrice: parseFloat(r.prix_unitaire),
         unitName: r.unite_nom,
       })),
-      subProducts: sousProduits.rows.map((r) => ({
-        id: r.id,
-        subProductId: r.sous_produit_id,
-        portion: r.portion,
-        subProductName: r.sous_produit_nom,
-      })),
+      subProducts: sousProduits.rows.map((r) => {
+        const unitCost = parseFloat(r.cout_unitaire || 0);
+        const portion = parseFloat(r.portion);
+        return {
+          id: r.id,
+          subProductId: r.sous_produit_id,
+          portion,
+          subProductName: r.sous_produit_nom,
+          unitCost,
+          totalLineCost: parseFloat((portion * unitCost).toFixed(3)),
+        };
+      }),
     });
   } catch (err) {
     console.error(err);
