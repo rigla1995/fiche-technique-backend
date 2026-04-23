@@ -26,4 +26,34 @@ const create = async (req, res) => {
   }
 };
 
-module.exports = { list, create };
+const update = async (req, res) => {
+  const { id } = req.params;
+  const { nom } = req.body;
+  if (!nom?.trim()) return res.status(400).json({ message: 'Nom requis' });
+  try {
+    const result = await pool.query(
+      'UPDATE domaines_activite SET nom = $1 WHERE id = $2 RETURNING *',
+      [nom.trim(), id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Domaine introuvable' });
+    res.json({ id: result.rows[0].id, nom: result.rows[0].nom });
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ message: 'Ce domaine existe déjà' });
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const remove = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM domaines_activite WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Domaine introuvable' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { list, create, update, remove };
