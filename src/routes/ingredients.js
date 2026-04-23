@@ -23,6 +23,8 @@ const validateCreate = [
 ];
 
 router.get('/', authenticate, list);
+// Static routes MUST come before /:id to avoid Express treating them as id params
+router.get('/has-selections', authenticate, requireClient, hasSelections);
 router.get('/:id', authenticate, getById);
 router.post('/', authenticate, validateCreate, create);
 router.put('/:id', authenticate, [
@@ -39,9 +41,6 @@ router.delete('/:id', authenticate, remove);
 
 // Client sets their own purchase price for an ingredient
 router.put('/:id/price', authenticate, requireClient, setClientPrice);
-
-// Client ingredient selection (working list)
-router.get('/has-selections', authenticate, requireClient, hasSelections);
 router.post('/:id/select', authenticate, requireClient, toggleSelection);
 
 module.exports = router;
