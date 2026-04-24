@@ -160,7 +160,14 @@ const duplicateStockToFranchise = async (req, res) => {
     );
 
     for (const act of others.rows) {
+      // Only copy ingredients that are selected in the target activity
+      const targetSel = await pool.query(
+        'SELECT ingredient_id FROM activite_ingredient_selections WHERE activite_id = $1',
+        [act.id]
+      );
+      const targetIngSet = new Set(targetSel.rows.map((r) => r.ingredient_id));
       for (const row of source.rows) {
+        if (!targetIngSet.has(row.ingredient_id)) continue;
         await pool.query(
           `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_stock, quantite, prix_unitaire, updated_at)
            VALUES ($1, $2, $3, $4, $5, NOW())

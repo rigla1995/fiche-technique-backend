@@ -118,7 +118,12 @@ const me = async (req, res) => {
       }
     }
 
-    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role, compteType: u.compte_type || 'independant', onboardingStep: step });
+    let entrepriseName = null;
+    if (u.compte_type === 'entreprise') {
+      const epRes = await pool.query('SELECT nom FROM profil_entreprise WHERE client_id = $1', [u.id]);
+      if (epRes.rows.length > 0) entrepriseName = epRes.rows[0].nom;
+    }
+    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role, compteType: u.compte_type || 'independant', onboardingStep: step, entrepriseName });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

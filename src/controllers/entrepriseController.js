@@ -56,6 +56,7 @@ const mapActivite = (row) => ({
   telephone: row.telephone,
   email: row.email,
   type: row.type,
+  franchiseGroup: row.franchise_group || null,
   createdAt: row.created_at,
 });
 
@@ -78,8 +79,11 @@ const listActivites = async (req, res) => {
 };
 
 const createActivite = async (req, res) => {
-  const { nom, adresse, telephone, email, memeActivite, nombreActivites, type } = req.body;
-  if (!nom) return res.status(400).json({ message: 'Nom requis' });
+  // franchiseName is used for franchise batch creation; nom is used for single/distinct
+  const { nom, franchiseName, adresse, telephone, email, memeActivite, nombreActivites, type } = req.body;
+  const isFranchise = memeActivite === true || type === 'franchise';
+  const baseName = isFranchise && franchiseName ? franchiseName : nom;
+  if (!baseName) return res.status(400).json({ message: 'Nom requis' });
   try {
     const entrepriseRes = await pool.query(
       'SELECT id, meme_activite FROM profil_entreprise WHERE client_id = $1',
@@ -90,7 +94,6 @@ const createActivite = async (req, res) => {
 
     const entreprise = entrepriseRes.rows[0];
 
-    // Check if this is the first activity — if so, set meme_activite on the company
     const countRes = await pool.query(
       'SELECT COUNT(*) FROM activites WHERE entreprise_id = $1',
       [entreprise.id]
@@ -104,20 +107,23 @@ const createActivite = async (req, res) => {
       );
     }
 
-    // Derive type: explicit payload value takes precedence, then derive from memeActivite
     let activiteType = type || null;
     if (!activiteType && memeActivite !== undefined && memeActivite !== null) {
       activiteType = memeActivite ? 'franchise' : 'distincte';
     }
 
-    const count = parseInt(nombreActivites) > 1 ? Math.min(parseInt(nombreActivites), 20) : 1;
+    const count = isFranchise && parseInt(nombreActivites) > 1
+      ? Math.min(parseInt(nombreActivites), 20)
+      : 1;
+    const franchiseGroupValue = isFranchise ? baseName : null;
+
     const created = [];
     for (let i = 0; i < count; i++) {
-      const activiteName = count > 1 ? `${nom} ${i + 1}` : nom;
+      const activiteName = count > 1 ? `${baseName} ${i + 1}` : baseName;
       const result = await pool.query(
-        `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [entreprise.id, activiteName, adresse || null, telephone || null, email || null, activiteType]
+        `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type, franchise_group)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [entreprise.id, activiteName, adresse || null, telephone || null, email || null, activiteType, franchiseGroupValue]
       );
       created.push(mapActivite(result.rows[0]));
     }
