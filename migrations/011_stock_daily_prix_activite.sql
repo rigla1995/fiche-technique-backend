@@ -3,7 +3,7 @@ ALTER TABLE activite_ingredient_selections ADD COLUMN IF NOT EXISTS prix_unitair
 
 -- Date-keyed stock for individual (independant) clients
 CREATE TABLE IF NOT EXISTS stock_client_daily (
-  client_id   INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  client_id   INTEGER REFERENCES utilisateurs(id) ON DELETE CASCADE,
   ingredient_id INTEGER REFERENCES ingredients(id) ON DELETE CASCADE,
   date_stock  DATE NOT NULL DEFAULT CURRENT_DATE,
   quantite    DECIMAL(10,3),
