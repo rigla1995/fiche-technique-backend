@@ -81,10 +81,10 @@ const getStockEntreprise = async (req, res) => {
        JOIN ingredients i ON ais.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
-       LEFT JOIN stock_entreprise_daily sed ON sed.ingredient_id = i.id AND sed.activite_id = $1 AND sed.date_stock = $3
+       LEFT JOIN stock_entreprise_daily sed ON sed.ingredient_id = i.id AND sed.activite_id = $1 AND sed.date_stock = $2
        WHERE ais.activite_id = $1
        ORDER BY c.nom NULLS LAST, i.nom`,
-      [activiteId, req.user.id, dateStock]
+      [activiteId, dateStock]
     );
     res.json(result.rows.map((row) => ({
       ingredientId: row.ingredient_id,
