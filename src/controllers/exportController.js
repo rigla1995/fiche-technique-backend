@@ -1,12 +1,63 @@
 const ExcelJS = require('exceljs');
 const pool = require('../config/database');
-const { calculerCout } = require('./produitsController');
+const { calculerCout, calculerCoutAvecPrixMap } = require('./produitsController');
 
 const exportExcel = async (req, res) => {
   const { id } = req.params;
+  const { mode, activiteId, date } = req.query;
+  const actId = parseInt(activiteId) || 0;
 
   try {
-    const coutData = await calculerCout(parseInt(id), req.user.id);
+    let coutData;
+    let ftMode = null;
+    let ftDate = null;
+
+    if (mode === 'stock' && date) {
+      // Build price map from stock at the given date
+      let priceRows;
+      if (actId) {
+        const r = await pool.query(
+          `SELECT sed.ingredient_id, sed.prix_unitaire
+           FROM stock_entreprise_daily sed
+           JOIN activites a ON sed.activite_id = a.id
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE sed.activite_id = $1 AND pe.client_id = $2 AND sed.date_stock = $3
+             AND sed.prix_unitaire IS NOT NULL`,
+          [actId, req.user.id, date]
+        );
+        priceRows = r.rows;
+      } else {
+        const r = await pool.query(
+          `SELECT ingredient_id, prix_unitaire FROM stock_client_daily
+           WHERE client_id = $1 AND date_stock = $2 AND prix_unitaire IS NOT NULL`,
+          [req.user.id, date]
+        );
+        priceRows = r.rows;
+      }
+      const priceMap = {};
+      priceRows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+      coutData = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
+      ftMode = 'Stock';
+      ftDate = date;
+    } else if (mode === 'manual') {
+      // Build price map from manual prices
+      const r = await pool.query(
+        `SELECT ingredient_id, prix_unitaire, updated_at
+         FROM fiche_technique_manual_prices
+         WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3`,
+        [id, req.user.id, actId]
+      );
+      const priceMap = {};
+      r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+      const latestUpdated = r.rows.length > 0 ? r.rows[0].updated_at : new Date();
+      coutData = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
+      ftMode = 'Manuel';
+      ftDate = latestUpdated instanceof Date
+        ? latestUpdated.toISOString().slice(0, 10)
+        : String(latestUpdated).slice(0, 10);
+    } else {
+      coutData = await calculerCout(parseInt(id), req.user.id);
+    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
@@ -240,6 +291,19 @@ const exportExcel = async (req, res) => {
       addSummaryRow('Coût produits utilisables :', coutData.cout_sous_produits, false, 'F0F4FF');
     }
     addSummaryRow('COÛT TOTAL :', coutData.cout_total, true, COLORS.totalBg);
+
+    // ─── TYPE ET DATE (si FP Stock ou FP Manuel) ───
+    if (ftMode) {
+      sheet.mergeCells(`A${rowIndex}:E${rowIndex}`);
+      const typeCell = sheet.getCell(`A${rowIndex}`);
+      typeCell.value = `Type : ${ftMode}${ftDate ? ` — Date : ${ftDate}` : ''}`;
+      typeCell.font = { name: 'Calibri', bold: true, size: 9, color: { argb: '1F3864' } };
+      typeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D9E1F2' } };
+      typeCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      typeCell.border = { top: thin, left: thin, bottom: thin, right: thin };
+      sheet.getRow(rowIndex).height = 16;
+      rowIndex++;
+    }
 
     // ─── PIED DE PAGE ───
     rowIndex++;

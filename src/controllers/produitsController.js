@@ -581,9 +581,182 @@ const getCout = async (req, res) => {
   }
 };
 
+// Calcul du coût avec une map de prix explicites { ingredientId → prixUnitaire }
+async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = new Set()) {
+  if (visited.has(produitId)) throw new Error('Référence circulaire détectée dans les sous-produits');
+  visited.add(produitId);
+
+  const produit = await pool.query('SELECT * FROM produits WHERE id = $1 AND client_id = $2', [produitId, clientId]);
+  if (produit.rows.length === 0) throw new Error('Produit introuvable');
+
+  const ingredients = await pool.query(
+    `SELECT pi.portion, i.id as ingredient_id, i.nom as ingredient_nom,
+            u.nom as unite_nom, c.nom as categorie_nom
+     FROM produit_ingredients pi
+     JOIN ingredients i ON pi.ingredient_id = i.id
+     JOIN unites u ON pi.unite_id = u.id
+     LEFT JOIN categories c ON i.categorie_id = c.id
+     WHERE pi.produit_id = $1
+     ORDER BY COALESCE(c.nom, 'zzz'), i.nom`,
+    [produitId]
+  );
+
+  let coutIngredients = 0;
+  const lignesIngredients = ingredients.rows.map((row) => {
+    const prix = priceMap[row.ingredient_id] !== undefined ? parseFloat(priceMap[row.ingredient_id]) : 0;
+    const cout = parseFloat(row.portion) * prix;
+    coutIngredients += cout;
+    return {
+      nom: row.ingredient_nom,
+      portion: parseFloat(row.portion),
+      unite: row.unite_nom,
+      prix_unitaire: prix,
+      cout: parseFloat(cout.toFixed(3)),
+      categorie: row.categorie_nom || null,
+    };
+  });
+
+  const sousProduits = await pool.query(
+    `SELECT psp.portion, psp.sous_produit_id, p.nom as sous_produit_nom
+     FROM produit_sous_produits psp
+     JOIN produits p ON psp.sous_produit_id = p.id
+     WHERE psp.produit_id = $1`,
+    [produitId]
+  );
+
+  let coutSousProduits = 0;
+  const lignesSousProduits = [];
+  for (const sp of sousProduits.rows) {
+    const detailSp = await calculerCoutAvecPrixMap(sp.sous_produit_id, clientId, priceMap, new Set(visited));
+    const coutSp = parseFloat(sp.portion) * detailSp.cout_total;
+    coutSousProduits += coutSp;
+    lignesSousProduits.push({
+      nom: sp.sous_produit_nom,
+      portion: parseFloat(sp.portion),
+      cout_unitaire: detailSp.cout_total,
+      cout: parseFloat(coutSp.toFixed(3)),
+      details: detailSp,
+    });
+  }
+
+  const coutTotal = coutIngredients + coutSousProduits;
+  return {
+    produit: produit.rows[0].nom,
+    ingredients: lignesIngredients,
+    sous_produits: lignesSousProduits,
+    cout_ingredients: parseFloat(coutIngredients.toFixed(3)),
+    cout_sous_produits: parseFloat(coutSousProduits.toFixed(3)),
+    cout_total: parseFloat(coutTotal.toFixed(3)),
+  };
+}
+
+// GET /products/:id/stock-dates?activiteId=:aid&month=YYYY-MM
+const getStockDates = async (req, res) => {
+  const { id } = req.params;
+  const { activiteId, month } = req.query;
+  const monthStr = month || new Date().toISOString().slice(0, 7);
+  const monthDate = `${monthStr}-01`;
+
+  try {
+    let rows;
+    if (activiteId) {
+      const result = await pool.query(
+        `SELECT DISTINCT date_stock::text FROM stock_entreprise_daily sed
+         JOIN activites a ON sed.activite_id = a.id
+         JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+         WHERE sed.activite_id = $1 AND pe.client_id = $2 AND sed.prix_unitaire IS NOT NULL
+           AND DATE_TRUNC('month', sed.date_stock) = DATE_TRUNC('month', $3::date)
+         ORDER BY date_stock`,
+        [activiteId, req.user.id, monthDate]
+      );
+      rows = result.rows;
+    } else {
+      const result = await pool.query(
+        `SELECT DISTINCT date_stock::text FROM stock_client_daily
+         WHERE client_id = $1 AND prix_unitaire IS NOT NULL
+           AND DATE_TRUNC('month', date_stock) = DATE_TRUNC('month', $2::date)
+         ORDER BY date_stock`,
+        [req.user.id, monthDate]
+      );
+      rows = result.rows;
+    }
+    res.json({ dates: rows.map((r) => r.date_stock.slice(0, 10)) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// GET /products/:id/manual-prices?activiteId=:aid
+const getManualPrices = async (req, res) => {
+  const { id } = req.params;
+  const actId = parseInt(req.query.activiteId) || 0;
+
+  try {
+    const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
+
+    const result = await pool.query(
+      `SELECT fmp.ingredient_id, fmp.prix_unitaire, fmp.updated_at,
+              i.nom as ingredient_nom, u.nom as unite_nom
+       FROM fiche_technique_manual_prices fmp
+       JOIN ingredients i ON i.id = fmp.ingredient_id
+       LEFT JOIN unites u ON i.unite_id = u.id
+       WHERE fmp.produit_id = $1 AND fmp.client_id = $2 AND fmp.activite_id = $3`,
+      [id, req.user.id, actId]
+    );
+
+    const updatedAt = result.rows.length > 0 ? result.rows[0].updated_at : null;
+    res.json({
+      prices: result.rows.map((r) => ({
+        ingredientId: r.ingredient_id,
+        nom: r.ingredient_nom,
+        unite: r.unite_nom,
+        prixUnitaire: parseFloat(r.prix_unitaire),
+      })),
+      updatedAt,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// POST /products/:id/manual-prices
+const saveManualPrices = async (req, res) => {
+  const { id } = req.params;
+  const { activiteId, prices } = req.body;
+  const actId = parseInt(activiteId) || 0;
+
+  if (!Array.isArray(prices) || prices.length === 0) {
+    return res.status(400).json({ message: 'Prices array required' });
+  }
+
+  try {
+    const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
+
+    const now = new Date();
+    for (const p of prices) {
+      await pool.query(
+        `INSERT INTO fiche_technique_manual_prices (produit_id, ingredient_id, client_id, activite_id, prix_unitaire, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (produit_id, ingredient_id, client_id, activite_id)
+         DO UPDATE SET prix_unitaire = $5, updated_at = $6`,
+        [id, p.ingredientId, req.user.id, actId, p.prixUnitaire, now]
+      );
+    }
+    res.json({ updatedAt: now });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   list, getById, create, update, remove,
   addIngredient, removeIngredient,
   addSousProduit, removeSousProduit,
-  getCout, calculerCout,
+  getCout, calculerCout, calculerCoutAvecPrixMap,
+  getStockDates, getManualPrices, saveManualPrices,
 };
