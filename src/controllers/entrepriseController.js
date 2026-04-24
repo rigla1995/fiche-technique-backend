@@ -246,6 +246,7 @@ const getActiviteIngredients = async (req, res) => {
 
     const result = await pool.query(
       `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+              i.categorie_id,
               COALESCE(ipc.prix, i.prix) as prix,
               ais.prix_unitaire,
               CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
@@ -262,6 +263,7 @@ const getActiviteIngredients = async (req, res) => {
       nom: r.nom,
       unite: r.unite,
       categorie: r.categorie,
+      categorieId: r.categorie_id ?? null,
       prix: r.prix ? parseFloat(r.prix) : null,
       prixUnitaire: r.prix_unitaire ? parseFloat(r.prix_unitaire) : null,
       selected: r.selected,
