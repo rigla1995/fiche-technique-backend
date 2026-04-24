@@ -88,7 +88,37 @@ const me = async (req, res) => {
       [req.user.id]
     );
     const u = result.rows[0];
-    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role, compteType: u.compte_type || 'independant', onboardingStep: u.onboarding_step ?? 0 });
+    let step = u.onboarding_step ?? 0;
+
+    // Auto-heal: if entreprise user is stuck at step 1 or 2 but already has activities,
+    // advance them automatically so they are never re-blocked after a session reset.
+    if (step > 0 && (u.compte_type === 'entreprise')) {
+      const actRes = await pool.query(
+        `SELECT COUNT(*) FROM activites a
+         JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+         WHERE pe.client_id = $1`,
+        [u.id]
+      );
+      const hasActivities = parseInt(actRes.rows[0].count) > 0;
+      if (hasActivities && step < 3) {
+        // They have activities → at least past step 2; check ingredient selections
+        const selRes = await pool.query(
+          `SELECT COUNT(*) FROM activite_ingredient_selections ais
+           JOIN activites a ON ais.activite_id = a.id
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE pe.client_id = $1`,
+          [u.id]
+        );
+        const hasSelections = parseInt(selRes.rows[0].count) > 0;
+        step = hasSelections ? 0 : 3;
+        await pool.query(
+          'UPDATE utilisateurs SET onboarding_step = $1, updated_at = NOW() WHERE id = $2',
+          [step, u.id]
+        );
+      }
+    }
+
+    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role, compteType: u.compte_type || 'independant', onboardingStep: step });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

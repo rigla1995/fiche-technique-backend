@@ -136,6 +136,7 @@ const update = async (req, res) => {
   const telephone = req.body.telephone || req.body.phone;
   const activeValue = active !== undefined ? active : actif;
   const compteType = req.body.compteType || req.body.compte_type;
+  const onboardingStep = req.body.onboardingStep !== undefined ? req.body.onboardingStep : null;
 
   // Check tel uniqueness (exclude current user)
   if (telephone) {
@@ -155,10 +156,11 @@ const update = async (req, res) => {
            telephone = COALESCE($3, telephone),
            actif = COALESCE($4, actif),
            compte_type = COALESCE($5, compte_type),
+           onboarding_step = COALESCE($6, onboarding_step),
            updated_at = NOW()
-       WHERE id = $6 AND role = 'client'
+       WHERE id = $7 AND role = 'client'
        RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
-      [nom || null, email || null, telephone || null, activeValue !== undefined ? activeValue : null, compteType || null, id]
+      [nom || null, email || null, telephone || null, activeValue !== undefined ? activeValue : null, compteType || null, onboardingStep !== null ? onboardingStep : null, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Client introuvable' });
