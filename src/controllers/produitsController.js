@@ -696,23 +696,32 @@ const getManualPrices = async (req, res) => {
     const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
+    // Return ALL ingredients of the product, with saved manual prices joined in (NULL if not yet saved)
     const result = await pool.query(
-      `SELECT fmp.ingredient_id, fmp.prix_unitaire, fmp.updated_at,
-              i.nom as ingredient_nom, u.nom as unite_nom
-       FROM fiche_technique_manual_prices fmp
-       JOIN ingredients i ON i.id = fmp.ingredient_id
+      `SELECT pi.ingredient_id,
+              i.nom as ingredient_nom, u.nom as unite_nom,
+              fmp.prix_unitaire, fmp.updated_at
+       FROM produit_ingredients pi
+       JOIN ingredients i ON i.id = pi.ingredient_id
        LEFT JOIN unites u ON i.unite_id = u.id
-       WHERE fmp.produit_id = $1 AND fmp.client_id = $2 AND fmp.activite_id = $3`,
+       LEFT JOIN fiche_technique_manual_prices fmp
+         ON fmp.ingredient_id = pi.ingredient_id
+         AND fmp.produit_id = pi.produit_id
+         AND fmp.client_id = $2
+         AND fmp.activite_id = $3
+       WHERE pi.produit_id = $1
+       ORDER BY i.nom`,
       [id, req.user.id, actId]
     );
 
-    const updatedAt = result.rows.length > 0 ? result.rows[0].updated_at : null;
+    const savedRow = result.rows.find((r) => r.updated_at);
+    const updatedAt = savedRow ? savedRow.updated_at : null;
     res.json({
       prices: result.rows.map((r) => ({
         ingredientId: r.ingredient_id,
         nom: r.ingredient_nom,
         unite: r.unite_nom,
-        prixUnitaire: parseFloat(r.prix_unitaire),
+        prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
       })),
       updatedAt,
     });
