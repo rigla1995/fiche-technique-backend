@@ -737,8 +737,11 @@ const saveManualPrices = async (req, res) => {
   const { activiteId, prices } = req.body;
   const actId = parseInt(activiteId) || 0;
 
-  if (!Array.isArray(prices) || prices.length === 0) {
+  if (!Array.isArray(prices)) {
     return res.status(400).json({ message: 'Prices array required' });
+  }
+  if (prices.length === 0) {
+    return res.json({ updatedAt: null });
   }
 
   try {
