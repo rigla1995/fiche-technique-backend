@@ -4,6 +4,7 @@ const {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
   hasActivites, getActiviteIngredients, toggleActiviteIngredient,
+  getActiviteTypesSummary,
 } = require('../controllers/entrepriseController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
@@ -13,6 +14,7 @@ router.put('/', authenticate, requireEntreprise, upsertEntreprise);
 
 // Activities
 router.get('/activites/has', authenticate, requireEntreprise, hasActivites);
+router.get('/activites/types-summary', authenticate, requireEntreprise, getActiviteTypesSummary);
 router.get('/activites', authenticate, requireEntreprise, listActivites);
 router.post('/activites', authenticate, requireEntreprise, createActivite);
 router.put('/activites/:id', authenticate, requireEntreprise, updateActivite);

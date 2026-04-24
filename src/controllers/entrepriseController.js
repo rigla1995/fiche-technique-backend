@@ -55,6 +55,7 @@ const mapActivite = (row) => ({
   adresse: row.adresse,
   telephone: row.telephone,
   email: row.email,
+  type: row.type,
   createdAt: row.created_at,
 });
 
@@ -77,7 +78,7 @@ const listActivites = async (req, res) => {
 };
 
 const createActivite = async (req, res) => {
-  const { nom, adresse, telephone, email, memeActivite, nombreActivites } = req.body;
+  const { nom, adresse, telephone, email, memeActivite, nombreActivites, type } = req.body;
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   try {
     const entrepriseRes = await pool.query(
@@ -103,14 +104,20 @@ const createActivite = async (req, res) => {
       );
     }
 
+    // Derive type: explicit payload value takes precedence, then derive from memeActivite
+    let activiteType = type || null;
+    if (!activiteType && memeActivite !== undefined && memeActivite !== null) {
+      activiteType = memeActivite ? 'franchise' : 'distincte';
+    }
+
     const count = parseInt(nombreActivites) > 1 ? Math.min(parseInt(nombreActivites), 20) : 1;
     const created = [];
     for (let i = 0; i < count; i++) {
       const activiteName = count > 1 ? `${nom} ${i + 1}` : nom;
       const result = await pool.query(
-        `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [entreprise.id, activiteName, adresse || null, telephone || null, email || null]
+        `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [entreprise.id, activiteName, adresse || null, telephone || null, email || null, activiteType]
       );
       created.push(mapActivite(result.rows[0]));
     }
@@ -187,9 +194,9 @@ const duplicateActivite = async (req, res) => {
 
     const src = source.rows[0];
     const result = await pool.query(
-      `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [src.entreprise_id, src.nom, src.adresse, src.telephone, src.email]
+      `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [src.entreprise_id, src.nom, src.adresse, src.telephone, src.email, src.type]
     );
     res.status(201).json(mapActivite(result.rows[0]));
   } catch (err) {
@@ -291,9 +298,32 @@ const toggleActiviteIngredient = async (req, res) => {
   }
 };
 
+const getActiviteTypesSummary = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         BOOL_OR(a.type = 'franchise') AS has_franchise,
+         BOOL_OR(a.type = 'distincte') AS has_distinct
+       FROM activites a
+       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE pe.client_id = $1`,
+      [req.user.id]
+    );
+    const row = result.rows[0];
+    res.json({
+      hasFranchise: row.has_franchise ?? false,
+      hasDistinct: row.has_distinct ?? false,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
   hasActivites,
   getActiviteIngredients, toggleActiviteIngredient,
+  getActiviteTypesSummary,
 };
