@@ -486,10 +486,23 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
     throw new Error('Produit introuvable');
   }
 
-  // Coût des ingrédients directs — prix client prioritaire
+  // Coût des ingrédients directs — prix stock le plus récent en priorité
   const ingredients = await pool.query(
-    `SELECT pi.portion, COALESCE(ipc.prix, i.prix, 0) as prix_unitaire, i.nom as ingredient_nom,
-            u.nom as unite_nom, pi.unite_id, c.nom as categorie_nom
+    `SELECT pi.portion, i.nom as ingredient_nom,
+            u.nom as unite_nom, pi.unite_id, c.nom as categorie_nom,
+            COALESCE(
+              (SELECT sed.prix_unitaire FROM stock_entreprise_daily sed
+               JOIN activites a_s ON sed.activite_id = a_s.id
+               JOIN profil_entreprise pe_s ON a_s.entreprise_id = pe_s.id
+               WHERE sed.ingredient_id = i.id AND pe_s.client_id = $2
+                 AND sed.prix_unitaire IS NOT NULL
+               ORDER BY sed.date_stock DESC LIMIT 1),
+              (SELECT scd.prix_unitaire FROM stock_client_daily scd
+               WHERE scd.ingredient_id = i.id AND scd.client_id = $2
+                 AND scd.prix_unitaire IS NOT NULL
+               ORDER BY scd.date_stock DESC LIMIT 1),
+              ipc.prix, i.prix, 0
+            ) as prix_unitaire
      FROM produit_ingredients pi
      JOIN ingredients i ON pi.ingredient_id = i.id
      JOIN unites u ON pi.unite_id = u.id
