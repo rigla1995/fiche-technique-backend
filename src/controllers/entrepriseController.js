@@ -77,7 +77,7 @@ const listActivites = async (req, res) => {
 };
 
 const createActivite = async (req, res) => {
-  const { nom, adresse, telephone, email, memeActivite } = req.body;
+  const { nom, adresse, telephone, email, memeActivite, nombreActivites } = req.body;
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   try {
     const entrepriseRes = await pool.query(
@@ -103,12 +103,18 @@ const createActivite = async (req, res) => {
       );
     }
 
-    const result = await pool.query(
-      `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [entreprise.id, nom, adresse || null, telephone || null, email || null]
-    );
-    res.status(201).json(mapActivite(result.rows[0]));
+    const count = parseInt(nombreActivites) > 1 ? Math.min(parseInt(nombreActivites), 20) : 1;
+    const created = [];
+    for (let i = 0; i < count; i++) {
+      const activiteName = count > 1 ? `${nom} ${i + 1}` : nom;
+      const result = await pool.query(
+        `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [entreprise.id, activiteName, adresse || null, telephone || null, email || null]
+      );
+      created.push(mapActivite(result.rows[0]));
+    }
+    res.status(201).json(count > 1 ? created : created[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -212,8 +218,82 @@ const hasActivites = async (req, res) => {
   }
 };
 
+// ─── Per-activity ingredient assignments ────────────────────────────────────
+
+const getActiviteIngredients = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const check = await pool.query(
+      `SELECT a.id FROM activites a
+       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE a.id = $1 AND pe.client_id = $2`,
+      [id, req.user.id]
+    );
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+
+    const result = await pool.query(
+      `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+              COALESCE(ipc.prix, i.prix) as prix,
+              CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
+       FROM ingredients i
+       JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
+       LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
+       LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = i.id AND ais.activite_id = $1
+       ORDER BY c.nom NULLS LAST, i.nom`,
+      [id, req.user.id]
+    );
+    res.json(result.rows.map((r) => ({
+      id: r.id,
+      nom: r.nom,
+      unite: r.unite,
+      categorie: r.categorie,
+      prix: r.prix ? parseFloat(r.prix) : null,
+      selected: r.selected,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const toggleActiviteIngredient = async (req, res) => {
+  const { id, ingredientId } = req.params;
+  try {
+    const check = await pool.query(
+      `SELECT a.id FROM activites a
+       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE a.id = $1 AND pe.client_id = $2`,
+      [id, req.user.id]
+    );
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+
+    const existing = await pool.query(
+      'SELECT 1 FROM activite_ingredient_selections WHERE activite_id = $1 AND ingredient_id = $2',
+      [id, ingredientId]
+    );
+    if (existing.rows.length > 0) {
+      await pool.query(
+        'DELETE FROM activite_ingredient_selections WHERE activite_id = $1 AND ingredient_id = $2',
+        [id, ingredientId]
+      );
+      res.json({ selected: false });
+    } else {
+      await pool.query(
+        'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id) VALUES ($1, $2)',
+        [id, ingredientId]
+      );
+      res.json({ selected: true });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
   hasActivites,
+  getActiviteIngredients, toggleActiviteIngredient,
 };
