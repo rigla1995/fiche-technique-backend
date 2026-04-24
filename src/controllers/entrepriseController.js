@@ -241,6 +241,7 @@ const getActiviteIngredients = async (req, res) => {
     const result = await pool.query(
       `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
               COALESCE(ipc.prix, i.prix) as prix,
+              ais.prix_unitaire,
               CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
        FROM ingredients i
        JOIN unites u ON i.unite_id = u.id
@@ -256,6 +257,7 @@ const getActiviteIngredients = async (req, res) => {
       unite: r.unite,
       categorie: r.categorie,
       prix: r.prix ? parseFloat(r.prix) : null,
+      prixUnitaire: r.prix_unitaire ? parseFloat(r.prix_unitaire) : null,
       selected: r.selected,
     })));
   } catch (err) {
@@ -286,9 +288,10 @@ const toggleActiviteIngredient = async (req, res) => {
       );
       res.json({ selected: false });
     } else {
+      const { prixUnitaire } = req.body;
       await pool.query(
-        'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id) VALUES ($1, $2)',
-        [id, ingredientId]
+        'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire) VALUES ($1, $2, $3)',
+        [id, ingredientId, prixUnitaire || null]
       );
       res.json({ selected: true });
     }
@@ -320,10 +323,35 @@ const getActiviteTypesSummary = async (req, res) => {
   }
 };
 
+const updateIngredientPrice = async (req, res) => {
+  const { id, ingredientId } = req.params;
+  const { prixUnitaire } = req.body;
+  try {
+    const check = await pool.query(
+      `SELECT a.id FROM activites a
+       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE a.id = $1 AND pe.client_id = $2`,
+      [id, req.user.id]
+    );
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+
+    await pool.query(
+      `INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (activite_id, ingredient_id) DO UPDATE SET prix_unitaire = $3`,
+      [id, ingredientId, prixUnitaire ?? null]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
   hasActivites,
-  getActiviteIngredients, toggleActiviteIngredient,
+  getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,
 };

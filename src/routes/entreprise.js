@@ -3,7 +3,7 @@ const router = express.Router();
 const {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
-  hasActivites, getActiviteIngredients, toggleActiviteIngredient,
+  hasActivites, getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,
 } = require('../controllers/entrepriseController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
@@ -22,5 +22,6 @@ router.delete('/activites/:id', authenticate, requireEntreprise, deleteActivite)
 router.post('/activites/:id/duplicate', authenticate, requireEntreprise, duplicateActivite);
 router.get('/activites/:id/ingredients', authenticate, requireEntreprise, getActiviteIngredients);
 router.post('/activites/:id/ingredients/:ingredientId/select', authenticate, requireEntreprise, toggleActiviteIngredient);
+router.put('/activites/:id/ingredients/:ingredientId/price', authenticate, requireEntreprise, updateIngredientPrice);
 
 module.exports = router;
