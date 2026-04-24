@@ -10,13 +10,11 @@ const getStockClient = async (req, res) => {
     const result = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie,
-              COALESCE(ipc.prix, i.prix) as prix_unitaire,
-              scd.quantite, scd.updated_at
+              scd.quantite, scd.prix_unitaire, scd.updated_at
        FROM client_ingredient_selections cis
        JOIN ingredients i ON cis.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
-       LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $1
        LEFT JOIN stock_client_daily scd ON scd.ingredient_id = i.id AND scd.client_id = $1 AND scd.date_stock = $2
        WHERE cis.client_id = $1
        ORDER BY c.nom NULLS LAST, i.nom`,
@@ -39,7 +37,7 @@ const getStockClient = async (req, res) => {
 
 const updateStockClient = async (req, res) => {
   const { ingredientId } = req.params;
-  const { quantite, dateStock } = req.body;
+  const { quantite, prixUnitaire, dateStock } = req.body;
   const ds = dateStock || todayStr();
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
@@ -47,11 +45,11 @@ const updateStockClient = async (req, res) => {
 
   try {
     await pool.query(
-      `INSERT INTO stock_client_daily (client_id, ingredient_id, date_stock, quantite, updated_at)
-       VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO stock_client_daily (client_id, ingredient_id, date_stock, quantite, prix_unitaire, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
        ON CONFLICT (client_id, ingredient_id, date_stock)
-       DO UPDATE SET quantite = $4, updated_at = NOW()`,
-      [req.user.id, ingredientId, ds, quantite ?? null]
+       DO UPDATE SET quantite = $4, prix_unitaire = $5, updated_at = NOW()`,
+      [req.user.id, ingredientId, ds, quantite ?? null, prixUnitaire ?? null]
     );
     res.json({ success: true });
   } catch (err) {
@@ -78,13 +76,11 @@ const getStockEntreprise = async (req, res) => {
     const result = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie,
-              COALESCE(ais.prix_unitaire, ipc.prix, i.prix) as prix_unitaire,
-              sed.quantite, sed.updated_at
+              sed.quantite, sed.prix_unitaire, sed.updated_at
        FROM activite_ingredient_selections ais
        JOIN ingredients i ON ais.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
-       LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
        LEFT JOIN stock_entreprise_daily sed ON sed.ingredient_id = i.id AND sed.activite_id = $1 AND sed.date_stock = $3
        WHERE ais.activite_id = $1
        ORDER BY c.nom NULLS LAST, i.nom`,
@@ -107,7 +103,7 @@ const getStockEntreprise = async (req, res) => {
 
 const updateStockEntreprise = async (req, res) => {
   const { activiteId, ingredientId } = req.params;
-  const { quantite, dateStock } = req.body;
+  const { quantite, prixUnitaire, dateStock } = req.body;
   const ds = dateStock || todayStr();
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
@@ -124,11 +120,11 @@ const updateStockEntreprise = async (req, res) => {
       return res.status(404).json({ message: 'Activité introuvable' });
 
     await pool.query(
-      `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_stock, quantite, updated_at)
-       VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_stock, quantite, prix_unitaire, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
        ON CONFLICT (activite_id, ingredient_id, date_stock)
-       DO UPDATE SET quantite = $4, updated_at = NOW()`,
-      [activiteId, ingredientId, ds, quantite ?? null]
+       DO UPDATE SET quantite = $4, prix_unitaire = $5, updated_at = NOW()`,
+      [activiteId, ingredientId, ds, quantite ?? null, prixUnitaire ?? null]
     );
     res.json({ success: true });
   } catch (err) {
@@ -142,7 +138,6 @@ const duplicateStockToFranchise = async (req, res) => {
   const { activiteId } = req.params;
   const dateStock = req.query.date || todayStr();
   try {
-    // Verify ownership + get entreprise
     const check = await pool.query(
       `SELECT a.id, a.entreprise_id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
@@ -154,13 +149,11 @@ const duplicateStockToFranchise = async (req, res) => {
 
     const entrepriseId = check.rows[0].entreprise_id;
 
-    // Get source stock
     const source = await pool.query(
-      'SELECT ingredient_id, quantite FROM stock_entreprise_daily WHERE activite_id = $1 AND date_stock = $2',
+      'SELECT ingredient_id, quantite, prix_unitaire FROM stock_entreprise_daily WHERE activite_id = $1 AND date_stock = $2',
       [activiteId, dateStock]
     );
 
-    // Get all other franchise activities in same company
     const others = await pool.query(
       "SELECT id FROM activites WHERE entreprise_id = $1 AND type = 'franchise' AND id != $2",
       [entrepriseId, activiteId]
@@ -169,10 +162,10 @@ const duplicateStockToFranchise = async (req, res) => {
     for (const act of others.rows) {
       for (const row of source.rows) {
         await pool.query(
-          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_stock, quantite, updated_at)
-           VALUES ($1, $2, $3, $4, NOW())
-           ON CONFLICT (activite_id, ingredient_id, date_stock) DO UPDATE SET quantite = $4, updated_at = NOW()`,
-          [act.id, row.ingredient_id, dateStock, row.quantite]
+          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_stock, quantite, prix_unitaire, updated_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           ON CONFLICT (activite_id, ingredient_id, date_stock) DO UPDATE SET quantite = $4, prix_unitaire = $5, updated_at = NOW()`,
+          [act.id, row.ingredient_id, dateStock, row.quantite, row.prix_unitaire]
         );
       }
     }

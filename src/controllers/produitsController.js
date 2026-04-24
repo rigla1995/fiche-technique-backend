@@ -37,10 +37,26 @@ const mapCout = (data) => ({
   totalCost: data.cout_total,
 });
 
+// Returns the most recent stock price for an ingredient for a given client.
+// Tries enterprise stock (any activity) then client stock, then falls back to catalogue price.
+const stockPriceLookup = (ingAlias, productAlias, ipcAlias) => `COALESCE(
+    (SELECT sed.prix_unitaire FROM stock_entreprise_daily sed
+     JOIN activites a_s ON sed.activite_id = a_s.id
+     JOIN profil_entreprise pe_s ON a_s.entreprise_id = pe_s.id
+     WHERE sed.ingredient_id = ${ingAlias}.id AND pe_s.client_id = ${productAlias}.client_id
+       AND sed.prix_unitaire IS NOT NULL
+     ORDER BY sed.date_stock DESC LIMIT 1),
+    (SELECT scd.prix_unitaire FROM stock_client_daily scd
+     WHERE scd.ingredient_id = ${ingAlias}.id AND scd.client_id = ${productAlias}.client_id
+       AND scd.prix_unitaire IS NOT NULL
+     ORDER BY scd.date_stock DESC LIMIT 1),
+    ${ipcAlias}.prix, ${ingAlias}.prix, 0
+  )`;
+
 const costSubquery = (alias = 'p') => `
   ROUND(
     COALESCE((
-      SELECT SUM(pi.portion * COALESCE(ipc.prix, i.prix, 0))
+      SELECT SUM(pi.portion * ${stockPriceLookup('i', alias, 'ipc')})
       FROM produit_ingredients pi
       JOIN ingredients i ON pi.ingredient_id = i.id
       LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = ${alias}.client_id
@@ -48,7 +64,7 @@ const costSubquery = (alias = 'p') => `
     ), 0) +
     COALESCE((
       SELECT SUM(psp.portion * (
-        SELECT COALESCE(SUM(pi2.portion * COALESCE(ipc2.prix, i2.prix, 0)), 0)
+        SELECT COALESCE(SUM(pi2.portion * ${stockPriceLookup('i2', alias, 'ipc2')}), 0)
         FROM produit_ingredients pi2
         JOIN ingredients i2 ON pi2.ingredient_id = i2.id
         LEFT JOIN ingredient_prix_client ipc2 ON ipc2.ingredient_id = i2.id AND ipc2.client_id = ${alias}.client_id
