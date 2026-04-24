@@ -137,4 +137,51 @@ const updateStockEntreprise = async (req, res) => {
   }
 };
 
-module.exports = { getStockClient, updateStockClient, getStockEntreprise, updateStockEntreprise };
+// Copy all stock entries from one franchise activity to all other franchise activities of the same company
+const duplicateStockToFranchise = async (req, res) => {
+  const { activiteId } = req.params;
+  const dateStock = req.query.date || todayStr();
+  try {
+    // Verify ownership + get entreprise
+    const check = await pool.query(
+      `SELECT a.id, a.entreprise_id FROM activites a
+       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE a.id = $1 AND pe.client_id = $2 AND a.type = 'franchise'`,
+      [activiteId, req.user.id]
+    );
+    if (check.rows.length === 0)
+      return res.status(404).json({ message: 'Activité franchise introuvable' });
+
+    const entrepriseId = check.rows[0].entreprise_id;
+
+    // Get source stock
+    const source = await pool.query(
+      'SELECT ingredient_id, quantite FROM stock_entreprise_daily WHERE activite_id = $1 AND date_stock = $2',
+      [activiteId, dateStock]
+    );
+
+    // Get all other franchise activities in same company
+    const others = await pool.query(
+      "SELECT id FROM activites WHERE entreprise_id = $1 AND type = 'franchise' AND id != $2",
+      [entrepriseId, activiteId]
+    );
+
+    for (const act of others.rows) {
+      for (const row of source.rows) {
+        await pool.query(
+          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_stock, quantite, updated_at)
+           VALUES ($1, $2, $3, $4, NOW())
+           ON CONFLICT (activite_id, ingredient_id, date_stock) DO UPDATE SET quantite = $4, updated_at = NOW()`,
+          [act.id, row.ingredient_id, dateStock, row.quantite]
+        );
+      }
+    }
+
+    res.json({ duplicatedTo: others.rows.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { getStockClient, updateStockClient, getStockEntreprise, updateStockEntreprise, duplicateStockToFranchise };

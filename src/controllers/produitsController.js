@@ -7,6 +7,8 @@ const mapProduit = (row) => ({
   description: row.description,
   type: row.type || 'vendable',
   clientId: row.client_id,
+  activiteId: row.activite_id || null,
+  activiteType: row.activite_type || null,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
   ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
   subProductsCount: row.sub_products_count !== undefined ? parseInt(row.sub_products_count) : undefined,
@@ -35,36 +37,50 @@ const mapCout = (data) => ({
   totalCost: data.cout_total,
 });
 
+const costSubquery = (alias = 'p') => `
+  ROUND(
+    COALESCE((
+      SELECT SUM(pi.portion * COALESCE(ipc.prix, i.prix, 0))
+      FROM produit_ingredients pi
+      JOIN ingredients i ON pi.ingredient_id = i.id
+      LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = ${alias}.client_id
+      WHERE pi.produit_id = ${alias}.id
+    ), 0) +
+    COALESCE((
+      SELECT SUM(psp.portion * (
+        SELECT COALESCE(SUM(pi2.portion * COALESCE(ipc2.prix, i2.prix, 0)), 0)
+        FROM produit_ingredients pi2
+        JOIN ingredients i2 ON pi2.ingredient_id = i2.id
+        LEFT JOIN ingredient_prix_client ipc2 ON ipc2.ingredient_id = i2.id AND ipc2.client_id = ${alias}.client_id
+        WHERE pi2.produit_id = psp.sous_produit_id
+      ))
+      FROM produit_sous_produits psp
+      WHERE psp.produit_id = ${alias}.id
+    ), 0)
+  , 3) AS total_cost`;
+
 const list = async (req, res) => {
+  const { activiteId, activiteType } = req.query;
   try {
+    let whereExtra = '';
+    const params = [req.user.id];
+    if (activiteId) {
+      params.push(activiteId);
+      whereExtra = ` AND p.activite_id = $${params.length}`;
+    } else if (activiteType) {
+      params.push(activiteType);
+      whereExtra = ` AND p.activite_type = $${params.length}`;
+    }
+
     const result = await pool.query(
       `SELECT p.*,
         (SELECT COUNT(*) FROM produit_ingredients WHERE produit_id = p.id) AS ingredients_count,
         (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
-        ROUND(
-          COALESCE((
-            SELECT SUM(pi.portion * COALESCE(ipc.prix, i.prix, 0))
-            FROM produit_ingredients pi
-            JOIN ingredients i ON pi.ingredient_id = i.id
-            LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = p.client_id
-            WHERE pi.produit_id = p.id
-          ), 0) +
-          COALESCE((
-            SELECT SUM(psp.portion * (
-              SELECT COALESCE(SUM(pi2.portion * COALESCE(ipc2.prix, i2.prix, 0)), 0)
-              FROM produit_ingredients pi2
-              JOIN ingredients i2 ON pi2.ingredient_id = i2.id
-              LEFT JOIN ingredient_prix_client ipc2 ON ipc2.ingredient_id = i2.id AND ipc2.client_id = p.client_id
-              WHERE pi2.produit_id = psp.sous_produit_id
-            ))
-            FROM produit_sous_produits psp
-            WHERE psp.produit_id = p.id
-          ), 0)
-        , 3) AS total_cost
+        ${costSubquery()}
        FROM produits p
-       WHERE p.client_id = $1
+       WHERE p.client_id = $1${whereExtra}
        ORDER BY p.nom`,
-      [req.user.id]
+      params
     );
     res.json(result.rows.map(mapProduit));
   } catch (err) {
@@ -155,14 +171,16 @@ const create = async (req, res) => {
   const type = req.body.type === 'utilisable' ? 'utilisable' : 'vendable';
   const ingredients = req.body.ingredients || [];
   const subProducts = req.body.subProducts || [];
+  const activiteId = req.body.activiteId || null;
+  const activiteType = req.body.activiteType || null;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     const result = await client.query(
-      'INSERT INTO produits (nom, description, type, client_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nom, description || null, type, req.user.id]
+      'INSERT INTO produits (nom, description, type, client_id, activite_id, activite_type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [nom, description || null, type, req.user.id, activiteId, activiteType]
     );
     const produitId = result.rows[0].id;
 
