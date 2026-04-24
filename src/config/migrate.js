@@ -17,12 +17,16 @@ async function migrate() {
       console.log(`Migration appliquee: ${file}`);
     } catch (err) {
       console.error(`Erreur lors de la migration ${file}:`, err.message);
-      process.exit(1);
+      throw err;
     }
   }
 
-  await pool.end();
   console.log('Toutes les migrations effectuees avec succes');
 }
 
-migrate();
+module.exports = migrate;
+
+// Allow standalone execution: node src/config/migrate.js
+if (require.main === module) {
+  migrate().then(() => pool.end()).catch(() => process.exit(1));
+}
