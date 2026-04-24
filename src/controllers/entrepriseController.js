@@ -303,7 +303,7 @@ const getActiviteTypesSummary = async (req, res) => {
     const result = await pool.query(
       `SELECT
          BOOL_OR(a.type = 'franchise') AS has_franchise,
-         BOOL_OR(a.type = 'distincte') AS has_distinct
+         BOOL_OR(a.type IS NULL OR a.type = 'distincte') AS has_distinct
        FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE pe.client_id = $1`,
