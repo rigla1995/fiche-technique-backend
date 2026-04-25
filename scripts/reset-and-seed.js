@@ -18,6 +18,16 @@ async function main() {
   try {
     await client.query('BEGIN');
 
+    // ── Clear sub-product references first (RESTRICT FK blocks cascade) ─────
+    await client.query(`
+      DELETE FROM produit_sous_produits
+      WHERE sous_produit_id IN (
+        SELECT p.id FROM produits p
+        JOIN utilisateurs u ON p.client_id = u.id
+        WHERE u.role != 'super_admin'
+      )
+    `);
+
     // ── Wipe all non-admin users (CASCADE removes everything linked) ─────────
     console.log('Deleting all non-admin users...');
     const del = await client.query(
