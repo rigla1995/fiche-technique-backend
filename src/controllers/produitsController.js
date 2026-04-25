@@ -95,7 +95,7 @@ const list = async (req, res) => {
         ${costSubquery()}
        FROM produits p
        WHERE p.client_id = $1${whereExtra}
-       ORDER BY p.nom`,
+       ORDER BY p.created_at DESC`,
       params
     );
     res.json(result.rows.map(mapProduit));
