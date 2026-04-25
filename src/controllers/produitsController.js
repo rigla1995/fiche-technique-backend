@@ -87,10 +87,10 @@ const list = async (req, res) => {
     }
     if (activiteId) {
       params.push(activiteId);
-      whereExtra = ` AND p.activite_id = $${params.length}`;
+      whereExtra += ` AND p.activite_id = $${params.length}`;
     } else if (activiteType) {
       params.push(activiteType);
-      whereExtra = ` AND p.activite_type = $${params.length}`;
+      whereExtra += ` AND p.activite_type = $${params.length}`;
       if (franchiseGroup) {
         params.push(franchiseGroup);
         whereExtra += ` AND p.franchise_group = $${params.length}`;
