@@ -9,6 +9,7 @@ const mapProduit = (row) => ({
   clientId: row.client_id,
   activiteId: row.activite_id || null,
   activiteType: row.activite_type || null,
+  franchiseGroup: row.franchise_group || null,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
   ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
   subProductsCount: row.sub_products_count !== undefined ? parseInt(row.sub_products_count) : undefined,
@@ -76,7 +77,7 @@ const costSubquery = (alias = 'p') => `
   , 3) AS total_cost`;
 
 const list = async (req, res) => {
-  const { activiteId, activiteType } = req.query;
+  const { activiteId, activiteType, franchiseGroup } = req.query;
   try {
     let whereExtra = '';
     const params = [req.user.id];
@@ -86,6 +87,10 @@ const list = async (req, res) => {
     } else if (activiteType) {
       params.push(activiteType);
       whereExtra = ` AND p.activite_type = $${params.length}`;
+      if (franchiseGroup) {
+        params.push(franchiseGroup);
+        whereExtra += ` AND p.franchise_group = $${params.length}`;
+      }
     }
 
     const result = await pool.query(
@@ -189,14 +194,15 @@ const create = async (req, res) => {
   const subProducts = req.body.subProducts || [];
   const activiteId = req.body.activiteId || null;
   const activiteType = req.body.activiteType || null;
+  const franchiseGroup = req.body.franchiseGroup || null;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     const result = await client.query(
-      'INSERT INTO produits (nom, description, type, client_id, activite_id, activite_type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [nom, description || null, type, req.user.id, activiteId, activiteType]
+      'INSERT INTO produits (nom, description, type, client_id, activite_id, activite_type, franchise_group) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [nom, description || null, type, req.user.id, activiteId, activiteType, franchiseGroup]
     );
     const produitId = result.rows[0].id;
 
