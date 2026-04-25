@@ -576,7 +576,22 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
 
 const getCout = async (req, res) => {
   const { id } = req.params;
+  const { mode, activiteId } = req.query;
   try {
+    if (mode === 'manual') {
+      const actId = parseInt(activiteId) || 0;
+      const pricesResult = await pool.query(
+        `SELECT ingredient_id, prix_unitaire FROM fiche_technique_manual_prices
+         WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3`,
+        [id, req.user.id, actId]
+      );
+      const priceMap = {};
+      for (const row of pricesResult.rows) {
+        priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire);
+      }
+      const result = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
+      return res.json(mapCout(result));
+    }
     const result = await calculerCout(parseInt(id), req.user.id);
     res.json(mapCout(result));
   } catch (err) {
