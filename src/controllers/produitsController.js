@@ -735,10 +735,12 @@ const getStockDates = async (req, res) => {
   }
 };
 
-// Recursively collect all unique ingredients from a product and its sub-products
-async function collectAllIngredients(produitId, visited = new Set()) {
-  if (visited.has(produitId)) return [];
-  visited.add(produitId);
+// Recursively collect ingredients grouped by their source product/sub-product.
+// Returns: [{ label, depth, ingredientIds: [{ ingredientId, nom, unite }] }, ...]
+// seenIngs prevents the same ingredient appearing in multiple groups.
+async function collectIngredientsStructured(produitId, label, depth, visitedProds = new Set(), seenIngs = new Set()) {
+  if (visitedProds.has(produitId)) return [];
+  visitedProds.add(produitId);
 
   const direct = await pool.query(
     `SELECT pi.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom
@@ -750,18 +752,35 @@ async function collectAllIngredients(produitId, visited = new Set()) {
     [produitId]
   );
 
-  const rows = [...direct.rows];
+  const groups = [];
+  const newIngredients = direct.rows.filter((r) => !seenIngs.has(r.ingredient_id));
+  newIngredients.forEach((r) => seenIngs.add(r.ingredient_id));
+
+  if (newIngredients.length > 0) {
+    groups.push({
+      label,
+      depth,
+      ingredients: newIngredients.map((r) => ({
+        ingredientId: r.ingredient_id,
+        nom: r.ingredient_nom,
+        unite: r.unite_nom,
+      })),
+    });
+  }
 
   const subs = await pool.query(
-    'SELECT sous_produit_id FROM produit_sous_produits WHERE produit_id = $1',
+    `SELECT psp.sous_produit_id, p.nom
+     FROM produit_sous_produits psp
+     JOIN produits p ON p.id = psp.sous_produit_id
+     WHERE psp.produit_id = $1`,
     [produitId]
   );
   for (const sp of subs.rows) {
-    const subRows = await collectAllIngredients(sp.sous_produit_id, visited);
-    rows.push(...subRows);
+    const subGroups = await collectIngredientsStructured(sp.sous_produit_id, sp.nom, depth + 1, visitedProds, seenIngs);
+    groups.push(...subGroups);
   }
 
-  return rows;
+  return groups;
 }
 
 // GET /products/:id/manual-prices?activiteId=:aid
@@ -770,21 +789,17 @@ const getManualPrices = async (req, res) => {
   const actId = parseInt(req.query.activiteId) || 0;
 
   try {
-    const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
-    // Collect all ingredients recursively (product + sub-products + sub-sub-products …)
-    const allRaw = await collectAllIngredients(parseInt(id));
-    // Deduplicate: keep first occurrence of each ingredient_id
-    const seen = new Set();
-    const allIngredients = allRaw.filter((r) => {
-      if (seen.has(r.ingredient_id)) return false;
-      seen.add(r.ingredient_id);
-      return true;
-    });
+    // Collect ingredients grouped by source (product → sub-products → …), deduplicated across levels
+    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0);
 
-    // Fetch saved manual prices for all these ingredients under the main product
-    const ingredientIds = allIngredients.map((r) => r.ingredient_id);
+    // Flat list of all ingredients (already deduplicated by collectIngredientsStructured)
+    const allIngredients = groups.flatMap((g) => g.ingredients);
+
+    // Fetch saved manual prices
+    const ingredientIds = allIngredients.map((r) => r.ingredientId);
     const priceMap = {};
     if (ingredientIds.length > 0) {
       const pricesResult = await pool.query(
@@ -802,17 +817,31 @@ const getManualPrices = async (req, res) => {
     const savedEntry = Object.values(priceMap).find((v) => v.updatedAt);
     const updatedAt = savedEntry ? savedEntry.updatedAt : null;
 
-    res.json({
-      prices: allIngredients.map((r) => ({
-        ingredientId: r.ingredient_id,
-        nom: r.ingredient_nom,
-        unite: r.unite_nom,
-        prixUnitaire: priceMap[r.ingredient_id]?.prixUnitaire != null
-          ? parseFloat(priceMap[r.ingredient_id].prixUnitaire)
+    // Attach saved prices to each group's ingredients
+    const groupsWithPrices = groups.map((g) => ({
+      label: g.label,
+      depth: g.depth,
+      ingredients: g.ingredients.map((ing) => ({
+        ingredientId: ing.ingredientId,
+        nom: ing.nom,
+        unite: ing.unite,
+        prixUnitaire: priceMap[ing.ingredientId]?.prixUnitaire != null
+          ? parseFloat(priceMap[ing.ingredientId].prixUnitaire)
           : null,
       })),
-      updatedAt,
-    });
+    }));
+
+    // Flat prices array kept for save flow
+    const prices = allIngredients.map((ing) => ({
+      ingredientId: ing.ingredientId,
+      nom: ing.nom,
+      unite: ing.unite,
+      prixUnitaire: priceMap[ing.ingredientId]?.prixUnitaire != null
+        ? parseFloat(priceMap[ing.ingredientId].prixUnitaire)
+        : null,
+    }));
+
+    res.json({ groups: groupsWithPrices, prices, updatedAt });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
