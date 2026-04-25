@@ -139,7 +139,7 @@ const duplicateStockToFranchise = async (req, res) => {
   const dateStock = req.query.date || todayStr();
   try {
     const check = await pool.query(
-      `SELECT a.id, a.entreprise_id FROM activites a
+      `SELECT a.id, a.entreprise_id, a.franchise_group FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2 AND a.type = 'franchise'`,
       [activiteId, req.user.id]
@@ -147,7 +147,7 @@ const duplicateStockToFranchise = async (req, res) => {
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité franchise introuvable' });
 
-    const entrepriseId = check.rows[0].entreprise_id;
+    const { entreprise_id: entrepriseId, franchise_group: franchiseGroup } = check.rows[0];
 
     const source = await pool.query(
       'SELECT ingredient_id, quantite, prix_unitaire FROM stock_entreprise_daily WHERE activite_id = $1 AND date_stock = $2',
@@ -155,8 +155,9 @@ const duplicateStockToFranchise = async (req, res) => {
     );
 
     const others = await pool.query(
-      "SELECT id FROM activites WHERE entreprise_id = $1 AND type = 'franchise' AND id != $2",
-      [entrepriseId, activiteId]
+      `SELECT id FROM activites
+       WHERE entreprise_id = $1 AND type = 'franchise' AND franchise_group = $2 AND id != $3`,
+      [entrepriseId, franchiseGroup, activiteId]
     );
 
     for (const act of others.rows) {
