@@ -52,7 +52,7 @@ async function main() {
 
     // Manual prices for products of this client
     await client.query(
-      'DELETE FROM ingredient_prix_manuel WHERE client_id = $1',
+      'DELETE FROM fiche_technique_manual_prices WHERE client_id = $1',
       [clientId]
     );
 
