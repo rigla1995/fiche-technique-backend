@@ -735,6 +735,35 @@ const getStockDates = async (req, res) => {
   }
 };
 
+// Recursively collect all unique ingredients from a product and its sub-products
+async function collectAllIngredients(produitId, visited = new Set()) {
+  if (visited.has(produitId)) return [];
+  visited.add(produitId);
+
+  const direct = await pool.query(
+    `SELECT pi.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom
+     FROM produit_ingredients pi
+     JOIN ingredients i ON i.id = pi.ingredient_id
+     LEFT JOIN unites u ON i.unite_id = u.id
+     WHERE pi.produit_id = $1
+     ORDER BY i.nom`,
+    [produitId]
+  );
+
+  const rows = [...direct.rows];
+
+  const subs = await pool.query(
+    'SELECT sous_produit_id FROM produit_sous_produits WHERE produit_id = $1',
+    [produitId]
+  );
+  for (const sp of subs.rows) {
+    const subRows = await collectAllIngredients(sp.sous_produit_id, visited);
+    rows.push(...subRows);
+  }
+
+  return rows;
+}
+
 // GET /products/:id/manual-prices?activiteId=:aid
 const getManualPrices = async (req, res) => {
   const { id } = req.params;
@@ -744,32 +773,43 @@ const getManualPrices = async (req, res) => {
     const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
-    // Return ALL ingredients of the product, with saved manual prices joined in (NULL if not yet saved)
-    const result = await pool.query(
-      `SELECT pi.ingredient_id,
-              i.nom as ingredient_nom, u.nom as unite_nom,
-              fmp.prix_unitaire, fmp.updated_at
-       FROM produit_ingredients pi
-       JOIN ingredients i ON i.id = pi.ingredient_id
-       LEFT JOIN unites u ON i.unite_id = u.id
-       LEFT JOIN fiche_technique_manual_prices fmp
-         ON fmp.ingredient_id = pi.ingredient_id
-         AND fmp.produit_id = pi.produit_id
-         AND fmp.client_id = $2
-         AND fmp.activite_id = $3
-       WHERE pi.produit_id = $1
-       ORDER BY i.nom`,
-      [id, req.user.id, actId]
-    );
+    // Collect all ingredients recursively (product + sub-products + sub-sub-products …)
+    const allRaw = await collectAllIngredients(parseInt(id));
+    // Deduplicate: keep first occurrence of each ingredient_id
+    const seen = new Set();
+    const allIngredients = allRaw.filter((r) => {
+      if (seen.has(r.ingredient_id)) return false;
+      seen.add(r.ingredient_id);
+      return true;
+    });
 
-    const savedRow = result.rows.find((r) => r.updated_at);
-    const updatedAt = savedRow ? savedRow.updated_at : null;
+    // Fetch saved manual prices for all these ingredients under the main product
+    const ingredientIds = allIngredients.map((r) => r.ingredient_id);
+    const priceMap = {};
+    if (ingredientIds.length > 0) {
+      const pricesResult = await pool.query(
+        `SELECT ingredient_id, prix_unitaire, updated_at
+         FROM fiche_technique_manual_prices
+         WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3
+           AND ingredient_id = ANY($4::int[])`,
+        [id, req.user.id, actId, ingredientIds]
+      );
+      for (const row of pricesResult.rows) {
+        priceMap[row.ingredient_id] = { prixUnitaire: row.prix_unitaire, updatedAt: row.updated_at };
+      }
+    }
+
+    const savedEntry = Object.values(priceMap).find((v) => v.updatedAt);
+    const updatedAt = savedEntry ? savedEntry.updatedAt : null;
+
     res.json({
-      prices: result.rows.map((r) => ({
+      prices: allIngredients.map((r) => ({
         ingredientId: r.ingredient_id,
         nom: r.ingredient_nom,
         unite: r.unite_nom,
-        prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
+        prixUnitaire: priceMap[r.ingredient_id]?.prixUnitaire != null
+          ? parseFloat(priceMap[r.ingredient_id].prixUnitaire)
+          : null,
       })),
       updatedAt,
     });
