@@ -314,9 +314,16 @@ const getActiviteTypesSummary = async (req, res) => {
     const result = await pool.query(
       `SELECT
          BOOL_OR(a.type = 'franchise') AS has_franchise,
-         BOOL_OR(a.type IS NULL OR a.type = 'distincte') AS has_distinct
+         BOOL_OR(a.type IS NULL OR a.type = 'distincte') AS has_distinct,
+         BOOL_OR(a.type = 'franchise' AND sel.cnt > 0) AS has_franchise_selections,
+         BOOL_OR((a.type IS NULL OR a.type = 'distincte') AND sel.cnt > 0) AS has_distinct_selections
        FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       LEFT JOIN (
+         SELECT activite_id, COUNT(*) AS cnt
+         FROM activite_ingredient_selections
+         GROUP BY activite_id
+       ) sel ON sel.activite_id = a.id
        WHERE pe.client_id = $1`,
       [req.user.id]
     );
@@ -324,6 +331,8 @@ const getActiviteTypesSummary = async (req, res) => {
     res.json({
       hasFranchise: row.has_franchise ?? false,
       hasDistinct: row.has_distinct ?? false,
+      hasFranchiseSelections: row.has_franchise_selections ?? false,
+      hasDistinctSelections: row.has_distinct_selections ?? false,
     });
   } catch (err) {
     console.error(err);
