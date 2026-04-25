@@ -651,34 +651,57 @@ async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = 
 }
 
 // GET /products/:id/stock-dates?activiteId=:aid&month=YYYY-MM
+// Omit month to get all available dates (not limited to current month)
 const getStockDates = async (req, res) => {
   const { id } = req.params;
   const { activiteId, month } = req.query;
-  const monthStr = month || new Date().toISOString().slice(0, 7);
-  const monthDate = `${monthStr}-01`;
 
   try {
     let rows;
     if (activiteId) {
-      const result = await pool.query(
-        `SELECT DISTINCT date_stock::text FROM stock_entreprise_daily sed
-         JOIN activites a ON sed.activite_id = a.id
-         JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-         WHERE sed.activite_id = $1 AND pe.client_id = $2 AND sed.prix_unitaire IS NOT NULL
-           AND DATE_TRUNC('month', sed.date_stock) = DATE_TRUNC('month', $3::date)
-         ORDER BY date_stock`,
-        [activiteId, req.user.id, monthDate]
-      );
-      rows = result.rows;
+      if (month) {
+        const monthDate = `${month}-01`;
+        const result = await pool.query(
+          `SELECT DISTINCT date_stock::text FROM stock_entreprise_daily sed
+           JOIN activites a ON sed.activite_id = a.id
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE sed.activite_id = $1 AND pe.client_id = $2 AND sed.prix_unitaire IS NOT NULL
+             AND DATE_TRUNC('month', sed.date_stock) = DATE_TRUNC('month', $3::date)
+           ORDER BY date_stock`,
+          [activiteId, req.user.id, monthDate]
+        );
+        rows = result.rows;
+      } else {
+        const result = await pool.query(
+          `SELECT DISTINCT date_stock::text FROM stock_entreprise_daily sed
+           JOIN activites a ON sed.activite_id = a.id
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE sed.activite_id = $1 AND pe.client_id = $2 AND sed.prix_unitaire IS NOT NULL
+           ORDER BY date_stock DESC`,
+          [activiteId, req.user.id]
+        );
+        rows = result.rows;
+      }
     } else {
-      const result = await pool.query(
-        `SELECT DISTINCT date_stock::text FROM stock_client_daily
-         WHERE client_id = $1 AND prix_unitaire IS NOT NULL
-           AND DATE_TRUNC('month', date_stock) = DATE_TRUNC('month', $2::date)
-         ORDER BY date_stock`,
-        [req.user.id, monthDate]
-      );
-      rows = result.rows;
+      if (month) {
+        const monthDate = `${month}-01`;
+        const result = await pool.query(
+          `SELECT DISTINCT date_stock::text FROM stock_client_daily
+           WHERE client_id = $1 AND prix_unitaire IS NOT NULL
+             AND DATE_TRUNC('month', date_stock) = DATE_TRUNC('month', $2::date)
+           ORDER BY date_stock`,
+          [req.user.id, monthDate]
+        );
+        rows = result.rows;
+      } else {
+        const result = await pool.query(
+          `SELECT DISTINCT date_stock::text FROM stock_client_daily
+           WHERE client_id = $1 AND prix_unitaire IS NOT NULL
+           ORDER BY date_stock DESC`,
+          [req.user.id]
+        );
+        rows = result.rows;
+      }
     }
     res.json({ dates: rows.map((r) => r.date_stock.slice(0, 10)) });
   } catch (err) {

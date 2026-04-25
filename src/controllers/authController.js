@@ -90,31 +90,41 @@ const me = async (req, res) => {
     const u = result.rows[0];
     let step = u.onboarding_step ?? 0;
 
-    // Auto-heal: if entreprise user is stuck at step 1 or 2 but already has activities,
-    // advance them automatically so they are never re-blocked after a session reset.
-    if (step > 0 && (u.compte_type === 'entreprise')) {
-      const actRes = await pool.query(
-        `SELECT COUNT(*) FROM activites a
-         JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-         WHERE pe.client_id = $1`,
+    // Auto-heal: advance enterprise users who are blocked at onboarding steps they've already completed.
+    // Uses profil_entreprise directly to avoid a JOIN that fails when the row doesn't exist.
+    if (step > 0 && u.compte_type === 'entreprise') {
+      const epRes = await pool.query(
+        'SELECT id FROM profil_entreprise WHERE client_id = $1',
         [u.id]
       );
-      const hasActivities = parseInt(actRes.rows[0].count) > 0;
-      if (hasActivities && step < 3) {
-        // They have activities → at least past step 2; check ingredient selections
-        const selRes = await pool.query(
-          `SELECT COUNT(*) FROM activite_ingredient_selections ais
-           JOIN activites a ON ais.activite_id = a.id
-           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-           WHERE pe.client_id = $1`,
-          [u.id]
+      if (epRes.rows.length > 0) {
+        const entrepriseId = epRes.rows[0].id;
+        const actRes = await pool.query(
+          'SELECT COUNT(*) FROM activites WHERE entreprise_id = $1',
+          [entrepriseId]
         );
-        const hasSelections = parseInt(selRes.rows[0].count) > 0;
-        step = hasSelections ? 0 : 3;
-        await pool.query(
-          'UPDATE utilisateurs SET onboarding_step = $1, updated_at = NOW() WHERE id = $2',
-          [step, u.id]
-        );
+        const hasActivities = parseInt(actRes.rows[0].count) > 0;
+        if (hasActivities) {
+          const selRes = await pool.query(
+            `SELECT COUNT(*) FROM activite_ingredient_selections ais
+             JOIN activites a ON ais.activite_id = a.id
+             WHERE a.entreprise_id = $1`,
+            [entrepriseId]
+          );
+          const hasSelections = parseInt(selRes.rows[0].count) > 0;
+          step = hasSelections ? 0 : 3;
+          await pool.query(
+            'UPDATE utilisateurs SET onboarding_step = $1, updated_at = NOW() WHERE id = $2',
+            [step, u.id]
+          );
+        } else if (step === 1) {
+          // Has company profile but no activities yet → password was already changed, advance to step 2
+          step = 2;
+          await pool.query(
+            'UPDATE utilisateurs SET onboarding_step = 2, updated_at = NOW() WHERE id = $1',
+            [u.id]
+          );
+        }
       }
     }
 
