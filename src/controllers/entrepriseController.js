@@ -119,7 +119,7 @@ const createActivite = async (req, res) => {
 
     const created = [];
     for (let i = 0; i < count; i++) {
-      const activiteName = count > 1 ? `${baseName} ${i + 1}` : baseName;
+      const activiteName = count > 1 ? `${baseName} ${i + 1}` : (nom || baseName);
       const result = await pool.query(
         `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type, franchise_group)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
