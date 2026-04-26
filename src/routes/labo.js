@@ -1,0 +1,29 @@
+const express = require('express');
+const router = express.Router();
+const {
+  createLabo, listLabos, getLaboById,
+  getLaboIngredients, toggleLaboIngredient,
+  getLaboStock, updateLaboStock, getLaboStockHistory,
+  createTransfer, getTransferHistory,
+} = require('../controllers/laboController');
+const { authenticate, requireEntreprise } = require('../middleware/auth');
+
+// Labo CRUD
+router.get('/', authenticate, requireEntreprise, listLabos);
+router.post('/', authenticate, requireEntreprise, createLabo);
+router.get('/:laboId', authenticate, requireEntreprise, getLaboById);
+
+// Labo ingredient selections
+router.get('/:laboId/ingredients', authenticate, requireEntreprise, getLaboIngredients);
+router.post('/:laboId/ingredients/:ingredientId/select', authenticate, requireEntreprise, toggleLaboIngredient);
+
+// Labo stock
+router.get('/:laboId/stock', authenticate, requireEntreprise, getLaboStock);
+router.put('/:laboId/stock/:ingredientId', authenticate, requireEntreprise, updateLaboStock);
+router.get('/:laboId/stock/:ingredientId/history', authenticate, requireEntreprise, getLaboStockHistory);
+
+// Transfers
+router.post('/:laboId/transfer', authenticate, requireEntreprise, createTransfer);
+router.get('/:laboId/transfers', authenticate, requireEntreprise, getTransferHistory);
+
+module.exports = router;

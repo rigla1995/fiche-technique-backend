@@ -57,6 +57,7 @@ const mapActivite = (row) => ({
   email: row.email,
   type: row.type,
   franchiseGroup: row.franchise_group || null,
+  laboId: row.labo_id || null,
   createdAt: row.created_at,
 });
 
@@ -80,7 +81,7 @@ const listActivites = async (req, res) => {
 
 const createActivite = async (req, res) => {
   // franchiseName is used for franchise batch creation; nom is used for single/distinct
-  const { nom, franchiseName, adresse, telephone, email, memeActivite, nombreActivites, type } = req.body;
+  const { nom, franchiseName, adresse, telephone, email, memeActivite, nombreActivites, type, laboId } = req.body;
   const isFranchise = memeActivite === true || type === 'franchise';
   const baseName = isFranchise && franchiseName ? franchiseName : nom;
   if (!baseName) return res.status(400).json({ message: 'Nom requis' });
@@ -121,9 +122,9 @@ const createActivite = async (req, res) => {
     for (let i = 0; i < count; i++) {
       const activiteName = count > 1 ? `${baseName} ${i + 1}` : (nom || baseName);
       const result = await pool.query(
-        `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type, franchise_group)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [entreprise.id, activiteName, adresse || null, telephone || null, email || null, activiteType, franchiseGroupValue]
+        `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type, franchise_group, labo_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [entreprise.id, activiteName, adresse || null, telephone || null, email || null, activiteType, franchiseGroupValue, laboId || null]
       );
       created.push(mapActivite(result.rows[0]));
     }

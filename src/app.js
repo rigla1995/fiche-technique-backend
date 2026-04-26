@@ -12,6 +12,7 @@ const categoriesRoutes = require('./routes/categories');
 const entrepriseRoutes = require('./routes/entreprise');
 const stockRoutes = require('./routes/stock');
 const domainesRoutes = require('./routes/domaines');
+const laboRoutes = require('./routes/labo');
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api/categories', categoriesRoutes);
 app.use('/api/entreprise', entrepriseRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/domaines', domainesRoutes);
+app.use('/api/labo', laboRoutes);
 
 // English aliases (B5)
 app.use('/api/units', unitesRoutes);
