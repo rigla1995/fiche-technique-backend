@@ -12,25 +12,32 @@ const exportExcel = async (req, res) => {
     let ftMode = null;
     let ftDate = null;
 
-    if (mode === 'stock' && date) {
-      // Build price map from stock at the given date
+    if (mode === 'stock') {
+      // Use latest appro price for current year per ingredient
+      const currentYear = new Date().getFullYear();
       let priceRows;
       if (actId) {
         const r = await pool.query(
-          `SELECT sed.ingredient_id, sed.prix_unitaire
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire, date_appro
            FROM stock_entreprise_daily sed
            JOIN activites a ON sed.activite_id = a.id
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-           WHERE sed.activite_id = $1 AND pe.client_id = $2 AND sed.date_stock = $3
-             AND sed.prix_unitaire IS NOT NULL`,
-          [actId, req.user.id, date]
+           WHERE sed.activite_id = $1 AND pe.client_id = $2
+             AND sed.prix_unitaire IS NOT NULL AND sed.prix_unitaire > 0
+             AND EXTRACT(YEAR FROM sed.date_appro) = $3
+           ORDER BY ingredient_id, date_appro DESC`,
+          [actId, req.user.id, currentYear]
         );
         priceRows = r.rows;
       } else {
         const r = await pool.query(
-          `SELECT ingredient_id, prix_unitaire FROM stock_client_daily
-           WHERE client_id = $1 AND date_stock = $2 AND prix_unitaire IS NOT NULL`,
-          [req.user.id, date]
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire, date_appro
+           FROM stock_client_daily
+           WHERE client_id = $1
+             AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+             AND EXTRACT(YEAR FROM date_appro) = $2
+           ORDER BY ingredient_id, date_appro DESC`,
+          [req.user.id, currentYear]
         );
         priceRows = r.rows;
       }
@@ -38,7 +45,7 @@ const exportExcel = async (req, res) => {
       priceRows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
       coutData = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
       ftMode = 'Stock';
-      ftDate = date;
+      ftDate = new Date().toISOString().slice(0, 10);
     } else if (mode === 'manual') {
       // Build price map from manual prices
       const r = await pool.query(

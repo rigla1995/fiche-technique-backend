@@ -38,7 +38,7 @@ const mapCout = (data) => ({
   totalCost: data.cout_total,
 });
 
-// Returns the most recent stock price for an ingredient for a given client.
+// Returns the most recent stock price (current year) for an ingredient for a given client.
 // Tries enterprise stock (any activity) then client stock, then falls back to catalogue price.
 const stockPriceLookup = (ingAlias, productAlias, ipcAlias) => `COALESCE(
     (SELECT sed.prix_unitaire FROM stock_entreprise_daily sed
@@ -46,11 +46,13 @@ const stockPriceLookup = (ingAlias, productAlias, ipcAlias) => `COALESCE(
      JOIN profil_entreprise pe_s ON a_s.entreprise_id = pe_s.id
      WHERE sed.ingredient_id = ${ingAlias}.id AND pe_s.client_id = ${productAlias}.client_id
        AND sed.prix_unitaire IS NOT NULL
-     ORDER BY sed.date_stock DESC LIMIT 1),
+       AND EXTRACT(YEAR FROM sed.date_appro) = EXTRACT(YEAR FROM CURRENT_DATE)
+     ORDER BY sed.date_appro DESC LIMIT 1),
     (SELECT scd.prix_unitaire FROM stock_client_daily scd
      WHERE scd.ingredient_id = ${ingAlias}.id AND scd.client_id = ${productAlias}.client_id
        AND scd.prix_unitaire IS NOT NULL
-     ORDER BY scd.date_stock DESC LIMIT 1),
+       AND EXTRACT(YEAR FROM scd.date_appro) = EXTRACT(YEAR FROM CURRENT_DATE)
+     ORDER BY scd.date_appro DESC LIMIT 1),
     ${ipcAlias}.prix, ${ingAlias}.prix, 0
   )`;
 
@@ -506,11 +508,11 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
                JOIN profil_entreprise pe_s ON a_s.entreprise_id = pe_s.id
                WHERE sed.ingredient_id = i.id AND pe_s.client_id = $2
                  AND sed.prix_unitaire IS NOT NULL
-               ORDER BY sed.date_stock DESC LIMIT 1),
+               ORDER BY sed.date_appro DESC LIMIT 1),
               (SELECT scd.prix_unitaire FROM stock_client_daily scd
                WHERE scd.ingredient_id = i.id AND scd.client_id = $2
                  AND scd.prix_unitaire IS NOT NULL
-               ORDER BY scd.date_stock DESC LIMIT 1),
+               ORDER BY scd.date_appro DESC LIMIT 1),
               ipc.prix, i.prix, 0
             ) as prix_unitaire
      FROM produit_ingredients pi
@@ -687,22 +689,22 @@ const getStockDates = async (req, res) => {
       if (month) {
         const monthDate = `${month}-01`;
         const result = await pool.query(
-          `SELECT DISTINCT date_stock::text FROM stock_entreprise_daily sed
+          `SELECT DISTINCT date_appro::text FROM stock_entreprise_daily sed
            JOIN activites a ON sed.activite_id = a.id
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
            WHERE sed.activite_id = $1 AND pe.client_id = $2 AND sed.prix_unitaire IS NOT NULL
-             AND DATE_TRUNC('month', sed.date_stock) = DATE_TRUNC('month', $3::date)
-           ORDER BY date_stock`,
+             AND DATE_TRUNC('month', sed.date_appro) = DATE_TRUNC('month', $3::date)
+           ORDER BY date_appro`,
           [activiteId, req.user.id, monthDate]
         );
         rows = result.rows;
       } else {
         const result = await pool.query(
-          `SELECT DISTINCT date_stock::text FROM stock_entreprise_daily sed
+          `SELECT DISTINCT date_appro::text FROM stock_entreprise_daily sed
            JOIN activites a ON sed.activite_id = a.id
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
            WHERE sed.activite_id = $1 AND pe.client_id = $2 AND sed.prix_unitaire IS NOT NULL
-           ORDER BY date_stock DESC`,
+           ORDER BY date_appro DESC`,
           [activiteId, req.user.id]
         );
         rows = result.rows;
@@ -711,24 +713,24 @@ const getStockDates = async (req, res) => {
       if (month) {
         const monthDate = `${month}-01`;
         const result = await pool.query(
-          `SELECT DISTINCT date_stock::text FROM stock_client_daily
+          `SELECT DISTINCT date_appro::text FROM stock_client_daily
            WHERE client_id = $1 AND prix_unitaire IS NOT NULL
-             AND DATE_TRUNC('month', date_stock) = DATE_TRUNC('month', $2::date)
-           ORDER BY date_stock`,
+             AND DATE_TRUNC('month', date_appro) = DATE_TRUNC('month', $2::date)
+           ORDER BY date_appro`,
           [req.user.id, monthDate]
         );
         rows = result.rows;
       } else {
         const result = await pool.query(
-          `SELECT DISTINCT date_stock::text FROM stock_client_daily
+          `SELECT DISTINCT date_appro::text FROM stock_client_daily
            WHERE client_id = $1 AND prix_unitaire IS NOT NULL
-           ORDER BY date_stock DESC`,
+           ORDER BY date_appro DESC`,
           [req.user.id]
         );
         rows = result.rows;
       }
     }
-    res.json({ dates: rows.map((r) => r.date_stock.slice(0, 10)) });
+    res.json({ dates: rows.map((r) => r.date_appro.slice(0, 10)) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -782,6 +784,106 @@ async function collectIngredientsStructured(produitId, label, depth, visitedProd
 
   return groups;
 }
+
+// GET /products/:id/stock-check?activiteId=:aid
+// Returns { complete, missing: [{ ingredientId, nom, unite, lastQty, lastPrice, lastDate }], groups }
+const getStockCheck = async (req, res) => {
+  const { id } = req.params;
+  const actId = parseInt(req.query.activiteId) || 0;
+  const currentYear = new Date().getFullYear();
+
+  try {
+    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
+
+    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0);
+    const allIngredients = groups.flatMap((g) => g.ingredients);
+
+    if (allIngredients.length === 0) return res.json({ complete: true, missing: [], groups: [] });
+
+    const ingredientIds = allIngredients.map((i) => i.ingredientId);
+
+    // Fetch valid stock for current year (qty > 0 AND price > 0)
+    let validRows = [];
+    if (actId) {
+      const r = await pool.query(
+        `SELECT DISTINCT ON (ingredient_id) ingredient_id
+         FROM stock_entreprise_daily
+         WHERE activite_id = $1 AND ingredient_id = ANY($2::int[])
+           AND EXTRACT(YEAR FROM date_appro) = $3
+           AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+           AND quantite IS NOT NULL AND quantite > 0
+         ORDER BY ingredient_id, date_appro DESC`,
+        [actId, ingredientIds, currentYear]
+      );
+      validRows = r.rows;
+    } else {
+      const r = await pool.query(
+        `SELECT DISTINCT ON (ingredient_id) ingredient_id
+         FROM stock_client_daily
+         WHERE client_id = $1 AND ingredient_id = ANY($2::int[])
+           AND EXTRACT(YEAR FROM date_appro) = $3
+           AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+           AND quantite IS NOT NULL AND quantite > 0
+         ORDER BY ingredient_id, date_appro DESC`,
+        [req.user.id, ingredientIds, currentYear]
+      );
+      validRows = r.rows;
+    }
+
+    const validIds = new Set(validRows.map((r) => r.ingredient_id));
+    const missingIngredients = allIngredients.filter((ing) => !validIds.has(ing.ingredientId));
+
+    // For missing: get last known values (any year) for prefilling the popup
+    let lastKnownMap = {};
+    if (missingIngredients.length > 0) {
+      const missingIds = missingIngredients.map((i) => i.ingredientId);
+      let lkRows = [];
+      if (actId) {
+        const r = await pool.query(
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id, quantite, prix_unitaire, date_appro
+           FROM stock_entreprise_daily
+           WHERE activite_id = $1 AND ingredient_id = ANY($2::int[])
+           ORDER BY ingredient_id, date_appro DESC`,
+          [actId, missingIds]
+        );
+        lkRows = r.rows;
+      } else {
+        const r = await pool.query(
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id, quantite, prix_unitaire, date_appro
+           FROM stock_client_daily
+           WHERE client_id = $1 AND ingredient_id = ANY($2::int[])
+           ORDER BY ingredient_id, date_appro DESC`,
+          [req.user.id, missingIds]
+        );
+        lkRows = r.rows;
+      }
+      for (const r of lkRows) lastKnownMap[r.ingredient_id] = r;
+    }
+
+    const missing = missingIngredients.map((ing) => {
+      const lk = lastKnownMap[ing.ingredientId];
+      return {
+        ingredientId: ing.ingredientId,
+        nom: ing.nom,
+        unite: ing.unite,
+        lastQty: lk && lk.quantite !== null ? parseFloat(lk.quantite) : null,
+        lastPrice: lk && lk.prix_unitaire !== null ? parseFloat(lk.prix_unitaire) : null,
+        lastDate: lk ? String(lk.date_appro).slice(0, 10) : null,
+      };
+    });
+
+    const missingIdsSet = new Set(missingIngredients.map((i) => i.ingredientId));
+    const missingGroups = groups
+      .map((g) => ({ ...g, ingredients: g.ingredients.filter((i) => missingIdsSet.has(i.ingredientId)) }))
+      .filter((g) => g.ingredients.length > 0);
+
+    res.json({ complete: missing.length === 0, missing, groups: missingGroups });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
 
 // GET /products/:id/manual-prices?activiteId=:aid
 const getManualPrices = async (req, res) => {
@@ -887,5 +989,5 @@ module.exports = {
   addIngredient, removeIngredient,
   addSousProduit, removeSousProduit,
   getCout, calculerCout, calculerCoutAvecPrixMap,
-  getStockDates, getManualPrices, saveManualPrices,
+  getStockDates, getStockCheck, getManualPrices, saveManualPrices,
 };

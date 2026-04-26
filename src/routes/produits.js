@@ -5,7 +5,7 @@ const {
   list, getById, create, update, remove,
   addIngredient, removeIngredient,
   addSousProduit, removeSousProduit,
-  getCout, getStockDates, getManualPrices, saveManualPrices,
+  getCout, getStockDates, getStockCheck, getManualPrices, saveManualPrices,
 } = require('../controllers/produitsController');
 const { exportExcel } = require('../controllers/exportController');
 const { authenticate, requireClient } = require('../middleware/auth');
@@ -57,8 +57,9 @@ router.delete('/:id/sous-produits/:sousProduitId', authenticate, requireClient, 
 router.get('/:id/cout', authenticate, requireClient, getCout);
 router.get('/:id/export', authenticate, requireClient, exportExcel);
 
-// Fiche technique — dates stock & prix manuels
+// Fiche technique — stock check, dates & prix manuels
 router.get('/:id/stock-dates', authenticate, requireClient, getStockDates);
+router.get('/:id/stock-check', authenticate, requireClient, getStockCheck);
 router.get('/:id/manual-prices', authenticate, requireClient, getManualPrices);
 router.post('/:id/manual-prices', authenticate, requireClient, saveManualPrices);
 
