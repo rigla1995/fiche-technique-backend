@@ -1,6 +1,12 @@
 const pool = require('../config/database');
 
 const todayStr = () => new Date().toISOString().split('T')[0];
+// node-pg may return DATE columns as Date objects or strings depending on version/config
+const isoDate = (d) => {
+  if (!d) return null;
+  if (d instanceof Date) return d.toISOString().slice(0, 10);
+  return String(d).slice(0, 10);
+};
 
 // ─── Stock Client (independant) ──────────────────────────────────────────────
 
@@ -32,7 +38,7 @@ const getStockClient = async (req, res) => {
       categorie: row.categorie,
       prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
       quantite: row.quantite !== null ? parseFloat(row.quantite) : null,
-      dateAppro: row.date_appro ? String(row.date_appro).slice(0, 10) : null,
+      dateAppro: isoDate(row.date_appro),
       updatedAt: row.updated_at,
     })));
   } catch (err) {
@@ -104,7 +110,7 @@ const getStockEntreprise = async (req, res) => {
       categorie: row.categorie,
       prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
       quantite: row.quantite !== null ? parseFloat(row.quantite) : null,
-      dateAppro: row.date_appro ? String(row.date_appro).slice(0, 10) : null,
+      dateAppro: isoDate(row.date_appro),
       updatedAt: row.updated_at,
     })));
   } catch (err) {
@@ -160,7 +166,7 @@ const getHistoryClient = async (req, res) => {
       [req.user.id, ingredientId]
     );
     res.json(result.rows.map((r) => ({
-      dateAppro: String(r.date_appro).slice(0, 10),
+      dateAppro: isoDate(r.date_appro),
       quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
       prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
       updatedAt: r.updated_at,
@@ -193,7 +199,7 @@ const getHistoryEntreprise = async (req, res) => {
       [activiteId, ingredientId]
     );
     res.json(result.rows.map((r) => ({
-      dateAppro: String(r.date_appro).slice(0, 10),
+      dateAppro: isoDate(r.date_appro),
       quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
       prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
       updatedAt: r.updated_at,
@@ -271,7 +277,7 @@ const getHistoriqueAppro = async (req, res) => {
 
 function mapHistEntry(r) {
   return {
-    dateAppro: String(r.date_appro).slice(0, 10),
+    dateAppro: isoDate(r.date_appro),
     quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
     prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
     updatedAt: r.updated_at,
