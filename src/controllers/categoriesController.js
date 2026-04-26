@@ -8,8 +8,15 @@ const mapCategorie = (row) => ({
 });
 
 const list = async (req, res) => {
+  const { onlyWithIngredients } = req.query;
   try {
-    const result = await pool.query('SELECT * FROM categories ORDER BY nom');
+    let query = 'SELECT * FROM categories ORDER BY nom';
+    if (onlyWithIngredients === 'true') {
+      query = `SELECT c.* FROM categories c
+               WHERE EXISTS (SELECT 1 FROM ingredients i WHERE i.categorie_id = c.id)
+               ORDER BY c.nom`;
+    }
+    const result = await pool.query(query);
     res.json(result.rows.map(mapCategorie));
   } catch (err) {
     console.error(err);
