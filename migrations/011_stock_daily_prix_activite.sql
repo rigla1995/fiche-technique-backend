@@ -22,12 +22,25 @@ CREATE TABLE IF NOT EXISTS stock_entreprise_daily (
 );
 
 -- Migrate existing non-null stock to today's date
-INSERT INTO stock_client_daily (client_id, ingredient_id, date_stock, quantite, updated_at)
-SELECT client_id, ingredient_id, CURRENT_DATE, quantite, NOW()
-FROM stock_client WHERE quantite IS NOT NULL
-ON CONFLICT DO NOTHING;
+-- Wrapped in exception handlers: if date_stock was already renamed to date_appro
+-- by a later migration (018), the column reference fails harmlessly since the
+-- data migration already ran on the first server start.
+DO $$
+BEGIN
+  INSERT INTO stock_client_daily (client_id, ingredient_id, date_stock, quantite, updated_at)
+  SELECT client_id, ingredient_id, CURRENT_DATE, quantite, NOW()
+  FROM stock_client WHERE quantite IS NOT NULL
+  ON CONFLICT DO NOTHING;
+EXCEPTION WHEN undefined_column OR undefined_table THEN
+  NULL; -- already migrated
+END$$;
 
-INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_stock, quantite, updated_at)
-SELECT activite_id, ingredient_id, CURRENT_DATE, quantite, NOW()
-FROM stock_entreprise WHERE quantite IS NOT NULL
-ON CONFLICT DO NOTHING;
+DO $$
+BEGIN
+  INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_stock, quantite, updated_at)
+  SELECT activite_id, ingredient_id, CURRENT_DATE, quantite, NOW()
+  FROM stock_entreprise WHERE quantite IS NOT NULL
+  ON CONFLICT DO NOTHING;
+EXCEPTION WHEN undefined_column OR undefined_table THEN
+  NULL; -- already migrated
+END$$;
