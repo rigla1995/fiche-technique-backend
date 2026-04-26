@@ -207,7 +207,7 @@ const getHistoryEntreprise = async (req, res) => {
 // ─── Historique Approvisionnement (filtered, current year) ──────────────────
 
 const getHistoriqueAppro = async (req, res) => {
-  const { activiteId, ingredientId, startDate, endDate } = req.query;
+  const { activiteId, ingredientId, categorieId, startDate, endDate } = req.query;
   const currentYear = new Date().getFullYear();
 
   try {
@@ -224,6 +224,7 @@ const getHistoriqueAppro = async (req, res) => {
       const params = [activiteId, currentYear];
       let extraWhere = '';
       if (ingredientId) { params.push(ingredientId); extraWhere += ` AND sed.ingredient_id = $${params.length}`; }
+      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
       if (startDate) { params.push(startDate); extraWhere += ` AND sed.date_appro >= $${params.length}`; }
       if (endDate) { params.push(endDate); extraWhere += ` AND sed.date_appro <= $${params.length}`; }
 
@@ -244,6 +245,7 @@ const getHistoriqueAppro = async (req, res) => {
       const params = [req.user.id, currentYear];
       let extraWhere = '';
       if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
+      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
       if (startDate) { params.push(startDate); extraWhere += ` AND scd.date_appro >= $${params.length}`; }
       if (endDate) { params.push(endDate); extraWhere += ` AND scd.date_appro <= $${params.length}`; }
 

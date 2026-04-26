@@ -21,9 +21,12 @@ const mapIngredient = (row) => ({
 });
 
 const list = async (req, res) => {
+  const { categorieId } = req.query;
   try {
     let query, params;
     if (req.user.role === 'super_admin') {
+      params = [];
+      let where = categorieId ? `WHERE i.categorie_id = $${params.push(categorieId)}` : '';
       query = `
         SELECT i.*, u.nom as unite_nom, util.nom as client_nom, c.nom as categorie_nom,
                NULL::numeric as client_prix, i.prix as effective_prix
@@ -31,10 +34,12 @@ const list = async (req, res) => {
         JOIN unites u ON i.unite_id = u.id
         LEFT JOIN utilisateurs util ON i.client_id = util.id
         LEFT JOIN categories c ON i.categorie_id = c.id
+        ${where}
         ORDER BY COALESCE(c.nom, 'zzz'), i.nom
       `;
-      params = [];
     } else {
+      params = [req.user.id];
+      let where = categorieId ? `AND i.categorie_id = $${params.push(categorieId)}` : '';
       query = `
         SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
                ipc.prix as client_prix,
@@ -45,9 +50,9 @@ const list = async (req, res) => {
         LEFT JOIN categories c ON i.categorie_id = c.id
         LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $1
         LEFT JOIN client_ingredient_selections cis ON cis.ingredient_id = i.id AND cis.client_id = $1
+        WHERE 1=1 ${where}
         ORDER BY COALESCE(c.nom, 'zzz'), i.nom
       `;
-      params = [req.user.id];
     }
     const result = await pool.query(query, params);
     res.json(result.rows.map(mapIngredient));
