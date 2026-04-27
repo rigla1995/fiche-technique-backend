@@ -35,6 +35,13 @@ const createLabo = async (req, res) => {
       return res.status(400).json({ message: 'Profil entreprise introuvable' });
     const entrepriseId = peRes.rows[0].id;
 
+    const dup = await pool.query(
+      'SELECT id FROM labos WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
+      [entrepriseId, franchiseGroup]
+    );
+    if (dup.rows.length > 0)
+      return res.status(409).json({ message: `Un labo pour la franchise "${franchiseGroup}" existe déjà.` });
+
     const result = await pool.query(
       `INSERT INTO labos (entreprise_id, franchise_group, nom, referent_tel, adresse)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -382,9 +389,99 @@ const getTransferHistory = async (req, res) => {
   }
 };
 
+// ─── Activity Ingredient Assignments ─────────────────────────────────────────
+
+const getActivityAssignments = async (req, res) => {
+  const { laboId } = req.params;
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const ingRes = await pool.query(
+      `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie
+       FROM labo_ingredient_selections lis
+       JOIN ingredients i ON lis.ingredient_id = i.id
+       JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
+       WHERE lis.labo_id = $1
+       ORDER BY c.nom NULLS LAST, i.nom`,
+      [laboId]
+    );
+    const actRes = await pool.query(
+      'SELECT id, nom FROM activites WHERE labo_id = $1 ORDER BY nom',
+      [laboId]
+    );
+    const assignRes = await pool.query(
+      `SELECT ais.activite_id, ais.ingredient_id
+       FROM activite_ingredient_selections ais
+       JOIN activites a ON ais.activite_id = a.id
+       WHERE a.labo_id = $1`,
+      [laboId]
+    );
+    const assigned = new Set(assignRes.rows.map((r) => `${r.activite_id}:${r.ingredient_id}`));
+
+    res.json({
+      activites: actRes.rows.map((a) => ({ id: a.id, nom: a.nom })),
+      ingredients: ingRes.rows.map((ing) => ({
+        ingredientId: ing.id,
+        nom: ing.nom,
+        unite: ing.unite,
+        categorie: ing.categorie,
+        activities: actRes.rows.map((act) => ({
+          activiteId: act.id,
+          nom: act.nom,
+          assigned: assigned.has(`${act.id}:${ing.id}`),
+        })),
+      })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const toggleActivityAssignment = async (req, res) => {
+  const { laboId, ingredientId } = req.params;
+  const { activiteId } = req.body;
+  if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const actCheck = await pool.query(
+      'SELECT id FROM activites WHERE id = $1 AND labo_id = $2',
+      [activiteId, laboId]
+    );
+    if (actCheck.rows.length === 0)
+      return res.status(400).json({ message: 'Activité invalide' });
+
+    const existing = await pool.query(
+      'SELECT 1 FROM activite_ingredient_selections WHERE activite_id = $1 AND ingredient_id = $2',
+      [activiteId, ingredientId]
+    );
+    if (existing.rows.length > 0) {
+      await pool.query(
+        'DELETE FROM activite_ingredient_selections WHERE activite_id = $1 AND ingredient_id = $2',
+        [activiteId, ingredientId]
+      );
+      res.json({ assigned: false });
+    } else {
+      await pool.query(
+        'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id) VALUES ($1, $2)',
+        [activiteId, ingredientId]
+      );
+      res.json({ assigned: true });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   createLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
   createTransfer, getTransferHistory,
+  getActivityAssignments, toggleActivityAssignment,
 };

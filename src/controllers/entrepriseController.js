@@ -118,6 +118,15 @@ const createActivite = async (req, res) => {
       : 1;
     const franchiseGroupValue = isFranchise ? baseName : null;
 
+    if (isFranchise && franchiseGroupValue) {
+      const dup = await pool.query(
+        'SELECT id FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
+        [entreprise.id, franchiseGroupValue]
+      );
+      if (dup.rows.length > 0)
+        return res.status(409).json({ message: `Une franchise "${franchiseGroupValue}" existe déjà.` });
+    }
+
     const created = [];
     for (let i = 0; i < count; i++) {
       const activiteName = count > 1 ? `${baseName} ${i + 1}` : (nom || baseName);

@@ -5,6 +5,7 @@ const {
   getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
   createTransfer, getTransferHistory,
+  getActivityAssignments, toggleActivityAssignment,
 } = require('../controllers/laboController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
@@ -21,6 +22,10 @@ router.post('/:laboId/ingredients/:ingredientId/select', authenticate, requireEn
 router.get('/:laboId/stock', authenticate, requireEntreprise, getLaboStock);
 router.put('/:laboId/stock/:ingredientId', authenticate, requireEntreprise, updateLaboStock);
 router.get('/:laboId/stock/:ingredientId/history', authenticate, requireEntreprise, getLaboStockHistory);
+
+// Activity ingredient assignments
+router.get('/:laboId/activity-assignments', authenticate, requireEntreprise, getActivityAssignments);
+router.post('/:laboId/ingredients/:ingredientId/assign-to-activity', authenticate, requireEntreprise, toggleActivityAssignment);
 
 // Transfers
 router.post('/:laboId/transfer', authenticate, requireEntreprise, createTransfer);
