@@ -367,7 +367,7 @@ const createTransfer = async (req, res) => {
           `INSERT INTO stock_entreprise_daily
              (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
            VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, NOW())
-           ON CONFLICT ON CONSTRAINT stock_entreprise_daily_uniq
+           ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro)
            DO UPDATE SET quantite = COALESCE(stock_entreprise_daily.quantite, 0) + $4,
                          fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
           [t.activiteId, t.ingredientId, dateTransfert, qty, prixUnitaire, laboFournisseurId, refFacture || null]
