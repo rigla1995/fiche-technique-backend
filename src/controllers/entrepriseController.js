@@ -59,6 +59,8 @@ const mapActivite = (row) => ({
   franchiseGroup: row.franchise_group || null,
   laboId: row.labo_id || null,
   laboNom: row.labo_nom || null,
+  laboTel: row.labo_tel || null,
+  laboAdresse: row.labo_adresse || null,
   createdAt: row.created_at,
 });
 
@@ -70,7 +72,7 @@ const listActivites = async (req, res) => {
     );
     if (entreprise.rows.length === 0) return res.json([]);
     const result = await pool.query(
-      `SELECT a.*, l.nom AS labo_nom
+      `SELECT a.*, l.nom AS labo_nom, l.referent_tel AS labo_tel, l.adresse AS labo_adresse
        FROM activites a
        LEFT JOIN labos l ON l.id = a.labo_id
        WHERE a.entreprise_id = $1 ORDER BY a.created_at ASC`,
