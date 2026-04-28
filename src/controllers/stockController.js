@@ -38,7 +38,9 @@ const getStockClient = async (req, res) => {
       categorie: row.categorie,
       prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
       quantite: parseFloat(row.total_quantite),
+      totalQuantite: parseFloat(row.total_quantite),
       dateAppro: isoDate(row.date_appro),
+      seuilMin: null,
     })));
   } catch (err) {
     console.error(err);
@@ -114,6 +116,7 @@ const getStockEntreprise = async (req, res) => {
       seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
       prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
       quantite: parseFloat(row.total_quantite),
+      totalQuantite: parseFloat(row.total_quantite),
       dateAppro: isoDate(row.date_appro),
     })));
   } catch (err) {
