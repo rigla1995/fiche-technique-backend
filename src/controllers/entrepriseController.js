@@ -61,6 +61,7 @@ const mapActivite = (row) => ({
   laboNom: row.labo_nom || null,
   laboTel: row.labo_tel || null,
   laboAdresse: row.labo_adresse || null,
+  ingredientCount: parseInt(row.ingredient_count) || 0,
   createdAt: row.created_at,
 });
 
@@ -72,9 +73,15 @@ const listActivites = async (req, res) => {
     );
     if (entreprise.rows.length === 0) return res.json([]);
     const result = await pool.query(
-      `SELECT a.*, l.nom AS labo_nom, l.referent_tel AS labo_tel, l.adresse AS labo_adresse
+      `SELECT a.*, l.nom AS labo_nom, l.referent_tel AS labo_tel, l.adresse AS labo_adresse,
+              CASE WHEN a.labo_id IS NOT NULL THEN COALESCE(lis.cnt, 0)
+                   ELSE COALESCE(ais.cnt, 0) END AS ingredient_count
        FROM activites a
        LEFT JOIN labos l ON l.id = a.labo_id
+       LEFT JOIN (SELECT activite_id, COUNT(*) AS cnt FROM activite_ingredient_selections GROUP BY activite_id) ais
+              ON ais.activite_id = a.id
+       LEFT JOIN (SELECT labo_id, COUNT(*) AS cnt FROM labo_ingredient_selections GROUP BY labo_id) lis
+              ON lis.labo_id = a.labo_id
        WHERE a.entreprise_id = $1 ORDER BY a.created_at ASC`,
       [entreprise.rows[0].id]
     );
