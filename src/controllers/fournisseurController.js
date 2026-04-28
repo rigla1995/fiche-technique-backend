@@ -10,7 +10,7 @@ const listFournisseurs = async (req, res) => {
     const entrepriseId = await getEntrepriseId(req.user.id);
     if (!entrepriseId) return res.json([]);
     const result = await pool.query(
-      `SELECT f.id, f.nom, f.adresse, f.telephone, f.created_at,
+      `SELECT f.id, f.nom, f.adresse, f.telephone, f.is_labo, f.created_at,
               COALESCE(
                 json_agg(fa.activite_id) FILTER (WHERE fa.activite_id IS NOT NULL),
                 '[]'
@@ -19,7 +19,7 @@ const listFournisseurs = async (req, res) => {
        LEFT JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id
        WHERE f.entreprise_id = $1
        GROUP BY f.id
-       ORDER BY f.nom`,
+       ORDER BY f.is_labo DESC, f.nom`,
       [entrepriseId]
     );
     res.json(result.rows.map((r) => ({
@@ -27,6 +27,7 @@ const listFournisseurs = async (req, res) => {
       nom: r.nom,
       adresse: r.adresse,
       telephone: r.telephone,
+      isLabo: r.is_labo ?? false,
       createdAt: r.created_at,
       activiteIds: r.activite_ids,
     })));
@@ -101,10 +102,11 @@ const updateFournisseur = async (req, res) => {
   try {
     const entrepriseId = await getEntrepriseId(req.user.id);
     const check = await pool.query(
-      'SELECT id FROM fournisseurs WHERE id = $1 AND entreprise_id = $2',
+      'SELECT id, is_labo FROM fournisseurs WHERE id = $1 AND entreprise_id = $2',
       [id, entrepriseId]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Fournisseur introuvable' });
+    if (check.rows[0].is_labo) return res.status(403).json({ message: 'Ce fournisseur est géré automatiquement par le labo.' });
 
     await pool.query(
       `UPDATE fournisseurs SET nom = $1, adresse = $2, telephone = $3 WHERE id = $4`,
@@ -133,10 +135,11 @@ const deleteFournisseur = async (req, res) => {
   try {
     const entrepriseId = await getEntrepriseId(req.user.id);
     const check = await pool.query(
-      'SELECT id FROM fournisseurs WHERE id = $1 AND entreprise_id = $2',
+      'SELECT id, is_labo FROM fournisseurs WHERE id = $1 AND entreprise_id = $2',
       [id, entrepriseId]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Fournisseur introuvable' });
+    if (check.rows[0].is_labo) return res.status(403).json({ message: 'Ce fournisseur est géré automatiquement par le labo.' });
     await pool.query('DELETE FROM fournisseurs WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (err) {

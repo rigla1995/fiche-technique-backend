@@ -154,7 +154,25 @@ const createActivite = async (req, res) => {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
         [entreprise.id, activiteName, adresse || null, telephone || null, email || null, activiteType, franchiseGroupValue, laboId || null]
       );
-      created.push(mapActivite(result.rows[0]));
+      const newActivite = result.rows[0];
+      created.push(mapActivite(newActivite));
+
+      // If franchise activity: link to labo fournisseur if one exists for this franchise group
+      if (isFranchise && franchiseGroupValue) {
+        const laboFournisseurRes = await pool.query(
+          `SELECT f.id FROM fournisseurs f
+           JOIN labos l ON f.labo_id = l.id
+           WHERE l.entreprise_id = $1 AND LOWER(l.franchise_group) = LOWER($2) AND f.is_labo = true
+           LIMIT 1`,
+          [entreprise.id, franchiseGroupValue]
+        );
+        if (laboFournisseurRes.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [laboFournisseurRes.rows[0].id, newActivite.id]
+          );
+        }
+      }
     }
     res.status(201).json(count > 1 ? created : created[0]);
   } catch (err) {

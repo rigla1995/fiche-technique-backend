@@ -49,7 +49,33 @@ const createLabo = async (req, res) => {
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [entrepriseId, franchiseGroup, nom, referentTel, adresse || null]
     );
-    res.status(201).json(mapLabo(result.rows[0]));
+    const labo = result.rows[0];
+
+    // Auto-create a labo fournisseur linked to all activities of this franchise group
+    const existingFournisseur = await pool.query(
+      'SELECT id FROM fournisseurs WHERE labo_id = $1', [labo.id]
+    );
+    if (existingFournisseur.rows.length === 0) {
+      const fRes = await pool.query(
+        `INSERT INTO fournisseurs (entreprise_id, nom, telephone, adresse, is_labo, labo_id)
+         VALUES ($1, $2, $3, $4, true, $5) RETURNING id`,
+        [entrepriseId, nom, referentTel, adresse || null, labo.id]
+      );
+      const fournisseurId = fRes.rows[0].id;
+      // Link to all existing franchise activities
+      const acts = await pool.query(
+        `SELECT id FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)`,
+        [entrepriseId, franchiseGroup]
+      );
+      for (const act of acts.rows) {
+        await pool.query(
+          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [fournisseurId, act.id]
+        );
+      }
+    }
+
+    res.status(201).json(mapLabo(labo));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -185,11 +211,13 @@ const getLaboStock = async (req, res) => {
 
     const result = await pool.query(
       `SELECT sub.ingredient_id, sub.nom, sub.unite_nom, sub.categorie,
-              sub.quantite, sub.prix_unitaire, sub.date_appro
+              sub.quantite, sub.prix_unitaire, sub.date_appro, sub.seuil_min,
+              COALESCE(tr.total_transfere, 0) as total_transfere
        FROM (
          SELECT DISTINCT ON (i.id) i.id as ingredient_id, i.nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie,
-                sld.quantite, sld.prix_unitaire, sld.date_appro
+                sld.quantite, sld.prix_unitaire, sld.date_appro,
+                lis.seuil_min
          FROM labo_ingredient_selections lis
          JOIN ingredients i ON lis.ingredient_id = i.id
          JOIN unites u ON i.unite_id = u.id
@@ -198,6 +226,12 @@ const getLaboStock = async (req, res) => {
          WHERE lis.labo_id = $1 ${assignedFilter}
          ORDER BY i.id, sld.date_appro DESC NULLS LAST
        ) sub
+       LEFT JOIN (
+         SELECT ingredient_id, SUM(quantite) as total_transfere
+         FROM labo_transfers
+         WHERE labo_id = $1
+         GROUP BY ingredient_id
+       ) tr ON tr.ingredient_id = sub.ingredient_id
        ORDER BY sub.categorie NULLS LAST, sub.nom`,
       [laboId]
     );
@@ -209,6 +243,8 @@ const getLaboStock = async (req, res) => {
       quantite: row.quantite !== null ? parseFloat(row.quantite) : null,
       prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
       dateAppro: isoDate(row.date_appro),
+      seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
+      totalTransfere: parseFloat(row.total_transfere),
     })));
   } catch (err) {
     console.error(err);
@@ -268,11 +304,11 @@ const getLaboStockHistory = async (req, res) => {
 
 // ─── Transfers ────────────────────────────────────────────────────────────────
 
-// POST /api/stock/labo/:laboId/transfer
-// Body: { dateTransfert, note, transfers: [{ activiteId, ingredientId, quantite }] }
+// POST /api/labo/:laboId/transfer
+// Body: { dateTransfert, note, refFacture, transfers: [{ activiteId, ingredientId, quantite }] }
 const createTransfer = async (req, res) => {
   const { laboId } = req.params;
-  const { dateTransfert, note, transfers } = req.body;
+  const { dateTransfert, note, refFacture, transfers } = req.body;
 
   if (!dateTransfert || !Array.isArray(transfers) || transfers.length === 0)
     return res.status(400).json({ message: 'dateTransfert et transfers requis' });
@@ -289,6 +325,13 @@ const createTransfer = async (req, res) => {
     );
     if (actCheck.rows.length !== activiteIds.length)
       return res.status(400).json({ message: 'Une ou plusieurs activités invalides' });
+
+    // Look up the labo fournisseur (is_labo=true for this labo)
+    const laboFournisseurRes = await pool.query(
+      'SELECT id FROM fournisseurs WHERE labo_id = $1 AND is_labo = true LIMIT 1',
+      [laboId]
+    );
+    const laboFournisseurId = laboFournisseurRes.rows.length > 0 ? laboFournisseurRes.rows[0].id : null;
 
     const client = await pool.connect();
     try {
@@ -319,21 +362,22 @@ const createTransfer = async (req, res) => {
           [laboId, t.ingredientId, dateTransfert, currentQty - qty, prixUnitaire, qty]
         );
 
-        // Add to activity stock (type=transfert)
+        // Add to activity stock (type=transfert) with labo fournisseur ref
         await client.query(
           `INSERT INTO stock_entreprise_daily
-             (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, updated_at)
-           VALUES ($1, $2, $3, $4, $5, 'transfert', NOW())
+             (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
+           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, NOW())
            ON CONFLICT ON CONSTRAINT stock_entreprise_daily_uniq
-           DO UPDATE SET quantite = COALESCE(stock_entreprise_daily.quantite, 0) + $4, updated_at = NOW()`,
-          [t.activiteId, t.ingredientId, dateTransfert, qty, prixUnitaire]
+           DO UPDATE SET quantite = COALESCE(stock_entreprise_daily.quantite, 0) + $4,
+                         fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
+          [t.activiteId, t.ingredientId, dateTransfert, qty, prixUnitaire, laboFournisseurId, refFacture || null]
         );
 
         // Record transfer
         await client.query(
-          `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [laboId, t.activiteId, t.ingredientId, qty, dateTransfert, note || null]
+          `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [laboId, t.activiteId, t.ingredientId, qty, dateTransfert, note || null, refFacture || null]
         );
       }
 
@@ -368,7 +412,7 @@ const getTransferHistory = async (req, res) => {
     if (endDate) { params.push(endDate); extraWhere += ` AND lt.date_transfert <= $${params.length}`; }
 
     const result = await pool.query(
-      `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.created_at,
+      `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
               i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
               a.id as activite_id, a.nom as activite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom
@@ -387,6 +431,7 @@ const getTransferHistory = async (req, res) => {
       quantite: parseFloat(r.quantite),
       dateTransfert: isoDate(r.date_transfert),
       note: r.note,
+      refFacture: r.ref_facture,
       createdAt: r.created_at,
       ingredientId: r.ingredient_id,
       ingredientNom: r.ingredient_nom,
@@ -395,6 +440,27 @@ const getTransferHistory = async (req, res) => {
       activiteId: r.activite_id,
       activiteNom: r.activite_nom,
     })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// ─── Labo Ingredient Seuil Min ───────────────────────────────────────────────
+
+const updateLaboSeuilMin = async (req, res) => {
+  const { laboId, ingredientId } = req.params;
+  const { seuilMin } = req.body;
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    await pool.query(
+      `UPDATE labo_ingredient_selections SET seuil_min = $1
+       WHERE labo_id = $2 AND ingredient_id = $3`,
+      [seuilMin ?? null, laboId, ingredientId]
+    );
+    res.json({ success: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -494,6 +560,7 @@ module.exports = {
   createLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
+  updateLaboSeuilMin,
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,
 };
