@@ -6,6 +6,7 @@ const {
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro,
   duplicateStockToFranchise,
+  updateSeuilMin,
 } = require('../controllers/stockController');
 const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
 
@@ -18,6 +19,7 @@ router.get('/client/:ingredientId/history', authenticate, requireClient, getHist
 router.get('/entreprise/:activiteId', authenticate, requireEntreprise, getStockEntreprise);
 router.put('/entreprise/:activiteId/:ingredientId', authenticate, requireEntreprise, updateStockEntreprise);
 router.get('/entreprise/:activiteId/:ingredientId/history', authenticate, requireEntreprise, getHistoryEntreprise);
+router.put('/entreprise/:activiteId/:ingredientId/seuil-min', authenticate, requireEntreprise, updateSeuilMin);
 router.post('/entreprise/:activiteId/duplicate-franchise', authenticate, requireEntreprise, duplicateStockToFranchise);
 
 // Historique Approvisionnement (current year, filtered)

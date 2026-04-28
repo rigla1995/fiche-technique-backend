@@ -319,11 +319,12 @@ const createTransfer = async (req, res) => {
           [laboId, t.ingredientId, dateTransfert, currentQty - qty, prixUnitaire, qty]
         );
 
-        // Add to activity stock
+        // Add to activity stock (type=transfert)
         await client.query(
-          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, updated_at)
-           VALUES ($1, $2, $3, $4, $5, NOW())
-           ON CONFLICT (activite_id, ingredient_id, date_appro)
+          `INSERT INTO stock_entreprise_daily
+             (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, updated_at)
+           VALUES ($1, $2, $3, $4, $5, 'transfert', NOW())
+           ON CONFLICT ON CONSTRAINT stock_entreprise_daily_uniq
            DO UPDATE SET quantite = COALESCE(stock_entreprise_daily.quantite, 0) + $4, updated_at = NOW()`,
           [t.activiteId, t.ingredientId, dateTransfert, qty, prixUnitaire]
         );
