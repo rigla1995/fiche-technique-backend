@@ -363,28 +363,49 @@ const toggleActiviteIngredient = async (req, res) => {
 
 const getActiviteTypesSummary = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT
-         BOOL_OR(a.type = 'franchise') AS has_franchise,
-         BOOL_OR(a.type IS NULL OR a.type = 'distincte') AS has_distinct,
-         BOOL_OR(a.type = 'franchise' AND sel.cnt > 0) AS has_franchise_selections,
-         BOOL_OR((a.type IS NULL OR a.type = 'distincte') AND sel.cnt > 0) AS has_distinct_selections
-       FROM activites a
-       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-       LEFT JOIN (
-         SELECT activite_id, COUNT(*) AS cnt
-         FROM activite_ingredient_selections
-         GROUP BY activite_id
-       ) sel ON sel.activite_id = a.id
-       WHERE pe.client_id = $1`,
-      [req.user.id]
-    );
-    const row = result.rows[0];
+    const [actResult, approResult] = await Promise.all([
+      pool.query(
+        `SELECT
+           BOOL_OR(a.type = 'franchise') AS has_franchise,
+           BOOL_OR(a.type IS NULL OR a.type = 'distincte') AS has_distinct,
+           BOOL_OR(a.type = 'franchise' AND sel.cnt > 0) AS has_franchise_selections,
+           BOOL_OR((a.type IS NULL OR a.type = 'distincte') AND sel.cnt > 0) AS has_distinct_selections
+         FROM activites a
+         JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+         LEFT JOIN (
+           SELECT activite_id, COUNT(*) AS cnt
+           FROM activite_ingredient_selections
+           GROUP BY activite_id
+         ) sel ON sel.activite_id = a.id
+         WHERE pe.client_id = $1`,
+        [req.user.id]
+      ),
+      pool.query(
+        `SELECT
+           EXISTS (
+             SELECT 1 FROM stock_entreprise_daily sed
+             JOIN activites a ON sed.activite_id = a.id
+             JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+             WHERE pe.client_id = $1 AND a.type = 'franchise'
+           ) AS has_franchise_appro,
+           EXISTS (
+             SELECT 1 FROM stock_entreprise_daily sed
+             JOIN activites a ON sed.activite_id = a.id
+             JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+             WHERE pe.client_id = $1 AND (a.type IS NULL OR a.type = 'distincte')
+           ) AS has_distinct_appro`,
+        [req.user.id]
+      ),
+    ]);
+    const row = actResult.rows[0];
+    const appro = approResult.rows[0];
     res.json({
       hasFranchise: row.has_franchise ?? false,
       hasDistinct: row.has_distinct ?? false,
       hasFranchiseSelections: row.has_franchise_selections ?? false,
       hasDistinctSelections: row.has_distinct_selections ?? false,
+      hasFranchiseAppro: appro.has_franchise_appro ?? false,
+      hasDistinctAppro: appro.has_distinct_appro ?? false,
     });
   } catch (err) {
     console.error(err);
