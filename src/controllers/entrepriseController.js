@@ -58,6 +58,7 @@ const mapActivite = (row) => ({
   type: row.type,
   franchiseGroup: row.franchise_group || null,
   laboId: row.labo_id || null,
+  laboNom: row.labo_nom || null,
   createdAt: row.created_at,
 });
 
@@ -69,7 +70,10 @@ const listActivites = async (req, res) => {
     );
     if (entreprise.rows.length === 0) return res.json([]);
     const result = await pool.query(
-      'SELECT * FROM activites WHERE entreprise_id = $1 ORDER BY created_at ASC',
+      `SELECT a.*, l.nom AS labo_nom
+       FROM activites a
+       LEFT JOIN labos l ON l.id = a.labo_id
+       WHERE a.entreprise_id = $1 ORDER BY a.created_at ASC`,
       [entreprise.rows[0].id]
     );
     res.json(result.rows.map(mapActivite));
