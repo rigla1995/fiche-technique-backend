@@ -427,18 +427,31 @@ const deleteFranchiseGroup = async (req, res) => {
     );
     if (acts.rows.length === 0) return res.status(404).json({ message: 'Groupe introuvable' });
 
-    const laboId = acts.rows.find((r) => r.labo_id)?.labo_id ?? null;
+    const actIds = acts.rows.map((r) => r.id);
 
-    // Delete all activities in the group (cascade handles ingredient selections)
+    // Delete stock entries for all activities in the group
+    if (actIds.length > 0) {
+      await pool.query(
+        `DELETE FROM stock_entreprise_daily WHERE activite_id = ANY($1::int[])`,
+        [actIds]
+      );
+      await pool.query(
+        `DELETE FROM activite_ingredient_selections WHERE activite_id = ANY($1::int[])`,
+        [actIds]
+      );
+    }
+
+    // Delete all activities in the group
     await pool.query(
       'DELETE FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
       [entrepriseId, group]
     );
 
-    // Delete the labo if there was one
-    if (laboId) {
-      await pool.query('DELETE FROM labos WHERE id = $1 AND entreprise_id = $2', [laboId, entrepriseId]);
-    }
+    // Delete the labo by franchise_group name (more robust than labo_id lookup)
+    await pool.query(
+      'DELETE FROM labos WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
+      [entrepriseId, group]
+    );
 
     res.status(204).send();
   } catch (err) {
