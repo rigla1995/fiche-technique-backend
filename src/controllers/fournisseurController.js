@@ -49,14 +49,14 @@ const getFournisseursForActivite = async (req, res) => {
     if (check.rows.length === 0) return res.json([]);
 
     const result = await pool.query(
-      `SELECT f.id, f.nom, f.telephone
+      `SELECT f.id, f.nom, f.telephone, f.is_labo
        FROM fournisseurs f
        JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id
        WHERE fa.activite_id = $1
-       ORDER BY f.nom`,
+       ORDER BY f.is_labo DESC, f.nom`,
       [activiteId]
     );
-    res.json(result.rows);
+    res.json(result.rows.map((r) => ({ id: r.id, nom: r.nom, telephone: r.telephone, isLabo: r.is_labo ?? false })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
