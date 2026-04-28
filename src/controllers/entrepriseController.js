@@ -253,27 +253,50 @@ const getActiviteIngredients = async (req, res) => {
   const { id } = req.params;
   try {
     const check = await pool.query(
-      `SELECT a.id FROM activites a
+      `SELECT a.id, a.labo_id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
       [id, req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
-    const result = await pool.query(
-      `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
-              i.categorie_id,
-              COALESCE(ipc.prix, i.prix) as prix,
-              ais.prix_unitaire,
-              CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
-       FROM ingredients i
-       JOIN unites u ON i.unite_id = u.id
-       LEFT JOIN categories c ON i.categorie_id = c.id
-       LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
-       LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = i.id AND ais.activite_id = $1
-       ORDER BY c.nom NULLS LAST, i.nom`,
-      [id, req.user.id]
-    );
+    const laboId = check.rows[0].labo_id;
+
+    // When the activity belongs to a labo, only expose ingredients that were
+    // added to that labo in the Catalogue Global (labo_ingredient_selections).
+    // For non-labo activities, expose all admin ingredients.
+    const result = laboId
+      ? await pool.query(
+          `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+                  i.categorie_id,
+                  COALESCE(ipc.prix, i.prix) as prix,
+                  ais.prix_unitaire,
+                  CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
+           FROM labo_ingredient_selections lis
+           JOIN ingredients i ON i.id = lis.ingredient_id
+           JOIN unites u ON i.unite_id = u.id
+           LEFT JOIN categories c ON i.categorie_id = c.id
+           LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
+           LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = i.id AND ais.activite_id = $1
+           WHERE lis.labo_id = $3
+           ORDER BY c.nom NULLS LAST, i.nom`,
+          [id, req.user.id, laboId]
+        )
+      : await pool.query(
+          `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+                  i.categorie_id,
+                  COALESCE(ipc.prix, i.prix) as prix,
+                  ais.prix_unitaire,
+                  CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
+           FROM ingredients i
+           JOIN unites u ON i.unite_id = u.id
+           LEFT JOIN categories c ON i.categorie_id = c.id
+           LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
+           LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = i.id AND ais.activite_id = $1
+           ORDER BY c.nom NULLS LAST, i.nom`,
+          [id, req.user.id]
+        );
+
     res.json(result.rows.map((r) => ({
       id: r.id,
       nom: r.nom,
