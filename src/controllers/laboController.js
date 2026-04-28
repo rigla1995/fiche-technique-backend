@@ -170,9 +170,18 @@ const toggleLaboIngredient = async (req, res) => {
 
 const getLaboStock = async (req, res) => {
   const { laboId } = req.params;
+  const assignedOnly = req.query.assignedOnly === 'true';
   try {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const assignedFilter = assignedOnly
+      ? `AND EXISTS (
+           SELECT 1 FROM activite_ingredient_selections ais
+           JOIN activites a ON ais.activite_id = a.id
+           WHERE a.labo_id = $1 AND ais.ingredient_id = i.id
+         )`
+      : '';
 
     const result = await pool.query(
       `SELECT sub.ingredient_id, sub.nom, sub.unite_nom, sub.categorie,
@@ -186,7 +195,7 @@ const getLaboStock = async (req, res) => {
          JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN stock_labo_daily sld ON sld.ingredient_id = i.id AND sld.labo_id = $1
-         WHERE lis.labo_id = $1
+         WHERE lis.labo_id = $1 ${assignedFilter}
          ORDER BY i.id, sld.date_appro DESC NULLS LAST
        ) sub
        ORDER BY sub.categorie NULLS LAST, sub.nom`,
