@@ -118,18 +118,24 @@ const createActivite = async (req, res) => {
       : 1;
     const franchiseGroupValue = isFranchise ? baseName : null;
 
-    if (isFranchise && franchiseGroupValue) {
-      const dup = await pool.query(
-        'SELECT id FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
-        [entreprise.id, franchiseGroupValue]
-      );
-      if (dup.rows.length > 0)
-        return res.status(409).json({ message: `Une franchise "${franchiseGroupValue}" existe déjà.` });
-    }
-
     const created = [];
     for (let i = 0; i < count; i++) {
       const activiteName = count > 1 ? `${baseName} ${i + 1}` : (nom || baseName);
+
+      // For franchise activities, if an activity with this exact nom already exists in the
+      // franchise group (e.g. from a partial previous attempt), return the existing one
+      // instead of failing — makes the creation idempotent on retry.
+      if (isFranchise && franchiseGroupValue) {
+        const existing = await pool.query(
+          'SELECT * FROM activites WHERE entreprise_id = $1 AND LOWER(nom) = LOWER($2) AND LOWER(franchise_group) = LOWER($3)',
+          [entreprise.id, activiteName, franchiseGroupValue]
+        );
+        if (existing.rows.length > 0) {
+          created.push(mapActivite(existing.rows[0]));
+          continue;
+        }
+      }
+
       const result = await pool.query(
         `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type, franchise_group, labo_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,

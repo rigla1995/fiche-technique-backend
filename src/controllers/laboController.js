@@ -36,11 +36,13 @@ const createLabo = async (req, res) => {
     const entrepriseId = peRes.rows[0].id;
 
     const dup = await pool.query(
-      'SELECT id FROM labos WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
+      'SELECT * FROM labos WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
       [entrepriseId, franchiseGroup]
     );
+    // If a labo already exists for this franchise group (e.g. orphaned from a previous
+    // failed attempt), return it so the caller can reuse it instead of being blocked.
     if (dup.rows.length > 0)
-      return res.status(409).json({ message: `Un labo pour la franchise "${franchiseGroup}" existe déjà.` });
+      return res.status(200).json(mapLabo(dup.rows[0]));
 
     const result = await pool.query(
       `INSERT INTO labos (entreprise_id, franchise_group, nom, referent_tel, adresse)
