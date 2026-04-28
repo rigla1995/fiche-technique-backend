@@ -408,9 +408,47 @@ const updateIngredientPrice = async (req, res) => {
   }
 };
 
+const deleteFranchiseGroup = async (req, res) => {
+  const { group } = req.params;
+  if (!group) return res.status(400).json({ message: 'Groupe requis' });
+  try {
+    const entrepriseRes = await pool.query(
+      'SELECT id FROM profil_entreprise WHERE client_id = $1',
+      [req.user.id]
+    );
+    if (entrepriseRes.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
+    const entrepriseId = entrepriseRes.rows[0].id;
+
+    const acts = await pool.query(
+      'SELECT id, labo_id FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
+      [entrepriseId, group]
+    );
+    if (acts.rows.length === 0) return res.status(404).json({ message: 'Groupe introuvable' });
+
+    const laboId = acts.rows.find((r) => r.labo_id)?.labo_id ?? null;
+
+    // Delete all activities in the group (cascade handles ingredient selections)
+    await pool.query(
+      'DELETE FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
+      [entrepriseId, group]
+    );
+
+    // Delete the labo if there was one
+    if (laboId) {
+      await pool.query('DELETE FROM labos WHERE id = $1 AND entreprise_id = $2', [laboId, entrepriseId]);
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
+  deleteFranchiseGroup,
   hasActivites,
   getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,
