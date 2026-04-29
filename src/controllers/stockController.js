@@ -111,7 +111,10 @@ const getStockEntreprise = async (req, res) => {
                ORDER BY sed2.date_appro DESC LIMIT 1) as last_fournisseur_id,
               (SELECT sed2.ref_facture FROM stock_entreprise_daily sed2
                WHERE sed2.activite_id = $1 AND sed2.ingredient_id = i.id
-               ORDER BY sed2.date_appro DESC LIMIT 1) as last_ref_facture
+               ORDER BY sed2.date_appro DESC LIMIT 1) as last_ref_facture,
+              (SELECT sed2.type_appro FROM stock_entreprise_daily sed2
+               WHERE sed2.activite_id = $1 AND sed2.ingredient_id = i.id
+               ORDER BY sed2.date_appro DESC LIMIT 1) as last_type_appro
        FROM activite_ingredient_selections ais
        JOIN ingredients i ON ais.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
@@ -134,6 +137,7 @@ const getStockEntreprise = async (req, res) => {
       dateAppro: isoDate(row.date_appro),
       lastFournisseurId: row.last_fournisseur_id ?? null,
       lastRefFacture: row.last_ref_facture ?? null,
+      lastTypeAppro: row.last_type_appro ?? null,
     })));
   } catch (err) {
     console.error(err);
