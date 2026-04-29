@@ -259,12 +259,12 @@ const getHistoryEntreprise = async (req, res) => {
 // ─── Historique Approvisionnement ─────────────────────────────────────────────
 
 const getHistoriqueAppro = async (req, res) => {
-  const { activiteId, franchiseGroup, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture } = req.query;
+  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture } = req.query;
   const currentYear = new Date().getFullYear();
 
   try {
-    if (activiteId || franchiseGroup) {
-      // Resolve activiteIds
+    if (activiteId || franchiseGroup || activiteIdsParam || entType) {
+      // Resolve activiteIds list
       let activiteIds = [];
       if (activiteId) {
         const check = await pool.query(
@@ -275,8 +275,7 @@ const getHistoriqueAppro = async (req, res) => {
         );
         if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
         activiteIds = [activiteId];
-      } else {
-        // franchiseGroup: find all activites of that group for this client
+      } else if (franchiseGroup) {
         const gRes = await pool.query(
           `SELECT a.id FROM activites a
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
@@ -284,6 +283,28 @@ const getHistoriqueAppro = async (req, res) => {
           [req.user.id, franchiseGroup]
         );
         activiteIds = gRes.rows.map((r) => r.id);
+        if (activiteIds.length === 0) return res.json([]);
+      } else if (activiteIdsParam) {
+        // Comma-separated list of activiteIds
+        const requested = activiteIdsParam.split(',').map(Number).filter(Boolean);
+        const check = await pool.query(
+          `SELECT a.id FROM activites a
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE a.id = ANY($1) AND pe.client_id = $2`,
+          [requested, req.user.id]
+        );
+        activiteIds = check.rows.map((r) => r.id);
+        if (activiteIds.length === 0) return res.json([]);
+      } else if (entType) {
+        // All activities of a given type for this client
+        const typeFilter = entType === 'franchise' ? `a.type = 'franchise'` : `(a.type = 'distincte' OR a.type IS NULL)`;
+        const allRes = await pool.query(
+          `SELECT a.id FROM activites a
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE pe.client_id = $1 AND ${typeFilter}`,
+          [req.user.id]
+        );
+        activiteIds = allRes.rows.map((r) => r.id);
         if (activiteIds.length === 0) return res.json([]);
       }
 
