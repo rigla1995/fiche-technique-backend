@@ -348,6 +348,30 @@ const getLaboFournisseurs = async (req, res) => {
   }
 };
 
+// PUT /api/labo/:laboId/fournisseurs/sync
+// Body: { fournisseurIds: number[] }
+const syncLaboFournisseurs = async (req, res) => {
+  const { laboId } = req.params;
+  const { fournisseurIds } = req.body;
+  if (!Array.isArray(fournisseurIds)) return res.status(400).json({ message: 'fournisseurIds requis' });
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    await pool.query('DELETE FROM fournisseur_labos WHERE labo_id = $1', [laboId]);
+    for (const fId of fournisseurIds) {
+      await pool.query(
+        'INSERT INTO fournisseur_labos (fournisseur_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [fId, laboId]
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // ─── Transfers ────────────────────────────────────────────────────────────────
 
 // POST /api/labo/:laboId/transfer
@@ -606,7 +630,7 @@ module.exports = {
   createLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
-  getLaboFournisseurs,
+  getLaboFournisseurs, syncLaboFournisseurs,
   updateLaboSeuilMin,
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,

@@ -4,7 +4,7 @@ const {
   createLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
-  getLaboFournisseurs,
+  getLaboFournisseurs, syncLaboFournisseurs,
   updateLaboSeuilMin,
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,
@@ -27,6 +27,7 @@ router.get('/:laboId/stock/:ingredientId/history', authenticate, requireEntrepri
 
 // Labo fournisseurs (non-labo fournisseurs assigned to this labo)
 router.get('/:laboId/fournisseurs', authenticate, requireEntreprise, getLaboFournisseurs);
+router.put('/:laboId/fournisseurs/sync', authenticate, requireEntreprise, syncLaboFournisseurs);
 
 // Labo ingredient seuil min
 router.put('/:laboId/ingredients/:ingredientId/seuil-min', authenticate, requireEntreprise, updateLaboSeuilMin);
