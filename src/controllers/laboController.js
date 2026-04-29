@@ -101,10 +101,15 @@ const listLabos = async (req, res) => {
     );
     if (peRes.rows.length === 0) return res.json([]);
     const result = await pool.query(
-      'SELECT * FROM labos WHERE entreprise_id = $1 ORDER BY nom',
+      `SELECT l.*, COUNT(fl.fournisseur_id)::int AS fournisseur_count
+       FROM labos l
+       LEFT JOIN fournisseur_labos fl ON fl.labo_id = l.id
+       WHERE l.entreprise_id = $1
+       GROUP BY l.id
+       ORDER BY l.nom`,
       [peRes.rows[0].id]
     );
-    res.json(result.rows.map(mapLabo));
+    res.json(result.rows.map((r) => ({ ...mapLabo(r), fournisseurCount: r.fournisseur_count })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
