@@ -8,7 +8,7 @@ const {
   updateLaboSeuilMin,
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,
-  getLaboHistorique,
+  getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
 } = require('../controllers/laboController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
@@ -39,6 +39,8 @@ router.post('/:laboId/ingredients/:ingredientId/assign-to-activity', authenticat
 
 // Labo historique appro
 router.get('/:laboId/historique', authenticate, requireEntreprise, getLaboHistorique);
+router.put('/:laboId/historique/:entryId', authenticate, requireEntreprise, updateLaboHistoriqueEntry);
+router.delete('/:laboId/historique/:entryId', authenticate, requireEntreprise, deleteLaboHistoriqueEntry);
 
 // Transfers
 router.post('/:laboId/transfer', authenticate, requireEntreprise, createTransfer);

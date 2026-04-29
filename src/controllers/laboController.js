@@ -573,6 +573,60 @@ const getLaboHistorique = async (req, res) => {
   }
 };
 
+// PUT /api/labo/:laboId/historique/:entryId
+const updateLaboHistoriqueEntry = async (req, res) => {
+  const { laboId, entryId } = req.params;
+  const { quantite, prixUnitaire, fournisseurId, refFacture } = req.body;
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const check = await pool.query(
+      'SELECT id FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
+      [entryId, laboId]
+    );
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
+
+    const result = await pool.query(
+      `UPDATE stock_labo_daily
+       SET quantite = $1, prix_unitaire = $2, fournisseur_id = $3, ref_facture = $4, updated_at = NOW()
+       WHERE id = $5 AND labo_id = $6
+       RETURNING id, quantite, prix_unitaire, fournisseur_id, ref_facture`,
+      [quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, entryId, laboId]
+    );
+    const r = result.rows[0];
+    res.json({
+      id: r.id,
+      quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
+      prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
+      fournisseurId: r.fournisseur_id,
+      refFacture: r.ref_facture,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// DELETE /api/labo/:laboId/historique/:entryId
+const deleteLaboHistoriqueEntry = async (req, res) => {
+  const { laboId, entryId } = req.params;
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const result = await pool.query(
+      'DELETE FROM stock_labo_daily WHERE id = $1 AND labo_id = $2 RETURNING id',
+      [entryId, laboId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // ─── Labo Ingredient Seuil Min ───────────────────────────────────────────────
 
 const updateLaboSeuilMin = async (req, res) => {
@@ -691,5 +745,5 @@ module.exports = {
   updateLaboSeuilMin,
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,
-  getLaboHistorique,
+  getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
 };
