@@ -124,10 +124,13 @@ const getLaboById = async (req, res) => {
     const r = await pool.query('SELECT * FROM labos WHERE id = $1', [laboId]);
     // Also return activities linked to this labo
     const acts = await pool.query(
-      'SELECT id, nom, telephone, email, adresse FROM activites WHERE labo_id = $1 ORDER BY nom',
+      'SELECT id, nom, type, franchise_group FROM activites WHERE labo_id = $1 ORDER BY nom',
       [laboId]
     );
-    res.json({ ...mapLabo(r.rows[0]), activites: acts.rows });
+    res.json({
+      ...mapLabo(r.rows[0]),
+      activites: acts.rows.map((a) => ({ id: a.id, nom: a.nom, type: a.type, franchiseGroup: a.franchise_group })),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -670,7 +673,7 @@ const getActivityAssignments = async (req, res) => {
       [laboId]
     );
     const actRes = await pool.query(
-      'SELECT id, nom FROM activites WHERE labo_id = $1 ORDER BY nom',
+      'SELECT id, nom, type, franchise_group FROM activites WHERE labo_id = $1 ORDER BY nom',
       [laboId]
     );
     const assignRes = await pool.query(
@@ -683,7 +686,7 @@ const getActivityAssignments = async (req, res) => {
     const assigned = new Set(assignRes.rows.map((r) => `${r.activite_id}:${r.ingredient_id}`));
 
     res.json({
-      activites: actRes.rows.map((a) => ({ id: a.id, nom: a.nom })),
+      activites: actRes.rows.map((a) => ({ id: a.id, nom: a.nom, type: a.type, franchiseGroup: a.franchise_group })),
       ingredients: ingRes.rows.map((ing) => ({
         ingredientId: ing.id,
         nom: ing.nom,
@@ -692,6 +695,8 @@ const getActivityAssignments = async (req, res) => {
         activities: actRes.rows.map((act) => ({
           activiteId: act.id,
           nom: act.nom,
+          type: act.type,
+          franchiseGroup: act.franchise_group,
           assigned: assigned.has(`${act.id}:${ing.id}`),
         })),
       })),
