@@ -231,7 +231,7 @@ const getLaboStock = async (req, res) => {
 
     const result = await pool.query(
       `SELECT sub.ingredient_id, sub.nom, sub.unite_nom, sub.categorie,
-              sub.quantite, sub.prix_unitaire, sub.date_appro, sub.seuil_min,
+              sub.quantite_totale, sub.prix_unitaire, sub.date_appro, sub.seuil_min,
               COALESCE(tr.total_transfere, 0) as total_transfere,
               (SELECT sld2.fournisseur_id FROM stock_labo_daily sld2
                WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id
@@ -240,9 +240,15 @@ const getLaboStock = async (req, res) => {
                WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id
                ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_ref_facture
        FROM (
-         SELECT DISTINCT ON (i.id) i.id as ingredient_id, i.nom, u.nom as unite_nom,
+         SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie,
-                sld.quantite, sld.prix_unitaire, sld.date_appro,
+                SUM(sld.quantite) as quantite_totale,
+                (SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id
+                 ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as prix_unitaire,
+                (SELECT sld2.date_appro FROM stock_labo_daily sld2
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id
+                 ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as date_appro,
                 lis.seuil_min
          FROM labo_ingredient_selections lis
          JOIN ingredients i ON lis.ingredient_id = i.id
@@ -250,7 +256,7 @@ const getLaboStock = async (req, res) => {
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN stock_labo_daily sld ON sld.ingredient_id = i.id AND sld.labo_id = $1
          WHERE lis.labo_id = $1 ${assignedFilter}
-         ORDER BY i.id, sld.date_appro DESC NULLS LAST
+         GROUP BY i.id, i.nom, u.nom, c.nom, lis.seuil_min
        ) sub
        LEFT JOIN (
          SELECT ingredient_id, SUM(quantite) as total_transfere
@@ -261,19 +267,24 @@ const getLaboStock = async (req, res) => {
        ORDER BY sub.categorie NULLS LAST, sub.nom`,
       [laboId]
     );
-    res.json(result.rows.map((row) => ({
-      ingredientId: row.ingredient_id,
-      nom: row.nom,
-      unite: row.unite_nom,
-      categorie: row.categorie,
-      quantite: row.quantite !== null ? parseFloat(row.quantite) : null,
-      prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
-      dateAppro: isoDate(row.date_appro),
-      seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
-      totalTransfere: parseFloat(row.total_transfere),
-      lastFournisseurId: row.last_fournisseur_id ?? null,
-      lastRefFacture: row.last_ref_facture ?? null,
-    })));
+    res.json(result.rows.map((row) => {
+      const totalAppros = row.quantite_totale !== null ? parseFloat(row.quantite_totale) : null;
+      const totalTransfere = parseFloat(row.total_transfere);
+      return {
+        ingredientId: row.ingredient_id,
+        nom: row.nom,
+        unite: row.unite_nom,
+        categorie: row.categorie,
+        // stock actuel = total appros - total transféré
+        quantite: totalAppros !== null ? totalAppros - totalTransfere : null,
+        prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
+        dateAppro: isoDate(row.date_appro),
+        seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
+        totalTransfere,
+        lastFournisseurId: row.last_fournisseur_id ?? null,
+        lastRefFacture: row.last_ref_facture ?? null,
+      };
+    }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -475,7 +486,7 @@ const createTransfer = async (req, res) => {
 
 const getTransferHistory = async (req, res) => {
   const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, activiteId } = req.query;
+  const { startDate, endDate, ingredientId, activiteId, limit } = req.query;
   const currentYear = new Date().getFullYear();
 
   try {
@@ -500,7 +511,7 @@ const getTransferHistory = async (req, res) => {
        LEFT JOIN categories c ON i.categorie_id = c.id
        JOIN activites a ON a.id = lt.activite_id
        WHERE lt.labo_id = $1 AND EXTRACT(YEAR FROM lt.date_transfert) = $2${extraWhere}
-       ORDER BY lt.date_transfert DESC, lt.created_at DESC`,
+       ORDER BY lt.date_transfert DESC, lt.created_at DESC${limit ? ` LIMIT ${parseInt(limit, 10)}` : ''}`,
       params
     );
 
