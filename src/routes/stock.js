@@ -4,7 +4,7 @@ const {
   getStockClient, updateStockClient,
   getStockEntreprise, updateStockEntreprise,
   getHistoryClient, getHistoryEntreprise,
-  getHistoriqueAppro,
+  getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
   duplicateStockToFranchise,
   updateSeuilMin,
 } = require('../controllers/stockController');
@@ -24,5 +24,7 @@ router.post('/entreprise/:activiteId/duplicate-franchise', authenticate, require
 
 // Historique Approvisionnement (current year, filtered)
 router.get('/historique', authenticate, requireClient, getHistoriqueAppro);
+router.put('/historique/:id', authenticate, requireClient, updateHistoriqueEntry);
+router.delete('/historique/:id', authenticate, requireClient, deleteHistoriqueEntry);
 
 module.exports = router;
