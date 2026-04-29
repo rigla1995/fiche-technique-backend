@@ -8,6 +8,7 @@ const {
   updateLaboSeuilMin,
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,
+  getLaboHistorique,
 } = require('../controllers/laboController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
@@ -35,6 +36,9 @@ router.put('/:laboId/ingredients/:ingredientId/seuil-min', authenticate, require
 // Activity ingredient assignments
 router.get('/:laboId/activity-assignments', authenticate, requireEntreprise, getActivityAssignments);
 router.post('/:laboId/ingredients/:ingredientId/assign-to-activity', authenticate, requireEntreprise, toggleActivityAssignment);
+
+// Labo historique appro
+router.get('/:laboId/historique', authenticate, requireEntreprise, getLaboHistorique);
 
 // Transfers
 router.post('/:laboId/transfer', authenticate, requireEntreprise, createTransfer);

@@ -521,6 +521,58 @@ const getTransferHistory = async (req, res) => {
   }
 };
 
+// GET /api/labo/:laboId/historique
+const getLaboHistorique = async (req, res) => {
+  const { laboId } = req.params;
+  const { startDate, endDate, ingredientId } = req.query;
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const conditions = ['sld.labo_id = $1'];
+    const params = [laboId];
+    let idx = 2;
+    if (startDate) { conditions.push(`sld.date_appro >= $${idx++}`); params.push(startDate); }
+    if (endDate)   { conditions.push(`sld.date_appro <= $${idx++}`); params.push(endDate); }
+    if (ingredientId) { conditions.push(`sld.ingredient_id = $${idx++}`); params.push(ingredientId); }
+
+    const result = await pool.query(
+      `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
+              sld.ref_facture, sld.updated_at,
+              i.nom as ingredient_nom,
+              u.nom as unite_nom,
+              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+              f.nom as fournisseur_nom, f.id as fournisseur_id
+       FROM stock_labo_daily sld
+       JOIN ingredients i ON i.id = sld.ingredient_id
+       JOIN unites u ON u.id = i.unite_id
+       LEFT JOIN categories c ON c.id = i.categorie_id
+       LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY sld.date_appro DESC, sld.updated_at DESC`,
+      params
+    );
+
+    res.json(result.rows.map((r) => ({
+      id: r.id,
+      ingredientId: r.ingredient_id,
+      ingredientNom: r.ingredient_nom,
+      uniteNom: r.unite_nom,
+      categorieNom: r.categorie_nom,
+      dateAppro: isoDate(r.date_appro),
+      quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
+      prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
+      refFacture: r.ref_facture || null,
+      fournisseurId: r.fournisseur_id || null,
+      fournisseurNom: r.fournisseur_nom || null,
+      updatedAt: r.updated_at,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // ─── Labo Ingredient Seuil Min ───────────────────────────────────────────────
 
 const updateLaboSeuilMin = async (req, res) => {
@@ -639,4 +691,5 @@ module.exports = {
   updateLaboSeuilMin,
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,
+  getLaboHistorique,
 };
