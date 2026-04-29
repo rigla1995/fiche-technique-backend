@@ -212,7 +212,13 @@ const getLaboStock = async (req, res) => {
     const result = await pool.query(
       `SELECT sub.ingredient_id, sub.nom, sub.unite_nom, sub.categorie,
               sub.quantite, sub.prix_unitaire, sub.date_appro, sub.seuil_min,
-              COALESCE(tr.total_transfere, 0) as total_transfere
+              COALESCE(tr.total_transfere, 0) as total_transfere,
+              (SELECT sld2.fournisseur_id FROM stock_labo_daily sld2
+               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id
+               ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_fournisseur_id,
+              (SELECT sld2.ref_facture FROM stock_labo_daily sld2
+               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id
+               ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_ref_facture
        FROM (
          SELECT DISTINCT ON (i.id) i.id as ingredient_id, i.nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie,
@@ -245,6 +251,8 @@ const getLaboStock = async (req, res) => {
       dateAppro: isoDate(row.date_appro),
       seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
       totalTransfere: parseFloat(row.total_transfere),
+      lastFournisseurId: row.last_fournisseur_id ?? null,
+      lastRefFacture: row.last_ref_facture ?? null,
     })));
   } catch (err) {
     console.error(err);
@@ -254,7 +262,7 @@ const getLaboStock = async (req, res) => {
 
 const updateLaboStock = async (req, res) => {
   const { laboId, ingredientId } = req.params;
-  const { quantite, prixUnitaire, dateAppro } = req.body;
+  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture } = req.body;
   const da = dateAppro || todayStr();
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
@@ -265,11 +273,11 @@ const updateLaboStock = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     await pool.query(
-      `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, updated_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())
+      `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (labo_id, ingredient_id, date_appro)
-       DO UPDATE SET quantite = $4, prix_unitaire = $5, updated_at = NOW()`,
-      [laboId, ingredientId, da, quantite ?? null, prixUnitaire ?? null]
+       DO UPDATE SET quantite = $4, prix_unitaire = $5, fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
+      [laboId, ingredientId, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null]
     );
     res.json({ success: true });
   } catch (err) {
