@@ -23,9 +23,9 @@ async function checkLaboOwner(laboId, userId) {
 // ─── Labo CRUD ────────────────────────────────────────────────────────────────
 
 const createLabo = async (req, res) => {
-  const { franchiseGroup, nom, referentTel, adresse } = req.body;
-  if (!franchiseGroup || !nom || !referentTel)
-    return res.status(400).json({ message: 'franchiseGroup, nom et referentTel requis' });
+  const { nom, refLabo, referentTel, adresse, franchiseGroup } = req.body;
+  if (!nom || !refLabo || !referentTel)
+    return res.status(400).json({ message: 'nom, refLabo et referentTel requis' });
   try {
     const peRes = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1',
@@ -35,23 +35,32 @@ const createLabo = async (req, res) => {
       return res.status(400).json({ message: 'Profil entreprise introuvable' });
     const entrepriseId = peRes.rows[0].id;
 
-    const dup = await pool.query(
-      'SELECT * FROM labos WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
-      [entrepriseId, franchiseGroup]
+    // Check refLabo uniqueness
+    const refCheck = await pool.query(
+      'SELECT id FROM labos WHERE entreprise_id = $1 AND LOWER(ref_labo) = LOWER($2)',
+      [entrepriseId, refLabo.trim()]
     );
-    // If a labo already exists for this franchise group (e.g. orphaned from a previous
-    // failed attempt), return it so the caller can reuse it instead of being blocked.
-    if (dup.rows.length > 0)
-      return res.status(200).json(mapLabo(dup.rows[0]));
+    if (refCheck.rows.length > 0)
+      return res.status(409).json({ message: 'Un labo avec cette référence existe déjà' });
+
+    // If franchiseGroup provided: return existing labo for that group (idempotent)
+    if (franchiseGroup) {
+      const dup = await pool.query(
+        'SELECT * FROM labos WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
+        [entrepriseId, franchiseGroup]
+      );
+      if (dup.rows.length > 0)
+        return res.status(200).json(mapLabo(dup.rows[0]));
+    }
 
     const result = await pool.query(
-      `INSERT INTO labos (entreprise_id, franchise_group, nom, referent_tel, adresse)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [entrepriseId, franchiseGroup, nom, referentTel, adresse || null]
+      `INSERT INTO labos (entreprise_id, franchise_group, nom, referent_tel, adresse, ref_labo)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [entrepriseId, franchiseGroup || null, nom.trim(), referentTel.trim(), adresse?.trim() || null, refLabo.trim()]
     );
     const labo = result.rows[0];
 
-    // Auto-create a labo fournisseur linked to all activities of this franchise group
+    // Auto-create a labo fournisseur
     const existingFournisseur = await pool.query(
       'SELECT id FROM fournisseurs WHERE labo_id = $1', [labo.id]
     );
@@ -59,19 +68,21 @@ const createLabo = async (req, res) => {
       const fRes = await pool.query(
         `INSERT INTO fournisseurs (entreprise_id, nom, telephone, adresse, is_labo, labo_id)
          VALUES ($1, $2, $3, $4, true, $5) RETURNING id`,
-        [entrepriseId, nom, referentTel, adresse || null, labo.id]
+        [entrepriseId, nom.trim(), referentTel.trim(), adresse?.trim() || null, labo.id]
       );
       const fournisseurId = fRes.rows[0].id;
-      // Link to all existing franchise activities
-      const acts = await pool.query(
-        `SELECT id FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)`,
-        [entrepriseId, franchiseGroup]
-      );
-      for (const act of acts.rows) {
-        await pool.query(
-          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [fournisseurId, act.id]
+      // Link to all existing activities of this franchise group (if applicable)
+      if (franchiseGroup) {
+        const acts = await pool.query(
+          `SELECT id FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)`,
+          [entrepriseId, franchiseGroup]
         );
+        for (const act of acts.rows) {
+          await pool.query(
+            `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [fournisseurId, act.id]
+          );
+        }
       }
     }
 
@@ -124,6 +135,7 @@ function mapLabo(row) {
     entrepriseId: row.entreprise_id,
     franchiseGroup: row.franchise_group,
     nom: row.nom,
+    refLabo: row.ref_labo || null,
     referentTel: row.referent_tel,
     adresse: row.adresse,
     createdAt: row.created_at,
@@ -293,17 +305,43 @@ const getLaboStockHistory = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const result = await pool.query(
-      `SELECT date_appro, quantite, prix_unitaire, updated_at
-       FROM stock_labo_daily
-       WHERE labo_id = $1 AND ingredient_id = $2
-       ORDER BY date_appro DESC LIMIT 10`,
+      `SELECT sld.date_appro, sld.quantite, sld.prix_unitaire, sld.ref_facture,
+              f.nom as fournisseur_nom
+       FROM stock_labo_daily sld
+       LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
+       WHERE sld.labo_id = $1 AND sld.ingredient_id = $2
+       ORDER BY sld.date_appro DESC LIMIT 10`,
       [laboId, ingredientId]
     );
     res.json(result.rows.map((r) => ({
       dateAppro: isoDate(r.date_appro),
       quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
       prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
+      refFacture: r.ref_facture || null,
+      fournisseurNom: r.fournisseur_nom || null,
     })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// Returns non-labo fournisseurs assigned to this labo (via fournisseur_labos)
+const getLaboFournisseurs = async (req, res) => {
+  const { laboId } = req.params;
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const result = await pool.query(
+      `SELECT f.id, f.nom, f.telephone
+       FROM fournisseurs f
+       JOIN fournisseur_labos fl ON fl.fournisseur_id = f.id
+       WHERE fl.labo_id = $1 AND f.is_labo = false
+       ORDER BY f.nom`,
+      [laboId]
+    );
+    res.json(result.rows.map((r) => ({ id: r.id, nom: r.nom, telephone: r.telephone })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -568,6 +606,7 @@ module.exports = {
   createLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
+  getLaboFournisseurs,
   updateLaboSeuilMin,
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,

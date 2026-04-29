@@ -12,11 +12,16 @@ const listFournisseurs = async (req, res) => {
     const result = await pool.query(
       `SELECT f.id, f.nom, f.adresse, f.telephone, f.is_labo, f.created_at,
               COALESCE(
-                json_agg(fa.activite_id) FILTER (WHERE fa.activite_id IS NOT NULL),
+                json_agg(DISTINCT fa.activite_id) FILTER (WHERE fa.activite_id IS NOT NULL),
                 '[]'
-              ) as activite_ids
+              ) as activite_ids,
+              COALESCE(
+                json_agg(DISTINCT fl.labo_id) FILTER (WHERE fl.labo_id IS NOT NULL),
+                '[]'
+              ) as labo_ids
        FROM fournisseurs f
        LEFT JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id
+       LEFT JOIN fournisseur_labos fl ON fl.fournisseur_id = f.id
        WHERE f.entreprise_id = $1
        GROUP BY f.id
        ORDER BY f.is_labo DESC, f.nom`,
@@ -30,6 +35,7 @@ const listFournisseurs = async (req, res) => {
       isLabo: r.is_labo ?? false,
       createdAt: r.created_at,
       activiteIds: r.activite_ids,
+      laboIds: r.labo_ids,
     })));
   } catch (err) {
     console.error(err);
@@ -64,7 +70,7 @@ const getFournisseursForActivite = async (req, res) => {
 };
 
 const createFournisseur = async (req, res) => {
-  const { nom, adresse, telephone, activiteIds } = req.body;
+  const { nom, adresse, telephone, activiteIds, laboIds } = req.body;
   if (!nom?.trim()) return res.status(400).json({ message: 'Nom requis' });
 
   try {
@@ -87,7 +93,16 @@ const createFournisseur = async (req, res) => {
       }
     }
 
-    res.status(201).json({ id: fournisseur.id, nom: fournisseur.nom, adresse: fournisseur.adresse, telephone: fournisseur.telephone, activiteIds: activiteIds || [] });
+    if (Array.isArray(laboIds) && laboIds.length > 0) {
+      for (const laboId of laboIds) {
+        await pool.query(
+          `INSERT INTO fournisseur_labos (fournisseur_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [fournisseur.id, laboId]
+        );
+      }
+    }
+
+    res.status(201).json({ id: fournisseur.id, nom: fournisseur.nom, adresse: fournisseur.adresse, telephone: fournisseur.telephone, activiteIds: activiteIds || [], laboIds: laboIds || [] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -96,7 +111,7 @@ const createFournisseur = async (req, res) => {
 
 const updateFournisseur = async (req, res) => {
   const { id } = req.params;
-  const { nom, adresse, telephone, activiteIds } = req.body;
+  const { nom, adresse, telephone, activiteIds, laboIds } = req.body;
   if (!nom?.trim()) return res.status(400).json({ message: 'Nom requis' });
 
   try {
@@ -119,6 +134,16 @@ const updateFournisseur = async (req, res) => {
         await pool.query(
           `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
           [id, actId]
+        );
+      }
+    }
+
+    await pool.query('DELETE FROM fournisseur_labos WHERE fournisseur_id = $1', [id]);
+    if (Array.isArray(laboIds) && laboIds.length > 0) {
+      for (const laboId of laboIds) {
+        await pool.query(
+          `INSERT INTO fournisseur_labos (fournisseur_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [id, laboId]
         );
       }
     }

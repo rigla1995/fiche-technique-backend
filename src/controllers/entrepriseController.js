@@ -157,8 +157,21 @@ const createActivite = async (req, res) => {
       const newActivite = result.rows[0];
       created.push(mapActivite(newActivite));
 
-      // If franchise activity: link to labo fournisseur if one exists for this franchise group
-      if (isFranchise && franchiseGroupValue) {
+      // If laboId provided (franchise or distinct): link labo fournisseur to the new activity
+      const effectiveLaboId = laboId || null;
+      if (effectiveLaboId) {
+        const laboFRes = await pool.query(
+          'SELECT id FROM fournisseurs WHERE labo_id = $1 AND is_labo = true LIMIT 1',
+          [effectiveLaboId]
+        );
+        if (laboFRes.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [laboFRes.rows[0].id, newActivite.id]
+          );
+        }
+      } else if (isFranchise && franchiseGroupValue) {
+        // Fallback: link via franchise_group on labo (for legacy flows without explicit laboId)
         const laboFournisseurRes = await pool.query(
           `SELECT f.id FROM fournisseurs f
            JOIN labos l ON f.labo_id = l.id
