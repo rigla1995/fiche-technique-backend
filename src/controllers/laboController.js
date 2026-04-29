@@ -524,7 +524,7 @@ const getTransferHistory = async (req, res) => {
 // GET /api/labo/:laboId/historique
 const getLaboHistorique = async (req, res) => {
   const { laboId } = req.params;
-  const { startDate, endDate, ingredientId } = req.query;
+  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture } = req.query;
   try {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
@@ -532,9 +532,12 @@ const getLaboHistorique = async (req, res) => {
     const conditions = ['sld.labo_id = $1'];
     const params = [laboId];
     let idx = 2;
-    if (startDate) { conditions.push(`sld.date_appro >= $${idx++}`); params.push(startDate); }
-    if (endDate)   { conditions.push(`sld.date_appro <= $${idx++}`); params.push(endDate); }
+    if (startDate)    { conditions.push(`sld.date_appro >= $${idx++}`); params.push(startDate); }
+    if (endDate)      { conditions.push(`sld.date_appro <= $${idx++}`); params.push(endDate); }
     if (ingredientId) { conditions.push(`sld.ingredient_id = $${idx++}`); params.push(ingredientId); }
+    if (categorieId)  { conditions.push(`i.categorie_id = $${idx++}`); params.push(categorieId); }
+    if (fournisseurId){ conditions.push(`sld.fournisseur_id = $${idx++}`); params.push(fournisseurId); }
+    if (refFacture)   { conditions.push(`sld.ref_facture ILIKE $${idx++}`); params.push(`%${refFacture}%`); }
 
     const result = await pool.query(
       `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
