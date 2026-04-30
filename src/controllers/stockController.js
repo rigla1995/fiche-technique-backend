@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const ExcelJS = require('exceljs');
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 const isoDate = (d) => {
@@ -550,10 +551,206 @@ const duplicateStockToFranchise = async (req, res) => {
   }
 };
 
+// ─── Export Excel Historique Appro ───────────────────────────────────────────
+const exportHistoriqueExcel = async (req, res) => {
+  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture } = req.query;
+  const { selectedIds = [] } = req.body;
+  const selectedSet = new Set(selectedIds.map(Number));
+  const currentYear = new Date().getFullYear();
+  const isEntreprise = !!(activiteId || franchiseGroup || activiteIdsParam || entType);
+
+  try {
+    let rows = [];
+    let activiteNames = {};
+
+    if (isEntreprise) {
+      let activiteIds = [];
+      if (activiteId) {
+        activiteIds = [activiteId];
+      } else if (franchiseGroup) {
+        const gRes = await pool.query(
+          `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1 AND a.franchise_group = $2`,
+          [req.user.id, franchiseGroup]
+        );
+        activiteIds = gRes.rows.map((r) => r.id);
+      } else if (activiteIdsParam) {
+        activiteIds = activiteIdsParam.split(',').map(Number).filter(Boolean);
+      } else if (entType) {
+        const typeFilter = entType === 'franchise' ? `a.type = 'franchise'` : `(a.type = 'distincte' OR a.type IS NULL)`;
+        const allRes = await pool.query(`SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1 AND ${typeFilter}`, [req.user.id]);
+        activiteIds = allRes.rows.map((r) => r.id);
+      }
+      if (activiteIds.length === 0) return res.status(404).json({ message: 'Aucune activité' });
+
+      // Load activite names
+      const actRes = await pool.query('SELECT id, nom FROM activites WHERE id = ANY($1)', [activiteIds]);
+      actRes.rows.forEach((r) => { activiteNames[r.id] = r.nom; });
+
+      const idList = activiteIds.map((_, i) => `$${i + 1}`).join(',');
+      const params = [...activiteIds, currentYear];
+      let extraWhere = '';
+      if (ingredientId) { params.push(ingredientId); extraWhere += ` AND sed.ingredient_id = $${params.length}`; }
+      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
+      if (startDate) { params.push(startDate); extraWhere += ` AND sed.date_appro >= $${params.length}`; }
+      if (endDate) { params.push(endDate); extraWhere += ` AND sed.date_appro <= $${params.length}`; }
+      if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND sed.fournisseur_id = $${params.length}`; }
+      if (refFacture) { params.push(`%${refFacture}%`); extraWhere += ` AND sed.ref_facture ILIKE $${params.length}`; }
+      const result = await pool.query(
+        `SELECT sed.id, sed.activite_id, sed.date_appro, sed.quantite, sed.prix_unitaire, sed.type_appro,
+                sed.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
+                u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom
+         FROM stock_entreprise_daily sed
+         JOIN ingredients i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
+         LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
+         WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
+         ORDER BY sed.date_appro DESC, i.nom`, params
+      );
+      rows = result.rows;
+    } else {
+      const params = [req.user.id, currentYear];
+      let extraWhere = '';
+      if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
+      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
+      if (startDate) { params.push(startDate); extraWhere += ` AND scd.date_appro >= $${params.length}`; }
+      if (endDate) { params.push(endDate); extraWhere += ` AND scd.date_appro <= $${params.length}`; }
+      if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND scd.fournisseur_id = $${params.length}`; }
+      if (refFacture) { params.push(`%${refFacture}%`); extraWhere += ` AND scd.ref_facture ILIKE $${params.length}`; }
+      const result = await pool.query(
+        `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
+                scd.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
+                u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom
+         FROM stock_client_daily scd
+         JOIN ingredients i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
+         LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
+         WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
+         ORDER BY scd.date_appro DESC, i.nom`, params
+      );
+      rows = result.rows;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Fiche Technique App';
+    const sheet = workbook.addWorksheet('Historique Appro', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+
+    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF8C00'; const ALT = 'EEF4FF'; const GOLD = 'FFD700';
+    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
+    const bodyFont = { name: 'Calibri', size: 10 };
+
+    const cols = [
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Ingrédient', key: 'ing', width: 26 },
+      { header: 'Catégorie', key: 'cat', width: 18 },
+      { header: 'Quantité', key: 'qty', width: 11 },
+      { header: 'Unité', key: 'unit', width: 9 },
+      { header: 'Prix/DT', key: 'prix', width: 11 },
+      { header: 'Coût total DT', key: 'cout', width: 14 },
+      ...(isEntreprise ? [
+        { header: 'Activité', key: 'act', width: 18 },
+        { header: 'Fournisseur', key: 'fourn', width: 18 },
+        { header: 'Réf. Facture', key: 'ref', width: 16 },
+        { header: 'Type', key: 'type', width: 10 },
+      ] : [
+        { header: 'Fournisseur', key: 'fourn', width: 18 },
+        { header: 'Réf. Facture', key: 'ref', width: 16 },
+      ]),
+    ];
+    sheet.columns = cols.map((c) => ({ width: c.width }));
+
+    // Header row
+    const hdrRow = sheet.addRow(cols.map((c) => c.header));
+    hdrRow.eachCell((cell) => {
+      cell.font = hdrFont;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = border;
+    });
+    hdrRow.height = 22;
+    sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
+
+    // Data rows
+    let totalQty = 0; let totalCout = 0;
+    rows.forEach((r, i) => {
+      const qty = r.quantite !== null ? parseFloat(r.quantite) : 0;
+      const prix = r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : 0;
+      const cout = qty * prix;
+      totalQty += qty; totalCout += cout;
+      const isSelected = selectedSet.has(r.id);
+      const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
+      const rowData = [
+        dateStr,
+        r.ingredient_nom,
+        r.categorie_nom,
+        qty,
+        r.unite_nom,
+        prix,
+        cout,
+        ...(isEntreprise ? [activiteNames[r.activite_id] || '', r.fournisseur_nom || '', r.ref_facture || '', r.type_appro || 'manuel'] : [r.fournisseur_nom || '', r.ref_facture || '']),
+      ];
+      const dataRow = sheet.addRow(rowData);
+      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
+      const txtColor = isSelected ? WHITE : '1a1a2e';
+      dataRow.eachCell((cell, col) => {
+        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.border = border;
+        cell.alignment = { vertical: 'middle', horizontal: col <= 3 ? 'left' : (col === 5 ? 'center' : 'right') };
+      });
+      // Number formats
+      const numFmt = '#,##0.000';
+      dataRow.getCell(4).numFmt = numFmt;
+      dataRow.getCell(6).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(7).numFmt = numFmt + ' "DT"';
+      if (isSelected) {
+        dataRow.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+      dataRow.height = 16;
+    });
+
+    // Total row
+    const totalRow = sheet.addRow([
+      'TOTAL', '', '',
+      totalQty, '', '',
+      totalCout,
+      ...(isEntreprise ? ['', '', '', ''] : ['', '']),
+    ]);
+    totalRow.eachCell((cell) => {
+      cell.font = { name: 'Calibri', bold: true, size: 10 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
+      cell.border = border;
+      cell.alignment = { vertical: 'middle', horizontal: 'right' };
+    });
+    totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+    totalRow.getCell(4).numFmt = '#,##0.000';
+    totalRow.getCell(7).numFmt = '#,##0.000 "DT"';
+    totalRow.height = 18;
+
+    // Footer
+    sheet.addRow([]);
+    const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — ${rows.length} enregistrement(s) — Prix en Dinars Tunisiens (DT)`]);
+    footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
+    if (selectedSet.size > 0) {
+      const noteRow = sheet.addRow([`⚠ ${selectedSet.size} appro(s) en surbrillance orange = sélectionnés`]);
+      noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: ORANGE } };
+    }
+
+    const dateRange = startDate && endDate ? `${startDate}_${endDate}` : currentYear;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Historique-Appro-${dateRange}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur génération Excel' });
+  }
+};
+
 module.exports = {
   getStockClient, updateStockClient,
   getStockEntreprise, updateStockEntreprise, updateSeuilMin,
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
   duplicateStockToFranchise,
+  exportHistoriqueExcel,
 };

@@ -9,6 +9,7 @@ const {
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
+  exportLaboHistoriqueExcel,
 } = require('../controllers/laboController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
@@ -39,6 +40,7 @@ router.post('/:laboId/ingredients/:ingredientId/assign-to-activity', authenticat
 
 // Labo historique appro
 router.get('/:laboId/historique', authenticate, requireEntreprise, getLaboHistorique);
+router.post('/:laboId/historique/export-excel', authenticate, requireEntreprise, exportLaboHistoriqueExcel);
 router.put('/:laboId/historique/:entryId', authenticate, requireEntreprise, updateLaboHistoriqueEntry);
 router.delete('/:laboId/historique/:entryId', authenticate, requireEntreprise, deleteLaboHistoriqueEntry);
 

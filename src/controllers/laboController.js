@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const ExcelJS = require('exceljs');
 
 const isoDate = (d) => {
   if (!d) return null;
@@ -756,6 +757,123 @@ const toggleActivityAssignment = async (req, res) => {
   }
 };
 
+// ─── Export Excel Historique Labo ────────────────────────────────────────────
+const exportLaboHistoriqueExcel = async (req, res) => {
+  const { laboId } = req.params;
+  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture } = req.query;
+  const { selectedIds = [] } = req.body;
+  const selectedSet = new Set(selectedIds.map(Number));
+
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const conditions = ['sld.labo_id = $1'];
+    const params = [laboId];
+    let idx = 2;
+    if (startDate)    { conditions.push(`sld.date_appro >= $${idx++}`); params.push(startDate); }
+    if (endDate)      { conditions.push(`sld.date_appro <= $${idx++}`); params.push(endDate); }
+    if (ingredientId) { conditions.push(`sld.ingredient_id = $${idx++}`); params.push(ingredientId); }
+    if (categorieId)  { conditions.push(`i.categorie_id = $${idx++}`); params.push(categorieId); }
+    if (fournisseurId){ conditions.push(`sld.fournisseur_id = $${idx++}`); params.push(fournisseurId); }
+    if (refFacture)   { conditions.push(`sld.ref_facture ILIKE $${idx++}`); params.push(`%${refFacture}%`); }
+
+    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
+    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+
+    const result = await pool.query(
+      `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
+              sld.ref_facture, i.nom as ingredient_nom, u.nom as unite_nom,
+              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+              f.nom as fournisseur_nom
+       FROM stock_labo_daily sld
+       JOIN ingredients i ON i.id = sld.ingredient_id JOIN unites u ON u.id = i.unite_id
+       LEFT JOIN categories c ON c.id = i.categorie_id LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY sld.date_appro DESC, sld.updated_at DESC`, params
+    );
+    const rows = result.rows;
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Fiche Technique App';
+    const sheet = workbook.addWorksheet(`Hist Appro ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+
+    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF8C00'; const ALT = 'EEF4FF'; const GOLD = 'FFD700';
+    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
+    const bodyFont = { name: 'Calibri', size: 10 };
+
+    const cols = [
+      { header: 'Date', width: 12 }, { header: 'Ingrédient', width: 26 }, { header: 'Catégorie', width: 18 },
+      { header: 'Quantité', width: 11 }, { header: 'Unité', width: 9 }, { header: 'Prix/DT', width: 11 },
+      { header: 'Coût total DT', width: 14 }, { header: 'Fournisseur', width: 18 }, { header: 'Réf. Facture', width: 16 },
+    ];
+    sheet.columns = cols.map((c) => ({ width: c.width }));
+
+    const hdrRow = sheet.addRow(cols.map((c) => c.header));
+    hdrRow.eachCell((cell) => {
+      cell.font = hdrFont;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = border;
+    });
+    hdrRow.height = 22;
+    sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
+
+    let totalQty = 0; let totalCout = 0;
+    rows.forEach((r, i) => {
+      const qty = r.quantite !== null ? parseFloat(r.quantite) : 0;
+      const prix = r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : 0;
+      const cout = qty * prix;
+      totalQty += qty; totalCout += cout;
+      const isSelected = selectedSet.has(r.id);
+      const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
+      const dataRow = sheet.addRow([dateStr, r.ingredient_nom, r.categorie_nom, qty, r.unite_nom, prix, cout, r.fournisseur_nom || '', r.ref_facture || '']);
+      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
+      const txtColor = isSelected ? WHITE : '1a1a2e';
+      dataRow.eachCell((cell, col) => {
+        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.border = border;
+        cell.alignment = { vertical: 'middle', horizontal: col <= 3 ? 'left' : (col === 5 ? 'center' : 'right') };
+      });
+      dataRow.getCell(4).numFmt = '#,##0.000';
+      dataRow.getCell(6).numFmt = '#,##0.000 "DT"';
+      dataRow.getCell(7).numFmt = '#,##0.000 "DT"';
+      dataRow.height = 16;
+    });
+
+    const totalRow = sheet.addRow(['TOTAL', '', '', totalQty, '', '', totalCout, '', '']);
+    totalRow.eachCell((cell) => {
+      cell.font = { name: 'Calibri', bold: true, size: 10 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
+      cell.border = border;
+      cell.alignment = { vertical: 'middle', horizontal: 'right' };
+    });
+    totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+    totalRow.getCell(4).numFmt = '#,##0.000';
+    totalRow.getCell(7).numFmt = '#,##0.000 "DT"';
+    totalRow.height = 18;
+
+    sheet.addRow([]);
+    const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — Labo : ${laboNom} — ${rows.length} enregistrement(s)`]);
+    footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
+    if (selectedSet.size > 0) {
+      const noteRow = sheet.addRow([`⚠ ${selectedSet.size} appro(s) en surbrillance orange = sélectionnés`]);
+      noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: ORANGE } };
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Historique-Labo-${laboNom}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur génération Excel' });
+  }
+};
+
 module.exports = {
   createLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
@@ -765,4 +883,5 @@ module.exports = {
   createTransfer, getTransferHistory,
   getActivityAssignments, toggleActivityAssignment,
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
+  exportLaboHistoriqueExcel,
 };
