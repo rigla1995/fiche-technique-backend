@@ -740,7 +740,7 @@ const getStockDates = async (req, res) => {
 // Recursively collect ingredients grouped by their source product/sub-product.
 // Returns: [{ label, depth, ingredientIds: [{ ingredientId, nom, unite }] }, ...]
 // seenIngs prevents the same ingredient appearing in multiple groups.
-async function collectIngredientsStructured(produitId, label, depth, visitedProds = new Set(), seenIngs = new Set()) {
+async function collectIngredientsStructured(produitId, label, depth, visitedProds = new Set(), seenIngs = new Set(), clientId = null) {
   if (visitedProds.has(produitId)) return [];
   visitedProds.add(produitId);
 
@@ -772,15 +772,18 @@ async function collectIngredientsStructured(produitId, label, depth, visitedProd
     });
   }
 
-  const subs = await pool.query(
-    `SELECT psp.sous_produit_id, p.nom
-     FROM produit_sous_produits psp
-     JOIN produits p ON p.id = psp.sous_produit_id
-     WHERE psp.produit_id = $1`,
-    [produitId]
-  );
+  const subsQuery = clientId
+    ? `SELECT psp.sous_produit_id, p.nom
+       FROM produit_sous_produits psp
+       JOIN produits p ON p.id = psp.sous_produit_id
+       WHERE psp.produit_id = $1 AND p.client_id = $2`
+    : `SELECT psp.sous_produit_id, p.nom
+       FROM produit_sous_produits psp
+       JOIN produits p ON p.id = psp.sous_produit_id
+       WHERE psp.produit_id = $1`;
+  const subs = await pool.query(subsQuery, clientId ? [produitId, clientId] : [produitId]);
   for (const sp of subs.rows) {
-    const subGroups = await collectIngredientsStructured(sp.sous_produit_id, sp.nom, depth + 1, visitedProds, seenIngs);
+    const subGroups = await collectIngredientsStructured(sp.sous_produit_id, sp.nom, depth + 1, visitedProds, seenIngs, clientId);
     groups.push(...subGroups);
   }
 
@@ -797,7 +800,7 @@ const getStockCheck = async (req, res) => {
     const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
-    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0);
+    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), req.user.id);
     const allIngredients = groups.flatMap((g) => g.ingredients);
 
     if (allIngredients.length === 0) return res.json({ complete: true, missing: [], groups: [] });
@@ -912,7 +915,7 @@ const getManualPrices = async (req, res) => {
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
     // Collect ingredients grouped by source (product → sub-products → …), deduplicated across levels
-    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0);
+    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), req.user.id);
 
     // Flat list of all ingredients (already deduplicated by collectIngredientsStructured)
     const allIngredients = groups.flatMap((g) => g.ingredients);
