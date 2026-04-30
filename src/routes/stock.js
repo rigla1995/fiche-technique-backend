@@ -25,7 +25,7 @@ router.post('/entreprise/:activiteId/duplicate-franchise', authenticate, require
 
 // Historique Approvisionnement (current year, filtered)
 router.get('/historique', authenticate, requireClient, getHistoriqueAppro);
-router.post('/historique/export-excel', authenticate, requireClient, exportHistoriqueExcel);
+router.get('/historique/export-excel', authenticate, requireClient, exportHistoriqueExcel);
 router.put('/historique/:id', authenticate, requireClient, updateHistoriqueEntry);
 router.delete('/historique/:id', authenticate, requireClient, deleteHistoriqueEntry);
 

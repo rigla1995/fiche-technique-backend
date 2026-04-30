@@ -760,9 +760,8 @@ const toggleActivityAssignment = async (req, res) => {
 // ─── Export Excel Historique Labo ────────────────────────────────────────────
 const exportLaboHistoriqueExcel = async (req, res) => {
   const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture } = req.query;
-  const { selectedIds = [] } = req.body;
-  const selectedSet = new Set(selectedIds.map(Number));
+  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture, selectedIds: selectedIdsParam } = req.query;
+  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
 
   try {
     const ok = await checkLaboOwner(laboId, req.user.id);

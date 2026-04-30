@@ -40,7 +40,7 @@ router.post('/:laboId/ingredients/:ingredientId/assign-to-activity', authenticat
 
 // Labo historique appro
 router.get('/:laboId/historique', authenticate, requireEntreprise, getLaboHistorique);
-router.post('/:laboId/historique/export-excel', authenticate, requireEntreprise, exportLaboHistoriqueExcel);
+router.get('/:laboId/historique/export-excel', authenticate, requireEntreprise, exportLaboHistoriqueExcel);
 router.put('/:laboId/historique/:entryId', authenticate, requireEntreprise, updateLaboHistoriqueEntry);
 router.delete('/:laboId/historique/:entryId', authenticate, requireEntreprise, deleteLaboHistoriqueEntry);
 

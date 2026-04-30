@@ -553,9 +553,8 @@ const duplicateStockToFranchise = async (req, res) => {
 
 // ─── Export Excel Historique Appro ───────────────────────────────────────────
 const exportHistoriqueExcel = async (req, res) => {
-  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture } = req.query;
-  const { selectedIds = [] } = req.body;
-  const selectedSet = new Set(selectedIds.map(Number));
+  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam } = req.query;
+  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
   const currentYear = new Date().getFullYear();
   const isEntreprise = !!(activiteId || franchiseGroup || activiteIdsParam || entType);
 
