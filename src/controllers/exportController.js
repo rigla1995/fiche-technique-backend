@@ -4,7 +4,7 @@ const { calculerCout, calculerCoutAvecPrixMap } = require('./produitsController'
 
 const exportExcel = async (req, res) => {
   const { id } = req.params;
-  const { mode, activiteId, date } = req.query;
+  const { mode, activiteId, date, fg } = req.query;
   const actId = parseInt(activiteId) || 0;
 
   try {
@@ -74,6 +74,9 @@ const exportExcel = async (req, res) => {
         [actId]
       );
       if (actRes.rows.length > 0) activityInfo = actRes.rows[0];
+    } else if (fg) {
+      // Franchise-wide product: no specific actId, but we have the franchise group name
+      activityInfo = { nom: fg, franchise_group: fg, type: 'franchise' };
     }
 
     // Fetch all franchise activities in the same group (for the franchise header row)
@@ -172,9 +175,9 @@ const exportExcel = async (req, res) => {
     sheet.getRow(hdr).height = 24;
     hdr++;
 
-    // ─── CONTEXTE FRANCHISE / ACTIVITÉ (si activiteId fourni) ───
+    // ─── CONTEXTE FRANCHISE / ACTIVITÉ (si activiteId fourni — pas pour les produits franchise-wide) ───
     let rowIndex = hdr;
-    if (activityInfo) {
+    if (activityInfo && actId) {
       sheet.mergeCells(`A${hdr}:E${hdr}`);
       const ctxCell = sheet.getCell(`A${hdr}`);
       const isFranchise = activityInfo.type === 'franchise';
