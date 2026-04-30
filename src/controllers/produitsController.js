@@ -803,9 +803,7 @@ const getStockCheck = async (req, res) => {
     const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), req.user.id);
     const allIngredients = groups.flatMap((g) => g.ingredients);
 
-    console.log(`[stock-check] produit="${prod.rows[0].nom}" id=${id} actId=${actId} allIngredients=[${allIngredients.map(i => i.nom).join(', ')}]`);
-
-    if (allIngredients.length === 0) return res.json({ complete: true, missing: [], groups: [], _debug: { productId: parseInt(id), productName: prod.rows[0].nom, allIngredients: [] } });
+    if (allIngredients.length === 0) return res.json({ complete: true, missing: [], groups: [] });
 
     const ingredientIds = allIngredients.map((i) => i.ingredientId);
 
@@ -884,7 +882,7 @@ const getStockCheck = async (req, res) => {
       .map((g) => ({ ...g, ingredients: g.ingredients.filter((i) => missingIdsSet.has(i.ingredientId)) }))
       .filter((g) => g.ingredients.length > 0);
 
-    res.json({ complete: missing.length === 0, missing, groups: missingGroups, _debug: { productId: parseInt(id), productName: prod.rows[0].nom, allIngredients: allIngredients.map(i => ({ id: i.ingredientId, nom: i.nom })) } });
+    res.json({ complete: missing.length === 0, missing, groups: missingGroups });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
