@@ -555,6 +555,7 @@ const duplicateStockToFranchise = async (req, res) => {
 const exportHistoriqueExcel = async (req, res) => {
   const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
+  console.log('[exportHistoriqueExcel] selectedIdsParam:', selectedIdsParam, '| selectedSet size:', selectedSet.size);
   const currentYear = new Date().getFullYear();
   const isEntreprise = !!(activiteId || franchiseGroup || activiteIdsParam || entType);
 
@@ -679,6 +680,7 @@ const exportHistoriqueExcel = async (req, res) => {
     hdrRow.height = 22;
     sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
 
+    if (rows.length > 0) console.log('[exportHistoriqueExcel] first row id:', rows[0].id, '| typeof:', typeof rows[0].id, '| isSelected:', selectedSet.has(Number(rows[0].id)));
     // Data rows
     let totalQty = 0; let totalCout = 0;
     rows.forEach((r, i) => {
@@ -686,7 +688,7 @@ const exportHistoriqueExcel = async (req, res) => {
       const prix = r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : 0;
       const cout = qty * prix;
       totalQty += qty; totalCout += cout;
-      const isSelected = selectedSet.has(r.id);
+      const isSelected = selectedSet.has(Number(r.id));
       const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
       const rowData = [
         dateStr,
@@ -701,13 +703,14 @@ const exportHistoriqueExcel = async (req, res) => {
       const dataRow = sheet.addRow(rowData);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
       const txtColor = isSelected ? WHITE : '1a1a2e';
-      dataRow.eachCell({ includeEmpty: true }, (cell, col) => {
+      // Use getCell loop to ensure ALL cells (including empty) get the fill
+      for (let c = 1; c <= cols.length; c++) {
+        const cell = dataRow.getCell(c);
         cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
         cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: col <= 3 ? 'left' : (col === 5 ? 'center' : 'right') };
-      });
-      // Number formats
+        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : (c === 5 ? 'center' : 'right') };
+      }
       const numFmt = '#,##0.000';
       dataRow.getCell(4).numFmt = numFmt;
       dataRow.getCell(6).numFmt = numFmt + ' "DT"';
