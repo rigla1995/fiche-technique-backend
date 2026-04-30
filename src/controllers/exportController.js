@@ -66,6 +66,16 @@ const exportExcel = async (req, res) => {
       coutData = await calculerCout(parseInt(id), req.user.id);
     }
 
+    // Look up activity details for context row + filename
+    let activityInfo = null;
+    if (actId) {
+      const actRes = await pool.query(
+        'SELECT nom, franchise_group, type FROM activites WHERE id = $1',
+        [actId]
+      );
+      if (actRes.rows.length > 0) activityInfo = actRes.rows[0];
+    }
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
     workbook.created = new Date();
@@ -122,9 +132,31 @@ const exportExcel = async (req, res) => {
     produitCell.border = border;
     sheet.getRow(2).height = 24;
 
+    // ─── CONTEXTE FRANCHISE / ACTIVITÉ (si activiteId fourni) ───
+    let rowIndex = 3;
+    if (activityInfo) {
+      sheet.mergeCells(`A3:E3`);
+      const ctxCell = sheet.getCell('A3');
+      const isFranchise = activityInfo.type === 'franchise';
+      if (isFranchise) {
+        const group = activityInfo.franchise_group || activityInfo.nom;
+        ctxCell.value = group === activityInfo.nom
+          ? `Franchise : ${activityInfo.nom}`
+          : `Franchise : ${group}  —  Activité : ${activityInfo.nom}`;
+      } else {
+        ctxCell.value = `Activité : ${activityInfo.nom}`;
+      }
+      ctxCell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: 'FFFFFF' } };
+      ctxCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '3A6BBF' } };
+      ctxCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      ctxCell.border = border;
+      sheet.getRow(3).height = 18;
+      rowIndex = 4;
+    }
+
     // ─── EN-TÊTE COLONNES ───
     const colHeaders = ['Désignation', 'Portion', 'Unité', 'Prix Unit. (DT)', 'Coût (DT)'];
-    const headerRow = sheet.getRow(3);
+    const headerRow = sheet.getRow(rowIndex);
     colHeaders.forEach((h, i) => {
       const cell = headerRow.getCell(i + 1);
       cell.value = h;
@@ -134,8 +166,7 @@ const exportExcel = async (req, res) => {
       cell.border = border;
     });
     headerRow.height = 20;
-
-    let rowIndex = 4;
+    rowIndex++;
 
     const addSectionHeader = (label) => {
       sheet.mergeCells(`A${rowIndex}:E${rowIndex}`);
@@ -320,7 +351,11 @@ const exportExcel = async (req, res) => {
     footerCell.font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
     footerCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    const filename = `fiche-technique-${coutData.produit.replace(/[^a-zA-Z0-9]/g, '-')}.xlsx`;
+    const safeProduit = coutData.produit.replace(/[^a-zA-Z0-9À-ÿ]/g, '-');
+    const safeActivity = activityInfo ? activityInfo.nom.replace(/[^a-zA-Z0-9À-ÿ]/g, '-') : '';
+    const filename = safeActivity
+      ? `FT-${safeActivity}-${safeProduit}.xlsx`
+      : `FT-${safeProduit}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
