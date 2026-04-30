@@ -5,6 +5,7 @@ const mapProduit = (row) => ({
   id: row.id,
   name: row.nom,
   description: row.description,
+  refProduit: row.ref_produit || null,
   type: row.type || 'vendable',
   clientId: row.client_id,
   activiteId: row.activite_id || null,
@@ -159,6 +160,7 @@ const getById = async (req, res) => {
 
     res.json({
       ...mapProduit(produit.rows[0]),
+      refProduit: produit.rows[0].ref_produit || null,
       ingredients: ingredients.rows.map((r) => ({
         id: r.id,
         ingredientId: r.ingredient_id,
@@ -195,6 +197,7 @@ const create = async (req, res) => {
 
   const nom = req.body.name || req.body.nom;
   const { description } = req.body;
+  const refProduit = req.body.refProduit || req.body.ref_produit || null;
   const type = req.body.type === 'utilisable' ? 'utilisable' : 'vendable';
   const ingredients = req.body.ingredients || [];
   const subProducts = req.body.subProducts || [];
@@ -207,8 +210,8 @@ const create = async (req, res) => {
     await client.query('BEGIN');
 
     const result = await client.query(
-      'INSERT INTO produits (nom, description, type, client_id, activite_id, activite_type, franchise_group) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [nom, description || null, type, req.user.id, activiteId, activiteType, franchiseGroup]
+      'INSERT INTO produits (nom, description, ref_produit, type, client_id, activite_id, activite_type, franchise_group) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [nom, description || null, refProduit, type, req.user.id, activiteId, activiteType, franchiseGroup]
     );
     const produitId = result.rows[0].id;
 
@@ -261,6 +264,7 @@ const update = async (req, res) => {
   const { id } = req.params;
   const nom = req.body.name || req.body.nom;
   const { description } = req.body;
+  const refProduit = req.body.refProduit !== undefined ? (req.body.refProduit || null) : req.body.ref_produit !== undefined ? (req.body.ref_produit || null) : undefined;
   const type = req.body.type === 'utilisable' ? 'utilisable' : req.body.type === 'vendable' ? 'vendable' : undefined;
   const ingredients = req.body.ingredients;
   const subProducts = req.body.subProducts;
@@ -271,9 +275,10 @@ const update = async (req, res) => {
 
     const result = await client.query(
       `UPDATE produits SET nom = COALESCE($1, nom), description = COALESCE($2, description),
-       type = COALESCE($3, type),
-       updated_at = NOW() WHERE id = $4 AND client_id = $5 RETURNING *`,
-      [nom, description, type || null, id, req.user.id]
+       ref_produit = CASE WHEN $3::text IS NOT NULL THEN $3 ELSE ref_produit END,
+       type = COALESCE($4, type),
+       updated_at = NOW() WHERE id = $5 AND client_id = $6 RETURNING *`,
+      [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.id]
     );
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');
