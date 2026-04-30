@@ -745,12 +745,13 @@ async function collectIngredientsStructured(produitId, label, depth, visitedProd
   visitedProds.add(produitId);
 
   const direct = await pool.query(
-    `SELECT pi.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom
+    `SELECT pi.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom, c.nom AS categorie_nom
      FROM produit_ingredients pi
      JOIN ingredients i ON i.id = pi.ingredient_id
      LEFT JOIN unites u ON i.unite_id = u.id
+     LEFT JOIN categories c ON i.categorie_id = c.id
      WHERE pi.produit_id = $1
-     ORDER BY i.nom`,
+     ORDER BY c.nom NULLS LAST, i.nom`,
     [produitId]
   );
 
@@ -766,6 +767,7 @@ async function collectIngredientsStructured(produitId, label, depth, visitedProd
         ingredientId: r.ingredient_id,
         nom: r.ingredient_nom,
         unite: r.unite_nom,
+        categorie: r.categorie_nom || null,
       })),
     });
   }
@@ -867,6 +869,7 @@ const getStockCheck = async (req, res) => {
         ingredientId: ing.ingredientId,
         nom: ing.nom,
         unite: ing.unite,
+        categorie: ing.categorie || null,
         lastQty: lk && lk.quantite !== null ? parseFloat(lk.quantite) : null,
         lastPrice: lk && lk.prix_unitaire !== null ? parseFloat(lk.prix_unitaire) : null,
         lastDate: lk ? String(lk.date_appro).slice(0, 10) : null,
