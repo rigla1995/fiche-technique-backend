@@ -632,7 +632,8 @@ const exportHistoriqueExcel = async (req, res) => {
     workbook.creator = 'Fiche Technique App';
     const sheet = workbook.addWorksheet('Historique Appro', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
-    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF8C00'; const ALT = 'EEF4FF'; const GOLD = 'FFD700';
+    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF6B00'; const ALT = 'EEF4FF'; const GOLD = 'FFD700';
+    const TITLE_BG = '2E4A7A';
     const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
     const border = { top: thin, left: thin, bottom: thin, right: thin };
     const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
@@ -658,16 +659,26 @@ const exportHistoriqueExcel = async (req, res) => {
     ];
     sheet.columns = cols.map((c) => ({ width: c.width }));
 
-    // Header row
+    // Title row
+    const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
+    const titleText = `Historique Appro  —  DU : ${fmtD(startDate)}   AU : ${fmtD(endDate)}`;
+    const titleRow = sheet.addRow([titleText, ...Array(cols.length - 1).fill('')]);
+    sheet.mergeCells(1, 1, 1, cols.length);
+    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
+    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
+    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+    titleRow.height = 28;
+
+    // Header row (now row 2)
     const hdrRow = sheet.addRow(cols.map((c) => c.header));
-    hdrRow.eachCell((cell) => {
+    hdrRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = hdrFont;
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = border;
     });
     hdrRow.height = 22;
-    sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
+    sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
 
     // Data rows
     let totalQty = 0; let totalCout = 0;
@@ -691,7 +702,7 @@ const exportHistoriqueExcel = async (req, res) => {
       const dataRow = sheet.addRow(rowData);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
       const txtColor = isSelected ? WHITE : '1a1a2e';
-      dataRow.eachCell((cell, col) => {
+      dataRow.eachCell({ includeEmpty: true }, (cell, col) => {
         cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
         cell.border = border;
@@ -702,9 +713,6 @@ const exportHistoriqueExcel = async (req, res) => {
       dataRow.getCell(4).numFmt = numFmt;
       dataRow.getCell(6).numFmt = numFmt + ' "DT"';
       dataRow.getCell(7).numFmt = numFmt + ' "DT"';
-      if (isSelected) {
-        dataRow.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
-      }
       dataRow.height = 16;
     });
 
@@ -715,7 +723,7 @@ const exportHistoriqueExcel = async (req, res) => {
       totalCout,
       ...(isEntreprise ? ['', '', '', ''] : ['', '']),
     ]);
-    totalRow.eachCell((cell) => {
+    totalRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { name: 'Calibri', bold: true, size: 10 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
       cell.border = border;

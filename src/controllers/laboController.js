@@ -798,7 +798,8 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     workbook.creator = 'Fiche Technique App';
     const sheet = workbook.addWorksheet(`Hist Appro ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
-    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF8C00'; const ALT = 'EEF4FF'; const GOLD = 'FFD700';
+    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF6B00'; const ALT = 'EEF4FF'; const GOLD = 'FFD700';
+    const TITLE_BG = '2E4A7A';
     const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
     const border = { top: thin, left: thin, bottom: thin, right: thin };
     const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
@@ -811,15 +812,26 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     ];
     sheet.columns = cols.map((c) => ({ width: c.width }));
 
+    // Title row
+    const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
+    const titleText = `Historique Appro — ${laboNom}  —  DU : ${fmtD(startDate)}   AU : ${fmtD(endDate)}`;
+    const titleRow = sheet.addRow([titleText, ...Array(cols.length - 1).fill('')]);
+    sheet.mergeCells(1, 1, 1, cols.length);
+    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
+    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
+    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+    titleRow.height = 28;
+
+    // Header row (now row 2)
     const hdrRow = sheet.addRow(cols.map((c) => c.header));
-    hdrRow.eachCell((cell) => {
+    hdrRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = hdrFont;
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = border;
     });
     hdrRow.height = 22;
-    sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
+    sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
 
     let totalQty = 0; let totalCout = 0;
     rows.forEach((r, i) => {
@@ -832,7 +844,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       const dataRow = sheet.addRow([dateStr, r.ingredient_nom, r.categorie_nom, qty, r.unite_nom, prix, cout, r.fournisseur_nom || '', r.ref_facture || '']);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
       const txtColor = isSelected ? WHITE : '1a1a2e';
-      dataRow.eachCell((cell, col) => {
+      dataRow.eachCell({ includeEmpty: true }, (cell, col) => {
         cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
         cell.border = border;
@@ -845,7 +857,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     });
 
     const totalRow = sheet.addRow(['TOTAL', '', '', totalQty, '', '', totalCout, '', '']);
-    totalRow.eachCell((cell) => {
+    totalRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { name: 'Calibri', bold: true, size: 10 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
       cell.border = border;
