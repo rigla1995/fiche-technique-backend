@@ -14,7 +14,7 @@ const getStockClient = async (req, res) => {
     const result = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie,
-              COALESCE(SUM(scd.quantite), 0) as total_quantite,
+              COALESCE(SUM(scd.quantite) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
               (SELECT scd2.prix_unitaire FROM stock_client_daily scd2
                WHERE scd2.client_id = $1 AND scd2.ingredient_id = i.id
                ORDER BY scd2.date_appro DESC LIMIT 1) as prix_unitaire,
@@ -99,7 +99,7 @@ const getStockEntreprise = async (req, res) => {
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie,
               ais.seuil_min,
-              COALESCE(SUM(sed.quantite), 0) as total_quantite,
+              COALESCE(SUM(sed.quantite) FILTER (WHERE date_trunc('month', sed.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
               (SELECT sed2.prix_unitaire FROM stock_entreprise_daily sed2
                WHERE sed2.activite_id = $1 AND sed2.ingredient_id = i.id
                ORDER BY sed2.date_appro DESC LIMIT 1) as prix_unitaire,
