@@ -394,10 +394,10 @@ const syncLaboFournisseurs = async (req, res) => {
 // ─── Transfers ────────────────────────────────────────────────────────────────
 
 // POST /api/labo/:laboId/transfer
-// Body: { dateTransfert, note, refFacture, fournisseurId, transfers: [{ activiteId, ingredientId, quantite }] }
+// Body: { dateTransfert, note, refFacture, transfers: [{ activiteId, ingredientId, quantite }] }
 const createTransfer = async (req, res) => {
   const { laboId } = req.params;
-  const { dateTransfert, note, refFacture, fournisseurId, transfers } = req.body;
+  const { dateTransfert, note, refFacture, transfers } = req.body;
 
   if (!dateTransfert || !Array.isArray(transfers) || transfers.length === 0)
     return res.status(400).json({ message: 'dateTransfert et transfers requis' });
@@ -451,10 +451,7 @@ const createTransfer = async (req, res) => {
           [laboId, t.ingredientId, dateTransfert, currentQty - qty, prixUnitaire, qty]
         );
 
-        // Use explicit fournisseur if provided, otherwise fall back to labo auto-fournisseur
-        const effectiveFournisseurId = fournisseurId || laboFournisseurId;
-
-        // Add to activity stock (type=transfert) with fournisseur ref
+        // Add to activity stock (type=transfert) with labo fournisseur ref
         await client.query(
           `INSERT INTO stock_entreprise_daily
              (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
@@ -462,14 +459,14 @@ const createTransfer = async (req, res) => {
            ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro)
            DO UPDATE SET quantite = COALESCE(stock_entreprise_daily.quantite, 0) + $4,
                          fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
-          [t.activiteId, t.ingredientId, dateTransfert, qty, prixUnitaire, effectiveFournisseurId, refFacture || null]
+          [t.activiteId, t.ingredientId, dateTransfert, qty, prixUnitaire, laboFournisseurId, refFacture || null]
         );
 
         // Record transfer
         await client.query(
-          `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture, fournisseur_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [laboId, t.activiteId, t.ingredientId, qty, dateTransfert, note || null, refFacture || null, fournisseurId || null]
+          `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [laboId, t.activiteId, t.ingredientId, qty, dateTransfert, note || null, refFacture || null]
         );
       }
 
@@ -507,14 +504,12 @@ const getTransferHistory = async (req, res) => {
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
               i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
               a.id as activite_id, a.nom as activite_nom,
-              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
-              f.nom as fournisseur_nom
+              COALESCE(c.nom, 'Sans catégorie') as categorie_nom
        FROM labo_transfers lt
        JOIN ingredients i ON i.id = lt.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        JOIN activites a ON a.id = lt.activite_id
-       LEFT JOIN fournisseurs f ON f.id = lt.fournisseur_id
        WHERE lt.labo_id = $1 AND EXTRACT(YEAR FROM lt.date_transfert) = $2${extraWhere}
        ORDER BY lt.date_transfert DESC, lt.created_at DESC${limit ? ` LIMIT ${parseInt(limit, 10)}` : ''}`,
       params
@@ -526,7 +521,6 @@ const getTransferHistory = async (req, res) => {
       dateTransfert: isoDate(r.date_transfert),
       note: r.note,
       refFacture: r.ref_facture,
-      fournisseurNom: r.fournisseur_nom ?? null,
       createdAt: r.created_at,
       ingredientId: r.ingredient_id,
       ingredientNom: r.ingredient_nom,
