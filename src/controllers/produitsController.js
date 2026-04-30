@@ -599,6 +599,48 @@ const getCout = async (req, res) => {
       const result = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
       return res.json(mapCout(result));
     }
+    if (mode === 'stock') {
+      // Mirror exportExcel stock logic: build priceMap with prix_unitaire > 0, filtered by activiteId
+      const actId = parseInt(activiteId) || 0;
+      const priceMap = {};
+      if (actId) {
+        const r1 = await pool.query(
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+           FROM stock_entreprise_daily sed
+           JOIN activites a ON sed.activite_id = a.id
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE sed.activite_id = $1 AND pe.client_id = $2
+             AND sed.prix_unitaire IS NOT NULL AND sed.prix_unitaire > 0
+           ORDER BY ingredient_id, date_appro DESC`,
+          [actId, req.user.id]
+        );
+        r1.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+        // Also fill from labo stock
+        const actRes = await pool.query('SELECT labo_id FROM activites WHERE id = $1', [actId]);
+        const laboId = actRes.rows[0]?.labo_id;
+        if (laboId) {
+          const r2 = await pool.query(
+            `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+             FROM stock_labo_daily
+             WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+             ORDER BY ingredient_id, date_appro DESC`,
+            [laboId]
+          );
+          r2.rows.forEach((row) => { if (!priceMap[row.ingredient_id]) priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+        }
+      } else {
+        const r = await pool.query(
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+           FROM stock_client_daily
+           WHERE client_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+           ORDER BY ingredient_id, date_appro DESC`,
+          [req.user.id]
+        );
+        r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+      }
+      const result = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
+      return res.json(mapCout(result));
+    }
     const result = await calculerCout(parseInt(id), req.user.id);
     res.json(mapCout(result));
   } catch (err) {
