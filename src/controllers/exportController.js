@@ -13,36 +13,48 @@ const exportExcel = async (req, res) => {
     let ftDate = null;
 
     if (mode === 'stock') {
-      // Use latest appro price for current year per ingredient
-      const currentYear = new Date().getFullYear();
-      let priceRows;
+      // Use latest available appro price per ingredient (no year restriction)
+      const priceMap = {};
       if (actId) {
-        const r = await pool.query(
-          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire, date_appro
+        // Check stock_entreprise_daily first
+        const r1 = await pool.query(
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
            FROM stock_entreprise_daily sed
            JOIN activites a ON sed.activite_id = a.id
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
            WHERE sed.activite_id = $1 AND pe.client_id = $2
              AND sed.prix_unitaire IS NOT NULL AND sed.prix_unitaire > 0
-             AND EXTRACT(YEAR FROM sed.date_appro) = $3
            ORDER BY ingredient_id, date_appro DESC`,
-          [actId, req.user.id, currentYear]
+          [actId, req.user.id]
         );
-        priceRows = r.rows;
+        r1.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+
+        // Also check stock_labo_daily for the labo linked to this activity
+        const actRes = await pool.query('SELECT labo_id FROM activites WHERE id = $1', [actId]);
+        const laboId = actRes.rows[0]?.labo_id;
+        if (laboId) {
+          const r2 = await pool.query(
+            `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+             FROM stock_labo_daily
+             WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+             ORDER BY ingredient_id, date_appro DESC`,
+            [laboId]
+          );
+          // Only fill in labo prices where enterprise stock has no price
+          r2.rows.forEach((row) => {
+            if (!priceMap[row.ingredient_id]) priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire);
+          });
+        }
       } else {
         const r = await pool.query(
-          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire, date_appro
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
            FROM stock_client_daily
-           WHERE client_id = $1
-             AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
-             AND EXTRACT(YEAR FROM date_appro) = $2
+           WHERE client_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
            ORDER BY ingredient_id, date_appro DESC`,
-          [req.user.id, currentYear]
+          [req.user.id]
         );
-        priceRows = r.rows;
+        r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
       }
-      const priceMap = {};
-      priceRows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
       coutData = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
       ftMode = 'Stock';
       ftDate = new Date().toISOString().slice(0, 10);

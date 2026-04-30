@@ -792,7 +792,6 @@ async function collectIngredientsStructured(produitId, label, depth, visitedProd
 const getStockCheck = async (req, res) => {
   const { id } = req.params;
   const actId = parseInt(req.query.activiteId) || 0;
-  const currentYear = new Date().getFullYear();
 
   try {
     const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
@@ -805,36 +804,51 @@ const getStockCheck = async (req, res) => {
 
     const ingredientIds = allIngredients.map((i) => i.ingredientId);
 
-    // Fetch valid stock for current year (qty > 0 AND price > 0)
-    let validRows = [];
+    // Fetch valid stock — no year restriction, use latest available price per ingredient
+    const validIdsSet = new Set();
+
     if (actId) {
-      const r = await pool.query(
+      // Check stock_entreprise_daily (activite-level stock)
+      const r1 = await pool.query(
         `SELECT DISTINCT ON (ingredient_id) ingredient_id
          FROM stock_entreprise_daily
          WHERE activite_id = $1 AND ingredient_id = ANY($2::int[])
-           AND EXTRACT(YEAR FROM date_appro) = $3
            AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
            AND quantite IS NOT NULL AND quantite > 0
          ORDER BY ingredient_id, date_appro DESC`,
-        [actId, ingredientIds, currentYear]
+        [actId, ingredientIds]
       );
-      validRows = r.rows;
+      r1.rows.forEach((r) => validIdsSet.add(r.ingredient_id));
+
+      // Also check stock_labo_daily for the labo linked to this activity
+      const actRes = await pool.query('SELECT labo_id FROM activites WHERE id = $1', [actId]);
+      const laboId = actRes.rows[0]?.labo_id;
+      if (laboId) {
+        const r2 = await pool.query(
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id
+           FROM stock_labo_daily
+           WHERE labo_id = $1 AND ingredient_id = ANY($2::int[])
+             AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+             AND quantite IS NOT NULL AND quantite > 0
+           ORDER BY ingredient_id, date_appro DESC`,
+          [laboId, ingredientIds]
+        );
+        r2.rows.forEach((r) => validIdsSet.add(r.ingredient_id));
+      }
     } else {
       const r = await pool.query(
         `SELECT DISTINCT ON (ingredient_id) ingredient_id
          FROM stock_client_daily
          WHERE client_id = $1 AND ingredient_id = ANY($2::int[])
-           AND EXTRACT(YEAR FROM date_appro) = $3
            AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
            AND quantite IS NOT NULL AND quantite > 0
          ORDER BY ingredient_id, date_appro DESC`,
-        [req.user.id, ingredientIds, currentYear]
+        [req.user.id, ingredientIds]
       );
-      validRows = r.rows;
+      r.rows.forEach((row) => validIdsSet.add(row.ingredient_id));
     }
 
-    const validIds = new Set(validRows.map((r) => r.ingredient_id));
-    const missingIngredients = allIngredients.filter((ing) => !validIds.has(ing.ingredientId));
+    const missingIngredients = allIngredients.filter((ing) => !validIdsSet.has(ing.ingredientId));
 
     // For missing: get last known values (any year) for prefilling the popup
     let lastKnownMap = {};
