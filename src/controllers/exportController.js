@@ -76,11 +76,30 @@ const exportExcel = async (req, res) => {
       if (actRes.rows.length > 0) activityInfo = actRes.rows[0];
     }
 
+    // Fetch all franchise activities in the same group (for the franchise header row)
+    let franchiseActNames = [];
+    if (activityInfo && activityInfo.type === 'franchise') {
+      const group = activityInfo.franchise_group || activityInfo.nom;
+      const faRes = await pool.query(
+        `SELECT nom FROM activites WHERE type = 'franchise' AND (franchise_group = $1 OR (franchise_group IS NULL AND nom = $1)) ORDER BY nom`,
+        [group]
+      );
+      franchiseActNames = faRes.rows.map((r) => r.nom);
+    }
+
+    // Compute filename early so the sheet tab can use it
+    const safeProduit = coutData.produit.replace(/[^a-zA-Z0-9À-ÿ]/g, '-');
+    const safeActivity = activityInfo ? activityInfo.nom.replace(/[^a-zA-Z0-9À-ÿ]/g, '-') : '';
+    const filename = safeActivity
+      ? `FT-${safeActivity}-${safeProduit}.xlsx`
+      : `FT-${safeProduit}.xlsx`;
+    const sheetTabName = filename.replace('.xlsx', '').replace(/[\\/?*[\]:]/g, '-').slice(0, 31);
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
     workbook.created = new Date();
 
-    const sheet = workbook.addWorksheet('Fiche Technique', {
+    const sheet = workbook.addWorksheet(sheetTabName, {
       pageSetup: { paperSize: 9, orientation: 'portrait' },
     });
 
@@ -114,29 +133,50 @@ const exportExcel = async (req, res) => {
     const rightAlign = { horizontal: 'right', vertical: 'middle' };
 
     // ─── EN-TÊTE PRINCIPAL ───
-    sheet.mergeCells('A1:E1');
-    const titleCell = sheet.getCell('A1');
+    let hdr = 1;
+
+    sheet.mergeCells(`A${hdr}:E${hdr}`);
+    const titleCell = sheet.getCell(`A${hdr}`);
     titleCell.value = 'FICHE TECHNIQUE';
     titleCell.font = { name: 'Calibri', bold: true, size: 16, color: { argb: COLORS.headerFg } };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.headerBg } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.border = border;
-    sheet.getRow(1).height = 30;
+    sheet.getRow(hdr).height = 30;
+    hdr++;
 
-    sheet.mergeCells('A2:E2');
-    const produitCell = sheet.getCell('A2');
+    // ─── FRANCHISE + ACTIVITÉS (si type franchise) ───
+    if (activityInfo && activityInfo.type === 'franchise') {
+      sheet.mergeCells(`A${hdr}:E${hdr}`);
+      const franCell = sheet.getCell(`A${hdr}`);
+      const group = activityInfo.franchise_group || activityInfo.nom;
+      const actsText = franchiseActNames.length > 0
+        ? `  ·  Activités : ${franchiseActNames.join('  ·  ')}`
+        : '';
+      franCell.value = `🏢  Franchise : ${group}${actsText}`;
+      franCell.font = { name: 'Calibri', bold: true, size: 9, color: { argb: 'FFFFFF' } };
+      franCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F3864' } };
+      franCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      franCell.border = border;
+      sheet.getRow(hdr).height = franchiseActNames.length > 4 ? 28 : 18;
+      hdr++;
+    }
+
+    sheet.mergeCells(`A${hdr}:E${hdr}`);
+    const produitCell = sheet.getCell(`A${hdr}`);
     produitCell.value = coutData.produit.toUpperCase();
     produitCell.font = { name: 'Calibri', bold: true, size: 13, color: { argb: COLORS.headerFg } };
     produitCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '2E5597' } };
     produitCell.alignment = { horizontal: 'center', vertical: 'middle' };
     produitCell.border = border;
-    sheet.getRow(2).height = 24;
+    sheet.getRow(hdr).height = 24;
+    hdr++;
 
     // ─── CONTEXTE FRANCHISE / ACTIVITÉ (si activiteId fourni) ───
-    let rowIndex = 3;
+    let rowIndex = hdr;
     if (activityInfo) {
-      sheet.mergeCells(`A3:E3`);
-      const ctxCell = sheet.getCell('A3');
+      sheet.mergeCells(`A${hdr}:E${hdr}`);
+      const ctxCell = sheet.getCell(`A${hdr}`);
       const isFranchise = activityInfo.type === 'franchise';
       if (isFranchise) {
         const group = activityInfo.franchise_group || activityInfo.nom;
@@ -150,8 +190,8 @@ const exportExcel = async (req, res) => {
       ctxCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '3A6BBF' } };
       ctxCell.alignment = { horizontal: 'center', vertical: 'middle' };
       ctxCell.border = border;
-      sheet.getRow(3).height = 18;
-      rowIndex = 4;
+      sheet.getRow(hdr).height = 18;
+      rowIndex = hdr + 1;
     }
 
     // ─── EN-TÊTE COLONNES ───
@@ -351,11 +391,6 @@ const exportExcel = async (req, res) => {
     footerCell.font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
     footerCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    const safeProduit = coutData.produit.replace(/[^a-zA-Z0-9À-ÿ]/g, '-');
-    const safeActivity = activityInfo ? activityInfo.nom.replace(/[^a-zA-Z0-9À-ÿ]/g, '-') : '';
-    const filename = safeActivity
-      ? `FT-${safeActivity}-${safeProduit}.xlsx`
-      : `FT-${safeProduit}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
