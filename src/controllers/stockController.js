@@ -555,7 +555,6 @@ const duplicateStockToFranchise = async (req, res) => {
 const exportHistoriqueExcel = async (req, res) => {
   const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
-  console.log('[exportHistoriqueExcel] selectedIdsParam:', selectedIdsParam, '| selectedSet size:', selectedSet.size);
   const currentYear = new Date().getFullYear();
   const isEntreprise = !!(activiteId || franchiseGroup || activiteIdsParam || entType);
 
@@ -639,23 +638,18 @@ const exportHistoriqueExcel = async (req, res) => {
     const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
     const bodyFont = { name: 'Calibri', size: 10 };
 
+    // Unified column order for all account types
     const cols = [
-      { header: 'Date', key: 'date', width: 12 },
-      { header: 'Ingrédient', key: 'ing', width: 26 },
-      { header: 'Catégorie', key: 'cat', width: 18 },
-      { header: 'Quantité', key: 'qty', width: 11 },
-      { header: 'Unité', key: 'unit', width: 9 },
-      { header: 'Prix/DT', key: 'prix', width: 11 },
-      { header: 'Coût total DT', key: 'cout', width: 14 },
-      ...(isEntreprise ? [
-        { header: 'Activité', key: 'act', width: 18 },
-        { header: 'Fournisseur', key: 'fourn', width: 18 },
-        { header: 'Réf. Facture', key: 'ref', width: 16 },
-        { header: 'Type', key: 'type', width: 10 },
-      ] : [
-        { header: 'Fournisseur', key: 'fourn', width: 18 },
-        { header: 'Réf. Facture', key: 'ref', width: 16 },
-      ]),
+      { header: 'Date',          width: 12 },
+      { header: 'Catégorie',     width: 18 },
+      { header: 'Ingrédient',    width: 26 },
+      { header: 'Unité',         width: 9  },
+      { header: 'Quantité',      width: 11 },
+      { header: 'Prix/DT',       width: 11 },
+      { header: 'Coût total DT', width: 14 },
+      { header: 'Fournisseur',   width: 18 },
+      { header: 'Réf. Facture',  width: 16 },
+      { header: 'Activité Stock',width: 22 },
     ];
     sheet.columns = cols.map((c) => ({ width: c.width }));
 
@@ -680,8 +674,7 @@ const exportHistoriqueExcel = async (req, res) => {
     hdrRow.height = 22;
     sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
 
-    if (rows.length > 0) console.log('[exportHistoriqueExcel] first row id:', rows[0].id, '| typeof:', typeof rows[0].id, '| isSelected:', selectedSet.has(Number(rows[0].id)));
-    // Data rows
+    // Data rows  — col order: Date|Catégorie|Ingrédient|Unité|Quantité|Prix|Coût|Fournisseur|Réf.|Activité
     let totalQty = 0; let totalCout = 0;
     rows.forEach((r, i) => {
       const qty = r.quantite !== null ? parseFloat(r.quantite) : 0;
@@ -692,39 +685,35 @@ const exportHistoriqueExcel = async (req, res) => {
       const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
       const rowData = [
         dateStr,
+        r.categorie_nom || '',
         r.ingredient_nom,
-        r.categorie_nom,
-        qty,
         r.unite_nom,
+        qty,
         prix,
         cout,
-        ...(isEntreprise ? [activiteNames[r.activite_id] || '', r.fournisseur_nom || '', r.ref_facture || '', r.type_appro || 'manuel'] : [r.fournisseur_nom || '', r.ref_facture || '']),
+        r.fournisseur_nom || '',
+        r.ref_facture || '',
+        isEntreprise ? (activiteNames[r.activite_id] || '') : '',
       ];
       const dataRow = sheet.addRow(rowData);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
       const txtColor = isSelected ? WHITE : '1a1a2e';
-      // Use getCell loop to ensure ALL cells (including empty) get the fill
       for (let c = 1; c <= cols.length; c++) {
         const cell = dataRow.getCell(c);
         cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
         cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : (c === 5 ? 'center' : 'right') };
+        // col 1-3 left | col 4 center (Unité) | col 5-7 right (nums) | col 8-10 left
+        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : c === 4 ? 'center' : c <= 7 ? 'right' : 'left' };
       }
-      const numFmt = '#,##0.000';
-      dataRow.getCell(4).numFmt = numFmt;
-      dataRow.getCell(6).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(7).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(5).numFmt = '#,##0.000';           // Quantité
+      dataRow.getCell(6).numFmt = '#,##0.000 "DT"';      // Prix
+      dataRow.getCell(7).numFmt = '#,##0.000 "DT"';      // Coût
       dataRow.height = 16;
     });
 
     // Total row
-    const totalRow = sheet.addRow([
-      'TOTAL', '', '',
-      totalQty, '', '',
-      totalCout,
-      ...(isEntreprise ? ['', '', '', ''] : ['', '']),
-    ]);
+    const totalRow = sheet.addRow(['TOTAL', '', '', '', totalQty, '', totalCout, '', '', '']);
     totalRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { name: 'Calibri', bold: true, size: 10 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
@@ -732,8 +721,8 @@ const exportHistoriqueExcel = async (req, res) => {
       cell.alignment = { vertical: 'middle', horizontal: 'right' };
     });
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(4).numFmt = '#,##0.000';
-    totalRow.getCell(7).numFmt = '#,##0.000 "DT"';
+    totalRow.getCell(5).numFmt = '#,##0.000';       // Quantité at col 5
+    totalRow.getCell(7).numFmt = '#,##0.000 "DT"';  // Coût at col 7
     totalRow.height = 18;
 
     // Footer

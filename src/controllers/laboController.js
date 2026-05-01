@@ -805,9 +805,16 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     const bodyFont = { name: 'Calibri', size: 10 };
 
     const cols = [
-      { header: 'Date', width: 12 }, { header: 'Ingrédient', width: 26 }, { header: 'Catégorie', width: 18 },
-      { header: 'Quantité', width: 11 }, { header: 'Unité', width: 9 }, { header: 'Prix/DT', width: 11 },
-      { header: 'Coût total DT', width: 14 }, { header: 'Fournisseur', width: 18 }, { header: 'Réf. Facture', width: 16 },
+      { header: 'Date',           width: 12 },
+      { header: 'Catégorie',      width: 18 },
+      { header: 'Ingrédient',     width: 26 },
+      { header: 'Unité',          width: 9  },
+      { header: 'Quantité',       width: 11 },
+      { header: 'Prix/DT',        width: 11 },
+      { header: 'Coût total DT',  width: 14 },
+      { header: 'Fournisseur',    width: 18 },
+      { header: 'Réf. Facture',   width: 16 },
+      { header: 'Activité Stock', width: 22 },
     ];
     sheet.columns = cols.map((c) => ({ width: c.width }));
 
@@ -840,24 +847,24 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       totalQty += qty; totalCout += cout;
       const isSelected = selectedSet.has(Number(r.id));
       const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
-      const dataRow = sheet.addRow([dateStr, r.ingredient_nom, r.categorie_nom, qty, r.unite_nom, prix, cout, r.fournisseur_nom || '', r.ref_facture || '']);
+      // col order: Date|Catégorie|Ingrédient|Unité|Quantité|Prix|Coût|Fournisseur|Réf.|Activité Stock
+      const dataRow = sheet.addRow([dateStr, r.categorie_nom || '', r.ingredient_nom, r.unite_nom, qty, prix, cout, r.fournisseur_nom || '', r.ref_facture || '', '']);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
       const txtColor = isSelected ? WHITE : '1a1a2e';
-      // Use getCell loop to ensure ALL cells (including empty) get the fill
       for (let c = 1; c <= cols.length; c++) {
         const cell = dataRow.getCell(c);
         cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
         cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : (c === 5 ? 'center' : 'right') };
+        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : c === 4 ? 'center' : c <= 7 ? 'right' : 'left' };
       }
-      dataRow.getCell(4).numFmt = '#,##0.000';
-      dataRow.getCell(6).numFmt = '#,##0.000 "DT"';
-      dataRow.getCell(7).numFmt = '#,##0.000 "DT"';
+      dataRow.getCell(5).numFmt = '#,##0.000';           // Quantité
+      dataRow.getCell(6).numFmt = '#,##0.000 "DT"';      // Prix
+      dataRow.getCell(7).numFmt = '#,##0.000 "DT"';      // Coût
       dataRow.height = 16;
     });
 
-    const totalRow = sheet.addRow(['TOTAL', '', '', totalQty, '', '', totalCout, '', '']);
+    const totalRow = sheet.addRow(['TOTAL', '', '', '', totalQty, '', totalCout, '', '', '']);
     totalRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { name: 'Calibri', bold: true, size: 10 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
@@ -865,8 +872,8 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       cell.alignment = { vertical: 'middle', horizontal: 'right' };
     });
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(4).numFmt = '#,##0.000';
-    totalRow.getCell(7).numFmt = '#,##0.000 "DT"';
+    totalRow.getCell(5).numFmt = '#,##0.000';       // Quantité at col 5
+    totalRow.getCell(7).numFmt = '#,##0.000 "DT"';  // Coût at col 7
     totalRow.height = 18;
 
     sheet.addRow([]);
