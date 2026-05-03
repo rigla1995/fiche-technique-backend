@@ -133,7 +133,36 @@ const me = async (req, res) => {
       const epRes = await pool.query('SELECT nom FROM profil_entreprise WHERE client_id = $1', [u.id]);
       if (epRes.rows.length > 0) entrepriseName = epRes.rows[0].nom;
     }
-    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role, compteType: u.compte_type || 'independant', onboardingStep: step, entrepriseName });
+
+    // Abonnement mode
+    const aboRes = await pool.query(
+      'SELECT mode_compte, prolongation_jours FROM abonnements WHERE client_id = $1',
+      [u.id]
+    );
+    const modeCompte = aboRes.rows[0]?.mode_compte || 'actif';
+    const prolongationJours = aboRes.rows[0]?.prolongation_jours || 0;
+
+    // Gérant fields
+    const gerantFields = {};
+    if (u.role === 'gerant') {
+      const gRow = await pool.query(
+        `SELECT gerant_parent_id, gerant_activite_id, gerant_activite_type FROM utilisateurs WHERE id = $1`,
+        [u.id]
+      );
+      Object.assign(gerantFields, {
+        gerantParentId: gRow.rows[0]?.gerant_parent_id,
+        gerantActiviteId: gRow.rows[0]?.gerant_activite_id,
+        gerantActiviteType: gRow.rows[0]?.gerant_activite_type,
+      });
+    }
+
+    res.json({
+      id: u.id, name: u.nom, email: u.email, phone: u.telephone,
+      role: u.role, compteType: u.compte_type || 'independant',
+      onboardingStep: step, entrepriseName,
+      modeCompte, prolongationJours,
+      ...gerantFields,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

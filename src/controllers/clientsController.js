@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
+const { createAbonnement } = require('./abonnementController');
 
 const mapClient = (row) => ({
   id: row.id,
@@ -114,6 +115,12 @@ const create = async (req, res) => {
         );
       }
     }
+
+    // Auto-create subscription
+    const tarifCle = compteType === 'entreprise' ? 'entreprise_onboarding' : 'indep_onboarding';
+    const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifCle]);
+    const montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
+    await createAbonnement(user.id, compteType, montantOnboarding);
 
     const responseData = mapClient(user);
     responseData.temporaryPassword = tempPassword;
