@@ -105,8 +105,94 @@ const traiter = async (req, res) => {
   if (!['validée', 'refusée'].includes(statut)) {
     return res.status(400).json({ message: 'Statut doit être "validée" ou "refusée"' });
   }
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    // Check demande exists and get its type
+    const demandeCheck = await client.query('SELECT type_demande, demandeur_id FROM demandes WHERE id = $1', [id]);
+    if (demandeCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Demande introuvable' });
+    }
+    const { type_demande, demandeur_id } = demandeCheck.rows[0];
+
+    // If validating an upgrade_entreprise demande, run full account migration
+    if (statut === 'validée' && type_demande === 'upgrade_entreprise') {
+      const userRes = await client.query('SELECT * FROM utilisateurs WHERE id = $1', [demandeur_id]);
+      const u = userRes.rows[0];
+
+      // 1. Create profil_entreprise
+      const peRes = await client.query(
+        `INSERT INTO profil_entreprise (client_id, nom, email, telephone)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (client_id) DO UPDATE SET nom = EXCLUDED.nom RETURNING id`,
+        [demandeur_id, u.nom, u.email, u.telephone || null]
+      );
+      const entrepriseId = peRes.rows[0].id;
+
+      // 2. Create activite (type=NULL — set by user in wizard)
+      const actRes = await client.query(
+        `INSERT INTO activites (entreprise_id, nom) VALUES ($1, $2) RETURNING id`,
+        [entrepriseId, u.nom]
+      );
+      const activiteId = actRes.rows[0].id;
+
+      // 3. Transfer ingredient selections → activite_ingredient_selections
+      await client.query(
+        `INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire)
+         SELECT $1, cis.ingredient_id, COALESCE(ipc.prix, i.prix)
+         FROM client_ingredient_selections cis
+         LEFT JOIN ingredient_prix_client ipc
+           ON ipc.ingredient_id = cis.ingredient_id AND ipc.client_id = $2
+         LEFT JOIN ingredients i ON i.id = cis.ingredient_id
+         WHERE cis.client_id = $2
+         ON CONFLICT DO NOTHING`,
+        [activiteId, demandeur_id]
+      );
+
+      // 4. Transfer stock → stock_entreprise_daily
+      await client.query(
+        `INSERT INTO stock_entreprise_daily
+           (activite_id, ingredient_id, quantite, prix_unitaire, date_appro,
+            fournisseur_id, ref_facture, type_appro, updated_at)
+         SELECT $1, ingredient_id, quantite, prix_unitaire, date_appro,
+                fournisseur_id, ref_facture, type_appro, updated_at
+         FROM stock_client_daily
+         WHERE client_id = $2
+         ON CONFLICT DO NOTHING`,
+        [activiteId, demandeur_id]
+      );
+
+      // 5. Transfer fournisseurs: client_id → entreprise_id, link to activite
+      const fourn = await client.query(
+        `UPDATE fournisseurs SET entreprise_id = $1, client_id = NULL
+         WHERE client_id = $2 RETURNING id`,
+        [entrepriseId, demandeur_id]
+      );
+      for (const f of fourn.rows) {
+        await client.query(
+          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
+           VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [f.id, activiteId]
+        );
+      }
+
+      // 6. Update abonnement compte_type
+      await client.query(
+        `UPDATE abonnements SET compte_type = 'entreprise' WHERE client_id = $1`,
+        [demandeur_id]
+      );
+
+      // 7. Set user to entreprise + trigger upgrade wizard
+      await client.query(
+        `UPDATE utilisateurs SET compte_type = 'entreprise', onboarding_step = 50 WHERE id = $1`,
+        [demandeur_id]
+      );
+    }
+
+    // Update demande record
+    const result = await client.query(
       `UPDATE demandes
        SET statut = $1, notes_admin = COALESCE($2, notes_admin),
            montant_mensuel_dt = COALESCE($5, montant_mensuel_dt),
@@ -115,11 +201,15 @@ const traiter = async (req, res) => {
        RETURNING *`,
       [statut, notesAdmin || null, req.user.id, id, montantMigration ?? null]
     );
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Demande introuvable' });
+
+    await client.query('COMMIT');
     res.json(mapDemande(result.rows[0]));
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
+  } finally {
+    client.release();
   }
 };
 
