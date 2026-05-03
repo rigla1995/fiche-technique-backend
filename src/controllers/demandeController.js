@@ -21,9 +21,6 @@ const create = async (req, res) => {
   const { typeDemande, notes } = req.body;
   const allowed = ['gerant_sup', 'labo_sup'];
   if (!allowed.includes(typeDemande)) return res.status(400).json({ message: 'Type invalide' });
-  if (typeDemande === 'labo_sup' && req.user.compteType !== 'entreprise') {
-    return res.status(403).json({ message: 'Réservé aux comptes entreprise' });
-  }
 
   try {
     // Fetch tarif
