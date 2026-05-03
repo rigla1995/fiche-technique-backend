@@ -15,10 +15,22 @@ const domainesRoutes = require('./routes/domaines');
 const laboRoutes = require('./routes/labo');
 const abonnementsRoutes = require('./routes/abonnements');
 
+const { authenticate, requireWriteAccess } = require('./middleware/auth');
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Enforce read-only / suspended mode for all mutating API calls (non-GET, non-auth, non-admin)
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  // Allow demandes creation even in read_only (so client can request to unblock account)
+  if (req.path === '/abonnements/demandes' && req.method === 'POST') return next();
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return next();
+  authenticate(req, res, () => requireWriteAccess(req, res, next));
+});
 
 app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
