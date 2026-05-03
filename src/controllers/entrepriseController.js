@@ -394,7 +394,7 @@ const toggleActiviteIngredient = async (req, res) => {
 
 const getActiviteTypesSummary = async (req, res) => {
   try {
-    const [actResult, approResult] = await Promise.all([
+    const [actResult, approResult, fourn] = await Promise.all([
       pool.query(
         `SELECT
            BOOL_OR(a.type = 'franchise') AS has_franchise,
@@ -427,9 +427,26 @@ const getActiviteTypesSummary = async (req, res) => {
            ) AS has_distinct_appro`,
         [req.user.id]
       ),
+      pool.query(
+        `SELECT
+           EXISTS (
+             SELECT 1 FROM fournisseur_activites fa
+             JOIN activites a ON fa.activite_id = a.id
+             JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+             WHERE pe.client_id = $1 AND a.type = 'franchise'
+           ) AS has_franchise_fournisseurs,
+           EXISTS (
+             SELECT 1 FROM fournisseur_activites fa
+             JOIN activites a ON fa.activite_id = a.id
+             JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+             WHERE pe.client_id = $1 AND (a.type IS NULL OR a.type = 'distincte')
+           ) AS has_distinct_fournisseurs`,
+        [req.user.id]
+      ),
     ]);
     const row = actResult.rows[0];
     const appro = approResult.rows[0];
+    const fo = fourn.rows[0];
     res.json({
       hasFranchise: row.has_franchise ?? false,
       hasDistinct: row.has_distinct ?? false,
@@ -437,6 +454,8 @@ const getActiviteTypesSummary = async (req, res) => {
       hasDistinctSelections: row.has_distinct_selections ?? false,
       hasFranchiseAppro: appro.has_franchise_appro ?? false,
       hasDistinctAppro: appro.has_distinct_appro ?? false,
+      hasFranchiseFournisseurs: fo.has_franchise_fournisseurs ?? false,
+      hasDistinctFournisseurs: fo.has_distinct_fournisseurs ?? false,
     });
   } catch (err) {
     console.error(err);

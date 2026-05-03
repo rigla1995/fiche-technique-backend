@@ -82,6 +82,27 @@ const updateStockClient = async (req, res) => {
   }
 };
 
+const getStockClientSummary = async (req, res) => {
+  try {
+    const [fourn, appro] = await Promise.all([
+      pool.query(`SELECT COUNT(*) FROM fournisseurs WHERE client_id = $1`, [req.user.id]),
+      pool.query(
+        `SELECT EXISTS (
+           SELECT 1 FROM stock_client_daily WHERE client_id = $1
+         ) AS has_appros`,
+        [req.user.id]
+      ),
+    ]);
+    res.json({
+      hasFournisseurs: parseInt(fourn.rows[0].count) > 0,
+      hasAppros: appro.rows[0].has_appros ?? false,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // ─── Stock Entreprise ──────────────────────────────────────────────────────
 
 const getStockEntreprise = async (req, res) => {
@@ -757,7 +778,7 @@ const exportHistoriqueExcel = async (req, res) => {
 };
 
 module.exports = {
-  getStockClient, updateStockClient,
+  getStockClient, updateStockClient, getStockClientSummary,
   getStockEntreprise, updateStockEntreprise, updateSeuilMin,
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,

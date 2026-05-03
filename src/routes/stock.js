@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getStockClient, updateStockClient,
+  getStockClient, updateStockClient, getStockClientSummary,
   getStockEntreprise, updateStockEntreprise,
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
@@ -12,6 +12,7 @@ const {
 const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
 
 // Client stock (all clients)
+router.get('/client/summary', authenticate, requireClient, getStockClientSummary);
 router.get('/client', authenticate, requireClient, getStockClient);
 router.put('/client/:ingredientId', authenticate, requireClient, updateStockClient);
 router.get('/client/:ingredientId/history', authenticate, requireClient, getHistoryClient);
