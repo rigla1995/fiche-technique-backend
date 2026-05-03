@@ -173,4 +173,74 @@ const deleteFournisseur = async (req, res) => {
   }
 };
 
-module.exports = { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur };
+// ── Indépendant fournisseurs (linked directly to client_id) ──────────────────
+
+const listFournisseursIndep = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, nom, adresse, telephone, created_at
+       FROM fournisseurs WHERE client_id = $1 ORDER BY nom`,
+      [req.user.id]
+    );
+    res.json(result.rows.map((r) => ({
+      id: r.id, nom: r.nom, adresse: r.adresse, telephone: r.telephone,
+      isLabo: false, activiteIds: [], laboIds: [], createdAt: r.created_at,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const createFournisseurIndep = async (req, res) => {
+  const { nom, adresse, telephone } = req.body;
+  if (!nom?.trim()) return res.status(400).json({ message: 'Nom requis' });
+  try {
+    const r = await pool.query(
+      `INSERT INTO fournisseurs (client_id, nom, adresse, telephone)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [req.user.id, nom.trim(), adresse?.trim() || null, telephone?.trim() || null]
+    );
+    const f = r.rows[0];
+    res.status(201).json({ id: f.id, nom: f.nom, adresse: f.adresse, telephone: f.telephone, isLabo: false, activiteIds: [], laboIds: [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const updateFournisseurIndep = async (req, res) => {
+  const { id } = req.params;
+  const { nom, adresse, telephone } = req.body;
+  if (!nom?.trim()) return res.status(400).json({ message: 'Nom requis' });
+  try {
+    const check = await pool.query('SELECT id FROM fournisseurs WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Fournisseur introuvable' });
+    await pool.query(
+      `UPDATE fournisseurs SET nom = $1, adresse = $2, telephone = $3 WHERE id = $4`,
+      [nom.trim(), adresse?.trim() || null, telephone?.trim() || null, id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const deleteFournisseurIndep = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const check = await pool.query('SELECT id FROM fournisseurs WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Fournisseur introuvable' });
+    await pool.query('DELETE FROM fournisseurs WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = {
+  listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur,
+  listFournisseursIndep, createFournisseurIndep, updateFournisseurIndep, deleteFournisseurIndep,
+};

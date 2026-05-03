@@ -14,6 +14,7 @@ const stockRoutes = require('./routes/stock');
 const domainesRoutes = require('./routes/domaines');
 const laboRoutes = require('./routes/labo');
 const abonnementsRoutes = require('./routes/abonnements');
+const fournisseursIndepRoutes = require('./routes/fournisseurs');
 
 const { authenticate, requireWriteAccess } = require('./middleware/auth');
 
@@ -45,6 +46,7 @@ app.use('/api/stock', stockRoutes);
 app.use('/api/domaines', domainesRoutes);
 app.use('/api/labo', laboRoutes);
 app.use('/api/abonnements', abonnementsRoutes);
+app.use('/api/fournisseurs', fournisseursIndepRoutes);
 
 // English aliases (B5)
 app.use('/api/units', unitesRoutes);
