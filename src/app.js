@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const cron = require('node-cron');
 const migrate = require('./config/migrate');
 
 const authRoutes = require('./routes/auth');
@@ -61,12 +60,24 @@ migrate()
     app.listen(PORT, () => {
       console.log(`Serveur démarré sur le port ${PORT}`);
     });
-    // Daily cron at 01:00 to enforce subscription payment deadlines
+    // Daily job at 01:00 to enforce subscription payment deadlines (no external dep)
     const { enforcerStatuts } = require('./controllers/abonnementController');
-    cron.schedule('0 1 * * *', () => {
-      console.log('[cron] Vérification des statuts abonnements...');
-      enforcerStatuts();
-    });
+    const scheduleDailyCheck = () => {
+      const now = new Date();
+      const next = new Date(now);
+      next.setDate(next.getDate() + (now.getHours() >= 1 ? 1 : 0));
+      next.setHours(1, 0, 0, 0);
+      const delay = next.getTime() - now.getTime();
+      setTimeout(() => {
+        console.log('[daily] Vérification des statuts abonnements...');
+        enforcerStatuts();
+        setInterval(() => {
+          console.log('[daily] Vérification des statuts abonnements...');
+          enforcerStatuts();
+        }, 24 * 60 * 60 * 1000);
+      }, delay);
+    };
+    scheduleDailyCheck();
   })
   .catch((err) => {
     console.error('Échec des migrations, serveur non démarré:', err.message);
