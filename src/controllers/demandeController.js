@@ -8,6 +8,7 @@ const mapDemande = (row) => ({
   typeDemande: row.type_demande,
   statut: row.statut,
   montantMensuelDt: row.montant_mensuel_dt,
+  montantOnboardingClient: row.montant_onboarding_client ?? null,
   notesClient: row.notes_client,
   notesAdmin: row.notes_admin,
   traitePar: row.traite_par,
@@ -27,7 +28,15 @@ const create = async (req, res) => {
 
   try {
     let montant = null;
-    if (typeDemande !== 'upgrade_entreprise') {
+    if (typeDemande === 'upgrade_entreprise') {
+      const [entrepriseTarif, aboRes] = await Promise.all([
+        pool.query(`SELECT valeur_dt FROM tarifs_config WHERE cle = 'entreprise_onboarding'`),
+        pool.query(`SELECT montant_onboarding FROM abonnements WHERE client_id = $1`, [req.user.id]),
+      ]);
+      const tarifEntreprise = entrepriseTarif.rows[0]?.valeur_dt ?? 0;
+      const dejaPayé = aboRes.rows[0]?.montant_onboarding ?? 0;
+      montant = Math.max(0, tarifEntreprise - dejaPayé);
+    } else {
       const cle = typeDemande === 'labo_sup' ? 'labo_sup_mensuel' : 'gerant_sup_mensuel';
       const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [cle]);
       montant = tarifRes.rows[0]?.valeur_dt || null;
@@ -72,10 +81,12 @@ const listAll = async (req, res) => {
     if (statut) { params.push(statut); where = `WHERE d.statut = $1`; }
 
     const result = await pool.query(
-      `SELECT d.*, u.nom AS demandeur_nom, a.nom AS traite_par_nom
+      `SELECT d.*, u.nom AS demandeur_nom, a.nom AS traite_par_nom,
+              ab.montant_onboarding AS montant_onboarding_client
        FROM demandes d
        LEFT JOIN utilisateurs u ON u.id = d.demandeur_id
        LEFT JOIN utilisateurs a ON a.id = d.traite_par
+       LEFT JOIN abonnements ab ON ab.client_id = d.demandeur_id
        ${where}
        ORDER BY d.created_at DESC`,
       params
@@ -90,7 +101,7 @@ const listAll = async (req, res) => {
 // PUT /admin/demandes/:id — admin validates or refuses
 const traiter = async (req, res) => {
   const { id } = req.params;
-  const { statut, notesAdmin } = req.body;
+  const { statut, notesAdmin, montantMigration } = req.body;
   if (!['validée', 'refusée'].includes(statut)) {
     return res.status(400).json({ message: 'Statut doit être "validée" ou "refusée"' });
   }
@@ -98,10 +109,11 @@ const traiter = async (req, res) => {
     const result = await pool.query(
       `UPDATE demandes
        SET statut = $1, notes_admin = COALESCE($2, notes_admin),
+           montant_mensuel_dt = COALESCE($5, montant_mensuel_dt),
            traite_par = $3, traite_le = NOW()
        WHERE id = $4
        RETURNING *`,
-      [statut, notesAdmin || null, req.user.id, id]
+      [statut, notesAdmin || null, req.user.id, id, montantMigration ?? null]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Demande introuvable' });
     res.json(mapDemande(result.rows[0]));
