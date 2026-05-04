@@ -94,7 +94,7 @@ const getStockClient = async (req, res) => {
         totalQuantite: parseFloat(r.total_quantite),
         dateAppro: isoDate(r.last_date_appro),
         seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
-        coutTotal: r.cout_total !== null ? parseFloat(r.cout_total) : null,
+        coutTotal: parseFloat(r.total_quantite) > 0 ? pInfo.prixDtu * parseFloat(r.total_quantite) : 0,
         lastFournisseurId: null,
         lastRefFacture: null,
       };
@@ -265,7 +265,7 @@ const getStockEntreprise = async (req, res) => {
         totalQuantite: parseFloat(r.total_quantite),
         dateAppro: isoDate(r.last_date_appro),
         seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
-        coutTotal: r.cout_total !== null ? parseFloat(r.cout_total) : null,
+        coutTotal: parseFloat(r.total_quantite) > 0 ? pInfo.prixDtu * parseFloat(r.total_quantite) : 0,
         lastFournisseurId: null,
         lastRefFacture: null,
       };
