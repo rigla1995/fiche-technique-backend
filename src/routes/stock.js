@@ -35,4 +35,10 @@ router.get('/historique/export-excel', authenticate, requireClient, exportHistor
 router.put('/historique/:id', authenticate, requireClient, updateHistoriqueEntry);
 router.delete('/historique/:id', authenticate, requireClient, deleteHistoriqueEntry);
 
+const { getStockPT, getStockPTHistory, saveStockPT, updateSeuilMinPT } = require('../controllers/produitTransformeController');
+router.get('/pt', authenticate, requireClient, getStockPT);
+router.get('/pt/:produitId/history', authenticate, requireClient, getStockPTHistory);
+router.put('/pt/:produitId', authenticate, requireClient, saveStockPT);
+router.put('/pt/:produitId/seuil-min', authenticate, requireClient, updateSeuilMinPT);
+
 module.exports = router;

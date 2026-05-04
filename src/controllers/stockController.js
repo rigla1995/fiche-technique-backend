@@ -627,6 +627,24 @@ const exportHistoriqueExcel = async (req, res) => {
          ORDER BY sed.date_appro DESC, i.nom`, params
       );
       rows = result.rows;
+
+      // Append PT rows for entreprise
+      const ptParamsEnt = [currentYear, ...activiteIds];
+      const ptIdListEnt = activiteIds.map((_, i) => `$${i + 2}`).join(',');
+      const ptResultEnt = await pool.query(
+        `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule AS prix_unitaire,
+                'produit_transforme' AS type_appro,
+                NULL AS fournisseur_nom, NULL AS ref_facture,
+                p.nom AS ingredient_nom,
+                'Produits Transformés' AS categorie_nom,
+                'unité' AS unite_nom
+         FROM stock_produits_transformes spt
+         JOIN produits p ON p.id = spt.produit_id
+         WHERE EXTRACT(YEAR FROM spt.date_appro) = $1 AND spt.activite_id IN (${ptIdListEnt})
+         ORDER BY spt.date_appro DESC, p.nom`,
+        ptParamsEnt
+      );
+      rows = rows.concat(ptResultEnt.rows);
     } else {
       const params = [req.user.id, currentYear];
       let extraWhere = '';
@@ -647,6 +665,22 @@ const exportHistoriqueExcel = async (req, res) => {
          ORDER BY scd.date_appro DESC, i.nom`, params
       );
       rows = result.rows;
+
+      // Append PT rows for indép
+      const ptResultIndep = await pool.query(
+        `SELECT spt.id, spt.date_appro, spt.quantite, spt.prix_calcule AS prix_unitaire,
+                'produit_transforme' AS type_appro,
+                NULL AS fournisseur_nom, NULL AS ref_facture,
+                p.nom AS ingredient_nom,
+                'Produits Transformés' AS categorie_nom,
+                'unité' AS unite_nom
+         FROM stock_produits_transformes spt
+         JOIN produits p ON p.id = spt.produit_id
+         WHERE spt.client_id = $1 AND EXTRACT(YEAR FROM spt.date_appro) = $2
+         ORDER BY spt.date_appro DESC, p.nom`,
+        [req.user.id, currentYear]
+      );
+      rows = rows.concat(ptResultIndep.rows);
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -719,7 +753,7 @@ const exportHistoriqueExcel = async (req, res) => {
         r.unite_nom,
         prix,
         cout,
-        ...(isEntreprise ? [activiteNames[r.activite_id] || '', r.fournisseur_nom || '', r.ref_facture || '', r.type_appro || 'manuel'] : [r.fournisseur_nom || '', r.ref_facture || '']),
+        ...(isEntreprise ? [activiteNames[r.activite_id] || '', r.fournisseur_nom || '', r.ref_facture || '', (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? 'Prod. Transformé' : t === 'transfert' ? 'Transfert' : t; })()] : [r.fournisseur_nom || '', r.ref_facture || '']),
       ];
       const dataRow = sheet.addRow(rowData);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
