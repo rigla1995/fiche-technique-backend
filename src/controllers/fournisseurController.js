@@ -22,7 +22,7 @@ const listFournisseurs = async (req, res) => {
        FROM fournisseurs f
        LEFT JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id
        LEFT JOIN fournisseur_labos fl ON fl.fournisseur_id = f.id
-       WHERE f.entreprise_id = $1
+       WHERE f.entreprise_id = $1 AND f.nom != 'AUTO'
        GROUP BY f.id
        ORDER BY f.is_labo DESC, f.nom`,
       [entrepriseId]
@@ -58,7 +58,7 @@ const getFournisseursForActivite = async (req, res) => {
       `SELECT f.id, f.nom, f.telephone, f.is_labo
        FROM fournisseurs f
        JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id
-       WHERE fa.activite_id = $1
+       WHERE fa.activite_id = $1 AND f.nom != 'AUTO'
        ORDER BY f.is_labo DESC, f.nom`,
       [activiteId]
     );
@@ -179,7 +179,7 @@ const listFournisseursIndep = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, nom, adresse, telephone, created_at
-       FROM fournisseurs WHERE client_id = $1 ORDER BY nom`,
+       FROM fournisseurs WHERE client_id = $1 AND nom != 'AUTO' ORDER BY nom`,
       [req.user.id]
     );
     res.json(result.rows.map((r) => ({

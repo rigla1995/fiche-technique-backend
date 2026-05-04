@@ -707,7 +707,7 @@ function mapHistEntry(r) {
     quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
     prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
     typeAppro: r.type_appro || 'manuel',
-    fournisseurNom: r.fournisseur_nom || null,
+    fournisseurNom: (r.fournisseur_nom && r.fournisseur_nom !== 'AUTO') ? r.fournisseur_nom : null,
     refFacture: r.ref_facture || null,
     updatedAt: r.updated_at,
   };
@@ -722,7 +722,7 @@ function mapHistoriqueEntry(r) {
     prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
     typeAppro: r.type_appro || 'manuel',
     fournisseurId: r.fournisseur_id || null,
-    fournisseurNom: r.fournisseur_nom || null,
+    fournisseurNom: (r.fournisseur_nom && r.fournisseur_nom !== 'AUTO') ? r.fournisseur_nom : null,
     refFacture: r.ref_facture || null,
     updatedAt: r.updated_at,
     ingredientId: r.ingredient_id,
