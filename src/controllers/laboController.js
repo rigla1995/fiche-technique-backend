@@ -233,6 +233,7 @@ const getLaboStock = async (req, res) => {
     const result = await pool.query(
       `SELECT sub.ingredient_id, sub.nom, sub.unite_nom, sub.categorie,
               sub.quantite_totale, sub.prix_unitaire, sub.date_appro, sub.seuil_min,
+              sub.cout_total,
               COALESCE(tr.total_transfere, 0) as total_transfere,
               (SELECT sld2.fournisseur_id FROM stock_labo_daily sld2
                WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id
@@ -250,7 +251,11 @@ const getLaboStock = async (req, res) => {
                 (SELECT sld2.date_appro FROM stock_labo_daily sld2
                  WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as date_appro,
-                lis.seuil_min
+                lis.seuil_min,
+                COALESCE(
+                  AVG(sld.prix_unitaire) FILTER (WHERE date_trunc('month', sld.date_appro) = date_trunc('month', CURRENT_DATE))
+                  * SUM(sld.quantite) FILTER (WHERE date_trunc('month', sld.date_appro) = date_trunc('month', CURRENT_DATE))
+                , 0) as cout_total
          FROM labo_ingredient_selections lis
          JOIN ingredients i ON lis.ingredient_id = i.id
          JOIN unites u ON i.unite_id = u.id
@@ -281,6 +286,7 @@ const getLaboStock = async (req, res) => {
         prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
         dateAppro: isoDate(row.date_appro),
         seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
+        coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : 0,
         totalTransfere,
         lastFournisseurId: row.last_fournisseur_id ?? null,
         lastRefFacture: row.last_ref_facture ?? null,
@@ -887,6 +893,26 @@ const exportLaboHistoriqueExcel = async (req, res) => {
   }
 };
 
+// ─── createLaboPerte ──────────────────────────────────────────────────────────
+const createLaboPerte = async (req, res) => {
+  const { laboId, ingredientId } = req.params;
+  const { quantite, typePerte, datePerte } = req.body;
+  if (!quantite || parseFloat(quantite) <= 0) return res.status(400).json({ message: 'Quantité invalide' });
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    await pool.query(
+      `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [laboId, ingredientId, parseFloat(quantite), typePerte || 'avarie', datePerte || new Date().toISOString().split('T')[0]]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[createLaboPerte]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   createLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
@@ -897,4 +923,5 @@ module.exports = {
   getActivityAssignments, toggleActivityAssignment,
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
   exportLaboHistoriqueExcel,
+  createLaboPerte,
 };

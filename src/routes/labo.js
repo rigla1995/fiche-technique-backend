@@ -10,6 +10,7 @@ const {
   getActivityAssignments, toggleActivityAssignment,
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
   exportLaboHistoriqueExcel,
+  createLaboPerte,
 } = require('../controllers/laboController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
@@ -26,6 +27,7 @@ router.post('/:laboId/ingredients/:ingredientId/select', authenticate, requireEn
 router.get('/:laboId/stock', authenticate, requireEntreprise, getLaboStock);
 router.put('/:laboId/stock/:ingredientId', authenticate, requireEntreprise, updateLaboStock);
 router.get('/:laboId/stock/:ingredientId/history', authenticate, requireEntreprise, getLaboStockHistory);
+router.post('/:laboId/stock/:ingredientId/perte', authenticate, requireEntreprise, createLaboPerte);
 
 // Labo fournisseurs (non-labo fournisseurs assigned to this labo)
 router.get('/:laboId/fournisseurs', authenticate, requireEntreprise, getLaboFournisseurs);
