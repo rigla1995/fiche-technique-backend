@@ -47,20 +47,14 @@ const getStockClient = async (req, res) => {
     // Fetch PT products for this client
     const ptPrixRes = await pool.query(`
       SELECT pi.produit_id,
-        BOOL_OR((lp.prix_unitaire IS NULL AND lp2.prix_calcule IS NULL) AND pi.portion > 0) as prix_partiel,
-        SUM(pi.portion * COALESCE(lp.prix_unitaire, lp2.prix_calcule, 0)) as prix_dtu
+        BOOL_OR(lp.prix_unitaire IS NULL AND pi.portion > 0) as prix_partiel,
+        SUM(pi.portion * COALESCE(lp.prix_unitaire, 0)) as prix_dtu
       FROM produit_ingredients pi
       LEFT JOIN LATERAL (
         SELECT prix_unitaire FROM stock_client_daily
-        WHERE client_id = $1 AND ingredient_id = pi.ingredient_id
+        WHERE client_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0
         ORDER BY date_appro DESC LIMIT 1
       ) lp ON true
-      LEFT JOIN LATERAL (
-        SELECT spt.prix_calcule FROM stock_produits_transformes spt
-        JOIN produits p ON p.id = spt.produit_id
-        WHERE p.linked_ingredient_id = pi.ingredient_id AND spt.client_id = $1
-        ORDER BY spt.date_appro DESC LIMIT 1
-      ) lp2 ON true
       WHERE pi.produit_id IN (SELECT id FROM produits WHERE client_id = $1 AND is_stock_ingredient = TRUE)
       GROUP BY pi.produit_id
     `, [req.user.id]);
@@ -70,7 +64,7 @@ const getStockClient = async (req, res) => {
     }
 
     const ptRes = await pool.query(`
-      SELECT p.id as produit_id, p.nom, p.seuil_min_pt, p.linked_ingredient_id,
+      SELECT p.id as produit_id, p.nom, p.seuil_min_pt,
         COALESCE(SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
         (SELECT spt2.date_appro FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.client_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_date_appro,
         (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.client_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule,
@@ -81,7 +75,7 @@ const getStockClient = async (req, res) => {
       FROM produits p
       LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.client_id = $1
       WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE
-      GROUP BY p.id, p.nom, p.seuil_min_pt, p.linked_ingredient_id
+      GROUP BY p.id, p.nom, p.seuil_min_pt
       ORDER BY p.nom
     `, [req.user.id]);
 
@@ -101,7 +95,6 @@ const getStockClient = async (req, res) => {
         dateAppro: isoDate(r.last_date_appro),
         seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
         coutTotal: r.cout_total !== null ? parseFloat(r.cout_total) : null,
-        linkedIngredientId: r.linked_ingredient_id || null,
         lastFournisseurId: null,
         lastRefFacture: null,
       };
@@ -225,20 +218,14 @@ const getStockEntreprise = async (req, res) => {
     // Fetch PT products for this activite
     const ptPrixRes = await pool.query(`
       SELECT pi.produit_id,
-        BOOL_OR((lp.prix_unitaire IS NULL AND lp2.prix_calcule IS NULL) AND pi.portion > 0) as prix_partiel,
-        SUM(pi.portion * COALESCE(lp.prix_unitaire, lp2.prix_calcule, 0)) as prix_dtu
+        BOOL_OR(lp.prix_unitaire IS NULL AND pi.portion > 0) as prix_partiel,
+        SUM(pi.portion * COALESCE(lp.prix_unitaire, 0)) as prix_dtu
       FROM produit_ingredients pi
       LEFT JOIN LATERAL (
         SELECT prix_unitaire FROM stock_entreprise_daily
-        WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id
+        WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0
         ORDER BY date_appro DESC LIMIT 1
       ) lp ON true
-      LEFT JOIN LATERAL (
-        SELECT spt.prix_calcule FROM stock_produits_transformes spt
-        JOIN produits p ON p.id = spt.produit_id
-        WHERE p.linked_ingredient_id = pi.ingredient_id AND spt.activite_id = $1
-        ORDER BY spt.date_appro DESC LIMIT 1
-      ) lp2 ON true
       WHERE pi.produit_id IN (SELECT id FROM produits WHERE activite_id = $1 AND is_stock_ingredient = TRUE)
       GROUP BY pi.produit_id
     `, [activiteId]);
@@ -248,7 +235,7 @@ const getStockEntreprise = async (req, res) => {
     }
 
     const ptRes = await pool.query(`
-      SELECT p.id as produit_id, p.nom, p.seuil_min_pt, p.linked_ingredient_id,
+      SELECT p.id as produit_id, p.nom, p.seuil_min_pt,
         COALESCE(SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
         (SELECT spt2.date_appro FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_date_appro,
         (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule,
@@ -259,7 +246,7 @@ const getStockEntreprise = async (req, res) => {
       FROM produits p
       LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.activite_id = $1
       WHERE p.activite_id = $1 AND p.is_stock_ingredient = TRUE
-      GROUP BY p.id, p.nom, p.seuil_min_pt, p.linked_ingredient_id
+      GROUP BY p.id, p.nom, p.seuil_min_pt
       ORDER BY p.nom
     `, [activiteId]);
 
@@ -279,7 +266,6 @@ const getStockEntreprise = async (req, res) => {
         dateAppro: isoDate(r.last_date_appro),
         seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
         coutTotal: r.cout_total !== null ? parseFloat(r.cout_total) : null,
-        linkedIngredientId: r.linked_ingredient_id || null,
         lastFournisseurId: null,
         lastRefFacture: null,
       };

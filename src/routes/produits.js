@@ -63,9 +63,8 @@ router.get('/:id/stock-check', authenticate, requireClient, getStockCheck);
 router.get('/:id/manual-prices', authenticate, requireClient, getManualPrices);
 router.post('/:id/manual-prices', authenticate, requireClient, saveManualPrices);
 
-const { toggleStockIngredient, deleteStockPTHistory, setLinkedIngredient } = require('../controllers/produitTransformeController');
+const { toggleStockIngredient, deleteStockPTHistory } = require('../controllers/produitTransformeController');
 router.post('/:id/toggle-stock-ingredient', authenticate, requireClient, toggleStockIngredient);
 router.delete('/:id/stock-pt-history', authenticate, requireClient, deleteStockPTHistory);
-router.put('/:id/link-ingredient', authenticate, requireClient, setLinkedIngredient);
 
 module.exports = router;
