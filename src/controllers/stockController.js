@@ -791,7 +791,6 @@ const duplicateStockToFranchise = async (req, res) => {
 const exportHistoriqueExcel = async (req, res) => {
   const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam, ptOnly, ptProduitId } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
-  console.log('[exportHistoriqueExcel] selectedIdsParam:', selectedIdsParam, '| selectedSet size:', selectedSet.size);
   const currentYear = new Date().getFullYear();
   const isEntreprise = !!(activiteId || franchiseGroup || activiteIdsParam || entType);
 
@@ -961,7 +960,6 @@ const exportHistoriqueExcel = async (req, res) => {
     hdrRow.height = 22;
     sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
 
-    if (rows.length > 0) console.log('[exportHistoriqueExcel] first row id:', rows[0].id, '| typeof:', typeof rows[0].id, '| isSelected:', selectedSet.has(Number(rows[0].id)));
     // Data rows
     let totalQty = 0; let totalCout = 0;
     rows.forEach((r, i) => {
