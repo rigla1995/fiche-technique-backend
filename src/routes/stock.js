@@ -8,6 +8,7 @@ const {
   duplicateStockToFranchise,
   updateSeuilMin,
   exportHistoriqueExcel,
+  deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
 } = require('../controllers/stockController');
 const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
 
@@ -23,6 +24,10 @@ router.put('/entreprise/:activiteId/:ingredientId', authenticate, requireEntrepr
 router.get('/entreprise/:activiteId/:ingredientId/history', authenticate, requireEntreprise, getHistoryEntreprise);
 router.put('/entreprise/:activiteId/:ingredientId/seuil-min', authenticate, requireEntreprise, updateSeuilMin);
 router.post('/entreprise/:activiteId/duplicate-franchise', authenticate, requireEntreprise, duplicateStockToFranchise);
+
+// Delete all history for an ingredient (after deselection confirmation)
+router.delete('/client/:ingredientId/all-history', authenticate, requireClient, deleteClientIngredientHistory);
+router.delete('/entreprise/:activiteId/:ingredientId/all-history', authenticate, requireEntreprise, deleteEntrepriseIngredientHistory);
 
 // Historique Approvisionnement (current year, filtered)
 router.get('/historique', authenticate, requireClient, getHistoriqueAppro);

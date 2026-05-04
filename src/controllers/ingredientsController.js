@@ -222,8 +222,13 @@ const toggleSelection = async (req, res) => {
       [clientId, ingredientId]
     );
     if (existing.rows.length > 0) {
+      const histRes = await pool.query(
+        'SELECT COUNT(*) FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2',
+        [clientId, ingredientId]
+      );
+      const historyCount = parseInt(histRes.rows[0].count);
       await pool.query('DELETE FROM client_ingredient_selections WHERE client_id = $1 AND ingredient_id = $2', [clientId, ingredientId]);
-      return res.json({ selected: false });
+      return res.json({ selected: false, hadHistory: historyCount > 0, historyCount });
     } else {
       await pool.query('INSERT INTO client_ingredient_selections (client_id, ingredient_id) VALUES ($1, $2)', [clientId, ingredientId]);
       return res.json({ selected: true });

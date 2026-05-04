@@ -373,11 +373,16 @@ const toggleActiviteIngredient = async (req, res) => {
       [id, ingredientId]
     );
     if (existing.rows.length > 0) {
+      const histRes = await pool.query(
+        'SELECT COUNT(*) FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2',
+        [id, ingredientId]
+      );
+      const historyCount = parseInt(histRes.rows[0].count);
       await pool.query(
         'DELETE FROM activite_ingredient_selections WHERE activite_id = $1 AND ingredient_id = $2',
         [id, ingredientId]
       );
-      res.json({ selected: false });
+      res.json({ selected: false, hadHistory: historyCount > 0, historyCount });
     } else {
       const { prixUnitaire } = req.body;
       await pool.query(
