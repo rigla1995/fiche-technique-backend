@@ -198,7 +198,16 @@ const getStockPTHistory = async (req, res) => {
       );
     }
 
-    res.json(result.rows);
+    res.json(result.rows.map(r => ({
+      id: r.id,
+      produitId: r.produit_id,
+      activiteId: r.activite_id,
+      clientId: r.client_id,
+      dateAppro: r.date_appro,
+      quantite: r.quantite,
+      prixCalcule: r.prix_calcule,
+      createdAt: r.created_at,
+    })));
   } catch (err) {
     console.error('[getStockPTHistory]', err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -289,8 +298,6 @@ const saveStockPT = async (req, res) => {
       upsertResult = await pool.query(
         `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (produit_id, COALESCE(activite_id, 0), COALESCE(client_id, 0), date_appro)
-         DO UPDATE SET quantite = EXCLUDED.quantite, prix_calcule = EXCLUDED.prix_calcule
          RETURNING id`,
         [produitId, actId, dateAppro, qty, prixCalcule]
       );
@@ -298,8 +305,6 @@ const saveStockPT = async (req, res) => {
       upsertResult = await pool.query(
         `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (produit_id, COALESCE(activite_id, 0), COALESCE(client_id, 0), date_appro)
-         DO UPDATE SET quantite = EXCLUDED.quantite, prix_calcule = EXCLUDED.prix_calcule
          RETURNING id`,
         [produitId, userId, dateAppro, qty, prixCalcule]
       );
