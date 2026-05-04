@@ -27,7 +27,11 @@ const getStockClient = async (req, res) => {
                ORDER BY scd2.date_appro DESC LIMIT 1) as last_fournisseur_id,
               (SELECT scd2.ref_facture FROM stock_client_daily scd2
                WHERE scd2.client_id = $1 AND scd2.ingredient_id = i.id
-               ORDER BY scd2.date_appro DESC LIMIT 1) as last_ref_facture
+               ORDER BY scd2.date_appro DESC LIMIT 1) as last_ref_facture,
+              COALESCE(
+                AVG(scd.prix_unitaire) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE) AND scd.quantite > 0)
+                * SUM(scd.quantite) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE))
+              , 0) as cout_total
        FROM client_ingredient_selections cis
        JOIN ingredients i ON cis.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
@@ -38,7 +42,64 @@ const getStockClient = async (req, res) => {
        ORDER BY categorie NULLS LAST, i.nom`,
       [req.user.id]
     );
-    res.json(result.rows.map((row) => ({
+
+    // Fetch PT products for this client
+    const ptPrixRes = await pool.query(`
+      SELECT pi.produit_id,
+        BOOL_OR(lp.prix_unitaire IS NULL AND pi.portion > 0) as prix_partiel,
+        SUM(pi.portion * COALESCE(lp.prix_unitaire, 0)) as prix_dtu
+      FROM produit_ingredients pi
+      LEFT JOIN LATERAL (
+        SELECT prix_unitaire FROM stock_client_daily
+        WHERE client_id = $1 AND ingredient_id = pi.ingredient_id
+        ORDER BY date_appro DESC LIMIT 1
+      ) lp ON true
+      WHERE pi.produit_id IN (SELECT id FROM produits WHERE client_id = $1 AND is_stock_ingredient = TRUE)
+      GROUP BY pi.produit_id
+    `, [req.user.id]);
+    const ptPrixMap = {};
+    for (const r of ptPrixRes.rows) {
+      ptPrixMap[r.produit_id] = { prixDtu: parseFloat(r.prix_dtu) || 0, prixPartiel: r.prix_partiel };
+    }
+
+    const ptRes = await pool.query(`
+      SELECT p.id as produit_id, p.nom, p.seuil_min_pt,
+        COALESCE(SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
+        (SELECT spt2.date_appro FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.client_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_date_appro,
+        (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.client_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule,
+        COALESCE(
+          AVG(spt.prix_calcule) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE))
+          * SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE))
+        , 0) as cout_total
+      FROM produits p
+      LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.client_id = $1
+      WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE
+      GROUP BY p.id, p.nom, p.seuil_min_pt
+      ORDER BY p.nom
+    `, [req.user.id]);
+
+    const ptRows = ptRes.rows.map((r) => {
+      const pInfo = ptPrixMap[r.produit_id] || { prixDtu: 0, prixPartiel: false };
+      return {
+        ingredientId: -(r.produit_id),  // negative ID = PT product
+        produitId: r.produit_id,
+        isPT: true,
+        nom: r.nom,
+        unite: 'unité',
+        categorie: 'Produits Transformés',
+        prixUnitaire: pInfo.prixDtu,
+        prixPartiel: pInfo.prixPartiel,
+        quantite: parseFloat(r.total_quantite),
+        totalQuantite: parseFloat(r.total_quantite),
+        dateAppro: isoDate(r.last_date_appro),
+        seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
+        coutTotal: r.cout_total !== null ? parseFloat(r.cout_total) : null,
+        lastFournisseurId: null,
+        lastRefFacture: null,
+      };
+    });
+
+    res.json([...result.rows.map((row) => ({
       ingredientId: row.ingredient_id,
       nom: row.nom,
       unite: row.unite_nom,
@@ -46,11 +107,12 @@ const getStockClient = async (req, res) => {
       prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
       quantite: parseFloat(row.total_quantite),
       totalQuantite: parseFloat(row.total_quantite),
+      coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : null,
       dateAppro: isoDate(row.date_appro),
       seuilMin: null,
       lastFournisseurId: row.last_fournisseur_id ?? null,
       lastRefFacture: row.last_ref_facture ?? null,
-    })));
+    })), ...ptRows]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -136,7 +198,11 @@ const getStockEntreprise = async (req, res) => {
                ORDER BY sed2.date_appro DESC LIMIT 1) as last_ref_facture,
               (SELECT sed2.type_appro FROM stock_entreprise_daily sed2
                WHERE sed2.activite_id = $1 AND sed2.ingredient_id = i.id
-               ORDER BY sed2.date_appro DESC LIMIT 1) as last_type_appro
+               ORDER BY sed2.date_appro DESC LIMIT 1) as last_type_appro,
+              COALESCE(
+                AVG(sed.prix_unitaire) FILTER (WHERE date_trunc('month', sed.date_appro) = date_trunc('month', CURRENT_DATE) AND sed.quantite > 0)
+                * SUM(sed.quantite) FILTER (WHERE date_trunc('month', sed.date_appro) = date_trunc('month', CURRENT_DATE))
+              , 0) as cout_total
        FROM activite_ingredient_selections ais
        JOIN ingredients i ON ais.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
@@ -147,7 +213,64 @@ const getStockEntreprise = async (req, res) => {
        ORDER BY categorie NULLS LAST, i.nom`,
       [activiteId]
     );
-    res.json(result.rows.map((row) => ({
+
+    // Fetch PT products for this activite
+    const ptPrixRes = await pool.query(`
+      SELECT pi.produit_id,
+        BOOL_OR(lp.prix_unitaire IS NULL AND pi.portion > 0) as prix_partiel,
+        SUM(pi.portion * COALESCE(lp.prix_unitaire, 0)) as prix_dtu
+      FROM produit_ingredients pi
+      LEFT JOIN LATERAL (
+        SELECT prix_unitaire FROM stock_entreprise_daily
+        WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id
+        ORDER BY date_appro DESC LIMIT 1
+      ) lp ON true
+      WHERE pi.produit_id IN (SELECT id FROM produits WHERE activite_id = $1 AND is_stock_ingredient = TRUE)
+      GROUP BY pi.produit_id
+    `, [activiteId]);
+    const ptPrixMap = {};
+    for (const r of ptPrixRes.rows) {
+      ptPrixMap[r.produit_id] = { prixDtu: parseFloat(r.prix_dtu) || 0, prixPartiel: r.prix_partiel };
+    }
+
+    const ptRes = await pool.query(`
+      SELECT p.id as produit_id, p.nom, p.seuil_min_pt,
+        COALESCE(SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
+        (SELECT spt2.date_appro FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_date_appro,
+        (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule,
+        COALESCE(
+          AVG(spt.prix_calcule) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE))
+          * SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE))
+        , 0) as cout_total
+      FROM produits p
+      LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.activite_id = $1
+      WHERE p.activite_id = $1 AND p.is_stock_ingredient = TRUE
+      GROUP BY p.id, p.nom, p.seuil_min_pt
+      ORDER BY p.nom
+    `, [activiteId]);
+
+    const ptRows = ptRes.rows.map((r) => {
+      const pInfo = ptPrixMap[r.produit_id] || { prixDtu: 0, prixPartiel: false };
+      return {
+        ingredientId: -(r.produit_id),  // negative ID = PT product
+        produitId: r.produit_id,
+        isPT: true,
+        nom: r.nom,
+        unite: 'unité',
+        categorie: 'Produits Transformés',
+        prixUnitaire: pInfo.prixDtu,
+        prixPartiel: pInfo.prixPartiel,
+        quantite: parseFloat(r.total_quantite),
+        totalQuantite: parseFloat(r.total_quantite),
+        dateAppro: isoDate(r.last_date_appro),
+        seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
+        coutTotal: r.cout_total !== null ? parseFloat(r.cout_total) : null,
+        lastFournisseurId: null,
+        lastRefFacture: null,
+      };
+    });
+
+    res.json([...result.rows.map((row) => ({
       ingredientId: row.ingredient_id,
       nom: row.nom,
       unite: row.unite_nom,
@@ -156,11 +279,12 @@ const getStockEntreprise = async (req, res) => {
       prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
       quantite: parseFloat(row.total_quantite),
       totalQuantite: parseFloat(row.total_quantite),
+      coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : null,
       dateAppro: isoDate(row.date_appro),
       lastFournisseurId: row.last_fournisseur_id ?? null,
       lastRefFacture: row.last_ref_facture ?? null,
       lastTypeAppro: row.last_type_appro ?? null,
-    })));
+    })), ...ptRows]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -281,7 +405,7 @@ const getHistoryEntreprise = async (req, res) => {
 // ─── Historique Approvisionnement ─────────────────────────────────────────────
 
 const getHistoriqueAppro = async (req, res) => {
-  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture } = req.query;
+  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId } = req.query;
   const currentYear = new Date().getFullYear();
 
   try {
@@ -354,7 +478,52 @@ const getHistoriqueAppro = async (req, res) => {
          ORDER BY sed.date_appro DESC, i.nom`,
         params
       );
-      res.json(result.rows.map(mapHistoriqueEntry));
+
+      let regularRows = result.rows.map(mapHistoriqueEntry);
+
+      // Append PT entries if no category filter is active or ptOnly is requested
+      if (ptOnly === 'true' || (!categorieId && !ingredientId)) {
+        const ptParams = [...activiteIds];
+        let ptWhere = `spt.activite_id IN (${idList})`;
+        if (startDate) { ptParams.push(startDate); ptWhere += ` AND spt.date_appro >= $${ptParams.length}`; }
+        if (endDate) { ptParams.push(endDate); ptWhere += ` AND spt.date_appro <= $${ptParams.length}`; }
+        if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND spt.produit_id = $${ptParams.length}`; }
+        const ptResult = await pool.query(
+          `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at, p.nom as produit_nom, p.id as produit_id
+           FROM stock_produits_transformes spt
+           JOIN produits p ON p.id = spt.produit_id
+           WHERE ${ptWhere}
+           ORDER BY spt.date_appro DESC`,
+          ptParams
+        );
+        const ptEntries = ptResult.rows.map((spt) => ({
+          id: spt.id,
+          activiteId: spt.activite_id,
+          dateAppro: isoDate(spt.date_appro),
+          quantite: spt.quantite !== null ? parseFloat(spt.quantite) : null,
+          prixUnitaire: spt.prix_calcule !== null ? parseFloat(spt.prix_calcule) : null,
+          typeAppro: 'produit_transformé',
+          refFacture: null,
+          fournisseurId: null,
+          fournisseurNom: null,
+          updatedAt: spt.created_at,
+          ingredientId: -(spt.produit_id),
+          ingredientNom: spt.produit_nom,
+          uniteNom: 'unité',
+          categorieNom: 'Produits Transformés',
+        }));
+        if (ptOnly === 'true') {
+          regularRows = ptEntries;
+        } else {
+          regularRows = [...regularRows, ...ptEntries].sort((a, b) => {
+            if (!a.dateAppro) return 1;
+            if (!b.dateAppro) return -1;
+            return b.dateAppro.localeCompare(a.dateAppro);
+          });
+        }
+      }
+
+      res.json(regularRows);
     } else {
       const params = [req.user.id, currentYear];
       let extraWhere = '';
@@ -379,7 +548,52 @@ const getHistoriqueAppro = async (req, res) => {
          ORDER BY scd.date_appro DESC, i.nom`,
         params
       );
-      res.json(result.rows.map(mapHistoriqueEntry));
+
+      let regularRows = result.rows.map(mapHistoriqueEntry);
+
+      // Append PT entries if no category filter is active or ptOnly is requested
+      if (ptOnly === 'true' || (!categorieId && !ingredientId)) {
+        const ptParams = [req.user.id];
+        let ptWhere = `spt.client_id = $1`;
+        if (startDate) { ptParams.push(startDate); ptWhere += ` AND spt.date_appro >= $${ptParams.length}`; }
+        if (endDate) { ptParams.push(endDate); ptWhere += ` AND spt.date_appro <= $${ptParams.length}`; }
+        if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND spt.produit_id = $${ptParams.length}`; }
+        const ptResult = await pool.query(
+          `SELECT spt.id, spt.client_id, spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at, p.nom as produit_nom, p.id as produit_id
+           FROM stock_produits_transformes spt
+           JOIN produits p ON p.id = spt.produit_id
+           WHERE ${ptWhere}
+           ORDER BY spt.date_appro DESC`,
+          ptParams
+        );
+        const ptEntries = ptResult.rows.map((spt) => ({
+          id: spt.id,
+          activiteId: null,
+          dateAppro: isoDate(spt.date_appro),
+          quantite: spt.quantite !== null ? parseFloat(spt.quantite) : null,
+          prixUnitaire: spt.prix_calcule !== null ? parseFloat(spt.prix_calcule) : null,
+          typeAppro: 'produit_transformé',
+          refFacture: null,
+          fournisseurId: null,
+          fournisseurNom: null,
+          updatedAt: spt.created_at,
+          ingredientId: -(spt.produit_id),
+          ingredientNom: spt.produit_nom,
+          uniteNom: 'unité',
+          categorieNom: 'Produits Transformés',
+        }));
+        if (ptOnly === 'true') {
+          regularRows = ptEntries;
+        } else {
+          regularRows = [...regularRows, ...ptEntries].sort((a, b) => {
+            if (!a.dateAppro) return 1;
+            if (!b.dateAppro) return -1;
+            return b.dateAppro.localeCompare(a.dateAppro);
+          });
+        }
+      }
+
+      res.json(regularRows);
     }
   } catch (err) {
     console.error(err);

@@ -241,25 +241,33 @@ const saveStockPT = async (req, res) => {
       return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
     }
 
+    // Fetch produit name for type_appro
+    const produitRes = await pool.query(`SELECT nom FROM produits WHERE id = $1`, [produitId]);
+    const produitNom = produitRes.rows[0]?.nom ?? 'PT';
+
     // 2. Calculate prix_calcule from recipe ingredients
     let ingRows;
     if (actId) {
       const ingRes = await pool.query(
-        `SELECT pi.ingredient_id, pi.portion,
+        `SELECT pi.ingredient_id, pi.portion, i.nom as nom,
            (SELECT prix_unitaire FROM stock_entreprise_daily
             WHERE ingredient_id = pi.ingredient_id AND activite_id = $2
             ORDER BY date_appro DESC LIMIT 1) AS last_prix
-         FROM produit_ingredients pi WHERE pi.produit_id = $1`,
+         FROM produit_ingredients pi
+         JOIN ingredients i ON i.id = pi.ingredient_id
+         WHERE pi.produit_id = $1`,
         [produitId, actId]
       );
       ingRows = ingRes.rows;
     } else {
       const ingRes = await pool.query(
-        `SELECT pi.ingredient_id, pi.portion,
+        `SELECT pi.ingredient_id, pi.portion, i.nom as nom,
            (SELECT prix_unitaire FROM stock_client_daily
             WHERE ingredient_id = pi.ingredient_id AND client_id = $2
             ORDER BY date_appro DESC LIMIT 1) AS last_prix
-         FROM produit_ingredients pi WHERE pi.produit_id = $1`,
+         FROM produit_ingredients pi
+         JOIN ingredients i ON i.id = pi.ingredient_id
+         WHERE pi.produit_id = $1`,
         [produitId, userId]
       );
       ingRows = ingRes.rows;
@@ -299,24 +307,73 @@ const saveStockPT = async (req, res) => {
     const sptId = upsertResult.rows[0].id;
 
     // 4. Create consumption entries in ingredient stock (negative quantities)
+    // Resolve or create AUTO fournisseur
+    let autoFournisseurId = null;
+    if (actId) {
+      const entRes = await pool.query(
+        `SELECT pe.id as entreprise_id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE a.id = $1`,
+        [actId]
+      );
+      if (entRes.rows.length > 0) {
+        const entrepriseId = entRes.rows[0].entreprise_id;
+        const foRes = await pool.query(
+          `SELECT f.id FROM fournisseurs f LEFT JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id WHERE f.entreprise_id = $1 AND f.nom = 'AUTO' LIMIT 1`,
+          [entrepriseId]
+        );
+        if (foRes.rows.length > 0) {
+          autoFournisseurId = foRes.rows[0].id;
+          await pool.query(
+            `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [autoFournisseurId, actId]
+          );
+        } else {
+          const newFo = await pool.query(
+            `INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`,
+            [entrepriseId]
+          );
+          autoFournisseurId = newFo.rows[0].id;
+          await pool.query(
+            `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [autoFournisseurId, actId]
+          );
+        }
+      }
+    } else {
+      const foRes = await pool.query(
+        `SELECT id FROM fournisseurs WHERE client_id = $1 AND nom = 'AUTO' LIMIT 1`,
+        [userId]
+      );
+      if (foRes.rows.length > 0) {
+        autoFournisseurId = foRes.rows[0].id;
+      } else {
+        const newFo = await pool.query(
+          `INSERT INTO fournisseurs (client_id, nom) VALUES ($1, 'AUTO') RETURNING id`,
+          [userId]
+        );
+        autoFournisseurId = newFo.rows[0].id;
+      }
+    }
+
+    const yearStr = String(new Date().getFullYear()).slice(-2);
+
     for (const ing of ingRows) {
       const quantiteConsumed = -(parseFloat(ing.portion) * qty);
 
       if (actId) {
         await pool.query(
-          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro)
-           VALUES ($1, $2, $3, $4, $5, 'consommation')
+          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro)
-           DO UPDATE SET quantite = EXCLUDED.quantite`,
-          [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0]
+           DO UPDATE SET quantite = stock_entreprise_daily.quantite + EXCLUDED.quantite, fournisseur_id = EXCLUDED.fournisseur_id, ref_facture = EXCLUDED.ref_facture`,
+          [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, produitNom, autoFournisseurId, `${ing.nom}-${yearStr}`]
         );
       } else {
         await pool.query(
-          `INSERT INTO stock_client_daily (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro)
-           VALUES ($1, $2, $3, $4, $5, 'consommation')
+          `INSERT INTO stock_client_daily (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (client_id, ingredient_id, date_appro, type_appro)
-           DO UPDATE SET quantite = EXCLUDED.quantite`,
-          [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0]
+           DO UPDATE SET quantite = stock_client_daily.quantite + EXCLUDED.quantite, fournisseur_id = EXCLUDED.fournisseur_id, ref_facture = EXCLUDED.ref_facture`,
+          [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, produitNom, autoFournisseurId, `${ing.nom}-${yearStr}`]
         );
       }
     }
