@@ -281,7 +281,7 @@ const saveStockPT = async (req, res) => {
       upsertResult = await pool.query(
         `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT ON CONSTRAINT uq_spt
+         ON CONFLICT (produit_id, COALESCE(activite_id, 0), COALESCE(client_id, 0), date_appro)
          DO UPDATE SET quantite = EXCLUDED.quantite, prix_calcule = EXCLUDED.prix_calcule
          RETURNING id`,
         [produitId, actId, dateAppro, qty, prixCalcule]
@@ -290,7 +290,7 @@ const saveStockPT = async (req, res) => {
       upsertResult = await pool.query(
         `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT ON CONSTRAINT uq_spt
+         ON CONFLICT (produit_id, COALESCE(activite_id, 0), COALESCE(client_id, 0), date_appro)
          DO UPDATE SET quantite = EXCLUDED.quantite, prix_calcule = EXCLUDED.prix_calcule
          RETURNING id`,
         [produitId, userId, dateAppro, qty, prixCalcule]
