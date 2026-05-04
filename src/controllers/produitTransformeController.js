@@ -250,9 +250,15 @@ const saveStockPT = async (req, res) => {
     if (actId) {
       const ingRes = await pool.query(
         `SELECT pi.ingredient_id, pi.portion, i.nom as nom,
-           (SELECT prix_unitaire FROM stock_entreprise_daily
-            WHERE ingredient_id = pi.ingredient_id AND activite_id = $2
-            ORDER BY date_appro DESC LIMIT 1) AS last_prix
+           COALESCE(
+             (SELECT prix_unitaire FROM stock_entreprise_daily
+              WHERE ingredient_id = pi.ingredient_id AND activite_id = $2
+              ORDER BY date_appro DESC LIMIT 1),
+             (SELECT spt.prix_calcule FROM stock_produits_transformes spt
+              JOIN produits p ON p.id = spt.produit_id
+              WHERE p.linked_ingredient_id = pi.ingredient_id AND spt.activite_id = $2
+              ORDER BY spt.date_appro DESC LIMIT 1)
+           ) AS last_prix
          FROM produit_ingredients pi
          JOIN ingredients i ON i.id = pi.ingredient_id
          WHERE pi.produit_id = $1`,
@@ -262,9 +268,15 @@ const saveStockPT = async (req, res) => {
     } else {
       const ingRes = await pool.query(
         `SELECT pi.ingredient_id, pi.portion, i.nom as nom,
-           (SELECT prix_unitaire FROM stock_client_daily
-            WHERE ingredient_id = pi.ingredient_id AND client_id = $2
-            ORDER BY date_appro DESC LIMIT 1) AS last_prix
+           COALESCE(
+             (SELECT prix_unitaire FROM stock_client_daily
+              WHERE ingredient_id = pi.ingredient_id AND client_id = $2
+              ORDER BY date_appro DESC LIMIT 1),
+             (SELECT spt.prix_calcule FROM stock_produits_transformes spt
+              JOIN produits p ON p.id = spt.produit_id
+              WHERE p.linked_ingredient_id = pi.ingredient_id AND spt.client_id = $2
+              ORDER BY spt.date_appro DESC LIMIT 1)
+           ) AS last_prix
          FROM produit_ingredients pi
          JOIN ingredients i ON i.id = pi.ingredient_id
          WHERE pi.produit_id = $1`,
@@ -442,6 +454,26 @@ const updateSeuilMinPT = async (req, res) => {
   }
 };
 
+const setLinkedIngredient = async (req, res) => {
+  const produitId = parseInt(req.params.id);
+  const { ingredientId } = req.body;
+  try {
+    const ownerRes = await pool.query(
+      `SELECT id FROM produits WHERE id = $1 AND (client_id = $2 OR activite_id IN (SELECT id FROM activites WHERE entreprise_id IN (SELECT id FROM profil_entreprise WHERE client_id = $2)))`,
+      [produitId, req.user.id]
+    );
+    if (ownerRes.rows.length === 0) return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+    await pool.query(
+      `UPDATE produits SET linked_ingredient_id = $1 WHERE id = $2`,
+      [ingredientId ?? null, produitId]
+    );
+    res.json({ produitId, linkedIngredientId: ingredientId ?? null });
+  } catch (err) {
+    console.error('[setLinkedIngredient]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   toggleStockIngredient,
   deleteStockPTHistory,
@@ -449,4 +481,5 @@ module.exports = {
   getStockPTHistory,
   saveStockPT,
   updateSeuilMinPT,
+  setLinkedIngredient,
 };
