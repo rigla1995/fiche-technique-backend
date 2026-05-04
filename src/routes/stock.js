@@ -6,7 +6,7 @@ const {
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
   duplicateStockToFranchise,
-  updateSeuilMin,
+  updateSeuilMin, updateSeuilMinClient, createClientPerte,
   exportHistoriqueExcel,
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
 } = require('../controllers/stockController');
@@ -16,6 +16,8 @@ const { authenticate, requireClient, requireEntreprise } = require('../middlewar
 router.get('/client/summary', authenticate, requireClient, getStockClientSummary);
 router.get('/client', authenticate, requireClient, getStockClient);
 router.put('/client/:ingredientId', authenticate, requireClient, updateStockClient);
+router.put('/client/:ingredientId/seuil-min', authenticate, requireClient, updateSeuilMinClient);
+router.post('/client/pertes', authenticate, requireClient, createClientPerte);
 router.get('/client/:ingredientId/history', authenticate, requireClient, getHistoryClient);
 
 // Enterprise stock (entreprise accounts only)

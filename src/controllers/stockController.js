@@ -15,6 +15,7 @@ const getStockClient = async (req, res) => {
     const result = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie,
+              cis.seuil_min,
               COALESCE(SUM(scd.quantite) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
               (SELECT scd2.prix_unitaire FROM stock_client_daily scd2
                WHERE scd2.client_id = $1 AND scd2.ingredient_id = i.id
@@ -38,7 +39,7 @@ const getStockClient = async (req, res) => {
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN stock_client_daily scd ON scd.ingredient_id = i.id AND scd.client_id = $1
        WHERE cis.client_id = $1
-       GROUP BY i.id, i.nom, u.nom, c.nom
+       GROUP BY i.id, i.nom, u.nom, c.nom, cis.seuil_min
        ORDER BY categorie NULLS LAST, i.nom`,
       [req.user.id]
     );
@@ -109,7 +110,7 @@ const getStockClient = async (req, res) => {
       totalQuantite: parseFloat(row.total_quantite),
       coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : null,
       dateAppro: isoDate(row.date_appro),
-      seuilMin: null,
+      seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
       lastFournisseurId: row.last_fournisseur_id ?? null,
       lastRefFacture: row.last_ref_facture ?? null,
     })), ...ptRows]);
@@ -788,7 +789,7 @@ const duplicateStockToFranchise = async (req, res) => {
 
 // ─── Export Excel Historique Appro ───────────────────────────────────────────
 const exportHistoriqueExcel = async (req, res) => {
-  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam } = req.query;
+  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam, ptOnly, ptProduitId } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
   console.log('[exportHistoriqueExcel] selectedIdsParam:', selectedIdsParam, '| selectedSet size:', selectedSet.size);
   const currentYear = new Date().getFullYear();
@@ -844,7 +845,10 @@ const exportHistoriqueExcel = async (req, res) => {
 
       // Append PT rows for entreprise
       const ptParamsEnt = [currentYear, ...activiteIds];
-      const ptIdListEnt = activiteIds.map((_, i) => `$${i + 2}`).join(',');
+      let ptWhereEnt = `EXTRACT(YEAR FROM spt.date_appro) = $1 AND spt.activite_id IN (${activiteIds.map((_, i) => `$${i + 2}`).join(',')})`;
+      if (ptProduitId) { ptParamsEnt.push(ptProduitId); ptWhereEnt += ` AND spt.produit_id = $${ptParamsEnt.length}`; }
+      if (startDate) { ptParamsEnt.push(startDate); ptWhereEnt += ` AND spt.date_appro >= $${ptParamsEnt.length}`; }
+      if (endDate) { ptParamsEnt.push(endDate); ptWhereEnt += ` AND spt.date_appro <= $${ptParamsEnt.length}`; }
       const ptResultEnt = await pool.query(
         `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule AS prix_unitaire,
                 'produit_transforme' AS type_appro,
@@ -854,33 +858,41 @@ const exportHistoriqueExcel = async (req, res) => {
                 'unité' AS unite_nom
          FROM stock_produits_transformes spt
          JOIN produits p ON p.id = spt.produit_id
-         WHERE EXTRACT(YEAR FROM spt.date_appro) = $1 AND spt.activite_id IN (${ptIdListEnt})
+         WHERE ${ptWhereEnt}
          ORDER BY spt.date_appro DESC, p.nom`,
         ptParamsEnt
       );
-      rows = rows.concat(ptResultEnt.rows);
+      if (ptOnly === 'true') rows = ptResultEnt.rows;
+      else rows = rows.concat(ptResultEnt.rows);
     } else {
-      const params = [req.user.id, currentYear];
-      let extraWhere = '';
-      if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
-      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
-      if (startDate) { params.push(startDate); extraWhere += ` AND scd.date_appro >= $${params.length}`; }
-      if (endDate) { params.push(endDate); extraWhere += ` AND scd.date_appro <= $${params.length}`; }
-      if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND scd.fournisseur_id = $${params.length}`; }
-      if (refFacture) { params.push(`%${refFacture}%`); extraWhere += ` AND scd.ref_facture ILIKE $${params.length}`; }
-      const result = await pool.query(
-        `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
-                scd.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
-                u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom
-         FROM stock_client_daily scd
-         JOIN ingredients i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
-         LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
-         WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
-         ORDER BY scd.date_appro DESC, i.nom`, params
-      );
-      rows = result.rows;
+      if (ptOnly !== 'true') {
+        const params = [req.user.id, currentYear];
+        let extraWhere = '';
+        if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
+        else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
+        if (startDate) { params.push(startDate); extraWhere += ` AND scd.date_appro >= $${params.length}`; }
+        if (endDate) { params.push(endDate); extraWhere += ` AND scd.date_appro <= $${params.length}`; }
+        if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND scd.fournisseur_id = $${params.length}`; }
+        if (refFacture) { params.push(`%${refFacture}%`); extraWhere += ` AND scd.ref_facture ILIKE $${params.length}`; }
+        const result = await pool.query(
+          `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
+                  scd.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
+                  u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom
+           FROM stock_client_daily scd
+           JOIN ingredients i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
+           LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
+           WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
+           ORDER BY scd.date_appro DESC, i.nom`, params
+        );
+        rows = result.rows;
+      }
 
       // Append PT rows for indép
+      const ptParamsIndep = [req.user.id, currentYear];
+      let ptWhereIndep = `spt.client_id = $1 AND EXTRACT(YEAR FROM spt.date_appro) = $2`;
+      if (ptProduitId) { ptParamsIndep.push(ptProduitId); ptWhereIndep += ` AND spt.produit_id = $${ptParamsIndep.length}`; }
+      if (startDate) { ptParamsIndep.push(startDate); ptWhereIndep += ` AND spt.date_appro >= $${ptParamsIndep.length}`; }
+      if (endDate) { ptParamsIndep.push(endDate); ptWhereIndep += ` AND spt.date_appro <= $${ptParamsIndep.length}`; }
       const ptResultIndep = await pool.query(
         `SELECT spt.id, spt.date_appro, spt.quantite, spt.prix_calcule AS prix_unitaire,
                 'produit_transforme' AS type_appro,
@@ -890,9 +902,9 @@ const exportHistoriqueExcel = async (req, res) => {
                 'unité' AS unite_nom
          FROM stock_produits_transformes spt
          JOIN produits p ON p.id = spt.produit_id
-         WHERE spt.client_id = $1 AND EXTRACT(YEAR FROM spt.date_appro) = $2
+         WHERE ${ptWhereIndep}
          ORDER BY spt.date_appro DESC, p.nom`,
-        [req.user.id, currentYear]
+        ptParamsIndep
       );
       rows = rows.concat(ptResultIndep.rows);
     }
@@ -1060,9 +1072,44 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
   }
 };
 
+const updateSeuilMinClient = async (req, res) => {
+  const { ingredientId } = req.params;
+  const { seuilMin } = req.body;
+  try {
+    await pool.query(
+      `UPDATE client_ingredient_selections SET seuil_min = $1 WHERE client_id = $2 AND ingredient_id = $3`,
+      [seuilMin ?? null, req.user.id, ingredientId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const createClientPerte = async (req, res) => {
+  const { ingredientId, quantite, typePerte, datePerte } = req.body;
+  if (!ingredientId || !quantite || !typePerte || !datePerte)
+    return res.status(400).json({ message: 'Champs requis: ingredientId, quantite, typePerte, datePerte' });
+  if (!['avarie', 'dechet'].includes(typePerte))
+    return res.status(400).json({ message: 'typePerte invalide (avarie|dechet)' });
+  try {
+    const r = await pool.query(
+      `INSERT INTO client_pertes (client_id, ingredient_id, quantite, type_perte, date_perte)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.user.id, ingredientId, quantite, typePerte, datePerte]
+    );
+    res.status(201).json(r.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getStockClient, updateStockClient, getStockClientSummary,
   getStockEntreprise, updateStockEntreprise, updateSeuilMin,
+  updateSeuilMinClient, createClientPerte,
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
   duplicateStockToFranchise,
