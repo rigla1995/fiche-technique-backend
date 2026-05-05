@@ -47,31 +47,37 @@ const getLaboInventaireStock = async (req, res) => {
       [laboId]
     );
 
-    const invRes = await pool.query(
-      `SELECT DISTINCT ON (ingredient_id)
-         id, ingredient_id, quantite_reelle, date_inventaire, note
+    // Last 5 inventaires per ingredient (for collapsible history)
+    const recentInvRes = await pool.query(
+      `SELECT id, ingredient_id, quantite_reelle, date_inventaire
        FROM inventaires
        WHERE labo_id = $1 AND ingredient_id IS NOT NULL
        ORDER BY ingredient_id, date_inventaire DESC, created_at DESC`,
       [laboId]
     );
-    const lastInvMap = {};
-    for (const r of invRes.rows) {
-      lastInvMap[r.ingredient_id] = {
-        id: r.id,
-        qty: parseFloat(r.quantite_reelle),
-        date: isoDate(r.date_inventaire),
-        note: r.note,
-      };
+    const recentInvMap = {};
+    for (const r of recentInvRes.rows) {
+      if (!recentInvMap[r.ingredient_id]) recentInvMap[r.ingredient_id] = [];
+      if (recentInvMap[r.ingredient_id].length < 5) {
+        recentInvMap[r.ingredient_id].push({
+          id: r.id,
+          qty: parseFloat(r.quantite_reelle),
+          date: isoDate(r.date_inventaire),
+        });
+      }
     }
-
-    const today = new Date().toISOString().slice(0, 10);
-    const todayInvRes = await pool.query(
-      `SELECT DISTINCT ingredient_id FROM inventaires
-       WHERE labo_id = $1 AND date_inventaire = $2 AND ingredient_id IS NOT NULL`,
-      [laboId, today]
+    // All distinct inventaire dates per ingredient (for alarm on any date)
+    const allDatesRes = await pool.query(
+      `SELECT ingredient_id, ARRAY_AGG(DISTINCT date_inventaire::text) as dates
+       FROM inventaires
+       WHERE labo_id = $1 AND ingredient_id IS NOT NULL
+       GROUP BY ingredient_id`,
+      [laboId]
     );
-    const todayInvSet = new Set(todayInvRes.rows.map((r) => r.ingredient_id));
+    const allDatesMap = {};
+    for (const r of allDatesRes.rows) {
+      allDatesMap[r.ingredient_id] = (r.dates || []).map(isoDate).filter(Boolean);
+    }
 
     res.json(ingRes.rows.map((r) => ({
       ingredientId: r.ingredient_id,
@@ -79,8 +85,8 @@ const getLaboInventaireStock = async (req, res) => {
       unite: r.unite_nom,
       categorie: r.categorie,
       seuilMin: r.seuil_min !== null ? parseFloat(r.seuil_min) : null,
-      lastInventaire: lastInvMap[r.ingredient_id] || null,
-      hasInventaireToday: todayInvSet.has(r.ingredient_id),
+      recentInventaires: recentInvMap[r.ingredient_id] || [],
+      inventaireDates: allDatesMap[r.ingredient_id] || [],
     })));
   } catch (err) {
     console.error('[getLaboInventaireStock]', err);
@@ -149,31 +155,33 @@ const getActiviteInventaireStock = async (req, res) => {
       [activiteId]
     );
 
-    const invRes = await pool.query(
-      `SELECT DISTINCT ON (ingredient_id)
-         id, ingredient_id, quantite_reelle, date_inventaire, note
+    const recentInvRes = await pool.query(
+      `SELECT id, ingredient_id, quantite_reelle, date_inventaire
        FROM inventaires
        WHERE activite_id = $1 AND ingredient_id IS NOT NULL
        ORDER BY ingredient_id, date_inventaire DESC, created_at DESC`,
       [activiteId]
     );
-    const lastInvMap = {};
-    for (const r of invRes.rows) {
-      lastInvMap[r.ingredient_id] = {
-        id: r.id,
-        qty: parseFloat(r.quantite_reelle),
-        date: isoDate(r.date_inventaire),
-        note: r.note,
-      };
+    const recentInvMap = {};
+    for (const r of recentInvRes.rows) {
+      if (!recentInvMap[r.ingredient_id]) recentInvMap[r.ingredient_id] = [];
+      if (recentInvMap[r.ingredient_id].length < 5) {
+        recentInvMap[r.ingredient_id].push({
+          id: r.id, qty: parseFloat(r.quantite_reelle), date: isoDate(r.date_inventaire),
+        });
+      }
     }
-
-    const today = new Date().toISOString().slice(0, 10);
-    const todayInvRes = await pool.query(
-      `SELECT DISTINCT ingredient_id FROM inventaires
-       WHERE activite_id = $1 AND date_inventaire = $2 AND ingredient_id IS NOT NULL`,
-      [activiteId, today]
+    const allDatesRes = await pool.query(
+      `SELECT ingredient_id, ARRAY_AGG(DISTINCT date_inventaire::text) as dates
+       FROM inventaires
+       WHERE activite_id = $1 AND ingredient_id IS NOT NULL
+       GROUP BY ingredient_id`,
+      [activiteId]
     );
-    const todayInvSet = new Set(todayInvRes.rows.map((r) => r.ingredient_id));
+    const allDatesMap = {};
+    for (const r of allDatesRes.rows) {
+      allDatesMap[r.ingredient_id] = (r.dates || []).map(isoDate).filter(Boolean);
+    }
 
     res.json(ingRes.rows.map((r) => ({
       ingredientId: r.ingredient_id,
@@ -181,8 +189,8 @@ const getActiviteInventaireStock = async (req, res) => {
       unite: r.unite_nom,
       categorie: r.categorie,
       seuilMin: r.seuil_min !== null ? parseFloat(r.seuil_min) : null,
-      lastInventaire: lastInvMap[r.ingredient_id] || null,
-      hasInventaireToday: todayInvSet.has(r.ingredient_id),
+      recentInventaires: recentInvMap[r.ingredient_id] || [],
+      inventaireDates: allDatesMap[r.ingredient_id] || [],
     })));
   } catch (err) {
     console.error('[getActiviteInventaireStock]', err);
