@@ -423,9 +423,7 @@ const updateLaboStock = async (req, res) => {
           const consumed = -(parseFloat(ing.portion) * qty);
           await pool.query(
             `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, type_appro, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-             ON CONFLICT (labo_id, ingredient_id, date_appro, type_appro)
-             DO UPDATE SET quantite = stock_labo_daily.quantite + EXCLUDED.quantite, updated_at = NOW()`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
             [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, `${ing.ing_nom}-${yearStr}`, produitNom]
           );
         }
