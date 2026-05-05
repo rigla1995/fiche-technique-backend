@@ -403,14 +403,32 @@ const updateLaboStock = async (req, res) => {
 
       // Deduct recipe ingredients from labo ingredient stock (negative entries)
       if (ingRes.rows.length > 0 && qty > 0) {
+        // Find or create AUTO fournisseur for this labo
+        const laboEntRes = await pool.query(`SELECT entreprise_id FROM labos WHERE id = $1`, [laboId]);
+        let autoFournisseurId = null;
+        if (laboEntRes.rows.length > 0) {
+          const entrepriseId = laboEntRes.rows[0].entreprise_id;
+          const foRes = await pool.query(
+            `SELECT id FROM fournisseurs WHERE entreprise_id = $1 AND nom = 'AUTO' LIMIT 1`, [entrepriseId]
+          );
+          if (foRes.rows.length > 0) {
+            autoFournisseurId = foRes.rows[0].id;
+          } else {
+            const newFo = await pool.query(
+              `INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`, [entrepriseId]
+            );
+            autoFournisseurId = newFo.rows[0].id;
+          }
+        }
+        const yearStr = String(new Date().getFullYear()).slice(-2);
         for (const ing of ingRes.rows) {
           const consumed = -(parseFloat(ing.portion) * qty);
           await pool.query(
-            `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, updated_at)
-             VALUES ($1, $2, $3, $4, $5, NOW())
-             ON CONFLICT (labo_id, ingredient_id, date_appro)
+            `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, type_appro, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+             ON CONFLICT (labo_id, ingredient_id, date_appro, type_appro)
              DO UPDATE SET quantite = stock_labo_daily.quantite + EXCLUDED.quantite, updated_at = NOW()`,
-            [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0]
+            [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, `${ing.ing_nom}-${yearStr}`, produitNom]
           );
         }
       }
@@ -419,9 +437,9 @@ const updateLaboStock = async (req, res) => {
     }
 
     await pool.query(
-      `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-       ON CONFLICT (labo_id, ingredient_id, date_appro)
+      `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, type_appro, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'manuel', NOW())
+       ON CONFLICT (labo_id, ingredient_id, date_appro, type_appro)
        DO UPDATE SET quantite = $4, prix_unitaire = $5, fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
       [laboId, ingredientIdRaw, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null]
     );
