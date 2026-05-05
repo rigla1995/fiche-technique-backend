@@ -233,7 +233,7 @@ const getLaboStock = async (req, res) => {
     const result = await pool.query(
       `SELECT sub.ingredient_id, sub.nom, sub.unite_nom, sub.categorie,
               sub.quantite_totale, sub.prix_unitaire, sub.date_appro, sub.seuil_min,
-              sub.cout_total, sub.recent_dates,
+              sub.cout_total, sub.recent_dates, sub.recent_transfer_dates,
               COALESCE(tr.total_transfere, 0) as total_transfere,
               (SELECT sld2.fournisseur_id FROM stock_labo_daily sld2
                WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro = 'manuel'
@@ -254,6 +254,9 @@ const getLaboStock = async (req, res) => {
                 ARRAY(SELECT DISTINCT sld2.date_appro FROM stock_labo_daily sld2
                       WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id
                       ORDER BY sld2.date_appro DESC LIMIT 30) as recent_dates,
+                ARRAY(SELECT DISTINCT lt2.date_transfert FROM labo_transfers lt2
+                      WHERE lt2.labo_id = $1 AND lt2.ingredient_id = i.id
+                      ORDER BY lt2.date_transfert DESC LIMIT 30) as recent_transfer_dates,
                 lis.seuil_min,
                 COALESCE(
                   AVG(sld.prix_unitaire) FILTER (WHERE date_trunc('month', sld.date_appro) = date_trunc('month', CURRENT_DATE))
@@ -293,6 +296,7 @@ const getLaboStock = async (req, res) => {
         lastFournisseurId: row.last_fournisseur_id ?? null,
         lastRefFacture: row.last_ref_facture ?? null,
         recentDates: (row.recent_dates || []).map(isoDate).filter(Boolean),
+        recentTransferDates: (row.recent_transfer_dates || []).map(isoDate).filter(Boolean),
         isPT: false,
       };
     });
@@ -312,6 +316,9 @@ const getLaboStock = async (req, res) => {
         ARRAY(SELECT DISTINCT slpt2.date_appro FROM stock_labo_pt_daily slpt2
               WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id
               ORDER BY slpt2.date_appro DESC LIMIT 30) as recent_dates,
+        ARRAY(SELECT DISTINCT lt2.date_transfert FROM labo_transfers lt2
+              WHERE lt2.labo_id = $1 AND lt2.produit_id = p.id
+              ORDER BY lt2.date_transfert DESC LIMIT 30) as recent_transfer_dates,
         (SELECT COALESCE(SUM(pi2.portion * (
            SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
            WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id AND sld2.quantite > 0
@@ -349,6 +356,7 @@ const getLaboStock = async (req, res) => {
         lastFournisseurId: null,
         lastRefFacture: null,
         recentDates: (row.recent_dates || []).map(isoDate).filter(Boolean),
+        recentTransferDates: (row.recent_transfer_dates || []).map(isoDate).filter(Boolean),
       };
     });
 
