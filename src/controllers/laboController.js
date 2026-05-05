@@ -355,16 +355,24 @@ const updateLaboStock = async (req, res) => {
     if (ingredientIdRaw < 0) {
       // PT product appro — auto-calculate prix from recipe using last labo ingredient prices
       const produitId = -ingredientIdRaw;
+      const qty = parseFloat(quantite) || 0;
 
-      const ingRes = await pool.query(
-        `SELECT pi.ingredient_id, pi.portion,
-           (SELECT sld.prix_unitaire FROM stock_labo_daily sld
-            WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id AND sld.quantite > 0
-            ORDER BY sld.date_appro DESC LIMIT 1) AS last_prix
-         FROM produit_ingredients pi
-         WHERE pi.produit_id = $1`,
-        [produitId, laboId]
-      );
+      // Get product name for type_appro label and recipe ingredients with last labo prices
+      const [prodRes, ingRes] = await Promise.all([
+        pool.query(`SELECT nom FROM produits WHERE id = $1`, [produitId]),
+        pool.query(
+          `SELECT pi.ingredient_id, pi.portion, i.nom as ing_nom,
+             (SELECT sld.prix_unitaire FROM stock_labo_daily sld
+              WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id AND sld.quantite > 0
+              ORDER BY sld.date_appro DESC LIMIT 1) AS last_prix
+           FROM produit_ingredients pi
+           JOIN ingredients i ON i.id = pi.ingredient_id
+           WHERE pi.produit_id = $1`,
+          [produitId, laboId]
+        ),
+      ]);
+      const produitNom = prodRes.rows[0]?.nom ?? 'PT';
+
       let prixCalcule = 0;
       for (const ing of ingRes.rows) {
         if (ing.last_prix !== null) {
@@ -373,13 +381,29 @@ const updateLaboStock = async (req, res) => {
       }
       const finalPrix = prixCalcule > 0 ? prixCalcule : (prixUnitaire ? parseFloat(prixUnitaire) : null);
 
+      // Save PT appro
       await pool.query(
         `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, updated_at)
          VALUES ($1, $2, $3, $4, $5, NOW())
          ON CONFLICT (labo_id, produit_id, date_appro)
-         DO UPDATE SET quantite = $4, prix_unitaire = $5, updated_at = NOW()`,
-        [laboId, produitId, da, parseFloat(quantite) || 0, finalPrix]
+         DO UPDATE SET quantite = stock_labo_pt_daily.quantite + $4, prix_unitaire = $5, updated_at = NOW()`,
+        [laboId, produitId, da, qty, finalPrix]
       );
+
+      // Deduct recipe ingredients from labo ingredient stock (negative entries)
+      if (ingRes.rows.length > 0 && qty > 0) {
+        for (const ing of ingRes.rows) {
+          const consumed = -(parseFloat(ing.portion) * qty);
+          await pool.query(
+            `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, updated_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (labo_id, ingredient_id, date_appro)
+             DO UPDATE SET quantite = stock_labo_daily.quantite + EXCLUDED.quantite, updated_at = NOW()`,
+            [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0]
+          );
+        }
+      }
+
       return res.json({ success: true, prixCalcule: finalPrix });
     }
 
