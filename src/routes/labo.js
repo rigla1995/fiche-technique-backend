@@ -12,6 +12,10 @@ const {
   exportLaboHistoriqueExcel,
   createLaboPerte,
 } = require('../controllers/laboController');
+const {
+  getLaboInventaireStock, saveLaboInventaire,
+  getLaboInventaireHistorique, exportLaboInventaireExcel,
+} = require('../controllers/inventaireController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
 // Labo CRUD
@@ -49,5 +53,11 @@ router.delete('/:laboId/historique/:entryId', authenticate, requireEntreprise, d
 // Transfers
 router.post('/:laboId/transfer', authenticate, requireEntreprise, createTransfer);
 router.get('/:laboId/transfers', authenticate, requireEntreprise, getTransferHistory);
+
+// Inventaire labo
+router.get('/:laboId/inventaire', authenticate, requireEntreprise, getLaboInventaireStock);
+router.post('/:laboId/inventaire', authenticate, requireEntreprise, saveLaboInventaire);
+router.get('/:laboId/inventaire/historique', authenticate, requireEntreprise, getLaboInventaireHistorique);
+router.get('/:laboId/inventaire/historique/export-excel', authenticate, requireEntreprise, exportLaboInventaireExcel);
 
 module.exports = router;

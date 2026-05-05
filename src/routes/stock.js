@@ -43,4 +43,16 @@ router.get('/pt/:produitId/history', authenticate, requireClient, getStockPTHist
 router.put('/pt/:produitId', authenticate, requireClient, saveStockPT);
 router.put('/pt/:produitId/seuil-min', authenticate, requireClient, updateSeuilMinPT);
 
+// Inventaire activite (franchise / distinct)
+const {
+  getActiviteInventaireStock, saveActiviteInventaire,
+  getActiviteInventaireHistorique, exportActiviteInventaireExcel,
+  updateInventaireEntry,
+} = require('../controllers/inventaireController');
+router.get('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, getActiviteInventaireStock);
+router.post('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, saveActiviteInventaire);
+router.get('/entreprise/:activiteId/inventaire/historique', authenticate, requireEntreprise, getActiviteInventaireHistorique);
+router.get('/entreprise/:activiteId/inventaire/historique/export-excel', authenticate, requireEntreprise, exportActiviteInventaireExcel);
+router.put('/inventaire/:inventaireId', authenticate, updateInventaireEntry);
+
 module.exports = router;

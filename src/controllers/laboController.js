@@ -279,15 +279,61 @@ const getLaboStock = async (req, res) => {
        ORDER BY sub.categorie NULLS LAST, sub.nom`,
       [laboId]
     );
+    // Apply inventaire baseline: last inventaire per ingredient acts as stock reset point
+    const invBaselineRes = await pool.query(
+      `WITH last_inv AS (
+         SELECT DISTINCT ON (ingredient_id)
+           ingredient_id, quantite_reelle, date_inventaire
+         FROM inventaires
+         WHERE labo_id = $1 AND ingredient_id IS NOT NULL
+         ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
+       ),
+       post_appro AS (
+         SELECT sld.ingredient_id, SUM(sld.quantite) as qty
+         FROM stock_labo_daily sld
+         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro > li.date_inventaire
+         WHERE sld.labo_id = $1
+         GROUP BY sld.ingredient_id
+       ),
+       post_transfer AS (
+         SELECT lt.ingredient_id, SUM(lt.quantite) as qty
+         FROM labo_transfers lt
+         JOIN last_inv li ON li.ingredient_id = lt.ingredient_id AND lt.date_transfert > li.date_inventaire
+         WHERE lt.labo_id = $1 AND lt.ingredient_id IS NOT NULL
+         GROUP BY lt.ingredient_id
+       )
+       SELECT li.ingredient_id,
+              li.quantite_reelle as inv_qty,
+              li.date_inventaire as inv_date,
+              COALESCE(pa.qty, 0) as post_appro_qty,
+              COALESCE(pt.qty, 0) as post_transfer_qty
+       FROM last_inv li
+       LEFT JOIN post_appro pa ON pa.ingredient_id = li.ingredient_id
+       LEFT JOIN post_transfer pt ON pt.ingredient_id = li.ingredient_id`,
+      [laboId]
+    );
+    const invBaselineMap = {};
+    for (const r of invBaselineRes.rows) {
+      invBaselineMap[r.ingredient_id] = {
+        invQty: parseFloat(r.inv_qty),
+        postApproQty: parseFloat(r.post_appro_qty),
+        postTransferQty: parseFloat(r.post_transfer_qty),
+      };
+    }
+
     const ingredientRows = result.rows.map((row) => {
       const totalAppros = row.quantite_totale !== null ? parseFloat(row.quantite_totale) : null;
       const totalTransfere = parseFloat(row.total_transfere);
+      const inv = invBaselineMap[row.ingredient_id];
+      const quantite = inv
+        ? inv.invQty + inv.postApproQty - inv.postTransferQty
+        : (totalAppros !== null ? totalAppros - totalTransfere : null);
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
         unite: row.unite_nom,
         categorie: row.categorie,
-        quantite: totalAppros !== null ? totalAppros - totalTransfere : null,
+        quantite,
         prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
         dateAppro: isoDate(row.date_appro),
         seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,

@@ -280,21 +280,58 @@ const getStockEntreprise = async (req, res) => {
       };
     });
 
-    res.json([...result.rows.map((row) => ({
-      ingredientId: row.ingredient_id,
-      nom: row.nom,
-      unite: row.unite_nom,
-      categorie: row.categorie,
-      seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
-      prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
-      quantite: parseFloat(row.total_quantite),
-      totalQuantite: parseFloat(row.total_quantite),
-      coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : null,
-      dateAppro: isoDate(row.date_appro),
-      lastFournisseurId: row.last_fournisseur_id ?? null,
-      lastRefFacture: row.last_ref_facture ?? null,
-      lastTypeAppro: row.last_type_appro ?? null,
-    })), ...ptRows]);
+    // Apply inventaire baseline for activite stock
+    const invBaselineRes = await pool.query(
+      `WITH last_inv AS (
+         SELECT DISTINCT ON (ingredient_id)
+           ingredient_id, quantite_reelle, date_inventaire
+         FROM inventaires
+         WHERE activite_id = $1 AND ingredient_id IS NOT NULL
+         ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
+       ),
+       post_appro AS (
+         SELECT sed.ingredient_id, SUM(sed.quantite) as qty
+         FROM stock_entreprise_daily sed
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro > li.date_inventaire
+         WHERE sed.activite_id = $1
+         GROUP BY sed.ingredient_id
+       )
+       SELECT li.ingredient_id,
+              li.quantite_reelle as inv_qty,
+              COALESCE(pa.qty, 0) as post_appro_qty
+       FROM last_inv li
+       LEFT JOIN post_appro pa ON pa.ingredient_id = li.ingredient_id`,
+      [activiteId]
+    );
+    const invBaselineMap = {};
+    for (const r of invBaselineRes.rows) {
+      invBaselineMap[r.ingredient_id] = {
+        invQty: parseFloat(r.inv_qty),
+        postApproQty: parseFloat(r.post_appro_qty),
+      };
+    }
+
+    res.json([...result.rows.map((row) => {
+      const inv = invBaselineMap[row.ingredient_id];
+      const quantite = inv
+        ? inv.invQty + inv.postApproQty
+        : parseFloat(row.total_quantite);
+      return {
+        ingredientId: row.ingredient_id,
+        nom: row.nom,
+        unite: row.unite_nom,
+        categorie: row.categorie,
+        seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
+        prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
+        quantite,
+        totalQuantite: quantite,
+        coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : null,
+        dateAppro: isoDate(row.date_appro),
+        lastFournisseurId: row.last_fournisseur_id ?? null,
+        lastRefFacture: row.last_ref_facture ?? null,
+        lastTypeAppro: row.last_type_appro ?? null,
+      };
+    }), ...ptRows]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
