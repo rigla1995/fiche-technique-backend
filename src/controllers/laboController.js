@@ -436,9 +436,7 @@ const updateLaboStock = async (req, res) => {
 
     await pool.query(
       `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, type_appro, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'manuel', NOW())
-       ON CONFLICT (labo_id, ingredient_id, date_appro, type_appro)
-       DO UPDATE SET quantite = $4, prix_unitaire = $5, fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'manuel', NOW())`,
       [laboId, ingredientIdRaw, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null]
     );
     res.json({ success: true });
@@ -592,17 +590,13 @@ const createTransfer = async (req, res) => {
              ORDER BY date_appro DESC LIMIT 1`,
             [laboId, produitId]
           );
-          const currentPtQty = latestPtRes.rows.length > 0 && latestPtRes.rows[0].quantite !== null
-            ? parseFloat(latestPtRes.rows[0].quantite) : 0;
           const ptPrix = latestPtRes.rows.length > 0 ? parseFloat(latestPtRes.rows[0].prix_unitaire || 0) : 0;
 
-          // Deduct from labo PT stock
+          // Deduct from labo PT stock (negative entry)
           await client.query(
             `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, updated_at)
-             VALUES ($1, $2, $3, $4, NOW())
-             ON CONFLICT (labo_id, produit_id, date_appro)
-             DO UPDATE SET quantite = stock_labo_pt_daily.quantite - $5, updated_at = NOW()`,
-            [laboId, produitId, dateTransfert, currentPtQty - qty, qty]
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [laboId, produitId, dateTransfert, -qty]
           );
 
           // Add to activité PT stock (stock_produits_transformes)
@@ -628,25 +622,18 @@ const createTransfer = async (req, res) => {
            ORDER BY date_appro DESC LIMIT 1`,
           [laboId, ingId]
         );
-        const currentQty = latestRes.rows.length > 0 && latestRes.rows[0].quantite !== null
-          ? parseFloat(latestRes.rows[0].quantite) : 0;
         const prixUnitaire = latestRes.rows.length > 0 ? latestRes.rows[0].prix_unitaire : null;
 
         await client.query(
-          `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, updated_at)
-           VALUES ($1, $2, $3, $4, $5, NOW())
-           ON CONFLICT (labo_id, ingredient_id, date_appro)
-           DO UPDATE SET quantite = stock_labo_daily.quantite - $6, updated_at = NOW()`,
-          [laboId, ingId, dateTransfert, currentQty - qty, prixUnitaire, qty]
+          `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, updated_at)
+           VALUES ($1, $2, $3, $4, $5, 'transfert', NOW())`,
+          [laboId, ingId, dateTransfert, -qty, prixUnitaire]
         );
 
         await client.query(
           `INSERT INTO stock_entreprise_daily
              (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
-           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, NOW())
-           ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro)
-           DO UPDATE SET quantite = COALESCE(stock_entreprise_daily.quantite, 0) + $4,
-                         fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
+           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, NOW())`,
           [t.activiteId, ingId, dateTransfert, qty, prixUnitaire, laboFournisseurId, refFacture || null]
         );
 

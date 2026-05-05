@@ -440,17 +440,13 @@ const saveStockPT = async (req, res) => {
       if (actId) {
         await pool.query(
           `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro)
-           DO UPDATE SET quantite = stock_entreprise_daily.quantite + EXCLUDED.quantite, fournisseur_id = EXCLUDED.fournisseur_id, ref_facture = EXCLUDED.ref_facture`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, produitNom, autoFournisseurId, `${ing.nom}-${yearStr}`]
         );
       } else {
         await pool.query(
           `INSERT INTO stock_client_daily (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           ON CONFLICT (client_id, ingredient_id, date_appro, type_appro)
-           DO UPDATE SET quantite = stock_client_daily.quantite + EXCLUDED.quantite, fournisseur_id = EXCLUDED.fournisseur_id, ref_facture = EXCLUDED.ref_facture`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, produitNom, autoFournisseurId, `${ing.nom}-${yearStr}`]
         );
       }

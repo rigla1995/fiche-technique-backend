@@ -132,9 +132,7 @@ const updateStockClient = async (req, res) => {
     await pool.query(
       `INSERT INTO stock_client_daily
          (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW())
-       ON CONFLICT (client_id, ingredient_id, date_appro, type_appro)
-       DO UPDATE SET quantite = $4, prix_unitaire = $5, fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
+       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW())`,
       [req.user.id, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
        fournisseurId ?? null, refFacture ?? null]
     );
@@ -324,9 +322,7 @@ const updateStockEntreprise = async (req, res) => {
     await pool.query(
       `INSERT INTO stock_entreprise_daily
          (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW())
-       ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro)
-       DO UPDATE SET quantite = $4, prix_unitaire = $5, fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
+       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW())`,
       [activiteId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
        fournisseurId ?? null, refFacture ?? null]
     );
@@ -791,9 +787,7 @@ const duplicateStockToFranchise = async (req, res) => {
         await pool.query(
           `INSERT INTO stock_entreprise_daily
              (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, updated_at)
-           VALUES ($1, $2, $3, $4, $5, 'manuel', NOW())
-           ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro)
-           DO UPDATE SET quantite = $4, prix_unitaire = $5, updated_at = NOW()`,
+           VALUES ($1, $2, $3, $4, $5, 'manuel', NOW())`,
           [act.id, row.ingredient_id, row.date_appro, row.quantite, row.prix_unitaire]
         );
       }
