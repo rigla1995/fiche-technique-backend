@@ -251,6 +251,9 @@ const getLaboStock = async (req, res) => {
                 (SELECT sld2.date_appro FROM stock_labo_daily sld2
                  WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel'
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as date_appro,
+                ARRAY(SELECT DISTINCT sld2.date_appro FROM stock_labo_daily sld2
+                      WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id
+                      ORDER BY sld2.date_appro DESC LIMIT 30) as recent_dates,
                 lis.seuil_min,
                 COALESCE(
                   AVG(sld.prix_unitaire) FILTER (WHERE date_trunc('month', sld.date_appro) = date_trunc('month', CURRENT_DATE))
@@ -289,6 +292,7 @@ const getLaboStock = async (req, res) => {
         totalTransfere,
         lastFournisseurId: row.last_fournisseur_id ?? null,
         lastRefFacture: row.last_ref_facture ?? null,
+        recentDates: (row.recent_dates || []).map(isoDate).filter(Boolean),
         isPT: false,
       };
     });
@@ -305,6 +309,9 @@ const getLaboStock = async (req, res) => {
         , 0) as cout_total,
         (SELECT slpt2.prix_unitaire FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as prix_unitaire,
         (SELECT slpt2.date_appro FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as date_appro,
+        ARRAY(SELECT DISTINCT slpt2.date_appro FROM stock_labo_pt_daily slpt2
+              WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id
+              ORDER BY slpt2.date_appro DESC LIMIT 30) as recent_dates,
         (SELECT COALESCE(SUM(pi2.portion * (
            SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
            WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id AND sld2.quantite > 0
@@ -340,6 +347,7 @@ const getLaboStock = async (req, res) => {
         totalTransfere: 0,
         lastFournisseurId: null,
         lastRefFacture: null,
+        recentDates: (row.recent_dates || []).map(isoDate).filter(Boolean),
       };
     });
 
