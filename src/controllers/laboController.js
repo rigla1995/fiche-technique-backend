@@ -346,6 +346,7 @@ const getLaboStock = async (req, res) => {
         categorie: 'Produits Transformés',
         activite: row.franchise_group || row.activite_nom || null,
         activiteId: row.activite_id ?? null,
+        ptFranchiseGroup: row.franchise_group || null,
         quantite: row.total_quantite !== null ? parseFloat(row.total_quantite) : null,
         prixUnitaire,
         prixCalcule: prixCalcule && prixCalcule > 0 ? prixCalcule : null,
