@@ -353,16 +353,34 @@ const updateLaboStock = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     if (ingredientIdRaw < 0) {
-      // PT product appro — save to stock_labo_pt_daily
+      // PT product appro — auto-calculate prix from recipe using last labo ingredient prices
       const produitId = -ingredientIdRaw;
+
+      const ingRes = await pool.query(
+        `SELECT pi.ingredient_id, pi.portion,
+           (SELECT sld.prix_unitaire FROM stock_labo_daily sld
+            WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id AND sld.quantite > 0
+            ORDER BY sld.date_appro DESC LIMIT 1) AS last_prix
+         FROM produit_ingredients pi
+         WHERE pi.produit_id = $1`,
+        [produitId, laboId]
+      );
+      let prixCalcule = 0;
+      for (const ing of ingRes.rows) {
+        if (ing.last_prix !== null) {
+          prixCalcule += parseFloat(ing.portion) * parseFloat(ing.last_prix);
+        }
+      }
+      const finalPrix = prixCalcule > 0 ? prixCalcule : (prixUnitaire ? parseFloat(prixUnitaire) : null);
+
       await pool.query(
         `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, updated_at)
          VALUES ($1, $2, $3, $4, $5, NOW())
          ON CONFLICT (labo_id, produit_id, date_appro)
          DO UPDATE SET quantite = $4, prix_unitaire = $5, updated_at = NOW()`,
-        [laboId, produitId, da, parseFloat(quantite) || 0, prixUnitaire ? parseFloat(prixUnitaire) : null]
+        [laboId, produitId, da, parseFloat(quantite) || 0, finalPrix]
       );
-      return res.json({ success: true });
+      return res.json({ success: true, prixCalcule: finalPrix });
     }
 
     await pool.query(
@@ -1022,11 +1040,23 @@ const createLaboPerte = async (req, res) => {
   try {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
-    await pool.query(
-      `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [laboId, ingredientId, parseFloat(quantite), typePerte || 'avarie', datePerte || new Date().toISOString().split('T')[0]]
-    );
+
+    const ingredientIdRaw = parseInt(ingredientId);
+    if (ingredientIdRaw < 0) {
+      // PT product perte
+      const produitId = -ingredientIdRaw;
+      await pool.query(
+        `INSERT INTO labo_pertes (labo_id, produit_id, quantite, type_perte, date_perte)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [laboId, produitId, parseFloat(quantite), typePerte || 'avarie', datePerte || new Date().toISOString().split('T')[0]]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [laboId, ingredientIdRaw, parseFloat(quantite), typePerte || 'avarie', datePerte || new Date().toISOString().split('T')[0]]
+      );
+    }
     res.json({ success: true });
   } catch (err) {
     console.error('[createLaboPerte]', err);
