@@ -105,17 +105,20 @@ const saveLaboInventaire = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
-    const inserted = [];
+    const upserted = [];
     for (const e of entries) {
       const r = await pool.query(
         `INSERT INTO inventaires (labo_id, ingredient_id, quantite_reelle, date_inventaire, note)
          VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (labo_id, ingredient_id, date_inventaire)
+           WHERE labo_id IS NOT NULL AND ingredient_id IS NOT NULL
+         DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
          RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
         [laboId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null]
       );
-      inserted.push(r.rows[0]);
+      upserted.push(r.rows[0]);
     }
-    res.json(inserted.map((r) => ({
+    res.json(upserted.map((r) => ({
       id: r.id,
       ingredientId: r.ingredient_id,
       quantiteReelle: parseFloat(r.quantite_reelle),
@@ -215,17 +218,20 @@ const saveActiviteInventaire = async (req, res) => {
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
 
-    const inserted = [];
+    const upserted = [];
     for (const e of entries) {
       const r = await pool.query(
         `INSERT INTO inventaires (activite_id, ingredient_id, quantite_reelle, date_inventaire, note)
          VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (activite_id, ingredient_id, date_inventaire)
+           WHERE activite_id IS NOT NULL AND ingredient_id IS NOT NULL
+         DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
          RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
         [activiteId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null]
       );
-      inserted.push(r.rows[0]);
+      upserted.push(r.rows[0]);
     }
-    res.json(inserted.map((r) => ({
+    res.json(upserted.map((r) => ({
       id: r.id,
       ingredientId: r.ingredient_id,
       quantiteReelle: parseFloat(r.quantite_reelle),
