@@ -701,13 +701,21 @@ const deleteHistoriqueEntry = async (req, res) => {
   }
 };
 
+function resolveAutoFournisseur(fournisseurNom, quantite) {
+  // Show "AUTO" for PT consumption entries (negative qty), hide for others
+  if (fournisseurNom === 'AUTO') {
+    return (quantite !== null && parseFloat(quantite) < 0) ? 'AUTO' : null;
+  }
+  return fournisseurNom || null;
+}
+
 function mapHistEntry(r) {
   return {
     dateAppro: isoDate(r.date_appro),
     quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
     prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
     typeAppro: r.type_appro || 'manuel',
-    fournisseurNom: (r.fournisseur_nom && r.fournisseur_nom !== 'AUTO') ? r.fournisseur_nom : null,
+    fournisseurNom: resolveAutoFournisseur(r.fournisseur_nom, r.quantite),
     refFacture: r.ref_facture || null,
     updatedAt: r.updated_at,
   };
@@ -722,7 +730,7 @@ function mapHistoriqueEntry(r) {
     prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
     typeAppro: r.type_appro || 'manuel',
     fournisseurId: r.fournisseur_id || null,
-    fournisseurNom: (r.fournisseur_nom && r.fournisseur_nom !== 'AUTO') ? r.fournisseur_nom : null,
+    fournisseurNom: resolveAutoFournisseur(r.fournisseur_nom, r.quantite),
     refFacture: r.ref_facture || null,
     updatedAt: r.updated_at,
     ingredientId: r.ingredient_id,

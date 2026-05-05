@@ -57,7 +57,11 @@ const deleteStockPTHistory = async (req, res) => {
       return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
     }
 
-    // Delete history — indép: client_id, or activite belonging to user
+    // Get product name (used as type_appro for consumption entries)
+    const nomRes = await pool.query(`SELECT nom FROM produits WHERE id = $1`, [produitId]);
+    const produitNom = nomRes.rows[0]?.nom;
+
+    // Delete PT appro history
     await pool.query(
       `DELETE FROM stock_produits_transformes
        WHERE produit_id = $1
@@ -71,6 +75,32 @@ const deleteStockPTHistory = async (req, res) => {
          )`,
       [produitId, userId]
     );
+
+    // Also delete ingredient consumption entries created by saveStockPT
+    if (produitNom) {
+      // Indép consumption entries
+      await pool.query(
+        `DELETE FROM stock_client_daily
+         WHERE client_id = $1
+           AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
+           AND quantite < 0
+           AND type_appro = $3`,
+        [userId, produitId, produitNom]
+      );
+      // Entreprise consumption entries
+      await pool.query(
+        `DELETE FROM stock_entreprise_daily
+         WHERE activite_id IN (
+           SELECT a.id FROM activites a
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE pe.client_id = $1
+         )
+           AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
+           AND quantite < 0
+           AND type_appro = $3`,
+        [userId, produitId, produitNom]
+      );
+    }
 
     res.json({ deleted: true });
   } catch (err) {
