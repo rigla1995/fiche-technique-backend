@@ -11,6 +11,7 @@ const mapProduit = (row) => ({
   activiteId: row.activite_id || null,
   activiteType: row.activite_type || null,
   franchiseGroup: row.franchise_group || null,
+  isStockIngredient: !!row.is_stock_ingredient,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
   ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
   subProductsCount: row.sub_products_count !== undefined ? parseInt(row.sub_products_count) : undefined,
