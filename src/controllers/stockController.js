@@ -226,7 +226,14 @@ const getStockEntreprise = async (req, res) => {
         WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0
         ORDER BY date_appro DESC LIMIT 1
       ) lp ON true
-      WHERE pi.produit_id IN (SELECT id FROM produits WHERE activite_id = $1 AND is_stock_ingredient = TRUE)
+      WHERE pi.produit_id IN (
+        SELECT id FROM produits
+        WHERE is_stock_ingredient = TRUE
+        AND (
+          activite_id = $1
+          OR (franchise_group IS NOT NULL AND franchise_group = (SELECT a2.franchise_group FROM activites a2 WHERE a2.id = $1))
+        )
+      )
       GROUP BY pi.produit_id
     `, [activiteId]);
     const ptPrixMap = {};
@@ -245,7 +252,11 @@ const getStockEntreprise = async (req, res) => {
         , 0) as cout_total
       FROM produits p
       LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.activite_id = $1
-      WHERE p.activite_id = $1 AND p.is_stock_ingredient = TRUE
+      WHERE p.is_stock_ingredient = TRUE
+      AND (
+        p.activite_id = $1
+        OR (p.franchise_group IS NOT NULL AND p.franchise_group = (SELECT a2.franchise_group FROM activites a2 WHERE a2.id = $1))
+      )
       GROUP BY p.id, p.nom, p.seuil_min_pt
       ORDER BY p.nom
     `, [activiteId]);

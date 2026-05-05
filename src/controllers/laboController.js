@@ -273,7 +273,7 @@ const getLaboStock = async (req, res) => {
        ORDER BY sub.categorie NULLS LAST, sub.nom`,
       [laboId]
     );
-    res.json(result.rows.map((row) => {
+    const ingredientRows = result.rows.map((row) => {
       const totalAppros = row.quantite_totale !== null ? parseFloat(row.quantite_totale) : null;
       const totalTransfere = parseFloat(row.total_transfere);
       return {
@@ -281,7 +281,6 @@ const getLaboStock = async (req, res) => {
         nom: row.nom,
         unite: row.unite_nom,
         categorie: row.categorie,
-        // stock actuel = total appros - total transféré
         quantite: totalAppros !== null ? totalAppros - totalTransfere : null,
         prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
         dateAppro: isoDate(row.date_appro),
@@ -290,8 +289,47 @@ const getLaboStock = async (req, res) => {
         totalTransfere,
         lastFournisseurId: row.last_fournisseur_id ?? null,
         lastRefFacture: row.last_ref_facture ?? null,
+        isPT: false,
       };
+    });
+
+    // PT products for this labo
+    const ptResult = await pool.query(`
+      SELECT p.id as produit_id, p.nom,
+        lps.seuil_min,
+        COALESCE(SUM(slpt.quantite) FILTER (WHERE date_trunc('month', slpt.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
+        COALESCE(
+          AVG(slpt.prix_unitaire) FILTER (WHERE date_trunc('month', slpt.date_appro) = date_trunc('month', CURRENT_DATE) AND slpt.quantite > 0)
+          * SUM(slpt.quantite) FILTER (WHERE date_trunc('month', slpt.date_appro) = date_trunc('month', CURRENT_DATE))
+        , 0) as cout_total,
+        (SELECT slpt2.prix_unitaire FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as prix_unitaire,
+        (SELECT slpt2.date_appro FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as date_appro
+      FROM labo_pt_selections lps
+      JOIN produits p ON p.id = lps.produit_id
+      LEFT JOIN stock_labo_pt_daily slpt ON slpt.produit_id = p.id AND slpt.labo_id = $1
+      WHERE lps.labo_id = $1
+      GROUP BY p.id, p.nom, lps.seuil_min
+      ORDER BY p.nom
+    `, [laboId]);
+
+    const ptRows = ptResult.rows.map((row) => ({
+      ingredientId: -(row.produit_id),
+      produitId: row.produit_id,
+      isPT: true,
+      nom: row.nom,
+      unite: 'unité',
+      categorie: 'Produits Transformés',
+      quantite: row.total_quantite !== null ? parseFloat(row.total_quantite) : null,
+      prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
+      dateAppro: isoDate(row.date_appro),
+      seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
+      coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : 0,
+      totalTransfere: 0,
+      lastFournisseurId: null,
+      lastRefFacture: null,
     }));
+
+    res.json([...ingredientRows, ...ptRows]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -299,7 +337,8 @@ const getLaboStock = async (req, res) => {
 };
 
 const updateLaboStock = async (req, res) => {
-  const { laboId, ingredientId } = req.params;
+  const { laboId } = req.params;
+  const ingredientIdRaw = parseInt(req.params.ingredientId);
   const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture } = req.body;
   const da = dateAppro || todayStr();
 
@@ -310,12 +349,25 @@ const updateLaboStock = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
+    if (ingredientIdRaw < 0) {
+      // PT product appro — save to stock_labo_pt_daily
+      const produitId = -ingredientIdRaw;
+      await pool.query(
+        `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (labo_id, produit_id, date_appro)
+         DO UPDATE SET quantite = $4, prix_unitaire = $5, updated_at = NOW()`,
+        [laboId, produitId, da, parseFloat(quantite) || 0, prixUnitaire ? parseFloat(prixUnitaire) : null]
+      );
+      return res.json({ success: true });
+    }
+
     await pool.query(
       `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
        ON CONFLICT (labo_id, ingredient_id, date_appro)
        DO UPDATE SET quantite = $4, prix_unitaire = $5, fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
-      [laboId, ingredientId, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null]
+      [laboId, ingredientIdRaw, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null]
     );
     res.json({ success: true });
   } catch (err) {
@@ -325,10 +377,29 @@ const updateLaboStock = async (req, res) => {
 };
 
 const getLaboStockHistory = async (req, res) => {
-  const { laboId, ingredientId } = req.params;
+  const { laboId } = req.params;
+  const ingredientIdRaw = parseInt(req.params.ingredientId);
   try {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    if (ingredientIdRaw < 0) {
+      const produitId = -ingredientIdRaw;
+      const result = await pool.query(
+        `SELECT date_appro, quantite, prix_unitaire
+         FROM stock_labo_pt_daily
+         WHERE labo_id = $1 AND produit_id = $2
+         ORDER BY date_appro DESC LIMIT 10`,
+        [laboId, produitId]
+      );
+      return res.json(result.rows.map((r) => ({
+        dateAppro: isoDate(r.date_appro),
+        quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
+        prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
+        refFacture: null,
+        fournisseurNom: null,
+      })));
+    }
 
     const result = await pool.query(
       `SELECT sld.date_appro, sld.quantite, sld.prix_unitaire, sld.ref_facture,
@@ -337,7 +408,7 @@ const getLaboStockHistory = async (req, res) => {
        LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
        WHERE sld.labo_id = $1 AND sld.ingredient_id = $2
        ORDER BY sld.date_appro DESC LIMIT 10`,
-      [laboId, ingredientId]
+      [laboId, ingredientIdRaw]
     );
     res.json(result.rows.map((r) => ({
       dateAppro: isoDate(r.date_appro),
@@ -437,28 +508,66 @@ const createTransfer = async (req, res) => {
         const qty = parseFloat(t.quantite);
         if (!qty || qty <= 0) continue;
 
-        // Get latest labo stock for this ingredient
+        const ingId = parseInt(t.ingredientId);
+
+        if (ingId < 0) {
+          // PT product transfer: deduct from stock_labo_pt_daily, add to stock_produits_transformes
+          const produitId = -ingId;
+
+          const latestPtRes = await client.query(
+            `SELECT quantite, prix_unitaire FROM stock_labo_pt_daily
+             WHERE labo_id = $1 AND produit_id = $2
+             ORDER BY date_appro DESC LIMIT 1`,
+            [laboId, produitId]
+          );
+          const currentPtQty = latestPtRes.rows.length > 0 && latestPtRes.rows[0].quantite !== null
+            ? parseFloat(latestPtRes.rows[0].quantite) : 0;
+          const ptPrix = latestPtRes.rows.length > 0 ? parseFloat(latestPtRes.rows[0].prix_unitaire || 0) : 0;
+
+          // Deduct from labo PT stock
+          await client.query(
+            `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, updated_at)
+             VALUES ($1, $2, $3, $4, NOW())
+             ON CONFLICT (labo_id, produit_id, date_appro)
+             DO UPDATE SET quantite = stock_labo_pt_daily.quantite - $5, updated_at = NOW()`,
+            [laboId, produitId, dateTransfert, currentPtQty - qty, qty]
+          );
+
+          // Add to activité PT stock (stock_produits_transformes)
+          await client.query(
+            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [produitId, t.activiteId, dateTransfert, qty, ptPrix]
+          );
+
+          // Record PT transfer
+          await client.query(
+            `INSERT INTO labo_transfers (labo_id, activite_id, produit_id, quantite, date_transfert, note, ref_facture)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [laboId, t.activiteId, produitId, qty, dateTransfert, note || null, refFacture || null]
+          );
+          continue;
+        }
+
+        // Regular ingredient transfer
         const latestRes = await client.query(
           `SELECT quantite, prix_unitaire FROM stock_labo_daily
            WHERE labo_id = $1 AND ingredient_id = $2
            ORDER BY date_appro DESC LIMIT 1`,
-          [laboId, t.ingredientId]
+          [laboId, ingId]
         );
         const currentQty = latestRes.rows.length > 0 && latestRes.rows[0].quantite !== null
           ? parseFloat(latestRes.rows[0].quantite) : 0;
         const prixUnitaire = latestRes.rows.length > 0 ? latestRes.rows[0].prix_unitaire : null;
 
-        // Deduct from labo stock for the transfer date.
-        // On new entry: set to currentQty - qty. On conflict (same date): subtract qty.
         await client.query(
           `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, updated_at)
            VALUES ($1, $2, $3, $4, $5, NOW())
            ON CONFLICT (labo_id, ingredient_id, date_appro)
            DO UPDATE SET quantite = stock_labo_daily.quantite - $6, updated_at = NOW()`,
-          [laboId, t.ingredientId, dateTransfert, currentQty - qty, prixUnitaire, qty]
+          [laboId, ingId, dateTransfert, currentQty - qty, prixUnitaire, qty]
         );
 
-        // Add to activity stock (type=transfert) with labo fournisseur ref
         await client.query(
           `INSERT INTO stock_entreprise_daily
              (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
@@ -466,14 +575,13 @@ const createTransfer = async (req, res) => {
            ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro)
            DO UPDATE SET quantite = COALESCE(stock_entreprise_daily.quantite, 0) + $4,
                          fournisseur_id = $6, ref_facture = $7, updated_at = NOW()`,
-          [t.activiteId, t.ingredientId, dateTransfert, qty, prixUnitaire, laboFournisseurId, refFacture || null]
+          [t.activiteId, ingId, dateTransfert, qty, prixUnitaire, laboFournisseurId, refFacture || null]
         );
 
-        // Record transfer
         await client.query(
           `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture)
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [laboId, t.activiteId, t.ingredientId, qty, dateTransfert, note || null, refFacture || null]
+          [laboId, t.activiteId, ingId, qty, dateTransfert, note || null, refFacture || null]
         );
       }
 
@@ -654,16 +762,26 @@ const deleteLaboHistoriqueEntry = async (req, res) => {
 // ─── Labo Ingredient Seuil Min ───────────────────────────────────────────────
 
 const updateLaboSeuilMin = async (req, res) => {
-  const { laboId, ingredientId } = req.params;
+  const { laboId } = req.params;
+  const ingredientIdRaw = parseInt(req.params.ingredientId);
   const { seuilMin } = req.body;
   try {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
+    if (ingredientIdRaw < 0) {
+      const produitId = -ingredientIdRaw;
+      await pool.query(
+        `UPDATE labo_pt_selections SET seuil_min = $1 WHERE labo_id = $2 AND produit_id = $3`,
+        [seuilMin ?? null, laboId, produitId]
+      );
+      return res.json({ success: true });
+    }
+
     await pool.query(
       `UPDATE labo_ingredient_selections SET seuil_min = $1
        WHERE labo_id = $2 AND ingredient_id = $3`,
-      [seuilMin ?? null, laboId, ingredientId]
+      [seuilMin ?? null, laboId, ingredientIdRaw]
     );
     res.json({ success: true });
   } catch (err) {

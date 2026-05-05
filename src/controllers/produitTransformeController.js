@@ -25,13 +25,37 @@ const toggleStockIngredient = async (req, res) => {
     );
 
     if (!newValue) {
-      // Toggling OFF — check existing stock history
+      // Toggling OFF — remove from labo_pt_selections if present
+      await pool.query(`DELETE FROM labo_pt_selections WHERE produit_id = $1`, [produitId]);
+      // Check existing stock history
       const countRes = await pool.query(
         `SELECT COUNT(*) as cnt FROM stock_produits_transformes WHERE produit_id = $1 AND client_id = $2`,
         [produitId, userId]
       );
       const historyCount = parseInt(countRes.rows[0].cnt);
       return res.json({ isStockIngredient: false, hadHistory: historyCount > 0, historyCount });
+    }
+
+    // Toggling ON — check if franchise product with labo, auto-add to labo_pt_selections
+    const prodCtx = await pool.query(
+      `SELECT franchise_group FROM produits WHERE id = $1`,
+      [produitId]
+    );
+    const fg = prodCtx.rows[0]?.franchise_group;
+    if (fg) {
+      const laboRes = await pool.query(
+        `SELECT DISTINCT a.labo_id FROM activites a
+         JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+         WHERE pe.client_id = $1 AND a.franchise_group = $2 AND a.labo_id IS NOT NULL
+         LIMIT 1`,
+        [userId, fg]
+      );
+      if (laboRes.rows.length > 0) {
+        await pool.query(
+          `INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [laboRes.rows[0].labo_id, produitId]
+        );
+      }
     }
 
     return res.json({ isStockIngredient: true, hadHistory: false, historyCount: 0 });
@@ -101,6 +125,9 @@ const deleteStockPTHistory = async (req, res) => {
         [userId, produitId, produitNom]
       );
     }
+
+    // Also clean up labo PT stock
+    await pool.query(`DELETE FROM stock_labo_pt_daily WHERE produit_id = $1`, [produitId]);
 
     res.json({ deleted: true });
   } catch (err) {
