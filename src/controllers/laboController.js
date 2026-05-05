@@ -304,7 +304,13 @@ const getLaboStock = async (req, res) => {
           * SUM(slpt.quantite) FILTER (WHERE date_trunc('month', slpt.date_appro) = date_trunc('month', CURRENT_DATE))
         , 0) as cout_total,
         (SELECT slpt2.prix_unitaire FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as prix_unitaire,
-        (SELECT slpt2.date_appro FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as date_appro
+        (SELECT slpt2.date_appro FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as date_appro,
+        (SELECT COALESCE(SUM(pi2.portion * (
+           SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
+           WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id AND sld2.quantite > 0
+           ORDER BY sld2.date_appro DESC LIMIT 1
+        )), 0)
+         FROM produit_ingredients pi2 WHERE pi2.produit_id = p.id) as prix_calcule
       FROM labo_pt_selections lps
       JOIN produits p ON p.id = lps.produit_id
       LEFT JOIN activites a ON a.id = p.activite_id
@@ -314,23 +320,28 @@ const getLaboStock = async (req, res) => {
       ORDER BY p.nom
     `, [laboId]);
 
-    const ptRows = ptResult.rows.map((row) => ({
-      ingredientId: -(row.produit_id),
-      produitId: row.produit_id,
-      isPT: true,
-      nom: row.nom,
-      unite: 'unité',
-      categorie: 'Produits Transformés',
-      activite: row.franchise_group || row.activite_nom || null,
-      quantite: row.total_quantite !== null ? parseFloat(row.total_quantite) : null,
-      prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
-      dateAppro: isoDate(row.date_appro),
-      seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
-      coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : 0,
-      totalTransfere: 0,
-      lastFournisseurId: null,
-      lastRefFacture: null,
-    }));
+    const ptRows = ptResult.rows.map((row) => {
+      const prixCalcule = row.prix_calcule !== null ? parseFloat(row.prix_calcule) : null;
+      const prixUnitaire = row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : (prixCalcule && prixCalcule > 0 ? prixCalcule : null);
+      return {
+        ingredientId: -(row.produit_id),
+        produitId: row.produit_id,
+        isPT: true,
+        nom: row.nom,
+        unite: 'unité',
+        categorie: 'Produits Transformés',
+        activite: row.franchise_group || row.activite_nom || null,
+        quantite: row.total_quantite !== null ? parseFloat(row.total_quantite) : null,
+        prixUnitaire,
+        prixCalcule: prixCalcule && prixCalcule > 0 ? prixCalcule : null,
+        dateAppro: isoDate(row.date_appro),
+        seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
+        coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : 0,
+        totalTransfere: 0,
+        lastFournisseurId: null,
+        lastRefFacture: null,
+      };
+    });
 
     res.json([...ingredientRows, ...ptRows]);
   } catch (err) {
