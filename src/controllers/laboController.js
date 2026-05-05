@@ -392,12 +392,10 @@ const updateLaboStock = async (req, res) => {
       }
       const finalPrix = prixCalcule > 0 ? prixCalcule : (prixUnitaire ? parseFloat(prixUnitaire) : null);
 
-      // Save PT appro
+      // Save PT appro — always insert a new row (multiple rows per day allowed)
       await pool.query(
         `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, updated_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())
-         ON CONFLICT (labo_id, produit_id, date_appro)
-         DO UPDATE SET quantite = stock_labo_pt_daily.quantite + $4, prix_unitaire = $5, updated_at = NOW()`,
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
         [laboId, produitId, da, qty, finalPrix]
       );
 
