@@ -295,7 +295,8 @@ const getLaboStock = async (req, res) => {
 
     // PT products for this labo
     const ptResult = await pool.query(`
-      SELECT p.id as produit_id, p.nom,
+      SELECT p.id as produit_id, p.nom, p.franchise_group,
+        a.nom as activite_nom,
         lps.seuil_min,
         COALESCE(SUM(slpt.quantite) FILTER (WHERE date_trunc('month', slpt.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
         COALESCE(
@@ -306,9 +307,10 @@ const getLaboStock = async (req, res) => {
         (SELECT slpt2.date_appro FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as date_appro
       FROM labo_pt_selections lps
       JOIN produits p ON p.id = lps.produit_id
+      LEFT JOIN activites a ON a.id = p.activite_id
       LEFT JOIN stock_labo_pt_daily slpt ON slpt.produit_id = p.id AND slpt.labo_id = $1
       WHERE lps.labo_id = $1
-      GROUP BY p.id, p.nom, lps.seuil_min
+      GROUP BY p.id, p.nom, p.franchise_group, a.nom, lps.seuil_min
       ORDER BY p.nom
     `, [laboId]);
 
@@ -319,6 +321,7 @@ const getLaboStock = async (req, res) => {
       nom: row.nom,
       unite: 'unité',
       categorie: 'Produits Transformés',
+      activite: row.franchise_group || row.activite_nom || null,
       quantite: row.total_quantite !== null ? parseFloat(row.total_quantite) : null,
       prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
       dateAppro: isoDate(row.date_appro),
