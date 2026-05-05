@@ -300,7 +300,7 @@ const getLaboStock = async (req, res) => {
     // PT products for this labo
     const ptResult = await pool.query(`
       SELECT p.id as produit_id, p.nom, p.franchise_group,
-        a.nom as activite_nom,
+        a.id as activite_id, a.nom as activite_nom,
         lps.seuil_min,
         COALESCE(SUM(slpt.quantite) FILTER (WHERE date_trunc('month', slpt.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
         COALESCE(
@@ -323,7 +323,7 @@ const getLaboStock = async (req, res) => {
       LEFT JOIN activites a ON a.id = p.activite_id
       LEFT JOIN stock_labo_pt_daily slpt ON slpt.produit_id = p.id AND slpt.labo_id = $1
       WHERE lps.labo_id = $1
-      GROUP BY p.id, p.nom, p.franchise_group, a.nom, lps.seuil_min
+      GROUP BY p.id, p.nom, p.franchise_group, a.id, a.nom, lps.seuil_min
       ORDER BY p.nom
     `, [laboId]);
 
@@ -338,6 +338,7 @@ const getLaboStock = async (req, res) => {
         unite: 'unité',
         categorie: 'Produits Transformés',
         activite: row.franchise_group || row.activite_nom || null,
+        activiteId: row.activite_id ?? null,
         quantite: row.total_quantite !== null ? parseFloat(row.total_quantite) : null,
         prixUnitaire,
         prixCalcule: prixCalcule && prixCalcule > 0 ? prixCalcule : null,
@@ -673,14 +674,54 @@ const getTransferHistory = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
+    const ingIdNum = ingredientId ? parseInt(ingredientId, 10) : null;
+    const isPTQuery = ingIdNum !== null && ingIdNum < 0;
+
     const params = [laboId, currentYear];
     let extraWhere = '';
-    if (ingredientId) { params.push(ingredientId); extraWhere += ` AND lt.ingredient_id = $${params.length}`; }
+
+    if (isPTQuery) {
+      // Negative ingredientId means PT product with produit_id = ABS(ingredientId)
+      const produitId = -ingIdNum;
+      params.push(produitId);
+      extraWhere += ` AND lt.produit_id = $${params.length}`;
+    } else {
+      if (ingredientId) { params.push(ingredientId); extraWhere += ` AND lt.ingredient_id = $${params.length}`; }
+    }
     if (activiteId) { params.push(activiteId); extraWhere += ` AND lt.activite_id = $${params.length}`; }
     if (startDate) { params.push(startDate); extraWhere += ` AND lt.date_transfert >= $${params.length}`; }
     if (endDate) { params.push(endDate); extraWhere += ` AND lt.date_transfert <= $${params.length}`; }
 
-    const result = await pool.query(
+    let result;
+    if (isPTQuery) {
+      result = await pool.query(
+        `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
+                p.id as produit_id, p.nom as produit_nom,
+                a.id as activite_id, a.nom as activite_nom
+         FROM labo_transfers lt
+         JOIN produits p ON p.id = lt.produit_id
+         JOIN activites a ON a.id = lt.activite_id
+         WHERE lt.labo_id = $1 AND EXTRACT(YEAR FROM lt.date_transfert) = $2${extraWhere}
+         ORDER BY lt.date_transfert DESC, lt.created_at DESC${limit ? ` LIMIT ${parseInt(limit, 10)}` : ''}`,
+        params
+      );
+      return res.json(result.rows.map((r) => ({
+        id: r.id,
+        quantite: parseFloat(r.quantite),
+        dateTransfert: isoDate(r.date_transfert),
+        note: r.note,
+        refFacture: r.ref_facture,
+        createdAt: r.created_at,
+        ingredientId: -(r.produit_id),
+        ingredientNom: r.produit_nom,
+        uniteNom: 'unité',
+        categorieNom: 'Produits Transformés',
+        activiteId: r.activite_id,
+        activiteNom: r.activite_nom,
+      })));
+    }
+
+    result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
               i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
               a.id as activite_id, a.nom as activite_nom,
