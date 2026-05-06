@@ -107,12 +107,77 @@ const getLaboInventaireStock = async (req, res) => {
     for (const r of allPTDatesRes.rows)
       allPTDatesMap[r.produit_id] = (r.dates || []).map(isoDate).filter(Boolean);
 
+    // Total stock per ingredient (same formula as getLaboStock)
+    const totalStockRes = await pool.query(
+      `WITH last_inv AS (
+         SELECT DISTINCT ON (ingredient_id)
+           ingredient_id, quantite_reelle, date_inventaire
+         FROM inventaires
+         WHERE labo_id = $1 AND ingredient_id IS NOT NULL
+         ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
+       ),
+       post_appro AS (
+         SELECT sld.ingredient_id, SUM(sld.quantite) as qty
+         FROM stock_labo_daily sld
+         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro > li.date_inventaire
+         WHERE sld.labo_id = $1
+         GROUP BY sld.ingredient_id
+       ),
+       post_transfer AS (
+         SELECT lt.ingredient_id, SUM(lt.quantite) as qty
+         FROM labo_transfers lt
+         JOIN last_inv li ON li.ingredient_id = lt.ingredient_id AND lt.date_transfert > li.date_inventaire
+         WHERE lt.labo_id = $1 AND lt.ingredient_id IS NOT NULL
+         GROUP BY lt.ingredient_id
+       ),
+       monthly AS (
+         SELECT sld.ingredient_id, SUM(sld.quantite) as appros
+         FROM stock_labo_daily sld
+         WHERE sld.labo_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+         GROUP BY sld.ingredient_id
+       ),
+       monthly_tr AS (
+         SELECT lt.ingredient_id, SUM(lt.quantite) as transfers
+         FROM labo_transfers lt
+         WHERE lt.labo_id = $1 AND lt.ingredient_id IS NOT NULL
+           AND date_trunc('month', lt.date_transfert) = date_trunc('month', CURRENT_DATE)
+         GROUP BY lt.ingredient_id
+       )
+       SELECT lis.ingredient_id,
+         CASE WHEN li.ingredient_id IS NOT NULL
+           THEN li.quantite_reelle + COALESCE(pa.qty, 0) - COALESCE(pt.qty, 0)
+           ELSE COALESCE(mo.appros, 0) - COALESCE(mtr.transfers, 0)
+         END as total_stock
+       FROM labo_ingredient_selections lis
+       LEFT JOIN last_inv li ON li.ingredient_id = lis.ingredient_id
+       LEFT JOIN post_appro pa ON pa.ingredient_id = lis.ingredient_id
+       LEFT JOIN post_transfer pt ON pt.ingredient_id = lis.ingredient_id
+       LEFT JOIN monthly mo ON mo.ingredient_id = lis.ingredient_id
+       LEFT JOIN monthly_tr mtr ON mtr.ingredient_id = lis.ingredient_id
+       WHERE lis.labo_id = $1`,
+      [laboId]
+    );
+    const totalStockMap = {};
+    for (const r of totalStockRes.rows) totalStockMap[r.ingredient_id] = parseFloat(r.total_stock) || 0;
+
+    // Total stock for labo PT (current month)
+    const totalStockPTRes = await pool.query(
+      `SELECT produit_id, COALESCE(SUM(quantite), 0) as total_stock
+       FROM stock_labo_pt_daily
+       WHERE labo_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+       GROUP BY produit_id`,
+      [laboId]
+    );
+    const totalStockPTMap = {};
+    for (const r of totalStockPTRes.rows) totalStockPTMap[r.produit_id] = parseFloat(r.total_stock) || 0;
+
     const ingRows = ingRes.rows.map((r) => ({
       ingredientId: r.ingredient_id,
       nom: r.nom,
       unite: r.unite_nom,
       categorie: r.categorie,
       seuilMin: r.seuil_min !== null ? parseFloat(r.seuil_min) : null,
+      totalStock: totalStockMap[r.ingredient_id] ?? null,
       recentInventaires: recentInvMap[r.ingredient_id] || [],
       inventaireDates: allDatesMap[r.ingredient_id] || [],
     }));
@@ -124,6 +189,7 @@ const getLaboInventaireStock = async (req, res) => {
       unite: 'unité',
       categorie: 'Produits Transformés',
       seuilMin: null,
+      totalStock: totalStockPTMap[r.produit_id] ?? null,
       recentInventaires: recentPTInvMap[r.produit_id] || [],
       inventaireDates: allPTDatesMap[r.produit_id] || [],
     }));
@@ -273,12 +339,61 @@ const getActiviteInventaireStock = async (req, res) => {
     for (const r of allPTDatesRes.rows)
       allPTDatesMap[r.produit_id] = (r.dates || []).map(isoDate).filter(Boolean);
 
+    // Total stock per ingredient (same formula as getStockEntreprise)
+    const totalStockActRes = await pool.query(
+      `WITH last_inv AS (
+         SELECT DISTINCT ON (ingredient_id)
+           ingredient_id, quantite_reelle, date_inventaire
+         FROM inventaires
+         WHERE activite_id = $1 AND ingredient_id IS NOT NULL
+         ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
+       ),
+       post_appro AS (
+         SELECT sed.ingredient_id, SUM(sed.quantite) as qty
+         FROM stock_entreprise_daily sed
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro > li.date_inventaire
+         WHERE sed.activite_id = $1
+         GROUP BY sed.ingredient_id
+       ),
+       monthly AS (
+         SELECT ingredient_id, SUM(quantite) as qty
+         FROM stock_entreprise_daily
+         WHERE activite_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+         GROUP BY ingredient_id
+       )
+       SELECT ais.ingredient_id,
+         CASE WHEN li.ingredient_id IS NOT NULL
+           THEN li.quantite_reelle + COALESCE(pa.qty, 0)
+           ELSE COALESCE(mo.qty, 0)
+         END as total_stock
+       FROM activite_ingredient_selections ais
+       LEFT JOIN last_inv li ON li.ingredient_id = ais.ingredient_id
+       LEFT JOIN post_appro pa ON pa.ingredient_id = ais.ingredient_id
+       LEFT JOIN monthly mo ON mo.ingredient_id = ais.ingredient_id
+       WHERE ais.activite_id = $1`,
+      [activiteId]
+    );
+    const totalStockActMap = {};
+    for (const r of totalStockActRes.rows) totalStockActMap[r.ingredient_id] = parseFloat(r.total_stock) || 0;
+
+    // Total stock for PT (current month from stock_produits_transformes)
+    const totalStockPTActRes = await pool.query(
+      `SELECT produit_id, COALESCE(SUM(quantite), 0) as total_stock
+       FROM stock_produits_transformes
+       WHERE activite_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+       GROUP BY produit_id`,
+      [activiteId]
+    );
+    const totalStockPTActMap = {};
+    for (const r of totalStockPTActRes.rows) totalStockPTActMap[r.produit_id] = parseFloat(r.total_stock) || 0;
+
     const ingRows = ingRes.rows.map((r) => ({
       ingredientId: r.ingredient_id,
       nom: r.nom,
       unite: r.unite_nom,
       categorie: r.categorie,
       seuilMin: r.seuil_min !== null ? parseFloat(r.seuil_min) : null,
+      totalStock: totalStockActMap[r.ingredient_id] ?? null,
       recentInventaires: recentInvMap[r.ingredient_id] || [],
       inventaireDates: allDatesMap[r.ingredient_id] || [],
     }));
@@ -290,6 +405,7 @@ const getActiviteInventaireStock = async (req, res) => {
       unite: 'unité',
       categorie: 'Produits Transformés',
       seuilMin: null,
+      totalStock: totalStockPTActMap[r.produit_id] ?? null,
       recentInventaires: recentPTInvMap[r.produit_id] || [],
       inventaireDates: allPTDatesMap[r.produit_id] || [],
     }));
@@ -847,12 +963,35 @@ const getClientInventaireStock = async (req, res) => {
     for (const r of allPTDatesRes.rows)
       allPTDatesMap[r.produit_id] = (r.dates || []).map(isoDate).filter(Boolean);
 
+    // Total stock per ingredient — current month (same as getStockClient)
+    const totalStockCliRes = await pool.query(
+      `SELECT ingredient_id, COALESCE(SUM(quantite), 0) as total_stock
+       FROM stock_client_daily
+       WHERE client_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+       GROUP BY ingredient_id`,
+      [clientId]
+    );
+    const totalStockCliMap = {};
+    for (const r of totalStockCliRes.rows) totalStockCliMap[r.ingredient_id] = parseFloat(r.total_stock) || 0;
+
+    // Total stock for client PT (current month)
+    const totalStockPTCliRes = await pool.query(
+      `SELECT produit_id, COALESCE(SUM(quantite), 0) as total_stock
+       FROM stock_produits_transformes
+       WHERE client_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+       GROUP BY produit_id`,
+      [clientId]
+    );
+    const totalStockPTCliMap = {};
+    for (const r of totalStockPTCliRes.rows) totalStockPTCliMap[r.produit_id] = parseFloat(r.total_stock) || 0;
+
     const ingRows = ingRes.rows.map((r) => ({
       ingredientId: r.ingredient_id,
       nom: r.nom,
       unite: r.unite_nom,
       categorie: r.categorie,
       seuilMin: r.seuil_min !== null ? parseFloat(r.seuil_min) : null,
+      totalStock: totalStockCliMap[r.ingredient_id] ?? null,
       recentInventaires: recentInvMap[r.ingredient_id] || [],
       inventaireDates: allDatesMap[r.ingredient_id] || [],
     }));
@@ -864,6 +1003,7 @@ const getClientInventaireStock = async (req, res) => {
       unite: 'unité',
       categorie: 'Produits Transformés',
       seuilMin: null,
+      totalStock: totalStockPTCliMap[r.produit_id] ?? null,
       recentInventaires: recentPTInvMap[r.produit_id] || [],
       inventaireDates: allPTDatesMap[r.produit_id] || [],
     }));
