@@ -16,6 +16,7 @@ const {
   getLaboInventaireStock, saveLaboInventaire,
   getLaboInventaireHistorique, exportLaboInventaireExcel,
 } = require('../controllers/inventaireController');
+const { getPrixLaboPerte } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
 // Labo CRUD
@@ -31,6 +32,7 @@ router.post('/:laboId/ingredients/:ingredientId/select', authenticate, requireEn
 router.get('/:laboId/stock', authenticate, requireEntreprise, getLaboStock);
 router.put('/:laboId/stock/:ingredientId', authenticate, requireEntreprise, updateLaboStock);
 router.get('/:laboId/stock/:ingredientId/history', authenticate, requireEntreprise, getLaboStockHistory);
+router.get('/:laboId/pertes/prix', authenticate, requireEntreprise, getPrixLaboPerte);
 router.post('/:laboId/stock/:ingredientId/perte', authenticate, requireEntreprise, createLaboPerte);
 
 // Labo fournisseurs (non-labo fournisseurs assigned to this labo)

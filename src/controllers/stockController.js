@@ -1525,10 +1525,20 @@ const createClientPerte = async (req, res) => {
   if (!['avarie', 'dechet'].includes(typePerte))
     return res.status(400).json({ message: 'typePerte invalide (avarie|dechet)' });
   try {
+    const priceRow = await pool.query(
+      `SELECT prix_unitaire FROM stock_client_daily
+       WHERE client_id = $1 AND ingredient_id = $2
+         AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+         AND date_appro <= $3
+       ORDER BY date_appro DESC, id DESC LIMIT 1`,
+      [req.user.id, ingredientId, datePerte]
+    );
+    const prixUnitaire = priceRow.rows.length > 0 ? parseFloat(priceRow.rows[0].prix_unitaire) : null;
+
     const r = await pool.query(
-      `INSERT INTO client_pertes (client_id, ingredient_id, quantite, type_perte, date_perte)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.user.id, ingredientId, quantite, typePerte, datePerte]
+      `INSERT INTO client_pertes (client_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [req.user.id, ingredientId, quantite, typePerte, datePerte, prixUnitaire]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {

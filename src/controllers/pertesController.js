@@ -18,10 +18,25 @@ const mapPerte = (r) => ({
   uniteNom: r.unite_nom,
   categorieNom: r.categorie_nom ?? null,
   quantite: parseFloat(r.quantite),
+  prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
   typePerte: r.type_perte,
   datePerte: r.date_perte instanceof Date ? r.date_perte.toISOString().slice(0, 10) : String(r.date_perte).slice(0, 10),
   createdAt: r.created_at,
 });
+
+// Returns the appro price for an ingredient on or before the given date (NULL if none)
+const getPrixPourPerte = async (table, ownerCol, ownerId, ingredientId, datePerte) => {
+  const r = await pool.query(
+    `SELECT prix_unitaire FROM ${table}
+     WHERE ${ownerCol} = $1 AND ingredient_id = $2
+       AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+       AND date_appro <= $3
+     ORDER BY date_appro DESC, id DESC
+     LIMIT 1`,
+    [ownerId, ingredientId, datePerte]
+  );
+  return r.rows.length > 0 ? parseFloat(r.rows[0].prix_unitaire) : null;
+};
 
 // ── Entreprise — existing create ─────────────────────────────────────────────
 
@@ -43,10 +58,12 @@ const createPerte = async (req, res) => {
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
+    const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, datePerte);
+
     const r = await pool.query(
-      `INSERT INTO pertes (activite_id, ingredient_id, quantite, type_perte, date_perte)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [activiteId, ingredientId, quantite, typePerte, datePerte]
+      `INSERT INTO pertes (activite_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [activiteId, ingredientId, quantite, typePerte, datePerte, prixUnitaire]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -117,7 +134,7 @@ const listClientPertes = async (req, res) => {
     const result = await pool.query(
       `SELECT cp.id, cp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              cp.quantite, cp.type_perte, cp.date_perte, cp.created_at
+              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at
        FROM client_pertes cp
        JOIN ingredients i ON i.id = cp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
@@ -137,15 +154,28 @@ const listClientPertes = async (req, res) => {
 
 const updateClientPerte = async (req, res) => {
   const { id } = req.params;
-  const { quantite, typePerte } = req.body;
+  const { quantite, typePerte, datePerte } = req.body;
   if (!quantite || !typePerte) return res.status(400).json({ message: 'quantite et typePerte requis' });
   if (!['avarie', 'dechet'].includes(typePerte)) return res.status(400).json({ message: 'typePerte invalide' });
   if (parseFloat(quantite) <= 0) return res.status(400).json({ message: 'quantite doit être > 0' });
   try {
+    // Fetch existing row to get ingredient_id and resolve datePerte
+    const existing = await pool.query(
+      `SELECT ingredient_id, date_perte FROM client_pertes WHERE id = $1 AND client_id = $2`,
+      [id, req.user.id]
+    );
+    if (existing.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+    const ingredientId = existing.rows[0].ingredient_id;
+    const effectiveDate = datePerte || (existing.rows[0].date_perte instanceof Date
+      ? existing.rows[0].date_perte.toISOString().slice(0, 10)
+      : String(existing.rows[0].date_perte).slice(0, 10));
+
+    const prixUnitaire = await getPrixPourPerte('stock_client_daily', 'client_id', req.user.id, ingredientId, effectiveDate);
+
     const r = await pool.query(
-      `UPDATE client_pertes SET quantite = $1, type_perte = $2
-       WHERE id = $3 AND client_id = $4 RETURNING id`,
-      [quantite, typePerte, id, req.user.id]
+      `UPDATE client_pertes SET quantite = $1, type_perte = $2, prix_unitaire = $3
+       WHERE id = $4 AND client_id = $5 RETURNING id`,
+      [quantite, typePerte, prixUnitaire, id, req.user.id]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     res.json({ message: 'Mise à jour effectuée' });
@@ -201,7 +231,7 @@ const listEntreprisePertes = async (req, res) => {
       `SELECT p.id, p.activite_id, a.nom AS activite_nom,
               p.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              p.quantite, p.type_perte, p.date_perte, p.created_at
+              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at
        FROM pertes p
        JOIN activites a ON a.id = p.activite_id
        JOIN ingredients i ON i.id = p.ingredient_id
@@ -222,18 +252,35 @@ const listEntreprisePertes = async (req, res) => {
 
 const updateEntreprisePerte = async (req, res) => {
   const { id } = req.params;
-  const { quantite, typePerte } = req.body;
+  const { quantite, typePerte, datePerte } = req.body;
   if (!quantite || !typePerte) return res.status(400).json({ message: 'quantite et typePerte requis' });
   if (!['avarie', 'dechet'].includes(typePerte)) return res.status(400).json({ message: 'typePerte invalide' });
   if (parseFloat(quantite) <= 0) return res.status(400).json({ message: 'quantite doit être > 0' });
   try {
+    // Fetch existing row to get ingredient_id, activite_id, date_perte
+    const existing = await pool.query(
+      `SELECT p.ingredient_id, p.activite_id, p.date_perte
+       FROM pertes p
+       JOIN activites a ON a.id = p.activite_id
+       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE p.id = $1 AND pe.client_id = $2`,
+      [id, req.user.id]
+    );
+    if (existing.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+    const { ingredient_id: ingredientId, activite_id: activiteId, date_perte } = existing.rows[0];
+    const effectiveDate = datePerte || (date_perte instanceof Date
+      ? date_perte.toISOString().slice(0, 10)
+      : String(date_perte).slice(0, 10));
+
+    const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, effectiveDate);
+
     const r = await pool.query(
-      `UPDATE pertes p SET quantite = $1, type_perte = $2
+      `UPDATE pertes p SET quantite = $1, type_perte = $2, prix_unitaire = $3
        FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-       WHERE p.id = $3 AND p.activite_id = a.id AND pe.client_id = $4
+       WHERE p.id = $4 AND p.activite_id = a.id AND pe.client_id = $5
        RETURNING p.id`,
-      [quantite, typePerte, id, req.user.id]
+      [quantite, typePerte, prixUnitaire, id, req.user.id]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     res.json({ message: 'Mise à jour effectuée' });
@@ -286,6 +333,8 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
     { header: 'Quantité', width: 11 },
     { header: 'Unité', width: 9 },
     { header: 'Type', width: 10 },
+    { header: 'Prix Unit.', width: 13 },
+    { header: 'Coût Total', width: 14 },
   ];
   sheet.columns = cols.map((c) => ({ width: c.width }));
 
@@ -315,8 +364,15 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
   let totalQty = 0;
   const selectedIds = new Set((filters.selectedIds || []).map(Number));
 
+  // Column indices (1-based)
+  const qtyColIdx   = isEntreprise ? 5 : 4;
+  const prixColIdx  = isEntreprise ? 8 : 7;
+  const coutColIdx  = isEntreprise ? 9 : 8;
+
   rows.forEach((r, i) => {
     const qty = parseFloat(r.quantite);
+    const prix = r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null;
+    const cout = (prix != null) ? qty * prix : null;
     totalQty += qty;
     const isSelected = selectedIds.size > 0 && selectedIds.has(Number(r.id));
     const isAvarie = r.type_perte === 'avarie';
@@ -329,6 +385,8 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
       qty,
       r.unite_nom,
       isAvarie ? 'Avarie' : 'Déchet',
+      prix ?? '',
+      cout ?? '',
     ];
     const dataRow = sheet.addRow(rowData);
 
@@ -340,20 +398,19 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
       cell.font = { ...bodyFont, bold: isSelected };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
       cell.border = border;
-      const colIdx = cols.findIndex((col) => col.header === (c === 1 ? 'Date' : cols[c - 1]?.header));
-      cell.alignment = { vertical: 'middle', horizontal: c === 5 ? 'right' : 'left' };
+      const isNumeric = [qtyColIdx, prixColIdx, coutColIdx].includes(c);
+      cell.alignment = { vertical: 'middle', horizontal: isNumeric ? 'right' : 'left' };
     }
-    const qtyCell = dataRow.getCell(isEntreprise ? 5 : 4);
-    qtyCell.numFmt = '#,##0.000';
-    qtyCell.alignment = { horizontal: 'right', vertical: 'middle' };
+    dataRow.getCell(qtyColIdx).numFmt = '#,##0.000';
+    if (prix != null) dataRow.getCell(prixColIdx).numFmt = '#,##0.000';
+    if (cout != null) dataRow.getCell(coutColIdx).numFmt = '#,##0.000';
     dataRow.height = 16;
   });
 
   // Total row
-  const totalColIdx = isEntreprise ? 5 : 4;
   const totalRowData = Array(cols.length).fill('');
   totalRowData[0] = 'TOTAL';
-  totalRowData[totalColIdx - 1] = totalQty;
+  totalRowData[qtyColIdx - 1] = totalQty;
   const totalRow = sheet.addRow(totalRowData);
   totalRow.eachCell({ includeEmpty: true }, (cell) => {
     cell.font = { name: 'Calibri', bold: true, size: 10 };
@@ -362,7 +419,7 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
     cell.alignment = { vertical: 'middle', horizontal: 'right' };
   });
   totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-  totalRow.getCell(totalColIdx).numFmt = '#,##0.000';
+  totalRow.getCell(qtyColIdx).numFmt = '#,##0.000';
   totalRow.height = 18;
 
   // Footer
@@ -402,7 +459,7 @@ const exportClientPertes = async (req, res) => {
     const result = await pool.query(
       `SELECT cp.id, cp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              cp.quantite, cp.type_perte, cp.date_perte, cp.created_at
+              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at
        FROM client_pertes cp
        JOIN ingredients i ON i.id = cp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
@@ -449,7 +506,7 @@ const exportEntreprisePertes = async (req, res) => {
       `SELECT p.id, p.activite_id, a.nom AS activite_nom,
               p.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              p.quantite, p.type_perte, p.date_perte, p.created_at
+              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at
        FROM pertes p
        JOIN activites a ON a.id = p.activite_id
        JOIN ingredients i ON i.id = p.ingredient_id
@@ -466,8 +523,58 @@ const exportEntreprisePertes = async (req, res) => {
   }
 };
 
+// ── Prix lookup endpoints ─────────────────────────────────────────────────────
+
+const getPrixClientPerte = async (req, res) => {
+  const { ingredientId, date } = req.query;
+  if (!ingredientId || !date) return res.status(400).json({ message: 'ingredientId et date requis' });
+  try {
+    const prixUnitaire = await getPrixPourPerte('stock_client_daily', 'client_id', req.user.id, ingredientId, date);
+    res.json({ prixUnitaire });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const getPrixEntreprisePerte = async (req, res) => {
+  const { activiteId, ingredientId, date } = req.query;
+  if (!activiteId || !ingredientId || !date) return res.status(400).json({ message: 'activiteId, ingredientId et date requis' });
+  try {
+    // Verify ownership
+    const check = await pool.query(
+      `SELECT a.id FROM activites a
+       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE a.id = $1 AND pe.client_id = $2`,
+      [activiteId, req.user.id]
+    );
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, date);
+    res.json({ prixUnitaire });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const getPrixLaboPerte = async (req, res) => {
+  const { laboId } = req.params;
+  const { ingredientId, date } = req.query;
+  if (!ingredientId || !date) return res.status(400).json({ message: 'ingredientId et date requis' });
+  try {
+    const prixUnitaire = await getPrixPourPerte('stock_labo_daily', 'labo_id', laboId, ingredientId, date);
+    res.json({ prixUnitaire });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   createPerte, listPertes,
   listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes,
+  getPrixClientPerte,
   listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes,
+  getPrixEntreprisePerte,
+  getPrixLaboPerte,
 };
