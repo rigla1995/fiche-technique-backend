@@ -240,9 +240,15 @@ const getActiviteInventaireStock = async (req, res) => {
       allDatesMap[r.ingredient_id] = (r.dates || []).map(isoDate).filter(Boolean);
     }
 
-    // PT products for this activite
+    // PT products for this activite — same logic as getStockEntreprise
     const ptRes = await pool.query(
-      `SELECT id as produit_id, nom FROM produits WHERE activite_id = $1 ORDER BY nom`,
+      `SELECT id as produit_id, nom FROM produits
+       WHERE is_stock_ingredient = TRUE
+       AND (
+         activite_id = $1
+         OR (franchise_group IS NOT NULL AND franchise_group = (SELECT a2.franchise_group FROM activites a2 WHERE a2.id = $1))
+       )
+       ORDER BY nom`,
       [activiteId]
     );
     const recentPTInvRes = await pool.query(
