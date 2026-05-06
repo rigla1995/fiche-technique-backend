@@ -369,6 +369,10 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
   sheet.addRow([]);
   const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — ${rows.length} perte(s)`]);
   footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
+  if (selectedIds.size > 0) {
+    const noteRow = sheet.addRow([`⚠ ${selectedIds.size} perte(s) en surbrillance = sélectionnées pour comparaison`]);
+    noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: 'C0392B' } };
+  }
 
   const dateTag = filters.dateDebut ? filters.dateDebut : new Date().toISOString().slice(0, 10);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -391,9 +395,8 @@ const exportClientPertes = async (req, res) => {
   if (ingredientId) { params.push(ingredientId); wheres.push(`cp.ingredient_id = $${params.length}`); }
   if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
 
-  // If specific IDs requested, filter to those
+  // selectedIds are used only for Excel highlighting, not for WHERE filtering
   const idList = selectedIds ? String(selectedIds).split(',').map(Number).filter(Boolean) : [];
-  if (idList.length > 0) { params.push(idList); wheres.push(`cp.id = ANY($${params.length})`); }
 
   try {
     const result = await pool.query(
@@ -438,8 +441,8 @@ const exportEntreprisePertes = async (req, res) => {
   if (ingredientId) { params.push(ingredientId); wheres.push(`p.ingredient_id = $${params.length}`); }
   if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
 
+  // selectedIds are used only for Excel highlighting, not for WHERE filtering
   const idList = selectedIds ? String(selectedIds).split(',').map(Number).filter(Boolean) : [];
-  if (idList.length > 0) { params.push(idList); wheres.push(`p.id = ANY($${params.length})`); }
 
   try {
     const result = await pool.query(
