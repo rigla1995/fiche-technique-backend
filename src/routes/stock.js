@@ -48,7 +48,13 @@ const {
   getActiviteInventaireStock, saveActiviteInventaire,
   getActiviteInventaireHistorique, exportActiviteInventaireExcel,
   updateInventaireEntry,
+  getClientInventaireStock, saveClientInventaire,
+  getClientInventaireHistorique, exportClientInventaireExcel,
 } = require('../controllers/inventaireController');
+router.get('/client/inventaire', authenticate, requireClient, getClientInventaireStock);
+router.post('/client/inventaire', authenticate, requireClient, saveClientInventaire);
+router.get('/client/inventaire/historique', authenticate, requireClient, getClientInventaireHistorique);
+router.get('/client/inventaire/historique/export-excel', authenticate, requireClient, exportClientInventaireExcel);
 router.get('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, getActiviteInventaireStock);
 router.post('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, saveActiviteInventaire);
 router.get('/entreprise/:activiteId/inventaire/historique', authenticate, requireEntreprise, getActiviteInventaireHistorique);
