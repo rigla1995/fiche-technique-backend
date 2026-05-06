@@ -172,6 +172,13 @@ const update = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Client introuvable' });
     }
+    // Sync abonnement compte_type so billing uses the correct tarif
+    if (compteType) {
+      await pool.query(
+        `UPDATE abonnements SET compte_type = $1, updated_at = NOW() WHERE client_id = $2`,
+        [compteType, id]
+      );
+    }
     res.json(mapClient(result.rows[0]));
   } catch (err) {
     if (err.code === '23505') {
