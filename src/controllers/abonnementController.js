@@ -16,9 +16,58 @@ const mapAbonnement = (row) => ({
   notes: row.notes,
   archiveDate: row.archive_date,
   suppressionCascadeDate: row.suppression_cascade_date,
+  hasActivePromo: row.has_active_promo ?? false,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
+
+const mapPromotion = (row) => ({
+  id: row.id,
+  abonnementId: row.abonnement_id,
+  type: row.type,
+  appliesTo: row.applies_to,
+  discountOnboarding: row.discount_onboarding,
+  discountMensualite: row.discount_mensualite,
+  fixedOnboarding: row.fixed_onboarding,
+  fixedMensualite: row.fixed_mensualite,
+  dateDebut: row.date_debut,
+  monthsDuration: row.months_duration,
+  dateFin: row.date_fin,
+  notes: row.notes,
+  createdAt: row.created_at,
+  isActive: row.is_active ?? null,
+});
+
+// Returns the active promo for an abonnement on a given date (ISO string)
+const getActivePromo = async (abonnementId, dateStr) => {
+  const result = await pool.query(
+    `SELECT * FROM promotions
+     WHERE abonnement_id = $1
+       AND date_debut <= $2::date
+       AND (date_fin IS NULL OR date_fin >= $2::date)
+     ORDER BY created_at DESC LIMIT 1`,
+    [abonnementId, dateStr]
+  );
+  return result.rows[0] || null;
+};
+
+const applyPromoMensualite = (baseAmount, promo) => {
+  if (!promo || !['mensualite', 'les_deux'].includes(promo.applies_to)) return baseAmount;
+  if (promo.type === 'free_months') return 0;
+  if (promo.type === 'percent_off' && promo.discount_mensualite != null)
+    return Math.round(baseAmount * (1 - promo.discount_mensualite / 100) * 100) / 100;
+  if (promo.type === 'fixed_price' && promo.fixed_mensualite != null) return promo.fixed_mensualite;
+  return baseAmount;
+};
+
+const applyPromoOnboarding = (baseAmount, promo) => {
+  if (!promo || !['onboarding', 'les_deux'].includes(promo.applies_to)) return baseAmount;
+  if (promo.type === 'free_months') return 0;
+  if (promo.type === 'percent_off' && promo.discount_onboarding != null)
+    return Math.round(baseAmount * (1 - promo.discount_onboarding / 100) * 100) / 100;
+  if (promo.type === 'fixed_price' && promo.fixed_onboarding != null) return promo.fixed_onboarding;
+  return baseAmount;
+};
 
 const mapPaiement = (row) => ({
   id: row.id,
@@ -70,7 +119,13 @@ const updateTarif = async (req, res) => {
 const listAbonnements = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT a.*, u.nom AS client_nom, u.email AS client_email
+      SELECT a.*, u.nom AS client_nom, u.email AS client_email,
+        EXISTS(
+          SELECT 1 FROM promotions pr
+          WHERE pr.abonnement_id = a.id
+            AND pr.date_debut <= CURRENT_DATE
+            AND (pr.date_fin IS NULL OR pr.date_fin >= CURRENT_DATE)
+        ) AS has_active_promo
       FROM abonnements a
       LEFT JOIN utilisateurs u ON u.id = a.client_id
       ORDER BY a.created_at DESC
@@ -86,7 +141,13 @@ const getAbonnement = async (req, res) => {
   const { clientId } = req.params;
   try {
     const result = await pool.query(`
-      SELECT a.*, u.nom AS client_nom, u.email AS client_email
+      SELECT a.*, u.nom AS client_nom, u.email AS client_email,
+        EXISTS(
+          SELECT 1 FROM promotions pr
+          WHERE pr.abonnement_id = a.id
+            AND pr.date_debut <= CURRENT_DATE
+            AND (pr.date_fin IS NULL OR pr.date_fin >= CURRENT_DATE)
+        ) AS has_active_promo
       FROM abonnements a
       LEFT JOIN utilisateurs u ON u.id = a.client_id
       WHERE a.client_id = $1
@@ -100,6 +161,13 @@ const getAbonnement = async (req, res) => {
       [abo.id]
     );
     abo.paiements = paiements.rows.map(mapPaiement);
+
+    const promos = await pool.query(
+      `SELECT *, (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active
+       FROM promotions WHERE abonnement_id = $1 ORDER BY date_debut DESC`,
+      [abo.id]
+    );
+    abo.promotions = promos.rows.map(mapPromotion);
 
     res.json(abo);
   } catch (err) {
@@ -218,14 +286,24 @@ const upsertPaiement = async (req, res) => {
   if (!allowed.includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
 
   try {
-    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
+    const aboRes = await pool.query('SELECT id, compte_type FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
-    const aboId = aboRes.rows[0].id;
+    const { id: aboId, compte_type: compteType } = aboRes.rows[0];
 
     // Normalize mois to first of month
     const moisDate = new Date(mois);
     moisDate.setDate(1);
     const moisStr = moisDate.toISOString().slice(0, 10);
+
+    // If no montant supplied, compute from tarif + promo
+    let finalMontant = montant != null ? Number(montant) : null;
+    if (finalMontant === null) {
+      const tarifKey = compteType === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel';
+      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifKey]);
+      const base = tarifRes.rows[0]?.valeur_dt || 0;
+      const promo = await getActivePromo(aboId, moisStr);
+      finalMontant = applyPromoMensualite(base, promo);
+    }
 
     const result = await pool.query(
       `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut, saisie_par, date_saisie, notes)
@@ -234,9 +312,92 @@ const upsertPaiement = async (req, res) => {
        SET statut = $4, montant_dt = COALESCE($3, paiements.montant_dt),
            saisie_par = $5, date_saisie = NOW(), notes = COALESCE($6, paiements.notes)
        RETURNING *`,
-      [aboId, moisStr, montant || null, statut, req.user.id, notes || null]
+      [aboId, moisStr, finalMontant, statut, req.user.id, notes || null]
     );
     res.json(mapPaiement(result.rows[0]));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// ── Promotions ────────────────────────────────────────────────────────────────
+
+const listPromotions = async (req, res) => {
+  const { clientId } = req.params;
+  try {
+    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
+    if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
+    const result = await pool.query(
+      `SELECT *, (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active
+       FROM promotions WHERE abonnement_id = $1 ORDER BY date_debut DESC`,
+      [aboRes.rows[0].id]
+    );
+    res.json(result.rows.map(mapPromotion));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const createPromotion = async (req, res) => {
+  const { clientId } = req.params;
+  const {
+    type, appliesTo,
+    discountOnboarding, discountMensualite,
+    fixedOnboarding, fixedMensualite,
+    dateDebut, monthsDuration, notes,
+  } = req.body;
+
+  const validTypes = ['percent_off', 'free_months', 'fixed_price'];
+  const validApplies = ['onboarding', 'mensualite', 'les_deux'];
+  if (!validTypes.includes(type)) return res.status(400).json({ message: 'Type invalide' });
+  if (!validApplies.includes(appliesTo)) return res.status(400).json({ message: 'applies_to invalide' });
+  if (!dateDebut) return res.status(400).json({ message: 'date_debut requis' });
+
+  try {
+    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
+    if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
+    const aboId = aboRes.rows[0].id;
+
+    // Compute date_fin from dateDebut + monthsDuration
+    let dateFin = null;
+    if (monthsDuration && Number(monthsDuration) > 0) {
+      const d = new Date(dateDebut);
+      d.setMonth(d.getMonth() + Number(monthsDuration));
+      d.setDate(d.getDate() - 1); // last day of promotion
+      dateFin = d.toISOString().slice(0, 10);
+    }
+
+    const result = await pool.query(
+      `INSERT INTO promotions
+         (abonnement_id, type, applies_to,
+          discount_onboarding, discount_mensualite,
+          fixed_onboarding, fixed_mensualite,
+          date_debut, months_duration, date_fin, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       RETURNING *, (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active`,
+      [
+        aboId, type, appliesTo,
+        discountOnboarding || null, discountMensualite || null,
+        fixedOnboarding || null, fixedMensualite || null,
+        dateDebut, monthsDuration || null, dateFin,
+        notes || null, req.user.id,
+      ]
+    );
+    res.status(201).json(mapPromotion(result.rows[0]));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const deletePromotion = async (req, res) => {
+  const { promoId } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM promotions WHERE id = $1 RETURNING id', [promoId]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Promotion introuvable' });
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -319,18 +480,24 @@ const enforcerStatuts = async () => {
       }
     }
 
-    // Auto-create next month payment record if missing
+    // Auto-create next month payment record if missing (apply promo if active)
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-    await pool.query(`
-      INSERT INTO paiements (abonnement_id, mois, montant_dt, statut)
-      SELECT a.id, $1,
-             (SELECT valeur_dt FROM tarifs_config WHERE cle = CASE a.compte_type WHEN 'entreprise' THEN 'entreprise_mensuel' ELSE 'indep_mensuel' END),
-             'en_attente'
+    const missingAbo = await pool.query(`
+      SELECT a.id, a.compte_type,
+             (SELECT valeur_dt FROM tarifs_config WHERE cle = CASE a.compte_type WHEN 'entreprise' THEN 'entreprise_mensuel' ELSE 'indep_mensuel' END) AS base_montant
       FROM abonnements a
       WHERE a.mode_compte NOT IN ('archive')
         AND NOT EXISTS (SELECT 1 FROM paiements p WHERE p.abonnement_id = a.id AND p.mois = $1)
     `, [thisMonth]);
+    for (const abo of missingAbo.rows) {
+      const promo = await getActivePromo(abo.id, thisMonth);
+      const montant = applyPromoMensualite(parseFloat(abo.base_montant || 0), promo);
+      await pool.query(
+        `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut) VALUES ($1, $2, $3, 'en_attente')`,
+        [abo.id, thisMonth, montant]
+      );
+    }
 
   } catch (err) {
     console.error('Cron enforcerStatuts error:', err.message);
@@ -342,5 +509,6 @@ module.exports = {
   listAbonnements, getAbonnement, createAbonnement,
   updateOnboarding, updateProlongation, updateNotes, updateMode,
   upsertPaiement,
+  listPromotions, createPromotion, deletePromotion,
   enforcerStatuts,
 };

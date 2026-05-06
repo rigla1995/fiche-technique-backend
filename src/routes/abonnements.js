@@ -18,6 +18,11 @@ router.put('/client/:clientId/mode', authenticate, requireSuperAdmin, ab.updateM
 router.put('/client/:clientId/notes', authenticate, requireSuperAdmin, ab.updateNotes);
 router.post('/client/:clientId/paiements', authenticate, requireSuperAdmin, ab.upsertPaiement);
 
+// ── Promotions (admin) ───────────────────────────────────────────────────────
+router.get('/client/:clientId/promotions', authenticate, requireSuperAdmin, ab.listPromotions);
+router.post('/client/:clientId/promotions', authenticate, requireSuperAdmin, ab.createPromotion);
+router.delete('/promotions/:promoId', authenticate, requireSuperAdmin, ab.deletePromotion);
+
 // ── Mon abonnement (client self) ─────────────────────────────────────────────
 router.get('/mon-abonnement', authenticate, requireClient, async (req, res) => {
   req.params.clientId = String(req.user.id);
