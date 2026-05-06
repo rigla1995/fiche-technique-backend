@@ -65,24 +65,149 @@ const getStockClient = async (req, res) => {
 
     const ptRes = await pool.query(`
       SELECT p.id as produit_id, p.nom, p.seuil_min_pt,
-        COALESCE(SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
         (SELECT spt2.date_appro FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.client_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_date_appro,
-        (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.client_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule,
-        COALESCE(
-          AVG(spt.prix_calcule) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE))
-          * SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE))
-        , 0) as cout_total
+        (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.client_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule
       FROM produits p
-      LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.client_id = $1
       WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE
-      GROUP BY p.id, p.nom, p.seuil_min_pt
       ORDER BY p.nom
     `, [req.user.id]);
 
+    // ── Ingredient baseline: last current-year inv + post-inv appros - pertes ──
+    const invBaselineCliRes = await pool.query(
+      `WITH last_inv AS (
+         SELECT DISTINCT ON (ingredient_id)
+           ingredient_id, quantite_reelle, date_inventaire
+         FROM inventaires
+         WHERE client_id = $1 AND ingredient_id IS NOT NULL
+           AND date_trunc('year', date_inventaire) = date_trunc('year', CURRENT_DATE)
+         ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
+       ),
+       post_appro AS (
+         SELECT scd.ingredient_id, SUM(scd.quantite) as qty
+         FROM stock_client_daily scd
+         JOIN last_inv li ON li.ingredient_id = scd.ingredient_id AND scd.date_appro > li.date_inventaire
+         WHERE scd.client_id = $1
+         GROUP BY scd.ingredient_id
+       ),
+       post_pertes AS (
+         SELECT cp.ingredient_id, SUM(cp.quantite) as qty
+         FROM client_pertes cp
+         JOIN last_inv li ON li.ingredient_id = cp.ingredient_id AND cp.date_perte > li.date_inventaire
+         WHERE cp.client_id = $1 AND cp.ingredient_id IS NOT NULL
+         GROUP BY cp.ingredient_id
+       ),
+       year_appro AS (
+         SELECT ingredient_id, SUM(quantite) as qty
+         FROM stock_client_daily
+         WHERE client_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         GROUP BY ingredient_id
+       ),
+       year_pertes AS (
+         SELECT ingredient_id, SUM(quantite) as qty
+         FROM client_pertes
+         WHERE client_id = $1 AND ingredient_id IS NOT NULL
+           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
+         GROUP BY ingredient_id
+       )
+       SELECT cis.ingredient_id,
+              li.quantite_reelle        as inv_qty,
+              COALESCE(pa.qty, 0)       as post_appro_qty,
+              COALESCE(pp.qty, 0)       as post_pertes_qty,
+              COALESCE(ya.qty, 0)       as year_appro_qty,
+              COALESCE(yp.qty, 0)       as year_pertes_qty
+       FROM client_ingredient_selections cis
+       LEFT JOIN last_inv li   ON li.ingredient_id = cis.ingredient_id
+       LEFT JOIN post_appro pa ON pa.ingredient_id = cis.ingredient_id
+       LEFT JOIN post_pertes pp ON pp.ingredient_id = cis.ingredient_id
+       LEFT JOIN year_appro ya ON ya.ingredient_id = cis.ingredient_id
+       LEFT JOIN year_pertes yp ON yp.ingredient_id = cis.ingredient_id
+       WHERE cis.client_id = $1`,
+      [req.user.id]
+    );
+    const invBaselineCliMap = {};
+    for (const r of invBaselineCliRes.rows) {
+      invBaselineCliMap[r.ingredient_id] = {
+        hasInv: r.inv_qty !== null,
+        invQty: r.inv_qty !== null ? parseFloat(r.inv_qty) : 0,
+        postApproQty: parseFloat(r.post_appro_qty) || 0,
+        postPertesQty: parseFloat(r.post_pertes_qty) || 0,
+        yearApproQty: parseFloat(r.year_appro_qty) || 0,
+        yearPertesQty: parseFloat(r.year_pertes_qty) || 0,
+      };
+    }
+
+    // ── PT baseline for client ────────────────────────────────────────────────
+    const ptBaselineCliRes = await pool.query(
+      `WITH last_inv AS (
+         SELECT DISTINCT ON (produit_id)
+           produit_id, quantite_reelle, date_inventaire
+         FROM inventaires
+         WHERE client_id = $1 AND produit_id IS NOT NULL
+           AND date_trunc('year', date_inventaire) = date_trunc('year', CURRENT_DATE)
+         ORDER BY produit_id, date_inventaire DESC, created_at DESC
+       ),
+       post_appro AS (
+         SELECT spt.produit_id, SUM(spt.quantite) as qty
+         FROM stock_produits_transformes spt
+         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro > li.date_inventaire
+         WHERE spt.client_id = $1
+         GROUP BY spt.produit_id
+       ),
+       post_pertes AS (
+         SELECT cp.produit_id, SUM(cp.quantite) as qty
+         FROM client_pertes cp
+         JOIN last_inv li ON li.produit_id = cp.produit_id AND cp.date_perte > li.date_inventaire
+         WHERE cp.client_id = $1 AND cp.produit_id IS NOT NULL
+         GROUP BY cp.produit_id
+       ),
+       year_appro AS (
+         SELECT produit_id, SUM(quantite) as qty
+         FROM stock_produits_transformes
+         WHERE client_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         GROUP BY produit_id
+       ),
+       year_pertes AS (
+         SELECT produit_id, SUM(quantite) as qty
+         FROM client_pertes
+         WHERE client_id = $1 AND produit_id IS NOT NULL
+           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
+         GROUP BY produit_id
+       )
+       SELECT p.id as produit_id,
+              li.quantite_reelle        as inv_qty,
+              COALESCE(pa.qty, 0)       as post_appro_qty,
+              COALESCE(pp.qty, 0)       as post_pertes_qty,
+              COALESCE(ya.qty, 0)       as year_appro_qty,
+              COALESCE(yp.qty, 0)       as year_pertes_qty
+       FROM produits p
+       LEFT JOIN last_inv li   ON li.produit_id = p.id
+       LEFT JOIN post_appro pa ON pa.produit_id = p.id
+       LEFT JOIN post_pertes pp ON pp.produit_id = p.id
+       LEFT JOIN year_appro ya ON ya.produit_id = p.id
+       LEFT JOIN year_pertes yp ON yp.produit_id = p.id
+       WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE`,
+      [req.user.id]
+    );
+    const ptBaselineCliMap = {};
+    for (const r of ptBaselineCliRes.rows) {
+      ptBaselineCliMap[r.produit_id] = {
+        hasInv: r.inv_qty !== null,
+        invQty: r.inv_qty !== null ? parseFloat(r.inv_qty) : 0,
+        postApproQty: parseFloat(r.post_appro_qty) || 0,
+        postPertesQty: parseFloat(r.post_pertes_qty) || 0,
+        yearApproQty: parseFloat(r.year_appro_qty) || 0,
+        yearPertesQty: parseFloat(r.year_pertes_qty) || 0,
+      };
+    }
+
     const ptRows = ptRes.rows.map((r) => {
       const pInfo = ptPrixMap[r.produit_id] || { prixDtu: 0, prixPartiel: false };
+      const pb = ptBaselineCliMap[r.produit_id] || {};
+      const quantite = pb.hasInv
+        ? pb.invQty + pb.postApproQty - pb.postPertesQty
+        : pb.yearApproQty - pb.yearPertesQty;
       return {
-        ingredientId: -(r.produit_id),  // negative ID = PT product
+        ingredientId: -(r.produit_id),
         produitId: r.produit_id,
         isPT: true,
         nom: r.nom,
@@ -90,30 +215,36 @@ const getStockClient = async (req, res) => {
         categorie: 'Produits Transformés',
         prixUnitaire: pInfo.prixDtu,
         prixPartiel: pInfo.prixPartiel,
-        quantite: parseFloat(r.total_quantite),
-        totalQuantite: parseFloat(r.total_quantite),
+        quantite,
+        totalQuantite: quantite,
         dateAppro: isoDate(r.last_date_appro),
         seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
-        coutTotal: parseFloat(r.total_quantite) > 0 ? pInfo.prixDtu * parseFloat(r.total_quantite) : 0,
+        coutTotal: quantite > 0 ? pInfo.prixDtu * quantite : 0,
         lastFournisseurId: null,
         lastRefFacture: null,
       };
     });
 
-    res.json([...result.rows.map((row) => ({
-      ingredientId: row.ingredient_id,
-      nom: row.nom,
-      unite: row.unite_nom,
-      categorie: row.categorie,
-      prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
-      quantite: parseFloat(row.total_quantite),
-      totalQuantite: parseFloat(row.total_quantite),
-      coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : null,
-      dateAppro: isoDate(row.date_appro),
-      seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
-      lastFournisseurId: row.last_fournisseur_id ?? null,
-      lastRefFacture: row.last_ref_facture ?? null,
-    })), ...ptRows]);
+    res.json([...result.rows.map((row) => {
+      const b = invBaselineCliMap[row.ingredient_id] || {};
+      const quantite = b.hasInv
+        ? b.invQty + b.postApproQty - b.postPertesQty
+        : b.yearApproQty - b.yearPertesQty;
+      return {
+        ingredientId: row.ingredient_id,
+        nom: row.nom,
+        unite: row.unite_nom,
+        categorie: row.categorie,
+        prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
+        quantite,
+        totalQuantite: quantite,
+        coutTotal: row.cout_total !== null ? parseFloat(row.cout_total) : null,
+        dateAppro: isoDate(row.date_appro),
+        seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
+        lastFournisseurId: row.last_fournisseur_id ?? null,
+        lastRefFacture: row.last_ref_facture ?? null,
+      };
+    }), ...ptRows]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -213,7 +344,7 @@ const getStockEntreprise = async (req, res) => {
       [activiteId]
     );
 
-    // Fetch PT products for this activite
+    // Fetch PT products for this activite (prix only)
     const ptPrixRes = await pool.query(`
       SELECT pi.produit_id,
         BOOL_OR(lp.prix_unitaire IS NULL AND pi.portion > 0) as prix_partiel,
@@ -241,52 +372,25 @@ const getStockEntreprise = async (req, res) => {
 
     const ptRes = await pool.query(`
       SELECT p.id as produit_id, p.nom, p.seuil_min_pt,
-        COALESCE(SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
         (SELECT spt2.date_appro FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_date_appro,
-        (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule,
-        COALESCE(
-          AVG(spt.prix_calcule) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE))
-          * SUM(spt.quantite) FILTER (WHERE date_trunc('month', spt.date_appro) = date_trunc('month', CURRENT_DATE))
-        , 0) as cout_total
+        (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule
       FROM produits p
-      LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.activite_id = $1
       WHERE p.is_stock_ingredient = TRUE
       AND (
         p.activite_id = $1
         OR (p.franchise_group IS NOT NULL AND p.franchise_group = (SELECT a2.franchise_group FROM activites a2 WHERE a2.id = $1))
       )
-      GROUP BY p.id, p.nom, p.seuil_min_pt
       ORDER BY p.nom
     `, [activiteId]);
 
-    const ptRows = ptRes.rows.map((r) => {
-      const pInfo = ptPrixMap[r.produit_id] || { prixDtu: 0, prixPartiel: false };
-      return {
-        ingredientId: -(r.produit_id),  // negative ID = PT product
-        produitId: r.produit_id,
-        isPT: true,
-        nom: r.nom,
-        unite: 'unité',
-        categorie: 'Produits Transformés',
-        prixUnitaire: pInfo.prixDtu,
-        prixPartiel: pInfo.prixPartiel,
-        quantite: parseFloat(r.total_quantite),
-        totalQuantite: parseFloat(r.total_quantite),
-        dateAppro: isoDate(r.last_date_appro),
-        seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
-        coutTotal: parseFloat(r.total_quantite) > 0 ? pInfo.prixDtu * parseFloat(r.total_quantite) : 0,
-        lastFournisseurId: null,
-        lastRefFacture: null,
-      };
-    });
-
-    // Apply inventaire baseline for activite stock
+    // ── Ingredient baseline: last current-year inv + post-inv flows + pertes ──
     const invBaselineRes = await pool.query(
       `WITH last_inv AS (
          SELECT DISTINCT ON (ingredient_id)
            ingredient_id, quantite_reelle, date_inventaire
          FROM inventaires
          WHERE activite_id = $1 AND ingredient_id IS NOT NULL
+           AND date_trunc('year', date_inventaire) = date_trunc('year', CURRENT_DATE)
          ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
        ),
        post_appro AS (
@@ -295,27 +399,152 @@ const getStockEntreprise = async (req, res) => {
          JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro > li.date_inventaire
          WHERE sed.activite_id = $1
          GROUP BY sed.ingredient_id
+       ),
+       post_pertes AS (
+         SELECT p.ingredient_id, SUM(p.quantite) as qty
+         FROM pertes p
+         JOIN last_inv li ON li.ingredient_id = p.ingredient_id AND p.date_perte > li.date_inventaire
+         WHERE p.activite_id = $1 AND p.ingredient_id IS NOT NULL
+         GROUP BY p.ingredient_id
+       ),
+       year_appro AS (
+         SELECT ingredient_id, SUM(quantite) as qty
+         FROM stock_entreprise_daily
+         WHERE activite_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         GROUP BY ingredient_id
+       ),
+       year_pertes AS (
+         SELECT ingredient_id, SUM(quantite) as qty
+         FROM pertes
+         WHERE activite_id = $1 AND ingredient_id IS NOT NULL
+           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
+         GROUP BY ingredient_id
        )
-       SELECT li.ingredient_id,
-              li.quantite_reelle as inv_qty,
-              COALESCE(pa.qty, 0) as post_appro_qty
-       FROM last_inv li
-       LEFT JOIN post_appro pa ON pa.ingredient_id = li.ingredient_id`,
+       SELECT ais.ingredient_id,
+              li.quantite_reelle        as inv_qty,
+              COALESCE(pa.qty, 0)       as post_appro_qty,
+              COALESCE(pp.qty, 0)       as post_pertes_qty,
+              COALESCE(ya.qty, 0)       as year_appro_qty,
+              COALESCE(yp.qty, 0)       as year_pertes_qty
+       FROM activite_ingredient_selections ais
+       LEFT JOIN last_inv li   ON li.ingredient_id = ais.ingredient_id
+       LEFT JOIN post_appro pa ON pa.ingredient_id = ais.ingredient_id
+       LEFT JOIN post_pertes pp ON pp.ingredient_id = ais.ingredient_id
+       LEFT JOIN year_appro ya ON ya.ingredient_id = ais.ingredient_id
+       LEFT JOIN year_pertes yp ON yp.ingredient_id = ais.ingredient_id
+       WHERE ais.activite_id = $1`,
       [activiteId]
     );
     const invBaselineMap = {};
     for (const r of invBaselineRes.rows) {
       invBaselineMap[r.ingredient_id] = {
-        invQty: parseFloat(r.inv_qty),
-        postApproQty: parseFloat(r.post_appro_qty),
+        hasInv: r.inv_qty !== null,
+        invQty: r.inv_qty !== null ? parseFloat(r.inv_qty) : 0,
+        postApproQty: parseFloat(r.post_appro_qty) || 0,
+        postPertesQty: parseFloat(r.post_pertes_qty) || 0,
+        yearApproQty: parseFloat(r.year_appro_qty) || 0,
+        yearPertesQty: parseFloat(r.year_pertes_qty) || 0,
       };
     }
 
+    // ── PT baseline: last current-year inv + post-inv appros - pertes ─────────
+    const ptBaselineRes = await pool.query(
+      `WITH last_inv AS (
+         SELECT DISTINCT ON (produit_id)
+           produit_id, quantite_reelle, date_inventaire
+         FROM inventaires
+         WHERE activite_id = $1 AND produit_id IS NOT NULL
+           AND date_trunc('year', date_inventaire) = date_trunc('year', CURRENT_DATE)
+         ORDER BY produit_id, date_inventaire DESC, created_at DESC
+       ),
+       post_appro AS (
+         SELECT spt.produit_id, SUM(spt.quantite) as qty
+         FROM stock_produits_transformes spt
+         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro > li.date_inventaire
+         WHERE spt.activite_id = $1
+         GROUP BY spt.produit_id
+       ),
+       post_pertes AS (
+         SELECT p.produit_id, SUM(p.quantite) as qty
+         FROM pertes p
+         JOIN last_inv li ON li.produit_id = p.produit_id AND p.date_perte > li.date_inventaire
+         WHERE p.activite_id = $1 AND p.produit_id IS NOT NULL
+         GROUP BY p.produit_id
+       ),
+       year_appro AS (
+         SELECT produit_id, SUM(quantite) as qty
+         FROM stock_produits_transformes
+         WHERE activite_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         GROUP BY produit_id
+       ),
+       year_pertes AS (
+         SELECT produit_id, SUM(quantite) as qty
+         FROM pertes
+         WHERE activite_id = $1 AND produit_id IS NOT NULL
+           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
+         GROUP BY produit_id
+       ),
+       pt_list AS (
+         SELECT id as produit_id FROM produits
+         WHERE is_stock_ingredient = TRUE
+           AND (activite_id = $1 OR (franchise_group IS NOT NULL AND franchise_group = (SELECT a2.franchise_group FROM activites a2 WHERE a2.id = $1)))
+       )
+       SELECT pl.produit_id,
+              li.quantite_reelle        as inv_qty,
+              COALESCE(pa.qty, 0)       as post_appro_qty,
+              COALESCE(pp.qty, 0)       as post_pertes_qty,
+              COALESCE(ya.qty, 0)       as year_appro_qty,
+              COALESCE(yp.qty, 0)       as year_pertes_qty
+       FROM pt_list pl
+       LEFT JOIN last_inv li   ON li.produit_id = pl.produit_id
+       LEFT JOIN post_appro pa ON pa.produit_id = pl.produit_id
+       LEFT JOIN post_pertes pp ON pp.produit_id = pl.produit_id
+       LEFT JOIN year_appro ya ON ya.produit_id = pl.produit_id
+       LEFT JOIN year_pertes yp ON yp.produit_id = pl.produit_id`,
+      [activiteId]
+    );
+    const ptBaselineMap = {};
+    for (const r of ptBaselineRes.rows) {
+      ptBaselineMap[r.produit_id] = {
+        hasInv: r.inv_qty !== null,
+        invQty: r.inv_qty !== null ? parseFloat(r.inv_qty) : 0,
+        postApproQty: parseFloat(r.post_appro_qty) || 0,
+        postPertesQty: parseFloat(r.post_pertes_qty) || 0,
+        yearApproQty: parseFloat(r.year_appro_qty) || 0,
+        yearPertesQty: parseFloat(r.year_pertes_qty) || 0,
+      };
+    }
+
+    const ptRows = ptRes.rows.map((r) => {
+      const pInfo = ptPrixMap[r.produit_id] || { prixDtu: 0, prixPartiel: false };
+      const pb = ptBaselineMap[r.produit_id] || {};
+      const quantite = pb.hasInv
+        ? pb.invQty + pb.postApproQty - pb.postPertesQty
+        : pb.yearApproQty - pb.yearPertesQty;
+      return {
+        ingredientId: -(r.produit_id),
+        produitId: r.produit_id,
+        isPT: true,
+        nom: r.nom,
+        unite: 'unité',
+        categorie: 'Produits Transformés',
+        prixUnitaire: pInfo.prixDtu,
+        prixPartiel: pInfo.prixPartiel,
+        quantite,
+        totalQuantite: quantite,
+        dateAppro: isoDate(r.last_date_appro),
+        seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
+        coutTotal: quantite > 0 ? pInfo.prixDtu * quantite : 0,
+        lastFournisseurId: null,
+        lastRefFacture: null,
+      };
+    });
+
     res.json([...result.rows.map((row) => {
-      const inv = invBaselineMap[row.ingredient_id];
-      const quantite = inv
-        ? inv.invQty + inv.postApproQty
-        : parseFloat(row.total_quantite);
+      const b = invBaselineMap[row.ingredient_id] || {};
+      const quantite = b.hasInv
+        ? b.invQty + b.postApproQty - b.postPertesQty
+        : b.yearApproQty - b.yearPertesQty;
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
