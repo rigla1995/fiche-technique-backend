@@ -385,7 +385,24 @@ const createPromotion = async (req, res) => {
         notes || null, req.user.id,
       ]
     );
-    res.status(201).json(mapPromotion(result.rows[0]));
+    const promo = result.rows[0];
+
+    // Update existing en_attente paiements within the promo's date range
+    if (['mensualite', 'les_deux'].includes(appliesTo)) {
+      const aboTypeRes = await pool.query('SELECT compte_type FROM abonnements WHERE id = $1', [aboId]);
+      const compteType = aboTypeRes.rows[0]?.compte_type;
+      const tarifKey = compteType === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel';
+      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifKey]);
+      const base = parseFloat(tarifRes.rows[0]?.valeur_dt || 0);
+      const newMontant = applyPromoMensualite(base, promo);
+
+      const params = [aboId, dateDebut, newMontant];
+      let sql = `UPDATE paiements SET montant_dt = $3 WHERE abonnement_id = $1 AND statut = 'en_attente' AND mois >= $2::date`;
+      if (dateFin) { sql += ` AND mois <= $4::date`; params.push(dateFin); }
+      await pool.query(sql, params);
+    }
+
+    res.status(201).json(mapPromotion(promo));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

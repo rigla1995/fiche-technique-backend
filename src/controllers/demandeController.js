@@ -178,10 +178,12 @@ const traiter = async (req, res) => {
         );
       }
 
-      // 6. Update abonnement compte_type
+      // 6. Update abonnement compte_type + montant_onboarding to entreprise tarif
+      const entOnboardingRes = await client.query(`SELECT valeur_dt FROM tarifs_config WHERE cle = 'entreprise_onboarding'`);
+      const entrepriseOnboarding = entOnboardingRes.rows[0]?.valeur_dt ?? null;
       await client.query(
-        `UPDATE abonnements SET compte_type = 'entreprise' WHERE client_id = $1`,
-        [demandeur_id]
+        `UPDATE abonnements SET compte_type = 'entreprise', montant_onboarding = COALESCE($2, montant_onboarding) WHERE client_id = $1`,
+        [demandeur_id, entrepriseOnboarding]
       );
 
       // 7. Set user to entreprise + trigger upgrade wizard
