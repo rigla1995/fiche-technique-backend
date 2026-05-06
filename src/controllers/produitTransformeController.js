@@ -287,13 +287,71 @@ const getStockPTHistory = async (req, res) => {
   }
 };
 
+// ─── getPTRecipe ──────────────────────────────────────────────────────────────
+// GET /api/stock/pt/:produitId/recipe?activiteId=X
+const getPTRecipe = async (req, res) => {
+  const userId = req.user.id;
+  const produitId = parseInt(req.params.produitId);
+  const actId = req.query.activiteId ? parseInt(req.query.activiteId) : null;
+
+  try {
+    let rows;
+    if (actId) {
+      const r = await pool.query(
+        `SELECT pi.ingredient_id, pi.portion AS portion_standard,
+                i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
+                (SELECT prix_unitaire FROM stock_entreprise_daily
+                 WHERE ingredient_id = pi.ingredient_id AND activite_id = $2 AND quantite > 0
+                 ORDER BY date_appro DESC LIMIT 1) AS last_prix
+         FROM produit_ingredients pi
+         JOIN ingredients i ON i.id = pi.ingredient_id
+         JOIN unites u ON u.id = i.unite_id
+         LEFT JOIN categories c ON c.id = i.categorie_id
+         WHERE pi.produit_id = $1
+         ORDER BY COALESCE(c.nom,''), i.nom`,
+        [produitId, actId]
+      );
+      rows = r.rows;
+    } else {
+      const r = await pool.query(
+        `SELECT pi.ingredient_id, pi.portion AS portion_standard,
+                i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
+                (SELECT prix_unitaire FROM stock_client_daily
+                 WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
+                 ORDER BY date_appro DESC LIMIT 1) AS last_prix
+         FROM produit_ingredients pi
+         JOIN ingredients i ON i.id = pi.ingredient_id
+         JOIN unites u ON u.id = i.unite_id
+         LEFT JOIN categories c ON c.id = i.categorie_id
+         WHERE pi.produit_id = $1
+         ORDER BY COALESCE(c.nom,''), i.nom`,
+        [produitId, userId]
+      );
+      rows = r.rows;
+    }
+
+    res.json(rows.map((r) => ({
+      ingredientId: r.ingredient_id,
+      nom: r.nom,
+      unite: r.unite,
+      categorie: r.categorie,
+      categorieId: r.categorie_id,
+      portionStandard: parseFloat(r.portion_standard),
+      lastPrix: r.last_prix != null ? parseFloat(r.last_prix) : null,
+    })));
+  } catch (err) {
+    console.error('[getPTRecipe]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // ─── saveStockPT ──────────────────────────────────────────────────────────────
 // PUT /api/stock/pt/:produitId
-// Body: { quantite, dateAppro, activiteId? }
+// Body: { quantite, dateAppro, activiteId?, customPortions? }
 const saveStockPT = async (req, res) => {
   const userId = req.user.id;
   const produitId = parseInt(req.params.produitId);
-  const { quantite, dateAppro, activiteId } = req.body;
+  const { quantite, dateAppro, activiteId, customPortions } = req.body;
 
   if (!quantite || !dateAppro) {
     return res.status(400).json({ message: 'quantite et dateAppro sont requis' });
@@ -355,31 +413,44 @@ const saveStockPT = async (req, res) => {
       ingRows = ingRes.rows;
     }
 
-    let prixCalcule = 0;
-    let prixPartiel = false;
-    for (const ing of ingRows) {
-      if (ing.last_prix === null) {
-        prixPartiel = true;
-      } else {
-        prixCalcule += parseFloat(ing.portion) * parseFloat(ing.last_prix);
+    // Build custom portions map: ingredientId → portionCustom
+    const customPortionsMap = {};
+    if (Array.isArray(customPortions)) {
+      for (const cp of customPortions) {
+        customPortionsMap[cp.ingredientId] = parseFloat(cp.portionCustom);
       }
     }
 
-    // 3. UPSERT into stock_produits_transformes
+    let prixCalcule = 0;
+    let prixPartiel = false;
+    for (const ing of ingRows) {
+      const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
+      if (ing.last_prix === null) {
+        prixPartiel = true;
+      } else {
+        prixCalcule += portion * parseFloat(ing.last_prix);
+      }
+    }
+
+    const customPortionsJson = Object.keys(customPortionsMap).length > 0
+      ? JSON.stringify(customPortions)
+      : null;
+
+    // 3. INSERT into stock_produits_transformes
     let upsertResult;
     if (actId) {
       upsertResult = await pool.query(
-        `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, custom_portions)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id`,
-        [produitId, actId, dateAppro, qty, prixCalcule]
+        [produitId, actId, dateAppro, qty, prixCalcule, customPortionsJson]
       );
     } else {
       upsertResult = await pool.query(
-        `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule, custom_portions)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id`,
-        [produitId, userId, dateAppro, qty, prixCalcule]
+        [produitId, userId, dateAppro, qty, prixCalcule, customPortionsJson]
       );
     }
     const sptId = upsertResult.rows[0].id;
@@ -435,7 +506,8 @@ const saveStockPT = async (req, res) => {
     const yearStr = String(new Date().getFullYear()).slice(-2);
 
     for (const ing of ingRows) {
-      const quantiteConsumed = -(parseFloat(ing.portion) * qty);
+      const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
+      const quantiteConsumed = -(portion * qty);
 
       if (actId) {
         await pool.query(
@@ -521,6 +593,7 @@ module.exports = {
   deleteStockPTHistory,
   getStockPT,
   getStockPTHistory,
+  getPTRecipe,
   saveStockPT,
   updateSeuilMinPT,
 };

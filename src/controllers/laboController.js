@@ -603,7 +603,7 @@ const getLaboStock = async (req, res) => {
 const updateLaboStock = async (req, res) => {
   const { laboId } = req.params;
   const ingredientIdRaw = parseInt(req.params.ingredientId);
-  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture } = req.body;
+  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, customPortions } = req.body;
   const da = dateAppro || todayStr();
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
@@ -634,19 +634,27 @@ const updateLaboStock = async (req, res) => {
       ]);
       const produitNom = prodRes.rows[0]?.nom ?? 'PT';
 
+      // Build custom portions map
+      const customPortionsMap = {};
+      if (Array.isArray(customPortions)) {
+        for (const cp of customPortions) { customPortionsMap[cp.ingredientId] = parseFloat(cp.portionCustom); }
+      }
+
       let prixCalcule = 0;
       for (const ing of ingRes.rows) {
+        const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
         if (ing.last_prix !== null) {
-          prixCalcule += parseFloat(ing.portion) * parseFloat(ing.last_prix);
+          prixCalcule += portion * parseFloat(ing.last_prix);
         }
       }
       const finalPrix = prixCalcule > 0 ? prixCalcule : (prixUnitaire ? parseFloat(prixUnitaire) : null);
+      const customPortionsJson = Object.keys(customPortionsMap).length > 0 ? JSON.stringify(customPortions) : null;
 
       // Save PT appro — always insert a new row (multiple rows per day allowed)
       await pool.query(
-        `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, updated_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [laboId, produitId, da, qty, finalPrix]
+        `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [laboId, produitId, da, qty, finalPrix, customPortionsJson]
       );
 
       // Deduct recipe ingredients from labo ingredient stock (negative entries)
@@ -670,7 +678,8 @@ const updateLaboStock = async (req, res) => {
         }
         const yearStr = String(new Date().getFullYear()).slice(-2);
         for (const ing of ingRes.rows) {
-          const consumed = -(parseFloat(ing.portion) * qty);
+          const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
+          const consumed = -(portion * qty);
           await pool.query(
             `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, type_appro, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
@@ -1400,6 +1409,43 @@ const createLaboPerte = async (req, res) => {
   }
 };
 
+// ─── getLaboPTRecipe ──────────────────────────────────────────────────────────
+const getLaboPTRecipe = async (req, res) => {
+  const { laboId, produitId } = req.params;
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const r = await pool.query(
+      `SELECT pi.ingredient_id, pi.portion AS portion_standard,
+              i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
+              (SELECT sld.prix_unitaire FROM stock_labo_daily sld
+               WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id AND sld.quantite > 0
+               ORDER BY sld.date_appro DESC LIMIT 1) AS last_prix
+       FROM produit_ingredients pi
+       JOIN ingredients i ON i.id = pi.ingredient_id
+       JOIN unites u ON u.id = i.unite_id
+       LEFT JOIN categories c ON c.id = i.categorie_id
+       WHERE pi.produit_id = $1
+       ORDER BY COALESCE(c.nom,''), i.nom`,
+      [produitId, laboId]
+    );
+
+    res.json(r.rows.map((row) => ({
+      ingredientId: row.ingredient_id,
+      nom: row.nom,
+      unite: row.unite,
+      categorie: row.categorie,
+      categorieId: row.categorie_id,
+      portionStandard: parseFloat(row.portion_standard),
+      lastPrix: row.last_prix != null ? parseFloat(row.last_prix) : null,
+    })));
+  } catch (err) {
+    console.error('[getLaboPTRecipe]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   createLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
@@ -1411,4 +1457,5 @@ module.exports = {
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
   exportLaboHistoriqueExcel,
   createLaboPerte,
+  getLaboPTRecipe,
 };

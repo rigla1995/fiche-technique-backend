@@ -11,6 +11,7 @@ const {
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
   exportLaboHistoriqueExcel,
   createLaboPerte,
+  getLaboPTRecipe,
 } = require('../controllers/laboController');
 const {
   getLaboInventaireStock, saveLaboInventaire,
@@ -30,6 +31,7 @@ router.post('/:laboId/ingredients/:ingredientId/select', authenticate, requireEn
 
 // Labo stock
 router.get('/:laboId/stock', authenticate, requireEntreprise, getLaboStock);
+router.get('/:laboId/pt/:produitId/recipe', authenticate, requireEntreprise, getLaboPTRecipe);
 router.put('/:laboId/stock/:ingredientId', authenticate, requireEntreprise, updateLaboStock);
 router.get('/:laboId/stock/:ingredientId/history', authenticate, requireEntreprise, getLaboStockHistory);
 router.get('/:laboId/pertes/prix', authenticate, requireEntreprise, getPrixLaboPerte);
