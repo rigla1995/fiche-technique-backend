@@ -11,7 +11,7 @@ const {
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
 } = require('../controllers/stockController');
 const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
-const { listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, getPrixClientPerte } = require('../controllers/pertesController');
+const { listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, getPrixClientPerte, getDateRangeClientPerte } = require('../controllers/pertesController');
 
 // Client stock (all clients)
 router.get('/client/summary', authenticate, requireClient, getStockClientSummary);
@@ -21,6 +21,7 @@ router.put('/client/:ingredientId/seuil-min', authenticate, requireClient, updat
 router.post('/client/pertes', authenticate, requireClient, createClientPerte);
 router.get('/client/pertes/export-excel', authenticate, requireClient, exportClientPertes);
 router.get('/client/pertes/prix', authenticate, requireClient, getPrixClientPerte);
+router.get('/client/pertes/date-range', authenticate, requireClient, getDateRangeClientPerte);
 router.get('/client/pertes', authenticate, requireClient, listClientPertes);
 router.put('/client/pertes/:id', authenticate, requireClient, updateClientPerte);
 router.delete('/client/pertes/:id', authenticate, requireClient, deleteClientPerte);

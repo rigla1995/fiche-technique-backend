@@ -570,11 +570,70 @@ const getPrixLaboPerte = async (req, res) => {
   }
 };
 
+// ── Date range lookup endpoints ───────────────────────────────────────────────
+
+const getDateRangeClientPerte = async (req, res) => {
+  const { ingredientId } = req.query;
+  if (!ingredientId) return res.status(400).json({ message: 'ingredientId requis' });
+  try {
+    const r = await pool.query(
+      `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
+       FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2`,
+      [req.user.id, ingredientId]
+    );
+    const row = r.rows[0];
+    res.json({
+      minDate: row.min_date ? (row.min_date instanceof Date ? row.min_date.toISOString().slice(0, 10) : String(row.min_date).slice(0, 10)) : null,
+      maxDate: row.max_date ? (row.max_date instanceof Date ? row.max_date.toISOString().slice(0, 10) : String(row.max_date).slice(0, 10)) : null,
+    });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Erreur serveur' }); }
+};
+
+const getDateRangeEntreprisePerte = async (req, res) => {
+  const { activiteId, ingredientId } = req.query;
+  if (!activiteId || !ingredientId) return res.status(400).json({ message: 'activiteId et ingredientId requis' });
+  try {
+    const check = await pool.query(
+      `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE a.id = $1 AND pe.client_id = $2`,
+      [activiteId, req.user.id]
+    );
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    const r = await pool.query(
+      `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
+       FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2`,
+      [activiteId, ingredientId]
+    );
+    const row = r.rows[0];
+    res.json({
+      minDate: row.min_date ? (row.min_date instanceof Date ? row.min_date.toISOString().slice(0, 10) : String(row.min_date).slice(0, 10)) : null,
+      maxDate: row.max_date ? (row.max_date instanceof Date ? row.max_date.toISOString().slice(0, 10) : String(row.max_date).slice(0, 10)) : null,
+    });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Erreur serveur' }); }
+};
+
+const getDateRangeLaboPerte = async (req, res) => {
+  const { laboId } = req.params;
+  const { ingredientId } = req.query;
+  if (!ingredientId) return res.status(400).json({ message: 'ingredientId requis' });
+  try {
+    const r = await pool.query(
+      `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
+       FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = $2`,
+      [laboId, ingredientId]
+    );
+    const row = r.rows[0];
+    res.json({
+      minDate: row.min_date ? (row.min_date instanceof Date ? row.min_date.toISOString().slice(0, 10) : String(row.min_date).slice(0, 10)) : null,
+      maxDate: row.max_date ? (row.max_date instanceof Date ? row.max_date.toISOString().slice(0, 10) : String(row.max_date).slice(0, 10)) : null,
+    });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Erreur serveur' }); }
+};
+
 module.exports = {
   createPerte, listPertes,
   listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes,
-  getPrixClientPerte,
+  getPrixClientPerte, getDateRangeClientPerte,
   listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes,
-  getPrixEntreprisePerte,
-  getPrixLaboPerte,
+  getPrixEntreprisePerte, getDateRangeEntreprisePerte,
+  getPrixLaboPerte, getDateRangeLaboPerte,
 };
