@@ -79,7 +79,35 @@ const getLaboInventaireStock = async (req, res) => {
       allDatesMap[r.ingredient_id] = (r.dates || []).map(isoDate).filter(Boolean);
     }
 
-    res.json(ingRes.rows.map((r) => ({
+    // PT products assigned to this labo via labo_pt_selections
+    const ptRes = await pool.query(
+      `SELECT lps.produit_id, p.nom FROM labo_pt_selections lps
+       JOIN produits p ON p.id = lps.produit_id
+       WHERE lps.labo_id = $1 ORDER BY p.nom`,
+      [laboId]
+    );
+    const recentPTInvRes = await pool.query(
+      `SELECT id, produit_id, quantite_reelle, date_inventaire
+       FROM inventaires WHERE labo_id = $1 AND produit_id IS NOT NULL
+       ORDER BY produit_id, date_inventaire DESC, created_at DESC`,
+      [laboId]
+    );
+    const recentPTInvMap = {};
+    for (const r of recentPTInvRes.rows) {
+      if (!recentPTInvMap[r.produit_id]) recentPTInvMap[r.produit_id] = [];
+      if (recentPTInvMap[r.produit_id].length < 5)
+        recentPTInvMap[r.produit_id].push({ id: r.id, qty: parseFloat(r.quantite_reelle), date: isoDate(r.date_inventaire) });
+    }
+    const allPTDatesRes = await pool.query(
+      `SELECT produit_id, ARRAY_AGG(DISTINCT date_inventaire::text) as dates
+       FROM inventaires WHERE labo_id = $1 AND produit_id IS NOT NULL GROUP BY produit_id`,
+      [laboId]
+    );
+    const allPTDatesMap = {};
+    for (const r of allPTDatesRes.rows)
+      allPTDatesMap[r.produit_id] = (r.dates || []).map(isoDate).filter(Boolean);
+
+    const ingRows = ingRes.rows.map((r) => ({
       ingredientId: r.ingredient_id,
       nom: r.nom,
       unite: r.unite_nom,
@@ -87,7 +115,19 @@ const getLaboInventaireStock = async (req, res) => {
       seuilMin: r.seuil_min !== null ? parseFloat(r.seuil_min) : null,
       recentInventaires: recentInvMap[r.ingredient_id] || [],
       inventaireDates: allDatesMap[r.ingredient_id] || [],
-    })));
+    }));
+    const ptRows = ptRes.rows.map((r) => ({
+      ingredientId: -(r.produit_id),
+      produitId: r.produit_id,
+      isPT: true,
+      nom: r.nom,
+      unite: 'unité',
+      categorie: 'Produits Transformés',
+      seuilMin: null,
+      recentInventaires: recentPTInvMap[r.produit_id] || [],
+      inventaireDates: allPTDatesMap[r.produit_id] || [],
+    }));
+    res.json([...ingRows, ...ptRows]);
   } catch (err) {
     console.error('[getLaboInventaireStock]', err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -107,16 +147,30 @@ const saveLaboInventaire = async (req, res) => {
 
     const upserted = [];
     for (const e of entries) {
-      const r = await pool.query(
-        `INSERT INTO inventaires (labo_id, ingredient_id, quantite_reelle, date_inventaire, note)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (labo_id, ingredient_id, date_inventaire)
-           WHERE labo_id IS NOT NULL AND ingredient_id IS NOT NULL
-         DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
-         RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
-        [laboId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null]
-      );
-      upserted.push(r.rows[0]);
+      if (e.ingredientId < 0) {
+        const produitId = -(e.ingredientId);
+        const r = await pool.query(
+          `INSERT INTO inventaires (labo_id, produit_id, quantite_reelle, date_inventaire, note)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (labo_id, produit_id, date_inventaire)
+             WHERE labo_id IS NOT NULL AND produit_id IS NOT NULL
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
+           RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
+          [laboId, produitId, e.quantiteReelle, dateInventaire, e.note || null]
+        );
+        upserted.push({ ...r.rows[0], ingredient_id: -(r.rows[0].produit_id) });
+      } else {
+        const r = await pool.query(
+          `INSERT INTO inventaires (labo_id, ingredient_id, quantite_reelle, date_inventaire, note)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (labo_id, ingredient_id, date_inventaire)
+             WHERE labo_id IS NOT NULL AND ingredient_id IS NOT NULL
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
+           RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
+          [laboId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null]
+        );
+        upserted.push(r.rows[0]);
+      }
     }
     res.json(upserted.map((r) => ({
       id: r.id,
@@ -308,24 +362,29 @@ const getLaboInventaireHistorique = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
+    const ingIdNumL = ingredientId ? Number(ingredientId) : null;
     const conditions = ['inv.labo_id = $1'];
     const params = [laboId];
     let idx = 2;
-    if (startDate)    { conditions.push(`inv.date_inventaire >= $${idx++}`); params.push(startDate); }
-    if (endDate)      { conditions.push(`inv.date_inventaire <= $${idx++}`); params.push(endDate); }
-    if (ingredientId) { conditions.push(`inv.ingredient_id = $${idx++}`); params.push(ingredientId); }
+    if (startDate) { conditions.push(`inv.date_inventaire >= $${idx++}`); params.push(startDate); }
+    if (endDate)   { conditions.push(`inv.date_inventaire <= $${idx++}`); params.push(endDate); }
+    if (ingIdNumL && ingIdNumL > 0) { conditions.push(`inv.ingredient_id = $${idx++}`); params.push(ingIdNumL); }
+    else if (ingIdNumL && ingIdNumL < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNumL); }
 
     const result = await pool.query(
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note, inv.created_at, inv.updated_at,
-              i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+              inv.ingredient_id, inv.produit_id,
+              COALESCE(i.nom, p.nom) as ingredient_nom,
+              COALESCE(u.nom, 'unité') as unite_nom,
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom,
               l.nom as labo_nom
        FROM inventaires inv
        LEFT JOIN ingredients i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
+       LEFT JOIN produits p ON p.id = inv.produit_id
        LEFT JOIN labos l ON l.id = inv.labo_id
-       WHERE ${conditions.join(' AND ')} AND inv.ingredient_id IS NOT NULL
+       WHERE ${conditions.join(' AND ')} AND (inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)
        ORDER BY inv.date_inventaire DESC, inv.created_at DESC`,
       params
     );
@@ -337,7 +396,8 @@ const getLaboInventaireHistorique = async (req, res) => {
       note: r.note,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
-      ingredientId: r.ingredient_id,
+      ingredientId: r.ingredient_id !== null ? r.ingredient_id : -(r.produit_id),
+      isPT: r.produit_id !== null,
       ingredientNom: r.ingredient_nom,
       unite: r.unite_nom,
       categorie: r.categorie_nom,
@@ -468,25 +528,29 @@ const exportLaboInventaireExcel = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
-    const conditions = ['inv.labo_id = $1', 'inv.ingredient_id IS NOT NULL'];
+    const ingIdNumLE = ingredientId ? Number(ingredientId) : null;
+    const conditions = ['inv.labo_id = $1'];
     const params = [laboId];
     let idx = 2;
-    if (startDate)    { conditions.push(`inv.date_inventaire >= $${idx++}`); params.push(startDate); }
-    if (endDate)      { conditions.push(`inv.date_inventaire <= $${idx++}`); params.push(endDate); }
-    if (ingredientId) { conditions.push(`inv.ingredient_id = $${idx++}`); params.push(ingredientId); }
+    if (startDate) { conditions.push(`inv.date_inventaire >= $${idx++}`); params.push(startDate); }
+    if (endDate)   { conditions.push(`inv.date_inventaire <= $${idx++}`); params.push(endDate); }
+    if (ingIdNumLE && ingIdNumLE > 0) { conditions.push(`inv.ingredient_id = $${idx++}`); params.push(ingIdNumLE); }
+    else if (ingIdNumLE && ingIdNumLE < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNumLE); }
 
     const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
     const laboNom = laboRes.rows[0]?.nom || 'Labo';
 
     const result = await pool.query(
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
-              i.nom as ingredient_nom, u.nom as unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') as categorie_nom
+              COALESCE(i.nom, p.nom) as ingredient_nom,
+              COALESCE(u.nom, 'unité') as unite_nom,
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
        LEFT JOIN ingredients i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
-       WHERE ${conditions.join(' AND ')}
+       LEFT JOIN produits p ON p.id = inv.produit_id
+       WHERE ${conditions.join(' AND ')} AND (inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)
        ORDER BY inv.date_inventaire DESC, inv.created_at DESC`,
       params
     );
