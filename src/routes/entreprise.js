@@ -8,7 +8,7 @@ const {
   getActiviteTypesSummary,
 } = require('../controllers/entrepriseController');
 const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur } = require('../controllers/fournisseurController');
-const { createPerte, listPertes } = require('../controllers/pertesController');
+const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
 // Company profile
@@ -35,8 +35,14 @@ router.put('/fournisseurs/:id', authenticate, requireEntreprise, updateFournisse
 router.delete('/fournisseurs/:id', authenticate, requireEntreprise, deleteFournisseur);
 router.get('/activites/:activiteId/fournisseurs', authenticate, requireEntreprise, getFournisseursForActivite);
 
-// Pertes
+// Pertes (per activite)
 router.post('/activites/:activiteId/pertes', authenticate, requireEntreprise, createPerte);
 router.get('/activites/:activiteId/pertes', authenticate, requireEntreprise, listPertes);
+
+// Pertes historique (all activités combined)
+router.get('/pertes/export-excel', authenticate, requireEntreprise, exportEntreprisePertes);
+router.get('/pertes', authenticate, requireEntreprise, listEntreprisePertes);
+router.put('/pertes/:id', authenticate, requireEntreprise, updateEntreprisePerte);
+router.delete('/pertes/:id', authenticate, requireEntreprise, deleteEntreprisePerte);
 
 module.exports = router;
