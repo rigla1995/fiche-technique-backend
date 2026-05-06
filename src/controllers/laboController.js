@@ -292,21 +292,21 @@ const getLaboStock = async (req, res) => {
        post_appro AS (
          SELECT sld.ingredient_id, SUM(sld.quantite) as qty
          FROM stock_labo_daily sld
-         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
          WHERE sld.labo_id = $1
          GROUP BY sld.ingredient_id
        ),
        post_transfer AS (
          SELECT lt.ingredient_id, SUM(lt.quantite) as qty
          FROM labo_transfers lt
-         JOIN last_inv li ON li.ingredient_id = lt.ingredient_id AND lt.date_transfert > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = lt.ingredient_id AND lt.date_transfert >= li.date_inventaire
          WHERE lt.labo_id = $1 AND lt.ingredient_id IS NOT NULL
          GROUP BY lt.ingredient_id
        ),
        post_pertes AS (
          SELECT lp.ingredient_id, SUM(lp.quantite) as qty
          FROM labo_pertes lp
-         JOIN last_inv li ON li.ingredient_id = lp.ingredient_id AND lp.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = lp.ingredient_id AND lp.date_perte >= li.date_inventaire
          WHERE lp.labo_id = $1 AND lp.ingredient_id IS NOT NULL
          GROUP BY lp.ingredient_id
        ),
@@ -333,14 +333,14 @@ const getLaboStock = async (req, res) => {
        post_pt_usage AS (
          SELECT sld.ingredient_id, SUM(ABS(sld.quantite)) as qty
          FROM stock_labo_daily sld
-         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
          WHERE sld.labo_id = $1 AND sld.quantite < 0 AND sld.type_appro NOT IN ('manuel', 'transfert')
          GROUP BY sld.ingredient_id
        ),
        avg_prix_post AS (
          SELECT sld.ingredient_id, AVG(sld.prix_unitaire) as avg_prix
          FROM stock_labo_daily sld
-         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
          WHERE sld.labo_id = $1 AND sld.quantite > 0 AND sld.prix_unitaire IS NOT NULL
          GROUP BY sld.ingredient_id
        ),
@@ -483,14 +483,14 @@ const getLaboStock = async (req, res) => {
        post_appro AS (
          SELECT slpt.produit_id, SUM(slpt.quantite) as qty
          FROM stock_labo_pt_daily slpt
-         JOIN last_inv li ON li.produit_id = slpt.produit_id AND slpt.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = slpt.produit_id AND slpt.date_appro >= li.date_inventaire
          WHERE slpt.labo_id = $1
          GROUP BY slpt.produit_id
        ),
        post_pertes AS (
          SELECT lp.produit_id, SUM(lp.quantite) as qty
          FROM labo_pertes lp
-         JOIN last_inv li ON li.produit_id = lp.produit_id AND lp.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = lp.produit_id AND lp.date_perte >= li.date_inventaire
          WHERE lp.labo_id = $1 AND lp.produit_id IS NOT NULL
          GROUP BY lp.produit_id
        ),
@@ -510,7 +510,7 @@ const getLaboStock = async (req, res) => {
        avg_prix_post AS (
          SELECT slpt.produit_id, AVG(slpt.prix_unitaire) as avg_prix
          FROM stock_labo_pt_daily slpt
-         JOIN last_inv li ON li.produit_id = slpt.produit_id AND slpt.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = slpt.produit_id AND slpt.date_appro >= li.date_inventaire
          WHERE slpt.labo_id = $1 AND slpt.prix_unitaire IS NOT NULL
          GROUP BY slpt.produit_id
        ),

@@ -85,28 +85,28 @@ const getStockClient = async (req, res) => {
        post_appro AS (
          SELECT scd.ingredient_id, SUM(scd.quantite) as qty
          FROM stock_client_daily scd
-         JOIN last_inv li ON li.ingredient_id = scd.ingredient_id AND scd.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = scd.ingredient_id AND scd.date_appro >= li.date_inventaire
          WHERE scd.client_id = $1
          GROUP BY scd.ingredient_id
        ),
        post_pertes AS (
          SELECT cp.ingredient_id, SUM(cp.quantite) as qty
          FROM client_pertes cp
-         JOIN last_inv li ON li.ingredient_id = cp.ingredient_id AND cp.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = cp.ingredient_id AND cp.date_perte >= li.date_inventaire
          WHERE cp.client_id = $1 AND cp.ingredient_id IS NOT NULL
          GROUP BY cp.ingredient_id
        ),
        post_pt_usage AS (
          SELECT scd.ingredient_id, SUM(ABS(scd.quantite)) as qty
          FROM stock_client_daily scd
-         JOIN last_inv li ON li.ingredient_id = scd.ingredient_id AND scd.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = scd.ingredient_id AND scd.date_appro >= li.date_inventaire
          WHERE scd.client_id = $1 AND scd.quantite < 0
          GROUP BY scd.ingredient_id
        ),
        avg_prix_post AS (
          SELECT scd.ingredient_id, AVG(scd.prix_unitaire) as avg_prix
          FROM stock_client_daily scd
-         JOIN last_inv li ON li.ingredient_id = scd.ingredient_id AND scd.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = scd.ingredient_id AND scd.date_appro >= li.date_inventaire
          WHERE scd.client_id = $1 AND scd.quantite > 0 AND scd.prix_unitaire IS NOT NULL
          GROUP BY scd.ingredient_id
        ),
@@ -191,21 +191,21 @@ const getStockClient = async (req, res) => {
        post_appro AS (
          SELECT spt.produit_id, SUM(spt.quantite) as qty
          FROM stock_produits_transformes spt
-         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro >= li.date_inventaire
          WHERE spt.client_id = $1
          GROUP BY spt.produit_id
        ),
        post_pertes AS (
          SELECT cp.produit_id, SUM(cp.quantite) as qty
          FROM client_pertes cp
-         JOIN last_inv li ON li.produit_id = cp.produit_id AND cp.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = cp.produit_id AND cp.date_perte >= li.date_inventaire
          WHERE cp.client_id = $1 AND cp.produit_id IS NOT NULL
          GROUP BY cp.produit_id
        ),
        avg_prix_post AS (
          SELECT spt.produit_id, AVG(spt.prix_calcule) as avg_prix
          FROM stock_produits_transformes spt
-         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro >= li.date_inventaire
          WHERE spt.client_id = $1 AND spt.prix_calcule IS NOT NULL
          GROUP BY spt.produit_id
        ),
@@ -473,28 +473,28 @@ const getStockEntreprise = async (req, res) => {
        post_appro AS (
          SELECT sed.ingredient_id, SUM(sed.quantite) as qty
          FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
          WHERE sed.activite_id = $1
          GROUP BY sed.ingredient_id
        ),
        post_pertes AS (
          SELECT p.ingredient_id, SUM(p.quantite) as qty
          FROM pertes p
-         JOIN last_inv li ON li.ingredient_id = p.ingredient_id AND p.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = p.ingredient_id AND p.date_perte >= li.date_inventaire
          WHERE p.activite_id = $1 AND p.ingredient_id IS NOT NULL
          GROUP BY p.ingredient_id
        ),
        post_pt_usage AS (
          SELECT sed.ingredient_id, SUM(ABS(sed.quantite)) as qty
          FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
          WHERE sed.activite_id = $1 AND sed.quantite < 0
          GROUP BY sed.ingredient_id
        ),
        avg_prix_post AS (
          SELECT sed.ingredient_id, AVG(sed.prix_unitaire) as avg_prix
          FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
          WHERE sed.activite_id = $1 AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
          GROUP BY sed.ingredient_id
        ),
@@ -579,21 +579,21 @@ const getStockEntreprise = async (req, res) => {
        post_appro AS (
          SELECT spt.produit_id, SUM(spt.quantite) as qty
          FROM stock_produits_transformes spt
-         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro >= li.date_inventaire
          WHERE spt.activite_id = $1
          GROUP BY spt.produit_id
        ),
        post_pertes AS (
          SELECT p.produit_id, SUM(p.quantite) as qty
          FROM pertes p
-         JOIN last_inv li ON li.produit_id = p.produit_id AND p.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = p.produit_id AND p.date_perte >= li.date_inventaire
          WHERE p.activite_id = $1 AND p.produit_id IS NOT NULL
          GROUP BY p.produit_id
        ),
        avg_prix_post AS (
          SELECT spt.produit_id, AVG(spt.prix_calcule) as avg_prix
          FROM stock_produits_transformes spt
-         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro >= li.date_inventaire
          WHERE spt.activite_id = $1 AND spt.prix_calcule IS NOT NULL
          GROUP BY spt.produit_id
        ),

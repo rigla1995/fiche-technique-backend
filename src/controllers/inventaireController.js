@@ -120,21 +120,21 @@ const getLaboInventaireStock = async (req, res) => {
        post_appro AS (
          SELECT sld.ingredient_id, SUM(sld.quantite) as qty
          FROM stock_labo_daily sld
-         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
          WHERE sld.labo_id = $1
          GROUP BY sld.ingredient_id
        ),
        post_transfer AS (
          SELECT lt.ingredient_id, SUM(lt.quantite) as qty
          FROM labo_transfers lt
-         JOIN last_inv li ON li.ingredient_id = lt.ingredient_id AND lt.date_transfert > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = lt.ingredient_id AND lt.date_transfert >= li.date_inventaire
          WHERE lt.labo_id = $1 AND lt.ingredient_id IS NOT NULL
          GROUP BY lt.ingredient_id
        ),
        post_pertes AS (
          SELECT lp.ingredient_id, SUM(lp.quantite) as qty
          FROM labo_pertes lp
-         JOIN last_inv li ON li.ingredient_id = lp.ingredient_id AND lp.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = lp.ingredient_id AND lp.date_perte >= li.date_inventaire
          WHERE lp.labo_id = $1 AND lp.ingredient_id IS NOT NULL
          GROUP BY lp.ingredient_id
        ),
@@ -190,14 +190,14 @@ const getLaboInventaireStock = async (req, res) => {
        post_appro AS (
          SELECT slpt.produit_id, SUM(slpt.quantite) as qty
          FROM stock_labo_pt_daily slpt
-         JOIN last_inv li ON li.produit_id = slpt.produit_id AND slpt.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = slpt.produit_id AND slpt.date_appro >= li.date_inventaire
          WHERE slpt.labo_id = $1
          GROUP BY slpt.produit_id
        ),
        post_pertes AS (
          SELECT lp.produit_id, SUM(lp.quantite) as qty
          FROM labo_pertes lp
-         JOIN last_inv li ON li.produit_id = lp.produit_id AND lp.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = lp.produit_id AND lp.date_perte >= li.date_inventaire
          WHERE lp.labo_id = $1 AND lp.produit_id IS NOT NULL
          GROUP BY lp.produit_id
        ),
@@ -412,14 +412,14 @@ const getActiviteInventaireStock = async (req, res) => {
        post_appro AS (
          SELECT sed.ingredient_id, SUM(sed.quantite) as qty
          FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
          WHERE sed.activite_id = $1
          GROUP BY sed.ingredient_id
        ),
        post_pertes AS (
          SELECT p.ingredient_id, SUM(p.quantite) as qty
          FROM pertes p
-         JOIN last_inv li ON li.ingredient_id = p.ingredient_id AND p.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = p.ingredient_id AND p.date_perte >= li.date_inventaire
          WHERE p.activite_id = $1 AND p.ingredient_id IS NOT NULL
          GROUP BY p.ingredient_id
        ),
@@ -466,14 +466,14 @@ const getActiviteInventaireStock = async (req, res) => {
        post_appro AS (
          SELECT spt.produit_id, SUM(spt.quantite) as qty
          FROM stock_produits_transformes spt
-         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro >= li.date_inventaire
          WHERE spt.activite_id = $1
          GROUP BY spt.produit_id
        ),
        post_pertes AS (
          SELECT p.produit_id, SUM(p.quantite) as qty
          FROM pertes p
-         JOIN last_inv li ON li.produit_id = p.produit_id AND p.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = p.produit_id AND p.date_perte >= li.date_inventaire
          WHERE p.activite_id = $1 AND p.produit_id IS NOT NULL
          GROUP BY p.produit_id
        ),
@@ -1100,14 +1100,14 @@ const getClientInventaireStock = async (req, res) => {
        post_appro AS (
          SELECT scd.ingredient_id, SUM(scd.quantite) as qty
          FROM stock_client_daily scd
-         JOIN last_inv li ON li.ingredient_id = scd.ingredient_id AND scd.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = scd.ingredient_id AND scd.date_appro >= li.date_inventaire
          WHERE scd.client_id = $1
          GROUP BY scd.ingredient_id
        ),
        post_pertes AS (
          SELECT cp.ingredient_id, SUM(cp.quantite) as qty
          FROM client_pertes cp
-         JOIN last_inv li ON li.ingredient_id = cp.ingredient_id AND cp.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.ingredient_id = cp.ingredient_id AND cp.date_perte >= li.date_inventaire
          WHERE cp.client_id = $1 AND cp.ingredient_id IS NOT NULL
          GROUP BY cp.ingredient_id
        ),
@@ -1154,14 +1154,14 @@ const getClientInventaireStock = async (req, res) => {
        post_appro AS (
          SELECT spt.produit_id, SUM(spt.quantite) as qty
          FROM stock_produits_transformes spt
-         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro >= li.date_inventaire
          WHERE spt.client_id = $1
          GROUP BY spt.produit_id
        ),
        post_pertes AS (
          SELECT cp.produit_id, SUM(cp.quantite) as qty
          FROM client_pertes cp
-         JOIN last_inv li ON li.produit_id = cp.produit_id AND cp.date_perte > li.date_inventaire
+         JOIN last_inv li ON li.produit_id = cp.produit_id AND cp.date_perte >= li.date_inventaire
          WHERE cp.client_id = $1 AND cp.produit_id IS NOT NULL
          GROUP BY cp.produit_id
        ),
