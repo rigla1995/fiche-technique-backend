@@ -133,14 +133,14 @@ const getLaboInventaireStock = async (req, res) => {
        monthly AS (
          SELECT sld.ingredient_id, SUM(sld.quantite) as appros
          FROM stock_labo_daily sld
-         WHERE sld.labo_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+         WHERE sld.labo_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
          GROUP BY sld.ingredient_id
        ),
        monthly_tr AS (
          SELECT lt.ingredient_id, SUM(lt.quantite) as transfers
          FROM labo_transfers lt
          WHERE lt.labo_id = $1 AND lt.ingredient_id IS NOT NULL
-           AND date_trunc('month', lt.date_transfert) = date_trunc('month', CURRENT_DATE)
+           AND date_trunc('year', lt.date_transfert) = date_trunc('year', CURRENT_DATE)
          GROUP BY lt.ingredient_id
        )
        SELECT lis.ingredient_id,
@@ -164,7 +164,7 @@ const getLaboInventaireStock = async (req, res) => {
     const totalStockPTRes = await pool.query(
       `SELECT produit_id, COALESCE(SUM(quantite), 0) as total_stock
        FROM stock_labo_pt_daily
-       WHERE labo_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+       WHERE labo_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
        GROUP BY produit_id`,
       [laboId]
     );
@@ -358,7 +358,7 @@ const getActiviteInventaireStock = async (req, res) => {
        monthly AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+         WHERE activite_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        )
        SELECT ais.ingredient_id,
@@ -380,7 +380,7 @@ const getActiviteInventaireStock = async (req, res) => {
     const totalStockPTActRes = await pool.query(
       `SELECT produit_id, COALESCE(SUM(quantite), 0) as total_stock
        FROM stock_produits_transformes
-       WHERE activite_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+       WHERE activite_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
        GROUP BY produit_id`,
       [activiteId]
     );
@@ -967,7 +967,7 @@ const getClientInventaireStock = async (req, res) => {
     const totalStockCliRes = await pool.query(
       `SELECT ingredient_id, COALESCE(SUM(quantite), 0) as total_stock
        FROM stock_client_daily
-       WHERE client_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+       WHERE client_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
        GROUP BY ingredient_id`,
       [clientId]
     );
@@ -978,7 +978,7 @@ const getClientInventaireStock = async (req, res) => {
     const totalStockPTCliRes = await pool.query(
       `SELECT produit_id, COALESCE(SUM(quantite), 0) as total_stock
        FROM stock_produits_transformes
-       WHERE client_id = $1 AND date_trunc('month', date_appro) = date_trunc('month', CURRENT_DATE)
+       WHERE client_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
        GROUP BY produit_id`,
       [clientId]
     );
