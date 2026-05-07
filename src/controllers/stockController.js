@@ -872,11 +872,18 @@ const getHistoriqueAppro = async (req, res) => {
       } else if (entType) {
         // All activities of a given type for this client
         const typeFilter = entType === 'franchise' ? `a.type = 'franchise'` : `(a.type = 'distincte' OR a.type IS NULL)`;
+        const clientId = req.user.gerant_parent_id || req.user.id;
+        const entTypeParams = [clientId];
+        let laboFilter = '';
+        if (req.query.laboId) {
+          entTypeParams.push(req.query.laboId);
+          laboFilter = ` AND a.labo_id = $${entTypeParams.length}`;
+        }
         const allRes = await pool.query(
           `SELECT a.id FROM activites a
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-           WHERE pe.client_id = $1 AND ${typeFilter}`,
-          [req.user.gerant_parent_id || req.user.id]
+           WHERE pe.client_id = $1 AND ${typeFilter}${laboFilter}`,
+          entTypeParams
         );
         activiteIds = allRes.rows.map((r) => r.id);
         if (activiteIds.length === 0) return res.json([]);

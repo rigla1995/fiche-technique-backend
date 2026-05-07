@@ -81,7 +81,7 @@ const costSubquery = (alias = 'p') => `
   , 3) AS total_cost`;
 
 const list = async (req, res) => {
-  const { activiteId, activiteType, franchiseGroup, type } = req.query;
+  const { activiteId, activiteType, franchiseGroup, type, laboId } = req.query;
   try {
     let whereExtra = '';
     const params = [req.user.gerant_parent_id || req.user.id];
@@ -98,6 +98,10 @@ const list = async (req, res) => {
       if (franchiseGroup) {
         params.push(franchiseGroup);
         whereExtra += ` AND p.franchise_group = $${params.length}`;
+      }
+      if (laboId) {
+        params.push(laboId);
+        whereExtra += ` AND p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${params.length})`;
       }
     }
 
