@@ -35,6 +35,18 @@ const login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
+    // For gérants, resolve compte_type from the parent client
+    let compteType = utilisateur.compte_type || 'independant';
+    let onboardingStep = utilisateur.onboarding_step ?? 0;
+    if (utilisateur.role === 'gerant' && utilisateur.gerant_parent_id) {
+      const parentRes = await pool.query(
+        'SELECT compte_type FROM utilisateurs WHERE id = $1',
+        [utilisateur.gerant_parent_id]
+      );
+      compteType = parentRes.rows[0]?.compte_type || 'independant';
+      onboardingStep = 0; // gérants skip onboarding
+    }
+
     res.json({
       token,
       user: {
@@ -42,8 +54,8 @@ const login = async (req, res) => {
         name: utilisateur.nom,
         email: utilisateur.email,
         role: utilisateur.role,
-        compteType: utilisateur.compte_type || 'independant',
-        onboardingStep: utilisateur.onboarding_step ?? 0,
+        compteType,
+        onboardingStep,
       },
     });
   } catch (err) {
@@ -84,15 +96,22 @@ const register = async (req, res) => {
 const me = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, nom, email, telephone, role, compte_type, onboarding_step FROM utilisateurs WHERE id = $1',
+      `SELECT u.id, u.nom, u.email, u.telephone, u.role,
+              COALESCE(u.compte_type, p.compte_type) AS compte_type,
+              u.onboarding_step,
+              u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type
+       FROM utilisateurs u
+       LEFT JOIN utilisateurs p ON p.id = u.gerant_parent_id
+       WHERE u.id = $1`,
       [req.user.id]
     );
     const u = result.rows[0];
-    let step = u.onboarding_step ?? 0;
+    const isGerant = u.role === 'gerant';
+    // Gérants bypass onboarding entirely — use parent's step if needed but never block them
+    let step = isGerant ? 0 : (u.onboarding_step ?? 0);
 
     // Auto-heal: advance enterprise users who are blocked at onboarding steps they've already completed.
-    // Uses profil_entreprise directly to avoid a JOIN that fails when the row doesn't exist.
-    if (step > 0 && u.compte_type === 'entreprise') {
+    if (!isGerant && step > 0 && u.compte_type === 'entreprise') {
       const epRes = await pool.query(
         'SELECT id FROM profil_entreprise WHERE client_id = $1',
         [u.id]
@@ -118,7 +137,6 @@ const me = async (req, res) => {
             [step, u.id]
           );
         } else if (step === 1) {
-          // Has company profile but no activities yet → password was already changed, advance to step 2
           step = 2;
           await pool.query(
             'UPDATE utilisateurs SET onboarding_step = 2, updated_at = NOW() WHERE id = $1',
@@ -128,33 +146,28 @@ const me = async (req, res) => {
       }
     }
 
+    // entrepriseName: use parent's profil_entreprise for gérants
     let entrepriseName = null;
     if (u.compte_type === 'entreprise') {
-      const epRes = await pool.query('SELECT nom FROM profil_entreprise WHERE client_id = $1', [u.id]);
+      const clientId = isGerant ? u.gerant_parent_id : u.id;
+      const epRes = await pool.query('SELECT nom FROM profil_entreprise WHERE client_id = $1', [clientId]);
       if (epRes.rows.length > 0) entrepriseName = epRes.rows[0].nom;
     }
 
-    // Abonnement mode
+    // Abonnement: use parent's abonnement for gérants
+    const aboClientId = isGerant ? u.gerant_parent_id : u.id;
     const aboRes = await pool.query(
       'SELECT mode_compte, prolongation_jours FROM abonnements WHERE client_id = $1',
-      [u.id]
+      [aboClientId]
     );
     const modeCompte = aboRes.rows[0]?.mode_compte || 'actif';
     const prolongationJours = aboRes.rows[0]?.prolongation_jours || 0;
 
-    // Gérant fields
-    const gerantFields = {};
-    if (u.role === 'gerant') {
-      const gRow = await pool.query(
-        `SELECT gerant_parent_id, gerant_activite_id, gerant_activite_type FROM utilisateurs WHERE id = $1`,
-        [u.id]
-      );
-      Object.assign(gerantFields, {
-        gerantParentId: gRow.rows[0]?.gerant_parent_id,
-        gerantActiviteId: gRow.rows[0]?.gerant_activite_id,
-        gerantActiviteType: gRow.rows[0]?.gerant_activite_type,
-      });
-    }
+    const gerantFields = isGerant ? {
+      gerantParentId: u.gerant_parent_id,
+      gerantActiviteId: u.gerant_activite_id,
+      gerantActiviteType: u.gerant_activite_type,
+    } : {};
 
     res.json({
       id: u.id, name: u.nom, email: u.email, phone: u.telephone,
