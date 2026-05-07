@@ -112,11 +112,22 @@ const list = async (req, res) => {
       }
     }
 
-    // Gérant labo: only utilisable produits transformés scoped to their labo
+    // Gérant labo: utilisable products scoped to their labo's activités.
+    // Products can be linked via activite_id (specific) OR via activite_type+franchise_group.
     if (isLaboGerant) {
-      whereExtra += ` AND p.type = 'utilisable' AND p.is_stock_ingredient = true`;
+      whereExtra += ` AND p.type = 'utilisable'`;
       params.push(req.user.gerant_activite_id);
-      whereExtra += ` AND p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${params.length})`;
+      const laboIdx = params.length;
+      whereExtra += ` AND (
+        p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx})
+        OR (
+          p.activite_type = 'franchise'
+          AND p.franchise_group IN (
+            SELECT COALESCE(a.franchise_group, a.nom)
+            FROM activites a WHERE a.labo_id = $${laboIdx} AND a.type = 'franchise'
+          )
+        )
+      )`;
     }
 
     // Gérant activité: restrict to their specific activité only
