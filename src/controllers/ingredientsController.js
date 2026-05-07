@@ -38,7 +38,8 @@ const list = async (req, res) => {
         ORDER BY COALESCE(c.nom, 'zzz'), i.nom
       `;
     } else {
-      params = [req.user.id];
+      const clientId = req.user.gerant_parent_id || req.user.id;
+      params = [clientId];
       let where = categorieId ? `AND i.categorie_id = $${params.push(categorieId)}` : '';
       query = `
         SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
