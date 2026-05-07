@@ -339,10 +339,10 @@ const updateStockClient = async (req, res) => {
   try {
     await pool.query(
       `INSERT INTO stock_client_daily
-         (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW())`,
+         (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at, created_by)
+       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW(), $8)`,
       [req.user.id, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
-       fournisseurId ?? null, refFacture ?? null]
+       fournisseurId ?? null, refFacture ?? null, req.user.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -741,10 +741,10 @@ const updateStockEntreprise = async (req, res) => {
 
     await pool.query(
       `INSERT INTO stock_entreprise_daily
-         (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW())`,
+         (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at, created_by)
+       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW(), $8)`,
       [activiteId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
-       fournisseurId ?? null, refFacture ?? null]
+       fournisseurId ?? null, refFacture ?? null, req.user.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -1572,9 +1572,9 @@ const createClientPerte = async (req, res) => {
     const prixUnitaire = priceRow.rows.length > 0 ? parseFloat(priceRow.rows[0].prix_unitaire) : null;
 
     const r = await pool.query(
-      `INSERT INTO client_pertes (client_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [req.user.id, ingredientId, quantite, typePerte, datePerte, prixUnitaire]
+      `INSERT INTO client_pertes (client_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [req.user.id, ingredientId, quantite, typePerte, datePerte, prixUnitaire, req.user.id]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {

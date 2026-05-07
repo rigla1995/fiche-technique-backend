@@ -61,9 +61,9 @@ const createPerte = async (req, res) => {
     const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, datePerte);
 
     const r = await pool.query(
-      `INSERT INTO pertes (activite_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [activiteId, ingredientId, quantite, typePerte, datePerte, prixUnitaire]
+      `INSERT INTO pertes (activite_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [activiteId, ingredientId, quantite, typePerte, datePerte, prixUnitaire, req.user.id]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {

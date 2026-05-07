@@ -276,24 +276,24 @@ const saveLaboInventaire = async (req, res) => {
       if (e.ingredientId < 0) {
         const produitId = -(e.ingredientId);
         const r = await pool.query(
-          `INSERT INTO inventaires (labo_id, produit_id, quantite_reelle, date_inventaire, note)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO inventaires (labo_id, produit_id, quantite_reelle, date_inventaire, note, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (labo_id, produit_id, date_inventaire)
              WHERE labo_id IS NOT NULL AND produit_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
            RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
-          [laboId, produitId, e.quantiteReelle, dateInventaire, e.note || null]
+          [laboId, produitId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
         );
         upserted.push({ ...r.rows[0], ingredient_id: -(r.rows[0].produit_id) });
       } else {
         const r = await pool.query(
-          `INSERT INTO inventaires (labo_id, ingredient_id, quantite_reelle, date_inventaire, note)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO inventaires (labo_id, ingredient_id, quantite_reelle, date_inventaire, note, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (labo_id, ingredient_id, date_inventaire)
              WHERE labo_id IS NOT NULL AND ingredient_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
            RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
-          [laboId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null]
+          [laboId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
         );
         upserted.push(r.rows[0]);
       }
@@ -563,24 +563,24 @@ const saveActiviteInventaire = async (req, res) => {
         // PT product — negative ingredientId encodes produitId
         const produitId = -(e.ingredientId);
         const r = await pool.query(
-          `INSERT INTO inventaires (activite_id, produit_id, quantite_reelle, date_inventaire, note)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO inventaires (activite_id, produit_id, quantite_reelle, date_inventaire, note, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (activite_id, produit_id, date_inventaire)
              WHERE activite_id IS NOT NULL AND produit_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
            RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
-          [activiteId, produitId, e.quantiteReelle, dateInventaire, e.note || null]
+          [activiteId, produitId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
         );
         upserted.push({ ...r.rows[0], ingredient_id: -(r.rows[0].produit_id) });
       } else {
         const r = await pool.query(
-          `INSERT INTO inventaires (activite_id, ingredient_id, quantite_reelle, date_inventaire, note)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO inventaires (activite_id, ingredient_id, quantite_reelle, date_inventaire, note, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (activite_id, ingredient_id, date_inventaire)
              WHERE activite_id IS NOT NULL AND ingredient_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
            RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
-          [activiteId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null]
+          [activiteId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
         );
         upserted.push(r.rows[0]);
       }
@@ -1237,24 +1237,24 @@ const saveClientInventaire = async (req, res) => {
       if (e.ingredientId < 0) {
         const produitId = -(e.ingredientId);
         const r = await pool.query(
-          `INSERT INTO inventaires (client_id, produit_id, quantite_reelle, date_inventaire, note)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO inventaires (client_id, produit_id, quantite_reelle, date_inventaire, note, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (client_id, produit_id, date_inventaire)
              WHERE client_id IS NOT NULL AND produit_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
            RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
-          [clientId, produitId, e.quantiteReelle, dateInventaire, e.note || null]
+          [clientId, produitId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
         );
         upserted.push({ ...r.rows[0], ingredient_id: -(r.rows[0].produit_id) });
       } else {
         const r = await pool.query(
-          `INSERT INTO inventaires (client_id, ingredient_id, quantite_reelle, date_inventaire, note)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO inventaires (client_id, ingredient_id, quantite_reelle, date_inventaire, note, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (client_id, ingredient_id, date_inventaire)
              WHERE client_id IS NOT NULL AND ingredient_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW()
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
            RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
-          [clientId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null]
+          [clientId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
         );
         upserted.push(r.rows[0]);
       }
