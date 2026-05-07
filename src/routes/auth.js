@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { login, register, me, updateProfile, upgradeToEntreprise, advanceOnboarding, completeUpgradeWizard } = require('../controllers/authController');
+const { login, register, me, updateProfile, upgradeToEntreprise, advanceOnboarding, completeUpgradeWizard, verifyInviteToken, acceptInvite, resendInvite } = require('../controllers/authController');
 const { authenticate, requireSuperAdmin, requireClient } = require('../middleware/auth');
 
 router.post('/login', [
@@ -45,6 +45,10 @@ router.put('/profile', authenticate, [
     return true;
   }),
 ], updateProfile);
+
+router.get('/invite/:token', verifyInviteToken);
+router.post('/invite/accept', acceptInvite);
+router.post('/invite/resend/:userId', authenticate, resendInvite);
 
 router.post('/upgrade', authenticate, requireClient, upgradeToEntreprise);
 router.post('/onboarding-step', authenticate, requireClient, advanceOnboarding);

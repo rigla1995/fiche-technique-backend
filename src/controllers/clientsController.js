@@ -1,8 +1,7 @@
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { createAbonnement } = require('./abonnementController');
+const { sendInviteEmail, generateInviteToken } = require('../services/emailService');
 
 const mapClient = (row) => ({
   id: row.id,
@@ -71,24 +70,23 @@ const create = async (req, res) => {
       return res.status(409).json({ message: 'Ce numéro de téléphone est déjà utilisé' });
   }
 
-  const tempPassword = crypto.randomBytes(8).toString('hex');
-
   try {
     const existing = await pool.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ message: 'Cet email est déjà utilisé' });
     }
 
-    const hash = await bcrypt.hash(tempPassword, 10);
+    const inviteToken = generateInviteToken();
+    const inviteExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
     // onboarding_step: 0 for independant (no onboarding), 1 for entreprise (must complete onboarding)
     const onboardingStep = compteType === 'entreprise' ? 1 : 0;
 
     const userResult = await pool.query(
-      `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, compte_type, onboarding_step)
-       VALUES ($1, $2, $3, $4, 'client', $5, $6)
+      `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, compte_type, onboarding_step, invite_token, invite_token_expires_at)
+       VALUES ($1, $2, NULL, $3, 'client', $4, $5, $6, $7)
        RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
-      [nom, email, hash, telephone || null, compteType, onboardingStep]
+      [nom, email, telephone || null, compteType, onboardingStep, inviteToken, inviteExpires]
     );
 
     const user = userResult.rows[0];
@@ -122,9 +120,8 @@ const create = async (req, res) => {
     const montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
     await createAbonnement(user.id, compteType, montantOnboarding);
 
-    const responseData = mapClient(user);
-    responseData.temporaryPassword = tempPassword;
-    res.status(201).json(responseData);
+    await sendInviteEmail({ to: user.email, nom: user.nom, token: inviteToken, role: 'client' });
+    res.status(201).json(mapClient(user));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

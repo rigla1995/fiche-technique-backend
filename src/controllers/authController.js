@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
+const { sendInviteEmail, generateInviteToken } = require('../services/emailService');
 
 const login = async (req, res) => {
   const errors = validationResult(req);
@@ -23,6 +24,11 @@ const login = async (req, res) => {
     }
 
     const utilisateur = result.rows[0];
+
+    if (!utilisateur.activated_at) {
+      return res.status(403).json({ message: 'invite_pending', detail: 'Votre compte n\'est pas encore activé. Consultez votre email d\'invitation.' });
+    }
+
     const isValid = await bcrypt.compare(password, utilisateur.mot_de_passe);
 
     if (!isValid) {
@@ -307,4 +313,81 @@ const completeUpgradeWizard = async (req, res) => {
   }
 };
 
-module.exports = { login, register, me, updateProfile, upgradeToEntreprise, advanceOnboarding, completeUpgradeWizard };
+// ── Invitation helpers ────────────────────────────────────────────────────────
+
+const verifyInviteToken = async (req, res) => {
+  const { token } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT id, nom, email, role FROM utilisateurs
+       WHERE invite_token = $1 AND invite_token_expires_at > NOW() AND activated_at IS NULL`,
+      [token]
+    );
+    if (result.rows.length === 0)
+      return res.status(404).json({ message: 'Lien invalide ou expiré' });
+    const u = result.rows[0];
+    res.json({ nom: u.nom, email: u.email, role: u.role });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const acceptInvite = async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password || password.length < 8)
+    return res.status(400).json({ message: 'Token et mot de passe (8 caractères min) requis' });
+
+  try {
+    const result = await pool.query(
+      `SELECT id FROM utilisateurs
+       WHERE invite_token = $1 AND invite_token_expires_at > NOW() AND activated_at IS NULL`,
+      [token]
+    );
+    if (result.rows.length === 0)
+      return res.status(404).json({ message: 'Lien invalide ou expiré' });
+
+    const hash = await bcrypt.hash(password, 10);
+    await pool.query(
+      `UPDATE utilisateurs
+       SET mot_de_passe = $1, invite_token = NULL, invite_token_expires_at = NULL,
+           activated_at = NOW(), updated_at = NOW()
+       WHERE id = $2`,
+      [hash, result.rows[0].id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const resendInvite = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const result = await pool.query(
+      'SELECT id, nom, email, role FROM utilisateurs WHERE id = $1 AND activated_at IS NULL',
+      [userId]
+    );
+    if (result.rows.length === 0)
+      return res.status(404).json({ message: 'Utilisateur introuvable ou déjà activé' });
+
+    const u = result.rows[0];
+    const token = generateInviteToken();
+    const expires = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    await pool.query(
+      'UPDATE utilisateurs SET invite_token = $1, invite_token_expires_at = $2, updated_at = NOW() WHERE id = $3',
+      [token, expires, u.id]
+    );
+    await sendInviteEmail({ to: u.email, nom: u.nom, token, role: u.role });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = {
+  login, register, me, updateProfile, upgradeToEntreprise, advanceOnboarding, completeUpgradeWizard,
+  verifyInviteToken, acceptInvite, resendInvite,
+};

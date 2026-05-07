@@ -1,6 +1,5 @@
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 const pool = require('../config/database');
+const { sendInviteEmail, generateInviteToken } = require('../services/emailService');
 
 const mapGerant = (row) => ({
   id: row.id,
@@ -59,25 +58,24 @@ const create = async (req, res) => {
   const emailCheck = await pool.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
   if (emailCheck.rows.length > 0) return res.status(409).json({ message: 'Email déjà utilisé' });
 
-  const tempPassword = crypto.randomBytes(6).toString('hex');
-  const hash = await bcrypt.hash(tempPassword, 10);
+  const inviteToken = generateInviteToken();
+  const inviteExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
   try {
     const result = await pool.query(
       `INSERT INTO utilisateurs
          (nom, email, mot_de_passe, telephone, role, compte_type,
           gerant_parent_id, gerant_activite_id, gerant_activite_type,
-          gerant_est_gratuit, gerant_montant_mensuel)
-       VALUES ($1, $2, $3, $4, 'gerant', $5, $6, $7, $8, $9, $10)
+          gerant_est_gratuit, gerant_montant_mensuel, invite_token, invite_token_expires_at)
+       VALUES ($1, $2, NULL, $3, 'gerant', $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id, nom, email, telephone, gerant_parent_id, gerant_activite_id,
                  gerant_activite_type, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at`,
-      [nom, email, hash, telephone, parentType,
+      [nom, email, telephone, parentType,
        parentId, activiteId || null, activiteType || null,
-       isGratuit, montant]
+       isGratuit, montant, inviteToken, inviteExpires]
     );
-    const gerant = mapGerant(result.rows[0]);
-    gerant.temporaryPassword = tempPassword;
-    res.status(201).json(gerant);
+    await sendInviteEmail({ to: email, nom, token: inviteToken, role: 'gerant' });
+    res.status(201).json(mapGerant(result.rows[0]));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
