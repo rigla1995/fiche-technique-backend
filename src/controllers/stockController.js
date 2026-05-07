@@ -961,7 +961,7 @@ const getHistoriqueAppro = async (req, res) => {
 
       res.json(regularRows);
     } else {
-      const params = [req.user.id, currentYear];
+      const params = [req.user.gerant_parent_id || req.user.id, currentYear];
       let extraWhere = '';
       if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
       else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
@@ -1256,7 +1256,7 @@ const exportHistoriqueExcel = async (req, res) => {
       } else if (franchiseGroup) {
         const gRes = await pool.query(
           `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1 AND a.franchise_group = $2`,
-          [req.user.id, franchiseGroup]
+          [req.user.gerant_parent_id || req.user.id, franchiseGroup]
         );
         activiteIds = gRes.rows.map((r) => r.id);
       } else if (activiteIdsParam) {
@@ -1316,7 +1316,7 @@ const exportHistoriqueExcel = async (req, res) => {
       else rows = rows.concat(ptResultEnt.rows);
     } else {
       if (ptOnly !== 'true') {
-        const params = [req.user.id, currentYear];
+        const params = [req.user.gerant_parent_id || req.user.id, currentYear];
         let extraWhere = '';
         if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
         else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
@@ -1490,8 +1490,8 @@ const getCascadeInfoClient = async (req, res) => {
   const { ingredientId } = req.params;
   try {
     const [appros, inv] = await Promise.all([
-      pool.query('SELECT COUNT(*) FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2', [req.user.id, ingredientId]),
-      pool.query('SELECT COUNT(*) FROM inventaires WHERE client_id = $1 AND ingredient_id = $2', [req.user.id, ingredientId]),
+      pool.query('SELECT COUNT(*) FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2', [req.user.gerant_parent_id || req.user.id, ingredientId]),
+      pool.query('SELECT COUNT(*) FROM inventaires WHERE client_id = $1 AND ingredient_id = $2', [req.user.gerant_parent_id || req.user.id, ingredientId]),
     ]);
     res.json({ approCount: Number(appros.rows[0].count), inventaireCount: Number(inv.rows[0].count) });
   } catch (err) {
@@ -1523,8 +1523,8 @@ const getCascadeInfoEntreprise = async (req, res) => {
 const deleteClientIngredientHistory = async (req, res) => {
   const { ingredientId } = req.params;
   try {
-    await pool.query('DELETE FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2', [req.user.id, ingredientId]);
-    await pool.query('DELETE FROM inventaires WHERE client_id = $1 AND ingredient_id = $2', [req.user.id, ingredientId]);
+    await pool.query('DELETE FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2', [req.user.gerant_parent_id || req.user.id, ingredientId]);
+    await pool.query('DELETE FROM inventaires WHERE client_id = $1 AND ingredient_id = $2', [req.user.gerant_parent_id || req.user.id, ingredientId]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -1556,7 +1556,7 @@ const updateSeuilMinClient = async (req, res) => {
   try {
     await pool.query(
       `UPDATE client_ingredient_selections SET seuil_min = $1 WHERE client_id = $2 AND ingredient_id = $3`,
-      [seuilMin ?? null, req.user.id, ingredientId]
+      [seuilMin ?? null, req.user.gerant_parent_id || req.user.id, ingredientId]
     );
     res.json({ success: true });
   } catch (err) {
