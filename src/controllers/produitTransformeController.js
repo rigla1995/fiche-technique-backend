@@ -145,6 +145,9 @@ const deleteStockPTHistory = async (req, res) => {
     // Also clean up labo PT stock
     await pool.query(`DELETE FROM stock_labo_pt_daily WHERE produit_id = $1`, [produitId]);
 
+    // Clean up inventaires referencing this PT product
+    await pool.query(`DELETE FROM inventaires WHERE produit_id = $1`, [produitId]);
+
     res.json({ deleted: true });
   } catch (err) {
     console.error('[deleteStockPTHistory]', err);

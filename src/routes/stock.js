@@ -9,6 +9,7 @@ const {
   updateSeuilMin, updateSeuilMinClient, createClientPerte,
   exportHistoriqueExcel,
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
+  getCascadeInfoClient, getCascadeInfoEntreprise,
 } = require('../controllers/stockController');
 const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
 const { listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, getPrixClientPerte, getDateRangeClientPerte } = require('../controllers/pertesController');
@@ -34,7 +35,11 @@ router.get('/entreprise/:activiteId/:ingredientId/history', authenticate, requir
 router.put('/entreprise/:activiteId/:ingredientId/seuil-min', authenticate, requireEntreprise, updateSeuilMin);
 router.post('/entreprise/:activiteId/duplicate-franchise', authenticate, requireEntreprise, duplicateStockToFranchise);
 
-// Delete all history for an ingredient (after deselection confirmation)
+// Cascade info (appro + inventaire counts) for ingredient deselect confirmation
+router.get('/client/:ingredientId/cascade-info', authenticate, requireClient, getCascadeInfoClient);
+router.get('/entreprise/:activiteId/:ingredientId/cascade-info', authenticate, requireEntreprise, getCascadeInfoEntreprise);
+
+// Delete all history + inventaires for an ingredient (after deselection confirmation)
 router.delete('/client/:ingredientId/all-history', authenticate, requireClient, deleteClientIngredientHistory);
 router.delete('/entreprise/:activiteId/:ingredientId/all-history', authenticate, requireEntreprise, deleteEntrepriseIngredientHistory);
 

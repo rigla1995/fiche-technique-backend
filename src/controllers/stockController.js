@@ -1468,13 +1468,45 @@ const exportHistoriqueExcel = async (req, res) => {
   }
 };
 
+const getCascadeInfoClient = async (req, res) => {
+  const { ingredientId } = req.params;
+  try {
+    const [appros, inv] = await Promise.all([
+      pool.query('SELECT COUNT(*) FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2', [req.user.id, ingredientId]),
+      pool.query('SELECT COUNT(*) FROM inventaires WHERE client_id = $1 AND ingredient_id = $2', [req.user.id, ingredientId]),
+    ]);
+    res.json({ approCount: Number(appros.rows[0].count), inventaireCount: Number(inv.rows[0].count) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const getCascadeInfoEntreprise = async (req, res) => {
+  const { activiteId, ingredientId } = req.params;
+  try {
+    const check = await pool.query(
+      `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE a.id = $1 AND pe.client_id = $2`,
+      [activiteId, req.user.id]
+    );
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    const [appros, inv] = await Promise.all([
+      pool.query('SELECT COUNT(*) FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]),
+      pool.query('SELECT COUNT(*) FROM inventaires WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]),
+    ]);
+    res.json({ approCount: Number(appros.rows[0].count), inventaireCount: Number(inv.rows[0].count) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 const deleteClientIngredientHistory = async (req, res) => {
   const { ingredientId } = req.params;
   try {
-    await pool.query(
-      'DELETE FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2',
-      [req.user.id, ingredientId]
-    );
+    await pool.query('DELETE FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2', [req.user.id, ingredientId]);
+    await pool.query('DELETE FROM inventaires WHERE client_id = $1 AND ingredient_id = $2', [req.user.id, ingredientId]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -1485,17 +1517,14 @@ const deleteClientIngredientHistory = async (req, res) => {
 const deleteEntrepriseIngredientHistory = async (req, res) => {
   const { activiteId, ingredientId } = req.params;
   try {
-    // Verify ownership
     const check = await pool.query(
       `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
       [activiteId, req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
-    await pool.query(
-      'DELETE FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2',
-      [activiteId, ingredientId]
-    );
+    await pool.query('DELETE FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
+    await pool.query('DELETE FROM inventaires WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -1556,4 +1585,5 @@ module.exports = {
   duplicateStockToFranchise,
   exportHistoriqueExcel,
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
+  getCascadeInfoClient, getCascadeInfoEntreprise,
 };
