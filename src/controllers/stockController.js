@@ -902,6 +902,7 @@ const getHistoriqueAppro = async (req, res) => {
       const result = await pool.query(
         `SELECT sed.id, sed.activite_id, sed.date_appro, sed.quantite, sed.prix_unitaire, sed.type_appro,
                 sed.ref_facture, sed.fournisseur_id, f.nom as fournisseur_nom, sed.updated_at,
+                sed.created_by,
                 i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie_nom
          FROM stock_entreprise_daily sed
@@ -972,6 +973,7 @@ const getHistoriqueAppro = async (req, res) => {
       const result = await pool.query(
         `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
                 scd.ref_facture, scd.fournisseur_id, f.nom as fournisseur_nom, scd.updated_at,
+                scd.created_by,
                 i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie_nom
          FROM stock_client_daily scd
@@ -1044,15 +1046,17 @@ const updateHistoriqueEntry = async (req, res) => {
     if (isEntreprise) {
       // Verify ownership
       const check = await pool.query(
-        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite as old_quantite, sed.type_appro, sed.date_appro
+        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite as old_quantite, sed.type_appro, sed.date_appro, sed.created_by
          FROM stock_entreprise_daily sed
          JOIN activites a ON a.id = sed.activite_id
          JOIN profil_entreprise pe ON pe.id = a.entreprise_id
          WHERE sed.id = $1 AND pe.client_id = $2`,
-        [id, req.user.id]
+        [id, req.user.gerant_parent_id || req.user.id]
       );
       if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
       const entry = check.rows[0];
+      if (req.user.role === 'gerant' && entry.created_by !== req.user.id)
+        return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
       await pool.query(
         `UPDATE stock_entreprise_daily SET quantite=$1, prix_unitaire=$2, fournisseur_id=$3, ref_facture=$4, updated_at=NOW()
          WHERE id=$5`,
@@ -1075,10 +1079,12 @@ const updateHistoriqueEntry = async (req, res) => {
       }
     } else {
       const check = await pool.query(
-        `SELECT id FROM stock_client_daily WHERE id=$1 AND client_id=$2`,
-        [id, req.user.id]
+        `SELECT id, created_by FROM stock_client_daily WHERE id=$1 AND client_id=$2`,
+        [id, req.user.gerant_parent_id || req.user.id]
       );
       if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
+      if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
+        return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
       await pool.query(
         `UPDATE stock_client_daily SET quantite=$1, prix_unitaire=$2, fournisseur_id=$3, ref_facture=$4, updated_at=NOW()
          WHERE id=$5`,
@@ -1099,14 +1105,16 @@ const deleteHistoriqueEntry = async (req, res) => {
   try {
     if (isEntreprise === 'true') {
       const check = await pool.query(
-        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite, sed.type_appro, sed.date_appro
+        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite, sed.type_appro, sed.date_appro, sed.created_by
          FROM stock_entreprise_daily sed
          JOIN activites a ON a.id = sed.activite_id
          JOIN profil_entreprise pe ON pe.id = a.entreprise_id
          WHERE sed.id = $1 AND pe.client_id = $2`,
-        [id, req.user.id]
+        [id, req.user.gerant_parent_id || req.user.id]
       );
       if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
+      if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
+        return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
       const entry = check.rows[0];
       await pool.query('DELETE FROM stock_entreprise_daily WHERE id=$1', [id]);
       // If transfert, restore labo stock
@@ -1122,10 +1130,12 @@ const deleteHistoriqueEntry = async (req, res) => {
       }
     } else {
       const check = await pool.query(
-        `SELECT id FROM stock_client_daily WHERE id=$1 AND client_id=$2`,
-        [id, req.user.id]
+        `SELECT id, created_by FROM stock_client_daily WHERE id=$1 AND client_id=$2`,
+        [id, req.user.gerant_parent_id || req.user.id]
       );
       if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
+      if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
+        return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
       await pool.query('DELETE FROM stock_client_daily WHERE id=$1', [id]);
     }
     res.json({ success: true });
@@ -1171,6 +1181,7 @@ function mapHistoriqueEntry(r) {
     ingredientNom: r.ingredient_nom,
     uniteNom: r.unite_nom,
     categorieNom: r.categorie_nom,
+    createdBy: r.created_by ?? null,
   };
 }
 

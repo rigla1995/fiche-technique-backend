@@ -618,7 +618,7 @@ const getLaboInventaireHistorique = async (req, res) => {
     else if (ingIdNumL && ingIdNumL < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNumL); }
 
     const result = await pool.query(
-      `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note, inv.created_at, inv.updated_at,
+      `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note, inv.created_at, inv.updated_at, inv.created_by,
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
@@ -642,6 +642,7 @@ const getLaboInventaireHistorique = async (req, res) => {
       note: r.note,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
+      createdBy: r.created_by ?? null,
       ingredientId: r.ingredient_id !== null ? r.ingredient_id : -(r.produit_id),
       isPT: r.produit_id !== null,
       ingredientNom: r.ingredient_nom,
@@ -685,7 +686,7 @@ const getActiviteInventaireHistorique = async (req, res) => {
       : ingIdNum > 0 ? `inv.ingredient_id IS NOT NULL` : `inv.produit_id IS NOT NULL`;
 
     const result = await pool.query(
-      `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note, inv.created_at, inv.updated_at,
+      `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note, inv.created_at, inv.updated_at, inv.created_by,
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
@@ -709,6 +710,7 @@ const getActiviteInventaireHistorique = async (req, res) => {
       note: r.note,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
+      createdBy: r.created_by ?? null,
       ingredientId: r.ingredient_id !== null ? r.ingredient_id : -(r.produit_id),
       isPT: r.produit_id !== null,
       ingredientNom: r.ingredient_nom,
@@ -730,17 +732,20 @@ const updateInventaireEntry = async (req, res) => {
   if (quantiteReelle === undefined || quantiteReelle === null)
     return res.status(400).json({ message: 'quantiteReelle requis' });
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const check = await pool.query(
-      `SELECT inv.id FROM inventaires inv
+      `SELECT inv.id, inv.created_by FROM inventaires inv
        LEFT JOIN labos l ON l.id = inv.labo_id
        LEFT JOIN activites a ON a.id = inv.activite_id
        LEFT JOIN profil_entreprise pe1 ON l.entreprise_id = pe1.id
        LEFT JOIN profil_entreprise pe2 ON a.entreprise_id = pe2.id
        WHERE inv.id = $1 AND (pe1.client_id = $2 OR pe2.client_id = $2 OR inv.client_id = $2)`,
-      [inventaireId, req.user.id]
+      [inventaireId, clientId]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Inventaire introuvable' });
+    if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
 
     const r = await pool.query(
       `UPDATE inventaires SET quantite_reelle = $1, note = $2, updated_at = NOW()
@@ -1276,7 +1281,7 @@ const saveClientInventaire = async (req, res) => {
 // ─── GET historique inventaire (client indep) ─────────────────────────────────
 
 const getClientInventaireHistorique = async (req, res) => {
-  const clientId = req.user.id;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   const { startDate, endDate, ingredientId } = req.query;
   try {
     const ingIdNum3 = ingredientId ? Number(ingredientId) : null;
@@ -1289,7 +1294,7 @@ const getClientInventaireHistorique = async (req, res) => {
     else if (ingIdNum3 && ingIdNum3 < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNum3); }
 
     const result = await pool.query(
-      `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note, inv.created_at, inv.updated_at,
+      `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note, inv.created_at, inv.updated_at, inv.created_by,
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
@@ -1311,6 +1316,7 @@ const getClientInventaireHistorique = async (req, res) => {
       note: r.note,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
+      createdBy: r.created_by ?? null,
       ingredientId: r.ingredient_id !== null ? r.ingredient_id : -(r.produit_id),
       isPT: r.produit_id !== null,
       ingredientNom: r.ingredient_nom,

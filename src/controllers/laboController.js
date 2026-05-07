@@ -1027,7 +1027,7 @@ const getLaboHistorique = async (req, res) => {
 
     const result = await pool.query(
       `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
-              sld.ref_facture, sld.updated_at,
+              sld.ref_facture, sld.updated_at, sld.created_by,
               i.nom as ingredient_nom,
               u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
@@ -1055,6 +1055,7 @@ const getLaboHistorique = async (req, res) => {
       fournisseurId: r.fournisseur_id || null,
       fournisseurNom: r.fournisseur_nom || null,
       updatedAt: r.updated_at,
+      createdBy: r.created_by ?? null,
     })));
   } catch (err) {
     console.error(err);
@@ -1071,10 +1072,12 @@ const updateLaboHistoriqueEntry = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const check = await pool.query(
-      'SELECT id FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
+      'SELECT id, created_by FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
       [entryId, laboId]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
+    if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
 
     const result = await pool.query(
       `UPDATE stock_labo_daily
@@ -1104,9 +1107,16 @@ const deleteLaboHistoriqueEntry = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
-    const result = await pool.query(
-      'DELETE FROM stock_labo_daily WHERE id = $1 AND labo_id = $2 RETURNING id',
+    const checkDel = await pool.query(
+      'SELECT created_by FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
       [entryId, laboId]
+    );
+    if (checkDel.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
+    if (req.user.role === 'gerant' && checkDel.rows[0].created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
+    const result = await pool.query(
+      'DELETE FROM stock_labo_daily WHERE id = $1 RETURNING id',
+      [entryId]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
     res.json({ ok: true });

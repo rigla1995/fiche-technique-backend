@@ -22,6 +22,7 @@ const mapPerte = (r) => ({
   typePerte: r.type_perte,
   datePerte: r.date_perte instanceof Date ? r.date_perte.toISOString().slice(0, 10) : String(r.date_perte).slice(0, 10),
   createdAt: r.created_at,
+  createdBy: r.created_by ?? null,
 });
 
 // Returns the appro price for an ingredient on or before the given date (NULL if none)
@@ -134,7 +135,7 @@ const listClientPertes = async (req, res) => {
     const result = await pool.query(
       `SELECT cp.id, cp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at
+              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at, cp.created_by
        FROM client_pertes cp
        JOIN ingredients i ON i.id = cp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
@@ -161,10 +162,12 @@ const updateClientPerte = async (req, res) => {
   try {
     // Fetch existing row to get ingredient_id and resolve datePerte
     const existing = await pool.query(
-      `SELECT ingredient_id, date_perte FROM client_pertes WHERE id = $1 AND client_id = $2`,
+      `SELECT ingredient_id, date_perte, created_by FROM client_pertes WHERE id = $1 AND client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
     );
     if (existing.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+    if (req.user.role === 'gerant' && existing.rows[0].created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
     const ingredientId = existing.rows[0].ingredient_id;
     const effectiveDate = datePerte || (existing.rows[0].date_perte instanceof Date
       ? existing.rows[0].date_perte.toISOString().slice(0, 10)
@@ -190,9 +193,16 @@ const updateClientPerte = async (req, res) => {
 const deleteClientPerte = async (req, res) => {
   const { id } = req.params;
   try {
-    const r = await pool.query(
-      `DELETE FROM client_pertes WHERE id = $1 AND client_id = $2 RETURNING id`,
+    const checkDel = await pool.query(
+      `SELECT created_by FROM client_pertes WHERE id = $1 AND client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
+    );
+    if (checkDel.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+    if (req.user.role === 'gerant' && checkDel.rows[0].created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
+    const r = await pool.query(
+      `DELETE FROM client_pertes WHERE id = $1 RETURNING id`,
+      [id]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     res.json({ message: 'Perte supprimée' });
@@ -231,7 +241,7 @@ const listEntreprisePertes = async (req, res) => {
       `SELECT p.id, p.activite_id, a.nom AS activite_nom,
               p.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at
+              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at, p.created_by
        FROM pertes p
        JOIN activites a ON a.id = p.activite_id
        JOIN ingredients i ON i.id = p.ingredient_id
@@ -259,7 +269,7 @@ const updateEntreprisePerte = async (req, res) => {
   try {
     // Fetch existing row to get ingredient_id, activite_id, date_perte
     const existing = await pool.query(
-      `SELECT p.ingredient_id, p.activite_id, p.date_perte
+      `SELECT p.ingredient_id, p.activite_id, p.date_perte, p.created_by
        FROM pertes p
        JOIN activites a ON a.id = p.activite_id
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
@@ -267,6 +277,8 @@ const updateEntreprisePerte = async (req, res) => {
       [id, req.user.gerant_parent_id || req.user.id]
     );
     if (existing.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+    if (req.user.role === 'gerant' && existing.rows[0].created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
     const { ingredient_id: ingredientId, activite_id: activiteId, date_perte } = existing.rows[0];
     const effectiveDate = datePerte || (date_perte instanceof Date
       ? date_perte.toISOString().slice(0, 10)
@@ -295,13 +307,19 @@ const updateEntreprisePerte = async (req, res) => {
 const deleteEntreprisePerte = async (req, res) => {
   const { id } = req.params;
   try {
-    const r = await pool.query(
-      `DELETE FROM pertes p
-       USING activites a
+    const checkEntDel = await pool.query(
+      `SELECT p.created_by FROM pertes p
+       JOIN activites a ON a.id = p.activite_id
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-       WHERE p.id = $1 AND p.activite_id = a.id AND pe.client_id = $2
-       RETURNING p.id`,
+       WHERE p.id = $1 AND pe.client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
+    );
+    if (checkEntDel.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+    if (req.user.role === 'gerant' && checkEntDel.rows[0].created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
+    const r = await pool.query(
+      `DELETE FROM pertes WHERE id = $1 RETURNING id`,
+      [id]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     res.json({ message: 'Perte supprimée' });
@@ -459,7 +477,7 @@ const exportClientPertes = async (req, res) => {
     const result = await pool.query(
       `SELECT cp.id, cp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at
+              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at, cp.created_by
        FROM client_pertes cp
        JOIN ingredients i ON i.id = cp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
@@ -506,7 +524,7 @@ const exportEntreprisePertes = async (req, res) => {
       `SELECT p.id, p.activite_id, a.nom AS activite_nom,
               p.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at
+              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at, p.created_by
        FROM pertes p
        JOIN activites a ON a.id = p.activite_id
        JOIN ingredients i ON i.id = p.ingredient_id
