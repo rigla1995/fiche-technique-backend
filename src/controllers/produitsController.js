@@ -84,7 +84,7 @@ const list = async (req, res) => {
   const { activiteId, activiteType, franchiseGroup, type } = req.query;
   try {
     let whereExtra = '';
-    const params = [req.user.id];
+    const params = [req.user.gerant_parent_id || req.user.id];
     if (type === 'vendable' || type === 'utilisable') {
       params.push(type);
       whereExtra += ` AND p.type = $${params.length}`;
