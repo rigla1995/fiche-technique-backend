@@ -866,9 +866,9 @@ const createTransfer = async (req, res) => {
 
           // Record PT transfer
           await client.query(
-            `INSERT INTO labo_transfers (labo_id, activite_id, produit_id, quantite, date_transfert, note, ref_facture)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [laboId, t.activiteId, produitId, qty, dateTransfert, note || null, refFacture || null]
+            `INSERT INTO labo_transfers (labo_id, activite_id, produit_id, quantite, date_transfert, note, ref_facture, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [laboId, t.activiteId, produitId, qty, dateTransfert, note || null, refFacture || null, req.user.id]
           );
           continue;
         }
@@ -883,22 +883,22 @@ const createTransfer = async (req, res) => {
         const prixUnitaire = latestRes.rows.length > 0 ? latestRes.rows[0].prix_unitaire : null;
 
         await client.query(
-          `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, updated_at)
-           VALUES ($1, $2, $3, $4, $5, 'transfert', NOW())`,
-          [laboId, ingId, dateTransfert, -qty, prixUnitaire]
+          `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, updated_at, created_by)
+           VALUES ($1, $2, $3, $4, $5, 'transfert', NOW(), $6)`,
+          [laboId, ingId, dateTransfert, -qty, prixUnitaire, req.user.id]
         );
 
         await client.query(
           `INSERT INTO stock_entreprise_daily
-             (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at)
-           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, NOW())`,
-          [t.activiteId, ingId, dateTransfert, qty, prixUnitaire, laboFournisseurId, refFacture || null]
+             (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at, created_by)
+           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, NOW(), $8)`,
+          [t.activiteId, ingId, dateTransfert, qty, prixUnitaire, laboFournisseurId, refFacture || null, req.user.id]
         );
 
         await client.query(
-          `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [laboId, t.activiteId, ingId, qty, dateTransfert, note || null, refFacture || null]
+          `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [laboId, t.activiteId, ingId, qty, dateTransfert, note || null, refFacture || null, req.user.id]
         );
       }
 
