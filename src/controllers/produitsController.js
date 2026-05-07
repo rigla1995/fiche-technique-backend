@@ -82,27 +82,51 @@ const costSubquery = (alias = 'p') => `
 
 const list = async (req, res) => {
   const { activiteId, activiteType, franchiseGroup, type, laboId } = req.query;
+  const isLaboGerant = req.user.role === 'gerant' && req.user.gerant_activite_type === 'labo';
+  const isActiviteGerant = req.user.role === 'gerant' && req.user.gerant_activite_type && req.user.gerant_activite_type !== 'labo';
+
   try {
     let whereExtra = '';
     const params = [req.user.gerant_parent_id || req.user.id];
-    if (type === 'vendable' || type === 'utilisable') {
-      params.push(type);
-      whereExtra += ` AND p.type = $${params.length}`;
-    }
-    if (activiteId) {
-      params.push(activiteId);
-      whereExtra += ` AND p.activite_id = $${params.length}`;
-    } else if (activiteType) {
-      params.push(activiteType);
-      whereExtra += ` AND p.activite_type = $${params.length}`;
-      if (franchiseGroup) {
-        params.push(franchiseGroup);
-        whereExtra += ` AND p.franchise_group = $${params.length}`;
+
+    // For non-gérant users: apply standard query filters
+    if (!isLaboGerant && !isActiviteGerant) {
+      if (type === 'vendable' || type === 'utilisable') {
+        params.push(type);
+        whereExtra += ` AND p.type = $${params.length}`;
+      }
+      if (activiteId) {
+        params.push(activiteId);
+        whereExtra += ` AND p.activite_id = $${params.length}`;
+      } else if (activiteType) {
+        params.push(activiteType);
+        whereExtra += ` AND p.activite_type = $${params.length}`;
+        if (franchiseGroup) {
+          params.push(franchiseGroup);
+          whereExtra += ` AND p.franchise_group = $${params.length}`;
+        }
       }
       if (laboId) {
         params.push(laboId);
         whereExtra += ` AND p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${params.length})`;
       }
+    }
+
+    // Gérant labo: only utilisable produits transformés scoped to their labo
+    if (isLaboGerant) {
+      whereExtra += ` AND p.type = 'utilisable' AND p.is_stock_ingredient = true`;
+      params.push(req.user.gerant_activite_id);
+      whereExtra += ` AND p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${params.length})`;
+    }
+
+    // Gérant activité: restrict to their specific activité only
+    if (isActiviteGerant) {
+      if (type === 'vendable' || type === 'utilisable') {
+        params.push(type);
+        whereExtra += ` AND p.type = $${params.length}`;
+      }
+      params.push(req.user.gerant_activite_id);
+      whereExtra += ` AND p.activite_id = $${params.length}`;
     }
 
     const result = await pool.query(
