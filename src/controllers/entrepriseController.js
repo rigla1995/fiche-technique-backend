@@ -67,9 +67,10 @@ const mapActivite = (row) => ({
 
 const listActivites = async (req, res) => {
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const entreprise = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1',
-      [req.user.id]
+      [clientId]
     );
     if (entreprise.rows.length === 0) return res.json([]);
     const result = await pool.query(
@@ -399,6 +400,7 @@ const toggleActiviteIngredient = async (req, res) => {
 
 const getActiviteTypesSummary = async (req, res) => {
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const [actResult, approResult, fourn] = await Promise.all([
       pool.query(
         `SELECT
@@ -414,7 +416,7 @@ const getActiviteTypesSummary = async (req, res) => {
            GROUP BY activite_id
          ) sel ON sel.activite_id = a.id
          WHERE pe.client_id = $1`,
-        [req.user.id]
+        [clientId]
       ),
       pool.query(
         `SELECT
@@ -430,7 +432,7 @@ const getActiviteTypesSummary = async (req, res) => {
              JOIN profil_entreprise pe ON a.entreprise_id = pe.id
              WHERE pe.client_id = $1 AND (a.type IS NULL OR a.type = 'distincte')
            ) AS has_distinct_appro`,
-        [req.user.id]
+        [clientId]
       ),
       pool.query(
         `SELECT
@@ -446,7 +448,7 @@ const getActiviteTypesSummary = async (req, res) => {
              JOIN profil_entreprise pe ON a.entreprise_id = pe.id
              WHERE pe.client_id = $1 AND (a.type IS NULL OR a.type = 'distincte')
            ) AS has_distinct_fournisseurs`,
-        [req.user.id]
+        [clientId]
       ),
     ]);
     const row = actResult.rows[0];

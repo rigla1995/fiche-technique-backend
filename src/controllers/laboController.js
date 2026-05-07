@@ -96,9 +96,10 @@ const createLabo = async (req, res) => {
 
 const listLabos = async (req, res) => {
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const peRes = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1',
-      [req.user.id]
+      [clientId]
     );
     if (peRes.rows.length === 0) return res.json([]);
     const result = await pool.query(
@@ -120,7 +121,7 @@ const listLabos = async (req, res) => {
 const getLaboById = async (req, res) => {
   const { laboId } = req.params;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
     const r = await pool.query('SELECT * FROM labos WHERE id = $1', [laboId]);
     // Also return activities linked to this labo
@@ -156,7 +157,7 @@ function mapLabo(row) {
 const getLaboIngredients = async (req, res) => {
   const { laboId } = req.params;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const result = await pool.query(
@@ -187,7 +188,7 @@ const getLaboIngredients = async (req, res) => {
 const toggleLaboIngredient = async (req, res) => {
   const { laboId, ingredientId } = req.params;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const existing = await pool.query(
@@ -219,7 +220,7 @@ const getLaboStock = async (req, res) => {
   const { laboId } = req.params;
   const assignedOnly = req.query.assignedOnly === 'true';
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const assignedFilter = assignedOnly
@@ -610,7 +611,7 @@ const updateLaboStock = async (req, res) => {
     return res.status(400).json({ message: 'Quantité invalide' });
 
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     if (ingredientIdRaw < 0) {
@@ -707,7 +708,7 @@ const getLaboStockHistory = async (req, res) => {
   const { laboId } = req.params;
   const ingredientIdRaw = parseInt(req.params.ingredientId);
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     if (ingredientIdRaw < 0) {
@@ -754,7 +755,7 @@ const getLaboStockHistory = async (req, res) => {
 const getLaboFournisseurs = async (req, res) => {
   const { laboId } = req.params;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const result = await pool.query(
@@ -779,7 +780,7 @@ const syncLaboFournisseurs = async (req, res) => {
   const { fournisseurIds } = req.body;
   if (!Array.isArray(fournisseurIds)) return res.status(400).json({ message: 'fournisseurIds requis' });
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     await pool.query('DELETE FROM fournisseur_labos WHERE labo_id = $1', [laboId]);
@@ -808,7 +809,7 @@ const createTransfer = async (req, res) => {
     return res.status(400).json({ message: 'dateTransfert et transfers requis' });
 
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     // Verify all activites belong to this labo
@@ -921,7 +922,7 @@ const getTransferHistory = async (req, res) => {
   const currentYear = new Date().getFullYear();
 
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const ingIdNum = ingredientId ? parseInt(ingredientId, 10) : null;
@@ -1011,7 +1012,7 @@ const getLaboHistorique = async (req, res) => {
   const { laboId } = req.params;
   const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture } = req.query;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const conditions = ['sld.labo_id = $1'];
@@ -1066,7 +1067,7 @@ const updateLaboHistoriqueEntry = async (req, res) => {
   const { laboId, entryId } = req.params;
   const { quantite, prixUnitaire, fournisseurId, refFacture } = req.body;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const check = await pool.query(
@@ -1100,7 +1101,7 @@ const updateLaboHistoriqueEntry = async (req, res) => {
 const deleteLaboHistoriqueEntry = async (req, res) => {
   const { laboId, entryId } = req.params;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const result = await pool.query(
@@ -1122,7 +1123,7 @@ const updateLaboSeuilMin = async (req, res) => {
   const ingredientIdRaw = parseInt(req.params.ingredientId);
   const { seuilMin } = req.body;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     if (ingredientIdRaw < 0) {
@@ -1151,7 +1152,7 @@ const updateLaboSeuilMin = async (req, res) => {
 const getActivityAssignments = async (req, res) => {
   const { laboId } = req.params;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const ingRes = await pool.query(
@@ -1204,7 +1205,7 @@ const toggleActivityAssignment = async (req, res) => {
   const { activiteId } = req.body;
   if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const actCheck = await pool.query(
@@ -1244,7 +1245,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
 
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const conditions = ['sld.labo_id = $1'];
@@ -1373,7 +1374,7 @@ const createLaboPerte = async (req, res) => {
   const { quantite, typePerte, datePerte } = req.body;
   if (!quantite || parseFloat(quantite) <= 0) return res.status(400).json({ message: 'Quantité invalide' });
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const ingredientIdRaw = parseInt(ingredientId);
@@ -1413,7 +1414,7 @@ const createLaboPerte = async (req, res) => {
 const getLaboPTRecipe = async (req, res) => {
   const { laboId, produitId } = req.params;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const r = await pool.query(
