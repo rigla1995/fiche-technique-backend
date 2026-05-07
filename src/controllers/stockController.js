@@ -854,7 +854,7 @@ const getHistoriqueAppro = async (req, res) => {
           `SELECT a.id FROM activites a
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
            WHERE pe.client_id = $1 AND a.franchise_group = $2`,
-          [req.user.id, franchiseGroup]
+          [req.user.gerant_parent_id || req.user.id, franchiseGroup]
         );
         activiteIds = gRes.rows.map((r) => r.id);
         if (activiteIds.length === 0) return res.json([]);
