@@ -13,12 +13,13 @@ const mapClient = (row) => ({
   onboardingStep: row.onboarding_step ?? 0,
   active: row.actif,
   createdAt: row.created_at,
+  activatedAt: row.activated_at || null,
 });
 
 const list = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at
+      `SELECT id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at, activated_at
        FROM utilisateurs WHERE role = 'client' ORDER BY nom`
     );
     res.json(result.rows.map(mapClient));

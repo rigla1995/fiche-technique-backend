@@ -13,6 +13,7 @@ const mapGerant = (row) => ({
   montantMensuel: row.gerant_montant_mensuel,
   actif: row.actif,
   createdAt: row.created_at,
+  activatedAt: row.activated_at || null,
 });
 
 // GET /api/gerants — list gérants for current user (indep or entreprise)
@@ -20,7 +21,7 @@ const list = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, nom, email, telephone, gerant_parent_id, gerant_activite_id,
-              gerant_activite_type, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at
+              gerant_activite_type, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at, activated_at
        FROM utilisateurs
        WHERE role = 'gerant' AND gerant_parent_id = $1
        ORDER BY nom`,
