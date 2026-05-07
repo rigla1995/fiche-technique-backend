@@ -189,13 +189,14 @@ const deleteFournisseur = async (req, res) => {
 // ── Indépendant fournisseurs (linked directly to client_id) ──────────────────
 
 const listFournisseursIndep = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const result = await pool.query(
       `SELECT f.id, f.nom, f.adresse, f.telephone, f.created_at,
               (SELECT COUNT(*) FROM stock_client_daily scd WHERE scd.fournisseur_id = f.id AND scd.quantite > 0) AS appro_count
        FROM fournisseurs f
        WHERE f.client_id = $1 AND f.nom != 'AUTO' ORDER BY f.nom`,
-      [req.user.id]
+      [clientId]
     );
     res.json(result.rows.map((r) => ({
       id: r.id, nom: r.nom, adresse: r.adresse, telephone: r.telephone,
@@ -231,8 +232,9 @@ const updateFournisseurIndep = async (req, res) => {
   const { id } = req.params;
   const { nom, adresse, telephone } = req.body;
   if (!nom?.trim()) return res.status(400).json({ message: 'Nom requis' });
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const check = await pool.query('SELECT id FROM fournisseurs WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    const check = await pool.query('SELECT id FROM fournisseurs WHERE id = $1 AND client_id = $2', [id, clientId]);
     if (check.rows.length === 0) return res.status(404).json({ message: 'Fournisseur introuvable' });
     await pool.query(
       `UPDATE fournisseurs SET nom = $1, adresse = $2, telephone = $3 WHERE id = $4`,
@@ -247,8 +249,9 @@ const updateFournisseurIndep = async (req, res) => {
 
 const deleteFournisseurIndep = async (req, res) => {
   const { id } = req.params;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const check = await pool.query('SELECT id FROM fournisseurs WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    const check = await pool.query('SELECT id FROM fournisseurs WHERE id = $1 AND client_id = $2', [id, clientId]);
     if (check.rows.length === 0) return res.status(404).json({ message: 'Fournisseur introuvable' });
     await pool.query('DELETE FROM fournisseurs WHERE id = $1', [id]);
     res.json({ success: true });
