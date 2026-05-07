@@ -118,16 +118,28 @@ const list = async (req, res) => {
       whereExtra += ` AND p.type = 'utilisable'`;
       params.push(req.user.gerant_activite_id);
       const laboIdx = params.length;
-      whereExtra += ` AND (
-        p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx})
-        OR (
-          p.activite_type = 'franchise'
-          AND p.franchise_group IN (
+
+      if (activiteType === 'franchise') {
+        whereExtra += ` AND (
+          p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx} AND a.type = 'franchise')
+          OR (p.activite_type = 'franchise' AND p.franchise_group IN (
             SELECT COALESCE(a.franchise_group, a.nom)
             FROM activites a WHERE a.labo_id = $${laboIdx} AND a.type = 'franchise'
-          )
-        )
-      )`;
+          ))
+        )`;
+      } else if (activiteType === 'distincte') {
+        whereExtra += ` AND p.activite_id IN (
+          SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx} AND (a.type = 'distincte' OR a.type IS NULL)
+        )`;
+      } else {
+        whereExtra += ` AND (
+          p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx})
+          OR (p.activite_type = 'franchise' AND p.franchise_group IN (
+            SELECT COALESCE(a.franchise_group, a.nom)
+            FROM activites a WHERE a.labo_id = $${laboIdx} AND a.type = 'franchise'
+          ))
+        )`;
+      }
     }
 
     // Gérant activité: restrict to their specific activité only
