@@ -6,8 +6,9 @@ const getEntrepriseId = async (clientId) => {
 };
 
 const listFournisseurs = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const entrepriseId = await getEntrepriseId(req.user.id);
+    const entrepriseId = await getEntrepriseId(clientId);
     if (!entrepriseId) return res.json([]);
     const result = await pool.query(
       `SELECT f.id, f.nom, f.adresse, f.telephone, f.is_labo, f.created_at,
@@ -58,12 +59,13 @@ const listFournisseurs = async (req, res) => {
 
 const getFournisseursForActivite = async (req, res) => {
   const { activiteId } = req.params;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const check = await pool.query(
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, clientId]
     );
     if (check.rows.length === 0) return res.json([]);
 
@@ -85,9 +87,9 @@ const getFournisseursForActivite = async (req, res) => {
 const createFournisseur = async (req, res) => {
   const { nom, adresse, telephone, activiteIds, laboIds } = req.body;
   if (!nom?.trim()) return res.status(400).json({ message: 'Nom requis' });
-
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const entrepriseId = await getEntrepriseId(req.user.id);
+    const entrepriseId = await getEntrepriseId(clientId);
     if (!entrepriseId) return res.status(403).json({ message: 'Entreprise introuvable' });
 
     const r = await pool.query(
@@ -126,9 +128,9 @@ const updateFournisseur = async (req, res) => {
   const { id } = req.params;
   const { nom, adresse, telephone, activiteIds, laboIds } = req.body;
   if (!nom?.trim()) return res.status(400).json({ message: 'Nom requis' });
-
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const entrepriseId = await getEntrepriseId(req.user.id);
+    const entrepriseId = await getEntrepriseId(clientId);
     const check = await pool.query(
       'SELECT id, is_labo FROM fournisseurs WHERE id = $1 AND entreprise_id = $2',
       [id, entrepriseId]
@@ -170,8 +172,9 @@ const updateFournisseur = async (req, res) => {
 
 const deleteFournisseur = async (req, res) => {
   const { id } = req.params;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const entrepriseId = await getEntrepriseId(req.user.id);
+    const entrepriseId = await getEntrepriseId(clientId);
     const check = await pool.query(
       'SELECT id, is_labo FROM fournisseurs WHERE id = $1 AND entreprise_id = $2',
       [id, entrepriseId]
