@@ -32,7 +32,7 @@ async function checkActiviteOwner(activiteId, userId) {
 const getLaboInventaireStock = async (req, res) => {
   const { laboId } = req.params;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const ingRes = await pool.query(
@@ -268,7 +268,7 @@ const saveLaboInventaire = async (req, res) => {
   if (!dateInventaire || !Array.isArray(entries) || entries.length === 0)
     return res.status(400).json({ message: 'dateInventaire et entries[] requis' });
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const upserted = [];
@@ -321,7 +321,7 @@ const getActiviteInventaireStock = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
@@ -552,7 +552,7 @@ const saveActiviteInventaire = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
@@ -605,7 +605,7 @@ const getLaboInventaireHistorique = async (req, res) => {
   const { laboId } = req.params;
   const { startDate, endDate, ingredientId } = req.query;
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const ingIdNumL = ingredientId ? Number(ingredientId) : null;
@@ -666,7 +666,7 @@ const getActiviteInventaireHistorique = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
@@ -776,7 +776,7 @@ const exportLaboInventaireExcel = async (req, res) => {
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').filter(Boolean) : []);
 
   try {
-    const ok = await checkLaboOwner(laboId, req.user.id);
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const ingIdNumLE = ingredientId ? Number(ingredientId) : null;
@@ -907,7 +907,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
       `SELECT a.id, a.nom FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
@@ -1025,7 +1025,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
 // ─── GET client inventaire stock (indep) ─────────────────────────────────────
 
 const getClientInventaireStock = async (req, res) => {
-  const clientId = req.user.id;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const ingRes = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
@@ -1232,7 +1232,7 @@ const getClientInventaireStock = async (req, res) => {
 // ─── POST save client inventaire (indep) ─────────────────────────────────────
 
 const saveClientInventaire = async (req, res) => {
-  const clientId = req.user.id;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   const { dateInventaire, entries } = req.body;
   if (!dateInventaire || !Array.isArray(entries) || entries.length === 0)
     return res.status(400).json({ message: 'dateInventaire et entries[] requis' });
@@ -1332,7 +1332,7 @@ const getClientInventaireHistorique = async (req, res) => {
 // ─── Export Excel — client inventaire historique ──────────────────────────────
 
 const exportClientInventaireExcel = async (req, res) => {
-  const clientId = req.user.id;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   const { startDate, endDate, ingredientId, selectedIds: selectedIdsParam } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').filter(Boolean) : []);
 

@@ -341,7 +341,7 @@ const updateStockClient = async (req, res) => {
       `INSERT INTO stock_client_daily
          (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at, created_by)
        VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW(), $8)`,
-      [req.user.id, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
+      [req.user.gerant_parent_id || req.user.id, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
        fournisseurId ?? null, refFacture ?? null, req.user.id]
     );
     res.json({ success: true });
@@ -792,7 +792,7 @@ const getHistoryClient = async (req, res) => {
        WHERE scd.client_id = $1 AND scd.ingredient_id = $2
        ORDER BY scd.date_appro DESC
        LIMIT 5`,
-      [req.user.id, ingredientId]
+      [req.user.gerant_parent_id || req.user.id, ingredientId]
     );
     res.json(result.rows.map(mapHistEntry));
   } catch (err) {
@@ -865,7 +865,7 @@ const getHistoriqueAppro = async (req, res) => {
           `SELECT a.id FROM activites a
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
            WHERE a.id = ANY($1) AND pe.client_id = $2`,
-          [requested, req.user.id]
+          [requested, req.user.gerant_parent_id || req.user.id]
         );
         activiteIds = check.rows.map((r) => r.id);
         if (activiteIds.length === 0) return res.json([]);
@@ -1578,14 +1578,15 @@ const createClientPerte = async (req, res) => {
          AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
          AND date_appro <= $3
        ORDER BY date_appro DESC, id DESC LIMIT 1`,
-      [req.user.id, ingredientId, datePerte]
+      [req.user.gerant_parent_id || req.user.id, ingredientId, datePerte]
     );
     const prixUnitaire = priceRow.rows.length > 0 ? parseFloat(priceRow.rows[0].prix_unitaire) : null;
+    const clientId = req.user.gerant_parent_id || req.user.id;
 
     const r = await pool.query(
       `INSERT INTO client_pertes (client_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [req.user.id, ingredientId, quantite, typePerte, datePerte, prixUnitaire, req.user.id]
+      [clientId, ingredientId, quantite, typePerte, datePerte, prixUnitaire, req.user.id]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {

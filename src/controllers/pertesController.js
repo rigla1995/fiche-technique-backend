@@ -55,7 +55,7 @@ const createPerte = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
@@ -83,7 +83,7 @@ const listPertes = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
@@ -173,12 +173,13 @@ const updateClientPerte = async (req, res) => {
       ? existing.rows[0].date_perte.toISOString().slice(0, 10)
       : String(existing.rows[0].date_perte).slice(0, 10));
 
-    const prixUnitaire = await getPrixPourPerte('stock_client_daily', 'client_id', req.user.id, ingredientId, effectiveDate);
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const prixUnitaire = await getPrixPourPerte('stock_client_daily', 'client_id', clientId, ingredientId, effectiveDate);
 
     const r = await pool.query(
       `UPDATE client_pertes SET quantite = $1, type_perte = $2, prix_unitaire = $3
        WHERE id = $4 AND client_id = $5 RETURNING id`,
-      [quantite, typePerte, prixUnitaire, id, req.user.id]
+      [quantite, typePerte, prixUnitaire, id, clientId]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     res.json({ message: 'Mise à jour effectuée' });
@@ -292,7 +293,7 @@ const updateEntreprisePerte = async (req, res) => {
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE p.id = $4 AND p.activite_id = a.id AND pe.client_id = $5
        RETURNING p.id`,
-      [quantite, typePerte, prixUnitaire, id, req.user.id]
+      [quantite, typePerte, prixUnitaire, id, req.user.gerant_parent_id || req.user.id]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     res.json({ message: 'Mise à jour effectuée' });
@@ -547,7 +548,7 @@ const getPrixClientPerte = async (req, res) => {
   const { ingredientId, date } = req.query;
   if (!ingredientId || !date) return res.status(400).json({ message: 'ingredientId et date requis' });
   try {
-    const prixUnitaire = await getPrixPourPerte('stock_client_daily', 'client_id', req.user.id, ingredientId, date);
+    const prixUnitaire = await getPrixPourPerte('stock_client_daily', 'client_id', req.user.gerant_parent_id || req.user.id, ingredientId, date);
     res.json({ prixUnitaire });
   } catch (err) {
     console.error(err);
@@ -564,7 +565,7 @@ const getPrixEntreprisePerte = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
     const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, date);
@@ -597,7 +598,7 @@ const getDateRangeClientPerte = async (req, res) => {
     const r = await pool.query(
       `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
        FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2`,
-      [req.user.id, ingredientId]
+      [req.user.gerant_parent_id || req.user.id, ingredientId]
     );
     const row = r.rows[0];
     res.json({
@@ -613,7 +614,7 @@ const getDateRangeEntreprisePerte = async (req, res) => {
   try {
     const check = await pool.query(
       `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
     const r = await pool.query(
