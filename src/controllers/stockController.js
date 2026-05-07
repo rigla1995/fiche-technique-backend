@@ -833,6 +833,13 @@ const getHistoryEntreprise = async (req, res) => {
 // ─── Historique Approvisionnement ─────────────────────────────────────────────
 
 const getHistoriqueAppro = async (req, res) => {
+  // Enforce activiteId scope for gérant accounts
+  if (req.user.role === 'gerant' && req.user.gerant_activite_id) {
+    req.query.activiteId = String(req.user.gerant_activite_id);
+    delete req.query.franchiseGroup;
+    delete req.query.activiteIds;
+    delete req.query.entType;
+  }
   const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId } = req.query;
   const currentYear = new Date().getFullYear();
 

@@ -216,6 +216,10 @@ const deleteClientPerte = async (req, res) => {
 // ── Entreprise — list (all activités) ────────────────────────────────────────
 
 const listEntreprisePertes = async (req, res) => {
+  // Enforce activiteId scope for gérant accounts
+  if (req.user.role === 'gerant' && req.user.gerant_activite_id) {
+    req.query.activiteId = String(req.user.gerant_activite_id);
+  }
   const { activiteId, dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
 
   // Verify company ownership
