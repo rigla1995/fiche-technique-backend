@@ -120,7 +120,7 @@ const listPertes = async (req, res) => {
 
 const listClientPertes = async (req, res) => {
   const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
-  const params = [req.user.id];
+  const params = [req.user.gerant_parent_id || req.user.id];
   const wheres = [`cp.client_id = $1`, `cp.ingredient_id IS NOT NULL`];
 
   if (dateDebut) { params.push(dateDebut); wheres.push(`cp.date_perte >= $${params.length}`); }
@@ -162,7 +162,7 @@ const updateClientPerte = async (req, res) => {
     // Fetch existing row to get ingredient_id and resolve datePerte
     const existing = await pool.query(
       `SELECT ingredient_id, date_perte FROM client_pertes WHERE id = $1 AND client_id = $2`,
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (existing.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     const ingredientId = existing.rows[0].ingredient_id;
@@ -192,7 +192,7 @@ const deleteClientPerte = async (req, res) => {
   try {
     const r = await pool.query(
       `DELETE FROM client_pertes WHERE id = $1 AND client_id = $2 RETURNING id`,
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     res.json({ message: 'Perte supprimée' });
@@ -210,7 +210,7 @@ const listEntreprisePertes = async (req, res) => {
   // Verify company ownership
   const companyCheck = await pool.query(
     `SELECT pe.id FROM profil_entreprise pe WHERE pe.client_id = $1`,
-    [req.user.id]
+    [req.user.gerant_parent_id || req.user.id]
   );
   if (companyCheck.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
   const entrepriseId = companyCheck.rows[0].id;
@@ -264,7 +264,7 @@ const updateEntreprisePerte = async (req, res) => {
        JOIN activites a ON a.id = p.activite_id
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE p.id = $1 AND pe.client_id = $2`,
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (existing.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     const { ingredient_id: ingredientId, activite_id: activiteId, date_perte } = existing.rows[0];
@@ -301,7 +301,7 @@ const deleteEntreprisePerte = async (req, res) => {
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE p.id = $1 AND p.activite_id = a.id AND pe.client_id = $2
        RETURNING p.id`,
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     res.json({ message: 'Perte supprimée' });
@@ -442,7 +442,7 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
 
 const exportClientPertes = async (req, res) => {
   const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds } = req.query;
-  const params = [req.user.id];
+  const params = [req.user.gerant_parent_id || req.user.id];
   const wheres = [`cp.client_id = $1`, `cp.ingredient_id IS NOT NULL`];
 
   if (dateDebut) { params.push(dateDebut); wheres.push(`cp.date_perte >= $${params.length}`); }
@@ -482,7 +482,7 @@ const exportEntreprisePertes = async (req, res) => {
 
   const companyCheck = await pool.query(
     `SELECT pe.id FROM profil_entreprise pe WHERE pe.client_id = $1`,
-    [req.user.id]
+    [req.user.gerant_parent_id || req.user.id]
   );
   if (companyCheck.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
   const entrepriseId = companyCheck.rows[0].id;

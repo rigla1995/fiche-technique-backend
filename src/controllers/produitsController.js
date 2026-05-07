@@ -123,7 +123,7 @@ const getById = async (req, res) => {
   try {
     const produit = await pool.query(
       'SELECT * FROM produits WHERE id = $1 AND client_id = $2',
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (produit.rows.length === 0) {
       return res.status(404).json({ message: 'Produit introuvable' });
@@ -156,7 +156,7 @@ const getById = async (req, res) => {
        FROM produit_sous_produits psp
        JOIN produits p ON psp.sous_produit_id = p.id
        WHERE psp.produit_id = $1`,
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
 
     res.json({
@@ -337,7 +337,7 @@ const remove = async (req, res) => {
   try {
     const result = await pool.query(
       'DELETE FROM produits WHERE id = $1 AND client_id = $2 RETURNING id',
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Produit introuvable' });
@@ -367,7 +367,7 @@ const addIngredient = async (req, res) => {
     // Vérifier que le produit appartient au client
     const produit = await pool.query(
       'SELECT id FROM produits WHERE id = $1 AND client_id = $2',
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (produit.rows.length === 0) {
       return res.status(404).json({ message: 'Produit introuvable' });
@@ -402,7 +402,7 @@ const removeIngredient = async (req, res) => {
     // Verify product ownership
     const produit = await pool.query(
       'SELECT id FROM produits WHERE id = $1 AND client_id = $2',
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (produit.rows.length === 0) {
       return res.status(404).json({ message: 'Produit introuvable' });
@@ -438,7 +438,7 @@ const addSousProduit = async (req, res) => {
 
   try {
     const [produit, sousProduit] = await Promise.all([
-      pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]),
+      pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]),
       pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [sousProduitId, req.user.id]),
     ]);
 
@@ -469,7 +469,7 @@ const removeSousProduit = async (req, res) => {
   try {
     const produit = await pool.query(
       'SELECT id FROM produits WHERE id = $1 AND client_id = $2',
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (produit.rows.length === 0) {
       return res.status(404).json({ message: 'Produit introuvable' });
@@ -635,7 +635,7 @@ const getCout = async (req, res) => {
            FROM stock_client_daily
            WHERE client_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
            ORDER BY ingredient_id, date_appro DESC`,
-          [req.user.id]
+          [req.user.gerant_parent_id || req.user.id]
         );
         r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
       }
@@ -773,7 +773,7 @@ const getStockDates = async (req, res) => {
           `SELECT DISTINCT date_appro::text FROM stock_client_daily
            WHERE client_id = $1 AND prix_unitaire IS NOT NULL
            ORDER BY date_appro DESC`,
-          [req.user.id]
+          [req.user.gerant_parent_id || req.user.id]
         );
         rows = result.rows;
       }
@@ -845,7 +845,7 @@ const getStockCheck = async (req, res) => {
   const actId = parseInt(req.query.activiteId) || 0;
 
   try {
-    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
     const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), req.user.id);
@@ -943,7 +943,7 @@ const getManualPrices = async (req, res) => {
   const actId = parseInt(req.query.activiteId) || 0;
 
   try {
-    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
     // Collect ingredients grouped by source (product → sub-products → …), deduplicated across levels
@@ -1016,7 +1016,7 @@ const saveManualPrices = async (req, res) => {
   }
 
   try {
-    const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.id]);
+    const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
     const now = new Date();

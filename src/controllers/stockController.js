@@ -41,7 +41,7 @@ const getStockClient = async (req, res) => {
        WHERE cis.client_id = $1
        GROUP BY i.id, i.nom, u.nom, c.nom, cis.seuil_min
        ORDER BY categorie NULLS LAST, i.nom`,
-      [req.user.id]
+      [req.user.gerant_parent_id || req.user.id]
     );
 
     // Fetch PT products for this client
@@ -57,7 +57,7 @@ const getStockClient = async (req, res) => {
       ) lp ON true
       WHERE pi.produit_id IN (SELECT id FROM produits WHERE client_id = $1 AND is_stock_ingredient = TRUE)
       GROUP BY pi.produit_id
-    `, [req.user.id]);
+    `, [req.user.gerant_parent_id || req.user.id]);
     const ptPrixMap = {};
     for (const r of ptPrixRes.rows) {
       ptPrixMap[r.produit_id] = { prixDtu: parseFloat(r.prix_dtu) || 0, prixPartiel: r.prix_partiel };
@@ -70,7 +70,7 @@ const getStockClient = async (req, res) => {
       FROM produits p
       WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE
       ORDER BY p.nom
-    `, [req.user.id]);
+    `, [req.user.gerant_parent_id || req.user.id]);
 
     // ── Ingredient baseline: last current-year inv + post-inv appros - pertes ──
     const invBaselineCliRes = await pool.query(
@@ -159,7 +159,7 @@ const getStockClient = async (req, res) => {
        LEFT JOIN year_pt_usage ypu  ON ypu.ingredient_id = cis.ingredient_id
        LEFT JOIN avg_prix_year apy  ON apy.ingredient_id = cis.ingredient_id
        WHERE cis.client_id = $1`,
-      [req.user.id]
+      [req.user.gerant_parent_id || req.user.id]
     );
     const invBaselineCliMap = {};
     for (const r of invBaselineCliRes.rows) {
@@ -247,7 +247,7 @@ const getStockClient = async (req, res) => {
        LEFT JOIN year_pertes yp     ON yp.produit_id = p.id
        LEFT JOIN avg_prix_year apy  ON apy.produit_id = p.id
        WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE`,
-      [req.user.id]
+      [req.user.gerant_parent_id || req.user.id]
     );
     const ptBaselineCliMap = {};
     for (const r of ptBaselineCliRes.rows) {
@@ -354,12 +354,12 @@ const updateStockClient = async (req, res) => {
 const getStockClientSummary = async (req, res) => {
   try {
     const [fourn, appro] = await Promise.all([
-      pool.query(`SELECT COUNT(*) FROM fournisseurs WHERE client_id = $1`, [req.user.id]),
+      pool.query(`SELECT COUNT(*) FROM fournisseurs WHERE client_id = $1`, [req.user.gerant_parent_id || req.user.id]),
       pool.query(
         `SELECT EXISTS (
            SELECT 1 FROM stock_client_daily WHERE client_id = $1
          ) AS has_appros`,
-        [req.user.id]
+        [req.user.gerant_parent_id || req.user.id]
       ),
     ]);
     res.json({
@@ -381,7 +381,7 @@ const getStockEntreprise = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
@@ -734,7 +734,7 @@ const updateStockEntreprise = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
@@ -761,7 +761,7 @@ const updateSeuilMin = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
@@ -808,7 +808,7 @@ const getHistoryEntreprise = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
@@ -845,7 +845,7 @@ const getHistoriqueAppro = async (req, res) => {
           `SELECT a.id FROM activites a
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
            WHERE a.id = $1 AND pe.client_id = $2`,
-          [activiteId, req.user.id]
+          [activiteId, req.user.gerant_parent_id || req.user.id]
         );
         if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
         activiteIds = [activiteId];
@@ -876,7 +876,7 @@ const getHistoriqueAppro = async (req, res) => {
           `SELECT a.id FROM activites a
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
            WHERE pe.client_id = $1 AND ${typeFilter}`,
-          [req.user.id]
+          [req.user.gerant_parent_id || req.user.id]
         );
         activiteIds = allRes.rows.map((r) => r.id);
         if (activiteIds.length === 0) return res.json([]);
@@ -981,7 +981,7 @@ const getHistoriqueAppro = async (req, res) => {
 
       // Append PT entries if no category filter is active or ptOnly is requested
       if (ptOnly === 'true' || (!categorieId && !ingredientId)) {
-        const ptParams = [req.user.id];
+        const ptParams = [req.user.gerant_parent_id || req.user.id];
         let ptWhere = `spt.client_id = $1`;
         if (startDate) { ptParams.push(startDate); ptWhere += ` AND spt.date_appro >= $${ptParams.length}`; }
         if (endDate) { ptParams.push(endDate); ptWhere += ` AND spt.date_appro <= $${ptParams.length}`; }
@@ -1176,7 +1176,7 @@ const duplicateStockToFranchise = async (req, res) => {
       `SELECT a.id, a.entreprise_id, a.franchise_group FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2 AND a.type = 'franchise'`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité franchise introuvable' });
@@ -1245,7 +1245,7 @@ const exportHistoriqueExcel = async (req, res) => {
         activiteIds = activiteIdsParam.split(',').map(Number).filter(Boolean);
       } else if (entType) {
         const typeFilter = entType === 'franchise' ? `a.type = 'franchise'` : `(a.type = 'distincte' OR a.type IS NULL)`;
-        const allRes = await pool.query(`SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1 AND ${typeFilter}`, [req.user.id]);
+        const allRes = await pool.query(`SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1 AND ${typeFilter}`, [req.user.gerant_parent_id || req.user.id]);
         activiteIds = allRes.rows.map((r) => r.id);
       }
       if (activiteIds.length === 0) return res.status(404).json({ message: 'Aucune activité' });
@@ -1488,7 +1488,7 @@ const getCascadeInfoEntreprise = async (req, res) => {
     const check = await pool.query(
       `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
     const [appros, inv] = await Promise.all([
@@ -1520,7 +1520,7 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
     const check = await pool.query(
       `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
+      [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
     await pool.query('DELETE FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
