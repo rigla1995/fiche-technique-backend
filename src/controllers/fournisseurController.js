@@ -18,7 +18,10 @@ const listFournisseurs = async (req, res) => {
               COALESCE(
                 json_agg(DISTINCT fl.labo_id) FILTER (WHERE fl.labo_id IS NOT NULL),
                 '[]'
-              ) as labo_ids
+              ) as labo_ids,
+              EXISTS (
+                SELECT 1 FROM stock_entreprise_daily sed WHERE sed.fournisseur_id = f.id AND sed.quantite > 0
+              ) AS has_appros
        FROM fournisseurs f
        LEFT JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id
        LEFT JOIN fournisseur_labos fl ON fl.fournisseur_id = f.id
@@ -36,6 +39,7 @@ const listFournisseurs = async (req, res) => {
       createdAt: r.created_at,
       activiteIds: r.activite_ids,
       laboIds: r.labo_ids,
+      hasAppros: r.has_appros ?? false,
     })));
   } catch (err) {
     console.error(err);
@@ -178,13 +182,18 @@ const deleteFournisseur = async (req, res) => {
 const listFournisseursIndep = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, nom, adresse, telephone, created_at
-       FROM fournisseurs WHERE client_id = $1 AND nom != 'AUTO' ORDER BY nom`,
+      `SELECT f.id, f.nom, f.adresse, f.telephone, f.created_at,
+              EXISTS (
+                SELECT 1 FROM stock_client_daily scd WHERE scd.fournisseur_id = f.id AND scd.quantite > 0
+              ) AS has_appros
+       FROM fournisseurs f
+       WHERE f.client_id = $1 AND f.nom != 'AUTO' ORDER BY f.nom`,
       [req.user.id]
     );
     res.json(result.rows.map((r) => ({
       id: r.id, nom: r.nom, adresse: r.adresse, telephone: r.telephone,
       isLabo: false, activiteIds: [], laboIds: [], createdAt: r.created_at,
+      hasAppros: r.has_appros ?? false,
     })));
   } catch (err) {
     console.error(err);
