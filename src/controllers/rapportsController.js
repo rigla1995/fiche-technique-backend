@@ -30,16 +30,6 @@ const getRapportPertes = async (req, res) => {
   const isEntreprise = req.user.compteType === 'entreprise';
 
   try {
-    const params = [];
-    const wheres = [];
-    let pIdx = 1;
-
-    if (dateFrom) { wheres.push(`p.date_perte >= $${pIdx++}`); params.push(dateFrom); }
-    if (dateTo)   { wheres.push(`p.date_perte <= $${pIdx++}`); params.push(dateTo); }
-    if (categorieId) { wheres.push(`c.id = $${pIdx++}`); params.push(categorieId); }
-
-    const whereStr = wheres.length ? `AND ${wheres.join(' AND ')}` : '';
-
     let rows = [];
 
     if (isEntreprise) {
@@ -49,8 +39,17 @@ const getRapportPertes = async (req, res) => {
 
       if (activiteIds.length === 0) return res.json({ rows: [], byCategorie: [], byMois: [], byType: [] });
 
+      const params = [];
+      const wheres = [];
+      let pIdx = 1;
+
+      if (dateFrom)    { wheres.push(`p.date_perte >= $${pIdx++}`); params.push(dateFrom); }
+      if (dateTo)      { wheres.push(`p.date_perte <= $${pIdx++}`); params.push(dateTo); }
+      if (categorieId) { wheres.push(`c.id = $${pIdx++}`); params.push(categorieId); }
+
       const actParams = activiteIds.map((_, i) => `$${pIdx + i}`).join(',');
       const fullParams = [...params, ...activiteIds];
+      const whereStr = wheres.length ? `AND ${wheres.join(' AND ')}` : '';
 
       const q = await pool.query(
         `SELECT
@@ -74,9 +73,15 @@ const getRapportPertes = async (req, res) => {
       );
       rows = q.rows;
     } else {
-      // Indépendant — client_pertes
-      wheres.unshift(`cp.client_id = $${pIdx++}`);
-      params.push(clientId);
+      // Indépendant — client_pertes (alias: cp)
+      const params = [clientId];
+      const wheres = [`cp.client_id = $1`];
+      let pIdx = 2;
+
+      if (dateFrom)    { wheres.push(`cp.date_perte >= $${pIdx++}`); params.push(dateFrom); }
+      if (dateTo)      { wheres.push(`cp.date_perte <= $${pIdx++}`); params.push(dateTo); }
+      if (categorieId) { wheres.push(`c.id = $${pIdx++}`); params.push(categorieId); }
+
       const q = await pool.query(
         `SELECT
            i.nom AS ingredient_nom,
