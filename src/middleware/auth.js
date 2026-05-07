@@ -11,10 +11,13 @@ const authenticate = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const result = await pool.query(
-      `SELECT u.id, u.nom, u.email, u.role, u.compte_type, u.actif,
+      `SELECT u.id, u.nom, u.email, u.role,
+              COALESCE(u.compte_type, p.compte_type) AS compte_type,
+              u.actif,
               u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type,
               a.mode_compte
        FROM utilisateurs u
+       LEFT JOIN utilisateurs p ON p.id = u.gerant_parent_id
        LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, u.id)
        WHERE u.id = $1`,
       [decoded.userId]
@@ -44,14 +47,14 @@ const requireSuperAdmin = (req, res, next) => {
 };
 
 const requireClient = (req, res, next) => {
-  if (req.user.role !== 'client') {
+  if (req.user.role !== 'client' && req.user.role !== 'gerant') {
     return res.status(403).json({ message: 'Accès réservé aux clients' });
   }
   next();
 };
 
 const requireEntreprise = (req, res, next) => {
-  if (req.user.role !== 'client') {
+  if (req.user.role !== 'client' && req.user.role !== 'gerant') {
     return res.status(403).json({ message: 'Accès réservé aux clients' });
   }
   if (req.user.compte_type !== 'entreprise') {
