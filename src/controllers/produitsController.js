@@ -42,7 +42,7 @@ const mapCout = (data) => ({
 
 // Returns the most recent stock price (current year) for an ingredient for a given client.
 // Tries enterprise stock (any activity) then client stock, then falls back to catalogue price.
-const stockPriceLookup = (ingAlias, productAlias, ipcAlias) => `COALESCE(
+const stockPriceLookup = (ingAlias, productAlias) => `COALESCE(
     (SELECT sed.prix_unitaire FROM stock_entreprise_daily sed
      JOIN activites a_s ON sed.activite_id = a_s.id
      JOIN profil_entreprise pe_s ON a_s.entreprise_id = pe_s.id
@@ -55,24 +55,22 @@ const stockPriceLookup = (ingAlias, productAlias, ipcAlias) => `COALESCE(
        AND scd.prix_unitaire IS NOT NULL
        AND EXTRACT(YEAR FROM scd.date_appro) = EXTRACT(YEAR FROM CURRENT_DATE)
      ORDER BY scd.date_appro DESC LIMIT 1),
-    ${ipcAlias}.prix, ${ingAlias}.prix, 0
+    ${ingAlias}.prix, 0
   )`;
 
 const costSubquery = (alias = 'p') => `
   ROUND(
     COALESCE((
-      SELECT SUM(pi.portion * ${stockPriceLookup('i', alias, 'ipc')})
+      SELECT SUM(pi.portion * ${stockPriceLookup('i', alias)})
       FROM produit_ingredients pi
       JOIN ingredients i ON pi.ingredient_id = i.id
-      LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = ${alias}.client_id
       WHERE pi.produit_id = ${alias}.id
     ), 0) +
     COALESCE((
       SELECT SUM(psp.portion * (
-        SELECT COALESCE(SUM(pi2.portion * ${stockPriceLookup('i2', alias, 'ipc2')}), 0)
+        SELECT COALESCE(SUM(pi2.portion * ${stockPriceLookup('i2', alias)}), 0)
         FROM produit_ingredients pi2
         JOIN ingredients i2 ON pi2.ingredient_id = i2.id
-        LEFT JOIN ingredient_prix_client ipc2 ON ipc2.ingredient_id = i2.id AND ipc2.client_id = ${alias}.client_id
         WHERE pi2.produit_id = psp.sous_produit_id
       ))
       FROM produit_sous_produits psp
@@ -196,11 +194,9 @@ const getById = async (req, res) => {
               p.nom as sous_produit_nom,
               ROUND(
                 COALESCE((
-                  SELECT SUM(pi2.portion * COALESCE(ipc2.prix, i2.prix, 0))
+                  SELECT SUM(pi2.portion * COALESCE(i2.prix, 0))
                   FROM produit_ingredients pi2
                   JOIN ingredients i2 ON pi2.ingredient_id = i2.id
-                  LEFT JOIN ingredient_prix_client ipc2
-                    ON ipc2.ingredient_id = i2.id AND ipc2.client_id = $2
                   WHERE pi2.produit_id = psp.sous_produit_id
                 ), 0), 3
               ) AS cout_unitaire
@@ -570,12 +566,11 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
                WHERE scd.ingredient_id = i.id AND scd.client_id = $2
                  AND scd.prix_unitaire IS NOT NULL
                ORDER BY scd.date_appro DESC LIMIT 1),
-              ipc.prix, i.prix, 0
+              i.prix, 0
             ) as prix_unitaire
      FROM produit_ingredients pi
      JOIN ingredients i ON pi.ingredient_id = i.id
      JOIN unites u ON pi.unite_id = u.id
-     LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
      LEFT JOIN categories c ON i.categorie_id = c.id
      WHERE pi.produit_id = $1
      ORDER BY COALESCE(c.nom, 'zzz'), i.nom`,

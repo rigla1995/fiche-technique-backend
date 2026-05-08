@@ -141,10 +141,8 @@ const traiter = async (req, res) => {
       // 3. Transfer ingredient selections → activite_ingredient_selections
       await client.query(
         `INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire)
-         SELECT $1, cis.ingredient_id, COALESCE(ipc.prix, i.prix)
+         SELECT $1, cis.ingredient_id, i.prix
          FROM client_ingredient_selections cis
-         LEFT JOIN ingredient_prix_client ipc
-           ON ipc.ingredient_id = cis.ingredient_id AND ipc.client_id = $2
          LEFT JOIN ingredients i ON i.id = cis.ingredient_id
          WHERE cis.client_id = $2
          ON CONFLICT DO NOTHING`,

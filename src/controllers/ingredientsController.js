@@ -43,13 +43,12 @@ const list = async (req, res) => {
       let where = categorieId ? `AND i.categorie_id = $${params.push(categorieId)}` : '';
       query = `
         SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
-               ipc.prix as client_prix,
-               COALESCE(ipc.prix, i.prix) as effective_prix,
+               NULL::numeric as client_prix,
+               i.prix as effective_prix,
                (cis.ingredient_id IS NOT NULL) as selected
         FROM ingredients i
         JOIN unites u ON i.unite_id = u.id
         LEFT JOIN categories c ON i.categorie_id = c.id
-        LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $1
         LEFT JOIN client_ingredient_selections cis ON cis.ingredient_id = i.id AND cis.client_id = $1
         WHERE 1=1 ${where}
         ORDER BY COALESCE(c.nom, 'zzz'), i.nom
@@ -68,14 +67,13 @@ const getById = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
-              ipc.prix as client_prix,
-              COALESCE(ipc.prix, i.prix) as effective_prix
+              NULL::numeric as client_prix,
+              i.prix as effective_prix
        FROM ingredients i
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
-       LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
        WHERE i.id = $1`,
-      [id, req.user.id]
+      [id]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Ingrédient introuvable' });
     res.json(mapIngredient(result.rows[0]));
@@ -182,37 +180,6 @@ const remove = async (req, res) => {
   }
 };
 
-const setClientPrice = async (req, res) => {
-  const { id } = req.params;
-  const prix = req.body.price !== undefined ? req.body.price : req.body.prix;
-  if (prix === undefined || prix === null || isNaN(parseFloat(prix)) || parseFloat(prix) < 0) {
-    return res.status(400).json({ message: 'Prix invalide' });
-  }
-  try {
-    const ingCheck = await pool.query('SELECT id FROM ingredients WHERE id = $1', [id]);
-    if (ingCheck.rows.length === 0) return res.status(404).json({ message: 'Ingrédient introuvable' });
-
-    await pool.query(
-      `INSERT INTO ingredient_prix_client (ingredient_id, client_id, prix)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (ingredient_id, client_id) DO UPDATE SET prix = $3, updated_at = NOW()`,
-      [id, req.user.id, parseFloat(prix)]
-    );
-    const result = await pool.query(
-      `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
-              ipc.prix as client_prix, COALESCE(ipc.prix, i.prix) as effective_prix
-       FROM ingredients i JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
-       LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
-       WHERE i.id = $1`,
-      [id, req.user.id]
-    );
-    res.json(mapIngredient(result.rows[0]));
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
 
 const toggleSelection = async (req, res) => {
   const clientId = req.user.id;
@@ -254,4 +221,4 @@ const hasSelections = async (req, res) => {
   }
 };
 
-module.exports = { list, getById, create, update, remove, setClientPrice, toggleSelection, hasSelections };
+module.exports = { list, getById, create, update, remove, toggleSelection, hasSelections };

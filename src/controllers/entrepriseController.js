@@ -314,29 +314,27 @@ const getActiviteIngredients = async (req, res) => {
       ? await pool.query(
           `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
                   i.categorie_id,
-                  COALESCE(ipc.prix, i.prix) as prix,
+                  i.prix as prix,
                   ais.prix_unitaire,
                   CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
            FROM labo_ingredient_selections lis
            JOIN ingredients i ON i.id = lis.ingredient_id
            JOIN unites u ON i.unite_id = u.id
            LEFT JOIN categories c ON i.categorie_id = c.id
-           LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
            LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = i.id AND ais.activite_id = $1
-           WHERE lis.labo_id = $3
+           WHERE lis.labo_id = $2
            ORDER BY c.nom NULLS LAST, i.nom`,
-          [id, req.user.id, laboId]
+          [id, laboId]
         )
       : await pool.query(
           `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
                   i.categorie_id,
-                  COALESCE(ipc.prix, i.prix) as prix,
+                  i.prix as prix,
                   ais.prix_unitaire,
                   CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
            FROM ingredients i
            JOIN unites u ON i.unite_id = u.id
            LEFT JOIN categories c ON i.categorie_id = c.id
-           LEFT JOIN ingredient_prix_client ipc ON ipc.ingredient_id = i.id AND ipc.client_id = $2
            LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = i.id AND ais.activite_id = $1
            ORDER BY c.nom NULLS LAST, i.nom`,
           [id, req.user.id]
