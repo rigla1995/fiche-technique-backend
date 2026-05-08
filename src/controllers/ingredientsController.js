@@ -57,7 +57,10 @@ const list = async (req, res) => {
       params = [clientId];
       let where = categorieId ? `AND i.categorie_id = $${params.push(categorieId)}` : '';
 
-      // For gérant: scope to their specific activite's domaine
+      // Domain scope:
+      // - gérant: scoped to their specific activité's domaine
+      // - indép client: uses client_domaines (domains assigned by super admin at account creation)
+      // - entreprise client: uses any activité's domaine_id via profil_entreprise
       const domaineScope = req.user.role === 'gerant' && req.user.gerant_activite_id
         ? `AND (
              NOT EXISTS (SELECT 1 FROM ingredient_domaines WHERE ingredient_id = i.id)
@@ -71,9 +74,14 @@ const list = async (req, res) => {
              NOT EXISTS (SELECT 1 FROM ingredient_domaines WHERE ingredient_id = i.id)
              OR EXISTS (
                SELECT 1 FROM ingredient_domaines id_m
-               JOIN activites a ON a.domaine_id = id_m.domaine_id
-               JOIN profil_entreprise pe ON pe.id = a.entreprise_id
-               WHERE id_m.ingredient_id = i.id AND pe.client_id = $1
+               WHERE id_m.ingredient_id = i.id
+               AND id_m.domaine_id IN (
+                 SELECT cd.domaine_id FROM client_domaines cd WHERE cd.client_id = $1
+                 UNION
+                 SELECT a.domaine_id FROM activites a
+                 JOIN profil_entreprise pe ON pe.id = a.entreprise_id
+                 WHERE pe.client_id = $1 AND a.domaine_id IS NOT NULL
+               )
              )
            )`;
 

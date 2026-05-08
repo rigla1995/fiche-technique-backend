@@ -14,13 +14,30 @@ const mapClient = (row) => ({
   active: row.actif,
   createdAt: row.created_at,
   activatedAt: row.activated_at || null,
+  domaineIds: row.domaine_ids || [],
 });
+
+const saveClientDomaines = async (client, clientId, domaineIds) => {
+  await client.query('DELETE FROM client_domaines WHERE client_id = $1', [clientId]);
+  if (domaineIds && domaineIds.length > 0) {
+    const values = domaineIds.map((_, i) => `($1, $${i + 2})`).join(', ');
+    await client.query(
+      `INSERT INTO client_domaines (client_id, domaine_id) VALUES ${values} ON CONFLICT DO NOTHING`,
+      [clientId, ...domaineIds]
+    );
+  }
+};
 
 const list = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at, activated_at
-       FROM utilisateurs WHERE role = 'client' ORDER BY nom`
+      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.compte_type, u.onboarding_step, u.actif, u.created_at, u.activated_at,
+              ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
+       FROM utilisateurs u
+       LEFT JOIN client_domaines cd ON cd.client_id = u.id
+       WHERE u.role = 'client'
+       GROUP BY u.id
+       ORDER BY u.nom`
     );
     res.json(result.rows.map(mapClient));
   } catch (err) {
@@ -33,8 +50,12 @@ const getById = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at
-       FROM utilisateurs WHERE id = $1 AND role = 'client'`,
+      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.compte_type, u.onboarding_step, u.actif, u.created_at,
+              ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
+       FROM utilisateurs u
+       LEFT JOIN client_domaines cd ON cd.client_id = u.id
+       WHERE u.id = $1 AND u.role = 'client'
+       GROUP BY u.id`,
       [id]
     );
     if (result.rows.length === 0) {
@@ -56,7 +77,7 @@ const create = async (req, res) => {
   const compteType = req.body.compteType || req.body.compte_type || 'independant';
   const nom = req.body.name || req.body.nom;
   const { email, telephone, adresse } = req.body;
-  const domaineId = req.body.domaineId || req.body.domaine_id || null;
+  const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : [];
 
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   if (!email) return res.status(400).json({ message: 'Email requis' });
@@ -83,46 +104,57 @@ const create = async (req, res) => {
     // onboarding_step: 0 for independant (no onboarding), 1 for entreprise (must complete onboarding)
     const onboardingStep = compteType === 'entreprise' ? 1 : 0;
 
-    const userResult = await pool.query(
-      `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, compte_type, onboarding_step, invite_token, invite_token_expires_at)
-       VALUES ($1, $2, NULL, $3, 'client', $4, $5, $6, $7)
-       RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
-      [nom, email, telephone || null, compteType, onboardingStep, inviteToken, inviteExpires]
-    );
+    const dbClient = await pool.connect();
+    try {
+      await dbClient.query('BEGIN');
 
-    const user = userResult.rows[0];
-
-    // Create profil_entreprise with the provided info
-    await pool.query(
-      `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (client_id) DO NOTHING`,
-      [user.id, nom, email, telephone || null, adresse || null]
-    );
-
-    // For independant: also create the first activity immediately
-    if (compteType === 'independant') {
-      const entrepriseResult = await pool.query(
-        'SELECT id FROM profil_entreprise WHERE client_id = $1',
-        [user.id]
+      const userResult = await dbClient.query(
+        `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, compte_type, onboarding_step, invite_token, invite_token_expires_at)
+         VALUES ($1, $2, NULL, $3, 'client', $4, $5, $6, $7)
+         RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
+        [nom, email, telephone || null, compteType, onboardingStep, inviteToken, inviteExpires]
       );
-      if (entrepriseResult.rows.length > 0) {
-        await pool.query(
-          `INSERT INTO activites (entreprise_id, nom, email, telephone, adresse, domaine_id)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [entrepriseResult.rows[0].id, nom, email, telephone || null, adresse || null, domaineId || null]
+
+      const user = userResult.rows[0];
+
+      // Create profil_entreprise
+      const peResult = await dbClient.query(
+        `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (client_id) DO NOTHING
+         RETURNING id`,
+        [user.id, nom, email, telephone || null, adresse || null]
+      );
+
+      // For independant: create the first activity (no domain_id — domain handled via client_domaines)
+      if (compteType === 'independant' && peResult.rows.length > 0) {
+        await dbClient.query(
+          `INSERT INTO activites (entreprise_id, nom, email, telephone, adresse) VALUES ($1, $2, $3, $4, $5)`,
+          [peResult.rows[0].id, nom, email, telephone || null, adresse || null]
         );
       }
+
+      // Save domain assignments for independant accounts
+      if (compteType === 'independant' && domaineIds.length > 0) {
+        await saveClientDomaines(dbClient, user.id, domaineIds);
+      }
+
+      await dbClient.query('COMMIT');
+
+      // Auto-create subscription
+      const tarifCle = compteType === 'entreprise' ? 'entreprise_onboarding' : 'indep_onboarding';
+      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifCle]);
+      const montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
+      await createAbonnement(user.id, compteType, montantOnboarding);
+
+      await sendInviteEmail({ to: user.email, nom: user.nom, token: inviteToken, role: 'client' });
+      res.status(201).json({ ...mapClient(user), domaineIds });
+    } catch (err) {
+      await dbClient.query('ROLLBACK');
+      throw err;
+    } finally {
+      dbClient.release();
     }
-
-    // Auto-create subscription
-    const tarifCle = compteType === 'entreprise' ? 'entreprise_onboarding' : 'indep_onboarding';
-    const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifCle]);
-    const montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
-    await createAbonnement(user.id, compteType, montantOnboarding);
-
-    await sendInviteEmail({ to: user.email, nom: user.nom, token: inviteToken, role: 'client' });
-    res.status(201).json(mapClient(user));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -142,6 +174,7 @@ const update = async (req, res) => {
   const activeValue = active !== undefined ? active : actif;
   const compteType = req.body.compteType || req.body.compte_type;
   const onboardingStep = req.body.onboardingStep !== undefined ? req.body.onboardingStep : null;
+  const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : null;
 
   // Check tel uniqueness (exclude current user)
   if (telephone) {
@@ -153,8 +186,11 @@ const update = async (req, res) => {
       return res.status(409).json({ message: 'Ce numéro de téléphone est déjà utilisé' });
   }
 
+  const dbClient = await pool.connect();
   try {
-    const result = await pool.query(
+    await dbClient.query('BEGIN');
+
+    const result = await dbClient.query(
       `UPDATE utilisateurs
        SET nom = COALESCE($1, nom),
            email = COALESCE($2, email),
@@ -168,22 +204,42 @@ const update = async (req, res) => {
       [nom || null, email || null, telephone || null, activeValue !== undefined ? activeValue : null, compteType || null, onboardingStep !== null ? onboardingStep : null, id]
     );
     if (result.rows.length === 0) {
+      await dbClient.query('ROLLBACK');
       return res.status(404).json({ message: 'Client introuvable' });
     }
-    // Sync abonnement compte_type so billing uses the correct tarif
+
+    const updatedUser = result.rows[0];
+
+    // Sync abonnement compte_type
     if (compteType) {
-      await pool.query(
+      await dbClient.query(
         `UPDATE abonnements SET compte_type = $1, updated_at = NOW() WHERE client_id = $2`,
         [compteType, id]
       );
     }
-    res.json(mapClient(result.rows[0]));
+
+    // Update domain assignments if provided (only meaningful for indép accounts)
+    if (domaineIds !== null) {
+      await saveClientDomaines(dbClient, id, domaineIds);
+    }
+
+    await dbClient.query('COMMIT');
+
+    // Return with fresh domaineIds
+    const domainesRes = await pool.query(
+      'SELECT domaine_id FROM client_domaines WHERE client_id = $1',
+      [id]
+    );
+    res.json({ ...mapClient(updatedUser), domaineIds: domainesRes.rows.map((r) => r.domaine_id) });
   } catch (err) {
+    await dbClient.query('ROLLBACK');
     if (err.code === '23505') {
       return res.status(409).json({ message: 'Cet email est déjà utilisé' });
     }
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
+  } finally {
+    dbClient.release();
   }
 };
 
