@@ -25,7 +25,9 @@ const login = async (req, res) => {
 
     const utilisateur = result.rows[0];
 
-    if (!utilisateur.activated_at) {
+    // super_admin and pre-invite accounts (have a password but no activated_at) bypass the invite check
+    const needsActivation = !utilisateur.activated_at && utilisateur.role !== 'super_admin' && !utilisateur.mot_de_passe;
+    if (needsActivation) {
       return res.status(403).json({ message: 'invite_pending', detail: 'Votre compte n\'est pas encore activé. Consultez votre email d\'invitation.' });
     }
 
