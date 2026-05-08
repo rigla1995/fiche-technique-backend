@@ -8,7 +8,6 @@ const mapIngredient = (row) => ({
   clientPrice: row.client_prix !== undefined && row.client_prix !== null ? parseFloat(row.client_prix) : null,
   effectivePrice: row.effective_prix !== undefined && row.effective_prix !== null ? parseFloat(row.effective_prix) : null,
   selected: !!row.selected,
-  selected: !!row.selected,
   unitId: row.unite_id,
   unitName: row.unite_nom,
   unit: row.unite_id ? { id: row.unite_id, name: row.unite_nom } : null,
@@ -16,9 +15,22 @@ const mapIngredient = (row) => ({
   categorieName: row.categorie_nom || null,
   clientId: row.client_id || null,
   clientName: row.client_nom || null,
+  domaineIds: row.domaine_ids || [],
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
+
+// Save domaine associations for an ingredient (replaces all existing ones)
+const saveDomaines = async (client, ingredientId, domaineIds) => {
+  await client.query('DELETE FROM ingredient_domaines WHERE ingredient_id = $1', [ingredientId]);
+  if (domaineIds && domaineIds.length > 0) {
+    const values = domaineIds.map((_, i) => `($1, $${i + 2})`).join(', ');
+    await client.query(
+      `INSERT INTO ingredient_domaines (ingredient_id, domaine_id) VALUES ${values} ON CONFLICT DO NOTHING`,
+      [ingredientId, ...domaineIds]
+    );
+  }
+};
 
 const list = async (req, res) => {
   const { categorieId } = req.query;
@@ -29,28 +41,55 @@ const list = async (req, res) => {
       let where = categorieId ? `WHERE i.categorie_id = $${params.push(categorieId)}` : '';
       query = `
         SELECT i.*, u.nom as unite_nom, util.nom as client_nom, c.nom as categorie_nom,
-               NULL::numeric as client_prix, i.prix as effective_prix
+               NULL::numeric as client_prix, i.prix as effective_prix,
+               ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
         FROM ingredients i
         JOIN unites u ON i.unite_id = u.id
         LEFT JOIN utilisateurs util ON i.client_id = util.id
         LEFT JOIN categories c ON i.categorie_id = c.id
+        LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id
         ${where}
+        GROUP BY i.id, u.nom, util.nom, c.nom
         ORDER BY COALESCE(c.nom, 'zzz'), i.nom
       `;
     } else {
       const clientId = req.user.gerant_parent_id || req.user.id;
       params = [clientId];
       let where = categorieId ? `AND i.categorie_id = $${params.push(categorieId)}` : '';
+
+      // For gérant: scope to their specific activite's domaine
+      const domaineScope = req.user.role === 'gerant' && req.user.gerant_activite_id
+        ? `AND (
+             NOT EXISTS (SELECT 1 FROM ingredient_domaines WHERE ingredient_id = i.id)
+             OR EXISTS (
+               SELECT 1 FROM ingredient_domaines id_m
+               JOIN activites a ON a.domaine_id = id_m.domaine_id
+               WHERE id_m.ingredient_id = i.id AND a.id = ${parseInt(req.user.gerant_activite_id)}
+             )
+           )`
+        : `AND (
+             NOT EXISTS (SELECT 1 FROM ingredient_domaines WHERE ingredient_id = i.id)
+             OR EXISTS (
+               SELECT 1 FROM ingredient_domaines id_m
+               JOIN activites a ON a.domaine_id = id_m.domaine_id
+               JOIN profil_entreprise pe ON pe.id = a.entreprise_id
+               WHERE id_m.ingredient_id = i.id AND pe.client_id = $1
+             )
+           )`;
+
       query = `
         SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
                NULL::numeric as client_prix,
                i.prix as effective_prix,
-               (cis.ingredient_id IS NOT NULL) as selected
+               (cis.ingredient_id IS NOT NULL) as selected,
+               ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
         FROM ingredients i
         JOIN unites u ON i.unite_id = u.id
         LEFT JOIN categories c ON i.categorie_id = c.id
         LEFT JOIN client_ingredient_selections cis ON cis.ingredient_id = i.id AND cis.client_id = $1
-        WHERE 1=1 ${where}
+        LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id
+        WHERE 1=1 ${where} ${domaineScope}
+        GROUP BY i.id, u.nom, c.nom, cis.ingredient_id
         ORDER BY COALESCE(c.nom, 'zzz'), i.nom
       `;
     }
@@ -68,11 +107,14 @@ const getById = async (req, res) => {
     const result = await pool.query(
       `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
               NULL::numeric as client_prix,
-              i.prix as effective_prix
+              i.prix as effective_prix,
+              ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
        FROM ingredients i
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE i.id = $1`,
+       LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id
+       WHERE i.id = $1
+       GROUP BY i.id, u.nom, c.nom`,
       [id]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Ingrédient introuvable' });
@@ -92,26 +134,44 @@ const create = async (req, res) => {
   const unite_id = req.body.unitId || req.body.unite_id;
   const categorie_id = req.body.categorieId || req.body.categorie_id || null;
   const clientId = req.user.role === 'super_admin' ? null : req.user.id;
+  const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : [];
 
+  const client = await pool.connect();
   try {
-    const uniteCheck = await pool.query('SELECT id FROM unites WHERE id = $1', [unite_id]);
-    if (uniteCheck.rows.length === 0) return res.status(400).json({ message: 'Unité invalide' });
+    await client.query('BEGIN');
 
-    const inserted = await pool.query(
+    const uniteCheck = await client.query('SELECT id FROM unites WHERE id = $1', [unite_id]);
+    if (uniteCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: 'Unité invalide' });
+    }
+
+    const inserted = await client.query(
       `INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [nom, prix !== null ? prix : null, unite_id, clientId, categorie_id]
     );
+    const newId = inserted.rows[0].id;
+    await saveDomaines(client, newId, domaineIds);
+
+    await client.query('COMMIT');
+
     const result = await pool.query(
       `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
-              NULL::numeric as client_prix, i.prix as effective_prix
+              NULL::numeric as client_prix, i.prix as effective_prix,
+              ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
        FROM ingredients i JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE i.id = $1`,
-      [inserted.rows[0].id]
+       LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id
+       WHERE i.id = $1
+       GROUP BY i.id, u.nom, c.nom`,
+      [newId]
     );
     res.status(201).json(mapIngredient(result.rows[0]));
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
+  } finally {
+    client.release();
   }
 };
 
@@ -128,8 +188,12 @@ const update = async (req, res) => {
     ? req.body.categorieId
     : req.body.categorie_id !== undefined ? req.body.categorie_id : undefined;
   const catChanged = categorie_id !== undefined;
+  const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : null;
 
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+
     const isSuperAdmin = req.user.role === 'super_admin';
     const params = isSuperAdmin
       ? [nom, prixStr, unite_id, categorie_id ?? null, id, catChanged]
@@ -138,7 +202,7 @@ const update = async (req, res) => {
     const catPlaceholder = isSuperAdmin ? '$6' : '$7';
     const whereClause = isSuperAdmin ? 'WHERE id = $5' : 'WHERE id = $5 AND client_id = $6';
 
-    const updated = await pool.query(
+    const updated = await client.query(
       `UPDATE ingredients
        SET nom = COALESCE($1, nom),
            prix = CASE WHEN $2::text IS NOT NULL THEN $2::numeric ELSE prix END,
@@ -148,19 +212,35 @@ const update = async (req, res) => {
        ${whereClause} RETURNING id`,
       params
     );
-    if (updated.rows.length === 0) return res.status(404).json({ message: 'Ingrédient introuvable' });
+    if (updated.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Ingrédient introuvable' });
+    }
+
+    // Only update domaines if explicitly provided in the request
+    if (domaineIds !== null) {
+      await saveDomaines(client, updated.rows[0].id, domaineIds);
+    }
+
+    await client.query('COMMIT');
 
     const result = await pool.query(
       `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
-              NULL::numeric as client_prix, i.prix as effective_prix
+              NULL::numeric as client_prix, i.prix as effective_prix,
+              ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
        FROM ingredients i JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE i.id = $1`,
+       LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id
+       WHERE i.id = $1
+       GROUP BY i.id, u.nom, c.nom`,
       [updated.rows[0].id]
     );
     res.json(mapIngredient(result.rows[0]));
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
+  } finally {
+    client.release();
   }
 };
 
@@ -179,7 +259,6 @@ const remove = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
-
 
 const toggleSelection = async (req, res) => {
   const clientId = req.user.id;
