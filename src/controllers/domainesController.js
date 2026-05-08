@@ -2,7 +2,13 @@ const pool = require('../config/database');
 
 const list = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM domaines_activite ORDER BY nom');
+    const { hasIngredients } = req.query;
+    const query = hasIngredients === 'true'
+      ? `SELECT d.* FROM domaines_activite d
+         WHERE EXISTS (SELECT 1 FROM ingredient_domaines id WHERE id.domaine_id = d.id)
+         ORDER BY d.nom`
+      : 'SELECT * FROM domaines_activite ORDER BY nom';
+    const result = await pool.query(query);
     res.json(result.rows.map((r) => ({ id: r.id, nom: r.nom })));
   } catch (err) {
     console.error(err);
