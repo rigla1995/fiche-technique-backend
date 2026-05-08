@@ -104,6 +104,8 @@ const create = async (req, res) => {
     // onboarding_step: 0 for independant (no onboarding), 1 for entreprise (must complete onboarding)
     const onboardingStep = compteType === 'entreprise' ? 1 : 0;
 
+    // Transaction: create user + profil + activite + domaines
+    let user;
     const dbClient = await pool.connect();
     try {
       await dbClient.query('BEGIN');
@@ -114,10 +116,8 @@ const create = async (req, res) => {
          RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
         [nom, email, telephone || null, compteType, onboardingStep, inviteToken, inviteExpires]
       );
+      user = userResult.rows[0];
 
-      const user = userResult.rows[0];
-
-      // Create profil_entreprise
       const peResult = await dbClient.query(
         `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse)
          VALUES ($1, $2, $3, $4, $5)
@@ -126,7 +126,6 @@ const create = async (req, res) => {
         [user.id, nom, email, telephone || null, adresse || null]
       );
 
-      // For independant: create the first activity (no domain_id — domain handled via client_domaines)
       if (compteType === 'independant' && peResult.rows.length > 0) {
         await dbClient.query(
           `INSERT INTO activites (entreprise_id, nom, email, telephone, adresse) VALUES ($1, $2, $3, $4, $5)`,
@@ -134,27 +133,31 @@ const create = async (req, res) => {
         );
       }
 
-      // Save domain assignments for independant accounts
       if (compteType === 'independant' && domaineIds.length > 0) {
         await saveClientDomaines(dbClient, user.id, domaineIds);
       }
 
       await dbClient.query('COMMIT');
-
-      // Auto-create subscription
-      const tarifCle = compteType === 'entreprise' ? 'entreprise_onboarding' : 'indep_onboarding';
-      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifCle]);
-      const montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
-      await createAbonnement(user.id, compteType, montantOnboarding);
-
-      await sendInviteEmail({ to: user.email, nom: user.nom, token: inviteToken, role: 'client' });
-      res.status(201).json({ ...mapClient(user), domaineIds });
     } catch (err) {
       await dbClient.query('ROLLBACK');
       throw err;
     } finally {
       dbClient.release();
     }
+
+    // Outside transaction: subscription + email (failures here don't rollback the created account)
+    const tarifCle = compteType === 'entreprise' ? 'entreprise_onboarding' : 'indep_onboarding';
+    const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifCle]);
+    const montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
+    await createAbonnement(user.id, compteType, montantOnboarding);
+
+    const emailResult = await sendInviteEmail({ to: user.email, nom: user.nom, token: inviteToken, role: 'client' });
+    res.status(201).json({
+      ...mapClient(user),
+      domaineIds,
+      // Expose invite URL when email service is not configured (dev/staging)
+      inviteUrl: emailResult?.inviteUrl || null,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

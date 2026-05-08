@@ -49,7 +49,7 @@ const sendInviteEmail = async ({ to, nom, token, role }) => {
 
   if (!process.env.RESEND_API_KEY) {
     console.log(`[DEV] Invite email to ${to}: ${inviteUrl}`);
-    return { success: true, dev: true };
+    return { success: true, dev: true, inviteUrl };
   }
 
   const { data, error } = await resend.emails.send({
