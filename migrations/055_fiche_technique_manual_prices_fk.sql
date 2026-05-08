@@ -1,10 +1,10 @@
--- 1. Add FK so deleting a client cascades to their manual price configs
+-- 1. Clear orphaned data first (before adding FK constraints)
+TRUNCATE TABLE fiche_technique_manual_prices;
+
+-- 2. Now add FK so future client deletes cascade to their manual price configs
 ALTER TABLE fiche_technique_manual_prices
   ADD CONSTRAINT fk_ftmp_client
     FOREIGN KEY (client_id) REFERENCES utilisateurs(id) ON DELETE CASCADE;
-
--- 2. Clear all data from fiche_technique_manual_prices (all clients were wiped)
-TRUNCATE TABLE fiche_technique_manual_prices;
 
 -- 3. Clear ingredients first (references unites + categories; cascades to labo/activite selections)
 TRUNCATE TABLE ingredients CASCADE;
