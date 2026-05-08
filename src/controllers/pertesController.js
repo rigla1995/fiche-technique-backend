@@ -601,7 +601,9 @@ const getDateRangeClientPerte = async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
-       FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2`,
+       FROM stock_client_daily
+       WHERE client_id = $1 AND ingredient_id = $2
+         AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)`,
       [req.user.gerant_parent_id || req.user.id, ingredientId]
     );
     const row = r.rows[0];
@@ -623,7 +625,9 @@ const getDateRangeEntreprisePerte = async (req, res) => {
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
     const r = await pool.query(
       `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
-       FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2`,
+       FROM stock_entreprise_daily
+       WHERE activite_id = $1 AND ingredient_id = $2
+         AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)`,
       [activiteId, ingredientId]
     );
     const row = r.rows[0];
@@ -641,7 +645,9 @@ const getDateRangeLaboPerte = async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
-       FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = $2`,
+       FROM stock_labo_daily
+       WHERE labo_id = $1 AND ingredient_id = $2
+         AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)`,
       [laboId, ingredientId]
     );
     const row = r.rows[0];
