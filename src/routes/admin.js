@@ -2,6 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
 const { list, getById, create, update, remove } = require('../controllers/clientsController');
+const { getRapportsStats } = require('../controllers/adminRapportsController');
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 
 const validateCreate = [
@@ -41,6 +42,8 @@ const validateUpdate = [
     return true;
   }),
 ];
+
+router.get('/rapports/stats', authenticate, requireSuperAdmin, getRapportsStats);
 
 router.get('/clients', authenticate, requireSuperAdmin, list);
 router.get('/clients/:id', authenticate, requireSuperAdmin, getById);
