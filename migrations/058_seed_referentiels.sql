@@ -3,23 +3,15 @@
 -- ══════════════════════════════════════════════════════════════════════════════
 
 -- ── 1. Unités ─────────────────────────────────────────────────────────────────
-INSERT INTO unites (nom) VALUES
-  ('g'),
-  ('kg'),
-  ('ml'),
-  ('L'),
-  ('pièce'),
-  ('portion'),
-  ('sachet'),
-  ('boîte'),
-  ('bouteille'),
-  ('plateau'),
-  ('tranche'),
-  ('bouquet'),
-  ('botte'),
-  ('cuillère à soupe'),
-  ('cuillère à café')
-ON CONFLICT (nom) DO NOTHING;
+-- unites has UNIQUE(nom, client_id) not UNIQUE(nom), so ON CONFLICT (nom) won't work.
+-- Use WHERE NOT EXISTS to avoid duplicating global (client_id IS NULL) rows.
+INSERT INTO unites (nom)
+SELECT v FROM (VALUES
+  ('g'), ('kg'), ('ml'), ('L'), ('pièce'), ('portion'), ('sachet'),
+  ('boîte'), ('bouteille'), ('plateau'), ('tranche'), ('bouquet'),
+  ('botte'), ('cuillère à soupe'), ('cuillère à café')
+) AS t(v)
+WHERE NOT EXISTS (SELECT 1 FROM unites u WHERE u.nom = t.v AND u.client_id IS NULL);
 
 -- ── 2. Domaines d'activité ────────────────────────────────────────────────────
 INSERT INTO domaines_activite (nom) VALUES
@@ -55,12 +47,14 @@ CREATE OR REPLACE PROCEDURE _seed_add_ing(
 ) LANGUAGE plpgsql AS $$
 DECLARE v_id INTEGER;
 BEGIN
+  -- ingredients has no UNIQUE(nom) constraint; use WHERE NOT EXISTS for idempotency
   INSERT INTO ingredients (nom, unite_id, categorie_id)
-  VALUES (p_nom, p_unite_id, p_cat_id)
-  ON CONFLICT DO NOTHING
+  SELECT p_nom, p_unite_id, p_cat_id
+  WHERE NOT EXISTS (SELECT 1 FROM ingredients WHERE nom = p_nom AND client_id IS NULL)
   RETURNING id INTO v_id;
 
   IF v_id IS NOT NULL THEN
+    -- ingredient_domaines has PK(ingredient_id, domaine_id) so ON CONFLICT DO NOTHING is safe
     INSERT INTO ingredient_domaines (ingredient_id, domaine_id)
     VALUES (v_id, p_domaine_id)
     ON CONFLICT DO NOTHING;
