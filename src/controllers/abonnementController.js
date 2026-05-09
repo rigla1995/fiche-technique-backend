@@ -184,13 +184,15 @@ const getAbonnement = async (req, res) => {
       const baseMensuel = tarifsMap[mensuelKey] || null;
       const baseOnboarding = tarifsMap[onboardingKey] || null;
 
-      const activePromo = abo.promotions.find((p) => p.isActive) || null;
+      // Use raw snake_case row so applyPromo* helpers work correctly
+      const rawActivePromo = promos.rows.find((p) => p.is_active) || null;
+      const activePromoMapped = abo.promotions.find((p) => p.isActive) || null;
       abo.pricing = {
         baseMensuel,
         baseOnboarding,
-        effectifMensuel: activePromo ? applyPromoMensualite(baseMensuel || 0, activePromo) : baseMensuel,
-        effectifOnboarding: activePromo ? applyPromoOnboarding(baseOnboarding || 0, activePromo) : baseOnboarding,
-        activePromo,
+        effectifMensuel: rawActivePromo ? applyPromoMensualite(baseMensuel || 0, rawActivePromo) : baseMensuel,
+        effectifOnboarding: rawActivePromo ? applyPromoOnboarding(baseOnboarding || 0, rawActivePromo) : baseOnboarding,
+        activePromo: activePromoMapped,
       };
     }
 
