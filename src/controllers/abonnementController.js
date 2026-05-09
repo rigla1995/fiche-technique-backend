@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { sendInviteEmail } = require('../services/emailService');
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -17,6 +18,7 @@ const mapAbonnement = (row) => ({
   archiveDate: row.archive_date,
   suppressionCascadeDate: row.suppression_cascade_date,
   hasActivePromo: row.has_active_promo ?? false,
+  inviteSent: row.invite_sent ?? false,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -168,6 +170,29 @@ const getAbonnement = async (req, res) => {
       [abo.id]
     );
     abo.promotions = promos.rows.map(mapPromotion);
+
+    if (req.query.withPricing) {
+      const isEntreprise = abo.compteType === 'entreprise';
+      const mensuelKey = isEntreprise ? 'entreprise_mensuel' : 'indep_mensuel';
+      const onboardingKey = isEntreprise ? 'entreprise_onboarding' : 'indep_onboarding';
+      const tarifsRes = await pool.query(
+        'SELECT cle, valeur_dt FROM tarifs_config WHERE cle = ANY($1)',
+        [[mensuelKey, onboardingKey]]
+      );
+      const tarifsMap = {};
+      tarifsRes.rows.forEach((r) => { tarifsMap[r.cle] = parseFloat(r.valeur_dt); });
+      const baseMensuel = tarifsMap[mensuelKey] || null;
+      const baseOnboarding = tarifsMap[onboardingKey] || null;
+
+      const activePromo = abo.promotions.find((p) => p.isActive) || null;
+      abo.pricing = {
+        baseMensuel,
+        baseOnboarding,
+        effectifMensuel: activePromo ? applyPromoMensualite(baseMensuel || 0, activePromo) : baseMensuel,
+        effectifOnboarding: activePromo ? applyPromoOnboarding(baseOnboarding || 0, activePromo) : baseOnboarding,
+        activePromo,
+      };
+    }
 
     res.json(abo);
   } catch (err) {
@@ -521,11 +546,45 @@ const enforcerStatuts = async () => {
   }
 };
 
+const confirmInvite = async (req, res) => {
+  const { clientId } = req.params;
+  try {
+    const userRes = await pool.query(
+      'SELECT id, nom, email, invite_token, invite_token_expires_at, activated_at FROM utilisateurs WHERE id = $1',
+      [clientId]
+    );
+    if (userRes.rows.length === 0) return res.status(404).json({ message: 'Client introuvable' });
+    const u = userRes.rows[0];
+    if (u.activated_at) return res.status(400).json({ message: 'Ce compte est déjà activé' });
+    if (!u.invite_token) return res.status(400).json({ message: 'Aucun token d\'invitation disponible' });
+
+    // Refresh token expiry (48h from now) before sending
+    const newExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    await pool.query(
+      'UPDATE utilisateurs SET invite_token_expires_at = $1 WHERE id = $2',
+      [newExpires, clientId]
+    );
+
+    const emailResult = await sendInviteEmail({ to: u.email, nom: u.nom, token: u.invite_token, role: 'client' });
+
+    await pool.query(
+      'UPDATE abonnements SET invite_sent = TRUE, updated_at = NOW() WHERE client_id = $1',
+      [clientId]
+    );
+
+    res.json({ ok: true, inviteUrl: emailResult?.inviteUrl || null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getTarifs, updateTarif,
   listAbonnements, getAbonnement, createAbonnement,
   updateOnboarding, updateProlongation, updateNotes, updateMode,
   upsertPaiement,
   listPromotions, createPromotion, deletePromotion,
+  confirmInvite,
   enforcerStatuts,
 };

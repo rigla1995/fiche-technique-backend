@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { createAbonnement } = require('./abonnementController');
-const { sendInviteEmail, generateInviteToken } = require('../services/emailService');
+const { generateInviteToken } = require('../services/emailService');
 
 const mapClient = (row) => ({
   id: row.id,
@@ -145,18 +145,15 @@ const create = async (req, res) => {
       dbClient.release();
     }
 
-    // Outside transaction: subscription + email (failures here don't rollback the created account)
+    // Outside transaction: subscription (email sent later when admin confirms)
     const tarifCle = compteType === 'entreprise' ? 'entreprise_onboarding' : 'indep_onboarding';
     const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifCle]);
     const montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
     await createAbonnement(user.id, compteType, montantOnboarding);
 
-    const emailResult = await sendInviteEmail({ to: user.email, nom: user.nom, token: inviteToken, role: 'client' });
     res.status(201).json({
       ...mapClient(user),
       domaineIds,
-      // Expose invite URL when email service is not configured (dev/staging)
-      inviteUrl: emailResult?.inviteUrl || null,
     });
   } catch (err) {
     console.error(err);

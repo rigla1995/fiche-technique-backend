@@ -23,9 +23,13 @@ router.get('/client/:clientId/promotions', authenticate, requireSuperAdmin, ab.l
 router.post('/client/:clientId/promotions', authenticate, requireSuperAdmin, ab.createPromotion);
 router.delete('/promotions/:promoId', authenticate, requireSuperAdmin, ab.deletePromotion);
 
+// ── Confirm invite & send email (admin) ──────────────────────────────────────
+router.post('/client/:clientId/confirm-invite', authenticate, requireSuperAdmin, ab.confirmInvite);
+
 // ── Mon abonnement (client self) ─────────────────────────────────────────────
 router.get('/mon-abonnement', authenticate, requireClient, async (req, res) => {
   req.params.clientId = String(req.user.id);
+  req.query.withPricing = '1';
   return ab.getAbonnement(req, res);
 });
 
