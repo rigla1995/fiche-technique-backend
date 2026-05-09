@@ -619,6 +619,79 @@ const confirmInvite = async (req, res) => {
   }
 };
 
+const allPaiements = async (req, res) => {
+  const { clientId, statut, mois } = req.query;
+  try {
+    const conditions = ['1=1'];
+    const params = [];
+    let i = 1;
+    if (clientId) { conditions.push(`a.client_id = $${i++}`); params.push(clientId); }
+    if (statut)   { conditions.push(`p.statut = $${i++}`);    params.push(statut); }
+    if (mois)     { conditions.push(`DATE_TRUNC('month', p.mois) = DATE_TRUNC('month', $${i++}::date)`); params.push(mois); }
+    const result = await pool.query(`
+      SELECT p.id, p.mois, p.montant_dt, p.statut, p.date_saisie, p.notes,
+             a.client_id, a.compte_type,
+             u.nom AS client_nom, u.email AS client_email
+      FROM paiements p
+      JOIN abonnements a ON a.id = p.abonnement_id
+      LEFT JOIN utilisateurs u ON u.id = a.client_id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY p.mois DESC, u.nom ASC
+    `, params);
+    res.json(result.rows.map((r) => ({
+      id: r.id,
+      mois: r.mois,
+      montantDt: r.montant_dt,
+      statut: r.statut,
+      dateSaisie: r.date_saisie,
+      notes: r.notes,
+      clientId: r.client_id,
+      compteType: r.compte_type,
+      clientNom: r.client_nom,
+      clientEmail: r.client_email,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const allPromotions = async (req, res) => {
+  const { clientId, type, appliesTo, active } = req.query;
+  try {
+    const conditions = ['1=1'];
+    const params = [];
+    let i = 1;
+    if (clientId)  { conditions.push(`a.client_id = $${i++}`);  params.push(clientId); }
+    if (type)      { conditions.push(`pr.type = $${i++}`);       params.push(type); }
+    if (appliesTo) { conditions.push(`pr.applies_to = $${i++}`); params.push(appliesTo); }
+    if (active === '1') {
+      conditions.push('pr.date_debut <= CURRENT_DATE AND (pr.date_fin IS NULL OR pr.date_fin >= CURRENT_DATE)');
+    }
+    const result = await pool.query(`
+      SELECT pr.*,
+             (pr.date_debut <= CURRENT_DATE AND (pr.date_fin IS NULL OR pr.date_fin >= CURRENT_DATE)) AS is_active,
+             a.client_id, a.compte_type,
+             u.nom AS client_nom, u.email AS client_email
+      FROM promotions pr
+      JOIN abonnements a ON a.id = pr.abonnement_id
+      LEFT JOIN utilisateurs u ON u.id = a.client_id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY pr.date_debut DESC, u.nom ASC
+    `, params);
+    res.json(result.rows.map((r) => ({
+      ...mapPromotion(r),
+      clientId: r.client_id,
+      compteType: r.compte_type,
+      clientNom: r.client_nom,
+      clientEmail: r.client_email,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getTarifs, updateTarif,
   listAbonnements, getAbonnement, createAbonnement,
@@ -626,5 +699,6 @@ module.exports = {
   upsertPaiement,
   listPromotions, createPromotion, deletePromotion,
   confirmInvite,
+  allPaiements, allPromotions,
   enforcerStatuts,
 };

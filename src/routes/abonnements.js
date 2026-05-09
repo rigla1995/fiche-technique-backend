@@ -26,6 +26,10 @@ router.delete('/promotions/:promoId', authenticate, requireSuperAdmin, ab.delete
 // ── Confirm invite & send email (admin) ──────────────────────────────────────
 router.post('/client/:clientId/confirm-invite', authenticate, requireSuperAdmin, ab.confirmInvite);
 
+// ── Global historique paiements & promotions (admin) ─────────────────────────
+router.get('/all-paiements',  authenticate, requireSuperAdmin, ab.allPaiements);
+router.get('/all-promotions', authenticate, requireSuperAdmin, ab.allPromotions);
+
 // ── Mon abonnement (client self) ─────────────────────────────────────────────
 router.get('/mon-abonnement', authenticate, requireClient, async (req, res) => {
   req.params.clientId = String(req.user.id);
