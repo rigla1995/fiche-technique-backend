@@ -31,6 +31,9 @@ router.post('/client/:clientId/confirm-invite', authenticate, requireSuperAdmin,
 router.get('/all-paiements',  authenticate, requireSuperAdmin, ab.allPaiements);
 router.get('/all-promotions', authenticate, requireSuperAdmin, ab.allPromotions);
 
+// ── Admin data fix ────────────────────────────────────────────────────────────
+router.post('/admin/sync-promo-statuts', authenticate, requireSuperAdmin, ab.runSyncPromoStatuts);
+
 // ── Mon abonnement (client self) ─────────────────────────────────────────────
 router.get('/mon-abonnement', authenticate, requireClient, async (req, res) => {
   req.params.clientId = String(req.user.id);

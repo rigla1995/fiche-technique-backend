@@ -41,6 +41,8 @@ const mapPromotion = (row) => ({
   notes: row.notes,
   createdAt: row.created_at,
   isActive: row.is_active ?? null,
+  // 'actif' = date_fin IS NULL or >= today; 'expiré' = date_fin < today
+  statutPromo: row.statut_promo ?? (row.is_active ? 'actif' : 'expiré'),
 });
 
 // Returns the active promo for an abonnement on a given date (ISO string)
@@ -179,10 +181,18 @@ const getAbonnement = async (req, res) => {
     );
     abo.paiements = paiements.rows.map(mapPaiement);
 
+    const promoYearStart = `${new Date().getFullYear()}-01-01`;
+    const promoYearEnd   = `${new Date().getFullYear()}-12-31`;
     const promos = await pool.query(
-      `SELECT *, (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active
-       FROM promotions WHERE abonnement_id = $1 ORDER BY date_debut DESC`,
-      [abo.id]
+      `SELECT *,
+         (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active,
+         CASE WHEN date_fin IS NULL OR date_fin >= CURRENT_DATE THEN 'actif' ELSE 'expiré' END AS statut_promo
+       FROM promotions
+       WHERE abonnement_id = $1
+         AND date_debut <= $3::date
+         AND (date_fin IS NULL OR date_fin >= $2::date)
+       ORDER BY date_debut DESC`,
+      [abo.id, promoYearStart, promoYearEnd]
     );
     abo.promotions = promos.rows.map(mapPromotion);
 
@@ -514,13 +524,21 @@ const upsertPaiement = async (req, res) => {
 
 const listPromotions = async (req, res) => {
   const { clientId } = req.params;
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const yearEnd   = `${new Date().getFullYear()}-12-31`;
   try {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
     const result = await pool.query(
-      `SELECT *, (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active
-       FROM promotions WHERE abonnement_id = $1 ORDER BY date_debut DESC`,
-      [aboRes.rows[0].id]
+      `SELECT *,
+         (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active,
+         CASE WHEN date_fin IS NULL OR date_fin >= CURRENT_DATE THEN 'actif' ELSE 'expiré' END AS statut_promo
+       FROM promotions
+       WHERE abonnement_id = $1
+         AND date_debut <= $3::date
+         AND (date_fin IS NULL OR date_fin >= $2::date)
+       ORDER BY date_debut DESC`,
+      [aboRes.rows[0].id, yearStart, yearEnd]
     );
     res.json(result.rows.map(mapPromotion));
   } catch (err) {
@@ -662,6 +680,13 @@ const deletePromotion = async (req, res) => {
     if (promoRes.rows.length === 0) return res.status(404).json({ message: 'Promotion introuvable' });
     const p = promoRes.rows[0];
 
+    // Only allow deletion of future promos (not yet started)
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const promoStart = new Date(p.date_debut); promoStart.setHours(0, 0, 0, 0);
+    if (promoStart <= today) {
+      return res.status(400).json({ message: 'Impossible de supprimer une promotion déjà commencée. Contactez le support si nécessaire.' });
+    }
+
     await pool.query('DELETE FROM promotions WHERE id = $1', [promoId]);
 
     // Reset statut_onboarding if we removed the free ob promo
@@ -693,9 +718,91 @@ const deletePromotion = async (req, res) => {
 
 // ── Cron: auto-create monthly payment records ────────────────────────────────
 
+const syncPromoStatuts = async () => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+
+    // 1. For active free mensualite promos: ensure all covered months have gratuit paiements
+    const activeFreeMens = await pool.query(
+      `SELECT p.*, a.compte_type FROM promotions p
+       JOIN abonnements a ON a.id = p.abonnement_id
+       WHERE p.type = 'free_months'
+         AND p.applies_to IN ('mensualite', 'les_deux')
+         AND p.date_debut <= $1::date
+         AND (p.date_fin IS NULL OR p.date_fin >= $1::date)`,
+      [today]
+    );
+    for (const promo of activeFreeMens.rows) {
+      const startDate = new Date(promo.date_debut);
+      const endDate = promo.date_fin ? new Date(promo.date_fin) : new Date(today);
+      const cur = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      while (cur <= endDate) {
+        const moisStr = cur.toISOString().slice(0, 10);
+        await pool.query(
+          `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut)
+           VALUES ($1, $2, 0, 'gratuit')
+           ON CONFLICT (abonnement_id, mois) DO UPDATE
+             SET statut = 'gratuit', montant_dt = 0
+           WHERE paiements.statut NOT IN ('payé')`,
+          [promo.abonnement_id, moisStr]
+        );
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    }
+
+    // 2. Sync statut_onboarding for accounts with active free ob promos
+    await pool.query(
+      `UPDATE abonnements a SET statut_onboarding = 'gratuit'
+       WHERE EXISTS (
+         SELECT 1 FROM promotions p
+         WHERE p.abonnement_id = a.id
+           AND p.type = 'free_months'
+           AND p.applies_to IN ('onboarding', 'les_deux')
+       ) AND statut_onboarding <> 'payé'`
+    );
+
+    // 3. Reset gratuit paiements beyond expired free promos back to en_attente
+    const expiredFreePromos = await pool.query(
+      `SELECT * FROM promotions
+       WHERE type = 'free_months'
+         AND applies_to IN ('mensualite', 'les_deux')
+         AND date_fin IS NOT NULL
+         AND date_fin < $1::date`,
+      [today]
+    );
+    for (const promo of expiredFreePromos.rows) {
+      // Check there's no other free promo covering the same period
+      const coverage = await pool.query(
+        `SELECT 1 FROM promotions
+         WHERE abonnement_id = $1
+           AND id <> $2
+           AND type = 'free_months'
+           AND applies_to IN ('mensualite', 'les_deux')
+           AND date_fin IS NULL OR date_fin >= $3::date
+         LIMIT 1`,
+        [promo.abonnement_id, promo.id, promo.date_fin]
+      );
+      if (coverage.rows.length === 0) {
+        await pool.query(
+          `UPDATE paiements SET statut = 'en_attente'
+           WHERE abonnement_id = $1
+             AND statut = 'gratuit'
+             AND mois > $2::date`,
+          [promo.abonnement_id, promo.date_fin]
+        );
+      }
+    }
+  } catch (err) {
+    console.error('syncPromoStatuts error:', err.message);
+  }
+};
+
 const enforcerStatuts = async () => {
   try {
-    // Auto-create next month payment record if missing (apply promo if active)
+    // Sync promo statuts first
+    await syncPromoStatuts();
+
+    // Auto-create monthly payment record if missing (apply promo if active)
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
     const missingAbo = await pool.query(`
@@ -830,6 +937,17 @@ const allPromotions = async (req, res) => {
   }
 };
 
+// Admin: manually trigger promo sync (fixes existing data)
+const runSyncPromoStatuts = async (req, res) => {
+  try {
+    await syncPromoStatuts();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getTarifs, updateTarif,
   listAbonnements, getAbonnement, createAbonnement,
@@ -840,4 +958,5 @@ module.exports = {
   confirmInvite,
   allPaiements, allPromotions,
   enforcerStatuts,
+  runSyncPromoStatuts,
 };
