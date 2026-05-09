@@ -673,19 +673,116 @@ const createPromotion = async (req, res) => {
   }
 };
 
+const updatePromotion = async (req, res) => {
+  const { promoId } = req.params;
+  const {
+    type, appliesTo,
+    discountOnboarding, discountMensualite,
+    fixedOnboarding, fixedMensualite,
+    discountSupplement, fixedSupplement,
+    dateDebut, monthsDuration,
+  } = req.body;
+
+  const validTypes = ['percent_off', 'free_months', 'fixed_price'];
+  const validApplies = ['onboarding', 'mensualite', 'les_deux', 'supplement_gerant', 'supplement_labo'];
+  if (!validTypes.includes(type)) return res.status(400).json({ message: 'Type invalide' });
+  if (!validApplies.includes(appliesTo)) return res.status(400).json({ message: 'applies_to invalide' });
+  if (!dateDebut) return res.status(400).json({ message: 'date_debut requis' });
+
+  try {
+    const promoRes = await pool.query('SELECT * FROM promotions WHERE id = $1', [promoId]);
+    if (promoRes.rows.length === 0) return res.status(404).json({ message: 'Promotion introuvable' });
+    const existing = promoRes.rows[0];
+
+    // Compute date_fin
+    let dateFin = null;
+    if (monthsDuration && Number(monthsDuration) > 0) {
+      const d = new Date(dateDebut);
+      d.setMonth(d.getMonth() + Number(monthsDuration));
+      d.setDate(d.getDate() - 1);
+      dateFin = d.toISOString().slice(0, 10);
+    }
+
+    // Conflict check (exclude self)
+    const conflictMap = {
+      mensualite:        ['mensualite', 'les_deux'],
+      onboarding:        ['onboarding', 'les_deux'],
+      les_deux:          ['mensualite', 'onboarding', 'les_deux'],
+      supplement_gerant: ['supplement_gerant'],
+      supplement_labo:   ['supplement_labo'],
+    };
+    const conflictTypes = conflictMap[appliesTo];
+    const conflictRes = await pool.query(
+      `SELECT applies_to, date_fin FROM promotions
+       WHERE abonnement_id = $1
+         AND id <> $2
+         AND applies_to = ANY($3)
+         AND date_debut <= COALESCE($4::date, '9999-12-31'::date)
+         AND (date_fin IS NULL OR date_fin >= $5::date)
+       LIMIT 1`,
+      [existing.abonnement_id, promoId, conflictTypes, dateFin, dateDebut]
+    );
+    if (conflictRes.rows.length > 0) {
+      const cf = conflictRes.rows[0];
+      const hint = cf.date_fin
+        ? ` Elle se termine le ${new Date(cf.date_fin).toLocaleDateString('fr-FR')}.`
+        : ' Elle est permanente.';
+      return res.status(409).json({
+        message: `Une promotion sur "${cf.applies_to}" chevauche cette période.${hint}`,
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE promotions
+       SET type = $1, applies_to = $2,
+           discount_onboarding = $3, discount_mensualite = $4,
+           fixed_onboarding = $5, fixed_mensualite = $6,
+           discount_supplement = $7, fixed_supplement = $8,
+           date_debut = $9, months_duration = $10, date_fin = $11,
+           updated_at = NOW()
+       WHERE id = $12
+       RETURNING *, (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active`,
+      [
+        type, appliesTo,
+        discountOnboarding || null, discountMensualite || null,
+        fixedOnboarding || null, fixedMensualite || null,
+        discountSupplement || null, fixedSupplement || null,
+        dateDebut, monthsDuration || null, dateFin,
+        promoId,
+      ]
+    );
+    const updated = result.rows[0];
+
+    // Sync statut_onboarding for free_months onboarding type changes
+    if (type === 'free_months' && ['onboarding', 'les_deux'].includes(appliesTo)) {
+      await pool.query(
+        `UPDATE abonnements SET statut_onboarding = 'gratuit', updated_at = NOW() WHERE id = $1`,
+        [existing.abonnement_id]
+      );
+    } else if (existing.type === 'free_months' && ['onboarding', 'les_deux'].includes(existing.applies_to)) {
+      // Was a free onboarding promo, now changed — reset statut
+      await pool.query(
+        `UPDATE abonnements
+         SET statut_onboarding = CASE WHEN date_onboarding IS NOT NULL THEN 'payé' ELSE 'en_attente' END,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [existing.abonnement_id]
+      );
+    }
+
+    res.json(mapPromotion(updated));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 const deletePromotion = async (req, res) => {
   const { promoId } = req.params;
   try {
     const promoRes = await pool.query('SELECT * FROM promotions WHERE id = $1', [promoId]);
     if (promoRes.rows.length === 0) return res.status(404).json({ message: 'Promotion introuvable' });
     const p = promoRes.rows[0];
-
-    // Only allow deletion of future promos (not yet started)
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const promoStart = new Date(p.date_debut); promoStart.setHours(0, 0, 0, 0);
-    if (promoStart <= today) {
-      return res.status(400).json({ message: 'Impossible de supprimer une promotion déjà commencée. Contactez le support si nécessaire.' });
-    }
 
     await pool.query('DELETE FROM promotions WHERE id = $1', [promoId]);
 
@@ -954,7 +1051,7 @@ module.exports = {
   updateOnboarding, updateProlongation, updateNotes, updateMode,
   upsertPaiement,
   getMontantMois,
-  listPromotions, createPromotion, deletePromotion,
+  listPromotions, createPromotion, updatePromotion, deletePromotion,
   confirmInvite,
   allPaiements, allPromotions,
   enforcerStatuts,

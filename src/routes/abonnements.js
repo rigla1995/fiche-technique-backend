@@ -22,6 +22,7 @@ router.get('/client/:clientId/montant-mois', authenticate, requireSuperAdmin, ab
 // ── Promotions (admin) ───────────────────────────────────────────────────────
 router.get('/client/:clientId/promotions', authenticate, requireSuperAdmin, ab.listPromotions);
 router.post('/client/:clientId/promotions', authenticate, requireSuperAdmin, ab.createPromotion);
+router.put('/promotions/:promoId', authenticate, requireSuperAdmin, ab.updatePromotion);
 router.delete('/promotions/:promoId', authenticate, requireSuperAdmin, ab.deletePromotion);
 
 // ── Confirm invite & send email (admin) ──────────────────────────────────────
