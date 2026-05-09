@@ -342,20 +342,23 @@ const acceptInvite = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT id FROM utilisateurs
+      `SELECT id, onboarding_step FROM utilisateurs
        WHERE invite_token = $1 AND invite_token_expires_at > NOW() AND activated_at IS NULL`,
       [token]
     );
     if (result.rows.length === 0)
       return res.status(404).json({ message: 'Lien invalide ou expiré' });
 
+    const u = result.rows[0];
     const hash = await bcrypt.hash(password, 10);
+    // If entreprise client was at step 1 (forced password change), skip it — invite flow already handles it
+    const newStep = u.onboarding_step === 1 ? 2 : u.onboarding_step;
     await pool.query(
       `UPDATE utilisateurs
        SET mot_de_passe = $1, invite_token = NULL, invite_token_expires_at = NULL,
-           activated_at = NOW(), updated_at = NOW()
-       WHERE id = $2`,
-      [hash, result.rows[0].id]
+           activated_at = NOW(), onboarding_step = $2, updated_at = NOW()
+       WHERE id = $3`,
+      [hash, newStep, u.id]
     );
     res.json({ ok: true });
   } catch (err) {
