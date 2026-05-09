@@ -531,7 +531,7 @@ const createPromotion = async (req, res) => {
       return res.status(400).json({ message: `La date de début ne peut pas être antérieure au début de l'abonnement (${aboDateDebut.toISOString().slice(0, 10)})` });
     }
 
-    // Conflict check: no active promo covering the same type(s)
+    // Conflict check: date-range overlap with existing promos of same type
     const conflictMap = {
       mensualite:        ['mensualite', 'les_deux'],
       onboarding:        ['onboarding', 'les_deux'],
@@ -540,19 +540,25 @@ const createPromotion = async (req, res) => {
       supplement_labo:   ['supplement_labo'],
     };
     const conflictTypes = conflictMap[appliesTo];
+    // Two date ranges [A,B] and [C,D] overlap when A <= D and C <= B
+    // (NULL date_fin = open-ended / infinite)
     const conflictRes = await pool.query(
-      `SELECT applies_to FROM promotions
+      `SELECT applies_to, date_fin FROM promotions
        WHERE abonnement_id = $1
-         AND date_debut <= CURRENT_DATE
-         AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
          AND applies_to = ANY($2)
+         AND date_debut <= COALESCE($3::date, '9999-12-31'::date)
+         AND (date_fin IS NULL OR date_fin >= $4::date)
        LIMIT 1`,
-      [aboId, conflictTypes]
+      [aboId, conflictTypes, dateFin, dateDebut]
     );
     if (conflictRes.rows.length > 0) {
       const existing = conflictRes.rows[0].applies_to;
+      const existingFin = conflictRes.rows[0].date_fin;
+      const hint = existingFin
+        ? ` Elle se termine le ${new Date(existingFin).toLocaleDateString('fr-FR')}.`
+        : ' Elle est permanente.';
       return res.status(409).json({
-        message: `Une promotion active couvre déjà "${existing}". Attendez sa fin avant d'en créer une nouvelle sur ce type.`,
+        message: `Une promotion sur "${existing}" chevauche cette période.${hint}`,
       });
     }
 
