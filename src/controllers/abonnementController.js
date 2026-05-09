@@ -247,19 +247,32 @@ const createAbonnement = async (clientId, compteType, montantOnboarding) => {
 // Admin: update onboarding payment status + optional date
 const updateOnboarding = async (req, res) => {
   const { clientId } = req.params;
-  const { statut, datePaiement } = req.body;
-  const allowed = ['payé', 'impayé', 'offert', 'gratuit'];
-  if (!allowed.includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
+  const { datePaiement } = req.body; // admin only declares payment date; statut is computed
+
   try {
+    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
+    if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
+    const aboId = aboRes.rows[0].id;
+
+    // Compute statut: free promo → gratuit, admin confirmed date → payé, else → en_attente
+    const promoRes = await pool.query(
+      `SELECT 1 FROM promotions
+       WHERE abonnement_id = $1 AND applies_to IN ('onboarding','les_deux') AND type = 'free_months'
+       LIMIT 1`,
+      [aboId]
+    );
+    let statut = 'en_attente';
+    if (promoRes.rows.length > 0) statut = 'gratuit';
+    else if (datePaiement) statut = 'payé';
+
     const result = await pool.query(
       `UPDATE abonnements
        SET statut_onboarding = $1,
-           date_onboarding = COALESCE($2::date, date_onboarding),
+           date_onboarding = CASE WHEN $2::date IS NOT NULL THEN $2::date ELSE date_onboarding END,
            updated_at = NOW()
        WHERE client_id = $3 RETURNING *`,
       [statut, datePaiement || null, clientId]
     );
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
     res.json({
       statutOnboarding: result.rows[0].statut_onboarding,
       dateOnboarding: result.rows[0].date_onboarding,
@@ -416,8 +429,11 @@ const getMontantMois = async (req, res) => {
 
     const total = effectifMensuel + effectifGerant + effectifLabo;
 
+    const isGratuit = promoMens?.type === 'free_months';
+
     res.json({
       moisStr,
+      isGratuit,
       existing: existingRes.rows[0]
         ? {
             montantDt: existingRes.rows[0].montant_dt,
@@ -426,9 +442,18 @@ const getMontantMois = async (req, res) => {
           }
         : null,
       breakdown: {
-        mensualite: { base: baseMensuel, effectif: effectifMensuel, hasPromo: !!promoMens },
-        supplementGerant: { base: baseGerant, effectif: effectifGerant, active: hasGerant, hasPromo: !!promoGerant },
-        supplementLabo: { base: baseLabo, effectif: effectifLabo, active: hasLabo, hasPromo: !!promoLabo },
+        mensualite: {
+          base: baseMensuel, effectif: effectifMensuel, hasPromo: !!promoMens,
+          promoType: promoMens?.type || null,
+        },
+        supplementGerant: {
+          base: baseGerant, effectif: effectifGerant, active: hasGerant, hasPromo: !!promoGerant,
+          promoType: promoGerant?.type || null,
+        },
+        supplementLabo: {
+          base: baseLabo, effectif: effectifLabo, active: hasLabo, hasPromo: !!promoLabo,
+          promoType: promoLabo?.type || null,
+        },
       },
       total,
     });
@@ -599,6 +624,14 @@ const createPromotion = async (req, res) => {
     );
     const promo = result.rows[0];
 
+    // Sync statut_onboarding when a free onboarding promo is created
+    if (type === 'free_months' && ['onboarding', 'les_deux'].includes(appliesTo)) {
+      await pool.query(
+        `UPDATE abonnements SET statut_onboarding = 'gratuit', updated_at = NOW() WHERE id = $1`,
+        [aboId]
+      );
+    }
+
     // Update existing en_attente paiements within the promo's date range
     if (['mensualite', 'les_deux'].includes(appliesTo)) {
       const aboTypeRes = await pool.query('SELECT compte_type FROM abonnements WHERE id = $1', [aboId]);
@@ -625,8 +658,32 @@ const createPromotion = async (req, res) => {
 const deletePromotion = async (req, res) => {
   const { promoId } = req.params;
   try {
-    const result = await pool.query('DELETE FROM promotions WHERE id = $1 RETURNING id', [promoId]);
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Promotion introuvable' });
+    const promoRes = await pool.query('SELECT * FROM promotions WHERE id = $1', [promoId]);
+    if (promoRes.rows.length === 0) return res.status(404).json({ message: 'Promotion introuvable' });
+    const p = promoRes.rows[0];
+
+    await pool.query('DELETE FROM promotions WHERE id = $1', [promoId]);
+
+    // Reset statut_onboarding if we removed the free ob promo
+    if (p.type === 'free_months' && ['onboarding', 'les_deux'].includes(p.applies_to)) {
+      await pool.query(
+        `UPDATE abonnements
+         SET statut_onboarding = CASE WHEN date_onboarding IS NOT NULL THEN 'payé' ELSE 'en_attente' END,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [p.abonnement_id]
+      );
+    }
+
+    // Reset gratuit paiements back to en_attente when a free mensualite promo is removed
+    if (p.type === 'free_months' && ['mensualite', 'les_deux'].includes(p.applies_to)) {
+      const params = [p.abonnement_id, p.date_debut];
+      let sql = `UPDATE paiements SET statut = 'en_attente'
+                 WHERE abonnement_id = $1 AND statut = 'gratuit' AND mois >= $2::date`;
+      if (p.date_fin) { sql += ` AND mois <= $3::date`; params.push(p.date_fin); }
+      await pool.query(sql, params);
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
