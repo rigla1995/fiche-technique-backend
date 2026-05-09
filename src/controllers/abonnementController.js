@@ -527,11 +527,16 @@ const createPromotion = async (req, res) => {
     const aboDateDebut = aboRes.rows[0].date_debut;
 
     // date_debut must be >= subscription start date
+    // For mensualite/supplements, compare at month level only (day is irrelevant)
     const aboDateDebutStr = aboDateDebut instanceof Date
       ? aboDateDebut.toISOString().slice(0, 10)
       : aboDateDebut.toString().slice(0, 10);
-    if (dateDebut < aboDateDebutStr) {
-      return res.status(400).json({ message: `La date de début ne peut pas être antérieure au début de l'abonnement (${aboDateDebutStr})` });
+    const isMonthOnly = appliesTo !== 'onboarding';
+    const cmpDateDebut = isMonthOnly ? dateDebut.slice(0, 7) : dateDebut;
+    const cmpAboStart  = isMonthOnly ? aboDateDebutStr.slice(0, 7) : aboDateDebutStr;
+    if (cmpDateDebut < cmpAboStart) {
+      const hint = isMonthOnly ? aboDateDebutStr.slice(0, 7) : aboDateDebutStr;
+      return res.status(400).json({ message: `La date de début ne peut pas être antérieure au début de l'abonnement (${hint})` });
     }
 
     // Conflict check: date-range overlap with existing promos of same type
