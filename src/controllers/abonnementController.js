@@ -42,11 +42,13 @@ const mapPromotion = (row) => ({
 
 // Returns the active promo for an abonnement on a given date (ISO string)
 const getActivePromo = async (abonnementId, dateStr) => {
+  // Only mensualite-applicable promos affect payment amounts
   const result = await pool.query(
     `SELECT * FROM promotions
      WHERE abonnement_id = $1
        AND date_debut <= $2::date
        AND (date_fin IS NULL OR date_fin >= $2::date)
+       AND applies_to IN ('mensualite', 'les_deux')
      ORDER BY created_at DESC LIMIT 1`,
     [abonnementId, dateStr]
   );
@@ -184,15 +186,16 @@ const getAbonnement = async (req, res) => {
       const baseMensuel = tarifsMap[mensuelKey] || null;
       const baseOnboarding = tarifsMap[onboardingKey] || null;
 
-      // Use raw snake_case row so applyPromo* helpers work correctly
-      const rawActivePromo = promos.rows.find((p) => p.is_active) || null;
-      const activePromoMapped = abo.promotions.find((p) => p.isActive) || null;
+      // Find separate active promos per type (raw snake_case for applyPromo* helpers)
+      const rawPromoMens = promos.rows.find((p) => p.is_active && ['mensualite', 'les_deux'].includes(p.applies_to)) || null;
+      const rawPromoOb = promos.rows.find((p) => p.is_active && ['onboarding', 'les_deux'].includes(p.applies_to)) || null;
       abo.pricing = {
         baseMensuel,
         baseOnboarding,
-        effectifMensuel: rawActivePromo ? applyPromoMensualite(baseMensuel || 0, rawActivePromo) : baseMensuel,
-        effectifOnboarding: rawActivePromo ? applyPromoOnboarding(baseOnboarding || 0, rawActivePromo) : baseOnboarding,
-        activePromo: activePromoMapped,
+        effectifMensuel: rawPromoMens ? applyPromoMensualite(baseMensuel || 0, rawPromoMens) : baseMensuel,
+        effectifOnboarding: rawPromoOb ? applyPromoOnboarding(baseOnboarding || 0, rawPromoOb) : baseOnboarding,
+        activePromoMensuel: rawPromoMens ? abo.promotions.find((p) => p.id === rawPromoMens.id) || null : null,
+        activePromoOnboarding: rawPromoOb ? abo.promotions.find((p) => p.id === rawPromoOb.id) || null : null,
       };
     }
 
@@ -388,9 +391,37 @@ const createPromotion = async (req, res) => {
   if (!dateDebut) return res.status(400).json({ message: 'date_debut requis' });
 
   try {
-    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
+    const aboRes = await pool.query('SELECT id, date_debut FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
+    const aboDateDebut = aboRes.rows[0].date_debut;
+
+    // date_debut must be >= subscription start date
+    if (dateDebut < aboDateDebut.toISOString().slice(0, 10)) {
+      return res.status(400).json({ message: `La date de début ne peut pas être antérieure au début de l'abonnement (${aboDateDebut.toISOString().slice(0, 10)})` });
+    }
+
+    // Conflict check: no active promo covering the same type(s)
+    const conflictTypes = {
+      mensualite: ['mensualite', 'les_deux'],
+      onboarding: ['onboarding', 'les_deux'],
+      les_deux: ['mensualite', 'onboarding', 'les_deux'],
+    }[appliesTo];
+    const conflictRes = await pool.query(
+      `SELECT applies_to FROM promotions
+       WHERE abonnement_id = $1
+         AND date_debut <= CURRENT_DATE
+         AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
+         AND applies_to = ANY($2)
+       LIMIT 1`,
+      [aboId, conflictTypes]
+    );
+    if (conflictRes.rows.length > 0) {
+      const existing = conflictRes.rows[0].applies_to;
+      return res.status(409).json({
+        message: `Une promotion active couvre déjà "${existing}". Attendez sa fin avant d'en créer une nouvelle sur ce type.`,
+      });
+    }
 
     // Compute date_fin from dateDebut + monthsDuration
     let dateFin = null;
