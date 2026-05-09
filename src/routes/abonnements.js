@@ -17,6 +17,7 @@ router.put('/client/:clientId/prolongation', authenticate, requireSuperAdmin, ab
 router.put('/client/:clientId/mode', authenticate, requireSuperAdmin, ab.updateMode);
 router.put('/client/:clientId/notes', authenticate, requireSuperAdmin, ab.updateNotes);
 router.post('/client/:clientId/paiements', authenticate, requireSuperAdmin, ab.upsertPaiement);
+router.get('/client/:clientId/montant-mois', authenticate, requireSuperAdmin, ab.getMontantMois);
 
 // ── Promotions (admin) ───────────────────────────────────────────────────────
 router.get('/client/:clientId/promotions', authenticate, requireSuperAdmin, ab.listPromotions);

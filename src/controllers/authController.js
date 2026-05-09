@@ -37,6 +37,20 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
+    // Check if account is blocked
+    if (utilisateur.role !== 'super_admin') {
+      const aboClientId = utilisateur.role === 'gerant' ? utilisateur.gerant_parent_id : utilisateur.id;
+      if (aboClientId) {
+        const aboCheck = await pool.query(
+          'SELECT mode_compte FROM abonnements WHERE client_id = $1',
+          [aboClientId]
+        );
+        if (aboCheck.rows[0]?.mode_compte === 'bloque') {
+          return res.status(403).json({ message: 'account_blocked' });
+        }
+      }
+    }
+
     const token = jwt.sign(
       { userId: utilisateur.id, role: utilisateur.role },
       process.env.JWT_SECRET,
