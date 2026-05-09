@@ -213,10 +213,15 @@ const createAbonnement = async (clientId, compteType, montantOnboarding) => {
   const aboId = result.rows[0].id;
   const firstOfMonth = new Date();
   firstOfMonth.setDate(1);
+  const tarifKey = compteType === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel';
+  const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifKey]);
+  const baseMontant = parseFloat(tarifRes.rows[0]?.valeur_dt || 0);
+  const activePromo = await getActivePromo(aboId, firstOfMonth.toISOString().slice(0, 10));
+  const montant = activePromo ? applyPromoMensualite(baseMontant, activePromo) : baseMontant;
+  const statut = montant === 0 ? 'gratuit' : 'en_attente';
   await pool.query(
-    `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut)
-     VALUES ($1, $2, (SELECT valeur_dt FROM tarifs_config WHERE cle = $3), 'en_attente')`,
-    [aboId, firstOfMonth.toISOString().slice(0, 10), compteType === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel']
+    `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut) VALUES ($1, $2, $3, $4)`,
+    [aboId, firstOfMonth.toISOString().slice(0, 10), montant, statut]
   );
   return aboId;
 };
@@ -307,7 +312,7 @@ const upsertPaiement = async (req, res) => {
   const { clientId } = req.params;
   const { mois, statut, montant, notes } = req.body;
   if (!mois || !statut) return res.status(400).json({ message: 'mois et statut requis' });
-  const allowed = ['payé', 'impayé', 'en_attente', 'remisé'];
+  const allowed = ['payé', 'impayé', 'en_attente', 'remisé', 'gratuit'];
   if (!allowed.includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
 
   try {
@@ -421,9 +426,10 @@ const createPromotion = async (req, res) => {
       const base = parseFloat(tarifRes.rows[0]?.valeur_dt || 0);
       const newMontant = applyPromoMensualite(base, promo);
 
-      const params = [aboId, dateDebut, newMontant];
-      let sql = `UPDATE paiements SET montant_dt = $3 WHERE abonnement_id = $1 AND statut = 'en_attente' AND mois >= $2::date`;
-      if (dateFin) { sql += ` AND mois <= $4::date`; params.push(dateFin); }
+      const newStatut = newMontant === 0 ? 'gratuit' : 'en_attente';
+      const params = [aboId, dateDebut, newMontant, newStatut];
+      let sql = `UPDATE paiements SET montant_dt = $3, statut = $4 WHERE abonnement_id = $1 AND statut IN ('en_attente', 'gratuit') AND mois >= $2::date`;
+      if (dateFin) { sql += ` AND mois <= $5::date`; params.push(dateFin); }
       await pool.query(sql, params);
     }
 
@@ -535,9 +541,10 @@ const enforcerStatuts = async () => {
     for (const abo of missingAbo.rows) {
       const promo = await getActivePromo(abo.id, thisMonth);
       const montant = applyPromoMensualite(parseFloat(abo.base_montant || 0), promo);
+      const statut = montant === 0 ? 'gratuit' : 'en_attente';
       await pool.query(
-        `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut) VALUES ($1, $2, $3, 'en_attente')`,
-        [abo.id, thisMonth, montant]
+        `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut) VALUES ($1, $2, $3, $4)`,
+        [abo.id, thisMonth, montant, statut]
       );
     }
 
