@@ -539,6 +539,15 @@ const createPromotion = async (req, res) => {
       return res.status(400).json({ message: `La date de début ne peut pas être antérieure au début de l'abonnement (${hint})` });
     }
 
+    // Compute date_fin from dateDebut + monthsDuration (needed for conflict check)
+    let dateFin = null;
+    if (monthsDuration && Number(monthsDuration) > 0) {
+      const d = new Date(dateDebut);
+      d.setMonth(d.getMonth() + Number(monthsDuration));
+      d.setDate(d.getDate() - 1); // last day of promotion
+      dateFin = d.toISOString().slice(0, 10);
+    }
+
     // Conflict check: date-range overlap with existing promos of same type
     const conflictMap = {
       mensualite:        ['mensualite', 'les_deux'],
@@ -568,15 +577,6 @@ const createPromotion = async (req, res) => {
       return res.status(409).json({
         message: `Une promotion sur "${existing}" chevauche cette période.${hint}`,
       });
-    }
-
-    // Compute date_fin from dateDebut + monthsDuration
-    let dateFin = null;
-    if (monthsDuration && Number(monthsDuration) > 0) {
-      const d = new Date(dateDebut);
-      d.setMonth(d.getMonth() + Number(monthsDuration));
-      d.setDate(d.getDate() - 1); // last day of promotion
-      dateFin = d.toISOString().slice(0, 10);
     }
 
     const result = await pool.query(
