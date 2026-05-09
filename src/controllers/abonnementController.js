@@ -527,8 +527,11 @@ const createPromotion = async (req, res) => {
     const aboDateDebut = aboRes.rows[0].date_debut;
 
     // date_debut must be >= subscription start date
-    if (dateDebut < aboDateDebut.toISOString().slice(0, 10)) {
-      return res.status(400).json({ message: `La date de début ne peut pas être antérieure au début de l'abonnement (${aboDateDebut.toISOString().slice(0, 10)})` });
+    const aboDateDebutStr = aboDateDebut instanceof Date
+      ? aboDateDebut.toISOString().slice(0, 10)
+      : aboDateDebut.toString().slice(0, 10);
+    if (dateDebut < aboDateDebutStr) {
+      return res.status(400).json({ message: `La date de début ne peut pas être antérieure au début de l'abonnement (${aboDateDebutStr})` });
     }
 
     // Conflict check: date-range overlap with existing promos of same type
