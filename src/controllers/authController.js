@@ -374,6 +374,15 @@ const acceptInvite = async (req, res) => {
        WHERE id = $3`,
       [hash, newStep, u.id]
     );
+    // Record digital contract acceptance for main client accounts
+    if (u.role === 'client') {
+      const clientIp = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
+      await pool.query(
+        `UPDATE abonnements SET contrat_accepte_le = NOW(), contrat_accepte_ip = $1, updated_at = NOW()
+         WHERE client_id = $2 AND contrat_accepte_le IS NULL`,
+        [clientIp, u.id]
+      );
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
