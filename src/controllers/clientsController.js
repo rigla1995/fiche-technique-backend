@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { createAbonnement } = require('./abonnementController');
-const { generateInviteToken } = require('../services/emailService');
+const { generateInviteToken, sendWelcomeWithContractEmail } = require('../services/emailService');
 
 const mapClient = (row) => ({
   id: row.id,
@@ -74,20 +74,25 @@ const create = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const compteType = req.body.compteType || req.body.compte_type || 'independant';
   const nom = req.body.name || req.body.nom;
   const { email, telephone, adresse } = req.body;
   const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : [];
 
+  // New config-based fields (new modal flow)
+  const nbActivites  = req.body.nbActivites  ? parseInt(req.body.nbActivites)  : null;
+  const nbLabos      = req.body.nbLabos      ? parseInt(req.body.nbLabos)      : null;
+  const nbGerants    = req.body.nbGerants    ? parseInt(req.body.nbGerants)    : null;
+  const montantOnboardingConfig = req.body.montantOnboarding != null ? parseFloat(req.body.montantOnboarding) : null;
+  const contractPdfBase64 = req.body.contractPdfBase64 || null;
+
+  // Legacy: compte_type (kept for backward compat with old modal)
+  const compteType = nbActivites != null ? null : (req.body.compteType || req.body.compte_type || 'independant');
+
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   if (!email) return res.status(400).json({ message: 'Email requis' });
 
-  // Check tel uniqueness
   if (telephone) {
-    const telCheck = await pool.query(
-      'SELECT id FROM utilisateurs WHERE telephone = $1',
-      [telephone]
-    );
+    const telCheck = await pool.query('SELECT id FROM utilisateurs WHERE telephone = $1', [telephone]);
     if (telCheck.rows.length > 0)
       return res.status(409).json({ message: 'Ce numéro de téléphone est déjà utilisé' });
   }
@@ -101,10 +106,6 @@ const create = async (req, res) => {
     const inviteToken = generateInviteToken();
     const inviteExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
-    // onboarding_step: 0 for independant (no onboarding), 1 for entreprise (must complete onboarding)
-    const onboardingStep = compteType === 'entreprise' ? 1 : 0;
-
-    // Transaction: create user + profil + activite + domaines
     let user;
     const dbClient = await pool.connect();
     try {
@@ -112,9 +113,9 @@ const create = async (req, res) => {
 
       const userResult = await dbClient.query(
         `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, compte_type, onboarding_step, invite_token, invite_token_expires_at)
-         VALUES ($1, $2, NULL, $3, 'client', $4, $5, $6, $7)
+         VALUES ($1, $2, NULL, $3, 'client', $4, 1, $5, $6)
          RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
-        [nom, email, telephone || null, compteType, onboardingStep, inviteToken, inviteExpires]
+        [nom, email, telephone || null, compteType || null, inviteToken, inviteExpires]
       );
       user = userResult.rows[0];
 
@@ -126,14 +127,7 @@ const create = async (req, res) => {
         [user.id, nom, email, telephone || null, adresse || null]
       );
 
-      if (compteType === 'independant' && peResult.rows.length > 0) {
-        await dbClient.query(
-          `INSERT INTO activites (entreprise_id, nom, email, telephone, adresse) VALUES ($1, $2, $3, $4, $5)`,
-          [peResult.rows[0].id, nom, email, telephone || null, adresse || null]
-        );
-      }
-
-      if (compteType === 'independant' && domaineIds.length > 0) {
+      if (domaineIds.length > 0) {
         await saveClientDomaines(dbClient, user.id, domaineIds);
       }
 
@@ -145,16 +139,40 @@ const create = async (req, res) => {
       dbClient.release();
     }
 
-    // Outside transaction: subscription (email sent later when admin confirms)
-    const tarifCle = compteType === 'entreprise' ? 'entreprise_onboarding' : 'indep_onboarding';
-    const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifCle]);
-    const montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
-    await createAbonnement(user.id, compteType, montantOnboarding);
+    // Create abonnement with config if provided
+    const config = nbActivites != null ? {
+      nbActivites, nbLabos: nbLabos || 0, nbGerants: nbGerants || 0,
+      montantOnboarding: montantOnboardingConfig || 0,
+    } : null;
 
-    res.status(201).json({
-      ...mapClient(user),
-      domaineIds,
-    });
+    let montantOnboarding = montantOnboardingConfig;
+    if (!config) {
+      const tarifCle = compteType === 'entreprise' ? 'entreprise_onboarding' : 'indep_onboarding';
+      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifCle]);
+      montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
+    }
+
+    await createAbonnement(user.id, compteType, montantOnboarding, config);
+
+    // Send welcome email with contract PDF if provided
+    if (contractPdfBase64) {
+      try {
+        await sendWelcomeWithContractEmail({
+          to: email,
+          nom,
+          token: inviteToken,
+          contractPdfBase64,
+        });
+        await pool.query(
+          `UPDATE utilisateurs SET invite_sent = TRUE WHERE id = $1`,
+          [user.id]
+        ).catch(() => {});
+      } catch (emailErr) {
+        console.error('Welcome email error:', emailErr.message);
+      }
+    }
+
+    res.status(201).json({ ...mapClient(user), domaineIds });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

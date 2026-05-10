@@ -4,6 +4,7 @@ const { authenticate, requireSuperAdmin, requireClient, requireClientOrGerant } 
 const ab = require('../controllers/abonnementController');
 const gerant = require('../controllers/gerantController');
 const demande = require('../controllers/demandeController');
+const support = require('../controllers/supportController');
 
 // ── Tarifs (admin) ───────────────────────────────────────────────────────────
 router.get('/tarifs', authenticate, ab.getTarifs);
@@ -24,6 +25,11 @@ router.get('/client/:clientId/promotions', authenticate, requireSuperAdmin, ab.l
 router.post('/client/:clientId/promotions', authenticate, requireSuperAdmin, ab.createPromotion);
 router.put('/promotions/:promoId', authenticate, requireSuperAdmin, ab.updatePromotion);
 router.delete('/promotions/:promoId', authenticate, requireSuperAdmin, ab.deletePromotion);
+
+// ── Abonnement config ────────────────────────────────────────────────────────
+router.get('/client/:clientId/config', authenticate, requireSuperAdmin, ab.getAbonnementConfig);
+router.put('/client/:clientId/config', authenticate, requireSuperAdmin, ab.updateAbonnementConfig);
+router.get('/pricing-preview', authenticate, requireSuperAdmin, ab.getPricingPreview);
 
 // ── Confirm invite & send email (admin) ──────────────────────────────────────
 router.post('/client/:clientId/confirm-invite', authenticate, requireSuperAdmin, ab.confirmInvite);
@@ -48,10 +54,16 @@ router.post('/gerants', authenticate, requireClient, gerant.create);
 router.put('/gerants/:id', authenticate, requireClient, gerant.update);
 router.delete('/gerants/:id', authenticate, requireClient, gerant.remove);
 
-// ── Demandes ─────────────────────────────────────────────────────────────────
+// ── Demandes (upgrade) ────────────────────────────────────────────────────────
 router.get('/demandes', authenticate, requireClient, demande.listMine);
 router.post('/demandes', authenticate, requireClient, demande.create);
 router.get('/admin/demandes', authenticate, requireSuperAdmin, demande.listAll);
 router.put('/admin/demandes/:id', authenticate, requireSuperAdmin, demande.traiter);
+
+// ── Support ───────────────────────────────────────────────────────────────────
+router.get('/support', authenticate, requireClient, support.listMine);
+router.post('/support', authenticate, requireClient, support.create);
+router.get('/admin/support', authenticate, requireSuperAdmin, support.listAll);
+router.put('/admin/support/:id', authenticate, requireSuperAdmin, support.traiter);
 
 module.exports = router;
