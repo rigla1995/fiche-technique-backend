@@ -486,13 +486,6 @@ const getStockEntreprise = async (req, res) => {
          WHERE sed.activite_id = $1 AND sed.quantite < 0
          GROUP BY sed.ingredient_id
        ),
-       post_transfer_from_labo AS (
-         SELECT lt.ingredient_id, SUM(lt.quantite) as qty
-         FROM labo_transfers lt
-         JOIN last_inv li ON li.ingredient_id = lt.ingredient_id AND lt.date_transfert >= li.date_inventaire
-         WHERE lt.activite_id = $1 AND lt.ingredient_id IS NOT NULL
-         GROUP BY lt.ingredient_id
-       ),
        avg_prix_post AS (
          SELECT sed.ingredient_id, AVG(sed.prix_unitaire) as avg_prix
          FROM stock_entreprise_daily sed
@@ -518,12 +511,6 @@ const getStockEntreprise = async (req, res) => {
          WHERE activite_id = $1 AND quantite < 0
          GROUP BY ingredient_id
        ),
-       all_transfer_from_labo AS (
-         SELECT ingredient_id, SUM(quantite) as qty
-         FROM labo_transfers
-         WHERE activite_id = $1 AND ingredient_id IS NOT NULL
-         GROUP BY ingredient_id
-       ),
        avg_prix_all AS (
          SELECT ingredient_id, AVG(prix_unitaire) as avg_prix
          FROM stock_entreprise_daily
@@ -536,24 +523,20 @@ const getStockEntreprise = async (req, res) => {
               COALESCE(pa.qty, 0)       as post_appro_qty,
               COALESCE(pp.qty, 0)       as post_pertes_qty,
               COALESCE(ppu.qty, 0)      as post_pt_usage_qty,
-              COALESCE(ptfl.qty, 0)     as post_transfer_from_labo_qty,
               app.avg_prix              as avg_prix_post,
               COALESCE(aa.qty, 0)       as all_appro_qty,
               COALESCE(ap.qty, 0)       as all_pertes_qty,
               COALESCE(apu.qty, 0)      as all_pt_usage_qty,
-              COALESCE(atfl.qty, 0)     as all_transfer_from_labo_qty,
               apy.avg_prix              as avg_prix_all
        FROM activite_ingredient_selections ais
        LEFT JOIN last_inv li                ON li.ingredient_id  = ais.ingredient_id
        LEFT JOIN post_appro pa              ON pa.ingredient_id  = ais.ingredient_id
        LEFT JOIN post_pertes pp             ON pp.ingredient_id  = ais.ingredient_id
        LEFT JOIN post_pt_usage ppu          ON ppu.ingredient_id = ais.ingredient_id
-       LEFT JOIN post_transfer_from_labo ptfl ON ptfl.ingredient_id = ais.ingredient_id
        LEFT JOIN avg_prix_post app          ON app.ingredient_id = ais.ingredient_id
        LEFT JOIN all_appro aa              ON aa.ingredient_id  = ais.ingredient_id
        LEFT JOIN all_pertes ap             ON ap.ingredient_id  = ais.ingredient_id
        LEFT JOIN all_pt_usage apu          ON apu.ingredient_id = ais.ingredient_id
-       LEFT JOIN all_transfer_from_labo atfl ON atfl.ingredient_id = ais.ingredient_id
        LEFT JOIN avg_prix_all apy          ON apy.ingredient_id = ais.ingredient_id
        WHERE ais.activite_id = $1`,
       [activiteId]
@@ -567,12 +550,10 @@ const getStockEntreprise = async (req, res) => {
         postApproQty: parseFloat(r.post_appro_qty) || 0,
         postPertesQty: parseFloat(r.post_pertes_qty) || 0,
         postPtUsageQty: parseFloat(r.post_pt_usage_qty) || 0,
-        postTransferFromLaboQty: parseFloat(r.post_transfer_from_labo_qty) || 0,
         avgPrixPost: r.avg_prix_post !== null ? parseFloat(r.avg_prix_post) : null,
         allApproQty: parseFloat(r.all_appro_qty) || 0,
         allPertesQty: parseFloat(r.all_pertes_qty) || 0,
         allPtUsageQty: parseFloat(r.all_pt_usage_qty) || 0,
-        allTransferFromLaboQty: parseFloat(r.all_transfer_from_labo_qty) || 0,
         avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
       };
     }
@@ -699,8 +680,8 @@ const getStockEntreprise = async (req, res) => {
     res.json([...result.rows.map((row) => {
       const b = invBaselineMap[row.ingredient_id] || {};
       const quantite = b.hasInv
-        ? b.invQty + b.postApproQty + b.postTransferFromLaboQty - b.postPertesQty
-        : b.allApproQty + b.allTransferFromLaboQty - b.allPertesQty;
+        ? b.invQty + b.postApproQty - b.postPertesQty
+        : b.allApproQty - b.allPertesQty;
       const avgPrix = b.hasInv ? (b.avgPrixPost ?? b.avgPrixAll ?? null) : (b.avgPrixAll ?? null);
       const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
       const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
