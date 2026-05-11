@@ -87,33 +87,40 @@ const generateAvenantPdf = ({
       .text('Nouvelle configuration & tarification mensuelle', 60, y);
     y += 16;
 
+    // Column layout — all positions relative to left margin (60)
+    // Label : 60%W  |  Qty : 15%W  |  Cost : 25%W (right-aligned)
+    const labelX = 66;
+    const labelW = Math.floor(W * 0.60) - 6;
+    const qtyX   = 60 + Math.floor(W * 0.60);
+    const costX  = 60 + Math.floor(W * 0.75);
+    const costW  = W - Math.floor(W * 0.75) - 4; // right edge ≈ 60+W-4 (within page)
+
     // Table header
-    const cols = { label: 60, qty: 60 + W * 0.5, cost: 60 + W * 0.75, total: 60 + W * 0.88 };
     doc.rect(60, y, W, 22).fill(INDIGO);
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9);
-    doc.text('Élément',       cols.label + 6, y + 6);
-    doc.text('Quantité',      cols.qty,        y + 6);
-    doc.text('Coût (DT/mois)',cols.cost - 20,  y + 6);
+    doc.text('Élément',        labelX, y + 6, { width: labelW });
+    doc.text('Quantité',       qtyX,   y + 6);
+    doc.text('Coût (DT/mois)', costX,  y + 6, { align: 'right', width: costW });
     y += 22;
 
     const drawRow = (label, qty, cost, isTotal = false) => {
       const rowH = isTotal ? 26 : 22;
+      const offset = isTotal ? 8 : 6;
       doc.rect(60, y, W, rowH).fill(isTotal ? '#eff6ff' : BG_LIGHT);
       doc.moveTo(60, y + rowH).lineTo(60 + W, y + rowH).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
-      const fontSize = isTotal ? 10 : 9;
-      const fontName = isTotal ? 'Helvetica-Bold' : 'Helvetica';
-      const textColor = isTotal ? '#1e40af' : '#111827';
-      doc.fillColor(textColor).font(fontName).fontSize(fontSize);
-      doc.text(label, cols.label + 6, y + (isTotal ? 8 : 6));
-      if (qty !== null) doc.text(String(qty), cols.qty, y + (isTotal ? 8 : 6));
-      doc.text(cost, 60 + W - 6, y + (isTotal ? 8 : 6), { align: 'right', width: W - 6 });
+      doc.fillColor(isTotal ? '#1e40af' : '#111827')
+         .font(isTotal ? 'Helvetica-Bold' : 'Helvetica')
+         .fontSize(isTotal ? 10 : 9);
+      doc.text(label,        labelX, y + offset, { width: labelW });
+      if (qty !== null) doc.text(String(qty), qtyX, y + offset);
+      doc.text(cost,         costX,  y + offset, { align: 'right', width: costW });
       y += rowH;
     };
 
     drawRow(`Activités`, nbActivites, fmtDt(activiteCost));
     if (nbLabos > 0)   drawRow(`Labos`,   nbLabos,   fmtDt(laboCost));
     if (nbGerants > 0) drawRow(`Gérants`, nbGerants, fmtDt(gerantCost));
-    drawRow('Total mensuel (base)', null, fmtDt(newMensuel), true);
+    drawRow('Total mensuel', null, fmtDt(newMensuel), true);
 
     if (promoApplied && effectifMensuel != null && effectifMensuel !== newMensuel) {
       y += 4;
