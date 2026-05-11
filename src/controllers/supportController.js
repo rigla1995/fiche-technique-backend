@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const { sendAvenantEmail } = require('../services/emailService');
 const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
+const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -87,11 +88,9 @@ const create = async (req, res) => {
 
     const result = await pool.query(sql, params);
     const demande = mapDemande(result.rows[0]);
-    pushToAdmins('new_demande', {
-      demandeId: demande.id,
-      type: demande.type,
-      clientNom: clientNom || 'Client',
-    });
+    const notifPayload = { eventType: 'new_demande', demandeId: demande.id, type: demande.type, clientNom: clientNom || 'Client' };
+    pushToAdmins('new_demande', notifPayload);
+    saveNotificationToAdmins(notifPayload).catch(console.error);
     res.status(201).json(demande);
   } catch (err) {
     console.error(err);
@@ -158,12 +157,15 @@ const traiter = async (req, res) => {
       [statut, notesAdmin || null, req.user.id, id]
     );
 
-    pushTo(demande.client_id, 'demande_traitee', {
+    const traiteePayload = {
+      eventType: 'demande_traitee',
       demandeId: Number(id),
       type: demande.type,
       statut,
       notesAdmin: notesAdmin || null,
-    });
+    };
+    pushTo(demande.client_id, 'demande_traitee', traiteePayload);
+    saveNotification(demande.client_id, traiteePayload).catch(console.error);
 
     // Auto-create ingredient in global catalogue when ingredient request is validated
     if (statut === 'validée' && demande.type === 'ingredient_manquant' && demande.nom_ingredient) {

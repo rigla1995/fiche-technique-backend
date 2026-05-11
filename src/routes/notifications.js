@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { addClient, removeClient } = require('../services/sseService');
+const { list, clearAll, deleteOne } = require('../controllers/notificationController');
 
-// GET /api/notifications/stream — SSE endpoint, auth via JWT
+// GET /api/notifications/stream — SSE endpoint, auth via Bearer or ?token=
 router.get('/stream', authenticate, (req, res) => {
   res.set({
     'Content-Type': 'text/event-stream',
@@ -18,7 +19,6 @@ router.get('/stream', authenticate, (req, res) => {
 
   addClient(userId, role, res);
 
-  // Keep-alive heartbeat every 25s
   const heartbeat = setInterval(() => {
     try { res.write(': ping\n\n'); } catch { clearInterval(heartbeat); }
   }, 25000);
@@ -28,5 +28,14 @@ router.get('/stream', authenticate, (req, res) => {
     removeClient(userId, role, res);
   });
 });
+
+// GET /api/notifications — list persisted notifications
+router.get('/', authenticate, list);
+
+// DELETE /api/notifications — clear all (support page opened)
+router.delete('/', authenticate, clearAll);
+
+// DELETE /api/notifications/:id — dismiss one
+router.delete('/:id', authenticate, deleteOne);
 
 module.exports = router;
