@@ -294,7 +294,7 @@ const getLaboStock = async (req, res) => {
          SELECT sld.ingredient_id, SUM(sld.quantite) as qty
          FROM stock_labo_daily sld
          JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
-         WHERE sld.labo_id = $1
+         WHERE sld.labo_id = $1 AND sld.type_appro != 'transfert'
          GROUP BY sld.ingredient_id
        ),
        post_transfer AS (
@@ -314,7 +314,7 @@ const getLaboStock = async (req, res) => {
        all_appro AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_labo_daily
-         WHERE labo_id = $1
+         WHERE labo_id = $1 AND type_appro != 'transfert'
          GROUP BY ingredient_id
        ),
        all_transfer AS (
@@ -1021,7 +1021,7 @@ const getLaboHistorique = async (req, res) => {
 
     const result = await pool.query(
       `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
-              sld.ref_facture, sld.updated_at, sld.created_by,
+              sld.ref_facture, sld.type_appro, sld.updated_at, sld.created_by,
               i.nom as ingredient_nom,
               u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
@@ -1046,6 +1046,7 @@ const getLaboHistorique = async (req, res) => {
       quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
       prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
       refFacture: r.ref_facture || null,
+      typeAppro: r.type_appro || null,
       fournisseurId: r.fournisseur_id || null,
       fournisseurNom: r.fournisseur_nom || null,
       updatedAt: r.updated_at,
