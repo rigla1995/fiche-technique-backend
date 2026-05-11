@@ -249,7 +249,9 @@ const getAbonnement = async (req, res) => {
 
       let baseMensuel, baseOnboarding;
       if (config) {
-        baseMensuel = computeBaseMensuelFromConfig(config, tarifs);
+        baseMensuel = (computeBaseMensuelFromConfig(config, tarifs) || 0)
+                    + (computeBaseLaboFromConfig(config, tarifs)    || 0)
+                    + (computeBaseGerantFromConfig(config, tarifs)  || 0);
         baseOnboarding = parseFloat(config.montant_onboarding) || null;
       } else {
         const isEntreprise = abo.compteType === 'entreprise';
