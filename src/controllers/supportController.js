@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { sendAvenantEmail } = require('../services/emailService');
+const { generateAvenantPdf } = require('../services/pdfService');
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -225,7 +226,7 @@ const traiter = async (req, res) => {
       const clientEmail = demande.client_email;
       const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
       if (clientEmail) {
-        // Fetch new config + pricing for email
+        // Fetch new config + pricing for email + PDF
         (async () => {
           try {
             const tarifsRes = await pool.query('SELECT cle, valeur_dt FROM tarifs_config');
@@ -253,9 +254,9 @@ const traiter = async (req, res) => {
             const laboCost = nbL * (tarifs['labo_mensuel'] ?? 160);
             const gerantCost = nbG * (tarifs['gerant_mensuel'] ?? 80);
             const newMensuel = activiteCost + laboCost + gerantCost;
+            const dateAvenant = new Date().toISOString();
 
-            await sendAvenantEmail({
-              to: clientEmail,
+            const pdfData = {
               nom: clientNom,
               notesAdmin: notesAdmin || null,
               nbActivitesAdded: demande.nb_activites_supp || 0,
@@ -270,7 +271,18 @@ const traiter = async (req, res) => {
               newMensuel,
               promoApplied: false,
               effectifMensuel: newMensuel,
-              dateAvenant: new Date().toISOString(),
+              dateAvenant,
+            };
+
+            const pdfBase64 = await generateAvenantPdf(pdfData).catch((e) => {
+              console.error('PDF generation error:', e);
+              return null;
+            });
+
+            await sendAvenantEmail({
+              to: clientEmail,
+              ...pdfData,
+              pdfBase64,
             });
           } catch (e) {
             console.error('Avenant email error:', e);

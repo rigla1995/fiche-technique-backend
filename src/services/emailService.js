@@ -145,6 +145,8 @@ const sendAvenantEmail = async ({
   promoApplied, effectifMensuel,
   // Date
   dateAvenant,
+  // PDF contract attachment (base64)
+  pdfBase64,
 }) => {
   const fmtDt = (n) => (n != null ? `${Number(n).toFixed(2)} DT` : '—');
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -230,11 +232,22 @@ const sendAvenantEmail = async ({
 </body>
 </html>`;
 
+  const attachments = pdfBase64 ? [{
+    filename: `avenant-${nom.replace(/\s+/g, '-').toLowerCase()}-${new Date(dateAvenant).toISOString().slice(0, 10)}.pdf`,
+    content: pdfBase64,
+  }] : [];
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV] Avenant email to ${to} (PDF attached: ${!!pdfBase64})`);
+    return { success: true, dev: true };
+  }
+
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
     subject: `${APP_NAME} — Avenant validé : ${addedParts}`,
     html,
+    attachments,
   });
   if (error) throw new Error(error.message);
   return { success: true, id: data?.id };
