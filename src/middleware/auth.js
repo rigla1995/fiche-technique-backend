@@ -57,7 +57,8 @@ const requireEntreprise = (req, res, next) => {
   if (req.user.role !== 'client' && req.user.role !== 'gerant') {
     return res.status(403).json({ message: 'Accès réservé aux clients' });
   }
-  if (req.user.compte_type !== 'entreprise') {
+  // Allow entreprise and config-based clients (null compte_type = new subscription model)
+  if (req.user.compte_type !== 'entreprise' && req.user.compte_type !== null) {
     return res.status(403).json({ message: 'Fonctionnalité réservée aux comptes entreprise' });
   }
   next();
