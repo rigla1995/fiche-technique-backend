@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { sendAvenantEmail } = require('../services/emailService');
 const { generateAvenantPdf } = require('../services/pdfService');
+const { pushTo, pushToAdmins } = require('../services/sseService');
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -85,7 +86,13 @@ const create = async (req, res) => {
     }
 
     const result = await pool.query(sql, params);
-    res.status(201).json(mapDemande(result.rows[0]));
+    const demande = mapDemande(result.rows[0]);
+    pushToAdmins('new_demande', {
+      demandeId: demande.id,
+      type: demande.type,
+      clientNom: clientNom || 'Client',
+    });
+    res.status(201).json(demande);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -150,6 +157,13 @@ const traiter = async (req, res) => {
        WHERE id = $4 RETURNING *`,
       [statut, notesAdmin || null, req.user.id, id]
     );
+
+    pushTo(demande.client_id, 'demande_traitee', {
+      demandeId: Number(id),
+      type: demande.type,
+      statut,
+      notesAdmin: notesAdmin || null,
+    });
 
     // Auto-create ingredient in global catalogue when ingredient request is validated
     if (statut === 'validée' && demande.type === 'ingredient_manquant' && demande.nom_ingredient) {

@@ -3,11 +3,16 @@ const pool = require('../config/database');
 
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  // SSE connections pass token via query param (EventSource doesn't support headers)
+  const queryToken = req.query?.token;
+  if (!authHeader && !queryToken) {
+    return res.status(401).json({ message: 'Token d\'authentification manquant' });
+  }
+  if (authHeader && !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Token d\'authentification manquant' });
   }
 
-  const token = authHeader.substring(7);
+  const token = queryToken || authHeader.substring(7);
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const result = await pool.query(

@@ -16,6 +16,7 @@ const laboRoutes = require('./routes/labo');
 const abonnementsRoutes = require('./routes/abonnements');
 const fournisseursIndepRoutes = require('./routes/fournisseurs');
 const rapportsRoutes = require('./routes/rapports');
+const notificationsRoutes = require('./routes/notifications');
 
 const { authenticate, requireWriteAccess } = require('./middleware/auth');
 
@@ -49,6 +50,7 @@ app.use('/api/labo', laboRoutes);
 app.use('/api/abonnements', abonnementsRoutes);
 app.use('/api/fournisseurs', fournisseursIndepRoutes);
 app.use('/api/rapports', rapportsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // English aliases (B5)
 app.use('/api/units', unitesRoutes);
