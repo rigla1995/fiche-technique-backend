@@ -1259,6 +1259,38 @@ const getSupplementPricing = async (req, res) => {
   }
 };
 
+// Admin version of getSupplementPricing — uses clientId from params
+const getClientSupplementPricing = async (req, res) => {
+  const { clientId } = req.params;
+  try {
+    const tarifs = await loadAllTarifs();
+    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
+    if (!aboRes.rows.length) return res.status(404).json({ message: 'Abonnement introuvable' });
+    const aboId = aboRes.rows[0].id;
+    const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
+    const config = configRes.rows[0] || null;
+
+    const nbA = parseInt(config?.nb_activites) || 0;
+    const nbL = parseInt(config?.nb_labos) || 0;
+    const nbG = parseInt(config?.nb_gerants) || 0;
+    const activiteCost = config ? (computeBaseMensuelFromConfig(config, tarifs) || 0) : 0;
+    const laboCost     = config ? (computeBaseLaboFromConfig(config, tarifs) || 0) : 0;
+    const gerantCost   = config ? (computeBaseGerantFromConfig(config, tarifs) || 0) : 0;
+    const currentMensuel = activiteCost + laboCost + gerantCost;
+
+    res.json({
+      prixActiviteSup: parseFloat(tarifs['activite_sup'] ?? 120),
+      prixLaboSup:     parseFloat(tarifs['labo_mensuel'] ?? 160),
+      prixGerantSup:   parseFloat(tarifs['gerant_mensuel'] ?? 80),
+      currentMensuel, activiteCost, laboCost, gerantCost,
+      nbActivites: nbA, nbLabos: nbL, nbGerants: nbG,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getTarifs, updateTarif,
   listAbonnements, getAbonnement, createAbonnement,
@@ -1266,7 +1298,7 @@ module.exports = {
   upsertPaiement,
   getMontantMois,
   listPromotions, createPromotion, updatePromotion, deletePromotion,
-  getAbonnementConfig, updateAbonnementConfig, getPricingPreview, getSupplementPricing,
+  getAbonnementConfig, updateAbonnementConfig, getPricingPreview, getSupplementPricing, getClientSupplementPricing,
   confirmInvite,
   allPaiements, allPromotions,
   enforcerStatuts,

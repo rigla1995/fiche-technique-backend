@@ -51,6 +51,9 @@ router.get('/mon-abonnement', authenticate, requireClient, async (req, res) => {
 // ── Supplement pricing (client self) ─────────────────────────────────────────
 router.get('/supplement-pricing', authenticate, requireClient, ab.getSupplementPricing);
 
+// ── Supplement pricing for a specific client (admin) ─────────────────────────
+router.get('/client/:clientId/supplement-pricing', authenticate, requireSuperAdmin, ab.getClientSupplementPricing);
+
 // ── Gérants ──────────────────────────────────────────────────────────────────
 router.get('/gerants', authenticate, requireClient, gerant.list);
 router.post('/gerants', authenticate, requireClient, gerant.create);
@@ -66,6 +69,7 @@ router.put('/admin/demandes/:id', authenticate, requireSuperAdmin, demande.trait
 // ── Support ───────────────────────────────────────────────────────────────────
 router.get('/support', authenticate, requireClient, support.listMine);
 router.post('/support', authenticate, requireClient, support.create);
+router.delete('/support/:id', authenticate, requireClient, support.deleteMine);
 router.get('/admin/support', authenticate, requireSuperAdmin, support.listAll);
 router.put('/admin/support/:id', authenticate, requireSuperAdmin, support.traiter);
 

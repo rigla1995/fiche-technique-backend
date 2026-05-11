@@ -286,4 +286,25 @@ const traiter = async (req, res) => {
   }
 };
 
-module.exports = { listMine, create, listAll, traiter };
+// Client: delete a pending support request
+const deleteMine = async (req, res) => {
+  const { id } = req.params;
+  const clientId = req.user.id;
+  try {
+    const result = await pool.query(
+      `DELETE FROM support_demandes
+       WHERE id = $1 AND client_id = $2 AND statut = 'en_attente'
+       RETURNING id`,
+      [id, clientId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Demande introuvable ou déjà traitée' });
+    }
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { listMine, create, listAll, traiter, deleteMine };
