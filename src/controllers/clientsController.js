@@ -9,7 +9,7 @@ const mapClient = (row) => ({
   email: row.email,
   phone: row.telephone,
   role: row.role,
-  compteType: row.compte_type || 'independant',
+  compteType: row.compte_type || null,
   onboardingStep: row.onboarding_step ?? 0,
   active: row.actif,
   createdAt: row.created_at,

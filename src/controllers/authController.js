@@ -58,14 +58,14 @@ const login = async (req, res) => {
     );
 
     // For gérants, resolve compte_type from the parent client
-    let compteType = utilisateur.compte_type || 'independant';
+    let compteType = utilisateur.compte_type || null;
     let onboardingStep = utilisateur.onboarding_step ?? 0;
     if (utilisateur.role === 'gerant' && utilisateur.gerant_parent_id) {
       const parentRes = await pool.query(
         'SELECT compte_type FROM utilisateurs WHERE id = $1',
         [utilisateur.gerant_parent_id]
       );
-      compteType = parentRes.rows[0]?.compte_type || 'independant';
+      compteType = parentRes.rows[0]?.compte_type || null;
       onboardingStep = 0; // gérants skip onboarding
     }
 
@@ -193,7 +193,7 @@ const me = async (req, res) => {
 
     res.json({
       id: u.id, name: u.nom, email: u.email, phone: u.telephone,
-      role: u.role, compteType: u.compte_type || 'independant',
+      role: u.role, compteType: u.compte_type || null,
       onboardingStep: step, entrepriseName,
       modeCompte, prolongationJours,
       ...gerantFields,
