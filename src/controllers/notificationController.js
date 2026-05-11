@@ -40,10 +40,15 @@ const list = async (req, res) => {
   }
 };
 
-// DELETE /api/notifications — clear all for current user (called when opening support tab)
+// DELETE /api/notifications[?eventType=xxx] — clear all (or by eventType) for current user
 const clearAll = async (req, res) => {
   try {
-    await pool.query('DELETE FROM notifications WHERE user_id = $1', [req.user.id]);
+    const { eventType } = req.query;
+    if (eventType) {
+      await pool.query('DELETE FROM notifications WHERE user_id = $1 AND event_type = $2', [req.user.id, eventType]);
+    } else {
+      await pool.query('DELETE FROM notifications WHERE user_id = $1', [req.user.id]);
+    }
     res.json({ success: true });
   } catch (err) {
     console.error(err);

@@ -1,5 +1,7 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
+const { pushTo } = require('../services/sseService');
+const { saveNotification } = require('./notificationController');
 
 const isoDate = (d) => {
   if (!d) return null;
@@ -298,6 +300,20 @@ const saveLaboInventaire = async (req, res) => {
         upserted.push(r.rows[0]);
       }
     }
+    if (req.user.role === 'gerant' && req.user.gerant_parent_id) {
+      const clientRes = await pool.query(
+        `SELECT pe.client_id, l.nom as labo_nom FROM labos l
+         JOIN profil_entreprise pe ON l.entreprise_id = pe.id WHERE l.id = $1`,
+        [laboId]
+      );
+      if (clientRes.rows.length > 0) {
+        const { client_id, labo_nom } = clientRes.rows[0];
+        const payload = { eventType: 'new_inventaire', type: 'labo', notesAdmin: `Labo : ${labo_nom} — ${dateInventaire}` };
+        pushTo(client_id, 'new_inventaire', payload);
+        saveNotification(client_id, payload).catch(console.error);
+      }
+    }
+
     res.json(upserted.map((r) => ({
       id: r.id,
       ingredientId: r.ingredient_id,
@@ -585,6 +601,21 @@ const saveActiviteInventaire = async (req, res) => {
         upserted.push(r.rows[0]);
       }
     }
+
+    if (req.user.role === 'gerant' && req.user.gerant_parent_id) {
+      const clientRes = await pool.query(
+        `SELECT pe.client_id, a.nom as activite_nom FROM activites a
+         JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE a.id = $1`,
+        [activiteId]
+      );
+      if (clientRes.rows.length > 0) {
+        const { client_id, activite_nom } = clientRes.rows[0];
+        const payload = { eventType: 'new_inventaire', type: 'activite', notesAdmin: `Activité : ${activite_nom} — ${dateInventaire}` };
+        pushTo(client_id, 'new_inventaire', payload);
+        saveNotification(client_id, payload).catch(console.error);
+      }
+    }
+
     res.json(upserted.map((r) => ({
       id: r.id,
       ingredientId: r.ingredient_id,
@@ -1264,6 +1295,13 @@ const saveClientInventaire = async (req, res) => {
         upserted.push(r.rows[0]);
       }
     }
+
+    if (req.user.role === 'gerant' && req.user.gerant_parent_id) {
+      const payload = { eventType: 'new_inventaire', type: 'client', notesAdmin: `Inventaire — ${dateInventaire}` };
+      pushTo(req.user.gerant_parent_id, 'new_inventaire', payload);
+      saveNotification(req.user.gerant_parent_id, payload).catch(console.error);
+    }
+
     res.json(upserted.map((r) => ({
       id: r.id,
       ingredientId: r.ingredient_id,
