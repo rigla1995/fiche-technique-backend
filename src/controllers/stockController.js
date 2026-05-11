@@ -110,31 +110,28 @@ const getStockClient = async (req, res) => {
          WHERE scd.client_id = $1 AND scd.quantite > 0 AND scd.prix_unitaire IS NOT NULL
          GROUP BY scd.ingredient_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_client_daily
-         WHERE client_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE client_id = $1
          GROUP BY ingredient_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM client_pertes
          WHERE client_id = $1 AND ingredient_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        ),
-       year_pt_usage AS (
+       all_pt_usage AS (
          SELECT ingredient_id, SUM(ABS(quantite)) as qty
          FROM stock_client_daily
          WHERE client_id = $1 AND quantite < 0
-           AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        ),
-       avg_prix_year AS (
+       avg_prix_all AS (
          SELECT ingredient_id, AVG(prix_unitaire) as avg_prix
          FROM stock_client_daily
          WHERE client_id = $1 AND quantite > 0 AND prix_unitaire IS NOT NULL
-           AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        )
        SELECT cis.ingredient_id,
@@ -144,20 +141,20 @@ const getStockClient = async (req, res) => {
               COALESCE(pp.qty, 0)       as post_pertes_qty,
               COALESCE(ppu.qty, 0)      as post_pt_usage_qty,
               app.avg_prix              as avg_prix_post,
-              COALESCE(ya.qty, 0)       as year_appro_qty,
-              COALESCE(yp.qty, 0)       as year_pertes_qty,
-              COALESCE(ypu.qty, 0)      as year_pt_usage_qty,
-              apy.avg_prix              as avg_prix_year
+              COALESCE(aa.qty, 0)       as all_appro_qty,
+              COALESCE(ap.qty, 0)       as all_pertes_qty,
+              COALESCE(apu.qty, 0)      as all_pt_usage_qty,
+              apy.avg_prix              as avg_prix_all
        FROM client_ingredient_selections cis
        LEFT JOIN last_inv li        ON li.ingredient_id = cis.ingredient_id
        LEFT JOIN post_appro pa      ON pa.ingredient_id = cis.ingredient_id
        LEFT JOIN post_pertes pp     ON pp.ingredient_id = cis.ingredient_id
        LEFT JOIN post_pt_usage ppu  ON ppu.ingredient_id = cis.ingredient_id
        LEFT JOIN avg_prix_post app  ON app.ingredient_id = cis.ingredient_id
-       LEFT JOIN year_appro ya      ON ya.ingredient_id = cis.ingredient_id
-       LEFT JOIN year_pertes yp     ON yp.ingredient_id = cis.ingredient_id
-       LEFT JOIN year_pt_usage ypu  ON ypu.ingredient_id = cis.ingredient_id
-       LEFT JOIN avg_prix_year apy  ON apy.ingredient_id = cis.ingredient_id
+       LEFT JOIN all_appro aa      ON aa.ingredient_id = cis.ingredient_id
+       LEFT JOIN all_pertes ap     ON ap.ingredient_id = cis.ingredient_id
+       LEFT JOIN all_pt_usage apu  ON apu.ingredient_id = cis.ingredient_id
+       LEFT JOIN avg_prix_all apy  ON apy.ingredient_id = cis.ingredient_id
        WHERE cis.client_id = $1`,
       [req.user.gerant_parent_id || req.user.id]
     );
@@ -171,10 +168,10 @@ const getStockClient = async (req, res) => {
         postPertesQty: parseFloat(r.post_pertes_qty) || 0,
         postPtUsageQty: parseFloat(r.post_pt_usage_qty) || 0,
         avgPrixPost: r.avg_prix_post !== null ? parseFloat(r.avg_prix_post) : null,
-        yearApproQty: parseFloat(r.year_appro_qty) || 0,
-        yearPertesQty: parseFloat(r.year_pertes_qty) || 0,
-        yearPtUsageQty: parseFloat(r.year_pt_usage_qty) || 0,
-        avgPrixYear: r.avg_prix_year !== null ? parseFloat(r.avg_prix_year) : null,
+        allApproQty: parseFloat(r.all_appro_qty) || 0,
+        allPertesQty: parseFloat(r.all_pertes_qty) || 0,
+        allPtUsageQty: parseFloat(r.all_pt_usage_qty) || 0,
+        avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
       };
     }
 
@@ -209,24 +206,22 @@ const getStockClient = async (req, res) => {
          WHERE spt.client_id = $1 AND spt.prix_calcule IS NOT NULL
          GROUP BY spt.produit_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM stock_produits_transformes
-         WHERE client_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE client_id = $1
          GROUP BY produit_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM client_pertes
          WHERE client_id = $1 AND produit_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY produit_id
        ),
-       avg_prix_year AS (
+       avg_prix_all AS (
          SELECT produit_id, AVG(prix_calcule) as avg_prix
          FROM stock_produits_transformes
          WHERE client_id = $1 AND prix_calcule IS NOT NULL
-           AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
          GROUP BY produit_id
        )
        SELECT p.id as produit_id,
@@ -235,17 +230,17 @@ const getStockClient = async (req, res) => {
               COALESCE(pa.qty, 0)       as post_appro_qty,
               COALESCE(pp.qty, 0)       as post_pertes_qty,
               app.avg_prix              as avg_prix_post,
-              COALESCE(ya.qty, 0)       as year_appro_qty,
-              COALESCE(yp.qty, 0)       as year_pertes_qty,
-              apy.avg_prix              as avg_prix_year
+              COALESCE(aa.qty, 0)       as all_appro_qty,
+              COALESCE(ap.qty, 0)       as all_pertes_qty,
+              apy.avg_prix              as avg_prix_all
        FROM produits p
        LEFT JOIN last_inv li        ON li.produit_id = p.id
        LEFT JOIN post_appro pa      ON pa.produit_id = p.id
        LEFT JOIN post_pertes pp     ON pp.produit_id = p.id
        LEFT JOIN avg_prix_post app  ON app.produit_id = p.id
-       LEFT JOIN year_appro ya      ON ya.produit_id = p.id
-       LEFT JOIN year_pertes yp     ON yp.produit_id = p.id
-       LEFT JOIN avg_prix_year apy  ON apy.produit_id = p.id
+       LEFT JOIN all_appro aa      ON aa.produit_id = p.id
+       LEFT JOIN all_pertes ap     ON ap.produit_id = p.id
+       LEFT JOIN avg_prix_all apy  ON apy.produit_id = p.id
        WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE`,
       [req.user.gerant_parent_id || req.user.id]
     );
@@ -258,9 +253,9 @@ const getStockClient = async (req, res) => {
         postApproQty: parseFloat(r.post_appro_qty) || 0,
         postPertesQty: parseFloat(r.post_pertes_qty) || 0,
         avgPrixPost: r.avg_prix_post !== null ? parseFloat(r.avg_prix_post) : null,
-        yearApproQty: parseFloat(r.year_appro_qty) || 0,
-        yearPertesQty: parseFloat(r.year_pertes_qty) || 0,
-        avgPrixYear: r.avg_prix_year !== null ? parseFloat(r.avg_prix_year) : null,
+        allApproQty: parseFloat(r.all_appro_qty) || 0,
+        allPertesQty: parseFloat(r.all_pertes_qty) || 0,
+        avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
       };
     }
 
@@ -269,9 +264,9 @@ const getStockClient = async (req, res) => {
       const pb = ptBaselineCliMap[r.produit_id] || {};
       const quantite = pb.hasInv
         ? pb.invQty + pb.postApproQty - pb.postPertesQty
-        : pb.yearApproQty - pb.yearPertesQty;
-      const avgPrix = pb.hasInv ? (pb.avgPrixPost ?? pb.avgPrixYear ?? null) : (pb.avgPrixYear ?? null);
-      const pertesDepuisInv = pb.hasInv ? pb.postPertesQty : pb.yearPertesQty;
+        : pb.allApproQty - pb.allPertesQty;
+      const avgPrix = pb.hasInv ? (pb.avgPrixPost ?? pb.avgPrixAll ?? null) : (pb.avgPrixAll ?? null);
+      const pertesDepuisInv = pb.hasInv ? pb.postPertesQty : pb.allPertesQty;
       return {
         ingredientId: -(r.produit_id),
         produitId: r.produit_id,
@@ -299,10 +294,10 @@ const getStockClient = async (req, res) => {
       const b = invBaselineCliMap[row.ingredient_id] || {};
       const quantite = b.hasInv
         ? b.invQty + b.postApproQty - b.postPertesQty
-        : b.yearApproQty - b.yearPertesQty;
-      const avgPrix = b.hasInv ? (b.avgPrixPost ?? b.avgPrixYear ?? null) : (b.avgPrixYear ?? null);
-      const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.yearPertesQty;
-      const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.yearPtUsageQty;
+        : b.allApproQty - b.allPertesQty;
+      const avgPrix = b.hasInv ? (b.avgPrixPost ?? b.avgPrixAll ?? null) : (b.avgPrixAll ?? null);
+      const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
+      const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
@@ -491,6 +486,13 @@ const getStockEntreprise = async (req, res) => {
          WHERE sed.activite_id = $1 AND sed.quantite < 0
          GROUP BY sed.ingredient_id
        ),
+       post_transfer_from_labo AS (
+         SELECT lt.ingredient_id, SUM(lt.quantite) as qty
+         FROM labo_transfers lt
+         JOIN last_inv li ON li.ingredient_id = lt.ingredient_id AND lt.date_transfert >= li.date_inventaire
+         WHERE lt.activite_id = $1 AND lt.ingredient_id IS NOT NULL
+         GROUP BY lt.ingredient_id
+       ),
        avg_prix_post AS (
          SELECT sed.ingredient_id, AVG(sed.prix_unitaire) as avg_prix
          FROM stock_entreprise_daily sed
@@ -498,31 +500,34 @@ const getStockEntreprise = async (req, res) => {
          WHERE sed.activite_id = $1 AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
          GROUP BY sed.ingredient_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE activite_id = $1
          GROUP BY ingredient_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM pertes
          WHERE activite_id = $1 AND ingredient_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        ),
-       year_pt_usage AS (
+       all_pt_usage AS (
          SELECT ingredient_id, SUM(ABS(quantite)) as qty
          FROM stock_entreprise_daily
          WHERE activite_id = $1 AND quantite < 0
-           AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        ),
-       avg_prix_year AS (
+       all_transfer_from_labo AS (
+         SELECT ingredient_id, SUM(quantite) as qty
+         FROM labo_transfers
+         WHERE activite_id = $1 AND ingredient_id IS NOT NULL
+         GROUP BY ingredient_id
+       ),
+       avg_prix_all AS (
          SELECT ingredient_id, AVG(prix_unitaire) as avg_prix
          FROM stock_entreprise_daily
          WHERE activite_id = $1 AND quantite > 0 AND prix_unitaire IS NOT NULL
-           AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        )
        SELECT ais.ingredient_id,
@@ -531,21 +536,25 @@ const getStockEntreprise = async (req, res) => {
               COALESCE(pa.qty, 0)       as post_appro_qty,
               COALESCE(pp.qty, 0)       as post_pertes_qty,
               COALESCE(ppu.qty, 0)      as post_pt_usage_qty,
+              COALESCE(ptfl.qty, 0)     as post_transfer_from_labo_qty,
               app.avg_prix              as avg_prix_post,
-              COALESCE(ya.qty, 0)       as year_appro_qty,
-              COALESCE(yp.qty, 0)       as year_pertes_qty,
-              COALESCE(ypu.qty, 0)      as year_pt_usage_qty,
-              apy.avg_prix              as avg_prix_year
+              COALESCE(aa.qty, 0)       as all_appro_qty,
+              COALESCE(ap.qty, 0)       as all_pertes_qty,
+              COALESCE(apu.qty, 0)      as all_pt_usage_qty,
+              COALESCE(atfl.qty, 0)     as all_transfer_from_labo_qty,
+              apy.avg_prix              as avg_prix_all
        FROM activite_ingredient_selections ais
-       LEFT JOIN last_inv li        ON li.ingredient_id = ais.ingredient_id
-       LEFT JOIN post_appro pa      ON pa.ingredient_id = ais.ingredient_id
-       LEFT JOIN post_pertes pp     ON pp.ingredient_id = ais.ingredient_id
-       LEFT JOIN post_pt_usage ppu  ON ppu.ingredient_id = ais.ingredient_id
-       LEFT JOIN avg_prix_post app  ON app.ingredient_id = ais.ingredient_id
-       LEFT JOIN year_appro ya      ON ya.ingredient_id = ais.ingredient_id
-       LEFT JOIN year_pertes yp     ON yp.ingredient_id = ais.ingredient_id
-       LEFT JOIN year_pt_usage ypu  ON ypu.ingredient_id = ais.ingredient_id
-       LEFT JOIN avg_prix_year apy  ON apy.ingredient_id = ais.ingredient_id
+       LEFT JOIN last_inv li                ON li.ingredient_id  = ais.ingredient_id
+       LEFT JOIN post_appro pa              ON pa.ingredient_id  = ais.ingredient_id
+       LEFT JOIN post_pertes pp             ON pp.ingredient_id  = ais.ingredient_id
+       LEFT JOIN post_pt_usage ppu          ON ppu.ingredient_id = ais.ingredient_id
+       LEFT JOIN post_transfer_from_labo ptfl ON ptfl.ingredient_id = ais.ingredient_id
+       LEFT JOIN avg_prix_post app          ON app.ingredient_id = ais.ingredient_id
+       LEFT JOIN all_appro aa              ON aa.ingredient_id  = ais.ingredient_id
+       LEFT JOIN all_pertes ap             ON ap.ingredient_id  = ais.ingredient_id
+       LEFT JOIN all_pt_usage apu          ON apu.ingredient_id = ais.ingredient_id
+       LEFT JOIN all_transfer_from_labo atfl ON atfl.ingredient_id = ais.ingredient_id
+       LEFT JOIN avg_prix_all apy          ON apy.ingredient_id = ais.ingredient_id
        WHERE ais.activite_id = $1`,
       [activiteId]
     );
@@ -558,11 +567,13 @@ const getStockEntreprise = async (req, res) => {
         postApproQty: parseFloat(r.post_appro_qty) || 0,
         postPertesQty: parseFloat(r.post_pertes_qty) || 0,
         postPtUsageQty: parseFloat(r.post_pt_usage_qty) || 0,
+        postTransferFromLaboQty: parseFloat(r.post_transfer_from_labo_qty) || 0,
         avgPrixPost: r.avg_prix_post !== null ? parseFloat(r.avg_prix_post) : null,
-        yearApproQty: parseFloat(r.year_appro_qty) || 0,
-        yearPertesQty: parseFloat(r.year_pertes_qty) || 0,
-        yearPtUsageQty: parseFloat(r.year_pt_usage_qty) || 0,
-        avgPrixYear: r.avg_prix_year !== null ? parseFloat(r.avg_prix_year) : null,
+        allApproQty: parseFloat(r.all_appro_qty) || 0,
+        allPertesQty: parseFloat(r.all_pertes_qty) || 0,
+        allPtUsageQty: parseFloat(r.all_pt_usage_qty) || 0,
+        allTransferFromLaboQty: parseFloat(r.all_transfer_from_labo_qty) || 0,
+        avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
       };
     }
 
@@ -597,24 +608,22 @@ const getStockEntreprise = async (req, res) => {
          WHERE spt.activite_id = $1 AND spt.prix_calcule IS NOT NULL
          GROUP BY spt.produit_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM stock_produits_transformes
-         WHERE activite_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE activite_id = $1
          GROUP BY produit_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM pertes
          WHERE activite_id = $1 AND produit_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY produit_id
        ),
-       avg_prix_year AS (
+       avg_prix_all AS (
          SELECT produit_id, AVG(prix_calcule) as avg_prix
          FROM stock_produits_transformes
          WHERE activite_id = $1 AND prix_calcule IS NOT NULL
-           AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
          GROUP BY produit_id
        ),
        pt_list AS (
@@ -628,17 +637,17 @@ const getStockEntreprise = async (req, res) => {
               COALESCE(pa.qty, 0)       as post_appro_qty,
               COALESCE(pp.qty, 0)       as post_pertes_qty,
               app.avg_prix              as avg_prix_post,
-              COALESCE(ya.qty, 0)       as year_appro_qty,
-              COALESCE(yp.qty, 0)       as year_pertes_qty,
-              apy.avg_prix              as avg_prix_year
+              COALESCE(aa.qty, 0)       as all_appro_qty,
+              COALESCE(ap.qty, 0)       as all_pertes_qty,
+              apy.avg_prix              as avg_prix_all
        FROM pt_list pl
        LEFT JOIN last_inv li        ON li.produit_id = pl.produit_id
        LEFT JOIN post_appro pa      ON pa.produit_id = pl.produit_id
        LEFT JOIN post_pertes pp     ON pp.produit_id = pl.produit_id
        LEFT JOIN avg_prix_post app  ON app.produit_id = pl.produit_id
-       LEFT JOIN year_appro ya      ON ya.produit_id = pl.produit_id
-       LEFT JOIN year_pertes yp     ON yp.produit_id = pl.produit_id
-       LEFT JOIN avg_prix_year apy  ON apy.produit_id = pl.produit_id`,
+       LEFT JOIN all_appro aa      ON aa.produit_id = pl.produit_id
+       LEFT JOIN all_pertes ap     ON ap.produit_id = pl.produit_id
+       LEFT JOIN avg_prix_all apy  ON apy.produit_id = pl.produit_id`,
       [activiteId]
     );
     const ptBaselineMap = {};
@@ -650,9 +659,9 @@ const getStockEntreprise = async (req, res) => {
         postApproQty: parseFloat(r.post_appro_qty) || 0,
         postPertesQty: parseFloat(r.post_pertes_qty) || 0,
         avgPrixPost: r.avg_prix_post !== null ? parseFloat(r.avg_prix_post) : null,
-        yearApproQty: parseFloat(r.year_appro_qty) || 0,
-        yearPertesQty: parseFloat(r.year_pertes_qty) || 0,
-        avgPrixYear: r.avg_prix_year !== null ? parseFloat(r.avg_prix_year) : null,
+        allApproQty: parseFloat(r.all_appro_qty) || 0,
+        allPertesQty: parseFloat(r.all_pertes_qty) || 0,
+        avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
       };
     }
 
@@ -661,9 +670,9 @@ const getStockEntreprise = async (req, res) => {
       const pb = ptBaselineMap[r.produit_id] || {};
       const quantite = pb.hasInv
         ? pb.invQty + pb.postApproQty - pb.postPertesQty
-        : pb.yearApproQty - pb.yearPertesQty;
-      const avgPrix = pb.hasInv ? (pb.avgPrixPost ?? pb.avgPrixYear ?? null) : (pb.avgPrixYear ?? null);
-      const pertesDepuisInv = pb.hasInv ? pb.postPertesQty : pb.yearPertesQty;
+        : pb.allApproQty - pb.allPertesQty;
+      const avgPrix = pb.hasInv ? (pb.avgPrixPost ?? pb.avgPrixAll ?? null) : (pb.avgPrixAll ?? null);
+      const pertesDepuisInv = pb.hasInv ? pb.postPertesQty : pb.allPertesQty;
       return {
         ingredientId: -(r.produit_id),
         produitId: r.produit_id,
@@ -690,11 +699,11 @@ const getStockEntreprise = async (req, res) => {
     res.json([...result.rows.map((row) => {
       const b = invBaselineMap[row.ingredient_id] || {};
       const quantite = b.hasInv
-        ? b.invQty + b.postApproQty - b.postPertesQty
-        : b.yearApproQty - b.yearPertesQty;
-      const avgPrix = b.hasInv ? (b.avgPrixPost ?? b.avgPrixYear ?? null) : (b.avgPrixYear ?? null);
-      const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.yearPertesQty;
-      const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.yearPtUsageQty;
+        ? b.invQty + b.postApproQty + b.postTransferFromLaboQty - b.postPertesQty
+        : b.allApproQty + b.allTransferFromLaboQty - b.allPertesQty;
+      const avgPrix = b.hasInv ? (b.avgPrixPost ?? b.avgPrixAll ?? null) : (b.avgPrixAll ?? null);
+      const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
+      const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
