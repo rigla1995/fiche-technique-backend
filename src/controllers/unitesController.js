@@ -22,6 +22,10 @@ const list = async (req, res) => {
         ORDER BY u.nom
       `;
       params = [];
+    } else if (req.query.all === 'true') {
+      // All units (for support forms / ingredient lookup) — read-only, no client data exposed
+      query = 'SELECT * FROM unites ORDER BY nom';
+      params = [];
     } else {
       query = 'SELECT * FROM unites WHERE client_id = $1 ORDER BY nom';
       params = [req.user.id];
