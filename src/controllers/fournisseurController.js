@@ -69,25 +69,12 @@ const getFournisseursForActivite = async (req, res) => {
     );
     if (check.rows.length === 0) return res.json([]);
 
-    // Return fournisseurs directly assigned to the activité OR (for labo-linked activités)
-    // non-labo fournisseurs assigned to its labo — both paths are valid for manual appros.
     const result = await pool.query(
-      `SELECT DISTINCT f.id, f.nom, f.telephone, f.is_labo
+      `SELECT f.id, f.nom, f.telephone, f.is_labo
        FROM fournisseurs f
-       WHERE f.nom != 'AUTO' AND (
-         EXISTS (
-           SELECT 1 FROM fournisseur_activites fa
-           WHERE fa.fournisseur_id = f.id AND fa.activite_id = $1
-         )
-         OR (
-           f.is_labo = false AND EXISTS (
-             SELECT 1 FROM fournisseur_labos fl
-             JOIN activites a ON a.labo_id = fl.labo_id
-             WHERE fl.fournisseur_id = f.id AND a.id = $1
-           )
-         )
-       )
-       ORDER BY f.is_labo DESC, f.nom`,
+       JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id
+       WHERE f.nom != 'AUTO' AND fa.activite_id = $1 AND f.is_labo = false
+       ORDER BY f.nom`,
       [activiteId]
     );
     res.json(result.rows.map((r) => ({ id: r.id, nom: r.nom, telephone: r.telephone, isLabo: r.is_labo ?? false })));
