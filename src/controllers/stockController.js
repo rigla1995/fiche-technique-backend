@@ -1579,16 +1579,26 @@ const createClientPerte = async (req, res) => {
   if (!['avarie', 'dechet'].includes(typePerte))
     return res.status(400).json({ message: 'typePerte invalide (avarie|dechet)' });
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
+
+    const minRow = await pool.query(
+      `SELECT MIN(date_appro) AS min_date FROM stock_client_daily WHERE client_id = $1 AND ingredient_id = $2`,
+      [clientId, ingredientId]
+    );
+    const minAppro = minRow.rows[0]?.min_date;
+    if (!minAppro) return res.status(400).json({ message: 'Aucun approvisionnement enregistré pour cet ingrédient.' });
+    const minApproStr = minAppro instanceof Date ? minAppro.toISOString().slice(0, 10) : String(minAppro).slice(0, 10);
+    if (datePerte < minApproStr) return res.status(400).json({ message: `La date de perte doit être >= au premier appro (${minApproStr.split('-').reverse().join('/')}).` });
+
     const priceRow = await pool.query(
       `SELECT prix_unitaire FROM stock_client_daily
        WHERE client_id = $1 AND ingredient_id = $2
          AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
          AND date_appro <= $3
        ORDER BY date_appro DESC, id DESC LIMIT 1`,
-      [req.user.gerant_parent_id || req.user.id, ingredientId, datePerte]
+      [clientId, ingredientId, datePerte]
     );
     const prixUnitaire = priceRow.rows.length > 0 ? parseFloat(priceRow.rows[0].prix_unitaire) : null;
-    const clientId = req.user.gerant_parent_id || req.user.id;
 
     const r = await pool.query(
       `INSERT INTO client_pertes (client_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, created_by)

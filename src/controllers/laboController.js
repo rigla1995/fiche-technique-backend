@@ -1398,6 +1398,15 @@ const createLaboPerte = async (req, res) => {
         [laboId, produitId, parseFloat(quantite), typePerte || 'avarie', effectiveDate]
       );
     } else {
+      const minRow = await pool.query(
+        `SELECT MIN(date_appro) AS min_date FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = $2`,
+        [laboId, ingredientIdRaw]
+      );
+      const minAppro = minRow.rows[0]?.min_date;
+      if (!minAppro) return res.status(400).json({ message: 'Aucun approvisionnement enregistré pour cet ingrédient.' });
+      const minApproStr = minAppro instanceof Date ? minAppro.toISOString().slice(0, 10) : String(minAppro).slice(0, 10);
+      if (effectiveDate < minApproStr) return res.status(400).json({ message: `La date de perte doit être >= au premier appro (${minApproStr.split('-').reverse().join('/')}).` });
+
       const priceRow = await pool.query(
         `SELECT prix_unitaire FROM stock_labo_daily
          WHERE labo_id = $1 AND ingredient_id = $2

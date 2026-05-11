@@ -59,6 +59,15 @@ const createPerte = async (req, res) => {
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
+    const minRow = await pool.query(
+      `SELECT MIN(date_appro) AS min_date FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2`,
+      [activiteId, ingredientId]
+    );
+    const minAppro = minRow.rows[0]?.min_date;
+    if (!minAppro) return res.status(400).json({ message: 'Aucun approvisionnement enregistré pour cet ingrédient.' });
+    const minApproStr = minAppro instanceof Date ? minAppro.toISOString().slice(0, 10) : String(minAppro).slice(0, 10);
+    if (datePerte < minApproStr) return res.status(400).json({ message: `La date de perte doit être >= au premier appro (${minApproStr.split('-').reverse().join('/')}).` });
+
     const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, datePerte);
 
     const r = await pool.query(
@@ -602,8 +611,7 @@ const getDateRangeClientPerte = async (req, res) => {
     const r = await pool.query(
       `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
        FROM stock_client_daily
-       WHERE client_id = $1 AND ingredient_id = $2
-         AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)`,
+       WHERE client_id = $1 AND ingredient_id = $2`,
       [req.user.gerant_parent_id || req.user.id, ingredientId]
     );
     const row = r.rows[0];
@@ -626,8 +634,7 @@ const getDateRangeEntreprisePerte = async (req, res) => {
     const r = await pool.query(
       `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
        FROM stock_entreprise_daily
-       WHERE activite_id = $1 AND ingredient_id = $2
-         AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)`,
+       WHERE activite_id = $1 AND ingredient_id = $2`,
       [activiteId, ingredientId]
     );
     const row = r.rows[0];
@@ -646,8 +653,7 @@ const getDateRangeLaboPerte = async (req, res) => {
     const r = await pool.query(
       `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
        FROM stock_labo_daily
-       WHERE labo_id = $1 AND ingredient_id = $2
-         AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)`,
+       WHERE labo_id = $1 AND ingredient_id = $2`,
       [laboId, ingredientId]
     );
     const row = r.rows[0];
