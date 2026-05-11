@@ -27,7 +27,7 @@ const getLaboIds = async (clientId) => {
 const getRapportPertes = async (req, res) => {
   const { dateFrom, dateTo, categorieId, activiteId } = req.query;
   const clientId = req.user.id;
-  const isEntreprise = req.user.compteType === 'entreprise';
+  const isEntreprise = req.user.compteType === 'entreprise' || req.user.compteType === null;
 
   try {
     let rows = [];
@@ -147,7 +147,7 @@ const getRapportPertes = async (req, res) => {
 const getRapportCoutMatiere = async (req, res) => {
   const { dateFrom, dateTo, categorieId, activiteId } = req.query;
   const clientId = req.user.id;
-  const isEntreprise = req.user.compteType === 'entreprise';
+  const isEntreprise = req.user.compteType === 'entreprise' || req.user.compteType === null;
 
   try {
     let rows = [];
@@ -264,7 +264,7 @@ const getRapportCoutMatiere = async (req, res) => {
 const getRapportAppros = async (req, res) => {
   const { dateFrom, dateTo, fournisseurId, activiteId, typeAppro } = req.query;
   const clientId = req.user.id;
-  const isEntreprise = req.user.compteType === 'entreprise';
+  const isEntreprise = req.user.compteType === 'entreprise' || req.user.compteType === null;
 
   try {
     let rows = [];
@@ -370,7 +370,7 @@ const getRapportAppros = async (req, res) => {
 const getRapportStock = async (req, res) => {
   const { activiteId } = req.query;
   const clientId = req.user.id;
-  const isEntreprise = req.user.compteType === 'entreprise';
+  const isEntreprise = req.user.compteType === 'entreprise' || req.user.compteType === null;
 
   try {
     let rows = [];
@@ -528,7 +528,7 @@ const getRapportActivites = async (req, res) => {
 
 const getRapportFilters = async (req, res) => {
   const clientId = req.user.id;
-  const isEntreprise = req.user.compteType === 'entreprise';
+  const isEntreprise = req.user.compteType === 'entreprise' || req.user.compteType === null;
 
   try {
     const [catRes, fourn, acts] = await Promise.all([

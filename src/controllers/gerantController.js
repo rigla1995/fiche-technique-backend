@@ -42,7 +42,7 @@ const create = async (req, res) => {
   }
 
   const parentId = req.user.id;
-  const parentType = req.user.compteType; // 'independant' | 'entreprise'
+  const parentType = req.user.compteType; // 'independant' | 'entreprise' | null (config-based)
 
   // Check free gérant limit
   const existing = await pool.query(
@@ -50,7 +50,8 @@ const create = async (req, res) => {
     [parentId]
   );
   const freeCount = parseInt(existing.rows[0].count, 10);
-  const freeLimit = parentType === 'entreprise' ? 3 : 1;
+  const isEntrepriseClass = parentType === 'entreprise' || parentType === null;
+  const freeLimit = isEntrepriseClass ? 3 : 1;
 
   const isGratuit = estGratuit !== false && freeCount < freeLimit;
   const montant = isGratuit ? 0 : (montantMensuel || 80);
