@@ -405,7 +405,8 @@ const getActiviteTypesSummary = async (req, res) => {
            BOOL_OR(a.type = 'franchise') AS has_franchise,
            BOOL_OR(a.type IS NULL OR a.type = 'distincte') AS has_distinct,
            BOOL_OR(a.type = 'franchise' AND sel.cnt > 0) AS has_franchise_selections,
-           BOOL_OR((a.type IS NULL OR a.type = 'distincte') AND sel.cnt > 0) AS has_distinct_selections
+           BOOL_OR((a.type IS NULL OR a.type = 'distincte') AND sel.cnt > 0) AS has_distinct_selections,
+           BOOL_OR(a.type = 'franchise' AND (a.labo_id IS NULL OR COALESCE(lis.cnt, 0) > 0)) AS has_franchise_ready
          FROM activites a
          JOIN profil_entreprise pe ON a.entreprise_id = pe.id
          LEFT JOIN (
@@ -413,6 +414,11 @@ const getActiviteTypesSummary = async (req, res) => {
            FROM activite_ingredient_selections
            GROUP BY activite_id
          ) sel ON sel.activite_id = a.id
+         LEFT JOIN (
+           SELECT labo_id, COUNT(*) AS cnt
+           FROM labo_ingredient_selections
+           GROUP BY labo_id
+         ) lis ON lis.labo_id = a.labo_id
          WHERE pe.client_id = $1`,
         [clientId]
       ),
@@ -457,6 +463,7 @@ const getActiviteTypesSummary = async (req, res) => {
       hasDistinct: row.has_distinct ?? false,
       hasFranchiseSelections: row.has_franchise_selections ?? false,
       hasDistinctSelections: row.has_distinct_selections ?? false,
+      hasFranchiseReady: row.has_franchise_ready ?? false,
       hasFranchiseAppro: appro.has_franchise_appro ?? false,
       hasDistinctAppro: appro.has_distinct_appro ?? false,
       hasFranchiseFournisseurs: fo.has_franchise_fournisseurs ?? false,
