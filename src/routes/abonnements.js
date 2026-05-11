@@ -48,6 +48,9 @@ router.get('/mon-abonnement', authenticate, requireClient, async (req, res) => {
   return ab.getAbonnement(req, res);
 });
 
+// ── Supplement pricing (client self) ─────────────────────────────────────────
+router.get('/supplement-pricing', authenticate, requireClient, ab.getSupplementPricing);
+
 // ── Gérants ──────────────────────────────────────────────────────────────────
 router.get('/gerants', authenticate, requireClient, gerant.list);
 router.post('/gerants', authenticate, requireClient, gerant.create);
