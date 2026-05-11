@@ -128,40 +128,103 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
 
 const generateInviteToken = () => crypto.randomBytes(32).toString('hex');
 
-const sendSupportValidationEmail = async ({ to, nom, type, statut, details, notesAdmin }) => {
-  const typeLabels = {
-    ingredient_manquant: 'Ingrédient manquant',
-    supplement: 'Ajout de capacité',
-    aide: 'Besoin d\'aide',
-  };
-  const statutLabel = statut === 'validée' ? '✅ Validée' : '❌ Refusée';
-  const statutColor = statut === 'validée' ? '#16a34a' : '#dc2626';
+/**
+ * Supplement validation email — serves as the amendment contract (avenant).
+ * Includes the added capacity, full new pricing breakdown, and admin note.
+ * Only sent when a supplement request is validated (not for other types).
+ */
+const sendAvenantEmail = async ({
+  to, nom, notesAdmin,
+  // Added supplements
+  nbActivitesAdded, nbLabosAdded, nbGerantsAdded,
+  // New config after supplement
+  nbActivites, nbLabos, nbGerants,
+  // New pricing breakdown
+  activiteCost, laboCost, gerantCost, newMensuel,
+  // Optional promo
+  promoApplied, effectifMensuel,
+  // Date
+  dateAvenant,
+}) => {
+  const fmtDt = (n) => (n != null ? `${Number(n).toFixed(2)} DT` : '—');
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const addedParts = [
+    nbActivitesAdded > 0 && `+${nbActivitesAdded} activité${nbActivitesAdded > 1 ? 's' : ''}`,
+    nbLabosAdded > 0     && `+${nbLabosAdded} labo${nbLabosAdded > 1 ? 's' : ''}`,
+    nbGerantsAdded > 0   && `+${nbGerantsAdded} gérant${nbGerantsAdded > 1 ? 's' : ''}`,
+  ].filter(Boolean).join(' · ');
 
   const html = `
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:28px 36px;">
-      <h1 style="margin:0;color:#fff;font-size:1.3rem;font-weight:800;">${APP_NAME}</h1>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;">
+      <h1 style="margin:0 0 4px;color:#fff;font-size:1.4rem;font-weight:800;letter-spacing:-0.02em;">${APP_NAME}</h1>
+      <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Contrat Avenant — Ajout de capacité</p>
     </div>
-    <div style="padding:32px 36px;">
-      <h2 style="margin:0 0 8px;color:#111827;font-size:1.05rem;font-weight:700;">Bonjour ${nom},</h2>
-      <p style="margin:0 0 20px;color:#374151;font-size:0.9rem;line-height:1.6;">
-        Votre demande de type <strong>${typeLabels[type] || type}</strong> a été traitée.
+
+    <!-- Body -->
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;">Bonjour ${nom},</h2>
+      <p style="margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;">
+        Votre demande d'ajout de capacité a été <strong style="color:#16a34a;">validée</strong>.
+        Cet email constitue votre avenant de contrat daté du <strong>${fmtDate(dateAvenant)}</strong>.
       </p>
-      <div style="background:#f8fafc;border-radius:10px;padding:16px 20px;margin-bottom:20px;border-left:4px solid ${statutColor};">
-        <div style="font-size:0.88rem;font-weight:800;color:${statutColor};margin-bottom:8px;">${statutLabel}</div>
-        ${details ? `<div style="font-size:0.85rem;color:#374151;">${details}</div>` : ''}
+
+      <!-- Capacité ajoutée -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">✅ Capacité ajoutée</div>
+        <div style="font-size:1rem;font-weight:700;color:#14532d;">${addedParts}</div>
       </div>
-      ${notesAdmin ? `<div style="background:#eff6ff;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
-        <div style="font-size:0.75rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Message de l'administration</div>
-        <div style="font-size:0.85rem;color:#374151;">${notesAdmin}</div>
+
+      <!-- Nouvelle configuration -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre configuration après avenant</div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Activités</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nbActivites}</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(activiteCost)}</td>
+          </tr>
+          ${nbLabos > 0 ? `<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Labos</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nbLabos}</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(laboCost)}</td>
+          </tr>` : ''}
+          ${nbGerants > 0 ? `<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Gérants</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nbGerants}</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(gerantCost)}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding:12px 0 4px;font-weight:800;color:#1e40af;" colspan="2">Nouveau mensuel de base</td>
+            <td style="padding:12px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;">${fmtDt(newMensuel)}/mois</td>
+          </tr>
+          ${promoApplied && effectifMensuel != null && effectifMensuel !== newMensuel ? `<tr>
+            <td style="padding:4px 0;font-size:0.78rem;color:#7c3aed;" colspan="2">🎉 Promotion appliquée</td>
+            <td style="padding:4px 0;text-align:right;font-weight:900;color:#7c3aed;font-size:1.05rem;">${fmtDt(effectifMensuel)}/mois</td>
+          </tr>` : ''}
+        </table>
+      </div>
+
+      ${notesAdmin ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Note de l'administration</div>
+        <div style="font-size:0.88rem;color:#1e3a5f;line-height:1.6;">${notesAdmin}</div>
       </div>` : ''}
-      <p style="margin:0;color:#6b7280;font-size:0.82rem;">
-        Connectez-vous à votre espace pour plus de détails.
+
+      <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">
+        Votre espace est déjà mis à jour. Connectez-vous pour consulter votre nouvelle configuration.
       </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;">
+      <p style="margin:0;color:#94a3b8;font-size:0.75rem;">${APP_NAME} · Avenant du ${fmtDate(dateAvenant)}</p>
     </div>
   </div>
 </body>
@@ -170,11 +233,11 @@ const sendSupportValidationEmail = async ({ to, nom, type, statut, details, note
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: `${APP_NAME} — Demande ${statut === 'validée' ? 'validée' : 'refusée'} : ${typeLabels[type] || type}`,
+    subject: `${APP_NAME} — Avenant validé : ${addedParts}`,
     html,
   });
   if (error) throw new Error(error.message);
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendSupportValidationEmail };
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail };

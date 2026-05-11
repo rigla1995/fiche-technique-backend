@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { sendSupportValidationEmail } = require('../services/emailService');
+const { sendAvenantEmail } = require('../services/emailService');
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -220,23 +220,63 @@ const traiter = async (req, res) => {
       );
     }
 
-    // Send email notification to client
-    const clientEmail = demande.client_email;
-    const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
-    if (clientEmail) {
-      let details = '';
-      if (demande.type === 'ingredient_manquant' && demande.nom_ingredient) {
-        details = `Ingrédient : <strong>${demande.nom_ingredient}</strong>`;
-        if (statut === 'validée') details += ' — ajouté au catalogue global.';
-      } else if (demande.type === 'supplement') {
-        const parts = [];
-        if (demande.nb_activites_supp) parts.push(`+${demande.nb_activites_supp} activité(s)`);
-        if (demande.nb_labos_supp) parts.push(`+${demande.nb_labos_supp} labo(s)`);
-        if (demande.nb_gerants_supp) parts.push(`+${demande.nb_gerants_supp} gérant(s)`);
-        details = parts.join(' · ');
-        if (statut === 'validée') details += ' — votre configuration a été mise à jour.';
+    // Send avenant email only when supplement request is validated
+    if (statut === 'validée' && demande.type === 'supplement') {
+      const clientEmail = demande.client_email;
+      const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
+      if (clientEmail) {
+        // Fetch new config + pricing for email
+        (async () => {
+          try {
+            const tarifsRes = await pool.query('SELECT cle, valeur_dt FROM tarifs_config');
+            const tarifs = {};
+            tarifsRes.rows.forEach((r) => { tarifs[r.cle] = parseFloat(r.valeur_dt); });
+
+            const configRes = await pool.query(
+              `SELECT ac.* FROM abonnement_config ac
+               JOIN abonnements a ON a.id = ac.abonnement_id
+               WHERE a.client_id = $1`,
+              [demande.client_id]
+            );
+            const cfg = configRes.rows[0];
+            if (!cfg) return;
+
+            const nbA = parseInt(cfg.nb_activites) || 1;
+            const nbL = parseInt(cfg.nb_labos) || 0;
+            const nbG = parseInt(cfg.nb_gerants) || 0;
+
+            // Activité cost
+            let activiteCost;
+            if (nbA === 1) activiteCost = tarifs['activite_1'] ?? 200;
+            else if (nbA === 2) activiteCost = tarifs['activite_2'] ?? 350;
+            else activiteCost = nbA * (tarifs['activite_sup'] ?? 120);
+            const laboCost = nbL * (tarifs['labo_mensuel'] ?? 160);
+            const gerantCost = nbG * (tarifs['gerant_mensuel'] ?? 80);
+            const newMensuel = activiteCost + laboCost + gerantCost;
+
+            await sendAvenantEmail({
+              to: clientEmail,
+              nom: clientNom,
+              notesAdmin: notesAdmin || null,
+              nbActivitesAdded: demande.nb_activites_supp || 0,
+              nbLabosAdded:     demande.nb_labos_supp     || 0,
+              nbGerantsAdded:   demande.nb_gerants_supp   || 0,
+              nbActivites: nbA,
+              nbLabos: nbL,
+              nbGerants: nbG,
+              activiteCost,
+              laboCost,
+              gerantCost,
+              newMensuel,
+              promoApplied: false,
+              effectifMensuel: newMensuel,
+              dateAvenant: new Date().toISOString(),
+            });
+          } catch (e) {
+            console.error('Avenant email error:', e);
+          }
+        })();
       }
-      sendSupportValidationEmail({ to: clientEmail, nom: clientNom, type: demande.type, statut, details, notesAdmin }).catch(console.error);
     }
 
     res.json(mapDemande(result.rows[0]));
