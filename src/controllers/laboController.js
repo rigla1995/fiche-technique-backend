@@ -1,13 +1,6 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
-
-const isoDate = (d) => {
-  if (!d) return null;
-  if (d instanceof Date) return d.toISOString().slice(0, 10);
-  return String(d).slice(0, 10);
-};
-
-const todayStr = () => new Date().toISOString().split('T')[0];
+const { isoDate, todayStr } = require('../utils/dateUtils');
 
 // ─── Ownership check helper ───────────────────────────────────────────────────
 
@@ -74,16 +67,13 @@ const createLabo = async (req, res) => {
       const fournisseurId = fRes.rows[0].id;
       // Link to all existing activities of this franchise group (if applicable)
       if (franchiseGroup) {
-        const acts = await pool.query(
-          `SELECT id FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)`,
-          [entrepriseId, franchiseGroup]
+        await pool.query(
+          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
+           SELECT $1, id FROM activites
+           WHERE entreprise_id = $2 AND LOWER(franchise_group) = LOWER($3)
+           ON CONFLICT DO NOTHING`,
+          [fournisseurId, entrepriseId, franchiseGroup]
         );
-        for (const act of acts.rows) {
-          await pool.query(
-            `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-            [fournisseurId, act.id]
-          );
-        }
       }
     }
 
@@ -779,10 +769,10 @@ const syncLaboFournisseurs = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     await pool.query('DELETE FROM fournisseur_labos WHERE labo_id = $1', [laboId]);
-    for (const fId of fournisseurIds) {
+    if (fournisseurIds.length > 0) {
       await pool.query(
-        'INSERT INTO fournisseur_labos (fournisseur_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-        [fId, laboId]
+        'INSERT INTO fournisseur_labos (fournisseur_id, labo_id) SELECT UNNEST($1::int[]), $2 ON CONFLICT DO NOTHING',
+        [fournisseurIds, laboId]
       );
     }
     res.json({ ok: true });

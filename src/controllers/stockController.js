@@ -1,12 +1,6 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
-
-const todayStr = () => new Date().toISOString().split('T')[0];
-const isoDate = (d) => {
-  if (!d) return null;
-  if (d instanceof Date) return d.toISOString().slice(0, 10);
-  return String(d).slice(0, 10);
-};
+const { isoDate, todayStr } = require('../utils/dateUtils');
 
 // ─── Stock Client (independant) ──────────────────────────────────────────────
 
@@ -17,18 +11,10 @@ const getStockClient = async (req, res) => {
               COALESCE(c.nom, 'Sans catégorie') as categorie,
               cis.seuil_min,
               COALESCE(SUM(scd.quantite) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
-              (SELECT scd2.prix_unitaire FROM stock_client_daily scd2
-               WHERE scd2.client_id = $1 AND scd2.ingredient_id = i.id
-               ORDER BY scd2.date_appro DESC LIMIT 1) as prix_unitaire,
-              (SELECT scd2.date_appro FROM stock_client_daily scd2
-               WHERE scd2.client_id = $1 AND scd2.ingredient_id = i.id
-               ORDER BY scd2.date_appro DESC LIMIT 1) as date_appro,
-              (SELECT scd2.fournisseur_id FROM stock_client_daily scd2
-               WHERE scd2.client_id = $1 AND scd2.ingredient_id = i.id
-               ORDER BY scd2.date_appro DESC LIMIT 1) as last_fournisseur_id,
-              (SELECT scd2.ref_facture FROM stock_client_daily scd2
-               WHERE scd2.client_id = $1 AND scd2.ingredient_id = i.id
-               ORDER BY scd2.date_appro DESC LIMIT 1) as last_ref_facture,
+              last_scd.prix_unitaire,
+              last_scd.date_appro,
+              last_scd.fournisseur_id as last_fournisseur_id,
+              last_scd.ref_facture    as last_ref_facture,
               COALESCE(
                 AVG(scd.prix_unitaire) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE) AND scd.quantite > 0)
                 * SUM(scd.quantite) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE))
@@ -38,8 +24,15 @@ const getStockClient = async (req, res) => {
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN stock_client_daily scd ON scd.ingredient_id = i.id AND scd.client_id = $1
+       LEFT JOIN LATERAL (
+         SELECT prix_unitaire, date_appro, fournisseur_id, ref_facture
+         FROM stock_client_daily
+         WHERE client_id = $1 AND ingredient_id = i.id
+         ORDER BY date_appro DESC, id DESC LIMIT 1
+       ) last_scd ON true
        WHERE cis.client_id = $1
-       GROUP BY i.id, i.nom, u.nom, c.nom, cis.seuil_min
+       GROUP BY i.id, i.nom, u.nom, c.nom, cis.seuil_min,
+                last_scd.prix_unitaire, last_scd.date_appro, last_scd.fournisseur_id, last_scd.ref_facture
        ORDER BY categorie NULLS LAST, i.nom`,
       [req.user.gerant_parent_id || req.user.id]
     );
@@ -65,9 +58,14 @@ const getStockClient = async (req, res) => {
 
     const ptRes = await pool.query(`
       SELECT p.id as produit_id, p.nom, p.seuil_min_pt,
-        (SELECT spt2.date_appro FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.client_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_date_appro,
-        (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.client_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule
+             last_spt.date_appro   as last_date_appro,
+             last_spt.prix_calcule as last_prix_calcule
       FROM produits p
+      LEFT JOIN LATERAL (
+        SELECT date_appro, prix_calcule FROM stock_produits_transformes
+        WHERE produit_id = p.id AND client_id = $1
+        ORDER BY date_appro DESC LIMIT 1
+      ) last_spt ON true
       WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE
       ORDER BY p.nom
     `, [req.user.gerant_parent_id || req.user.id]);
@@ -386,21 +384,11 @@ const getStockEntreprise = async (req, res) => {
               COALESCE(c.nom, 'Sans catégorie') as categorie,
               ais.seuil_min,
               COALESCE(SUM(sed.quantite) FILTER (WHERE date_trunc('month', sed.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
-              (SELECT sed2.prix_unitaire FROM stock_entreprise_daily sed2
-               WHERE sed2.activite_id = $1 AND sed2.ingredient_id = i.id
-               ORDER BY sed2.date_appro DESC LIMIT 1) as prix_unitaire,
-              (SELECT sed2.date_appro FROM stock_entreprise_daily sed2
-               WHERE sed2.activite_id = $1 AND sed2.ingredient_id = i.id
-               ORDER BY sed2.date_appro DESC LIMIT 1) as date_appro,
-              (SELECT sed2.fournisseur_id FROM stock_entreprise_daily sed2
-               WHERE sed2.activite_id = $1 AND sed2.ingredient_id = i.id
-               ORDER BY sed2.date_appro DESC LIMIT 1) as last_fournisseur_id,
-              (SELECT sed2.ref_facture FROM stock_entreprise_daily sed2
-               WHERE sed2.activite_id = $1 AND sed2.ingredient_id = i.id
-               ORDER BY sed2.date_appro DESC LIMIT 1) as last_ref_facture,
-              (SELECT sed2.type_appro FROM stock_entreprise_daily sed2
-               WHERE sed2.activite_id = $1 AND sed2.ingredient_id = i.id
-               ORDER BY sed2.date_appro DESC LIMIT 1) as last_type_appro,
+              last_sed.prix_unitaire,
+              last_sed.date_appro,
+              last_sed.fournisseur_id as last_fournisseur_id,
+              last_sed.ref_facture    as last_ref_facture,
+              last_sed.type_appro     as last_type_appro,
               COALESCE(
                 AVG(sed.prix_unitaire) FILTER (WHERE date_trunc('month', sed.date_appro) = date_trunc('month', CURRENT_DATE) AND sed.quantite > 0)
                 * SUM(sed.quantite) FILTER (WHERE date_trunc('month', sed.date_appro) = date_trunc('month', CURRENT_DATE))
@@ -410,8 +398,16 @@ const getStockEntreprise = async (req, res) => {
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN stock_entreprise_daily sed ON sed.ingredient_id = i.id AND sed.activite_id = $1
+       LEFT JOIN LATERAL (
+         SELECT prix_unitaire, date_appro, fournisseur_id, ref_facture, type_appro
+         FROM stock_entreprise_daily
+         WHERE activite_id = $1 AND ingredient_id = i.id
+         ORDER BY date_appro DESC, id DESC LIMIT 1
+       ) last_sed ON true
        WHERE ais.activite_id = $1
-       GROUP BY i.id, i.nom, u.nom, c.nom, ais.seuil_min
+       GROUP BY i.id, i.nom, u.nom, c.nom, ais.seuil_min,
+                last_sed.prix_unitaire, last_sed.date_appro, last_sed.fournisseur_id,
+                last_sed.ref_facture, last_sed.type_appro
        ORDER BY categorie NULLS LAST, i.nom`,
       [activiteId]
     );
@@ -444,9 +440,14 @@ const getStockEntreprise = async (req, res) => {
 
     const ptRes = await pool.query(`
       SELECT p.id as produit_id, p.nom, p.seuil_min_pt,
-        (SELECT spt2.date_appro FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_date_appro,
-        (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2 WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 ORDER BY spt2.date_appro DESC LIMIT 1) as last_prix_calcule
+             last_spt.date_appro   as last_date_appro,
+             last_spt.prix_calcule as last_prix_calcule
       FROM produits p
+      LEFT JOIN LATERAL (
+        SELECT date_appro, prix_calcule FROM stock_produits_transformes
+        WHERE produit_id = p.id AND activite_id = $1
+        ORDER BY date_appro DESC LIMIT 1
+      ) last_spt ON true
       WHERE p.is_stock_ingredient = TRUE
       AND (
         p.activite_id = $1

@@ -2,12 +2,7 @@ const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
-
-const isoDate = (d) => {
-  if (!d) return null;
-  if (d instanceof Date) return d.toISOString().slice(0, 10);
-  return String(d).slice(0, 10);
-};
+const { isoDate } = require('../utils/dateUtils');
 
 async function checkLaboOwner(laboId, userId) {
   const r = await pool.query(
@@ -273,33 +268,64 @@ const saveLaboInventaire = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
-    const upserted = [];
-    for (const e of entries) {
-      if (e.ingredientId < 0) {
-        const produitId = -(e.ingredientId);
-        const r = await pool.query(
-          `INSERT INTO inventaires (labo_id, produit_id, quantite_reelle, date_inventaire, note, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (labo_id, produit_id, date_inventaire)
-             WHERE labo_id IS NOT NULL AND produit_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
-           RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
-          [laboId, produitId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
-        );
-        upserted.push({ ...r.rows[0], ingredient_id: -(r.rows[0].produit_id) });
-      } else {
-        const r = await pool.query(
+    const ingEntries = entries.filter((e) => e.ingredientId >= 0);
+    const ptEntries  = entries.filter((e) => e.ingredientId < 0);
+
+    const client = await pool.connect();
+    let upserted = [];
+    try {
+      await client.query('BEGIN');
+
+      if (ingEntries.length > 0) {
+        const r = await client.query(
           `INSERT INTO inventaires (labo_id, ingredient_id, quantite_reelle, date_inventaire, note, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6)
+           SELECT $1, UNNEST($2::int[]), UNNEST($3::numeric[]), $4, UNNEST($5::text[]), $6
            ON CONFLICT (labo_id, ingredient_id, date_inventaire)
              WHERE labo_id IS NOT NULL AND ingredient_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note,
+                         updated_at = NOW(), created_by = EXCLUDED.created_by
            RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
-          [laboId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
+          [
+            laboId,
+            ingEntries.map((e) => e.ingredientId),
+            ingEntries.map((e) => e.quantiteReelle),
+            dateInventaire,
+            ingEntries.map((e) => e.note || null),
+            req.user.id,
+          ]
         );
-        upserted.push(r.rows[0]);
+        upserted = upserted.concat(r.rows);
       }
+
+      if (ptEntries.length > 0) {
+        const r = await client.query(
+          `INSERT INTO inventaires (labo_id, produit_id, quantite_reelle, date_inventaire, note, created_by)
+           SELECT $1, UNNEST($2::int[]), UNNEST($3::numeric[]), $4, UNNEST($5::text[]), $6
+           ON CONFLICT (labo_id, produit_id, date_inventaire)
+             WHERE labo_id IS NOT NULL AND produit_id IS NOT NULL
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note,
+                         updated_at = NOW(), created_by = EXCLUDED.created_by
+           RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
+          [
+            laboId,
+            ptEntries.map((e) => -(e.ingredientId)),
+            ptEntries.map((e) => e.quantiteReelle),
+            dateInventaire,
+            ptEntries.map((e) => e.note || null),
+            req.user.id,
+          ]
+        );
+        upserted = upserted.concat(r.rows.map((row) => ({ ...row, ingredient_id: -(row.produit_id) })));
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
+
     if (req.user.role === 'gerant' && req.user.gerant_parent_id) {
       const clientRes = await pool.query(
         `SELECT pe.client_id, l.nom as labo_nom FROM labos l
@@ -573,33 +599,62 @@ const saveActiviteInventaire = async (req, res) => {
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
 
-    const upserted = [];
-    for (const e of entries) {
-      if (e.ingredientId < 0) {
-        // PT product — negative ingredientId encodes produitId
-        const produitId = -(e.ingredientId);
-        const r = await pool.query(
-          `INSERT INTO inventaires (activite_id, produit_id, quantite_reelle, date_inventaire, note, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (activite_id, produit_id, date_inventaire)
-             WHERE activite_id IS NOT NULL AND produit_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
-           RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
-          [activiteId, produitId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
-        );
-        upserted.push({ ...r.rows[0], ingredient_id: -(r.rows[0].produit_id) });
-      } else {
-        const r = await pool.query(
+    const ingEntries = entries.filter((e) => e.ingredientId >= 0);
+    const ptEntries  = entries.filter((e) => e.ingredientId < 0);
+
+    const client = await pool.connect();
+    let upserted = [];
+    try {
+      await client.query('BEGIN');
+
+      if (ingEntries.length > 0) {
+        const r = await client.query(
           `INSERT INTO inventaires (activite_id, ingredient_id, quantite_reelle, date_inventaire, note, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6)
+           SELECT $1, UNNEST($2::int[]), UNNEST($3::numeric[]), $4, UNNEST($5::text[]), $6
            ON CONFLICT (activite_id, ingredient_id, date_inventaire)
              WHERE activite_id IS NOT NULL AND ingredient_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note,
+                         updated_at = NOW(), created_by = EXCLUDED.created_by
            RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
-          [activiteId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
+          [
+            activiteId,
+            ingEntries.map((e) => e.ingredientId),
+            ingEntries.map((e) => e.quantiteReelle),
+            dateInventaire,
+            ingEntries.map((e) => e.note || null),
+            req.user.id,
+          ]
         );
-        upserted.push(r.rows[0]);
+        upserted = upserted.concat(r.rows);
       }
+
+      if (ptEntries.length > 0) {
+        const r = await client.query(
+          `INSERT INTO inventaires (activite_id, produit_id, quantite_reelle, date_inventaire, note, created_by)
+           SELECT $1, UNNEST($2::int[]), UNNEST($3::numeric[]), $4, UNNEST($5::text[]), $6
+           ON CONFLICT (activite_id, produit_id, date_inventaire)
+             WHERE activite_id IS NOT NULL AND produit_id IS NOT NULL
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note,
+                         updated_at = NOW(), created_by = EXCLUDED.created_by
+           RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
+          [
+            activiteId,
+            ptEntries.map((e) => -(e.ingredientId)),
+            ptEntries.map((e) => e.quantiteReelle),
+            dateInventaire,
+            ptEntries.map((e) => e.note || null),
+            req.user.id,
+          ]
+        );
+        upserted = upserted.concat(r.rows.map((row) => ({ ...row, ingredient_id: -(row.produit_id) })));
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
 
     if (req.user.role === 'gerant' && req.user.gerant_parent_id) {
@@ -1268,32 +1323,62 @@ const saveClientInventaire = async (req, res) => {
   if (!dateInventaire || !Array.isArray(entries) || entries.length === 0)
     return res.status(400).json({ message: 'dateInventaire et entries[] requis' });
   try {
-    const upserted = [];
-    for (const e of entries) {
-      if (e.ingredientId < 0) {
-        const produitId = -(e.ingredientId);
-        const r = await pool.query(
-          `INSERT INTO inventaires (client_id, produit_id, quantite_reelle, date_inventaire, note, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (client_id, produit_id, date_inventaire)
-             WHERE client_id IS NOT NULL AND produit_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
-           RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
-          [clientId, produitId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
-        );
-        upserted.push({ ...r.rows[0], ingredient_id: -(r.rows[0].produit_id) });
-      } else {
-        const r = await pool.query(
+    const ingEntries = entries.filter((e) => e.ingredientId >= 0);
+    const ptEntries  = entries.filter((e) => e.ingredientId < 0);
+
+    const client = await pool.connect();
+    let upserted = [];
+    try {
+      await client.query('BEGIN');
+
+      if (ingEntries.length > 0) {
+        const r = await client.query(
           `INSERT INTO inventaires (client_id, ingredient_id, quantite_reelle, date_inventaire, note, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6)
+           SELECT $1, UNNEST($2::int[]), UNNEST($3::numeric[]), $4, UNNEST($5::text[]), $6
            ON CONFLICT (client_id, ingredient_id, date_inventaire)
              WHERE client_id IS NOT NULL AND ingredient_id IS NOT NULL
-           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note, updated_at = NOW(), created_by = EXCLUDED.created_by
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note,
+                         updated_at = NOW(), created_by = EXCLUDED.created_by
            RETURNING id, ingredient_id, quantite_reelle, date_inventaire, note, created_at`,
-          [clientId, e.ingredientId, e.quantiteReelle, dateInventaire, e.note || null, req.user.id]
+          [
+            clientId,
+            ingEntries.map((e) => e.ingredientId),
+            ingEntries.map((e) => e.quantiteReelle),
+            dateInventaire,
+            ingEntries.map((e) => e.note || null),
+            req.user.id,
+          ]
         );
-        upserted.push(r.rows[0]);
+        upserted = upserted.concat(r.rows);
       }
+
+      if (ptEntries.length > 0) {
+        const r = await client.query(
+          `INSERT INTO inventaires (client_id, produit_id, quantite_reelle, date_inventaire, note, created_by)
+           SELECT $1, UNNEST($2::int[]), UNNEST($3::numeric[]), $4, UNNEST($5::text[]), $6
+           ON CONFLICT (client_id, produit_id, date_inventaire)
+             WHERE client_id IS NOT NULL AND produit_id IS NOT NULL
+           DO UPDATE SET quantite_reelle = EXCLUDED.quantite_reelle, note = EXCLUDED.note,
+                         updated_at = NOW(), created_by = EXCLUDED.created_by
+           RETURNING id, produit_id, quantite_reelle, date_inventaire, note, created_at`,
+          [
+            clientId,
+            ptEntries.map((e) => -(e.ingredientId)),
+            ptEntries.map((e) => e.quantiteReelle),
+            dateInventaire,
+            ptEntries.map((e) => e.note || null),
+            req.user.id,
+          ]
+        );
+        upserted = upserted.concat(r.rows.map((row) => ({ ...row, ingredient_id: -(row.produit_id) })));
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
 
     if (req.user.role === 'gerant' && req.user.gerant_parent_id) {
