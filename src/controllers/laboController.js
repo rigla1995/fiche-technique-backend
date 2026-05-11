@@ -725,7 +725,7 @@ const getLaboStockHistory = async (req, res) => {
 
     const result = await pool.query(
       `SELECT sld.date_appro, sld.quantite, sld.prix_unitaire, sld.ref_facture,
-              f.nom as fournisseur_nom
+              sld.type_appro, f.nom as fournisseur_nom
        FROM stock_labo_daily sld
        LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
        WHERE sld.labo_id = $1 AND sld.ingredient_id = $2
@@ -737,6 +737,7 @@ const getLaboStockHistory = async (req, res) => {
       quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
       prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
       refFacture: r.ref_facture || null,
+      typeAppro: r.type_appro || null,
       fournisseurNom: r.fournisseur_nom || null,
     })));
   } catch (err) {
