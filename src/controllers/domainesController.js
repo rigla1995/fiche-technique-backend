@@ -3,12 +3,37 @@ const pool = require('../config/database');
 const list = async (req, res) => {
   try {
     const { hasIngredients } = req.query;
-    const query = hasIngredients === 'true'
-      ? `SELECT d.* FROM domaines_activite d
-         WHERE EXISTS (SELECT 1 FROM ingredient_domaines id WHERE id.domaine_id = d.id)
-         ORDER BY d.nom`
-      : 'SELECT * FROM domaines_activite ORDER BY nom';
-    const result = await pool.query(query);
+    const isSuperAdmin = req.user?.role === 'super_admin';
+
+    let query, params = [];
+
+    if (isSuperAdmin) {
+      query = hasIngredients === 'true'
+        ? `SELECT d.* FROM domaines_activite d
+           WHERE EXISTS (SELECT 1 FROM ingredient_domaines id WHERE id.domaine_id = d.id)
+           ORDER BY d.nom`
+        : 'SELECT * FROM domaines_activite ORDER BY nom';
+    } else {
+      // Return only domaines linked to the client:
+      // - independant: via client_domaines
+      // - entreprise: via activites.domaine_id (where activite belongs to client's entreprise)
+      const clientId = req.user.gerant_parent_id || req.user.id;
+      query = `
+        SELECT DISTINCT d.id, d.nom
+        FROM domaines_activite d
+        WHERE d.id IN (
+          SELECT cd.domaine_id FROM client_domaines cd WHERE cd.client_id = $1
+          UNION
+          SELECT a.domaine_id FROM activites a
+          JOIN profil_entreprise pe ON pe.id = a.entreprise_id
+          WHERE pe.client_id = $1 AND a.domaine_id IS NOT NULL
+        )
+        ORDER BY d.nom
+      `;
+      params = [clientId];
+    }
+
+    const result = await pool.query(query, params);
     res.json(result.rows.map((r) => ({ id: r.id, nom: r.nom })));
   } catch (err) {
     console.error(err);
