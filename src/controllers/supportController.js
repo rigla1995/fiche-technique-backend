@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { sendSupportValidationEmail } = require('../services/emailService');
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -54,7 +55,6 @@ const create = async (req, res) => {
   if (!validTypes.includes(type)) return res.status(400).json({ message: 'Type invalide' });
 
   try {
-    // Fetch client name for denorm
     const clientRes = await pool.query('SELECT nom FROM utilisateurs WHERE id = $1', [clientId]);
     const clientNom = clientRes.rows[0]?.nom || null;
 
@@ -107,9 +107,9 @@ const listAll = async (req, res) => {
               da.nom AS domaine_nom,
               admin.nom AS traite_par_nom
        FROM support_demandes sd
-       LEFT JOIN utilisateurs u     ON u.id = sd.client_id
+       LEFT JOIN utilisateurs u       ON u.id = sd.client_id
        LEFT JOIN domaines_activite da ON da.id = sd.domaine_id
-       LEFT JOIN utilisateurs admin  ON admin.id = sd.traite_par
+       LEFT JOIN utilisateurs admin   ON admin.id = sd.traite_par
        WHERE ${conditions.join(' AND ')}
        ORDER BY
          CASE sd.statut WHEN 'en_attente' THEN 0 WHEN 'validée' THEN 1 ELSE 2 END,
@@ -127,10 +127,19 @@ const listAll = async (req, res) => {
 const traiter = async (req, res) => {
   const { id } = req.params;
   const { statut, notesAdmin } = req.body;
+  // Admin-editable overrides for ingredient requests
+  const { domaineId: adminDomaineId, categorieNom: adminCategorieNom, uniteNom: adminUniteNom } = req.body;
+
   if (!['validée', 'refusée'].includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
 
   try {
-    const demandeRes = await pool.query('SELECT * FROM support_demandes WHERE id = $1', [id]);
+    const demandeRes = await pool.query(
+      `SELECT sd.*, u.email AS client_email, u.nom AS client_nom_u
+       FROM support_demandes sd
+       LEFT JOIN utilisateurs u ON u.id = sd.client_id
+       WHERE sd.id = $1`,
+      [id]
+    );
     if (demandeRes.rows.length === 0) return res.status(404).json({ message: 'Demande introuvable' });
     const demande = demandeRes.rows[0];
 
@@ -141,50 +150,93 @@ const traiter = async (req, res) => {
       [statut, notesAdmin || null, req.user.id, id]
     );
 
-    // If validated ingredient request: add ingredient to global catalogue
+    // Auto-create ingredient in global catalogue when ingredient request is validated
     if (statut === 'validée' && demande.type === 'ingredient_manquant' && demande.nom_ingredient) {
-      // Find or create unit
+      const finalDomaineId = adminDomaineId != null ? adminDomaineId : demande.domaine_id;
+      const finalCategorieNom = adminCategorieNom != null ? adminCategorieNom : demande.categorie_nom;
+      const finalUniteNom = adminUniteNom != null ? adminUniteNom : demande.unite_nom;
+
+      // Resolve or create unit (global: client_id IS NULL)
       let uniteId = null;
-      if (demande.unite_nom) {
-        const uniteRes = await pool.query(
-          `INSERT INTO unites (nom) VALUES ($1) ON CONFLICT (nom) DO UPDATE SET nom = EXCLUDED.nom RETURNING id`,
-          [demande.unite_nom]
+      if (finalUniteNom) {
+        const existingUnite = await pool.query(
+          'SELECT id FROM unites WHERE nom = $1 AND client_id IS NULL LIMIT 1',
+          [finalUniteNom]
         );
-        uniteId = uniteRes.rows[0].id;
+        if (existingUnite.rows.length > 0) {
+          uniteId = existingUnite.rows[0].id;
+        } else {
+          const newUnite = await pool.query(
+            'INSERT INTO unites (nom) VALUES ($1) RETURNING id',
+            [finalUniteNom]
+          );
+          uniteId = newUnite.rows[0].id;
+        }
       }
 
-      // Find or create category
+      // Resolve or create category
       let categorieId = null;
-      if (demande.categorie_nom) {
+      if (finalCategorieNom) {
         const catRes = await pool.query(
-          `INSERT INTO categories (nom) VALUES ($1) ON CONFLICT (nom) DO UPDATE SET nom = EXCLUDED.nom RETURNING id`,
-          [demande.categorie_nom]
+          `INSERT INTO categories (nom) VALUES ($1)
+           ON CONFLICT (nom) DO UPDATE SET nom = EXCLUDED.nom RETURNING id`,
+          [finalCategorieNom]
         );
         categorieId = catRes.rows[0].id;
       }
 
       if (uniteId) {
-        await pool.query(
-          `INSERT INTO ingredients (nom, unite_id, categorie_id, domaine_id, prix)
-           VALUES ($1, $2, $3, $4, NULL)
-           ON CONFLICT DO NOTHING`,
-          [demande.nom_ingredient, uniteId, categorieId, demande.domaine_id]
-        ).catch(() => {});
+        // Insert global ingredient (client_id NULL = catalogue global)
+        const ingRes = await pool.query(
+          `INSERT INTO ingredients (nom, unite_id, categorie_id, client_id, prix)
+           VALUES ($1, $2, $3, NULL, NULL)
+           ON CONFLICT DO NOTHING RETURNING id`,
+          [demande.nom_ingredient, uniteId, categorieId]
+        );
+        const ingredientId = ingRes.rows[0]?.id;
+
+        // Link to domaine via ingredient_domaines junction table
+        if (ingredientId && finalDomaineId) {
+          await pool.query(
+            `INSERT INTO ingredient_domaines (ingredient_id, domaine_id)
+             VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [ingredientId, finalDomaineId]
+          ).catch(() => {});
+        }
       }
     }
 
-    // If validated supplement: update abonnement_config
+    // Update abonnement_config when supplement request is validated
     if (statut === 'validée' && demande.type === 'supplement') {
       await pool.query(
         `UPDATE abonnement_config ac
          SET nb_activites = nb_activites + $1,
-             nb_labos = nb_labos + $2,
-             nb_gerants = nb_gerants + $3,
-             updated_at = NOW()
+             nb_labos     = nb_labos     + $2,
+             nb_gerants   = nb_gerants   + $3,
+             updated_at   = NOW()
          FROM abonnements a
          WHERE a.id = ac.abonnement_id AND a.client_id = $4`,
         [demande.nb_activites_supp || 0, demande.nb_labos_supp || 0, demande.nb_gerants_supp || 0, demande.client_id]
       );
+    }
+
+    // Send email notification to client
+    const clientEmail = demande.client_email;
+    const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
+    if (clientEmail) {
+      let details = '';
+      if (demande.type === 'ingredient_manquant' && demande.nom_ingredient) {
+        details = `Ingrédient : <strong>${demande.nom_ingredient}</strong>`;
+        if (statut === 'validée') details += ' — ajouté au catalogue global.';
+      } else if (demande.type === 'supplement') {
+        const parts = [];
+        if (demande.nb_activites_supp) parts.push(`+${demande.nb_activites_supp} activité(s)`);
+        if (demande.nb_labos_supp) parts.push(`+${demande.nb_labos_supp} labo(s)`);
+        if (demande.nb_gerants_supp) parts.push(`+${demande.nb_gerants_supp} gérant(s)`);
+        details = parts.join(' · ');
+        if (statut === 'validée') details += ' — votre configuration a été mise à jour.';
+      }
+      sendSupportValidationEmail({ to: clientEmail, nom: clientNom, type: demande.type, statut, details, notesAdmin }).catch(console.error);
     }
 
     res.json(mapDemande(result.rows[0]));

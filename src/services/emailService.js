@@ -128,4 +128,53 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
 
 const generateInviteToken = () => crypto.randomBytes(32).toString('hex');
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken };
+const sendSupportValidationEmail = async ({ to, nom, type, statut, details, notesAdmin }) => {
+  const typeLabels = {
+    ingredient_manquant: 'Ingrédient manquant',
+    supplement: 'Ajout de capacité',
+    aide: 'Besoin d\'aide',
+  };
+  const statutLabel = statut === 'validée' ? '✅ Validée' : '❌ Refusée';
+  const statutColor = statut === 'validée' ? '#16a34a' : '#dc2626';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:28px 36px;">
+      <h1 style="margin:0;color:#fff;font-size:1.3rem;font-weight:800;">${APP_NAME}</h1>
+    </div>
+    <div style="padding:32px 36px;">
+      <h2 style="margin:0 0 8px;color:#111827;font-size:1.05rem;font-weight:700;">Bonjour ${nom},</h2>
+      <p style="margin:0 0 20px;color:#374151;font-size:0.9rem;line-height:1.6;">
+        Votre demande de type <strong>${typeLabels[type] || type}</strong> a été traitée.
+      </p>
+      <div style="background:#f8fafc;border-radius:10px;padding:16px 20px;margin-bottom:20px;border-left:4px solid ${statutColor};">
+        <div style="font-size:0.88rem;font-weight:800;color:${statutColor};margin-bottom:8px;">${statutLabel}</div>
+        ${details ? `<div style="font-size:0.85rem;color:#374151;">${details}</div>` : ''}
+      </div>
+      ${notesAdmin ? `<div style="background:#eff6ff;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+        <div style="font-size:0.75rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Message de l'administration</div>
+        <div style="font-size:0.85rem;color:#374151;">${notesAdmin}</div>
+      </div>` : ''}
+      <p style="margin:0;color:#6b7280;font-size:0.82rem;">
+        Connectez-vous à votre espace pour plus de détails.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `${APP_NAME} — Demande ${statut === 'validée' ? 'validée' : 'refusée'} : ${typeLabels[type] || type}`,
+    html,
+  });
+  if (error) throw new Error(error.message);
+  return { success: true, id: data?.id };
+};
+
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendSupportValidationEmail };
