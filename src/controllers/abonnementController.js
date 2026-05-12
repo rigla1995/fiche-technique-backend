@@ -1240,20 +1240,35 @@ const getPricingPreview = async (req, res) => {
     const gerantCost   = computeBaseGerantFromConfig(mockConfig, tarifs)  || 0;
     const total        = activiteCost + laboCost + gerantCost;
 
-    const base = parseFloat(tarifs['prix_base_activite'] ?? tarifs['activite_1'] ?? 200);
+    const base   = parseFloat(tarifs['prix_base_activite'] ?? tarifs['activite_1'] ?? 200);
+    const pLabo  = parseFloat(tarifs['labo_sup_mensuel']  ?? tarifs['labo_mensuel']   ?? 160);
+    const pGer   = parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80);
     const hasLabo = nbl > 0;
-    const rl = parseFloat(tarifs['remise_avec_labo'] ?? 30) / 100;
-    const r2 = parseFloat(tarifs['remise_2eme_sans_labo'] ?? 20) / 100;
-    const r3 = parseFloat(tarifs['remise_3eme_plus_sans_labo'] ?? 40) / 100;
-    const unitPriceActivite = hasLabo
-      ? Math.round(base * (1 - rl) * 100) / 100
-      : nb === 1 ? base : nb === 2 ? Math.round(base * (1 - r2) * 100) / 100 : Math.round(base * (1 - r3) * 100) / 100;
+    const rl = parseFloat(tarifs['remise_avec_labo']            ?? 30) / 100;
+    const r2 = parseFloat(tarifs['remise_2eme_sans_labo']       ?? 20) / 100;
+    const r3 = parseFloat(tarifs['remise_3eme_plus_sans_labo']  ?? 40) / 100;
+
+    // Build per-tier activity lines for PricingCard display
+    const actLines = [];
+    if (hasLabo) {
+      const up = Math.round(base * (1 - rl) * 100) / 100;
+      actLines.push({ label: `${nb} activité${nb > 1 ? 's' : ''} × ${up} DT (avec labo −${Math.round(rl*100)}%)`, total: activiteCost });
+    } else {
+      if (nb >= 1) actLines.push({ label: `1ère activité`, unitPrice: base, total: base });
+      if (nb >= 2) { const up2 = Math.round(base*(1-r2)*100)/100; actLines.push({ label: `2ème activité (−${Math.round(r2*100)}%)`, unitPrice: up2, total: up2 }); }
+      if (nb >= 3) { const up3 = Math.round(base*(1-r3)*100)/100; actLines.push({ label: `${nb-2} activité${nb-2>1?'s':''} supp. × ${up3} DT (−${Math.round(r3*100)}%)`, total: Math.round((nb-2)*up3*100)/100 }); }
+    }
+
+    const onboardingPrice = parseFloat(
+      nbl > 0 ? (tarifs['onboarding_avec_labo'] ?? 700) : (tarifs['onboarding_sans_labo'] ?? 500)
+    );
 
     res.json({
-      activite: { nb, unitPrice: unitPriceActivite, total: activiteCost },
-      labo:     { nb: nbl, unitPrice: parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160), total: laboCost },
-      gerant:   { nb: nbg, unitPrice: parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80), total: gerantCost },
+      activite: { nb, total: activiteCost, lines: actLines },
+      labo:     { nb: nbl, unitPrice: pLabo, total: laboCost },
+      gerant:   { nb: nbg, unitPrice: pGer,  total: gerantCost },
       totalMensuel: total,
+      onboardingPrice,
     });
   } catch (err) {
     console.error(err);
