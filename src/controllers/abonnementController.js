@@ -1277,13 +1277,14 @@ const getPricingPreview = async (req, res) => {
 };
 
 // Extract active supplement promo info for a given applies_to type
+// promoRows must be pre-filtered to active rows (date_fin IS NULL OR date_fin >= CURRENT_DATE)
 const extractSupplPromo = (promoRows, appliesTo) => {
-  const p = promoRows.find((r) => r.applies_to === appliesTo && r.is_active);
+  const p = promoRows.find((r) => r.applies_to === appliesTo);
   if (!p) return null;
   return {
     type: p.type,
-    discount: p.discount_mensualite != null ? parseFloat(p.discount_mensualite) : null,
-    fixed: p.fixed_mensualite != null ? parseFloat(p.fixed_mensualite) : null,
+    discount: p.discount_supplement != null ? parseFloat(p.discount_supplement) : null,
+    fixed: p.fixed_supplement != null ? parseFloat(p.fixed_supplement) : null,
   };
 };
 
@@ -1297,8 +1298,9 @@ const getSupplementPricing = async (req, res) => {
     const aboId = aboRes.rows[0].id;
     const [configRes, promoRes] = await Promise.all([
       pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]),
-      pool.query(`SELECT applies_to, type, is_active, discount_mensualite, fixed_mensualite
-                  FROM promotions WHERE abonnement_id = $1 AND is_active = true
+      pool.query(`SELECT applies_to, type, discount_supplement, fixed_supplement
+                  FROM promotions WHERE abonnement_id = $1
+                    AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
                     AND applies_to IN ('supplement_activite','supplement_labo','supplement_gerant')`, [aboId]),
     ]);
     const config = configRes.rows[0] || null;
@@ -1338,8 +1340,9 @@ const getClientSupplementPricing = async (req, res) => {
     const aboId = aboRes.rows[0].id;
     const [configRes, promoRes] = await Promise.all([
       pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]),
-      pool.query(`SELECT applies_to, type, is_active, discount_mensualite, fixed_mensualite
-                  FROM promotions WHERE abonnement_id = $1 AND is_active = true
+      pool.query(`SELECT applies_to, type, discount_supplement, fixed_supplement
+                  FROM promotions WHERE abonnement_id = $1
+                    AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
                     AND applies_to IN ('supplement_activite','supplement_labo','supplement_gerant')`, [aboId]),
     ]);
     const config = configRes.rows[0] || null;
