@@ -1276,6 +1276,17 @@ const getPricingPreview = async (req, res) => {
   }
 };
 
+// Extract active supplement promo info for a given applies_to type
+const extractSupplPromo = (promoRows, appliesTo) => {
+  const p = promoRows.find((r) => r.applies_to === appliesTo && r.is_active);
+  if (!p) return null;
+  return {
+    type: p.type,
+    discount: p.discount_mensualite != null ? parseFloat(p.discount_mensualite) : null,
+    fixed: p.fixed_mensualite != null ? parseFloat(p.fixed_mensualite) : null,
+  };
+};
+
 // Client: get supplement unit prices + current config for cost preview
 const getSupplementPricing = async (req, res) => {
   const clientId = req.user.id;
@@ -1284,7 +1295,12 @@ const getSupplementPricing = async (req, res) => {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (!aboRes.rows.length) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
-    const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
+    const [configRes, promoRes] = await Promise.all([
+      pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]),
+      pool.query(`SELECT applies_to, type, is_active, discount_mensualite, fixed_mensualite
+                  FROM promotions WHERE abonnement_id = $1 AND is_active = true
+                    AND applies_to IN ('supplement_activite','supplement_labo','supplement_gerant')`, [aboId]),
+    ]);
     const config = configRes.rows[0] || null;
 
     const nbA = parseInt(config?.nb_activites) || 0;
@@ -1301,9 +1317,10 @@ const getSupplementPricing = async (req, res) => {
       prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160),
       prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
       currentMensuel,
-      nbActivites: nbA,
-      nbLabos: nbL,
-      nbGerants: nbG,
+      nbActivites: nbA, nbLabos: nbL, nbGerants: nbG,
+      activitePromo: extractSupplPromo(promoRes.rows, 'supplement_activite'),
+      laboPromo:     extractSupplPromo(promoRes.rows, 'supplement_labo'),
+      gerantPromo:   extractSupplPromo(promoRes.rows, 'supplement_gerant'),
     });
   } catch (err) {
     console.error(err);
@@ -1319,7 +1336,12 @@ const getClientSupplementPricing = async (req, res) => {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (!aboRes.rows.length) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
-    const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
+    const [configRes, promoRes] = await Promise.all([
+      pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]),
+      pool.query(`SELECT applies_to, type, is_active, discount_mensualite, fixed_mensualite
+                  FROM promotions WHERE abonnement_id = $1 AND is_active = true
+                    AND applies_to IN ('supplement_activite','supplement_labo','supplement_gerant')`, [aboId]),
+    ]);
     const config = configRes.rows[0] || null;
 
     const nbA = parseInt(config?.nb_activites) || 0;
@@ -1336,6 +1358,9 @@ const getClientSupplementPricing = async (req, res) => {
       prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
       currentMensuel, activiteCost, laboCost, gerantCost,
       nbActivites: nbA, nbLabos: nbL, nbGerants: nbG,
+      activitePromo: extractSupplPromo(promoRes.rows, 'supplement_activite'),
+      laboPromo:     extractSupplPromo(promoRes.rows, 'supplement_labo'),
+      gerantPromo:   extractSupplPromo(promoRes.rows, 'supplement_gerant'),
     });
   } catch (err) {
     console.error(err);
