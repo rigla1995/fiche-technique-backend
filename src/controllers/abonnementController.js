@@ -684,7 +684,7 @@ const createPromotion = async (req, res) => {
   } = req.body;
 
   const validTypes = ['percent_off', 'free_months', 'fixed_price'];
-  const validApplies = ['onboarding', 'mensualite', 'les_deux', 'supplement_gerant', 'supplement_labo'];
+  const validApplies = ['onboarding', 'mensualite', 'les_deux', 'supplement_gerant', 'supplement_labo', 'supplement_activite'];
   if (!validTypes.includes(type)) return res.status(400).json({ message: 'Type invalide' });
   if (!validApplies.includes(appliesTo)) return res.status(400).json({ message: 'applies_to invalide' });
   if (!dateDebut) return res.status(400).json({ message: 'date_debut requis' });
@@ -719,11 +719,12 @@ const createPromotion = async (req, res) => {
 
     // Conflict check: date-range overlap with existing promos of same type
     const conflictMap = {
-      mensualite:        ['mensualite', 'les_deux'],
-      onboarding:        ['onboarding', 'les_deux'],
-      les_deux:          ['mensualite', 'onboarding', 'les_deux'],
-      supplement_gerant: ['supplement_gerant'],
-      supplement_labo:   ['supplement_labo'],
+      mensualite:          ['mensualite', 'les_deux'],
+      onboarding:          ['onboarding', 'les_deux'],
+      les_deux:            ['mensualite', 'onboarding', 'les_deux'],
+      supplement_gerant:   ['supplement_gerant'],
+      supplement_labo:     ['supplement_labo'],
+      supplement_activite: ['supplement_activite'],
     };
     const conflictTypes = conflictMap[appliesTo];
     // Two date ranges [A,B] and [C,D] overlap when A <= D and C <= B
@@ -810,7 +811,7 @@ const updatePromotion = async (req, res) => {
   } = req.body;
 
   const validTypes = ['percent_off', 'free_months', 'fixed_price'];
-  const validApplies = ['onboarding', 'mensualite', 'les_deux', 'supplement_gerant', 'supplement_labo'];
+  const validApplies = ['onboarding', 'mensualite', 'les_deux', 'supplement_gerant', 'supplement_labo', 'supplement_activite'];
   if (!validTypes.includes(type)) return res.status(400).json({ message: 'Type invalide' });
   if (!validApplies.includes(appliesTo)) return res.status(400).json({ message: 'applies_to invalide' });
   if (!dateDebut) return res.status(400).json({ message: 'date_debut requis' });
@@ -831,11 +832,12 @@ const updatePromotion = async (req, res) => {
 
     // Conflict check (exclude self)
     const conflictMap = {
-      mensualite:        ['mensualite', 'les_deux'],
-      onboarding:        ['onboarding', 'les_deux'],
-      les_deux:          ['mensualite', 'onboarding', 'les_deux'],
-      supplement_gerant: ['supplement_gerant'],
-      supplement_labo:   ['supplement_labo'],
+      mensualite:          ['mensualite', 'les_deux'],
+      onboarding:          ['onboarding', 'les_deux'],
+      les_deux:            ['mensualite', 'onboarding', 'les_deux'],
+      supplement_gerant:   ['supplement_gerant'],
+      supplement_labo:     ['supplement_labo'],
+      supplement_activite: ['supplement_activite'],
     };
     const conflictTypes = conflictMap[appliesTo];
     const conflictRes = await pool.query(
