@@ -87,29 +87,55 @@ const applyPromoSupplement = (baseAmount, promo) => {
   return baseAmount;
 };
 
-// Compute base mensuel from abonnement_config (new pricing model)
+// Tiered/degressive pricing model
+// Sans labo: 1er=base, 2ème=base*(1-r2%), 3ème+=base*(1-r3%) each
+// Avec labo: all = base*(1-rl%) each
 const computeBaseMensuelFromConfig = (config, tarifs) => {
   if (!config) return null;
-  const n = parseInt(config.nb_activites) || 1;
-  let activiteCost;
-  if (n === 1) activiteCost = parseFloat(tarifs['activite_1'] ?? 200);
-  else if (n === 2) activiteCost = parseFloat(tarifs['activite_2'] ?? 350);
-  else activiteCost = n * parseFloat(tarifs['activite_sup'] ?? 120);
-  return activiteCost;
+  const n   = parseInt(config.nb_activites) || 1;
+  const nbl = parseInt(config.nb_labos)     || 0;
+  const base = parseFloat(tarifs['prix_base_activite'] ?? tarifs['activite_1'] ?? 200);
+  const hasLabo = nbl > 0;
+
+  if (hasLabo) {
+    const rl = parseFloat(tarifs['remise_avec_labo'] ?? 30) / 100;
+    return Math.round(n * base * (1 - rl) * 100) / 100;
+  }
+
+  // Sans labo: tiered
+  const r2 = parseFloat(tarifs['remise_2eme_sans_labo']      ?? 20) / 100;
+  const r3 = parseFloat(tarifs['remise_3eme_plus_sans_labo'] ?? 40) / 100;
+  let cost = base; // 1st
+  if (n >= 2) cost += base * (1 - r2); // 2nd
+  if (n >= 3) cost += (n - 2) * base * (1 - r3); // 3rd+
+  return Math.round(cost * 100) / 100;
 };
 
 const computeBaseGerantFromConfig = (config, tarifs) => {
   if (!config) return null;
   const n = parseInt(config.nb_gerants) || 0;
   if (n === 0) return 0;
-  return n * parseFloat(tarifs['gerant_mensuel'] ?? 80);
+  return n * parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80);
 };
 
 const computeBaseLaboFromConfig = (config, tarifs) => {
   if (!config) return null;
   const n = parseInt(config.nb_labos) || 0;
   if (n === 0) return 0;
-  return n * parseFloat(tarifs['labo_mensuel'] ?? 160);
+  return n * parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160);
+};
+
+// Unit price for next supplement activité (tier n+1)
+const computeActiviteSupPrice = (config, tarifs) => {
+  if (!config) return parseFloat(tarifs['prix_base_activite'] ?? 200);
+  const nbl  = parseInt(config.nb_labos)     || 0;
+  const base = parseFloat(tarifs['prix_base_activite'] ?? tarifs['activite_1'] ?? 200);
+  if (nbl > 0) {
+    const rl = parseFloat(tarifs['remise_avec_labo'] ?? 30) / 100;
+    return Math.round(base * (1 - rl) * 100) / 100;
+  }
+  const r3 = parseFloat(tarifs['remise_3eme_plus_sans_labo'] ?? 40) / 100;
+  return Math.round(base * (1 - r3) * 100) / 100;
 };
 
 const loadAllTarifs = async () => {
@@ -280,9 +306,9 @@ const getAbonnement = async (req, res) => {
           activite: { nb: nbA, total: activiteCost },
           labo:     { nb: nbL, total: laboCost },
           gerant:   { nb: nbG, total: gerantCost },
-          prixActiviteSup: parseFloat(tarifs['activite_sup'] ?? 120),
-          prixLaboSup:     parseFloat(tarifs['labo_mensuel'] ?? 160),
-          prixGerantSup:   parseFloat(tarifs['gerant_mensuel'] ?? 80),
+          prixActiviteSup: computeActiviteSupPrice(config, tarifs),
+          prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160),
+          prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
         };
       }
     }
@@ -1214,10 +1240,19 @@ const getPricingPreview = async (req, res) => {
     const gerantCost   = computeBaseGerantFromConfig(mockConfig, tarifs)  || 0;
     const total        = activiteCost + laboCost + gerantCost;
 
+    const base = parseFloat(tarifs['prix_base_activite'] ?? tarifs['activite_1'] ?? 200);
+    const hasLabo = nbl > 0;
+    const rl = parseFloat(tarifs['remise_avec_labo'] ?? 30) / 100;
+    const r2 = parseFloat(tarifs['remise_2eme_sans_labo'] ?? 20) / 100;
+    const r3 = parseFloat(tarifs['remise_3eme_plus_sans_labo'] ?? 40) / 100;
+    const unitPriceActivite = hasLabo
+      ? Math.round(base * (1 - rl) * 100) / 100
+      : nb === 1 ? base : nb === 2 ? Math.round(base * (1 - r2) * 100) / 100 : Math.round(base * (1 - r3) * 100) / 100;
+
     res.json({
-      activite: { nb, unitPrice: nb === 1 ? tarifs['activite_1'] : nb === 2 ? tarifs['activite_2'] / 2 : tarifs['activite_sup'], total: activiteCost },
-      labo:     { nb: nbl, unitPrice: tarifs['labo_mensuel']   || 160, total: laboCost },
-      gerant:   { nb: nbg, unitPrice: tarifs['gerant_mensuel'] || 80,  total: gerantCost },
+      activite: { nb, unitPrice: unitPriceActivite, total: activiteCost },
+      labo:     { nb: nbl, unitPrice: parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160), total: laboCost },
+      gerant:   { nb: nbg, unitPrice: parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80), total: gerantCost },
       totalMensuel: total,
     });
   } catch (err) {
@@ -1247,9 +1282,9 @@ const getSupplementPricing = async (req, res) => {
       : 0;
 
     res.json({
-      prixActiviteSup: parseFloat(tarifs['activite_sup'] ?? 120),
-      prixLaboSup:     parseFloat(tarifs['labo_mensuel'] ?? 160),
-      prixGerantSup:   parseFloat(tarifs['gerant_mensuel'] ?? 80),
+      prixActiviteSup: computeActiviteSupPrice(config, tarifs),
+      prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160),
+      prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
       currentMensuel,
       nbActivites: nbA,
       nbLabos: nbL,
@@ -1281,9 +1316,9 @@ const getClientSupplementPricing = async (req, res) => {
     const currentMensuel = activiteCost + laboCost + gerantCost;
 
     res.json({
-      prixActiviteSup: parseFloat(tarifs['activite_sup'] ?? 120),
-      prixLaboSup:     parseFloat(tarifs['labo_mensuel'] ?? 160),
-      prixGerantSup:   parseFloat(tarifs['gerant_mensuel'] ?? 80),
+      prixActiviteSup: computeActiviteSupPrice(config, tarifs),
+      prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160),
+      prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
       currentMensuel, activiteCost, laboCost, gerantCost,
       nbActivites: nbA, nbLabos: nbL, nbGerants: nbG,
     });
@@ -1305,5 +1340,5 @@ module.exports = {
   allPaiements, allPromotions,
   enforcerStatuts,
   runSyncPromoStatuts,
-  computeBaseMensuelFromConfig, computeBaseGerantFromConfig, computeBaseLaboFromConfig, loadAllTarifs,
+  computeBaseMensuelFromConfig, computeBaseGerantFromConfig, computeBaseLaboFromConfig, computeActiviteSupPrice, loadAllTarifs,
 };

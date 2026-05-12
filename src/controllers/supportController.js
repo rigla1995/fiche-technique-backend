@@ -3,6 +3,7 @@ const { sendAvenantEmail } = require('../services/emailService');
 const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
+const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig } = require('./abonnementController');
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -262,14 +263,10 @@ const traiter = async (req, res) => {
             const nbL = parseInt(cfg.nb_labos) || 0;
             const nbG = parseInt(cfg.nb_gerants) || 0;
 
-            // Activité cost
-            let activiteCost;
-            if (nbA === 1) activiteCost = tarifs['activite_1'] ?? 200;
-            else if (nbA === 2) activiteCost = tarifs['activite_2'] ?? 350;
-            else activiteCost = nbA * (tarifs['activite_sup'] ?? 120);
-            const laboCost = nbL * (tarifs['labo_mensuel'] ?? 160);
-            const gerantCost = nbG * (tarifs['gerant_mensuel'] ?? 80);
-            const newMensuel = activiteCost + laboCost + gerantCost;
+            const activiteCost = computeBaseMensuelFromConfig(cfg, tarifs) || 0;
+            const laboCost     = computeBaseLaboFromConfig(cfg, tarifs)    || 0;
+            const gerantCost   = computeBaseGerantFromConfig(cfg, tarifs)  || 0;
+            const newMensuel   = activiteCost + laboCost + gerantCost;
             const dateAvenant = new Date().toISOString();
 
             const pdfData = {
