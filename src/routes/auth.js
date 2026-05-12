@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 const { login, register, me, updateProfile, upgradeToEntreprise, advanceOnboarding, completeUpgradeWizard, verifyInviteToken, acceptInvite, resendInvite } = require('../controllers/authController');
 const { authenticate, requireSuperAdmin, requireClient } = require('../middleware/auth');
+const pool = require('../config/database');
 
 router.post('/login', [
   body('email').isEmail().withMessage('Email invalide'),
@@ -24,6 +25,18 @@ router.post('/register', authenticate, requireSuperAdmin, [
 ], register);
 
 router.get('/me', authenticate, me);
+
+// GET /api/auth/check-email?email=X&excludeId=Y
+// Returns { exists: boolean } — used for real-time uniqueness feedback in forms
+router.get('/check-email', authenticate, async (req, res) => {
+  const { email, excludeId } = req.query;
+  if (!email) return res.json({ exists: false });
+  const result = await pool.query(
+    'SELECT 1 FROM utilisateurs WHERE LOWER(email) = LOWER($1)' + (excludeId ? ' AND id <> $2' : ''),
+    excludeId ? [email, excludeId] : [email]
+  );
+  res.json({ exists: result.rows.length > 0 });
+});
 
 router.put('/profile', authenticate, [
   body('name').optional().trim().notEmpty().withMessage('Nom ne peut pas être vide'),
