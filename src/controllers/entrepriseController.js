@@ -337,7 +337,7 @@ const getActiviteIngredients = async (req, res) => {
            LEFT JOIN categories c ON i.categorie_id = c.id
            LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = i.id AND ais.activite_id = $1
            ORDER BY c.nom NULLS LAST, i.nom`,
-          [id, req.user.id]
+          [id]
         );
 
     res.json(result.rows.map((r) => ({
