@@ -50,7 +50,7 @@ const createLabo = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO labos (entreprise_id, franchise_group, nom, referent_tel, adresse, ref_labo)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [entrepriseId, franchiseGroup || null, nom.trim(), referentTel.trim(), adresse?.trim() || null, refLabo.trim()]
+      [entrepriseId, franchiseGroup || refLabo.trim(), nom.trim(), referentTel.trim(), adresse?.trim() || null, refLabo.trim()]
     );
     const labo = result.rows[0];
 
