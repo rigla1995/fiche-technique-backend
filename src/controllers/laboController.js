@@ -17,7 +17,7 @@ async function checkLaboOwner(laboId, userId) {
 // ─── Labo CRUD ────────────────────────────────────────────────────────────────
 
 const createLabo = async (req, res) => {
-  const { nom, refLabo, referentTel, adresse, franchiseGroup } = req.body;
+  const { nom, refLabo, referentTel, adresse, franchiseGroup, activityIds } = req.body;
   if (!nom || !refLabo || !referentTel)
     return res.status(400).json({ message: 'nom, refLabo et referentTel requis' });
   try {
@@ -73,6 +73,19 @@ const createLabo = async (req, res) => {
            WHERE entreprise_id = $2 AND LOWER(franchise_group) = LOWER($3)
            ON CONFLICT DO NOTHING`,
           [fournisseurId, entrepriseId, franchiseGroup]
+        );
+      }
+      // Assign manually selected activities to this labo (standalone creation)
+      if (activityIds && activityIds.length > 0) {
+        await pool.query(
+          'UPDATE activites SET labo_id = $1 WHERE id = ANY($2::int[]) AND entreprise_id = $3',
+          [labo.id, activityIds, entrepriseId]
+        );
+        await pool.query(
+          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
+           SELECT $1, id FROM activites WHERE id = ANY($2::int[]) AND entreprise_id = $3
+           ON CONFLICT DO NOTHING`,
+          [fournisseurId, activityIds, entrepriseId]
         );
       }
     }
