@@ -262,13 +262,13 @@ const traiter = async (req, res) => {
       const clientEmail = demande.client_email;
       const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
       if (clientEmail) {
-        // Fetch new config + pricing for email + PDF
         (async () => {
           try {
             const tarifsRes = await pool.query('SELECT cle, valeur_dt FROM tarifs_config');
             const tarifs = {};
             tarifsRes.rows.forEach((r) => { tarifs[r.cle] = parseFloat(r.valeur_dt); });
 
+            // Fetch config AFTER update
             const configRes = await pool.query(
               `SELECT ac.* FROM abonnement_config ac
                JOIN abonnements a ON a.id = ac.abonnement_id
@@ -282,11 +282,23 @@ const traiter = async (req, res) => {
             const nbL = parseInt(cfg.nb_labos) || 0;
             const nbG = parseInt(cfg.nb_gerants) || 0;
 
+            // Reconstruct config BEFORE supplement to compute ancien mensuel
+            const cfgBefore = {
+              ...cfg,
+              nb_activites: nbA - (demande.nb_activites_supp || 0),
+              nb_labos:     nbL - (demande.nb_labos_supp     || 0),
+              nb_gerants:   nbG - (demande.nb_gerants_supp   || 0),
+            };
+            const ancienActivite = computeBaseMensuelFromConfig(cfgBefore, tarifs) || 0;
+            const ancienLabo     = computeBaseLaboFromConfig(cfgBefore, tarifs)    || 0;
+            const ancienGerant   = computeBaseGerantFromConfig(cfgBefore, tarifs)  || 0;
+            const ancienMensuel  = ancienActivite + ancienLabo + ancienGerant;
+
             const activiteCost = computeBaseMensuelFromConfig(cfg, tarifs) || 0;
             const laboCost     = computeBaseLaboFromConfig(cfg, tarifs)    || 0;
             const gerantCost   = computeBaseGerantFromConfig(cfg, tarifs)  || 0;
             const newMensuel   = activiteCost + laboCost + gerantCost;
-            const dateAvenant = new Date().toISOString();
+            const dateAvenant  = new Date().toISOString();
 
             const pdfData = {
               nom: clientNom,
@@ -301,6 +313,7 @@ const traiter = async (req, res) => {
               laboCost,
               gerantCost,
               newMensuel,
+              ancienMensuel,
               promoApplied: false,
               effectifMensuel: newMensuel,
               dateAvenant,
@@ -311,11 +324,7 @@ const traiter = async (req, res) => {
               return null;
             });
 
-            await sendAvenantEmail({
-              to: clientEmail,
-              ...pdfData,
-              pdfBase64,
-            });
+            await sendAvenantEmail({ to: clientEmail, ...pdfData, pdfBase64 });
           } catch (e) {
             console.error('Avenant email error:', e);
           }
@@ -365,6 +374,11 @@ const previewAvenant = async (req, res) => {
       nb_gerants:   (parseInt(cfg.nb_gerants)   || 0) + (demande.nb_gerants_supp   || 0),
     };
 
+    const ancienActivite = computeBaseMensuelFromConfig(cfg, tarifs)     || 0;
+    const ancienLabo     = computeBaseLaboFromConfig(cfg, tarifs)         || 0;
+    const ancienGerant   = computeBaseGerantFromConfig(cfg, tarifs)       || 0;
+    const ancienMensuel  = ancienActivite + ancienLabo + ancienGerant;
+
     const activiteCost = computeBaseMensuelFromConfig(cfgAfter, tarifs) || 0;
     const laboCost     = computeBaseLaboFromConfig(cfgAfter, tarifs)    || 0;
     const gerantCost   = computeBaseGerantFromConfig(cfgAfter, tarifs)  || 0;
@@ -384,6 +398,7 @@ const previewAvenant = async (req, res) => {
       laboCost,
       gerantCost,
       newMensuel,
+      ancienMensuel,
       promoApplied: false,
       effectifMensuel: newMensuel,
       dateAvenant: new Date().toISOString(),

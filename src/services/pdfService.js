@@ -2,200 +2,204 @@ const PDFDocument = require('pdfkit');
 
 const APP_NAME = process.env.APP_NAME || 'Fiche Technique';
 
-const fmtDt = (n) => (n != null ? `${Number(n).toFixed(2)} DT` : '—');
+const fmtDt = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
+const todayFr = () => new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 const fmtDate = (d) => d
   ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
-  : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  : todayFr();
 
-/**
- * Generate the avenant PDF as a base64 string.
- */
-const generateAvenantPdf = ({
-  nom,
-  notesAdmin,
-  nbActivitesAdded, nbLabosAdded, nbGerantsAdded,
-  nbActivites, nbLabos, nbGerants,
-  activiteCost, laboCost, gerantCost, newMensuel,
-  promoApplied, effectifMensuel,
-  dateAvenant,
-}) => new Promise((resolve, reject) => {
+const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
+  const {
+    nom, notesAdmin,
+    nbActivitesAdded, nbLabosAdded, nbGerantsAdded,
+    nbActivites, nbLabos, nbGerants,
+    activiteCost, laboCost, gerantCost, newMensuel,
+    promoApplied, effectifMensuel,
+    dateAvenant,
+    ancienMensuel,
+  } = params;
+
   try {
-    const doc = new PDFDocument({ size: 'A4', margin: 60 });
+    const doc = new PDFDocument({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 }, autoFirstPage: true });
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
     doc.on('error', reject);
 
-    const W = doc.page.width - 120; // usable width
-    const INDIGO = '#4338ca';
-    const DARK = '#1e1b4b';
-    const GRAY = '#6b7280';
-    const GREEN = '#16a34a';
-    const BG_LIGHT = '#f8fafc';
-
+    const PW = doc.page.width;   // 595.28
+    const PH = doc.page.height;  // 841.89
+    const ML = 54;
+    const CW = PW - ML * 2;
+    const RX = ML + CW;
     const dateStr = fmtDate(dateAvenant);
+    const ref = `AVN-${Date.now().toString().slice(-8)}`;
 
-    // ── Header band ──────────────────────────────────────────────────────────
-    doc.rect(0, 0, doc.page.width, 90).fill(DARK);
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(20)
-      .text(APP_NAME, 60, 28);
-    doc.fillColor('#c7d2fe').font('Helvetica').fontSize(10)
-      .text('Contrat Avenant — Ajout de capacité', 60, 54);
-    doc.fillColor('#ffffff').fontSize(9)
-      .text(`Date : ${dateStr}`, 60, 70);
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    const fill = (x, y, w, h, hex) => { doc.rect(x, y, w, h).fill(hex); };
 
-    let y = 115;
+    const hline = (y, hex = '#e2e8f0', x1 = ML, x2 = RX) => {
+      doc.save().moveTo(x1, y).lineTo(x2, y).lineWidth(0.5).stroke(hex).restore();
+    };
 
-    // ── Title ─────────────────────────────────────────────────────────────────
-    doc.fillColor(DARK).font('Helvetica-Bold').fontSize(15)
-      .text('AVENANT AU CONTRAT D\'ABONNEMENT', 60, y, { align: 'center', width: W });
-    y += 30;
-    doc.fillColor(GRAY).font('Helvetica').fontSize(10)
-      .text(`Émis le ${dateStr} — Client : ${nom}`, 60, y, { align: 'center', width: W });
-    y += 30;
+    const txt = (str, x, y, size, bold, hex, opts = {}) => {
+      doc.fontSize(size)
+         .font(bold ? 'Helvetica-Bold' : 'Helvetica')
+         .fillColor(hex)
+         .text(str, x, y, { lineBreak: false, ...opts });
+    };
 
-    // Divider
-    doc.moveTo(60, y).lineTo(60 + W, y).strokeColor('#e2e8f0').stroke();
-    y += 18;
+    const sectionHdr = (label, y) => {
+      fill(ML, y, CW, 20, '#f0f4ff');
+      hline(y, '#c7d2fe'); hline(y + 20, '#c7d2fe');
+      txt(label, ML + 8, y + 6, 8, true, '#3730a3');
+      return y + 26;
+    };
 
-    // ── Préambule ─────────────────────────────────────────────────────────────
-    doc.fillColor('#374151').font('Helvetica').fontSize(10).lineGap(3)
-      .text(
-        `Le présent avenant modifie le contrat d'abonnement en vigueur entre ${APP_NAME} et le client ` +
-        `${nom}. Il prend effet à compter de sa date d'émission et vient compléter les termes initiaux ` +
-        `du contrat sans les remplacer.`,
-        60, y, { width: W }
-      );
-    y = doc.y + 20;
+    let y = 0;
 
-    // ── Capacité ajoutée ──────────────────────────────────────────────────────
+    // ── HEADER ────────────────────────────────────────────────────────────────
+    fill(0, 0, PW, 119, '#1e1b4b');
+    fill(0, 108, PW, 11, '#d97706');
+    txt(APP_NAME, ML, 28, 22, true, '#ffffff');
+    txt('AVENANT AU CONTRAT D\'ABONNEMENT', ML, 52, 10, false, '#fde68a');
+    txt(`Réf. ${ref}`, ML, 28, 8, false, '#fbbf24', { align: 'right', width: CW });
+    txt(`Émis le ${dateStr}`, ML, 42, 8, false, '#fcd34d', { align: 'right', width: CW });
+    y = 153;
+
+    // ── OBJET ─────────────────────────────────────────────────────────────────
+    y = sectionHdr('OBJET DE L\'AVENANT', y);
+    const objetText =
+      `Le présent avenant modifie le contrat d'abonnement en vigueur entre ${APP_NAME} et le client ${nom}. ` +
+      `Il prend effet à compter du ${dateStr} et complète les termes initiaux du contrat sans les remplacer.`;
+    // measure text height
+    const objetLines = doc.fontSize(8).font('Helvetica').heightOfString(objetText, { width: CW - 16 });
+    const objetH = Math.max(40, objetLines + 20);
+    fill(ML, y, CW, objetH, '#fffbeb');
+    hline(y, '#fde68a'); hline(y + objetH, '#fde68a');
+    doc.fontSize(8).font('Helvetica').fillColor('#78350f')
+       .text(objetText, ML + 8, y + 8, { width: CW - 16, lineGap: 2, lineBreak: true });
+    y += objetH + 10;
+
+    // ── CLIENT ────────────────────────────────────────────────────────────────
+    y = sectionHdr('CLIENT', y);
+    fill(ML, y, CW, 36, '#f8fafc');
+    hline(y, '#e2e8f0'); hline(y + 36, '#e2e8f0');
+    txt(nom, ML + 8, y + 12, 9, true, '#0f172a');
+    y += 44;
+
+    // ── MODIFICATION APPORTÉE ─────────────────────────────────────────────────
+    y = sectionHdr('MODIFICATION APPORTÉE', y);
     const addedParts = [
       nbActivitesAdded > 0 && `+${nbActivitesAdded} activité${nbActivitesAdded > 1 ? 's' : ''}`,
       nbLabosAdded > 0     && `+${nbLabosAdded} labo${nbLabosAdded > 1 ? 's' : ''}`,
       nbGerantsAdded > 0   && `+${nbGerantsAdded} gérant${nbGerantsAdded > 1 ? 's' : ''}`,
-    ].filter(Boolean).join('  ·  ');
+    ].filter(Boolean).join('   ·   ');
+    fill(ML, y, CW, 44, '#f0fdf4');
+    hline(y, '#bbf7d0'); hline(y + 44, '#bbf7d0');
+    txt('CAPACITÉ AJOUTÉE', ML + 8, y + 8, 7, true, '#15803d');
+    txt(addedParts, ML + 8, y + 24, 13, true, '#14532d');
+    y += 52;
 
-    doc.rect(60, y, W, 48).fill('#f0fdf4');
-    doc.fillColor('#15803d').font('Helvetica-Bold').fontSize(8)
-      .text('CAPACITÉ AJOUTÉE', 76, y + 10);
-    doc.fillColor('#14532d').font('Helvetica-Bold').fontSize(13)
-      .text(addedParts, 76, y + 24);
-    y += 64;
-
-    // ── Nouvelle configuration & tarification ──────────────────────────────────
-    doc.fillColor(DARK).font('Helvetica-Bold').fontSize(11)
-      .text('Nouvelle configuration & tarification mensuelle', 60, y);
-    y += 16;
-
-    // Column layout — all positions relative to left margin (60)
-    // Label : 60%W  |  Qty : 15%W  |  Cost : 25%W (right-aligned)
-    const labelX = 66;
-    const labelW = Math.floor(W * 0.60) - 6;
-    const qtyX   = 60 + Math.floor(W * 0.60);
-    const costX  = 60 + Math.floor(W * 0.75);
-    const costW  = W - Math.floor(W * 0.75) - 4; // right edge ≈ 60+W-4 (within page)
-
+    // ── NOUVELLE CONFIGURATION ────────────────────────────────────────────────
+    y = sectionHdr('NOUVELLE CONFIGURATION', y);
     // Table header
-    doc.rect(60, y, W, 22).fill(INDIGO);
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9);
-    doc.text('Élément',        labelX, y + 6, { width: labelW });
-    doc.text('Quantité',       qtyX,   y + 6);
-    doc.text('Coût (DT/mois)', costX,  y + 6, { align: 'right', width: costW });
+    fill(ML, y, CW, 22, '#eef2ff');
+    hline(y, '#c7d2fe'); hline(y + 22, '#c7d2fe');
+    txt('Poste', ML + 8, y + 7, 7, true, '#4338ca');
+    txt('Qté', ML + 200, y + 7, 7, true, '#4338ca');
+    txt('Tarif mensuel', ML, y + 7, 7, true, '#4338ca', { align: 'right', width: CW - 8 });
     y += 22;
 
+    let rowIdx = 0;
     const drawRow = (label, qty, cost, isTotal = false) => {
-      const rowH = isTotal ? 26 : 22;
-      const offset = isTotal ? 8 : 6;
-      doc.rect(60, y, W, rowH).fill(isTotal ? '#eff6ff' : BG_LIGHT);
-      doc.moveTo(60, y + rowH).lineTo(60 + W, y + rowH).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
-      doc.fillColor(isTotal ? '#1e40af' : '#111827')
-         .font(isTotal ? 'Helvetica-Bold' : 'Helvetica')
-         .fontSize(isTotal ? 10 : 9);
-      doc.text(label,        labelX, y + offset, { width: labelW });
-      if (qty !== null) doc.text(String(qty), qtyX, y + offset);
-      doc.text(cost,         costX,  y + offset, { align: 'right', width: costW });
-      y += rowH;
+      const rh = isTotal ? 28 : 22;
+      const yOff = isTotal ? 9 : 7;
+      fill(ML, y, CW, rh, isTotal ? '#dbeafe' : (rowIdx % 2 === 0 ? '#fafbff' : '#ffffff'));
+      hline(y + rh, '#f1f5f9');
+      txt(label, ML + 8, y + yOff, isTotal ? 10 : 9, isTotal, isTotal ? '#1e40af' : '#0f172a');
+      if (qty !== null) txt(String(qty), ML + 200, y + yOff, isTotal ? 10 : 9, true, '#4338ca');
+      txt(cost, ML, y + yOff, isTotal ? 10 : 8, isTotal, isTotal ? '#1d4ed8' : '#374151', { align: 'right', width: CW - 8 });
+      y += rh;
+      rowIdx++;
     };
 
-    drawRow(`Activités`, nbActivites, fmtDt(activiteCost));
-    if (nbLabos > 0)   drawRow(`Labos`,   nbLabos,   fmtDt(laboCost));
-    if (nbGerants > 0) drawRow(`Gérants`, nbGerants, fmtDt(gerantCost));
+    drawRow('Activités', nbActivites, fmtDt(activiteCost));
+    if (nbLabos > 0)   drawRow('Labos', nbLabos, fmtDt(laboCost));
+    if (nbGerants > 0) drawRow('Gérants', nbGerants, fmtDt(gerantCost));
     drawRow('Total mensuel', null, fmtDt(newMensuel), true);
+    y += 10;
 
+    // ── IMPACT FINANCIER ──────────────────────────────────────────────────────
+    y = sectionHdr('IMPACT FINANCIER', y);
+
+    const prevMensuel = ancienMensuel != null ? ancienMensuel : null;
+    if (prevMensuel != null) {
+      fill(ML, y, CW, 28, '#f8fafc');
+      hline(y, '#e2e8f0'); hline(y + 28, '#e2e8f0');
+      txt('Mensualité précédente', ML + 8, y + 10, 8, false, '#64748b');
+      txt(fmtDt(prevMensuel), ML, y + 10, 10, false, '#94a3b8', { align: 'right', width: CW - 8 });
+      y += 28;
+    }
+
+    // Nouveau mensuel band
+    const mensH = promoApplied && effectifMensuel != null && effectifMensuel !== newMensuel ? 44 : 36;
+    fill(ML, y, CW, mensH, '#dbeafe');
+    hline(y, '#93c5fd'); hline(y + mensH, '#1d4ed8');
+    txt('Nouvelle mensualité', ML + 8, y + 10, 9, true, '#1e40af');
+    txt(fmtDt(newMensuel) + ' /mois', ML, y + 10, 11, true, '#1d4ed8', { align: 'right', width: CW - 8 });
     if (promoApplied && effectifMensuel != null && effectifMensuel !== newMensuel) {
-      y += 4;
-      doc.fillColor('#7c3aed').font('Helvetica-Bold').fontSize(10)
-        .text(`Montant effectif après promotion : ${fmtDt(effectifMensuel)} / mois`, 60, y);
-      y += 18;
+      txt(`Promo active : ${fmtDt(effectifMensuel)} /mois effectif`, ML + 8, y + 28, 7, false, '#7c3aed');
+    } else {
+      txt('Facturation mensuelle récurrente', ML + 8, y + 26, 7, false, '#3b82f6');
     }
-    y += 14;
+    y += mensH + 12;
 
-    // ── Note admin ────────────────────────────────────────────────────────────
-    if (notesAdmin) {
-      doc.rect(60, y, W, 14).fill('#eff6ff');
-      doc.fillColor('#1e40af').font('Helvetica-Bold').fontSize(8)
-        .text('NOTE DE L\'ADMINISTRATION', 66, y + 3);
-      y += 18;
-      doc.rect(60, y, W, 2).fill('#bfdbfe'); // top border accent
-      y += 4;
-      doc.fillColor('#1e3a5f').font('Helvetica').fontSize(9).lineGap(3)
-        .text(notesAdmin, 66, y, { width: W - 12 });
-      y = doc.y + 16;
+    // ── NOTE ADMIN ────────────────────────────────────────────────────────────
+    if (notesAdmin && notesAdmin.trim()) {
+      y = sectionHdr('NOTE', y);
+      const noteH = Math.max(28, doc.fontSize(8).font('Helvetica').heightOfString(notesAdmin, { width: CW - 16 }) + 16);
+      fill(ML, y, CW, noteH, '#eff6ff');
+      hline(y, '#bfdbfe'); hline(y + noteH, '#bfdbfe');
+      doc.fontSize(8).font('Helvetica').fillColor('#1e3a5f')
+         .text(notesAdmin, ML + 8, y + 8, { width: CW - 16, lineGap: 2, lineBreak: true });
+      y += noteH + 10;
     }
 
-    // ── Clauses légales ───────────────────────────────────────────────────────
-    doc.moveTo(60, y).lineTo(60 + W, y).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
-    y += 14;
-    doc.fillColor(GRAY).font('Helvetica').fontSize(8).lineGap(2)
-      .text(
-        'Le présent avenant est accepté par les deux parties. Il est réputé signé électroniquement ' +
-        'par le client dès lors qu\'il se connecte à la plateforme après réception de ce document. ' +
-        'Toutes les autres clauses du contrat initial demeurent inchangées et pleinement en vigueur.',
-        60, y, { width: W }
-      );
-    y = doc.y + 24;
+    // ── SIGNATURES ────────────────────────────────────────────────────────────
+    if (y > PH - 200) { doc.addPage({ margins: { top: 0, bottom: 0, left: 0, right: 0 } }); y = 40; }
+    y = sectionHdr('SIGNATURES', y);
+    const sw = (CW - 16) / 2;
+    const sx1 = ML;
+    const sx2 = ML + sw + 16;
 
-    // ── Signature spaces ──────────────────────────────────────────────────────
-    if (y > doc.page.height - 200) {
-      doc.addPage();
-      y = 60;
-    }
+    fill(sx1, y, sw, 72, '#f8fafc');
+    doc.save().strokeColor('#e2e8f0').lineWidth(0.5).rect(sx1, y, sw, 72).stroke().restore();
+    txt('PRESTATAIRE', sx1 + 8, y + 10, 7, true, '#374151');
+    txt(APP_NAME, sx1 + 8, y + 24, 8, false, '#64748b');
+    txt(`Date : ${dateStr}`, sx1 + 8, y + 36, 7, false, '#64748b');
+    hline(y + 57, '#9ca3af', sx1 + 8, sx1 + sw - 8);
+    txt('Signature & cachet', sx1 + 8, y + 62, 7, false, '#9ca3af');
 
-    doc.fillColor(DARK).font('Helvetica-Bold').fontSize(11)
-      .text('Signatures', 60, y);
-    y += 20;
+    fill(sx2, y, sw, 72, '#f8fafc');
+    doc.save().strokeColor('#e2e8f0').lineWidth(0.5).rect(sx2, y, sw, 72).stroke().restore();
+    txt('CLIENT', sx2 + 8, y + 10, 7, true, '#374151');
+    txt(nom, sx2 + 8, y + 24, 8, false, '#64748b');
+    txt(`Date : ${dateStr}`, sx2 + 8, y + 36, 7, false, '#64748b');
+    hline(y + 57, '#9ca3af', sx2 + 8, sx2 + sw - 8);
+    txt(`Signature — ${nom}`, sx2 + 8, y + 62, 7, false, '#9ca3af');
+    y += 82;
 
-    const halfW = (W - 30) / 2;
+    // ── ACCEPTATION NUMÉRIQUE ─────────────────────────────────────────────────
+    fill(ML, y, CW, 24, '#fefce8');
+    hline(y, '#fde68a'); hline(y + 24, '#fde68a');
+    doc.fontSize(7.5).font('Helvetica').fillColor('#92400e')
+       .text('Validation numérique : la validation de cet avenant vaut acceptation des nouvelles conditions tarifaires.',
+         ML + 8, y + 8, { width: CW - 16, lineBreak: true });
 
-    // Left — client
-    doc.rect(60, y, halfW, 80).stroke('#d1d5db');
-    doc.fillColor(GRAY).font('Helvetica').fontSize(8)
-      .text('Pour le Client', 66, y + 6)
-      .text(`${nom}`, 66, y + 18)
-      .text(`Date : ${dateStr}`, 66, y + 30);
-    doc.fillColor('#9ca3af').fontSize(8)
-      .text('Signature :', 66, y + 50)
-      .moveTo(66 + 55, y + 56).lineTo(60 + halfW - 10, y + 56).strokeColor('#9ca3af').lineWidth(0.5).stroke();
-
-    // Right — admin
-    const rx = 60 + halfW + 30;
-    doc.rect(rx, y, halfW, 80).stroke('#d1d5db');
-    doc.fillColor(GRAY).font('Helvetica').fontSize(8)
-      .text('Pour la Plateforme', rx + 6, y + 6)
-      .text(APP_NAME, rx + 6, y + 18)
-      .text(`Date : ${dateStr}`, rx + 6, y + 30);
-    doc.fillColor('#9ca3af').fontSize(8)
-      .text('Signature :', rx + 6, y + 50)
-      .moveTo(rx + 55, y + 56).lineTo(rx + halfW - 10, y + 56).strokeColor('#9ca3af').lineWidth(0.5).stroke();
-
-    y += 96;
-
-    // ── Footer ─────────────────────────────────────────────────────────────────
-    const footerY = doc.page.height - 45;
-    doc.rect(0, footerY, doc.page.width, 45).fill('#f8fafc');
-    doc.fillColor('#94a3b8').font('Helvetica').fontSize(8)
-      .text(`${APP_NAME}  ·  Avenant du ${dateStr}  ·  Document généré automatiquement`,
-        60, footerY + 14, { align: 'center', width: W });
+    // ── FOOTER ────────────────────────────────────────────────────────────────
+    fill(0, PH - 28, PW, 28, '#1e1b4b');
+    txt(`${APP_NAME}  ·  Avenant généré le ${todayFr()}  ·  Document confidentiel`,
+      ML, PH - 14, 7, false, '#fbbf24', { align: 'center', width: CW });
 
     doc.end();
   } catch (err) {
