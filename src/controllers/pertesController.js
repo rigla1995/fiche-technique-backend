@@ -23,6 +23,7 @@ const mapPerte = (r) => ({
   datePerte: r.date_perte instanceof Date ? r.date_perte.toISOString().slice(0, 10) : String(r.date_perte).slice(0, 10),
   createdAt: r.created_at,
   createdBy: r.created_by ?? null,
+  createdByNom: r.created_by_nom ?? null,
 });
 
 // Returns the appro price for an ingredient on or before the given date (NULL if none)
@@ -144,11 +145,13 @@ const listClientPertes = async (req, res) => {
     const result = await pool.query(
       `SELECT cp.id, cp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at, cp.created_by
+              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at, cp.created_by,
+              ub.nom AS created_by_nom
        FROM client_pertes cp
        JOIN ingredients i ON i.id = cp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
+       LEFT JOIN utilisateurs ub ON ub.id = cp.created_by
        WHERE ${wheres.join(' AND ')}
        ORDER BY cp.date_perte DESC, cp.created_at DESC`,
       params
@@ -255,12 +258,14 @@ const listEntreprisePertes = async (req, res) => {
       `SELECT p.id, p.activite_id, a.nom AS activite_nom,
               p.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at, p.created_by
+              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at, p.created_by,
+              ub.nom AS created_by_nom
        FROM pertes p
        JOIN activites a ON a.id = p.activite_id
        JOIN ingredients i ON i.id = p.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
+       LEFT JOIN utilisateurs ub ON ub.id = p.created_by
        WHERE ${wheres.join(' AND ')}
        ORDER BY p.date_perte DESC, p.created_at DESC`,
       params

@@ -709,13 +709,14 @@ const getLaboInventaireHistorique = async (req, res) => {
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom,
-              l.nom as labo_nom
+              l.nom as labo_nom, ub.nom as created_by_nom
        FROM inventaires inv
        LEFT JOIN ingredients i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = inv.produit_id
        LEFT JOIN labos l ON l.id = inv.labo_id
+       LEFT JOIN utilisateurs ub ON ub.id = inv.created_by
        WHERE ${conditions.join(' AND ')} AND (inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)
        ORDER BY inv.date_inventaire DESC, inv.created_at DESC`,
       params
@@ -729,6 +730,7 @@ const getLaboInventaireHistorique = async (req, res) => {
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       createdBy: r.created_by ?? null,
+      createdByNom: r.created_by_nom ?? null,
       ingredientId: r.ingredient_id !== null ? r.ingredient_id : -(r.produit_id),
       isPT: r.produit_id !== null,
       ingredientNom: r.ingredient_nom,
@@ -777,13 +779,14 @@ const getActiviteInventaireHistorique = async (req, res) => {
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom,
-              a.nom as activite_nom
+              a.nom as activite_nom, ub.nom as created_by_nom
        FROM inventaires inv
        LEFT JOIN ingredients i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = inv.produit_id
        LEFT JOIN activites a ON a.id = inv.activite_id
+       LEFT JOIN utilisateurs ub ON ub.id = inv.created_by
        WHERE ${conditions.join(' AND ')} AND (inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)
        ORDER BY inv.date_inventaire DESC, inv.created_at DESC`,
       params
@@ -797,6 +800,7 @@ const getActiviteInventaireHistorique = async (req, res) => {
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       createdBy: r.created_by ?? null,
+      createdByNom: r.created_by_nom ?? null,
       ingredientId: r.ingredient_id !== null ? r.ingredient_id : -(r.produit_id),
       isPT: r.produit_id !== null,
       ingredientNom: r.ingredient_nom,
@@ -1421,12 +1425,14 @@ const getClientInventaireHistorique = async (req, res) => {
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom,
+              ub.nom as created_by_nom
        FROM inventaires inv
        LEFT JOIN ingredients i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = inv.produit_id
+       LEFT JOIN utilisateurs ub ON ub.id = inv.created_by
        WHERE ${conditions.join(' AND ')} AND (inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)
        ORDER BY inv.date_inventaire DESC, inv.created_at DESC`,
       params
@@ -1440,6 +1446,7 @@ const getClientInventaireHistorique = async (req, res) => {
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       createdBy: r.created_by ?? null,
+      createdByNom: r.created_by_nom ?? null,
       ingredientId: r.ingredient_id !== null ? r.ingredient_id : -(r.produit_id),
       isPT: r.produit_id !== null,
       ingredientNom: r.ingredient_nom,

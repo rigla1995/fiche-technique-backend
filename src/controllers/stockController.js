@@ -900,7 +900,7 @@ const getHistoriqueAppro = async (req, res) => {
       const result = await pool.query(
         `SELECT sed.id, sed.activite_id, sed.date_appro, sed.quantite, sed.prix_unitaire, sed.type_appro,
                 sed.ref_facture, sed.fournisseur_id, f.nom as fournisseur_nom, sed.updated_at,
-                sed.created_by,
+                sed.created_by, ub.nom as created_by_nom,
                 i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie_nom
          FROM stock_entreprise_daily sed
@@ -908,6 +908,7 @@ const getHistoriqueAppro = async (req, res) => {
          JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
+         LEFT JOIN utilisateurs ub ON ub.id = sed.created_by
          WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
          ORDER BY sed.date_appro DESC, i.nom`,
         params
@@ -971,7 +972,7 @@ const getHistoriqueAppro = async (req, res) => {
       const result = await pool.query(
         `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
                 scd.ref_facture, scd.fournisseur_id, f.nom as fournisseur_nom, scd.updated_at,
-                scd.created_by,
+                scd.created_by, ub.nom as created_by_nom,
                 i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie_nom
          FROM stock_client_daily scd
@@ -979,6 +980,7 @@ const getHistoriqueAppro = async (req, res) => {
          JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
+         LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
          WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
          ORDER BY scd.date_appro DESC, i.nom`,
         params
@@ -1180,6 +1182,7 @@ function mapHistoriqueEntry(r) {
     uniteNom: r.unite_nom,
     categorieNom: r.categorie_nom,
     createdBy: r.created_by ?? null,
+    createdByNom: r.created_by_nom ?? null,
   };
 }
 

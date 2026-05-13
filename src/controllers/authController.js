@@ -185,10 +185,22 @@ const me = async (req, res) => {
     const modeCompte = aboRes.rows[0]?.mode_compte || 'actif';
     const prolongationJours = aboRes.rows[0]?.prolongation_jours || 0;
 
+    let gerantActiviteNom = null;
+    if (isGerant && u.gerant_activite_id) {
+      if (u.gerant_activite_type === 'labo') {
+        const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [u.gerant_activite_id]);
+        if (laboRes.rows.length > 0) gerantActiviteNom = laboRes.rows[0].nom;
+      } else {
+        const actRes2 = await pool.query('SELECT nom FROM activites WHERE id = $1', [u.gerant_activite_id]);
+        if (actRes2.rows.length > 0) gerantActiviteNom = actRes2.rows[0].nom;
+      }
+    }
+
     const gerantFields = isGerant ? {
       gerantParentId: u.gerant_parent_id,
       gerantActiviteId: u.gerant_activite_id,
       gerantActiviteType: u.gerant_activite_type,
+      gerantActiviteNom,
     } : {};
 
     res.json({
