@@ -561,9 +561,13 @@ const getMontantMois = async (req, res) => {
         mensualite: {
           base: baseTotal, effectif: effectifTotal, hasPromo: true,
           promoType: promoMens.type, coversAll: true,
+          // individual component bases for detailed display
+          baseActivite: baseMensuel,
+          baseGerant: hasGerant ? baseGerant : 0,
+          baseLabo: hasLabo ? baseLabo : 0,
         },
-        supplementGerant: { base: baseGerant, effectif: 0, active: false, hasPromo: false, promoType: null },
-        supplementLabo:   { base: baseLabo,   effectif: 0, active: false, hasPromo: false, promoType: null },
+        supplementGerant: { base: baseGerant, effectif: 0, active: hasGerant, hasPromo: false, promoType: null },
+        supplementLabo:   { base: baseLabo,   effectif: 0, active: hasLabo,   hasPromo: false, promoType: null },
       };
     } else {
       const effectifGerant = hasGerant ? applyPromoSupplement(baseGerant, promoGerant) : 0;
