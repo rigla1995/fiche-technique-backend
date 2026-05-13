@@ -136,7 +136,7 @@ const traiter = async (req, res) => {
   const { id } = req.params;
   const { statut, notesAdmin } = req.body;
   // Admin-editable overrides for ingredient requests
-  const { domaineId: adminDomaineId, categorieNom: adminCategorieNom, uniteNom: adminUniteNom } = req.body;
+  const { domaineId: adminDomaineId, categorieNom: adminCategorieNom, uniteNom: adminUniteNom, nomIngredient: adminNomIngredient } = req.body;
 
   if (!['validée', 'refusée'].includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
 
@@ -169,10 +169,11 @@ const traiter = async (req, res) => {
     saveNotification(demande.client_id, traiteePayload).catch(console.error);
 
     // Auto-create ingredient in global catalogue when ingredient request is validated
-    if (statut === 'validée' && demande.type === 'ingredient_manquant' && demande.nom_ingredient) {
+    if (statut === 'validée' && demande.type === 'ingredient_manquant' && (adminNomIngredient || demande.nom_ingredient)) {
       const finalDomaineId = adminDomaineId != null ? adminDomaineId : demande.domaine_id;
       const finalCategorieNom = adminCategorieNom != null ? adminCategorieNom : demande.categorie_nom;
       const finalUniteNom = adminUniteNom != null ? adminUniteNom : demande.unite_nom;
+      const finalNomIngredient = adminNomIngredient != null ? adminNomIngredient.trim() : demande.nom_ingredient;
 
       // Resolve or create unit (global: client_id IS NULL)
       let uniteId = null;
@@ -209,7 +210,7 @@ const traiter = async (req, res) => {
           `INSERT INTO ingredients (nom, unite_id, categorie_id, client_id, prix)
            VALUES ($1, $2, $3, NULL, NULL)
            ON CONFLICT DO NOTHING RETURNING id`,
-          [demande.nom_ingredient, uniteId, categorieId]
+          [finalNomIngredient, uniteId, categorieId]
         );
         const ingredientId = ingRes.rows[0]?.id;
 
