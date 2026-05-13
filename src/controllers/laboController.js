@@ -87,6 +87,15 @@ const createLabo = async (req, res) => {
            ON CONFLICT DO NOTHING`,
           [fournisseurId, activityIds, entrepriseId]
         );
+        // Auto-import ingredients from assigned activities into the labo
+        await pool.query(
+          `INSERT INTO labo_ingredient_selections (labo_id, ingredient_id)
+           SELECT DISTINCT $1, ais.ingredient_id
+           FROM activite_ingredient_selections ais
+           WHERE ais.activite_id = ANY($2::int[])
+           ON CONFLICT DO NOTHING`,
+          [labo.id, activityIds]
+        );
       }
     }
 
