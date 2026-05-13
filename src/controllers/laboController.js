@@ -1452,8 +1452,39 @@ const getLaboPTRecipe = async (req, res) => {
   }
 };
 
+const updateLabo = async (req, res) => {
+  const { laboId } = req.params;
+  const { nom, referentTel, adresse } = req.body;
+  if (!nom || !referentTel)
+    return res.status(400).json({ message: 'nom et referentTel requis' });
+  try {
+    const peRes = await pool.query(
+      'SELECT id FROM profil_entreprise WHERE client_id = $1', [req.user.id]
+    );
+    if (peRes.rows.length === 0)
+      return res.status(400).json({ message: 'Profil entreprise introuvable' });
+    const entrepriseId = peRes.rows[0].id;
+    const result = await pool.query(
+      `UPDATE labos SET nom = $1, referent_tel = $2, adresse = $3, updated_at = NOW()
+       WHERE id = $4 AND entreprise_id = $5 RETURNING *`,
+      [nom.trim(), referentTel.trim(), adresse?.trim() || null, laboId, entrepriseId]
+    );
+    if (result.rows.length === 0)
+      return res.status(404).json({ message: 'Labo introuvable' });
+    // Sync the auto-created labo fournisseur name/tel
+    await pool.query(
+      `UPDATE fournisseurs SET nom = $1, telephone = $2 WHERE labo_id = $3 AND is_labo = true`,
+      [nom.trim(), referentTel.trim(), laboId]
+    );
+    res.json(mapLabo(result.rows[0]));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
-  createLabo, listLabos, getLaboById,
+  createLabo, updateLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
   getLaboFournisseurs, syncLaboFournisseurs,
