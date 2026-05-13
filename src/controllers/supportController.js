@@ -30,21 +30,26 @@ const mapDemande = (row) => ({
   traiteParNom: row.traite_par_nom || null,
   traiteLe: row.traite_le,
   createdAt: row.created_at,
+  // creator (gérant or client)
+  createdBy: row.created_by || row.client_id,
+  createdByNom: row.created_by_nom || row.client_nom || null,
 });
 
-// Client: list my support requests
+// Client: list my support requests (includes requests created by gérants)
 const listMine = async (req, res) => {
-  const clientId = req.user.id;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const result = await pool.query(
-      `SELECT sd.*, da.nom AS domaine_nom
+      `SELECT sd.*, da.nom AS domaine_nom,
+              cb.nom AS created_by_nom_joined
        FROM support_demandes sd
        LEFT JOIN domaines_activite da ON da.id = sd.domaine_id
+       LEFT JOIN utilisateurs cb ON cb.id = sd.created_by
        WHERE sd.client_id = $1
        ORDER BY sd.created_at DESC`,
       [clientId]
     );
-    res.json(result.rows.map(mapDemande));
+    res.json(result.rows.map((row) => mapDemande({ ...row, created_by_nom: row.created_by_nom || row.created_by_nom_joined })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -53,13 +58,19 @@ const listMine = async (req, res) => {
 
 // Client: create a support request
 const create = async (req, res) => {
-  const clientId = req.user.id;
+  const createdById = req.user.id;
+  // Gérant requests are owned by their parent enterprise client
+  const clientId = req.user.gerant_parent_id || req.user.id;
   const { type } = req.body;
   const validTypes = ['ingredient_manquant', 'supplement', 'aide'];
   if (!validTypes.includes(type)) return res.status(400).json({ message: 'Type invalide' });
 
   try {
-    const clientRes = await pool.query('SELECT nom FROM utilisateurs WHERE id = $1', [clientId]);
+    const userRes = await pool.query('SELECT nom FROM utilisateurs WHERE id = $1', [createdById]);
+    const createdByNom = userRes.rows[0]?.nom || null;
+    const clientRes = clientId !== createdById
+      ? await pool.query('SELECT nom FROM utilisateurs WHERE id = $1', [clientId])
+      : { rows: [{ nom: createdByNom }] };
     const clientNom = clientRes.rows[0]?.nom || null;
 
     let params;
@@ -69,29 +80,34 @@ const create = async (req, res) => {
       const { domaineId, categorieNom, uniteNom, nomIngredient } = req.body;
       if (!nomIngredient) return res.status(400).json({ message: 'Nom de l\'ingrédient requis' });
       sql = `INSERT INTO support_demandes
-             (client_id, client_nom, type, domaine_id, categorie_nom, unite_nom, nom_ingredient)
-             VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`;
-      params = [clientId, clientNom, type, domaineId || null, categorieNom || null, uniteNom || null, nomIngredient];
+             (client_id, client_nom, type, domaine_id, categorie_nom, unite_nom, nom_ingredient, created_by, created_by_nom)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`;
+      params = [clientId, clientNom, type, domaineId || null, categorieNom || null, uniteNom || null, nomIngredient, createdById, createdByNom];
     } else if (type === 'supplement') {
       const { nbActivitesSupp, nbLabosSupp, nbGerantsSupp } = req.body;
       const total = (nbActivitesSupp || 0) + (nbLabosSupp || 0) + (nbGerantsSupp || 0);
       if (total === 0) return res.status(400).json({ message: 'Indiquez au moins un supplément' });
       sql = `INSERT INTO support_demandes
-             (client_id, client_nom, type, nb_activites_supp, nb_labos_supp, nb_gerants_supp)
-             VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`;
-      params = [clientId, clientNom, type, nbActivitesSupp || 0, nbLabosSupp || 0, nbGerantsSupp || 0];
+             (client_id, client_nom, type, nb_activites_supp, nb_labos_supp, nb_gerants_supp, created_by, created_by_nom)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`;
+      params = [clientId, clientNom, type, nbActivitesSupp || 0, nbLabosSupp || 0, nbGerantsSupp || 0, createdById, createdByNom];
     } else {
       const { description } = req.body;
       if (!description?.trim()) return res.status(400).json({ message: 'Description requise' });
-      sql = `INSERT INTO support_demandes (client_id, client_nom, type, description) VALUES ($1,$2,$3,$4) RETURNING *`;
-      params = [clientId, clientNom, type, description.trim()];
+      // aide requests are auto-validated on creation
+      sql = `INSERT INTO support_demandes (client_id, client_nom, type, description, statut, created_by, created_by_nom)
+             VALUES ($1,$2,$3,$4,'validée',$5,$6) RETURNING *`;
+      params = [clientId, clientNom, type, description.trim(), createdById, createdByNom];
     }
 
     const result = await pool.query(sql, params);
     const demande = mapDemande(result.rows[0]);
     const notifPayload = { eventType: 'new_demande', demandeId: demande.id, type: demande.type, clientNom: clientNom || 'Client' };
-    pushToAdmins('new_demande', notifPayload);
-    saveNotificationToAdmins(notifPayload).catch(console.error);
+    // Don't notify admins for auto-validated aide requests
+    if (type !== 'aide') {
+      pushToAdmins('new_demande', notifPayload);
+      saveNotificationToAdmins(notifPayload).catch(console.error);
+    }
     res.status(201).json(demande);
   } catch (err) {
     console.error(err);
@@ -113,18 +129,20 @@ const listAll = async (req, res) => {
       `SELECT sd.*,
               u.nom AS client_nom, u.email AS client_email,
               da.nom AS domaine_nom,
-              admin.nom AS traite_par_nom
+              admin.nom AS traite_par_nom,
+              cb.nom AS created_by_nom_joined
        FROM support_demandes sd
        LEFT JOIN utilisateurs u       ON u.id = sd.client_id
        LEFT JOIN domaines_activite da ON da.id = sd.domaine_id
        LEFT JOIN utilisateurs admin   ON admin.id = sd.traite_par
+       LEFT JOIN utilisateurs cb      ON cb.id = sd.created_by
        WHERE ${conditions.join(' AND ')}
        ORDER BY
          CASE sd.statut WHEN 'en_attente' THEN 0 WHEN 'validée' THEN 1 ELSE 2 END,
          sd.created_at DESC`,
       params
     );
-    res.json(result.rows.map(mapDemande));
+    res.json(result.rows.map((row) => mapDemande({ ...row, created_by_nom: row.created_by_nom || row.created_by_nom_joined })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
