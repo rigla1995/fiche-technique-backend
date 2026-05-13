@@ -1452,6 +1452,44 @@ const getLaboPTRecipe = async (req, res) => {
   }
 };
 
+const deleteLabo = async (req, res) => {
+  const { laboId } = req.params;
+  try {
+    const peRes = await pool.query(
+      'SELECT id FROM profil_entreprise WHERE client_id = $1', [req.user.id]
+    );
+    if (peRes.rows.length === 0)
+      return res.status(400).json({ message: 'Profil entreprise introuvable' });
+    const entrepriseId = peRes.rows[0].id;
+
+    const laboRes = await pool.query(
+      'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2', [laboId, entrepriseId]
+    );
+    if (laboRes.rows.length === 0)
+      return res.status(404).json({ message: 'Labo introuvable' });
+
+    // Unassign labo from activities
+    await pool.query(
+      'UPDATE activites SET labo_id = NULL WHERE labo_id = $1 AND entreprise_id = $2',
+      [laboId, entrepriseId]
+    );
+    // Delete auto-created labo fournisseur and its activity links
+    const fRes = await pool.query('SELECT id FROM fournisseurs WHERE labo_id = $1', [laboId]);
+    if (fRes.rows.length > 0) {
+      const fId = fRes.rows[0].id;
+      await pool.query('DELETE FROM fournisseur_activites WHERE fournisseur_id = $1', [fId]);
+      await pool.query('DELETE FROM fournisseur_labos WHERE fournisseur_id = $1', [fId]);
+      await pool.query('DELETE FROM fournisseurs WHERE id = $1', [fId]);
+    }
+    await pool.query('DELETE FROM labos WHERE id = $1', [laboId]);
+
+    res.json({ message: 'Labo supprimé' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 const updateLabo = async (req, res) => {
   const { laboId } = req.params;
   const { nom, referentTel, adresse } = req.body;
@@ -1484,7 +1522,7 @@ const updateLabo = async (req, res) => {
 };
 
 module.exports = {
-  createLabo, updateLabo, listLabos, getLaboById,
+  createLabo, updateLabo, deleteLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
   getLaboFournisseurs, syncLaboFournisseurs,
