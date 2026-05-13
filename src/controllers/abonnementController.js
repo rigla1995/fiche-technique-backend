@@ -550,11 +550,41 @@ const getMontantMois = async (req, res) => {
     const promoGerant = promos.find((p) => p.applies_to === 'supplement_gerant') || null;
     const promoLabo   = promos.find((p) => p.applies_to === 'supplement_labo') || null;
 
-    const effectifMensuel = promoMens   ? applyPromoMensualite(baseMensuel, promoMens)   : baseMensuel;
-    const effectifGerant  = hasGerant   ? applyPromoSupplement(baseGerant, promoGerant)  : 0;
-    const effectifLabo    = hasLabo     ? applyPromoSupplement(baseLabo,   promoLabo)    : 0;
+    // Mensualité promo applies to the FULL total (activités + labos + gérants)
+    const baseTotal = baseMensuel + (hasGerant ? baseGerant : 0) + (hasLabo ? baseLabo : 0);
 
-    const total = effectifMensuel + effectifGerant + effectifLabo;
+    let total, breakdown;
+    if (promoMens) {
+      const effectifTotal = applyPromoMensualite(baseTotal, promoMens);
+      total = effectifTotal;
+      breakdown = {
+        mensualite: {
+          base: baseTotal, effectif: effectifTotal, hasPromo: true,
+          promoType: promoMens.type, coversAll: true,
+        },
+        supplementGerant: { base: baseGerant, effectif: 0, active: false, hasPromo: false, promoType: null },
+        supplementLabo:   { base: baseLabo,   effectif: 0, active: false, hasPromo: false, promoType: null },
+      };
+    } else {
+      const effectifGerant = hasGerant ? applyPromoSupplement(baseGerant, promoGerant) : 0;
+      const effectifLabo   = hasLabo   ? applyPromoSupplement(baseLabo,   promoLabo)   : 0;
+      total = baseMensuel + effectifGerant + effectifLabo;
+      breakdown = {
+        mensualite: {
+          base: baseMensuel, effectif: baseMensuel, hasPromo: false,
+          promoType: null, coversAll: false,
+        },
+        supplementGerant: {
+          base: baseGerant, effectif: effectifGerant, active: hasGerant, hasPromo: !!promoGerant,
+          promoType: promoGerant?.type || null,
+        },
+        supplementLabo: {
+          base: baseLabo, effectif: effectifLabo, active: hasLabo, hasPromo: !!promoLabo,
+          promoType: promoLabo?.type || null,
+        },
+      };
+    }
+
     const isGratuit = promoMens?.type === 'free_months';
 
     res.json({
@@ -568,20 +598,7 @@ const getMontantMois = async (req, res) => {
             datePaiement: existingRes.rows[0].date_paiement,
           }
         : null,
-      breakdown: {
-        mensualite: {
-          base: baseMensuel, effectif: effectifMensuel, hasPromo: !!promoMens,
-          promoType: promoMens?.type || null,
-        },
-        supplementGerant: {
-          base: baseGerant, effectif: effectifGerant, active: hasGerant, hasPromo: !!promoGerant,
-          promoType: promoGerant?.type || null,
-        },
-        supplementLabo: {
-          base: baseLabo, effectif: effectifLabo, active: hasLabo, hasPromo: !!promoLabo,
-          promoType: promoLabo?.type || null,
-        },
-      },
+      breakdown,
       total,
     });
   } catch (err) {
