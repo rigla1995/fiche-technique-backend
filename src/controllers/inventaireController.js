@@ -135,39 +135,37 @@ const getLaboInventaireStock = async (req, res) => {
          WHERE lp.labo_id = $1 AND lp.ingredient_id IS NOT NULL
          GROUP BY lp.ingredient_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_labo_daily
-         WHERE labo_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE labo_id = $1
          GROUP BY ingredient_id
        ),
-       year_transfer AS (
+       all_transfer AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM labo_transfers
          WHERE labo_id = $1 AND ingredient_id IS NOT NULL
-           AND date_trunc('year', date_transfert) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM labo_pertes
          WHERE labo_id = $1 AND ingredient_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        )
        SELECT lis.ingredient_id,
          CASE WHEN li.ingredient_id IS NOT NULL
            THEN li.quantite_reelle + COALESCE(pa.qty,0) - COALESCE(pt.qty,0) - COALESCE(pp.qty,0)
-           ELSE COALESCE(ya.qty,0) - COALESCE(ytr.qty,0) - COALESCE(yp.qty,0)
+           ELSE COALESCE(aa.qty,0) - COALESCE(atr.qty,0) - COALESCE(ap.qty,0)
          END as total_stock
        FROM labo_ingredient_selections lis
        LEFT JOIN last_inv li    ON li.ingredient_id  = lis.ingredient_id
        LEFT JOIN post_appro pa  ON pa.ingredient_id  = lis.ingredient_id
        LEFT JOIN post_transfer pt ON pt.ingredient_id = lis.ingredient_id
        LEFT JOIN post_pertes pp ON pp.ingredient_id  = lis.ingredient_id
-       LEFT JOIN year_appro ya  ON ya.ingredient_id  = lis.ingredient_id
-       LEFT JOIN year_transfer ytr ON ytr.ingredient_id = lis.ingredient_id
-       LEFT JOIN year_pertes yp ON yp.ingredient_id  = lis.ingredient_id
+       LEFT JOIN all_appro aa   ON aa.ingredient_id  = lis.ingredient_id
+       LEFT JOIN all_transfer atr ON atr.ingredient_id = lis.ingredient_id
+       LEFT JOIN all_pertes ap  ON ap.ingredient_id  = lis.ingredient_id
        WHERE lis.labo_id = $1`,
       [laboId]
     );
@@ -198,30 +196,29 @@ const getLaboInventaireStock = async (req, res) => {
          WHERE lp.labo_id = $1 AND lp.produit_id IS NOT NULL
          GROUP BY lp.produit_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM stock_labo_pt_daily
-         WHERE labo_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE labo_id = $1
          GROUP BY produit_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM labo_pertes
          WHERE labo_id = $1 AND produit_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY produit_id
        )
        SELECT lps.produit_id,
          CASE WHEN li.produit_id IS NOT NULL
            THEN li.quantite_reelle + COALESCE(pa.qty,0) - COALESCE(pp.qty,0)
-           ELSE COALESCE(ya.qty,0) - COALESCE(yp.qty,0)
+           ELSE COALESCE(aa.qty,0) - COALESCE(ap.qty,0)
          END as total_stock
        FROM labo_pt_selections lps
        LEFT JOIN last_inv li   ON li.produit_id  = lps.produit_id
        LEFT JOIN post_appro pa ON pa.produit_id  = lps.produit_id
        LEFT JOIN post_pertes pp ON pp.produit_id = lps.produit_id
-       LEFT JOIN year_appro ya ON ya.produit_id  = lps.produit_id
-       LEFT JOIN year_pertes yp ON yp.produit_id = lps.produit_id
+       LEFT JOIN all_appro aa ON aa.produit_id  = lps.produit_id
+       LEFT JOIN all_pertes ap ON ap.produit_id = lps.produit_id
        WHERE lps.labo_id = $1`,
       [laboId]
     );
@@ -465,30 +462,29 @@ const getActiviteInventaireStock = async (req, res) => {
          WHERE p.activite_id = $1 AND p.ingredient_id IS NOT NULL
          GROUP BY p.ingredient_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE activite_id = $1
          GROUP BY ingredient_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM pertes
          WHERE activite_id = $1 AND ingredient_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        )
        SELECT ais.ingredient_id,
          CASE WHEN li.ingredient_id IS NOT NULL
            THEN li.quantite_reelle + COALESCE(pa.qty,0) - COALESCE(pp.qty,0)
-           ELSE COALESCE(ya.qty,0) - COALESCE(yp.qty,0)
+           ELSE COALESCE(aa.qty,0) - COALESCE(ap.qty,0)
          END as total_stock
        FROM activite_ingredient_selections ais
        LEFT JOIN last_inv li   ON li.ingredient_id = ais.ingredient_id
        LEFT JOIN post_appro pa ON pa.ingredient_id = ais.ingredient_id
        LEFT JOIN post_pertes pp ON pp.ingredient_id = ais.ingredient_id
-       LEFT JOIN year_appro ya ON ya.ingredient_id = ais.ingredient_id
-       LEFT JOIN year_pertes yp ON yp.ingredient_id = ais.ingredient_id
+       LEFT JOIN all_appro aa ON aa.ingredient_id = ais.ingredient_id
+       LEFT JOIN all_pertes ap ON ap.ingredient_id = ais.ingredient_id
        WHERE ais.activite_id = $1`,
       [activiteId]
     );
@@ -519,17 +515,16 @@ const getActiviteInventaireStock = async (req, res) => {
          WHERE p.activite_id = $1 AND p.produit_id IS NOT NULL
          GROUP BY p.produit_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM stock_produits_transformes
-         WHERE activite_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE activite_id = $1
          GROUP BY produit_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM pertes
          WHERE activite_id = $1 AND produit_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY produit_id
        ),
        pt_list AS (
@@ -540,14 +535,14 @@ const getActiviteInventaireStock = async (req, res) => {
        SELECT pl.produit_id,
          CASE WHEN li.produit_id IS NOT NULL
            THEN li.quantite_reelle + COALESCE(pa.qty,0) - COALESCE(pp.qty,0)
-           ELSE COALESCE(ya.qty,0) - COALESCE(yp.qty,0)
+           ELSE COALESCE(aa.qty,0) - COALESCE(ap.qty,0)
          END as total_stock
        FROM pt_list pl
        LEFT JOIN last_inv li   ON li.produit_id = pl.produit_id
        LEFT JOIN post_appro pa ON pa.produit_id = pl.produit_id
        LEFT JOIN post_pertes pp ON pp.produit_id = pl.produit_id
-       LEFT JOIN year_appro ya ON ya.produit_id = pl.produit_id
-       LEFT JOIN year_pertes yp ON yp.produit_id = pl.produit_id`,
+       LEFT JOIN all_appro aa ON aa.produit_id = pl.produit_id
+       LEFT JOIN all_pertes ap ON ap.produit_id = pl.produit_id`,
       [activiteId]
     );
     const totalStockPTActMap = {};
@@ -1206,30 +1201,29 @@ const getClientInventaireStock = async (req, res) => {
          WHERE cp.client_id = $1 AND cp.ingredient_id IS NOT NULL
          GROUP BY cp.ingredient_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_client_daily
-         WHERE client_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE client_id = $1
          GROUP BY ingredient_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM client_pertes
          WHERE client_id = $1 AND ingredient_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY ingredient_id
        )
        SELECT cis.ingredient_id,
          CASE WHEN li.ingredient_id IS NOT NULL
            THEN li.quantite_reelle + COALESCE(pa.qty,0) - COALESCE(pp.qty,0)
-           ELSE COALESCE(ya.qty,0) - COALESCE(yp.qty,0)
+           ELSE COALESCE(aa.qty,0) - COALESCE(ap.qty,0)
          END as total_stock
        FROM client_ingredient_selections cis
        LEFT JOIN last_inv li   ON li.ingredient_id = cis.ingredient_id
        LEFT JOIN post_appro pa ON pa.ingredient_id = cis.ingredient_id
        LEFT JOIN post_pertes pp ON pp.ingredient_id = cis.ingredient_id
-       LEFT JOIN year_appro ya ON ya.ingredient_id = cis.ingredient_id
-       LEFT JOIN year_pertes yp ON yp.ingredient_id = cis.ingredient_id
+       LEFT JOIN all_appro aa ON aa.ingredient_id = cis.ingredient_id
+       LEFT JOIN all_pertes ap ON ap.ingredient_id = cis.ingredient_id
        WHERE cis.client_id = $1`,
       [clientId]
     );
@@ -1260,30 +1254,29 @@ const getClientInventaireStock = async (req, res) => {
          WHERE cp.client_id = $1 AND cp.produit_id IS NOT NULL
          GROUP BY cp.produit_id
        ),
-       year_appro AS (
+       all_appro AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM stock_produits_transformes
-         WHERE client_id = $1 AND date_trunc('year', date_appro) = date_trunc('year', CURRENT_DATE)
+         WHERE client_id = $1
          GROUP BY produit_id
        ),
-       year_pertes AS (
+       all_pertes AS (
          SELECT produit_id, SUM(quantite) as qty
          FROM client_pertes
          WHERE client_id = $1 AND produit_id IS NOT NULL
-           AND date_trunc('year', date_perte) = date_trunc('year', CURRENT_DATE)
          GROUP BY produit_id
        )
        SELECT p.id as produit_id,
          CASE WHEN li.produit_id IS NOT NULL
            THEN li.quantite_reelle + COALESCE(pa.qty,0) - COALESCE(pp.qty,0)
-           ELSE COALESCE(ya.qty,0) - COALESCE(yp.qty,0)
+           ELSE COALESCE(aa.qty,0) - COALESCE(ap.qty,0)
          END as total_stock
        FROM produits p
        LEFT JOIN last_inv li   ON li.produit_id = p.id
        LEFT JOIN post_appro pa ON pa.produit_id = p.id
        LEFT JOIN post_pertes pp ON pp.produit_id = p.id
-       LEFT JOIN year_appro ya ON ya.produit_id = p.id
-       LEFT JOIN year_pertes yp ON yp.produit_id = p.id
+       LEFT JOIN all_appro aa ON aa.produit_id = p.id
+       LEFT JOIN all_pertes ap ON ap.produit_id = p.id
        WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE`,
       [clientId]
     );
