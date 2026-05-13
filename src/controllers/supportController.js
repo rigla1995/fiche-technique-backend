@@ -330,6 +330,73 @@ const traiter = async (req, res) => {
   }
 };
 
+// Admin: preview avenant PDF for a supplement request (no DB changes)
+const previewAvenant = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const demandeRes = await pool.query(
+      `SELECT sd.*, u.nom AS client_nom_u
+       FROM support_demandes sd
+       LEFT JOIN utilisateurs u ON u.id = sd.client_id
+       WHERE sd.id = $1 AND sd.type = 'supplement'`,
+      [id]
+    );
+    if (demandeRes.rows.length === 0) return res.status(404).json({ message: 'Demande introuvable' });
+    const demande = demandeRes.rows[0];
+
+    const tarifsRes = await pool.query('SELECT cle, valeur_dt FROM tarifs_config');
+    const tarifs = {};
+    tarifsRes.rows.forEach((r) => { tarifs[r.cle] = parseFloat(r.valeur_dt); });
+
+    const configRes = await pool.query(
+      `SELECT ac.* FROM abonnement_config ac
+       JOIN abonnements a ON a.id = ac.abonnement_id
+       WHERE a.client_id = $1`,
+      [demande.client_id]
+    );
+    const cfg = configRes.rows[0];
+    if (!cfg) return res.status(404).json({ message: 'Configuration abonnement introuvable' });
+
+    // Simulate config after supplement is applied
+    const cfgAfter = {
+      ...cfg,
+      nb_activites: (parseInt(cfg.nb_activites) || 1) + (demande.nb_activites_supp || 0),
+      nb_labos:     (parseInt(cfg.nb_labos)     || 0) + (demande.nb_labos_supp     || 0),
+      nb_gerants:   (parseInt(cfg.nb_gerants)   || 0) + (demande.nb_gerants_supp   || 0),
+    };
+
+    const activiteCost = computeBaseMensuelFromConfig(cfgAfter, tarifs) || 0;
+    const laboCost     = computeBaseLaboFromConfig(cfgAfter, tarifs)    || 0;
+    const gerantCost   = computeBaseGerantFromConfig(cfgAfter, tarifs)  || 0;
+    const newMensuel   = activiteCost + laboCost + gerantCost;
+
+    const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
+    const pdfData = {
+      nom: clientNom,
+      notesAdmin: null,
+      nbActivitesAdded: demande.nb_activites_supp || 0,
+      nbLabosAdded:     demande.nb_labos_supp     || 0,
+      nbGerantsAdded:   demande.nb_gerants_supp   || 0,
+      nbActivites: cfgAfter.nb_activites,
+      nbLabos:     cfgAfter.nb_labos,
+      nbGerants:   cfgAfter.nb_gerants,
+      activiteCost,
+      laboCost,
+      gerantCost,
+      newMensuel,
+      promoApplied: false,
+      effectifMensuel: newMensuel,
+      dateAvenant: new Date().toISOString(),
+    };
+
+    const pdfBase64 = await generateAvenantPdf(pdfData);
+    res.json({ pdfBase64 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // Client: delete a pending support request
 const deleteMine = async (req, res) => {
   const { id } = req.params;
@@ -351,4 +418,4 @@ const deleteMine = async (req, res) => {
   }
 };
 
-module.exports = { listMine, create, listAll, traiter, deleteMine };
+module.exports = { listMine, create, listAll, traiter, deleteMine, previewAvenant };

@@ -71,6 +71,7 @@ router.get('/support', authenticate, requireClient, support.listMine);
 router.post('/support', authenticate, requireClient, support.create);
 router.delete('/support/:id', authenticate, requireClient, support.deleteMine);
 router.get('/admin/support', authenticate, requireSuperAdmin, support.listAll);
+router.get('/admin/support/:id/avenant-preview', authenticate, requireSuperAdmin, support.previewAvenant);
 router.put('/admin/support/:id', authenticate, requireSuperAdmin, support.traiter);
 
 module.exports = router;
