@@ -10,12 +10,14 @@ const {
   exportHistoriqueExcel,
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
   getCascadeInfoClient, getCascadeInfoEntreprise,
+  getClientIngredientSelections,
 } = require('../controllers/stockController');
 const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
 const { listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, getPrixClientPerte, getDateRangeClientPerte } = require('../controllers/pertesController');
 
 // Client stock (all clients)
 router.get('/client/summary', authenticate, requireClient, getStockClientSummary);
+router.get('/client/ingredient-selections', authenticate, requireClient, getClientIngredientSelections);
 router.get('/client', authenticate, requireClient, getStockClient);
 router.put('/client/:ingredientId', authenticate, requireClient, updateStockClient);
 router.put('/client/:ingredientId/seuil-min', authenticate, requireClient, updateSeuilMinClient);

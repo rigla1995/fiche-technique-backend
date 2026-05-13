@@ -6,6 +6,7 @@ const {
   deleteFranchiseGroup,
   hasActivites, getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,
+  getActiviteSelectedIngredients, getTypeSelectedIngredients,
 } = require('../controllers/entrepriseController');
 const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur } = require('../controllers/fournisseurController');
 const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, getPrixEntreprisePerte, getDateRangeEntreprisePerte } = require('../controllers/pertesController');
@@ -18,6 +19,7 @@ router.put('/', authenticate, requireEntreprise, upsertEntreprise);
 // Activities
 router.get('/activites/has', authenticate, requireEntreprise, hasActivites);
 router.get('/activites/types-summary', authenticate, requireEntreprise, getActiviteTypesSummary);
+router.get('/activites/selected-ingredients', authenticate, requireEntreprise, getTypeSelectedIngredients);
 router.get('/activites', authenticate, requireEntreprise, listActivites);
 router.post('/activites', authenticate, requireEntreprise, createActivite);
 router.put('/activites/:id', authenticate, requireEntreprise, updateActivite);
@@ -25,6 +27,7 @@ router.delete('/activites/:id', authenticate, requireEntreprise, deleteActivite)
 router.delete('/franchise-groups/:group', authenticate, requireEntreprise, deleteFranchiseGroup);
 router.post('/activites/:id/duplicate', authenticate, requireEntreprise, duplicateActivite);
 router.get('/activites/:id/ingredients', authenticate, requireEntreprise, getActiviteIngredients);
+router.get('/activites/:id/selected-ingredients', authenticate, requireEntreprise, getActiviteSelectedIngredients);
 router.post('/activites/:id/ingredients/:ingredientId/select', authenticate, requireEntreprise, toggleActiviteIngredient);
 router.put('/activites/:id/ingredients/:ingredientId/price', authenticate, requireEntreprise, updateIngredientPrice);
 

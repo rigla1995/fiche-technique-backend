@@ -1606,6 +1606,27 @@ const createClientPerte = async (req, res) => {
   }
 };
 
+const getClientIngredientSelections = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const result = await pool.query(
+      `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+              i.categorie_id as "categorieId"
+       FROM client_ingredient_selections cis
+       JOIN ingredients i ON i.id = cis.ingredient_id
+       JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
+       WHERE cis.client_id = $1
+       ORDER BY c.nom NULLS LAST, i.nom`,
+      [clientId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getStockClient, updateStockClient, getStockClientSummary,
   getStockEntreprise, updateStockEntreprise, updateSeuilMin,
@@ -1616,4 +1637,5 @@ module.exports = {
   exportHistoriqueExcel,
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
   getCascadeInfoClient, getCascadeInfoEntreprise,
+  getClientIngredientSelections,
 };

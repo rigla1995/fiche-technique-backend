@@ -550,6 +550,67 @@ const deleteFranchiseGroup = async (req, res) => {
   }
 };
 
+// Returns only SELECTED ingredients for one activité — gérant-compatible
+const getActiviteSelectedIngredients = async (req, res) => {
+  const { id } = req.params;
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const check = await pool.query(
+      `SELECT a.id, a.labo_id FROM activites a
+       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE a.id = $1 AND pe.client_id = $2`,
+      [id, clientId]
+    );
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+
+    const result = await pool.query(
+      `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+              i.categorie_id as "categorieId"
+       FROM activite_ingredient_selections ais
+       JOIN ingredients i ON i.id = ais.ingredient_id
+       JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
+       WHERE ais.activite_id = $1
+       ORDER BY c.nom NULLS LAST, i.nom`,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// Returns SELECTED ingredients for all activités of a type (franchise/distinct) — for "all" view
+const getTypeSelectedIngredients = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const { type } = req.query;
+  try {
+    const typeFilter = type === 'franchise'
+      ? `AND a.type IN ('franchise_avec_labo','franchise_gestion_separee','franchise')`
+      : type === 'distinct'
+      ? `AND (a.type = 'distincte' OR a.type IS NULL)`
+      : '';
+    const result = await pool.query(
+      `SELECT DISTINCT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+              i.categorie_id as "categorieId"
+       FROM activite_ingredient_selections ais
+       JOIN activites a ON a.id = ais.activite_id
+       JOIN profil_entreprise pe ON pe.id = a.entreprise_id
+       JOIN ingredients i ON i.id = ais.ingredient_id
+       JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
+       WHERE pe.client_id = $1 ${typeFilter}
+       ORDER BY categorie NULLS LAST, i.nom`,
+      [clientId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
@@ -557,4 +618,5 @@ module.exports = {
   hasActivites,
   getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,
+  getActiviteSelectedIngredients, getTypeSelectedIngredients,
 };
