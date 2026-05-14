@@ -100,9 +100,10 @@ const createActivite = async (req, res) => {
   const baseName = isFranchise && franchiseName ? franchiseName : nom;
   if (!baseName) return res.status(400).json({ message: 'Nom requis' });
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const entrepriseRes = await pool.query(
       'SELECT id, meme_activite FROM profil_entreprise WHERE client_id = $1',
-      [req.user.id]
+      [clientId]
     );
     if (entrepriseRes.rows.length === 0)
       return res.status(400).json({ message: 'Créez d\'abord votre profil entreprise' });
@@ -199,9 +200,10 @@ const updateActivite = async (req, res) => {
   const { id } = req.params;
   const { nom, adresse, telephone, email } = req.body;
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const entreprise = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1',
-      [req.user.id]
+      [clientId]
     );
     if (entreprise.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
 
@@ -226,9 +228,10 @@ const updateActivite = async (req, res) => {
 const deleteActivite = async (req, res) => {
   const { id } = req.params;
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const entreprise = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1',
-      [req.user.id]
+      [clientId]
     );
     if (entreprise.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
 
@@ -247,9 +250,10 @@ const deleteActivite = async (req, res) => {
 const duplicateActivite = async (req, res) => {
   const { id } = req.params;
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const entreprise = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1',
-      [req.user.id]
+      [clientId]
     );
     if (entreprise.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
 
@@ -274,9 +278,10 @@ const duplicateActivite = async (req, res) => {
 
 const hasActivites = async (req, res) => {
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const entreprise = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1',
-      [req.user.id]
+      [clientId]
     );
     if (entreprise.rows.length === 0) return res.json({ hasActivites: false, count: 0 });
 
@@ -301,7 +306,7 @@ const getActiviteIngredients = async (req, res) => {
       `SELECT a.id, a.labo_id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
@@ -363,7 +368,7 @@ const toggleActiviteIngredient = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
@@ -483,7 +488,7 @@ const updateIngredientPrice = async (req, res) => {
       `SELECT a.id FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE a.id = $1 AND pe.client_id = $2`,
-      [id, req.user.id]
+      [id, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
@@ -504,9 +509,10 @@ const deleteFranchiseGroup = async (req, res) => {
   const { group } = req.params;
   if (!group) return res.status(400).json({ message: 'Groupe requis' });
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const entrepriseRes = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1',
-      [req.user.id]
+      [clientId]
     );
     if (entrepriseRes.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
     const entrepriseId = entrepriseRes.rows[0].id;
