@@ -278,7 +278,6 @@ const getLaboStock = async (req, res) => {
            ingredient_id, quantite_reelle, date_inventaire
          FROM inventaires
          WHERE labo_id = $1 AND ingredient_id IS NOT NULL
-           AND date_trunc('year', date_inventaire) = date_trunc('year', CURRENT_DATE)
          ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
        ),
        post_appro AS (
@@ -402,6 +401,7 @@ const getLaboStock = async (req, res) => {
       const avgPrix = b.hasInv ? (b.avgPrixPost ?? b.avgPrixAll ?? null) : (b.avgPrixAll ?? null);
       const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
       const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
+      const transfertsDepuisInv = b.hasInv ? b.postTransferQty : b.allTransferQty;
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
@@ -422,6 +422,7 @@ const getLaboStock = async (req, res) => {
         lastInvQty: b.hasInv ? b.invQty : null,
         pertesDepuisInv,
         ptUsageDepuisInv,
+        transfertsDepuisInv,
       };
     });
 
@@ -465,7 +466,6 @@ const getLaboStock = async (req, res) => {
            produit_id, quantite_reelle, date_inventaire
          FROM inventaires
          WHERE labo_id = $1 AND produit_id IS NOT NULL
-           AND date_trunc('year', date_inventaire) = date_trunc('year', CURRENT_DATE)
          ORDER BY produit_id, date_inventaire DESC, created_at DESC
        ),
        post_appro AS (
