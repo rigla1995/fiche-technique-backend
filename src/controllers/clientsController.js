@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
-const { createAbonnement } = require('./abonnementController');
+const { createAbonnement, insertPromoForAbonnement } = require('./abonnementController');
 const { generateInviteToken, sendWelcomeWithContractEmail } = require('../services/emailService');
 
 const mapClient = (row) => ({
@@ -152,7 +152,16 @@ const create = async (req, res) => {
       montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
     }
 
-    await createAbonnement(user.id, compteType, montantOnboarding, config);
+    const aboId = await createAbonnement(user.id, compteType, montantOnboarding, config);
+
+    // Create promotions passed during client creation
+    const promotions = Array.isArray(req.body.promotions) ? req.body.promotions : [];
+    if (promotions.length > 0) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      for (const promoData of promotions) {
+        await insertPromoForAbonnement(aboId, todayStr, promoData, req.user.id);
+      }
+    }
 
     // Send welcome email with contract PDF if provided
     if (contractPdfBase64) {

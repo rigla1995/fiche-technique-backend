@@ -694,15 +694,120 @@ const listPromotions = async (req, res) => {
   }
 };
 
-const createPromotion = async (req, res) => {
-  const { clientId } = req.params;
+// Core promo insertion logic — reusable from both the HTTP route and internal client creation
+const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, createdById) => {
   const {
     type, appliesTo,
     discountOnboarding, discountMensualite,
     fixedOnboarding, fixedMensualite,
     discountSupplement, fixedSupplement,
     dateDebut, monthsDuration,
-  } = req.body;
+  } = promoData;
+
+  const isMonthOnly = appliesTo !== 'onboarding';
+  const cmpDateDebut = isMonthOnly ? dateDebut.slice(0, 7) : dateDebut;
+  const cmpAboStart  = isMonthOnly ? aboDateDebutStr.slice(0, 7) : aboDateDebutStr;
+  if (cmpDateDebut < cmpAboStart) {
+    const hint = isMonthOnly ? aboDateDebutStr.slice(0, 7) : aboDateDebutStr;
+    const err = new Error(`La date de début ne peut pas être antérieure au début de l'abonnement (${hint})`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  let dateFin = null;
+  if (monthsDuration && Number(monthsDuration) > 0) {
+    const d = new Date(dateDebut);
+    d.setMonth(d.getMonth() + Number(monthsDuration));
+    d.setDate(d.getDate() - 1);
+    dateFin = d.toISOString().slice(0, 10);
+  }
+
+  const conflictMap = {
+    mensualite:          ['mensualite', 'les_deux'],
+    onboarding:          ['onboarding', 'les_deux'],
+    les_deux:            ['mensualite', 'onboarding', 'les_deux'],
+    supplement_gerant:   ['supplement_gerant'],
+    supplement_labo:     ['supplement_labo'],
+    supplement_activite: ['supplement_activite'],
+  };
+  const conflictTypes = conflictMap[appliesTo] || [appliesTo];
+  const conflictRes = await pool.query(
+    `SELECT applies_to, date_fin FROM promotions
+     WHERE abonnement_id = $1
+       AND applies_to = ANY($2)
+       AND date_debut <= COALESCE($3::date, '9999-12-31'::date)
+       AND (date_fin IS NULL OR date_fin >= $4::date)
+     LIMIT 1`,
+    [aboId, conflictTypes, dateFin, dateDebut]
+  );
+  if (conflictRes.rows.length > 0) {
+    const existing = conflictRes.rows[0].applies_to;
+    const existingFin = conflictRes.rows[0].date_fin;
+    const hint = existingFin
+      ? ` Elle se termine le ${new Date(existingFin).toLocaleDateString('fr-FR')}.`
+      : ' Elle est permanente.';
+    const err = new Error(`Une promotion sur "${existing}" chevauche cette période.${hint}`);
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const result = await pool.query(
+    `INSERT INTO promotions
+       (abonnement_id, type, applies_to,
+        discount_onboarding, discount_mensualite,
+        fixed_onboarding, fixed_mensualite,
+        discount_supplement, fixed_supplement,
+        date_debut, months_duration, date_fin, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+     RETURNING *, (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active`,
+    [
+      aboId, type, appliesTo,
+      discountOnboarding || null, discountMensualite || null,
+      fixedOnboarding || null, fixedMensualite || null,
+      discountSupplement || null, fixedSupplement || null,
+      dateDebut, monthsDuration || null, dateFin,
+      createdById,
+    ]
+  );
+  const promo = result.rows[0];
+
+  if (type === 'free_months' && ['onboarding', 'les_deux'].includes(appliesTo)) {
+    await pool.query(
+      `UPDATE abonnements SET statut_onboarding = 'gratuit', updated_at = NOW() WHERE id = $1`,
+      [aboId]
+    );
+  }
+
+  if (['mensualite', 'les_deux'].includes(appliesTo)) {
+    const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
+    const config = configRes.rows[0] || null;
+    let base = 0;
+    if (config) {
+      const tarifs = await loadAllTarifs();
+      base = (computeBaseMensuelFromConfig(config, tarifs) || 0)
+        + (computeBaseGerantFromConfig(config, tarifs) || 0)
+        + (computeBaseLaboFromConfig(config, tarifs) || 0);
+    } else {
+      const aboTypeRes = await pool.query('SELECT compte_type FROM abonnements WHERE id = $1', [aboId]);
+      const compteType = aboTypeRes.rows[0]?.compte_type;
+      const tarifKey = compteType === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel';
+      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifKey]);
+      base = parseFloat(tarifRes.rows[0]?.valeur_dt || 0);
+    }
+    const newMontant = applyPromoMensualite(base, promo);
+    const newStatut = newMontant === 0 ? 'gratuit' : 'en_attente';
+    const params = [aboId, dateDebut, newMontant, newStatut];
+    let sql = `UPDATE paiements SET montant_dt = $3, statut = $4 WHERE abonnement_id = $1 AND statut IN ('en_attente', 'gratuit') AND mois >= $2::date`;
+    if (dateFin) { sql += ` AND mois <= $5::date`; params.push(dateFin); }
+    await pool.query(sql, params);
+  }
+
+  return promo;
+};
+
+const createPromotion = async (req, res) => {
+  const { clientId } = req.params;
+  const { type, appliesTo, dateDebut } = req.body;
 
   const validTypes = ['percent_off', 'free_months', 'fixed_price'];
   const validApplies = ['onboarding', 'mensualite', 'les_deux', 'supplement_gerant', 'supplement_labo', 'supplement_activite'];
@@ -715,107 +820,14 @@ const createPromotion = async (req, res) => {
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
     const aboDateDebut = aboRes.rows[0].date_debut;
-
-    // date_debut must be >= subscription start date
-    // For mensualite/supplements, compare at month level only (day is irrelevant)
     const aboDateDebutStr = aboDateDebut instanceof Date
       ? aboDateDebut.toISOString().slice(0, 10)
       : aboDateDebut.toString().slice(0, 10);
-    const isMonthOnly = appliesTo !== 'onboarding';
-    const cmpDateDebut = isMonthOnly ? dateDebut.slice(0, 7) : dateDebut;
-    const cmpAboStart  = isMonthOnly ? aboDateDebutStr.slice(0, 7) : aboDateDebutStr;
-    if (cmpDateDebut < cmpAboStart) {
-      const hint = isMonthOnly ? aboDateDebutStr.slice(0, 7) : aboDateDebutStr;
-      return res.status(400).json({ message: `La date de début ne peut pas être antérieure au début de l'abonnement (${hint})` });
-    }
 
-    // Compute date_fin from dateDebut + monthsDuration (needed for conflict check)
-    let dateFin = null;
-    if (monthsDuration && Number(monthsDuration) > 0) {
-      const d = new Date(dateDebut);
-      d.setMonth(d.getMonth() + Number(monthsDuration));
-      d.setDate(d.getDate() - 1); // last day of promotion
-      dateFin = d.toISOString().slice(0, 10);
-    }
-
-    // Conflict check: date-range overlap with existing promos of same type
-    const conflictMap = {
-      mensualite:          ['mensualite', 'les_deux'],
-      onboarding:          ['onboarding', 'les_deux'],
-      les_deux:            ['mensualite', 'onboarding', 'les_deux'],
-      supplement_gerant:   ['supplement_gerant'],
-      supplement_labo:     ['supplement_labo'],
-      supplement_activite: ['supplement_activite'],
-    };
-    const conflictTypes = conflictMap[appliesTo];
-    // Two date ranges [A,B] and [C,D] overlap when A <= D and C <= B
-    // (NULL date_fin = open-ended / infinite)
-    const conflictRes = await pool.query(
-      `SELECT applies_to, date_fin FROM promotions
-       WHERE abonnement_id = $1
-         AND applies_to = ANY($2)
-         AND date_debut <= COALESCE($3::date, '9999-12-31'::date)
-         AND (date_fin IS NULL OR date_fin >= $4::date)
-       LIMIT 1`,
-      [aboId, conflictTypes, dateFin, dateDebut]
-    );
-    if (conflictRes.rows.length > 0) {
-      const existing = conflictRes.rows[0].applies_to;
-      const existingFin = conflictRes.rows[0].date_fin;
-      const hint = existingFin
-        ? ` Elle se termine le ${new Date(existingFin).toLocaleDateString('fr-FR')}.`
-        : ' Elle est permanente.';
-      return res.status(409).json({
-        message: `Une promotion sur "${existing}" chevauche cette période.${hint}`,
-      });
-    }
-
-    const result = await pool.query(
-      `INSERT INTO promotions
-         (abonnement_id, type, applies_to,
-          discount_onboarding, discount_mensualite,
-          fixed_onboarding, fixed_mensualite,
-          discount_supplement, fixed_supplement,
-          date_debut, months_duration, date_fin, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-       RETURNING *, (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active`,
-      [
-        aboId, type, appliesTo,
-        discountOnboarding || null, discountMensualite || null,
-        fixedOnboarding || null, fixedMensualite || null,
-        discountSupplement || null, fixedSupplement || null,
-        dateDebut, monthsDuration || null, dateFin,
-        req.user.id,
-      ]
-    );
-    const promo = result.rows[0];
-
-    // Sync statut_onboarding when a free onboarding promo is created
-    if (type === 'free_months' && ['onboarding', 'les_deux'].includes(appliesTo)) {
-      await pool.query(
-        `UPDATE abonnements SET statut_onboarding = 'gratuit', updated_at = NOW() WHERE id = $1`,
-        [aboId]
-      );
-    }
-
-    // Update existing en_attente paiements within the promo's date range
-    if (['mensualite', 'les_deux'].includes(appliesTo)) {
-      const aboTypeRes = await pool.query('SELECT compte_type FROM abonnements WHERE id = $1', [aboId]);
-      const compteType = aboTypeRes.rows[0]?.compte_type;
-      const tarifKey = compteType === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel';
-      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifKey]);
-      const base = parseFloat(tarifRes.rows[0]?.valeur_dt || 0);
-      const newMontant = applyPromoMensualite(base, promo);
-
-      const newStatut = newMontant === 0 ? 'gratuit' : 'en_attente';
-      const params = [aboId, dateDebut, newMontant, newStatut];
-      let sql = `UPDATE paiements SET montant_dt = $3, statut = $4 WHERE abonnement_id = $1 AND statut IN ('en_attente', 'gratuit') AND mois >= $2::date`;
-      if (dateFin) { sql += ` AND mois <= $5::date`; params.push(dateFin); }
-      await pool.query(sql, params);
-    }
-
+    const promo = await insertPromoForAbonnement(aboId, aboDateDebutStr, req.body, req.user.id);
     res.status(201).json(mapPromotion(promo));
   } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -1400,7 +1412,7 @@ module.exports = {
   updateOnboarding, updateProlongation, updateNotes, updateMode,
   upsertPaiement,
   getMontantMois,
-  listPromotions, createPromotion, updatePromotion, deletePromotion,
+  listPromotions, createPromotion, updatePromotion, deletePromotion, insertPromoForAbonnement,
   getAbonnementConfig, updateAbonnementConfig, getPricingPreview, getSupplementPricing, getClientSupplementPricing,
   confirmInvite,
   allPaiements, allPromotions,
