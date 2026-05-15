@@ -1668,7 +1668,7 @@ const updateTransfer = async (req, res) => {
       await client.query('BEGIN');
 
       await client.query(
-        'UPDATE labo_transfers SET quantite = $1, updated_at = NOW() WHERE id = $2',
+        'UPDATE labo_transfers SET quantite = $1 WHERE id = $2',
         [newQty, transferId]
       );
 
