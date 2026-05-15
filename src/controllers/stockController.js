@@ -522,6 +522,13 @@ const getStockEntreprise = async (req, res) => {
          WHERE activite_id = $1 AND quantite > 0
          ORDER BY ingredient_id, date_appro DESC, id DESC
        ),
+       last_manuel_appro AS (
+         SELECT DISTINCT ON (ingredient_id)
+           ingredient_id, date_appro
+         FROM stock_entreprise_daily
+         WHERE activite_id = $1 AND quantite > 0 AND type_appro != 'transfert'
+         ORDER BY ingredient_id, date_appro DESC, id DESC
+       ),
        all_appro AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_entreprise_daily
@@ -563,7 +570,7 @@ const getStockEntreprise = async (req, res) => {
        since_appro_transferts AS (
          SELECT sed.ingredient_id, SUM(sed.quantite) as qty
          FROM stock_entreprise_daily sed
-         JOIN last_appro la ON la.ingredient_id = sed.ingredient_id AND sed.date_appro >= la.date_appro
+         JOIN last_manuel_appro lma ON lma.ingredient_id = sed.ingredient_id AND sed.date_appro > lma.date_appro
          WHERE sed.activite_id = $1 AND sed.quantite > 0 AND sed.type_appro = 'transfert'
          GROUP BY sed.ingredient_id
        )
