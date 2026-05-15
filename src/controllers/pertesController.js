@@ -728,6 +728,54 @@ const listLaboPertes = async (req, res) => {
   }
 };
 
+// ── Labo — export Excel ───────────────────────────────────────────────────────
+
+const exportLaboPerteExcel = async (req, res) => {
+  const { laboId } = req.params;
+  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds } = req.query;
+  const clientId = req.user.gerant_parent_id || req.user.id;
+
+  try {
+    const ownerCheck = await pool.query(
+      `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id WHERE l.id = $1 AND pe.client_id = $2`,
+      [laboId, clientId]
+    );
+    if (ownerCheck.rows.length === 0) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
+    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+
+    const params = [laboId];
+    const wheres = [`lp.labo_id = $1`, `lp.ingredient_id IS NOT NULL`];
+    if (dateDebut)   { params.push(dateDebut);   wheres.push(`lp.date_perte >= $${params.length}`); }
+    if (dateFin)     { params.push(dateFin);     wheres.push(`lp.date_perte <= $${params.length}`); }
+    if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
+    if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
+    if (ingredientId){ params.push(ingredientId); wheres.push(`lp.ingredient_id = $${params.length}`); }
+    if (search)      { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
+
+    const idList = selectedIds ? String(selectedIds).split(',').map(Number).filter(Boolean) : [];
+
+    const result = await pool.query(
+      `SELECT lp.id, lp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
+              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
+              lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte, lp.created_at
+       FROM labo_pertes lp
+       JOIN ingredients i ON i.id = lp.ingredient_id
+       JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
+       WHERE ${wheres.join(' AND ')}
+       ORDER BY lp.date_perte DESC, lp.created_at DESC`,
+      params
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="Historique-Pertes-Labo-${laboNom}.xlsx"`);
+    await buildExcelPertes(res, result.rows, false, { dateDebut, dateFin, selectedIds: idList });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur génération Excel' });
+  }
+};
+
 module.exports = {
   createPerte, listPertes,
   listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes,
@@ -735,5 +783,5 @@ module.exports = {
   listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes,
   getPrixEntreprisePerte, getDateRangeEntreprisePerte,
   getPrixLaboPerte, getDateRangeLaboPerte,
-  listLaboPertes,
+  listLaboPertes, exportLaboPerteExcel,
 };

@@ -1519,6 +1519,129 @@ const updateLabo = async (req, res) => {
   }
 };
 
+// ── Transfer history — export Excel ──────────────────────────────────────────
+
+const exportLaboTransferExcel = async (req, res) => {
+  const { laboId } = req.params;
+  const { startDate, endDate, activiteId, selectedIds: selectedIdsParam } = req.query;
+  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
+
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
+    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+
+    const conditions = ['lt.labo_id = $1'];
+    const params = [laboId];
+    let idx = 2;
+    if (startDate)  { conditions.push(`lt.date_transfert >= $${idx++}`); params.push(startDate); }
+    if (endDate)    { conditions.push(`lt.date_transfert <= $${idx++}`); params.push(endDate); }
+    if (activiteId) { conditions.push(`lt.activite_id = $${idx++}`); params.push(activiteId); }
+
+    const result = await pool.query(
+      `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
+              lt.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
+              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
+              lt.activite_id, a.nom AS activite_nom
+       FROM labo_transfers lt
+       JOIN ingredients i ON i.id = lt.ingredient_id
+       JOIN unites u ON u.id = i.unite_id
+       LEFT JOIN categories c ON c.id = i.categorie_id
+       JOIN activites a ON a.id = lt.activite_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY lt.date_transfert DESC, lt.id DESC`,
+      params
+    );
+    const rows = result.rows;
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Fiche Technique App';
+    const sheet = workbook.addWorksheet(`Hist Transferts ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+
+    const PURPLE = '4C1D95'; const LIGHT_PURPLE = '7C3AED'; const WHITE = 'FFFFFF';
+    const ALT = 'F5F3FF'; const ORANGE = 'FF6B00'; const GOLD = 'FFD700';
+    const thin = { style: 'thin', color: { argb: 'DDD6FE' } };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
+    const bodyFont = { name: 'Calibri', size: 10 };
+
+    const cols = [
+      { header: 'Date', width: 12 },
+      { header: 'Activité', width: 20 },
+      { header: 'Ingrédient', width: 26 },
+      { header: 'Catégorie', width: 18 },
+      { header: 'Quantité', width: 11 },
+      { header: 'Unité', width: 9 },
+      { header: 'Note', width: 24 },
+    ];
+    sheet.columns = cols.map((c) => ({ width: c.width }));
+
+    const fmtD = (d) => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—';
+    const titleText = `Historique Transferts — ${laboNom}  —  DU : ${fmtD(startDate)}   AU : ${fmtD(endDate)}`;
+    const titleRow = sheet.addRow([titleText, ...Array(cols.length - 1).fill('')]);
+    sheet.mergeCells(1, 1, 1, cols.length);
+    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
+    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE } };
+    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+    titleRow.height = 28;
+
+    const hdrRow = sheet.addRow(cols.map((c) => c.header));
+    hdrRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = hdrFont;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_PURPLE } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = border;
+    });
+    hdrRow.height = 22;
+    sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+
+    let totalQty = 0;
+    rows.forEach((r, i) => {
+      const qty = parseFloat(r.quantite);
+      totalQty += qty;
+      const isSelected = selectedSet.has(Number(r.id));
+      const dateStr = fmtD(r.date_transfert);
+      const dataRow = sheet.addRow([dateStr, r.activite_nom, r.ingredient_nom, r.categorie_nom, qty, r.unite_nom, r.note || '']);
+      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
+      const txtColor = isSelected ? WHITE : '1a1a2e';
+      for (let c = 1; c <= cols.length; c++) {
+        const cell = dataRow.getCell(c);
+        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.border = border;
+        cell.alignment = { vertical: 'middle', horizontal: c === 5 ? 'right' : 'left' };
+      }
+      dataRow.getCell(5).numFmt = '#,##0.000';
+      dataRow.height = 16;
+    });
+
+    const totalRow = sheet.addRow(['TOTAL', '', '', '', totalQty, '', '']);
+    totalRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = { name: 'Calibri', bold: true, size: 10 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
+      cell.border = border;
+      cell.alignment = { vertical: 'middle', horizontal: 'right' };
+    });
+    totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+    totalRow.getCell(5).numFmt = '#,##0.000';
+    totalRow.height = 18;
+
+    sheet.addRow([]);
+    const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — Labo : ${laboNom} — ${rows.length} transfert(s)`]);
+    footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Historique-Transferts-${laboNom}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur génération Excel' });
+  }
+};
+
 module.exports = {
   createLabo, updateLabo, deleteLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
@@ -1531,4 +1654,5 @@ module.exports = {
   exportLaboHistoriqueExcel,
   createLaboPerte,
   getLaboPTRecipe,
+  exportLaboTransferExcel,
 };

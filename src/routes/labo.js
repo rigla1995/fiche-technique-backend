@@ -12,12 +12,13 @@ const {
   exportLaboHistoriqueExcel,
   createLaboPerte,
   getLaboPTRecipe,
+  exportLaboTransferExcel,
 } = require('../controllers/laboController');
 const {
   getLaboInventaireStock, saveLaboInventaire,
   getLaboInventaireHistorique, exportLaboInventaireExcel,
 } = require('../controllers/inventaireController');
-const { getPrixLaboPerte, getDateRangeLaboPerte, listLaboPertes } = require('../controllers/pertesController');
+const { getPrixLaboPerte, getDateRangeLaboPerte, listLaboPertes, exportLaboPerteExcel } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
 // Labo CRUD
@@ -37,6 +38,7 @@ router.get('/:laboId/pt/:produitId/recipe', authenticate, requireEntreprise, get
 router.put('/:laboId/stock/:ingredientId', authenticate, requireEntreprise, updateLaboStock);
 router.get('/:laboId/stock/:ingredientId/history', authenticate, requireEntreprise, getLaboStockHistory);
 router.get('/:laboId/pertes/historique', authenticate, requireEntreprise, listLaboPertes);
+router.get('/:laboId/pertes/historique/export-excel', authenticate, requireEntreprise, exportLaboPerteExcel);
 router.get('/:laboId/pertes/prix', authenticate, requireEntreprise, getPrixLaboPerte);
 router.get('/:laboId/pertes/date-range', authenticate, requireEntreprise, getDateRangeLaboPerte);
 router.post('/:laboId/stock/:ingredientId/perte', authenticate, requireEntreprise, createLaboPerte);
@@ -61,6 +63,7 @@ router.delete('/:laboId/historique/:entryId', authenticate, requireEntreprise, d
 // Transfers
 router.post('/:laboId/transfer', authenticate, requireEntreprise, createTransfer);
 router.get('/:laboId/transfers', authenticate, requireEntreprise, getTransferHistory);
+router.get('/:laboId/transfers/export-excel', authenticate, requireEntreprise, exportLaboTransferExcel);
 
 // Inventaire labo
 router.get('/:laboId/inventaire', authenticate, requireEntreprise, getLaboInventaireStock);
