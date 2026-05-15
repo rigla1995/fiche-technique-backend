@@ -6,6 +6,7 @@ const {
   hasActivites, getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,
   getActiviteSelectedIngredients, getTypeSelectedIngredients,
+  getCatalogueGlobalIngredients,
 } = require('../controllers/entrepriseController');
 const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur } = require('../controllers/fournisseurController');
 const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, getPrixEntreprisePerte, getDateRangeEntreprisePerte } = require('../controllers/pertesController');
@@ -19,6 +20,7 @@ router.put('/', authenticate, requireEntreprise, upsertEntreprise);
 router.get('/activites/has', authenticate, requireEntreprise, hasActivites);
 router.get('/activites/types-summary', authenticate, requireEntreprise, getActiviteTypesSummary);
 router.get('/activites/selected-ingredients', authenticate, requireEntreprise, getTypeSelectedIngredients);
+router.get('/catalogue-global-ingredients', authenticate, requireEntreprise, getCatalogueGlobalIngredients);
 router.get('/activites', authenticate, requireEntreprise, listActivites);
 router.post('/activites', authenticate, requireEntreprise, createActivite);
 router.put('/activites/:id', authenticate, requireEntreprise, updateActivite);

@@ -478,6 +478,60 @@ const getTypeSelectedIngredients = async (req, res) => {
   }
 };
 
+const getCatalogueGlobalIngredients = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const entRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [clientId]);
+    if (entRes.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
+    const entrepriseId = entRes.rows[0].id;
+
+    const [ings, acts, labs, actSels, laboSels] = await Promise.all([
+      pool.query(
+        `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie
+         FROM ingredients i
+         JOIN unites u ON u.id = i.unite_id
+         LEFT JOIN categories c ON c.id = i.categorie_id
+         ORDER BY COALESCE(c.nom, 'Sans catégorie'), i.nom`
+      ),
+      pool.query('SELECT id, nom FROM activites WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),
+      pool.query('SELECT id, nom FROM labos WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),
+      pool.query(
+        `SELECT ais.activite_id, ais.ingredient_id
+         FROM activite_ingredient_selections ais
+         JOIN activites a ON a.id = ais.activite_id
+         WHERE a.entreprise_id = $1`,
+        [entrepriseId]
+      ),
+      pool.query(
+        `SELECT lis.labo_id, lis.ingredient_id
+         FROM labo_ingredient_selections lis
+         JOIN labos l ON l.id = lis.labo_id
+         WHERE l.entreprise_id = $1`,
+        [entrepriseId]
+      ),
+    ]);
+
+    const actSelSet = new Set(actSels.rows.map((r) => `${r.activite_id}:${r.ingredient_id}`));
+    const laboSelSet = new Set(laboSels.rows.map((r) => `${r.labo_id}:${r.ingredient_id}`));
+
+    const result = ings.rows.map((ing) => ({
+      id: ing.id,
+      nom: ing.nom,
+      unite: ing.unite,
+      categorie: ing.categorie,
+      contexts: [
+        ...acts.rows.map((a) => ({ type: 'activite', id: a.id, nom: a.nom, assigned: actSelSet.has(`${a.id}:${ing.id}`) })),
+        ...labs.rows.map((l) => ({ type: 'labo', id: l.id, nom: l.nom, assigned: laboSelSet.has(`${l.id}:${ing.id}`) })),
+      ],
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
@@ -485,4 +539,5 @@ module.exports = {
   getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,
   getActiviteSelectedIngredients, getTypeSelectedIngredients,
+  getCatalogueGlobalIngredients,
 };
