@@ -203,11 +203,22 @@ const me = async (req, res) => {
       gerantActiviteNom,
     } : {};
 
+    // Activités count — used by the frontend to pick the post-login redirect
+    let activitesCount = 0;
+    if (!isGerant) {
+      const epCountRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [u.id]);
+      if (epCountRes.rows.length > 0) {
+        const actCountRes = await pool.query('SELECT COUNT(*) FROM activites WHERE entreprise_id = $1', [epCountRes.rows[0].id]);
+        activitesCount = parseInt(actCountRes.rows[0].count) || 0;
+      }
+    }
+
     res.json({
       id: u.id, name: u.nom, email: u.email, phone: u.telephone,
       role: u.role, compteType: u.compte_type || null,
       onboardingStep: step, entrepriseName,
       modeCompte, prolongationJours,
+      activitesCount,
       ...gerantFields,
     });
   } catch (err) {
