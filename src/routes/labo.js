@@ -6,7 +6,7 @@ const {
   getLaboStock, updateLaboStock, getLaboStockHistory,
   getLaboFournisseurs, syncLaboFournisseurs,
   updateLaboSeuilMin,
-  createTransfer, getTransferHistory,
+  createTransfer, getTransferHistory, updateTransfer, deleteTransfer, getTransferPrix,
   getActivityAssignments, toggleActivityAssignment,
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
   exportLaboHistoriqueExcel,
@@ -64,6 +64,9 @@ router.delete('/:laboId/historique/:entryId', authenticate, requireEntreprise, d
 router.post('/:laboId/transfer', authenticate, requireEntreprise, createTransfer);
 router.get('/:laboId/transfers', authenticate, requireEntreprise, getTransferHistory);
 router.get('/:laboId/transfers/export-excel', authenticate, requireEntreprise, exportLaboTransferExcel);
+router.get('/:laboId/transfers/:transferId/prix', authenticate, requireEntreprise, getTransferPrix);
+router.patch('/:laboId/transfers/:transferId', authenticate, requireEntreprise, updateTransfer);
+router.delete('/:laboId/transfers/:transferId', authenticate, requireEntreprise, deleteTransfer);
 
 // Inventaire labo
 router.get('/:laboId/inventaire', authenticate, requireEntreprise, getLaboInventaireStock);

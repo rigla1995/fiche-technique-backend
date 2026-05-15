@@ -1642,13 +1642,208 @@ const exportLaboTransferExcel = async (req, res) => {
   }
 };
 
+// PATCH /api/labo/:laboId/transfers/:transferId
+const updateTransfer = async (req, res) => {
+  const { laboId, transferId } = req.params;
+  const { quantite } = req.body;
+  const newQty = parseFloat(quantite);
+  if (!newQty || newQty <= 0)
+    return res.status(400).json({ message: 'quantite requise et doit être > 0' });
+
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const tRes = await pool.query(
+      `SELECT id, ingredient_id, produit_id, activite_id, quantite, date_transfert
+       FROM labo_transfers WHERE id = $1 AND labo_id = $2`,
+      [transferId, laboId]
+    );
+    if (tRes.rows.length === 0) return res.status(404).json({ message: 'Transfert introuvable' });
+    const t = tRes.rows[0];
+    const oldQty = parseFloat(t.quantite);
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        'UPDATE labo_transfers SET quantite = $1, updated_at = NOW() WHERE id = $2',
+        [newQty, transferId]
+      );
+
+      if (t.ingredient_id) {
+        await client.query(
+          `UPDATE stock_labo_daily SET quantite = $1, updated_at = NOW()
+           WHERE id = (
+             SELECT id FROM stock_labo_daily
+             WHERE labo_id = $2 AND ingredient_id = $3 AND type_appro = 'transfert'
+               AND date_appro = $4 AND quantite = $5
+             ORDER BY id ASC LIMIT 1
+           )`,
+          [-newQty, laboId, t.ingredient_id, t.date_transfert, -oldQty]
+        );
+        await client.query(
+          `UPDATE stock_entreprise_daily SET quantite = $1, updated_at = NOW()
+           WHERE id = (
+             SELECT id FROM stock_entreprise_daily
+             WHERE activite_id = $2 AND ingredient_id = $3 AND type_appro = 'transfert'
+               AND date_appro = $4 AND quantite = $5
+             ORDER BY id ASC LIMIT 1
+           )`,
+          [newQty, t.activite_id, t.ingredient_id, t.date_transfert, oldQty]
+        );
+      } else if (t.produit_id) {
+        await client.query(
+          `UPDATE stock_labo_pt_daily SET quantite = $1, updated_at = NOW()
+           WHERE id = (
+             SELECT id FROM stock_labo_pt_daily
+             WHERE labo_id = $2 AND produit_id = $3 AND date_appro = $4 AND quantite = $5
+             ORDER BY id ASC LIMIT 1
+           )`,
+          [-newQty, laboId, t.produit_id, t.date_transfert, -oldQty]
+        );
+        await client.query(
+          `UPDATE stock_produits_transformes SET quantite = $1
+           WHERE id = (
+             SELECT id FROM stock_produits_transformes
+             WHERE activite_id = $2 AND produit_id = $3 AND date_appro = $4 AND quantite = $5
+             ORDER BY id ASC LIMIT 1
+           )`,
+          [newQty, t.activite_id, t.produit_id, t.date_transfert, oldQty]
+        );
+      }
+
+      await client.query('COMMIT');
+      res.json({ success: true, quantite: newQty });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// DELETE /api/labo/:laboId/transfers/:transferId
+const deleteTransfer = async (req, res) => {
+  const { laboId, transferId } = req.params;
+
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const tRes = await pool.query(
+      `SELECT id, ingredient_id, produit_id, activite_id, quantite, date_transfert
+       FROM labo_transfers WHERE id = $1 AND labo_id = $2`,
+      [transferId, laboId]
+    );
+    if (tRes.rows.length === 0) return res.status(404).json({ message: 'Transfert introuvable' });
+    const t = tRes.rows[0];
+    const qty = parseFloat(t.quantite);
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query('DELETE FROM labo_transfers WHERE id = $1', [transferId]);
+
+      if (t.ingredient_id) {
+        await client.query(
+          `DELETE FROM stock_labo_daily
+           WHERE id = (
+             SELECT id FROM stock_labo_daily
+             WHERE labo_id = $1 AND ingredient_id = $2 AND type_appro = 'transfert'
+               AND date_appro = $3 AND quantite = $4
+             ORDER BY id ASC LIMIT 1
+           )`,
+          [laboId, t.ingredient_id, t.date_transfert, -qty]
+        );
+        await client.query(
+          `DELETE FROM stock_entreprise_daily
+           WHERE id = (
+             SELECT id FROM stock_entreprise_daily
+             WHERE activite_id = $1 AND ingredient_id = $2 AND type_appro = 'transfert'
+               AND date_appro = $3 AND quantite = $4
+             ORDER BY id ASC LIMIT 1
+           )`,
+          [t.activite_id, t.ingredient_id, t.date_transfert, qty]
+        );
+      } else if (t.produit_id) {
+        await client.query(
+          `DELETE FROM stock_labo_pt_daily
+           WHERE id = (
+             SELECT id FROM stock_labo_pt_daily
+             WHERE labo_id = $1 AND produit_id = $2 AND date_appro = $3 AND quantite = $4
+             ORDER BY id ASC LIMIT 1
+           )`,
+          [laboId, t.produit_id, t.date_transfert, -qty]
+        );
+        await client.query(
+          `DELETE FROM stock_produits_transformes
+           WHERE id = (
+             SELECT id FROM stock_produits_transformes
+             WHERE activite_id = $1 AND produit_id = $2 AND date_appro = $3 AND quantite = $4
+             ORDER BY id ASC LIMIT 1
+           )`,
+          [t.activite_id, t.produit_id, t.date_transfert, qty]
+        );
+      }
+
+      await client.query('COMMIT');
+      res.json({ success: true });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// GET /api/labo/:laboId/transfers/:transferId/prix
+const getTransferPrix = async (req, res) => {
+  const { laboId, transferId } = req.params;
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const tRes = await pool.query(
+      'SELECT ingredient_id, date_transfert FROM labo_transfers WHERE id = $1 AND labo_id = $2',
+      [transferId, laboId]
+    );
+    if (tRes.rows.length === 0) return res.status(404).json({ message: 'Transfert introuvable' });
+    const { ingredient_id, date_transfert } = tRes.rows[0];
+
+    if (!ingredient_id) return res.json({ prixUnitaire: null });
+
+    const pRes = await pool.query(
+      `SELECT prix_unitaire FROM stock_labo_daily
+       WHERE labo_id = $1 AND ingredient_id = $2 AND date_appro <= $3
+         AND type_appro != 'transfert' AND prix_unitaire IS NOT NULL
+       ORDER BY date_appro DESC LIMIT 1`,
+      [laboId, ingredient_id, date_transfert]
+    );
+    res.json({ prixUnitaire: pRes.rows.length > 0 ? parseFloat(pRes.rows[0].prix_unitaire) : null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   createLabo, updateLabo, deleteLabo, listLabos, getLaboById,
   getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
   getLaboFournisseurs, syncLaboFournisseurs,
   updateLaboSeuilMin,
-  createTransfer, getTransferHistory,
+  createTransfer, getTransferHistory, updateTransfer, deleteTransfer, getTransferPrix,
   getActivityAssignments, toggleActivityAssignment,
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
   exportLaboHistoriqueExcel,
