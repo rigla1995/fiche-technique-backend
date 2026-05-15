@@ -341,7 +341,7 @@ const toggleActiviteIngredient = async (req, res) => {
 const getActiviteTypesSummary = async (req, res) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
-    const [actResult, approResult, fourn] = await Promise.all([
+    const [actResult, approResult, fourn, laboIngResult] = await Promise.all([
       pool.query(
         `SELECT
            COUNT(a.id) > 0 AS has_activites,
@@ -361,35 +361,44 @@ const getActiviteTypesSummary = async (req, res) => {
         [clientId]
       ),
       pool.query(
-        `SELECT
-           EXISTS (
-             SELECT 1 FROM stock_entreprise_daily sed
-             JOIN activites a ON sed.activite_id = a.id
-             JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-             WHERE pe.client_id = $1
-           ) AS has_appro`,
+        `SELECT EXISTS (
+           SELECT 1 FROM stock_entreprise_daily sed
+           JOIN activites a ON sed.activite_id = a.id
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE pe.client_id = $1
+         ) AS has_appro`,
         [clientId]
       ),
       pool.query(
-        `SELECT
-           EXISTS (
-             SELECT 1 FROM fournisseur_activites fa
-             JOIN activites a ON fa.activite_id = a.id
-             JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-             WHERE pe.client_id = $1
-           ) AS has_fournisseurs`,
+        `SELECT EXISTS (
+           SELECT 1 FROM fournisseur_activites fa
+           JOIN activites a ON fa.activite_id = a.id
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE pe.client_id = $1
+         ) AS has_fournisseurs`,
+        [clientId]
+      ),
+      pool.query(
+        `SELECT EXISTS (
+           SELECT 1 FROM labo_ingredient_selections lis
+           JOIN labos l ON l.id = lis.labo_id
+           JOIN profil_entreprise pe ON l.entreprise_id = pe.id
+           WHERE pe.client_id = $1
+         ) AS has_labo_ingredients`,
         [clientId]
       ),
     ]);
     const row = actResult.rows[0];
     const appro = approResult.rows[0];
     const fo = fourn.rows[0];
+    const laboIng = laboIngResult.rows[0];
     res.json({
       hasActivites: row.has_activites ?? false,
       hasSelections: row.has_selections ?? false,
       hasReady: row.has_ready ?? false,
       hasAppro: appro.has_appro ?? false,
       hasFournisseurs: fo.has_fournisseurs ?? false,
+      hasLaboIngredients: laboIng.has_labo_ingredients ?? false,
     });
   } catch (err) {
     console.error(err);
