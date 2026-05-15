@@ -1175,7 +1175,7 @@ const getActivityAssignments = async (req, res) => {
     const assigned = new Set(assignRes.rows.map((r) => `${r.activite_id}:${r.ingredient_id}`));
 
     res.json({
-      activites: actRes.rows.map((a) => ({ id: a.id, nom: a.nom, type: a.type, franchiseGroup: a.franchise_group })),
+      activites: actRes.rows.map((a) => ({ id: a.id, nom: a.nom, type: a.type })),
       ingredients: ingRes.rows.map((ing) => ({
         ingredientId: ing.id,
         nom: ing.nom,
