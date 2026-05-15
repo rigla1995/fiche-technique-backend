@@ -55,8 +55,6 @@ const mapActivite = (row) => ({
   adresse: row.adresse,
   telephone: row.telephone,
   email: row.email,
-  type: row.type,
-  franchiseGroup: row.franchise_group || null,
   laboId: row.labo_id || null,
   laboNom: row.labo_nom || null,
   laboTel: row.labo_tel || null,
@@ -94,15 +92,12 @@ const listActivites = async (req, res) => {
 };
 
 const createActivite = async (req, res) => {
-  // franchiseName is used for franchise batch creation; nom is used for single/distinct
-  const { nom, franchiseName, adresse, telephone, email, memeActivite, nombreActivites, type, laboId } = req.body;
-  const isFranchise = memeActivite === true || type === 'franchise';
-  const baseName = isFranchise && franchiseName ? franchiseName : nom;
-  if (!baseName) return res.status(400).json({ message: 'Nom requis' });
+  const { nom, adresse, telephone, email, laboId } = req.body;
+  if (!nom) return res.status(400).json({ message: 'Nom requis' });
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
     const entrepriseRes = await pool.query(
-      'SELECT id, meme_activite FROM profil_entreprise WHERE client_id = $1',
+      'SELECT id FROM profil_entreprise WHERE client_id = $1',
       [clientId]
     );
     if (entrepriseRes.rows.length === 0)
@@ -110,86 +105,28 @@ const createActivite = async (req, res) => {
 
     const entreprise = entrepriseRes.rows[0];
 
-    const countRes = await pool.query(
-      'SELECT COUNT(*) FROM activites WHERE entreprise_id = $1',
-      [entreprise.id]
+    const result = await pool.query(
+      `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, labo_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [entreprise.id, nom, adresse || null, telephone || null, email || null, laboId || null]
     );
-    const isFirst = parseInt(countRes.rows[0].count) === 0;
+    const newActivite = result.rows[0];
 
-    if (isFirst && memeActivite !== undefined && memeActivite !== null) {
-      await pool.query(
-        'UPDATE profil_entreprise SET meme_activite = $1, updated_at = NOW() WHERE id = $2',
-        [memeActivite, entreprise.id]
+    // If laboId provided, link labo fournisseur to the new activity
+    if (laboId) {
+      const laboFRes = await pool.query(
+        'SELECT id FROM fournisseurs WHERE labo_id = $1 AND is_labo = true LIMIT 1',
+        [laboId]
       );
-    }
-
-    let activiteType = type || null;
-    if (!activiteType && memeActivite !== undefined && memeActivite !== null) {
-      activiteType = memeActivite ? 'franchise' : 'distincte';
-    }
-
-    const count = isFranchise && parseInt(nombreActivites) > 1
-      ? Math.min(parseInt(nombreActivites), 20)
-      : 1;
-    const franchiseGroupValue = isFranchise ? baseName : null;
-
-    const created = [];
-    for (let i = 0; i < count; i++) {
-      const activiteName = count > 1 ? `${baseName} ${i + 1}` : (nom || baseName);
-
-      // For franchise activities, if an activity with this exact nom already exists in the
-      // franchise group (e.g. from a partial previous attempt), return the existing one
-      // instead of failing — makes the creation idempotent on retry.
-      if (isFranchise && franchiseGroupValue) {
-        const existing = await pool.query(
-          'SELECT * FROM activites WHERE entreprise_id = $1 AND LOWER(nom) = LOWER($2) AND LOWER(franchise_group) = LOWER($3)',
-          [entreprise.id, activiteName, franchiseGroupValue]
+      if (laboFRes.rows.length > 0) {
+        await pool.query(
+          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [laboFRes.rows[0].id, newActivite.id]
         );
-        if (existing.rows.length > 0) {
-          created.push(mapActivite(existing.rows[0]));
-          continue;
-        }
-      }
-
-      const result = await pool.query(
-        `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type, franchise_group, labo_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [entreprise.id, activiteName, adresse || null, telephone || null, email || null, activiteType, franchiseGroupValue, laboId || null]
-      );
-      const newActivite = result.rows[0];
-      created.push(mapActivite(newActivite));
-
-      // If laboId provided (franchise or distinct): link labo fournisseur to the new activity
-      const effectiveLaboId = laboId || null;
-      if (effectiveLaboId) {
-        const laboFRes = await pool.query(
-          'SELECT id FROM fournisseurs WHERE labo_id = $1 AND is_labo = true LIMIT 1',
-          [effectiveLaboId]
-        );
-        if (laboFRes.rows.length > 0) {
-          await pool.query(
-            `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-            [laboFRes.rows[0].id, newActivite.id]
-          );
-        }
-      } else if (isFranchise && franchiseGroupValue) {
-        // Fallback: link via franchise_group on labo (for legacy flows without explicit laboId)
-        const laboFournisseurRes = await pool.query(
-          `SELECT f.id FROM fournisseurs f
-           JOIN labos l ON f.labo_id = l.id
-           WHERE l.entreprise_id = $1 AND LOWER(l.franchise_group) = LOWER($2) AND f.is_labo = true
-           LIMIT 1`,
-          [entreprise.id, franchiseGroupValue]
-        );
-        if (laboFournisseurRes.rows.length > 0) {
-          await pool.query(
-            `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-            [laboFournisseurRes.rows[0].id, newActivite.id]
-          );
-        }
       }
     }
-    res.status(201).json(count > 1 ? created : created[0]);
+
+    res.status(201).json(mapActivite(newActivite));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -265,9 +202,9 @@ const duplicateActivite = async (req, res) => {
 
     const src = source.rows[0];
     const result = await pool.query(
-      `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, type)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [src.entreprise_id, src.nom, src.adresse, src.telephone, src.email, src.type]
+      `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [src.entreprise_id, src.nom, src.adresse, src.telephone, src.email]
     );
     res.status(201).json(mapActivite(result.rows[0]));
   } catch (err) {
@@ -407,16 +344,12 @@ const getActiviteTypesSummary = async (req, res) => {
     const [actResult, approResult, fourn] = await Promise.all([
       pool.query(
         `SELECT
-           BOOL_OR(a.type = 'franchise') AS has_franchise,
-           BOOL_OR(a.type IS NULL OR a.type = 'distincte') AS has_distinct,
-           BOOL_OR(a.type = 'franchise' AND sel.cnt > 0) AS has_franchise_selections,
-           BOOL_OR((a.type IS NULL OR a.type = 'distincte') AND sel.cnt > 0) AS has_distinct_selections,
+           COUNT(a.id) > 0 AS has_activites,
+           BOOL_OR(sel.cnt > 0) AS has_selections,
            BOOL_OR(
-             a.type = 'franchise' AND (
-               a.labo_id IS NULL
-               OR EXISTS (SELECT 1 FROM labo_ingredient_selections lis2 WHERE lis2.labo_id = a.labo_id LIMIT 1)
-             )
-           ) AS has_franchise_ready
+             a.labo_id IS NULL
+             OR EXISTS (SELECT 1 FROM labo_ingredient_selections lis2 WHERE lis2.labo_id = a.labo_id LIMIT 1)
+           ) AS has_ready
          FROM activites a
          JOIN profil_entreprise pe ON a.entreprise_id = pe.id
          LEFT JOIN (
@@ -433,14 +366,8 @@ const getActiviteTypesSummary = async (req, res) => {
              SELECT 1 FROM stock_entreprise_daily sed
              JOIN activites a ON sed.activite_id = a.id
              JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-             WHERE pe.client_id = $1 AND a.type = 'franchise'
-           ) AS has_franchise_appro,
-           EXISTS (
-             SELECT 1 FROM stock_entreprise_daily sed
-             JOIN activites a ON sed.activite_id = a.id
-             JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-             WHERE pe.client_id = $1 AND (a.type IS NULL OR a.type = 'distincte')
-           ) AS has_distinct_appro`,
+             WHERE pe.client_id = $1
+           ) AS has_appro`,
         [clientId]
       ),
       pool.query(
@@ -449,14 +376,8 @@ const getActiviteTypesSummary = async (req, res) => {
              SELECT 1 FROM fournisseur_activites fa
              JOIN activites a ON fa.activite_id = a.id
              JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-             WHERE pe.client_id = $1 AND a.type = 'franchise'
-           ) AS has_franchise_fournisseurs,
-           EXISTS (
-             SELECT 1 FROM fournisseur_activites fa
-             JOIN activites a ON fa.activite_id = a.id
-             JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-             WHERE pe.client_id = $1 AND (a.type IS NULL OR a.type = 'distincte')
-           ) AS has_distinct_fournisseurs`,
+             WHERE pe.client_id = $1
+           ) AS has_fournisseurs`,
         [clientId]
       ),
     ]);
@@ -464,15 +385,11 @@ const getActiviteTypesSummary = async (req, res) => {
     const appro = approResult.rows[0];
     const fo = fourn.rows[0];
     res.json({
-      hasFranchise: row.has_franchise ?? false,
-      hasDistinct: row.has_distinct ?? false,
-      hasFranchiseSelections: row.has_franchise_selections ?? false,
-      hasDistinctSelections: row.has_distinct_selections ?? false,
-      hasFranchiseReady: row.has_franchise_ready ?? false,
-      hasFranchiseAppro: appro.has_franchise_appro ?? false,
-      hasDistinctAppro: appro.has_distinct_appro ?? false,
-      hasFranchiseFournisseurs: fo.has_franchise_fournisseurs ?? false,
-      hasDistinctFournisseurs: fo.has_distinct_fournisseurs ?? false,
+      hasActivites: row.has_activites ?? false,
+      hasSelections: row.has_selections ?? false,
+      hasReady: row.has_ready ?? false,
+      hasAppro: appro.has_appro ?? false,
+      hasFournisseurs: fo.has_fournisseurs ?? false,
     });
   } catch (err) {
     console.error(err);
@@ -505,56 +422,6 @@ const updateIngredientPrice = async (req, res) => {
   }
 };
 
-const deleteFranchiseGroup = async (req, res) => {
-  const { group } = req.params;
-  if (!group) return res.status(400).json({ message: 'Groupe requis' });
-  try {
-    const clientId = req.user.gerant_parent_id || req.user.id;
-    const entrepriseRes = await pool.query(
-      'SELECT id FROM profil_entreprise WHERE client_id = $1',
-      [clientId]
-    );
-    if (entrepriseRes.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
-    const entrepriseId = entrepriseRes.rows[0].id;
-
-    const acts = await pool.query(
-      'SELECT id, labo_id FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
-      [entrepriseId, group]
-    );
-    if (acts.rows.length === 0) return res.status(404).json({ message: 'Groupe introuvable' });
-
-    const actIds = acts.rows.map((r) => r.id);
-
-    // Delete stock entries for all activities in the group
-    if (actIds.length > 0) {
-      await pool.query(
-        `DELETE FROM stock_entreprise_daily WHERE activite_id = ANY($1::int[])`,
-        [actIds]
-      );
-      await pool.query(
-        `DELETE FROM activite_ingredient_selections WHERE activite_id = ANY($1::int[])`,
-        [actIds]
-      );
-    }
-
-    // Delete all activities in the group
-    await pool.query(
-      'DELETE FROM activites WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
-      [entrepriseId, group]
-    );
-
-    // Delete the labo by franchise_group name (more robust than labo_id lookup)
-    await pool.query(
-      'DELETE FROM labos WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
-      [entrepriseId, group]
-    );
-
-    res.status(204).send();
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
 
 // Returns only SELECTED ingredients for one activité — gérant-compatible
 const getActiviteSelectedIngredients = async (req, res) => {
@@ -587,16 +454,10 @@ const getActiviteSelectedIngredients = async (req, res) => {
   }
 };
 
-// Returns SELECTED ingredients for all activités of a type (franchise/distinct) — for "all" view
+// Returns all SELECTED ingredients across all activités
 const getTypeSelectedIngredients = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
-  const { type } = req.query;
   try {
-    const typeFilter = type === 'franchise'
-      ? `AND a.type IN ('franchise_avec_labo','franchise_gestion_separee','franchise')`
-      : type === 'distinct'
-      ? `AND (a.type = 'distincte' OR a.type IS NULL)`
-      : '';
     const result = await pool.query(
       `SELECT DISTINCT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
               i.categorie_id as "categorieId"
@@ -606,7 +467,7 @@ const getTypeSelectedIngredients = async (req, res) => {
        JOIN ingredients i ON i.id = ais.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE pe.client_id = $1 ${typeFilter}
+       WHERE pe.client_id = $1
        ORDER BY categorie NULLS LAST, i.nom`,
       [clientId]
     );
@@ -620,7 +481,6 @@ const getTypeSelectedIngredients = async (req, res) => {
 module.exports = {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
-  deleteFranchiseGroup,
   hasActivites,
   getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,

@@ -9,8 +9,6 @@ const mapProduit = (row) => ({
   type: row.type || 'vendable',
   clientId: row.client_id,
   activiteId: row.activite_id || null,
-  activiteType: row.activite_type || null,
-  franchiseGroup: row.franchise_group || null,
   isStockIngredient: !!row.is_stock_ingredient,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
   ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
@@ -79,9 +77,9 @@ const costSubquery = (alias = 'p') => `
   , 3) AS total_cost`;
 
 const list = async (req, res) => {
-  const { activiteId, activiteType, franchiseGroup, type, laboId } = req.query;
+  const { activiteId, type, laboId } = req.query;
   const isLaboGerant = req.user.role === 'gerant' && req.user.gerant_activite_type === 'labo';
-  const isActiviteGerant = req.user.role === 'gerant' && req.user.gerant_activite_type && req.user.gerant_activite_type !== 'labo';
+  const isActiviteGerant = req.user.role === 'gerant' && req.user.gerant_activite_type === 'activite';
 
   try {
     let whereExtra = '';
@@ -96,13 +94,6 @@ const list = async (req, res) => {
       if (activiteId) {
         params.push(activiteId);
         whereExtra += ` AND p.activite_id = $${params.length}`;
-      } else if (activiteType) {
-        params.push(activiteType);
-        whereExtra += ` AND p.activite_type = $${params.length}`;
-        if (franchiseGroup) {
-          params.push(franchiseGroup);
-          whereExtra += ` AND p.franchise_group = $${params.length}`;
-        }
       }
       if (laboId) {
         params.push(laboId);
@@ -110,34 +101,12 @@ const list = async (req, res) => {
       }
     }
 
-    // Gérant labo: utilisable products scoped to their labo's activités.
-    // Products can be linked via activite_id (specific) OR via activite_type+franchise_group.
+    // Gérant labo: utilisable products scoped to their labo's activités
     if (isLaboGerant) {
       whereExtra += ` AND p.type = 'utilisable'`;
       params.push(req.user.gerant_activite_id);
       const laboIdx = params.length;
-
-      if (activiteType === 'franchise') {
-        whereExtra += ` AND (
-          p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx} AND a.type = 'franchise')
-          OR (p.activite_type = 'franchise' AND p.franchise_group IN (
-            SELECT COALESCE(a.franchise_group, a.nom)
-            FROM activites a WHERE a.labo_id = $${laboIdx} AND a.type = 'franchise'
-          ))
-        )`;
-      } else if (activiteType === 'distincte') {
-        whereExtra += ` AND p.activite_id IN (
-          SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx} AND (a.type = 'distincte' OR a.type IS NULL)
-        )`;
-      } else {
-        whereExtra += ` AND (
-          p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx})
-          OR (p.activite_type = 'franchise' AND p.franchise_group IN (
-            SELECT COALESCE(a.franchise_group, a.nom)
-            FROM activites a WHERE a.labo_id = $${laboIdx} AND a.type = 'franchise'
-          ))
-        )`;
-      }
+      whereExtra += ` AND p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx})`;
     }
 
     // Gérant activité: restrict to their specific activité only
@@ -250,16 +219,14 @@ const create = async (req, res) => {
   const ingredients = req.body.ingredients || [];
   const subProducts = req.body.subProducts || [];
   const activiteId = req.body.activiteId || null;
-  const activiteType = req.body.activiteType || null;
-  const franchiseGroup = req.body.franchiseGroup || null;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     const result = await client.query(
-      'INSERT INTO produits (nom, description, ref_produit, type, client_id, activite_id, activite_type, franchise_group) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [nom, description || null, refProduit, type, req.user.id, activiteId, activiteType, franchiseGroup]
+      'INSERT INTO produits (nom, description, ref_produit, type, client_id, activite_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [nom, description || null, refProduit, type, req.user.id, activiteId]
     );
     const produitId = result.rows[0].id;
 

@@ -409,10 +409,7 @@ const getActiviteInventaireStock = async (req, res) => {
     const ptRes = await pool.query(
       `SELECT id as produit_id, nom FROM produits
        WHERE is_stock_ingredient = TRUE
-       AND (
-         activite_id = $1
-         OR (franchise_group IS NOT NULL AND franchise_group = (SELECT a2.franchise_group FROM activites a2 WHERE a2.id = $1))
-       )
+       AND activite_id = $1
        ORDER BY nom`,
       [activiteId]
     );
@@ -530,7 +527,7 @@ const getActiviteInventaireStock = async (req, res) => {
        pt_list AS (
          SELECT id as produit_id FROM produits
          WHERE is_stock_ingredient = TRUE
-           AND (activite_id = $1 OR (franchise_group IS NOT NULL AND franchise_group = (SELECT a2.franchise_group FROM activites a2 WHERE a2.id = $1)))
+           AND activite_id = $1
        )
        SELECT pl.produit_id,
          CASE WHEN li.produit_id IS NOT NULL

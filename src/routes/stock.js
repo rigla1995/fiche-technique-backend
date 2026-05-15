@@ -5,7 +5,6 @@ const {
   getStockEntreprise, updateStockEntreprise,
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
-  duplicateStockToFranchise,
   updateSeuilMin, updateSeuilMinClient, createClientPerte,
   exportHistoriqueExcel,
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
@@ -35,8 +34,6 @@ router.get('/entreprise/:activiteId', authenticate, requireEntreprise, getStockE
 router.put('/entreprise/:activiteId/:ingredientId', authenticate, requireEntreprise, updateStockEntreprise);
 router.get('/entreprise/:activiteId/:ingredientId/history', authenticate, requireEntreprise, getHistoryEntreprise);
 router.put('/entreprise/:activiteId/:ingredientId/seuil-min', authenticate, requireEntreprise, updateSeuilMin);
-router.post('/entreprise/:activiteId/duplicate-franchise', authenticate, requireEntreprise, duplicateStockToFranchise);
-
 // Cascade info (appro + inventaire counts) for ingredient deselect confirmation
 router.get('/client/:ingredientId/cascade-info', authenticate, requireClient, getCascadeInfoClient);
 router.get('/entreprise/:activiteId/:ingredientId/cascade-info', authenticate, requireEntreprise, getCascadeInfoEntreprise);
@@ -58,7 +55,7 @@ router.get('/pt/:produitId/history', authenticate, requireClient, getStockPTHist
 router.put('/pt/:produitId', authenticate, requireClient, saveStockPT);
 router.put('/pt/:produitId/seuil-min', authenticate, requireClient, updateSeuilMinPT);
 
-// Inventaire activite (franchise / distinct)
+// Inventaire activite
 const {
   getActiviteInventaireStock, saveActiviteInventaire,
   getActiviteInventaireHistorique, exportActiviteInventaireExcel,

@@ -17,7 +17,7 @@ async function checkLaboOwner(laboId, userId) {
 // ─── Labo CRUD ────────────────────────────────────────────────────────────────
 
 const createLabo = async (req, res) => {
-  const { nom, refLabo, referentTel, adresse, franchiseGroup, activityIds } = req.body;
+  const { nom, refLabo, referentTel, adresse, activityIds } = req.body;
   if (!nom || !refLabo || !referentTel)
     return res.status(400).json({ message: 'nom, refLabo et referentTel requis' });
   try {
@@ -37,20 +37,10 @@ const createLabo = async (req, res) => {
     if (refCheck.rows.length > 0)
       return res.status(409).json({ message: 'Un labo avec cette référence existe déjà' });
 
-    // If franchiseGroup provided: return existing labo for that group (idempotent)
-    if (franchiseGroup) {
-      const dup = await pool.query(
-        'SELECT * FROM labos WHERE entreprise_id = $1 AND LOWER(franchise_group) = LOWER($2)',
-        [entrepriseId, franchiseGroup]
-      );
-      if (dup.rows.length > 0)
-        return res.status(200).json(mapLabo(dup.rows[0]));
-    }
-
     const result = await pool.query(
-      `INSERT INTO labos (entreprise_id, franchise_group, nom, referent_tel, adresse, ref_labo)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [entrepriseId, franchiseGroup || refLabo.trim(), nom.trim(), referentTel.trim(), adresse?.trim() || null, refLabo.trim()]
+      `INSERT INTO labos (entreprise_id, nom, referent_tel, adresse, ref_labo)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [entrepriseId, nom.trim(), referentTel.trim(), adresse?.trim() || null, refLabo.trim()]
     );
     const labo = result.rows[0];
 
@@ -65,16 +55,6 @@ const createLabo = async (req, res) => {
         [entrepriseId, nom.trim(), referentTel.trim(), adresse?.trim() || null, labo.id]
       );
       const fournisseurId = fRes.rows[0].id;
-      // Link to all existing activities of this franchise group (if applicable)
-      if (franchiseGroup) {
-        await pool.query(
-          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
-           SELECT $1, id FROM activites
-           WHERE entreprise_id = $2 AND LOWER(franchise_group) = LOWER($3)
-           ON CONFLICT DO NOTHING`,
-          [fournisseurId, entrepriseId, franchiseGroup]
-        );
-      }
       // Assign manually selected activities to this labo (standalone creation)
       if (activityIds && activityIds.length > 0) {
         await pool.query(
@@ -138,12 +118,12 @@ const getLaboById = async (req, res) => {
     const r = await pool.query('SELECT * FROM labos WHERE id = $1', [laboId]);
     // Also return activities linked to this labo
     const acts = await pool.query(
-      'SELECT id, nom, type, franchise_group FROM activites WHERE labo_id = $1 ORDER BY nom',
+      'SELECT id, nom FROM activites WHERE labo_id = $1 ORDER BY nom',
       [laboId]
     );
     res.json({
       ...mapLabo(r.rows[0]),
-      activites: acts.rows.map((a) => ({ id: a.id, nom: a.nom, type: a.type, franchiseGroup: a.franchise_group })),
+      activites: acts.rows.map((a) => ({ id: a.id, nom: a.nom })),
     });
   } catch (err) {
     console.error(err);
@@ -155,7 +135,6 @@ function mapLabo(row) {
   return {
     id: row.id,
     entrepriseId: row.entreprise_id,
-    franchiseGroup: row.franchise_group,
     nom: row.nom,
     refLabo: row.ref_labo || null,
     referentTel: row.referent_tel,
@@ -448,7 +427,7 @@ const getLaboStock = async (req, res) => {
 
     // ── PT products for this labo ──────────────────────────────────────────────
     const ptResult = await pool.query(`
-      SELECT p.id as produit_id, p.nom, p.franchise_group,
+      SELECT p.id as produit_id, p.nom,
         a.id as activite_id, a.nom as activite_nom,
         lps.seuil_min,
         COALESCE(SUM(slpt.quantite) FILTER (WHERE date_trunc('year', slpt.date_appro) = date_trunc('year', CURRENT_DATE)), 0) as total_quantite,
@@ -475,7 +454,7 @@ const getLaboStock = async (req, res) => {
       LEFT JOIN activites a ON a.id = p.activite_id
       LEFT JOIN stock_labo_pt_daily slpt ON slpt.produit_id = p.id AND slpt.labo_id = $1
       WHERE lps.labo_id = $1
-      GROUP BY p.id, p.nom, p.franchise_group, a.id, a.nom, lps.seuil_min
+      GROUP BY p.id, p.nom, a.id, a.nom, lps.seuil_min
       ORDER BY p.nom
     `, [laboId]);
 
@@ -579,9 +558,8 @@ const getLaboStock = async (req, res) => {
         nom: row.nom,
         unite: 'unité',
         categorie: 'Produits Transformés',
-        activite: row.franchise_group || row.activite_nom || null,
+        activite: row.activite_nom || null,
         activiteId: row.activite_id ?? null,
-        ptFranchiseGroup: row.franchise_group || null,
         quantite,
         prixUnitaire,
         prixCalcule: prixCalcule && prixCalcule > 0 ? prixCalcule : null,
@@ -1184,7 +1162,7 @@ const getActivityAssignments = async (req, res) => {
       [laboId]
     );
     const actRes = await pool.query(
-      'SELECT id, nom, type, franchise_group FROM activites WHERE labo_id = $1 ORDER BY nom',
+      'SELECT id, nom FROM activites WHERE labo_id = $1 ORDER BY nom',
       [laboId]
     );
     const assignRes = await pool.query(
@@ -1206,8 +1184,6 @@ const getActivityAssignments = async (req, res) => {
         activities: actRes.rows.map((act) => ({
           activiteId: act.id,
           nom: act.nom,
-          type: act.type,
-          franchiseGroup: act.franchise_group,
           assigned: assigned.has(`${act.id}:${ing.id}`),
         })),
       })),

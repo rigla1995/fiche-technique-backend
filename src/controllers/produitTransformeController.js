@@ -36,31 +36,13 @@ const toggleStockIngredient = async (req, res) => {
       return res.json({ isStockIngredient: false, hadHistory: historyCount > 0, historyCount });
     }
 
-    // Toggling ON — auto-add to labo_pt_selections if product belongs to franchise/activité with labo
+    // Toggling ON — auto-add to labo_pt_selections if product's activité has a labo
     const prodCtx = await pool.query(
-      `SELECT franchise_group, activite_id FROM produits WHERE id = $1`,
+      `SELECT activite_id FROM produits WHERE id = $1`,
       [produitId]
     );
-    const { franchise_group: fg, activite_id: actId } = prodCtx.rows[0] || {};
+    const { activite_id: actId } = prodCtx.rows[0] || {};
 
-    // Case 1: franchise_group → find labo for that franchise group
-    if (fg) {
-      const laboRes = await pool.query(
-        `SELECT DISTINCT a.labo_id FROM activites a
-         JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-         WHERE pe.client_id = $1 AND a.franchise_group = $2 AND a.labo_id IS NOT NULL
-         LIMIT 1`,
-        [userId, fg]
-      );
-      if (laboRes.rows.length > 0) {
-        await pool.query(
-          `INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [laboRes.rows[0].labo_id, produitId]
-        );
-      }
-    }
-
-    // Case 2: activite_id → check if that activité has a labo
     if (actId) {
       const laboRes = await pool.query(
         `SELECT labo_id FROM activites WHERE id = $1 AND labo_id IS NOT NULL`,

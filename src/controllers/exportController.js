@@ -82,24 +82,10 @@ const exportExcel = async (req, res) => {
     let activityInfo = null;
     if (actId) {
       const actRes = await pool.query(
-        'SELECT nom, franchise_group, type FROM activites WHERE id = $1',
+        'SELECT nom FROM activites WHERE id = $1',
         [actId]
       );
       if (actRes.rows.length > 0) activityInfo = actRes.rows[0];
-    } else if (fg) {
-      // Franchise-wide product: no specific actId, but we have the franchise group name
-      activityInfo = { nom: fg, franchise_group: fg, type: 'franchise' };
-    }
-
-    // Fetch all franchise activities in the same group (for the franchise header row)
-    let franchiseActNames = [];
-    if (activityInfo && activityInfo.type === 'franchise') {
-      const group = activityInfo.franchise_group || activityInfo.nom;
-      const faRes = await pool.query(
-        `SELECT nom FROM activites WHERE type = 'franchise' AND (franchise_group = $1 OR (franchise_group IS NULL AND nom = $1)) ORDER BY nom`,
-        [group]
-      );
-      franchiseActNames = faRes.rows.map((r) => r.nom);
     }
 
     // Compute filename early so the sheet tab can use it
@@ -160,23 +146,6 @@ const exportExcel = async (req, res) => {
     sheet.getRow(hdr).height = 30;
     hdr++;
 
-    // ─── FRANCHISE + ACTIVITÉS (si type franchise) ───
-    if (activityInfo && activityInfo.type === 'franchise') {
-      sheet.mergeCells(`A${hdr}:E${hdr}`);
-      const franCell = sheet.getCell(`A${hdr}`);
-      const group = activityInfo.franchise_group || activityInfo.nom;
-      const actsText = franchiseActNames.length > 0
-        ? `  ·  Activités : ${franchiseActNames.join('  ·  ')}`
-        : '';
-      franCell.value = `🏢  Franchise : ${group}${actsText}`;
-      franCell.font = { name: 'Calibri', bold: true, size: 9, color: { argb: 'FFFFFF' } };
-      franCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F3864' } };
-      franCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-      franCell.border = border;
-      sheet.getRow(hdr).height = franchiseActNames.length > 4 ? 28 : 18;
-      hdr++;
-    }
-
     sheet.mergeCells(`A${hdr}:E${hdr}`);
     const produitCell = sheet.getCell(`A${hdr}`);
     produitCell.value = coutData.produit.toUpperCase();
@@ -187,20 +156,11 @@ const exportExcel = async (req, res) => {
     sheet.getRow(hdr).height = 24;
     hdr++;
 
-    // ─── CONTEXTE FRANCHISE / ACTIVITÉ (si activiteId fourni — pas pour les produits franchise-wide) ───
     let rowIndex = hdr;
     if (activityInfo && actId) {
       sheet.mergeCells(`A${hdr}:E${hdr}`);
       const ctxCell = sheet.getCell(`A${hdr}`);
-      const isFranchise = activityInfo.type === 'franchise';
-      if (isFranchise) {
-        const group = activityInfo.franchise_group || activityInfo.nom;
-        ctxCell.value = group === activityInfo.nom
-          ? `Franchise : ${activityInfo.nom}`
-          : `Franchise : ${group}  —  Activité : ${activityInfo.nom}`;
-      } else {
-        ctxCell.value = `Activité : ${activityInfo.nom}`;
-      }
+      ctxCell.value = `Activité : ${activityInfo.nom}`;
       ctxCell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: 'FFFFFF' } };
       ctxCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '3A6BBF' } };
       ctxCell.alignment = { horizontal: 'center', vertical: 'middle' };

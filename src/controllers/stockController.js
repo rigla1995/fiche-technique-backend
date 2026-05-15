@@ -426,10 +426,7 @@ const getStockEntreprise = async (req, res) => {
       WHERE pi.produit_id IN (
         SELECT id FROM produits
         WHERE is_stock_ingredient = TRUE
-        AND (
-          activite_id = $1
-          OR (franchise_group IS NOT NULL AND franchise_group = (SELECT a2.franchise_group FROM activites a2 WHERE a2.id = $1))
-        )
+        AND activite_id = $1
       )
       GROUP BY pi.produit_id
     `, [activiteId]);
@@ -449,10 +446,7 @@ const getStockEntreprise = async (req, res) => {
         ORDER BY date_appro DESC LIMIT 1
       ) last_spt ON true
       WHERE p.is_stock_ingredient = TRUE
-      AND (
-        p.activite_id = $1
-        OR (p.franchise_group IS NOT NULL AND p.franchise_group = (SELECT a2.franchise_group FROM activites a2 WHERE a2.id = $1))
-      )
+      AND p.activite_id = $1
       ORDER BY p.nom
     `, [activiteId]);
 
@@ -827,15 +821,14 @@ const getHistoriqueAppro = async (req, res) => {
   // Enforce activiteId scope for gérant accounts
   if (req.user.role === 'gerant' && req.user.gerant_activite_id) {
     req.query.activiteId = String(req.user.gerant_activite_id);
-    delete req.query.franchiseGroup;
     delete req.query.activiteIds;
     delete req.query.entType;
   }
-  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId } = req.query;
+  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId } = req.query;
   const currentYear = new Date().getFullYear();
 
   try {
-    if (activiteId || franchiseGroup || activiteIdsParam || entType) {
+    if (activiteId || activiteIdsParam || entType) {
       // Resolve activiteIds list
       let activiteIds = [];
       if (activiteId) {
@@ -847,15 +840,6 @@ const getHistoriqueAppro = async (req, res) => {
         );
         if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
         activiteIds = [activiteId];
-      } else if (franchiseGroup) {
-        const gRes = await pool.query(
-          `SELECT a.id FROM activites a
-           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-           WHERE pe.client_id = $1 AND a.franchise_group = $2`,
-          [req.user.gerant_parent_id || req.user.id, franchiseGroup]
-        );
-        activiteIds = gRes.rows.map((r) => r.id);
-        if (activiteIds.length === 0) return res.json([]);
       } else if (activiteIdsParam) {
         // Comma-separated list of activiteIds
         const requested = activiteIdsParam.split(',').map(Number).filter(Boolean);
@@ -868,8 +852,7 @@ const getHistoriqueAppro = async (req, res) => {
         activiteIds = check.rows.map((r) => r.id);
         if (activiteIds.length === 0) return res.json([]);
       } else if (entType) {
-        // All activities of a given type for this client
-        const typeFilter = entType === 'franchise' ? `a.type = 'franchise'` : `(a.type = 'distincte' OR a.type IS NULL)`;
+        // All activités for this client (optionally filtered by laboId)
         const clientId = req.user.gerant_parent_id || req.user.id;
         const entTypeParams = [clientId];
         let laboFilter = '';
@@ -880,7 +863,7 @@ const getHistoriqueAppro = async (req, res) => {
         const allRes = await pool.query(
           `SELECT a.id FROM activites a
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-           WHERE pe.client_id = $1 AND ${typeFilter}${laboFilter}`,
+           WHERE pe.client_id = $1${laboFilter}`,
           entTypeParams
         );
         activiteIds = allRes.rows.map((r) => r.id);
@@ -1186,65 +1169,12 @@ function mapHistoriqueEntry(r) {
   };
 }
 
-// ─── Duplicate Franchise ──────────────────────────────────────────────────────
-
-const duplicateStockToFranchise = async (req, res) => {
-  const { activiteId } = req.params;
-  try {
-    const check = await pool.query(
-      `SELECT a.id, a.entreprise_id, a.franchise_group FROM activites a
-       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-       WHERE a.id = $1 AND pe.client_id = $2 AND a.type = 'franchise'`,
-      [activiteId, req.user.gerant_parent_id || req.user.id]
-    );
-    if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Activité franchise introuvable' });
-
-    const { entreprise_id: entrepriseId, franchise_group: franchiseGroup } = check.rows[0];
-
-    const source = await pool.query(
-      `SELECT DISTINCT ON (ingredient_id) ingredient_id, quantite, prix_unitaire, date_appro
-       FROM stock_entreprise_daily WHERE activite_id = $1 AND type_appro = 'manuel'
-       ORDER BY ingredient_id, date_appro DESC`,
-      [activiteId]
-    );
-
-    const others = await pool.query(
-      `SELECT id FROM activites
-       WHERE entreprise_id = $1 AND type = 'franchise' AND franchise_group = $2 AND id != $3`,
-      [entrepriseId, franchiseGroup, activiteId]
-    );
-
-    for (const act of others.rows) {
-      const targetSel = await pool.query(
-        'SELECT ingredient_id FROM activite_ingredient_selections WHERE activite_id = $1',
-        [act.id]
-      );
-      const targetIngSet = new Set(targetSel.rows.map((r) => r.ingredient_id));
-      for (const row of source.rows) {
-        if (!targetIngSet.has(row.ingredient_id)) continue;
-        await pool.query(
-          `INSERT INTO stock_entreprise_daily
-             (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, updated_at)
-           VALUES ($1, $2, $3, $4, $5, 'manuel', NOW())`,
-          [act.id, row.ingredient_id, row.date_appro, row.quantite, row.prix_unitaire]
-        );
-      }
-    }
-
-    res.json({ duplicatedTo: others.rows.length });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
 // ─── Export Excel Historique Appro ───────────────────────────────────────────
 const exportHistoriqueExcel = async (req, res) => {
-  const { activiteId, franchiseGroup, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam, ptOnly, ptProduitId } = req.query;
+  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam, ptOnly, ptProduitId } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
   const currentYear = new Date().getFullYear();
-  const isEntreprise = !!(activiteId || franchiseGroup || activiteIdsParam || entType);
+  const isEntreprise = !!(activiteId || activiteIdsParam || entType);
 
   try {
     let rows = [];
@@ -1254,17 +1184,13 @@ const exportHistoriqueExcel = async (req, res) => {
       let activiteIds = [];
       if (activiteId) {
         activiteIds = [activiteId];
-      } else if (franchiseGroup) {
-        const gRes = await pool.query(
-          `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1 AND a.franchise_group = $2`,
-          [req.user.gerant_parent_id || req.user.id, franchiseGroup]
-        );
-        activiteIds = gRes.rows.map((r) => r.id);
       } else if (activiteIdsParam) {
         activiteIds = activiteIdsParam.split(',').map(Number).filter(Boolean);
       } else if (entType) {
-        const typeFilter = entType === 'franchise' ? `a.type = 'franchise'` : `(a.type = 'distincte' OR a.type IS NULL)`;
-        const allRes = await pool.query(`SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1 AND ${typeFilter}`, [req.user.gerant_parent_id || req.user.id]);
+        const allRes = await pool.query(
+          `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1`,
+          [req.user.gerant_parent_id || req.user.id]
+        );
         activiteIds = allRes.rows.map((r) => r.id);
       }
       if (activiteIds.length === 0) return res.status(404).json({ message: 'Aucune activité' });
@@ -1633,7 +1559,6 @@ module.exports = {
   updateSeuilMinClient, createClientPerte,
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
-  duplicateStockToFranchise,
   exportHistoriqueExcel,
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
   getCascadeInfoClient, getCascadeInfoEntreprise,

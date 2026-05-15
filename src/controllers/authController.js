@@ -323,22 +323,18 @@ const updateProfile = async (req, res) => {
 };
 
 const completeUpgradeWizard = async (req, res) => {
-  const { activiteType, franchiseGroup, activiteNom } = req.body;
-  if (!['franchise', 'distincte'].includes(activiteType)) {
-    return res.status(400).json({ message: 'activiteType doit être "franchise" ou "distincte"' });
-  }
+  const { activiteNom } = req.body;
   try {
-    // Find the entreprise + the activite created during migration
     const peRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [req.user.id]);
     if (peRes.rows.length === 0) return res.status(404).json({ message: 'Profil entreprise introuvable' });
     const entrepriseId = peRes.rows[0].id;
 
-    await pool.query(
-      `UPDATE activites
-       SET type = $1, franchise_group = $2, nom = COALESCE($3, nom), updated_at = NOW()
-       WHERE entreprise_id = $4 AND type IS NULL`,
-      [activiteType, franchiseGroup || null, activiteNom || null, entrepriseId]
-    );
+    if (activiteNom) {
+      await pool.query(
+        `UPDATE activites SET nom = $1, updated_at = NOW() WHERE entreprise_id = $2 AND nom IS NULL`,
+        [activiteNom, entrepriseId]
+      );
+    }
 
     await pool.query(
       'UPDATE utilisateurs SET onboarding_step = 0, updated_at = NOW() WHERE id = $1',
