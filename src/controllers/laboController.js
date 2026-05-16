@@ -1022,6 +1022,7 @@ const getLaboHistorique = async (req, res) => {
     const result = await pool.query(
       `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
               sld.ref_facture, sld.type_appro, sld.updated_at, sld.created_by,
+              sld.taux_tva, sld.prix_unitaire_tva,
               i.nom as ingredient_nom,
               u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
@@ -1045,6 +1046,8 @@ const getLaboHistorique = async (req, res) => {
       dateAppro: isoDate(r.date_appro),
       quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
       prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
+      tauxTva: r.taux_tva !== null ? parseFloat(r.taux_tva) : null,
+      prixUnitaireTva: r.prix_unitaire_tva !== null ? parseFloat(r.prix_unitaire_tva) : null,
       refFacture: r.ref_facture || null,
       typeAppro: r.type_appro || null,
       fournisseurId: r.fournisseur_id || null,
@@ -1266,12 +1269,14 @@ const exportLaboHistoriqueExcel = async (req, res) => {
 
     const result = await pool.query(
       `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
-              sld.ref_facture, i.nom as ingredient_nom, u.nom as unite_nom,
+              sld.ref_facture, sld.type_appro, sld.taux_tva, sld.prix_unitaire_tva,
+              i.nom as ingredient_nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
-              f.nom as fournisseur_nom
+              f.nom as fournisseur_nom, ub.nom as created_by_nom
        FROM stock_labo_daily sld
        JOIN ingredients i ON i.id = sld.ingredient_id JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
+       LEFT JOIN utilisateurs ub ON ub.id = sld.created_by
        WHERE ${conditions.join(' AND ')}
        ORDER BY sld.date_appro DESC, sld.updated_at DESC`, params
     );
@@ -1288,10 +1293,13 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
     const bodyFont = { name: 'Calibri', size: 10 };
 
+    // cols: Date | Ingrédient | Catégorie | Type | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Fournisseur | Réf. Facture | Créé par
     const cols = [
       { header: 'Date', width: 12 }, { header: 'Ingrédient', width: 26 }, { header: 'Catégorie', width: 18 },
-      { header: 'Quantité', width: 11 }, { header: 'Unité', width: 9 }, { header: 'Prix/DT', width: 11 },
-      { header: 'Coût total DT', width: 14 }, { header: 'Fournisseur', width: 18 }, { header: 'Réf. Facture', width: 16 },
+      { header: 'Type', width: 10 }, { header: 'Quantité', width: 11 }, { header: 'Unité', width: 9 },
+      { header: 'Prix U. HT', width: 13 }, { header: 'TVA %', width: 9 }, { header: 'Prix U. TTC', width: 13 },
+      { header: 'Coût HT', width: 14 }, { header: 'Coût TTC', width: 14 },
+      { header: 'Fournisseur', width: 18 }, { header: 'Réf. Facture', width: 16 }, { header: 'Créé par', width: 16 },
     ];
     sheet.columns = cols.map((c) => ({ width: c.width }));
 
@@ -1316,32 +1324,44 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     hdrRow.height = 22;
     sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
 
-    let totalQty = 0; let totalCout = 0;
+    // col5=Quantité, col7=Prix HT, col9=Prix TTC, col10=Coût HT, col11=Coût TTC
+    let totalHT = 0; let totalTTC = 0;
     rows.forEach((r, i) => {
       const qty = r.quantite !== null ? parseFloat(r.quantite) : 0;
       const prix = r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : 0;
-      const cout = qty * prix;
-      totalQty += qty; totalCout += cout;
+      const prixTtc = r.prix_unitaire_tva !== null ? parseFloat(r.prix_unitaire_tva) : prix;
+      const tva = r.taux_tva !== null ? parseFloat(r.taux_tva) : null;
+      const coutHt = qty * prix;
+      const coutTtc = qty * prixTtc;
+      totalHT += coutHt; totalTTC += coutTtc;
       const isSelected = selectedSet.has(Number(r.id));
       const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
-      const dataRow = sheet.addRow([dateStr, r.ingredient_nom, r.categorie_nom, qty, r.unite_nom, prix, cout, r.fournisseur_nom || '', r.ref_facture || '']);
+      const typeLabel = (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? 'Prod. Transformé' : t === 'transfert' ? 'Transfert' : 'Appro'; })();
+      const dataRow = sheet.addRow([
+        dateStr, r.ingredient_nom, r.categorie_nom, typeLabel,
+        qty, r.unite_nom, prix, tva !== null ? tva : '', prixTtc,
+        coutHt, coutTtc,
+        r.fournisseur_nom || '', r.ref_facture || '', r.created_by_nom || '',
+      ]);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
       const txtColor = isSelected ? WHITE : '1a1a2e';
-      // Use getCell loop to ensure ALL cells (including empty) get the fill
       for (let c = 1; c <= cols.length; c++) {
         const cell = dataRow.getCell(c);
         cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
         cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : (c === 5 ? 'center' : 'right') };
+        cell.alignment = { vertical: 'middle', horizontal: (c <= 4 || c === cols.length) ? 'left' : (c === 6 ? 'center' : 'right') };
       }
-      dataRow.getCell(4).numFmt = '#,##0.000';
-      dataRow.getCell(6).numFmt = '#,##0.000 "DT"';
-      dataRow.getCell(7).numFmt = '#,##0.000 "DT"';
+      const numFmt = '#,##0.000';
+      dataRow.getCell(5).numFmt = numFmt;
+      dataRow.getCell(7).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(9).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(10).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(11).numFmt = numFmt + ' "DT"';
       dataRow.height = 16;
     });
 
-    const totalRow = sheet.addRow(['TOTAL', '', '', totalQty, '', '', totalCout, '', '']);
+    const totalRow = sheet.addRow(['TOTAL', '', '', '', '', '', '', '', '', totalHT, totalTTC, '', '', '']);
     totalRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { name: 'Calibri', bold: true, size: 10 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
@@ -1349,8 +1369,8 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       cell.alignment = { vertical: 'middle', horizontal: 'right' };
     });
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(4).numFmt = '#,##0.000';
-    totalRow.getCell(7).numFmt = '#,##0.000 "DT"';
+    totalRow.getCell(10).numFmt = '#,##0.000 "DT"';
+    totalRow.getCell(11).numFmt = '#,##0.000 "DT"';
     totalRow.height = 18;
 
     sheet.addRow([]);
@@ -1554,12 +1574,15 @@ const exportLaboTransferExcel = async (req, res) => {
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
               lt.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              lt.activite_id, a.nom AS activite_nom
+              lt.activite_id, a.nom AS activite_nom,
+              lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
+              ub.nom AS created_by_nom
        FROM labo_transfers lt
        JOIN ingredients i ON i.id = lt.ingredient_id
        JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN utilisateurs ub ON ub.id = lt.created_by
        WHERE ${conditions.join(' AND ')}
        ORDER BY lt.date_transfert DESC, lt.id DESC`,
       params
@@ -1577,14 +1600,14 @@ const exportLaboTransferExcel = async (req, res) => {
     const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
     const bodyFont = { name: 'Calibri', size: 10 };
 
+    // Date | Activité | Ingrédient | Catégorie | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Créé par | Note
     const cols = [
-      { header: 'Date', width: 12 },
-      { header: 'Activité', width: 20 },
-      { header: 'Ingrédient', width: 26 },
-      { header: 'Catégorie', width: 18 },
-      { header: 'Quantité', width: 11 },
-      { header: 'Unité', width: 9 },
-      { header: 'Note', width: 24 },
+      { header: 'Date', width: 12 }, { header: 'Activité', width: 20 },
+      { header: 'Ingrédient', width: 26 }, { header: 'Catégorie', width: 18 },
+      { header: 'Quantité', width: 11 }, { header: 'Unité', width: 9 },
+      { header: 'Prix U. HT', width: 13 }, { header: 'TVA %', width: 9 }, { header: 'Prix U. TTC', width: 13 },
+      { header: 'Coût HT', width: 14 }, { header: 'Coût TTC', width: 14 },
+      { header: 'Créé par', width: 16 }, { header: 'Note', width: 24 },
     ];
     sheet.columns = cols.map((c) => ({ width: c.width }));
 
@@ -1607,13 +1630,25 @@ const exportLaboTransferExcel = async (req, res) => {
     hdrRow.height = 22;
     sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
 
-    let totalQty = 0;
+    // col5=Quantité, col7=Prix HT, col9=Prix TTC, col10=Coût HT, col11=Coût TTC
+    let totalHT = 0; let totalTTC = 0;
     rows.forEach((r, i) => {
       const qty = parseFloat(r.quantite);
-      totalQty += qty;
+      const prix = r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : 0;
+      const prixTtc = r.prix_unitaire_tva !== null ? parseFloat(r.prix_unitaire_tva) : prix;
+      const tva = r.taux_tva !== null ? parseFloat(r.taux_tva) : null;
+      const coutHt = qty * prix;
+      const coutTtc = qty * prixTtc;
+      totalHT += coutHt; totalTTC += coutTtc;
       const isSelected = selectedSet.has(Number(r.id));
       const dateStr = fmtD(r.date_transfert);
-      const dataRow = sheet.addRow([dateStr, r.activite_nom, r.ingredient_nom, r.categorie_nom, qty, r.unite_nom, r.note || '']);
+      const dataRow = sheet.addRow([
+        dateStr, r.activite_nom, r.ingredient_nom, r.categorie_nom,
+        qty, r.unite_nom,
+        prix, tva !== null ? tva : '', prixTtc,
+        coutHt, coutTtc,
+        r.created_by_nom || '', r.note || '',
+      ]);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
       const txtColor = isSelected ? WHITE : '1a1a2e';
       for (let c = 1; c <= cols.length; c++) {
@@ -1621,13 +1656,18 @@ const exportLaboTransferExcel = async (req, res) => {
         cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
         cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: c === 5 ? 'right' : 'left' };
+        cell.alignment = { vertical: 'middle', horizontal: (c <= 4 || c >= 12) ? 'left' : (c === 6 ? 'center' : 'right') };
       }
-      dataRow.getCell(5).numFmt = '#,##0.000';
+      const numFmt = '#,##0.000';
+      dataRow.getCell(5).numFmt = numFmt;
+      dataRow.getCell(7).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(9).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(10).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(11).numFmt = numFmt + ' "DT"';
       dataRow.height = 16;
     });
 
-    const totalRow = sheet.addRow(['TOTAL', '', '', '', totalQty, '', '']);
+    const totalRow = sheet.addRow(['TOTAL', '', '', '', '', '', '', '', '', totalHT, totalTTC, '', '']);
     totalRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { name: 'Calibri', bold: true, size: 10 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
@@ -1635,7 +1675,8 @@ const exportLaboTransferExcel = async (req, res) => {
       cell.alignment = { vertical: 'middle', horizontal: 'right' };
     });
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(5).numFmt = '#,##0.000';
+    totalRow.getCell(10).numFmt = '#,##0.000 "DT"';
+    totalRow.getCell(11).numFmt = '#,##0.000 "DT"';
     totalRow.height = 18;
 
     sheet.addRow([]);

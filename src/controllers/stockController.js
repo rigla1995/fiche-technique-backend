@@ -1240,10 +1240,12 @@ const exportHistoriqueExcel = async (req, res) => {
       const result = await pool.query(
         `SELECT sed.id, sed.activite_id, sed.date_appro, sed.quantite, sed.prix_unitaire, sed.type_appro,
                 sed.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
-                u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom
+                u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+                sed.taux_tva, sed.prix_unitaire_tva, ub.nom as created_by_nom
          FROM stock_entreprise_daily sed
          JOIN ingredients i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
+         LEFT JOIN utilisateurs ub ON ub.id = sed.created_by
          WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
          ORDER BY sed.date_appro DESC, i.nom`, params
       );
@@ -1261,7 +1263,8 @@ const exportHistoriqueExcel = async (req, res) => {
                 NULL AS fournisseur_nom, NULL AS ref_facture,
                 p.nom AS ingredient_nom,
                 'Produits Transformés' AS categorie_nom,
-                'unité' AS unite_nom
+                'unité' AS unite_nom,
+                NULL AS taux_tva, NULL AS prix_unitaire_tva, NULL AS created_by_nom
          FROM stock_produits_transformes spt
          JOIN produits p ON p.id = spt.produit_id
          WHERE ${ptWhereEnt}
@@ -1283,10 +1286,12 @@ const exportHistoriqueExcel = async (req, res) => {
         const result = await pool.query(
           `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
                   scd.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
-                  u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom
+                  u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+                  scd.taux_tva, scd.prix_unitaire_tva, ub.nom as created_by_nom
            FROM stock_client_daily scd
            JOIN ingredients i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
            LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
+           LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
            WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
            ORDER BY scd.date_appro DESC, i.nom`, params
         );
@@ -1305,7 +1310,8 @@ const exportHistoriqueExcel = async (req, res) => {
                 NULL AS fournisseur_nom, NULL AS ref_facture,
                 p.nom AS ingredient_nom,
                 'Produits Transformés' AS categorie_nom,
-                'unité' AS unite_nom
+                'unité' AS unite_nom,
+                NULL AS taux_tva, NULL AS prix_unitaire_tva, NULL AS created_by_nom
          FROM stock_produits_transformes spt
          JOIN produits p ON p.id = spt.produit_id
          WHERE ${ptWhereIndep}
@@ -1332,17 +1338,21 @@ const exportHistoriqueExcel = async (req, res) => {
       { header: 'Catégorie', key: 'cat', width: 18 },
       { header: 'Quantité', key: 'qty', width: 11 },
       { header: 'Unité', key: 'unit', width: 9 },
-      { header: 'Prix/DT', key: 'prix', width: 11 },
-      { header: 'Coût total DT', key: 'cout', width: 14 },
+      { header: 'Prix U. HT', key: 'prix', width: 13 },
+      { header: 'TVA %', key: 'tva', width: 9 },
+      { header: 'Prix U. TTC', key: 'prixTtc', width: 13 },
+      { header: 'Coût HT', key: 'coutHt', width: 14 },
+      { header: 'Coût TTC', key: 'coutTtc', width: 14 },
       ...(isEntreprise ? [
         { header: 'Activité', key: 'act', width: 18 },
         { header: 'Fournisseur', key: 'fourn', width: 18 },
         { header: 'Réf. Facture', key: 'ref', width: 16 },
-        { header: 'Type', key: 'type', width: 10 },
+        { header: 'Type', key: 'type', width: 12 },
       ] : [
         { header: 'Fournisseur', key: 'fourn', width: 18 },
         { header: 'Réf. Facture', key: 'ref', width: 16 },
       ]),
+      { header: 'Créé par', key: 'createdBy', width: 16 },
     ];
     sheet.columns = cols.map((c) => ({ width: c.width }));
 
@@ -1368,14 +1378,20 @@ const exportHistoriqueExcel = async (req, res) => {
     sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
 
     // Data rows
-    let totalQty = 0; let totalCout = 0;
+    // cols 1-10 are fixed; 11+ depend on isEntreprise
+    // col9 = Coût HT, col10 = Coût TTC (both fixed positions)
+    let totalHT = 0; let totalTTC = 0;
     rows.forEach((r, i) => {
       const qty = r.quantite !== null ? parseFloat(r.quantite) : 0;
       const prix = r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : 0;
-      const cout = qty * prix;
-      totalQty += qty; totalCout += cout;
+      const prixTtc = r.prix_unitaire_tva !== null ? parseFloat(r.prix_unitaire_tva) : prix;
+      const tva = r.taux_tva !== null ? parseFloat(r.taux_tva) : null;
+      const coutHt = qty * prix;
+      const coutTtc = qty * prixTtc;
+      totalHT += coutHt; totalTTC += coutTtc;
       const isSelected = selectedSet.has(Number(r.id));
       const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
+      const typeLabel = (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? 'Prod. Transformé' : t === 'transfert' ? 'Transfert' : 'Manuel'; })();
       const rowData = [
         dateStr,
         r.ingredient_nom,
@@ -1383,34 +1399,35 @@ const exportHistoriqueExcel = async (req, res) => {
         qty,
         r.unite_nom,
         prix,
-        cout,
-        ...(isEntreprise ? [activiteNames[r.activite_id] || '', r.fournisseur_nom || '', r.ref_facture || '', (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? 'Prod. Transformé' : t === 'transfert' ? 'Transfert' : t; })()] : [r.fournisseur_nom || '', r.ref_facture || '']),
+        tva !== null ? tva : '',
+        prixTtc,
+        coutHt,
+        coutTtc,
+        ...(isEntreprise ? [activiteNames[r.activite_id] || '', r.fournisseur_nom || '', r.ref_facture || '', typeLabel] : [r.fournisseur_nom || '', r.ref_facture || '']),
+        r.created_by_nom || '',
       ];
       const dataRow = sheet.addRow(rowData);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
       const txtColor = isSelected ? WHITE : '1a1a2e';
-      // Use getCell loop to ensure ALL cells (including empty) get the fill
       for (let c = 1; c <= cols.length; c++) {
         const cell = dataRow.getCell(c);
         cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
         cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : (c === 5 ? 'center' : 'right') };
+        cell.alignment = { vertical: 'middle', horizontal: (c <= 3 || c === cols.length) ? 'left' : (c === 5 ? 'center' : 'right') };
       }
       const numFmt = '#,##0.000';
       dataRow.getCell(4).numFmt = numFmt;
       dataRow.getCell(6).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(7).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(8).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(9).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(10).numFmt = numFmt + ' "DT"';
       dataRow.height = 16;
     });
 
-    // Total row
-    const totalRow = sheet.addRow([
-      'TOTAL', '', '',
-      totalQty, '', '',
-      totalCout,
-      ...(isEntreprise ? ['', '', '', ''] : ['', '']),
-    ]);
+    // Total row — qty at col4, Coût HT at col9, Coût TTC at col10
+    const totalRowData = ['TOTAL', '', '', '', '', '', '', '', totalHT, totalTTC, ...Array(cols.length - 10).fill('')];
+    const totalRow = sheet.addRow(totalRowData);
     totalRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { name: 'Calibri', bold: true, size: 10 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
@@ -1418,8 +1435,8 @@ const exportHistoriqueExcel = async (req, res) => {
       cell.alignment = { vertical: 'middle', horizontal: 'right' };
     });
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(4).numFmt = '#,##0.000';
-    totalRow.getCell(7).numFmt = '#,##0.000 "DT"';
+    totalRow.getCell(9).numFmt = '#,##0.000 "DT"';
+    totalRow.getCell(10).numFmt = '#,##0.000 "DT"';
     totalRow.height = 18;
 
     // Footer
