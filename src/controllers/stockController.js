@@ -1346,11 +1346,9 @@ const exportHistoriqueExcel = async (req, res) => {
       ...(isEntreprise ? [
         { header: 'Activité', key: 'act', width: 18 },
         { header: 'Fournisseur', key: 'fourn', width: 18 },
-        { header: 'Réf. Facture', key: 'ref', width: 16 },
         { header: 'Type', key: 'type', width: 12 },
       ] : [
         { header: 'Fournisseur', key: 'fourn', width: 18 },
-        { header: 'Réf. Facture', key: 'ref', width: 16 },
       ]),
       { header: 'Créé par', key: 'createdBy', width: 16 },
     ];
@@ -1403,7 +1401,7 @@ const exportHistoriqueExcel = async (req, res) => {
         prixTtc,
         coutHt,
         coutTtc,
-        ...(isEntreprise ? [activiteNames[r.activite_id] || '', r.fournisseur_nom || '', r.ref_facture || '', typeLabel] : [r.fournisseur_nom || '', r.ref_facture || '']),
+        ...(isEntreprise ? [activiteNames[r.activite_id] || '', r.fournisseur_nom || '', typeLabel] : [r.fournisseur_nom || '']),
         r.created_by_nom || '',
       ];
       const dataRow = sheet.addRow(rowData);
