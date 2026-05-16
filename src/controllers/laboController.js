@@ -18,8 +18,8 @@ async function checkLaboOwner(laboId, userId) {
 
 const createLabo = async (req, res) => {
   const { nom, refLabo, referentTel, adresse, activityIds } = req.body;
-  if (!nom || !refLabo || !referentTel)
-    return res.status(400).json({ message: 'nom, refLabo et referentTel requis' });
+  if (!nom || !refLabo)
+    return res.status(400).json({ message: 'nom et refLabo requis' });
   try {
     const peRes = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1',
@@ -37,10 +37,11 @@ const createLabo = async (req, res) => {
     if (refCheck.rows.length > 0)
       return res.status(409).json({ message: 'Un labo avec cette référence existe déjà' });
 
+    const tel = referentTel?.trim() || null;
     const result = await pool.query(
       `INSERT INTO labos (entreprise_id, nom, referent_tel, adresse, ref_labo)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [entrepriseId, nom.trim(), referentTel.trim(), adresse?.trim() || null, refLabo.trim()]
+      [entrepriseId, nom.trim(), tel, adresse?.trim() || null, refLabo.trim()]
     );
     const labo = result.rows[0];
 
@@ -52,7 +53,7 @@ const createLabo = async (req, res) => {
       const fRes = await pool.query(
         `INSERT INTO fournisseurs (entreprise_id, nom, telephone, adresse, is_labo, labo_id)
          VALUES ($1, $2, $3, $4, true, $5) RETURNING id`,
-        [entrepriseId, nom.trim(), referentTel.trim(), adresse?.trim() || null, labo.id]
+        [entrepriseId, nom.trim(), tel, adresse?.trim() || null, labo.id]
       );
       const fournisseurId = fRes.rows[0].id;
       // Assign manually selected activities to this labo (standalone creation)
@@ -1495,8 +1496,8 @@ const deleteLabo = async (req, res) => {
 const updateLabo = async (req, res) => {
   const { laboId } = req.params;
   const { nom, referentTel, adresse } = req.body;
-  if (!nom || !referentTel)
-    return res.status(400).json({ message: 'nom et referentTel requis' });
+  if (!nom)
+    return res.status(400).json({ message: 'nom requis' });
   try {
     const peRes = await pool.query(
       'SELECT id FROM profil_entreprise WHERE client_id = $1', [req.user.id]
@@ -1504,17 +1505,18 @@ const updateLabo = async (req, res) => {
     if (peRes.rows.length === 0)
       return res.status(400).json({ message: 'Profil entreprise introuvable' });
     const entrepriseId = peRes.rows[0].id;
+    const tel = referentTel?.trim() || null;
     const result = await pool.query(
       `UPDATE labos SET nom = $1, referent_tel = $2, adresse = $3, updated_at = NOW()
        WHERE id = $4 AND entreprise_id = $5 RETURNING *`,
-      [nom.trim(), referentTel.trim(), adresse?.trim() || null, laboId, entrepriseId]
+      [nom.trim(), tel, adresse?.trim() || null, laboId, entrepriseId]
     );
     if (result.rows.length === 0)
       return res.status(404).json({ message: 'Labo introuvable' });
     // Sync the auto-created labo fournisseur name/tel
     await pool.query(
       `UPDATE fournisseurs SET nom = $1, telephone = $2 WHERE labo_id = $3 AND is_labo = true`,
-      [nom.trim(), referentTel.trim(), laboId]
+      [nom.trim(), tel, laboId]
     );
     res.json(mapLabo(result.rows[0]));
   } catch (err) {
