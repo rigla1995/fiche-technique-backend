@@ -154,7 +154,7 @@ const traiter = async (req, res) => {
   const { id } = req.params;
   const { statut, notesAdmin } = req.body;
   // Admin-editable overrides for ingredient requests
-  const { domaineId: adminDomaineId, categorieNom: adminCategorieNom, uniteNom: adminUniteNom, nomIngredient: adminNomIngredient } = req.body;
+  const { domaineId: adminDomaineId, domaineIds: adminDomaineIds, categorieNom: adminCategorieNom, uniteNom: adminUniteNom, nomIngredient: adminNomIngredient } = req.body;
 
   if (!['validée', 'refusée'].includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
 
@@ -188,7 +188,11 @@ const traiter = async (req, res) => {
 
     // Auto-create ingredient in global catalogue when ingredient request is validated
     if (statut === 'validée' && demande.type === 'ingredient_manquant' && (adminNomIngredient || demande.nom_ingredient)) {
-      const finalDomaineId = adminDomaineId != null ? adminDomaineId : demande.domaine_id;
+      const finalDomaineIds = Array.isArray(adminDomaineIds) && adminDomaineIds.length > 0
+        ? adminDomaineIds.map(Number).filter(Boolean)
+        : adminDomaineId != null ? [Number(adminDomaineId)]
+        : demande.domaine_id ? [Number(demande.domaine_id)]
+        : [];
       const finalCategorieNom = adminCategorieNom != null ? adminCategorieNom : demande.categorie_nom;
       const finalUniteNom = adminUniteNom != null ? adminUniteNom : demande.unite_nom;
       const finalNomIngredient = adminNomIngredient != null ? adminNomIngredient.trim() : demande.nom_ingredient;
@@ -232,13 +236,15 @@ const traiter = async (req, res) => {
         );
         const ingredientId = ingRes.rows[0]?.id;
 
-        // Link to domaine via ingredient_domaines junction table
-        if (ingredientId && finalDomaineId) {
-          await pool.query(
-            `INSERT INTO ingredient_domaines (ingredient_id, domaine_id)
-             VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-            [ingredientId, finalDomaineId]
-          ).catch(() => {});
+        // Link to domaines via ingredient_domaines junction table
+        if (ingredientId && finalDomaineIds.length > 0) {
+          for (const domaineId of finalDomaineIds) {
+            await pool.query(
+              `INSERT INTO ingredient_domaines (ingredient_id, domaine_id)
+               VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+              [ingredientId, domaineId]
+            ).catch(() => {});
+          }
         }
       }
     }
