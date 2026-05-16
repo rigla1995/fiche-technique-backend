@@ -961,6 +961,7 @@ const getTransferHistory = async (req, res) => {
     result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
+              lt.created_by, ub.nom as created_by_nom,
               i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
               a.id as activite_id, a.nom as activite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom
@@ -969,6 +970,7 @@ const getTransferHistory = async (req, res) => {
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN utilisateurs ub ON ub.id = lt.created_by
        WHERE lt.labo_id = $1 AND EXTRACT(YEAR FROM lt.date_transfert) = $2${extraWhere}
        ORDER BY lt.date_transfert DESC, lt.created_at DESC${limit ? ` LIMIT ${parseInt(limit, 10)}` : ''}`,
       params
@@ -981,6 +983,8 @@ const getTransferHistory = async (req, res) => {
       note: r.note,
       refFacture: r.ref_facture,
       createdAt: r.created_at,
+      createdBy: r.created_by ?? null,
+      createdByNom: r.created_by_nom ?? null,
       prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
       tauxTva: r.taux_tva != null ? parseFloat(r.taux_tva) : null,
       prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
