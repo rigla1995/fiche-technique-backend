@@ -135,7 +135,7 @@ const createActivite = async (req, res) => {
 
 const updateActivite = async (req, res) => {
   const { id } = req.params;
-  const { nom, adresse, telephone, email } = req.body;
+  const { nom, adresse, telephone, email, laboId } = req.body;
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
     const entreprise = await pool.query(
@@ -143,17 +143,43 @@ const updateActivite = async (req, res) => {
       [clientId]
     );
     if (entreprise.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
+    const entrepriseId = entreprise.rows[0].id;
 
-    const result = await pool.query(
-      `UPDATE activites
-       SET nom = COALESCE($1, nom),
-           adresse = $2,
-           telephone = $3,
-           email = $4,
-           updated_at = NOW()
-       WHERE id = $5 AND entreprise_id = $6 RETURNING *`,
-      [nom, adresse || null, telephone || null, email || null, id, entreprise.rows[0].id]
-    );
+    // Validate laboId belongs to this entreprise if provided
+    if (laboId) {
+      const laboCheck = await pool.query(
+        'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2',
+        [laboId, entrepriseId]
+      );
+      if (laboCheck.rows.length === 0) return res.status(400).json({ message: 'Labo introuvable' });
+    }
+
+    // Build query depending on whether laboId was passed
+    let result;
+    if (typeof laboId !== 'undefined') {
+      result = await pool.query(
+        `UPDATE activites
+         SET nom = COALESCE($1, nom),
+             adresse = $2,
+             telephone = $3,
+             email = $4,
+             labo_id = $5,
+             updated_at = NOW()
+         WHERE id = $6 AND entreprise_id = $7 RETURNING *`,
+        [nom, adresse || null, telephone || null, email || null, laboId || null, id, entrepriseId]
+      );
+    } else {
+      result = await pool.query(
+        `UPDATE activites
+         SET nom = COALESCE($1, nom),
+             adresse = $2,
+             telephone = $3,
+             email = $4,
+             updated_at = NOW()
+         WHERE id = $5 AND entreprise_id = $6 RETURNING *`,
+        [nom, adresse || null, telephone || null, email || null, id, entrepriseId]
+      );
+    }
     if (result.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
     res.json(mapActivite(result.rows[0]));
   } catch (err) {
