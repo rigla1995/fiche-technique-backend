@@ -588,7 +588,7 @@ const getLaboStock = async (req, res) => {
 const updateLaboStock = async (req, res) => {
   const { laboId } = req.params;
   const ingredientIdRaw = parseInt(req.params.ingredientId);
-  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, customPortions } = req.body;
+  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, customPortions, tauxTva } = req.body;
   const da = dateAppro || todayStr();
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
@@ -676,10 +676,12 @@ const updateLaboStock = async (req, res) => {
       return res.json({ success: true, prixCalcule: finalPrix });
     }
 
+    const tva = tauxTva != null ? parseFloat(tauxTva) : null;
+    const prixUnitaireTva = tva != null && prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
     await pool.query(
-      `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, type_appro, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'manuel', NOW())`,
-      [laboId, ingredientIdRaw, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null]
+      `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, type_appro, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'manuel', NOW())`,
+      [laboId, ingredientIdRaw, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, tva, prixUnitaireTva]
     );
     res.json({ success: true });
   } catch (err) {
@@ -715,7 +717,7 @@ const getLaboStockHistory = async (req, res) => {
 
     const result = await pool.query(
       `SELECT sld.date_appro, sld.quantite, sld.prix_unitaire, sld.ref_facture,
-              sld.type_appro, f.nom as fournisseur_nom
+              sld.type_appro, f.nom as fournisseur_nom, sld.taux_tva, sld.prix_unitaire_tva
        FROM stock_labo_daily sld
        LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
        WHERE sld.labo_id = $1 AND sld.ingredient_id = $2
@@ -729,6 +731,8 @@ const getLaboStockHistory = async (req, res) => {
       refFacture: r.ref_facture || null,
       typeAppro: r.type_appro || null,
       fournisseurNom: r.fournisseur_nom || null,
+      tauxTva: r.taux_tva != null ? parseFloat(r.taux_tva) : null,
+      prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
     })));
   } catch (err) {
     console.error(err);
@@ -788,7 +792,7 @@ const syncLaboFournisseurs = async (req, res) => {
 // Body: { dateTransfert, note, refFacture, transfers: [{ activiteId, ingredientId, quantite }] }
 const createTransfer = async (req, res) => {
   const { laboId } = req.params;
-  const { dateTransfert, note, refFacture, transfers } = req.body;
+  const { dateTransfert, note, refFacture, tauxTva, transfers } = req.body;
 
   if (!dateTransfert || !Array.isArray(transfers) || transfers.length === 0)
     return res.status(400).json({ message: 'dateTransfert et transfers requis' });
@@ -859,31 +863,27 @@ const createTransfer = async (req, res) => {
         }
 
         // Regular ingredient transfer
-        const latestRes = await client.query(
-          `SELECT quantite, prix_unitaire FROM stock_labo_daily
-           WHERE labo_id = $1 AND ingredient_id = $2
-           ORDER BY date_appro DESC LIMIT 1`,
-          [laboId, ingId]
-        );
-        const prixUnitaire = latestRes.rows.length > 0 ? latestRes.rows[0].prix_unitaire : null;
+        const prixUnit = t.prixUnitaire != null ? parseFloat(t.prixUnitaire) : null;
+        const tva = tauxTva != null ? parseFloat(tauxTva) : null;
+        const prixUnitaireTva = tva != null && prixUnit != null ? prixUnit * (1 + tva / 100) : null;
 
         await client.query(
           `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, updated_at, created_by)
            VALUES ($1, $2, $3, $4, $5, 'transfert', NOW(), $6)`,
-          [laboId, ingId, dateTransfert, -qty, prixUnitaire, req.user.id]
+          [laboId, ingId, dateTransfert, -qty, prixUnit, req.user.id]
         );
 
         await client.query(
           `INSERT INTO stock_entreprise_daily
-             (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at, created_by)
-           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, NOW(), $8)`,
-          [t.activiteId, ingId, dateTransfert, qty, prixUnitaire, laboFournisseurId, refFacture || null, req.user.id]
+             (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
+           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, $8, $9, NOW(), $10)`,
+          [t.activiteId, ingId, dateTransfert, qty, prixUnit, laboFournisseurId, refFacture || null, tva, prixUnitaireTva, req.user.id]
         );
 
         await client.query(
-          `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [laboId, t.activiteId, ingId, qty, dateTransfert, note || null, refFacture || null, req.user.id]
+          `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture, prix_unitaire, taux_tva, prix_unitaire_tva, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [laboId, t.activiteId, ingId, qty, dateTransfert, note || null, refFacture || null, prixUnit, tva, prixUnitaireTva, req.user.id]
         );
       }
 
@@ -959,6 +959,7 @@ const getTransferHistory = async (req, res) => {
 
     result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
+              lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
               i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
               a.id as activite_id, a.nom as activite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom
@@ -979,6 +980,9 @@ const getTransferHistory = async (req, res) => {
       note: r.note,
       refFacture: r.ref_facture,
       createdAt: r.created_at,
+      prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
+      tauxTva: r.taux_tva != null ? parseFloat(r.taux_tva) : null,
+      prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
       ingredientId: r.ingredient_id,
       ingredientNom: r.ingredient_nom,
       uniteNom: r.unite_nom,

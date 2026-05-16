@@ -321,8 +321,10 @@ const getStockClient = async (req, res) => {
 
 const updateStockClient = async (req, res) => {
   const { ingredientId } = req.params;
-  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture } = req.body;
+  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, tauxTva } = req.body;
   const da = dateAppro || todayStr();
+  const tva = tauxTva != null ? parseFloat(tauxTva) : null;
+  const prixUnitaireTva = tva != null && prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
     return res.status(400).json({ message: 'Quantité invalide' });
@@ -330,10 +332,10 @@ const updateStockClient = async (req, res) => {
   try {
     await pool.query(
       `INSERT INTO stock_client_daily
-         (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW(), $8)`,
+         (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
+       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)`,
       [req.user.gerant_parent_id || req.user.id, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
-       fournisseurId ?? null, refFacture ?? null, req.user.id]
+       fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -725,8 +727,10 @@ const getStockEntreprise = async (req, res) => {
 
 const updateStockEntreprise = async (req, res) => {
   const { activiteId, ingredientId } = req.params;
-  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture } = req.body;
+  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, tauxTva } = req.body;
   const da = dateAppro || todayStr();
+  const tva = tauxTva != null ? parseFloat(tauxTva) : null;
+  const prixUnitaireTva = tva != null && prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
     return res.status(400).json({ message: 'Quantité invalide' });
@@ -743,10 +747,10 @@ const updateStockEntreprise = async (req, res) => {
 
     await pool.query(
       `INSERT INTO stock_entreprise_daily
-         (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, updated_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, NOW(), $8)`,
+         (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
+       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)`,
       [activiteId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
-       fournisseurId ?? null, refFacture ?? null, req.user.id]
+       fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -788,7 +792,8 @@ const getHistoryClient = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
-              scd.ref_facture, f.nom as fournisseur_nom, scd.updated_at
+              scd.ref_facture, f.nom as fournisseur_nom, scd.updated_at,
+              scd.taux_tva, scd.prix_unitaire_tva
        FROM stock_client_daily scd
        LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
        WHERE scd.client_id = $1 AND scd.ingredient_id = $2
@@ -817,7 +822,8 @@ const getHistoryEntreprise = async (req, res) => {
 
     const result = await pool.query(
       `SELECT sed.date_appro, sed.quantite, sed.prix_unitaire, sed.type_appro,
-              sed.ref_facture, f.nom as fournisseur_nom, sed.updated_at
+              sed.ref_facture, f.nom as fournisseur_nom, sed.updated_at,
+              sed.taux_tva, sed.prix_unitaire_tva
        FROM stock_entreprise_daily sed
        LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
        WHERE sed.activite_id = $1 AND sed.ingredient_id = $2
@@ -1162,6 +1168,8 @@ function mapHistEntry(r) {
     fournisseurNom: resolveAutoFournisseur(r.fournisseur_nom, r.quantite),
     refFacture: r.ref_facture || null,
     updatedAt: r.updated_at,
+    tauxTva: r.taux_tva != null ? parseFloat(r.taux_tva) : null,
+    prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
   };
 }
 
