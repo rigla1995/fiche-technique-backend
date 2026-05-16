@@ -1293,13 +1293,13 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
     const bodyFont = { name: 'Calibri', size: 10 };
 
-    // cols: Date | Ingrédient | Catégorie | Type | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Fournisseur | Créé par
+    // cols: Date | Ingrédient | Catégorie | Type | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Fournisseur | Réf. Facture | Créé par
     const cols = [
       { header: 'Date', width: 12 }, { header: 'Ingrédient', width: 26 }, { header: 'Catégorie', width: 18 },
       { header: 'Type', width: 10 }, { header: 'Quantité', width: 11 }, { header: 'Unité', width: 9 },
       { header: 'Prix U. HT', width: 13 }, { header: 'TVA %', width: 9 }, { header: 'Prix U. TTC', width: 13 },
       { header: 'Coût HT', width: 14 }, { header: 'Coût TTC', width: 14 },
-      { header: 'Fournisseur', width: 18 }, { header: 'Créé par', width: 16 },
+      { header: 'Fournisseur', width: 18 }, { header: 'Réf. Facture', width: 16 }, { header: 'Créé par', width: 16 },
     ];
     sheet.columns = cols.map((c) => ({ width: c.width }));
 
@@ -1341,7 +1341,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
         dateStr, r.ingredient_nom, r.categorie_nom, typeLabel,
         qty, r.unite_nom, prix, tva !== null ? tva : '', prixTtc,
         coutHt, coutTtc,
-        r.fournisseur_nom || '', r.created_by_nom || '',
+        r.fournisseur_nom || '', r.ref_facture || '', r.created_by_nom || '',
       ]);
       const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
       const txtColor = isSelected ? WHITE : '1a1a2e';
@@ -1361,7 +1361,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       dataRow.height = 16;
     });
 
-    const totalRow = sheet.addRow(['TOTAL', '', '', '', '', '', '', '', '', totalHT, totalTTC, '', '']);
+    const totalRow = sheet.addRow(['TOTAL', '', '', '', '', '', '', '', '', totalHT, totalTTC, '', '', '']);
     totalRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { name: 'Calibri', bold: true, size: 10 };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
