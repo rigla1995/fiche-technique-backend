@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
+const { computeStockCourant } = require('../utils/stockUtils');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,16 @@ const createPerte = async (req, res) => {
     if (datePerte < minApproStr) return res.status(400).json({ message: `La date de perte doit être >= au premier appro (${minApproStr.split('-').reverse().join('/')}).` });
 
     const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, datePerte);
+
+    const stockCourant = await computeStockCourant('activite', activiteId, ingredientId);
+    const qty = parseFloat(quantite);
+    if (qty > stockCourant) {
+      return res.status(422).json({
+        message: `Stock insuffisant`,
+        disponible: Math.max(0, stockCourant),
+        demande: qty,
+      });
+    }
 
     const r = await pool.query(
       `INSERT INTO pertes (activite_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, created_by)

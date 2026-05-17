@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
+const { computeStockCourant } = require('../utils/stockUtils');
 
 // ─── Ownership check helper ───────────────────────────────────────────────────
 
@@ -818,6 +819,27 @@ const createTransfer = async (req, res) => {
     );
     const laboFournisseurId = laboFournisseurRes.rows.length > 0 ? laboFournisseurRes.rows[0].id : null;
 
+    // Vérification stock labo avant transaction
+    const ingQtyMap = {};
+    for (const t of transfers) {
+      const ingId = parseInt(t.ingredientId);
+      if (ingId < 0) continue; // PT géré séparément
+      const qty = parseFloat(t.quantite) || 0;
+      if (qty > 0) ingQtyMap[ingId] = (ingQtyMap[ingId] || 0) + qty;
+    }
+    for (const [ingId, totalQty] of Object.entries(ingQtyMap)) {
+      const stockCourant = await computeStockCourant('labo', laboId, parseInt(ingId));
+      if (totalQty > stockCourant) {
+        const ingRow = await pool.query('SELECT nom FROM ingredients WHERE id = $1', [ingId]);
+        const ingNom = ingRow.rows[0]?.nom ?? `ingrédient #${ingId}`;
+        return res.status(422).json({
+          message: `Stock insuffisant pour "${ingNom}"`,
+          disponible: Math.max(0, stockCourant),
+          demande: totalQty,
+        });
+      }
+    }
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -1429,6 +1451,16 @@ const createLaboPerte = async (req, res) => {
         [laboId, ingredientIdRaw, effectiveDate]
       );
       const prixUnitaire = priceRow.rows.length > 0 ? parseFloat(priceRow.rows[0].prix_unitaire) : null;
+      const stockCourant = await computeStockCourant('labo', laboId, ingredientIdRaw);
+      const qtyDemandee = parseFloat(quantite);
+      if (qtyDemandee > stockCourant) {
+        return res.status(422).json({
+          message: `Stock insuffisant`,
+          disponible: Math.max(0, stockCourant),
+          demande: qtyDemandee,
+        });
+      }
+
       await pool.query(
         `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire)
          VALUES ($1, $2, $3, $4, $5, $6)`,
