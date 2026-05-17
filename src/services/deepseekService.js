@@ -4,13 +4,13 @@ const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // DeepSeek-V3 — free tier
 
 async function fetchClientContext(clientId) {
-  const [stockRows, pertesRows, inventaireRows, clientRow, approRows] = await Promise.all([
+  const [stockRows, pertesRows, inventaireRows, clientRow] = await Promise.all([
     pool.query(
-      `SELECT i.nom AS ingredient, scd.quantite, scd.date
+      `SELECT i.nom AS ingredient, scd.quantite, scd.date_appro, scd.prix_unitaire
        FROM stock_client_daily scd
        JOIN ingredients i ON i.id = scd.ingredient_id
        WHERE scd.client_id = $1
-       ORDER BY scd.date DESC LIMIT 100`,
+       ORDER BY scd.date_appro DESC LIMIT 100`,
       [clientId]
     ),
     pool.query(
@@ -37,14 +37,6 @@ async function fetchClientContext(clientId) {
        WHERE u.id = $1`,
       [clientId]
     ),
-    pool.query(
-      `SELECT i.nom AS ingredient, sa.quantite, sa.date_appro, sa.prix_unitaire
-       FROM stock_appros sa
-       JOIN ingredients i ON i.id = sa.ingredient_id
-       WHERE sa.client_id = $1
-       ORDER BY sa.date_appro DESC LIMIT 30`,
-      [clientId]
-    ).catch(() => ({ rows: [] })),
   ]);
 
   const clientInfo = clientRow.rows[0] || {};
@@ -61,7 +53,7 @@ async function fetchClientContext(clientId) {
     stock: stockByIngredient,
     pertes: pertesRows.rows,
     inventaires: inventaireRows.rows,
-    appros: approRows.rows,
+    appros: stockRows.rows.slice(0, 30), // last appros from same table
   };
 }
 
@@ -69,7 +61,7 @@ function buildSystemPrompt(context) {
   const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const stockLines = Object.values(context.stock)
-    .map(r => `  - ${r.ingredient}: ${r.quantite} (au ${new Date(r.date).toLocaleDateString('fr-FR')})`)
+    .map(r => `  - ${r.ingredient}: ${r.quantite} (au ${new Date(r.date_appro).toLocaleDateString('fr-FR')})`)
     .join('\n') || '  Aucune donnée.';
 
   const pertesLines = context.pertes.slice(0, 20)
