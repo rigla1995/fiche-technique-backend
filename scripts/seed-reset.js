@@ -69,7 +69,7 @@ async function seedUnites(c) {
 
   for (const nom of unites) {
     await c.query(
-      `INSERT INTO unites (nom, client_id) SELECT $1, NULL
+      `INSERT INTO unites (nom, client_id) SELECT $1::varchar, NULL::integer
        WHERE NOT EXISTS (SELECT 1 FROM unites WHERE nom = $1 AND client_id IS NULL)`,
       [nom]
     );
