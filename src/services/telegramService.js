@@ -87,13 +87,7 @@ const handleMessage = async (msg) => {
       [confidence, client.client_id, String(chatId)]
     );
 
-    // Confidence disclaimer if below threshold
-    let reply = assistantMessage;
-    if (confidence !== null && confidence < client.confidence_threshold) {
-      reply += `\n\n⚠️ _Confiance faible (${Math.round(confidence * 100)}%) — vérifiez dans LabFlow._`;
-    }
-
-    await bot.sendMessage(chatId, reply, { parse_mode: 'Markdown' });
+    await bot.sendMessage(chatId, assistantMessage, { parse_mode: 'Markdown' });
 
     // Email report trigger
     const lower = text.toLowerCase();

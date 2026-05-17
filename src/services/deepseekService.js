@@ -5,14 +5,25 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile'; // Groq free tier
 
 async function fetchClientContext(clientId) {
   const [stockRows, pertesRows, inventaireRows, clientRow] = await Promise.all([
+    // Stock: union indépendant (stock_client_daily) + entreprise (stock_entreprise_daily via activites)
     pool.query(
-      `SELECT i.nom AS ingredient, scd.quantite, scd.date_appro, scd.prix_unitaire
-       FROM stock_client_daily scd
-       JOIN ingredients i ON i.id = scd.ingredient_id
-       WHERE scd.client_id = $1
-       ORDER BY scd.date_appro DESC LIMIT 100`,
+      `SELECT i.nom AS ingredient, s.quantite, s.date_appro, s.prix_unitaire
+       FROM (
+         SELECT ingredient_id, quantite, date_appro, prix_unitaire
+         FROM stock_client_daily
+         WHERE client_id = $1
+         UNION ALL
+         SELECT sed.ingredient_id, sed.quantite, sed.date_appro, sed.prix_unitaire
+         FROM stock_entreprise_daily sed
+         JOIN activites act ON act.id = sed.activite_id
+         JOIN profil_entreprise pe ON pe.id = act.entreprise_id
+         WHERE pe.client_id = $1
+       ) s
+       JOIN ingredients i ON i.id = s.ingredient_id
+       ORDER BY s.date_appro DESC LIMIT 100`,
       [clientId]
     ),
+    // Pertes : client_pertes couvre les deux types (client_id direct)
     pool.query(
       `SELECT i.nom AS ingredient, cp.quantite, cp.type_perte, cp.date_perte
        FROM client_pertes cp
@@ -21,11 +32,17 @@ async function fetchClientContext(clientId) {
        ORDER BY cp.date_perte DESC LIMIT 50`,
       [clientId]
     ),
+    // Inventaires : client_id (indép) ou via activite_id (entreprise)
     pool.query(
       `SELECT i.nom AS ingredient, inv.quantite_reelle, inv.date_inventaire
        FROM inventaires inv
        JOIN ingredients i ON i.id = inv.ingredient_id
        WHERE inv.client_id = $1
+          OR inv.activite_id IN (
+            SELECT act.id FROM activites act
+            JOIN profil_entreprise pe ON pe.id = act.entreprise_id
+            WHERE pe.client_id = $1
+          )
        ORDER BY inv.date_inventaire DESC LIMIT 50`,
       [clientId]
     ),
@@ -53,7 +70,7 @@ async function fetchClientContext(clientId) {
     stock: stockByIngredient,
     pertes: pertesRows.rows,
     inventaires: inventaireRows.rows,
-    appros: stockRows.rows.slice(0, 30), // last appros from same table
+    appros: stockRows.rows.slice(0, 30),
   };
 }
 
@@ -77,8 +94,10 @@ function buildSystemPrompt(context) {
     .join('\n') || '  Aucun appro récent.';
 
   return `Tu es l'assistant IA de LabFlow pour le client "${context.clientNom}". Aujourd'hui : ${today}.
-Tu réponds via Telegram — sois concis (max 4-5 lignes), pratique, en français.
+Tu réponds via Telegram — sois concis (max 4-5 lignes), pratique.
 Tu as accès aux données réelles du client ci-dessous.
+
+LANGUE : Réponds dans la même langue que le client. Si le client écrit en arabe tunisien (darija), réponds en darija tunisienne. Si en français, réponds en français. Tu comprends et parles couramment le dialecte tunisien.
 
 STOCK ACTUEL :
 ${stockLines}
@@ -99,7 +118,7 @@ Exemples : [CONF:0.92] si données complètes et réponse certaine. [CONF:0.45] 
 Règles :
 - Si on te demande un rapport par email, réponds "Je vais envoyer le rapport par email à ${context.clientEmail}" puis génère un résumé clair.
 - Si tu identifies stock bas ou pertes élevées, signale-le proactivement.
-- Réponds toujours en français, de façon courte et actionnable.`;
+- Sois court et actionnable.`;
 }
 
 async function getConversation(clientId, whatsappNumber) {
@@ -126,7 +145,7 @@ async function saveConversation(clientId, whatsappNumber, conversationId, messag
   }
 }
 
-// Parse [CONF:0.XX] tag from DeepSeek response
+// Parse [CONF:0.XX] tag from Groq response
 function parseConfidence(rawMessage) {
   const match = rawMessage.match(/^\[CONF:(0\.\d{1,2})\]\s*/);
   if (match) {
