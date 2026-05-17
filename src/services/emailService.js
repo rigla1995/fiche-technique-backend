@@ -253,4 +253,20 @@ const sendAvenantEmail = async ({
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail };
+const sendRapportEmail = async ({ to, clientNom, rapportText }) => {
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `${APP_NAME} — Rapport IA pour ${clientNom}`,
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:auto">
+      <h2 style="color:#6366f1">Rapport IA — ${clientNom}</h2>
+      <p style="color:#374151;line-height:1.6;white-space:pre-wrap">${rapportText.replace(/\n/g, '<br>')}</p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:12px;color:#94a3b8">Généré par l'assistant IA LabFlow · ${APP_NAME}</p>
+    </div>`,
+  });
+  if (error) throw new Error(error.message);
+  return { success: true, id: data?.id };
+};
+
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail, sendRapportEmail };
