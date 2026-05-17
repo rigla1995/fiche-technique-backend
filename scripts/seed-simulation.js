@@ -265,8 +265,7 @@ async function main() {
         const prix = Math.round(prixBase * (0.95 + Math.random() * 0.1) * 1000) / 1000;
         await client.query(
           `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (labo_id, ingredient_id, date_appro) DO UPDATE SET quantite = EXCLUDED.quantite`,
+           VALUES ($1, $2, $3, $4, $5)`,
           [laboId, ings[nom], dateStr, qty, prix]
         );
         nApprosLabo++;
@@ -312,9 +311,7 @@ async function main() {
           await client.query(
             `INSERT INTO stock_entreprise_daily
                (activite_id, ingredient_id, date_appro, quantite, type_appro, prix_unitaire)
-             VALUES ($1, $2, $3, $4, 'transfert', $5)
-             ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro) DO UPDATE
-               SET quantite = EXCLUDED.quantite`,
+             VALUES ($1, $2, $3, $4, 'transfert', $5)`,
             [actId, ings[nom], dateStr, qty,
               ingDefs.find(d => d[0] === nom)?.[3] ?? 1]
           );
@@ -345,9 +342,7 @@ async function main() {
           await client.query(
             `INSERT INTO stock_entreprise_daily
                (activite_id, ingredient_id, date_appro, quantite, type_appro, fournisseur_id, prix_unitaire)
-             VALUES ($1, $2, $3, $4, 'manuel', $5, $6)
-             ON CONFLICT (activite_id, ingredient_id, date_appro, type_appro) DO UPDATE
-               SET quantite = EXCLUDED.quantite`,
+             VALUES ($1, $2, $3, $4, 'manuel', $5, $6)`,
             [actId, ings[nom], dateStr, qty, fourIds[fourNom], prix]
           );
           nEmbal++;
