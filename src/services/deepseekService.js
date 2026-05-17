@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-const DEEPSEEK_MODEL = 'deepseek-chat'; // DeepSeek-V3 — free tier
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile'; // Groq free tier
 
 async function fetchClientContext(clientId) {
   const [stockRows, pertesRows, inventaireRows, clientRow] = await Promise.all([
@@ -140,7 +140,7 @@ function parseConfidence(rawMessage) {
 
 // telegramChatId is used as the session key (reuses whatsapp_number column)
 async function chatWithDeepSeek(clientId, telegramChatId, userMessage, confidenceThreshold = 0.75) {
-  if (!process.env.DEEPSEEK_API_KEY) throw new Error('DEEPSEEK_API_KEY non configurée');
+  if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY non configurée');
 
   const context = await fetchClientContext(clientId);
   const systemPrompt = buildSystemPrompt(context);
@@ -149,14 +149,14 @@ async function chatWithDeepSeek(clientId, telegramChatId, userMessage, confidenc
   const history = (conv?.messages ?? []).slice(-16);
   history.push({ role: 'user', content: userMessage });
 
-  const response = await fetch(DEEPSEEK_API_URL, {
+  const response = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: DEEPSEEK_MODEL,
+      model: GROQ_MODEL,
       messages: [{ role: 'system', content: systemPrompt }, ...history],
       max_tokens: 512,
       stream: false,
@@ -165,7 +165,7 @@ async function chatWithDeepSeek(clientId, telegramChatId, userMessage, confidenc
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`DeepSeek API error ${response.status}: ${err}`);
+    throw new Error(`Groq API error ${response.status}: ${err}`);
   }
 
   const data = await response.json();
