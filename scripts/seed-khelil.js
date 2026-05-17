@@ -22,10 +22,27 @@
  */
 
 require('dotenv').config();
+const fs   = require('fs');
+const path = require('path');
 const pool = require('../src/config/database');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { sendWelcomeWithContractEmail, sendAiAgentInviteEmail } = require('../src/services/emailService');
+
+// ─── Auto-apply migration 078 if domaines_activite doesn't exist ──────────────
+async function ensureMigration078() {
+  const { rows } = await pool.query(
+    `SELECT to_regclass('domaines_activite') AS t`
+  );
+  if (rows[0].t) return; // already exists
+  console.log('Table domaines_activite manquante — application de la migration 078…');
+  const sql = fs.readFileSync(
+    path.join(__dirname, '../migrations/078_global_catalogue.sql'),
+    'utf8'
+  );
+  await pool.query(sql);
+  console.log('Migration 078 appliquée.');
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -60,6 +77,8 @@ const jitter = (base, pct = 0.15) =>
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
+  await ensureMigration078();
+
   const c = await pool.connect();
   try {
     await c.query('BEGIN');
