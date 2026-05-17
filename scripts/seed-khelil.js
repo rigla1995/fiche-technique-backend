@@ -31,14 +31,28 @@ const { sendWelcomeWithContractEmail, sendAiAgentInviteEmail } = require('../src
 
 // ─── Auto-apply migration 078 if domaines_activite doesn't exist ──────────────
 async function ensureMigration078() {
-  // Check for the 'slug' column specifically — the table may exist from an older
-  // migration run that predates the slug column.
-  const { rows } = await pool.query(
+  // Check for the 'slug' column — the table may exist from an older partial run.
+  const { rows: colRows } = await pool.query(
     `SELECT 1 FROM information_schema.columns
      WHERE table_name = 'domaines_activite' AND column_name = 'slug'`
   );
-  if (rows.length > 0) return; // slug column exists → migration already complete
-  console.log('Migration 078 requise (slug manquant) — application…');
+  if (colRows.length > 0) return; // slug column exists → migration already complete
+
+  // If the table exists without slug, add the column + unique index before
+  // re-running the migration (CREATE TABLE IF NOT EXISTS would otherwise skip).
+  const { rows: tableRows } = await pool.query(
+    `SELECT to_regclass('domaines_activite') AS t`
+  );
+  if (tableRows[0].t) {
+    console.log('domaines_activite existe sans slug — ajout de la colonne…');
+    await pool.query(`
+      ALTER TABLE domaines_activite ADD COLUMN IF NOT EXISTS slug VARCHAR(50);
+      CREATE UNIQUE INDEX IF NOT EXISTS domaines_activite_slug_key
+        ON domaines_activite(slug);
+    `);
+  }
+
+  console.log('Application de la migration 078…');
   const sql = fs.readFileSync(
     path.join(__dirname, '../migrations/078_global_catalogue.sql'),
     'utf8'
