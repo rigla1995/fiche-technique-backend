@@ -156,23 +156,32 @@ const getActiveAgents = async (req, res) => {
          aic.client_id,
          aic.enabled,
          aic.telegram_chat_id,
-         aic.confidence_threshold,
          aic.invite_token,
          aic.updated_at,
          u.nom,
          u.email,
-         COALESCE(stats.msg_count, 0) AS message_count,
-         stats.last_activity
+         COALESCE(stats.msg_count, 0)      AS message_count,
+         stats.last_activity,
+         last_conv.last_confidence,
+         ROUND(stats.avg_confidence_month::numeric, 2) AS avg_confidence_month
        FROM ai_assistant_config aic
        JOIN utilisateurs u ON u.id = aic.client_id
        LEFT JOIN (
          SELECT
            client_id,
-           COUNT(*) AS msg_count,
-           MAX(updated_at) AS last_activity
+           COUNT(*)                                                                         AS msg_count,
+           MAX(updated_at)                                                                  AS last_activity,
+           AVG(CASE WHEN updated_at >= date_trunc('month', NOW()) THEN last_confidence END) AS avg_confidence_month
          FROM ai_conversations
          GROUP BY client_id
        ) stats ON stats.client_id = aic.client_id
+       LEFT JOIN LATERAL (
+         SELECT last_confidence
+         FROM ai_conversations
+         WHERE client_id = aic.client_id
+         ORDER BY updated_at DESC
+         LIMIT 1
+       ) last_conv ON true
        ORDER BY aic.enabled DESC, stats.last_activity DESC NULLS LAST`
     );
 
@@ -183,9 +192,10 @@ const getActiveAgents = async (req, res) => {
       clientEmail: r.email,
       enabled: r.enabled,
       telegramLinked: !!r.telegram_chat_id,
-      confidenceThreshold: parseFloat(r.confidence_threshold) || 0.75,
       messageCount: parseInt(r.message_count),
       lastActivity: r.last_activity,
+      lastConfidence: r.last_confidence != null ? parseFloat(r.last_confidence) : null,
+      avgConfidenceMonth: r.avg_confidence_month != null ? parseFloat(r.avg_confidence_month) : null,
       inviteLink: r.invite_token && botUser && !r.telegram_chat_id
         ? `https://t.me/${botUser}?start=${r.invite_token}`
         : null,
