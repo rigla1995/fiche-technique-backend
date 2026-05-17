@@ -209,4 +209,88 @@ const getActiveAgents = async (req, res) => {
   }
 };
 
-module.exports = { getAiConfig, setAiConfig, generateInviteLink, getActiveAgents };
+// ── Client: web chat endpoints ────────────────────────────────────────────────
+
+const { chatWithClaude } = require('../services/claudeService');
+const { chatWithDeepSeek } = require('../services/deepseekService');
+
+async function _chatWithAI(clientId, sessionId, message, threshold) {
+  if (process.env.ANTHROPIC_API_KEY) {
+    return chatWithClaude(clientId, sessionId, message, threshold);
+  }
+  return chatWithDeepSeek(clientId, sessionId, message, threshold);
+}
+
+const getClientStatus = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const result = await pool.query(
+      'SELECT enabled FROM ai_assistant_config WHERE client_id = $1',
+      [clientId]
+    );
+    res.json({ enabled: result.rows[0]?.enabled ?? false });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const getClientConversation = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const sessionId = `web_${req.user.id}`;
+  try {
+    const result = await pool.query(
+      `SELECT messages FROM ai_conversations
+       WHERE client_id = $1 AND whatsapp_number = $2
+       ORDER BY updated_at DESC LIMIT 1`,
+      [clientId, sessionId]
+    );
+    res.json({ messages: result.rows[0]?.messages ?? [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const clientChat = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const sessionId = `web_${req.user.id}`;
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ message: 'Message requis' });
+
+  try {
+    const cfg = await pool.query(
+      'SELECT enabled, confidence_threshold FROM ai_assistant_config WHERE client_id = $1',
+      [clientId]
+    );
+    if (!cfg.rows[0]?.enabled) {
+      return res.status(403).json({ message: 'Agent IA non activé pour ce compte' });
+    }
+    const threshold = parseFloat(cfg.rows[0].confidence_threshold) || 0.75;
+    const { assistantMessage } = await _chatWithAI(clientId, sessionId, message.trim(), threshold);
+    res.json({ reply: assistantMessage });
+  } catch (err) {
+    console.error('[AI chat]', err.message);
+    res.status(500).json({ message: 'Erreur lors de la communication avec l\'IA' });
+  }
+};
+
+const clearClientConversation = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const sessionId = `web_${req.user.id}`;
+  try {
+    await pool.query(
+      'DELETE FROM ai_conversations WHERE client_id = $1 AND whatsapp_number = $2',
+      [clientId, sessionId]
+    );
+    res.json({ cleared: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = {
+  getAiConfig, setAiConfig, generateInviteLink, getActiveAgents,
+  getClientStatus, getClientConversation, clientChat, clearClientConversation,
+};

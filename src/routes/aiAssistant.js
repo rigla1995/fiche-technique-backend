@@ -11,4 +11,10 @@ router.post('/config/:clientId/invite', authenticate, requireSuperAdmin, ai.gene
 // Admin: all agents dashboard
 router.get('/agents', authenticate, requireSuperAdmin, ai.getActiveAgents);
 
+// Client: web chat interface
+router.get('/status', authenticate, ai.getClientStatus);
+router.get('/conversation', authenticate, ai.getClientConversation);
+router.post('/chat', authenticate, ai.clientChat);
+router.delete('/conversation', authenticate, ai.clearClientConversation);
+
 module.exports = router;

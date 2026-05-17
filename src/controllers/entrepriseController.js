@@ -521,12 +521,29 @@ const getCatalogueGlobalIngredients = async (req, res) => {
     const entrepriseId = entRes.rows[0].id;
 
     const [ings, acts, labs, actSels, laboSels] = await Promise.all([
+      // Filter ingredients by domain: show global (no domain) + domains matching this company's activités/profil
       pool.query(
         `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie
          FROM ingredients i
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
-         ORDER BY COALESCE(c.nom, 'Sans catégorie'), i.nom`
+         WHERE i.client_id IS NULL
+           AND (
+             NOT EXISTS (SELECT 1 FROM ingredient_domaines id2 WHERE id2.ingredient_id = i.id)
+             OR EXISTS (
+               SELECT 1 FROM ingredient_domaines id2
+               WHERE id2.ingredient_id = i.id
+                 AND id2.domaine_id IN (
+                   SELECT DISTINCT domaine_id FROM (
+                     SELECT pe.domaine_id FROM profil_entreprise pe WHERE pe.id = $1
+                     UNION ALL
+                     SELECT a.domaine_id FROM activites a WHERE a.entreprise_id = $1 AND a.domaine_id IS NOT NULL
+                   ) d WHERE d.domaine_id IS NOT NULL
+                 )
+             )
+           )
+         ORDER BY COALESCE(c.nom, 'Sans catégorie'), i.nom`,
+        [entrepriseId]
       ),
       pool.query('SELECT id, nom FROM activites WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),
       pool.query('SELECT id, nom FROM labos WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),
