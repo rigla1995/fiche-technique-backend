@@ -31,26 +31,28 @@ const { sendWelcomeWithContractEmail, sendAiAgentInviteEmail } = require('../src
 
 // ─── Auto-apply migration 078 if domaines_activite doesn't exist ──────────────
 async function ensureMigration078() {
-  // Check for the 'slug' column — the table may exist from an older partial run.
-  const { rows: colRows } = await pool.query(
-    `SELECT 1 FROM information_schema.columns
-     WHERE table_name = 'domaines_activite' AND column_name = 'slug'`
-  );
-  if (colRows.length > 0) return; // slug column exists → migration already complete
+  // True completeness check: the 'restauration' row must exist.
+  // Wrap in try/catch so missing table or missing slug column both fall through.
+  try {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM domaines_activite WHERE slug = 'restauration' LIMIT 1`
+    );
+    if (rows.length > 0) return; // data is present → migration already complete
+  } catch { /* table or slug column missing → proceed */ }
 
-  // If the table exists without slug, add the column + unique index before
-  // re-running the migration (CREATE TABLE IF NOT EXISTS would otherwise skip).
-  const { rows: tableRows } = await pool.query(
-    `SELECT to_regclass('domaines_activite') AS t`
-  );
-  if (tableRows[0].t) {
-    console.log('domaines_activite existe sans slug — ajout de la colonne…');
-    await pool.query(`
-      ALTER TABLE domaines_activite ADD COLUMN IF NOT EXISTS slug VARCHAR(50);
-      CREATE UNIQUE INDEX IF NOT EXISTS domaines_activite_slug_key
-        ON domaines_activite(slug);
-    `);
-  }
+  // If the table exists but lacks the slug column, patch it first so the
+  // migration's CREATE TABLE IF NOT EXISTS (a no-op) + INSERTs can run cleanly.
+  try {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM information_schema.columns
+       WHERE table_name = 'domaines_activite' AND column_name = 'slug'`
+    );
+    if (rows.length === 0) {
+      console.log('domaines_activite existe sans slug — ajout de la colonne…');
+      await pool.query(`ALTER TABLE domaines_activite ADD COLUMN IF NOT EXISTS slug VARCHAR(50)`);
+      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS domaines_activite_slug_key ON domaines_activite(slug)`);
+    }
+  } catch { /* table doesn't exist yet — no patch needed */ }
 
   console.log('Application de la migration 078…');
   const sql = fs.readFileSync(
