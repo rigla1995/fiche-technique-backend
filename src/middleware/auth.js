@@ -78,6 +78,9 @@ const requireWriteAccess = (req, res, next) => {
   if (mode === 'desactive' || mode === 'archive') {
     return res.status(403).json({ message: 'Compte suspendu', code: 'SUSPENDED' });
   }
+  if (mode === 'bloque') {
+    return res.status(403).json({ message: 'Compte bloqué — veuillez régulariser votre situation', code: 'BLOCKED' });
+  }
   next();
 };
 

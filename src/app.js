@@ -55,18 +55,9 @@ app.use('/api/rapports', rapportsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/ai-assistant', aiAssistantRoutes);
 
-// English aliases (B5)
-app.use('/api/units', unitesRoutes);
-app.use('/api/ingredients', ingredientsRoutes); // already mounted
 app.use('/api/products', produitsRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
-
-// Root aliases without /api/ prefix (B-NEW-4)
-app.use('/units', unitesRoutes);
-app.use('/ingredients', ingredientsRoutes);
-app.use('/products', produitsRoutes);
-app.use('/categories', categoriesRoutes);
 
 app.use((req, res) => res.status(404).json({ message: 'Route introuvable' }));
 

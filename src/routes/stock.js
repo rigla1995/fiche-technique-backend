@@ -71,6 +71,6 @@ router.get('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise
 router.post('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, saveActiviteInventaire);
 router.get('/entreprise/:activiteId/inventaire/historique', authenticate, requireEntreprise, getActiviteInventaireHistorique);
 router.get('/entreprise/:activiteId/inventaire/historique/export-excel', authenticate, requireEntreprise, exportActiviteInventaireExcel);
-router.put('/inventaire/:inventaireId', authenticate, updateInventaireEntry);
+router.put('/inventaire/:inventaireId', authenticate, requireClient, updateInventaireEntry);
 
 module.exports = router;

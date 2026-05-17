@@ -1036,7 +1036,7 @@ const syncPromoStatuts = async () => {
            AND id <> $2
            AND type = 'free_months'
            AND applies_to IN ('mensualite', 'les_deux')
-           AND date_fin IS NULL OR date_fin >= $3::date
+           AND (date_fin IS NULL OR date_fin >= $3::date)
          LIMIT 1`,
         [promo.abonnement_id, promo.id, promo.date_fin]
       );

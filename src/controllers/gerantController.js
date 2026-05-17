@@ -44,26 +44,25 @@ const create = async (req, res) => {
   const parentId = req.user.id;
   const parentType = req.user.compteType; // 'independant' | 'entreprise' | null (config-based)
 
-  // Check free gérant limit
-  const existing = await pool.query(
-    `SELECT COUNT(*) FROM utilisateurs WHERE role = 'gerant' AND gerant_parent_id = $1 AND gerant_est_gratuit = true`,
-    [parentId]
-  );
-  const freeCount = parseInt(existing.rows[0].count, 10);
-  const isEntrepriseClass = parentType === 'entreprise' || parentType === null;
-  const freeLimit = isEntrepriseClass ? 3 : 1;
-
-  const isGratuit = estGratuit !== false && freeCount < freeLimit;
-  const montant = isGratuit ? 0 : (montantMensuel || 80);
-
-  // Check email uniqueness
-  const emailCheck = await pool.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
-  if (emailCheck.rows.length > 0) return res.status(409).json({ message: 'Email déjà utilisé' });
-
-  const inviteToken = generateInviteToken();
-  const inviteExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
-
   try {
+    // Check free gérant limit
+    const existing = await pool.query(
+      `SELECT COUNT(*) FROM utilisateurs WHERE role = 'gerant' AND gerant_parent_id = $1 AND gerant_est_gratuit = true`,
+      [parentId]
+    );
+    const freeCount = parseInt(existing.rows[0].count, 10);
+    const isEntrepriseClass = parentType === 'entreprise' || parentType === null;
+    const freeLimit = isEntrepriseClass ? 3 : 1;
+
+    const isGratuit = estGratuit !== false && freeCount < freeLimit;
+    const montant = isGratuit ? 0 : (montantMensuel || 80);
+
+    // Check email uniqueness
+    const emailCheck = await pool.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
+    if (emailCheck.rows.length > 0) return res.status(409).json({ message: 'Email déjà utilisé' });
+
+    const inviteToken = generateInviteToken();
+    const inviteExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
     const result = await pool.query(
       `INSERT INTO utilisateurs
          (nom, email, mot_de_passe, telephone, role, compte_type,

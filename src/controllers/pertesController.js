@@ -27,7 +27,14 @@ const mapPerte = (r) => ({
 });
 
 // Returns the appro price for an ingredient on or before the given date (NULL if none)
+const STOCK_TABLE_ALLOWLIST = {
+  stock_entreprise_daily: 'activite_id',
+  stock_client_daily:     'client_id',
+  stock_labo_daily:       'labo_id',
+};
 const getPrixPourPerte = async (table, ownerCol, ownerId, ingredientId, datePerte) => {
+  const expectedCol = STOCK_TABLE_ALLOWLIST[table];
+  if (!expectedCol || expectedCol !== ownerCol) throw new Error(`Table non autorisée: ${table}`);
   const r = await pool.query(
     `SELECT prix_unitaire FROM ${table}
      WHERE ${ownerCol} = $1 AND ingredient_id = $2

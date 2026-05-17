@@ -7,7 +7,7 @@ const demande = require('../controllers/demandeController');
 const support = require('../controllers/supportController');
 
 // ── Tarifs (admin) ───────────────────────────────────────────────────────────
-router.get('/tarifs', authenticate, ab.getTarifs);
+router.get('/tarifs', authenticate, requireSuperAdmin, ab.getTarifs);
 router.put('/tarifs/:cle', authenticate, requireSuperAdmin, ab.updateTarif);
 
 // ── Abonnements (admin) ──────────────────────────────────────────────────────
