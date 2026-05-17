@@ -31,11 +31,14 @@ const { sendWelcomeWithContractEmail, sendAiAgentInviteEmail } = require('../src
 
 // ─── Auto-apply migration 078 if domaines_activite doesn't exist ──────────────
 async function ensureMigration078() {
+  // Check for the 'slug' column specifically — the table may exist from an older
+  // migration run that predates the slug column.
   const { rows } = await pool.query(
-    `SELECT to_regclass('domaines_activite') AS t`
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'domaines_activite' AND column_name = 'slug'`
   );
-  if (rows[0].t) return; // already exists
-  console.log('Table domaines_activite manquante — application de la migration 078…');
+  if (rows.length > 0) return; // slug column exists → migration already complete
+  console.log('Migration 078 requise (slug manquant) — application…');
   const sql = fs.readFileSync(
     path.join(__dirname, '../migrations/078_global_catalogue.sql'),
     'utf8'
