@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { getStatus } = require('../services/whatsappService');
+const { getStatus, sendMessage } = require('../services/whatsappService');
 
 // ── Admin: get AI + WhatsApp config for a client ─────────────────────────────
 
@@ -35,12 +35,33 @@ const setAiConfig = async (req, res) => {
 
     const normalizedNumber = whatsappNumber ? whatsappNumber.trim() : null;
 
+    // Check if we're newly activating (was previously disabled or non-existent)
+    const existing = await pool.query(
+      'SELECT enabled FROM ai_assistant_config WHERE client_id = $1',
+      [clientId]
+    );
+    const wasDisabled = !existing.rows[0]?.enabled;
+
     await pool.query(
       `INSERT INTO ai_assistant_config (client_id, enabled, whatsapp_number, updated_at)
        VALUES ($1, $2, $3, NOW())
        ON CONFLICT (client_id) DO UPDATE SET enabled = $2, whatsapp_number = $3, updated_at = NOW()`,
       [clientId, enabled, normalizedNumber]
     );
+
+    // Send welcome message when newly activating
+    if (enabled && wasDisabled && normalizedNumber) {
+      try {
+        await sendMessage(
+          normalizedNumber,
+          'Bonjour 👋 Je suis votre agent LabFlow. Comment puis-je vous aider ? (stock, inventaire, pertes, rapport...)'
+        );
+      } catch (err) {
+        // Bot may not be ready yet — log but don't fail the request
+        console.warn('[AI] Welcome message not sent (bot not ready):', err.message);
+      }
+    }
+
     res.json({ clientId: parseInt(clientId), enabled, whatsappNumber: normalizedNumber });
   } catch (err) {
     console.error(err);
