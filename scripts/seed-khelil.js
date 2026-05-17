@@ -141,7 +141,7 @@ async function main() {
 
     // ── 4. Unités globales (lookup only) ────────────────────────────────────
     const uniteNames = ['kg','g','L','ml','cl','pièces','sachet','boîte','rouleau'];
-    const unites: Record<string, number> = {};
+    const unites = {};
     for (const nom of uniteNames) {
       const { rows: [row] } = await c.query(
         `INSERT INTO unites (nom, client_id) VALUES ($1, NULL)
@@ -158,7 +158,7 @@ async function main() {
       'Chocolat & Cacao', 'Fruits secs & Oléagineux', 'Emballages',
       'Produits frais', 'Boissons', 'Divers',
     ];
-    const cats: Record<string, number> = {};
+    const cats = {};
     for (const nom of catDefs) {
       const { rows: [row] } = await c.query(
         `INSERT INTO categories (nom) VALUES ($1) ON CONFLICT (nom) DO UPDATE SET nom = EXCLUDED.nom RETURNING id`,
@@ -169,7 +169,7 @@ async function main() {
 
     // ── 6. 60 ingrédients ────────────────────────────────────────────────────
     // [nom, unite, categorie, prix_ref]
-    const ingDefs: [string, string, string, number][] = [
+    const ingDefs = [
       // Farines & Céréales (8)
       ['Farine T45',              'kg',      'Farines & Céréales',          1.100],
       ['Farine T55',              'kg',      'Farines & Céréales',          1.050],
@@ -249,7 +249,7 @@ async function main() {
       ['Gélatine (feuilles)',     'g',       'Divers',                      0.080],
     ];
 
-    const ings: Record<string, number> = {};
+    const ings = {};
     for (const [nom, unite, cat, prix] of ingDefs) {
       const { rows: [row] } = await c.query(
         `INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id)
@@ -276,7 +276,7 @@ async function main() {
       { nom: 'Boutique Zone Touristique', adresse: 'Av. Hedi Chaker, 4002 Sousse',        tel: '+216 73 220 002', lieLabo: true },
       { nom: 'Stand Hôtel Royal Palace',  adresse: 'Hôtel Royal Palace, 4089 Port El Kantaoui', tel: '+216 73 220 003', lieLabo: false },
     ];
-    const actIds: number[] = [];
+    const actIds = [];
     for (const { nom, adresse, tel, lieLabo } of actDefs) {
       const { rows: [act] } = await c.query(
         `INSERT INTO activites (entreprise_id, nom, adresse, telephone, labo_id)
@@ -309,7 +309,7 @@ async function main() {
       { nom: 'Épicerie Confiserie TN', adresse: 'Zone Commerciale, Tunis',   tel: '+216 71 234 001' },
       { nom: 'Embalys Packaging',      adresse: 'Av. de l\'Environnement, Sfax', tel: '+216 74 300 500' },
     ];
-    const fourIds: Record<string, number> = {};
+    const fourIds = {};
     for (const { nom, adresse, tel } of fourDefs) {
       const { rows: [f] } = await c.query(
         `INSERT INTO fournisseurs (entreprise_id, nom, adresse, telephone) VALUES ($1, $2, $3, $4) RETURNING id`,
@@ -367,7 +367,7 @@ async function main() {
     console.log('Sélections ingrédients créées.');
 
     // ── 12. Appros labo (chaque lundi) ───────────────────────────────────────
-    const laboAppros: Record<string, { base: number; four: string }> = {
+    const laboAppros = {
       'Farine T45':           { base: 150, four: 'Minoterie du Sahel' },
       'Farine T55':           { base: 120, four: 'Minoterie du Sahel' },
       'Farine T65':           { base: 40,  four: 'Minoterie du Sahel' },
@@ -423,7 +423,7 @@ async function main() {
     console.log(`${nAppros} appros labo (lundis).`);
 
     // ── 13. Transferts labo → Boutiques (jeudi + dimanche) ──────────────────
-    const transferDefs: Record<string, number> = {
+    const transferDefs = {
       'Farine T45': 30, 'Farine T55': 25, 'Sucre blanc': 18, 'Sucre glace': 8,
       'Beurre doux': 12, 'Lait entier': 25, 'Œufs frais': 150, 'Levure fraîche': 3,
       'Cacao en poudre': 4, 'Amandes effilées': 3, 'Chocolat noir 70%': 5,
@@ -454,7 +454,7 @@ async function main() {
     console.log(`${nTransfers} transferts labo → boutiques.`);
 
     // ── 14. Appros directes Boutiques (emballages, chaque 1er et 15) ────────
-    const embalBoutique: [string, string, number][] = [
+    const embalBoutique = [
       ['Boîtes gâteaux S',  'Embalys Packaging', 25],
       ['Boîtes gâteaux M',  'Embalys Packaging', 20],
       ['Caissettes dorées', 'Embalys Packaging', 15],
@@ -483,7 +483,7 @@ async function main() {
     console.log(`${nEmbal} appros emballages boutiques.`);
 
     // ── 15. Appros Stand Hôtel (mercredi) ────────────────────────────────────
-    const standAppros: [string, string, number][] = [
+    const standAppros = [
       ['Farine T55',          'Minoterie du Sahel',     15],
       ['Sucre blanc',         'Épicerie Confiserie TN', 10],
       ['Beurre doux',         'Frigorifique Sousse',     8],
@@ -516,7 +516,7 @@ async function main() {
     console.log(`${nStand} appros stand hôtel (mercredis).`);
 
     // ── 16. Pertes activités (hebdomadaires, vendredi) ───────────────────────
-    const pertesDefs: [number, string, string, number][] = [
+    const pertesDefs = [
       // [actIdx, ing, type, base_qty]
       [0, 'Farine T55',        'dechet', 2.0],
       [0, 'Beurre doux',       'avarie', 0.5],
@@ -543,7 +543,7 @@ async function main() {
     console.log(`${nPertes} pertes activités (vendredis).`);
 
     // ── 17. Pertes labo (mensuel) ────────────────────────────────────────────
-    const pertesLaboDefs: [string, string, number][] = [
+    const pertesLaboDefs = [
       ['Farine T55',   'dechet', 6.0],
       ['Levure fraîche','avarie', 0.8],
       ['Beurre de cacao','avarie',0.5],
