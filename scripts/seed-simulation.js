@@ -168,8 +168,8 @@ async function main() {
 
     // ── 7. Labo central ──────────────────────────────────────────────────────
     const { rows: [labo] } = await client.query(
-      `INSERT INTO labos (entreprise_id, franchise_group, nom, referent_tel, adresse)
-       VALUES ($1, 'mahdia', 'Labo de Production Central', '+216 73 220 101',
+      `INSERT INTO labos (entreprise_id, nom, referent_tel, adresse)
+       VALUES ($1, 'Labo de Production Central', '+216 73 220 101',
                'Zone Industrielle, 5100 Mahdia')
        RETURNING id`,
       [epId]
