@@ -1,7 +1,16 @@
 const { Bot } = require('grammy');
 const pool = require('../config/database');
+const { chatWithClaude } = require('./claudeService');
 const { chatWithDeepSeek } = require('./deepseekService');
 const { generateAndSendReport } = require('./reportService');
+
+// Use Claude when ANTHROPIC_API_KEY is set, fall back to Groq
+async function chatWithAI(clientId, chatSessionId, userMessage, confidenceThreshold) {
+  if (process.env.ANTHROPIC_API_KEY) {
+    return chatWithClaude(clientId, chatSessionId, userMessage, confidenceThreshold);
+  }
+  return chatWithDeepSeek(clientId, chatSessionId, userMessage, confidenceThreshold);
+}
 
 let bot = null;
 let botUsername = null;
@@ -87,7 +96,7 @@ const initTelegram = () => {
     await ctx.api.sendChatAction(chatId, 'typing');
 
     try {
-      const { assistantMessage, confidence, clientEmail } = await chatWithDeepSeek(
+      const { assistantMessage, confidence, clientEmail } = await chatWithAI(
         client.client_id,
         String(chatId),
         text,
