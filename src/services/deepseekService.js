@@ -14,7 +14,7 @@ async function fetchClientContext(clientId) {
       [clientId]
     ),
     pool.query(
-      `SELECT i.nom AS ingredient, cp.quantite, cp.raison, cp.date_perte
+      `SELECT i.nom AS ingredient, cp.quantite, cp.type_perte, cp.date_perte
        FROM client_pertes cp
        JOIN ingredients i ON i.id = cp.ingredient_id
        WHERE cp.client_id = $1
@@ -22,11 +22,11 @@ async function fetchClientContext(clientId) {
       [clientId]
     ),
     pool.query(
-      `SELECT i.nom AS ingredient, inv.quantite_reelle, inv.ecart, inv.created_at
+      `SELECT i.nom AS ingredient, inv.quantite_reelle, inv.date_inventaire
        FROM inventaires inv
        JOIN ingredients i ON i.id = inv.ingredient_id
        WHERE inv.client_id = $1
-       ORDER BY inv.created_at DESC LIMIT 50`,
+       ORDER BY inv.date_inventaire DESC LIMIT 50`,
       [clientId]
     ),
     pool.query(
@@ -65,11 +65,11 @@ function buildSystemPrompt(context) {
     .join('\n') || '  Aucune donnée.';
 
   const pertesLines = context.pertes.slice(0, 20)
-    .map(r => `  - ${r.ingredient}: ${r.quantite}${r.raison ? ` (${r.raison})` : ''} le ${new Date(r.date_perte).toLocaleDateString('fr-FR')}`)
+    .map(r => `  - ${r.ingredient}: ${r.quantite} (${r.type_perte}) le ${new Date(r.date_perte).toLocaleDateString('fr-FR')}`)
     .join('\n') || '  Aucune perte récente.';
 
   const inventaireLines = context.inventaires.slice(0, 15)
-    .map(r => `  - ${r.ingredient}: réel=${r.quantite_reelle}, écart=${r.ecart >= 0 ? '+' : ''}${r.ecart}`)
+    .map(r => `  - ${r.ingredient}: réel=${r.quantite_reelle} (le ${new Date(r.date_inventaire).toLocaleDateString('fr-FR')})`)
     .join('\n') || '  Aucun inventaire récent.';
 
   const approLines = context.appros.slice(0, 10)
@@ -86,7 +86,7 @@ ${stockLines}
 PERTES RÉCENTES :
 ${pertesLines}
 
-INVENTAIRES RÉCENTS (écarts) :
+INVENTAIRES RÉCENTS :
 ${inventaireLines}
 
 APPROS RÉCENTS :
