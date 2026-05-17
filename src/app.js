@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET manquant dans .env');
+  process.exit(1);
+}
+
 const express = require('express');
 const cors = require('cors');
 const migrate = require('./config/migrate');

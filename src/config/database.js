@@ -14,7 +14,6 @@ const pool = new Pool({
 
 pool.on('error', (err) => {
   console.error('Erreur inattendue du pool PostgreSQL', err);
-  process.exit(-1);
 });
 
 module.exports = pool;
