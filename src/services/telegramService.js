@@ -79,8 +79,11 @@ const handleMessage = async (msg) => {
     // Update last_confidence in conversation
     await pool.query(
       `UPDATE ai_conversations SET last_confidence = $1
-       WHERE client_id = $2 AND whatsapp_number = $3
-       ORDER BY updated_at DESC LIMIT 1`,
+       WHERE id = (
+         SELECT id FROM ai_conversations
+         WHERE client_id = $2 AND whatsapp_number = $3
+         ORDER BY updated_at DESC LIMIT 1
+       )`,
       [confidence, client.client_id, String(chatId)]
     );
 
