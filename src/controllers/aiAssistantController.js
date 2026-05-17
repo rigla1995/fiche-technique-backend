@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const pool = require('../config/database');
 const { getBotUsername, sendWelcomeMessage } = require('../services/telegramService');
+const { sendAiAgentInviteEmail } = require('../services/emailService');
 
 // ── Admin: get AI config for a client ────────────────────────────────────────
 
@@ -87,6 +88,20 @@ const setAiConfig = async (req, res) => {
       ? `https://t.me/${botUser}?start=${inviteToken}`
       : null;
 
+    // Send invitation email when activating a new (non-linked) agent
+    if (enabled && wasDisabled && !hasChatId && inviteLink) {
+      const clientRow = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
+      const { nom, email } = clientRow.rows[0] || {};
+      if (email) {
+        sendAiAgentInviteEmail({
+          to: email,
+          clientNom: nom || 'Client',
+          inviteLink,
+          appName: process.env.APP_NAME,
+        }).catch(e => console.warn('[AI] Invite email error:', e.message));
+      }
+    }
+
     res.json({ clientId: parseInt(clientId), enabled, telegramLinked: hasChatId, inviteLink, confidenceThreshold: threshold });
   } catch (err) {
     console.error(err);
@@ -111,7 +126,21 @@ const generateInviteLink = async (req, res) => {
     const botUser = getBotUsername();
     if (!botUser) return res.status(503).json({ message: 'Bot Telegram non connecté — vérifiez TELEGRAM_BOT_TOKEN' });
 
-    res.json({ inviteLink: `https://t.me/${botUser}?start=${inviteToken}` });
+    const inviteLink = `https://t.me/${botUser}?start=${inviteToken}`;
+
+    // Send new invite link by email
+    const clientRow = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
+    const { nom, email } = clientRow.rows[0] || {};
+    if (email) {
+      sendAiAgentInviteEmail({
+        to: email,
+        clientNom: nom || 'Client',
+        inviteLink,
+        appName: process.env.APP_NAME,
+      }).catch(e => console.warn('[AI] Invite email error:', e.message));
+    }
+
+    res.json({ inviteLink });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
