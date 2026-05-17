@@ -85,7 +85,7 @@ function buildSystemPrompt(context) {
     .join('\n') || '  Aucun appro récent.';
 
   return `Tu es l'assistant IA de LabFlow pour le client "${context.clientNom}". Aujourd'hui : ${today}.
-Tu réponds via WhatsApp — sois concis (max 3-4 lignes), pratique, en français.
+Tu réponds via Telegram — sois concis (max 4-5 lignes), pratique, en français.
 Tu as accès aux données réelles du client ci-dessous.
 
 STOCK ACTUEL :
@@ -100,9 +100,12 @@ ${inventaireLines}
 APPROS RÉCENTS :
 ${approLines}
 
+IMPORTANT — Format de réponse obligatoire :
+Commence TOUJOURS ta réponse par [CONF:0.XX] où XX est ton niveau de confiance de 0.00 à 1.00 basé sur la disponibilité et la précision des données fournies.
+Exemples : [CONF:0.92] si données complètes et réponse certaine. [CONF:0.45] si données manquantes ou réponse incertaine.
+
 Règles :
 - Si on te demande un rapport par email, réponds "Je vais envoyer le rapport par email à ${context.clientEmail}" puis génère un résumé clair.
-- Ne génère pas de tableaux complexes (WhatsApp ne les affiche pas bien).
 - Si tu identifies stock bas ou pertes élevées, signale-le proactivement.
 - Réponds toujours en français, de façon courte et actionnable.`;
 }
@@ -131,13 +134,26 @@ async function saveConversation(clientId, whatsappNumber, conversationId, messag
   }
 }
 
-async function chatWithDeepSeek(clientId, whatsappNumber, userMessage) {
+// Parse [CONF:0.XX] tag from DeepSeek response
+function parseConfidence(rawMessage) {
+  const match = rawMessage.match(/^\[CONF:(0\.\d{1,2})\]\s*/);
+  if (match) {
+    return {
+      confidence: parseFloat(match[1]),
+      message: rawMessage.slice(match[0].length).trim(),
+    };
+  }
+  return { confidence: null, message: rawMessage };
+}
+
+// telegramChatId is used as the session key (reuses whatsapp_number column)
+async function chatWithDeepSeek(clientId, telegramChatId, userMessage, confidenceThreshold = 0.75) {
   if (!process.env.DEEPSEEK_API_KEY) throw new Error('DEEPSEEK_API_KEY non configurée');
 
   const context = await fetchClientContext(clientId);
   const systemPrompt = buildSystemPrompt(context);
 
-  const conv = await getConversation(clientId, whatsappNumber);
+  const conv = await getConversation(clientId, telegramChatId);
   const history = (conv?.messages ?? []).slice(-16);
   history.push({ role: 'user', content: userMessage });
 
@@ -161,12 +177,13 @@ async function chatWithDeepSeek(clientId, whatsappNumber, userMessage) {
   }
 
   const data = await response.json();
-  const assistantMessage = data.choices?.[0]?.message?.content ?? 'Désolé, je n\'ai pas pu répondre.';
+  const raw = data.choices?.[0]?.message?.content ?? 'Désolé, je n\'ai pas pu répondre.';
+  const { confidence, message: assistantMessage } = parseConfidence(raw);
+
   const updatedMessages = history.concat({ role: 'assistant', content: assistantMessage });
+  await saveConversation(clientId, telegramChatId, conv?.id ?? null, updatedMessages);
 
-  await saveConversation(clientId, whatsappNumber, conv?.id ?? null, updatedMessages);
-
-  return { assistantMessage, clientEmail: context.clientEmail, clientNom: context.clientNom };
+  return { assistantMessage, confidence, clientEmail: context.clientEmail, clientNom: context.clientNom };
 }
 
 module.exports = { chatWithDeepSeek, fetchClientContext, buildSystemPrompt };

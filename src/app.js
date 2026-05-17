@@ -18,7 +18,7 @@ const fournisseursIndepRoutes = require('./routes/fournisseurs');
 const rapportsRoutes = require('./routes/rapports');
 const notificationsRoutes = require('./routes/notifications');
 const aiAssistantRoutes = require('./routes/aiAssistant');
-const { initWhatsApp } = require('./services/whatsappService');
+const { initTelegram } = require('./services/telegramService');
 
 const { authenticate, requireWriteAccess } = require('./middleware/auth');
 
@@ -99,10 +99,8 @@ migrate()
       }, delay);
     };
     scheduleDailyCheck();
-    // Initialize WhatsApp bot if enabled in environment
-    if (process.env.WHATSAPP_ENABLED === 'true') {
-      initWhatsApp();
-    }
+    // Initialize Telegram bot (requires TELEGRAM_BOT_TOKEN in .env)
+    initTelegram();
   })
   .catch((err) => {
     console.error('Échec des migrations, serveur non démarré:', err.message);

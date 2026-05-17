@@ -3,11 +3,12 @@ const router = express.Router();
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 const ai = require('../controllers/aiAssistantController');
 
-// Admin: get/set AI + WhatsApp config per client
+// Admin: per-client config
 router.get('/config/:clientId', authenticate, requireSuperAdmin, ai.getAiConfig);
 router.put('/config/:clientId', authenticate, requireSuperAdmin, ai.setAiConfig);
+router.post('/config/:clientId/invite', authenticate, requireSuperAdmin, ai.generateInviteLink);
 
-// Admin: WhatsApp bot status + QR code for pairing
-router.get('/whatsapp-status', authenticate, requireSuperAdmin, ai.getWhatsAppStatus);
+// Admin: all agents dashboard
+router.get('/agents', authenticate, requireSuperAdmin, ai.getActiveAgents);
 
 module.exports = router;
