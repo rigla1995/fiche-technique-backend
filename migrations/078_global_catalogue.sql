@@ -12,6 +12,12 @@ CREATE TABLE IF NOT EXISTS domaines_activite (
   CONSTRAINT domaines_activite_slug_key UNIQUE (slug)
 );
 
+-- Patch tables créées avant la structure complète
+ALTER TABLE domaines_activite ADD COLUMN IF NOT EXISTS slug        VARCHAR(50);
+ALTER TABLE domaines_activite ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE domaines_activite ADD COLUMN IF NOT EXISTS created_at  TIMESTAMPTZ DEFAULT NOW();
+CREATE UNIQUE INDEX IF NOT EXISTS domaines_activite_slug_key ON domaines_activite(slug);
+
 -- 2. Lien domaine sur les catégories (NULL = toutes catégories confondues)
 ALTER TABLE categories  ADD COLUMN IF NOT EXISTS domaine_id INT REFERENCES domaines_activite(id) ON DELETE SET NULL;
 
