@@ -106,8 +106,13 @@ DECLARE
   v_client_id   INT := NULL;
 BEGIN
 
-  -- Helper interne
-  -- INSERT IGNORE pattern : on tente l'insert, ON CONFLICT skip
+  -- Idempotency guard: ingredients has no UNIQUE(nom, client_id) constraint.
+  -- If the first global ingredient already exists, the whole block was already seeded.
+  IF EXISTS (
+    SELECT 1 FROM ingredients WHERE client_id IS NULL AND nom = 'Farine blanche T55'
+  ) THEN
+    RETURN;
+  END IF;
 
   -- ── Farines & Féculents (5) ────────────────────────────────────────────────
   FOR v_unite_id, v_cat_id IN
@@ -119,8 +124,7 @@ BEGIN
       ('Semoule fine',          0.950, v_unite_id, v_client_id, v_cat_id),
       ('Semoule grosse',        0.920, v_unite_id, v_client_id, v_cat_id),
       ('Fécule de maïs',        2.800, v_unite_id, v_client_id, v_cat_id),
-      ('Farine de blé complet', 1.300, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Farine de blé complet', 1.300, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Viandes & Volailles (8) ────────────────────────────────────────────────
@@ -136,8 +140,7 @@ BEGIN
       ('Merguez fraîche',       14.000, v_unite_id, v_client_id, v_cat_id),
       ('Escalopes de veau',     32.000, v_unite_id, v_client_id, v_cat_id),
       ('Foie de veau',          18.000, v_unite_id, v_client_id, v_cat_id),
-      ('Kefta (viande hachée épicée)', 20.000, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Kefta (viande hachée épicée)', 20.000, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Poissons & Fruits de mer (4) ───────────────────────────────────────────
@@ -149,8 +152,7 @@ BEGIN
       ('Sardines fraîches',  6.000, v_unite_id, v_client_id, v_cat_id),
       ('Crevettes fraîches', 32.000, v_unite_id, v_client_id, v_cat_id),
       ('Loup de mer',        28.000, v_unite_id, v_client_id, v_cat_id),
-      ('Calamars',           18.000, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Calamars',           18.000, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- Thon conserve (boîte)
@@ -159,8 +161,7 @@ BEGIN
     WHERE u.nom = 'boîte' AND c.nom = 'Poissons & Fruits de mer' LIMIT 1
   LOOP
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
-      ('Thon en conserve', 4.200, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Thon en conserve', 4.200, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Légumes frais (10) ─────────────────────────────────────────────────────
@@ -178,8 +179,7 @@ BEGIN
       ('Ail',               4.500, v_unite_id, v_client_id, v_cat_id),
       ('Piment rouge frais',3.000, v_unite_id, v_client_id, v_cat_id),
       ('Navets',            0.600, v_unite_id, v_client_id, v_cat_id),
-      ('Choux blanc',       0.750, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Choux blanc',       0.750, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Légumineuses (4) ───────────────────────────────────────────────────────
@@ -191,8 +191,7 @@ BEGIN
       ('Pois chiches',    2.800, v_unite_id, v_client_id, v_cat_id),
       ('Lentilles corail',3.200, v_unite_id, v_client_id, v_cat_id),
       ('Haricots blancs', 2.500, v_unite_id, v_client_id, v_cat_id),
-      ('Fèves sèches',    2.200, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Fèves sèches',    2.200, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Épices & Condiments (7) ────────────────────────────────────────────────
@@ -207,8 +206,7 @@ BEGIN
       ('Paprika doux',     14.000, v_unite_id, v_client_id, v_cat_id),
       ('Curcuma',          18.000, v_unite_id, v_client_id, v_cat_id),
       ('Poivre noir moulu',22.000, v_unite_id, v_client_id, v_cat_id),
-      ('Tabel (mélange d''épices tunisien)', 16.000, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Tabel (mélange d''épices tunisien)', 16.000, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- Harissa (boîte)
@@ -217,8 +215,7 @@ BEGIN
     WHERE u.nom = 'boîte' AND c.nom = 'Épices & Condiments' LIMIT 1
   LOOP
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
-      ('Harissa (conserve)', 3.500, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Harissa (conserve)', 3.500, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Corps gras (3) ─────────────────────────────────────────────────────────
@@ -228,8 +225,7 @@ BEGIN
   LOOP
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
       ('Huile végétale',            2.800, v_unite_id, v_client_id, v_cat_id),
-      ('Huile d''olive extra vierge', 7.500, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Huile d''olive extra vierge', 7.500, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   FOR v_unite_id, v_cat_id IN
@@ -237,8 +233,7 @@ BEGIN
     WHERE u.nom = 'kg' AND c.nom = 'Corps gras' LIMIT 1
   LOOP
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
-      ('Beurre doux', 12.500, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Beurre doux', 12.500, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Produits laitiers & Œufs (4) ──────────────────────────────────────────
@@ -248,8 +243,7 @@ BEGIN
   LOOP
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
       ('Lait entier',      1.050, v_unite_id, v_client_id, v_cat_id),
-      ('Crème fraîche 35%',6.800, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Crème fraîche 35%',6.800, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   FOR v_unite_id, v_cat_id IN
@@ -257,8 +251,7 @@ BEGIN
     WHERE u.nom = 'pièces' AND c.nom = 'Produits laitiers & Œufs' LIMIT 1
   LOOP
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
-      ('Œufs frais', 0.450, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Œufs frais', 0.450, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   FOR v_unite_id, v_cat_id IN
@@ -266,8 +259,7 @@ BEGIN
     WHERE u.nom = 'boîte' AND c.nom = 'Produits laitiers & Œufs' LIMIT 1
   LOOP
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
-      ('Fromage fondu (Kiri)', 4.200, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Fromage fondu (Kiri)', 4.200, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Pâtes & Céréales (3) ──────────────────────────────────────────────────
@@ -278,8 +270,7 @@ BEGIN
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
       ('Riz long grain',   1.400, v_unite_id, v_client_id, v_cat_id),
       ('Pâtes (spaghetti)',1.100, v_unite_id, v_client_id, v_cat_id),
-      ('Couscous moyen',   1.200, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Couscous moyen',   1.200, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Sauces & Conserves (2) ────────────────────────────────────────────────
@@ -289,8 +280,7 @@ BEGIN
   LOOP
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
       ('Concentré de tomate', 3.500, v_unite_id, v_client_id, v_cat_id),
-      ('Olives noires',       8.000, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Olives noires',       8.000, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Emballages restauration (3) ────────────────────────────────────────────
@@ -301,8 +291,7 @@ BEGIN
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
       ('Boîtes à emporter (small)',  0.350, v_unite_id, v_client_id, v_cat_id),
       ('Boîtes à emporter (large)',  0.550, v_unite_id, v_client_id, v_cat_id),
-      ('Couverts jetables (set)',    0.200, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Couverts jetables (set)',    0.200, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- Sacs kraft (sachet)
@@ -311,8 +300,7 @@ BEGIN
     WHERE u.nom = 'sachet' AND c.nom = 'Emballages restauration' LIMIT 1
   LOOP
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
-      ('Sacs kraft (emporter)', 0.180, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Sacs kraft (emporter)', 0.180, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
   -- ── Boissons (3) ──────────────────────────────────────────────────────────
@@ -323,8 +311,7 @@ BEGIN
     INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES
       ('Eau minérale (bidon)',  0.350, v_unite_id, v_client_id, v_cat_id),
       ('Jus d''orange pur',     2.800, v_unite_id, v_client_id, v_cat_id),
-      ('Limonade (sirop)',      3.200, v_unite_id, v_client_id, v_cat_id)
-    ON CONFLICT (nom, client_id) DO NOTHING;
+      ('Limonade (sirop)',      3.200, v_unite_id, v_client_id, v_cat_id);
   END LOOP;
 
 END $$;
