@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
-const { computeStockCourant } = require('../utils/stockUtils');
+const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
 
 // ─── Ownership check helper ───────────────────────────────────────────────────
 
@@ -637,6 +637,22 @@ const updateLaboStock = async (req, res) => {
       const finalPrix = prixCalcule > 0 ? prixCalcule : (prixUnitaire ? parseFloat(prixUnitaire) : null);
       const customPortionsJson = Object.keys(customPortionsMap).length > 0 ? JSON.stringify(customPortions) : null;
 
+      // Vérifier que chaque ingrédient de la recette a assez de stock
+      if (ingRes.rows.length > 0 && qty > 0) {
+        for (const ing of ingRes.rows) {
+          const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
+          const needed  = portion * qty;
+          const stockCourant = await computeStockCourant('labo', laboId, ing.ingredient_id);
+          if (needed > stockCourant) {
+            return res.status(422).json({
+              message: `Stock insuffisant pour "${ing.ing_nom}" (recette)`,
+              disponible: Math.max(0, stockCourant),
+              demande: needed,
+            });
+          }
+        }
+      }
+
       // Save PT appro — always insert a new row (multiple rows per day allowed)
       await pool.query(
         `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, updated_at)
@@ -819,14 +835,21 @@ const createTransfer = async (req, res) => {
     );
     const laboFournisseurId = laboFournisseurRes.rows.length > 0 ? laboFournisseurRes.rows[0].id : null;
 
-    // Vérification stock labo avant transaction
+    // Vérification stock labo avant transaction (ingrédients + PT)
     const ingQtyMap = {};
+    const ptQtyMap  = {};
     for (const t of transfers) {
       const ingId = parseInt(t.ingredientId);
-      if (ingId < 0) continue; // PT géré séparément
-      const qty = parseFloat(t.quantite) || 0;
-      if (qty > 0) ingQtyMap[ingId] = (ingQtyMap[ingId] || 0) + qty;
+      const qty   = parseFloat(t.quantite) || 0;
+      if (qty <= 0) continue;
+      if (ingId < 0) {
+        const produitId = -ingId;
+        ptQtyMap[produitId] = (ptQtyMap[produitId] || 0) + qty;
+      } else {
+        ingQtyMap[ingId] = (ingQtyMap[ingId] || 0) + qty;
+      }
     }
+    // Ingrédients
     for (const [ingId, totalQty] of Object.entries(ingQtyMap)) {
       const stockCourant = await computeStockCourant('labo', laboId, parseInt(ingId));
       if (totalQty > stockCourant) {
@@ -835,6 +858,19 @@ const createTransfer = async (req, res) => {
         return res.status(422).json({
           message: `Stock insuffisant pour "${ingNom}"`,
           disponible: Math.max(0, stockCourant),
+          demande: totalQty,
+        });
+      }
+    }
+    // Produits transformés
+    for (const [produitId, totalQty] of Object.entries(ptQtyMap)) {
+      const ptStock = await computeStockPTCourant('labo', laboId, parseInt(produitId));
+      if (totalQty > ptStock) {
+        const ptRow = await pool.query('SELECT nom FROM produits WHERE id = $1', [produitId]);
+        const ptNom = ptRow.rows[0]?.nom ?? `PT #${produitId}`;
+        return res.status(422).json({
+          message: `Stock PT insuffisant pour "${ptNom}"`,
+          disponible: Math.max(0, ptStock),
           demande: totalQty,
         });
       }
@@ -1425,12 +1461,21 @@ const createLaboPerte = async (req, res) => {
     const ingredientIdRaw = parseInt(ingredientId);
     const effectiveDate = datePerte || new Date().toISOString().split('T')[0];
     if (ingredientIdRaw < 0) {
-      // PT product perte — no ingredient price lookup
+      // PT product perte
       const produitId = -ingredientIdRaw;
+      const ptStock = await computeStockPTCourant('labo', laboId, produitId);
+      const qtyPT = parseFloat(quantite);
+      if (qtyPT > ptStock) {
+        return res.status(422).json({
+          message: `Stock PT insuffisant`,
+          disponible: Math.max(0, ptStock),
+          demande: qtyPT,
+        });
+      }
       await pool.query(
         `INSERT INTO labo_pertes (labo_id, produit_id, quantite, type_perte, date_perte)
          VALUES ($1, $2, $3, $4, $5)`,
-        [laboId, produitId, parseFloat(quantite), typePerte || 'avarie', effectiveDate]
+        [laboId, produitId, qtyPT, typePerte || 'avarie', effectiveDate]
       );
     } else {
       const minRow = await pool.query(
