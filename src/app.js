@@ -17,6 +17,7 @@ const abonnementsRoutes = require('./routes/abonnements');
 const fournisseursIndepRoutes = require('./routes/fournisseurs');
 const rapportsRoutes = require('./routes/rapports');
 const notificationsRoutes = require('./routes/notifications');
+const aiAssistantRoutes = require('./routes/aiAssistant');
 
 const { authenticate, requireWriteAccess } = require('./middleware/auth');
 
@@ -51,6 +52,7 @@ app.use('/api/abonnements', abonnementsRoutes);
 app.use('/api/fournisseurs', fournisseursIndepRoutes);
 app.use('/api/rapports', rapportsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/ai-assistant', aiAssistantRoutes);
 
 // English aliases (B5)
 app.use('/api/units', unitesRoutes);
