@@ -29,7 +29,9 @@ INSERT INTO domaines_activite (nom, slug, description) VALUES
   ('Restauration', 'restauration', 'Restaurants, traiteurs, cafétérias, food court'),
   ('Boulangerie',  'boulangerie',  'Boulangeries, pâtisseries, viennoiseries'),
   ('Café',         'cafe',         'Cafés, salons de thé, espresso bars')
-ON CONFLICT (slug) DO NOTHING;
+ON CONFLICT (nom) DO UPDATE SET
+  slug        = EXCLUDED.slug,
+  description = EXCLUDED.description;
 
 -- ─── Unités globales (si pas encore créées par 077) ─────────────────────────
 INSERT INTO unites (nom, client_id) VALUES
