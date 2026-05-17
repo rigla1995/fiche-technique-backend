@@ -158,7 +158,7 @@ async function addIng(c, nom, uniteNom, catNom, domaineId, unitMap, catMap) {
 
   const { rows } = await c.query(
     `INSERT INTO ingredients (nom, unite_id, categorie_id)
-     SELECT $1, $2, $3
+     SELECT $1::varchar, $2::integer, $3::integer
      WHERE NOT EXISTS (SELECT 1 FROM ingredients WHERE nom = $1 AND client_id IS NULL)
      RETURNING id`,
     [nom, uniteId, catId]
