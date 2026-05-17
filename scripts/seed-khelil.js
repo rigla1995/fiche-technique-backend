@@ -31,20 +31,31 @@ const { sendWelcomeWithContractEmail, sendAiAgentInviteEmail } = require('../src
 
 // ─── Auto-apply migration 078 if domaines_activite doesn't exist ──────────────
 async function ensureMigration078() {
-  // Delegate to the official migration runner — it handles tracking, idempotency,
-  // and error reporting for every migration including 078.
+  // If 078 was previously recorded as applied but the data is missing or
+  // columns are incomplete, remove its tracking entry so the runner re-applies it.
+  const dataCheck = await pool.query(
+    `SELECT 1 FROM domaines_activite WHERE slug = 'restauration' LIMIT 1`
+  ).catch(() => ({ rows: [] }));
+
+  if (dataCheck.rows.length === 0) {
+    // Remove 078 from tracking so migrate() re-runs it with the updated SQL.
+    await pool.query(
+      `DELETE FROM _migrations WHERE filename = '078_global_catalogue.sql'`
+    ).catch(() => {}); // _migrations may not exist yet — ignore
+    console.log('Migration 078 re-marquée pour réapplication…');
+  }
+
+  // Run the official migration runner.
   const migrate = require('../src/config/migrate');
   await migrate();
 
-  // Verify the restauration row exists (extra guard for partial-run edge cases).
+  // Final guard.
   const { rows } = await pool.query(
     `SELECT 1 FROM domaines_activite WHERE slug = 'restauration' LIMIT 1`
   ).catch(() => ({ rows: [] }));
 
   if (rows.length === 0) {
-    throw new Error(
-      'Migration 078 appliquée mais domaine restauration manquant — vérifiez les logs migrate.'
-    );
+    throw new Error('Migration 078 : domaine restauration toujours manquant — vérifiez les logs.');
   }
 }
 
