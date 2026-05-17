@@ -31,36 +31,21 @@ const { sendWelcomeWithContractEmail, sendAiAgentInviteEmail } = require('../src
 
 // ─── Auto-apply migration 078 if domaines_activite doesn't exist ──────────────
 async function ensureMigration078() {
-  // True completeness check: the 'restauration' row must exist.
-  // Wrap in try/catch so missing table or missing slug column both fall through.
-  try {
-    const { rows } = await pool.query(
-      `SELECT 1 FROM domaines_activite WHERE slug = 'restauration' LIMIT 1`
-    );
-    if (rows.length > 0) return; // data is present → migration already complete
-  } catch { /* table or slug column missing → proceed */ }
+  // Delegate to the official migration runner — it handles tracking, idempotency,
+  // and error reporting for every migration including 078.
+  const migrate = require('../src/config/migrate');
+  await migrate();
 
-  // If the table exists but lacks the slug column, patch it first so the
-  // migration's CREATE TABLE IF NOT EXISTS (a no-op) + INSERTs can run cleanly.
-  try {
-    const { rows } = await pool.query(
-      `SELECT 1 FROM information_schema.columns
-       WHERE table_name = 'domaines_activite' AND column_name = 'slug'`
-    );
-    if (rows.length === 0) {
-      console.log('domaines_activite existe sans slug — ajout de la colonne…');
-      await pool.query(`ALTER TABLE domaines_activite ADD COLUMN IF NOT EXISTS slug VARCHAR(50)`);
-      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS domaines_activite_slug_key ON domaines_activite(slug)`);
-    }
-  } catch { /* table doesn't exist yet — no patch needed */ }
+  // Verify the restauration row exists (extra guard for partial-run edge cases).
+  const { rows } = await pool.query(
+    `SELECT 1 FROM domaines_activite WHERE slug = 'restauration' LIMIT 1`
+  ).catch(() => ({ rows: [] }));
 
-  console.log('Application de la migration 078…');
-  const sql = fs.readFileSync(
-    path.join(__dirname, '../migrations/078_global_catalogue.sql'),
-    'utf8'
-  );
-  await pool.query(sql);
-  console.log('Migration 078 appliquée.');
+  if (rows.length === 0) {
+    throw new Error(
+      'Migration 078 appliquée mais domaine restauration manquant — vérifiez les logs migrate.'
+    );
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
