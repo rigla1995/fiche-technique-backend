@@ -397,9 +397,10 @@ const getLaboStock = async (req, res) => {
     const ingredientRows = result.rows.map((row) => {
       const totalTransfere = parseFloat(row.total_transfere);
       const b = invBaselineMap[row.ingredient_id] || {};
-      const quantite = b.hasInv
+      const quantiteRaw = b.hasInv
         ? b.invQty + b.postApproQty - b.postTransferQty - b.postPertesQty
         : b.allApproQty - b.allTransferQty - b.allPertesQty;
+      const quantite = Math.round(quantiteRaw * 1000) / 1000;
       const avgPrix = b.hasInv ? (b.avgPrixPost ?? b.avgPrixAll ?? null) : (b.avgPrixAll ?? null);
       const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
       const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
