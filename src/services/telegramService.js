@@ -1,12 +1,21 @@
 const TelegramBot = require('node-telegram-bot-api');
 const pool = require('../config/database');
 const { chatWithDeepSeek } = require('./deepseekService');
-const { sendRapportEmail } = require('./emailService');
+const { generateAndSendReport } = require('./reportService');
 
 let bot = null;
 let botUsername = null;
 
-const EMAIL_TRIGGER = ['email', 'mail', 'rapport par email', 'envoie le rapport', 'envoyer le rapport'];
+const EXCEL_TRIGGER = ['rapport excel', 'fichier excel', 'export excel', 'envoie excel', 'excel'];
+const PDF_TRIGGER   = ['rapport pdf', 'fichier pdf', 'export pdf', 'envoie pdf'];
+const EMAIL_TRIGGER = ['rapport', 'email', 'mail', 'envoie', 'send'];
+
+function detectReportFormat(text) {
+  const lower = text.toLowerCase();
+  if (EXCEL_TRIGGER.some(kw => lower.includes(kw))) return 'excel';
+  if (PDF_TRIGGER.some(kw => lower.includes(kw))) return 'pdf';
+  return null;
+}
 
 const findClientByToken = async (token) => {
   const result = await pool.query(
@@ -87,17 +96,23 @@ const handleMessage = async (msg) => {
       [confidence, client.client_id, String(chatId)]
     );
 
-    await bot.sendMessage(chatId, assistantMessage, { parse_mode: 'Markdown' });
-
-    // Email report trigger
+    // Check if client asked for an Excel or PDF report before sending AI reply
+    const format = detectReportFormat(text);
     const lower = text.toLowerCase();
-    if (EMAIL_TRIGGER.some(kw => lower.includes(kw)) && clientEmail) {
+    const wantsEmail = EMAIL_TRIGGER.some(kw => lower.includes(kw));
+
+    if (format && wantsEmail && clientEmail) {
+      // Generate and send real file, then confirm
+      await bot.sendMessage(chatId, `⏳ Je génère votre rapport ${format.toUpperCase()}...`);
       try {
-        await sendRapportEmail({ to: clientEmail, clientNom: client.nom, rapportText: assistantMessage });
-        await bot.sendMessage(chatId, `✅ Rapport envoyé à ${clientEmail}`);
+        const filename = await generateAndSendReport(client.client_id, clientEmail, client.nom, format);
+        await bot.sendMessage(chatId, `✅ Rapport ${format.toUpperCase()} envoyé à ${clientEmail} (${filename})`);
       } catch (e) {
-        console.error('[Telegram] Email rapport error:', e.message);
+        console.error('[Telegram] Report generation error:', e.message);
+        await bot.sendMessage(chatId, `❌ Erreur lors de la génération du rapport. Réessayez.`);
       }
+    } else {
+      await bot.sendMessage(chatId, assistantMessage, { parse_mode: 'Markdown' });
     }
   } catch (err) {
     console.error('[Telegram] handleMessage error:', err.message);

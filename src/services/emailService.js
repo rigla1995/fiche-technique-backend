@@ -269,6 +269,34 @@ const sendRapportEmail = async ({ to, clientNom, rapportText }) => {
   return { success: true, id: data?.id };
 };
 
+const sendRapportWithAttachment = async ({ to, clientNom, buffer, filename, mimeType, format }) => {
+  const formatLabel = format === 'excel' ? 'Excel' : 'PDF';
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `${APP_NAME} — Rapport ${formatLabel} pour ${clientNom}`,
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+      <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+        <div style="font-size:36px;margin-bottom:8px">${format === 'excel' ? '📊' : '📄'}</div>
+        <h1 style="color:#fff;margin:0;font-size:20px">Rapport ${formatLabel} — ${clientNom}</h1>
+      </div>
+      <p style="color:#374151;font-size:14px;line-height:1.6">
+        Votre rapport <strong>${formatLabel}</strong> est disponible en pièce jointe.<br>
+        Il contient votre stock actuel, vos pertes récentes et vos inventaires.
+      </p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+      <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ${APP_NAME}</p>
+    </div>`,
+    attachments: [{
+      filename,
+      content: buffer.toString('base64'),
+      contentType: mimeType,
+    }],
+  });
+  if (error) throw new Error(error.message);
+  return { success: true, id: data?.id };
+};
+
 const sendAiAgentInviteEmail = async ({ to, clientNom, inviteLink, appName }) => {
   const name = appName || APP_NAME;
   const { data, error } = await resend.emails.send({
@@ -304,4 +332,4 @@ const sendAiAgentInviteEmail = async ({ to, clientNom, inviteLink, appName }) =>
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail, sendRapportEmail, sendAiAgentInviteEmail };
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail, sendRapportEmail, sendRapportWithAttachment, sendAiAgentInviteEmail };
