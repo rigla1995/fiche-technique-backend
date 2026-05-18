@@ -24,6 +24,7 @@ const fournisseursIndepRoutes = require('./routes/fournisseurs');
 const rapportsRoutes = require('./routes/rapports');
 const notificationsRoutes = require('./routes/notifications');
 const aiAssistantRoutes = require('./routes/aiAssistant');
+const ventesRoutes = require('./routes/ventes');
 const { initTelegram } = require('./services/telegramService');
 
 const { authenticate, requireWriteAccess } = require('./middleware/auth');
@@ -60,6 +61,7 @@ app.use('/api/fournisseurs', fournisseursIndepRoutes);
 app.use('/api/rapports', rapportsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/ai-assistant', aiAssistantRoutes);
+app.use('/api', ventesRoutes);
 
 app.use('/api/products', produitsRoutes);
 
