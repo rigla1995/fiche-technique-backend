@@ -541,6 +541,8 @@ const getCatalogueGlobalIngredients = async (req, res) => {
                        SELECT pe.domaine_id FROM profil_entreprise pe WHERE pe.id = $1
                        UNION ALL
                        SELECT a.domaine_id FROM activites a WHERE a.entreprise_id = $1 AND a.domaine_id IS NOT NULL
+                       UNION ALL
+                       SELECT cd.domaine_id FROM client_domaines cd WHERE cd.client_id = $2
                      ) d WHERE d.domaine_id IS NOT NULL
                    )
                )
@@ -557,7 +559,7 @@ const getCatalogueGlobalIngredients = async (req, res) => {
              )
            )
          ORDER BY COALESCE(c.nom, 'Sans catégorie'), i.nom`,
-        [entrepriseId]
+        [entrepriseId, clientId]
       ),
       pool.query('SELECT id, nom FROM activites WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),
       pool.query('SELECT id, nom FROM labos WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),
