@@ -8,7 +8,12 @@ function clientId(req) {
 }
 
 async function getActiviteClientId(activiteId) {
-  const r = await pool.query('SELECT client_id FROM activites WHERE id = $1', [activiteId]);
+  const r = await pool.query(
+    `SELECT pe.client_id FROM activites a
+     JOIN profil_entreprise pe ON pe.id = a.entreprise_id
+     WHERE a.id = $1`,
+    [activiteId]
+  );
   return r.rows[0]?.client_id ?? null;
 }
 
