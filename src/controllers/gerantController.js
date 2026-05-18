@@ -42,17 +42,15 @@ const create = async (req, res) => {
   }
 
   const parentId = req.user.id;
-  const parentType = req.user.compteType; // 'independant' | 'entreprise' | null (config-based)
 
   try {
-    // Check free gérant limit
+    // Check free gérant limit (3 included per subscription)
     const existing = await pool.query(
       `SELECT COUNT(*) FROM utilisateurs WHERE role = 'gerant' AND gerant_parent_id = $1 AND gerant_est_gratuit = true`,
       [parentId]
     );
     const freeCount = parseInt(existing.rows[0].count, 10);
-    const isEntrepriseClass = parentType === 'entreprise' || parentType === null;
-    const freeLimit = isEntrepriseClass ? 3 : 1;
+    const freeLimit = 3;
 
     const isGratuit = estGratuit !== false && freeCount < freeLimit;
     const montant = isGratuit ? 0 : (montantMensuel || 80);
@@ -65,13 +63,13 @@ const create = async (req, res) => {
     const inviteExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
     const result = await pool.query(
       `INSERT INTO utilisateurs
-         (nom, email, mot_de_passe, telephone, role, compte_type,
+         (nom, email, mot_de_passe, telephone, role,
           gerant_parent_id, gerant_activite_id, gerant_activite_type,
           gerant_est_gratuit, gerant_montant_mensuel, invite_token, invite_token_expires_at)
-       VALUES ($1, $2, NULL, $3, 'gerant', $4, $5, $6, $7, $8, $9, $10, $11)
+       VALUES ($1, $2, NULL, $3, 'gerant', $4, $5, $6, $7, $8, $9, $10)
        RETURNING id, nom, email, telephone, gerant_parent_id, gerant_activite_id,
                  gerant_activite_type, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at`,
-      [nom, email, telephone, parentType,
+      [nom, email, telephone,
        parentId, activiteId || null, activiteType || null,
        isGratuit, montant, inviteToken, inviteExpires]
     );

@@ -57,17 +57,7 @@ const login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
-    // For gérants, resolve compte_type from the parent client
-    let compteType = utilisateur.compte_type || null;
-    let onboardingStep = utilisateur.onboarding_step ?? 0;
-    if (utilisateur.role === 'gerant' && utilisateur.gerant_parent_id) {
-      const parentRes = await pool.query(
-        'SELECT compte_type FROM utilisateurs WHERE id = $1',
-        [utilisateur.gerant_parent_id]
-      );
-      compteType = parentRes.rows[0]?.compte_type || null;
-      onboardingStep = 0; // gérants skip onboarding
-    }
+    const onboardingStep = utilisateur.role === 'gerant' ? 0 : (utilisateur.onboarding_step ?? 0);
 
     res.json({
       token,
@@ -76,7 +66,6 @@ const login = async (req, res) => {
         name: utilisateur.nom,
         email: utilisateur.email,
         role: utilisateur.role,
-        compteType,
         onboardingStep,
       },
     });
@@ -132,20 +121,20 @@ const me = async (req, res) => {
     // Gérants bypass onboarding entirely — use parent's step if needed but never block them
     let step = isGerant ? 0 : (u.onboarding_step ?? 0);
 
-    // Auto-heal: advance enterprise users who are blocked at onboarding steps they've already completed.
-    if (!isGerant && step > 0 && u.compte_type === 'entreprise') {
+    // Auto-heal: advance clients who are blocked at onboarding steps they've already completed.
+    if (!isGerant && step > 0) {
       const epRes = await pool.query(
         'SELECT id FROM profil_entreprise WHERE client_id = $1',
         [u.id]
       );
       if (epRes.rows.length > 0) {
         const entrepriseId = epRes.rows[0].id;
-        const actRes = await pool.query(
-          'SELECT COUNT(*) FROM activites WHERE entreprise_id = $1',
-          [entrepriseId]
-        );
-        const hasActivities = parseInt(actRes.rows[0].count) > 0;
-        if (hasActivities) {
+        const [actRes, laboRes] = await Promise.all([
+          pool.query('SELECT COUNT(*) FROM activites WHERE entreprise_id = $1', [entrepriseId]),
+          pool.query('SELECT COUNT(*) FROM labos WHERE entreprise_id = $1', [entrepriseId]),
+        ]);
+        const hasActivitiesOrLabos = parseInt(actRes.rows[0].count) > 0 || parseInt(laboRes.rows[0].count) > 0;
+        if (hasActivitiesOrLabos) {
           const selRes = await pool.query(
             `SELECT COUNT(*) FROM activite_ingredient_selections ais
              JOIN activites a ON ais.activite_id = a.id
@@ -168,11 +157,11 @@ const me = async (req, res) => {
       }
     }
 
-    // entrepriseName: use parent's profil_entreprise for gérants
+    // entrepriseName: fetch for clients and gérants (from parent's profil_entreprise)
     let entrepriseName = null;
-    if (u.compte_type === 'entreprise') {
-      const clientId = isGerant ? u.gerant_parent_id : u.id;
-      const epRes = await pool.query('SELECT nom FROM profil_entreprise WHERE client_id = $1', [clientId]);
+    const epClientId = isGerant ? u.gerant_parent_id : u.id;
+    if (epClientId) {
+      const epRes = await pool.query('SELECT nom FROM profil_entreprise WHERE client_id = $1', [epClientId]);
       if (epRes.rows.length > 0) entrepriseName = epRes.rows[0].nom;
     }
 
@@ -215,7 +204,7 @@ const me = async (req, res) => {
 
     res.json({
       id: u.id, name: u.nom, email: u.email, phone: u.telephone,
-      role: u.role, compteType: u.compte_type || null,
+      role: u.role,
       onboardingStep: step, entrepriseName,
       modeCompte, prolongationJours,
       activitesCount,

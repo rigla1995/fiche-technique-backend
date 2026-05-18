@@ -13,12 +13,10 @@ const getRapportsStats = async (req, res) => {
       demandesRes,
       newClientsRes,
     ] = await Promise.all([
-      // Client counts by type + activation status
+      // Client counts + activation status
       pool.query(`
         SELECT
           COUNT(*) FILTER (WHERE role = 'client') AS total,
-          COUNT(*) FILTER (WHERE role = 'client' AND compte_type = 'independant') AS indep,
-          COUNT(*) FILTER (WHERE role = 'client' AND compte_type = 'entreprise') AS entreprise,
           COUNT(*) FILTER (WHERE role = 'client' AND activated_at IS NOT NULL) AS activated,
           COUNT(*) FILTER (WHERE role = 'client' AND activated_at IS NULL AND mot_de_passe IS NULL) AS pending_invite
         FROM utilisateurs
@@ -88,8 +86,6 @@ const getRapportsStats = async (req, res) => {
     res.json({
       clients: {
         total: parseInt(clientsRes.rows[0].total),
-        indep: parseInt(clientsRes.rows[0].indep),
-        entreprise: parseInt(clientsRes.rows[0].entreprise),
         activated: parseInt(clientsRes.rows[0].activated),
         pendingInvite: parseInt(clientsRes.rows[0].pending_invite),
       },

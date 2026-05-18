@@ -20,32 +20,18 @@ const mapDemande = (row) => ({
 // POST /api/demandes — client creates a request
 const create = async (req, res) => {
   const { typeDemande, notes } = req.body;
-  const allowed = ['gerant_sup', 'labo_sup', 'upgrade_entreprise'];
+  const allowed = ['gerant_sup', 'labo_sup'];
   if (!allowed.includes(typeDemande)) return res.status(400).json({ message: 'Type invalide' });
-  if (typeDemande === 'upgrade_entreprise' && req.user.compteType !== 'independant') {
-    return res.status(403).json({ message: 'Réservé aux comptes indépendant' });
-  }
 
   try {
-    let montant = null;
-    if (typeDemande === 'upgrade_entreprise') {
-      const [entrepriseTarif, aboRes] = await Promise.all([
-        pool.query(`SELECT valeur_dt FROM tarifs_config WHERE cle = 'entreprise_onboarding'`),
-        pool.query(`SELECT montant_onboarding FROM abonnements WHERE client_id = $1`, [req.user.id]),
-      ]);
-      const tarifEntreprise = entrepriseTarif.rows[0]?.valeur_dt ?? 0;
-      const dejaPayé = aboRes.rows[0]?.montant_onboarding ?? 0;
-      montant = Math.max(0, tarifEntreprise - dejaPayé);
-    } else {
-      const cle = typeDemande === 'labo_sup' ? 'labo_sup_mensuel' : 'gerant_sup_mensuel';
-      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [cle]);
-      montant = tarifRes.rows[0]?.valeur_dt || null;
-    }
+    const cle = typeDemande === 'labo_sup' ? 'labo_sup_mensuel' : 'gerant_sup_mensuel';
+    const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [cle]);
+    const montant = tarifRes.rows[0]?.valeur_dt || null;
 
     const result = await pool.query(
       `INSERT INTO demandes (demandeur_id, demandeur_type, type_demande, montant_mensuel_dt, notes_client)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.user.id, req.user.compteType, typeDemande, montant, notes || null]
+      [req.user.id, null, typeDemande, montant, notes || null]
     );
     res.status(201).json(mapDemande(result.rows[0]));
   } catch (err) {
