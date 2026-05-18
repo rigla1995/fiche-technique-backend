@@ -26,8 +26,4 @@ router.get('/ventes/:id', authenticate, requireEntreprise, c.getVente);
 router.post('/ventes', authenticate, requireEntreprise, c.createVente);
 router.delete('/ventes/:id', authenticate, requireEntreprise, c.annulerVente);
 
-// ── Labo ventes (transferts valorisés) ──────────────────────────────────────
-router.get('/labo/ventes', authenticate, requireEntreprise, c.laboVentes);
-router.get('/labo/ventes/stats', authenticate, requireEntreprise, c.laboVentesStats);
-
 module.exports = router;

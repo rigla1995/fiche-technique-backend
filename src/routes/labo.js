@@ -20,6 +20,7 @@ const {
 } = require('../controllers/inventaireController');
 const { getPrixLaboPerte, getDateRangeLaboPerte, listLaboPertes, exportLaboPerteExcel } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
+const { laboVentes, laboVentesStats } = require('../controllers/ventesController');
 
 /**
  * @openapi
@@ -52,6 +53,10 @@ const { authenticate, requireEntreprise } = require('../middleware/auth');
  *         description: Accès réservé aux entreprises
  */
 router.get('/', authenticate, requireEntreprise, listLabos);
+
+// Ventes labo (transferts valorisés) — doit être AVANT /:laboId
+router.get('/ventes', authenticate, requireEntreprise, laboVentes);
+router.get('/ventes/stats', authenticate, requireEntreprise, laboVentesStats);
 
 /**
  * @openapi
