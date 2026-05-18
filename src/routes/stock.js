@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { body, validationResult } = require('express-validator');
 const {
   getStockClient, updateStockClient, getStockClientSummary,
   getStockEntreprise, updateStockEntreprise,
@@ -14,13 +15,44 @@ const {
 const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
 const { listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, getPrixClientPerte, getDateRangeClientPerte } = require('../controllers/pertesController');
 
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  next();
+};
+
+const approValidation = [
+  body('quantite').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('quantite doit être un nombre >= 0'),
+  body('prixUnitaire').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('prixUnitaire doit être un nombre >= 0'),
+  body('dateAppro').optional({ nullable: true }).isISO8601().withMessage('dateAppro doit être une date ISO8601'),
+  body('fournisseurId').optional({ nullable: true }).isInt({ min: 1 }).withMessage('fournisseurId invalide'),
+  body('tauxTva').optional({ nullable: true }).isFloat({ min: 0, max: 100 }).withMessage('tauxTva doit être entre 0 et 100'),
+];
+
+const seuilMinValidation = [
+  body('seuilMin').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('seuilMin doit être un nombre >= 0'),
+];
+
+const perteValidation = [
+  body('ingredientId').isInt({ min: 1 }).withMessage('ingredientId invalide'),
+  body('quantite').isFloat({ min: 0.001 }).withMessage('quantite doit être > 0'),
+  body('typePerte').isIn(['avarie', 'dechet']).withMessage('typePerte invalide (avarie|dechet)'),
+  body('datePerte').isISO8601().withMessage('datePerte doit être une date ISO8601'),
+];
+
+const inventaireValidation = [
+  body('dateInventaire').isISO8601().withMessage('dateInventaire doit être une date ISO8601'),
+  body('entries').isArray({ min: 1 }).withMessage('entries doit être un tableau non vide'),
+  body('entries.*.quantiteReelle').isFloat({ min: 0 }).withMessage('quantiteReelle doit être un nombre >= 0'),
+];
+
 // Client stock (all clients)
 router.get('/client/summary', authenticate, requireClient, getStockClientSummary);
 router.get('/client/ingredient-selections', authenticate, requireClient, getClientIngredientSelections);
 router.get('/client', authenticate, requireClient, getStockClient);
-router.put('/client/:ingredientId', authenticate, requireClient, updateStockClient);
-router.put('/client/:ingredientId/seuil-min', authenticate, requireClient, updateSeuilMinClient);
-router.post('/client/pertes', authenticate, requireClient, createClientPerte);
+router.put('/client/:ingredientId', authenticate, requireClient, approValidation, validate, updateStockClient);
+router.put('/client/:ingredientId/seuil-min', authenticate, requireClient, seuilMinValidation, validate, updateSeuilMinClient);
+router.post('/client/pertes', authenticate, requireClient, perteValidation, validate, createClientPerte);
 router.get('/client/pertes/export-excel', authenticate, requireClient, exportClientPertes);
 router.get('/client/pertes/prix', authenticate, requireClient, getPrixClientPerte);
 router.get('/client/pertes/date-range', authenticate, requireClient, getDateRangeClientPerte);
@@ -114,9 +146,9 @@ router.get('/entreprise/:activiteId', authenticate, requireEntreprise, getStockE
  *       401:
  *         description: Non authentifié
  */
-router.put('/entreprise/:activiteId/:ingredientId', authenticate, requireEntreprise, updateStockEntreprise);
+router.put('/entreprise/:activiteId/:ingredientId', authenticate, requireEntreprise, approValidation, validate, updateStockEntreprise);
 router.get('/entreprise/:activiteId/:ingredientId/history', authenticate, requireEntreprise, getHistoryEntreprise);
-router.put('/entreprise/:activiteId/:ingredientId/seuil-min', authenticate, requireEntreprise, updateSeuilMin);
+router.put('/entreprise/:activiteId/:ingredientId/seuil-min', authenticate, requireEntreprise, seuilMinValidation, validate, updateSeuilMin);
 // Cascade info (appro + inventaire counts) for ingredient deselect confirmation
 router.get('/client/:ingredientId/cascade-info', authenticate, requireClient, getCascadeInfoClient);
 router.get('/entreprise/:activiteId/:ingredientId/cascade-info', authenticate, requireEntreprise, getCascadeInfoEntreprise);
@@ -147,11 +179,11 @@ const {
   getClientInventaireHistorique, exportClientInventaireExcel,
 } = require('../controllers/inventaireController');
 router.get('/client/inventaire', authenticate, requireClient, getClientInventaireStock);
-router.post('/client/inventaire', authenticate, requireClient, saveClientInventaire);
+router.post('/client/inventaire', authenticate, requireClient, inventaireValidation, validate, saveClientInventaire);
 router.get('/client/inventaire/historique', authenticate, requireClient, getClientInventaireHistorique);
 router.get('/client/inventaire/historique/export-excel', authenticate, requireClient, exportClientInventaireExcel);
 router.get('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, getActiviteInventaireStock);
-router.post('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, saveActiviteInventaire);
+router.post('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, inventaireValidation, validate, saveActiviteInventaire);
 router.get('/entreprise/:activiteId/inventaire/historique', authenticate, requireEntreprise, getActiviteInventaireHistorique);
 router.get('/entreprise/:activiteId/inventaire/historique/export-excel', authenticate, requireEntreprise, exportActiviteInventaireExcel);
 router.put('/inventaire/:inventaireId', authenticate, requireClient, updateInventaireEntry);

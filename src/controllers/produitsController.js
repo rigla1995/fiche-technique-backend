@@ -1022,7 +1022,7 @@ const saveManualPrices = async (req, res) => {
   const actId = parseInt(activiteId) || 0;
 
   if (!Array.isArray(prices)) {
-    return res.status(400).json({ message: 'Prices array required' });
+    return res.status(400).json({ message: 'Le champ prices doit être un tableau' });
   }
   if (prices.length === 0) {
     return res.json({ updatedAt: null });
