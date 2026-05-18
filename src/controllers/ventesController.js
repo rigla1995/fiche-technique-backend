@@ -599,7 +599,7 @@ const laboVentesStats = async (req, res) => {
        LEFT JOIN produits p ON p.id = lt.produit_id
        WHERE lt.labo_id = $1 AND lt.prix_unitaire IS NOT NULL
          AND date_trunc('month', lt.date_transfert) = date_trunc('month', CURRENT_DATE)
-       GROUP BY nom
+       GROUP BY (CASE WHEN lt.ingredient_id IS NOT NULL THEN i.nom ELSE p.nom END)
        ORDER BY total_valeur DESC LIMIT 5`,
       [laboId]
     );
