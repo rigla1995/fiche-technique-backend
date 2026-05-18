@@ -480,13 +480,6 @@ const getStockEntreprise = async (req, res) => {
          WHERE sed.activite_id = $1 AND sed.quantite < 0
          GROUP BY sed.ingredient_id
        ),
-       avg_prix_post AS (
-         SELECT sed.ingredient_id, AVG(sed.prix_unitaire) as avg_prix
-         FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
-         GROUP BY sed.ingredient_id
-       ),
        all_appro AS (
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_entreprise_daily
@@ -505,12 +498,6 @@ const getStockEntreprise = async (req, res) => {
          WHERE activite_id = $1 AND quantite < 0
          GROUP BY ingredient_id
        ),
-       avg_prix_all AS (
-         SELECT ingredient_id, AVG(prix_unitaire) as avg_prix
-         FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND quantite > 0 AND prix_unitaire IS NOT NULL
-         GROUP BY ingredient_id
-       ),
        post_transferts_in AS (
          SELECT sed.ingredient_id, SUM(sed.quantite) as qty
          FROM stock_entreprise_daily sed
@@ -523,6 +510,69 @@ const getStockEntreprise = async (req, res) => {
          FROM stock_entreprise_daily
          WHERE activite_id = $1 AND quantite > 0 AND type_appro = 'transfert'
          GROUP BY ingredient_id
+       ),
+       prev_inv AS (
+         SELECT ingredient_id, date_inventaire FROM (
+           SELECT ingredient_id, date_inventaire,
+             ROW_NUMBER() OVER (PARTITION BY ingredient_id ORDER BY date_inventaire DESC, created_at DESC) as rn
+           FROM inventaires WHERE activite_id = $1 AND ingredient_id IS NOT NULL
+         ) sub WHERE rn = 2
+       ),
+       first_appro AS (
+         SELECT ingredient_id, MIN(date_appro) as first_date
+         FROM stock_entreprise_daily WHERE activite_id = $1 AND quantite > 0
+         GROUP BY ingredient_id
+       ),
+       pmp_hist AS (
+         SELECT sed.ingredient_id,
+           SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0) as pmp_ht,
+           SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire)) / NULLIF(SUM(sed.quantite), 0) as pmp_tva
+         FROM stock_entreprise_daily sed
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id
+         LEFT JOIN prev_inv pi ON pi.ingredient_id = sed.ingredient_id
+         LEFT JOIN first_appro fa ON fa.ingredient_id = sed.ingredient_id
+         WHERE sed.activite_id = $1 AND sed.type_appro = 'manuel' AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
+           AND sed.date_appro >= COALESCE(pi.date_inventaire, fa.first_date)
+           AND sed.date_appro < li.date_inventaire
+         GROUP BY sed.ingredient_id
+       ),
+       appro_cost_post AS (
+         SELECT sed.ingredient_id,
+           SUM(sed.quantite) as qty,
+           SUM(sed.quantite * COALESCE(sed.prix_unitaire, 0)) as cost_ht,
+           SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire, 0)) as cost_tva
+         FROM stock_entreprise_daily sed
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
+         WHERE sed.activite_id = $1 AND sed.type_appro = 'manuel' AND sed.quantite > 0
+         GROUP BY sed.ingredient_id
+       ),
+       appro_cost_all AS (
+         SELECT ingredient_id,
+           SUM(quantite) as qty,
+           SUM(quantite * COALESCE(prix_unitaire, 0)) as cost_ht,
+           SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)) as cost_tva
+         FROM stock_entreprise_daily
+         WHERE activite_id = $1 AND type_appro = 'manuel' AND quantite > 0
+         GROUP BY ingredient_id
+       ),
+       transfer_cost_post AS (
+         SELECT sed.ingredient_id,
+           SUM(sed.quantite) as qty,
+           SUM(sed.quantite * COALESCE(sed.prix_unitaire, 0)) as cost_ht,
+           SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire, 0)) as cost_tva
+         FROM stock_entreprise_daily sed
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
+         WHERE sed.activite_id = $1 AND sed.type_appro = 'transfert' AND sed.quantite > 0
+         GROUP BY sed.ingredient_id
+       ),
+       transfer_cost_all AS (
+         SELECT ingredient_id,
+           SUM(quantite) as qty,
+           SUM(quantite * COALESCE(prix_unitaire, 0)) as cost_ht,
+           SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)) as cost_tva
+         FROM stock_entreprise_daily
+         WHERE activite_id = $1 AND type_appro = 'transfert' AND quantite > 0
+         GROUP BY ingredient_id
        )
        SELECT ais.ingredient_id,
               li.quantite_reelle        as inv_qty,
@@ -530,25 +580,40 @@ const getStockEntreprise = async (req, res) => {
               COALESCE(pa.qty, 0)       as post_appro_qty,
               COALESCE(pp.qty, 0)       as post_pertes_qty,
               COALESCE(ppu.qty, 0)      as post_pt_usage_qty,
-              app.avg_prix              as avg_prix_post,
               COALESCE(aa.qty, 0)       as all_appro_qty,
               COALESCE(ap.qty, 0)       as all_pertes_qty,
               COALESCE(apu.qty, 0)      as all_pt_usage_qty,
-              apy.avg_prix              as avg_prix_all,
               COALESCE(pti.qty, 0)      as post_transferts_in_qty,
-              COALESCE(ati.qty, 0)      as all_transferts_in_qty
+              COALESCE(ati.qty, 0)      as all_transferts_in_qty,
+              ph.pmp_ht                 as pmp_hist_ht,
+              ph.pmp_tva                as pmp_hist_tva,
+              COALESCE(acp.qty, 0)      as appro_cost_post_qty,
+              COALESCE(acp.cost_ht, 0)  as appro_cost_post_ht,
+              COALESCE(acp.cost_tva, 0) as appro_cost_post_tva,
+              COALESCE(aca.qty, 0)      as appro_cost_all_qty,
+              COALESCE(aca.cost_ht, 0)  as appro_cost_all_ht,
+              COALESCE(aca.cost_tva, 0) as appro_cost_all_tva,
+              COALESCE(tcp.qty, 0)      as transfer_cost_post_qty,
+              COALESCE(tcp.cost_ht, 0)  as transfer_cost_post_ht,
+              COALESCE(tcp.cost_tva, 0) as transfer_cost_post_tva,
+              COALESCE(tca.qty, 0)      as transfer_cost_all_qty,
+              COALESCE(tca.cost_ht, 0)  as transfer_cost_all_ht,
+              COALESCE(tca.cost_tva, 0) as transfer_cost_all_tva
        FROM activite_ingredient_selections ais
        LEFT JOIN last_inv li                ON li.ingredient_id  = ais.ingredient_id
        LEFT JOIN post_appro pa              ON pa.ingredient_id  = ais.ingredient_id
        LEFT JOIN post_pertes pp             ON pp.ingredient_id  = ais.ingredient_id
        LEFT JOIN post_pt_usage ppu          ON ppu.ingredient_id = ais.ingredient_id
-       LEFT JOIN avg_prix_post app          ON app.ingredient_id = ais.ingredient_id
        LEFT JOIN all_appro aa              ON aa.ingredient_id  = ais.ingredient_id
        LEFT JOIN all_pertes ap             ON ap.ingredient_id  = ais.ingredient_id
        LEFT JOIN all_pt_usage apu          ON apu.ingredient_id = ais.ingredient_id
-       LEFT JOIN avg_prix_all apy          ON apy.ingredient_id = ais.ingredient_id
        LEFT JOIN post_transferts_in pti    ON pti.ingredient_id = ais.ingredient_id
        LEFT JOIN all_transferts_in ati     ON ati.ingredient_id = ais.ingredient_id
+       LEFT JOIN pmp_hist ph               ON ph.ingredient_id  = ais.ingredient_id
+       LEFT JOIN appro_cost_post acp       ON acp.ingredient_id = ais.ingredient_id
+       LEFT JOIN appro_cost_all aca        ON aca.ingredient_id = ais.ingredient_id
+       LEFT JOIN transfer_cost_post tcp    ON tcp.ingredient_id = ais.ingredient_id
+       LEFT JOIN transfer_cost_all tca     ON tca.ingredient_id = ais.ingredient_id
        WHERE ais.activite_id = $1`,
       [activiteId]
     );
@@ -561,13 +626,25 @@ const getStockEntreprise = async (req, res) => {
         postApproQty: parseFloat(r.post_appro_qty) || 0,
         postPertesQty: parseFloat(r.post_pertes_qty) || 0,
         postPtUsageQty: parseFloat(r.post_pt_usage_qty) || 0,
-        avgPrixPost: r.avg_prix_post !== null ? parseFloat(r.avg_prix_post) : null,
         allApproQty: parseFloat(r.all_appro_qty) || 0,
         allPertesQty: parseFloat(r.all_pertes_qty) || 0,
         allPtUsageQty: parseFloat(r.all_pt_usage_qty) || 0,
-        avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
         postTransfertsInQty: parseFloat(r.post_transferts_in_qty) || 0,
         allTransfertsInQty: parseFloat(r.all_transferts_in_qty) || 0,
+        pmpHistHT: r.pmp_hist_ht !== null ? parseFloat(r.pmp_hist_ht) : null,
+        pmpHistTTC: r.pmp_hist_tva !== null ? parseFloat(r.pmp_hist_tva) : null,
+        approCostPostQty: parseFloat(r.appro_cost_post_qty) || 0,
+        approCostPostHT: parseFloat(r.appro_cost_post_ht) || 0,
+        approCostPostTTC: parseFloat(r.appro_cost_post_tva) || 0,
+        approCostAllQty: parseFloat(r.appro_cost_all_qty) || 0,
+        approCostAllHT: parseFloat(r.appro_cost_all_ht) || 0,
+        approCostAllTTC: parseFloat(r.appro_cost_all_tva) || 0,
+        transferCostPostQty: parseFloat(r.transfer_cost_post_qty) || 0,
+        transferCostPostHT: parseFloat(r.transfer_cost_post_ht) || 0,
+        transferCostPostTTC: parseFloat(r.transfer_cost_post_tva) || 0,
+        transferCostAllQty: parseFloat(r.transfer_cost_all_qty) || 0,
+        transferCostAllHT: parseFloat(r.transfer_cost_all_ht) || 0,
+        transferCostAllTTC: parseFloat(r.transfer_cost_all_tva) || 0,
       };
     }
 
@@ -694,10 +771,30 @@ const getStockEntreprise = async (req, res) => {
       const quantite = b.hasInv
         ? b.invQty + b.postApproQty - b.postPertesQty
         : b.allApproQty - b.allPertesQty;
-      const avgPrix = b.hasInv ? (b.avgPrixPost ?? b.avgPrixAll ?? null) : (b.avgPrixAll ?? null);
       const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
       const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
       const transfertsDepuisAppro = b.hasInv ? b.postTransfertsInQty : b.allTransfertsInQty;
+      let coutTotal = 0;
+      let coutTotalTTC = 0;
+      if (b.hasInv) {
+        const coutInvHT = (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
+        const coutInvTTC = (b.invQty > 0 && b.pmpHistTTC !== null) ? b.invQty * b.pmpHistTTC : (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
+        const totalCostInHT = coutInvHT + (b.approCostPostHT || 0) + (b.transferCostPostHT || 0);
+        const totalCostInTTC = coutInvTTC + (b.approCostPostTTC || 0) + (b.transferCostPostTTC || 0);
+        const totalQtyIn = b.invQty + (b.approCostPostQty || 0) + (b.transferCostPostQty || 0);
+        const pmpHT = totalQtyIn > 0 ? totalCostInHT / totalQtyIn : null;
+        const pmpTTC = totalQtyIn > 0 ? totalCostInTTC / totalQtyIn : null;
+        coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
+        coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
+      } else {
+        const totalQtyIn = (b.approCostAllQty || 0) + (b.transferCostAllQty || 0);
+        const totalCostInHT = (b.approCostAllHT || 0) + (b.transferCostAllHT || 0);
+        const totalCostInTTC = (b.approCostAllTTC || 0) + (b.transferCostAllTTC || 0);
+        const pmpHT = totalQtyIn > 0 ? totalCostInHT / totalQtyIn : null;
+        const pmpTTC = totalQtyIn > 0 ? totalCostInTTC / totalQtyIn : null;
+        coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
+        coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
+      }
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
@@ -707,7 +804,8 @@ const getStockEntreprise = async (req, res) => {
         prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
         quantite,
         totalQuantite: quantite,
-        coutTotal: avgPrix !== null && quantite > 0 ? quantite * avgPrix : null,
+        coutTotal,
+        coutTotalTTC,
         dateAppro: isoDate(row.date_appro),
         lastFournisseurId: row.last_fournisseur_id ?? null,
         lastRefFacture: row.last_ref_facture ?? null,

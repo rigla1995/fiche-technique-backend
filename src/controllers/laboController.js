@@ -328,23 +328,54 @@ const getLaboStock = async (req, res) => {
          WHERE sld.labo_id = $1 AND sld.quantite < 0 AND sld.type_appro NOT IN ('manuel', 'transfert')
          GROUP BY sld.ingredient_id
        ),
-       avg_prix_post AS (
-         SELECT sld.ingredient_id, AVG(sld.prix_unitaire) as avg_prix
-         FROM stock_labo_daily sld
-         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
-         WHERE sld.labo_id = $1 AND sld.quantite > 0 AND sld.prix_unitaire IS NOT NULL
-         GROUP BY sld.ingredient_id
-       ),
        year_pt_usage AS (
          SELECT ingredient_id, SUM(ABS(quantite)) as qty
          FROM stock_labo_daily
          WHERE labo_id = $1 AND quantite < 0 AND type_appro NOT IN ('manuel', 'transfert')
          GROUP BY ingredient_id
        ),
-       avg_prix_all AS (
-         SELECT ingredient_id, AVG(prix_unitaire) as avg_prix
+       prev_inv AS (
+         SELECT ingredient_id, date_inventaire FROM (
+           SELECT ingredient_id, date_inventaire,
+             ROW_NUMBER() OVER (PARTITION BY ingredient_id ORDER BY date_inventaire DESC, created_at DESC) as rn
+           FROM inventaires WHERE labo_id = $1 AND ingredient_id IS NOT NULL
+         ) sub WHERE rn = 2
+       ),
+       first_appro AS (
+         SELECT ingredient_id, MIN(date_appro) as first_date
+         FROM stock_labo_daily WHERE labo_id = $1 AND type_appro = 'manuel' AND quantite > 0
+         GROUP BY ingredient_id
+       ),
+       pmp_hist AS (
+         SELECT sld.ingredient_id,
+           SUM(sld.quantite * sld.prix_unitaire) / NULLIF(SUM(sld.quantite), 0) as pmp_ht,
+           SUM(sld.quantite * COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire)) / NULLIF(SUM(sld.quantite), 0) as pmp_tva
+         FROM stock_labo_daily sld
+         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id
+         LEFT JOIN prev_inv pi ON pi.ingredient_id = sld.ingredient_id
+         LEFT JOIN first_appro fa ON fa.ingredient_id = sld.ingredient_id
+         WHERE sld.labo_id = $1 AND sld.type_appro = 'manuel' AND sld.quantite > 0 AND sld.prix_unitaire IS NOT NULL
+           AND sld.date_appro >= COALESCE(pi.date_inventaire, fa.first_date)
+           AND sld.date_appro < li.date_inventaire
+         GROUP BY sld.ingredient_id
+       ),
+       appro_cost_post AS (
+         SELECT sld.ingredient_id,
+           SUM(sld.quantite) as qty,
+           SUM(sld.quantite * COALESCE(sld.prix_unitaire, 0)) as cost_ht,
+           SUM(sld.quantite * COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire, 0)) as cost_tva
+         FROM stock_labo_daily sld
+         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
+         WHERE sld.labo_id = $1 AND sld.type_appro = 'manuel' AND sld.quantite > 0
+         GROUP BY sld.ingredient_id
+       ),
+       appro_cost_all AS (
+         SELECT ingredient_id,
+           SUM(quantite) as qty,
+           SUM(quantite * COALESCE(prix_unitaire, 0)) as cost_ht,
+           SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)) as cost_tva
          FROM stock_labo_daily
-         WHERE labo_id = $1 AND quantite > 0 AND prix_unitaire IS NOT NULL
+         WHERE labo_id = $1 AND type_appro = 'manuel' AND quantite > 0
          GROUP BY ingredient_id
        )
        SELECT lis.ingredient_id,
@@ -354,24 +385,31 @@ const getLaboStock = async (req, res) => {
               COALESCE(pt.qty, 0)           as post_transfer_qty,
               COALESCE(pp.qty, 0)           as post_pertes_qty,
               COALESCE(ppu.qty, 0)          as post_pt_usage_qty,
-              app.avg_prix                  as avg_prix_post,
+              ph.pmp_ht                     as pmp_hist_ht,
+              ph.pmp_tva                    as pmp_hist_tva,
+              COALESCE(acp.qty, 0)          as appro_cost_post_qty,
+              COALESCE(acp.cost_ht, 0)      as appro_cost_post_ht,
+              COALESCE(acp.cost_tva, 0)     as appro_cost_post_tva,
               COALESCE(aa.qty, 0)           as all_appro_qty,
               COALESCE(atr.qty, 0)          as all_transfer_qty,
               COALESCE(ap.qty, 0)           as all_pertes_qty,
               COALESCE(apu.qty, 0)          as all_pt_usage_qty,
-              apy.avg_prix                  as avg_prix_all
+              COALESCE(aca.qty, 0)          as appro_cost_all_qty,
+              COALESCE(aca.cost_ht, 0)      as appro_cost_all_ht,
+              COALESCE(aca.cost_tva, 0)     as appro_cost_all_tva
        FROM labo_ingredient_selections lis
        LEFT JOIN last_inv li      ON li.ingredient_id  = lis.ingredient_id
        LEFT JOIN post_appro pa    ON pa.ingredient_id  = lis.ingredient_id
        LEFT JOIN post_transfer pt ON pt.ingredient_id  = lis.ingredient_id
        LEFT JOIN post_pertes pp   ON pp.ingredient_id  = lis.ingredient_id
        LEFT JOIN post_pt_usage ppu ON ppu.ingredient_id = lis.ingredient_id
-       LEFT JOIN avg_prix_post app ON app.ingredient_id = lis.ingredient_id
+       LEFT JOIN pmp_hist ph       ON ph.ingredient_id  = lis.ingredient_id
+       LEFT JOIN appro_cost_post acp ON acp.ingredient_id = lis.ingredient_id
        LEFT JOIN all_appro aa    ON aa.ingredient_id  = lis.ingredient_id
        LEFT JOIN all_transfer atr ON atr.ingredient_id = lis.ingredient_id
        LEFT JOIN all_pertes ap   ON ap.ingredient_id  = lis.ingredient_id
        LEFT JOIN year_pt_usage apu ON apu.ingredient_id = lis.ingredient_id
-       LEFT JOIN avg_prix_all apy ON apy.ingredient_id = lis.ingredient_id
+       LEFT JOIN appro_cost_all aca ON aca.ingredient_id = lis.ingredient_id
        WHERE lis.labo_id = $1`,
       [laboId]
     );
@@ -385,12 +423,18 @@ const getLaboStock = async (req, res) => {
         postTransferQty: parseFloat(r.post_transfer_qty) || 0,
         postPertesQty: parseFloat(r.post_pertes_qty) || 0,
         postPtUsageQty: parseFloat(r.post_pt_usage_qty) || 0,
-        avgPrixPost: r.avg_prix_post !== null ? parseFloat(r.avg_prix_post) : null,
+        pmpHistHT: r.pmp_hist_ht !== null ? parseFloat(r.pmp_hist_ht) : null,
+        pmpHistTTC: r.pmp_hist_tva !== null ? parseFloat(r.pmp_hist_tva) : null,
+        approCostPostQty: parseFloat(r.appro_cost_post_qty) || 0,
+        approCostPostHT: parseFloat(r.appro_cost_post_ht) || 0,
+        approCostPostTTC: parseFloat(r.appro_cost_post_tva) || 0,
         allApproQty: parseFloat(r.all_appro_qty) || 0,
         allTransferQty: parseFloat(r.all_transfer_qty) || 0,
         allPertesQty: parseFloat(r.all_pertes_qty) || 0,
         allPtUsageQty: parseFloat(r.all_pt_usage_qty) || 0,
-        avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
+        approCostAllQty: parseFloat(r.appro_cost_all_qty) || 0,
+        approCostAllHT: parseFloat(r.appro_cost_all_ht) || 0,
+        approCostAllTTC: parseFloat(r.appro_cost_all_tva) || 0,
       };
     }
 
@@ -401,10 +445,27 @@ const getLaboStock = async (req, res) => {
         ? b.invQty + b.postApproQty - b.postTransferQty - b.postPertesQty
         : b.allApproQty - b.allTransferQty - b.allPertesQty;
       const quantite = Math.round(quantiteRaw * 1000) / 1000;
-      const avgPrix = b.hasInv ? (b.avgPrixPost ?? b.avgPrixAll ?? null) : (b.avgPrixAll ?? null);
       const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
       const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
       const transfertsDepuisInv = b.hasInv ? b.postTransferQty : b.allTransferQty;
+      let coutTotal = 0;
+      let coutTotalTTC = 0;
+      if (b.hasInv) {
+        const coutInvHT = (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
+        const coutInvTTC = (b.invQty > 0 && b.pmpHistTTC !== null) ? b.invQty * b.pmpHistTTC : (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
+        const totalCostInHT = coutInvHT + (b.approCostPostHT || 0);
+        const totalCostInTTC = coutInvTTC + (b.approCostPostTTC || 0);
+        const totalQtyIn = b.invQty + (b.approCostPostQty || 0);
+        const pmpHT = totalQtyIn > 0 ? totalCostInHT / totalQtyIn : null;
+        const pmpTTC = totalQtyIn > 0 ? totalCostInTTC / totalQtyIn : null;
+        coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
+        coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
+      } else {
+        const pmpHT = b.approCostAllQty > 0 ? b.approCostAllHT / b.approCostAllQty : null;
+        const pmpTTC = b.approCostAllQty > 0 ? b.approCostAllTTC / b.approCostAllQty : null;
+        coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
+        coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
+      }
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
@@ -414,7 +475,8 @@ const getLaboStock = async (req, res) => {
         prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
         dateAppro: isoDate(row.date_appro),
         seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
-        coutTotal: avgPrix !== null && quantite > 0 ? quantite * avgPrix : 0,
+        coutTotal,
+        coutTotalTTC,
         totalTransfere,
         lastFournisseurId: row.last_fournisseur_id ?? null,
         lastRefFacture: row.last_ref_facture ?? null,
