@@ -21,14 +21,116 @@ const {
 const { getPrixLaboPerte, getDateRangeLaboPerte, listLaboPertes, exportLaboPerteExcel } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
-// Labo CRUD
+/**
+ * @openapi
+ * /api/labo:
+ *   get:
+ *     tags: [Labo]
+ *     summary: Lister les laboratoires de l'entreprise
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des labos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   nom:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       401:
+ *         description: Non authentifié
+ *       403:
+ *         description: Accès réservé aux entreprises
+ */
 router.get('/', authenticate, requireEntreprise, listLabos);
+
+/**
+ * @openapi
+ * /api/labo:
+ *   post:
+ *     tags: [Labo]
+ *     summary: Créer un nouveau laboratoire
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [nom]
+ *             properties:
+ *               nom:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Labo créé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 nom:
+ *                   type: string
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Non authentifié
+ */
 router.post('/', authenticate, requireEntreprise, createLabo);
 router.get('/:laboId', authenticate, requireEntreprise, getLaboById);
 router.put('/:laboId', authenticate, requireEntreprise, updateLabo);
 router.delete('/:laboId', authenticate, requireEntreprise, deleteLabo);
 
-// Labo ingredient selections
+/**
+ * @openapi
+ * /api/labo/{laboId}/ingredients:
+ *   get:
+ *     tags: [Labo]
+ *     summary: Récupérer les ingrédients d'un laboratoire
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: laboId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID du laboratoire
+ *     responses:
+ *       200:
+ *         description: Liste des ingrédients du labo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   nom:
+ *                     type: string
+ *                   selected:
+ *                     type: boolean
+ *                   quantite:
+ *                     type: number
+ *       401:
+ *         description: Non authentifié
+ *       404:
+ *         description: Labo introuvable
+ */
 router.get('/:laboId/ingredients', authenticate, requireEntreprise, getLaboIngredients);
 router.post('/:laboId/ingredients/:ingredientId/select', authenticate, requireEntreprise, toggleLaboIngredient);
 

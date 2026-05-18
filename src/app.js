@@ -7,6 +7,8 @@ if (!process.env.JWT_SECRET) {
 
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 const migrate = require('./config/migrate');
 
 const authRoutes = require('./routes/auth');
@@ -33,6 +35,13 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Swagger UI — available at /api-docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'Fiche Technique API',
+  swaggerOptions: { persistAuthorization: true },
+}));
+app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
 
 // Enforce read-only / suspended mode for all mutating API calls (non-GET, non-auth, non-admin)
 app.use('/api', (req, res, next) => {
@@ -77,11 +86,12 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 migrate()
   .then(() => {
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Serveur démarré sur le port ${PORT}`);
     });
     // Daily job at 01:00 to enforce subscription payment deadlines (no external dep)
     const { enforcerStatuts } = require('./controllers/abonnementController');
+    let dailyInterval = null;
     const scheduleDailyCheck = () => {
       const now = new Date();
       const next = new Date(now);
@@ -91,13 +101,16 @@ migrate()
       setTimeout(() => {
         console.log('[daily] Vérification des statuts abonnements...');
         enforcerStatuts();
-        setInterval(() => {
+        if (dailyInterval) clearInterval(dailyInterval);
+        dailyInterval = setInterval(() => {
           console.log('[daily] Vérification des statuts abonnements...');
           enforcerStatuts();
         }, 24 * 60 * 60 * 1000);
       }, delay);
     };
     scheduleDailyCheck();
+    process.on('SIGTERM', () => { if (dailyInterval) clearInterval(dailyInterval); server.close(() => process.exit(0)); });
+    process.on('SIGINT', () => { if (dailyInterval) clearInterval(dailyInterval); server.close(() => process.exit(0)); });
     // Initialize Telegram bot (requires TELEGRAM_BOT_TOKEN in .env)
     initTelegram();
   })

@@ -5,6 +5,43 @@ const { login, register, me, updateProfile, upgradeToEntreprise, advanceOnboardi
 const { authenticate, requireSuperAdmin, requireClient } = require('../middleware/auth');
 const pool = require('../config/database');
 
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Connexion utilisateur
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Connexion réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Email ou mot de passe incorrect
+ *       403:
+ *         description: Compte désactivé ou suspendu
+ */
 router.post('/login', [
   body('email').isEmail().withMessage('Email invalide'),
   body('mot_de_passe').optional(),
@@ -24,6 +61,24 @@ router.post('/register', authenticate, requireSuperAdmin, [
   body('telephone').optional().isMobilePhone().withMessage('Numéro de téléphone invalide'),
 ], register);
 
+/**
+ * @openapi
+ * /auth/me:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Récupérer l'utilisateur connecté
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profil de l'utilisateur
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Non authentifié
+ */
 router.get('/me', authenticate, me);
 
 // GET /api/auth/check-email?email=X&excludeId=Y
@@ -38,6 +93,37 @@ router.get('/check-email', authenticate, async (req, res) => {
   res.json({ exists: result.rows.length > 0 });
 });
 
+/**
+ * @openapi
+ * /auth/profile:
+ *   put:
+ *     tags: [Auth]
+ *     summary: Mettre à jour le profil utilisateur
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               phone:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profil mis à jour
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Non authentifié
+ */
 router.put('/profile', authenticate, [
   body('name').optional().trim().notEmpty().withMessage('Nom ne peut pas être vide'),
   body('email').optional().isEmail().withMessage('Format email invalide'),
@@ -64,6 +150,30 @@ router.post('/invite/accept', acceptInvite);
 router.post('/invite/resend/:userId', authenticate, resendInvite);
 
 router.post('/upgrade', authenticate, requireClient, upgradeToEntreprise);
+
+/**
+ * @openapi
+ * /auth/onboarding-step:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Avancer d'une étape dans le processus d'onboarding
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Étape avancée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 onboardingStep:
+ *                   type: integer
+ *       401:
+ *         description: Non authentifié
+ *       403:
+ *         description: Accès réservé aux comptes entreprise
+ */
 router.post('/onboarding-step', authenticate, requireClient, advanceOnboarding);
 router.post('/upgrade-wizard-complete', authenticate, requireClient, completeUpgradeWizard);
 

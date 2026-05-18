@@ -1059,11 +1059,17 @@ const enforcerStatuts = async () => {
       WHERE a.mode_compte NOT IN ('archive')
         AND NOT EXISTS (SELECT 1 FROM paiements p WHERE p.abonnement_id = a.id AND p.mois = $1)
     `, [thisMonth]);
+    // Fetch all configs at once to avoid N+1
+    const configRows = await pool.query(
+      'SELECT * FROM abonnement_config WHERE abonnement_id = ANY($1)',
+      [missingAbo.rows.map(a => a.id)]
+    );
+    const configMap = new Map(configRows.rows.map(c => [c.abonnement_id, c]));
+
     for (const abo of missingAbo.rows) {
-      const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [abo.id]);
+      const cfg = configMap.get(abo.id) || null;
       let base;
-      if (configRes.rows.length > 0) {
-        const cfg = configRes.rows[0];
+      if (cfg) {
         base = (computeBaseMensuelFromConfig(cfg, tarifs) || 0)
           + (computeBaseGerantFromConfig(cfg, tarifs) || 0)
           + (computeBaseLaboFromConfig(cfg, tarifs) || 0);

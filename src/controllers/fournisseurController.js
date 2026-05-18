@@ -159,21 +159,19 @@ const createFournisseur = async (req, res) => {
     }
 
     if (Array.isArray(activiteIds) && activiteIds.length > 0) {
-      for (const actId of activiteIds) {
-        await pool.query(
-          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [fournisseur.id, actId]
-        );
-      }
+      await pool.query(
+        `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
+         SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`,
+        [fournisseur.id, activiteIds]
+      );
     }
 
     if (Array.isArray(laboIds) && laboIds.length > 0) {
-      for (const laboId of laboIds) {
-        await pool.query(
-          `INSERT INTO fournisseur_labos (fournisseur_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [fournisseur.id, laboId]
-        );
-      }
+      await pool.query(
+        `INSERT INTO fournisseur_labos (fournisseur_id, labo_id)
+         SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`,
+        [fournisseur.id, laboIds]
+      );
     }
 
     res.status(201).json({ id: fournisseur.id, nom: fournisseur.nom, adresse: fournisseur.adresse, telephone: fournisseur.telephone, activiteIds: activiteIds || [], laboIds: laboIds || [] });
@@ -215,22 +213,20 @@ const updateFournisseur = async (req, res) => {
 
     await pool.query('DELETE FROM fournisseur_activites WHERE fournisseur_id = $1', [id]);
     if (Array.isArray(activiteIds) && activiteIds.length > 0) {
-      for (const actId of activiteIds) {
-        await pool.query(
-          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [id, actId]
-        );
-      }
+      await pool.query(
+        `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
+         SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`,
+        [id, activiteIds]
+      );
     }
 
     await pool.query('DELETE FROM fournisseur_labos WHERE fournisseur_id = $1', [id]);
     if (Array.isArray(laboIds) && laboIds.length > 0) {
-      for (const laboId of laboIds) {
-        await pool.query(
-          `INSERT INTO fournisseur_labos (fournisseur_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [id, laboId]
-        );
-      }
+      await pool.query(
+        `INSERT INTO fournisseur_labos (fournisseur_id, labo_id)
+         SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`,
+        [id, laboIds]
+      );
     }
 
     res.json({ success: true });

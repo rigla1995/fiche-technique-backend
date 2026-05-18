@@ -29,8 +29,91 @@ router.put('/client/pertes/:id', authenticate, requireClient, updateClientPerte)
 router.delete('/client/pertes/:id', authenticate, requireClient, deleteClientPerte);
 router.get('/client/:ingredientId/history', authenticate, requireClient, getHistoryClient);
 
-// Enterprise stock (entreprise accounts only)
+/**
+ * @openapi
+ * /api/stock/entreprise/{activiteId}:
+ *   get:
+ *     tags: [Stock]
+ *     summary: Récupérer le stock d'une activité entreprise
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: activiteId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'activité
+ *     responses:
+ *       200:
+ *         description: Stock de l'activité
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   ingredientId:
+ *                     type: integer
+ *                   nom:
+ *                     type: string
+ *                   quantite:
+ *                     type: number
+ *                   unite:
+ *                     type: string
+ *                   seuilMin:
+ *                     type: number
+ *       401:
+ *         description: Non authentifié
+ *       403:
+ *         description: Accès réservé aux entreprises
+ */
 router.get('/entreprise/:activiteId', authenticate, requireEntreprise, getStockEntreprise);
+
+/**
+ * @openapi
+ * /api/stock/entreprise/{activiteId}/{ingredientId}:
+ *   put:
+ *     tags: [Stock]
+ *     summary: Mettre à jour la quantité d'un ingrédient en stock pour une activité
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: activiteId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'activité
+ *       - in: path
+ *         name: ingredientId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de l'ingrédient
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [quantite]
+ *             properties:
+ *               quantite:
+ *                 type: number
+ *               fournisseurId:
+ *                 type: integer
+ *               prixUnitaire:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Stock mis à jour
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Non authentifié
+ */
 router.put('/entreprise/:activiteId/:ingredientId', authenticate, requireEntreprise, updateStockEntreprise);
 router.get('/entreprise/:activiteId/:ingredientId/history', authenticate, requireEntreprise, getHistoryEntreprise);
 router.put('/entreprise/:activiteId/:ingredientId/seuil-min', authenticate, requireEntreprise, updateSeuilMin);
