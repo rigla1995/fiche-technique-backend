@@ -454,7 +454,8 @@ const statsVentes = async (req, res) => {
        LEFT JOIN ingredients i ON vl.article_type = 'ingredient' AND i.id = vl.article_id
        WHERE v.activite_id = $1 AND v.statut = 'confirmee'
          AND date_trunc('month', v.date_vente) = date_trunc('month', CURRENT_DATE)
-       GROUP BY vl.article_type, vl.article_id, nom
+       GROUP BY vl.article_type, vl.article_id,
+                (CASE vl.article_type WHEN 'produit' THEN p.nom WHEN 'ingredient' THEN i.nom END)
        ORDER BY total_ca DESC LIMIT 10`,
       [activiteId]
     );
