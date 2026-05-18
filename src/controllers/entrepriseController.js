@@ -304,8 +304,9 @@ const getActiviteIngredients = async (req, res) => {
            JOIN unites u ON i.unite_id = u.id
            LEFT JOIN categories c ON i.categorie_id = c.id
            LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = i.id AND ais.activite_id = $1
+           WHERE (i.client_id IS NULL OR i.client_id = $2)
            ORDER BY c.nom NULLS LAST, i.nom`,
-          [id]
+          [id, req.user.gerant_parent_id || req.user.id]
         );
 
     res.json(result.rows.map((r) => ({
@@ -529,7 +530,9 @@ const getCatalogueGlobalIngredients = async (req, res) => {
          FROM ingredients i
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
-         WHERE i.client_id IS NULL
+         WHERE (
+           -- Admin ingredients: domain-filtered + any currently assigned (even out-of-domain)
+           i.client_id IS NULL
            AND (
              (
                NOT EXISTS (SELECT 1 FROM ingredient_domaines id2 WHERE id2.ingredient_id = i.id)
@@ -558,6 +561,24 @@ const getCatalogueGlobalIngredients = async (req, res) => {
                WHERE l.entreprise_id = $1 AND lis.ingredient_id = i.id
              )
            )
+         )
+         OR (
+           -- Client-owned ingredients: only show if currently assigned to this enterprise
+           -- (e.g. migrated from client stock) so the catalogue count matches what stock shows
+           i.client_id = $2
+           AND (
+             EXISTS (
+               SELECT 1 FROM activite_ingredient_selections ais
+               JOIN activites a ON a.id = ais.activite_id
+               WHERE a.entreprise_id = $1 AND ais.ingredient_id = i.id
+             )
+             OR EXISTS (
+               SELECT 1 FROM labo_ingredient_selections lis
+               JOIN labos l ON l.id = lis.labo_id
+               WHERE l.entreprise_id = $1 AND lis.ingredient_id = i.id
+             )
+           )
+         )
          ORDER BY COALESCE(c.nom, 'Sans catégorie'), i.nom`,
         [entrepriseId, clientId]
       ),
