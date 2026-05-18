@@ -522,6 +522,8 @@ const getCatalogueGlobalIngredients = async (req, res) => {
 
     const [ings, acts, labs, actSels, laboSels] = await Promise.all([
       // Filter ingredients by domain: show global (no domain) + domains matching this company's activités/profil
+      // Also include any ingredient currently selected for this enterprise (even if out of domain)
+      // so the catalogue accurately reflects stock assignments and users can deselect them.
       pool.query(
         `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie
          FROM ingredients i
@@ -529,17 +531,29 @@ const getCatalogueGlobalIngredients = async (req, res) => {
          LEFT JOIN categories c ON c.id = i.categorie_id
          WHERE i.client_id IS NULL
            AND (
-             NOT EXISTS (SELECT 1 FROM ingredient_domaines id2 WHERE id2.ingredient_id = i.id)
+             (
+               NOT EXISTS (SELECT 1 FROM ingredient_domaines id2 WHERE id2.ingredient_id = i.id)
+               OR EXISTS (
+                 SELECT 1 FROM ingredient_domaines id2
+                 WHERE id2.ingredient_id = i.id
+                   AND id2.domaine_id IN (
+                     SELECT DISTINCT domaine_id FROM (
+                       SELECT pe.domaine_id FROM profil_entreprise pe WHERE pe.id = $1
+                       UNION ALL
+                       SELECT a.domaine_id FROM activites a WHERE a.entreprise_id = $1 AND a.domaine_id IS NOT NULL
+                     ) d WHERE d.domaine_id IS NOT NULL
+                   )
+               )
+             )
              OR EXISTS (
-               SELECT 1 FROM ingredient_domaines id2
-               WHERE id2.ingredient_id = i.id
-                 AND id2.domaine_id IN (
-                   SELECT DISTINCT domaine_id FROM (
-                     SELECT pe.domaine_id FROM profil_entreprise pe WHERE pe.id = $1
-                     UNION ALL
-                     SELECT a.domaine_id FROM activites a WHERE a.entreprise_id = $1 AND a.domaine_id IS NOT NULL
-                   ) d WHERE d.domaine_id IS NOT NULL
-                 )
+               SELECT 1 FROM activite_ingredient_selections ais
+               JOIN activites a ON a.id = ais.activite_id
+               WHERE a.entreprise_id = $1 AND ais.ingredient_id = i.id
+             )
+             OR EXISTS (
+               SELECT 1 FROM labo_ingredient_selections lis
+               JOIN labos l ON l.id = lis.labo_id
+               WHERE l.entreprise_id = $1 AND lis.ingredient_id = i.id
              )
            )
          ORDER BY COALESCE(c.nom, 'Sans catégorie'), i.nom`,
