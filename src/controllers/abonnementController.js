@@ -280,9 +280,8 @@ const getAbonnement = async (req, res) => {
                     + (computeBaseGerantFromConfig(config, tarifs)  || 0);
         baseOnboarding = parseFloat(config.montant_onboarding) || null;
       } else {
-        const isEntreprise = abo.compteType === 'entreprise';
-        baseMensuel = tarifs[isEntreprise ? 'entreprise_mensuel' : 'indep_mensuel'] || null;
-        baseOnboarding = tarifs[isEntreprise ? 'entreprise_onboarding' : 'indep_onboarding'] || null;
+        baseMensuel = tarifs['entreprise_mensuel'] || null;
+        baseOnboarding = tarifs['entreprise_onboarding'] || null;
       }
 
       const rawPromoMens = promos.rows.find((p) => p.is_active && ['mensualite', 'les_deux'].includes(p.applies_to)) || null;
@@ -322,12 +321,12 @@ const getAbonnement = async (req, res) => {
 
 // Called internally when admin creates a client account
 // config: { nbActivites, nbLabos, nbGerants, montantOnboarding } — if provided, uses new pricing model
-const createAbonnement = async (clientId, compteType, montantOnboarding, config = null) => {
+const createAbonnement = async (clientId, montantOnboarding, config = null) => {
   const result = await pool.query(
-    `INSERT INTO abonnements (client_id, compte_type, montant_onboarding, date_debut)
-     VALUES ($1, $2, $3, CURRENT_DATE)
+    `INSERT INTO abonnements (client_id, montant_onboarding, date_debut)
+     VALUES ($1, $2, CURRENT_DATE)
      RETURNING id`,
-    [clientId, compteType || null, config ? config.montantOnboarding : montantOnboarding]
+    [clientId, config ? config.montantOnboarding : montantOnboarding]
   );
   const aboId = result.rows[0].id;
 
@@ -351,10 +350,6 @@ const createAbonnement = async (clientId, compteType, montantOnboarding, config 
     baseMontant = (computeBaseMensuelFromConfig(config, tarifs) || 0)
       + (computeBaseGerantFromConfig(config, tarifs) || 0)
       + (computeBaseLaboFromConfig(config, tarifs) || 0);
-  } else {
-    const tarifKey = compteType === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel';
-    const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifKey]);
-    baseMontant = parseFloat(tarifRes.rows[0]?.valeur_dt || 0);
   }
 
   const activePromo = await getActivePromo(aboId, moisStr);
@@ -520,9 +515,8 @@ const getMontantMois = async (req, res) => {
       hasGerant   = (config.nb_gerants || 0) > 0;
       hasLabo     = (config.nb_labos || 0) > 0;
     } else {
-      // Legacy pricing
-      const isEntreprise = compteType === 'entreprise';
-      baseMensuel = tarifs[isEntreprise ? 'entreprise_mensuel' : 'indep_mensuel'] || 0;
+      // Legacy fallback for accounts without config
+      baseMensuel = tarifs['entreprise_mensuel'] || 0;
       const gerantCountRes = await pool.query(
         'SELECT COUNT(*) FROM utilisateurs WHERE gerant_parent_id = $1 AND role = $2',
         [clientId, 'gerant']
@@ -642,8 +636,7 @@ const upsertPaiement = async (req, res) => {
           + (computeBaseGerantFromConfig(cfg, tarifs) || 0)
           + (computeBaseLaboFromConfig(cfg, tarifs) || 0);
       } else {
-        const tarifKey = compteType === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel';
-        base = tarifs[tarifKey] || 0;
+        base = tarifs['entreprise_mensuel'] || 0;
       }
       const promo = await getActivePromo(aboId, moisStr);
       finalMontant = applyPromoMensualite(base, promo);
@@ -788,10 +781,7 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
         + (computeBaseGerantFromConfig(config, tarifs) || 0)
         + (computeBaseLaboFromConfig(config, tarifs) || 0);
     } else {
-      const aboTypeRes = await pool.query('SELECT compte_type FROM abonnements WHERE id = $1', [aboId]);
-      const compteType = aboTypeRes.rows[0]?.compte_type;
-      const tarifKey = compteType === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel';
-      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifKey]);
+      const tarifRes = await pool.query(`SELECT valeur_dt FROM tarifs_config WHERE cle = 'entreprise_mensuel'`);
       base = parseFloat(tarifRes.rows[0]?.valeur_dt || 0);
     }
     const newMontant = applyPromoMensualite(base, promo);
@@ -982,8 +972,7 @@ const syncPromoStatuts = async () => {
 
     // 1. For active free mensualite promos: ensure all covered months have gratuit paiements
     const activeFreeMens = await pool.query(
-      `SELECT p.*, a.compte_type FROM promotions p
-       JOIN abonnements a ON a.id = p.abonnement_id
+      `SELECT p.* FROM promotions p
        WHERE p.type = 'free_months'
          AND p.applies_to IN ('mensualite', 'les_deux')
          AND p.date_debut <= $1::date
@@ -1065,7 +1054,7 @@ const enforcerStatuts = async () => {
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
     const tarifs = await loadAllTarifs();
     const missingAbo = await pool.query(`
-      SELECT a.id, a.compte_type
+      SELECT a.id
       FROM abonnements a
       WHERE a.mode_compte NOT IN ('archive')
         AND NOT EXISTS (SELECT 1 FROM paiements p WHERE p.abonnement_id = a.id AND p.mois = $1)
@@ -1079,8 +1068,7 @@ const enforcerStatuts = async () => {
           + (computeBaseGerantFromConfig(cfg, tarifs) || 0)
           + (computeBaseLaboFromConfig(cfg, tarifs) || 0);
       } else {
-        const tarifKey = abo.compte_type === 'entreprise' ? 'entreprise_mensuel' : 'indep_mensuel';
-        base = tarifs[tarifKey] || 0;
+        base = tarifs['entreprise_mensuel'] || 0;
       }
       const promo = await getActivePromo(abo.id, thisMonth);
       const montant = applyPromoMensualite(base, promo);
@@ -1143,7 +1131,7 @@ const allPaiements = async (req, res) => {
     if (mois)     { conditions.push(`DATE_TRUNC('month', p.mois) = DATE_TRUNC('month', $${i++}::date)`); params.push(mois); }
     const result = await pool.query(`
       SELECT p.id, p.mois, p.montant_dt, p.statut, p.date_saisie, p.date_paiement, p.notes,
-             a.client_id, a.compte_type,
+             a.client_id,
              u.nom AS client_nom, u.email AS client_email
       FROM paiements p
       JOIN abonnements a ON a.id = p.abonnement_id
@@ -1160,7 +1148,6 @@ const allPaiements = async (req, res) => {
       datePaiement: r.date_paiement,
       notes: r.notes,
       clientId: r.client_id,
-      compteType: r.compte_type,
       clientNom: r.client_nom,
       clientEmail: r.client_email,
     })));
@@ -1185,7 +1172,7 @@ const allPromotions = async (req, res) => {
     const result = await pool.query(`
       SELECT pr.*,
              (pr.date_debut <= CURRENT_DATE AND (pr.date_fin IS NULL OR pr.date_fin >= CURRENT_DATE)) AS is_active,
-             a.client_id, a.compte_type,
+             a.client_id,
              u.nom AS client_nom, u.email AS client_email
       FROM promotions pr
       JOIN abonnements a ON a.id = pr.abonnement_id
@@ -1196,7 +1183,6 @@ const allPromotions = async (req, res) => {
     res.json(result.rows.map((r) => ({
       ...mapPromotion(r),
       clientId: r.client_id,
-      compteType: r.compte_type,
       clientNom: r.client_nom,
       clientEmail: r.client_email,
     })));

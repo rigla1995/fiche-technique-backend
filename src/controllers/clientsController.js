@@ -85,9 +85,6 @@ const create = async (req, res) => {
   const montantOnboardingConfig = req.body.montantOnboarding != null ? parseFloat(req.body.montantOnboarding) : null;
   const contractPdfBase64 = req.body.contractPdfBase64 || null;
 
-  // Legacy: compte_type (kept for backward compat with old modal)
-  const compteType = nbActivites != null ? null : (req.body.compteType || req.body.compte_type || 'independant');
-
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   if (!email) return res.status(400).json({ message: 'Email requis' });
 
@@ -112,10 +109,10 @@ const create = async (req, res) => {
       await dbClient.query('BEGIN');
 
       const userResult = await dbClient.query(
-        `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, compte_type, onboarding_step, invite_token, invite_token_expires_at)
-         VALUES ($1, $2, NULL, $3, 'client', $4, 1, $5, $6)
-         RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
-        [nom, email, telephone || null, compteType || null, inviteToken, inviteExpires]
+        `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, onboarding_step, invite_token, invite_token_expires_at)
+         VALUES ($1, $2, NULL, $3, 'client', 1, $4, $5)
+         RETURNING id, nom, email, telephone, role, onboarding_step, actif, created_at`,
+        [nom, email, telephone || null, inviteToken, inviteExpires]
       );
       user = userResult.rows[0];
 
@@ -147,12 +144,11 @@ const create = async (req, res) => {
 
     let montantOnboarding = montantOnboardingConfig;
     if (!config) {
-      const tarifCle = compteType === 'entreprise' ? 'entreprise_onboarding' : 'indep_onboarding';
-      const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [tarifCle]);
+      const tarifRes = await pool.query(`SELECT valeur_dt FROM tarifs_config WHERE cle = 'entreprise_onboarding'`);
       montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
     }
 
-    const aboId = await createAbonnement(user.id, compteType, montantOnboarding, config);
+    const aboId = await createAbonnement(user.id, montantOnboarding, config);
 
     // Create promotions passed during client creation
     const promotions = Array.isArray(req.body.promotions) ? req.body.promotions : [];
@@ -199,7 +195,6 @@ const update = async (req, res) => {
   const { email, active, actif } = req.body;
   const telephone = req.body.telephone || req.body.phone;
   const activeValue = active !== undefined ? active : actif;
-  const compteType = req.body.compteType || req.body.compte_type;
   const onboardingStep = req.body.onboardingStep !== undefined ? req.body.onboardingStep : null;
   const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : null;
 
@@ -223,12 +218,11 @@ const update = async (req, res) => {
            email = COALESCE($2, email),
            telephone = COALESCE($3, telephone),
            actif = COALESCE($4, actif),
-           compte_type = COALESCE($5, compte_type),
-           onboarding_step = COALESCE($6, onboarding_step),
+           onboarding_step = COALESCE($5, onboarding_step),
            updated_at = NOW()
-       WHERE id = $7 AND role = 'client'
-       RETURNING id, nom, email, telephone, role, compte_type, onboarding_step, actif, created_at`,
-      [nom || null, email || null, telephone || null, activeValue !== undefined ? activeValue : null, compteType || null, onboardingStep !== null ? onboardingStep : null, id]
+       WHERE id = $6 AND role = 'client'
+       RETURNING id, nom, email, telephone, role, onboarding_step, actif, created_at`,
+      [nom || null, email || null, telephone || null, activeValue !== undefined ? activeValue : null, onboardingStep !== null ? onboardingStep : null, id]
     );
     if (result.rows.length === 0) {
       await dbClient.query('ROLLBACK');
@@ -237,15 +231,7 @@ const update = async (req, res) => {
 
     const updatedUser = result.rows[0];
 
-    // Sync abonnement compte_type
-    if (compteType) {
-      await dbClient.query(
-        `UPDATE abonnements SET compte_type = $1, updated_at = NOW() WHERE client_id = $2`,
-        [compteType, id]
-      );
-    }
-
-    // Update domain assignments if provided (only meaningful for indép accounts)
+    // Update domain assignments if provided
     if (domaineIds !== null) {
       await saveClientDomaines(dbClient, id, domaineIds);
     }
