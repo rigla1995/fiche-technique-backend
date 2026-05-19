@@ -13,6 +13,7 @@ const THEME = {
   blue:   { header: '#1e40af', dark: '#1e3a8a', light: '#eff6ff' },
   red:    { header: '#991b1b', dark: '#7f1d1d', light: '#fff5f5' },
   purple: { header: '#7e22ce', dark: '#3b0764', light: '#faf5ff' },
+  green:  { header: '#065f46', dark: '#064e3b', light: '#f0fdf4' },
 };
 
 const renderPdf = (res, filename, title, subtitle, theme, colDefs, rowMapper, rows) =>
@@ -292,9 +293,79 @@ const buildLaboHistoriquePertesPdf = (res, rows, laboNom, filters = {}) => {
   return renderPdf(res, filename, `Historique Pertes — ${laboNom}`, subtitle, THEME.purple, colDefs, rowMapper, rows);
 };
 
+// ── Inventaire Historique PDF ─────────────────────────────────────────────────
+
+const buildInventaireHistoriquePdf = (res, rows, contextLabel, filters = {}) => {
+  const rangeLabel = (filters.startDate || filters.endDate)
+    ? `${fmtD(filters.startDate)} → ${fmtD(filters.endDate)}`
+    : '';
+  const subtitle = `${contextLabel}${rangeLabel ? ' · ' + rangeLabel : ''}`;
+
+  const colDefs = [
+    { label: 'Ingrédient', w: 230, align: 'left' },
+    { label: 'Date', w: 72, align: 'left' },
+    { label: 'Qté réelle', w: 90, align: 'right' },
+    { label: 'Note', w: 409, align: 'left' },
+  ];
+
+  const rowMapper = (r) => [
+    { main: r.ingredient_nom, sub: `${r.unite_nom}  ·  ${r.categorie_nom || '—'}`, mainBold: true },
+    { main: fmtD(r.date_inventaire), mainColor: '#065f46' },
+    { main: fmtN(r.quantite_reelle), sub: r.unite_nom, mainColor: '#0f766e', mainBold: true },
+    { main: r.note || '—', mainColor: r.note ? '#374151' : '#94a3b8' },
+  ];
+
+  const filename = `historique-inventaire-${new Date().toISOString().slice(0, 10)}.pdf`;
+  return renderPdf(res, filename, `Historique Inventaire — ${contextLabel}`, subtitle, THEME.green, colDefs, rowMapper, rows);
+};
+
+// ── Transfer Historique PDF ───────────────────────────────────────────────────
+
+const buildTransferHistoriquePdf = (res, rows, laboNom, filters = {}) => {
+  const rangeLabel = (filters.startDate || filters.endDate)
+    ? `${fmtD(filters.startDate)} → ${fmtD(filters.endDate)}`
+    : '';
+  const subtitle = `${laboNom}${rangeLabel ? ' · ' + rangeLabel : ''}`;
+
+  const colDefs = [
+    { label: 'Ingrédient', w: 175, align: 'left' },
+    { label: 'Date', w: 65, align: 'left' },
+    { label: 'Activité', w: 115, align: 'left' },
+    { label: 'Quantité', w: 68, align: 'right' },
+    { label: 'Prix U. HT', w: 72, align: 'right' },
+    { label: 'TVA %', w: 44, align: 'right' },
+    { label: 'Prix U. TTC', w: 74, align: 'right' },
+    { label: 'Coût HT', w: 82, align: 'right' },
+    { label: 'Coût TTC', w: 106, align: 'right' },
+  ];
+
+  const rowMapper = (r) => [
+    { main: r.ingredient_nom, sub: `${r.unite_nom}  ·  ${r.categorie_nom || '—'}`, mainBold: true },
+    { main: fmtD(r.date_transfert), mainColor: '#7e22ce' },
+    { main: r.activite_nom || '—', mainColor: '#374151' },
+    { main: fmtN(r.quantite), sub: r.unite_nom, mainColor: '#059669' },
+    { main: r.prix_unitaire != null ? fmtN(r.prix_unitaire) + ' DT' : '—', mainColor: '#374151' },
+    { main: r.taux_tva != null ? `${r.taux_tva}%` : '—', mainColor: '#6b7280' },
+    { main: r.prix_unitaire_tva != null ? fmtN(r.prix_unitaire_tva) + ' DT' : '—', mainColor: '#059669' },
+    {
+      main: r.prix_unitaire != null ? fmtN(parseFloat(r.quantite) * parseFloat(r.prix_unitaire)) + ' DT' : '—',
+      mainColor: '#1d4ed8',
+    },
+    {
+      main: r.prix_unitaire_tva != null ? fmtN(parseFloat(r.quantite) * parseFloat(r.prix_unitaire_tva)) + ' DT' : '—',
+      mainColor: '#059669', mainBold: r.prix_unitaire_tva != null,
+    },
+  ];
+
+  const filename = `historique-transferts-${new Date().toISOString().slice(0, 10)}.pdf`;
+  return renderPdf(res, filename, `Historique Transferts — ${laboNom}`, subtitle, THEME.purple, colDefs, rowMapper, rows);
+};
+
 module.exports = {
   buildHistoriqueApproPdf,
   buildHistoriquePertesPdf,
   buildLaboHistoriqueApproPdf,
   buildLaboHistoriquePertesPdf,
+  buildInventaireHistoriquePdf,
+  buildTransferHistoriquePdf,
 };

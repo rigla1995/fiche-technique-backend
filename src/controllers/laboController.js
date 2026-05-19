@@ -2,7 +2,7 @@ const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
-const { buildLaboHistoriqueApproPdf } = require('../services/histoPdfService');
+const { buildLaboHistoriqueApproPdf, buildTransferHistoriquePdf } = require('../services/histoPdfService');
 
 // ─── Ownership check helper ───────────────────────────────────────────────────
 
@@ -2042,6 +2042,7 @@ module.exports = {
   createLaboPerte,
   getLaboPTRecipe,
   exportLaboTransferExcel,
+  exportLaboTransferHistoriquePdf,
 };
 
 // ── Labo appro — export PDF ────────────────────────────────────────────────────
@@ -2081,6 +2082,46 @@ async function exportLaboHistoriquePdf(req, res) {
     await buildLaboHistoriqueApproPdf(res, result.rows, laboNom, { startDate, endDate });
   } catch (err) {
     console.error(err);
+    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
+  }
+}
+
+// ── Labo transfer — export PDF ─────────────────────────────────────────────────
+async function exportLaboTransferHistoriquePdf(req, res) {
+  const { laboId } = req.params;
+  const { startDate, endDate, activiteId, selectedIds: selectedIdsParam } = req.query;
+  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
+    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+    const conditions = ['lt.labo_id = $1'];
+    const params = [laboId];
+    let idx = 2;
+    if (startDate)  { conditions.push(`lt.date_transfert >= $${idx++}`); params.push(startDate); }
+    if (endDate)    { conditions.push(`lt.date_transfert <= $${idx++}`); params.push(endDate); }
+    if (activiteId) { conditions.push(`lt.activite_id = $${idx++}`); params.push(activiteId); }
+    const result = await pool.query(
+      `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
+              lt.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
+              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
+              lt.activite_id, a.nom AS activite_nom,
+              lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva
+       FROM labo_transfers lt
+       JOIN ingredients i ON i.id = lt.ingredient_id
+       JOIN unites u ON u.id = i.unite_id
+       LEFT JOIN categories c ON c.id = i.categorie_id
+       JOIN activites a ON a.id = lt.activite_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY lt.date_transfert DESC, lt.id DESC`,
+      params
+    );
+    let rows = result.rows;
+    if (selectedSet.size > 0) rows = rows.filter((r) => selectedSet.has(r.id));
+    await buildTransferHistoriquePdf(res, rows, laboNom, { startDate, endDate });
+  } catch (err) {
+    console.error('[exportLaboTransferHistoriquePdf]', err);
     if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
   }
 }

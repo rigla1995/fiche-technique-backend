@@ -13,10 +13,12 @@ const {
   createLaboPerte,
   getLaboPTRecipe,
   exportLaboTransferExcel,
+  exportLaboTransferHistoriquePdf,
 } = require('../controllers/laboController');
 const {
   getLaboInventaireStock, saveLaboInventaire,
   getLaboInventaireHistorique, exportLaboInventaireExcel,
+  exportLaboInventaireHistoriquePdf,
 } = require('../controllers/inventaireController');
 const { getPrixLaboPerte, getDateRangeLaboPerte, listLaboPertes, exportLaboPerteExcel, exportLaboPertesPdf } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
@@ -173,6 +175,7 @@ router.delete('/:laboId/historique/:entryId', authenticate, requireEntreprise, d
 router.post('/:laboId/transfer', authenticate, requireEntreprise, createTransfer);
 router.get('/:laboId/transfers', authenticate, requireEntreprise, getTransferHistory);
 router.get('/:laboId/transfers/export-excel', authenticate, requireEntreprise, exportLaboTransferExcel);
+router.get('/:laboId/transfers/export-pdf', authenticate, requireEntreprise, exportLaboTransferHistoriquePdf);
 router.get('/:laboId/transfers/:transferId/prix', authenticate, requireEntreprise, getTransferPrix);
 router.patch('/:laboId/transfers/:transferId', authenticate, requireEntreprise, updateTransfer);
 router.delete('/:laboId/transfers/:transferId', authenticate, requireEntreprise, deleteTransfer);
@@ -182,5 +185,6 @@ router.get('/:laboId/inventaire', authenticate, requireEntreprise, getLaboInvent
 router.post('/:laboId/inventaire', authenticate, requireEntreprise, saveLaboInventaire);
 router.get('/:laboId/inventaire/historique', authenticate, requireEntreprise, getLaboInventaireHistorique);
 router.get('/:laboId/inventaire/historique/export-excel', authenticate, requireEntreprise, exportLaboInventaireExcel);
+router.get('/:laboId/inventaire/historique/export-pdf', authenticate, requireEntreprise, exportLaboInventaireHistoriquePdf);
 
 module.exports = router;

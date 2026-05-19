@@ -179,15 +179,18 @@ const {
   updateInventaireEntry,
   getClientInventaireStock, saveClientInventaire,
   getClientInventaireHistorique, exportClientInventaireExcel,
+  exportActiviteInventaireHistoriquePdf, exportClientInventaireHistoriquePdf,
 } = require('../controllers/inventaireController');
 router.get('/client/inventaire', authenticate, requireClient, getClientInventaireStock);
 router.post('/client/inventaire', authenticate, requireClient, inventaireValidation, validate, saveClientInventaire);
 router.get('/client/inventaire/historique', authenticate, requireClient, getClientInventaireHistorique);
 router.get('/client/inventaire/historique/export-excel', authenticate, requireClient, exportClientInventaireExcel);
+router.get('/client/inventaire/historique/export-pdf', authenticate, requireClient, exportClientInventaireHistoriquePdf);
 router.get('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, getActiviteInventaireStock);
 router.post('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, inventaireValidation, validate, saveActiviteInventaire);
 router.get('/entreprise/:activiteId/inventaire/historique', authenticate, requireEntreprise, getActiviteInventaireHistorique);
 router.get('/entreprise/:activiteId/inventaire/historique/export-excel', authenticate, requireEntreprise, exportActiviteInventaireExcel);
+router.get('/entreprise/:activiteId/inventaire/historique/export-pdf', authenticate, requireEntreprise, exportActiviteInventaireHistoriquePdf);
 router.put('/inventaire/:inventaireId', authenticate, requireClient, updateInventaireEntry);
 
 module.exports = router;

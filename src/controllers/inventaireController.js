@@ -3,6 +3,7 @@ const ExcelJS = require('exceljs');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
 const { isoDate } = require('../utils/dateUtils');
+const { buildInventaireHistoriquePdf } = require('../services/histoPdfService');
 
 async function checkLaboOwner(laboId, userId) {
   const r = await pool.query(
@@ -1565,6 +1566,98 @@ const exportClientInventaireExcel = async (req, res) => {
   }
 };
 
+const inventaireHistoriqueQuery = async (pool, conditions, params) => {
+  const result = await pool.query(
+    `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
+            COALESCE(i.nom, p.nom) as ingredient_nom,
+            COALESCE(u.nom, 'unité') as unite_nom,
+            COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
+     FROM inventaires inv
+     LEFT JOIN ingredients i ON i.id = inv.ingredient_id
+     LEFT JOIN unites u ON u.id = i.unite_id
+     LEFT JOIN categories c ON c.id = i.categorie_id
+     LEFT JOIN produits p ON p.id = inv.produit_id
+     WHERE ${conditions.join(' AND ')} AND (inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)
+     ORDER BY inv.date_inventaire DESC, inv.created_at DESC`,
+    params
+  );
+  return result.rows;
+};
+
+const exportLaboInventaireHistoriquePdf = async (req, res) => {
+  const { laboId } = req.params;
+  const { startDate, endDate, ingredientId, selectedIds: selectedIdsParam } = req.query;
+  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').filter(Boolean) : []);
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
+    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+    const ingIdNum = ingredientId ? Number(ingredientId) : null;
+    const conditions = ['inv.labo_id = $1'];
+    const params = [laboId];
+    let idx = 2;
+    if (startDate) { conditions.push(`inv.date_inventaire >= $${idx++}`); params.push(startDate); }
+    if (endDate)   { conditions.push(`inv.date_inventaire <= $${idx++}`); params.push(endDate); }
+    if (ingIdNum && ingIdNum > 0) { conditions.push(`inv.ingredient_id = $${idx++}`); params.push(ingIdNum); }
+    else if (ingIdNum && ingIdNum < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNum); }
+    let rows = await inventaireHistoriqueQuery(pool, conditions, params);
+    if (selectedSet.size > 0) rows = rows.filter((r) => selectedSet.has(String(r.id)));
+    await buildInventaireHistoriquePdf(res, rows, laboNom, { startDate, endDate });
+  } catch (err) {
+    console.error('[exportLaboInventaireHistoriquePdf]', err);
+    if (!res.headersSent) res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const exportActiviteInventaireHistoriquePdf = async (req, res) => {
+  const { activiteId } = req.params;
+  const { startDate, endDate, ingredientId, selectedIds: selectedIdsParam } = req.query;
+  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').filter(Boolean) : []);
+  try {
+    const actRes = await pool.query(
+      `SELECT a.nom FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE a.id = $1 AND pe.client_id = $2`,
+      [activiteId, req.user.id]
+    );
+    const activiteNom = actRes.rows[0]?.nom || 'Activité';
+    const ingIdNum = ingredientId ? Number(ingredientId) : null;
+    const conditions = ['inv.activite_id = $1'];
+    const params = [activiteId];
+    let idx = 2;
+    if (startDate) { conditions.push(`inv.date_inventaire >= $${idx++}`); params.push(startDate); }
+    if (endDate)   { conditions.push(`inv.date_inventaire <= $${idx++}`); params.push(endDate); }
+    if (ingIdNum && ingIdNum > 0) { conditions.push(`inv.ingredient_id = $${idx++}`); params.push(ingIdNum); }
+    else if (ingIdNum && ingIdNum < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNum); }
+    let rows = await inventaireHistoriqueQuery(pool, conditions, params);
+    if (selectedSet.size > 0) rows = rows.filter((r) => selectedSet.has(String(r.id)));
+    await buildInventaireHistoriquePdf(res, rows, activiteNom, { startDate, endDate });
+  } catch (err) {
+    console.error('[exportActiviteInventaireHistoriquePdf]', err);
+    if (!res.headersSent) res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const exportClientInventaireHistoriquePdf = async (req, res) => {
+  const { startDate, endDate, ingredientId, selectedIds: selectedIdsParam } = req.query;
+  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').filter(Boolean) : []);
+  try {
+    const ingIdNum = ingredientId ? Number(ingredientId) : null;
+    const conditions = ['inv.client_id = $1'];
+    const params = [req.user.id];
+    let idx = 2;
+    if (startDate) { conditions.push(`inv.date_inventaire >= $${idx++}`); params.push(startDate); }
+    if (endDate)   { conditions.push(`inv.date_inventaire <= $${idx++}`); params.push(endDate); }
+    if (ingIdNum && ingIdNum > 0) { conditions.push(`inv.ingredient_id = $${idx++}`); params.push(ingIdNum); }
+    else if (ingIdNum && ingIdNum < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNum); }
+    let rows = await inventaireHistoriqueQuery(pool, conditions, params);
+    if (selectedSet.size > 0) rows = rows.filter((r) => selectedSet.has(String(r.id)));
+    await buildInventaireHistoriquePdf(res, rows, 'Global', { startDate, endDate });
+  } catch (err) {
+    console.error('[exportClientInventaireHistoriquePdf]', err);
+    if (!res.headersSent) res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getLaboInventaireStock,
   saveLaboInventaire,
@@ -1579,4 +1672,7 @@ module.exports = {
   saveClientInventaire,
   getClientInventaireHistorique,
   exportClientInventaireExcel,
+  exportLaboInventaireHistoriquePdf,
+  exportActiviteInventaireHistoriquePdf,
+  exportClientInventaireHistoriquePdf,
 };
