@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
+const { buildHistoriqueApproPdf } = require('../services/histoPdfService');
 
 // ─── Stock Client (independant) ──────────────────────────────────────────────
 
@@ -1697,13 +1698,92 @@ const getClientIngredientSelections = async (req, res) => {
   }
 };
 
+// ── Historique Appro — export PDF ─────────────────────────────────────────────
+
+const exportHistoriquePdf = async (req, res) => {
+  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId,
+          startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId } = req.query;
+  const currentYear = new Date().getFullYear();
+  const isEntreprise = !!(activiteId || activiteIdsParam || entType);
+
+  try {
+    let rows = [];
+
+    if (isEntreprise) {
+      let activiteIds = [];
+      if (activiteId) activiteIds = [activiteId];
+      else if (activiteIdsParam) activiteIds = activiteIdsParam.split(',').map(Number).filter(Boolean);
+      else if (entType) {
+        const allRes = await pool.query(
+          `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1`,
+          [req.user.gerant_parent_id || req.user.id]
+        );
+        activiteIds = allRes.rows.map((r) => r.id);
+      }
+      if (activiteIds.length === 0) return res.status(404).json({ message: 'Aucune activité' });
+
+      const actRes = await pool.query('SELECT id, nom FROM activites WHERE id = ANY($1)', [activiteIds]);
+      const activiteNames = {};
+      actRes.rows.forEach((r) => { activiteNames[r.id] = r.nom; });
+
+      const idList = activiteIds.map((_, i) => `$${i + 1}`).join(',');
+      const params = [...activiteIds, currentYear];
+      let extraWhere = '';
+      if (ingredientId) { params.push(ingredientId); extraWhere += ` AND sed.ingredient_id = $${params.length}`; }
+      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
+      if (startDate) { params.push(startDate); extraWhere += ` AND sed.date_appro >= $${params.length}`; }
+      if (endDate)   { params.push(endDate);   extraWhere += ` AND sed.date_appro <= $${params.length}`; }
+      if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND sed.fournisseur_id = $${params.length}`; }
+      if (refFacture)    { params.push(`%${refFacture}%`); extraWhere += ` AND sed.ref_facture ILIKE $${params.length}`; }
+      const result = await pool.query(
+        `SELECT sed.id, sed.activite_id, sed.date_appro, sed.quantite, sed.prix_unitaire, sed.type_appro,
+                sed.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
+                u.nom as unite_nom, COALESCE(c.nom,'Sans catégorie') as categorie_nom,
+                sed.taux_tva, sed.prix_unitaire_tva
+         FROM stock_entreprise_daily sed
+         JOIN ingredients i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
+         LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
+         WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
+         ORDER BY sed.date_appro DESC, i.nom`, params
+      );
+      rows = result.rows.map((r) => ({ ...r, activite_nom: activiteNames[r.activite_id] || '' }));
+    } else {
+      const params = [req.user.gerant_parent_id || req.user.id, currentYear];
+      let extraWhere = '';
+      if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
+      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
+      if (startDate) { params.push(startDate); extraWhere += ` AND scd.date_appro >= $${params.length}`; }
+      if (endDate)   { params.push(endDate);   extraWhere += ` AND scd.date_appro <= $${params.length}`; }
+      if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND scd.fournisseur_id = $${params.length}`; }
+      if (refFacture)    { params.push(`%${refFacture}%`); extraWhere += ` AND scd.ref_facture ILIKE $${params.length}`; }
+      const result = await pool.query(
+        `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
+                scd.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
+                u.nom as unite_nom, COALESCE(c.nom,'Sans catégorie') as categorie_nom,
+                scd.taux_tva, scd.prix_unitaire_tva
+         FROM stock_client_daily scd
+         JOIN ingredients i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
+         LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
+         WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
+         ORDER BY scd.date_appro DESC, i.nom`, params
+      );
+      rows = result.rows;
+    }
+
+    await buildHistoriqueApproPdf(res, rows, { startDate, endDate });
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
+  }
+};
+
 module.exports = {
   getStockClient, updateStockClient, getStockClientSummary,
   getStockEntreprise, updateStockEntreprise, updateSeuilMin,
   updateSeuilMinClient, createClientPerte,
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
-  exportHistoriqueExcel,
+  exportHistoriqueExcel, exportHistoriquePdf,
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
   getCascadeInfoClient, getCascadeInfoEntreprise,
   getClientIngredientSelections,

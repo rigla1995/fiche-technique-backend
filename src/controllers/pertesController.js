@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { computeStockCourant } = require('../utils/stockUtils');
+const { buildHistoriquePertesPdf, buildLaboHistoriquePertesPdf } = require('../services/histoPdfService');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -794,12 +795,126 @@ const exportLaboPerteExcel = async (req, res) => {
   }
 };
 
+// ── Client pertes — export PDF ────────────────────────────────────────────────
+
+const exportClientPertesPdf = async (req, res) => {
+  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
+  const params = [req.user.gerant_parent_id || req.user.id];
+  const wheres = [`cp.client_id = $1`, `cp.ingredient_id IS NOT NULL`];
+
+  if (dateDebut) { params.push(dateDebut); wheres.push(`cp.date_perte >= $${params.length}`); }
+  if (dateFin)   { params.push(dateFin);   wheres.push(`cp.date_perte <= $${params.length}`); }
+  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`cp.type_perte = $${params.length}`); }
+  if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
+  if (ingredientId) { params.push(ingredientId); wheres.push(`cp.ingredient_id = $${params.length}`); }
+  if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
+
+  try {
+    const result = await pool.query(
+      `SELECT cp.id, cp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
+              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
+              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte
+       FROM client_pertes cp
+       JOIN ingredients i ON i.id = cp.ingredient_id JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
+       WHERE ${wheres.join(' AND ')} ORDER BY cp.date_perte DESC, cp.created_at DESC`,
+      params
+    );
+    await buildHistoriquePertesPdf(res, result.rows, { dateDebut, dateFin });
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
+  }
+};
+
+// ── Entreprise pertes — export PDF ────────────────────────────────────────────
+
+const exportEntreprisePertesPdf = async (req, res) => {
+  const { activiteId, dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
+  const companyCheck = await pool.query(
+    `SELECT pe.id FROM profil_entreprise pe WHERE pe.client_id = $1`,
+    [req.user.gerant_parent_id || req.user.id]
+  );
+  if (companyCheck.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
+  const entrepriseId = companyCheck.rows[0].id;
+
+  const params = [entrepriseId];
+  const wheres = [`a.entreprise_id = $1`];
+  if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
+  if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
+  if (dateFin)   { params.push(dateFin);   wheres.push(`p.date_perte <= $${params.length}`); }
+  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
+  if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
+  if (ingredientId) { params.push(ingredientId); wheres.push(`p.ingredient_id = $${params.length}`); }
+  if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
+
+  try {
+    const result = await pool.query(
+      `SELECT p.id, p.activite_id, a.nom AS activite_nom,
+              i.nom AS ingredient_nom, u.nom AS unite_nom,
+              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
+              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte
+       FROM pertes p JOIN activites a ON a.id = p.activite_id
+       JOIN ingredients i ON i.id = p.ingredient_id JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
+       WHERE ${wheres.join(' AND ')} ORDER BY p.date_perte DESC, p.created_at DESC`,
+      params
+    );
+    await buildHistoriquePertesPdf(res, result.rows, { dateDebut, dateFin });
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
+  }
+};
+
+// ── Labo pertes — export PDF ──────────────────────────────────────────────────
+
+const exportLaboPertesPdf = async (req, res) => {
+  const { laboId } = req.params;
+  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
+  const clientId = req.user.gerant_parent_id || req.user.id;
+
+  try {
+    const ownerCheck = await pool.query(
+      `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id WHERE l.id = $1 AND pe.client_id = $2`,
+      [laboId, clientId]
+    );
+    if (ownerCheck.rows.length === 0) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
+    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+
+    const params = [laboId];
+    const wheres = [`lp.labo_id = $1`, `lp.ingredient_id IS NOT NULL`];
+    if (dateDebut) { params.push(dateDebut); wheres.push(`lp.date_perte >= $${params.length}`); }
+    if (dateFin)   { params.push(dateFin);   wheres.push(`lp.date_perte <= $${params.length}`); }
+    if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
+    if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
+    if (ingredientId){ params.push(ingredientId); wheres.push(`lp.ingredient_id = $${params.length}`); }
+    if (search)      { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
+
+    const result = await pool.query(
+      `SELECT lp.id, lp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
+              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
+              lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte
+       FROM labo_pertes lp JOIN ingredients i ON i.id = lp.ingredient_id
+       JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
+       WHERE ${wheres.join(' AND ')} ORDER BY lp.date_perte DESC, lp.created_at DESC`,
+      params
+    );
+    await buildLaboHistoriquePertesPdf(res, result.rows, laboNom, { dateDebut, dateFin });
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
+  }
+};
+
 module.exports = {
   createPerte, listPertes,
-  listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes,
+  listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, exportClientPertesPdf,
   getPrixClientPerte, getDateRangeClientPerte,
-  listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes,
+  listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, exportEntreprisePertesPdf,
   getPrixEntreprisePerte, getDateRangeEntreprisePerte,
   getPrixLaboPerte, getDateRangeLaboPerte,
-  listLaboPertes, exportLaboPerteExcel,
+  listLaboPertes, exportLaboPerteExcel, exportLaboPertesPdf,
 };

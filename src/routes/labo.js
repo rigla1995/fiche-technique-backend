@@ -9,7 +9,7 @@ const {
   createTransfer, getTransferHistory, updateTransfer, deleteTransfer, getTransferPrix,
   getActivityAssignments, toggleActivityAssignment,
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
-  exportLaboHistoriqueExcel,
+  exportLaboHistoriqueExcel, exportLaboHistoriquePdf,
   createLaboPerte,
   getLaboPTRecipe,
   exportLaboTransferExcel,
@@ -18,7 +18,7 @@ const {
   getLaboInventaireStock, saveLaboInventaire,
   getLaboInventaireHistorique, exportLaboInventaireExcel,
 } = require('../controllers/inventaireController');
-const { getPrixLaboPerte, getDateRangeLaboPerte, listLaboPertes, exportLaboPerteExcel } = require('../controllers/pertesController');
+const { getPrixLaboPerte, getDateRangeLaboPerte, listLaboPertes, exportLaboPerteExcel, exportLaboPertesPdf } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 const { laboVentes, laboVentesStats } = require('../controllers/ventesController');
 
@@ -146,6 +146,7 @@ router.put('/:laboId/stock/:ingredientId', authenticate, requireEntreprise, upda
 router.get('/:laboId/stock/:ingredientId/history', authenticate, requireEntreprise, getLaboStockHistory);
 router.get('/:laboId/pertes/historique', authenticate, requireEntreprise, listLaboPertes);
 router.get('/:laboId/pertes/historique/export-excel', authenticate, requireEntreprise, exportLaboPerteExcel);
+router.get('/:laboId/pertes/historique/export-pdf', authenticate, requireEntreprise, exportLaboPertesPdf);
 router.get('/:laboId/pertes/prix', authenticate, requireEntreprise, getPrixLaboPerte);
 router.get('/:laboId/pertes/date-range', authenticate, requireEntreprise, getDateRangeLaboPerte);
 router.post('/:laboId/stock/:ingredientId/perte', authenticate, requireEntreprise, createLaboPerte);
@@ -164,6 +165,7 @@ router.post('/:laboId/ingredients/:ingredientId/assign-to-activity', authenticat
 // Labo historique appro
 router.get('/:laboId/historique', authenticate, requireEntreprise, getLaboHistorique);
 router.get('/:laboId/historique/export-excel', authenticate, requireEntreprise, exportLaboHistoriqueExcel);
+router.get('/:laboId/historique/export-pdf', authenticate, requireEntreprise, exportLaboHistoriquePdf);
 router.put('/:laboId/historique/:entryId', authenticate, requireEntreprise, updateLaboHistoriqueEntry);
 router.delete('/:laboId/historique/:entryId', authenticate, requireEntreprise, deleteLaboHistoriqueEntry);
 

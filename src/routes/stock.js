@@ -7,13 +7,13 @@ const {
   getHistoryClient, getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
   updateSeuilMin, updateSeuilMinClient, createClientPerte,
-  exportHistoriqueExcel,
+  exportHistoriqueExcel, exportHistoriquePdf,
   deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
   getCascadeInfoClient, getCascadeInfoEntreprise,
   getClientIngredientSelections,
 } = require('../controllers/stockController');
 const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
-const { listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, getPrixClientPerte, getDateRangeClientPerte } = require('../controllers/pertesController');
+const { listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, exportClientPertesPdf, getPrixClientPerte, getDateRangeClientPerte } = require('../controllers/pertesController');
 
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -54,6 +54,7 @@ router.put('/client/:ingredientId', authenticate, requireClient, approValidation
 router.put('/client/:ingredientId/seuil-min', authenticate, requireClient, seuilMinValidation, validate, updateSeuilMinClient);
 router.post('/client/pertes', authenticate, requireClient, perteValidation, validate, createClientPerte);
 router.get('/client/pertes/export-excel', authenticate, requireClient, exportClientPertes);
+router.get('/client/pertes/export-pdf', authenticate, requireClient, exportClientPertesPdf);
 router.get('/client/pertes/prix', authenticate, requireClient, getPrixClientPerte);
 router.get('/client/pertes/date-range', authenticate, requireClient, getDateRangeClientPerte);
 router.get('/client/pertes', authenticate, requireClient, listClientPertes);
@@ -160,6 +161,7 @@ router.delete('/entreprise/:activiteId/:ingredientId/all-history', authenticate,
 // Historique Approvisionnement (current year, filtered)
 router.get('/historique', authenticate, requireClient, getHistoriqueAppro);
 router.get('/historique/export-excel', authenticate, requireClient, exportHistoriqueExcel);
+router.get('/historique/export-pdf', authenticate, requireClient, exportHistoriquePdf);
 router.put('/historique/:id', authenticate, requireClient, updateHistoriqueEntry);
 router.delete('/historique/:id', authenticate, requireClient, deleteHistoriqueEntry);
 
