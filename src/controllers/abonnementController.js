@@ -234,6 +234,7 @@ const getAbonnement = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT a.*, u.nom AS client_nom, u.email AS client_email,
+        pe.module_vente_actif, pe.module_vente_activated_at,
         EXISTS(
           SELECT 1 FROM promotions pr
           WHERE pr.abonnement_id = a.id
@@ -242,6 +243,7 @@ const getAbonnement = async (req, res) => {
         ) AS has_active_promo
       FROM abonnements a
       LEFT JOIN utilisateurs u ON u.id = a.client_id
+      LEFT JOIN profil_entreprise pe ON pe.client_id = a.client_id
       WHERE a.client_id = $1
     `, [clientId]);
     if (result.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
