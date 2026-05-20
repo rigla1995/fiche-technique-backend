@@ -36,7 +36,7 @@ const create = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO demandes (demandeur_id, demandeur_type, type_demande, montant_mensuel_dt, notes_client)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.user.id, null, typeDemande, montant, notes || null]
+      [req.user.id, req.user.compteType || req.user.role || 'client', typeDemande, montant, notes || null]
     );
     res.status(201).json(mapDemande(result.rows[0]));
   } catch (err) {
