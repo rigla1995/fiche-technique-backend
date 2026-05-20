@@ -97,7 +97,23 @@ const requireClientOrGerant = (req, res, next) => {
   next();
 };
 
+const requireModuleVente = async (req, res, next) => {
+  try {
+    const userId = req.user.gerant_parent_id || req.user.id;
+    const r = await pool.query(
+      `SELECT module_vente_actif FROM profil_entreprise WHERE client_id = $1`,
+      [userId]
+    );
+    if (!r.rows[0]?.module_vente_actif) {
+      return res.status(403).json({ message: 'Module Vente non activé', code: 'MODULE_VENTE_INACTIVE' });
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   authenticate, requireSuperAdmin, requireClient, requireEntreprise,
-  requireWriteAccess, requireGerant, requireClientOrGerant,
+  requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
 };

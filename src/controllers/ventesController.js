@@ -35,11 +35,11 @@ const listPrestataires = async (req, res) => {
 
 const createPrestataire = async (req, res) => {
   try {
-    const { nom, logo_url, commission_pct = 0 } = req.body;
+    const { nom, logo_url } = req.body;
     if (!nom) return res.status(400).json({ message: 'nom requis' });
     const r = await pool.query(
-      'INSERT INTO prestataires_livraison (nom, logo_url, commission_pct) VALUES ($1,$2,$3) RETURNING *',
-      [nom, logo_url || null, commission_pct]
+      'INSERT INTO prestataires_livraison (nom, logo_url) VALUES ($1,$2) RETURNING *',
+      [nom, logo_url || null]
     );
     res.status(201).json(r.rows[0]);
   } catch (e) {
@@ -50,15 +50,14 @@ const createPrestataire = async (req, res) => {
 const updatePrestataire = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom, logo_url, commission_pct, actif } = req.body;
+    const { nom, logo_url, actif } = req.body;
     const r = await pool.query(
       `UPDATE prestataires_livraison SET
         nom = COALESCE($1, nom),
         logo_url = COALESCE($2, logo_url),
-        commission_pct = COALESCE($3, commission_pct),
-        actif = COALESCE($4, actif)
-       WHERE id = $5 RETURNING *`,
-      [nom, logo_url, commission_pct, actif, id]
+        actif = COALESCE($3, actif)
+       WHERE id = $4 RETURNING *`,
+      [nom, logo_url, actif, id]
     );
     if (!r.rows.length) return res.status(404).json({ message: 'Introuvable' });
     res.json(r.rows[0]);
@@ -77,23 +76,120 @@ const deletePrestataire = async (req, res) => {
   }
 };
 
-// Activate/deactivate prestataire for a client entreprise
-const setEntreprisePrestataires = async (req, res) => {
+// Admin — Toggle module vente for an entreprise
+const toggleModuleVente = async (req, res) => {
   try {
-    const { id: entrepriseId } = req.params;
-    const { prestataire_ids = [] } = req.body;
-    await pool.query('BEGIN');
-    await pool.query('DELETE FROM entreprise_prestataires WHERE entreprise_id = $1', [entrepriseId]);
-    for (const pid of prestataire_ids) {
-      await pool.query(
-        'INSERT INTO entreprise_prestataires (entreprise_id, prestataire_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
-        [entrepriseId, pid]
-      );
+    const { entrepriseId } = req.params;
+    const { actif } = req.body;
+    const r = await pool.query(
+      `UPDATE profil_entreprise SET module_vente_actif = $1 WHERE id = $2
+       RETURNING id, module_vente_actif`,
+      [actif, entrepriseId]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'Entreprise introuvable' });
+    res.json(r.rows[0]);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+// ─── Client — Prestataires par activité ──────────────────────────────────────
+
+const listActivitePrestataires = async (req, res) => {
+  try {
+    const { activiteId } = req.query;
+    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const cid = clientId(req);
+    await assertActiviteOwner(activiteId, cid);
+    const r = await pool.query(
+      `SELECT ap.id, ap.activite_id, ap.prestataire_id, ap.taux_commission, ap.actif,
+              pl.nom as prestataire_nom, pl.logo_url
+       FROM activite_prestataires ap
+       JOIN prestataires_livraison pl ON pl.id = ap.prestataire_id
+       WHERE ap.activite_id = $1
+       ORDER BY pl.nom`,
+      [activiteId]
+    );
+    res.json(r.rows.map(row => ({ ...row, taux_commission: parseFloat(row.taux_commission) })));
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    res.status(500).json({ message: e.message });
+  }
+};
+
+const addActivitePrestataire = async (req, res) => {
+  try {
+    const { activite_id, prestataire_id, taux_commission = 0 } = req.body;
+    if (!activite_id || !prestataire_id) {
+      return res.status(400).json({ message: 'activite_id et prestataire_id requis' });
     }
-    await pool.query('COMMIT');
+    const cid = clientId(req);
+    await assertActiviteOwner(activite_id, cid);
+    const r = await pool.query(
+      `INSERT INTO activite_prestataires (activite_id, prestataire_id, taux_commission)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (activite_id, prestataire_id) DO UPDATE
+         SET taux_commission = EXCLUDED.taux_commission, actif = true
+       RETURNING *`,
+      [activite_id, prestataire_id, taux_commission]
+    );
+    res.status(201).json(r.rows[0]);
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    res.status(500).json({ message: e.message });
+  }
+};
+
+const updateActivitePrestataire = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { taux_commission, actif } = req.body;
+    const r = await pool.query(
+      `UPDATE activite_prestataires SET
+        taux_commission = COALESCE($1, taux_commission),
+        actif = COALESCE($2, actif)
+       WHERE id = $3 RETURNING *`,
+      [taux_commission, actif, id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'Introuvable' });
+    res.json(r.rows[0]);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+const removeActivitePrestataire = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM activite_prestataires WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (e) {
-    await pool.query('ROLLBACK');
+    res.status(500).json({ message: e.message });
+  }
+};
+
+// Returns active prestataires for a given activité (used when creating a vente)
+const listPrestatairesClient = async (req, res) => {
+  try {
+    const { activiteId } = req.query;
+    if (activiteId) {
+      const cid = clientId(req);
+      await assertActiviteOwner(activiteId, cid);
+      const r = await pool.query(
+        `SELECT pl.id, pl.nom, pl.logo_url, ap.taux_commission, ap.id as activite_prestataire_id
+         FROM activite_prestataires ap
+         JOIN prestataires_livraison pl ON pl.id = ap.prestataire_id
+         WHERE ap.activite_id = $1 AND ap.actif = true AND pl.actif = true
+         ORDER BY pl.nom`,
+        [activiteId]
+      );
+      return res.json(r.rows.map(row => ({ ...row, taux_commission: parseFloat(row.taux_commission) })));
+    }
+    // Fallback: return all active prestataires
+    const r = await pool.query('SELECT * FROM prestataires_livraison WHERE actif = true ORDER BY nom');
+    res.json(r.rows);
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -108,7 +204,8 @@ const listArticlesVendables = async (req, res) => {
     await assertActiviteOwner(activiteId, cid);
 
     const r = await pool.query(
-      `SELECT av.id, av.activite_id, av.article_type, av.article_id, av.prix_vente, av.actif,
+      `SELECT av.id, av.activite_id, av.article_type, av.article_id,
+              av.prix_vente, av.portion, av.actif,
               CASE av.article_type
                 WHEN 'produit' THEN p.nom
                 WHEN 'ingredient' THEN i.nom
@@ -128,6 +225,7 @@ const listArticlesVendables = async (req, res) => {
     res.json(r.rows.map(row => ({
       ...row,
       prix_vente: parseFloat(row.prix_vente),
+      portion: row.portion != null ? parseFloat(row.portion) : null,
     })));
   } catch (e) {
     if (e.status) return res.status(e.status).json({ message: e.message });
@@ -137,7 +235,7 @@ const listArticlesVendables = async (req, res) => {
 
 const upsertArticleVendable = async (req, res) => {
   try {
-    const { activite_id, article_type, article_id, prix_vente, actif = true } = req.body;
+    const { activite_id, article_type, article_id, prix_vente, portion, actif = true } = req.body;
     if (!activite_id || !article_type || !article_id) {
       return res.status(400).json({ message: 'activite_id, article_type, article_id requis' });
     }
@@ -145,12 +243,14 @@ const upsertArticleVendable = async (req, res) => {
     await assertActiviteOwner(activite_id, cid);
 
     const r = await pool.query(
-      `INSERT INTO activite_articles_vendables (activite_id, article_type, article_id, prix_vente, actif)
-       VALUES ($1,$2,$3,$4,$5)
+      `INSERT INTO activite_articles_vendables (activite_id, article_type, article_id, prix_vente, portion, actif)
+       VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT (activite_id, article_type, article_id) DO UPDATE
-         SET prix_vente = EXCLUDED.prix_vente, actif = EXCLUDED.actif
+         SET prix_vente = EXCLUDED.prix_vente,
+             portion = EXCLUDED.portion,
+             actif = EXCLUDED.actif
        RETURNING *`,
-      [activite_id, article_type, article_id, prix_vente ?? 0, actif]
+      [activite_id, article_type, article_id, prix_vente ?? 0, portion ?? null, actif]
     );
     res.status(201).json(r.rows[0]);
   } catch (e) {
@@ -162,13 +262,14 @@ const upsertArticleVendable = async (req, res) => {
 const updateArticleVendable = async (req, res) => {
   try {
     const { id } = req.params;
-    const { prix_vente, actif } = req.body;
+    const { prix_vente, portion, actif } = req.body;
     const r = await pool.query(
       `UPDATE activite_articles_vendables SET
         prix_vente = COALESCE($1, prix_vente),
-        actif = COALESCE($2, actif)
-       WHERE id = $3 RETURNING *`,
-      [prix_vente, actif, id]
+        portion = COALESCE($2, portion),
+        actif = COALESCE($3, actif)
+       WHERE id = $4 RETURNING *`,
+      [prix_vente, portion, actif, id]
     );
     if (!r.rows.length) return res.status(404).json({ message: 'Introuvable' });
     res.json(r.rows[0]);
@@ -183,6 +284,112 @@ const deleteArticleVendable = async (req, res) => {
     await pool.query('DELETE FROM activite_articles_vendables WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+// ─── Client — Prix prestataire par article ───────────────────────────────────
+
+const listArticlePrixPrestataire = async (req, res) => {
+  try {
+    const { activiteId } = req.query;
+    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const cid = clientId(req);
+    await assertActiviteOwner(activiteId, cid);
+    const r = await pool.query(
+      `SELECT app.id, app.article_vendable_id, app.activite_prestataire_id,
+              app.prix_vente, app.updated_at,
+              ap.prestataire_id, ap.taux_commission,
+              pl.nom as prestataire_nom,
+              av.article_type, av.article_id, av.prix_vente as prix_base, av.portion,
+              CASE av.article_type
+                WHEN 'ingredient' THEN i.nom
+                WHEN 'produit' THEN p.nom
+              END as article_nom
+       FROM article_prix_prestataire app
+       JOIN activite_prestataires ap ON ap.id = app.activite_prestataire_id
+       JOIN prestataires_livraison pl ON pl.id = ap.prestataire_id
+       JOIN activite_articles_vendables av ON av.id = app.article_vendable_id
+       LEFT JOIN ingredients i ON av.article_type = 'ingredient' AND i.id = av.article_id
+       LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
+       WHERE av.activite_id = $1
+       ORDER BY pl.nom, article_nom`,
+      [activiteId]
+    );
+    res.json(r.rows.map(row => ({
+      ...row,
+      prix_vente: row.prix_vente != null ? parseFloat(row.prix_vente) : null,
+      prix_base: row.prix_base != null ? parseFloat(row.prix_base) : null,
+      taux_commission: parseFloat(row.taux_commission),
+      portion: row.portion != null ? parseFloat(row.portion) : null,
+    })));
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    res.status(500).json({ message: e.message });
+  }
+};
+
+const upsertArticlePrixPrestataire = async (req, res) => {
+  try {
+    const { article_vendable_id, activite_prestataire_id, prix_vente } = req.body;
+    if (!article_vendable_id || !activite_prestataire_id) {
+      return res.status(400).json({ message: 'article_vendable_id et activite_prestataire_id requis' });
+    }
+    const r = await pool.query(
+      `INSERT INTO article_prix_prestataire (article_vendable_id, activite_prestataire_id, prix_vente, updated_at)
+       VALUES ($1,$2,$3, NOW())
+       ON CONFLICT (article_vendable_id, activite_prestataire_id) DO UPDATE
+         SET prix_vente = EXCLUDED.prix_vente, updated_at = NOW()
+       RETURNING *`,
+      [article_vendable_id, activite_prestataire_id, prix_vente]
+    );
+    res.status(201).json(r.rows[0]);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+// ─── Client — Charges fixes ──────────────────────────────────────────────────
+
+const getChargesFixes = async (req, res) => {
+  try {
+    const { activiteId } = req.query;
+    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const cid = clientId(req);
+    await assertActiviteOwner(activiteId, cid);
+    const r = await pool.query('SELECT * FROM charges_fixes WHERE activite_id = $1', [activiteId]);
+    res.json(r.rows[0] || null);
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    res.status(500).json({ message: e.message });
+  }
+};
+
+const upsertChargesFixes = async (req, res) => {
+  try {
+    const { activite_id, mode, montant_global, loyer, charges_personnel, electricite_gaz, eau } = req.body;
+    if (!activite_id) return res.status(400).json({ message: 'activite_id requis' });
+    const cid = clientId(req);
+    await assertActiviteOwner(activite_id, cid);
+    const r = await pool.query(
+      `INSERT INTO charges_fixes
+         (activite_id, mode, montant_global, loyer, charges_personnel, electricite_gaz, eau, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7, NOW())
+       ON CONFLICT (activite_id) DO UPDATE SET
+         mode = EXCLUDED.mode,
+         montant_global = EXCLUDED.montant_global,
+         loyer = EXCLUDED.loyer,
+         charges_personnel = EXCLUDED.charges_personnel,
+         electricite_gaz = EXCLUDED.electricite_gaz,
+         eau = EXCLUDED.eau,
+         updated_at = NOW()
+       RETURNING *`,
+      [activite_id, mode || 'global', montant_global ?? null, loyer ?? null,
+       charges_personnel ?? null, electricite_gaz ?? null, eau ?? null]
+    );
+    res.status(201).json(r.rows[0]);
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -310,7 +517,6 @@ const createVente = async (req, res) => {
         );
         cout = coutRes.rows[0]?.avg_prix != null ? parseFloat(coutRes.rows[0].avg_prix) : null;
       } else if (article_type === 'produit') {
-        // Compute from fiche technique
         const coutRes = await client.query(
           `SELECT SUM(pi.portion * COALESCE(last_prix.prix_unitaire, 0)) as cout
            FROM produit_ingredients pi
@@ -340,7 +546,6 @@ const createVente = async (req, res) => {
            date_vente || new Date().toISOString().slice(0, 10), req.user.id]
         );
       } else if (article_type === 'produit') {
-        // Decrement all ingredients of the fiche technique
         const ftRes = await client.query(
           'SELECT ingredient_id, portion FROM produit_ingredients WHERE produit_id = $1',
           [article_id]
@@ -421,14 +626,10 @@ const annulerVente = async (req, res) => {
 
 const statsVentes = async (req, res) => {
   try {
-    const { activiteId, period = 'month' } = req.query;
+    const { activiteId } = req.query;
     if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
     const cid = clientId(req);
     await assertActiviteOwner(activiteId, cid);
-
-    let dateTrunc = 'month';
-    if (period === 'week') dateTrunc = 'week';
-    else if (period === 'day') dateTrunc = 'day';
 
     const caRes = await pool.query(
       `SELECT
@@ -492,40 +693,6 @@ const statsVentes = async (req, res) => {
   }
 };
 
-// ─── Client — Prestataires actifs pour une entreprise ──────────────────────
-
-const listPrestatairesClient = async (req, res) => {
-  try {
-    const cid = clientId(req);
-    // Get entreprise id for this client
-    const peRes = await pool.query(
-      'SELECT id FROM profil_entreprise WHERE client_id = $1 LIMIT 1',
-      [cid]
-    );
-    if (!peRes.rows.length) {
-      // Return all active prestataires if no entreprise profile found
-      const r = await pool.query('SELECT * FROM prestataires_livraison WHERE actif = true ORDER BY nom');
-      return res.json(r.rows);
-    }
-    const entrepriseId = peRes.rows[0].id;
-    const r = await pool.query(
-      `SELECT pl.* FROM prestataires_livraison pl
-       JOIN entreprise_prestataires ep ON ep.prestataire_id = pl.id
-       WHERE ep.entreprise_id = $1 AND pl.actif = true
-       ORDER BY pl.nom`,
-      [entrepriseId]
-    );
-    // Fallback: if no activation, return all active
-    if (!r.rows.length) {
-      const all = await pool.query('SELECT * FROM prestataires_livraison WHERE actif = true ORDER BY nom');
-      return res.json(all.rows);
-    }
-    res.json(r.rows);
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-};
-
 // ─── Labo — Ventes (= transferts valorisés) ──────────────────────────────────
 
 const laboVentes = async (req, res) => {
@@ -578,7 +745,7 @@ const laboVentes = async (req, res) => {
 
 const laboVentesStats = async (req, res) => {
   try {
-    const { laboId, period = 'month' } = req.query;
+    const { laboId } = req.query;
     if (!laboId) return res.status(400).json({ message: 'laboId requis' });
 
     const r = await pool.query(
@@ -621,9 +788,13 @@ const laboVentesStats = async (req, res) => {
 };
 
 module.exports = {
-  listPrestataires, createPrestataire, updatePrestataire, deletePrestataire, setEntreprisePrestataires,
-  listArticlesVendables, upsertArticleVendable, updateArticleVendable, deleteArticleVendable,
-  listVentes, getVente, createVente, annulerVente, statsVentes,
+  listPrestataires, createPrestataire, updatePrestataire, deletePrestataire,
+  toggleModuleVente,
+  listActivitePrestataires, addActivitePrestataire, updateActivitePrestataire, removeActivitePrestataire,
   listPrestatairesClient,
+  listArticlesVendables, upsertArticleVendable, updateArticleVendable, deleteArticleVendable,
+  listArticlePrixPrestataire, upsertArticlePrixPrestataire,
+  getChargesFixes, upsertChargesFixes,
+  listVentes, getVente, createVente, annulerVente, statsVentes,
   laboVentes, laboVentesStats,
 };

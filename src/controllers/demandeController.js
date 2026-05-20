@@ -20,12 +20,17 @@ const mapDemande = (row) => ({
 // POST /api/demandes — client creates a request
 const create = async (req, res) => {
   const { typeDemande, notes } = req.body;
-  const allowed = ['gerant_sup', 'labo_sup'];
+  const allowed = ['gerant_sup', 'labo_sup', 'activer_module_vente'];
   if (!allowed.includes(typeDemande)) return res.status(400).json({ message: 'Type invalide' });
 
   try {
-    const cle = typeDemande === 'labo_sup' ? 'labo_sup_mensuel' : 'gerant_sup_mensuel';
-    const tarifRes = await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [cle]);
+    let cle = null;
+    if (typeDemande === 'labo_sup') cle = 'labo_sup_mensuel';
+    else if (typeDemande === 'gerant_sup') cle = 'gerant_sup_mensuel';
+    else if (typeDemande === 'activer_module_vente') cle = 'module_vente';
+    const tarifRes = cle
+      ? await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [cle])
+      : { rows: [] };
     const montant = tarifRes.rows[0]?.valeur_dt || null;
 
     const result = await pool.query(
@@ -102,6 +107,14 @@ const traiter = async (req, res) => {
       return res.status(404).json({ message: 'Demande introuvable' });
     }
     const { type_demande, demandeur_id } = demandeCheck.rows[0];
+
+    // If validating an activer_module_vente demande, set module_vente_actif = true
+    if (statut === 'validée' && type_demande === 'activer_module_vente') {
+      await client.query(
+        `UPDATE profil_entreprise SET module_vente_actif = true WHERE client_id = $1`,
+        [demandeur_id]
+      );
+    }
 
     // If validating an upgrade_entreprise demande, run full account migration
     if (statut === 'validée' && type_demande === 'upgrade_entreprise') {
