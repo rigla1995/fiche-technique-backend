@@ -117,7 +117,10 @@ const traiter = async (req, res) => {
         [demandeur_id]
       );
       await client.query(
-        `UPDATE profil_entreprise SET module_vente_actif = true WHERE client_id = $1`,
+        `UPDATE profil_entreprise
+         SET module_vente_actif = true,
+             module_vente_activated_at = COALESCE(module_vente_activated_at, NOW())
+         WHERE client_id = $1`,
         [demandeur_id]
       );
     }

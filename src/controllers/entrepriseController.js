@@ -43,6 +43,8 @@ const mapEntreprise = (row) => ({
   telephone: row.telephone,
   adresse: row.adresse,
   memeActivite: row.meme_activite,
+  module_vente_actif: row.module_vente_actif ?? false,
+  module_vente_activated_at: row.module_vente_activated_at ?? null,
   createdAt: row.created_at,
 });
 

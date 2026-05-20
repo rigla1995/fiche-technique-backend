@@ -1413,12 +1413,15 @@ const toggleModuleVente = async (req, res) => {
       [clientId]
     );
     const r = await pool.query(
-      `UPDATE profil_entreprise SET module_vente_actif = $1 WHERE client_id = $2
-       RETURNING module_vente_actif`,
+      `UPDATE profil_entreprise
+       SET module_vente_actif = $1,
+           module_vente_activated_at = CASE WHEN $1 THEN COALESCE(module_vente_activated_at, NOW()) ELSE NULL END
+       WHERE client_id = $2
+       RETURNING module_vente_actif, module_vente_activated_at`,
       [!!actif, clientId]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Client introuvable' });
-    res.json({ moduleVenteActif: r.rows[0].module_vente_actif });
+    res.json({ moduleVenteActif: r.rows[0].module_vente_actif, moduleVenteActivatedAt: r.rows[0].module_vente_activated_at });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

@@ -10,8 +10,8 @@ const options = {
       contact: { name: 'Support', email: 'support@fichetechnique.app' },
     },
     servers: [
+      { url: 'https://api.labflow-tn.com', description: 'Production' },
       { url: 'http://localhost:3000', description: 'Développement' },
-      { url: 'https://api.fichetechnique.app', description: 'Production' },
     ],
     components: {
       securitySchemes: {
@@ -132,6 +132,8 @@ const options = {
       { name: 'Produits', description: 'Fiches techniques et recettes' },
       { name: 'Rapports', description: 'Rapports pertes, appros, valorisation' },
       { name: 'Admin', description: 'Administration (super_admin uniquement)' },
+      { name: 'Ventes', description: 'Module Vente — articles vendables, prestataires, ventes, rapport' },
+      { name: 'Abonnements', description: 'Abonnements, paiements, tarifs, demandes clients' },
     ],
   },
   apis: ['./src/routes/*.js'],
