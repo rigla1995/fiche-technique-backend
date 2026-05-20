@@ -21,6 +21,7 @@ const mapAbonnement = (row) => ({
   hasActivePromo: row.has_active_promo ?? false,
   inviteSent: row.invite_sent ?? false,
   moduleVenteActif: row.module_vente_actif ?? false,
+  moduleVenteActivatedAt: row.module_vente_activated_at ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -209,7 +210,7 @@ const listAbonnements = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT a.*, u.nom AS client_nom, u.email AS client_email,
-        pe.module_vente_actif,
+        pe.module_vente_actif, pe.module_vente_activated_at,
         EXISTS(
           SELECT 1 FROM promotions pr
           WHERE pr.abonnement_id = a.id
