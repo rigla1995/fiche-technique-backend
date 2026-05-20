@@ -20,6 +20,7 @@ const mapAbonnement = (row) => ({
   suppressionCascadeDate: row.suppression_cascade_date,
   hasActivePromo: row.has_active_promo ?? false,
   inviteSent: row.invite_sent ?? false,
+  moduleVenteActif: row.module_vente_actif ?? false,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -208,6 +209,7 @@ const listAbonnements = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT a.*, u.nom AS client_nom, u.email AS client_email,
+        pe.module_vente_actif,
         EXISTS(
           SELECT 1 FROM promotions pr
           WHERE pr.abonnement_id = a.id
@@ -216,6 +218,7 @@ const listAbonnements = async (req, res) => {
         ) AS has_active_promo
       FROM abonnements a
       LEFT JOIN utilisateurs u ON u.id = a.client_id
+      LEFT JOIN profil_entreprise pe ON pe.client_id = a.client_id
       ORDER BY a.created_at DESC
     `);
     res.json(result.rows.map(mapAbonnement));
@@ -1398,10 +1401,27 @@ const getClientSupplementPricing = async (req, res) => {
   }
 };
 
+const toggleModuleVente = async (req, res) => {
+  const { clientId } = req.params;
+  const { actif } = req.body;
+  try {
+    const r = await pool.query(
+      `UPDATE profil_entreprise SET module_vente_actif = $1 WHERE client_id = $2
+       RETURNING module_vente_actif`,
+      [!!actif, clientId]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ message: 'Profil entreprise introuvable' });
+    res.json({ moduleVenteActif: r.rows[0].module_vente_actif });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   getTarifs, updateTarif,
   listAbonnements, getAbonnement, createAbonnement,
-  updateOnboarding, updateProlongation, updateNotes, updateMode,
+  updateOnboarding, updateProlongation, updateNotes, updateMode, toggleModuleVente,
   upsertPaiement,
   getMontantMois,
   listPromotions, createPromotion, updatePromotion, deletePromotion, insertPromoForAbonnement,

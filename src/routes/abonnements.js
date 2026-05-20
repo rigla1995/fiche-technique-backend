@@ -17,6 +17,7 @@ router.put('/client/:clientId/onboarding', authenticate, requireSuperAdmin, ab.u
 router.put('/client/:clientId/prolongation', authenticate, requireSuperAdmin, ab.updateProlongation);
 router.put('/client/:clientId/mode', authenticate, requireSuperAdmin, ab.updateMode);
 router.put('/client/:clientId/notes', authenticate, requireSuperAdmin, ab.updateNotes);
+router.put('/client/:clientId/module-vente', authenticate, requireSuperAdmin, ab.toggleModuleVente);
 router.post('/client/:clientId/paiements', authenticate, requireSuperAdmin, ab.upsertPaiement);
 router.get('/client/:clientId/montant-mois', authenticate, requireSuperAdmin, ab.getMontantMois);
 
