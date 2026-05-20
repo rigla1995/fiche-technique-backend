@@ -1405,12 +1405,19 @@ const toggleModuleVente = async (req, res) => {
   const { clientId } = req.params;
   const { actif } = req.body;
   try {
+    // UPSERT: create profil_entreprise if missing, then set module_vente_actif
+    await pool.query(
+      `INSERT INTO profil_entreprise (client_id, nom, email)
+       SELECT $1, nom, email FROM utilisateurs WHERE id = $1
+       ON CONFLICT (client_id) DO NOTHING`,
+      [clientId]
+    );
     const r = await pool.query(
       `UPDATE profil_entreprise SET module_vente_actif = $1 WHERE client_id = $2
        RETURNING module_vente_actif`,
       [!!actif, clientId]
     );
-    if (r.rows.length === 0) return res.status(404).json({ message: 'Profil entreprise introuvable' });
+    if (r.rows.length === 0) return res.status(404).json({ message: 'Client introuvable' });
     res.json({ moduleVenteActif: r.rows[0].module_vente_actif });
   } catch (err) {
     console.error(err);

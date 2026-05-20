@@ -36,7 +36,7 @@ const create = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO demandes (demandeur_id, demandeur_type, type_demande, montant_mensuel_dt, notes_client)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.user.id, req.user.compteType || 'independant', typeDemande, montant, notes || null]
+      [req.user.id, 'client', typeDemande, montant, notes || null]
     );
     res.status(201).json(mapDemande(result.rows[0]));
   } catch (err) {
@@ -108,8 +108,14 @@ const traiter = async (req, res) => {
     }
     const { type_demande, demandeur_id } = demandeCheck.rows[0];
 
-    // If validating an activer_module_vente demande, set module_vente_actif = true
+    // If validating an activer_module_vente demande, upsert profil_entreprise and set module_vente_actif
     if (statut === 'validée' && type_demande === 'activer_module_vente') {
+      await client.query(
+        `INSERT INTO profil_entreprise (client_id, nom, email)
+         SELECT $1, nom, email FROM utilisateurs WHERE id = $1
+         ON CONFLICT (client_id) DO NOTHING`,
+        [demandeur_id]
+      );
       await client.query(
         `UPDATE profil_entreprise SET module_vente_actif = true WHERE client_id = $1`,
         [demandeur_id]
