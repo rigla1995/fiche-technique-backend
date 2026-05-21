@@ -10,6 +10,7 @@ const mapProduit = (row) => ({
   clientId: row.client_id,
   activiteId: row.activite_id || null,
   isStockIngredient: !!row.is_stock_ingredient,
+  isSupplement: !!row.is_supplement,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
   ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
   subProductsCount: row.sub_products_count !== undefined ? parseInt(row.sub_products_count) : undefined,
@@ -216,6 +217,7 @@ const create = async (req, res) => {
   const { description } = req.body;
   const refProduit = req.body.refProduit || req.body.ref_produit || null;
   const type = req.body.type === 'utilisable' ? 'utilisable' : 'vendable';
+  const isSupplement = req.body.isSupplement === true || req.body.isSupplement === 'true';
   const ingredients = req.body.ingredients || [];
   const subProducts = req.body.subProducts || [];
   const activiteId = req.body.activiteId || null;
@@ -225,8 +227,8 @@ const create = async (req, res) => {
     await client.query('BEGIN');
 
     const result = await client.query(
-      'INSERT INTO produits (nom, description, ref_produit, type, client_id, activite_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [nom, description || null, refProduit, type, req.user.id, activiteId]
+      'INSERT INTO produits (nom, description, ref_produit, type, is_supplement, client_id, activite_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [nom, description || null, refProduit, type, isSupplement, req.user.id, activiteId]
     );
     const produitId = result.rows[0].id;
 
@@ -281,6 +283,7 @@ const update = async (req, res) => {
   const { description } = req.body;
   const refProduit = req.body.refProduit !== undefined ? (req.body.refProduit || null) : req.body.ref_produit !== undefined ? (req.body.ref_produit || null) : undefined;
   const type = req.body.type === 'utilisable' ? 'utilisable' : req.body.type === 'vendable' ? 'vendable' : undefined;
+  const isSupplement = req.body.isSupplement !== undefined ? (req.body.isSupplement === true || req.body.isSupplement === 'true') : undefined;
   const ingredients = req.body.ingredients;
   const subProducts = req.body.subProducts;
 
@@ -292,8 +295,9 @@ const update = async (req, res) => {
       `UPDATE produits SET nom = COALESCE($1, nom), description = COALESCE($2, description),
        ref_produit = CASE WHEN $3::text IS NOT NULL THEN $3 ELSE ref_produit END,
        type = COALESCE($4, type),
+       is_supplement = COALESCE($7, is_supplement),
        updated_at = NOW() WHERE id = $5 AND client_id = $6 RETURNING *`,
-      [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.id]
+      [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.id, isSupplement !== undefined ? isSupplement : null]
     );
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');
