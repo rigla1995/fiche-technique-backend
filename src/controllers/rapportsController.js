@@ -63,7 +63,7 @@ const getRapportPertes = async (req, res) => {
            COALESCE(p.prix_unitaire, 0) AS prix_unitaire,
            p.quantite * COALESCE(p.prix_unitaire, 0) AS valeur
          FROM pertes p
-         JOIN ingredients i ON i.id = p.ingredient_id
+         JOIN articles i ON i.id = p.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
          JOIN activites a ON a.id = p.activite_id
@@ -94,7 +94,7 @@ const getRapportPertes = async (req, res) => {
            COALESCE(cp.prix_unitaire, 0) AS prix_unitaire,
            cp.quantite * COALESCE(cp.prix_unitaire, 0) AS valeur
          FROM client_pertes cp
-         JOIN ingredients i ON i.id = cp.ingredient_id
+         JOIN articles i ON i.id = cp.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
          WHERE ${wheres.join(' AND ')}
@@ -179,7 +179,7 @@ const getRapportCoutMatiere = async (req, res) => {
            AVG(sed.prix_unitaire) AS prix_moyen,
            SUM(sed.quantite * sed.prix_unitaire) AS cout_total
          FROM stock_entreprise_daily sed
-         JOIN ingredients i ON i.id = sed.ingredient_id
+         JOIN articles i ON i.id = sed.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
          WHERE ${wheres.join(' AND ')}
@@ -208,7 +208,7 @@ const getRapportCoutMatiere = async (req, res) => {
            AVG(scd.prix_unitaire) AS prix_moyen,
            SUM(scd.quantite * scd.prix_unitaire) AS cout_total
          FROM stock_client_daily scd
-         JOIN ingredients i ON i.id = scd.ingredient_id
+         JOIN articles i ON i.id = scd.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
          WHERE ${wheres.join(' AND ')}
@@ -296,7 +296,7 @@ const getRapportAppros = async (req, res) => {
            f.nom AS fournisseur_nom,
            a.nom AS activite_nom
          FROM stock_entreprise_daily sed
-         JOIN ingredients i ON i.id = sed.ingredient_id
+         JOIN articles i ON i.id = sed.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
          LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
@@ -328,7 +328,7 @@ const getRapportAppros = async (req, res) => {
            f.nom AS fournisseur_nom,
            NULL AS activite_nom
          FROM stock_client_daily scd
-         JOIN ingredients i ON i.id = scd.ingredient_id
+         JOIN articles i ON i.id = scd.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
          LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
@@ -395,7 +395,7 @@ const getRapportStock = async (req, res) => {
            ) AS prix_unitaire,
            SUM(CASE WHEN EXTRACT(YEAR FROM sed.date_appro) = EXTRACT(YEAR FROM NOW()) THEN sed.quantite ELSE 0 END) AS quantite
          FROM stock_entreprise_daily sed
-         JOIN ingredients i ON i.id = sed.ingredient_id
+         JOIN articles i ON i.id = sed.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
          JOIN activites a ON a.id = sed.activite_id
@@ -414,7 +414,7 @@ const getRapportStock = async (req, res) => {
            COALESCE(c.nom, 'Non classé') AS categorie,
            u.nom AS unite,
            NULL AS activite_nom,
-           cis.seuil_min,
+           i.seuil_min,
            COALESCE(
              (SELECT scd2.prix_unitaire FROM stock_client_daily scd2
               WHERE scd2.client_id = $1 AND scd2.ingredient_id = scd.ingredient_id
@@ -422,12 +422,11 @@ const getRapportStock = async (req, res) => {
            ) AS prix_unitaire,
            SUM(CASE WHEN EXTRACT(YEAR FROM scd.date_appro) = EXTRACT(YEAR FROM NOW()) THEN scd.quantite ELSE 0 END) AS quantite
          FROM stock_client_daily scd
-         JOIN ingredients i ON i.id = scd.ingredient_id
+         JOIN articles i ON i.id = scd.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
-         LEFT JOIN client_ingredient_selections cis ON cis.client_id = $1 AND cis.ingredient_id = scd.ingredient_id
          WHERE scd.client_id = $1
-         GROUP BY i.id, i.nom, c.nom, u.nom, cis.seuil_min, scd.ingredient_id
+         GROUP BY i.id, i.nom, c.nom, u.nom, i.seuil_min, scd.ingredient_id
          HAVING SUM(CASE WHEN EXTRACT(YEAR FROM scd.date_appro) = EXTRACT(YEAR FROM NOW()) THEN scd.quantite ELSE 0 END) > 0
          ORDER BY categorie, ingredient_nom`,
         [clientId]

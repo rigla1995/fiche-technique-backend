@@ -124,7 +124,7 @@ const listPertes = async (req, res) => {
       `SELECT p.id, p.ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
               p.quantite, p.type_perte, p.date_perte, p.created_at
        FROM pertes p
-       JOIN ingredients i ON i.id = p.ingredient_id
+       JOIN articles i ON i.id = p.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        WHERE p.activite_id = $1 ${extra}
        ORDER BY p.date_perte DESC, p.created_at DESC`,
@@ -167,7 +167,7 @@ const listClientPertes = async (req, res) => {
               cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at, cp.created_by,
               ub.nom AS created_by_nom
        FROM client_pertes cp
-       JOIN ingredients i ON i.id = cp.ingredient_id
+       JOIN articles i ON i.id = cp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN utilisateurs ub ON ub.id = cp.created_by
@@ -281,7 +281,7 @@ const listEntreprisePertes = async (req, res) => {
               ub.nom AS created_by_nom
        FROM pertes p
        JOIN activites a ON a.id = p.activite_id
-       JOIN ingredients i ON i.id = p.ingredient_id
+       JOIN articles i ON i.id = p.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN utilisateurs ub ON ub.id = p.created_by
@@ -517,7 +517,7 @@ const exportClientPertes = async (req, res) => {
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
               cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at, cp.created_by
        FROM client_pertes cp
-       JOIN ingredients i ON i.id = cp.ingredient_id
+       JOIN articles i ON i.id = cp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE ${wheres.join(' AND ')}
@@ -565,7 +565,7 @@ const exportEntreprisePertes = async (req, res) => {
               p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at, p.created_by
        FROM pertes p
        JOIN activites a ON a.id = p.activite_id
-       JOIN ingredients i ON i.id = p.ingredient_id
+       JOIN articles i ON i.id = p.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE ${wheres.join(' AND ')}
@@ -720,7 +720,7 @@ const listLaboPertes = async (req, res) => {
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
               lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte, lp.created_at
        FROM labo_pertes lp
-       JOIN ingredients i ON i.id = lp.ingredient_id
+       JOIN articles i ON i.id = lp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE ${wheres.join(' AND ')}
@@ -780,7 +780,7 @@ const exportLaboPerteExcel = async (req, res) => {
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
               lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte, lp.created_at
        FROM labo_pertes lp
-       JOIN ingredients i ON i.id = lp.ingredient_id
+       JOIN articles i ON i.id = lp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE ${wheres.join(' AND ')}
@@ -815,7 +815,7 @@ const exportClientPertesPdf = async (req, res) => {
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
               cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte
        FROM client_pertes cp
-       JOIN ingredients i ON i.id = cp.ingredient_id JOIN unites u ON i.unite_id = u.id
+       JOIN articles i ON i.id = cp.ingredient_id JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE ${wheres.join(' AND ')} ORDER BY cp.date_perte DESC, cp.created_at DESC`,
       params
@@ -855,7 +855,7 @@ const exportEntreprisePertesPdf = async (req, res) => {
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
               p.quantite, p.prix_unitaire, p.type_perte, p.date_perte
        FROM pertes p JOIN activites a ON a.id = p.activite_id
-       JOIN ingredients i ON i.id = p.ingredient_id JOIN unites u ON i.unite_id = u.id
+       JOIN articles i ON i.id = p.ingredient_id JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE ${wheres.join(' AND ')} ORDER BY p.date_perte DESC, p.created_at DESC`,
       params
@@ -897,7 +897,7 @@ const exportLaboPertesPdf = async (req, res) => {
       `SELECT lp.id, lp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
               lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte
-       FROM labo_pertes lp JOIN ingredients i ON i.id = lp.ingredient_id
+       FROM labo_pertes lp JOIN articles i ON i.id = lp.ingredient_id
        JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE ${wheres.join(' AND ')} ORDER BY lp.date_perte DESC, lp.created_at DESC`,
       params

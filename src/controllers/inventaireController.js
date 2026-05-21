@@ -37,7 +37,7 @@ const getLaboInventaireStock = async (req, res) => {
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie, lis.seuil_min
        FROM labo_ingredient_selections lis
-       JOIN ingredients i ON lis.ingredient_id = i.id
+       JOIN articles i ON lis.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE lis.labo_id = $1
@@ -370,7 +370,7 @@ const getActiviteInventaireStock = async (req, res) => {
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie, ais.seuil_min
        FROM activite_ingredient_selections ais
-       JOIN ingredients i ON ais.ingredient_id = i.id
+       JOIN articles i ON ais.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE ais.activite_id = $1
@@ -704,7 +704,7 @@ const getLaboInventaireHistorique = async (req, res) => {
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom,
               l.nom as labo_nom, ub.nom as created_by_nom
        FROM inventaires inv
-       LEFT JOIN ingredients i ON i.id = inv.ingredient_id
+       LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = inv.produit_id
@@ -774,7 +774,7 @@ const getActiviteInventaireHistorique = async (req, res) => {
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom,
               a.nom as activite_nom, ub.nom as created_by_nom
        FROM inventaires inv
-       LEFT JOIN ingredients i ON i.id = inv.ingredient_id
+       LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = inv.produit_id
@@ -880,7 +880,7 @@ const exportLaboInventaireExcel = async (req, res) => {
               COALESCE(u.nom, 'unité') as unite_nom,
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
-       LEFT JOIN ingredients i ON i.id = inv.ingredient_id
+       LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = inv.produit_id
@@ -1011,7 +1011,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
               COALESCE(u.nom, 'unité') as unite_nom,
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
-       LEFT JOIN ingredients i ON i.id = inv.ingredient_id
+       LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = inv.produit_id
@@ -1113,11 +1113,10 @@ const getClientInventaireStock = async (req, res) => {
     const ingRes = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie, cis.seuil_min
-       FROM client_ingredient_selections cis
-       JOIN ingredients i ON cis.ingredient_id = i.id
+       FROM articles i
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE cis.client_id = $1
+       WHERE i.client_id = $1
        ORDER BY categorie NULLS LAST, i.nom`,
       [clientId]
     );
@@ -1211,18 +1210,18 @@ const getClientInventaireStock = async (req, res) => {
          WHERE client_id = $1 AND ingredient_id IS NOT NULL
          GROUP BY ingredient_id
        )
-       SELECT cis.ingredient_id,
+       SELECT art.id AS ingredient_id,
          CASE WHEN li.ingredient_id IS NOT NULL
            THEN li.quantite_reelle + COALESCE(pa.qty,0) - COALESCE(pp.qty,0)
            ELSE COALESCE(aa.qty,0) - COALESCE(ap.qty,0)
          END as total_stock
-       FROM client_ingredient_selections cis
-       LEFT JOIN last_inv li   ON li.ingredient_id = cis.ingredient_id
-       LEFT JOIN post_appro pa ON pa.ingredient_id = cis.ingredient_id
-       LEFT JOIN post_pertes pp ON pp.ingredient_id = cis.ingredient_id
-       LEFT JOIN all_appro aa ON aa.ingredient_id = cis.ingredient_id
-       LEFT JOIN all_pertes ap ON ap.ingredient_id = cis.ingredient_id
-       WHERE cis.client_id = $1`,
+       FROM articles art
+       LEFT JOIN last_inv li   ON li.ingredient_id = art.id
+       LEFT JOIN post_appro pa ON pa.ingredient_id = art.id
+       LEFT JOIN post_pertes pp ON pp.ingredient_id = art.id
+       LEFT JOIN all_appro aa ON aa.ingredient_id = art.id
+       LEFT JOIN all_pertes ap ON ap.ingredient_id = art.id
+       WHERE art.client_id = $1`,
       [clientId]
     );
     const totalStockCliMap = {};
@@ -1419,7 +1418,7 @@ const getClientInventaireHistorique = async (req, res) => {
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom,
               ub.nom as created_by_nom
        FROM inventaires inv
-       LEFT JOIN ingredients i ON i.id = inv.ingredient_id
+       LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = inv.produit_id
@@ -1473,7 +1472,7 @@ const exportClientInventaireExcel = async (req, res) => {
               COALESCE(u.nom, 'unité') as unite_nom,
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
-       LEFT JOIN ingredients i ON i.id = inv.ingredient_id
+       LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = inv.produit_id
@@ -1573,7 +1572,7 @@ const inventaireHistoriqueQuery = async (pool, conditions, params) => {
             COALESCE(u.nom, 'unité') as unite_nom,
             COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
      FROM inventaires inv
-     LEFT JOIN ingredients i ON i.id = inv.ingredient_id
+     LEFT JOIN articles i ON i.id = inv.ingredient_id
      LEFT JOIN unites u ON u.id = i.unite_id
      LEFT JOIN categories c ON c.id = i.categorie_id
      LEFT JOIN produits p ON p.id = inv.produit_id

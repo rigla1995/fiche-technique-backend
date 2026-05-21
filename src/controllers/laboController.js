@@ -158,7 +158,7 @@ const getLaboIngredients = async (req, res) => {
       `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
               i.categorie_id,
               CASE WHEN lis.ingredient_id IS NOT NULL THEN true ELSE false END as selected
-       FROM ingredients i
+       FROM articles i
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN labo_ingredient_selections lis ON lis.ingredient_id = i.id AND lis.labo_id = $1
@@ -258,7 +258,7 @@ const getLaboStock = async (req, res) => {
                   * SUM(sld.quantite) FILTER (WHERE date_trunc('month', sld.date_appro) = date_trunc('month', CURRENT_DATE))
                 , 0) as cout_total
          FROM labo_ingredient_selections lis
-         JOIN ingredients i ON lis.ingredient_id = i.id
+         JOIN articles i ON lis.ingredient_id = i.id
          JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN stock_labo_daily sld ON sld.ingredient_id = i.id AND sld.labo_id = $1
@@ -678,7 +678,7 @@ const updateLaboStock = async (req, res) => {
               WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id AND sld.quantite > 0
               ORDER BY sld.date_appro DESC LIMIT 1) AS last_prix
            FROM produit_ingredients pi
-           JOIN ingredients i ON i.id = pi.ingredient_id
+           JOIN articles i ON i.id = pi.ingredient_id
            WHERE pi.produit_id = $1`,
           [produitId, laboId]
         ),
@@ -917,7 +917,7 @@ const createTransfer = async (req, res) => {
     for (const [ingId, totalQty] of Object.entries(ingQtyMap)) {
       const stockCourant = await computeStockCourant('labo', laboId, parseInt(ingId));
       if (totalQty > stockCourant) {
-        const ingRow = await pool.query('SELECT nom FROM ingredients WHERE id = $1', [ingId]);
+        const ingRow = await pool.query('SELECT nom FROM articles WHERE id = $1', [ingId]);
         const ingNom = ingRow.rows[0]?.nom ?? `ingrédient #${ingId}`;
         return res.status(422).json({
           message: `Stock insuffisant pour "${ingNom}"`,
@@ -1088,7 +1088,7 @@ const getTransferHistory = async (req, res) => {
               a.id as activite_id, a.nom as activite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom
        FROM labo_transfers lt
-       JOIN ingredients i ON i.id = lt.ingredient_id
+       JOIN articles i ON i.id = lt.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        JOIN activites a ON a.id = lt.activite_id
@@ -1150,7 +1150,7 @@ const getLaboHistorique = async (req, res) => {
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
               f.nom as fournisseur_nom, f.id as fournisseur_id
        FROM stock_labo_daily sld
-       JOIN ingredients i ON i.id = sld.ingredient_id
+       JOIN articles i ON i.id = sld.ingredient_id
        JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
@@ -1288,7 +1288,7 @@ const getActivityAssignments = async (req, res) => {
     const ingRes = await pool.query(
       `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie
        FROM labo_ingredient_selections lis
-       JOIN ingredients i ON lis.ingredient_id = i.id
+       JOIN articles i ON lis.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE lis.labo_id = $1
@@ -1396,7 +1396,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
               f.nom as fournisseur_nom, ub.nom as created_by_nom
        FROM stock_labo_daily sld
-       JOIN ingredients i ON i.id = sld.ingredient_id JOIN unites u ON u.id = i.unite_id
+       JOIN articles i ON i.id = sld.ingredient_id JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
        LEFT JOIN utilisateurs ub ON ub.id = sld.created_by
        WHERE ${conditions.join(' AND ')}
@@ -1597,7 +1597,7 @@ const getLaboPTRecipe = async (req, res) => {
                WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id AND sld.quantite > 0
                ORDER BY sld.date_appro DESC LIMIT 1) AS last_prix
        FROM produit_ingredients pi
-       JOIN ingredients i ON i.id = pi.ingredient_id
+       JOIN articles i ON i.id = pi.ingredient_id
        JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        WHERE pi.produit_id = $1
@@ -1719,7 +1719,7 @@ const exportLaboTransferExcel = async (req, res) => {
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
               ub.nom AS created_by_nom
        FROM labo_transfers lt
-       JOIN ingredients i ON i.id = lt.ingredient_id
+       JOIN articles i ON i.id = lt.ingredient_id
        JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        JOIN activites a ON a.id = lt.activite_id
@@ -2074,7 +2074,7 @@ async function exportLaboHistoriquePdf(req, res) {
               i.nom as ingredient_nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom, f.nom as fournisseur_nom
        FROM stock_labo_daily sld
-       JOIN ingredients i ON i.id = sld.ingredient_id JOIN unites u ON u.id = i.unite_id
+       JOIN articles i ON i.id = sld.ingredient_id JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
        WHERE ${conditions.join(' AND ')} ORDER BY sld.date_appro DESC, sld.updated_at DESC`,
       params
@@ -2109,7 +2109,7 @@ async function exportLaboTransferHistoriquePdf(req, res) {
               lt.activite_id, a.nom AS activite_nom,
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva
        FROM labo_transfers lt
-       JOIN ingredients i ON i.id = lt.ingredient_id
+       JOIN articles i ON i.id = lt.ingredient_id
        JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        JOIN activites a ON a.id = lt.activite_id

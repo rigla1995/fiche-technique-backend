@@ -4,19 +4,35 @@ const pool = require('../config/database');
 const mapCategorie = (row) => ({
   id: row.id,
   name: row.nom,
+  familleId: row.famille_id || null,
+  familleName: row.famille_nom || null,
+  clientId: row.client_id || null,
   createdAt: row.created_at,
 });
 
 const list = async (req, res) => {
-  const { onlyWithIngredients } = req.query;
+  const { onlyWithArticles, familleId } = req.query;
   try {
-    let query = 'SELECT * FROM categories ORDER BY nom';
-    if (onlyWithIngredients === 'true') {
-      query = `SELECT c.* FROM categories c
-               WHERE EXISTS (SELECT 1 FROM ingredients i WHERE i.categorie_id = c.id)
-               ORDER BY c.nom`;
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const params = [clientId];
+    let where = 'WHERE c.client_id = $1';
+
+    if (familleId) {
+      params.push(familleId);
+      where += ` AND c.famille_id = $${params.length}`;
     }
-    const result = await pool.query(query);
+    if (onlyWithArticles === 'true') {
+      where += ' AND EXISTS (SELECT 1 FROM articles a WHERE a.categorie_id = c.id)';
+    }
+
+    const result = await pool.query(
+      `SELECT c.*, f.nom as famille_nom
+       FROM categories c
+       LEFT JOIN familles f ON f.id = c.famille_id
+       ${where}
+       ORDER BY COALESCE(f.nom, 'zzz'), c.nom`,
+      params
+    );
     res.json(result.rows.map(mapCategorie));
   } catch (err) {
     console.error(err);
@@ -25,12 +41,15 @@ const list = async (req, res) => {
 };
 
 const getById = async (req, res) => {
-  const { id } = req.params;
   try {
-    const result = await pool.query('SELECT * FROM categories WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Catégorie introuvable' });
-    }
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const result = await pool.query(
+      `SELECT c.*, f.nom as famille_nom
+       FROM categories c LEFT JOIN familles f ON f.id = c.famille_id
+       WHERE c.id = $1 AND c.client_id = $2`,
+      [req.params.id, clientId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Catégorie introuvable' });
     res.json(mapCategorie(result.rows[0]));
   } catch (err) {
     console.error(err);
@@ -40,22 +59,25 @@ const getById = async (req, res) => {
 
 const create = async (req, res) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
+  const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = req.body.name || req.body.nom;
+  const famille_id = req.body.familleId || req.body.famille_id || null;
 
   try {
     const result = await pool.query(
-      'INSERT INTO categories (nom) VALUES ($1) RETURNING *',
-      [nom]
+      'INSERT INTO categories (nom, client_id, famille_id) VALUES ($1, $2, $3) RETURNING *',
+      [nom, clientId, famille_id]
     );
-    res.status(201).json(mapCategorie(result.rows[0]));
-  } catch (err) {
-    if (err.code === '23505') {
-      return res.status(409).json({ message: 'Cette catégorie existe déjà' });
+    const row = result.rows[0];
+    if (famille_id) {
+      const f = await pool.query('SELECT nom FROM familles WHERE id = $1', [famille_id]);
+      row.famille_nom = f.rows[0]?.nom || null;
     }
+    res.status(201).json(mapCategorie(row));
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ message: 'Cette catégorie existe déjà' });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -63,43 +85,47 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-  const { id } = req.params;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = req.body.name || req.body.nom;
+  const famille_id = req.body.familleId !== undefined ? req.body.familleId
+    : req.body.famille_id !== undefined ? req.body.famille_id : undefined;
+  const familleChanged = famille_id !== undefined;
 
   try {
     const result = await pool.query(
-      'UPDATE categories SET nom = $1 WHERE id = $2 RETURNING *',
-      [nom, id]
+      `UPDATE categories
+       SET nom = COALESCE($1, nom),
+           famille_id = CASE WHEN $3::boolean THEN $2 ELSE famille_id END
+       WHERE id = $4 AND client_id = $5 RETURNING *`,
+      [nom, famille_id ?? null, familleChanged, req.params.id, clientId]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Catégorie introuvable' });
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Catégorie introuvable' });
+    const row = result.rows[0];
+    if (row.famille_id) {
+      const f = await pool.query('SELECT nom FROM familles WHERE id = $1', [row.famille_id]);
+      row.famille_nom = f.rows[0]?.nom || null;
     }
-    res.json(mapCategorie(result.rows[0]));
+    res.json(mapCategorie(row));
   } catch (err) {
-    if (err.code === '23505') {
-      return res.status(409).json({ message: 'Cette catégorie existe déjà' });
-    }
+    if (err.code === '23505') return res.status(409).json({ message: 'Cette catégorie existe déjà' });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
 const remove = async (req, res) => {
-  const { id } = req.params;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const result = await pool.query('DELETE FROM categories WHERE id = $1 RETURNING id', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Catégorie introuvable' });
-    }
+    const result = await pool.query(
+      'DELETE FROM categories WHERE id = $1 AND client_id = $2 RETURNING id',
+      [req.params.id, clientId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Catégorie introuvable' });
     res.status(204).send();
   } catch (err) {
-    if (err.code === '23503') {
-      return res.status(409).json({ message: 'Cette catégorie est utilisée par des ingrédients et ne peut pas être supprimée' });
-    }
+    if (err.code === '23503') return res.status(409).json({ message: "Cette catégorie est utilisée par des articles et ne peut pas être supprimée" });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }

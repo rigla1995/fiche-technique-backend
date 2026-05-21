@@ -216,7 +216,7 @@ const listArticlesVendables = async (req, res) => {
               END as unite_nom
        FROM activite_articles_vendables av
        LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
-       LEFT JOIN ingredients i ON av.article_type = 'ingredient' AND i.id = av.article_id
+       LEFT JOIN articles i ON av.article_type = 'ingredient' AND i.id = av.article_id
        LEFT JOIN unites u ON i.unite_id = u.id
        WHERE av.activite_id = $1
        ORDER BY av.article_type, nom`,
@@ -310,7 +310,7 @@ const listArticlePrixPrestataire = async (req, res) => {
        JOIN activite_prestataires ap ON ap.id = app.activite_prestataire_id
        JOIN prestataires_livraison pl ON pl.id = ap.prestataire_id
        JOIN activite_articles_vendables av ON av.id = app.article_vendable_id
-       LEFT JOIN ingredients i ON av.article_type = 'ingredient' AND i.id = av.article_id
+       LEFT JOIN articles i ON av.article_type = 'ingredient' AND i.id = av.article_id
        LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
        WHERE av.activite_id = $1
        ORDER BY pl.nom, article_nom`,
@@ -461,7 +461,7 @@ const getVente = async (req, res) => {
               END as unite_nom
        FROM vente_lignes vl
        LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
-       LEFT JOIN ingredients i ON vl.article_type = 'ingredient' AND i.id = vl.article_id
+       LEFT JOIN articles i ON vl.article_type = 'ingredient' AND i.id = vl.article_id
        LEFT JOIN unites u ON i.unite_id = u.id
        WHERE vl.vente_id = $1`,
       [id]
@@ -652,7 +652,7 @@ const statsVentes = async (req, res) => {
        FROM ventes v
        JOIN vente_lignes vl ON vl.vente_id = v.id
        LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
-       LEFT JOIN ingredients i ON vl.article_type = 'ingredient' AND i.id = vl.article_id
+       LEFT JOIN articles i ON vl.article_type = 'ingredient' AND i.id = vl.article_id
        WHERE v.activite_id = $1 AND v.statut = 'confirmee'
          AND date_trunc('month', v.date_vente) = date_trunc('month', CURRENT_DATE)
        GROUP BY vl.article_type, vl.article_id,
@@ -722,7 +722,7 @@ const laboVentes = async (req, res) => {
         CASE WHEN lt.ingredient_id IS NOT NULL THEN u.nom ELSE NULL END as unite_nom,
         COALESCE(lt.quantite * lt.prix_unitaire, 0) as valeur
        FROM labo_transfers lt
-       LEFT JOIN ingredients i ON i.id = lt.ingredient_id
+       LEFT JOIN articles i ON i.id = lt.ingredient_id
        LEFT JOIN produits p ON p.id = lt.produit_id
        LEFT JOIN unites u ON i.unite_id = u.id
        JOIN activites a ON a.id = lt.activite_id
@@ -763,7 +763,7 @@ const laboVentesStats = async (req, res) => {
         CASE WHEN lt.ingredient_id IS NOT NULL THEN i.nom ELSE p.nom END as nom,
         SUM(lt.quantite * lt.prix_unitaire) as total_valeur
        FROM labo_transfers lt
-       LEFT JOIN ingredients i ON i.id = lt.ingredient_id
+       LEFT JOIN articles i ON i.id = lt.ingredient_id
        LEFT JOIN produits p ON p.id = lt.produit_id
        WHERE lt.labo_id = $1 AND lt.prix_unitaire IS NOT NULL
          AND date_trunc('month', lt.date_transfert) = date_trunc('month', CURRENT_DATE)

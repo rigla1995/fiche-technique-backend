@@ -146,13 +146,12 @@ const traiter = async (req, res) => {
       );
       const activiteId = actRes.rows[0].id;
 
-      // 3. Transfer ingredient selections → activite_ingredient_selections
+      // 3. Transfer article ownership → activite_ingredient_selections (all client articles assigned to new activité)
       await client.query(
         `INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire)
-         SELECT $1, cis.ingredient_id, i.prix
-         FROM client_ingredient_selections cis
-         LEFT JOIN ingredients i ON i.id = cis.ingredient_id
-         WHERE cis.client_id = $2
+         SELECT $1, a.id, a.prix
+         FROM articles a
+         WHERE a.client_id = $2
          ON CONFLICT DO NOTHING`,
         [activiteId, demandeur_id]
       );

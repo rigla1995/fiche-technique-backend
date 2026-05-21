@@ -62,14 +62,14 @@ const costSubquery = (alias = 'p') => `
     COALESCE((
       SELECT SUM(pi.portion * ${stockPriceLookup('i', alias)})
       FROM produit_ingredients pi
-      JOIN ingredients i ON pi.ingredient_id = i.id
+      JOIN articles i ON pi.ingredient_id = i.id
       WHERE pi.produit_id = ${alias}.id
     ), 0) +
     COALESCE((
       SELECT SUM(psp.portion * (
         SELECT COALESCE(SUM(pi2.portion * ${stockPriceLookup('i2', alias)}), 0)
         FROM produit_ingredients pi2
-        JOIN ingredients i2 ON pi2.ingredient_id = i2.id
+        JOIN articles i2 ON pi2.ingredient_id = i2.id
         WHERE pi2.produit_id = psp.sous_produit_id
       ))
       FROM produit_sous_produits psp
@@ -153,7 +153,7 @@ const getById = async (req, res) => {
               i.nom as ingredient_nom, i.prix as prix_unitaire,
               u.nom as unite_nom
        FROM produit_ingredients pi
-       JOIN ingredients i ON pi.ingredient_id = i.id
+       JOIN articles i ON pi.ingredient_id = i.id
        JOIN unites u ON pi.unite_id = u.id
        WHERE pi.produit_id = $1`,
       [id]
@@ -166,7 +166,7 @@ const getById = async (req, res) => {
                 COALESCE((
                   SELECT SUM(pi2.portion * COALESCE(i2.prix, 0))
                   FROM produit_ingredients pi2
-                  JOIN ingredients i2 ON pi2.ingredient_id = i2.id
+                  JOIN articles i2 ON pi2.ingredient_id = i2.id
                   WHERE pi2.produit_id = psp.sous_produit_id
                 ), 0), 3
               ) AS cout_unitaire
@@ -236,7 +236,7 @@ const create = async (req, res) => {
       const ingredientId = ing.ingredientId || ing.ingredient_id;
       const { portion } = ing;
       const ingRow = await client.query(
-        'SELECT unite_id FROM ingredients WHERE id = $1',
+        'SELECT unite_id FROM articles WHERE id = $1',
         [ingredientId]
       );
       if (ingRow.rows.length === 0) continue;
@@ -310,7 +310,7 @@ const update = async (req, res) => {
         const ingredientId = ing.ingredientId || ing.ingredient_id;
         const { portion } = ing;
         const ingRow = await client.query(
-          'SELECT unite_id FROM ingredients WHERE id = $1',
+          'SELECT unite_id FROM articles WHERE id = $1',
           [ingredientId]
         );
         if (ingRow.rows.length === 0) continue;
@@ -392,7 +392,7 @@ const addIngredient = async (req, res) => {
     }
 
     const ingredient = await pool.query(
-      'SELECT id FROM ingredients WHERE id = $1',
+      'SELECT id FROM articles WHERE id = $1',
       [ingredient_id]
     );
     if (ingredient.rows.length === 0) {
@@ -540,7 +540,7 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
               i.prix, 0
             ) as prix_unitaire
      FROM produit_ingredients pi
-     JOIN ingredients i ON pi.ingredient_id = i.id
+     JOIN articles i ON pi.ingredient_id = i.id
      JOIN unites u ON pi.unite_id = u.id
      LEFT JOIN categories c ON i.categorie_id = c.id
      WHERE pi.produit_id = $1
@@ -685,7 +685,7 @@ async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = 
     `SELECT pi.portion, i.id as ingredient_id, i.nom as ingredient_nom,
             u.nom as unite_nom, c.nom as categorie_nom
      FROM produit_ingredients pi
-     JOIN ingredients i ON pi.ingredient_id = i.id
+     JOIN articles i ON pi.ingredient_id = i.id
      JOIN unites u ON pi.unite_id = u.id
      LEFT JOIN categories c ON i.categorie_id = c.id
      WHERE pi.produit_id = $1
@@ -812,7 +812,7 @@ async function collectIngredientsStructured(produitId, label, depth, visitedProd
   const direct = await pool.query(
     `SELECT pi.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom, c.nom AS categorie_nom
      FROM produit_ingredients pi
-     JOIN ingredients i ON i.id = pi.ingredient_id
+     JOIN articles i ON i.id = pi.ingredient_id
      LEFT JOIN unites u ON i.unite_id = u.id
      LEFT JOIN categories c ON i.categorie_id = c.id
      WHERE pi.produit_id = $1

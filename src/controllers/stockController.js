@@ -10,7 +10,7 @@ const getStockClient = async (req, res) => {
     const result = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie,
-              cis.seuil_min,
+              i.seuil_min,
               COALESCE(SUM(scd.quantite) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
               last_scd.prix_unitaire,
               last_scd.date_appro,
@@ -20,8 +20,7 @@ const getStockClient = async (req, res) => {
                 AVG(scd.prix_unitaire) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE) AND scd.quantite > 0)
                 * SUM(scd.quantite) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE))
               , 0) as cout_total
-       FROM client_ingredient_selections cis
-       JOIN ingredients i ON cis.ingredient_id = i.id
+       FROM articles i
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN stock_client_daily scd ON scd.ingredient_id = i.id AND scd.client_id = $1
@@ -31,8 +30,8 @@ const getStockClient = async (req, res) => {
          WHERE client_id = $1 AND ingredient_id = i.id
          ORDER BY date_appro DESC, id DESC LIMIT 1
        ) last_scd ON true
-       WHERE cis.client_id = $1
-       GROUP BY i.id, i.nom, u.nom, c.nom, cis.seuil_min,
+       WHERE i.client_id = $1
+       GROUP BY i.id, i.nom, u.nom, c.nom, i.seuil_min,
                 last_scd.prix_unitaire, last_scd.date_appro, last_scd.fournisseur_id, last_scd.ref_facture
        ORDER BY categorie NULLS LAST, i.nom`,
       [req.user.gerant_parent_id || req.user.id]
@@ -132,7 +131,7 @@ const getStockClient = async (req, res) => {
          WHERE client_id = $1 AND quantite > 0 AND prix_unitaire IS NOT NULL
          GROUP BY ingredient_id
        )
-       SELECT cis.ingredient_id,
+       SELECT a.id AS ingredient_id,
               li.quantite_reelle        as inv_qty,
               li.date_inventaire        as inv_date,
               COALESCE(pa.qty, 0)       as post_appro_qty,
@@ -143,17 +142,17 @@ const getStockClient = async (req, res) => {
               COALESCE(ap.qty, 0)       as all_pertes_qty,
               COALESCE(apu.qty, 0)      as all_pt_usage_qty,
               apy.avg_prix              as avg_prix_all
-       FROM client_ingredient_selections cis
-       LEFT JOIN last_inv li        ON li.ingredient_id = cis.ingredient_id
-       LEFT JOIN post_appro pa      ON pa.ingredient_id = cis.ingredient_id
-       LEFT JOIN post_pertes pp     ON pp.ingredient_id = cis.ingredient_id
-       LEFT JOIN post_pt_usage ppu  ON ppu.ingredient_id = cis.ingredient_id
-       LEFT JOIN avg_prix_post app  ON app.ingredient_id = cis.ingredient_id
-       LEFT JOIN all_appro aa      ON aa.ingredient_id = cis.ingredient_id
-       LEFT JOIN all_pertes ap     ON ap.ingredient_id = cis.ingredient_id
-       LEFT JOIN all_pt_usage apu  ON apu.ingredient_id = cis.ingredient_id
-       LEFT JOIN avg_prix_all apy  ON apy.ingredient_id = cis.ingredient_id
-       WHERE cis.client_id = $1`,
+       FROM articles a
+       LEFT JOIN last_inv li        ON li.ingredient_id = a.id
+       LEFT JOIN post_appro pa      ON pa.ingredient_id = a.id
+       LEFT JOIN post_pertes pp     ON pp.ingredient_id = a.id
+       LEFT JOIN post_pt_usage ppu  ON ppu.ingredient_id = a.id
+       LEFT JOIN avg_prix_post app  ON app.ingredient_id = a.id
+       LEFT JOIN all_appro aa      ON aa.ingredient_id = a.id
+       LEFT JOIN all_pertes ap     ON ap.ingredient_id = a.id
+       LEFT JOIN all_pt_usage apu  ON apu.ingredient_id = a.id
+       LEFT JOIN avg_prix_all apy  ON apy.ingredient_id = a.id
+       WHERE a.client_id = $1`,
       [req.user.gerant_parent_id || req.user.id]
     );
     const invBaselineCliMap = {};
@@ -395,7 +394,7 @@ const getStockEntreprise = async (req, res) => {
                 * SUM(sed.quantite) FILTER (WHERE date_trunc('month', sed.date_appro) = date_trunc('month', CURRENT_DATE))
               , 0) as cout_total
        FROM activite_ingredient_selections ais
-       JOIN ingredients i ON ais.ingredient_id = i.id
+       JOIN articles i ON ais.ingredient_id = i.id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN stock_entreprise_daily sed ON sed.ingredient_id = i.id AND sed.activite_id = $1
@@ -1010,7 +1009,7 @@ const getHistoriqueAppro = async (req, res) => {
                 i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie_nom
          FROM stock_entreprise_daily sed
-         JOIN ingredients i ON i.id = sed.ingredient_id
+         JOIN articles i ON i.id = sed.ingredient_id
          JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
@@ -1083,7 +1082,7 @@ const getHistoriqueAppro = async (req, res) => {
                 i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie_nom
          FROM stock_client_daily scd
-         JOIN ingredients i ON i.id = scd.ingredient_id
+         JOIN articles i ON i.id = scd.ingredient_id
          JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
@@ -1342,7 +1341,7 @@ const exportHistoriqueExcel = async (req, res) => {
                 u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
                 sed.taux_tva, sed.prix_unitaire_tva, ub.nom as created_by_nom
          FROM stock_entreprise_daily sed
-         JOIN ingredients i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
+         JOIN articles i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
          LEFT JOIN utilisateurs ub ON ub.id = sed.created_by
          WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
@@ -1388,7 +1387,7 @@ const exportHistoriqueExcel = async (req, res) => {
                   u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
                   scd.taux_tva, scd.prix_unitaire_tva, ub.nom as created_by_nom
            FROM stock_client_daily scd
-           JOIN ingredients i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
+           JOIN articles i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
            LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
            LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
            WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
@@ -1627,8 +1626,8 @@ const updateSeuilMinClient = async (req, res) => {
   const { seuilMin } = req.body;
   try {
     await pool.query(
-      `UPDATE client_ingredient_selections SET seuil_min = $1 WHERE client_id = $2 AND ingredient_id = $3`,
-      [seuilMin ?? null, req.user.gerant_parent_id || req.user.id, ingredientId]
+      `UPDATE articles SET seuil_min = $1 WHERE id = $2 AND client_id = $3`,
+      [seuilMin ?? null, ingredientId, req.user.gerant_parent_id || req.user.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -1681,14 +1680,13 @@ const getClientIngredientSelections = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const result = await pool.query(
-      `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
-              i.categorie_id as "categorieId"
-       FROM client_ingredient_selections cis
-       JOIN ingredients i ON i.id = cis.ingredient_id
-       JOIN unites u ON i.unite_id = u.id
-       LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE cis.client_id = $1
-       ORDER BY c.nom NULLS LAST, i.nom`,
+      `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+              a.categorie_id as "categorieId"
+       FROM articles a
+       JOIN unites u ON a.unite_id = u.id
+       LEFT JOIN categories c ON a.categorie_id = c.id
+       WHERE a.client_id = $1
+       ORDER BY c.nom NULLS LAST, a.nom`,
       [clientId]
     );
     res.json(result.rows);
@@ -1741,7 +1739,7 @@ const exportHistoriquePdf = async (req, res) => {
                 u.nom as unite_nom, COALESCE(c.nom,'Sans catégorie') as categorie_nom,
                 sed.taux_tva, sed.prix_unitaire_tva
          FROM stock_entreprise_daily sed
-         JOIN ingredients i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
+         JOIN articles i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
          WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
          ORDER BY sed.date_appro DESC, i.nom`, params
@@ -1762,7 +1760,7 @@ const exportHistoriquePdf = async (req, res) => {
                 u.nom as unite_nom, COALESCE(c.nom,'Sans catégorie') as categorie_nom,
                 scd.taux_tva, scd.prix_unitaire_tva
          FROM stock_client_daily scd
-         JOIN ingredients i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
+         JOIN articles i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
          WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
          ORDER BY scd.date_appro DESC, i.nom`, params

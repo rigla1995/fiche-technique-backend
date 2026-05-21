@@ -8,11 +8,7 @@ const list = async (req, res) => {
     let query, params = [];
 
     if (isSuperAdmin) {
-      query = hasIngredients === 'true'
-        ? `SELECT d.* FROM domaines_activite d
-           WHERE EXISTS (SELECT 1 FROM ingredient_domaines id WHERE id.domaine_id = d.id)
-           ORDER BY d.nom`
-        : 'SELECT * FROM domaines_activite ORDER BY nom';
+      query = 'SELECT * FROM domaines_activite ORDER BY nom';
     } else {
       // Return only domaines linked to the client:
       // - independant: via client_domaines

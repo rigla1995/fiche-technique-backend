@@ -276,17 +276,17 @@ const getActiviteIngredients = async (req, res) => {
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
     const result = await pool.query(
-          `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
-                  i.categorie_id,
-                  i.prix as prix,
+          `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+                  a.categorie_id,
+                  a.prix as prix,
                   ais.prix_unitaire,
                   CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
-           FROM ingredients i
-           JOIN unites u ON i.unite_id = u.id
-           LEFT JOIN categories c ON i.categorie_id = c.id
-           LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = i.id AND ais.activite_id = $1
-           WHERE (i.client_id IS NULL OR i.client_id = $2)
-           ORDER BY c.nom NULLS LAST, i.nom`,
+           FROM articles a
+           JOIN unites u ON a.unite_id = u.id
+           LEFT JOIN categories c ON a.categorie_id = c.id
+           LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = a.id AND ais.activite_id = $1
+           WHERE a.client_id = $2
+           ORDER BY c.nom NULLS LAST, a.nom`,
           [id, req.user.gerant_parent_id || req.user.id]
         );
 
@@ -454,14 +454,14 @@ const getActiviteSelectedIngredients = async (req, res) => {
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
 
     const result = await pool.query(
-      `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
-              i.categorie_id as "categorieId"
+      `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+              a.categorie_id as "categorieId"
        FROM activite_ingredient_selections ais
-       JOIN ingredients i ON i.id = ais.ingredient_id
-       JOIN unites u ON i.unite_id = u.id
-       LEFT JOIN categories c ON i.categorie_id = c.id
+       JOIN articles a ON a.id = ais.ingredient_id
+       JOIN unites u ON a.unite_id = u.id
+       LEFT JOIN categories c ON a.categorie_id = c.id
        WHERE ais.activite_id = $1
-       ORDER BY c.nom NULLS LAST, i.nom`,
+       ORDER BY c.nom NULLS LAST, a.nom`,
       [id]
     );
     res.json(result.rows);
@@ -476,16 +476,16 @@ const getTypeSelectedIngredients = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const result = await pool.query(
-      `SELECT DISTINCT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
-              i.categorie_id as "categorieId"
+      `SELECT DISTINCT art.id, art.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+              art.categorie_id as "categorieId"
        FROM activite_ingredient_selections ais
-       JOIN activites a ON a.id = ais.activite_id
-       JOIN profil_entreprise pe ON pe.id = a.entreprise_id
-       JOIN ingredients i ON i.id = ais.ingredient_id
-       JOIN unites u ON i.unite_id = u.id
-       LEFT JOIN categories c ON i.categorie_id = c.id
+       JOIN activites act ON act.id = ais.activite_id
+       JOIN profil_entreprise pe ON pe.id = act.entreprise_id
+       JOIN articles art ON art.id = ais.ingredient_id
+       JOIN unites u ON art.unite_id = u.id
+       LEFT JOIN categories c ON art.categorie_id = c.id
        WHERE pe.client_id = $1
-       ORDER BY categorie NULLS LAST, i.nom`,
+       ORDER BY categorie NULLS LAST, art.nom`,
       [clientId]
     );
     res.json(result.rows);
@@ -503,65 +503,14 @@ const getCatalogueGlobalIngredients = async (req, res) => {
     const entrepriseId = entRes.rows[0].id;
 
     const [ings, acts, labs, actSels, laboSels] = await Promise.all([
-      // Filter ingredients by domain: show global (no domain) + domains matching this company's activités/profil
-      // Also include any ingredient currently selected for this enterprise (even if out of domain)
-      // so the catalogue accurately reflects stock assignments and users can deselect them.
       pool.query(
-        `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie
-         FROM ingredients i
-         JOIN unites u ON u.id = i.unite_id
-         LEFT JOIN categories c ON c.id = i.categorie_id
-         WHERE (
-           -- Admin ingredients: domain-filtered + any currently assigned (even out-of-domain)
-           i.client_id IS NULL
-           AND (
-             (
-               NOT EXISTS (SELECT 1 FROM ingredient_domaines id2 WHERE id2.ingredient_id = i.id)
-               OR EXISTS (
-                 SELECT 1 FROM ingredient_domaines id2
-                 WHERE id2.ingredient_id = i.id
-                   AND id2.domaine_id IN (
-                     SELECT DISTINCT domaine_id FROM (
-                       SELECT pe.domaine_id FROM profil_entreprise pe WHERE pe.id = $1
-                       UNION ALL
-                       SELECT a.domaine_id FROM activites a WHERE a.entreprise_id = $1 AND a.domaine_id IS NOT NULL
-                       UNION ALL
-                       SELECT cd.domaine_id FROM client_domaines cd WHERE cd.client_id = $2
-                     ) d WHERE d.domaine_id IS NOT NULL
-                   )
-               )
-             )
-             OR EXISTS (
-               SELECT 1 FROM activite_ingredient_selections ais
-               JOIN activites a ON a.id = ais.activite_id
-               WHERE a.entreprise_id = $1 AND ais.ingredient_id = i.id
-             )
-             OR EXISTS (
-               SELECT 1 FROM labo_ingredient_selections lis
-               JOIN labos l ON l.id = lis.labo_id
-               WHERE l.entreprise_id = $1 AND lis.ingredient_id = i.id
-             )
-           )
-         )
-         OR (
-           -- Client-owned ingredients: only show if currently assigned to this enterprise
-           -- (e.g. migrated from client stock) so the catalogue count matches what stock shows
-           i.client_id = $2
-           AND (
-             EXISTS (
-               SELECT 1 FROM activite_ingredient_selections ais
-               JOIN activites a ON a.id = ais.activite_id
-               WHERE a.entreprise_id = $1 AND ais.ingredient_id = i.id
-             )
-             OR EXISTS (
-               SELECT 1 FROM labo_ingredient_selections lis
-               JOIN labos l ON l.id = lis.labo_id
-               WHERE l.entreprise_id = $1 AND lis.ingredient_id = i.id
-             )
-           )
-         )
-         ORDER BY COALESCE(c.nom, 'Sans catégorie'), i.nom`,
-        [entrepriseId, clientId]
+        `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie
+         FROM articles a
+         JOIN unites u ON u.id = a.unite_id
+         LEFT JOIN categories c ON c.id = a.categorie_id
+         WHERE a.client_id = $1
+         ORDER BY COALESCE(c.nom, 'Sans catégorie'), a.nom`,
+        [clientId]
       ),
       pool.query('SELECT id, nom FROM activites WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),
       pool.query('SELECT id, nom FROM labos WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),

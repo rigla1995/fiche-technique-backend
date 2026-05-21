@@ -14,7 +14,8 @@ const migrate = require('./config/migrate');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const unitesRoutes = require('./routes/unites');
-const ingredientsRoutes = require('./routes/ingredients');
+const articlesRoutes = require('./routes/articles');
+const famillesRoutes = require('./routes/familles');
 const produitsRoutes = require('./routes/produits');
 const categoriesRoutes = require('./routes/categories');
 const entrepriseRoutes = require('./routes/entreprise');
@@ -58,7 +59,10 @@ app.use('/admin', adminRoutes);
 
 // French routes
 app.use('/api/unites', unitesRoutes);
-app.use('/api/ingredients', ingredientsRoutes);
+app.use('/api/articles', articlesRoutes);
+app.use('/api/familles', famillesRoutes);
+// Legacy alias kept for compatibility during FE migration
+app.use('/api/ingredients', articlesRoutes);
 app.use('/api/produits', produitsRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/entreprise', entrepriseRoutes);

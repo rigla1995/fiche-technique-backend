@@ -226,27 +226,7 @@ const traiter = async (req, res) => {
         categorieId = catRes.rows[0].id;
       }
 
-      if (uniteId) {
-        // Insert global ingredient (client_id NULL = catalogue global)
-        const ingRes = await pool.query(
-          `INSERT INTO ingredients (nom, unite_id, categorie_id, client_id, prix)
-           VALUES ($1, $2, $3, NULL, NULL)
-           ON CONFLICT DO NOTHING RETURNING id`,
-          [finalNomIngredient, uniteId, categorieId]
-        );
-        const ingredientId = ingRes.rows[0]?.id;
-
-        // Link to domaines via ingredient_domaines junction table
-        if (ingredientId && finalDomaineIds.length > 0) {
-          for (const domaineId of finalDomaineIds) {
-            await pool.query(
-              `INSERT INTO ingredient_domaines (ingredient_id, domaine_id)
-               VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-              [ingredientId, domaineId]
-            ).catch(() => {});
-          }
-        }
-      }
+      // Admin no longer creates global articles — each client manages their own referential
     }
 
     // Update abonnement_config when supplement request is validated
