@@ -173,7 +173,7 @@ const getById = async (req, res) => {
        FROM produit_sous_produits psp
        JOIN produits p ON psp.sous_produit_id = p.id
        WHERE psp.produit_id = $1`,
-      [id, req.user.gerant_parent_id || req.user.id]
+      [id]
     );
 
     res.json({
