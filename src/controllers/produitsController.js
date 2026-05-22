@@ -164,7 +164,7 @@ const getById = async (req, res) => {
               p.nom as sous_produit_nom,
               ROUND(
                 COALESCE((
-                  SELECT SUM(pi2.portion * COALESCE(i2.prix, 0))
+                  SELECT SUM(pi2.portion * 0)
                   FROM produit_ingredients pi2
                   JOIN articles i2 ON pi2.ingredient_id = i2.id
                   WHERE pi2.produit_id = psp.sous_produit_id
