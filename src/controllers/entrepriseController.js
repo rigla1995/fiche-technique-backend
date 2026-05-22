@@ -107,6 +107,13 @@ const createActivite = async (req, res) => {
 
     const entreprise = entrepriseRes.rows[0];
 
+    const nameCheck = await pool.query(
+      'SELECT id FROM activites WHERE entreprise_id = $1 AND LOWER(nom) = LOWER($2)',
+      [entreprise.id, nom.trim()]
+    );
+    if (nameCheck.rows.length > 0)
+      return res.status(409).json({ message: 'Une activité avec ce nom existe déjà' });
+
     const result = await pool.query(
       `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, labo_id)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
@@ -146,6 +153,15 @@ const updateActivite = async (req, res) => {
     );
     if (entreprise.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
     const entrepriseId = entreprise.rows[0].id;
+
+    if (nom) {
+      const nameCheck = await pool.query(
+        'SELECT id FROM activites WHERE entreprise_id = $1 AND LOWER(nom) = LOWER($2) AND id != $3',
+        [entrepriseId, nom.trim(), id]
+      );
+      if (nameCheck.rows.length > 0)
+        return res.status(409).json({ message: 'Une activité avec ce nom existe déjà' });
+    }
 
     // Validate laboId belongs to this entreprise if provided
     if (laboId) {

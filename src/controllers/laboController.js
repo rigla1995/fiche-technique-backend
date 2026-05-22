@@ -31,6 +31,14 @@ const createLabo = async (req, res) => {
       return res.status(400).json({ message: 'Profil entreprise introuvable' });
     const entrepriseId = peRes.rows[0].id;
 
+    // Check nom uniqueness
+    const nomCheck = await pool.query(
+      'SELECT id FROM labos WHERE entreprise_id = $1 AND LOWER(nom) = LOWER($2)',
+      [entrepriseId, nom.trim()]
+    );
+    if (nomCheck.rows.length > 0)
+      return res.status(409).json({ message: 'Un labo avec ce nom existe déjà' });
+
     // Check refLabo uniqueness
     const refCheck = await pool.query(
       'SELECT id FROM labos WHERE entreprise_id = $1 AND LOWER(ref_labo) = LOWER($2)',
@@ -1670,6 +1678,14 @@ const updateLabo = async (req, res) => {
     if (peRes.rows.length === 0)
       return res.status(400).json({ message: 'Profil entreprise introuvable' });
     const entrepriseId = peRes.rows[0].id;
+
+    const nomCheck = await pool.query(
+      'SELECT id FROM labos WHERE entreprise_id = $1 AND LOWER(nom) = LOWER($2) AND id != $3',
+      [entrepriseId, nom.trim(), laboId]
+    );
+    if (nomCheck.rows.length > 0)
+      return res.status(409).json({ message: 'Un labo avec ce nom existe déjà' });
+
     const tel = referentTel?.trim() || null;
     const result = await pool.query(
       `UPDATE labos SET nom = $1, referent_tel = $2, adresse = $3, updated_at = NOW()
