@@ -54,7 +54,7 @@ const stockPriceLookup = (ingAlias, productAlias) => `COALESCE(
        AND scd.prix_unitaire IS NOT NULL
        AND EXTRACT(YEAR FROM scd.date_appro) = EXTRACT(YEAR FROM CURRENT_DATE)
      ORDER BY scd.date_appro DESC LIMIT 1),
-    ${ingAlias}.prix, 0
+    0
   )`;
 
 const costSubquery = (alias = 'p') => `
