@@ -151,10 +151,12 @@ const getById = async (req, res) => {
     const ingredients = await pool.query(
       `SELECT pi.id, pi.ingredient_id, pi.portion, pi.unite_id,
               i.nom as ingredient_nom, NULL::numeric as prix_unitaire,
-              u.nom as unite_nom
+              u.nom as unite_nom,
+              c.nom as categorie_nom
        FROM produit_ingredients pi
        JOIN articles i ON pi.ingredient_id = i.id
        JOIN unites u ON pi.unite_id = u.id
+       LEFT JOIN categories c ON i.categorie_id = c.id
        WHERE pi.produit_id = $1`,
       [id]
     );
@@ -187,6 +189,7 @@ const getById = async (req, res) => {
         ingredientName: r.ingredient_nom,
         unitPrice: parseFloat(r.prix_unitaire),
         unitName: r.unite_nom,
+        categorieName: r.categorie_nom || null,
       })),
       subProducts: sousProduits.rows.map((r) => {
         const unitCost = parseFloat(r.cout_unitaire || 0);
