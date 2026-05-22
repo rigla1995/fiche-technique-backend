@@ -41,7 +41,7 @@ const list = async (req, res) => {
       let where = categorieId ? `WHERE i.categorie_id = $${params.push(categorieId)}` : '';
       query = `
         SELECT i.*, u.nom as unite_nom, util.nom as client_nom, c.nom as categorie_nom,
-               NULL::numeric as client_prix, i.prix as effective_prix,
+               NULL::numeric as client_prix, NULL::numeric as effective_prix,
                ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
         FROM ingredients i
         JOIN unites u ON i.unite_id = u.id
@@ -88,7 +88,7 @@ const list = async (req, res) => {
       query = `
         SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
                NULL::numeric as client_prix,
-               i.prix as effective_prix,
+               NULL::numeric as effective_prix,
                (cis.ingredient_id IS NOT NULL) as selected,
                ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
         FROM ingredients i
@@ -115,7 +115,7 @@ const getById = async (req, res) => {
     const result = await pool.query(
       `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
               NULL::numeric as client_prix,
-              i.prix as effective_prix,
+              NULL::numeric as effective_prix,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
        FROM ingredients i
        JOIN unites u ON i.unite_id = u.id
@@ -165,7 +165,7 @@ const create = async (req, res) => {
 
     const result = await pool.query(
       `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
-              NULL::numeric as client_prix, i.prix as effective_prix,
+              NULL::numeric as client_prix, NULL::numeric as effective_prix,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
        FROM ingredients i JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id
@@ -234,7 +234,7 @@ const update = async (req, res) => {
 
     const result = await pool.query(
       `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
-              NULL::numeric as client_prix, i.prix as effective_prix,
+              NULL::numeric as client_prix, NULL::numeric as effective_prix,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
        FROM ingredients i JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id

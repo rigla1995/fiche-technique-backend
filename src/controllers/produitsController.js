@@ -150,7 +150,7 @@ const getById = async (req, res) => {
 
     const ingredients = await pool.query(
       `SELECT pi.id, pi.ingredient_id, pi.portion, pi.unite_id,
-              i.nom as ingredient_nom, i.prix as prix_unitaire,
+              i.nom as ingredient_nom, NULL::numeric as prix_unitaire,
               u.nom as unite_nom
        FROM produit_ingredients pi
        JOIN articles i ON pi.ingredient_id = i.id
@@ -537,7 +537,7 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
                WHERE scd.ingredient_id = i.id AND scd.client_id = $2
                  AND scd.prix_unitaire IS NOT NULL
                ORDER BY scd.date_appro DESC LIMIT 1),
-              i.prix, 0
+              0
             ) as prix_unitaire
      FROM produit_ingredients pi
      JOIN articles i ON pi.ingredient_id = i.id

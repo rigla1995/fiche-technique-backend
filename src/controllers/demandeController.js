@@ -149,7 +149,7 @@ const traiter = async (req, res) => {
       // 3. Transfer article ownership → activite_ingredient_selections (all client articles assigned to new activité)
       await client.query(
         `INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire)
-         SELECT $1, a.id, a.prix
+         SELECT $1, a.id, NULL::numeric
          FROM articles a
          WHERE a.client_id = $2
          ON CONFLICT DO NOTHING`,

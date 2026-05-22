@@ -4,8 +4,6 @@ const pool = require('../config/database');
 const mapArticle = (row) => ({
   id: row.id,
   name: row.nom,
-  price: row.prix !== undefined && row.prix !== null ? parseFloat(row.prix) : null,
-  seuilMin: row.seuil_min !== undefined && row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
   unitId: row.unite_id,
   unitName: row.unite_nom,
   unit: row.unite_id ? { id: row.unite_id, name: row.unite_nom } : null,
@@ -77,10 +75,8 @@ const create = async (req, res) => {
 
   const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = req.body.name || req.body.nom;
-  const prix = req.body.price !== undefined ? req.body.price : (req.body.prix !== undefined ? req.body.prix : null);
   const unite_id = req.body.unitId || req.body.unite_id;
   const categorie_id = req.body.categorieId || req.body.categorie_id || null;
-  const seuil_min = req.body.seuilMin !== undefined ? req.body.seuilMin : (req.body.seuil_min !== undefined ? req.body.seuil_min : null);
 
   const client = await pool.connect();
   try {
@@ -104,9 +100,9 @@ const create = async (req, res) => {
     }
 
     const inserted = await client.query(
-      `INSERT INTO articles (nom, prix, unite_id, client_id, categorie_id, seuil_min)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [nom, prix !== null ? prix : null, unite_id, clientId, categorie_id, seuil_min]
+      `INSERT INTO articles (nom, unite_id, client_id, categorie_id)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [nom, unite_id, clientId, categorie_id]
     );
     const newId = inserted.rows[0].id;
     await client.query('COMMIT');
@@ -133,15 +129,10 @@ const update = async (req, res) => {
 
   const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = req.body.name || req.body.nom;
-  const prixVal = req.body.price !== undefined ? req.body.price : req.body.prix;
-  const prixStr = prixVal !== undefined && prixVal !== null ? String(prixVal) : null;
   const unite_id = req.body.unitId || req.body.unite_id;
   const categorie_id = req.body.categorieId !== undefined ? req.body.categorieId
     : req.body.categorie_id !== undefined ? req.body.categorie_id : undefined;
   const catChanged = categorie_id !== undefined;
-  const seuilMin = req.body.seuilMin !== undefined ? req.body.seuilMin
-    : req.body.seuil_min !== undefined ? req.body.seuil_min : undefined;
-  const seuilChanged = seuilMin !== undefined;
 
   const client = await pool.connect();
   try {
@@ -150,13 +141,11 @@ const update = async (req, res) => {
     const updated = await client.query(
       `UPDATE articles
        SET nom = COALESCE($1, nom),
-           prix = CASE WHEN $2::text IS NOT NULL THEN $2::numeric ELSE prix END,
-           unite_id = COALESCE($3, unite_id),
-           categorie_id = CASE WHEN $5::boolean THEN $4 ELSE categorie_id END,
-           seuil_min = CASE WHEN $7::boolean THEN $6 ELSE seuil_min END,
+           unite_id = COALESCE($2, unite_id),
+           categorie_id = CASE WHEN $4::boolean THEN $3 ELSE categorie_id END,
            updated_at = NOW()
-       WHERE id = $8 AND client_id = $9 RETURNING id`,
-      [nom, prixStr, unite_id, categorie_id ?? null, catChanged, seuilMin ?? null, seuilChanged, req.params.id, clientId]
+       WHERE id = $5 AND client_id = $6 RETURNING id`,
+      [nom, unite_id, categorie_id ?? null, catChanged, req.params.id, clientId]
     );
     if (updated.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -196,7 +185,6 @@ const remove = async (req, res) => {
   }
 };
 
-// Check if client has any articles (for sidebar progressive disclosure)
 const hasArticles = async (req, res) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;

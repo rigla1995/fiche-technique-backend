@@ -14,11 +14,6 @@ const validateCreate = [
     if (!uniteId || parseInt(uniteId) < 1) throw new Error('Unité invalide');
     return true;
   }),
-  body().custom((b) => {
-    const prix = b.price !== undefined ? b.price : b.prix;
-    if (prix !== undefined && prix !== null && parseFloat(prix) < 0) throw new Error('Prix invalide (doit être >= 0)');
-    return true;
-  }),
 ];
 
 router.get('/', authenticate, requireClient, list);
@@ -28,12 +23,9 @@ router.post('/', authenticate, requireClient, validateCreate, create);
 router.put('/:id', authenticate, requireClient, [
   body('name').optional().trim().notEmpty(),
   body('nom').optional().trim().notEmpty(),
-  body('price').optional({ nullable: true }).isFloat({ min: 0 }),
-  body('prix').optional({ nullable: true }).isFloat({ min: 0 }),
   body('unitId').optional().isInt({ min: 1 }),
   body('unite_id').optional().isInt({ min: 1 }),
   body('categorieId').optional({ nullable: true }).isInt({ min: 1 }),
-  body('seuilMin').optional({ nullable: true }).isFloat({ min: 0 }),
 ], update);
 router.delete('/:id', authenticate, requireClient, remove);
 

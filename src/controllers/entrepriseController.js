@@ -294,7 +294,7 @@ const getActiviteIngredients = async (req, res) => {
     const result = await pool.query(
           `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
                   a.categorie_id,
-                  a.prix as prix,
+                  NULL::numeric as prix,
                   ais.prix_unitaire,
                   CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
            FROM articles a
