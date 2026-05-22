@@ -602,9 +602,104 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
   };
 }
 
+async function buildDpPriceMap(actId, clientId) {
+  const priceMap = {};
+  if (actId) {
+    const r1 = await pool.query(
+      `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+       FROM stock_entreprise_daily sed
+       JOIN activites a ON sed.activite_id = a.id
+       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+       WHERE sed.activite_id = $1 AND pe.client_id = $2
+         AND sed.prix_unitaire IS NOT NULL AND sed.prix_unitaire > 0
+       ORDER BY ingredient_id, date_appro DESC`,
+      [actId, clientId]
+    );
+    r1.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+    const actRes = await pool.query('SELECT labo_id FROM activites WHERE id = $1', [actId]);
+    const laboId = actRes.rows[0]?.labo_id;
+    if (laboId) {
+      const r2 = await pool.query(
+        `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+         FROM stock_labo_daily
+         WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+         ORDER BY ingredient_id, date_appro DESC`,
+        [laboId]
+      );
+      r2.rows.forEach((row) => { if (!priceMap[row.ingredient_id]) priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+    }
+  } else {
+    const r = await pool.query(
+      `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+       FROM stock_client_daily
+       WHERE client_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+       ORDER BY ingredient_id, date_appro DESC`,
+      [clientId]
+    );
+    r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+  }
+  return priceMap;
+}
+
+async function buildMpPriceMap(actId, clientId) {
+  const priceMap = {};
+  if (actId) {
+    const r1 = await pool.query(
+      `WITH last_inv AS (
+        SELECT DISTINCT ON (ingredient_id) ingredient_id, date_inventaire
+        FROM inventaires
+        WHERE activite_id = $1 AND ingredient_id IS NOT NULL
+        ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
+      )
+      SELECT sed.ingredient_id, AVG(sed.prix_unitaire) AS avg_prix
+      FROM stock_entreprise_daily sed
+      JOIN activites a ON sed.activite_id = a.id
+      JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+      LEFT JOIN last_inv li ON li.ingredient_id = sed.ingredient_id
+      WHERE sed.activite_id = $1 AND pe.client_id = $2
+        AND sed.prix_unitaire IS NOT NULL AND sed.prix_unitaire > 0
+        AND (li.date_inventaire IS NULL OR sed.date_appro >= li.date_inventaire)
+      GROUP BY sed.ingredient_id`,
+      [actId, clientId]
+    );
+    r1.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.avg_prix); });
+    const actRes = await pool.query('SELECT labo_id FROM activites WHERE id = $1', [actId]);
+    const laboId = actRes.rows[0]?.labo_id;
+    if (laboId) {
+      const r2 = await pool.query(
+        `SELECT ingredient_id, AVG(prix_unitaire) AS avg_prix
+         FROM stock_labo_daily
+         WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+         GROUP BY ingredient_id`,
+        [laboId]
+      );
+      r2.rows.forEach((row) => { if (!priceMap[row.ingredient_id]) priceMap[row.ingredient_id] = parseFloat(row.avg_prix); });
+    }
+  } else {
+    const r = await pool.query(
+      `WITH last_inv AS (
+        SELECT DISTINCT ON (ingredient_id) ingredient_id, date_inventaire
+        FROM inventaires
+        WHERE client_id = $1 AND ingredient_id IS NOT NULL
+        ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
+      )
+      SELECT scd.ingredient_id, AVG(scd.prix_unitaire) AS avg_prix
+      FROM stock_client_daily scd
+      LEFT JOIN last_inv li ON li.ingredient_id = scd.ingredient_id
+      WHERE scd.client_id = $1
+        AND scd.prix_unitaire IS NOT NULL AND scd.prix_unitaire > 0
+        AND (li.date_inventaire IS NULL OR scd.date_appro >= li.date_inventaire)
+      GROUP BY scd.ingredient_id`,
+      [clientId]
+    );
+    r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.avg_prix); });
+  }
+  return priceMap;
+}
+
 const getCout = async (req, res) => {
   const { id } = req.params;
-  const { mode, activiteId } = req.query;
+  const { mode, activiteId, pricingMethod } = req.query;
   try {
     if (mode === 'manual') {
       const actId = parseInt(activiteId) || 0;
@@ -621,44 +716,11 @@ const getCout = async (req, res) => {
       return res.json(mapCout(result));
     }
     if (mode === 'stock') {
-      // Mirror exportExcel stock logic: build priceMap with prix_unitaire > 0, filtered by activiteId
       const actId = parseInt(activiteId) || 0;
-      const priceMap = {};
-      if (actId) {
-        const r1 = await pool.query(
-          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
-           FROM stock_entreprise_daily sed
-           JOIN activites a ON sed.activite_id = a.id
-           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-           WHERE sed.activite_id = $1 AND pe.client_id = $2
-             AND sed.prix_unitaire IS NOT NULL AND sed.prix_unitaire > 0
-           ORDER BY ingredient_id, date_appro DESC`,
-          [actId, req.user.id]
-        );
-        r1.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
-        // Also fill from labo stock
-        const actRes = await pool.query('SELECT labo_id FROM activites WHERE id = $1', [actId]);
-        const laboId = actRes.rows[0]?.labo_id;
-        if (laboId) {
-          const r2 = await pool.query(
-            `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
-             FROM stock_labo_daily
-             WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
-             ORDER BY ingredient_id, date_appro DESC`,
-            [laboId]
-          );
-          r2.rows.forEach((row) => { if (!priceMap[row.ingredient_id]) priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
-        }
-      } else {
-        const r = await pool.query(
-          `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
-           FROM stock_client_daily
-           WHERE client_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
-           ORDER BY ingredient_id, date_appro DESC`,
-          [req.user.gerant_parent_id || req.user.id]
-        );
-        r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
-      }
+      const clientId = actId ? req.user.id : (req.user.gerant_parent_id || req.user.id);
+      const priceMap = pricingMethod === 'mp'
+        ? await buildMpPriceMap(actId, clientId)
+        : await buildDpPriceMap(actId, clientId);
       const result = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
       return res.json(mapCout(result));
     }
@@ -1061,5 +1123,6 @@ module.exports = {
   addIngredient, removeIngredient,
   addSousProduit, removeSousProduit,
   getCout, calculerCout, calculerCoutAvecPrixMap,
+  buildDpPriceMap, buildMpPriceMap,
   getStockDates, getStockCheck, getManualPrices, saveManualPrices,
 };
