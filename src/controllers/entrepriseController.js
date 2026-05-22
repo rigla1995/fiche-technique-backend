@@ -294,15 +294,16 @@ const getActiviteIngredients = async (req, res) => {
     const result = await pool.query(
           `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
                   a.categorie_id,
-                  NULL::numeric as prix,
+                  f.id as famille_id, f.nom as famille_nom,
                   ais.prix_unitaire,
                   CASE WHEN ais.ingredient_id IS NOT NULL THEN true ELSE false END as selected
            FROM articles a
            JOIN unites u ON a.unite_id = u.id
            LEFT JOIN categories c ON a.categorie_id = c.id
+           LEFT JOIN familles f ON c.famille_id = f.id
            LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = a.id AND ais.activite_id = $1
            WHERE a.client_id = $2
-           ORDER BY c.nom NULLS LAST, a.nom`,
+           ORDER BY f.nom NULLS LAST, c.nom NULLS LAST, a.nom`,
           [id, req.user.gerant_parent_id || req.user.id]
         );
 
@@ -312,7 +313,8 @@ const getActiviteIngredients = async (req, res) => {
       unite: r.unite,
       categorie: r.categorie,
       categorieId: r.categorie_id ?? null,
-      prix: r.prix ? parseFloat(r.prix) : null,
+      familleId: r.famille_id ?? null,
+      familleNom: r.famille_nom ?? null,
       prixUnitaire: r.prix_unitaire ? parseFloat(r.prix_unitaire) : null,
       selected: r.selected,
     })));
