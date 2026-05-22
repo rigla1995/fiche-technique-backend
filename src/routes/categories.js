@@ -2,7 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
 const { list, getById, create, update, remove } = require('../controllers/categoriesController');
-const { authenticate, requireSuperAdmin } = require('../middleware/auth');
+const { authenticate, requireClient } = require('../middleware/auth');
 
 const validateNom = [
   body().custom((b) => {
@@ -16,10 +16,10 @@ const validateUpdate = [
   body('nom').optional().trim().notEmpty(),
 ];
 
-router.get('/', authenticate, list);
-router.get('/:id', authenticate, getById);
-router.post('/', authenticate, requireSuperAdmin, validateNom, create);
-router.put('/:id', authenticate, requireSuperAdmin, validateUpdate, update);
-router.delete('/:id', authenticate, requireSuperAdmin, remove);
+router.get('/', authenticate, requireClient, list);
+router.get('/:id', authenticate, requireClient, getById);
+router.post('/', authenticate, requireClient, validateNom, create);
+router.put('/:id', authenticate, requireClient, validateUpdate, update);
+router.delete('/:id', authenticate, requireClient, remove);
 
 module.exports = router;
