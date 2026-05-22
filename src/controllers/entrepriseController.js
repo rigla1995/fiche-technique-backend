@@ -365,7 +365,7 @@ const toggleActiviteIngredient = async (req, res) => {
 const getActiviteTypesSummary = async (req, res) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
-    const [actResult, approResult, fourn, laboIngResult] = await Promise.all([
+    const [actResult, approResult, fourn, laboIngResult, artResult] = await Promise.all([
       pool.query(
         `SELECT
            COUNT(a.id) > 0 AS has_activites,
@@ -411,11 +411,16 @@ const getActiviteTypesSummary = async (req, res) => {
          ) AS has_labo_ingredients`,
         [clientId]
       ),
+      pool.query(
+        `SELECT EXISTS (SELECT 1 FROM articles WHERE client_id = $1) AS has_articles`,
+        [clientId]
+      ),
     ]);
     const row = actResult.rows[0];
     const appro = approResult.rows[0];
     const fo = fourn.rows[0];
     const laboIng = laboIngResult.rows[0];
+    const art = artResult.rows[0];
     res.json({
       hasActivites: row.has_activites ?? false,
       hasSelections: row.has_selections ?? false,
@@ -423,6 +428,7 @@ const getActiviteTypesSummary = async (req, res) => {
       hasAppro: appro.has_appro ?? false,
       hasFournisseurs: fo.has_fournisseurs ?? false,
       hasLaboIngredients: laboIng.has_labo_ingredients ?? false,
+      hasArticles: art.has_articles ?? false,
     });
   } catch (err) {
     console.error(err);
