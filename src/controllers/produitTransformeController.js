@@ -189,6 +189,30 @@ const deleteStockPTHistory = async (req, res) => {
   }
 };
 
+// ─── getStockActivites ───────────────────────────────────────────────────────
+// GET /api/produits/:id/stock-activites
+const getStockActivites = async (req, res) => {
+  const produitId = parseInt(req.params.id);
+  const userId = req.user.id;
+  try {
+    const ownerRes = await pool.query(
+      `SELECT id FROM produits WHERE id = $1 AND client_id = $2`,
+      [produitId, userId]
+    );
+    if (ownerRes.rows.length === 0) {
+      return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+    }
+    const result = await pool.query(
+      `SELECT activite_id FROM produit_activite_stock WHERE produit_id = $1 AND activite_id IS NOT NULL`,
+      [produitId]
+    );
+    res.json(result.rows.map(r => r.activite_id));
+  } catch (err) {
+    console.error('[getStockActivites]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // ─── getStockPT ───────────────────────────────────────────────────────────────
 // GET /api/stock/pt
 // Query params: activiteId (optional, for entreprise)
@@ -628,6 +652,7 @@ const updateSeuilMinPT = async (req, res) => {
 module.exports = {
   toggleStockIngredient,
   deleteStockPTHistory,
+  getStockActivites,
   getStockPT,
   getStockPTHistory,
   getPTRecipe,
