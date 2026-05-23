@@ -121,11 +121,17 @@ const list = async (req, res) => {
       whereExtra += ` AND p.activite_id = $${params.length}`;
     }
 
+    // When filtering by activite, compute isStockIngredient from per-activité table
+    const stockIngSubquery = activiteId
+      ? `EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = ${parseInt(activiteId as string)}) AS is_stock_ingredient`
+      : `p.is_stock_ingredient`;
+
     const result = await pool.query(
       `SELECT p.*,
         (SELECT COUNT(*) FROM produit_ingredients WHERE produit_id = p.id) AS ingredients_count,
         (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
         (SELECT COUNT(*) FROM produit_sous_produits WHERE sous_produit_id = p.id) AS parent_products_count,
+        ${stockIngSubquery},
         ${costSubquery()}
        FROM produits p
        WHERE p.client_id = $1${whereExtra}

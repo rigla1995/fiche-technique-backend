@@ -2,61 +2,113 @@ const pool = require('../config/database');
 
 // ─── toggleStockIngredient ────────────────────────────────────────────────────
 // POST /api/produits/:id/toggle-stock-ingredient
+// Body: { activiteId? }  — if provided, toggle per-activité; otherwise toggle global boolean (indép)
 const toggleStockIngredient = async (req, res) => {
   const produitId = parseInt(req.params.id);
   const userId = req.user.id;
+  const { activiteId } = req.body;
+  const actId = activiteId ? parseInt(activiteId) : null;
 
   try {
-    // Verify product ownership (indép: client_id = userId)
+    // Verify product belongs to this client
     const ownerRes = await pool.query(
-      `SELECT id, is_stock_ingredient, client_id FROM produits WHERE id = $1 AND client_id = $2`,
+      `SELECT id, is_stock_ingredient FROM produits WHERE id = $1 AND client_id = $2`,
       [produitId, userId]
     );
     if (ownerRes.rows.length === 0) {
       return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
     }
 
-    const current = ownerRes.rows[0].is_stock_ingredient;
-    const newValue = !current;
-
-    await pool.query(
-      `UPDATE produits SET is_stock_ingredient = $1 WHERE id = $2`,
-      [newValue, produitId]
-    );
-
-    if (!newValue) {
-      // Toggling OFF — remove from labo_pt_selections if present
-      await pool.query(`DELETE FROM labo_pt_selections WHERE produit_id = $1`, [produitId]);
-      // Check existing stock history
-      const countRes = await pool.query(
-        `SELECT COUNT(*) as cnt FROM stock_produits_transformes WHERE produit_id = $1 AND client_id = $2`,
-        [produitId, userId]
-      );
-      const historyCount = parseInt(countRes.rows[0].cnt);
-      return res.json({ isStockIngredient: false, hadHistory: historyCount > 0, historyCount });
-    }
-
-    // Toggling ON — auto-add to labo_pt_selections if product's activité has a labo
-    const prodCtx = await pool.query(
-      `SELECT activite_id FROM produits WHERE id = $1`,
-      [produitId]
-    );
-    const { activite_id: actId } = prodCtx.rows[0] || {};
-
     if (actId) {
-      const laboRes = await pool.query(
-        `SELECT labo_id FROM activites WHERE id = $1 AND labo_id IS NOT NULL`,
-        [actId]
+      // ── Entreprise mode: per-activité toggle via produit_activite_stock ──
+      const existing = await pool.query(
+        `SELECT id FROM produit_activite_stock WHERE produit_id = $1 AND activite_id = $2`,
+        [produitId, actId]
       );
-      if (laboRes.rows.length > 0) {
-        await pool.query(
-          `INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [laboRes.rows[0].labo_id, produitId]
-        );
-      }
-    }
 
-    return res.json({ isStockIngredient: true, hadHistory: false, historyCount: 0 });
+      if (existing.rows.length > 0) {
+        // Toggle OFF — remove assignment for this activité
+        await pool.query(
+          `DELETE FROM produit_activite_stock WHERE produit_id = $1 AND activite_id = $2`,
+          [produitId, actId]
+        );
+        // Remove from labo_pt_selections only if no other activité of that labo still has this PT
+        const laboRow = await pool.query(
+          `SELECT labo_id FROM activites WHERE id = $1 AND labo_id IS NOT NULL`,
+          [actId]
+        );
+        if (laboRow.rows.length > 0) {
+          const laboId = laboRow.rows[0].labo_id;
+          const otherAct = await pool.query(
+            `SELECT COUNT(*) AS cnt FROM produit_activite_stock pas
+             JOIN activites a ON a.id = pas.activite_id
+             WHERE pas.produit_id = $1 AND a.labo_id = $2`,
+            [produitId, laboId]
+          );
+          if (parseInt(otherAct.rows[0].cnt) === 0) {
+            await pool.query(
+              `DELETE FROM labo_pt_selections WHERE produit_id = $1 AND labo_id = $2`,
+              [produitId, laboId]
+            );
+          }
+        }
+        const countRes = await pool.query(
+          `SELECT COUNT(*) AS cnt FROM stock_produits_transformes WHERE produit_id = $1 AND activite_id = $2`,
+          [produitId, actId]
+        );
+        const historyCount = parseInt(countRes.rows[0].cnt);
+        return res.json({ isStockIngredient: false, hadHistory: historyCount > 0, historyCount });
+      } else {
+        // Toggle ON — assign PT to this activité's stock
+        const laboRes = await pool.query(
+          `SELECT labo_id FROM activites WHERE id = $1 AND labo_id IS NOT NULL`,
+          [actId]
+        );
+        const laboId = laboRes.rows.length > 0 ? laboRes.rows[0].labo_id : null;
+        await pool.query(
+          `INSERT INTO produit_activite_stock (produit_id, activite_id, labo_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+          [produitId, actId, laboId]
+        );
+        if (laboId) {
+          await pool.query(
+            `INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [laboId, produitId]
+          );
+        }
+        return res.json({ isStockIngredient: true, hadHistory: false, historyCount: 0 });
+      }
+    } else {
+      // ── Indépendant mode: global boolean toggle ──
+      const current = ownerRes.rows[0].is_stock_ingredient;
+      const newValue = !current;
+      await pool.query(`UPDATE produits SET is_stock_ingredient = $1 WHERE id = $2`, [newValue, produitId]);
+
+      if (!newValue) {
+        await pool.query(`DELETE FROM labo_pt_selections WHERE produit_id = $1`, [produitId]);
+        const countRes = await pool.query(
+          `SELECT COUNT(*) AS cnt FROM stock_produits_transformes WHERE produit_id = $1 AND client_id = $2`,
+          [produitId, userId]
+        );
+        const historyCount = parseInt(countRes.rows[0].cnt);
+        return res.json({ isStockIngredient: false, hadHistory: historyCount > 0, historyCount });
+      }
+
+      const prodCtx = await pool.query(`SELECT activite_id FROM produits WHERE id = $1`, [produitId]);
+      const activiteId = prodCtx.rows[0]?.activite_id;
+      if (activiteId) {
+        const laboRes = await pool.query(
+          `SELECT labo_id FROM activites WHERE id = $1 AND labo_id IS NOT NULL`,
+          [activiteId]
+        );
+        if (laboRes.rows.length > 0) {
+          await pool.query(
+            `INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [laboRes.rows[0].labo_id, produitId]
+          );
+        }
+      }
+      return res.json({ isStockIngredient: true, hadHistory: false, historyCount: 0 });
+    }
   } catch (err) {
     console.error('[toggleStockIngredient]', err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -178,8 +230,8 @@ const getStockPT = async (req, res) => {
             WHERE spt2.produit_id = p.id AND spt2.activite_id = $1
             ORDER BY spt2.date_appro DESC LIMIT 1) AS last_prix_calcule
          FROM produits p
+         JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
          LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.activite_id = $1
-         WHERE p.activite_id = $1 AND p.is_stock_ingredient = TRUE
          GROUP BY p.id, p.nom, p.seuil_min_pt`,
         [actId, currentMonth, currentYear]
       );

@@ -445,8 +445,7 @@ const getStockEntreprise = async (req, res) => {
         WHERE produit_id = p.id AND activite_id = $1
         ORDER BY date_appro DESC LIMIT 1
       ) last_spt ON true
-      WHERE p.is_stock_ingredient = TRUE
-      AND p.activite_id = $1
+      JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
       ORDER BY p.nom
     `, [activiteId]);
 
