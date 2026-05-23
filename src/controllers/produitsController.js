@@ -95,7 +95,8 @@ const list = async (req, res) => {
       }
       if (activiteId) {
         params.push(activiteId);
-        whereExtra += ` AND p.activite_id = $${params.length}`;
+        const aIdx = params.length;
+        whereExtra += ` AND (p.activite_id = $${aIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${aIdx}))`;
       }
       if (laboId) {
         params.push(laboId);
@@ -118,7 +119,8 @@ const list = async (req, res) => {
         whereExtra += ` AND p.type = $${params.length}`;
       }
       params.push(req.user.gerant_activite_id);
-      whereExtra += ` AND p.activite_id = $${params.length}`;
+      const gIdx = params.length;
+      whereExtra += ` AND (p.activite_id = $${gIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${gIdx}))`;
     }
 
     // When filtering by activite, compute isStockIngredient from per-activité table
@@ -238,9 +240,10 @@ const create = async (req, res) => {
     await client.query('BEGIN');
 
     const isStockIngredient = type === 'utilisable' ? true : false;
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const result = await client.query(
       'INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, req.user.id, activiteId]
+      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activiteId]
     );
     const produitId = result.rows[0].id;
 

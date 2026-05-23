@@ -5,7 +5,7 @@ const pool = require('../config/database');
 // Body: { activiteId? }  — if provided, toggle per-activité; otherwise toggle global boolean (indép)
 const toggleStockIngredient = async (req, res) => {
   const produitId = parseInt(req.params.id);
-  const userId = req.user.id;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   const { activiteId } = req.body;
   const actId = activiteId ? parseInt(activiteId) : null;
 
@@ -13,7 +13,7 @@ const toggleStockIngredient = async (req, res) => {
     // Verify product belongs to this client
     const ownerRes = await pool.query(
       `SELECT id, is_stock_ingredient FROM produits WHERE id = $1 AND client_id = $2`,
-      [produitId, userId]
+      [produitId, clientId]
     );
     if (ownerRes.rows.length === 0) {
       return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
@@ -87,7 +87,7 @@ const toggleStockIngredient = async (req, res) => {
         await pool.query(`DELETE FROM labo_pt_selections WHERE produit_id = $1`, [produitId]);
         const countRes = await pool.query(
           `SELECT COUNT(*) AS cnt FROM stock_produits_transformes WHERE produit_id = $1 AND client_id = $2`,
-          [produitId, userId]
+          [produitId, clientId]
         );
         const historyCount = parseInt(countRes.rows[0].cnt);
         return res.json({ isStockIngredient: false, hadHistory: historyCount > 0, historyCount });
