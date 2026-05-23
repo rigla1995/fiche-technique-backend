@@ -123,7 +123,7 @@ const list = async (req, res) => {
 
     // When filtering by activite, compute isStockIngredient from per-activité table
     const stockIngSubquery = activiteId
-      ? `EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = ${parseInt(activiteId as string)}) AS is_stock_ingredient`
+      ? `EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = ${parseInt(activiteId)}) AS is_stock_ingredient`
       : `p.is_stock_ingredient`;
 
     const result = await pool.query(
