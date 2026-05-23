@@ -14,6 +14,7 @@ const mapProduit = (row) => ({
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
   ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
   subProductsCount: row.sub_products_count !== undefined ? parseInt(row.sub_products_count) : undefined,
+  parentProductsCount: row.parent_products_count !== undefined ? parseInt(row.parent_products_count) : undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -124,6 +125,7 @@ const list = async (req, res) => {
       `SELECT p.*,
         (SELECT COUNT(*) FROM produit_ingredients WHERE produit_id = p.id) AS ingredients_count,
         (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
+        (SELECT COUNT(*) FROM produit_sous_produits WHERE sous_produit_id = p.id) AS parent_products_count,
         ${costSubquery()}
        FROM produits p
        WHERE p.client_id = $1${whereExtra}
