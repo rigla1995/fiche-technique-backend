@@ -176,8 +176,12 @@ const deleteStockPTHistory = async (req, res) => {
       );
     }
 
-    // Also clean up labo PT stock
+    // Clean up labo PT stock
     await pool.query(`DELETE FROM stock_labo_pt_daily WHERE produit_id = $1`, [produitId]);
+
+    // Clean up PT stock assignments (produit_activite_stock + labo_pt_selections)
+    await pool.query(`DELETE FROM produit_activite_stock WHERE produit_id = $1`, [produitId]);
+    await pool.query(`DELETE FROM labo_pt_selections WHERE produit_id = $1`, [produitId]);
 
     // Clean up inventaires referencing this PT product
     await pool.query(`DELETE FROM inventaires WHERE produit_id = $1`, [produitId]);
