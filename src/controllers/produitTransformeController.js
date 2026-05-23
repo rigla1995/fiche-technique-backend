@@ -365,7 +365,7 @@ const getPTRecipe = async (req, res) => {
                  WHERE ingredient_id = pi.ingredient_id AND activite_id = $2 AND quantite > 0
                  ORDER BY date_appro DESC LIMIT 1) AS last_prix
          FROM produit_ingredients pi
-         JOIN ingredients i ON i.id = pi.ingredient_id
+         JOIN articles i ON i.id = pi.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
          WHERE pi.produit_id = $1
@@ -381,7 +381,7 @@ const getPTRecipe = async (req, res) => {
                  WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
                  ORDER BY date_appro DESC LIMIT 1) AS last_prix
          FROM produit_ingredients pi
-         JOIN ingredients i ON i.id = pi.ingredient_id
+         JOIN articles i ON i.id = pi.ingredient_id
          JOIN unites u ON u.id = i.unite_id
          LEFT JOIN categories c ON c.id = i.categorie_id
          WHERE pi.produit_id = $1
@@ -455,7 +455,7 @@ const saveStockPT = async (req, res) => {
             WHERE ingredient_id = pi.ingredient_id AND activite_id = $2 AND quantite > 0
             ORDER BY date_appro DESC LIMIT 1) AS last_prix
          FROM produit_ingredients pi
-         JOIN ingredients i ON i.id = pi.ingredient_id
+         JOIN articles i ON i.id = pi.ingredient_id
          WHERE pi.produit_id = $1`,
         [produitId, actId]
       );
@@ -467,7 +467,7 @@ const saveStockPT = async (req, res) => {
             WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
             ORDER BY date_appro DESC LIMIT 1) AS last_prix
          FROM produit_ingredients pi
-         JOIN ingredients i ON i.id = pi.ingredient_id
+         JOIN articles i ON i.id = pi.ingredient_id
          WHERE pi.produit_id = $1`,
         [produitId, userId]
       );
