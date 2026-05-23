@@ -120,14 +120,14 @@ const toggleStockIngredient = async (req, res) => {
 // Query param: activiteId — if provided, scope cleanup to that activité only
 const deleteStockPTHistory = async (req, res) => {
   const produitId = parseInt(req.params.id);
-  const userId = req.user.id;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   const activiteId = req.query.activiteId ? parseInt(req.query.activiteId) : null;
 
   try {
     // Verify ownership
     const ownerRes = await pool.query(
       `SELECT id FROM produits WHERE id = $1 AND client_id = $2`,
-      [produitId, userId]
+      [produitId, clientId]
     );
     if (ownerRes.rows.length === 0) {
       return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
@@ -190,7 +190,7 @@ const deleteStockPTHistory = async (req, res) => {
                WHERE pe.client_id = $2
              )
            )`,
-        [produitId, userId]
+        [produitId, clientId]
       );
       if (produitNom) {
         await pool.query(
@@ -199,7 +199,7 @@ const deleteStockPTHistory = async (req, res) => {
              AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
              AND quantite < 0
              AND type_appro = $3`,
-          [userId, produitId, produitNom]
+          [clientId, produitId, produitNom]
         );
         await pool.query(
           `DELETE FROM stock_entreprise_daily
@@ -211,7 +211,7 @@ const deleteStockPTHistory = async (req, res) => {
              AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
              AND quantite < 0
              AND type_appro = $3`,
-          [userId, produitId, produitNom]
+          [clientId, produitId, produitNom]
         );
       }
       await pool.query(`DELETE FROM stock_labo_pt_daily WHERE produit_id = $1`, [produitId]);
