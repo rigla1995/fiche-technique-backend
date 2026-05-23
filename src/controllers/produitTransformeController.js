@@ -117,9 +117,11 @@ const toggleStockIngredient = async (req, res) => {
 
 // ─── deleteStockPTHistory ─────────────────────────────────────────────────────
 // DELETE /api/produits/:id/stock-pt-history
+// Query param: activiteId — if provided, scope cleanup to that activité only
 const deleteStockPTHistory = async (req, res) => {
   const produitId = parseInt(req.params.id);
   const userId = req.user.id;
+  const activiteId = req.query.activiteId ? parseInt(req.query.activiteId) : null;
 
   try {
     // Verify ownership
@@ -135,56 +137,88 @@ const deleteStockPTHistory = async (req, res) => {
     const nomRes = await pool.query(`SELECT nom FROM produits WHERE id = $1`, [produitId]);
     const produitNom = nomRes.rows[0]?.nom;
 
-    // Delete PT appro history
-    await pool.query(
-      `DELETE FROM stock_produits_transformes
-       WHERE produit_id = $1
-         AND (
-           client_id = $2
-           OR activite_id IN (
+    if (activiteId) {
+      // ── Scoped to one activité ──
+      await pool.query(
+        `DELETE FROM stock_produits_transformes WHERE produit_id = $1 AND activite_id = $2`,
+        [produitId, activiteId]
+      );
+      if (produitNom) {
+        await pool.query(
+          `DELETE FROM stock_entreprise_daily
+           WHERE activite_id = $1
+             AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
+             AND quantite < 0
+             AND type_appro = $3`,
+          [activiteId, produitId, produitNom]
+        );
+      }
+      // Labo PT stock for the labo linked to this activité
+      const laboRes = await pool.query(
+        `SELECT labo_id FROM activites WHERE id = $1 AND labo_id IS NOT NULL`,
+        [activiteId]
+      );
+      if (laboRes.rows.length > 0) {
+        const laboId = laboRes.rows[0].labo_id;
+        await pool.query(
+          `DELETE FROM stock_labo_pt_daily WHERE produit_id = $1 AND labo_id = $2`,
+          [produitId, laboId]
+        );
+        await pool.query(
+          `DELETE FROM labo_pt_selections WHERE produit_id = $1 AND labo_id = $2`,
+          [produitId, laboId]
+        );
+      }
+      await pool.query(
+        `DELETE FROM produit_activite_stock WHERE produit_id = $1 AND activite_id = $2`,
+        [produitId, activiteId]
+      );
+      await pool.query(
+        `DELETE FROM inventaires WHERE produit_id = $1 AND activite_id = $2`,
+        [produitId, activiteId]
+      );
+    } else {
+      // ── Full cleanup across all activités ──
+      await pool.query(
+        `DELETE FROM stock_produits_transformes
+         WHERE produit_id = $1
+           AND (
+             client_id = $2
+             OR activite_id IN (
+               SELECT a.id FROM activites a
+               JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+               WHERE pe.client_id = $2
+             )
+           )`,
+        [produitId, userId]
+      );
+      if (produitNom) {
+        await pool.query(
+          `DELETE FROM stock_client_daily
+           WHERE client_id = $1
+             AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
+             AND quantite < 0
+             AND type_appro = $3`,
+          [userId, produitId, produitNom]
+        );
+        await pool.query(
+          `DELETE FROM stock_entreprise_daily
+           WHERE activite_id IN (
              SELECT a.id FROM activites a
              JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-             WHERE pe.client_id = $2
+             WHERE pe.client_id = $1
            )
-         )`,
-      [produitId, userId]
-    );
-
-    // Also delete ingredient consumption entries created by saveStockPT
-    if (produitNom) {
-      // Indép consumption entries
-      await pool.query(
-        `DELETE FROM stock_client_daily
-         WHERE client_id = $1
-           AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
-           AND quantite < 0
-           AND type_appro = $3`,
-        [userId, produitId, produitNom]
-      );
-      // Entreprise consumption entries
-      await pool.query(
-        `DELETE FROM stock_entreprise_daily
-         WHERE activite_id IN (
-           SELECT a.id FROM activites a
-           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-           WHERE pe.client_id = $1
-         )
-           AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
-           AND quantite < 0
-           AND type_appro = $3`,
-        [userId, produitId, produitNom]
-      );
+             AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
+             AND quantite < 0
+             AND type_appro = $3`,
+          [userId, produitId, produitNom]
+        );
+      }
+      await pool.query(`DELETE FROM stock_labo_pt_daily WHERE produit_id = $1`, [produitId]);
+      await pool.query(`DELETE FROM produit_activite_stock WHERE produit_id = $1`, [produitId]);
+      await pool.query(`DELETE FROM labo_pt_selections WHERE produit_id = $1`, [produitId]);
+      await pool.query(`DELETE FROM inventaires WHERE produit_id = $1`, [produitId]);
     }
-
-    // Clean up labo PT stock
-    await pool.query(`DELETE FROM stock_labo_pt_daily WHERE produit_id = $1`, [produitId]);
-
-    // Clean up PT stock assignments (produit_activite_stock + labo_pt_selections)
-    await pool.query(`DELETE FROM produit_activite_stock WHERE produit_id = $1`, [produitId]);
-    await pool.query(`DELETE FROM labo_pt_selections WHERE produit_id = $1`, [produitId]);
-
-    // Clean up inventaires referencing this PT product
-    await pool.query(`DELETE FROM inventaires WHERE produit_id = $1`, [produitId]);
 
     res.json({ deleted: true });
   } catch (err) {
