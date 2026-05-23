@@ -43,7 +43,7 @@ const list = async (req, res) => {
         SELECT i.*, u.nom as unite_nom, util.nom as client_nom, c.nom as categorie_nom,
                NULL::numeric as client_prix, NULL::numeric as effective_prix,
                ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
-        FROM ingredients i
+        FROM articles i
         JOIN unites u ON i.unite_id = u.id
         LEFT JOIN utilisateurs util ON i.client_id = util.id
         LEFT JOIN categories c ON i.categorie_id = c.id
@@ -91,7 +91,7 @@ const list = async (req, res) => {
                NULL::numeric as effective_prix,
                (cis.ingredient_id IS NOT NULL) as selected,
                ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
-        FROM ingredients i
+        FROM articles i
         JOIN unites u ON i.unite_id = u.id
         LEFT JOIN categories c ON i.categorie_id = c.id
         LEFT JOIN client_ingredient_selections cis ON cis.ingredient_id = i.id AND cis.client_id = $1
@@ -117,7 +117,7 @@ const getById = async (req, res) => {
               NULL::numeric as client_prix,
               NULL::numeric as effective_prix,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
-       FROM ingredients i
+       FROM articles i
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id
@@ -155,7 +155,7 @@ const create = async (req, res) => {
     }
 
     const inserted = await client.query(
-      `INSERT INTO ingredients (nom, prix, unite_id, client_id, categorie_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      `INSERT INTO articles (nom, prix, unite_id, client_id, categorie_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [nom, prix !== null ? prix : null, unite_id, clientId, categorie_id]
     );
     const newId = inserted.rows[0].id;
@@ -167,7 +167,7 @@ const create = async (req, res) => {
       `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
               NULL::numeric as client_prix, NULL::numeric as effective_prix,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
-       FROM ingredients i JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
+       FROM articles i JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id
        WHERE i.id = $1
        GROUP BY i.id, u.nom, c.nom`,
@@ -211,7 +211,7 @@ const update = async (req, res) => {
     const whereClause = isSuperAdmin ? 'WHERE id = $5' : 'WHERE id = $5 AND client_id = $6';
 
     const updated = await client.query(
-      `UPDATE ingredients
+      `UPDATE articles
        SET nom = COALESCE($1, nom),
            prix = CASE WHEN $2::text IS NOT NULL THEN $2::numeric ELSE prix END,
            unite_id = COALESCE($3, unite_id),
@@ -236,7 +236,7 @@ const update = async (req, res) => {
       `SELECT i.*, u.nom as unite_nom, c.nom as categorie_nom,
               NULL::numeric as client_prix, NULL::numeric as effective_prix,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT id_d.domaine_id), NULL) as domaine_ids
-       FROM ingredients i JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
+       FROM articles i JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN ingredient_domaines id_d ON id_d.ingredient_id = i.id
        WHERE i.id = $1
        GROUP BY i.id, u.nom, c.nom`,
@@ -258,7 +258,7 @@ const remove = async (req, res) => {
     const isSuperAdmin = req.user.role === 'super_admin';
     const whereClause = isSuperAdmin ? 'WHERE id = $1' : 'WHERE id = $1 AND client_id = $2';
     const params = isSuperAdmin ? [id] : [id, req.user.id];
-    const result = await pool.query(`DELETE FROM ingredients ${whereClause} RETURNING id`, params);
+    const result = await pool.query(`DELETE FROM articles ${whereClause} RETURNING id`, params);
     if (result.rows.length === 0) return res.status(404).json({ message: 'Ingrédient introuvable' });
     res.status(204).send();
   } catch (err) {

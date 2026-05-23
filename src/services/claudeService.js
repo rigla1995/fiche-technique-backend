@@ -36,7 +36,7 @@ async function fetchClientContext(clientId) {
          FROM stock_client_daily scd
          WHERE scd.client_id = $1
        ) s
-       JOIN ingredients i ON i.id = s.ingredient_id
+       JOIN articles i ON i.id = s.ingredient_id
        ORDER BY s.date_appro DESC LIMIT 100`,
       [clientId]
     ),
@@ -59,7 +59,7 @@ async function fetchClientContext(clientId) {
          FROM client_pertes cp
          WHERE cp.client_id = $1
        ) p
-       JOIN ingredients i ON i.id = p.ingredient_id
+       JOIN articles i ON i.id = p.ingredient_id
        ORDER BY p.date_perte DESC LIMIT 50`,
       [clientId]
     ),
@@ -68,7 +68,7 @@ async function fetchClientContext(clientId) {
       `${CLIENT_SCOPE_CTE}
        SELECT i.nom AS ingredient, inv.quantite_reelle, inv.date_inventaire
        FROM inventaires inv
-       JOIN ingredients i ON i.id = inv.ingredient_id
+       JOIN articles i ON i.id = inv.ingredient_id
        WHERE inv.ingredient_id IS NOT NULL
          AND (
            inv.client_id = $1
@@ -83,7 +83,7 @@ async function fetchClientContext(clientId) {
       `${CLIENT_SCOPE_CTE}
        SELECT i.nom AS ingredient, lt.quantite, lt.date_transfert
        FROM labo_transfers lt
-       JOIN ingredients i ON i.id = lt.ingredient_id
+       JOIN articles i ON i.id = lt.ingredient_id
        WHERE lt.activite_id IN (SELECT id FROM client_activites)
          AND lt.ingredient_id IS NOT NULL
        ORDER BY lt.date_transfert DESC LIMIT 30`,
