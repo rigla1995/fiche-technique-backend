@@ -37,16 +37,27 @@ const getStockClient = async (req, res) => {
       [req.user.gerant_parent_id || req.user.id]
     );
 
-    // Fetch PT products for this client
+    // Fetch PT products for this client — using PMP since last inventory
     const ptPrixRes = await pool.query(`
       SELECT pi.produit_id,
         BOOL_OR(lp.prix_unitaire IS NULL AND pi.portion > 0) as prix_partiel,
         SUM(pi.portion * COALESCE(lp.prix_unitaire, 0)) as prix_dtu
       FROM produit_ingredients pi
       LEFT JOIN LATERAL (
-        SELECT prix_unitaire FROM stock_client_daily
-        WHERE client_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0
-        ORDER BY date_appro DESC LIMIT 1
+        SELECT SUM(scd.quantite * scd.prix_unitaire) / NULLIF(SUM(scd.quantite), 0) as prix_unitaire
+        FROM stock_client_daily scd
+        WHERE scd.client_id = $1
+          AND scd.ingredient_id = pi.ingredient_id
+          AND scd.quantite > 0
+          AND scd.prix_unitaire IS NOT NULL
+          AND scd.type_appro = 'manuel'
+          AND scd.date_appro >= COALESCE(
+            (SELECT date_inventaire FROM inventaires
+             WHERE client_id = $1 AND ingredient_id = pi.ingredient_id
+             ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+            (SELECT MIN(date_appro) FROM stock_client_daily
+             WHERE client_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+          )
       ) lp ON true
       WHERE pi.produit_id IN (SELECT id FROM produits WHERE client_id = $1 AND is_stock_ingredient = TRUE)
       GROUP BY pi.produit_id
@@ -412,16 +423,27 @@ const getStockEntreprise = async (req, res) => {
       [activiteId]
     );
 
-    // Fetch PT products for this activite (prix only)
+    // Fetch PT products for this activite (prix only) — using PMP since last inventory
     const ptPrixRes = await pool.query(`
       SELECT pi.produit_id,
         BOOL_OR(lp.prix_unitaire IS NULL AND pi.portion > 0) as prix_partiel,
         SUM(pi.portion * COALESCE(lp.prix_unitaire, 0)) as prix_dtu
       FROM produit_ingredients pi
       LEFT JOIN LATERAL (
-        SELECT prix_unitaire FROM stock_entreprise_daily
-        WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0
-        ORDER BY date_appro DESC LIMIT 1
+        SELECT SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0) as prix_unitaire
+        FROM stock_entreprise_daily sed
+        WHERE sed.activite_id = $1
+          AND sed.ingredient_id = pi.ingredient_id
+          AND sed.quantite > 0
+          AND sed.prix_unitaire IS NOT NULL
+          AND sed.type_appro = 'manuel'
+          AND sed.date_appro >= COALESCE(
+            (SELECT date_inventaire FROM inventaires
+             WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id
+             ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+            (SELECT MIN(date_appro) FROM stock_entreprise_daily
+             WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+          )
       ) lp ON true
       WHERE pi.produit_id IN (
         SELECT pas.produit_id FROM produit_activite_stock pas
