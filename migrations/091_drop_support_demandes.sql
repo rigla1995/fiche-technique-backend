@@ -1,6 +1,9 @@
--- Remove ingredient_manquant / support demandes flow only
--- demande_id was an FK to support_demandes (ON DELETE CASCADE) — safe to drop
--- type, client_nom, statut, notes_admin are still used by inventaireController for new_inventaire notifications
+-- Remove ingredient_manquant / support demandes flow
+-- notifications.demande_id has ON DELETE CASCADE from support_demandes
 ALTER TABLE notifications DROP COLUMN IF EXISTS demande_id;
+ALTER TABLE notifications DROP COLUMN IF EXISTS type;
+ALTER TABLE notifications DROP COLUMN IF EXISTS client_nom;
+ALTER TABLE notifications DROP COLUMN IF EXISTS statut;
+ALTER TABLE notifications DROP COLUMN IF EXISTS notes_admin;
 
 DROP TABLE IF EXISTS support_demandes CASCADE;
