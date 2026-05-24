@@ -50,7 +50,7 @@ const getStockClient = async (req, res) => {
           AND scd.ingredient_id = pi.ingredient_id
           AND scd.quantite > 0
           AND scd.prix_unitaire IS NOT NULL
-          AND scd.type_appro = 'manuel'
+          AND scd.type_appro IN ('manuel', 'transfert')
           AND scd.date_appro >= COALESCE(
             (SELECT date_inventaire FROM inventaires
              WHERE client_id = $1 AND ingredient_id = pi.ingredient_id
@@ -436,7 +436,7 @@ const getStockEntreprise = async (req, res) => {
           AND sed.ingredient_id = pi.ingredient_id
           AND sed.quantite > 0
           AND sed.prix_unitaire IS NOT NULL
-          AND sed.type_appro = 'manuel'
+          AND sed.type_appro IN ('manuel', 'transfert')
           AND sed.date_appro >= COALESCE(
             (SELECT date_inventaire FROM inventaires
              WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id
