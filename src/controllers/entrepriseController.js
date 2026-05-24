@@ -303,6 +303,7 @@ const getActiviteIngredients = async (req, res) => {
            LEFT JOIN familles f ON c.famille_id = f.id
            LEFT JOIN activite_ingredient_selections ais ON ais.ingredient_id = a.id AND ais.activite_id = $1
            WHERE a.client_id = $2
+             AND (f.id IS NULL OR f.consommable = true)
            ORDER BY f.nom NULLS LAST, c.nom NULLS LAST, a.nom`,
           [id, req.user.gerant_parent_id || req.user.id]
         );

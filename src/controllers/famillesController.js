@@ -4,6 +4,7 @@ const pool = require('../config/database');
 const mapFamille = (row) => ({
   id: row.id,
   name: row.nom,
+  consommable: row.consommable !== false,
   clientId: row.client_id,
   createdAt: row.created_at,
 });
@@ -42,10 +43,11 @@ const create = async (req, res) => {
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = req.body.name || req.body.nom;
+  const consommable = req.body.consommable !== false;
   try {
     const result = await pool.query(
-      'INSERT INTO familles (nom, client_id) VALUES ($1, $2) RETURNING *',
-      [nom, clientId]
+      'INSERT INTO familles (nom, client_id, consommable) VALUES ($1, $2, $3) RETURNING *',
+      [nom, clientId, consommable]
     );
     res.status(201).json(mapFamille(result.rows[0]));
   } catch (err) {
@@ -60,11 +62,17 @@ const update = async (req, res) => {
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = req.body.name || req.body.nom;
+  const consommable = req.body.consommable !== undefined ? req.body.consommable !== false : undefined;
   try {
-    const result = await pool.query(
-      'UPDATE familles SET nom = $1 WHERE id = $2 AND client_id = $3 RETURNING *',
-      [nom, req.params.id, clientId]
-    );
+    let query, params;
+    if (consommable !== undefined) {
+      query = 'UPDATE familles SET nom = $1, consommable = $2 WHERE id = $3 AND client_id = $4 RETURNING *';
+      params = [nom, consommable, req.params.id, clientId];
+    } else {
+      query = 'UPDATE familles SET nom = $1 WHERE id = $2 AND client_id = $3 RETURNING *';
+      params = [nom, req.params.id, clientId];
+    }
+    const result = await pool.query(query, params);
     if (result.rows.length === 0) return res.status(404).json({ message: 'Famille introuvable' });
     res.json(mapFamille(result.rows[0]));
   } catch (err) {
