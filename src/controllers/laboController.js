@@ -519,9 +519,18 @@ const getLaboStock = async (req, res) => {
               WHERE lt2.labo_id = $1 AND lt2.produit_id = p.id
               ORDER BY lt2.date_transfert DESC LIMIT 30) as recent_transfer_dates,
         (SELECT COALESCE(SUM(pi2.portion * (
-           SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
-           WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id AND sld2.quantite > 0
-           ORDER BY sld2.date_appro DESC LIMIT 1
+           SELECT SUM(sld2.quantite * sld2.prix_unitaire) / NULLIF(SUM(sld2.quantite), 0)
+           FROM stock_labo_daily sld2
+           WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id
+             AND sld2.quantite > 0 AND sld2.prix_unitaire IS NOT NULL
+             AND sld2.type_appro IN ('manuel', 'transfert')
+             AND sld2.date_appro >= COALESCE(
+               (SELECT date_inventaire FROM inventaires
+                WHERE labo_id = $1 AND ingredient_id = pi2.ingredient_id
+                ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+               (SELECT MIN(date_appro) FROM stock_labo_daily
+                WHERE labo_id = $1 AND ingredient_id = pi2.ingredient_id AND quantite > 0)
+             )
         )), 0)
          FROM produit_ingredients pi2 WHERE pi2.produit_id = p.id) as prix_calcule
       FROM labo_pt_selections lps
@@ -682,9 +691,19 @@ const updateLaboStock = async (req, res) => {
         pool.query(`SELECT nom FROM produits WHERE id = $1`, [produitId]),
         pool.query(
           `SELECT pi.ingredient_id, pi.portion, i.nom as ing_nom,
-             (SELECT sld.prix_unitaire FROM stock_labo_daily sld
-              WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id AND sld.quantite > 0
-              ORDER BY sld.date_appro DESC LIMIT 1) AS last_prix
+             (SELECT SUM(sld.quantite * sld.prix_unitaire) / NULLIF(SUM(sld.quantite), 0)
+              FROM stock_labo_daily sld
+              WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id
+                AND sld.quantite > 0 AND sld.prix_unitaire IS NOT NULL
+                AND sld.type_appro IN ('manuel', 'transfert')
+                AND sld.date_appro >= COALESCE(
+                  (SELECT date_inventaire FROM inventaires
+                   WHERE labo_id = $2 AND ingredient_id = pi.ingredient_id
+                   ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                  (SELECT MIN(date_appro) FROM stock_labo_daily
+                   WHERE labo_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+                )
+             ) AS last_prix
            FROM produit_ingredients pi
            JOIN articles i ON i.id = pi.ingredient_id
            WHERE pi.produit_id = $1`,
