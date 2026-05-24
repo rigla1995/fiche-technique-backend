@@ -146,6 +146,11 @@ const list = async (req, res) => {
            FROM produit_activite_stock pas
            JOIN activites a ON a.id = pas.activite_id
            WHERE pas.produit_id = p.id
+           UNION
+           SELECT DISTINCT a.id, a.nom
+           FROM produit_activite_affectation paa
+           JOIN activites a ON a.id = paa.activite_id
+           WHERE paa.produit_id = p.id
          ) t) AS activites_list
        FROM produits p
        WHERE p.client_id = $1${whereExtra}

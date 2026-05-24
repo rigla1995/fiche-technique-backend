@@ -687,6 +687,38 @@ const updateSeuilMinPT = async (req, res) => {
   }
 };
 
+// ─── affecterActivites ────────────────────────────────────────────────────────
+// POST /api/produits/:id/affecter-activites
+// Body: { activiteIds: number[] }
+// Links a vendable product to activités (display only — no stock effect)
+const affecterActivites = async (req, res) => {
+  const produitId = parseInt(req.params.id);
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const { activiteIds } = req.body;
+  if (!Array.isArray(activiteIds)) return res.status(400).json({ message: 'activiteIds requis' });
+
+  try {
+    const ownerRes = await pool.query(
+      `SELECT id FROM produits WHERE id = $1 AND client_id = $2`,
+      [produitId, clientId]
+    );
+    if (ownerRes.rows.length === 0) return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+
+    // Replace full set: delete existing then insert new ones
+    await pool.query(`DELETE FROM produit_activite_affectation WHERE produit_id = $1`, [produitId]);
+    for (const actId of activiteIds) {
+      await pool.query(
+        `INSERT INTO produit_activite_affectation (produit_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [produitId, parseInt(actId)]
+      );
+    }
+    res.json({ ok: true, activiteIds });
+  } catch (err) {
+    console.error('[affecterActivites]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   toggleStockIngredient,
   deleteStockPTHistory,
@@ -696,4 +728,5 @@ module.exports = {
   getPTRecipe,
   saveStockPT,
   updateSeuilMinPT,
+  affecterActivites,
 };
