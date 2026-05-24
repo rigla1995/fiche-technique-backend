@@ -9,6 +9,7 @@ const mapProduit = (row) => ({
   type: row.type || 'vendable',
   clientId: row.client_id,
   activiteId: row.activite_id || null,
+  activites: row.activites_list || [],
   isStockIngredient: !!row.is_stock_ingredient,
   isSupplement: !!row.is_supplement,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
@@ -134,7 +135,18 @@ const list = async (req, res) => {
         (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
         (SELECT COUNT(*) FROM produit_sous_produits WHERE sous_produit_id = p.id) AS parent_products_count,
         ${stockIngSubquery},
-        ${costSubquery()}
+        ${costSubquery()},
+        (SELECT JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'nom', t.nom) ORDER BY t.nom)
+         FROM (
+           SELECT DISTINCT a.id, a.nom
+           FROM activites a
+           WHERE a.id = p.activite_id
+           UNION
+           SELECT DISTINCT a.id, a.nom
+           FROM produit_activite_stock pas
+           JOIN activites a ON a.id = pas.activite_id
+           WHERE pas.produit_id = p.id
+         ) t) AS activites_list
        FROM produits p
        WHERE p.client_id = $1${whereExtra}
        ORDER BY p.created_at DESC`,
