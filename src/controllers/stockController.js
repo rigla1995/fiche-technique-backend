@@ -424,9 +424,9 @@ const getStockEntreprise = async (req, res) => {
         ORDER BY date_appro DESC LIMIT 1
       ) lp ON true
       WHERE pi.produit_id IN (
-        SELECT id FROM produits
-        WHERE is_stock_ingredient = TRUE
-        AND activite_id = $1
+        SELECT pas.produit_id FROM produit_activite_stock pas
+        JOIN produits p ON p.id = pas.produit_id
+        WHERE pas.activite_id = $1 AND p.is_stock_ingredient = TRUE
       )
       GROUP BY pi.produit_id
     `, [activiteId]);
@@ -696,9 +696,9 @@ const getStockEntreprise = async (req, res) => {
          GROUP BY produit_id
        ),
        pt_list AS (
-         SELECT id as produit_id FROM produits
-         WHERE is_stock_ingredient = TRUE
-           AND activite_id = $1
+         SELECT pas.produit_id FROM produit_activite_stock pas
+         JOIN produits p ON p.id = pas.produit_id
+         WHERE pas.activite_id = $1 AND p.is_stock_ingredient = TRUE
        )
        SELECT pl.produit_id,
               li.quantite_reelle        as inv_qty,
