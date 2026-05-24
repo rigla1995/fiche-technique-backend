@@ -523,7 +523,7 @@ const getLaboStock = async (req, res) => {
            FROM stock_labo_daily sld2
            WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id
              AND sld2.quantite > 0 AND sld2.prix_unitaire IS NOT NULL
-             AND sld2.type_appro IN ('manuel', 'transfert')
+             AND sld2.type_appro = 'manuel'
              AND sld2.date_appro >= COALESCE(
                (SELECT date_inventaire FROM inventaires
                 WHERE labo_id = $1 AND ingredient_id = pi2.ingredient_id
@@ -695,7 +695,7 @@ const updateLaboStock = async (req, res) => {
               FROM stock_labo_daily sld
               WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id
                 AND sld.quantite > 0 AND sld.prix_unitaire IS NOT NULL
-                AND sld.type_appro IN ('manuel', 'transfert')
+                AND sld.type_appro = 'manuel'
                 AND sld.date_appro >= COALESCE(
                   (SELECT date_inventaire FROM inventaires
                    WHERE labo_id = $2 AND ingredient_id = pi.ingredient_id
