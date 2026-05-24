@@ -399,9 +399,19 @@ const getPTRecipe = async (req, res) => {
       const r = await pool.query(
         `SELECT pi.ingredient_id, pi.portion AS portion_standard,
                 i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
-                (SELECT prix_unitaire FROM stock_entreprise_daily
-                 WHERE ingredient_id = pi.ingredient_id AND activite_id = $2 AND quantite > 0
-                 ORDER BY date_appro DESC LIMIT 1) AS last_prix
+                (SELECT SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0)
+                 FROM stock_entreprise_daily sed
+                 WHERE sed.ingredient_id = pi.ingredient_id AND sed.activite_id = $2
+                   AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
+                   AND sed.type_appro IN ('manuel', 'transfert')
+                   AND sed.date_appro >= COALESCE(
+                     (SELECT date_inventaire FROM inventaires
+                      WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id
+                      ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                     (SELECT MIN(date_appro) FROM stock_entreprise_daily
+                      WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+                   )
+                ) AS last_prix
          FROM produit_ingredients pi
          JOIN articles i ON i.id = pi.ingredient_id
          JOIN unites u ON u.id = i.unite_id
@@ -415,9 +425,19 @@ const getPTRecipe = async (req, res) => {
       const r = await pool.query(
         `SELECT pi.ingredient_id, pi.portion AS portion_standard,
                 i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
-                (SELECT prix_unitaire FROM stock_client_daily
-                 WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
-                 ORDER BY date_appro DESC LIMIT 1) AS last_prix
+                (SELECT SUM(scd.quantite * scd.prix_unitaire) / NULLIF(SUM(scd.quantite), 0)
+                 FROM stock_client_daily scd
+                 WHERE scd.ingredient_id = pi.ingredient_id AND scd.client_id = $2
+                   AND scd.quantite > 0 AND scd.prix_unitaire IS NOT NULL
+                   AND scd.type_appro IN ('manuel', 'transfert')
+                   AND scd.date_appro >= COALESCE(
+                     (SELECT date_inventaire FROM inventaires
+                      WHERE client_id = $2 AND ingredient_id = pi.ingredient_id
+                      ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                     (SELECT MIN(date_appro) FROM stock_client_daily
+                      WHERE client_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+                   )
+                ) AS last_prix
          FROM produit_ingredients pi
          JOIN articles i ON i.id = pi.ingredient_id
          JOIN unites u ON u.id = i.unite_id
@@ -489,9 +509,19 @@ const saveStockPT = async (req, res) => {
     if (actId) {
       const ingRes = await pool.query(
         `SELECT pi.ingredient_id, pi.portion, i.nom as nom,
-           (SELECT prix_unitaire FROM stock_entreprise_daily
-            WHERE ingredient_id = pi.ingredient_id AND activite_id = $2 AND quantite > 0
-            ORDER BY date_appro DESC LIMIT 1) AS last_prix
+           (SELECT SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0)
+            FROM stock_entreprise_daily sed
+            WHERE sed.ingredient_id = pi.ingredient_id AND sed.activite_id = $2
+              AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
+              AND sed.type_appro IN ('manuel', 'transfert')
+              AND sed.date_appro >= COALESCE(
+                (SELECT date_inventaire FROM inventaires
+                 WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id
+                 ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                (SELECT MIN(date_appro) FROM stock_entreprise_daily
+                 WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+              )
+           ) AS last_prix
          FROM produit_ingredients pi
          JOIN articles i ON i.id = pi.ingredient_id
          WHERE pi.produit_id = $1`,
@@ -501,9 +531,19 @@ const saveStockPT = async (req, res) => {
     } else {
       const ingRes = await pool.query(
         `SELECT pi.ingredient_id, pi.portion, i.nom as nom,
-           (SELECT prix_unitaire FROM stock_client_daily
-            WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
-            ORDER BY date_appro DESC LIMIT 1) AS last_prix
+           (SELECT SUM(scd.quantite * scd.prix_unitaire) / NULLIF(SUM(scd.quantite), 0)
+            FROM stock_client_daily scd
+            WHERE scd.ingredient_id = pi.ingredient_id AND scd.client_id = $2
+              AND scd.quantite > 0 AND scd.prix_unitaire IS NOT NULL
+              AND scd.type_appro IN ('manuel', 'transfert')
+              AND scd.date_appro >= COALESCE(
+                (SELECT date_inventaire FROM inventaires
+                 WHERE client_id = $2 AND ingredient_id = pi.ingredient_id
+                 ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                (SELECT MIN(date_appro) FROM stock_client_daily
+                 WHERE client_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+              )
+           ) AS last_prix
          FROM produit_ingredients pi
          JOIN articles i ON i.id = pi.ingredient_id
          WHERE pi.produit_id = $1`,
