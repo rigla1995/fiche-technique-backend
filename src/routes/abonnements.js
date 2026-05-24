@@ -4,7 +4,6 @@ const { authenticate, requireSuperAdmin, requireClient, requireClientOrGerant } 
 const ab = require('../controllers/abonnementController');
 const gerant = require('../controllers/gerantController');
 const demande = require('../controllers/demandeController');
-const support = require('../controllers/supportController');
 
 // ── Tarifs (admin) ───────────────────────────────────────────────────────────
 router.get('/tarifs', authenticate, requireSuperAdmin, ab.getTarifs);
@@ -67,12 +66,5 @@ router.post('/demandes', authenticate, requireClient, demande.create);
 router.get('/admin/demandes', authenticate, requireSuperAdmin, demande.listAll);
 router.put('/admin/demandes/:id', authenticate, requireSuperAdmin, demande.traiter);
 
-// ── Support ───────────────────────────────────────────────────────────────────
-router.get('/support', authenticate, requireClient, support.listMine);
-router.post('/support', authenticate, requireClient, support.create);
-router.delete('/support/:id', authenticate, requireClient, support.deleteMine);
-router.get('/admin/support', authenticate, requireSuperAdmin, support.listAll);
-router.get('/admin/support/:id/avenant-preview', authenticate, requireSuperAdmin, support.previewAvenant);
-router.put('/admin/support/:id', authenticate, requireSuperAdmin, support.traiter);
 
 module.exports = router;
