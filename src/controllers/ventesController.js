@@ -232,7 +232,11 @@ const listArticlesVendables = async (req, res) => {
               CASE av.article_type
                 WHEN 'ingredient' THEN u.nom
                 ELSE NULL
-              END as unite_nom
+              END as unite_nom,
+              CASE av.article_type
+                WHEN 'produit' THEN COALESCE(p.is_supplement, FALSE)
+                ELSE FALSE
+              END as is_supplement
        FROM activite_articles_vendables av
        LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
        LEFT JOIN articles i ON av.article_type = 'ingredient' AND i.id = av.article_id
