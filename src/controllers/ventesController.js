@@ -225,24 +225,12 @@ const listArticlesVendables = async (req, res) => {
     const r = await pool.query(
       `SELECT av.id, av.activite_id, av.labo_id, av.article_type, av.article_id,
               av.prix_vente, av.portion, av.actif,
-              CASE av.article_type
-                WHEN 'produit' THEN p.nom
-                WHEN 'ingredient' THEN i.nom
-              END as nom,
-              CASE av.article_type
-                WHEN 'ingredient' THEN u.nom
-                ELSE NULL
-              END as unite_nom,
-              CASE av.article_type
-                WHEN 'produit' THEN COALESCE(p.is_supplement, FALSE)
-                ELSE FALSE
-              END as is_supplement
+              p.nom,
+              COALESCE(p.is_supplement, FALSE) as is_supplement
        FROM activite_articles_vendables av
-       LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
-       LEFT JOIN articles i ON av.article_type = 'ingredient' AND i.id = av.article_id
-       LEFT JOIN unites u ON i.unite_id = u.id
-       WHERE ${whereCol} = $1
-       ORDER BY av.article_type, nom`,
+       JOIN produits p ON p.id = av.article_id
+       WHERE ${whereCol} = $1 AND av.article_type = 'produit'
+       ORDER BY p.is_supplement, p.nom`,
       [whereVal]
     );
     res.json(r.rows.map(row => ({
@@ -261,6 +249,9 @@ const upsertArticleVendable = async (req, res) => {
     const { activite_id, article_type, article_id, prix_vente, portion, actif = true } = req.body;
     if (!activite_id || !article_type || !article_id) {
       return res.status(400).json({ message: 'activite_id, article_type, article_id requis' });
+    }
+    if (article_type !== 'produit') {
+      return res.status(400).json({ message: "article_type doit être 'produit'" });
     }
     const cid = clientId(req);
     await assertActiviteOwner(activite_id, cid);
