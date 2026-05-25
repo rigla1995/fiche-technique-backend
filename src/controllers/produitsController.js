@@ -97,7 +97,7 @@ const list = async (req, res) => {
       if (activiteId) {
         params.push(activiteId);
         const aIdx = params.length;
-        whereExtra += ` AND (p.activite_id = $${aIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${aIdx}))`;
+        whereExtra += ` AND (p.activite_id = $${aIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${aIdx}) OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${aIdx}))`;
       }
       if (laboId) {
         params.push(laboId);
@@ -121,7 +121,7 @@ const list = async (req, res) => {
       }
       params.push(req.user.gerant_activite_id);
       const gIdx = params.length;
-      whereExtra += ` AND (p.activite_id = $${gIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${gIdx}))`;
+      whereExtra += ` AND (p.activite_id = $${gIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${gIdx}) OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${gIdx}))`;
     }
 
     // When filtering by activite, compute isStockIngredient from per-activité table
