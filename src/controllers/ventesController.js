@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { isoDate } = require('../utils/dateUtils');
+const ExcelJS = require('exceljs');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -898,6 +899,144 @@ const laboVentesStats = async (req, res) => {
   }
 };
 
+const exportVentesExcel = async (req, res) => {
+  try {
+    const { activiteId, from, to, type } = req.query;
+    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const cid = clientId(req);
+    await assertActiviteOwner(activiteId, cid);
+
+    const params = [activiteId];
+    let where = '';
+    if (from) { params.push(from); where += ` AND v.date_vente >= $${params.length}`; }
+    if (to)   { params.push(to);   where += ` AND v.date_vente <= $${params.length}`; }
+    if (type) { params.push(type); where += ` AND v.type_vente = $${params.length}`; }
+
+    const r = await pool.query(
+      `SELECT v.date_vente, v.type_vente, pl.nom as prestataire_nom, v.statut,
+              COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) as total_ca,
+              COALESCE(SUM(vl.quantite * (vl.prix_unitaire - COALESCE(vl.cout_unitaire,0))), 0) as total_marge
+       FROM ventes v
+       LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
+       LEFT JOIN vente_lignes vl ON vl.vente_id = v.id
+       WHERE v.activite_id = $1 AND v.statut != 'annulee'${where}
+       GROUP BY v.id, pl.nom
+       ORDER BY v.date_vente DESC, v.created_at DESC`,
+      params
+    );
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Historique Ventes');
+    ws.columns = [
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Type', key: 'type', width: 16 },
+      { header: 'Prestataire', key: 'prestataire', width: 20 },
+      { header: 'CA (DT)', key: 'ca', width: 14 },
+      { header: 'Marge (DT)', key: 'marge', width: 14 },
+      { header: 'Statut', key: 'statut', width: 14 },
+    ];
+    const hRow = ws.getRow(1);
+    hRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } };
+      cell.alignment = { horizontal: 'center' };
+    });
+    for (const row of r.rows) {
+      ws.addRow({
+        date: isoDate(row.date_vente),
+        type: row.type_vente === 'directe' ? 'Directe' : 'Prestataire',
+        prestataire: row.prestataire_nom || '',
+        ca: parseFloat(row.total_ca),
+        marge: parseFloat(row.total_marge),
+        statut: row.statut === 'confirmee' ? 'Confirmée' : row.statut,
+      });
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="historique-ventes.xlsx"');
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    res.status(500).json({ message: e.message });
+  }
+};
+
+const exportPrixHistoriqueConfigExcel = async (req, res) => {
+  try {
+    const { activiteId } = req.query;
+    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const cid = clientId(req);
+    await assertActiviteOwner(activiteId, cid);
+
+    const r = await pool.query(
+      `SELECT h.id, h.prix_vente, h.saved_at,
+              av.article_type,
+              COALESCE(p.nom, i.nom) as produit_nom,
+              COALESCE(p.is_supplement, FALSE) as is_supplement
+       FROM article_vendable_prix_historique h
+       JOIN activite_articles_vendables av ON av.id = h.article_vendable_id
+       LEFT JOIN produits p ON p.id = av.article_id AND av.article_type = 'produit'
+       LEFT JOIN articles i ON i.id = av.article_id AND av.article_type = 'ingredient'
+       WHERE av.activite_id = $1
+       ORDER BY h.saved_at DESC
+       LIMIT 1000`,
+      [activiteId]
+    );
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Historique Config Prix');
+    ws.columns = [
+      { header: 'Produit', key: 'produit', width: 28 },
+      { header: 'Type', key: 'type', width: 14 },
+      { header: 'Prix (DT)', key: 'prix', width: 14 },
+      { header: 'Date', key: 'date', width: 14 },
+    ];
+    const hRow = ws.getRow(1);
+    hRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } };
+      cell.alignment = { horizontal: 'center' };
+    });
+    for (const row of r.rows) {
+      ws.addRow({
+        produit: row.produit_nom || '—',
+        type: row.is_supplement ? 'Supplément' : 'Produit',
+        prix: parseFloat(row.prix_vente),
+        date: new Date(row.saved_at).toLocaleDateString('fr-FR'),
+      });
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="historique-config-prix.xlsx"');
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    res.status(500).json({ message: e.message });
+  }
+};
+
+const deleteHistoriqueEntry = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cid = clientId(req);
+    const check = await pool.query(
+      `SELECT av.activite_id FROM article_vendable_prix_historique h
+       JOIN activite_articles_vendables av ON av.id = h.article_vendable_id
+       WHERE h.id = $1`,
+      [id]
+    );
+    if (!check.rows.length) return res.status(404).json({ message: 'Introuvable' });
+    await assertActiviteOwner(check.rows[0].activite_id, cid);
+    await pool.query('DELETE FROM article_vendable_prix_historique WHERE id = $1', [id]);
+    res.status(204).end();
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    res.status(500).json({ message: e.message });
+  }
+};
+
 module.exports = {
   listPrestataires, createPrestataire, updatePrestataire, deletePrestataire,
   toggleModuleVente,
@@ -907,5 +1046,6 @@ module.exports = {
   listArticlePrixPrestataire, upsertArticlePrixPrestataire,
   getChargesFixes, upsertChargesFixes,
   listVentes, getVente, createVente, annulerVente, statsVentes,
+  exportVentesExcel, exportPrixHistoriqueConfigExcel, deleteHistoriqueEntry,
   laboVentes, laboVentesStats,
 };

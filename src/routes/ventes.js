@@ -183,6 +183,7 @@ router.delete('/activite-prestataires/:id', authenticate, requireEntreprise, c.r
  */
 router.get('/articles-vendables', authenticate, requireEntreprise, c.listArticlesVendables);
 router.get('/articles-vendables/historique-config', authenticate, requireEntreprise, c.getPrixHistoriqueConfig);
+router.get('/articles-vendables/historique-config/export-excel', authenticate, requireEntreprise, c.exportPrixHistoriqueConfigExcel);
 router.post('/articles-vendables', authenticate, requireEntreprise, c.upsertArticleVendable);
 
 /**
@@ -214,6 +215,7 @@ router.post('/articles-vendables', authenticate, requireEntreprise, c.upsertArti
 router.put('/articles-vendables/:id', authenticate, requireEntreprise, c.updateArticleVendable);
 router.get('/articles-vendables/:id/historique', authenticate, requireEntreprise, c.getPrixHistorique);
 router.delete('/articles-vendables/:id', authenticate, requireEntreprise, c.deleteArticleVendable);
+router.delete('/articles-vendables/historique/:id', authenticate, requireEntreprise, c.deleteHistoriqueEntry);
 
 // ── Prix prestataire par article ──────────────────────────────────────────────
 
@@ -294,6 +296,7 @@ router.post('/charges-fixes', authenticate, requireEntreprise, c.upsertChargesFi
  *       201: { description: Vente créée }
  */
 router.get('/ventes', authenticate, requireEntreprise, c.listVentes);
+router.get('/ventes/export-excel', authenticate, requireEntreprise, c.exportVentesExcel);
 router.post('/ventes', authenticate, requireEntreprise, c.createVente);
 
 /**
