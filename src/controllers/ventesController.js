@@ -597,6 +597,11 @@ const createVente = async (req, res) => {
     );
     const vente = vRes.rows[0];
 
+    // Accumulate stock deduction totals across all lignes before inserting
+    const ingredientTotals = new Map(); // ingredient_id -> total qty to deduct
+    const ptTotals = new Map();         // sous_produit_id -> total qty to deduct
+    const dateApproValue = date_vente || new Date().toISOString().slice(0, 10);
+
     for (const ligne of lignes) {
       const { article_type, article_id, quantite, prix_unitaire } = ligne;
 
@@ -631,23 +636,43 @@ const createVente = async (req, res) => {
         [vente.id, article_type, article_id, quantite, prix_unitaire, cout]
       );
 
-      // Decrement activite stock when module_vente is active
+      // Accumulate ingredient and PT sub-product totals for stock deduction
       if (activite_id && moduleVenteActif && article_type === 'produit') {
         const ftRes = await client.query(
           'SELECT ingredient_id, portion FROM produit_ingredients WHERE produit_id = $1',
           [article_id]
         );
         for (const pi of ftRes.rows) {
-          await client.query(
-            `INSERT INTO stock_entreprise_daily
-               (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
-             VALUES ($1, $2, $3, $4, 'vente', 0, 0, 0, NOW(), $5)`,
-            [activite_id, pi.ingredient_id,
-             -(parseFloat(pi.portion) * parseFloat(quantite)),
-             date_vente || new Date().toISOString().slice(0, 10), req.user.id]
-          );
+          ingredientTotals.set(pi.ingredient_id,
+            (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(quantite));
+        }
+        const ptRes = await client.query(
+          'SELECT sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = $1',
+          [article_id]
+        );
+        for (const sp of ptRes.rows) {
+          ptTotals.set(sp.sous_produit_id,
+            (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(quantite));
         }
       }
+    }
+
+    // Insert ONE consolidated entry per ingredient (negative = deduction)
+    for (const [ingredientId, total] of ingredientTotals) {
+      await client.query(
+        `INSERT INTO stock_entreprise_daily
+           (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
+         VALUES ($1, $2, $3, $4, 'vente', 0, 0, 0, NOW(), $5)`,
+        [activite_id, ingredientId, -total, dateApproValue, req.user.id]
+      );
+    }
+    // Insert ONE consolidated entry per PT sub-product (negative = deduction)
+    for (const [sousProduitId, total] of ptTotals) {
+      await client.query(
+        `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
+         VALUES ($1, $2, $3, $4, NULL)`,
+        [sousProduitId, activite_id, dateApproValue, -total]
+      );
     }
 
     await client.query('COMMIT');
@@ -687,6 +712,8 @@ const annulerVente = async (req, res) => {
       const mvActif = mvRes.rows[0]?.module_vente_actif === true;
       if (mvActif) {
         const lignesRes = await client.query('SELECT * FROM vente_lignes WHERE vente_id = $1', [id]);
+        const ingredientTotals = new Map();
+        const ptTotals = new Map();
         for (const ligne of lignesRes.rows) {
           if (ligne.article_type === 'produit') {
             const ftRes = await client.query(
@@ -694,16 +721,33 @@ const annulerVente = async (req, res) => {
               [ligne.article_id]
             );
             for (const pi of ftRes.rows) {
-              await client.query(
-                `INSERT INTO stock_entreprise_daily
-                   (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
-                 VALUES ($1, $2, $3, $4, 'annulation_vente', 0, 0, 0, NOW(), $5)`,
-                [vente.activite_id, pi.ingredient_id,
-                 parseFloat(pi.portion) * parseFloat(ligne.quantite),
-                 vente.date_vente, req.user.id]
-              );
+              ingredientTotals.set(pi.ingredient_id,
+                (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(ligne.quantite));
+            }
+            const ptRes = await client.query(
+              'SELECT sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = $1',
+              [ligne.article_id]
+            );
+            for (const sp of ptRes.rows) {
+              ptTotals.set(sp.sous_produit_id,
+                (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(ligne.quantite));
             }
           }
+        }
+        for (const [ingredientId, total] of ingredientTotals) {
+          await client.query(
+            `INSERT INTO stock_entreprise_daily
+               (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
+             VALUES ($1, $2, $3, $4, 'annulation_vente', 0, 0, 0, NOW(), $5)`,
+            [vente.activite_id, ingredientId, total, vente.date_vente, req.user.id]
+          );
+        }
+        for (const [sousProduitId, total] of ptTotals) {
+          await client.query(
+            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
+             VALUES ($1, $2, $3, $4, NULL)`,
+            [sousProduitId, vente.activite_id, vente.date_vente, total]
+          );
         }
       }
     }
