@@ -751,7 +751,23 @@ const laboVentes = async (req, res) => {
           WHEN lt.produit_id IS NOT NULL THEN 'produit'
         END as article_type,
         CASE WHEN lt.ingredient_id IS NOT NULL THEN u.nom ELSE NULL END as unite_nom,
-        COALESCE(lt.quantite * lt.prix_unitaire, 0) as valeur
+        COALESCE(lt.quantite * lt.prix_unitaire, 0) as valeur,
+        CASE
+          WHEN lt.ingredient_id IS NOT NULL THEN (
+            SELECT AVG(sld.prix_unitaire)
+            FROM stock_labo_daily sld
+            WHERE sld.labo_id = $1 AND sld.ingredient_id = lt.ingredient_id AND sld.quantite > 0
+          )
+          WHEN lt.produit_id IS NOT NULL THEN (
+            SELECT SUM(pi.portion * COALESCE((
+              SELECT AVG(sld2.prix_unitaire)
+              FROM stock_labo_daily sld2
+              WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi.ingredient_id AND sld2.quantite > 0
+            ), 0))
+            FROM produit_ingredients pi
+            WHERE pi.produit_id = lt.produit_id
+          )
+        END as prix_moyen_appro
        FROM labo_transfers lt
        LEFT JOIN articles i ON i.id = lt.ingredient_id
        LEFT JOIN produits p ON p.id = lt.produit_id
@@ -768,6 +784,7 @@ const laboVentes = async (req, res) => {
       quantite: parseFloat(row.quantite),
       prix_unitaire: row.prix_unitaire != null ? parseFloat(row.prix_unitaire) : null,
       valeur: parseFloat(row.valeur),
+      prix_moyen_appro: row.prix_moyen_appro != null ? parseFloat(row.prix_moyen_appro) : null,
     })));
   } catch (e) {
     res.status(500).json({ message: e.message });
