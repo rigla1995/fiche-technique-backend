@@ -368,6 +368,7 @@ router.delete('/ventes/:id', authenticate, requireEntreprise, c.annulerVente);
  *       200: { description: Liste des lignes valorisées }
  */
 router.get('/labo-ventes', authenticate, requireEntreprise, c.laboVentes);
+router.get('/labo-ventes/export-excel', authenticate, requireEntreprise, c.exportLaboVentesExcel);
 
 /**
  * @swagger

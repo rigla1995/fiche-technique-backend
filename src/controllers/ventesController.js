@@ -1156,6 +1156,131 @@ const deleteHistoriqueEntry = async (req, res) => {
   }
 };
 
+const exportLaboVentesExcel = async (req, res) => {
+  try {
+    const { laboId, from, to, filterCategorie, filterActivite, filterArticle, selectedIds } = req.query;
+    if (!laboId) return res.status(400).json({ message: 'laboId requis' });
+
+    const params = [laboId];
+    let where = '';
+    if (from) { params.push(from); where += ` AND lt.date_transfert >= $${params.length}`; }
+    if (to)   { params.push(to);   where += ` AND lt.date_transfert <= $${params.length}`; }
+
+    const r = await pool.query(
+      `SELECT lt.id, lt.date_transfert, lt.quantite,
+        lt.prix_unitaire, lt.note,
+        a.nom as activite_nom,
+        CASE WHEN lt.ingredient_id IS NOT NULL THEN i.nom WHEN lt.produit_id IS NOT NULL THEN p.nom END as article_nom,
+        CASE WHEN lt.ingredient_id IS NOT NULL THEN u.nom ELSE NULL END as unite_nom,
+        CASE WHEN lt.ingredient_id IS NOT NULL THEN COALESCE(cat.nom, 'Sans catégorie') ELSE 'Produits Transformés' END as categorie_nom,
+        COALESCE(lt.quantite * lt.prix_unitaire, 0) as valeur,
+        CASE
+          WHEN lt.ingredient_id IS NOT NULL THEN (
+            SELECT AVG(sld.prix_unitaire) FROM stock_labo_daily sld
+            WHERE sld.labo_id = $1 AND sld.ingredient_id = lt.ingredient_id AND sld.quantite > 0)
+          WHEN lt.produit_id IS NOT NULL THEN (
+            SELECT SUM(pi.portion * COALESCE((
+              SELECT AVG(sld2.prix_unitaire) FROM stock_labo_daily sld2
+              WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi.ingredient_id AND sld2.quantite > 0), 0))
+            FROM produit_ingredients pi WHERE pi.produit_id = lt.produit_id)
+        END as prix_moyen_appro
+       FROM labo_transfers lt
+       LEFT JOIN articles i ON i.id = lt.ingredient_id
+       LEFT JOIN produits p ON p.id = lt.produit_id
+       LEFT JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories cat ON cat.id = i.categorie_id
+       JOIN activites a ON a.id = lt.activite_id
+       WHERE lt.labo_id = $1${where}
+       ORDER BY lt.date_transfert DESC, lt.created_at DESC`,
+      params
+    );
+
+    let rows = r.rows.map(row => ({
+      ...row,
+      date_transfert: isoDate(row.date_transfert),
+      quantite: parseFloat(row.quantite),
+      prix_unitaire: row.prix_unitaire != null ? parseFloat(row.prix_unitaire) : null,
+      valeur: parseFloat(row.valeur),
+      prix_moyen_appro: row.prix_moyen_appro != null ? parseFloat(row.prix_moyen_appro) : null,
+    }));
+
+    if (filterCategorie) rows = rows.filter(r => r.categorie_nom === filterCategorie);
+    if (filterActivite)  rows = rows.filter(r => r.activite_nom === filterActivite);
+    if (filterArticle)   rows = rows.filter(r => r.article_nom === filterArticle);
+
+    const selSet = selectedIds ? new Set(String(selectedIds).split(',').map(s => s.trim()).filter(Boolean)) : new Set();
+
+    const TITLE_BG = '2E4A7A', BLUE = '1F3864', ORANGE = 'FF6B00';
+    const ALT = 'EEF4FF', GOLD = 'FFD700';
+    const MON = { numFmt: '#,##0.000 "DT"' };
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Ventes Labo');
+
+    const dateLabel = from || to ? `DU: ${from || '…'} AU: ${to || '…'}` : 'Toutes dates';
+    const titleRow = ws.addRow([`Historique Ventes Labo — ${dateLabel}`]);
+    ws.mergeCells(1, 1, 1, 9);
+    const tc = titleRow.getCell(1);
+    tc.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 13 };
+    tc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + TITLE_BG } };
+    tc.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleRow.height = 28;
+
+    const hRow = ws.addRow(['Date', 'Article', 'Unité', 'Catégorie', 'Activité', 'Qté', 'Val. transfert', 'Val. appro', 'Écart']);
+    hRow.eachCell(c => {
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + BLUE } };
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: 9 } };
+    ws.getRow(2).height = 22;
+
+    [14, 26, 10, 18, 22, 8, 16, 16, 14].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+
+    let totalTransfert = 0, totalAppro = 0;
+    rows.forEach((row, idx) => {
+      const valeur = row.valeur;
+      const valAppro = row.prix_moyen_appro != null ? row.prix_moyen_appro * row.quantite : null;
+      totalTransfert += valeur;
+      if (valAppro != null) totalAppro += valAppro;
+      const ecart = valAppro != null ? valeur - valAppro : null;
+
+      const isSel = selSet.has(String(row.id));
+      const dr = ws.addRow([
+        row.date_transfert, row.article_nom, row.unite_nom ?? '', row.categorie_nom,
+        row.activite_nom, row.quantite, valeur, valAppro ?? '', ecart ?? '',
+      ]);
+      const bg = isSel ? ORANGE : (idx % 2 === 0 ? 'FFFFFFFF' : 'FF' + ALT);
+      dr.eachCell(c => {
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        if (isSel) c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      });
+      [7, 8, 9].forEach(col => {
+        const cell = dr.getCell(col);
+        if (cell.value !== '') Object.assign(cell, MON);
+      });
+    });
+
+    const totalEcart = totalTransfert - totalAppro;
+    const tr = ws.addRow(['Total', '', '', '', `${rows.length} ligne${rows.length !== 1 ? 's' : ''}`, '', totalTransfert, totalAppro, totalEcart]);
+    tr.eachCell(c => {
+      c.font = { bold: true, color: { argb: 'FF000000' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + GOLD } };
+    });
+    [7, 8, 9].forEach(col => { Object.assign(tr.getCell(col), MON); });
+
+    ws.addRow([]);
+    ws.addRow([`Généré le ${new Date().toLocaleDateString('fr-FR')} — ${rows.length} ligne${rows.length !== 1 ? 's' : ''}${selSet.size > 0 ? ` — ${selSet.size} ligne(s) sélectionnée(s) (fond orange)` : ''}`]);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="historique-ventes-labo.xlsx"');
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
 module.exports = {
   listPrestataires, createPrestataire, updatePrestataire, deletePrestataire,
   toggleModuleVente,
@@ -1166,5 +1291,5 @@ module.exports = {
   getChargesFixes, upsertChargesFixes,
   listVentes, getVente, createVente, annulerVente, statsVentes,
   exportVentesExcel, exportPrixHistoriqueConfigExcel, deleteHistoriqueEntry,
-  laboVentes, laboVentesStats,
+  laboVentes, laboVentesStats, exportLaboVentesExcel,
 };
