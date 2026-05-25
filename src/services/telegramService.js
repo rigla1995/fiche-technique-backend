@@ -4,7 +4,6 @@ const { chatWithClaude } = require('./claudeService');
 const { chatWithDeepSeek } = require('./deepseekService');
 const { generateAndSendReport } = require('./reportService');
 
-// Use Claude when ANTHROPIC_API_KEY is set, fall back to Groq
 async function chatWithAI(clientId, chatSessionId, userMessage, confidenceThreshold) {
   if (process.env.ANTHROPIC_API_KEY) {
     return chatWithClaude(clientId, chatSessionId, userMessage, confidenceThreshold);
@@ -15,38 +14,50 @@ async function chatWithAI(clientId, chatSessionId, userMessage, confidenceThresh
 let bot = null;
 let botUsername = null;
 
-const EXCEL_TRIGGER = ['rapport excel', 'fichier excel', 'export excel', 'envoie excel', 'excel'];
-const PDF_TRIGGER   = ['rapport pdf', 'fichier pdf', 'export pdf', 'envoie pdf'];
-const EMAIL_TRIGGER = ['rapport', 'email', 'mail', 'envoie', 'send'];
-
-function detectReportFormat(text) {
-  const lower = text.toLowerCase();
-  if (EXCEL_TRIGGER.some(kw => lower.includes(kw))) return 'excel';
-  if (PDF_TRIGGER.some(kw => lower.includes(kw))) return 'pdf';
-  return null;
-}
-
 const findClientByToken = async (token) => {
-  const result = await pool.query(
+  const { rows } = await pool.query(
     `SELECT aic.client_id, aic.confidence_threshold, u.nom, u.email
      FROM ai_assistant_config aic
      JOIN utilisateurs u ON u.id = aic.client_id
      WHERE aic.invite_token = $1 AND aic.enabled = true`,
     [token]
   );
-  return result.rows[0] || null;
+  return rows[0] || null;
 };
 
 const findClientByChatId = async (chatId) => {
-  const result = await pool.query(
+  const { rows } = await pool.query(
     `SELECT aic.client_id, aic.confidence_threshold, u.nom, u.email
      FROM ai_assistant_config aic
      JOIN utilisateurs u ON u.id = aic.client_id
      WHERE aic.telegram_chat_id = $1 AND aic.enabled = true`,
     [String(chatId)]
   );
-  return result.rows[0] || null;
+  return rows[0] || null;
 };
+
+// Detect explicit report generation requests (Excel/PDF by email)
+const REPORT_PATTERNS = [
+  { format: 'excel', keywords: ['rapport excel', 'fichier excel', 'export excel', 'envoie excel'] },
+  { format: 'pdf',   keywords: ['rapport pdf', 'fichier pdf', 'export pdf', 'envoie pdf'] },
+];
+
+function detectExplicitReportRequest(text) {
+  const lower = text.toLowerCase();
+  for (const { format, keywords } of REPORT_PATTERNS) {
+    if (keywords.some(kw => lower.includes(kw))) return format;
+  }
+  return null;
+}
+
+async function sendMarkdown(ctx, text) {
+  try {
+    await ctx.reply(text, { parse_mode: 'Markdown' });
+  } catch {
+    // Fall back to plain text if Markdown parse fails
+    await ctx.reply(text.replace(/[*_`]/g, ''));
+  }
+}
 
 const initTelegram = () => {
   if (bot) return;
@@ -58,7 +69,7 @@ const initTelegram = () => {
 
   bot = new Bot(token);
 
-  // ── /start TOKEN ────────────────────────────────────────────────────────
+  // ── /start TOKEN ──────────────────────────────────────────────────────────
   bot.command('start', async (ctx) => {
     const chatId = ctx.chat.id;
     const inviteToken = ctx.match?.trim();
@@ -80,11 +91,19 @@ const initTelegram = () => {
     );
 
     await ctx.reply(
-      `👋 Bonjour ${client.nom} ! Je suis votre agent LabFlow.\n\nComment puis-je vous aider ? (stock, inventaire, pertes, rapport...)`
+      `👋 *Bonjour ${client.nom} !*\n\nJe suis votre agent LabFlow. Je peux vous aider avec :\n\n` +
+      `📦 *Stock* — état actuel, historique\n` +
+      `🛒 *Appros* — approvisionnements et prix\n` +
+      `📉 *Pertes* — suivi et analyse\n` +
+      `📊 *Inventaires* — historique et écarts\n` +
+      `🔄 *Transferts* — labo vers activités\n` +
+      `📄 *Rapports* — Excel ou PDF par email\n\n` +
+      `Posez-moi votre question !`,
+      { parse_mode: 'Markdown' }
     );
   });
 
-  // ── Messages texte ───────────────────────────────────────────────────────
+  // ── Messages texte ────────────────────────────────────────────────────────
   bot.on('message:text', async (ctx) => {
     const chatId = ctx.chat.id;
     const text = ctx.message.text?.trim();
@@ -96,42 +115,46 @@ const initTelegram = () => {
     await ctx.api.sendChatAction(chatId, 'typing');
 
     try {
-      const { assistantMessage, confidence, clientEmail } = await chatWithAI(
+      // Explicit Excel/PDF report request → generate and email directly
+      const reportFormat = detectExplicitReportRequest(text);
+      if (reportFormat && client.email) {
+        await ctx.reply(`⏳ Génération de votre rapport *${reportFormat.toUpperCase()}* en cours...`, { parse_mode: 'Markdown' });
+        try {
+          const filename = await generateAndSendReport(client.client_id, client.email, client.nom, reportFormat);
+          await ctx.reply(
+            `✅ *Rapport ${reportFormat.toUpperCase()} envoyé*\n\n📧 Destinataire : ${client.email}\n📎 Fichier : \`${filename}\``,
+            { parse_mode: 'Markdown' }
+          );
+        } catch (e) {
+          console.error('[Telegram] Report error:', e.message);
+          await ctx.reply('❌ Erreur lors de la génération du rapport. Veuillez réessayer.');
+        }
+        return;
+      }
+
+      const { assistantMessage, confidence } = await chatWithAI(
         client.client_id,
         String(chatId),
         text,
         client.confidence_threshold
       );
 
-      await pool.query(
-        `UPDATE ai_conversations SET last_confidence = $1
-         WHERE id = (
-           SELECT id FROM ai_conversations
-           WHERE client_id = $2 AND whatsapp_number = $3
-           ORDER BY updated_at DESC LIMIT 1
-         )`,
-        [confidence, client.client_id, String(chatId)]
-      );
-
-      const format = detectReportFormat(text);
-      const lower = text.toLowerCase();
-      const wantsEmail = EMAIL_TRIGGER.some(kw => lower.includes(kw));
-
-      if (format && wantsEmail && clientEmail) {
-        await ctx.reply(`⏳ Je génère votre rapport ${format.toUpperCase()}...`);
-        try {
-          const filename = await generateAndSendReport(client.client_id, clientEmail, client.nom, format);
-          await ctx.reply(`✅ Rapport ${format.toUpperCase()} envoyé à ${clientEmail} (${filename})`);
-        } catch (e) {
-          console.error('[Telegram] Report generation error:', e.message);
-          await ctx.reply('❌ Erreur lors de la génération du rapport. Réessayez.');
-        }
-      } else {
-        await ctx.reply(assistantMessage, { parse_mode: 'Markdown' });
+      if (confidence !== null) {
+        await pool.query(
+          `UPDATE ai_conversations SET last_confidence = $1
+           WHERE id = (
+             SELECT id FROM ai_conversations
+             WHERE client_id = $2 AND whatsapp_number = $3
+             ORDER BY updated_at DESC LIMIT 1
+           )`,
+          [confidence, client.client_id, String(chatId)]
+        );
       }
+
+      await sendMarkdown(ctx, assistantMessage);
     } catch (err) {
       console.error('[Telegram] handleMessage error:', err.message);
-      await ctx.reply('Désolé, une erreur est survenue. Réessayez dans quelques instants.');
+      await ctx.reply('⚠️ Une erreur est survenue. Veuillez réessayer dans quelques instants.');
     }
   });
 
@@ -144,7 +167,6 @@ const initTelegram = () => {
     console.log(`[Telegram] Bot connecté : @${botUsername}`);
   });
 
-  // Start polling (non-blocking)
   bot.start({ drop_pending_updates: true }).catch((err) => {
     console.error('[Telegram] Fatal polling error:', err.message);
   });
@@ -156,7 +178,8 @@ const sendWelcomeMessage = async (chatId, clientNom) => {
   if (!bot) throw new Error('Bot Telegram non initialisé');
   await bot.api.sendMessage(
     chatId,
-    `👋 Bonjour ${clientNom} ! Je suis votre agent LabFlow.\n\nComment puis-je vous aider ? (stock, inventaire, pertes, rapport...)`
+    `👋 *Bonjour ${clientNom} !*\n\nVotre agent LabFlow est de nouveau actif. Comment puis-je vous aider ?`,
+    { parse_mode: 'Markdown' }
   );
 };
 
