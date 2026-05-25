@@ -498,7 +498,14 @@ const getStockEntreprise = async (req, res) => {
          SELECT sed.ingredient_id, SUM(ABS(sed.quantite)) as qty
          FROM stock_entreprise_daily sed
          JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.quantite < 0
+         WHERE sed.activite_id = $1 AND sed.quantite < 0 AND sed.type_appro NOT IN ('vente','annulation_vente')
+         GROUP BY sed.ingredient_id
+       ),
+       post_ventes AS (
+         SELECT sed.ingredient_id, SUM(ABS(sed.quantite)) as qty
+         FROM stock_entreprise_daily sed
+         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
+         WHERE sed.activite_id = $1 AND sed.type_appro = 'vente'
          GROUP BY sed.ingredient_id
        ),
        all_appro AS (
@@ -516,7 +523,13 @@ const getStockEntreprise = async (req, res) => {
        all_pt_usage AS (
          SELECT ingredient_id, SUM(ABS(quantite)) as qty
          FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND quantite < 0
+         WHERE activite_id = $1 AND quantite < 0 AND type_appro NOT IN ('vente','annulation_vente')
+         GROUP BY ingredient_id
+       ),
+       all_ventes AS (
+         SELECT ingredient_id, SUM(ABS(quantite)) as qty
+         FROM stock_entreprise_daily
+         WHERE activite_id = $1 AND type_appro = 'vente'
          GROUP BY ingredient_id
        ),
        post_transferts_in AS (
@@ -601,6 +614,8 @@ const getStockEntreprise = async (req, res) => {
               COALESCE(pa.qty, 0)       as post_appro_qty,
               COALESCE(pp.qty, 0)       as post_pertes_qty,
               COALESCE(ppu.qty, 0)      as post_pt_usage_qty,
+              COALESCE(pv.qty, 0)       as post_vente_qty,
+              COALESCE(av.qty, 0)       as all_vente_qty,
               COALESCE(aa.qty, 0)       as all_appro_qty,
               COALESCE(ap.qty, 0)       as all_pertes_qty,
               COALESCE(apu.qty, 0)      as all_pt_usage_qty,
@@ -625,6 +640,8 @@ const getStockEntreprise = async (req, res) => {
        LEFT JOIN post_appro pa              ON pa.ingredient_id  = ais.ingredient_id
        LEFT JOIN post_pertes pp             ON pp.ingredient_id  = ais.ingredient_id
        LEFT JOIN post_pt_usage ppu          ON ppu.ingredient_id = ais.ingredient_id
+       LEFT JOIN post_ventes pv            ON pv.ingredient_id  = ais.ingredient_id
+       LEFT JOIN all_ventes av             ON av.ingredient_id  = ais.ingredient_id
        LEFT JOIN all_appro aa              ON aa.ingredient_id  = ais.ingredient_id
        LEFT JOIN all_pertes ap             ON ap.ingredient_id  = ais.ingredient_id
        LEFT JOIN all_pt_usage apu          ON apu.ingredient_id = ais.ingredient_id
@@ -647,6 +664,8 @@ const getStockEntreprise = async (req, res) => {
         postApproQty: parseFloat(r.post_appro_qty) || 0,
         postPertesQty: parseFloat(r.post_pertes_qty) || 0,
         postPtUsageQty: parseFloat(r.post_pt_usage_qty) || 0,
+        postVenteQty: parseFloat(r.post_vente_qty) || 0,
+        allVenteQty: parseFloat(r.all_vente_qty) || 0,
         allApproQty: parseFloat(r.all_appro_qty) || 0,
         allPertesQty: parseFloat(r.all_pertes_qty) || 0,
         allPtUsageQty: parseFloat(r.all_pt_usage_qty) || 0,
@@ -794,6 +813,7 @@ const getStockEntreprise = async (req, res) => {
         : b.allApproQty - b.allPertesQty;
       const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
       const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
+      const venteDepuisInv = b.hasInv ? b.postVenteQty : b.allVenteQty;
       const transfertsDepuisAppro = b.hasInv ? b.postTransfertsInQty : b.allTransfertsInQty;
       let coutTotal = 0;
       let coutTotalTTC = 0;
@@ -835,6 +855,7 @@ const getStockEntreprise = async (req, res) => {
         lastInvQty: b.hasInv ? b.invQty : null,
         pertesDepuisInv,
         ptUsageDepuisInv,
+        venteDepuisInv,
         transfertsDepuisAppro,
       };
     }), ...ptRows]);
@@ -1240,6 +1261,8 @@ const deleteHistoriqueEntry = async (req, res) => {
         [id, req.user.gerant_parent_id || req.user.id]
       );
       if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
+      if (check.rows[0].type_appro === 'vente' || check.rows[0].type_appro === 'annulation_vente')
+        return res.status(403).json({ message: 'Cette entrée est liée à une vente et ne peut pas être supprimée.' });
       if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
       const entry = check.rows[0];

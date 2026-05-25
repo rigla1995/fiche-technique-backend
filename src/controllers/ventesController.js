@@ -575,6 +575,17 @@ const createVente = async (req, res) => {
     if (labo_id) await assertLaboOwner(labo_id, cid);
     else await assertActiviteOwner(activite_id, cid);
 
+    // Check module_vente_actif for stock deduction
+    let moduleVenteActif = false;
+    if (activite_id) {
+      const mvRes = await pool.query(
+        `SELECT pe.module_vente_actif FROM profil_entreprise pe
+         JOIN activites a ON a.entreprise_id = pe.id WHERE a.id = $1`,
+        [activite_id]
+      );
+      moduleVenteActif = mvRes.rows[0]?.module_vente_actif === true;
+    }
+
     await client.query('BEGIN');
 
     const vRes = await client.query(
@@ -620,24 +631,19 @@ const createVente = async (req, res) => {
         [vente.id, article_type, article_id, quantite, prix_unitaire, cout]
       );
 
-      // Decrement stock
-      if (article_type === 'ingredient') {
-        await client.query(
-          `INSERT INTO stock_client_daily (client_id, ingredient_id, quantite, date_appro, type_appro, created_by)
-           VALUES ($1, $2, $3, $4, 'vente', $5)`,
-          [cid, article_id, -Math.abs(quantite),
-           date_vente || new Date().toISOString().slice(0, 10), req.user.id]
-        );
-      } else if (article_type === 'produit') {
+      // Decrement activite stock when module_vente is active
+      if (activite_id && moduleVenteActif && article_type === 'produit') {
         const ftRes = await client.query(
           'SELECT ingredient_id, portion FROM produit_ingredients WHERE produit_id = $1',
           [article_id]
         );
         for (const pi of ftRes.rows) {
           await client.query(
-            `INSERT INTO stock_client_daily (client_id, ingredient_id, quantite, date_appro, type_appro, created_by)
-             VALUES ($1, $2, $3, $4, 'vente', $5)`,
-            [cid, pi.ingredient_id, -(parseFloat(pi.portion) * parseFloat(quantite)),
+            `INSERT INTO stock_entreprise_daily
+               (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
+             VALUES ($1, $2, $3, $4, 'vente', 0, 0, 0, NOW(), $5)`,
+            [activite_id, pi.ingredient_id,
+             -(parseFloat(pi.portion) * parseFloat(quantite)),
              date_vente || new Date().toISOString().slice(0, 10), req.user.id]
           );
         }
@@ -671,28 +677,33 @@ const annulerVente = async (req, res) => {
     await client.query('BEGIN');
     await client.query("UPDATE ventes SET statut = 'annulee' WHERE id = $1", [id]);
 
-    // Reverse stock decrements
-    const lignesRes = await client.query('SELECT * FROM vente_lignes WHERE vente_id = $1', [id]);
-    for (const ligne of lignesRes.rows) {
-      if (ligne.article_type === 'ingredient') {
-        await client.query(
-          `INSERT INTO stock_client_daily (client_id, ingredient_id, quantite, date_appro, type_appro, created_by)
-           VALUES ($1, $2, $3, $4, 'annulation_vente', $5)`,
-          [cid, ligne.article_id, Math.abs(parseFloat(ligne.quantite)),
-           vente.date_vente, req.user.id]
-        );
-      } else if (ligne.article_type === 'produit') {
-        const ftRes = await client.query(
-          'SELECT ingredient_id, portion FROM produit_ingredients WHERE produit_id = $1',
-          [ligne.article_id]
-        );
-        for (const pi of ftRes.rows) {
-          await client.query(
-            `INSERT INTO stock_client_daily (client_id, ingredient_id, quantite, date_appro, type_appro, created_by)
-             VALUES ($1, $2, $3, $4, 'annulation_vente', $5)`,
-            [cid, pi.ingredient_id, parseFloat(pi.portion) * parseFloat(ligne.quantite),
-             vente.date_vente, req.user.id]
-          );
+    // Reverse stock decrements if activite-based vente
+    if (vente.activite_id) {
+      const mvRes = await pool.query(
+        `SELECT pe.module_vente_actif FROM profil_entreprise pe
+         JOIN activites a ON a.entreprise_id = pe.id WHERE a.id = $1`,
+        [vente.activite_id]
+      );
+      const mvActif = mvRes.rows[0]?.module_vente_actif === true;
+      if (mvActif) {
+        const lignesRes = await client.query('SELECT * FROM vente_lignes WHERE vente_id = $1', [id]);
+        for (const ligne of lignesRes.rows) {
+          if (ligne.article_type === 'produit') {
+            const ftRes = await client.query(
+              'SELECT ingredient_id, portion FROM produit_ingredients WHERE produit_id = $1',
+              [ligne.article_id]
+            );
+            for (const pi of ftRes.rows) {
+              await client.query(
+                `INSERT INTO stock_entreprise_daily
+                   (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
+                 VALUES ($1, $2, $3, $4, 'annulation_vente', 0, 0, 0, NOW(), $5)`,
+                [vente.activite_id, pi.ingredient_id,
+                 parseFloat(pi.portion) * parseFloat(ligne.quantite),
+                 vente.date_vente, req.user.id]
+              );
+            }
+          }
         }
       }
     }
