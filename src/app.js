@@ -30,6 +30,7 @@ const aiAssistantRoutes = require('./routes/aiAssistant');
 const ventesRoutes = require('./routes/ventes');
 const referentielRoutes = require('./routes/referentiel');
 const { initTelegram } = require('./services/telegramService');
+const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 
 const { authenticate, requireWriteAccess } = require('./middleware/auth');
 
@@ -75,6 +76,8 @@ app.use('/api/fournisseurs', fournisseursIndepRoutes);
 app.use('/api/rapports', rapportsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/ai-assistant', aiAssistantRoutes);
+app.get('/api/messenger/webhook', verifyWebhook);
+app.post('/api/messenger/webhook', receiveWebhook);
 app.use('/api', ventesRoutes);
 app.use('/api/referentiel', referentielRoutes);
 

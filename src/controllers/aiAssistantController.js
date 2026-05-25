@@ -10,24 +10,31 @@ const getAiConfig = async (req, res) => {
     const { clientId } = req.params;
     const result = await pool.query(
       `SELECT client_id, enabled, whatsapp_number, telegram_chat_id,
-              invite_token, confidence_threshold
+              invite_token, messenger_psid, messenger_invite_token, confidence_threshold
        FROM ai_assistant_config WHERE client_id = $1`,
       [clientId]
     );
     if (result.rows.length === 0) {
-      return res.json({ clientId: parseInt(clientId), enabled: false, telegramLinked: false, confidenceThreshold: 0.75 });
+      return res.json({ clientId: parseInt(clientId), enabled: false, telegramLinked: false, messengerLinked: false, confidenceThreshold: 0.75 });
     }
     const r = result.rows[0];
     const botUser = getBotUsername();
-    const inviteLink = r.invite_token && botUser
+    const telegramInviteLink = r.invite_token && botUser
       ? `https://t.me/${botUser}?start=${r.invite_token}`
+      : null;
+    const messengerPageUsername = process.env.MESSENGER_PAGE_USERNAME;
+    const messengerInviteLink = r.messenger_invite_token && messengerPageUsername
+      ? `https://m.me/${messengerPageUsername}?ref=${r.messenger_invite_token}`
       : null;
     res.json({
       clientId: r.client_id,
       enabled: r.enabled,
       telegramLinked: !!r.telegram_chat_id,
       telegramChatId: r.telegram_chat_id,
-      inviteLink,
+      inviteLink: telegramInviteLink,
+      messengerLinked: !!r.messenger_psid,
+      messengerPsid: r.messenger_psid,
+      messengerInviteLink,
       confidenceThreshold: parseFloat(r.confidence_threshold) || 0.75,
     });
   } catch (err) {
@@ -88,6 +95,11 @@ const setAiConfig = async (req, res) => {
       ? `https://t.me/${botUser}?start=${inviteToken}`
       : null;
 
+    const messengerPageUsername = process.env.MESSENGER_PAGE_USERNAME;
+    const messengerInviteLink = existing.rows[0]?.messenger_invite_token && messengerPageUsername && !existing.rows[0]?.messenger_psid
+      ? `https://m.me/${messengerPageUsername}?ref=${existing.rows[0].messenger_invite_token}`
+      : null;
+
     // Send invitation email when activating a new (non-linked) agent
     if (enabled && wasDisabled && !hasChatId && inviteLink) {
       const clientRow = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
@@ -102,7 +114,15 @@ const setAiConfig = async (req, res) => {
       }
     }
 
-    res.json({ clientId: parseInt(clientId), enabled, telegramLinked: hasChatId, inviteLink, confidenceThreshold: threshold });
+    res.json({
+      clientId: parseInt(clientId),
+      enabled,
+      telegramLinked: hasChatId,
+      inviteLink,
+      messengerLinked: !!existing.rows[0]?.messenger_psid,
+      messengerInviteLink,
+      confidenceThreshold: threshold,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -141,6 +161,34 @@ const generateInviteLink = async (req, res) => {
     }
 
     res.json({ inviteLink });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// ── Admin: generate fresh Messenger invite link ───────────────────────────────
+
+const generateMessengerInviteLink = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const messengerPageUsername = process.env.MESSENGER_PAGE_USERNAME;
+    if (!messengerPageUsername) {
+      return res.status(503).json({ message: 'MESSENGER_PAGE_USERNAME non configuré' });
+    }
+
+    const inviteToken = crypto.randomBytes(24).toString('hex');
+
+    await pool.query(
+      `INSERT INTO ai_assistant_config (client_id, enabled, messenger_invite_token, updated_at)
+       VALUES ($1, false, $2, NOW())
+       ON CONFLICT (client_id) DO UPDATE
+         SET messenger_invite_token = $2, messenger_psid = NULL, updated_at = NOW()`,
+      [clientId, inviteToken]
+    );
+
+    const inviteLink = `https://m.me/${messengerPageUsername}?ref=${inviteToken}`;
+    res.json({ messengerInviteLink: inviteLink });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -186,18 +234,23 @@ const getActiveAgents = async (req, res) => {
     );
 
     const botUser = getBotUsername();
+    const messengerPageUsername = process.env.MESSENGER_PAGE_USERNAME;
     const agents = result.rows.map(r => ({
       clientId: r.client_id,
       clientNom: r.nom,
       clientEmail: r.email,
       enabled: r.enabled,
       telegramLinked: !!r.telegram_chat_id,
+      messengerLinked: !!r.messenger_psid,
       messageCount: parseInt(r.message_count),
       lastActivity: r.last_activity,
       lastConfidence: r.last_confidence != null ? parseFloat(r.last_confidence) : null,
       avgConfidenceMonth: r.avg_confidence_month != null ? parseFloat(r.avg_confidence_month) : null,
       inviteLink: r.invite_token && botUser && !r.telegram_chat_id
         ? `https://t.me/${botUser}?start=${r.invite_token}`
+        : null,
+      messengerInviteLink: r.messenger_invite_token && messengerPageUsername && !r.messenger_psid
+        ? `https://m.me/${messengerPageUsername}?ref=${r.messenger_invite_token}`
         : null,
       activatedAt: r.updated_at,
     }));
@@ -291,6 +344,6 @@ const clearClientConversation = async (req, res) => {
 };
 
 module.exports = {
-  getAiConfig, setAiConfig, generateInviteLink, getActiveAgents,
+  getAiConfig, setAiConfig, generateInviteLink, generateMessengerInviteLink, getActiveAgents,
   getClientStatus, getClientConversation, clientChat, clearClientConversation,
 };
