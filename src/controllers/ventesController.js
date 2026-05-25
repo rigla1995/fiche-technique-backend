@@ -751,6 +751,7 @@ const laboVentes = async (req, res) => {
           WHEN lt.produit_id IS NOT NULL THEN 'produit'
         END as article_type,
         CASE WHEN lt.ingredient_id IS NOT NULL THEN u.nom ELSE NULL END as unite_nom,
+        CASE WHEN lt.ingredient_id IS NOT NULL THEN COALESCE(cat.nom, 'Sans catégorie') ELSE 'Produits Transformés' END as categorie_nom,
         COALESCE(lt.quantite * lt.prix_unitaire, 0) as valeur,
         CASE
           WHEN lt.ingredient_id IS NOT NULL THEN (
@@ -772,6 +773,7 @@ const laboVentes = async (req, res) => {
        LEFT JOIN articles i ON i.id = lt.ingredient_id
        LEFT JOIN produits p ON p.id = lt.produit_id
        LEFT JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN categories cat ON cat.id = i.categorie_id
        JOIN activites a ON a.id = lt.activite_id
        WHERE lt.labo_id = $1${where}
        ORDER BY lt.date_transfert DESC, lt.created_at DESC`,
@@ -785,6 +787,7 @@ const laboVentes = async (req, res) => {
       prix_unitaire: row.prix_unitaire != null ? parseFloat(row.prix_unitaire) : null,
       valeur: parseFloat(row.valeur),
       prix_moyen_appro: row.prix_moyen_appro != null ? parseFloat(row.prix_moyen_appro) : null,
+      categorie_nom: row.categorie_nom ?? 'Sans catégorie',
     })));
   } catch (e) {
     res.status(500).json({ message: e.message });
