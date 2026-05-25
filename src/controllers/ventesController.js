@@ -323,6 +323,39 @@ const getPrixHistorique = async (req, res) => {
   }
 };
 
+const getPrixHistoriqueConfig = async (req, res) => {
+  try {
+    const { activiteId } = req.query;
+    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const cid = clientId(req);
+    await assertActiviteOwner(activiteId, cid);
+    const r = await pool.query(
+      `SELECT avph.id, avph.article_vendable_id, avph.prix_vente, avph.saved_at,
+              av.article_type, av.article_id,
+              p.nom as produit_nom, p.is_supplement
+       FROM article_vendable_prix_historique avph
+       JOIN activite_articles_vendables av ON av.id = avph.article_vendable_id
+       LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
+       WHERE av.activite_id = $1
+       ORDER BY avph.saved_at DESC
+       LIMIT 500`,
+      [activiteId]
+    );
+    res.json(r.rows.map(row => ({
+      id: row.id,
+      article_vendable_id: row.article_vendable_id,
+      prix_vente: parseFloat(row.prix_vente),
+      saved_at: row.saved_at,
+      article_type: row.article_type,
+      produit_nom: row.produit_nom ?? null,
+      is_supplement: row.is_supplement ?? false,
+    })));
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    res.status(500).json({ message: e.message });
+  }
+};
+
 const deleteArticleVendable = async (req, res) => {
   try {
     const { id } = req.params;
@@ -870,7 +903,7 @@ module.exports = {
   toggleModuleVente,
   listActivitePrestataires, addActivitePrestataire, updateActivitePrestataire, removeActivitePrestataire,
   listPrestatairesClient,
-  listArticlesVendables, upsertArticleVendable, updateArticleVendable, deleteArticleVendable, getPrixHistorique,
+  listArticlesVendables, upsertArticleVendable, updateArticleVendable, deleteArticleVendable, getPrixHistorique, getPrixHistoriqueConfig,
   listArticlePrixPrestataire, upsertArticlePrixPrestataire,
   getChargesFixes, upsertChargesFixes,
   listVentes, getVente, createVente, annulerVente, statsVentes,
