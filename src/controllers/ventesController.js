@@ -896,19 +896,21 @@ const laboVentesStats = async (req, res) => {
 
 const exportVentesExcel = async (req, res) => {
   try {
-    const { activiteId, from, to, type } = req.query;
+    const { activiteId, from, to, type, prestataireId, selectedIds: selParam } = req.query;
     if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
     const cid = clientId(req);
     await assertActiviteOwner(activiteId, cid);
+    const selectedSet = new Set(selParam ? selParam.split(',').filter(Boolean) : []);
 
     const params = [activiteId];
     let where = '';
-    if (from) { params.push(from); where += ` AND v.date_vente >= $${params.length}`; }
-    if (to)   { params.push(to);   where += ` AND v.date_vente <= $${params.length}`; }
-    if (type) { params.push(type); where += ` AND v.type_vente = $${params.length}`; }
+    if (from)          { params.push(from);          where += ` AND v.date_vente >= $${params.length}`; }
+    if (to)            { params.push(to);             where += ` AND v.date_vente <= $${params.length}`; }
+    if (type)          { params.push(type);           where += ` AND v.type_vente = $${params.length}`; }
+    if (prestataireId) { params.push(prestataireId);  where += ` AND v.prestataire_id = $${params.length}`; }
 
     const r = await pool.query(
-      `SELECT v.date_vente, v.type_vente, pl.nom as prestataire_nom, v.statut,
+      `SELECT v.id, v.date_vente, v.type_vente, pl.nom as prestataire_nom, v.statut,
               COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) as total_ca,
               COALESCE(SUM(vl.quantite * (vl.prix_unitaire - COALESCE(vl.cout_unitaire,0))), 0) as total_marge
        FROM ventes v
@@ -920,35 +922,99 @@ const exportVentesExcel = async (req, res) => {
       params
     );
 
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Historique Ventes');
-    ws.columns = [
-      { header: 'Date', key: 'date', width: 14 },
-      { header: 'Type', key: 'type', width: 16 },
-      { header: 'Prestataire', key: 'prestataire', width: 20 },
-      { header: 'CA (DT)', key: 'ca', width: 14 },
-      { header: 'Marge (DT)', key: 'marge', width: 14 },
-      { header: 'Statut', key: 'statut', width: 14 },
+    const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
+    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF6B00';
+    const ALT = 'EEF4FF'; const GOLD = 'FFD700'; const TITLE_BG = '2E4A7A';
+    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
+    const bodyFont = { name: 'Calibri', size: 10 };
+    const numFmt = '#,##0.000 "DT"';
+
+    const cols = [
+      { header: 'Date',        width: 13 },
+      { header: 'Type',        width: 14 },
+      { header: 'Prestataire', width: 22 },
+      { header: 'CA (DT)',     width: 15 },
+      { header: 'Marge (DT)',  width: 15 },
+      { header: 'Statut',      width: 14 },
     ];
-    const hRow = ws.getRow(1);
-    hRow.eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } };
-      cell.alignment = { horizontal: 'center' };
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Fiche Technique App';
+    const ws = wb.addWorksheet('Historique Ventes', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+    ws.columns = cols.map(c => ({ width: c.width }));
+
+    // Title row
+    const titleText = `Historique Ventes  —  DU : ${fmtD(from)}   AU : ${fmtD(to)}`;
+    const titleRow = ws.addRow([titleText, ...Array(cols.length - 1).fill('')]);
+    ws.mergeCells(1, 1, 1, cols.length);
+    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
+    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
+    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+    titleRow.height = 28;
+
+    // Header row
+    const hdrRow = ws.addRow(cols.map(c => c.header));
+    hdrRow.eachCell({ includeEmpty: true }, cell => {
+      cell.font = hdrFont;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = border;
     });
-    for (const row of r.rows) {
-      ws.addRow({
-        date: isoDate(row.date_vente),
-        type: row.type_vente === 'directe' ? 'Directe' : 'Prestataire',
-        prestataire: row.prestataire_nom || '',
-        ca: parseFloat(row.total_ca),
-        marge: parseFloat(row.total_marge),
-        statut: row.statut === 'confirmee' ? 'Confirmée' : row.statut,
-      });
+    hdrRow.height = 22;
+    ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+
+    // Data rows
+    let totalCA = 0; let totalMarge = 0;
+    r.rows.forEach((row, i) => {
+      const ca = parseFloat(row.total_ca);
+      const marge = parseFloat(row.total_marge);
+      totalCA += ca; totalMarge += marge;
+      const isSelected = selectedSet.has(row.id);
+      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
+      const txtColor = isSelected ? WHITE : '1a1a2e';
+      const dateStr = isoDate(row.date_vente)?.split('-').reverse().join('/') ?? '';
+      const typeLabel = row.type_vente === 'directe' ? 'Directe' : 'Prestataire';
+      const statutLabel = row.statut === 'confirmee' ? 'Confirmée' : row.statut;
+      const dataRow = ws.addRow([dateStr, typeLabel, row.prestataire_nom || '', ca, marge, statutLabel]);
+      for (let c = 1; c <= cols.length; c++) {
+        const cell = dataRow.getCell(c);
+        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.border = border;
+        cell.alignment = { vertical: 'middle', horizontal: c >= 4 && c <= 5 ? 'right' : (c === 6 ? 'center' : 'left') };
+      }
+      dataRow.getCell(4).numFmt = numFmt;
+      dataRow.getCell(5).numFmt = numFmt;
+      dataRow.height = 16;
+    });
+
+    // Total row
+    const totalRow = ws.addRow(['TOTAL', '', '', totalCA, totalMarge, '']);
+    totalRow.eachCell({ includeEmpty: true }, cell => {
+      cell.font = { name: 'Calibri', bold: true, size: 10 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
+      cell.border = border;
+      cell.alignment = { vertical: 'middle', horizontal: 'right' };
+    });
+    totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+    totalRow.getCell(4).numFmt = numFmt;
+    totalRow.getCell(5).numFmt = numFmt;
+    totalRow.height = 18;
+
+    // Footer
+    ws.addRow([]);
+    ws.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — ${r.rows.length} vente(s) — Montants en Dinars Tunisiens (DT)`])
+      .getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
+    if (selectedSet.size > 0) {
+      const noteRow = ws.addRow([`⚠ ${selectedSet.size} vente(s) en surbrillance orange = sélectionnées`]);
+      noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: ORANGE } };
     }
 
+    const dateRange = from && to ? `${from}_${to}` : new Date().getFullYear();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="historique-ventes.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="Historique-Ventes-${dateRange}.xlsx"`);
     await wb.xlsx.write(res);
     res.end();
   } catch (e) {
@@ -959,51 +1025,109 @@ const exportVentesExcel = async (req, res) => {
 
 const exportPrixHistoriqueConfigExcel = async (req, res) => {
   try {
-    const { activiteId } = req.query;
+    const { activiteId, from, to, filterType, filterNom, selectedIds: selParam } = req.query;
     if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
     const cid = clientId(req);
     await assertActiviteOwner(activiteId, cid);
+    const selectedSet = new Set(selParam ? selParam.split(',').map(Number).filter(Boolean) : []);
+
+    const params = [activiteId];
+    let where = '';
+    if (from)       { params.push(from);       where += ` AND h.saved_at >= $${params.length}`; }
+    if (to)         { params.push(to + 'T23:59:59'); where += ` AND h.saved_at <= $${params.length}`; }
+    if (filterType === 'produit')    where += ` AND COALESCE(p.is_supplement, FALSE) = FALSE`;
+    if (filterType === 'supplement') where += ` AND COALESCE(p.is_supplement, FALSE) = TRUE`;
+    if (filterNom) { params.push(`%${filterNom}%`); where += ` AND p.nom ILIKE $${params.length}`; }
 
     const r = await pool.query(
       `SELECT h.id, h.prix_vente, h.saved_at,
-              av.article_type,
-              COALESCE(p.nom, i.nom) as produit_nom,
+              p.nom as produit_nom,
               COALESCE(p.is_supplement, FALSE) as is_supplement
        FROM article_vendable_prix_historique h
        JOIN activite_articles_vendables av ON av.id = h.article_vendable_id
-       LEFT JOIN produits p ON p.id = av.article_id AND av.article_type = 'produit'
-       LEFT JOIN articles i ON i.id = av.article_id AND av.article_type = 'ingredient'
-       WHERE av.activite_id = $1
+       JOIN produits p ON p.id = av.article_id
+       WHERE av.activite_id = $1${where}
        ORDER BY h.saved_at DESC
        LIMIT 1000`,
-      [activiteId]
+      params
     );
 
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Historique Config Prix');
-    ws.columns = [
-      { header: 'Produit', key: 'produit', width: 28 },
-      { header: 'Type', key: 'type', width: 14 },
-      { header: 'Prix (DT)', key: 'prix', width: 14 },
-      { header: 'Date', key: 'date', width: 14 },
+    const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
+    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF6B00';
+    const ALT = 'EEF4FF'; const GOLD = 'FFD700'; const TITLE_BG = '2E4A7A';
+    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
+    const bodyFont = { name: 'Calibri', size: 10 };
+    const numFmt = '#,##0.000 "DT"';
+
+    const cols = [
+      { header: 'Produit / Supplément', width: 30 },
+      { header: 'Type',                  width: 14 },
+      { header: 'Prix enregistré',       width: 18 },
+      { header: 'Date',                  width: 14 },
     ];
-    const hRow = ws.getRow(1);
-    hRow.eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } };
-      cell.alignment = { horizontal: 'center' };
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Fiche Technique App';
+    const ws = wb.addWorksheet('Historique Config Prix', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+    ws.columns = cols.map(c => ({ width: c.width }));
+
+    // Title row
+    const titleText = `Historique Config Prix  —  DU : ${fmtD(from)}   AU : ${fmtD(to)}`;
+    const titleRow = ws.addRow([titleText, ...Array(cols.length - 1).fill('')]);
+    ws.mergeCells(1, 1, 1, cols.length);
+    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
+    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
+    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+    titleRow.height = 28;
+
+    // Header row
+    const hdrRow = ws.addRow(cols.map(c => c.header));
+    hdrRow.eachCell({ includeEmpty: true }, cell => {
+      cell.font = hdrFont;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = border;
     });
-    for (const row of r.rows) {
-      ws.addRow({
-        produit: row.produit_nom || '—',
-        type: row.is_supplement ? 'Supplément' : 'Produit',
-        prix: parseFloat(row.prix_vente),
-        date: new Date(row.saved_at).toLocaleDateString('fr-FR'),
-      });
+    hdrRow.height = 22;
+    ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+
+    // Data rows
+    r.rows.forEach((row, i) => {
+      const isSelected = selectedSet.has(Number(row.id));
+      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
+      const txtColor = isSelected ? WHITE : '1a1a2e';
+      const dateStr = new Date(row.saved_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+      const dataRow = ws.addRow([
+        row.produit_nom || '—',
+        row.is_supplement ? 'Supplément' : 'Produit',
+        parseFloat(row.prix_vente),
+        dateStr,
+      ]);
+      for (let c = 1; c <= cols.length; c++) {
+        const cell = dataRow.getCell(c);
+        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.border = border;
+        cell.alignment = { vertical: 'middle', horizontal: c === 3 ? 'right' : (c === 2 || c === 4 ? 'center' : 'left') };
+      }
+      dataRow.getCell(3).numFmt = numFmt;
+      dataRow.height = 16;
+    });
+
+    // Footer
+    ws.addRow([]);
+    ws.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — ${r.rows.length} entrée(s) — Prix en Dinars Tunisiens (DT)`])
+      .getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
+    if (selectedSet.size > 0) {
+      const noteRow = ws.addRow([`⚠ ${selectedSet.size} entrée(s) en surbrillance orange = sélectionnées`]);
+      noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: ORANGE } };
     }
 
+    const dateRange = from && to ? `${from}_${to}` : new Date().getFullYear();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="historique-config-prix.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="Historique-Config-Prix-${dateRange}.xlsx"`);
     await wb.xlsx.write(res);
     res.end();
   } catch (e) {
