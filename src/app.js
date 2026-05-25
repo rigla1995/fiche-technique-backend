@@ -28,6 +28,7 @@ const rapportsRoutes = require('./routes/rapports');
 const notificationsRoutes = require('./routes/notifications');
 const aiAssistantRoutes = require('./routes/aiAssistant');
 const ventesRoutes = require('./routes/ventes');
+const referentielRoutes = require('./routes/referentiel');
 const { initTelegram } = require('./services/telegramService');
 
 const { authenticate, requireWriteAccess } = require('./middleware/auth');
@@ -75,6 +76,7 @@ app.use('/api/rapports', rapportsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/ai-assistant', aiAssistantRoutes);
 app.use('/api', ventesRoutes);
+app.use('/api/referentiel', referentielRoutes);
 
 app.use('/api/products', produitsRoutes);
 

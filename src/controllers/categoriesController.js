@@ -6,6 +6,7 @@ const mapCategorie = (row) => ({
   name: row.nom,
   familleId: row.famille_id || null,
   familleName: row.famille_nom || null,
+  vendable: row.vendable !== undefined ? row.vendable : true,
   clientId: row.client_id || null,
   createdAt: row.created_at,
 });
@@ -64,11 +65,12 @@ const create = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = req.body.name || req.body.nom;
   const famille_id = req.body.familleId || req.body.famille_id || null;
+  const vendable = req.body.vendable !== undefined ? Boolean(req.body.vendable) : true;
 
   try {
     const result = await pool.query(
-      'INSERT INTO categories (nom, client_id, famille_id) VALUES ($1, $2, $3) RETURNING *',
-      [nom, clientId, famille_id]
+      'INSERT INTO categories (nom, client_id, famille_id, vendable) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nom, clientId, famille_id, vendable]
     );
     const row = result.rows[0];
     if (famille_id) {
@@ -92,14 +94,17 @@ const update = async (req, res) => {
   const famille_id = req.body.familleId !== undefined ? req.body.familleId
     : req.body.famille_id !== undefined ? req.body.famille_id : undefined;
   const familleChanged = famille_id !== undefined;
+  const vendable = req.body.vendable !== undefined ? Boolean(req.body.vendable) : undefined;
+  const vendableChanged = vendable !== undefined;
 
   try {
     const result = await pool.query(
       `UPDATE categories
        SET nom = COALESCE($1, nom),
-           famille_id = CASE WHEN $3::boolean THEN $2 ELSE famille_id END
-       WHERE id = $4 AND client_id = $5 RETURNING *`,
-      [nom, famille_id ?? null, familleChanged, req.params.id, clientId]
+           famille_id = CASE WHEN $3::boolean THEN $2 ELSE famille_id END,
+           vendable = CASE WHEN $6::boolean THEN $5 ELSE vendable END
+       WHERE id = $4 AND client_id = $7 RETURNING *`,
+      [nom, famille_id ?? null, familleChanged, req.params.id, vendable ?? true, vendableChanged, clientId]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Catégorie introuvable' });
     const row = result.rows[0];
