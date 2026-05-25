@@ -270,6 +270,13 @@ const upsertArticleVendable = async (req, res) => {
        RETURNING *`,
       [activite_id, article_type, article_id, prix_vente ?? 0, portion ?? null, actif]
     );
+    const pv = prix_vente ?? 0;
+    if (pv > 0) {
+      await pool.query(
+        `INSERT INTO article_vendable_prix_historique (article_vendable_id, prix_vente) VALUES ($1,$2)`,
+        [r.rows[0].id, pv]
+      );
+    }
     res.status(201).json(r.rows[0]);
   } catch (e) {
     if (e.status) return res.status(e.status).json({ message: e.message });
@@ -290,7 +297,27 @@ const updateArticleVendable = async (req, res) => {
       [prix_vente, portion, actif, id]
     );
     if (!r.rows.length) return res.status(404).json({ message: 'Introuvable' });
+    if (prix_vente != null && prix_vente > 0) {
+      await pool.query(
+        `INSERT INTO article_vendable_prix_historique (article_vendable_id, prix_vente) VALUES ($1,$2)`,
+        [id, prix_vente]
+      );
+    }
     res.json(r.rows[0]);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+const getPrixHistorique = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const r = await pool.query(
+      `SELECT prix_vente, saved_at FROM article_vendable_prix_historique
+       WHERE article_vendable_id = $1 ORDER BY saved_at DESC LIMIT 5`,
+      [id]
+    );
+    res.json(r.rows.map(row => ({ prix_vente: parseFloat(row.prix_vente), saved_at: row.saved_at })));
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
@@ -843,7 +870,7 @@ module.exports = {
   toggleModuleVente,
   listActivitePrestataires, addActivitePrestataire, updateActivitePrestataire, removeActivitePrestataire,
   listPrestatairesClient,
-  listArticlesVendables, upsertArticleVendable, updateArticleVendable, deleteArticleVendable,
+  listArticlesVendables, upsertArticleVendable, updateArticleVendable, deleteArticleVendable, getPrixHistorique,
   listArticlePrixPrestataire, upsertArticlePrixPrestataire,
   getChargesFixes, upsertChargesFixes,
   listVentes, getVente, createVente, annulerVente, statsVentes,

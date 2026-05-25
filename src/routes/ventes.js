@@ -211,6 +211,7 @@ router.post('/articles-vendables', authenticate, requireEntreprise, c.upsertArti
  *       204: { description: Supprimé }
  */
 router.put('/articles-vendables/:id', authenticate, requireEntreprise, c.updateArticleVendable);
+router.get('/articles-vendables/:id/historique', authenticate, requireEntreprise, c.getPrixHistorique);
 router.delete('/articles-vendables/:id', authenticate, requireEntreprise, c.deleteArticleVendable);
 
 // ── Prix prestataire par article ──────────────────────────────────────────────
