@@ -657,22 +657,38 @@ const createVente = async (req, res) => {
       }
     }
 
-    // Insert ONE consolidated entry per ingredient (negative = deduction)
+    // UPSERT per ingredient — accumulate into existing 'vente' row if same day
     for (const [ingredientId, total] of ingredientTotals) {
-      await client.query(
-        `INSERT INTO stock_entreprise_daily
-           (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
-         VALUES ($1, $2, $3, $4, 'vente', 0, 0, 0, NOW(), $5)`,
-        [activite_id, ingredientId, -total, dateApproValue, req.user.id]
+      const upd = await client.query(
+        `UPDATE stock_entreprise_daily
+         SET quantite = quantite - $1, updated_at = NOW()
+         WHERE activite_id = $2 AND ingredient_id = $3 AND date_appro = $4 AND type_appro = 'vente'`,
+        [total, activite_id, ingredientId, dateApproValue]
       );
+      if (upd.rowCount === 0) {
+        await client.query(
+          `INSERT INTO stock_entreprise_daily
+             (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
+           VALUES ($1, $2, $3, $4, 'vente', 0, 0, 0, NOW(), $5)`,
+          [activite_id, ingredientId, -total, dateApproValue, req.user.id]
+        );
+      }
     }
-    // Insert ONE consolidated entry per PT sub-product (negative = deduction)
+    // UPSERT per PT sub-product — accumulate into existing vente row if same day
     for (const [sousProduitId, total] of ptTotals) {
-      await client.query(
-        `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
-         VALUES ($1, $2, $3, $4, NULL)`,
-        [sousProduitId, activite_id, dateApproValue, -total]
+      const upd = await client.query(
+        `UPDATE stock_produits_transformes
+         SET quantite = quantite - $1
+         WHERE produit_id = $2 AND activite_id = $3 AND date_appro = $4 AND quantite < 0 AND prix_calcule IS NULL`,
+        [total, sousProduitId, activite_id, dateApproValue]
       );
+      if (upd.rowCount === 0) {
+        await client.query(
+          `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
+           VALUES ($1, $2, $3, $4, NULL)`,
+          [sousProduitId, activite_id, dateApproValue, -total]
+        );
+      }
     }
 
     await client.query('COMMIT');

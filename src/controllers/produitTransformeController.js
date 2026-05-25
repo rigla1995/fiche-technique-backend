@@ -379,6 +379,7 @@ const getStockPTHistory = async (req, res) => {
       quantite: r.quantite,
       prixCalcule: r.prix_calcule,
       createdAt: r.created_at,
+      typeAppro: parseFloat(r.quantite) < 0 ? 'vente' : 'manuel',
     })));
   } catch (err) {
     console.error('[getStockPTHistory]', err);
