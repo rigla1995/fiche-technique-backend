@@ -22,6 +22,17 @@ async function assertActiviteOwner(activiteId, userId) {
   if (String(ownerId) !== String(userId)) throw Object.assign(new Error('Accès refusé'), { status: 403 });
 }
 
+async function assertLaboOwner(laboId, userId) {
+  const r = await pool.query(
+    `SELECT pe.client_id FROM labos l
+     JOIN profil_entreprise pe ON pe.id = l.entreprise_id
+     WHERE l.id = $1`,
+    [laboId]
+  );
+  const ownerId = r.rows[0]?.client_id;
+  if (!ownerId || String(ownerId) !== String(userId)) throw Object.assign(new Error('Accès refusé'), { status: 403 });
+}
+
 // ─── Admin — Prestataires ────────────────────────────────────────────────────
 
 const listPrestataires = async (req, res) => {
@@ -97,18 +108,21 @@ const toggleModuleVente = async (req, res) => {
 
 const listActivitePrestataires = async (req, res) => {
   try {
-    const { activiteId } = req.query;
-    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const { activiteId, laboId } = req.query;
+    if (!activiteId && !laboId) return res.status(400).json({ message: 'activiteId ou laboId requis' });
     const cid = clientId(req);
-    await assertActiviteOwner(activiteId, cid);
+    if (activiteId) await assertActiviteOwner(activiteId, cid);
+    else await assertLaboOwner(laboId, cid);
+    const whereCol = activiteId ? 'ap.activite_id' : 'ap.labo_id';
+    const whereVal = activiteId || laboId;
     const r = await pool.query(
-      `SELECT ap.id, ap.activite_id, ap.prestataire_id, ap.taux_commission, ap.actif,
+      `SELECT ap.id, ap.activite_id, ap.labo_id, ap.prestataire_id, ap.taux_commission, ap.actif,
               pl.nom as prestataire_nom, pl.logo_url
        FROM activite_prestataires ap
        JOIN prestataires_livraison pl ON pl.id = ap.prestataire_id
-       WHERE ap.activite_id = $1
+       WHERE ${whereCol} = $1
        ORDER BY pl.nom`,
-      [activiteId]
+      [whereVal]
     );
     res.json(r.rows.map(row => ({ ...row, taux_commission: parseFloat(row.taux_commission) })));
   } catch (e) {
@@ -198,13 +212,17 @@ const listPrestatairesClient = async (req, res) => {
 
 const listArticlesVendables = async (req, res) => {
   try {
-    const { activiteId } = req.query;
-    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const { activiteId, laboId } = req.query;
+    if (!activiteId && !laboId) return res.status(400).json({ message: 'activiteId ou laboId requis' });
     const cid = clientId(req);
-    await assertActiviteOwner(activiteId, cid);
+    if (activiteId) await assertActiviteOwner(activiteId, cid);
+    else await assertLaboOwner(laboId, cid);
+
+    const whereCol = activiteId ? 'av.activite_id' : 'av.labo_id';
+    const whereVal = activiteId || laboId;
 
     const r = await pool.query(
-      `SELECT av.id, av.activite_id, av.article_type, av.article_id,
+      `SELECT av.id, av.activite_id, av.labo_id, av.article_type, av.article_id,
               av.prix_vente, av.portion, av.actif,
               CASE av.article_type
                 WHEN 'produit' THEN p.nom
@@ -218,9 +236,9 @@ const listArticlesVendables = async (req, res) => {
        LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
        LEFT JOIN articles i ON av.article_type = 'ingredient' AND i.id = av.article_id
        LEFT JOIN unites u ON i.unite_id = u.id
-       WHERE av.activite_id = $1
+       WHERE ${whereCol} = $1
        ORDER BY av.article_type, nom`,
-      [activiteId]
+      [whereVal]
     );
     res.json(r.rows.map(row => ({
       ...row,
@@ -292,10 +310,13 @@ const deleteArticleVendable = async (req, res) => {
 
 const listArticlePrixPrestataire = async (req, res) => {
   try {
-    const { activiteId } = req.query;
-    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const { activiteId, laboId } = req.query;
+    if (!activiteId && !laboId) return res.status(400).json({ message: 'activiteId ou laboId requis' });
     const cid = clientId(req);
-    await assertActiviteOwner(activiteId, cid);
+    if (activiteId) await assertActiviteOwner(activiteId, cid);
+    else await assertLaboOwner(laboId, cid);
+    const whereCol = activiteId ? 'av.activite_id' : 'av.labo_id';
+    const whereVal = activiteId || laboId;
     const r = await pool.query(
       `SELECT app.id, app.article_vendable_id, app.activite_prestataire_id,
               app.prix_vente, app.updated_at,
@@ -312,9 +333,9 @@ const listArticlePrixPrestataire = async (req, res) => {
        JOIN activite_articles_vendables av ON av.id = app.article_vendable_id
        LEFT JOIN articles i ON av.article_type = 'ingredient' AND i.id = av.article_id
        LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
-       WHERE av.activite_id = $1
+       WHERE ${whereCol} = $1
        ORDER BY pl.nom, article_nom`,
-      [activiteId]
+      [whereVal]
     );
     res.json(r.rows.map(row => ({
       ...row,
@@ -398,12 +419,15 @@ const upsertChargesFixes = async (req, res) => {
 
 const listVentes = async (req, res) => {
   try {
-    const { activiteId, from, to } = req.query;
-    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const { activiteId, laboId, from, to } = req.query;
+    if (!activiteId && !laboId) return res.status(400).json({ message: 'activiteId ou laboId requis' });
     const cid = clientId(req);
-    await assertActiviteOwner(activiteId, cid);
+    if (activiteId) await assertActiviteOwner(activiteId, cid);
+    else await assertLaboOwner(laboId, cid);
+    const whereCol = activiteId ? 'v.activite_id' : 'v.labo_id';
+    const whereVal = activiteId || laboId;
 
-    const params = [activiteId];
+    const params = [whereVal];
     let where = '';
     if (from) { params.push(from); where += ` AND v.date_vente >= $${params.length}`; }
     if (to)   { params.push(to);   where += ` AND v.date_vente <= $${params.length}`; }
@@ -416,7 +440,7 @@ const listVentes = async (req, res) => {
        FROM ventes v
        LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
        LEFT JOIN vente_lignes vl ON vl.vente_id = v.id
-       WHERE v.activite_id = $1 AND v.statut != 'annulee'${where}
+       WHERE ${whereCol} = $1 AND v.statut != 'annulee'${where}
        GROUP BY v.id, pl.nom
        ORDER BY v.date_vente DESC, v.created_at DESC`,
       params
@@ -447,7 +471,8 @@ const getVente = async (req, res) => {
     if (!vRes.rows.length) return res.status(404).json({ message: 'Introuvable' });
     const vente = vRes.rows[0];
     const cid = clientId(req);
-    await assertActiviteOwner(vente.activite_id, cid);
+    if (vente.labo_id) await assertLaboOwner(vente.labo_id, cid);
+    else await assertActiviteOwner(vente.activite_id, cid);
 
     const lignesRes = await pool.query(
       `SELECT vl.*,
@@ -486,19 +511,21 @@ const getVente = async (req, res) => {
 const createVente = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { activite_id, date_vente, type_vente, prestataire_id, notes, lignes = [] } = req.body;
-    if (!activite_id || !type_vente) {
-      return res.status(400).json({ message: 'activite_id, type_vente requis' });
+    const { activite_id, labo_id, date_vente, type_vente, prestataire_id, notes, lignes = [] } = req.body;
+    if ((!activite_id && !labo_id) || !type_vente) {
+      return res.status(400).json({ message: 'activite_id ou labo_id, et type_vente requis' });
     }
     const cid = clientId(req);
-    await assertActiviteOwner(activite_id, cid);
+    if (labo_id) await assertLaboOwner(labo_id, cid);
+    else await assertActiviteOwner(activite_id, cid);
 
     await client.query('BEGIN');
 
     const vRes = await client.query(
-      `INSERT INTO ventes (activite_id, date_vente, type_vente, prestataire_id, statut, notes, created_by)
-       VALUES ($1, $2, $3, $4, 'confirmee', $5, $6) RETURNING *`,
-      [activite_id, date_vente || new Date().toISOString().slice(0, 10), type_vente,
+      `INSERT INTO ventes (activite_id, labo_id, date_vente, type_vente, prestataire_id, statut, notes, created_by)
+       VALUES ($1, $2, $3, $4, $5, 'confirmee', $6, $7) RETURNING *`,
+      [activite_id || null, labo_id || null,
+       date_vente || new Date().toISOString().slice(0, 10), type_vente,
        prestataire_id || null, notes || null, req.user.id]
     );
     const vente = vRes.rows[0];
@@ -580,7 +607,8 @@ const annulerVente = async (req, res) => {
     if (!vRes.rows.length) return res.status(404).json({ message: 'Introuvable' });
     const vente = vRes.rows[0];
     const cid = clientId(req);
-    await assertActiviteOwner(vente.activite_id, cid);
+    if (vente.labo_id) await assertLaboOwner(vente.labo_id, cid);
+    else await assertActiviteOwner(vente.activite_id, cid);
 
     if (vente.statut === 'annulee') return res.status(400).json({ message: 'Déjà annulée' });
 
@@ -626,10 +654,13 @@ const annulerVente = async (req, res) => {
 
 const statsVentes = async (req, res) => {
   try {
-    const { activiteId } = req.query;
-    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const { activiteId, laboId } = req.query;
+    if (!activiteId && !laboId) return res.status(400).json({ message: 'activiteId ou laboId requis' });
     const cid = clientId(req);
-    await assertActiviteOwner(activiteId, cid);
+    if (activiteId) await assertActiviteOwner(activiteId, cid);
+    else await assertLaboOwner(laboId, cid);
+    const whereCol = activiteId ? 'v.activite_id' : 'v.labo_id';
+    const whereVal = activiteId || laboId;
 
     const caRes = await pool.query(
       `SELECT
@@ -639,8 +670,8 @@ const statsVentes = async (req, res) => {
         COALESCE(SUM(vl.quantite * (vl.prix_unitaire - COALESCE(vl.cout_unitaire, 0))) FILTER (WHERE date_trunc('month', v.date_vente) = date_trunc('month', CURRENT_DATE)), 0) as marge_mois
        FROM ventes v
        JOIN vente_lignes vl ON vl.vente_id = v.id
-       WHERE v.activite_id = $1 AND v.statut = 'confirmee'`,
-      [activiteId]
+       WHERE ${whereCol} = $1 AND v.statut = 'confirmee'`,
+      [whereVal]
     );
 
     const topRes = await pool.query(
@@ -653,22 +684,22 @@ const statsVentes = async (req, res) => {
        JOIN vente_lignes vl ON vl.vente_id = v.id
        LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
        LEFT JOIN articles i ON vl.article_type = 'ingredient' AND i.id = vl.article_id
-       WHERE v.activite_id = $1 AND v.statut = 'confirmee'
+       WHERE ${whereCol} = $1 AND v.statut = 'confirmee'
          AND date_trunc('month', v.date_vente) = date_trunc('month', CURRENT_DATE)
        GROUP BY vl.article_type, vl.article_id,
                 (CASE vl.article_type WHEN 'produit' THEN p.nom WHEN 'ingredient' THEN i.nom END)
        ORDER BY total_ca DESC LIMIT 10`,
-      [activiteId]
+      [whereVal]
     );
 
     const repartitionRes = await pool.query(
       `SELECT v.type_vente, SUM(vl.quantite * vl.prix_unitaire) as total
        FROM ventes v
        JOIN vente_lignes vl ON vl.vente_id = v.id
-       WHERE v.activite_id = $1 AND v.statut = 'confirmee'
+       WHERE ${whereCol} = $1 AND v.statut = 'confirmee'
          AND date_trunc('month', v.date_vente) = date_trunc('month', CURRENT_DATE)
        GROUP BY v.type_vente`,
-      [activiteId]
+      [whereVal]
     );
 
     const r = caRes.rows[0];
