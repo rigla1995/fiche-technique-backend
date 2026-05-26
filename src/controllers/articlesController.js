@@ -177,13 +177,10 @@ const remove = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const appro = await pool.query(
-      `SELECT 1 FROM (
-         SELECT ingredient_id FROM stock_client_daily   WHERE ingredient_id = $1 LIMIT 1
-         UNION ALL
-         SELECT ingredient_id FROM stock_entreprise_daily WHERE ingredient_id = $1 LIMIT 1
-         UNION ALL
-         SELECT ingredient_id FROM stock_labo_daily     WHERE ingredient_id = $1 LIMIT 1
-       ) t LIMIT 1`,
+      `SELECT 1 WHERE
+         EXISTS (SELECT 1 FROM stock_client_daily     WHERE ingredient_id = $1)
+         OR EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = $1)
+         OR EXISTS (SELECT 1 FROM stock_labo_daily     WHERE ingredient_id = $1)`,
       [req.params.id]
     );
     if (appro.rows.length > 0) {

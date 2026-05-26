@@ -196,11 +196,9 @@ const importReferentiel = [
             // Auto-assign if the existing article has no assignments at all
             if (activiteIds.length > 0 || laboIds.length > 0) {
               const hasAny = await client.query(
-                `SELECT 1 FROM (
-                   SELECT ingredient_id FROM activite_ingredient_selections WHERE ingredient_id = $1 LIMIT 1
-                   UNION ALL
-                   SELECT ingredient_id FROM labo_ingredient_selections     WHERE ingredient_id = $1 LIMIT 1
-                 ) t LIMIT 1`,
+                `SELECT 1 WHERE
+                   EXISTS (SELECT 1 FROM activite_ingredient_selections WHERE ingredient_id = $1)
+                   OR EXISTS (SELECT 1 FROM labo_ingredient_selections   WHERE ingredient_id = $1)`,
                 [existingArticleId]
               );
               if (hasAny.rows.length === 0) {
