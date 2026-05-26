@@ -12,6 +12,7 @@ const { exportExcel } = require('../controllers/exportController');
 const { authenticate, requireClient } = require('../middleware/auth');
 
 router.get('/', authenticate, requireClient, list);
+router.get('/export-list', authenticate, requireClient, exportListExcel);
 router.get('/:id', authenticate, requireClient, getById);
 router.post('/', authenticate, requireClient, [
   body().custom((b) => {
@@ -53,9 +54,6 @@ router.post('/:id/sous-produits', authenticate, requireClient, [
   body('portion').isFloat({ min: 0.001 }).withMessage('Portion invalide'),
 ], addSousProduit);
 router.delete('/:id/sous-produits/:sousProduitId', authenticate, requireClient, removeSousProduit);
-
-// List export
-router.get('/export-list', authenticate, requireClient, exportListExcel);
 
 // Calcul coût & export
 router.get('/:id/cout', authenticate, requireClient, getCout);
