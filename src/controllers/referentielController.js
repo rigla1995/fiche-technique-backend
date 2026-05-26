@@ -110,7 +110,7 @@ const importReferentiel = [
         laboIds = labRes.rows.map(r => r.id);
       }
 
-      const stats = { familles: 0, categories: 0, unites: 0, articles: 0 };
+      const stats = { familles: 0, categories: 0, unites: 0, articles: 0, autoAssigned: 0 };
       const details = [];
 
       const client = await pool.connect();
@@ -190,7 +190,36 @@ const importReferentiel = [
             [r.article, clientId]
           );
           if (existingArt.rows.length > 0) {
+            const existingArticleId = existingArt.rows[0].id;
             rowResult.existing.push('article');
+
+            // Auto-assign if the existing article has no assignments at all
+            if (activiteIds.length > 0 || laboIds.length > 0) {
+              const hasAny = await client.query(
+                `SELECT 1 FROM (
+                   SELECT ingredient_id FROM activite_ingredient_selections WHERE ingredient_id = $1 LIMIT 1
+                   UNION ALL
+                   SELECT ingredient_id FROM labo_ingredient_selections     WHERE ingredient_id = $1 LIMIT 1
+                 ) t LIMIT 1`,
+                [existingArticleId]
+              );
+              if (hasAny.rows.length === 0) {
+                for (const actId of activiteIds) {
+                  await client.query(
+                    'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING',
+                    [actId, existingArticleId]
+                  );
+                }
+                for (const laboId of laboIds) {
+                  await client.query(
+                    'INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                    [laboId, existingArticleId]
+                  );
+                }
+                rowResult.autoAssigned = true;
+                stats.autoAssigned++;
+              }
+            }
           } else {
             const newArt = await client.query(
               'INSERT INTO articles (nom, client_id, unite_id, categorie_id) VALUES ($1, $2, $3, $4) RETURNING id',
