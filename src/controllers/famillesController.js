@@ -6,6 +6,7 @@ const mapFamille = (row) => ({
   name: row.nom,
   consommable: row.consommable !== false,
   vendable: row.vendable !== false,
+  hasAppros: row.has_appros === true,
   clientId: row.client_id,
   createdAt: row.created_at,
 });
@@ -14,7 +15,16 @@ const list = async (req, res) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
     const result = await pool.query(
-      'SELECT * FROM familles WHERE client_id = $1 ORDER BY nom',
+      `SELECT f.*,
+              EXISTS (
+                SELECT 1 FROM articles a
+                JOIN categories c ON c.id = a.categorie_id
+                WHERE c.famille_id = f.id AND a.client_id = $1
+                AND (EXISTS (SELECT 1 FROM stock_client_daily       WHERE ingredient_id = a.id) OR
+                     EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
+                     EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id))
+              ) AS has_appros
+       FROM familles f WHERE f.client_id = $1 ORDER BY f.nom`,
       [clientId]
     );
     res.json(result.rows.map(mapFamille));

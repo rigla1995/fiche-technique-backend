@@ -6,6 +6,7 @@ const mapUnite = (row) => ({
   name: row.nom,
   clientId: row.client_id,
   clientName: row.client_nom,
+  hasAppros: row.has_appros === true,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -27,7 +28,14 @@ const list = async (req, res) => {
       query = 'SELECT * FROM unites ORDER BY nom';
       params = [];
     } else {
-      query = 'SELECT * FROM unites WHERE client_id = $1 ORDER BY nom';
+      query = `SELECT u.*,
+               EXISTS (
+                 SELECT 1 FROM articles a WHERE a.unite_id = u.id AND a.client_id = $1
+                 AND (EXISTS (SELECT 1 FROM stock_client_daily       WHERE ingredient_id = a.id) OR
+                      EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
+                      EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id))
+               ) AS has_appros
+               FROM unites u WHERE u.client_id = $1 ORDER BY u.nom`;
       params = [req.user.id];
     }
 

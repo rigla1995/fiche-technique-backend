@@ -7,6 +7,7 @@ const mapCategorie = (row) => ({
   familleId: row.famille_id || null,
   familleName: row.famille_nom || null,
   clientId: row.client_id || null,
+  hasAppros: row.has_appros === true,
   createdAt: row.created_at,
 });
 
@@ -26,7 +27,13 @@ const list = async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT c.*, f.nom as famille_nom
+      `SELECT c.*, f.nom as famille_nom,
+              EXISTS (
+                SELECT 1 FROM articles a WHERE a.categorie_id = c.id AND a.client_id = $1
+                AND (EXISTS (SELECT 1 FROM stock_client_daily       WHERE ingredient_id = a.id) OR
+                     EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
+                     EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id))
+              ) AS has_appros
        FROM categories c
        LEFT JOIN familles f ON f.id = c.famille_id
        ${where}

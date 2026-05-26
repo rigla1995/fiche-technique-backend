@@ -12,6 +12,7 @@ const mapArticle = (row) => ({
   familleId: row.famille_id || null,
   familleName: row.famille_nom || null,
   clientId: row.client_id || null,
+  hasAppros: row.has_appros === true,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -33,7 +34,10 @@ const list = async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT a.*, u.nom as unite_nom, c.nom as categorie_nom, f.nom as famille_nom, f.id as famille_id
+      `SELECT a.*, u.nom as unite_nom, c.nom as categorie_nom, f.nom as famille_nom, f.id as famille_id,
+              (EXISTS (SELECT 1 FROM stock_client_daily       WHERE ingredient_id = a.id) OR
+               EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
+               EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id)) AS has_appros
        FROM articles a
        JOIN unites u ON a.unite_id = u.id
        LEFT JOIN categories c ON a.categorie_id = c.id
