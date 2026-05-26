@@ -1290,11 +1290,10 @@ const exportListExcel = async (req, res) => {
             secCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XCOLORS.sectionBg } };
             secCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
             secCell.border = brd;
-            ws.getRow(r).height = 20; r++;
+            ws.getRow(r).height = 22; r++;
             altIdx = 0;
-            // Pass activity name so "Activités" column only shows this activity
             actProducts.forEach(p => addDataRow(p, actNom));
-            ws.getRow(r).height = 8; r++; // gap between sections
+            // No empty gap rows — they break Excel's auto-filter detection
           });
         } else {
           rows.forEach(p => addDataRow(p));
@@ -1304,6 +1303,7 @@ const exportListExcel = async (req, res) => {
       }
 
       // Summary — count all written rows (a product in 2 activities = 2 rows)
+      const lastDataRow = r - 1;
       ws.mergeCells(`A${r}:${lastCol}${r}`);
       const totCell = ws.getCell(`A${r}`);
       totCell.value = `Total : ${totalRowsWritten} produit${totalRowsWritten !== 1 ? 's' : ''}`;
@@ -1313,7 +1313,8 @@ const exportListExcel = async (req, res) => {
       totCell.border = brd;
       ws.getRow(r).height = 20;
 
-      ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: headerRowNum, column: colCount } };
+      // Explicit range covering all data rows so Excel doesn't stop at empty/merged rows
+      ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: lastDataRow, column: colCount } };
     };
 
     const wb = new ExcelJS.Workbook();
