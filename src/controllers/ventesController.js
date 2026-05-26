@@ -1108,17 +1108,20 @@ const exportPrixHistoriqueConfigExcel = async (req, res) => {
     let where = '';
     if (from)       { params.push(from);       where += ` AND h.saved_at >= $${params.length}`; }
     if (to)         { params.push(to + 'T23:59:59'); where += ` AND h.saved_at <= $${params.length}`; }
-    if (filterType === 'produit')    where += ` AND COALESCE(p.is_supplement, FALSE) = FALSE`;
-    if (filterType === 'supplement') where += ` AND COALESCE(p.is_supplement, FALSE) = TRUE`;
-    if (filterNom) { params.push(`%${filterNom}%`); where += ` AND p.nom ILIKE $${params.length}`; }
+    if (filterType === 'produit')    where += ` AND av.article_type = 'produit' AND COALESCE(p.is_supplement, FALSE) = FALSE`;
+    if (filterType === 'supplement') where += ` AND av.article_type = 'produit' AND COALESCE(p.is_supplement, FALSE) = TRUE`;
+    if (filterType === 'valorise')   where += ` AND av.article_type = 'ingredient'`;
+    if (filterNom) { params.push(`%${filterNom}%`); where += ` AND COALESCE(p.nom, a.nom) ILIKE $${params.length}`; }
 
     const r = await pool.query(
       `SELECT h.id, h.prix_vente, h.saved_at,
-              p.nom as produit_nom,
+              av.article_type,
+              COALESCE(p.nom, a.nom) as produit_nom,
               COALESCE(p.is_supplement, FALSE) as is_supplement
        FROM article_vendable_prix_historique h
        JOIN activite_articles_vendables av ON av.id = h.article_vendable_id
-       JOIN produits p ON p.id = av.article_id
+       LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
+       LEFT JOIN articles a ON av.article_type = 'ingredient' AND a.id = av.article_id
        WHERE av.activite_id = $1${where}
        ORDER BY h.saved_at DESC
        LIMIT 1000`,
@@ -1174,7 +1177,7 @@ const exportPrixHistoriqueConfigExcel = async (req, res) => {
       const dateStr = new Date(row.saved_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
       const dataRow = ws.addRow([
         row.produit_nom || '—',
-        row.is_supplement ? 'Supplément' : 'Produit',
+        row.article_type === 'ingredient' ? 'Produit Valorisé' : (row.is_supplement ? 'Supplément' : 'Produit'),
         parseFloat(row.prix_vente),
         dateStr,
       ]);
