@@ -34,6 +34,41 @@ const getTemplate = async (req, res) => {
   }
 };
 
+// Returns all activités + labos with assigned flag for one article
+const getArticleAssignments = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const articleId = parseInt(req.params.id);
+  try {
+    const entRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [clientId]);
+    if (entRes.rows.length === 0) return res.json({ activites: [], labos: [] });
+    const entrepriseId = entRes.rows[0].id;
+
+    const [acts, labs, actSels, laboSels] = await Promise.all([
+      pool.query('SELECT id, nom FROM activites WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),
+      pool.query('SELECT id, nom FROM labos WHERE entreprise_id = $1 ORDER BY nom', [entrepriseId]),
+      pool.query(
+        'SELECT activite_id FROM activite_ingredient_selections WHERE ingredient_id = $1',
+        [articleId]
+      ),
+      pool.query(
+        'SELECT labo_id FROM labo_ingredient_selections WHERE ingredient_id = $1',
+        [articleId]
+      ),
+    ]);
+
+    const assignedActs = new Set(actSels.rows.map(r => r.activite_id));
+    const assignedLabos = new Set(laboSels.rows.map(r => r.labo_id));
+
+    res.json({
+      activites: acts.rows.map(a => ({ id: a.id, nom: a.nom, assigned: assignedActs.has(a.id) })),
+      labos: labs.rows.map(l => ({ id: l.id, nom: l.nom, assigned: assignedLabos.has(l.id) })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 const importReferentiel = [
   upload.single('file'),
   async (req, res) => {
@@ -60,6 +95,20 @@ const importReferentiel = [
 
       if (rows.length === 0) return res.status(400).json({ message: 'Aucune ligne valide trouvée dans le fichier' });
       if (rows.length > MAX_ROWS) return res.status(400).json({ message: `Limite de ${MAX_ROWS} lignes dépassée (${rows.length} lignes trouvées)` });
+
+      // Fetch all activités + labos once before the loop
+      const entRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [clientId]);
+      const entrepriseId = entRes.rows.length > 0 ? entRes.rows[0].id : null;
+      let activiteIds = [];
+      let laboIds = [];
+      if (entrepriseId) {
+        const [actRes, labRes] = await Promise.all([
+          pool.query('SELECT id FROM activites WHERE entreprise_id = $1', [entrepriseId]),
+          pool.query('SELECT id FROM labos WHERE entreprise_id = $1', [entrepriseId]),
+        ]);
+        activiteIds = actRes.rows.map(r => r.id);
+        laboIds = labRes.rows.map(r => r.id);
+      }
 
       const stats = { familles: 0, categories: 0, unites: 0, articles: 0 };
       const details = [];
@@ -143,12 +192,27 @@ const importReferentiel = [
           if (existingArt.rows.length > 0) {
             rowResult.existing.push('article');
           } else {
-            await client.query(
-              'INSERT INTO articles (nom, client_id, unite_id, categorie_id) VALUES ($1, $2, $3, $4)',
+            const newArt = await client.query(
+              'INSERT INTO articles (nom, client_id, unite_id, categorie_id) VALUES ($1, $2, $3, $4) RETURNING id',
               [r.article, clientId, uniteId, categorieId]
             );
+            const newArticleId = newArt.rows[0].id;
             stats.articles++;
             rowResult.created.push('article');
+
+            // Auto-assign to all activités and labos
+            for (const actId of activiteIds) {
+              await client.query(
+                'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING',
+                [actId, newArticleId]
+              );
+            }
+            for (const laboId of laboIds) {
+              await client.query(
+                'INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                [laboId, newArticleId]
+              );
+            }
           }
 
           details.push(rowResult);
@@ -171,4 +235,4 @@ const importReferentiel = [
   },
 ];
 
-module.exports = { getTemplate, importReferentiel };
+module.exports = { getTemplate, importReferentiel, getArticleAssignments };
