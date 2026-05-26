@@ -498,14 +498,14 @@ const getStockEntreprise = async (req, res) => {
          SELECT sed.ingredient_id, SUM(ABS(sed.quantite)) as qty
          FROM stock_entreprise_daily sed
          JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.quantite < 0 AND sed.type_appro NOT IN ('vente','annulation_vente')
+         WHERE sed.activite_id = $1 AND sed.quantite < 0 AND sed.type_appro != 'vente'
          GROUP BY sed.ingredient_id
        ),
        post_ventes AS (
          SELECT sed.ingredient_id, GREATEST(-SUM(sed.quantite), 0) as qty
          FROM stock_entreprise_daily sed
          JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.type_appro IN ('vente', 'annulation_vente')
+         WHERE sed.activite_id = $1 AND sed.type_appro = 'vente'
          GROUP BY sed.ingredient_id
        ),
        all_appro AS (
@@ -523,13 +523,13 @@ const getStockEntreprise = async (req, res) => {
        all_pt_usage AS (
          SELECT ingredient_id, SUM(ABS(quantite)) as qty
          FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND quantite < 0 AND type_appro NOT IN ('vente','annulation_vente')
+         WHERE activite_id = $1 AND quantite < 0 AND type_appro != 'vente'
          GROUP BY ingredient_id
        ),
        all_ventes AS (
          SELECT ingredient_id, GREATEST(-SUM(quantite), 0) as qty
          FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND type_appro IN ('vente', 'annulation_vente')
+         WHERE activite_id = $1 AND type_appro = 'vente'
          GROUP BY ingredient_id
        ),
        post_transferts_in AS (
@@ -1282,7 +1282,7 @@ const deleteHistoriqueEntry = async (req, res) => {
         [id, req.user.gerant_parent_id || req.user.id]
       );
       if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
-      if (check.rows[0].type_appro === 'vente' || check.rows[0].type_appro === 'annulation_vente')
+      if (check.rows[0].type_appro === 'vente')
         return res.status(403).json({ message: 'Cette entrée est liée à une vente et ne peut pas être supprimée.' });
       if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });

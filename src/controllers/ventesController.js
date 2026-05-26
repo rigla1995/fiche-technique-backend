@@ -735,12 +735,16 @@ const annulerVente = async (req, res) => {
     if (vente.labo_id) await assertLaboOwner(vente.labo_id, cid);
     else await assertActiviteOwner(vente.activite_id, cid);
 
-    if (vente.statut === 'annulee') return res.status(400).json({ message: 'Déjà annulée' });
+    // Fetch lignes before deleting
+    const lignesRes = await client.query('SELECT * FROM vente_lignes WHERE vente_id = $1', [id]);
 
     await client.query('BEGIN');
-    await client.query("UPDATE ventes SET statut = 'annulee' WHERE id = $1", [id]);
 
-    // Reverse stock decrements if activite-based vente
+    // Hard delete the vente (lignes deleted first to avoid FK constraint)
+    await client.query('DELETE FROM vente_lignes WHERE vente_id = $1', [id]);
+    await client.query('DELETE FROM ventes WHERE id = $1', [id]);
+
+    // Subtract this vente's stock contribution from the existing 'vente' row
     if (vente.activite_id) {
       const mvRes = await pool.query(
         `SELECT pe.module_vente_actif FROM profil_entreprise pe
@@ -749,7 +753,6 @@ const annulerVente = async (req, res) => {
       );
       const mvActif = mvRes.rows[0]?.module_vente_actif === true;
       if (mvActif) {
-        const lignesRes = await client.query('SELECT * FROM vente_lignes WHERE vente_id = $1', [id]);
         const ingredientTotals = new Map();
         const ptTotals = new Map();
         for (const ligne of lignesRes.rows) {
@@ -771,33 +774,32 @@ const annulerVente = async (req, res) => {
                 (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(ligne.quantite));
             }
           }
-          // Direct ingredient sale reversal
           if (ligne.article_type === 'ingredient') {
             ingredientTotals.set(ligne.article_id,
               (ingredientTotals.get(ligne.article_id) || 0) + parseFloat(ligne.quantite));
           }
         }
         for (const [ingredientId, total] of ingredientTotals) {
-          const upd = await client.query(
+          // Subtract this vente's portion from the accumulated 'vente' stock entry
+          await client.query(
             `UPDATE stock_entreprise_daily
              SET quantite = quantite + $1, updated_at = NOW()
-             WHERE activite_id = $2 AND ingredient_id = $3 AND date_appro = $4 AND type_appro = 'annulation_vente'`,
+             WHERE activite_id = $2 AND ingredient_id = $3 AND date_appro = $4 AND type_appro = 'vente'`,
             [total, vente.activite_id, ingredientId, vente.date_vente]
           );
-          if (upd.rowCount === 0) {
-            await client.query(
-              `INSERT INTO stock_entreprise_daily
-                 (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
-               VALUES ($1, $2, $3, $4, 'annulation_vente', 0, 0, 0, NOW(), $5)`,
-              [vente.activite_id, ingredientId, total, vente.date_vente, req.user.id]
-            );
-          }
+          // Clean up the row if net quantity reached 0 (all ventes for this ingredient/day cancelled)
+          await client.query(
+            `DELETE FROM stock_entreprise_daily
+             WHERE activite_id = $1 AND ingredient_id = $2 AND date_appro = $3 AND type_appro = 'vente' AND quantite >= 0`,
+            [vente.activite_id, ingredientId, vente.date_vente]
+          );
         }
         for (const [sousProduitId, total] of ptTotals) {
           await client.query(
-            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
-             VALUES ($1, $2, $3, $4, NULL)`,
-            [sousProduitId, vente.activite_id, vente.date_vente, total]
+            `UPDATE stock_produits_transformes
+             SET quantite = quantite + $1
+             WHERE produit_id = $2 AND activite_id = $3 AND date_appro = $4 AND quantite < 0 AND prix_calcule IS NULL`,
+            [total, sousProduitId, vente.activite_id, vente.date_vente]
           );
         }
       }
