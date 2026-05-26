@@ -500,6 +500,7 @@ const listVentes = async (req, res) => {
                 JSON_AGG(JSON_BUILD_OBJECT(
                   'article_nom', COALESCE(p.nom, a.nom, '—'),
                   'quantite', vl.quantite,
+                  'prix_unitaire', vl.prix_unitaire,
                   'article_type', vl.article_type,
                   'is_supplement', COALESCE(p.is_supplement, FALSE)
                 ) ORDER BY vl.id) FILTER (WHERE vl.id IS NOT NULL),
