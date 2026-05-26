@@ -494,10 +494,22 @@ const listVentes = async (req, res) => {
       `SELECT v.id, v.date_vente, v.type_vente, v.statut, v.notes, v.created_at,
               v.prestataire_id, pl.nom as prestataire_nom,
               COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) as total_ca,
-              COALESCE(SUM(vl.quantite * (vl.prix_unitaire - COALESCE(vl.cout_unitaire,0))), 0) as total_marge
+              COALESCE(SUM(vl.quantite * (vl.prix_unitaire - COALESCE(vl.cout_unitaire,0))), 0) as total_marge,
+              COALESCE(SUM(vl.quantite), 0) as total_quantite,
+              COALESCE(
+                JSON_AGG(JSON_BUILD_OBJECT(
+                  'article_nom', COALESCE(p.nom, a.nom, '—'),
+                  'quantite', vl.quantite,
+                  'article_type', vl.article_type,
+                  'is_supplement', COALESCE(p.is_supplement, FALSE)
+                ) ORDER BY vl.id) FILTER (WHERE vl.id IS NOT NULL),
+                '[]'::json
+              ) as lignes
        FROM ventes v
        LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
        LEFT JOIN vente_lignes vl ON vl.vente_id = v.id
+       LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
+       LEFT JOIN articles a ON vl.article_type = 'ingredient' AND a.id = vl.article_id
        WHERE ${whereCol} = $1 AND v.statut != 'annulee'${where}
        GROUP BY v.id, pl.nom
        ORDER BY v.date_vente DESC, v.created_at DESC`,
@@ -509,6 +521,8 @@ const listVentes = async (req, res) => {
       date_vente: isoDate(row.date_vente),
       total_ca: parseFloat(row.total_ca),
       total_marge: parseFloat(row.total_marge),
+      total_quantite: parseFloat(row.total_quantite),
+      lignes: row.lignes || [],
     })));
   } catch (e) {
     if (e.status) return res.status(e.status).json({ message: e.message });
@@ -657,6 +671,11 @@ const createVente = async (req, res) => {
             (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(quantite));
         }
       }
+      // Direct ingredient sale (valorisé article) — deduct quantity directly from stock
+      if (activite_id && moduleVenteActif && article_type === 'ingredient') {
+        ingredientTotals.set(article_id,
+          (ingredientTotals.get(article_id) || 0) + parseFloat(quantite));
+      }
     }
 
     // UPSERT per ingredient — accumulate into existing 'vente' row if same day
@@ -750,6 +769,11 @@ const annulerVente = async (req, res) => {
               ptTotals.set(sp.sous_produit_id,
                 (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(ligne.quantite));
             }
+          }
+          // Direct ingredient sale reversal
+          if (ligne.article_type === 'ingredient') {
+            ingredientTotals.set(ligne.article_id,
+              (ingredientTotals.get(ligne.article_id) || 0) + parseFloat(ligne.quantite));
           }
         }
         for (const [ingredientId, total] of ingredientTotals) {
