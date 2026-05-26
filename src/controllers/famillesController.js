@@ -5,6 +5,7 @@ const mapFamille = (row) => ({
   id: row.id,
   name: row.nom,
   consommable: row.consommable !== false,
+  vendable: row.vendable !== false,
   clientId: row.client_id,
   createdAt: row.created_at,
 });
@@ -44,10 +45,11 @@ const create = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = req.body.name || req.body.nom;
   const consommable = req.body.consommable !== false;
+  const vendable = req.body.vendable !== false;
   try {
     const result = await pool.query(
-      'INSERT INTO familles (nom, client_id, consommable) VALUES ($1, $2, $3) RETURNING *',
-      [nom, clientId, consommable]
+      'INSERT INTO familles (nom, client_id, consommable, vendable) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nom, clientId, consommable, vendable]
     );
     res.status(201).json(mapFamille(result.rows[0]));
   } catch (err) {
@@ -63,16 +65,16 @@ const update = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = req.body.name || req.body.nom;
   const consommable = req.body.consommable !== undefined ? req.body.consommable !== false : undefined;
+  const vendable = req.body.vendable !== undefined ? req.body.vendable !== false : undefined;
   try {
-    let query, params;
-    if (consommable !== undefined) {
-      query = 'UPDATE familles SET nom = $1, consommable = $2 WHERE id = $3 AND client_id = $4 RETURNING *';
-      params = [nom, consommable, req.params.id, clientId];
-    } else {
-      query = 'UPDATE familles SET nom = $1 WHERE id = $2 AND client_id = $3 RETURNING *';
-      params = [nom, req.params.id, clientId];
-    }
-    const result = await pool.query(query, params);
+    const result = await pool.query(
+      `UPDATE familles
+       SET nom = $1,
+           consommable = CASE WHEN $3::boolean THEN $2 ELSE consommable END,
+           vendable = CASE WHEN $5::boolean THEN $4 ELSE vendable END
+       WHERE id = $6 AND client_id = $7 RETURNING *`,
+      [nom, consommable ?? true, consommable !== undefined, vendable ?? true, vendable !== undefined, req.params.id, clientId]
+    );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Famille introuvable' });
     res.json(mapFamille(result.rows[0]));
   } catch (err) {
