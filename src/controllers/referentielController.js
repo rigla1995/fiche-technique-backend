@@ -156,7 +156,7 @@ const importReferentiel = [
               rowResult.existing.push('catégorie');
             } else {
               const ins = await client.query(
-                'INSERT INTO categories (nom, client_id, famille_id, vendable) VALUES ($1, $2, $3, TRUE) RETURNING id',
+                'INSERT INTO categories (nom, client_id, famille_id) VALUES ($1, $2, $3) RETURNING id',
                 [r.categorie, clientId, familleId]
               );
               categorieId = ins.rows[0].id;
