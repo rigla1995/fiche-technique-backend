@@ -1171,7 +1171,7 @@ const exportListExcel = async (req, res) => {
         (SELECT COUNT(*) FROM produit_ingredients WHERE produit_id = p.id) AS ingredients_count,
         (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
         ${costSubquery()},
-        (SELECT STRING_AGG(a.nom, ', ' ORDER BY a.nom)
+        (SELECT STRING_AGG(t.nom, ', ' ORDER BY t.nom)
          FROM (
            SELECT DISTINCT a.id, a.nom FROM activites a WHERE a.id = p.activite_id
            UNION SELECT DISTINCT a.id, a.nom FROM produit_activite_stock pas JOIN activites a ON a.id = pas.activite_id WHERE pas.produit_id = p.id
