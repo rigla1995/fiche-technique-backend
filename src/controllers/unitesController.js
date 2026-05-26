@@ -98,15 +98,31 @@ const update = async (req, res) => {
 
 const remove = async (req, res) => {
   const { id } = req.params;
+  const clientId = req.user.gerant_parent_id || req.user.id;
 
   try {
+    if (req.user.role !== 'super_admin') {
+      const appro = await pool.query(
+        `SELECT 1 FROM articles a WHERE a.unite_id = $1 AND a.client_id = $2
+         AND (
+           EXISTS (SELECT 1 FROM stock_client_daily     WHERE ingredient_id = a.id LIMIT 1)
+           OR EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = a.id LIMIT 1)
+           OR EXISTS (SELECT 1 FROM stock_labo_daily     WHERE ingredient_id = a.id LIMIT 1)
+         ) LIMIT 1`,
+        [id, clientId]
+      );
+      if (appro.rows.length > 0) {
+        return res.status(409).json({ message: "Cette unité est utilisée par des articles avec des approvisionnements et ne peut pas être supprimée" });
+      }
+    }
+
     let query, params;
     if (req.user.role === 'super_admin') {
       query = 'DELETE FROM unites WHERE id = $1 RETURNING id';
       params = [id];
     } else {
       query = 'DELETE FROM unites WHERE id = $1 AND client_id = $2 RETURNING id';
-      params = [id, req.user.id];
+      params = [id, clientId];
     }
 
     const result = await pool.query(query, params);

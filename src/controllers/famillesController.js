@@ -87,6 +87,20 @@ const update = async (req, res) => {
 const remove = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
+    const appro = await pool.query(
+      `SELECT 1 FROM articles a
+       JOIN categories c ON c.id = a.categorie_id
+       WHERE c.famille_id = $1 AND a.client_id = $2
+       AND (
+         EXISTS (SELECT 1 FROM stock_client_daily       WHERE ingredient_id = a.id LIMIT 1)
+         OR EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = a.id LIMIT 1)
+         OR EXISTS (SELECT 1 FROM stock_labo_daily       WHERE ingredient_id = a.id LIMIT 1)
+       ) LIMIT 1`,
+      [req.params.id, clientId]
+    );
+    if (appro.rows.length > 0) {
+      return res.status(409).json({ message: "Cette famille contient des articles avec des approvisionnements et ne peut pas être supprimée" });
+    }
     const result = await pool.query(
       'DELETE FROM familles WHERE id = $1 AND client_id = $2 RETURNING id',
       [req.params.id, clientId]

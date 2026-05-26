@@ -172,6 +172,19 @@ const update = async (req, res) => {
 const remove = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
+    const appro = await pool.query(
+      `SELECT 1 FROM (
+         SELECT ingredient_id FROM stock_client_daily   WHERE ingredient_id = $1 LIMIT 1
+         UNION ALL
+         SELECT ingredient_id FROM stock_entreprise_daily WHERE ingredient_id = $1 LIMIT 1
+         UNION ALL
+         SELECT ingredient_id FROM stock_labo_daily     WHERE ingredient_id = $1 LIMIT 1
+       ) t LIMIT 1`,
+      [req.params.id]
+    );
+    if (appro.rows.length > 0) {
+      return res.status(409).json({ message: "Cet article a des approvisionnements et ne peut pas être supprimé" });
+    }
     const result = await pool.query(
       'DELETE FROM articles WHERE id = $1 AND client_id = $2 RETURNING id',
       [req.params.id, clientId]
@@ -179,7 +192,7 @@ const remove = async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ message: 'Article introuvable' });
     res.status(204).send();
   } catch (err) {
-    if (err.code === '23503') return res.status(409).json({ message: "Cet article est utilisé dans un produit ou dans le stock et ne peut pas être supprimé" });
+    if (err.code === '23503') return res.status(409).json({ message: "Cet article est utilisé dans une fiche technique et ne peut pas être supprimé" });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
