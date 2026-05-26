@@ -6,6 +6,7 @@ const {
   addIngredient, removeIngredient,
   addSousProduit, removeSousProduit,
   getCout, getStockDates, getStockCheck, getManualPrices, saveManualPrices,
+  exportListExcel,
 } = require('../controllers/produitsController');
 const { exportExcel } = require('../controllers/exportController');
 const { authenticate, requireClient } = require('../middleware/auth');
@@ -52,6 +53,9 @@ router.post('/:id/sous-produits', authenticate, requireClient, [
   body('portion').isFloat({ min: 0.001 }).withMessage('Portion invalide'),
 ], addSousProduit);
 router.delete('/:id/sous-produits/:sousProduitId', authenticate, requireClient, removeSousProduit);
+
+// List export
+router.get('/export-list', authenticate, requireClient, exportListExcel);
 
 // Calcul coût & export
 router.get('/:id/cout', authenticate, requireClient, getCout);

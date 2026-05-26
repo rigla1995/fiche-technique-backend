@@ -1147,6 +1147,134 @@ const saveManualPrices = async (req, res) => {
   }
 };
 
+const ExcelJS = require('exceljs');
+
+const exportListExcel = async (req, res) => {
+  const { activiteId, type, search, isSupplement } = req.query;
+  try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const params = [clientId];
+    let whereExtra = '';
+
+    if (type === 'vendable' || type === 'utilisable') {
+      params.push(type);
+      whereExtra += ` AND p.type = $${params.length}`;
+    }
+    if (activiteId) {
+      params.push(activiteId);
+      const aIdx = params.length;
+      whereExtra += ` AND (p.activite_id = $${aIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${aIdx}) OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${aIdx}))`;
+    }
+
+    const result = await pool.query(
+      `SELECT p.id, p.nom, p.type, p.is_supplement, p.ref_produit,
+        (SELECT COUNT(*) FROM produit_ingredients WHERE produit_id = p.id) AS ingredients_count,
+        (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
+        ${costSubquery()},
+        (SELECT STRING_AGG(a.nom, ', ' ORDER BY a.nom)
+         FROM (
+           SELECT DISTINCT a.id, a.nom FROM activites a WHERE a.id = p.activite_id
+           UNION SELECT DISTINCT a.id, a.nom FROM produit_activite_stock pas JOIN activites a ON a.id = pas.activite_id WHERE pas.produit_id = p.id
+           UNION SELECT DISTINCT a.id, a.nom FROM produit_activite_affectation paa JOIN activites a ON a.id = paa.activite_id WHERE paa.produit_id = p.id
+         ) t) AS activites_str
+       FROM produits p
+       WHERE p.client_id = $1${whereExtra}
+       ORDER BY p.nom`,
+      params
+    );
+
+    let rows = result.rows;
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter(r => r.nom.toLowerCase().includes(q));
+    }
+    if (isSupplement === 'true') rows = rows.filter(r => !!r.is_supplement);
+    else if (isSupplement === 'false') rows = rows.filter(r => !r.is_supplement);
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'FoodTech';
+    const ws = wb.addWorksheet('Produits');
+
+    const NAVY = '1F3864';
+    const WHITE = 'FFFFFF';
+    const ALT = 'F5F8FF';
+    const BORDER_COLOR = 'B8CCE4';
+    const thin = { style: 'thin', color: { argb: BORDER_COLOR } };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const headerFont = { name: 'Calibri', bold: true, size: 11, color: { argb: WHITE } };
+    const bodyFont = { name: 'Calibri', size: 10 };
+
+    const isVendable = type === 'vendable';
+
+    ws.columns = [
+      { header: 'Produit', key: 'nom', width: 36 },
+      { header: 'Type', key: 'type_label', width: 22 },
+      { header: 'Activités', key: 'activites', width: 30 },
+      { header: 'Référence', key: 'ref', width: 18 },
+      { header: 'Coût estimé (DT)', key: 'cout', width: 18 },
+      { header: 'Articles', key: 'articles', width: 12 },
+      ...(isVendable ? [{ header: 'Produits util.', key: 'sous', width: 14 }] : []),
+    ];
+
+    const headerRow = ws.getRow(1);
+    headerRow.height = 22;
+    headerRow.eachCell(cell => {
+      cell.font = headerFont;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = border;
+    });
+
+    ws.autoFilter = { from: 'A1', to: ws.columns[ws.columns.length - 1].letter + '1' };
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+    rows.forEach((r, idx) => {
+      const typeLabel = r.is_supplement ? 'Supplément vendable' : r.type === 'vendable' ? 'Produit vendable' : 'Produit utilisable';
+      const rowData = [
+        r.nom,
+        typeLabel,
+        r.activites_str || '',
+        r.ref_produit || '',
+        r.total_cost !== null ? parseFloat(r.total_cost) : '',
+        parseInt(r.ingredients_count),
+        ...(isVendable ? [parseInt(r.sub_products_count)] : []),
+      ];
+      const row = ws.addRow(rowData);
+      row.height = 18;
+      const bgColor = idx % 2 === 0 ? WHITE : ALT;
+      row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        cell.font = bodyFont;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+        cell.border = border;
+        cell.alignment = { vertical: 'middle', horizontal: colNum === 1 || colNum === 3 ? 'left' : 'center' };
+      });
+      if (r.total_cost !== null) {
+        const coutCell = row.getCell(5);
+        coutCell.numFmt = '#,##0.000';
+      }
+    });
+
+    // Summary row
+    const totalRow = ws.addRow(['', `${rows.length} produit${rows.length !== 1 ? 's' : ''}`, '', '', '', '']);
+    totalRow.height = 20;
+    totalRow.eachCell({ includeEmpty: true }, cell => {
+      cell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: NAVY } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D9E1F2' } };
+      cell.border = border;
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    const subTabLabel = isSupplement === 'true' ? 'supplements' : isSupplement === 'false' ? 'produits' : type || 'produits';
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="export-${subTabLabel}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur export' });
+  }
+};
+
 module.exports = {
   list, getById, create, update, remove,
   addIngredient, removeIngredient,
@@ -1154,4 +1282,5 @@ module.exports = {
   getCout, calculerCout, calculerCoutAvecPrixMap,
   buildDpPriceMap, buildMpPriceMap,
   getStockDates, getStockCheck, getManualPrices, saveManualPrices,
+  exportListExcel,
 };
