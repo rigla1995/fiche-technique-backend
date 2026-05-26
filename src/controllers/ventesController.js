@@ -1366,6 +1366,7 @@ const getArticlesValorisés = async (req, res) => {
               c.nom as categorie_nom, f.nom as famille_nom,
               av.id as av_id, av.prix_vente, av.actif
        FROM articles a
+       JOIN activite_ingredient_selections ais ON ais.ingredient_id = a.id AND ais.activite_id = $1
        JOIN unites u ON a.unite_id = u.id
        LEFT JOIN categories c ON a.categorie_id = c.id
        LEFT JOIN familles f ON c.famille_id = f.id
