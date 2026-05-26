@@ -502,10 +502,10 @@ const getStockEntreprise = async (req, res) => {
          GROUP BY sed.ingredient_id
        ),
        post_ventes AS (
-         SELECT sed.ingredient_id, SUM(ABS(sed.quantite)) as qty
+         SELECT sed.ingredient_id, GREATEST(-SUM(sed.quantite), 0) as qty
          FROM stock_entreprise_daily sed
          JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.type_appro = 'vente'
+         WHERE sed.activite_id = $1 AND sed.type_appro IN ('vente', 'annulation_vente')
          GROUP BY sed.ingredient_id
        ),
        all_appro AS (
@@ -527,9 +527,9 @@ const getStockEntreprise = async (req, res) => {
          GROUP BY ingredient_id
        ),
        all_ventes AS (
-         SELECT ingredient_id, SUM(ABS(quantite)) as qty
+         SELECT ingredient_id, GREATEST(-SUM(quantite), 0) as qty
          FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND type_appro = 'vente'
+         WHERE activite_id = $1 AND type_appro IN ('vente', 'annulation_vente')
          GROUP BY ingredient_id
        ),
        post_transferts_in AS (

@@ -778,12 +778,20 @@ const annulerVente = async (req, res) => {
           }
         }
         for (const [ingredientId, total] of ingredientTotals) {
-          await client.query(
-            `INSERT INTO stock_entreprise_daily
-               (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
-             VALUES ($1, $2, $3, $4, 'annulation_vente', 0, 0, 0, NOW(), $5)`,
-            [vente.activite_id, ingredientId, total, vente.date_vente, req.user.id]
+          const upd = await client.query(
+            `UPDATE stock_entreprise_daily
+             SET quantite = quantite + $1, updated_at = NOW()
+             WHERE activite_id = $2 AND ingredient_id = $3 AND date_appro = $4 AND type_appro = 'annulation_vente'`,
+            [total, vente.activite_id, ingredientId, vente.date_vente]
           );
+          if (upd.rowCount === 0) {
+            await client.query(
+              `INSERT INTO stock_entreprise_daily
+                 (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
+               VALUES ($1, $2, $3, $4, 'annulation_vente', 0, 0, 0, NOW(), $5)`,
+              [vente.activite_id, ingredientId, total, vente.date_vente, req.user.id]
+            );
+          }
         }
         for (const [sousProduitId, total] of ptTotals) {
           await client.query(
