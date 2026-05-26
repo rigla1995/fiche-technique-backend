@@ -1149,124 +1149,191 @@ const saveManualPrices = async (req, res) => {
 
 const ExcelJS = require('exceljs');
 
+const XCOLORS = {
+  navy: '1F3864', navyMid: '2E5597', white: 'FFFFFF',
+  altRow: 'EEF4FB', sectionBg: 'CFE2F3', totalBg: 'D9E1F2',
+  dateBg: 'F0F5FA', border: 'B8CCE4',
+};
+
 const exportListExcel = async (req, res) => {
-  const { activiteId, type, search, isSupplement } = req.query;
+  const { activiteId, type, search, isSupplement, withOtherSubTab } = req.query;
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const isVendable = type === 'vendable';
+
   try {
-    const clientId = req.user.gerant_parent_id || req.user.id;
-    const params = [clientId];
-    let whereExtra = '';
+    const fetchRows = async (isSupplFilter) => {
+      const params = [clientId];
+      let whereExtra = '';
+      if (type === 'vendable' || type === 'utilisable') {
+        params.push(type); whereExtra += ` AND p.type = $${params.length}`;
+      }
+      if (activiteId) {
+        params.push(activiteId);
+        const ai = params.length;
+        whereExtra += ` AND (p.activite_id = $${ai} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${ai}) OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${ai}))`;
+      }
+      if (isSupplFilter === 'true') whereExtra += ' AND p.is_supplement = TRUE';
+      else if (isSupplFilter === 'false') whereExtra += ' AND p.is_supplement = FALSE';
 
-    if (type === 'vendable' || type === 'utilisable') {
-      params.push(type);
-      whereExtra += ` AND p.type = $${params.length}`;
-    }
-    if (activiteId) {
-      params.push(activiteId);
-      const aIdx = params.length;
-      whereExtra += ` AND (p.activite_id = $${aIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${aIdx}) OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${aIdx}))`;
-    }
+      const { rows } = await pool.query(
+        `SELECT p.id, p.nom, p.type, p.is_supplement, p.ref_produit,
+          (SELECT COUNT(*) FROM produit_ingredients WHERE produit_id = p.id) AS ingredients_count,
+          (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
+          ${costSubquery()},
+          COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'nom', t.nom) ORDER BY t.nom)
+           FROM (
+             SELECT DISTINCT a.id, a.nom FROM activites a WHERE a.id = p.activite_id
+             UNION SELECT DISTINCT a.id, a.nom FROM produit_activite_stock pas JOIN activites a ON a.id = pas.activite_id WHERE pas.produit_id = p.id
+             UNION SELECT DISTINCT a.id, a.nom FROM produit_activite_affectation paa JOIN activites a ON a.id = paa.activite_id WHERE paa.produit_id = p.id
+           ) t), '[]'::json) AS activites_json
+         FROM produits p WHERE p.client_id = $1${whereExtra} ORDER BY p.nom`,
+        params
+      );
+      if (search) {
+        const q = search.toLowerCase();
+        return rows.filter(r => r.nom.toLowerCase().includes(q));
+      }
+      return rows;
+    };
 
-    const result = await pool.query(
-      `SELECT p.id, p.nom, p.type, p.is_supplement, p.ref_produit,
-        (SELECT COUNT(*) FROM produit_ingredients WHERE produit_id = p.id) AS ingredients_count,
-        (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
-        ${costSubquery()},
-        (SELECT STRING_AGG(t.nom, ', ' ORDER BY t.nom)
-         FROM (
-           SELECT DISTINCT a.id, a.nom FROM activites a WHERE a.id = p.activite_id
-           UNION SELECT DISTINCT a.id, a.nom FROM produit_activite_stock pas JOIN activites a ON a.id = pas.activite_id WHERE pas.produit_id = p.id
-           UNION SELECT DISTINCT a.id, a.nom FROM produit_activite_affectation paa JOIN activites a ON a.id = paa.activite_id WHERE paa.produit_id = p.id
-         ) t) AS activites_str
-       FROM produits p
-       WHERE p.client_id = $1${whereExtra}
-       ORDER BY p.nom`,
-      params
-    );
+    const thin = { style: 'thin', color: { argb: XCOLORS.border } };
+    const brd = { top: thin, left: thin, bottom: thin, right: thin };
 
-    let rows = result.rows;
-    if (search) {
-      const q = search.toLowerCase();
-      rows = rows.filter(r => r.nom.toLowerCase().includes(q));
-    }
-    if (isSupplement === 'true') rows = rows.filter(r => !!r.is_supplement);
-    else if (isSupplement === 'false') rows = rows.filter(r => !r.is_supplement);
+    const buildSheet = (ws, rows, sheetTitle) => {
+      const colDefs = [
+        { key: 'a', width: 36 }, { key: 'b', width: 22 }, { key: 'c', width: 32 },
+        { key: 'd', width: 18 }, { key: 'e', width: 18 }, { key: 'f', width: 12 },
+        ...(isVendable ? [{ key: 'g', width: 14 }] : []),
+      ];
+      ws.columns = colDefs;
+      const colCount = colDefs.length;
+      const lastCol = String.fromCharCode(64 + colCount);
+      let r = 1;
+
+      const mergedRow = (text, bg, fontOpts, height) => {
+        ws.mergeCells(`A${r}:${lastCol}${r}`);
+        const cell = ws.getCell(`A${r}`);
+        cell.value = text;
+        cell.font = { name: 'Calibri', ...fontOpts };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        ws.getRow(r).height = height;
+        r++;
+      };
+
+      mergedRow('LabFlow', XCOLORS.navy, { bold: true, size: 16, color: { argb: XCOLORS.white } }, 32);
+      mergedRow(sheetTitle, XCOLORS.navyMid, { bold: true, size: 12, color: { argb: XCOLORS.white } }, 24);
+      const now = new Date();
+      mergedRow(
+        `Généré le ${now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} à ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+        XCOLORS.dateBg, { italic: true, size: 9, color: { argb: '4A5568' } }, 16
+      );
+      ws.getRow(r).height = 8; r++; // spacer
+
+      // Column header row
+      const colHeaders = ['Produit', 'Type', 'Activités', 'Référence', 'Coût estimé (DT)', 'Articles', ...(isVendable ? ['Produits util.'] : [])];
+      const hRow = ws.getRow(r);
+      hRow.height = 22;
+      colHeaders.forEach((h, i) => {
+        const cell = hRow.getCell(i + 1);
+        cell.value = h;
+        cell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: XCOLORS.white } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XCOLORS.navy } };
+        cell.alignment = { horizontal: i === 0 || i === 2 ? 'left' : 'center', vertical: 'middle' };
+        cell.border = brd;
+      });
+      const headerRowNum = r;
+      ws.views = [{ state: 'frozen', ySplit: r }];
+      r++;
+
+      let altIdx = 0;
+      const addDataRow = (product) => {
+        const acts = product.activites_json || [];
+        const activitesStr = acts.map(a => a.nom).join(', ');
+        const typeLabel = product.is_supplement ? 'Supplément vendable' : product.type === 'vendable' ? 'Produit vendable' : 'Produit utilisable';
+        const values = [
+          product.nom, typeLabel, activitesStr, product.ref_produit || '',
+          product.total_cost !== null ? parseFloat(product.total_cost) : 0,
+          parseInt(product.ingredients_count),
+          ...(isVendable ? [parseInt(product.sub_products_count)] : []),
+        ];
+        const dataRow = ws.getRow(r);
+        dataRow.height = 17;
+        const bg = altIdx % 2 === 0 ? XCOLORS.white : XCOLORS.altRow;
+        values.forEach((val, i) => {
+          const cell = dataRow.getCell(i + 1);
+          cell.value = val;
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+          cell.border = brd;
+          cell.alignment = { vertical: 'middle', horizontal: i === 0 || i === 2 ? 'left' : 'center' };
+        });
+        if (product.total_cost !== null) dataRow.getCell(5).numFmt = '#,##0.000';
+        altIdx++; r++;
+      };
+
+      if (!activiteId && rows.length > 0) {
+        // Group by activity
+        const actMap = new Map();
+        rows.forEach(p => (p.activites_json || []).forEach(a => actMap.set(a.id, a.nom)));
+        const sorted = [...actMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+
+        if (sorted.length > 0) {
+          sorted.forEach(([actId, actNom]) => {
+            const actProducts = rows.filter(p => (p.activites_json || []).some(a => a.id === actId));
+            if (actProducts.length === 0) return;
+            ws.mergeCells(`A${r}:${lastCol}${r}`);
+            const secCell = ws.getCell(`A${r}`);
+            secCell.value = `  ${actNom}  —  ${actProducts.length} produit${actProducts.length !== 1 ? 's' : ''}`;
+            secCell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: XCOLORS.navy } };
+            secCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XCOLORS.sectionBg } };
+            secCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+            secCell.border = brd;
+            ws.getRow(r).height = 20; r++;
+            altIdx = 0;
+            actProducts.forEach(p => addDataRow(p));
+            ws.getRow(r).height = 8; r++; // gap between sections
+          });
+        } else {
+          rows.forEach(p => addDataRow(p));
+        }
+      } else {
+        rows.forEach(p => addDataRow(p));
+      }
+
+      // Summary
+      ws.mergeCells(`A${r}:${lastCol}${r}`);
+      const totCell = ws.getCell(`A${r}`);
+      totCell.value = `Total : ${rows.length} produit${rows.length !== 1 ? 's' : ''}`;
+      totCell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: XCOLORS.navy } };
+      totCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XCOLORS.totalBg } };
+      totCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      totCell.border = brd;
+      ws.getRow(r).height = 20;
+
+      ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: headerRowNum, column: colCount } };
+    };
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'FoodTech';
-    const ws = wb.addWorksheet('Produits');
+    wb.creator = 'LabFlow';
+    wb.created = new Date();
 
-    const NAVY = '1F3864';
-    const WHITE = 'FFFFFF';
-    const ALT = 'F5F8FF';
-    const BORDER_COLOR = 'B8CCE4';
-    const thin = { style: 'thin', color: { argb: BORDER_COLOR } };
-    const border = { top: thin, left: thin, bottom: thin, right: thin };
-    const headerFont = { name: 'Calibri', bold: true, size: 11, color: { argb: WHITE } };
-    const bodyFont = { name: 'Calibri', size: 10 };
+    const isCurrentSupp = isSupplement === 'true';
+    const mainTitle = isCurrentSupp ? 'SUPPLÉMENTS VENDABLES' : (isVendable ? 'PRODUITS VENDABLES' : 'PRODUITS UTILISABLES');
+    const mainSheetName = isCurrentSupp ? 'Suppléments vendables' : (isVendable ? 'Produits vendables' : 'Produits utilisables');
 
-    const isVendable = type === 'vendable';
+    buildSheet(wb.addWorksheet(mainSheetName), await fetchRows(isSupplement), mainTitle);
 
-    ws.columns = [
-      { header: 'Produit', key: 'nom', width: 36 },
-      { header: 'Type', key: 'type_label', width: 22 },
-      { header: 'Activités', key: 'activites', width: 30 },
-      { header: 'Référence', key: 'ref', width: 18 },
-      { header: 'Coût estimé (DT)', key: 'cout', width: 18 },
-      { header: 'Articles', key: 'articles', width: 12 },
-      ...(isVendable ? [{ header: 'Produits util.', key: 'sous', width: 14 }] : []),
-    ];
+    if (withOtherSubTab === 'true' && isVendable) {
+      const otherSupp = isCurrentSupp ? 'false' : 'true';
+      const otherTitle = otherSupp === 'true' ? 'SUPPLÉMENTS VENDABLES' : 'PRODUITS VENDABLES';
+      const otherSheet = otherSupp === 'true' ? 'Suppléments vendables' : 'Produits vendables';
+      buildSheet(wb.addWorksheet(otherSheet), await fetchRows(otherSupp), otherTitle);
+    }
 
-    const headerRow = ws.getRow(1);
-    headerRow.height = 22;
-    headerRow.eachCell(cell => {
-      cell.font = headerFont;
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = border;
-    });
-
-    ws.autoFilter = { from: 'A1', to: ws.columns[ws.columns.length - 1].letter + '1' };
-    ws.views = [{ state: 'frozen', ySplit: 1 }];
-
-    rows.forEach((r, idx) => {
-      const typeLabel = r.is_supplement ? 'Supplément vendable' : r.type === 'vendable' ? 'Produit vendable' : 'Produit utilisable';
-      const rowData = [
-        r.nom,
-        typeLabel,
-        r.activites_str || '',
-        r.ref_produit || '',
-        r.total_cost !== null ? parseFloat(r.total_cost) : '',
-        parseInt(r.ingredients_count),
-        ...(isVendable ? [parseInt(r.sub_products_count)] : []),
-      ];
-      const row = ws.addRow(rowData);
-      row.height = 18;
-      const bgColor = idx % 2 === 0 ? WHITE : ALT;
-      row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-        cell.font = bodyFont;
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
-        cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: colNum === 1 || colNum === 3 ? 'left' : 'center' };
-      });
-      if (r.total_cost !== null) {
-        const coutCell = row.getCell(5);
-        coutCell.numFmt = '#,##0.000';
-      }
-    });
-
-    // Summary row
-    const totalRow = ws.addRow(['', `${rows.length} produit${rows.length !== 1 ? 's' : ''}`, '', '', '', '']);
-    totalRow.height = 20;
-    totalRow.eachCell({ includeEmpty: true }, cell => {
-      cell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: NAVY } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D9E1F2' } };
-      cell.border = border;
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    });
-
-    const subTabLabel = isSupplement === 'true' ? 'supplements' : isSupplement === 'false' ? 'produits' : type || 'produits';
+    const filename = `labflow-${isCurrentSupp ? 'supplements' : isVendable ? 'produits-vendables' : 'produits-utilisables'}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="export-${subTabLabel}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     await wb.xlsx.write(res);
     res.end();
   } catch (err) {
