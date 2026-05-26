@@ -150,7 +150,8 @@ const importReferentiel = [
             const ins = await client.query(
               `INSERT INTO categories (nom, client_id, famille_id)
                VALUES ($1, $2, $3)
-               ON CONFLICT (nom, client_id) DO UPDATE SET famille_id = EXCLUDED.famille_id
+               ON CONFLICT (nom, client_id) WHERE client_id IS NOT NULL
+               DO UPDATE SET famille_id = EXCLUDED.famille_id
                RETURNING id, (xmax = 0) as inserted`,
               [r.categorie, clientId, familleId]
             );
