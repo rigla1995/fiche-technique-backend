@@ -147,21 +147,19 @@ const importReferentiel = [
 
           let categorieId = null;
           if (r.categorie) {
-            const existing = await client.query(
-              'SELECT id FROM categories WHERE LOWER(TRIM(nom)) = LOWER(TRIM($1)) AND famille_id = $2 AND client_id = $3',
-              [r.categorie, familleId, clientId]
+            const ins = await client.query(
+              `INSERT INTO categories (nom, client_id, famille_id)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (nom, client_id) DO UPDATE SET famille_id = EXCLUDED.famille_id
+               RETURNING id, (xmax = 0) as inserted`,
+              [r.categorie, clientId, familleId]
             );
-            if (existing.rows.length > 0) {
-              categorieId = existing.rows[0].id;
-              rowResult.existing.push('catégorie');
-            } else {
-              const ins = await client.query(
-                'INSERT INTO categories (nom, client_id, famille_id) VALUES ($1, $2, $3) RETURNING id',
-                [r.categorie, clientId, familleId]
-              );
-              categorieId = ins.rows[0].id;
+            categorieId = ins.rows[0].id;
+            if (ins.rows[0].inserted) {
               stats.categories++;
               rowResult.created.push('catégorie');
+            } else {
+              rowResult.existing.push('catégorie');
             }
           }
 
