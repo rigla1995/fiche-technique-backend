@@ -181,6 +181,7 @@ router.delete('/activite-prestataires/:id', authenticate, requireEntreprise, c.r
  *     responses:
  *       200: { description: Article upserted }
  */
+router.get('/articles-valorises', authenticate, requireEntreprise, c.getArticlesValorisés);
 router.get('/articles-vendables', authenticate, requireEntreprise, c.listArticlesVendables);
 router.get('/articles-vendables/historique-config', authenticate, requireEntreprise, c.getPrixHistoriqueConfig);
 router.get('/articles-vendables/historique-config/export-excel', authenticate, requireEntreprise, c.exportPrixHistoriqueConfigExcel);

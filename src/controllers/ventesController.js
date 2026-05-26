@@ -250,8 +250,8 @@ const upsertArticleVendable = async (req, res) => {
     if (!activite_id || !article_type || !article_id) {
       return res.status(400).json({ message: 'activite_id, article_type, article_id requis' });
     }
-    if (article_type !== 'produit') {
-      return res.status(400).json({ message: "article_type doit être 'produit'" });
+    if (!['produit', 'ingredient'].includes(article_type)) {
+      return res.status(400).json({ message: "article_type doit être 'produit' ou 'ingredient'" });
     }
     const cid = clientId(req);
     await assertActiviteOwner(activite_id, cid);
@@ -328,10 +328,12 @@ const getPrixHistoriqueConfig = async (req, res) => {
     const r = await pool.query(
       `SELECT avph.id, avph.article_vendable_id, avph.prix_vente, avph.saved_at,
               av.article_type, av.article_id,
-              p.nom as produit_nom, p.is_supplement
+              COALESCE(p.nom, a.nom) as produit_nom,
+              COALESCE(p.is_supplement, FALSE) as is_supplement
        FROM article_vendable_prix_historique avph
        JOIN activite_articles_vendables av ON av.id = avph.article_vendable_id
        LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
+       LEFT JOIN articles a ON av.article_type = 'ingredient' AND a.id = av.article_id
        WHERE av.activite_id = $1
        ORDER BY avph.saved_at DESC
        LIMIT 500`,
@@ -1352,6 +1354,50 @@ const exportLaboVentesExcel = async (req, res) => {
   }
 };
 
+const getArticlesValorisés = async (req, res) => {
+  try {
+    const { activiteId } = req.query;
+    if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
+    const cid = clientId(req);
+    await assertActiviteOwner(activiteId, cid);
+
+    const r = await pool.query(
+      `SELECT a.id, a.nom, u.nom as unite_nom,
+              c.nom as categorie_nom, f.nom as famille_nom,
+              av.id as av_id, av.prix_vente, av.actif
+       FROM articles a
+       JOIN unites u ON a.unite_id = u.id
+       LEFT JOIN categories c ON a.categorie_id = c.id
+       LEFT JOIN familles f ON c.famille_id = f.id
+       LEFT JOIN activite_articles_vendables av
+         ON av.article_id = a.id AND av.activite_id = $1 AND av.article_type = 'ingredient'
+       WHERE a.client_id = $2
+         AND f.consommable = FALSE
+         AND f.vendable = TRUE
+       ORDER BY f.nom, COALESCE(c.nom, ''), a.nom`,
+      [activiteId, cid]
+    );
+    res.json(r.rows.map(row => ({
+      id: row.id,
+      nom: row.nom,
+      unite_nom: row.unite_nom,
+      categorie_nom: row.categorie_nom ?? null,
+      famille_nom: row.famille_nom ?? null,
+      vendable: row.av_id ? {
+        id: String(row.av_id),
+        article_type: 'ingredient',
+        article_id: row.id,
+        prix_vente: parseFloat(row.prix_vente ?? 0),
+        portion: null,
+        actif: row.actif,
+      } : null,
+    })));
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
+    res.status(500).json({ message: e.message });
+  }
+};
+
 module.exports = {
   listPrestataires, createPrestataire, updatePrestataire, deletePrestataire,
   toggleModuleVente,
@@ -1363,4 +1409,5 @@ module.exports = {
   listVentes, getVente, createVente, annulerVente, statsVentes,
   exportVentesExcel, exportPrixHistoriqueConfigExcel, deleteHistoriqueEntry,
   laboVentes, laboVentesStats, exportLaboVentesExcel,
+  getArticlesValorisés,
 };
