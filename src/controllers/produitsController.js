@@ -1247,9 +1247,10 @@ const exportListExcel = async (req, res) => {
       r++;
 
       let altIdx = 0;
-      const addDataRow = (product) => {
+      let totalRowsWritten = 0;
+      const addDataRow = (product, overrideActivite = null) => {
         const acts = product.activites_json || [];
-        const activitesStr = acts.map(a => a.nom).join(', ');
+        const activitesStr = overrideActivite !== null ? overrideActivite : acts.map(a => a.nom).join(', ');
         const typeLabel = product.is_supplement ? 'Supplément vendable' : product.type === 'vendable' ? 'Produit vendable' : 'Produit utilisable';
         const values = [
           product.nom, typeLabel, activitesStr, product.ref_produit || '',
@@ -1269,7 +1270,7 @@ const exportListExcel = async (req, res) => {
           cell.alignment = { vertical: 'middle', horizontal: i === 0 || i === 2 ? 'left' : 'center' };
         });
         if (product.total_cost !== null) dataRow.getCell(5).numFmt = '#,##0.000';
-        altIdx++; r++;
+        altIdx++; totalRowsWritten++; r++;
       };
 
       if (!activiteId && rows.length > 0) {
@@ -1291,7 +1292,8 @@ const exportListExcel = async (req, res) => {
             secCell.border = brd;
             ws.getRow(r).height = 20; r++;
             altIdx = 0;
-            actProducts.forEach(p => addDataRow(p));
+            // Pass activity name so "Activités" column only shows this activity
+            actProducts.forEach(p => addDataRow(p, actNom));
             ws.getRow(r).height = 8; r++; // gap between sections
           });
         } else {
@@ -1301,10 +1303,10 @@ const exportListExcel = async (req, res) => {
         rows.forEach(p => addDataRow(p));
       }
 
-      // Summary
+      // Summary — count all written rows (a product in 2 activities = 2 rows)
       ws.mergeCells(`A${r}:${lastCol}${r}`);
       const totCell = ws.getCell(`A${r}`);
-      totCell.value = `Total : ${rows.length} produit${rows.length !== 1 ? 's' : ''}`;
+      totCell.value = `Total : ${totalRowsWritten} produit${totalRowsWritten !== 1 ? 's' : ''}`;
       totCell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: XCOLORS.navy } };
       totCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XCOLORS.totalBg } };
       totCell.alignment = { horizontal: 'center', vertical: 'middle' };
