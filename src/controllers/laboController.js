@@ -1153,7 +1153,9 @@ const getTransferHistory = async (req, res) => {
 // GET /api/labo/:laboId/historique
 const getLaboHistorique = async (req, res) => {
   const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture } = req.query;
+  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture, limit, offset } = req.query;
+  const parsedLimit = parseInt(limit, 10) || null;
+  const parsedOffset = parseInt(offset, 10) || 0;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
@@ -1182,7 +1184,8 @@ const getLaboHistorique = async (req, res) => {
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
        WHERE ${conditions.join(' AND ')}
-       ORDER BY sld.date_appro DESC, sld.updated_at DESC`,
+       ORDER BY sld.date_appro DESC, sld.updated_at DESC
+       ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`,
       params
     );
 

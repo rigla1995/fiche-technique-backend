@@ -1008,7 +1008,9 @@ const getHistoriqueAppro = async (req, res) => {
     delete req.query.activiteIds;
     delete req.query.entType;
   }
-  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId } = req.query;
+  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId, limit, offset } = req.query;
+  const parsedLimit = parseInt(limit, 10) || null;
+  const parsedOffset = parseInt(offset, 10) || 0;
   const currentYear = new Date().getFullYear();
 
   try {
@@ -1078,7 +1080,8 @@ const getHistoriqueAppro = async (req, res) => {
          LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
          LEFT JOIN utilisateurs ub ON ub.id = sed.created_by
          WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
-         ORDER BY sed.date_appro DESC, i.nom`,
+         ORDER BY sed.date_appro DESC, i.nom
+         ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`,
         params
       );
 
@@ -1151,7 +1154,8 @@ const getHistoriqueAppro = async (req, res) => {
          LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
          LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
          WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
-         ORDER BY scd.date_appro DESC, i.nom`,
+         ORDER BY scd.date_appro DESC, i.nom
+         ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`,
         params
       );
 
