@@ -1558,7 +1558,7 @@ const exportHistoriqueExcel = async (req, res) => {
       totalHT += coutHt; totalTTC += coutTtc;
       const isSelected = selectedSet.has(Number(r.id));
       const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
-      const typeLabel = (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? 'Prod. Transformé' : t === 'transfert' ? 'Transfert' : 'Manuel'; })();
+      const typeLabel = (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? 'Prod. Transformé' : t === 'transfert' ? 'Transfert' : t === 'PT' ? 'PT' : 'Manuel'; })();
       const rowData = [
         dateStr,
         r.ingredient_nom,
