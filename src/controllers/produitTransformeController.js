@@ -143,16 +143,14 @@ const deleteStockPTHistory = async (req, res) => {
         `DELETE FROM stock_produits_transformes WHERE produit_id = $1 AND activite_id = $2`,
         [produitId, activiteId]
       );
-      if (produitNom) {
-        await pool.query(
-          `DELETE FROM stock_entreprise_daily
-           WHERE activite_id = $1
-             AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
-             AND quantite < 0
-             AND type_appro = $3`,
-          [activiteId, produitId, produitNom]
-        );
-      }
+      await pool.query(
+        `DELETE FROM stock_entreprise_daily
+         WHERE activite_id = $1
+           AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
+           AND quantite < 0
+           AND type_appro = 'PT'`,
+        [activiteId, produitId]
+      );
       // Labo PT stock for the labo linked to this activité
       const laboRes = await pool.query(
         `SELECT labo_id FROM activites WHERE id = $1 AND labo_id IS NOT NULL`,
@@ -192,28 +190,26 @@ const deleteStockPTHistory = async (req, res) => {
            )`,
         [produitId, clientId]
       );
-      if (produitNom) {
-        await pool.query(
-          `DELETE FROM stock_client_daily
-           WHERE client_id = $1
-             AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
-             AND quantite < 0
-             AND type_appro = $3`,
-          [clientId, produitId, produitNom]
-        );
-        await pool.query(
-          `DELETE FROM stock_entreprise_daily
-           WHERE activite_id IN (
-             SELECT a.id FROM activites a
-             JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-             WHERE pe.client_id = $1
-           )
-             AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
-             AND quantite < 0
-             AND type_appro = $3`,
-          [clientId, produitId, produitNom]
-        );
-      }
+      await pool.query(
+        `DELETE FROM stock_client_daily
+         WHERE client_id = $1
+           AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
+           AND quantite < 0
+           AND type_appro = 'PT'`,
+        [clientId, produitId]
+      );
+      await pool.query(
+        `DELETE FROM stock_entreprise_daily
+         WHERE activite_id IN (
+           SELECT a.id FROM activites a
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE pe.client_id = $1
+         )
+           AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
+           AND quantite < 0
+           AND type_appro = 'PT'`,
+        [clientId, produitId]
+      );
       await pool.query(`DELETE FROM stock_labo_pt_daily WHERE produit_id = $1`, [produitId]);
       await pool.query(`DELETE FROM produit_activite_stock WHERE produit_id = $1`, [produitId]);
       await pool.query(`DELETE FROM labo_pt_selections WHERE produit_id = $1`, [produitId]);
@@ -653,13 +649,13 @@ const saveStockPT = async (req, res) => {
         await pool.query(
           `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, produitNom, autoFournisseurId, `${ing.nom}-${yearStr}`]
+          [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, 'PT', autoFournisseurId, `${ing.nom}-${yearStr}`]
         );
       } else {
         await pool.query(
           `INSERT INTO stock_client_daily (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, produitNom, autoFournisseurId, `${ing.nom}-${yearStr}`]
+          [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, 'PT', autoFournisseurId, `${ing.nom}-${yearStr}`]
         );
       }
     }
