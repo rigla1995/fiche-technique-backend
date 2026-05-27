@@ -1018,9 +1018,9 @@ const createTransfer = async (req, res) => {
         const prixUnitaireTva = tva != null && prixUnit != null ? prixUnit * (1 + tva / 100) : null;
 
         await client.query(
-          `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, updated_at, created_by)
-           VALUES ($1, $2, $3, $4, $5, 'transfert', NOW(), $6)`,
-          [laboId, ingId, dateTransfert, -qty, prixUnit, req.user.id]
+          `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, ref_facture, updated_at, created_by)
+           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, NOW(), $7)`,
+          [laboId, ingId, dateTransfert, -qty, prixUnit, refFacture || null, req.user.id]
         );
 
         await client.query(
