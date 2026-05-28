@@ -332,4 +332,39 @@ const sendAiAgentInviteEmail = async ({ to, clientNom, inviteLink, appName }) =>
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail, sendRapportEmail, sendRapportWithAttachment, sendAiAgentInviteEmail };
+const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) => {
+  const name = appName || APP_NAME;
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `${name} — Votre assistant IA Messenger est activé ! 🤖`,
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+      <div style="background:linear-gradient(135deg,#1877f2,#0a66c2);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+        <div style="font-size:40px;margin-bottom:8px">💬</div>
+        <h1 style="color:#fff;margin:0;font-size:22px">Votre agent IA ${name} est prêt sur Messenger !</h1>
+      </div>
+      <p style="color:#374151;font-size:15px;line-height:1.6">Bonjour <strong>${clientNom}</strong>,</p>
+      <p style="color:#374151;font-size:14px;line-height:1.6">
+        Votre assistant IA personnel vient d'être activé sur <strong>Facebook Messenger</strong>. Il peut répondre à vos questions sur votre <strong>stock</strong>, vos <strong>inventaires</strong>, vos <strong>pertes</strong> et vous envoyer des <strong>rapports par email</strong>.
+      </p>
+      <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin:20px 0">
+        <p style="margin:0 0 12px;font-size:13px;color:#374151;font-weight:600">Pour démarrer, cliquez sur le bouton ci-dessous :</p>
+        <a href="${inviteLink}" style="display:inline-block;background:linear-gradient(135deg,#1877f2,#0a66c2);color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px">
+          💬 Ouvrir mon assistant sur Messenger
+        </a>
+        <p style="margin:12px 0 0;font-size:11px;color:#94a3b8">Lien : ${inviteLink}</p>
+      </div>
+      <ol style="color:#374151;font-size:13px;line-height:1.8;padding-left:20px">
+        <li>Cliquez sur le bouton ci-dessus</li>
+        <li>Messenger s'ouvre — envoyez votre premier message</li>
+        <li>L'agent vous répond instantanément ✅</li>
+      </ol>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
+      <p style="font-size:11px;color:#94a3b8;text-align:center">${name} · Votre assistant IA personnel</p>
+    </div>`,
+  });
+  if (error) throw new Error(error.message);
+  return { success: true, id: data?.id };
+};
+
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail, sendRapportEmail, sendRapportWithAttachment, sendAiAgentInviteEmail, sendMessengerInviteEmail };

@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const pool = require('../config/database');
 const { getBotUsername, sendWelcomeMessage } = require('../services/telegramService');
-const { sendAiAgentInviteEmail } = require('../services/emailService');
+const { sendAiAgentInviteEmail, sendMessengerInviteEmail } = require('../services/emailService');
 
 // ── Admin: get AI config for a client ────────────────────────────────────────
 
@@ -188,6 +188,18 @@ const generateMessengerInviteLink = async (req, res) => {
     );
 
     const inviteLink = `https://m.me/${messengerPageUsername}?ref=${inviteToken}`;
+
+    const clientRow = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
+    const { nom, email } = clientRow.rows[0] || {};
+    if (email) {
+      sendMessengerInviteEmail({
+        to: email,
+        clientNom: nom || 'Client',
+        inviteLink,
+        appName: process.env.APP_NAME,
+      }).catch(e => console.warn('[AI] Messenger invite email error:', e.message));
+    }
+
     res.json({ messengerInviteLink: inviteLink });
   } catch (err) {
     console.error(err);
