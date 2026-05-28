@@ -7,7 +7,7 @@ const CONTEXT_TTL_MS = 60 * 60 * 1000; // 1 hour
 async function generateClientContext(clientId) {
   const [activitesRes, labosRes, fournisseursRes, venteRes] = await Promise.all([
     pool.query(
-      `SELECT a.id, a.nom, a.type, a.labo_id
+      `SELECT a.id, a.nom
        FROM activites a
        JOIN profil_entreprise pe ON pe.id = a.entreprise_id
        WHERE pe.client_id = $1
