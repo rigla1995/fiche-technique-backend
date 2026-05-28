@@ -99,27 +99,8 @@ function parseLlamaFunctionCall(raw) {
   }
 }
 
-async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidenceThreshold = 0.75) {
-  if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY non configurée');
-
-  const conv = await getConversation(clientId, chatSessionId);
-  const history = (conv?.messages ?? []).slice(-16);
-
-  const systemPrompt = buildSystemPrompt();
-  // Groq uses system as first message in the messages array
-  let messages = [
-    { role: 'system', content: systemPrompt },
-    ...history,
-    { role: 'user', content: userMessage },
-  ];
-
-  // Track storable messages (no tool internals)
-  const storableHistory = [...history, { role: 'user', content: userMessage }];
-
-  let finalText = null;
-  let confidence = null;
-
-  for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+async function groqRequest(messages, retries = 3) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
@@ -136,6 +117,47 @@ async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidence
         stream: false,
       }),
     });
+
+    if (response.status === 429) {
+      const errText = await response.text();
+      // Parse suggested wait time: "try again in 4.11s"
+      const waitMatch = errText.match(/try again in ([\d.]+)s/i);
+      const waitMs = waitMatch ? Math.ceil(parseFloat(waitMatch[1]) * 1000) + 200 : 5000;
+      if (attempt < retries) {
+        console.warn(`[Groq] Rate limit hit, retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})`);
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+      throw new Error(`Groq API error 429: rate limit — please retry in a moment`);
+    }
+
+    return response;
+  }
+}
+
+async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidenceThreshold = 0.75) {
+  if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY non configurée');
+
+  const conv = await getConversation(clientId, chatSessionId);
+  // Keep only last 8 messages to reduce token usage per request
+  const history = (conv?.messages ?? []).slice(-8);
+
+  const systemPrompt = buildSystemPrompt();
+  // Groq uses system as first message in the messages array
+  let messages = [
+    { role: 'system', content: systemPrompt },
+    ...history,
+    { role: 'user', content: userMessage },
+  ];
+
+  // Track storable messages (no tool internals)
+  const storableHistory = [...history, { role: 'user', content: userMessage }];
+
+  let finalText = null;
+  let confidence = null;
+
+  for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+    const response = await groqRequest(messages);
 
     if (!response.ok) {
       const errText = await response.text();
