@@ -247,7 +247,7 @@ async function fetchAppros(clientId, refs, dates, limit = 50) {
        sed.date_appro                             AS date,
        art.nom                                    AS article,
        sed.quantite,
-       u.symbole                                  AS unite,
+       u.nom                                  AS unite,
        sed.prix_unitaire,
        ROUND((sed.quantite * COALESCE(sed.prix_unitaire,0))::numeric, 3) AS total,
        f.nom                                      AS fournisseur,
@@ -287,7 +287,7 @@ async function fetchPertes(clientId, refs, dates, limit = 50) {
            p.date_perte   AS date,
            art.nom        AS article,
            p.quantite,
-           u.symbole      AS unite,
+           u.nom          AS unite,
            p.type_perte,
            a.nom          AS activite
          FROM pertes p
@@ -320,7 +320,7 @@ async function fetchPertes(clientId, refs, dates, limit = 50) {
            lp.date_perte AS date,
            art.nom       AS article,
            lp.quantite,
-           u.symbole     AS unite,
+           u.nom     AS unite,
            lp.type_perte,
            l.nom         AS activite
          FROM labo_pertes lp
@@ -359,7 +359,7 @@ async function fetchTransferts(clientId, refs, dates, limit = 50) {
        lt.date_transfert          AS date,
        art.nom                    AS article,
        lt.quantite,
-       u.symbole                  AS unite,
+       u.nom                  AS unite,
        l.nom                      AS labo,
        a.nom                      AS activite_destination
      FROM labo_transfers lt
@@ -392,7 +392,7 @@ async function fetchStock(clientId, refs) {
       const { rows } = await pool.query(
         `SELECT
            art.nom     AS article,
-           u.symbole   AS unite,
+           u.nom   AS unite,
            SUM(sed.quantite) AS quantite_totale,
            a.nom       AS activite,
            MAX(sed.date_appro) AS derniere_entree
@@ -402,7 +402,7 @@ async function fetchStock(clientId, refs) {
          JOIN activites a ON a.id = sed.activite_id
          WHERE sed.activite_id = ANY($1)
            AND sed.date_appro >= date_trunc('month', CURRENT_DATE) - INTERVAL '3 months'
-         GROUP BY art.nom, u.symbole, a.nom
+         GROUP BY art.nom, u.nom, a.nom
          ORDER BY quantite_totale DESC
          LIMIT 30`,
         [activiteIds]
@@ -415,7 +415,7 @@ async function fetchStock(clientId, refs) {
     const { rows } = await pool.query(
       `SELECT
          art.nom     AS article,
-         u.symbole   AS unite,
+         u.nom   AS unite,
          SUM(sld.quantite) AS quantite_totale,
          l.nom       AS activite,
          MAX(sld.date_appro) AS derniere_entree
@@ -425,7 +425,7 @@ async function fetchStock(clientId, refs) {
        JOIN labos l ON l.id = sld.labo_id
        WHERE sld.labo_id = $1
          AND sld.date_appro >= date_trunc('month', CURRENT_DATE) - INTERVAL '3 months'
-       GROUP BY art.nom, u.symbole, l.nom
+       GROUP BY art.nom, u.nom, l.nom
        ORDER BY quantite_totale DESC
        LIMIT 30`,
       [laboId]
