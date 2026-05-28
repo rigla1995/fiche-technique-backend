@@ -67,20 +67,31 @@ async function saveConversation(clientId, sessionId, conversationId, messages, c
   }
 }
 
-// Parse LLaMA-style <function=NAME{...}</function> from Groq's failed_generation
+// Parse LLaMA-style function calls from Groq's failed_generation.
+// Handles all observed formats:
+//   <function=NAME>{"args":...}</function>
+//   <function=NAME{"args":...}</function>  (missing >)
+//   <function=NAME({"args":...})</function> (parens wrapper)
 function parseLlamaFunctionCall(raw) {
-  const m = raw.match(/<function=([a-zA-Z_]+)(>?)([\s\S]*?)<\/function>/);
+  const m = raw.match(/<function=([a-zA-Z_]+)(>?)\s*([\s\S]*?)\s*<\/function>/);
   if (!m) return null;
   let name = m[1];
   let argsStr = m[3].trim();
-  // Handle missing > separator: JSON is directly concatenated to name
+  // When > is absent, args may be concatenated directly onto the name
   if (m[2] === '') {
-    const jsonIdx = name.indexOf('{');
-    if (jsonIdx !== -1) {
-      argsStr = name.slice(jsonIdx) + argsStr;
-      name = name.slice(0, jsonIdx);
+    const firstBrace = name.indexOf('{');
+    const firstParen = name.indexOf('(');
+    const splitAt = Math.min(
+      firstBrace === -1 ? Infinity : firstBrace,
+      firstParen === -1 ? Infinity : firstParen
+    );
+    if (splitAt !== Infinity) {
+      argsStr = name.slice(splitAt) + argsStr;
+      name = name.slice(0, splitAt);
     }
   }
+  // Strip wrapping parentheses: ({"key": val}) → {"key": val}
+  argsStr = argsStr.replace(/^\(+/, '').replace(/\)+$/, '').trim();
   try {
     return { name, args: JSON.parse(argsStr || '{}') };
   } catch {
