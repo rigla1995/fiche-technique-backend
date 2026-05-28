@@ -1,5 +1,22 @@
+const pool = require('../config/database');
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+async function recordTokenUsage(clientId, inputTokens, outputTokens) {
+  if (!clientId || (!inputTokens && !outputTokens)) return;
+  const total = (inputTokens || 0) + (outputTokens || 0);
+  await pool.query(
+    `INSERT INTO ai_token_usage (client_id, usage_date, tokens_input, tokens_output, tokens_total, msg_count)
+     VALUES ($1, CURRENT_DATE, $2, $3, $4, 1)
+     ON CONFLICT (client_id, usage_date) DO UPDATE
+       SET tokens_input  = ai_token_usage.tokens_input  + $2,
+           tokens_output = ai_token_usage.tokens_output + $3,
+           tokens_total  = ai_token_usage.tokens_total  + $4,
+           msg_count     = ai_token_usage.msg_count     + 1,
+           updated_at    = NOW()`,
+    [clientId, inputTokens || 0, outputTokens || 0, total]
+  ).catch(e => console.warn('[AI] Token usage record error:', e.message));
+}
 
 const INTENT_LABELS = {
   appros:     'Approvisionnements',
@@ -42,7 +59,7 @@ Règles STRICTES :
 - NE PAS inventer de données ni d'articles
 - Formatage texte simple (pas de Markdown complexe, le client lit sur mobile)`;
 
-async function formatWithGroq(userMessage, intent, data, context, dates) {
+async function formatWithGroq(userMessage, intent, data, context, dates, clientId) {
   if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY non configurée');
 
   const intentLabel = INTENT_LABELS[intent] || intent;
@@ -95,8 +112,11 @@ async function formatWithGroq(userMessage, intent, data, context, dates) {
     }
 
     const result = await response.json();
+    if (clientId && result.usage) {
+      recordTokenUsage(clientId, result.usage.prompt_tokens, result.usage.completion_tokens);
+    }
     return result.choices?.[0]?.message?.content ?? 'Désolé, je n\'ai pas pu générer une réponse.';
   }
 }
 
-module.exports = { formatWithGroq };
+module.exports = { formatWithGroq, recordTokenUsage };

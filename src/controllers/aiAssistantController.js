@@ -229,7 +229,10 @@ const getActiveAgents = async (req, res) => {
          COALESCE(stats.msg_count, 0)      AS message_count,
          stats.last_activity,
          last_conv.last_confidence,
-         ROUND(stats.avg_confidence_month::numeric, 2) AS avg_confidence_month
+         ROUND(stats.avg_confidence_month::numeric, 2) AS avg_confidence_month,
+         COALESCE(tok_month.tokens_total, 0) AS tokens_month,
+         COALESCE(tok_month.msg_count, 0)    AS tokens_msg_month,
+         COALESCE(tok_all.tokens_total, 0)   AS tokens_total
        FROM ai_assistant_config aic
        JOIN utilisateurs u ON u.id = aic.client_id
        LEFT JOIN (
@@ -248,6 +251,19 @@ const getActiveAgents = async (req, res) => {
          ORDER BY updated_at DESC
          LIMIT 1
        ) last_conv ON true
+       LEFT JOIN (
+         SELECT client_id,
+                SUM(tokens_total) AS tokens_total,
+                SUM(msg_count)    AS msg_count
+         FROM ai_token_usage
+         WHERE usage_date >= date_trunc('month', CURRENT_DATE)
+         GROUP BY client_id
+       ) tok_month ON tok_month.client_id = aic.client_id
+       LEFT JOIN (
+         SELECT client_id, SUM(tokens_total) AS tokens_total
+         FROM ai_token_usage
+         GROUP BY client_id
+       ) tok_all ON tok_all.client_id = aic.client_id
        ORDER BY aic.enabled DESC, stats.last_activity DESC NULLS LAST`
     );
 
@@ -264,6 +280,8 @@ const getActiveAgents = async (req, res) => {
       lastActivity: r.last_activity,
       lastConfidence: r.last_confidence != null ? parseFloat(r.last_confidence) : null,
       avgConfidenceMonth: r.avg_confidence_month != null ? parseFloat(r.avg_confidence_month) : null,
+      tokensMonth: parseInt(r.tokens_month) || 0,
+      tokensTotal: parseInt(r.tokens_total) || 0,
       inviteLink: r.invite_token && botUser && !r.telegram_chat_id
         ? `https://t.me/${botUser}?start=${r.invite_token}`
         : null,

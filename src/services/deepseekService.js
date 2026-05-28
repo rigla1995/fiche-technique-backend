@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const { routeMessage } = require('./intentRouter');
-const { formatWithGroq } = require('./aiFormatter');
+const { formatWithGroq, recordTokenUsage } = require('./aiFormatter');
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
@@ -33,7 +33,7 @@ async function saveConversation(clientId, sessionId, conversationId, messages, c
 }
 
 // Fallback for general (non-data) messages — simple single Groq call
-async function generalChat(history, userMessage, contextLine) {
+async function generalChat(history, userMessage, contextLine, clientId) {
   if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY non configurée');
 
   const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -65,6 +65,9 @@ Réponds en français (ou darija), sois concis et professionnel. 4-6 lignes max.
 
     if (!response.ok) throw new Error(`Groq error ${response.status}`);
     const data = await response.json();
+    if (clientId && data.usage) {
+      recordTokenUsage(clientId, data.usage.prompt_tokens, data.usage.completion_tokens);
+    }
     return data.choices?.[0]?.message?.content ?? 'Désolé, je n\'ai pas pu répondre.';
   }
 }
@@ -91,7 +94,7 @@ async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidence
     assistantMessage = routed.clarification;
   } else if (routed.intent === 'general') {
     // Conversational message — simple Groq call, no data
-    assistantMessage = await generalChat(history, userMessage, ctxLine);
+    assistantMessage = await generalChat(history, userMessage, ctxLine, clientId);
   } else {
     // Data response — format with Groq
     assistantMessage = await formatWithGroq(
@@ -99,7 +102,8 @@ async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidence
       routed.intent,
       routed.data,
       context,
-      routed.dates ?? null
+      routed.dates ?? null,
+      clientId
     );
   }
 
