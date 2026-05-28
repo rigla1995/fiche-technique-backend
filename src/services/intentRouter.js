@@ -31,7 +31,7 @@ async function generateClientContext(clientId) {
       [clientId]
     ),
     pool.query(
-      `SELECT module_vente_actif FROM abonnements WHERE client_id = $1 LIMIT 1`,
+      `SELECT module_vente_actif FROM profil_entreprise WHERE client_id = $1 LIMIT 1`,
       [clientId]
     ),
   ]);
@@ -296,6 +296,7 @@ async function fetchPertes(clientId, refs, dates, limit = 50) {
          JOIN activites a ON a.id = p.activite_id
          WHERE p.activite_id = ANY($1)
            AND p.date_perte BETWEEN $2 AND $3
+           AND p.produit_id IS NULL
          ORDER BY p.date_perte DESC
          LIMIT $4`,
         [activiteIds, date_from, date_to, limit]
@@ -328,6 +329,7 @@ async function fetchPertes(clientId, refs, dates, limit = 50) {
          JOIN labos l ON l.id = lp.labo_id
          WHERE lp.labo_id = ANY($1)
            AND lp.date_perte BETWEEN $2 AND $3
+           AND lp.produit_id IS NULL
          ORDER BY lp.date_perte DESC
          LIMIT $4`,
         [laboIds, date_from, date_to, limit]
