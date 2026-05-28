@@ -1153,41 +1153,102 @@ const getTransferHistory = async (req, res) => {
 // GET /api/labo/:laboId/historique
 const getLaboHistorique = async (req, res) => {
   const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture, limit, offset } = req.query;
+  const { startDate, endDate, ingredientId, categorieId, fournisseurId, activiteId, typeFilter, refFacture, limit, offset } = req.query;
   const parsedLimit = parseInt(limit, 10) || null;
   const parsedOffset = parseInt(offset, 10) || 0;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
-    const conditions = ['sld.labo_id = $1'];
+    // activiteId implies we only care about transfers
+    const includeManuel = (!typeFilter || typeFilter === 'manuel') && !activiteId;
+    const includeTransfert = !typeFilter || typeFilter === 'transfert';
+
+    const manuelConds = [`sld.labo_id = $1`, `sld.type_appro != 'transfert'`];
+    const transferConds = [`lt.labo_id = $1`];
     const params = [laboId];
     let idx = 2;
-    if (startDate)    { conditions.push(`sld.date_appro >= $${idx++}`); params.push(startDate); }
-    if (endDate)      { conditions.push(`sld.date_appro <= $${idx++}`); params.push(endDate); }
-    if (ingredientId) { conditions.push(`sld.ingredient_id = $${idx++}`); params.push(ingredientId); }
-    if (categorieId)  { conditions.push(`i.categorie_id = $${idx++}`); params.push(categorieId); }
-    if (fournisseurId){ conditions.push(`sld.fournisseur_id = $${idx++}`); params.push(fournisseurId); }
-    if (refFacture)   { conditions.push(`sld.ref_facture ILIKE $${idx++}`); params.push(`%${refFacture}%`); }
 
-    const result = await pool.query(
-      `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
-              sld.ref_facture, sld.type_appro, sld.updated_at, sld.created_by,
-              sld.taux_tva, sld.prix_unitaire_tva,
-              i.nom as ingredient_nom,
-              u.nom as unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
-              f.nom as fournisseur_nom, f.id as fournisseur_id
-       FROM stock_labo_daily sld
-       JOIN articles i ON i.id = sld.ingredient_id
-       JOIN unites u ON u.id = i.unite_id
-       LEFT JOIN categories c ON c.id = i.categorie_id
-       LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
-       WHERE ${conditions.join(' AND ')}
-       ORDER BY sld.date_appro DESC, sld.updated_at DESC
-       ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`,
-      params
-    );
+    if (startDate) {
+      params.push(startDate);
+      manuelConds.push(`sld.date_appro >= $${idx}`);
+      transferConds.push(`lt.date_transfert >= $${idx}`);
+      idx++;
+    }
+    if (endDate) {
+      params.push(endDate);
+      manuelConds.push(`sld.date_appro <= $${idx}`);
+      transferConds.push(`lt.date_transfert <= $${idx}`);
+      idx++;
+    }
+    if (ingredientId) {
+      params.push(ingredientId);
+      manuelConds.push(`sld.ingredient_id = $${idx}`);
+      transferConds.push(`lt.ingredient_id = $${idx}`);
+      idx++;
+    }
+    if (categorieId) {
+      params.push(categorieId);
+      manuelConds.push(`i.categorie_id = $${idx}`);
+      transferConds.push(`i.categorie_id = $${idx}`);
+      idx++;
+    }
+    if (fournisseurId) {
+      params.push(fournisseurId);
+      manuelConds.push(`sld.fournisseur_id = $${idx}`);
+      idx++;
+    }
+    if (refFacture) {
+      params.push(`%${refFacture}%`);
+      manuelConds.push(`sld.ref_facture ILIKE $${idx}`);
+      transferConds.push(`lt.ref_facture ILIKE $${idx}`);
+      idx++;
+    }
+    if (activiteId) {
+      params.push(activiteId);
+      transferConds.push(`lt.activite_id = $${idx}`);
+      idx++;
+    }
+
+    const manuelSql = `
+      SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
+             sld.ref_facture, sld.type_appro, sld.updated_at, sld.created_by,
+             sld.taux_tva, sld.prix_unitaire_tva,
+             i.nom as ingredient_nom, u.nom as unite_nom,
+             COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+             f.nom as fournisseur_nom, f.id as fournisseur_id,
+             NULL::int as activite_id, NULL::text as activite_nom
+      FROM stock_labo_daily sld
+      JOIN articles i ON i.id = sld.ingredient_id
+      JOIN unites u ON u.id = i.unite_id
+      LEFT JOIN categories c ON c.id = i.categorie_id
+      LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
+      WHERE ${manuelConds.join(' AND ')}`;
+
+    const transferSql = `
+      SELECT lt.id, lt.ingredient_id, lt.date_transfert as date_appro, lt.quantite, lt.prix_unitaire,
+             lt.ref_facture, 'transfert'::text as type_appro, lt.created_at as updated_at, lt.created_by,
+             lt.taux_tva, lt.prix_unitaire_tva,
+             i.nom as ingredient_nom, u.nom as unite_nom,
+             COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+             NULL::text as fournisseur_nom, NULL::int as fournisseur_id,
+             lt.activite_id, a.nom as activite_nom
+      FROM labo_transfers lt
+      JOIN articles i ON i.id = lt.ingredient_id
+      JOIN unites u ON u.id = i.unite_id
+      LEFT JOIN categories c ON c.id = i.categorie_id
+      JOIN activites a ON a.id = lt.activite_id
+      WHERE ${transferConds.join(' AND ')}`;
+
+    const parts = [];
+    if (includeManuel) parts.push(manuelSql);
+    if (includeTransfert) parts.push(transferSql);
+
+    const sql = `SELECT * FROM (${parts.join(' UNION ALL ')}) combined
+                 ORDER BY date_appro DESC, updated_at DESC
+                 ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`;
+
+    const result = await pool.query(sql, params);
 
     res.json(result.rows.map((r) => ({
       id: r.id,
@@ -1204,6 +1265,8 @@ const getLaboHistorique = async (req, res) => {
       typeAppro: r.type_appro || null,
       fournisseurId: r.fournisseur_id || null,
       fournisseurNom: r.fournisseur_nom || null,
+      activiteId: r.activite_id || null,
+      activiteNom: r.activite_nom || null,
       updatedAt: r.updated_at,
       createdBy: r.created_by ?? null,
     })));
