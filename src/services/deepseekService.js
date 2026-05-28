@@ -67,6 +67,27 @@ async function saveConversation(clientId, sessionId, conversationId, messages, c
   }
 }
 
+// Parse LLaMA-style <function=NAME{...}</function> from Groq's failed_generation
+function parseLlamaFunctionCall(raw) {
+  const m = raw.match(/<function=([a-zA-Z_]+)(>?)([\s\S]*?)<\/function>/);
+  if (!m) return null;
+  let name = m[1];
+  let argsStr = m[3].trim();
+  // Handle missing > separator: JSON is directly concatenated to name
+  if (m[2] === '') {
+    const jsonIdx = name.indexOf('{');
+    if (jsonIdx !== -1) {
+      argsStr = name.slice(jsonIdx) + argsStr;
+      name = name.slice(0, jsonIdx);
+    }
+  }
+  try {
+    return { name, args: JSON.parse(argsStr || '{}') };
+  } catch {
+    return null;
+  }
+}
+
 async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidenceThreshold = 0.75) {
   if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY non configurée');
 
@@ -99,14 +120,54 @@ async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidence
         messages,
         tools: TOOLS_OPENAI,
         tool_choice: 'auto',
+        parallel_tool_calls: false,
         max_tokens: 1024,
         stream: false,
       }),
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Groq API error ${response.status}: ${err}`);
+      const errText = await response.text();
+      // Groq returns 400 with tool_use_failed when the model generates
+      // the LLaMA-style <function=NAME{...}</function> format instead of
+      // OpenAI tool_calls. Recover by parsing failed_generation and executing.
+      let recovered = false;
+      try {
+        const errJson = JSON.parse(errText);
+        const failedGen = errJson?.error?.failed_generation;
+        if (errJson?.error?.code === 'tool_use_failed' && failedGen) {
+          const parsed = parseLlamaFunctionCall(failedGen);
+          if (parsed) {
+            console.warn(`[Groq] tool_use_failed — recovering call to ${parsed.name}`);
+            const fakeId = `recovered_${Date.now()}`;
+            // Inject a synthetic assistant message with tool_calls so the
+            // conversation history stays consistent for follow-up turns
+            messages.push({
+              role: 'assistant',
+              content: null,
+              tool_calls: [{
+                id: fakeId,
+                type: 'function',
+                function: { name: parsed.name, arguments: JSON.stringify(parsed.args) },
+              }],
+            });
+            const result = await executeToolCall(clientId, parsed.name, parsed.args);
+            if (result?.__clarification) {
+              let clarificationText = result.question;
+              if (result.options?.length) {
+                clarificationText += '\n\n' + result.options.map((o, idx) => `${idx + 1}. ${o}`).join('\n');
+              }
+              const storableMessages = storableHistory.concat({ role: 'assistant', content: clarificationText });
+              await saveConversation(clientId, chatSessionId, conv?.id ?? null, storableMessages, null);
+              return { assistantMessage: clarificationText, confidence: null, isClarification: true };
+            }
+            messages.push({ role: 'tool', tool_call_id: fakeId, content: JSON.stringify(result) });
+            recovered = true;
+          }
+        }
+      } catch { /* ignore parse errors, fall through to throw */ }
+      if (!recovered) throw new Error(`Groq API error ${response.status}: ${errText}`);
+      continue;
     }
 
     const data = await response.json();
