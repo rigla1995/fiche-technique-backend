@@ -88,14 +88,16 @@ async function handleMessengerEvent(event) {
   const psid = event.sender?.id;
   if (!psid) return;
 
+  // m.me/PAGE?ref=TOKEN fires a referral event (not a message)
+  const referralRef = event.referral?.ref?.trim() || event.postback?.referral?.ref?.trim();
   const messageText = event.message?.text?.trim();
   const postbackPayload = event.postback?.payload?.trim();
 
-  const text = messageText || postbackPayload;
-  if (!text) return;
+  // Check for invite token first (from referral or raw message/postback)
+  const tokenCandidate = referralRef || messageText || postbackPayload;
 
   // Handle invite token from deep link (m.me/page?ref=TOKEN or postback with token)
-  const refMatch = text.match(/^([a-f0-9]{48})$/i);
+  const refMatch = tokenCandidate?.match(/^([a-f0-9]{48})$/i);
   if (refMatch) {
     const inviteToken = refMatch[1];
     const client = await findClientByMessengerToken(inviteToken);
@@ -120,6 +122,10 @@ async function handleMessengerEvent(event) {
       `Posez-moi votre question !`
     );
   }
+
+  // If this was purely a referral event (no user-typed message), stop here
+  const text = messageText || postbackPayload;
+  if (!text) return;
 
   const client = await findClientByPsid(psid);
   if (!client) return;
