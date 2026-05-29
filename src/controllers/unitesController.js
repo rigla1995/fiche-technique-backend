@@ -36,7 +36,7 @@ const list = async (req, res) => {
                       EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id))
                ) AS has_appros
                FROM unites u WHERE u.client_id = $1 ORDER BY u.nom`;
-      params = [req.user.id];
+      params = [req.user.gerant_parent_id || req.user.id];
     }
 
     const result = await pool.query(query, params);
@@ -54,7 +54,7 @@ const create = async (req, res) => {
   }
 
   const nom = req.body.name || req.body.nom;
-  const clientId = req.user.role === 'super_admin' ? (req.body.clientId || req.body.client_id || null) : req.user.id;
+  const clientId = req.user.role === 'super_admin' ? (req.body.clientId || req.body.client_id || null) : (req.user.gerant_parent_id || req.user.id);
 
   try {
     const result = await pool.query(
@@ -87,7 +87,7 @@ const update = async (req, res) => {
       params = [nom, id];
     } else {
       query = 'UPDATE unites SET nom = $1, updated_at = NOW() WHERE id = $2 AND client_id = $3 RETURNING *';
-      params = [nom, id, req.user.id];
+      params = [nom, id, req.user.gerant_parent_id || req.user.id];
     }
 
     const result = await pool.query(query, params);
