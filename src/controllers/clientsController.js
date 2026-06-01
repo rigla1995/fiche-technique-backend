@@ -279,19 +279,26 @@ const remove = async (req, res) => {
     const userIds = usersRes.rows.map((r) => r.id);
     const uPlaceholders = userIds.map((_, i) => `$${i + 1}`).join(', ');
 
-    // SET NULL on created_by columns that have no ON DELETE action (would default to RESTRICT)
+    // SET NULL on created_by columns that have no ON DELETE action.
+    // Use SAVEPOINT per table so a missing table/column doesn't abort the transaction.
     const auditTables = [
       'stock_client_daily', 'stock_entreprise_daily', 'stock_labo_daily',
       'client_pertes', 'pertes', 'labo_transfers', 'inventaires', 'ventes',
     ];
     for (const t of auditTables) {
-      await dbClient.query(
-        `UPDATE ${t} SET created_by = NULL WHERE created_by IN (${uPlaceholders})`,
-        userIds
-      ).catch(() => {});
+      await dbClient.query('SAVEPOINT sp_audit');
+      try {
+        await dbClient.query(
+          `UPDATE ${t} SET created_by = NULL WHERE created_by IN (${uPlaceholders})`,
+          userIds
+        );
+        await dbClient.query('RELEASE SAVEPOINT sp_audit');
+      } catch (_) {
+        await dbClient.query('ROLLBACK TO SAVEPOINT sp_audit');
+      }
     }
 
-    // Delete RESTRICT-blocked tables before cascade reaches articles/produits/unites
+    // Delete RESTRICT-blocked tables before cascade reaches articles/produits/unites.
     // produit_ingredients references articles (ingredient_id RESTRICT) and unites (unite_id RESTRICT)
     await dbClient.query(
       `DELETE FROM produit_ingredients WHERE produit_id IN (
@@ -306,12 +313,18 @@ const remove = async (req, res) => {
           OR sous_produit_id IN (SELECT id FROM produits WHERE client_id = $1)`,
       [id]
     );
-    // article_vendable_prix_historique may reference articles with RESTRICT
-    await dbClient.query(
-      `DELETE FROM article_vendable_prix_historique
-       WHERE article_id IN (SELECT id FROM articles WHERE client_id = $1)`,
-      [id]
-    ).catch(() => {});
+    // article_vendable_prix_historique may not exist in all deployments
+    await dbClient.query('SAVEPOINT sp_avph');
+    try {
+      await dbClient.query(
+        `DELETE FROM article_vendable_prix_historique
+         WHERE article_id IN (SELECT id FROM articles WHERE client_id = $1)`,
+        [id]
+      );
+      await dbClient.query('RELEASE SAVEPOINT sp_avph');
+    } catch (_) {
+      await dbClient.query('ROLLBACK TO SAVEPOINT sp_avph');
+    }
 
     // Delete the client — all remaining data cascades automatically:
     //   utilisateurs → profil_entreprise → activites/labos/fournisseurs → stock/pertes/ventes/inventaires
