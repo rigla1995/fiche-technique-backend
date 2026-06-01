@@ -258,18 +258,79 @@ const update = async (req, res) => {
 
 const remove = async (req, res) => {
   const { id } = req.params;
+  const dbClient = await pool.connect();
   try {
-    const result = await pool.query(
-      `DELETE FROM utilisateurs WHERE id = $1 AND role = 'client' RETURNING id`,
+    await dbClient.query('BEGIN');
+
+    const check = await dbClient.query(
+      "SELECT id FROM utilisateurs WHERE id = $1 AND role = 'client'",
       [id]
     );
-    if (result.rows.length === 0) {
+    if (check.rows.length === 0) {
+      await dbClient.query('ROLLBACK');
       return res.status(404).json({ message: 'Client introuvable' });
     }
+
+    // Collect all user IDs owned by this client (client + its gérants)
+    const usersRes = await dbClient.query(
+      "SELECT id FROM utilisateurs WHERE id = $1 OR gerant_parent_id = $1",
+      [id]
+    );
+    const userIds = usersRes.rows.map((r) => r.id);
+    const uPlaceholders = userIds.map((_, i) => `$${i + 1}`).join(', ');
+
+    // SET NULL on created_by columns that have no ON DELETE action (would default to RESTRICT)
+    const auditTables = [
+      'stock_client_daily', 'stock_entreprise_daily', 'stock_labo_daily',
+      'client_pertes', 'pertes', 'labo_transfers', 'inventaires', 'ventes',
+    ];
+    for (const t of auditTables) {
+      await dbClient.query(
+        `UPDATE ${t} SET created_by = NULL WHERE created_by IN (${uPlaceholders})`,
+        userIds
+      ).catch(() => {});
+    }
+
+    // Delete RESTRICT-blocked tables before cascade reaches articles/produits/unites
+    // produit_ingredients references articles (ingredient_id RESTRICT) and unites (unite_id RESTRICT)
+    await dbClient.query(
+      `DELETE FROM produit_ingredients WHERE produit_id IN (
+         SELECT id FROM produits WHERE client_id = $1
+       )`,
+      [id]
+    );
+    // produit_sous_produits references produits (sous_produit_id RESTRICT)
+    await dbClient.query(
+      `DELETE FROM produit_sous_produits
+       WHERE produit_id IN (SELECT id FROM produits WHERE client_id = $1)
+          OR sous_produit_id IN (SELECT id FROM produits WHERE client_id = $1)`,
+      [id]
+    );
+    // article_vendable_prix_historique may reference articles with RESTRICT
+    await dbClient.query(
+      `DELETE FROM article_vendable_prix_historique
+       WHERE article_id IN (SELECT id FROM articles WHERE client_id = $1)`,
+      [id]
+    ).catch(() => {});
+
+    // Delete the client — all remaining data cascades automatically:
+    //   utilisateurs → profil_entreprise → activites/labos/fournisseurs → stock/pertes/ventes/inventaires
+    //   utilisateurs → abonnements → paiements/promotions/abonnement_config
+    //   utilisateurs → unites/articles/produits/categories/familles/client_domaines/...
+    //   utilisateurs → gérant child accounts (gerant_parent_id CASCADE)
+    await dbClient.query(
+      "DELETE FROM utilisateurs WHERE id = $1 AND role = 'client'",
+      [id]
+    );
+
+    await dbClient.query('COMMIT');
     res.status(204).send();
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
+    await dbClient.query('ROLLBACK');
+    console.error('Client delete error:', err);
+    res.status(500).json({ message: 'Erreur lors de la suppression du client' });
+  } finally {
+    dbClient.release();
   }
 };
 
