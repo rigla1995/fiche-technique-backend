@@ -1,145 +1,178 @@
 const pool = require('../config/database');
 
 /**
- * GET /api/gerant/dashboard
- * KPIs for the gérant's assigned activité or labo (current month + totals).
+ * GET /api/gerant/dashboard?year=2026
+ * Year-based KPIs + monthly breakdown for the gérant's activité or labo.
  */
 const getDashboard = async (req, res) => {
   const { id: userId, gerant_activite_id, gerant_activite_type, gerant_parent_id } = req.user;
   const clientId = gerant_parent_id || userId;
+  const year = parseInt(req.query.year, 10) || new Date().getFullYear();
+  const yearStart = `${year}-01-01`;
+  const yearEnd = `${year}-12-31`;
 
   try {
     if (!gerant_activite_id || !gerant_activite_type) {
-      return res.json({
-        type: null,
-        activiteNom: null,
-        kpis: null,
-      });
+      return res.json({ type: null, activiteNom: null, kpis: null, monthly: null, year });
     }
 
-    const now = new Date();
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .slice(0, 10);
-    const today = now.toISOString().slice(0, 10);
+    const buildMonthlyArray = (rows, key) => {
+      const arr = new Array(12).fill(0);
+      rows.forEach((r) => { arr[parseInt(r.mois, 10) - 1] = parseFloat(r[key]) || 0; });
+      return arr;
+    };
 
     if (gerant_activite_type === 'activite') {
-      // Verify gerant owns this activite via parent enterprise
       const check = await pool.query(
         `SELECT a.id, a.nom FROM activites a
          JOIN profil_entreprise pe ON a.entreprise_id = pe.id
          WHERE a.id = $1 AND pe.client_id = $2`,
         [gerant_activite_id, clientId]
       );
-      if (!check.rows.length) {
-        return res.status(403).json({ message: 'Activité non autorisée' });
-      }
+      if (!check.rows.length) return res.status(403).json({ message: 'Activité non autorisée' });
       const activiteNom = check.rows[0].nom;
 
-      const [appros, pertes, lastInv, stockCount] = await Promise.all([
-        // Appros this month
+      const [approsKpi, pertesKpi, invKpi, stockCount, approsMonthly, pertesMonthly] = await Promise.all([
         pool.query(
           `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
            FROM stock_entreprise_daily
-           WHERE activite_id = $1 AND date_appro >= $2 AND date_appro <= $3`,
-          [gerant_activite_id, firstOfMonth, today]
+           WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3`,
+          [gerant_activite_id, yearStart, yearEnd]
         ),
-        // Pertes this month
         pool.query(
           `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire, 0)), 0) AS valeur
            FROM pertes
-           WHERE activite_id = $1 AND date_perte >= $2 AND date_perte <= $3`,
-          [gerant_activite_id, firstOfMonth, today]
+           WHERE activite_id = $1 AND date_perte BETWEEN $2 AND $3`,
+          [gerant_activite_id, yearStart, yearEnd]
         ),
-        // Last inventory date
         pool.query(
-          `SELECT MAX(date_inventaire) AS last_date
+          `SELECT COUNT(*) AS count, MAX(date_inventaire) AS last_date
            FROM inventaires
-           WHERE activite_id = $1`,
-          [gerant_activite_id]
+           WHERE activite_id = $1 AND date_inventaire BETWEEN $2 AND $3`,
+          [gerant_activite_id, yearStart, yearEnd]
         ),
-        // Distinct ingredients in stock (ever)
         pool.query(
           `SELECT COUNT(DISTINCT ingredient_id) AS count
-           FROM stock_entreprise_daily
-           WHERE activite_id = $1`,
+           FROM stock_entreprise_daily WHERE activite_id = $1`,
           [gerant_activite_id]
+        ),
+        pool.query(
+          `SELECT EXTRACT(MONTH FROM date_appro) AS mois,
+                  COUNT(*) AS count,
+                  COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
+           FROM stock_entreprise_daily
+           WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3
+           GROUP BY mois ORDER BY mois`,
+          [gerant_activite_id, yearStart, yearEnd]
+        ),
+        pool.query(
+          `SELECT EXTRACT(MONTH FROM date_perte) AS mois,
+                  COUNT(*) AS count,
+                  COALESCE(SUM(quantite * COALESCE(prix_unitaire, 0)), 0) AS valeur
+           FROM pertes
+           WHERE activite_id = $1 AND date_perte BETWEEN $2 AND $3
+           GROUP BY mois ORDER BY mois`,
+          [gerant_activite_id, yearStart, yearEnd]
         ),
       ]);
 
       return res.json({
         type: 'activite',
         activiteNom,
+        year,
         kpis: {
-          approsCount: parseInt(appros.rows[0].count, 10),
-          approsValeur: parseFloat(appros.rows[0].valeur),
-          pertesCount: parseInt(pertes.rows[0].count, 10),
-          pertesValeur: parseFloat(pertes.rows[0].valeur),
-          dernierInventaire: lastInv.rows[0].last_date || null,
-          ingredientsCount: parseInt(stockCount.rows[0].count, 10),
+          approsCount: parseInt(approsKpi.rows[0].count, 10),
+          approsValeur: parseFloat(approsKpi.rows[0].valeur),
+          pertesCount: parseInt(pertesKpi.rows[0].count, 10),
+          pertesValeur: parseFloat(pertesKpi.rows[0].valeur),
+          inventairesCount: parseInt(invKpi.rows[0].count, 10),
+          dernierInventaire: invKpi.rows[0].last_date || null,
+          articlesCount: parseInt(stockCount.rows[0].count, 10),
+        },
+        monthly: {
+          approsCount: buildMonthlyArray(approsMonthly.rows, 'count'),
+          approsValeur: buildMonthlyArray(approsMonthly.rows, 'valeur'),
+          pertesCount: buildMonthlyArray(pertesMonthly.rows, 'count'),
+          pertesValeur: buildMonthlyArray(pertesMonthly.rows, 'valeur'),
         },
       });
     }
 
     if (gerant_activite_type === 'labo') {
-      // Verify gerant owns this labo via parent enterprise
       const check = await pool.query(
         `SELECT l.id, l.nom FROM labos l
          JOIN profil_entreprise pe ON l.entreprise_id = pe.id
          WHERE l.id = $1 AND pe.client_id = $2`,
         [gerant_activite_id, clientId]
       );
-      if (!check.rows.length) {
-        return res.status(403).json({ message: 'Labo non autorisé' });
-      }
+      if (!check.rows.length) return res.status(403).json({ message: 'Labo non autorisé' });
       const activiteNom = check.rows[0].nom;
 
-      const [appros, pertes, lastInv, stockCount] = await Promise.all([
-        // Appros labo this month
+      const [approsKpi, pertesKpi, invKpi, stockCount, approsMonthly, pertesMonthly] = await Promise.all([
         pool.query(
           `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
            FROM stock_labo_daily
-           WHERE labo_id = $1 AND date_appro >= $2 AND date_appro <= $3`,
-          [gerant_activite_id, firstOfMonth, today]
+           WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3`,
+          [gerant_activite_id, yearStart, yearEnd]
         ),
-        // Pertes labo this month
         pool.query(
           `SELECT COUNT(*) AS count
            FROM labo_pertes
-           WHERE labo_id = $1 AND date_perte >= $2 AND date_perte <= $3`,
-          [gerant_activite_id, firstOfMonth, today]
+           WHERE labo_id = $1 AND date_perte BETWEEN $2 AND $3`,
+          [gerant_activite_id, yearStart, yearEnd]
         ),
-        // Last inventory date for labo
         pool.query(
-          `SELECT MAX(date_inventaire) AS last_date
+          `SELECT COUNT(*) AS count, MAX(date_inventaire) AS last_date
            FROM inventaires
-           WHERE labo_id = $1`,
-          [gerant_activite_id]
+           WHERE labo_id = $1 AND date_inventaire BETWEEN $2 AND $3`,
+          [gerant_activite_id, yearStart, yearEnd]
         ),
-        // Distinct ingredients in labo stock
         pool.query(
           `SELECT COUNT(DISTINCT ingredient_id) AS count
-           FROM stock_labo_daily
-           WHERE labo_id = $1`,
+           FROM stock_labo_daily WHERE labo_id = $1`,
           [gerant_activite_id]
+        ),
+        pool.query(
+          `SELECT EXTRACT(MONTH FROM date_appro) AS mois,
+                  COUNT(*) AS count,
+                  COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
+           FROM stock_labo_daily
+           WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3
+           GROUP BY mois ORDER BY mois`,
+          [gerant_activite_id, yearStart, yearEnd]
+        ),
+        pool.query(
+          `SELECT EXTRACT(MONTH FROM date_perte) AS mois, COUNT(*) AS count
+           FROM labo_pertes
+           WHERE labo_id = $1 AND date_perte BETWEEN $2 AND $3
+           GROUP BY mois ORDER BY mois`,
+          [gerant_activite_id, yearStart, yearEnd]
         ),
       ]);
 
       return res.json({
         type: 'labo',
         activiteNom,
+        year,
         kpis: {
-          approsCount: parseInt(appros.rows[0].count, 10),
-          approsValeur: parseFloat(appros.rows[0].valeur),
-          pertesCount: parseInt(pertes.rows[0].count, 10),
-          pertesValeur: 0, // labo_pertes doesn't store prix_unitaire
-          dernierInventaire: lastInv.rows[0].last_date || null,
-          ingredientsCount: parseInt(stockCount.rows[0].count, 10),
+          approsCount: parseInt(approsKpi.rows[0].count, 10),
+          approsValeur: parseFloat(approsKpi.rows[0].valeur),
+          pertesCount: parseInt(pertesKpi.rows[0].count, 10),
+          pertesValeur: 0,
+          inventairesCount: parseInt(invKpi.rows[0].count, 10),
+          dernierInventaire: invKpi.rows[0].last_date || null,
+          articlesCount: parseInt(stockCount.rows[0].count, 10),
+        },
+        monthly: {
+          approsCount: buildMonthlyArray(approsMonthly.rows, 'count'),
+          approsValeur: buildMonthlyArray(approsMonthly.rows, 'valeur'),
+          pertesCount: buildMonthlyArray(pertesMonthly.rows, 'count'),
+          pertesValeur: new Array(12).fill(0),
         },
       });
     }
 
-    return res.json({ type: null, activiteNom: null, kpis: null });
+    return res.json({ type: null, activiteNom: null, kpis: null, monthly: null, year });
   } catch (err) {
     console.error('gerantDashboard error:', err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -148,7 +181,6 @@ const getDashboard = async (req, res) => {
 
 /**
  * GET /api/gerant/abonnement
- * Read-only summary of the parent client's subscription for a gérant.
  */
 const getAbonnementResume = async (req, res) => {
   const { gerant_parent_id, id: userId } = req.user;
@@ -166,9 +198,7 @@ const getAbonnementResume = async (req, res) => {
       [clientId]
     );
 
-    if (!result.rows.length) {
-      return res.status(404).json({ message: 'Abonnement introuvable' });
-    }
+    if (!result.rows.length) return res.status(404).json({ message: 'Abonnement introuvable' });
 
     const row = result.rows[0];
     return res.json({
