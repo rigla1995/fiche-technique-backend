@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { createAbonnement, insertPromoForAbonnement } = require('./abonnementController');
 const { generateInviteToken, sendWelcomeWithContractEmail } = require('../services/emailService');
+const { generateContratPdf } = require('../services/pdfService');
 
 const mapClient = (row) => ({
   id: row.id,
@@ -159,22 +160,24 @@ const create = async (req, res) => {
       }
     }
 
-    // Send welcome email with contract PDF if provided
-    if (contractPdfBase64) {
-      try {
-        await sendWelcomeWithContractEmail({
-          to: email,
-          nom,
-          token: inviteToken,
-          contractPdfBase64,
-        });
-        await pool.query(
-          `UPDATE utilisateurs SET invite_sent = TRUE WHERE id = $1`,
-          [user.id]
-        ).catch(() => {});
-      } catch (emailErr) {
-        console.error('Welcome email error:', emailErr.message);
-      }
+    // Auto-generate contract PDF and send welcome email
+    try {
+      const aboConfig = config || {};
+      const pdfBase64 = contractPdfBase64 || await generateContratPdf({
+        nom,
+        email,
+        telephone: telephone || null,
+        adresse: adresse || null,
+        montantMensuel: montantOnboarding || null,
+        nbActivites: aboConfig.nbActivites ?? 1,
+        nbLabos: aboConfig.nbLabos ?? 0,
+        nbGerants: aboConfig.nbGerants ?? 0,
+        dateContrat: new Date(),
+      });
+      await sendWelcomeWithContractEmail({ to: email, nom, token: inviteToken, contractPdfBase64: pdfBase64 });
+      await pool.query(`UPDATE utilisateurs SET invite_sent = TRUE WHERE id = $1`, [user.id]).catch(() => {});
+    } catch (emailErr) {
+      console.error('Welcome email error:', emailErr.message);
     }
 
     res.status(201).json({ ...mapClient(user), domaineIds });

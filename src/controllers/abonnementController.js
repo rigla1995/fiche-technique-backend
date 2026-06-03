@@ -22,6 +22,8 @@ const mapAbonnement = (row) => ({
   inviteSent: row.invite_sent ?? false,
   moduleVenteActif: row.module_vente_actif ?? false,
   moduleVenteActivatedAt: row.module_vente_activated_at ?? null,
+  contratAccepteLe: row.contrat_accepte_le ?? null,
+  contratAccepteIp: row.contrat_accepte_ip ?? null,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
