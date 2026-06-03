@@ -59,6 +59,12 @@ const login = async (req, res) => {
 
     const onboardingStep = utilisateur.role === 'gerant' ? 0 : (utilisateur.onboarding_step ?? 0);
 
+    const gerantFields = utilisateur.role === 'gerant' ? {
+      gerantParentId: utilisateur.gerant_parent_id,
+      gerantActiviteId: utilisateur.gerant_activite_id,
+      gerantActiviteType: utilisateur.gerant_activite_type,
+    } : {};
+
     res.json({
       token,
       user: {
@@ -67,6 +73,7 @@ const login = async (req, res) => {
         email: utilisateur.email,
         role: utilisateur.role,
         onboardingStep,
+        ...gerantFields,
       },
     });
   } catch (err) {
