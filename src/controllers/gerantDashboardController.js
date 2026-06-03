@@ -87,9 +87,9 @@ const getDashboard = async (req, res) => {
           `SELECT EXTRACT(MONTH FROM date_appro) AS mois,
                   COUNT(*) AS count, COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
            FROM stock_entreprise_daily
-           WHERE activite_id = $1 AND date_appro BETWEEN $4 AND $5 ${typeWhere}
+           WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}
            GROUP BY mois ORDER BY mois`,
-          [gerant_activite_id, dateFrom, dateTo, `${year}-01-01`, `${year}-12-31`]
+          [gerant_activite_id, `${year}-01-01`, `${year}-12-31`]
         ),
         // Monthly pertes (12 months)
         pool.query(
