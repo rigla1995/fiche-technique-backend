@@ -4,9 +4,10 @@ const pool = require('../config/database');
 
 const getEntreprise = async (req, res) => {
   try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
     const result = await pool.query(
       'SELECT * FROM profil_entreprise WHERE client_id = $1',
-      [req.user.id]
+      [clientId]
     );
     if (result.rows.length === 0) return res.json(null);
     res.json(mapEntreprise(result.rows[0]));
