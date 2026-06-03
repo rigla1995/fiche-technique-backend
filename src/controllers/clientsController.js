@@ -3,6 +3,7 @@ const pool = require('../config/database');
 const { createAbonnement, insertPromoForAbonnement } = require('./abonnementController');
 const { generateInviteToken, sendWelcomeWithContractEmail } = require('../services/emailService');
 const { generateContratPdf } = require('../services/pdfService');
+const { createContractSubmission, isConfigured: docusealConfigured } = require('../services/docusealService');
 
 const mapClient = (row) => ({
   id: row.id,
@@ -160,7 +161,7 @@ const create = async (req, res) => {
       }
     }
 
-    // Auto-generate contract PDF and send welcome email
+    // Auto-generate contract PDF, send via Docuseal (e-signature) + welcome email
     try {
       const aboConfig = config || {};
       const pdfBase64 = contractPdfBase64 || await generateContratPdf({
@@ -174,7 +175,19 @@ const create = async (req, res) => {
         nbGerants: aboConfig.nbGerants ?? 0,
         dateContrat: new Date(),
       });
-      await sendWelcomeWithContractEmail({ to: email, nom, token: inviteToken, contractPdfBase64: pdfBase64 });
+
+      // Send contract via Docuseal for e-signature (client receives a separate signing email)
+      if (docusealConfigured()) {
+        createContractSubmission({ pdfBase64, clientName: nom, clientEmail: email })
+          .then(({ submissionId }) => console.log(`[docuseal] Submission créée: ${submissionId} pour ${email}`))
+          .catch((err) => console.error('[docuseal] Erreur création submission:', err.message));
+        // Welcome email without PDF attachment (Docuseal handles the signing email)
+        await sendWelcomeWithContractEmail({ to: email, nom, token: inviteToken, contractPdfBase64: null });
+      } else {
+        // Fallback: attach PDF directly to welcome email
+        await sendWelcomeWithContractEmail({ to: email, nom, token: inviteToken, contractPdfBase64: pdfBase64 });
+      }
+
       await pool.query(`UPDATE utilisateurs SET invite_sent = TRUE WHERE id = $1`, [user.id]).catch(() => {});
     } catch (emailErr) {
       console.error('Welcome email error:', emailErr.message);
