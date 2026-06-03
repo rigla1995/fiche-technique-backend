@@ -178,7 +178,7 @@ const create = async (req, res) => {
 
       // Send contract via Docuseal for e-signature (client receives a separate signing email)
       if (docusealConfigured()) {
-        createContractSubmission({ pdfBase64, clientName: nom, clientEmail: email })
+        createContractSubmission({ clientName: nom, clientEmail: email })
           .then(({ submissionId }) => console.log(`[docuseal] Submission créée: ${submissionId} pour ${email}`))
           .catch((err) => console.error('[docuseal] Erreur création submission:', err.message));
         // Welcome email without PDF attachment (Docuseal handles the signing email)
