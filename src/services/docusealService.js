@@ -69,7 +69,7 @@ const createSubmission = async ({
   const subRes = await fetch(`${baseUrl}/api/submissions`, {
     method: 'POST',
     headers: {
-      Authorization: `Token ${token}`,
+      'X-Auth-Token': token,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
