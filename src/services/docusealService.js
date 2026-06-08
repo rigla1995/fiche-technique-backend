@@ -76,7 +76,7 @@ const createSubmission = async ({
       template_id: templateId,
       send_email: true,
       submitters: [
-        { role: 'First Party', email: clientEmail, name: clientName, fields },
+        { role: 'Première partie', email: clientEmail, name: clientName, fields },
       ],
     }),
   });
