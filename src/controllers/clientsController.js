@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { createAbonnement, insertPromoForAbonnement } = require('./abonnementController');
-const { generateInviteToken, sendWelcomeWithContractEmail } = require('../services/emailService');
+const { generateInviteToken, sendWelcomeWithContractEmail, sendDocusealSigningEmail } = require('../services/emailService');
 const { generateContratPdf } = require('../services/pdfService');
 const { createContractSubmission, isConfigured: docusealConfigured } = require('../services/docusealService');
 
@@ -176,7 +176,7 @@ const create = async (req, res) => {
         dateContrat: new Date(),
       });
 
-      // Send contract via Docuseal for e-signature (client receives a separate signing email)
+      // Send contract via Docuseal for e-signature — our backend sends the signing email via Resend
       if (docusealConfigured()) {
         const aboConfigForDocuseal = config || {};
         createContractSubmission({
@@ -188,9 +188,16 @@ const create = async (req, res) => {
           montantOnboarding: montantOnboarding ?? null,
           montantMensuel:    montantOnboarding ?? null,
         })
-          .then(({ submissionId }) => console.log(`[docuseal] Submission créée: ${submissionId} pour ${email}`))
+          .then(({ submissionId, signingUrl }) => {
+            console.log(`[docuseal] Submission créée: ${submissionId} pour ${email}, signingUrl: ${signingUrl}`);
+            if (signingUrl) {
+              sendDocusealSigningEmail({ to: email, nom, signingUrl })
+                .then(() => console.log(`[docuseal] Email de signature envoyé à ${email}`))
+                .catch((err) => console.error('[docuseal] Erreur envoi email signature:', err.message));
+            }
+          })
           .catch((err) => console.error('[docuseal] Erreur création submission:', err.message));
-        // Welcome email without PDF attachment (Docuseal handles the signing email)
+        // Welcome email without PDF — signing email sent separately above
         await sendWelcomeWithContractEmail({ to: email, nom, token: inviteToken, contractPdfBase64: null });
       } else {
         // Fallback: attach PDF directly to welcome email

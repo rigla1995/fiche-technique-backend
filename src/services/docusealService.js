@@ -74,7 +74,7 @@ const createSubmission = async ({
     },
     body: JSON.stringify({
       template_id: templateId,
-      send_email: true,
+      send_email: false,
       submitters: [
         { role: 'Première partie', email: clientEmail, name: clientName, fields },
       ],
@@ -87,11 +87,12 @@ const createSubmission = async ({
   }
 
   const subData = await subRes.json();
-  const submissionId = Array.isArray(subData)
-    ? (subData[0]?.submission_id ?? subData[0]?.id)
-    : subData.id;
+  const firstSubmitter = Array.isArray(subData) ? subData[0] : subData?.submitters?.[0];
+  const submissionId = firstSubmitter?.submission_id ?? firstSubmitter?.id ?? (Array.isArray(subData) ? null : subData.id);
+  const signingSlug = firstSubmitter?.slug ?? null;
+  const signingUrl = signingSlug ? `${baseUrl}/s/${signingSlug}` : null;
 
-  return { templateId, submissionId };
+  return { templateId, submissionId, signingUrl };
 };
 
 // Backward-compat alias used in clientsController
