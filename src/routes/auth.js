@@ -1,9 +1,18 @@
 const express = require('express');
 const { body } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const { login, register, me, updateProfile, upgradeToEntreprise, advanceOnboarding, completeUpgradeWizard, verifyInviteToken, acceptInvite, resendInvite } = require('../controllers/authController');
 const { authenticate, requireSuperAdmin, requireClient } = require('../middleware/auth');
 const pool = require('../config/database');
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { message: 'Trop de tentatives de connexion, réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @openapi
@@ -42,7 +51,7 @@ const pool = require('../config/database');
  *       403:
  *         description: Compte désactivé ou suspendu
  */
-router.post('/login', [
+router.post('/login', loginLimiter, [
   body('email').isEmail().withMessage('Email invalide'),
   body('mot_de_passe').optional(),
   body('password').optional(),

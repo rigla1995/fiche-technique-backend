@@ -334,7 +334,7 @@ const update = async (req, res) => {
        type = COALESCE($4, type),
        is_supplement = COALESCE($7, is_supplement),
        updated_at = NOW() WHERE id = $5 AND client_id = $6 RETURNING *`,
-      [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.id, isSupplement !== undefined ? isSupplement : null]
+      [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.gerant_parent_id || req.user.id, isSupplement !== undefined ? isSupplement : null]
     );
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -492,9 +492,10 @@ const addSousProduit = async (req, res) => {
   }
 
   try {
+    const ownerId = req.user.gerant_parent_id || req.user.id;
     const [produit, sousProduit] = await Promise.all([
-      pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]),
-      pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [sousProduitId, req.user.id]),
+      pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, ownerId]),
+      pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [sousProduitId, ownerId]),
     ]);
 
     if (produit.rows.length === 0) {
@@ -734,31 +735,31 @@ async function buildMpPriceMap(actId, clientId) {
 const getCout = async (req, res) => {
   const { id } = req.params;
   const { mode, activiteId, pricingMethod } = req.query;
+  const ownerId = req.user.gerant_parent_id || req.user.id;
   try {
     if (mode === 'manual') {
       const actId = parseInt(activiteId) || 0;
       const pricesResult = await pool.query(
         `SELECT ingredient_id, prix_unitaire FROM fiche_technique_manual_prices
          WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3`,
-        [id, req.user.id, actId]
+        [id, ownerId, actId]
       );
       const priceMap = {};
       for (const row of pricesResult.rows) {
         priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire);
       }
-      const result = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
+      const result = await calculerCoutAvecPrixMap(parseInt(id), ownerId, priceMap);
       return res.json(mapCout(result));
     }
     if (mode === 'stock') {
       const actId = parseInt(activiteId) || 0;
-      const clientId = actId ? req.user.id : (req.user.gerant_parent_id || req.user.id);
       const priceMap = pricingMethod === 'mp'
-        ? await buildMpPriceMap(actId, clientId)
-        : await buildDpPriceMap(actId, clientId);
-      const result = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
+        ? await buildMpPriceMap(actId, ownerId)
+        : await buildDpPriceMap(actId, ownerId);
+      const result = await calculerCoutAvecPrixMap(parseInt(id), ownerId, priceMap);
       return res.json(mapCout(result));
     }
-    const result = await calculerCout(parseInt(id), req.user.id);
+    const result = await calculerCout(parseInt(id), ownerId);
     res.json(mapCout(result));
   } catch (err) {
     if (err.message === 'Produit introuvable') {
@@ -961,10 +962,11 @@ const getStockCheck = async (req, res) => {
   const actId = parseInt(req.query.activiteId) || 0;
 
   try {
-    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]);
+    const ownerId = req.user.gerant_parent_id || req.user.id;
+    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, ownerId]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
-    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), req.user.id);
+    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), ownerId);
     const allIngredients = groups.flatMap((g) => g.ingredients);
 
     if (allIngredients.length === 0) return res.json({ complete: true, missing: [], groups: [] });
@@ -1059,11 +1061,12 @@ const getManualPrices = async (req, res) => {
   const actId = parseInt(req.query.activiteId) || 0;
 
   try {
-    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]);
+    const ownerId = req.user.gerant_parent_id || req.user.id;
+    const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, ownerId]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
     // Collect ingredients grouped by source (product → sub-products → …), deduplicated across levels
-    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), req.user.id);
+    const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), ownerId);
 
     // Flat list of all ingredients (already deduplicated by collectIngredientsStructured)
     const allIngredients = groups.flatMap((g) => g.ingredients);
@@ -1077,7 +1080,7 @@ const getManualPrices = async (req, res) => {
          FROM fiche_technique_manual_prices
          WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3
            AND ingredient_id = ANY($4::int[])`,
-        [id, req.user.id, actId, ingredientIds]
+        [id, ownerId, actId, ingredientIds]
       );
       for (const row of pricesResult.rows) {
         priceMap[row.ingredient_id] = { prixUnitaire: row.prix_unitaire, updatedAt: row.updated_at };
@@ -1135,6 +1138,7 @@ const saveManualPrices = async (req, res) => {
     const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
+    const ownerId = req.user.gerant_parent_id || req.user.id;
     const now = new Date();
     for (const p of prices) {
       await pool.query(
@@ -1142,7 +1146,7 @@ const saveManualPrices = async (req, res) => {
          VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (produit_id, ingredient_id, client_id, activite_id)
          DO UPDATE SET prix_unitaire = $5, updated_at = $6`,
-        [id, p.ingredientId, req.user.id, actId, p.prixUnitaire, now]
+        [id, p.ingredientId, ownerId, actId, p.prixUnitaire, now]
       );
     }
     res.json({ updatedAt: now });

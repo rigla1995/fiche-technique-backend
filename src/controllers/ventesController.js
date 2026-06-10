@@ -159,6 +159,15 @@ const updateActivitePrestataire = async (req, res) => {
   try {
     const { id } = req.params;
     const { taux_commission, actif } = req.body;
+    const cid = clientId(req);
+    const existing = await pool.query(
+      `SELECT ap.id, ap.activite_id, ap.labo_id FROM activite_prestataires ap WHERE ap.id = $1`,
+      [id]
+    );
+    if (!existing.rows.length) return res.status(404).json({ message: 'Introuvable' });
+    const row = existing.rows[0];
+    if (row.activite_id) await assertActiviteOwner(row.activite_id, cid);
+    else if (row.labo_id) await assertLaboOwner(row.labo_id, cid);
     const r = await pool.query(
       `UPDATE activite_prestataires SET
         taux_commission = COALESCE($1, taux_commission),
@@ -166,9 +175,9 @@ const updateActivitePrestataire = async (req, res) => {
        WHERE id = $3 RETURNING *`,
       [taux_commission, actif, id]
     );
-    if (!r.rows.length) return res.status(404).json({ message: 'Introuvable' });
     res.json(r.rows[0]);
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -176,9 +185,19 @@ const updateActivitePrestataire = async (req, res) => {
 const removeActivitePrestataire = async (req, res) => {
   try {
     const { id } = req.params;
+    const cid = clientId(req);
+    const existing = await pool.query(
+      `SELECT ap.id, ap.activite_id, ap.labo_id FROM activite_prestataires ap WHERE ap.id = $1`,
+      [id]
+    );
+    if (!existing.rows.length) return res.status(404).json({ message: 'Introuvable' });
+    const row = existing.rows[0];
+    if (row.activite_id) await assertActiviteOwner(row.activite_id, cid);
+    else if (row.labo_id) await assertLaboOwner(row.labo_id, cid);
     await pool.query('DELETE FROM activite_prestataires WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
