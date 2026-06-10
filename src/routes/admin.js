@@ -43,6 +43,124 @@ const validateUpdate = [
   }),
 ];
 
+/**
+ * @openapi
+ * /api/admin/rapports/stats:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Statistiques globales pour le tableau de bord admin
+ *     description: Retourne des métriques globales — nombre de clients actifs, revenus, abonnements, etc.
+ *     responses:
+ *       200:
+ *         description: Statistiques globales
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalClients: { type: integer }
+ *                 clientsActifs: { type: integer }
+ *                 revenusTotal: { type: number }
+ *                 abonnementsActifs: { type: integer }
+ *       403:
+ *         description: Accès réservé au super_admin
+ *
+ * /api/admin/clients:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Lister tous les clients (super_admin)
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Recherche par nom ou email
+ *       - in: query
+ *         name: mode
+ *         schema: { type: string, enum: [actif, read_only, desactive, bloque, archive] }
+ *     responses:
+ *       200:
+ *         description: Liste des clients
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ *   post:
+ *     tags: [Admin]
+ *     summary: Créer un client (super_admin)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email]
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string, format: email }
+ *               password: { type: string }
+ *               phone: { type: string, nullable: true }
+ *     responses:
+ *       201:
+ *         description: Client créé
+ *       400:
+ *         description: Données invalides
+ *       409:
+ *         description: Email déjà utilisé
+ *
+ * /api/admin/clients/{id}:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Récupérer un client par ID (super_admin)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Client trouvé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: Client introuvable
+ *   put:
+ *     tags: [Admin]
+ *     summary: Modifier un client (super_admin)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string, format: email }
+ *               phone: { type: string }
+ *     responses:
+ *       200:
+ *         description: Client mis à jour
+ *   delete:
+ *     tags: [Admin]
+ *     summary: Supprimer un client (super_admin)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Client supprimé
+ *       409:
+ *         description: Données associées, suppression impossible
+ */
 router.get('/rapports/stats', authenticate, requireSuperAdmin, getRapportsStats);
 
 router.get('/clients', authenticate, requireSuperAdmin, list);

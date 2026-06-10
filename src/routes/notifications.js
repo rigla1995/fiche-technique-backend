@@ -4,7 +4,62 @@ const { authenticate } = require('../middleware/auth');
 const { addClient, removeClient } = require('../services/sseService');
 const { list, clearAll, deleteOne } = require('../controllers/notificationController');
 
-// GET /api/notifications/stream — SSE endpoint, auth via Bearer or ?token=
+/**
+ * @openapi
+ * /api/notifications/stream:
+ *   get:
+ *     tags: [Notifications]
+ *     summary: Flux SSE de notifications en temps réel
+ *     description: Connexion Server-Sent Events. Envoie un ping toutes les 25s. Authentification via Bearer header ou ?token=
+ *     responses:
+ *       200:
+ *         description: Flux SSE ouvert
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ *       401:
+ *         description: Non authentifié
+ *
+ * /api/notifications:
+ *   get:
+ *     tags: [Notifications]
+ *     summary: Lister les notifications persistées
+ *     responses:
+ *       200:
+ *         description: Liste des notifications
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id: { type: integer }
+ *                   type: { type: string }
+ *                   message: { type: string }
+ *                   lu: { type: boolean }
+ *                   created_at: { type: string, format: date-time }
+ *   delete:
+ *     tags: [Notifications]
+ *     summary: Supprimer toutes les notifications
+ *     responses:
+ *       200:
+ *         description: Notifications effacées
+ *
+ * /api/notifications/{id}:
+ *   delete:
+ *     tags: [Notifications]
+ *     summary: Supprimer une notification
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Notification supprimée
+ */
 router.get('/stream', authenticate, (req, res) => {
   res.set({
     'Content-Type': 'text/event-stream',
@@ -29,13 +84,8 @@ router.get('/stream', authenticate, (req, res) => {
   });
 });
 
-// GET /api/notifications — list persisted notifications
 router.get('/', authenticate, list);
-
-// DELETE /api/notifications — clear all (support page opened)
 router.delete('/', authenticate, clearAll);
-
-// DELETE /api/notifications/:id — dismiss one
 router.delete('/:id', authenticate, deleteOne);
 
 module.exports = router;
