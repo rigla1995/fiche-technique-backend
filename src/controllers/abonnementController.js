@@ -1074,6 +1074,19 @@ const enforcerStatuts = async () => {
     );
     const configMap = new Map(configRows.rows.map(c => [c.abonnement_id, c]));
 
+    const aboIds = missingAbo.rows.map((a) => a.id);
+    const promoRows = await pool.query(
+      `SELECT DISTINCT ON (abonnement_id) abonnement_id, type, discount_mensualite, fixed_mensualite, applies_to
+       FROM promotions
+       WHERE abonnement_id = ANY($1)
+         AND date_debut <= $2::date
+         AND (date_fin IS NULL OR date_fin >= $2::date)
+         AND applies_to IN ('mensualite', 'les_deux')
+       ORDER BY abonnement_id, created_at DESC`,
+      [aboIds, thisMonth]
+    );
+    const promoMap = new Map(promoRows.rows.map((p) => [p.abonnement_id, p]));
+
     for (const abo of missingAbo.rows) {
       const cfg = configMap.get(abo.id) || null;
       let base;
@@ -1084,7 +1097,7 @@ const enforcerStatuts = async () => {
       } else {
         base = tarifs['entreprise_mensuel'] || 0;
       }
-      const promo = await getActivePromo(abo.id, thisMonth);
+      const promo = promoMap.get(abo.id) || null;
       const montant = applyPromoMensualite(base, promo);
       const statut = montant === 0 ? 'gratuit' : 'en_attente';
       await pool.query(
@@ -1135,7 +1148,7 @@ const confirmInvite = async (req, res) => {
 // ── Global admin queries ─────────────────────────────────────────────────────
 
 const allPaiements = async (req, res) => {
-  const { clientId, statut, mois } = req.query;
+  const { clientId, statut, mois, limit, offset } = req.query;
   try {
     const conditions = ['1=1'];
     const params = [];
@@ -1143,6 +1156,9 @@ const allPaiements = async (req, res) => {
     if (clientId) { conditions.push(`a.client_id = $${i++}`); params.push(clientId); }
     if (statut)   { conditions.push(`p.statut = $${i++}`);    params.push(statut); }
     if (mois)     { conditions.push(`DATE_TRUNC('month', p.mois) = DATE_TRUNC('month', $${i++}::date)`); params.push(mois); }
+    const pageSize = Math.min(parseInt(limit) || 200, 500);
+    const pageOffset = parseInt(offset) || 0;
+    params.push(pageSize, pageOffset);
     const result = await pool.query(`
       SELECT p.id, p.mois, p.montant_dt, p.statut, p.date_saisie, p.date_paiement, p.notes,
              a.client_id,
@@ -1152,6 +1168,7 @@ const allPaiements = async (req, res) => {
       LEFT JOIN utilisateurs u ON u.id = a.client_id
       WHERE ${conditions.join(' AND ')}
       ORDER BY p.mois DESC, u.nom ASC
+      LIMIT $${i} OFFSET $${i + 1}
     `, params);
     res.json(result.rows.map((r) => ({
       id: r.id,

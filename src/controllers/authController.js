@@ -128,28 +128,54 @@ const me = async (req, res) => {
     // Gérants bypass onboarding entirely — use parent's step if needed but never block them
     let step = isGerant ? 0 : (u.onboarding_step ?? 0);
 
+    const epClientId = isGerant ? u.gerant_parent_id : u.id;
+    const aboClientId = isGerant ? u.gerant_parent_id : u.id;
+
+    // Fetch profil_entreprise, abonnement, and gérant activité name in parallel
+    const [epRes, aboRes, gerantNomRes] = await Promise.all([
+      epClientId
+        ? pool.query('SELECT id, nom FROM profil_entreprise WHERE client_id = $1', [epClientId])
+        : Promise.resolve({ rows: [] }),
+      pool.query('SELECT mode_compte, prolongation_jours FROM abonnements WHERE client_id = $1', [aboClientId]),
+      isGerant && u.gerant_activite_id
+        ? pool.query(
+            u.gerant_activite_type === 'labo'
+              ? 'SELECT nom FROM labos WHERE id = $1'
+              : 'SELECT nom FROM activites WHERE id = $1',
+            [u.gerant_activite_id]
+          )
+        : Promise.resolve({ rows: [] }),
+    ]);
+
+    const entrepriseId = epRes.rows[0]?.id || null;
+    let entrepriseName = epRes.rows[0]?.nom || null;
+    const modeCompte = aboRes.rows[0]?.mode_compte || 'actif';
+    const prolongationJours = aboRes.rows[0]?.prolongation_jours || 0;
+    const gerantActiviteNom = gerantNomRes.rows[0]?.nom || null;
+
     // Auto-heal: advance clients who are blocked at onboarding steps they've already completed.
-    if (!isGerant && step > 0) {
-      const epRes = await pool.query(
-        'SELECT id FROM profil_entreprise WHERE client_id = $1',
-        [u.id]
-      );
-      if (epRes.rows.length > 0) {
-        const entrepriseId = epRes.rows[0].id;
-        const [actRes, laboRes] = await Promise.all([
-          pool.query('SELECT COUNT(*) FROM activites WHERE entreprise_id = $1', [entrepriseId]),
-          pool.query('SELECT COUNT(*) FROM labos WHERE entreprise_id = $1', [entrepriseId]),
-        ]);
-        const hasActivitiesOrLabos = parseInt(actRes.rows[0].count) > 0 || parseInt(laboRes.rows[0].count) > 0;
+    // Also collect activitesCount in the same query to avoid an extra round trip.
+    let activitesCount = 0;
+    if (!isGerant && entrepriseId) {
+      if (step > 0) {
+        const healRes = await pool.query(
+          `SELECT
+             COUNT(DISTINCT a.id) > 0 AS has_activities,
+             COUNT(DISTINCT l.id) > 0 AS has_labos,
+             COUNT(DISTINCT ais.id) > 0 AS has_selections,
+             COUNT(DISTINCT a.id) AS activites_count
+           FROM profil_entreprise pe
+           LEFT JOIN activites a ON a.entreprise_id = pe.id
+           LEFT JOIN labos l ON l.entreprise_id = pe.id
+           LEFT JOIN activite_ingredient_selections ais ON ais.activite_id = a.id
+           WHERE pe.id = $1`,
+          [entrepriseId]
+        );
+        const row = healRes.rows[0];
+        activitesCount = parseInt(row.activites_count) || 0;
+        const hasActivitiesOrLabos = row.has_activities || row.has_labos;
         if (hasActivitiesOrLabos) {
-          const selRes = await pool.query(
-            `SELECT COUNT(*) FROM activite_ingredient_selections ais
-             JOIN activites a ON ais.activite_id = a.id
-             WHERE a.entreprise_id = $1`,
-            [entrepriseId]
-          );
-          const hasSelections = parseInt(selRes.rows[0].count) > 0;
-          step = hasSelections ? 0 : 3;
+          step = row.has_selections ? 0 : 3;
           await pool.query(
             'UPDATE utilisateurs SET onboarding_step = $1, updated_at = NOW() WHERE id = $2',
             [step, u.id]
@@ -161,34 +187,12 @@ const me = async (req, res) => {
             [u.id]
           );
         }
-      }
-    }
-
-    // entrepriseName: fetch for clients and gérants (from parent's profil_entreprise)
-    let entrepriseName = null;
-    const epClientId = isGerant ? u.gerant_parent_id : u.id;
-    if (epClientId) {
-      const epRes = await pool.query('SELECT nom FROM profil_entreprise WHERE client_id = $1', [epClientId]);
-      if (epRes.rows.length > 0) entrepriseName = epRes.rows[0].nom;
-    }
-
-    // Abonnement: use parent's abonnement for gérants
-    const aboClientId = isGerant ? u.gerant_parent_id : u.id;
-    const aboRes = await pool.query(
-      'SELECT mode_compte, prolongation_jours FROM abonnements WHERE client_id = $1',
-      [aboClientId]
-    );
-    const modeCompte = aboRes.rows[0]?.mode_compte || 'actif';
-    const prolongationJours = aboRes.rows[0]?.prolongation_jours || 0;
-
-    let gerantActiviteNom = null;
-    if (isGerant && u.gerant_activite_id) {
-      if (u.gerant_activite_type === 'labo') {
-        const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [u.gerant_activite_id]);
-        if (laboRes.rows.length > 0) gerantActiviteNom = laboRes.rows[0].nom;
       } else {
-        const actRes2 = await pool.query('SELECT nom FROM activites WHERE id = $1', [u.gerant_activite_id]);
-        if (actRes2.rows.length > 0) gerantActiviteNom = actRes2.rows[0].nom;
+        const actCountRes = await pool.query(
+          'SELECT COUNT(*) FROM activites WHERE entreprise_id = $1',
+          [entrepriseId]
+        );
+        activitesCount = parseInt(actCountRes.rows[0].count) || 0;
       }
     }
 
@@ -198,16 +202,6 @@ const me = async (req, res) => {
       gerantActiviteType: u.gerant_activite_type,
       gerantActiviteNom,
     } : {};
-
-    // Activités count — used by the frontend to pick the post-login redirect
-    let activitesCount = 0;
-    if (!isGerant) {
-      const epCountRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [u.id]);
-      if (epCountRes.rows.length > 0) {
-        const actCountRes = await pool.query('SELECT COUNT(*) FROM activites WHERE entreprise_id = $1', [epCountRes.rows[0].id]);
-        activitesCount = parseInt(actCountRes.rows[0].count) || 0;
-      }
-    }
 
     res.json({
       id: u.id, name: u.nom, email: u.email, phone: u.telephone,

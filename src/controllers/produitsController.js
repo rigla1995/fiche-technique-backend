@@ -49,12 +49,14 @@ const stockPriceLookup = (ingAlias, productAlias) => `COALESCE(
      JOIN profil_entreprise pe_s ON a_s.entreprise_id = pe_s.id
      WHERE sed.ingredient_id = ${ingAlias}.id AND pe_s.client_id = ${productAlias}.client_id
        AND sed.prix_unitaire IS NOT NULL
-       AND EXTRACT(YEAR FROM sed.date_appro) = EXTRACT(YEAR FROM CURRENT_DATE)
+       AND sed.date_appro >= DATE_TRUNC('year', CURRENT_DATE)
+       AND sed.date_appro < DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year'
      ORDER BY sed.date_appro DESC LIMIT 1),
     (SELECT scd.prix_unitaire FROM stock_client_daily scd
      WHERE scd.ingredient_id = ${ingAlias}.id AND scd.client_id = ${productAlias}.client_id
        AND scd.prix_unitaire IS NOT NULL
-       AND EXTRACT(YEAR FROM scd.date_appro) = EXTRACT(YEAR FROM CURRENT_DATE)
+       AND scd.date_appro >= DATE_TRUNC('year', CURRENT_DATE)
+       AND scd.date_appro < DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year'
      ORDER BY scd.date_appro DESC LIMIT 1),
     0
   )`;
@@ -269,21 +271,24 @@ const create = async (req, res) => {
     );
     const produitId = result.rows[0].id;
 
-    for (const ing of ingredients) {
-      const ingredientId = ing.ingredientId || ing.ingredient_id;
-      const { portion } = ing;
-      const ingRow = await client.query(
-        'SELECT unite_id FROM articles WHERE id = $1',
-        [ingredientId]
+    if (ingredients.length > 0) {
+      const ingIds = ingredients.map((ing) => ing.ingredientId || ing.ingredient_id);
+      const ingUnites = await client.query(
+        'SELECT id, unite_id FROM articles WHERE id = ANY($1::int[])',
+        [ingIds]
       );
-      if (ingRow.rows.length === 0) continue;
-      const uniteId = ing.unitId || ing.unite_id || ingRow.rows[0].unite_id;
-      await client.query(
-        `INSERT INTO produit_ingredients (produit_id, ingredient_id, portion, unite_id)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (produit_id, ingredient_id) DO UPDATE SET portion = $3, unite_id = $4`,
-        [produitId, ingredientId, portion, uniteId]
-      );
+      const uniteMap = new Map(ingUnites.rows.map((r) => [r.id, r.unite_id]));
+      for (const ing of ingredients) {
+        const ingredientId = ing.ingredientId || ing.ingredient_id;
+        if (!uniteMap.has(parseInt(ingredientId))) continue;
+        const uniteId = ing.unitId || ing.unite_id || uniteMap.get(parseInt(ingredientId));
+        await client.query(
+          `INSERT INTO produit_ingredients (produit_id, ingredient_id, portion, unite_id)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (produit_id, ingredient_id) DO UPDATE SET portion = $3, unite_id = $4`,
+          [produitId, ingredientId, ing.portion, uniteId]
+        );
+      }
     }
 
     for (const sp of subProducts) {
@@ -343,21 +348,24 @@ const update = async (req, res) => {
 
     if (ingredients !== undefined) {
       await client.query('DELETE FROM produit_ingredients WHERE produit_id = $1', [id]);
-      for (const ing of ingredients) {
-        const ingredientId = ing.ingredientId || ing.ingredient_id;
-        const { portion } = ing;
-        const ingRow = await client.query(
-          'SELECT unite_id FROM articles WHERE id = $1',
-          [ingredientId]
+      if (ingredients.length > 0) {
+        const ingIds = ingredients.map((ing) => ing.ingredientId || ing.ingredient_id);
+        const ingUnites = await client.query(
+          'SELECT id, unite_id FROM articles WHERE id = ANY($1::int[])',
+          [ingIds]
         );
-        if (ingRow.rows.length === 0) continue;
-        const uniteId = ing.unitId || ing.unite_id || ingRow.rows[0].unite_id;
-        await client.query(
-          `INSERT INTO produit_ingredients (produit_id, ingredient_id, portion, unite_id)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (produit_id, ingredient_id) DO UPDATE SET portion = $3, unite_id = $4`,
-          [id, ingredientId, portion, uniteId]
-        );
+        const uniteMap = new Map(ingUnites.rows.map((r) => [r.id, r.unite_id]));
+        for (const ing of ingredients) {
+          const ingredientId = ing.ingredientId || ing.ingredient_id;
+          if (!uniteMap.has(parseInt(ingredientId))) continue;
+          const uniteId = ing.unitId || ing.unite_id || uniteMap.get(parseInt(ingredientId));
+          await client.query(
+            `INSERT INTO produit_ingredients (produit_id, ingredient_id, portion, unite_id)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (produit_id, ingredient_id) DO UPDATE SET portion = $3, unite_id = $4`,
+            [id, ingredientId, ing.portion, uniteId]
+          );
+        }
       }
     }
 
@@ -1140,15 +1148,15 @@ const saveManualPrices = async (req, res) => {
 
     const ownerId = req.user.gerant_parent_id || req.user.id;
     const now = new Date();
-    for (const p of prices) {
-      await pool.query(
-        `INSERT INTO fiche_technique_manual_prices (produit_id, ingredient_id, client_id, activite_id, prix_unitaire, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (produit_id, ingredient_id, client_id, activite_id)
-         DO UPDATE SET prix_unitaire = $5, updated_at = $6`,
-        [id, p.ingredientId, ownerId, actId, p.prixUnitaire, now]
-      );
-    }
+    const ingredientIds = prices.map((p) => p.ingredientId);
+    const prixUnitaires = prices.map((p) => p.prixUnitaire);
+    await pool.query(
+      `INSERT INTO fiche_technique_manual_prices (produit_id, ingredient_id, client_id, activite_id, prix_unitaire, updated_at)
+       SELECT $1, unnest($2::int[]), $3, $4, unnest($5::numeric[]), $6
+       ON CONFLICT (produit_id, ingredient_id, client_id, activite_id)
+       DO UPDATE SET prix_unitaire = EXCLUDED.prix_unitaire, updated_at = EXCLUDED.updated_at`,
+      [id, ingredientIds, ownerId, actId, prixUnitaires, now]
+    );
     res.json({ updatedAt: now });
   } catch (err) {
     console.error(err);
