@@ -162,7 +162,7 @@ const me = async (req, res) => {
           `SELECT
              COUNT(DISTINCT a.id) > 0 AS has_activities,
              COUNT(DISTINCT l.id) > 0 AS has_labos,
-             COUNT(DISTINCT ais.id) > 0 AS has_selections,
+             COUNT(DISTINCT ais.activite_id) > 0 AS has_selections,
              COUNT(DISTINCT a.id) AS activites_count
            FROM profil_entreprise pe
            LEFT JOIN activites a ON a.entreprise_id = pe.id
