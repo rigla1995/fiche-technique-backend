@@ -252,6 +252,9 @@ const getLaboStock = async (req, res) => {
                 (SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
                  WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel'
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as prix_unitaire,
+                (SELECT sld2.taux_tva FROM stock_labo_daily sld2
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel'
+                 ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as taux_tva,
                 (SELECT sld2.date_appro FROM stock_labo_daily sld2
                  WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel'
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as date_appro,
@@ -460,6 +463,7 @@ const getLaboStock = async (req, res) => {
       const transfertsDepuisInv = b.hasInv ? b.postTransferQty : b.allTransferQty;
       let coutTotal = 0;
       let coutTotalTTC = 0;
+      let pmpUnitHT = null;
       if (b.hasInv) {
         const coutInvHT = (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
         const coutInvTTC = (b.invQty > 0 && b.pmpHistTTC !== null) ? b.invQty * b.pmpHistTTC : (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
@@ -468,11 +472,13 @@ const getLaboStock = async (req, res) => {
         const totalQtyIn = b.invQty + (b.approCostPostQty || 0);
         const pmpHT = totalQtyIn > 0 ? totalCostInHT / totalQtyIn : null;
         const pmpTTC = totalQtyIn > 0 ? totalCostInTTC / totalQtyIn : null;
+        pmpUnitHT = pmpHT;
         coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
         coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
       } else {
         const pmpHT = b.approCostAllQty > 0 ? b.approCostAllHT / b.approCostAllQty : null;
         const pmpTTC = b.approCostAllQty > 0 ? b.approCostAllTTC / b.approCostAllQty : null;
+        pmpUnitHT = pmpHT;
         coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
         coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
       }
@@ -483,6 +489,8 @@ const getLaboStock = async (req, res) => {
         categorie: row.categorie,
         quantite,
         prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
+        tauxTva: row.taux_tva !== null ? parseFloat(row.taux_tva) : null,
+        pmpUnitHT: pmpUnitHT !== null ? Math.round(pmpUnitHT * 1000) / 1000 : null,
         dateAppro: isoDate(row.date_appro),
         seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
         coutTotal,
