@@ -680,7 +680,7 @@ const getLaboStock = async (req, res) => {
 const updateLaboStock = async (req, res) => {
   const { laboId } = req.params;
   const ingredientIdRaw = parseInt(req.params.ingredientId);
-  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, customPortions, tauxTva } = req.body;
+  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, customPortions, tauxTva, timbreFiscal = false } = req.body;
   const da = dateAppro || todayStr();
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
@@ -825,6 +825,7 @@ const updateLaboStock = async (req, res) => {
           montantHT,
           montantTva,
           montantTTC,
+          timbreFiscal: !!timbreFiscal,
           createdBy: req.user.id,
           stockTable: 'stock_labo_daily',
           stockRowId: laboInsRes.rows[0].id,

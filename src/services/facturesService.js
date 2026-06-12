@@ -15,6 +15,7 @@ const pool = require('../config/database');
  * @param {number}       opts.montantTva
  * @param {number}       opts.montantTTC
  * @param {number|null}  opts.createdBy
+ * @param {boolean}      opts.timbreFiscal  - whether to apply 1 DT timbre fiscal charge
  * @param {string}       opts.stockTable    - 'stock_client_daily' | 'stock_entreprise_daily' | 'stock_labo_daily'
  * @param {number}       opts.stockRowId    - id of the stock row to link
  * @returns {Promise<number>} factureId
@@ -31,6 +32,7 @@ async function upsertFacture(clientId, opts) {
     montantTva = 0,
     montantTTC = 0,
     createdBy = null,
+    timbreFiscal = false,
     stockTable,
     stockRowId,
   } = opts;
@@ -40,7 +42,7 @@ async function upsertFacture(clientId, opts) {
 
   // Try to find an existing facture matching the natural key
   const findRes = await pool.query(
-    `SELECT id, montant_ht, montant_tva, montant_ttc FROM factures
+    `SELECT id, montant_ht, montant_tva, montant_ttc, timbre_fiscal, montant_timbre FROM factures
      WHERE client_id = $1
        AND ref_facture IS NOT DISTINCT FROM $2
        AND date_facture = $3
@@ -59,22 +61,38 @@ async function upsertFacture(clientId, opts) {
     const existing = findRes.rows[0];
     const newHT  = parseFloat(existing.montant_ht)  + (montantHT  || 0);
     const newTva = parseFloat(existing.montant_tva) + (montantTva || 0);
-    const newTTC = parseFloat(existing.montant_ttc) + (montantTTC || 0);
+    let newTTC = parseFloat(existing.montant_ttc) + (montantTTC || 0);
+
+    // Handle timbre fiscal changes
+    let newTimbreFiscal = existing.timbre_fiscal;
+    let newTimbre = parseFloat(existing.montant_timbre);
+    if (timbreFiscal && !existing.timbre_fiscal) {
+      newTTC += 1;
+      newTimbreFiscal = true;
+      newTimbre = 1;
+    } else if (!timbreFiscal && existing.timbre_fiscal) {
+      newTTC -= parseFloat(existing.montant_timbre);
+      newTimbreFiscal = false;
+      newTimbre = 0;
+    }
+
     await pool.query(
-      `UPDATE factures SET montant_ht = $1, montant_tva = $2, montant_ttc = $3 WHERE id = $4`,
-      [newHT, newTva, newTTC, existing.id]
+      `UPDATE factures SET montant_ht = $1, montant_tva = $2, montant_ttc = $3, timbre_fiscal = $4, montant_timbre = $5 WHERE id = $6`,
+      [newHT, newTva, newTTC, newTimbreFiscal, newTimbre, existing.id]
     );
     factureId = existing.id;
   } else {
     // Insert new facture
+    const timbreVal = timbreFiscal ? 1 : 0;
+    const ttcWithTimbre = (montantTTC || 0) + timbreVal;
     const insRes = await pool.query(
       `INSERT INTO factures
          (client_id, ref_facture, date_facture, fournisseur_id, activite_id, labo_id,
-          type_source, montant_ht, montant_tva, montant_ttc, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          type_source, montant_ht, montant_tva, montant_ttc, timbre_fiscal, montant_timbre, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING id`,
       [clientId, refFacture || null, dateFact, fournisseurId, activiteId, laboId,
-       typeSource, montantHT || 0, montantTva || 0, montantTTC || 0, createdBy]
+       typeSource, montantHT || 0, montantTva || 0, ttcWithTimbre, !!timbreFiscal, timbreVal, createdBy]
     );
     factureId = insRes.rows[0].id;
   }

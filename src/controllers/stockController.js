@@ -333,7 +333,7 @@ const getStockClient = async (req, res) => {
 
 const updateStockClient = async (req, res) => {
   const { ingredientId } = req.params;
-  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, tauxTva } = req.body;
+  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, tauxTva, timbreFiscal = false } = req.body;
   const da = dateAppro || todayStr();
   const tva = tauxTva != null ? parseFloat(tauxTva) : null;
   const prixUnitaireTva = tva != null && prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
@@ -368,6 +368,7 @@ const updateStockClient = async (req, res) => {
         montantHT,
         montantTva,
         montantTTC,
+        timbreFiscal: !!timbreFiscal,
         createdBy: req.user.id,
         stockTable: 'stock_client_daily',
         stockRowId: insRes.rows[0].id,
@@ -913,7 +914,7 @@ const getStockEntreprise = async (req, res) => {
 
 const updateStockEntreprise = async (req, res) => {
   const { activiteId, ingredientId } = req.params;
-  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, tauxTva } = req.body;
+  const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, tauxTva, timbreFiscal = false } = req.body;
   const da = dateAppro || todayStr();
   const tva = tauxTva != null ? parseFloat(tauxTva) : null;
   const prixUnitaireTva = tva != null && prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
@@ -957,6 +958,7 @@ const updateStockEntreprise = async (req, res) => {
         montantHT,
         montantTva,
         montantTTC,
+        timbreFiscal: !!timbreFiscal,
         createdBy: req.user.id,
         stockTable: 'stock_entreprise_daily',
         stockRowId: insRes.rows[0].id,
