@@ -3,6 +3,7 @@ const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
 const { buildLaboHistoriqueApproPdf, buildTransferHistoriquePdf } = require('../services/histoPdfService');
+const { upsertFacture } = require('../services/facturesService');
 
 // ─── Ownership check helper ───────────────────────────────────────────────────
 
@@ -787,11 +788,41 @@ const updateLaboStock = async (req, res) => {
 
     const tva = tauxTva != null ? parseFloat(tauxTva) : null;
     const prixUnitaireTva = tva != null && prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
-    await pool.query(
+    const laboInsRes = await pool.query(
       `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, type_appro, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'manuel', NOW())`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'manuel', NOW())
+       RETURNING id`,
       [laboId, ingredientIdRaw, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, tva, prixUnitaireTva]
     );
+    if (refFacture) {
+      const laboClientRes = await pool.query(
+        `SELECT pe.client_id FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE l.id = $1`,
+        [laboId]
+      );
+      if (laboClientRes.rows.length > 0) {
+        const laboClientId = laboClientRes.rows[0].client_id;
+        const qty = parseFloat(quantite) || 0;
+        const pu = parseFloat(prixUnitaire) || 0;
+        const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
+        const montantHT = qty * pu;
+        const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
+        const montantTTC = qty * puTva;
+        await upsertFacture(laboClientId, {
+          refFacture,
+          dateAppro: da,
+          fournisseurId: fournisseurId || null,
+          activiteId: null,
+          laboId: parseInt(laboId),
+          typeSource: 'manuel',
+          montantHT,
+          montantTva,
+          montantTTC,
+          createdBy: req.user.id,
+          stockTable: 'stock_labo_daily',
+          stockRowId: laboInsRes.rows[0].id,
+        });
+      }
+    }
     res.json({ success: true });
   } catch (err) {
     console.error(err);

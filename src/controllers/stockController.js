@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { buildHistoriqueApproPdf } = require('../services/histoPdfService');
+const { upsertFacture } = require('../services/facturesService');
 
 // ─── Stock Client (independant) ──────────────────────────────────────────────
 
@@ -340,14 +341,38 @@ const updateStockClient = async (req, res) => {
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
     return res.status(400).json({ message: 'Quantité invalide' });
 
+  const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    await pool.query(
+    const insRes = await pool.query(
       `INSERT INTO stock_client_daily
          (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)`,
-      [req.user.gerant_parent_id || req.user.id, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
+       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
+       RETURNING id`,
+      [clientId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
        fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
     );
+    if (refFacture) {
+      const qty = parseFloat(quantite) || 0;
+      const pu = parseFloat(prixUnitaire) || 0;
+      const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
+      const montantHT = qty * pu;
+      const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
+      const montantTTC = qty * puTva;
+      await upsertFacture(clientId, {
+        refFacture,
+        dateAppro: da,
+        fournisseurId: fournisseurId ?? null,
+        activiteId: null,
+        laboId: null,
+        typeSource: 'manuel',
+        montantHT,
+        montantTva,
+        montantTTC,
+        createdBy: req.user.id,
+        stockTable: 'stock_client_daily',
+        stockRowId: insRes.rows[0].id,
+      });
+    }
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -906,13 +931,37 @@ const updateStockEntreprise = async (req, res) => {
     if (check.rows.length === 0)
       return res.status(404).json({ message: 'Activité introuvable' });
 
-    await pool.query(
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const insRes = await pool.query(
       `INSERT INTO stock_entreprise_daily
          (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)`,
+       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
+       RETURNING id`,
       [activiteId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
        fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
     );
+    if (refFacture) {
+      const qty = parseFloat(quantite) || 0;
+      const pu = parseFloat(prixUnitaire) || 0;
+      const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
+      const montantHT = qty * pu;
+      const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
+      const montantTTC = qty * puTva;
+      await upsertFacture(clientId, {
+        refFacture,
+        dateAppro: da,
+        fournisseurId: fournisseurId ?? null,
+        activiteId: parseInt(activiteId),
+        laboId: null,
+        typeSource: 'manuel',
+        montantHT,
+        montantTva,
+        montantTTC,
+        createdBy: req.user.id,
+        stockTable: 'stock_entreprise_daily',
+        stockRowId: insRes.rows[0].id,
+      });
+    }
     res.json({ success: true });
   } catch (err) {
     console.error(err);
