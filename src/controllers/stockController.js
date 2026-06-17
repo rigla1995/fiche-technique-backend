@@ -14,6 +14,7 @@ const getStockClient = async (req, res) => {
               i.seuil_min,
               COALESCE(SUM(scd.quantite) FILTER (WHERE date_trunc('month', scd.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
               last_scd.prix_unitaire,
+              last_scd.taux_tva       as last_taux_tva,
               last_scd.date_appro,
               last_scd.fournisseur_id as last_fournisseur_id,
               last_scd.ref_facture    as last_ref_facture,
@@ -26,14 +27,14 @@ const getStockClient = async (req, res) => {
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN stock_client_daily scd ON scd.ingredient_id = i.id AND scd.client_id = $1
        LEFT JOIN LATERAL (
-         SELECT prix_unitaire, date_appro, fournisseur_id, ref_facture
+         SELECT prix_unitaire, taux_tva, date_appro, fournisseur_id, ref_facture
          FROM stock_client_daily
          WHERE client_id = $1 AND ingredient_id = i.id
          ORDER BY date_appro DESC, id DESC LIMIT 1
        ) last_scd ON true
        WHERE i.client_id = $1
        GROUP BY i.id, i.nom, u.nom, c.nom, i.seuil_min,
-                last_scd.prix_unitaire, last_scd.date_appro, last_scd.fournisseur_id, last_scd.ref_facture
+                last_scd.prix_unitaire, last_scd.taux_tva, last_scd.date_appro, last_scd.fournisseur_id, last_scd.ref_facture
        ORDER BY categorie NULLS LAST, i.nom`,
       [req.user.gerant_parent_id || req.user.id]
     );
@@ -312,6 +313,7 @@ const getStockClient = async (req, res) => {
         unite: row.unite_nom,
         categorie: row.categorie,
         prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
+        lastTauxTva: row.last_taux_tva !== null ? parseFloat(row.last_taux_tva) : null,
         quantite,
         totalQuantite: quantite,
         coutTotal: avgPrix !== null && quantite > 0 ? quantite * avgPrix : null,
@@ -422,6 +424,7 @@ const getStockEntreprise = async (req, res) => {
               ais.seuil_min,
               COALESCE(SUM(sed.quantite) FILTER (WHERE date_trunc('month', sed.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
               last_sed.prix_unitaire,
+              last_sed.taux_tva       as last_taux_tva,
               last_sed.date_appro,
               last_sed.fournisseur_id as last_fournisseur_id,
               last_sed.ref_facture    as last_ref_facture,
@@ -436,14 +439,14 @@ const getStockEntreprise = async (req, res) => {
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN stock_entreprise_daily sed ON sed.ingredient_id = i.id AND sed.activite_id = $1
        LEFT JOIN LATERAL (
-         SELECT prix_unitaire, date_appro, fournisseur_id, ref_facture, type_appro
+         SELECT prix_unitaire, taux_tva, date_appro, fournisseur_id, ref_facture, type_appro
          FROM stock_entreprise_daily
          WHERE activite_id = $1 AND ingredient_id = i.id
          ORDER BY date_appro DESC, id DESC LIMIT 1
        ) last_sed ON true
        WHERE ais.activite_id = $1
        GROUP BY i.id, i.nom, u.nom, c.nom, ais.seuil_min,
-                last_sed.prix_unitaire, last_sed.date_appro, last_sed.fournisseur_id,
+                last_sed.prix_unitaire, last_sed.taux_tva, last_sed.date_appro, last_sed.fournisseur_id,
                 last_sed.ref_facture, last_sed.type_appro
        ORDER BY categorie NULLS LAST, i.nom`,
       [activiteId]
@@ -890,6 +893,7 @@ const getStockEntreprise = async (req, res) => {
         categorie: row.categorie,
         seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
         prixUnitaire: row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : null,
+        lastTauxTva: row.last_taux_tva !== null ? parseFloat(row.last_taux_tva) : null,
         quantite,
         totalQuantite: quantite,
         coutTotal,
