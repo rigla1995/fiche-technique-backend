@@ -756,6 +756,27 @@ const affecterActivites = async (req, res) => {
   }
 };
 
+// GET /api/produits/:id/parent-products
+// Returns vendable products that include this PT as a sous-produit, with portions
+const getParentProducts = async (req, res) => {
+  const produitId = parseInt(req.params.id);
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const result = await pool.query(
+      `SELECT p.id, p.nom as name, psp.portion
+       FROM produit_sous_produits psp
+       JOIN produits p ON p.id = psp.produit_id
+       WHERE psp.sous_produit_id = $1 AND p.client_id = $2
+       ORDER BY p.nom`,
+      [produitId, clientId]
+    );
+    res.json(result.rows.map((r) => ({ id: r.id, name: r.name, portion: parseFloat(r.portion) })));
+  } catch (err) {
+    console.error('[getParentProducts]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   toggleStockIngredient,
   deleteStockPTHistory,
@@ -766,4 +787,5 @@ module.exports = {
   saveStockPT,
   updateSeuilMinPT,
   affecterActivites,
+  getParentProducts,
 };
