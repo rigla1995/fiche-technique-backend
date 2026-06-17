@@ -338,8 +338,8 @@ const updateStockClient = async (req, res) => {
   const { ingredientId } = req.params;
   const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, tauxTva, timbreFiscal = false } = req.body;
   const da = dateAppro || todayStr();
-  const tva = tauxTva != null ? parseFloat(tauxTva) : null;
-  const prixUnitaireTva = tva != null && prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
+  const tva = tauxTva != null ? parseFloat(tauxTva) : 0;
+  const prixUnitaireTva = prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
     return res.status(400).json({ message: 'Quantité invalide' });
@@ -921,8 +921,8 @@ const updateStockEntreprise = async (req, res) => {
   const { activiteId, ingredientId } = req.params;
   const { quantite, prixUnitaire, dateAppro, fournisseurId, refFacture, tauxTva, timbreFiscal = false } = req.body;
   const da = dateAppro || todayStr();
-  const tva = tauxTva != null ? parseFloat(tauxTva) : null;
-  const prixUnitaireTva = tva != null && prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
+  const tva = tauxTva != null ? parseFloat(tauxTva) : 0;
+  const prixUnitaireTva = prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
 
   if (quantite !== null && quantite !== undefined && parseFloat(quantite) < 0)
     return res.status(400).json({ message: 'Quantité invalide' });

@@ -798,8 +798,8 @@ const updateLaboStock = async (req, res) => {
       return res.json({ success: true, prixCalcule: finalPrix });
     }
 
-    const tva = tauxTva != null ? parseFloat(tauxTva) : null;
-    const prixUnitaireTva = tva != null && prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
+    const tva = tauxTva != null ? parseFloat(tauxTva) : 0;
+    const prixUnitaireTva = prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
     const laboInsRes = await pool.query(
       `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, type_appro, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'manuel', NOW())
@@ -1058,13 +1058,13 @@ const createTransfer = async (req, res) => {
 
         // Regular ingredient transfer
         const prixUnit = t.prixUnitaire != null ? parseFloat(t.prixUnitaire) : null;
-        const tva = tauxTva != null ? parseFloat(tauxTva) : null;
-        const prixUnitaireTva = tva != null && prixUnit != null ? prixUnit * (1 + tva / 100) : null;
+        const tva = tauxTva != null ? parseFloat(tauxTva) : 0;
+        const prixUnitaireTva = prixUnit != null ? prixUnit * (1 + tva / 100) : null;
 
         await client.query(
-          `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, ref_facture, updated_at, created_by)
-           VALUES ($1, $2, $3, $4, $5, 'manuel', $6, NOW(), $7)`,
-          [laboId, ingId, dateTransfert, -qty, prixUnit, refFacture || null, req.user.id]
+          `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, ref_facture, updated_at, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'manuel', $8, NOW(), $9)`,
+          [laboId, ingId, dateTransfert, -qty, prixUnit, tva, prixUnitaireTva, refFacture || null, req.user.id]
         );
 
         await client.query(
