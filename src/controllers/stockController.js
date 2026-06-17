@@ -909,7 +909,7 @@ const getStockEntreprise = async (req, res) => {
         ptUsageDepuisInv,
         venteDepuisInv,
         transfertsDepuisAppro,
-        approDepuisInv: b.hasInv ? b.postApproQty : b.allApproQty,
+        approDepuisInv: b.hasInv ? b.approCostPostQty : b.approCostAllQty,
       };
     }), ...ptRows]);
   } catch (err) {
