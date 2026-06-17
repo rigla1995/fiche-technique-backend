@@ -443,7 +443,7 @@ const getStockEntreprise = async (req, res) => {
          SELECT prix_unitaire, taux_tva, date_appro, fournisseur_id, ref_facture, type_appro
          FROM stock_entreprise_daily
          WHERE activite_id = $1 AND ingredient_id = i.id
-           AND type_appro = 'manuel'
+           AND type_appro IN ('manuel', 'transfert')
          ORDER BY date_appro DESC, id DESC LIMIT 1
        ) last_sed ON true
        WHERE ais.activite_id = $1
