@@ -533,7 +533,7 @@ const getLaboStock = async (req, res) => {
           COALESCE((SELECT SUM(pi2.portion * (
              SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
              WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id
-               AND sld2.quantite > 0 AND sld2.prix_unitaire IS NOT NULL
+               AND sld2.type_appro = 'manuel' AND sld2.prix_unitaire IS NOT NULL
              ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1
           )) FROM produit_ingredients pi2 WHERE pi2.produit_id = p.id), 0)
           +
@@ -541,7 +541,7 @@ const getLaboStock = async (req, res) => {
              SELECT COALESCE(SUM(pi3.portion * (
                 SELECT sld3.prix_unitaire FROM stock_labo_daily sld3
                 WHERE sld3.labo_id = $1 AND sld3.ingredient_id = pi3.ingredient_id
-                  AND sld3.quantite > 0 AND sld3.prix_unitaire IS NOT NULL
+                  AND sld3.type_appro = 'manuel' AND sld3.prix_unitaire IS NOT NULL
                 ORDER BY sld3.date_appro DESC NULLS LAST LIMIT 1
              )), 0) FROM produit_ingredients pi3 WHERE pi3.produit_id = psp.sous_produit_id
           )) FROM produit_sous_produits psp WHERE psp.produit_id = p.id), 0)
