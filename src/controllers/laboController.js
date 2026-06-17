@@ -1443,6 +1443,22 @@ const getActivityAssignments = async (req, res) => {
     );
     const assigned = new Set(assignRes.rows.map((r) => `${r.activite_id}:${r.ingredient_id}`));
 
+    // PT products assigned to this labo and their activité assignments
+    const ptRes = await pool.query(
+      `SELECT p.id, p.nom FROM labo_pt_selections lps
+       JOIN produits p ON p.id = lps.produit_id
+       WHERE lps.labo_id = $1 ORDER BY p.nom`,
+      [laboId]
+    );
+    const ptAssignRes = await pool.query(
+      `SELECT pas.produit_id, pas.activite_id
+       FROM produit_activite_stock pas
+       JOIN activites a ON a.id = pas.activite_id
+       WHERE a.labo_id = $1`,
+      [laboId]
+    );
+    const ptAssigned = new Set(ptAssignRes.rows.map((r) => `${r.activite_id}:${r.produit_id}`));
+
     res.json({
       activites: actRes.rows.map((a) => ({ id: a.id, nom: a.nom, type: a.type })),
       ingredients: ingRes.rows.map((ing) => ({
@@ -1454,6 +1470,15 @@ const getActivityAssignments = async (req, res) => {
           activiteId: act.id,
           nom: act.nom,
           assigned: assigned.has(`${act.id}:${ing.id}`),
+        })),
+      })),
+      produits: ptRes.rows.map((pt) => ({
+        ingredientId: -(pt.id),
+        nom: pt.nom,
+        activities: actRes.rows.map((act) => ({
+          activiteId: act.id,
+          nom: act.nom,
+          assigned: ptAssigned.has(`${act.id}:${pt.id}`),
         })),
       })),
     });
