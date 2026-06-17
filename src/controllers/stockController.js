@@ -454,38 +454,37 @@ const getStockEntreprise = async (req, res) => {
       [activiteId]
     );
 
-    // Fetch PT products for this activite (prix only) — using PMP since last inventory
+    // Fetch PT products prix_calcule — last price × portion (same logic as labo, using stock_entreprise_daily)
     const ptPrixRes = await pool.query(`
-      SELECT pi.produit_id,
-        BOOL_OR(lp.prix_unitaire IS NULL AND pi.portion > 0) as prix_partiel,
-        SUM(pi.portion * COALESCE(lp.prix_unitaire, 0)) as prix_dtu
-      FROM produit_ingredients pi
-      LEFT JOIN LATERAL (
-        SELECT SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0) as prix_unitaire
-        FROM stock_entreprise_daily sed
-        WHERE sed.activite_id = $1
-          AND sed.ingredient_id = pi.ingredient_id
-          AND sed.quantite > 0
-          AND sed.prix_unitaire IS NOT NULL
-          AND sed.type_appro IN ('manuel', 'transfert')
-          AND sed.date_appro >= COALESCE(
-            (SELECT date_inventaire FROM inventaires
-             WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id
-             ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
-            (SELECT MIN(date_appro) FROM stock_entreprise_daily
-             WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0)
-          )
-      ) lp ON true
-      WHERE pi.produit_id IN (
+      SELECT p.id as produit_id,
+        (
+          COALESCE((SELECT SUM(pi2.portion * (
+             SELECT sld2.prix_unitaire FROM stock_entreprise_daily sld2
+             WHERE sld2.activite_id = $1 AND sld2.ingredient_id = pi2.ingredient_id
+               AND sld2.type_appro IN ('manuel', 'transfert') AND sld2.prix_unitaire IS NOT NULL
+             ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1
+          )) FROM produit_ingredients pi2 WHERE pi2.produit_id = p.id), 0)
+          +
+          COALESCE((SELECT SUM(psp.portion * (
+             SELECT COALESCE(SUM(pi3.portion * (
+                SELECT sld3.prix_unitaire FROM stock_entreprise_daily sld3
+                WHERE sld3.activite_id = $1 AND sld3.ingredient_id = pi3.ingredient_id
+                  AND sld3.type_appro IN ('manuel', 'transfert') AND sld3.prix_unitaire IS NOT NULL
+                ORDER BY sld3.date_appro DESC NULLS LAST LIMIT 1
+             )), 0) FROM produit_ingredients pi3 WHERE pi3.produit_id = psp.sous_produit_id
+          )) FROM produit_sous_produits psp WHERE psp.produit_id = p.id), 0)
+        ) as prix_calcule
+      FROM produits p
+      WHERE p.id IN (
         SELECT pas.produit_id FROM produit_activite_stock pas
-        JOIN produits p ON p.id = pas.produit_id
-        WHERE pas.activite_id = $1 AND p.is_stock_ingredient = TRUE
+        JOIN produits p2 ON p2.id = pas.produit_id
+        WHERE pas.activite_id = $1 AND p2.is_stock_ingredient = TRUE
       )
-      GROUP BY pi.produit_id
     `, [activiteId]);
     const ptPrixMap = {};
     for (const r of ptPrixRes.rows) {
-      ptPrixMap[r.produit_id] = { prixDtu: parseFloat(r.prix_dtu) || 0, prixPartiel: r.prix_partiel };
+      const pc = parseFloat(r.prix_calcule) || 0;
+      ptPrixMap[r.produit_id] = { prixCalcule: pc > 0 ? pc : null };
     }
 
     const ptRes = await pool.query(`
@@ -826,7 +825,7 @@ const getStockEntreprise = async (req, res) => {
     }
 
     const ptRows = ptRes.rows.map((r) => {
-      const pInfo = ptPrixMap[r.produit_id] || { prixDtu: 0, prixPartiel: false };
+      const pInfo = ptPrixMap[r.produit_id] || { prixCalcule: null };
       const pb = ptBaselineMap[r.produit_id] || {};
       const quantite = pb.hasInv
         ? pb.invQty + pb.postApproQty - pb.postPertesQty
@@ -841,13 +840,13 @@ const getStockEntreprise = async (req, res) => {
         nom: r.nom,
         unite: 'unité',
         categorie: 'Produits Transformés',
-        prixUnitaire: pInfo.prixDtu,
-        prixPartiel: pInfo.prixPartiel,
+        prixUnitaire: pInfo.prixCalcule,
+        prixCalcule: pInfo.prixCalcule,
         quantite,
         totalQuantite: quantite,
         dateAppro: isoDate(r.last_date_appro),
         seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
-        coutTotal: avgPrix !== null && quantite > 0 ? quantite * avgPrix : (pInfo.prixDtu > 0 && quantite > 0 ? pInfo.prixDtu * quantite : 0),
+        coutTotal: avgPrix !== null && quantite > 0 ? quantite * avgPrix : (pInfo.prixCalcule != null && pInfo.prixCalcule > 0 && quantite > 0 ? pInfo.prixCalcule * quantite : 0),
         lastFournisseurId: null,
         lastRefFacture: null,
         lastInvDate: pb.hasInv ? pb.invDate : null,
