@@ -240,23 +240,23 @@ const getLaboStock = async (req, res) => {
               sub.cout_total, sub.recent_dates, sub.recent_transfer_dates,
               COALESCE(tr.total_transfere, 0) as total_transfere,
               (SELECT sld2.fournisseur_id FROM stock_labo_daily sld2
-               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro = 'manuel'
+               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro IN ('manuel', 'transfert')
                ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_fournisseur_id,
               (SELECT sld2.ref_facture FROM stock_labo_daily sld2
-               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro = 'manuel'
+               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro IN ('manuel', 'transfert')
                ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_ref_facture
        FROM (
          SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie,
                 SUM(sld.quantite) as quantite_totale,
                 (SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel'
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro IN ('manuel', 'transfert')
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as prix_unitaire,
                 (SELECT sld2.taux_tva FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel'
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro IN ('manuel', 'transfert')
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as taux_tva,
                 (SELECT sld2.date_appro FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel'
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro IN ('manuel', 'transfert')
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as date_appro,
                 ARRAY(SELECT DISTINCT sld2.date_appro FROM stock_labo_daily sld2
                       WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id
