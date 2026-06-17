@@ -26,6 +26,7 @@ async function computeStockCourant(scope, scopeId, ingredientId) {
            COALESCE(SUM(quantite), 0) AS all_qty
          FROM stock_labo_daily
          WHERE labo_id = $1 AND ingredient_id = $2 AND type_appro != 'transfert'
+           AND NOT (type_appro = 'manuel' AND quantite < 0)
        ),
        transfers AS (
          SELECT

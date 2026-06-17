@@ -240,23 +240,23 @@ const getLaboStock = async (req, res) => {
               sub.cout_total, sub.recent_dates, sub.recent_transfer_dates,
               COALESCE(tr.total_transfere, 0) as total_transfere,
               (SELECT sld2.fournisseur_id FROM stock_labo_daily sld2
-               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro IN ('manuel', 'transfert')
+               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
                ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_fournisseur_id,
               (SELECT sld2.ref_facture FROM stock_labo_daily sld2
-               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro IN ('manuel', 'transfert')
+               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
                ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_ref_facture
        FROM (
          SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie,
                 SUM(sld.quantite) as quantite_totale,
                 (SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro IN ('manuel', 'transfert')
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as prix_unitaire,
                 (SELECT sld2.taux_tva FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro IN ('manuel', 'transfert')
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as taux_tva,
                 (SELECT sld2.date_appro FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro IN ('manuel', 'transfert')
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as date_appro,
                 ARRAY(SELECT DISTINCT sld2.date_appro FROM stock_labo_daily sld2
                       WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id
@@ -300,6 +300,7 @@ const getLaboStock = async (req, res) => {
          FROM stock_labo_daily sld
          JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
          WHERE sld.labo_id = $1 AND sld.type_appro != 'transfert'
+           AND NOT (sld.type_appro = 'manuel' AND sld.quantite < 0)
          GROUP BY sld.ingredient_id
        ),
        post_transfer AS (
@@ -320,6 +321,7 @@ const getLaboStock = async (req, res) => {
          SELECT ingredient_id, SUM(quantite) as qty
          FROM stock_labo_daily
          WHERE labo_id = $1 AND type_appro != 'transfert'
+           AND NOT (type_appro = 'manuel' AND quantite < 0)
          GROUP BY ingredient_id
        ),
        all_transfer AS (
@@ -1059,7 +1061,7 @@ const createTransfer = async (req, res) => {
 
         await client.query(
           `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, ref_facture, updated_at, created_by)
-           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, NOW(), $7)`,
+           VALUES ($1, $2, $3, $4, $5, 'manuel', $6, NOW(), $7)`,
           [laboId, ingId, dateTransfert, -qty, prixUnit, refFacture || null, req.user.id]
         );
 
@@ -1204,7 +1206,7 @@ const getLaboHistorique = async (req, res) => {
     const includeManuel = (!typeFilter || typeFilter === 'manuel') && !activiteId;
     const includeTransfert = !typeFilter || typeFilter === 'transfert';
 
-    const manuelConds = [`sld.labo_id = $1`, `sld.type_appro != 'transfert'`];
+    const manuelConds = [`sld.labo_id = $1`, `sld.type_appro != 'transfert'`, `NOT (sld.type_appro = 'manuel' AND sld.quantite < 0)`];
     const transferConds = [`lt.labo_id = $1`];
     const params = [laboId];
     let idx = 2;
@@ -2010,7 +2012,7 @@ const updateTransfer = async (req, res) => {
           `UPDATE stock_labo_daily SET quantite = $1, updated_at = NOW()
            WHERE id = (
              SELECT id FROM stock_labo_daily
-             WHERE labo_id = $2 AND ingredient_id = $3 AND type_appro = 'transfert'
+             WHERE labo_id = $2 AND ingredient_id = $3 AND type_appro = 'manuel' AND quantite < 0
                AND date_appro = $4 AND quantite = $5
              ORDER BY id ASC LIMIT 1
            )`,
@@ -2089,7 +2091,7 @@ const deleteTransfer = async (req, res) => {
           `DELETE FROM stock_labo_daily
            WHERE id = (
              SELECT id FROM stock_labo_daily
-             WHERE labo_id = $1 AND ingredient_id = $2 AND type_appro = 'transfert'
+             WHERE labo_id = $1 AND ingredient_id = $2 AND type_appro = 'manuel' AND quantite < 0
                AND date_appro = $3 AND quantite = $4
              ORDER BY id ASC LIMIT 1
            )`,
@@ -2159,7 +2161,7 @@ const getTransferPrix = async (req, res) => {
     const pRes = await pool.query(
       `SELECT prix_unitaire FROM stock_labo_daily
        WHERE labo_id = $1 AND ingredient_id = $2 AND date_appro <= $3
-         AND type_appro != 'transfert' AND prix_unitaire IS NOT NULL
+         AND type_appro = 'manuel' AND quantite > 0 AND prix_unitaire IS NOT NULL
        ORDER BY date_appro DESC LIMIT 1`,
       [laboId, ingredient_id, date_transfert]
     );
