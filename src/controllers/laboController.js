@@ -236,7 +236,7 @@ const getLaboStock = async (req, res) => {
 
     const result = await pool.query(
       `SELECT sub.ingredient_id, sub.nom, sub.unite_nom, sub.categorie,
-              sub.quantite_totale, sub.prix_unitaire, sub.date_appro, sub.seuil_min,
+              sub.quantite_totale, sub.prix_unitaire, sub.taux_tva, sub.date_appro, sub.seuil_min,
               sub.cout_total, sub.recent_dates, sub.recent_transfer_dates,
               COALESCE(tr.total_transfere, 0) as total_transfere,
               (SELECT sld2.fournisseur_id FROM stock_labo_daily sld2
