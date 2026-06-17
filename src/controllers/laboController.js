@@ -253,7 +253,7 @@ const getLaboStock = async (req, res) => {
                  WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as prix_unitaire,
                 (SELECT sld2.taux_tva FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0 AND sld2.taux_tva IS NOT NULL
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as taux_tva,
                 (SELECT sld2.date_appro FROM stock_labo_daily sld2
                  WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
