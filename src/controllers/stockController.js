@@ -459,17 +459,17 @@ const getStockEntreprise = async (req, res) => {
       SELECT p.id as produit_id,
         (
           COALESCE((SELECT SUM(pi2.portion * (
-             SELECT sld2.prix_unitaire FROM stock_entreprise_daily sld2
+             SELECT COALESCE(sld2.prix_unitaire_tva, sld2.prix_unitaire) FROM stock_entreprise_daily sld2
              WHERE sld2.activite_id = $1 AND sld2.ingredient_id = pi2.ingredient_id
-               AND sld2.type_appro IN ('manuel', 'transfert') AND sld2.prix_unitaire IS NOT NULL
+               AND sld2.type_appro IN ('manuel', 'transfert') AND COALESCE(sld2.prix_unitaire_tva, sld2.prix_unitaire) IS NOT NULL
              ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1
           )) FROM produit_ingredients pi2 WHERE pi2.produit_id = p.id), 0)
           +
           COALESCE((SELECT SUM(psp.portion * (
              SELECT COALESCE(SUM(pi3.portion * (
-                SELECT sld3.prix_unitaire FROM stock_entreprise_daily sld3
+                SELECT COALESCE(sld3.prix_unitaire_tva, sld3.prix_unitaire) FROM stock_entreprise_daily sld3
                 WHERE sld3.activite_id = $1 AND sld3.ingredient_id = pi3.ingredient_id
-                  AND sld3.type_appro IN ('manuel', 'transfert') AND sld3.prix_unitaire IS NOT NULL
+                  AND sld3.type_appro IN ('manuel', 'transfert') AND COALESCE(sld3.prix_unitaire_tva, sld3.prix_unitaire) IS NOT NULL
                 ORDER BY sld3.date_appro DESC NULLS LAST LIMIT 1
              )), 0) FROM produit_ingredients pi3 WHERE pi3.produit_id = psp.sous_produit_id
           )) FROM produit_sous_produits psp WHERE psp.produit_id = p.id), 0)
