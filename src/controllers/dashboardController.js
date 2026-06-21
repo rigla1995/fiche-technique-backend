@@ -304,6 +304,10 @@ const getRapportVentes = async (req, res) => {
     const params = [actIds, from, to];
     if (canal === 'directe') cond.push(`v.type_vente = 'directe'`);
     else if (canal === 'prestataire') cond.push(`v.type_vente = 'prestataire'`);
+    if (req.query.categorieId) {
+      params.push(Number(req.query.categorieId));
+      cond.push(`EXISTS (SELECT 1 FROM produits pc WHERE pc.id = vl.article_id AND vl.article_type = 'produit' AND pc.categorie_produit_id = $${params.length})`);
+    }
     const where = cond.join(' AND ');
 
     const kpiRes = await pool.query(
@@ -364,4 +368,89 @@ const getRapportVentes = async (req, res) => {
   }
 };
 
-module.exports = { getClientDashboard, getLaboDashboard, getRapportVentes };
+const getActivitesDashboard = async (req, res) => {
+  try {
+    const { from, to } = resolvePeriode(req.query.from, req.query.to);
+    const actIds = await resolveScopeActivites(req);
+    if (actIds.length === 0) return res.json({ periode: { from, to }, vide: true });
+    const catId = req.query.categorieId ? Number(req.query.categorieId) : null;
+    const catCond = catId ? ` AND i.categorie_id = ${catId}` : '';
+
+    // Stock : valeur + articles en alerte (sous seuil) + valeur par catégorie
+    const stockRes = await pool.query(
+      `SELECT i.nom AS article, COALESCE(c.nom,'Sans catégorie') AS categorie, ais.seuil_min,
+              SUM(sed.quantite) AS quantite,
+              (SELECT s2.prix_unitaire FROM stock_entreprise_daily s2
+               WHERE s2.activite_id = sed.activite_id AND s2.ingredient_id = sed.ingredient_id
+                 AND s2.prix_unitaire IS NOT NULL ORDER BY s2.date_appro DESC LIMIT 1) AS prix
+       FROM stock_entreprise_daily sed
+       JOIN articles i ON i.id = sed.ingredient_id
+       LEFT JOIN categories c ON c.id = i.categorie_id
+       LEFT JOIN activite_ingredient_selections ais ON ais.activite_id = sed.activite_id AND ais.ingredient_id = sed.ingredient_id
+       WHERE sed.activite_id = ANY($1::int[])${catCond}
+       GROUP BY sed.activite_id, sed.ingredient_id, i.nom, c.nom, ais.seuil_min`,
+      [actIds]
+    );
+    let valeurStock = 0; const stockParCat = {}; const alertes = [];
+    for (const r of stockRes.rows) {
+      const q = num(r.quantite); const v = q * num(r.prix);
+      valeurStock += v;
+      stockParCat[r.categorie] = (stockParCat[r.categorie] || 0) + v;
+      if (r.seuil_min != null && q <= num(r.seuil_min)) alertes.push({ article: r.article, categorie: r.categorie, quantite: q, seuil: num(r.seuil_min) });
+    }
+
+    // Achats (appros) sur la période + par catégorie
+    const approRes = await pool.query(
+      `SELECT COALESCE(c.nom,'Sans catégorie') AS categorie,
+              COALESCE(SUM(sed.quantite * COALESCE(sed.prix_unitaire,0)),0) AS valeur, COUNT(*) AS nb
+       FROM stock_entreprise_daily sed JOIN articles i ON i.id = sed.ingredient_id
+       LEFT JOIN categories c ON c.id = i.categorie_id
+       WHERE sed.activite_id = ANY($1::int[]) AND sed.date_appro >= $2 AND sed.date_appro <= $3${catCond}
+       GROUP BY 1 ORDER BY valeur DESC`,
+      [actIds, from, to]
+    );
+    const achats = approRes.rows.reduce((s, r) => s + num(r.valeur), 0);
+
+    // Pertes sur la période : total + par type + par catégorie + top articles
+    const pertesRes = await pool.query(
+      `SELECT p.type_perte, COALESCE(c.nom,'Sans catégorie') AS categorie, i.nom AS article,
+              COALESCE(SUM(p.quantite * COALESCE(p.prix_unitaire,0)),0) AS valeur
+       FROM pertes p JOIN articles i ON i.id = p.ingredient_id
+       LEFT JOIN categories c ON c.id = i.categorie_id
+       WHERE p.activite_id = ANY($1::int[]) AND p.date_perte >= $2 AND p.date_perte <= $3${catCond}
+       GROUP BY p.type_perte, c.nom, i.nom`,
+      [actIds, from, to]
+    );
+    let pertesTotal = 0; const pertesParType = {}; const pertesParCat = {}; const pertesArt = {};
+    for (const r of pertesRes.rows) {
+      const v = num(r.valeur); pertesTotal += v;
+      pertesParType[r.type_perte] = (pertesParType[r.type_perte] || 0) + v;
+      pertesParCat[r.categorie] = (pertesParCat[r.categorie] || 0) + v;
+      pertesArt[r.article] = (pertesArt[r.article] || 0) + v;
+    }
+
+    const toArr = (obj, kName) => Object.entries(obj).map(([k, v]) => ({ [kName]: k, valeur: Math.round(v * 1000) / 1000 })).sort((a, b) => b.valeur - a.valeur);
+
+    res.json({
+      periode: { from, to },
+      kpis: {
+        valeur_stock: Math.round(valeurStock * 1000) / 1000,
+        achats,
+        nb_appros: approRes.rows.reduce((s, r) => s + (parseInt(r.nb, 10) || 0), 0),
+        pertes: Math.round(pertesTotal * 1000) / 1000,
+        stock_bas: alertes.length,
+      },
+      stock_par_categorie: toArr(stockParCat, 'categorie'),
+      achats_par_categorie: approRes.rows.map((r) => ({ categorie: r.categorie, valeur: num(r.valeur) })),
+      pertes_par_type: toArr(pertesParType, 'type'),
+      pertes_par_categorie: toArr(pertesParCat, 'categorie'),
+      top_pertes: toArr(pertesArt, 'article').slice(0, 8),
+      alertes_stock: alertes.sort((a, b) => a.quantite - b.quantite).slice(0, 15),
+    });
+  } catch (err) {
+    console.error('[getActivitesDashboard]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { getClientDashboard, getLaboDashboard, getRapportVentes, getActivitesDashboard };
