@@ -245,11 +245,14 @@ const listArticlesVendables = async (req, res) => {
       `SELECT av.id, av.activite_id, av.labo_id, av.article_type, av.article_id,
               av.prix_vente, av.portion, av.actif,
               p.nom,
-              COALESCE(p.is_supplement, FALSE) as is_supplement
+              COALESCE(p.is_supplement, FALSE) as is_supplement,
+              p.categorie_produit_id,
+              cp.nom as categorie_nom
        FROM activite_articles_vendables av
        JOIN produits p ON p.id = av.article_id
+       LEFT JOIN categories_produit cp ON cp.id = p.categorie_produit_id
        WHERE ${whereCol} = $1 AND av.article_type = 'produit'
-       ORDER BY p.is_supplement, p.nom`,
+       ORDER BY p.is_supplement, cp.nom NULLS LAST, p.nom`,
       [whereVal]
     );
     res.json(r.rows.map(row => ({
@@ -307,6 +310,21 @@ const updateArticleVendable = async (req, res) => {
     const { prix_vente, portion, actif } = req.body;
     const categorieProduitId = req.body.categorie_produit_id ?? req.body.categorieProduitId;
     const categorieProvided = categorieProduitId !== undefined;
+
+    // Un article valorisé (ingredient) ne peut avoir un prix > 0 sans catégorie de produit.
+    if (prix_vente != null && prix_vente > 0) {
+      const cur = await pool.query(
+        'SELECT article_type, categorie_produit_id FROM activite_articles_vendables WHERE id = $1',
+        [id]
+      );
+      if (cur.rows.length && cur.rows[0].article_type === 'ingredient') {
+        const finalCat = categorieProvided ? (categorieProduitId || null) : cur.rows[0].categorie_produit_id;
+        if (!finalCat) {
+          return res.status(400).json({ message: "Catégorie de produit requise avant d'enregistrer le prix d'un article valorisé" });
+        }
+      }
+    }
+
     const r = await pool.query(
       `UPDATE activite_articles_vendables SET
         prix_vente = COALESCE($1, prix_vente),
