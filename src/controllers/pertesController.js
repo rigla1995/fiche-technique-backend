@@ -722,11 +722,13 @@ const listLaboPertes = async (req, res) => {
       `SELECT lp.id, lp.labo_id, lp.ingredient_id,
               i.nom AS ingredient_nom, u.nom AS unite_nom,
               COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte, lp.created_at
+              lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte, lp.created_at,
+              lp.created_by, ub.nom AS created_by_nom
        FROM labo_pertes lp
        JOIN articles i ON i.id = lp.ingredient_id
        JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
+       LEFT JOIN utilisateurs ub ON ub.id = lp.created_by
        WHERE ${wheres.join(' AND ')}
        ORDER BY lp.date_perte DESC, lp.created_at DESC`,
       params
@@ -744,6 +746,8 @@ const listLaboPertes = async (req, res) => {
       typePerte: r.type_perte,
       datePerte: r.date_perte instanceof Date ? r.date_perte.toISOString().slice(0, 10) : String(r.date_perte).slice(0, 10),
       createdAt: r.created_at,
+      createdBy: r.created_by ?? null,
+      createdByNom: r.created_by_nom ?? null,
     })));
   } catch (err) {
     console.error(err);

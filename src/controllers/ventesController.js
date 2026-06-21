@@ -293,8 +293,8 @@ const upsertArticleVendable = async (req, res) => {
     const pv = prix_vente ?? 0;
     if (pv > 0) {
       await pool.query(
-        `INSERT INTO article_vendable_prix_historique (article_vendable_id, prix_vente) VALUES ($1,$2)`,
-        [r.rows[0].id, pv]
+        `INSERT INTO article_vendable_prix_historique (article_vendable_id, prix_vente, created_by) VALUES ($1,$2,$3)`,
+        [r.rows[0].id, pv, req.user.id]
       );
     }
     res.status(201).json(r.rows[0]);
@@ -323,8 +323,8 @@ const updateArticleVendable = async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ message: 'Introuvable' });
     if (prix_vente != null && prix_vente > 0) {
       await pool.query(
-        `INSERT INTO article_vendable_prix_historique (article_vendable_id, prix_vente) VALUES ($1,$2)`,
-        [id, prix_vente]
+        `INSERT INTO article_vendable_prix_historique (article_vendable_id, prix_vente, created_by) VALUES ($1,$2,$3)`,
+        [id, prix_vente, req.user.id]
       );
     }
     res.json(r.rows[0]);
@@ -357,11 +357,13 @@ const getPrixHistoriqueConfig = async (req, res) => {
       `SELECT avph.id, avph.article_vendable_id, avph.prix_vente, avph.saved_at,
               av.article_type, av.article_id,
               COALESCE(p.nom, a.nom) as produit_nom,
-              COALESCE(p.is_supplement, FALSE) as is_supplement
+              COALESCE(p.is_supplement, FALSE) as is_supplement,
+              ub.nom as created_by_nom
        FROM article_vendable_prix_historique avph
        JOIN activite_articles_vendables av ON av.id = avph.article_vendable_id
        LEFT JOIN produits p ON av.article_type = 'produit' AND p.id = av.article_id
        LEFT JOIN articles a ON av.article_type = 'ingredient' AND a.id = av.article_id
+       LEFT JOIN utilisateurs ub ON ub.id = avph.created_by
        WHERE av.activite_id = $1
        ORDER BY avph.saved_at DESC
        LIMIT 500`,
@@ -375,6 +377,7 @@ const getPrixHistoriqueConfig = async (req, res) => {
       article_type: row.article_type,
       produit_nom: row.produit_nom ?? null,
       is_supplement: row.is_supplement ?? false,
+      created_by_nom: row.created_by_nom ?? null,
     })));
   } catch (e) {
     if (e.status) return res.status(e.status).json({ message: e.message });
@@ -521,6 +524,7 @@ const listVentes = async (req, res) => {
     const r = await pool.query(
       `SELECT v.id, v.date_vente, v.type_vente, v.statut, v.notes, v.created_at,
               v.prestataire_id, pl.nom as prestataire_nom,
+              v.created_by, ub.nom as created_by_nom,
               COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) as total_ca,
               COALESCE(SUM(vl.quantite * (vl.prix_unitaire - COALESCE(vl.cout_unitaire,0))), 0) as total_marge,
               COALESCE(SUM(vl.quantite), 0) as total_quantite,
@@ -536,11 +540,12 @@ const listVentes = async (req, res) => {
               ) as lignes
        FROM ventes v
        LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
+       LEFT JOIN utilisateurs ub ON ub.id = v.created_by
        LEFT JOIN vente_lignes vl ON vl.vente_id = v.id
        LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
        LEFT JOIN articles a ON vl.article_type = 'ingredient' AND a.id = vl.article_id
        WHERE ${whereCol} = $1 AND v.statut != 'annulee'${where}
-       GROUP BY v.id, pl.nom
+       GROUP BY v.id, pl.nom, ub.nom
        ORDER BY v.date_vente DESC, v.created_at DESC`,
       params
     );
@@ -762,6 +767,9 @@ const annulerVente = async (req, res) => {
     const cid = clientId(req);
     if (vente.labo_id) await assertLaboOwner(vente.labo_id, cid);
     else await assertActiviteOwner(vente.activite_id, cid);
+    // Un gérant ne peut annuler que les ventes qu'il a saisies.
+    if (req.user.role === 'gerant' && vente.created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez supprimer que les ventes que vous avez saisies' });
 
     // Fetch lignes before deleting
     const lignesRes = await client.query('SELECT * FROM vente_lignes WHERE vente_id = $1', [id]);
