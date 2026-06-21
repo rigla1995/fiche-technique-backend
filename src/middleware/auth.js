@@ -103,6 +103,14 @@ const requireWriteAccess = (req, res, next) => {
   next();
 };
 
+// Réservé au client propriétaire (exclut les gérants) — ex. mutations de l'Espace Produit.
+const requireClientOwner = (req, res, next) => {
+  if (req.user.role !== 'client') {
+    return res.status(403).json({ message: 'Action réservée au compte client (lecture seule pour les gérants)' });
+  }
+  next();
+};
+
 const requireGerant = (req, res, next) => {
   if (req.user.role !== 'gerant') {
     return res.status(403).json({ message: 'Accès réservé aux gérants' });
@@ -172,5 +180,5 @@ const scopeGerantActivite = (req, res) => {
 module.exports = {
   authenticate, requireSuperAdmin, requireClient, requireEntreprise,
   requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
-  gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
+  requireClientOwner, gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
 };
