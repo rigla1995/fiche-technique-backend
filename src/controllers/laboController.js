@@ -2025,12 +2025,14 @@ const updateTransfer = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const tRes = await pool.query(
-      `SELECT id, ingredient_id, produit_id, activite_id, quantite, date_transfert
+      `SELECT id, ingredient_id, produit_id, activite_id, quantite, date_transfert, created_by
        FROM labo_transfers WHERE id = $1 AND labo_id = $2`,
       [transferId, laboId]
     );
     if (tRes.rows.length === 0) return res.status(404).json({ message: 'Transfert introuvable' });
     const t = tRes.rows[0];
+    if (req.user.role === 'gerant' && t.created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez modifier que les transferts que vous avez créés' });
     const oldQty = parseFloat(t.quantite);
 
     const client = await pool.connect();
@@ -2107,12 +2109,14 @@ const deleteTransfer = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const tRes = await pool.query(
-      `SELECT id, ingredient_id, produit_id, activite_id, quantite, date_transfert
+      `SELECT id, ingredient_id, produit_id, activite_id, quantite, date_transfert, created_by
        FROM labo_transfers WHERE id = $1 AND labo_id = $2`,
       [transferId, laboId]
     );
     if (tRes.rows.length === 0) return res.status(404).json({ message: 'Transfert introuvable' });
     const t = tRes.rows[0];
+    if (req.user.role === 'gerant' && t.created_by !== req.user.id)
+      return res.status(403).json({ message: 'Vous ne pouvez supprimer que les transferts que vous avez créés' });
     const qty = parseFloat(t.quantite);
 
     const client = await pool.connect();

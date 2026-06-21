@@ -9,7 +9,7 @@ const {
   exportListExcel,
 } = require('../controllers/produitsController');
 const { exportExcel } = require('../controllers/exportController');
-const { authenticate, requireClient } = require('../middleware/auth');
+const { authenticate, requireClient, requireClientOwner } = require('../middleware/auth');
 
 /**
  * @openapi
@@ -390,7 +390,7 @@ const { authenticate, requireClient } = require('../middleware/auth');
 router.get('/', authenticate, requireClient, list);
 router.get('/export-list', authenticate, requireClient, exportListExcel);
 router.get('/:id', authenticate, requireClient, getById);
-router.post('/', authenticate, requireClient, [
+router.post('/', authenticate, requireClientOwner, [
   body().custom((b) => {
     if (!b.name && !b.nom) throw new Error('Nom requis');
     return true;
@@ -398,15 +398,15 @@ router.post('/', authenticate, requireClient, [
   body('type').optional().isIn(['utilisable', 'vendable']),
   body('categorieProduitId').optional({ nullable: true }).isInt({ min: 1 }),
 ], create);
-router.put('/:id', authenticate, requireClient, [
+router.put('/:id', authenticate, requireClientOwner, [
   body('name').optional().trim().notEmpty(),
   body('nom').optional().trim().notEmpty(),
   body('type').optional().isIn(['utilisable', 'vendable']),
   body('categorieProduitId').optional({ nullable: true }).isInt({ min: 1 }),
 ], update);
-router.delete('/:id', authenticate, requireClient, remove);
+router.delete('/:id', authenticate, requireClientOwner, remove);
 
-router.post('/:id/ingredients', authenticate, requireClient, [
+router.post('/:id/ingredients', authenticate, requireClientOwner, [
   body().custom((b) => {
     const id = b.ingredientId || b.ingredient_id;
     if (!id || parseInt(id) < 1) throw new Error('Ingrédient invalide');
@@ -419,9 +419,9 @@ router.post('/:id/ingredients', authenticate, requireClient, [
     return true;
   }),
 ], addIngredient);
-router.delete('/:id/ingredients/:ingredientId', authenticate, requireClient, removeIngredient);
+router.delete('/:id/ingredients/:ingredientId', authenticate, requireClientOwner, removeIngredient);
 
-router.post('/:id/sous-produits', authenticate, requireClient, [
+router.post('/:id/sous-produits', authenticate, requireClientOwner, [
   body().custom((b) => {
     const id = b.productId || b.produit_id;
     if (!id || parseInt(id) < 1) throw new Error('Sous-produit invalide');
@@ -429,7 +429,7 @@ router.post('/:id/sous-produits', authenticate, requireClient, [
   }),
   body('portion').isFloat({ min: 0.001 }).withMessage('Portion invalide'),
 ], addSousProduit);
-router.delete('/:id/sous-produits/:sousProduitId', authenticate, requireClient, removeSousProduit);
+router.delete('/:id/sous-produits/:sousProduitId', authenticate, requireClientOwner, removeSousProduit);
 
 router.get('/:id/cout', authenticate, requireClient, getCout);
 router.get('/:id/export', authenticate, requireClient, exportExcel);
@@ -440,10 +440,10 @@ router.post('/:id/manual-prices', authenticate, requireClient, saveManualPrices)
 
 const { toggleStockIngredient, deleteStockPTHistory, getStockActivites, affecterActivites, toggleAffectation, getParentProducts } = require('../controllers/produitTransformeController');
 router.get('/:id/stock-activites', authenticate, requireClient, getStockActivites);
-router.post('/:id/toggle-stock-ingredient', authenticate, requireClient, toggleStockIngredient);
-router.delete('/:id/stock-pt-history', authenticate, requireClient, deleteStockPTHistory);
-router.post('/:id/affecter-activites', authenticate, requireClient, affecterActivites);
-router.post('/:id/toggle-affectation', authenticate, requireClient, toggleAffectation);
+router.post('/:id/toggle-stock-ingredient', authenticate, requireClientOwner, toggleStockIngredient);
+router.delete('/:id/stock-pt-history', authenticate, requireClientOwner, deleteStockPTHistory);
+router.post('/:id/affecter-activites', authenticate, requireClientOwner, affecterActivites);
+router.post('/:id/toggle-affectation', authenticate, requireClientOwner, toggleAffectation);
 router.get('/:id/parent-products', authenticate, requireClient, getParentProducts);
 
 module.exports = router;
