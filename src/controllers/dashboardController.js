@@ -293,4 +293,75 @@ const getLaboDashboard = async (req, res) => {
   }
 };
 
-module.exports = { getClientDashboard, getLaboDashboard };
+const getRapportVentes = async (req, res) => {
+  try {
+    const { from, to } = resolvePeriode(req.query.from, req.query.to);
+    const actIds = await resolveScopeActivites(req);
+    if (actIds.length === 0) return res.json({ periode: { from, to }, vide: true });
+
+    const canal = req.query.canal || null; // 'directe' | 'prestataire' | null
+    const cond = [`v.activite_id = ANY($1::int[])`, `v.statut = 'confirmee'`, `v.date_vente >= $2`, `v.date_vente <= $3`];
+    const params = [actIds, from, to];
+    if (canal === 'directe') cond.push(`v.type_vente = 'directe'`);
+    else if (canal === 'prestataire') cond.push(`v.type_vente = 'prestataire'`);
+    const where = cond.join(' AND ');
+
+    const kpiRes = await pool.query(
+      `SELECT COALESCE(SUM(vl.quantite * vl.prix_unitaire),0) AS ca,
+              COALESCE(SUM(vl.quantite * COALESCE(vl.cout_unitaire,0)),0) AS cm,
+              COUNT(DISTINCT v.id) AS nb
+       FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id WHERE ${where}`,
+      params
+    );
+    const ca = num(kpiRes.rows[0].ca);
+    const cm = num(kpiRes.rows[0].cm);
+    const nb = parseInt(kpiRes.rows[0].nb, 10) || 0;
+
+    const prodRes = await pool.query(
+      `SELECT COALESCE(p.nom, a.nom, '—') AS nom,
+              COALESCE(p.is_supplement, FALSE) AS is_supplement,
+              vl.article_type,
+              SUM(vl.quantite) AS qte,
+              SUM(vl.quantite * vl.prix_unitaire) AS ca,
+              SUM(vl.quantite * COALESCE(vl.cout_unitaire,0)) AS cm
+       FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
+       LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
+       LEFT JOIN articles a ON vl.article_type = 'ingredient' AND a.id = vl.article_id
+       WHERE ${where}
+       GROUP BY 1,2,3 ORDER BY ca DESC`,
+      params
+    );
+    const canalRes = await pool.query(
+      `SELECT CASE WHEN v.type_vente='directe' THEN 'Direct' ELSE COALESCE(pl.nom,'Prestataire') END AS canal,
+              COALESCE(SUM(vl.quantite * vl.prix_unitaire),0) AS total
+       FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
+       LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
+       WHERE ${where} GROUP BY 1 ORDER BY total DESC`,
+      params
+    );
+
+    res.json({
+      periode: { from, to },
+      kpis: {
+        ca, cout_matiere: cm, marge: ca - cm,
+        food_cost_pct: ca > 0 ? Math.round((cm / ca) * 100) : null,
+        taux_marge_pct: ca > 0 ? Math.round(((ca - cm) / ca) * 100) : null,
+        nb_ventes: nb, panier_moyen: nb > 0 ? Math.round((ca / nb) * 100) / 100 : 0,
+      },
+      produits: prodRes.rows.map((r) => {
+        const pca = num(r.ca); const pcm = num(r.cm);
+        return {
+          nom: r.nom, type: r.article_type === 'ingredient' ? 'valorise' : (r.is_supplement ? 'supplement' : 'produit'),
+          qte: num(r.qte), ca: pca, marge: pca - pcm,
+          food_cost_pct: pca > 0 ? Math.round((pcm / pca) * 100) : null,
+        };
+      }),
+      ca_par_canal: canalRes.rows.map((r) => ({ canal: r.canal, total: num(r.total) })),
+    });
+  } catch (err) {
+    console.error('[getRapportVentes]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { getClientDashboard, getLaboDashboard, getRapportVentes };
