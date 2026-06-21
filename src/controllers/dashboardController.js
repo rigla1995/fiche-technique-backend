@@ -213,4 +213,84 @@ const getClientDashboard = async (req, res) => {
   }
 };
 
-module.exports = { getClientDashboard };
+const getLaboDashboard = async (req, res) => {
+  try {
+    const laboId = req.query.laboId ? Number(req.query.laboId) : null;
+    if (!laboId) return res.status(400).json({ message: 'laboId requis' });
+    // Vérifier la propriété / le périmètre.
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const own = await pool.query(
+      `SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE l.id = $1 AND pe.client_id = $2`,
+      [laboId, clientId]
+    );
+    if (own.rows.length === 0) return res.status(404).json({ message: 'Labo introuvable' });
+    if (req.user.role === 'gerant' && !(req.user.gerantLaboIds || []).includes(laboId)) {
+      return res.status(403).json({ message: 'Accès non autorisé à ce labo' });
+    }
+    const { from, to } = resolvePeriode(req.query.from, req.query.to);
+
+    // Valeur du stock labo (dernier prix par article)
+    const stockRes = await pool.query(
+      `SELECT sld.ingredient_id, SUM(sld.quantite) AS quantite,
+              (SELECT s2.prix_unitaire FROM stock_labo_daily s2
+               WHERE s2.labo_id = sld.labo_id AND s2.ingredient_id = sld.ingredient_id
+                 AND s2.prix_unitaire IS NOT NULL ORDER BY s2.date_appro DESC LIMIT 1) AS prix
+       FROM stock_labo_daily sld WHERE sld.labo_id = $1
+       GROUP BY sld.labo_id, sld.ingredient_id`,
+      [laboId]
+    );
+    let valeurStock = 0;
+    for (const r of stockRes.rows) valeurStock += num(r.quantite) * num(r.prix);
+
+    const approsRes = await pool.query(
+      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire,0)),0) AS valeur, COUNT(*) AS nb
+       FROM stock_labo_daily WHERE labo_id = $1 AND date_appro >= $2 AND date_appro <= $3`,
+      [laboId, from, to]
+    );
+    const pertesRes = await pool.query(
+      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire,0)),0) AS valeur
+       FROM labo_pertes WHERE labo_id = $1 AND date_perte >= $2 AND date_perte <= $3`,
+      [laboId, from, to]
+    );
+    const transRes = await pool.query(
+      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire,0)),0) AS valeur, COUNT(*) AS nb
+       FROM labo_transfers WHERE labo_id = $1 AND date_transfert >= $2 AND date_transfert <= $3`,
+      [laboId, from, to]
+    );
+    // Top articles transférés (par valeur)
+    const topTransRes = await pool.query(
+      `SELECT i.nom, SUM(lt.quantite) AS qte, SUM(lt.quantite * COALESCE(lt.prix_unitaire,0)) AS valeur
+       FROM labo_transfers lt JOIN articles i ON i.id = lt.ingredient_id
+       WHERE lt.labo_id = $1 AND lt.date_transfert >= $2 AND lt.date_transfert <= $3
+       GROUP BY i.nom ORDER BY valeur DESC LIMIT 8`,
+      [laboId, from, to]
+    );
+    // Transferts par activité destinataire
+    const parActiviteRes = await pool.query(
+      `SELECT a.nom AS activite, COALESCE(SUM(lt.quantite * COALESCE(lt.prix_unitaire,0)),0) AS valeur
+       FROM labo_transfers lt JOIN activites a ON a.id = lt.activite_id
+       WHERE lt.labo_id = $1 AND lt.date_transfert >= $2 AND lt.date_transfert <= $3
+       GROUP BY a.nom ORDER BY valeur DESC`,
+      [laboId, from, to]
+    );
+
+    res.json({
+      periode: { from, to },
+      kpis: {
+        valeur_stock: Math.round(valeurStock * 1000) / 1000,
+        appros: num(approsRes.rows[0].valeur),
+        nb_appros: parseInt(approsRes.rows[0].nb, 10) || 0,
+        pertes: num(pertesRes.rows[0].valeur),
+        transferts: num(transRes.rows[0].valeur),
+        nb_transferts: parseInt(transRes.rows[0].nb, 10) || 0,
+      },
+      top_transferts: topTransRes.rows.map((r) => ({ nom: r.nom, qte: num(r.qte), valeur: num(r.valeur) })),
+      transferts_par_activite: parActiviteRes.rows.map((r) => ({ activite: r.activite, valeur: num(r.valeur) })),
+    });
+  } catch (err) {
+    console.error('[getLaboDashboard]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { getClientDashboard, getLaboDashboard };
