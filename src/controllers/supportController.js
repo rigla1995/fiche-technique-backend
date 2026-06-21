@@ -62,7 +62,7 @@ const create = async (req, res) => {
   // Gérant requests are owned by their parent enterprise client
   const clientId = req.user.gerant_parent_id || req.user.id;
   const { type } = req.body;
-  const validTypes = ['ingredient_manquant', 'supplement', 'aide'];
+  const validTypes = ['supplement', 'aide'];
   if (!validTypes.includes(type)) return res.status(400).json({ message: 'Type invalide' });
 
   try {
