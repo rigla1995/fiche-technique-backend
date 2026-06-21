@@ -1296,7 +1296,9 @@ const getLaboHistorique = async (req, res) => {
     if (includeManuel) parts.push(manuelSql);
     if (includeTransfert) parts.push(transferSql);
 
-    const sql = `SELECT * FROM (${parts.join(' UNION ALL ')}) combined
+    const sql = `SELECT combined.*, ub.nom as created_by_nom
+                 FROM (${parts.join(' UNION ALL ')}) combined
+                 LEFT JOIN utilisateurs ub ON ub.id = combined.created_by
                  ORDER BY date_appro DESC, updated_at DESC
                  ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`;
 
@@ -1321,6 +1323,7 @@ const getLaboHistorique = async (req, res) => {
       activiteNom: r.activite_nom || null,
       updatedAt: r.updated_at,
       createdBy: r.created_by ?? null,
+      createdByNom: r.created_by_nom ?? null,
     })));
   } catch (err) {
     console.error(err);
@@ -1707,9 +1710,9 @@ const createLaboPerte = async (req, res) => {
         });
       }
       await pool.query(
-        `INSERT INTO labo_pertes (labo_id, produit_id, quantite, type_perte, date_perte)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [laboId, produitId, qtyPT, typePerte || 'avarie', effectiveDate]
+        `INSERT INTO labo_pertes (labo_id, produit_id, quantite, type_perte, date_perte, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [laboId, produitId, qtyPT, typePerte || 'avarie', effectiveDate, req.user.id]
       );
     } else {
       const minRow = await pool.query(
@@ -1741,9 +1744,9 @@ const createLaboPerte = async (req, res) => {
       }
 
       await pool.query(
-        `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [laboId, ingredientIdRaw, parseFloat(quantite), typePerte || 'avarie', effectiveDate, prixUnitaire]
+        `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [laboId, ingredientIdRaw, parseFloat(quantite), typePerte || 'avarie', effectiveDate, prixUnitaire, req.user.id]
       );
     }
     res.json({ success: true });
