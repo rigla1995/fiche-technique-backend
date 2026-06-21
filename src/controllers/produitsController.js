@@ -12,6 +12,8 @@ const mapProduit = (row) => ({
   activites: row.activites_list || [],
   isStockIngredient: !!row.is_stock_ingredient,
   isSupplement: !!row.is_supplement,
+  categorieProduitId: row.categorie_produit_id || null,
+  categorieProduitName: row.categorie_produit_nom || null,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
   ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
   subProductsCount: row.sub_products_count !== undefined ? parseInt(row.sub_products_count) : undefined,
@@ -158,7 +160,8 @@ const list = async (req, res) => {
            FROM produit_activite_affectation paa
            JOIN activites a ON a.id = paa.activite_id
            WHERE paa.produit_id = p.id
-         ) t) AS activites_list
+         ) t) AS activites_list,
+        (SELECT cp.nom FROM categories_produit cp WHERE cp.id = p.categorie_produit_id) AS categorie_produit_nom
        FROM produits p
        WHERE p.client_id = $1${whereExtra}
        ORDER BY p.created_at DESC`,
@@ -258,6 +261,12 @@ const create = async (req, res) => {
   const ingredients = req.body.ingredients || [];
   const subProducts = req.body.subProducts || [];
   const activiteId = req.body.activiteId || null;
+  const categorieProduitId = req.body.categorieProduitId || req.body.categorie_produit_id || null;
+
+  // Catégorie obligatoire pour les produits vendables/suppléments (pas pour les utilisables).
+  if (type === 'vendable' && !categorieProduitId) {
+    return res.status(400).json({ message: 'La catégorie de produit est obligatoire pour un produit vendable ou un supplément' });
+  }
 
   const client = await pool.connect();
   try {
@@ -265,9 +274,10 @@ const create = async (req, res) => {
 
     const isStockIngredient = type === 'utilisable' ? true : false;
     const clientId = req.user.gerant_parent_id || req.user.id;
+    const catId = type === 'utilisable' ? null : categorieProduitId;
     const result = await client.query(
-      'INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activiteId]
+      'INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id, categorie_produit_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activiteId, catId]
     );
     const produitId = result.rows[0].id;
 
@@ -326,8 +336,16 @@ const update = async (req, res) => {
   const refProduit = req.body.refProduit !== undefined ? (req.body.refProduit || null) : req.body.ref_produit !== undefined ? (req.body.ref_produit || null) : undefined;
   const type = req.body.type === 'utilisable' ? 'utilisable' : req.body.type === 'vendable' ? 'vendable' : undefined;
   const isSupplement = req.body.isSupplement !== undefined ? (req.body.isSupplement === true || req.body.isSupplement === 'true') : undefined;
+  const categorieProduitId = req.body.categorieProduitId !== undefined ? req.body.categorieProduitId
+    : req.body.categorie_produit_id !== undefined ? req.body.categorie_produit_id : undefined;
+  const categorieProvided = categorieProduitId !== undefined;
   const ingredients = req.body.ingredients;
   const subProducts = req.body.subProducts;
+
+  // Si on bascule (ou reste) en vendable et qu'une catégorie est explicitement fournie mais vide → refus.
+  if (categorieProvided && type !== 'utilisable' && !categorieProduitId) {
+    return res.status(400).json({ message: 'La catégorie de produit est obligatoire pour un produit vendable ou un supplément' });
+  }
 
   const client = await pool.connect();
   try {
@@ -338,8 +356,9 @@ const update = async (req, res) => {
        ref_produit = CASE WHEN $3::text IS NOT NULL THEN $3 ELSE ref_produit END,
        type = COALESCE($4, type),
        is_supplement = COALESCE($7, is_supplement),
+       categorie_produit_id = CASE WHEN $8::boolean THEN $9 ELSE categorie_produit_id END,
        updated_at = NOW() WHERE id = $5 AND client_id = $6 RETURNING *`,
-      [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.gerant_parent_id || req.user.id, isSupplement !== undefined ? isSupplement : null]
+      [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.gerant_parent_id || req.user.id, isSupplement !== undefined ? isSupplement : null, categorieProvided, categorieProvided ? (categorieProduitId || null) : null]
     );
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');

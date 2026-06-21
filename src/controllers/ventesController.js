@@ -266,6 +266,7 @@ const listArticlesVendables = async (req, res) => {
 const upsertArticleVendable = async (req, res) => {
   try {
     const { activite_id, article_type, article_id, prix_vente, portion, actif = true } = req.body;
+    const categorieProduitId = req.body.categorie_produit_id ?? req.body.categorieProduitId ?? null;
     if (!activite_id || !article_type || !article_id) {
       return res.status(400).json({ message: 'activite_id, article_type, article_id requis' });
     }
@@ -276,14 +277,15 @@ const upsertArticleVendable = async (req, res) => {
     await assertActiviteOwner(activite_id, cid);
 
     const r = await pool.query(
-      `INSERT INTO activite_articles_vendables (activite_id, article_type, article_id, prix_vente, portion, actif)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO activite_articles_vendables (activite_id, article_type, article_id, prix_vente, portion, actif, categorie_produit_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
        ON CONFLICT (activite_id, article_type, article_id) DO UPDATE
          SET prix_vente = EXCLUDED.prix_vente,
              portion = EXCLUDED.portion,
-             actif = EXCLUDED.actif
+             actif = EXCLUDED.actif,
+             categorie_produit_id = EXCLUDED.categorie_produit_id
        RETURNING *`,
-      [activite_id, article_type, article_id, prix_vente ?? 0, portion ?? null, actif]
+      [activite_id, article_type, article_id, prix_vente ?? 0, portion ?? null, actif, categorieProduitId]
     );
     const pv = prix_vente ?? 0;
     if (pv > 0) {
@@ -303,13 +305,16 @@ const updateArticleVendable = async (req, res) => {
   try {
     const { id } = req.params;
     const { prix_vente, portion, actif } = req.body;
+    const categorieProduitId = req.body.categorie_produit_id ?? req.body.categorieProduitId;
+    const categorieProvided = categorieProduitId !== undefined;
     const r = await pool.query(
       `UPDATE activite_articles_vendables SET
         prix_vente = COALESCE($1, prix_vente),
         portion = COALESCE($2, portion),
-        actif = COALESCE($3, actif)
+        actif = COALESCE($3, actif),
+        categorie_produit_id = CASE WHEN $5::boolean THEN $6 ELSE categorie_produit_id END
        WHERE id = $4 RETURNING *`,
-      [prix_vente, portion, actif, id]
+      [prix_vente, portion, actif, id, categorieProvided, categorieProvided ? (categorieProduitId || null) : null]
     );
     if (!r.rows.length) return res.status(404).json({ message: 'Introuvable' });
     if (prix_vente != null && prix_vente > 0) {
@@ -1421,7 +1426,8 @@ const getArticlesValorisés = async (req, res) => {
     const r = await pool.query(
       `SELECT a.id, a.nom, u.nom as unite_nom,
               c.nom as categorie_nom, f.nom as famille_nom,
-              av.id as av_id, av.prix_vente, av.actif
+              av.id as av_id, av.prix_vente, av.actif, av.categorie_produit_id,
+              cp.nom as categorie_produit_nom
        FROM articles a
        JOIN activite_ingredient_selections ais ON ais.ingredient_id = a.id AND ais.activite_id = $1
        JOIN unites u ON a.unite_id = u.id
@@ -1429,6 +1435,7 @@ const getArticlesValorisés = async (req, res) => {
        LEFT JOIN familles f ON c.famille_id = f.id
        LEFT JOIN activite_articles_vendables av
          ON av.article_id = a.id AND av.activite_id = $1 AND av.article_type = 'ingredient'
+       LEFT JOIN categories_produit cp ON cp.id = av.categorie_produit_id
        WHERE a.client_id = $2
          AND f.consommable = FALSE
          AND f.vendable = TRUE
@@ -1441,6 +1448,8 @@ const getArticlesValorisés = async (req, res) => {
       unite_nom: row.unite_nom,
       categorie_nom: row.categorie_nom ?? null,
       famille_nom: row.famille_nom ?? null,
+      categorie_produit_id: row.categorie_produit_id ?? null,
+      categorie_produit_nom: row.categorie_produit_nom ?? null,
       vendable: row.av_id ? {
         id: String(row.av_id),
         article_type: 'ingredient',
@@ -1448,6 +1457,7 @@ const getArticlesValorisés = async (req, res) => {
         prix_vente: parseFloat(row.prix_vente ?? 0),
         portion: null,
         actif: row.actif,
+        categorie_produit_id: row.categorie_produit_id ?? null,
       } : null,
     })));
   } catch (e) {
