@@ -118,20 +118,16 @@ const createFournisseur = async (req, res) => {
     );
     const fournisseur = r.rows[0];
 
-    // Gérant: auto-assign to their activité/labo only
-    if (isGerant && gerantActiviteId) {
-      if (gerantActiviteType === 'labo') {
-        await pool.query(
-          `INSERT INTO fournisseur_labos (fournisseur_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [fournisseur.id, gerantActiviteId]
-        );
-      } else {
-        await pool.query(
-          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [fournisseur.id, gerantActiviteId]
-        );
+    // Gérant: valider que les activités/labos demandés sont dans son périmètre
+    if (isGerant) {
+      const allowedAct = req.user.gerantActiviteIds || [];
+      const allowedLabo = req.user.gerantLaboIds || [];
+      const bad = (Array.isArray(activiteIds) ? activiteIds : []).some((id) => !allowedAct.includes(Number(id)))
+        || (Array.isArray(laboIds) ? laboIds : []).some((id) => !allowedLabo.includes(Number(id)));
+      if (bad) {
+        await pool.query('DELETE FROM fournisseurs WHERE id = $1', [fournisseur.id]);
+        return res.status(403).json({ message: 'Affectation hors de votre périmètre' });
       }
-      return res.status(201).json({ id: fournisseur.id, nom: fournisseur.nom, adresse: fournisseur.adresse, telephone: fournisseur.telephone, activiteIds: gerantActiviteType !== 'labo' ? [gerantActiviteId] : [], laboIds: gerantActiviteType === 'labo' ? [gerantActiviteId] : [] });
     }
 
     if (Array.isArray(activiteIds) && activiteIds.length > 0) {
