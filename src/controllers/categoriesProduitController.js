@@ -1,9 +1,12 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 
+const TYPES = ['vendable', 'supplement', 'valorise'];
+
 const mapCategorie = (row) => ({
   id: row.id,
   name: row.nom,
+  typeProduit: row.type_produit || 'vendable',
   clientId: row.client_id || null,
   produitsCount: row.produits_count !== undefined ? Number(row.produits_count) : undefined,
   createdAt: row.created_at,
@@ -12,13 +15,19 @@ const mapCategorie = (row) => ({
 const list = async (req, res) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
+    const params = [clientId];
+    let where = 'WHERE cp.client_id = $1';
+    if (req.query.type && TYPES.includes(req.query.type)) {
+      params.push(req.query.type);
+      where += ` AND cp.type_produit = $${params.length}`;
+    }
     const result = await pool.query(
       `SELECT cp.*,
               (SELECT COUNT(*) FROM produits p WHERE p.categorie_produit_id = cp.id) AS produits_count
        FROM categories_produit cp
-       WHERE cp.client_id = $1
-       ORDER BY cp.nom`,
-      [clientId]
+       ${where}
+       ORDER BY cp.type_produit, cp.nom`,
+      params
     );
     res.json(result.rows.map(mapCategorie));
   } catch (err) {
@@ -48,11 +57,15 @@ const create = async (req, res) => {
 
   const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = (req.body.name || req.body.nom || '').trim();
+  const typeProduit = req.body.typeProduit || req.body.type_produit;
+  if (!TYPES.includes(typeProduit)) {
+    return res.status(400).json({ message: "Type de produit invalide (vendable, supplement ou valorise)" });
+  }
 
   try {
     const result = await pool.query(
-      'INSERT INTO categories_produit (nom, client_id) VALUES ($1, $2) RETURNING *',
-      [nom, clientId]
+      'INSERT INTO categories_produit (nom, client_id, type_produit) VALUES ($1, $2, $3) RETURNING *',
+      [nom, clientId, typeProduit]
     );
     res.status(201).json(mapCategorie(result.rows[0]));
   } catch (err) {
@@ -68,11 +81,16 @@ const update = async (req, res) => {
 
   const clientId = req.user.gerant_parent_id || req.user.id;
   const nom = (req.body.name || req.body.nom || '').trim();
+  const rawType = req.body.typeProduit || req.body.type_produit;
+  const typeProduit = TYPES.includes(rawType) ? rawType : null;
 
   try {
     const result = await pool.query(
-      'UPDATE categories_produit SET nom = $1 WHERE id = $2 AND client_id = $3 RETURNING *',
-      [nom, req.params.id, clientId]
+      `UPDATE categories_produit
+       SET nom = $1,
+           type_produit = COALESCE($2, type_produit)
+       WHERE id = $3 AND client_id = $4 RETURNING *`,
+      [nom, typeProduit, req.params.id, clientId]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Catégorie introuvable' });
     res.json(mapCategorie(result.rows[0]));
