@@ -777,6 +777,53 @@ const getParentProducts = async (req, res) => {
   }
 };
 
+// POST /api/produits/:id/toggle-affectation  { activiteId }
+// Toggle une activité dans produit_activite_affectation (produits vendables/suppléments).
+// Maintient produits.activite_id cohérent avec l'ensemble d'affectation.
+const toggleAffectation = async (req, res) => {
+  const produitId = parseInt(req.params.id);
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const actId = req.body.activiteId ? parseInt(req.body.activiteId) : null;
+  if (!actId) return res.status(400).json({ message: 'activiteId requis' });
+
+  try {
+    const ownerRes = await pool.query(
+      `SELECT id FROM produits WHERE id = $1 AND client_id = $2`,
+      [produitId, clientId]
+    );
+    if (ownerRes.rows.length === 0) return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+
+    const existing = await pool.query(
+      `SELECT 1 FROM produit_activite_affectation WHERE produit_id = $1 AND activite_id = $2`,
+      [produitId, actId]
+    );
+    if (existing.rows.length > 0) {
+      await pool.query(
+        `DELETE FROM produit_activite_affectation WHERE produit_id = $1 AND activite_id = $2`,
+        [produitId, actId]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO produit_activite_affectation (produit_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [produitId, actId]
+      );
+    }
+
+    // Garder produits.activite_id aligné sur l'ensemble d'affectation
+    await pool.query(
+      `UPDATE produits
+       SET activite_id = (SELECT MIN(activite_id) FROM produit_activite_affectation WHERE produit_id = $1)
+       WHERE id = $1`,
+      [produitId]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[toggleAffectation]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   toggleStockIngredient,
   deleteStockPTHistory,
@@ -787,5 +834,6 @@ module.exports = {
   saveStockPT,
   updateSeuilMinPT,
   affecterActivites,
+  toggleAffectation,
   getParentProducts,
 };
