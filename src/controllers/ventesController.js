@@ -311,20 +311,6 @@ const updateArticleVendable = async (req, res) => {
     const categorieProduitId = req.body.categorie_produit_id ?? req.body.categorieProduitId;
     const categorieProvided = categorieProduitId !== undefined;
 
-    // Un article valorisé (ingredient) ne peut avoir un prix > 0 sans catégorie de produit.
-    if (prix_vente != null && prix_vente > 0) {
-      const cur = await pool.query(
-        'SELECT article_type, categorie_produit_id FROM activite_articles_vendables WHERE id = $1',
-        [id]
-      );
-      if (cur.rows.length && cur.rows[0].article_type === 'ingredient') {
-        const finalCat = categorieProvided ? (categorieProduitId || null) : cur.rows[0].categorie_produit_id;
-        if (!finalCat) {
-          return res.status(400).json({ message: "Catégorie de produit requise avant d'enregistrer le prix d'un article valorisé" });
-        }
-      }
-    }
-
     const r = await pool.query(
       `UPDATE activite_articles_vendables SET
         prix_vente = COALESCE($1, prix_vente),
@@ -1441,10 +1427,13 @@ const getArticlesValorisés = async (req, res) => {
     const cid = clientId(req);
     await assertActiviteOwner(activiteId, cid);
 
+    // La catégorie de produit est désormais portée par l'article (globale).
+    // On n'affiche que les articles valorisés ayant une catégorie assignée.
     const r = await pool.query(
       `SELECT a.id, a.nom, u.nom as unite_nom,
               c.nom as categorie_nom, f.nom as famille_nom,
-              av.id as av_id, av.prix_vente, av.actif, av.categorie_produit_id,
+              av.id as av_id, av.prix_vente, av.actif,
+              a.categorie_produit_id,
               cp.nom as categorie_produit_nom
        FROM articles a
        JOIN activite_ingredient_selections ais ON ais.ingredient_id = a.id AND ais.activite_id = $1
@@ -1453,11 +1442,12 @@ const getArticlesValorisés = async (req, res) => {
        LEFT JOIN familles f ON c.famille_id = f.id
        LEFT JOIN activite_articles_vendables av
          ON av.article_id = a.id AND av.activite_id = $1 AND av.article_type = 'ingredient'
-       LEFT JOIN categories_produit cp ON cp.id = av.categorie_produit_id
+       LEFT JOIN categories_produit cp ON cp.id = a.categorie_produit_id
        WHERE a.client_id = $2
          AND f.consommable = FALSE
          AND f.vendable = TRUE
-       ORDER BY f.nom, COALESCE(c.nom, ''), a.nom`,
+         AND a.categorie_produit_id IS NOT NULL
+       ORDER BY cp.nom, a.nom`,
       [activiteId, cid]
     );
     res.json(r.rows.map(row => ({
@@ -1484,7 +1474,60 @@ const getArticlesValorisés = async (req, res) => {
   }
 };
 
+// GET /api/articles-valorisables
+// Liste GLOBALE (par client) des articles dont la famille est vendable et non consommable,
+// avec leur catégorie de produit assignée. Sert à la page "Articles valorisés" de l'Espace Produit.
+const listArticlesValorisables = async (req, res) => {
+  try {
+    const cid = clientId(req);
+    const r = await pool.query(
+      `SELECT a.id, a.nom, u.nom as unite_nom,
+              c.nom as categorie_nom, f.nom as famille_nom,
+              a.categorie_produit_id, cp.nom as categorie_produit_nom
+       FROM articles a
+       JOIN unites u ON a.unite_id = u.id
+       LEFT JOIN categories c ON a.categorie_id = c.id
+       LEFT JOIN familles f ON c.famille_id = f.id
+       LEFT JOIN categories_produit cp ON cp.id = a.categorie_produit_id
+       WHERE a.client_id = $1
+         AND f.consommable = FALSE
+         AND f.vendable = TRUE
+       ORDER BY COALESCE(cp.nom, 'zzz'), f.nom, a.nom`,
+      [cid]
+    );
+    res.json(r.rows.map(row => ({
+      id: row.id,
+      nom: row.nom,
+      unite_nom: row.unite_nom,
+      categorie_nom: row.categorie_nom ?? null,
+      famille_nom: row.famille_nom ?? null,
+      categorie_produit_id: row.categorie_produit_id ?? null,
+      categorie_produit_nom: row.categorie_produit_nom ?? null,
+    })));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+// PUT /api/articles-valorisables/:id/categorie  { categorie_produit_id }
+const setArticleCategorieProduit = async (req, res) => {
+  try {
+    const cid = clientId(req);
+    const articleId = parseInt(req.params.id);
+    const categorieProduitId = req.body.categorie_produit_id ?? req.body.categorieProduitId ?? null;
+    const r = await pool.query(
+      `UPDATE articles SET categorie_produit_id = $1 WHERE id = $2 AND client_id = $3 RETURNING id`,
+      [categorieProduitId || null, articleId, cid]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: 'Article introuvable' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
 module.exports = {
+  listArticlesValorisables, setArticleCategorieProduit,
   listPrestataires, createPrestataire, updatePrestataire, deletePrestataire,
   toggleModuleVente,
   listActivitePrestataires, addActivitePrestataire, updateActivitePrestataire, removeActivitePrestataire,

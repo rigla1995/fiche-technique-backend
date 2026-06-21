@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, requireSuperAdmin, requireEntreprise } = require('../middleware/auth');
+const { authenticate, requireSuperAdmin, requireEntreprise, requireClient } = require('../middleware/auth');
 const c = require('../controllers/ventesController');
 
 // ── Admin routes ─────────────────────────────────────────────────────────────
@@ -182,6 +182,8 @@ router.delete('/activite-prestataires/:id', authenticate, requireEntreprise, c.r
  *       200: { description: Article upserted }
  */
 router.get('/articles-valorises', authenticate, requireEntreprise, c.getArticlesValorisés);
+router.get('/articles-valorisables', authenticate, requireClient, c.listArticlesValorisables);
+router.put('/articles-valorisables/:id/categorie', authenticate, requireClient, c.setArticleCategorieProduit);
 router.get('/articles-vendables', authenticate, requireEntreprise, c.listArticlesVendables);
 router.get('/articles-vendables/historique-config', authenticate, requireEntreprise, c.getPrixHistoriqueConfig);
 router.get('/articles-vendables/historique-config/export-excel', authenticate, requireEntreprise, c.exportPrixHistoriqueConfigExcel);
