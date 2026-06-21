@@ -85,52 +85,49 @@ const costSubquery = (alias = 'p') => `
 
 const list = async (req, res) => {
   const { activiteId, type, laboId } = req.query;
-  const isLaboGerant = req.user.role === 'gerant' && req.user.gerant_activite_type === 'labo';
-  const isActiviteGerant = req.user.role === 'gerant' && req.user.gerant_activite_type === 'activite';
+  const isGerant = req.user.role === 'gerant';
+
+  // Périmètre gérant : valider l'activité / le labo demandé
+  if (isGerant) {
+    if (activiteId && !(req.user.gerantActiviteIds || []).includes(Number(activiteId))) {
+      return res.status(403).json({ message: 'Accès non autorisé à cette activité' });
+    }
+    if (laboId && !(req.user.gerantLaboIds || []).includes(Number(laboId))) {
+      return res.status(403).json({ message: 'Accès non autorisé à ce labo' });
+    }
+  }
 
   try {
     let whereExtra = '';
     const params = [req.user.gerant_parent_id || req.user.id];
 
-    // For non-gérant users: apply standard query filters
-    if (!isLaboGerant && !isActiviteGerant) {
-      if (type === 'vendable' || type === 'utilisable') {
-        params.push(type);
-        whereExtra += ` AND p.type = $${params.length}`;
-      }
-      if (activiteId) {
-        params.push(activiteId);
-        const aIdx = params.length;
-        if (type === 'vendable') {
-          // Vendable products: own activité OR affecté from catalogue; exclude produit_activite_stock (stock ingredients only)
-          whereExtra += ` AND (p.activite_id = $${aIdx} OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${aIdx}))`;
-        } else {
-          whereExtra += ` AND (p.activite_id = $${aIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${aIdx}) OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${aIdx}))`;
-        }
-      }
-      if (laboId) {
-        params.push(laboId);
-        whereExtra += ` AND p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${params.length})`;
+    if (type === 'vendable' || type === 'utilisable') {
+      params.push(type);
+      whereExtra += ` AND p.type = $${params.length}`;
+    }
+    if (activiteId) {
+      params.push(activiteId);
+      const aIdx = params.length;
+      if (type === 'vendable') {
+        whereExtra += ` AND (p.activite_id = $${aIdx} OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${aIdx}))`;
+      } else {
+        whereExtra += ` AND (p.activite_id = $${aIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${aIdx}) OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${aIdx}))`;
       }
     }
-
-    // Gérant labo: utilisable products scoped to their labo's activités
-    if (isLaboGerant) {
-      whereExtra += ` AND p.type = 'utilisable'`;
-      params.push(req.user.gerant_activite_id);
-      const laboIdx = params.length;
-      whereExtra += ` AND p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${laboIdx})`;
+    if (laboId) {
+      params.push(laboId);
+      whereExtra += ` AND p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = $${params.length})`;
     }
 
-    // Gérant activité: restrict to their specific activité only
-    if (isActiviteGerant) {
-      if (type === 'vendable' || type === 'utilisable') {
-        params.push(type);
-        whereExtra += ` AND p.type = $${params.length}`;
-      }
-      params.push(req.user.gerant_activite_id);
-      const gIdx = params.length;
-      whereExtra += ` AND (p.activite_id = $${gIdx} OR EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = $${gIdx}) OR EXISTS (SELECT 1 FROM produit_activite_affectation paa WHERE paa.produit_id = p.id AND paa.activite_id = $${gIdx}))`;
+    // Gérant sans activité/labo précisé : limiter à son périmètre assigné
+    if (isGerant && !activiteId && !laboId) {
+      const actIds = (req.user.gerantActiviteIds || []);
+      const laboIds = (req.user.gerantLaboIds || []);
+      params.push(actIds.length ? actIds : [-1]);
+      const aIdx = params.length;
+      params.push(laboIds.length ? laboIds : [-1]);
+      const lIdx = params.length;
+      whereExtra += ` AND (p.activite_id = ANY($${aIdx}::int[]) OR p.activite_id IN (SELECT a.id FROM activites a WHERE a.labo_id = ANY($${lIdx}::int[])))`;
     }
 
     // When filtering by activite, compute isStockIngredient from per-activité table

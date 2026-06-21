@@ -61,13 +61,14 @@ const list = async (req, res) => {
       // - gérant: scoped to their specific activité's domaine
       // - indép client: uses client_domaines (domains assigned by super admin at account creation)
       // - entreprise client: uses any activité's domaine_id via profil_entreprise
-      const domaineScope = req.user.role === 'gerant' && req.user.gerant_activite_id
+      const gerantActIds = (req.user.gerantActiviteIds || []).map(Number).filter(Number.isFinite);
+      const domaineScope = req.user.role === 'gerant' && gerantActIds.length
         ? `AND (
              NOT EXISTS (SELECT 1 FROM ingredient_domaines WHERE ingredient_id = i.id)
              OR EXISTS (
                SELECT 1 FROM ingredient_domaines id_m
                JOIN activites a ON a.domaine_id = id_m.domaine_id
-               WHERE id_m.ingredient_id = i.id AND a.id = ${parseInt(req.user.gerant_activite_id)}
+               WHERE id_m.ingredient_id = i.id AND a.id = ANY(ARRAY[${gerantActIds.join(',')}]::int[])
              )
            )`
         : `AND (

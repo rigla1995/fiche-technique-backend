@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
+const { scopeGerantActivite } = require('../middleware/auth');
 const { computeStockCourant } = require('../utils/stockUtils');
 const { buildHistoriquePertesPdf, buildLaboHistoriquePertesPdf } = require('../services/histoPdfService');
 
@@ -247,11 +248,11 @@ const deleteClientPerte = async (req, res) => {
 // ── Entreprise — list (all activités) ────────────────────────────────────────
 
 const listEntreprisePertes = async (req, res) => {
-  // Enforce activiteId scope for gérant accounts
-  if (req.user.role === 'gerant' && req.user.gerant_activite_id) {
-    req.query.activiteId = String(req.user.gerant_activite_id);
+  // Enforce activité scope for gérant accounts (multi-affectations)
+  if (req.user.role === 'gerant') {
+    if (!scopeGerantActivite(req, res)) return;
   }
-  const { activiteId, dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
+  const { activiteId, activiteIds, dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
 
   // Verify company ownership
   const companyCheck = await pool.query(
@@ -265,6 +266,7 @@ const listEntreprisePertes = async (req, res) => {
   const wheres = [`a.entreprise_id = $1`];
 
   if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
+  else if (activiteIds) { params.push(activiteIds.split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
   if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
   if (dateFin)   { params.push(dateFin);   wheres.push(`p.date_perte <= $${params.length}`); }
   if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
@@ -534,7 +536,8 @@ const exportClientPertes = async (req, res) => {
 // ── Entreprise — export Excel ─────────────────────────────────────────────────
 
 const exportEntreprisePertes = async (req, res) => {
-  const { activiteId, dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds } = req.query;
+  if (req.user.role === 'gerant') { if (!scopeGerantActivite(req, res)) return; }
+  const { activiteId, activiteIds, dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds } = req.query;
 
   const companyCheck = await pool.query(
     `SELECT pe.id FROM profil_entreprise pe WHERE pe.client_id = $1`,
@@ -547,6 +550,7 @@ const exportEntreprisePertes = async (req, res) => {
   const wheres = [`a.entreprise_id = $1`];
 
   if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
+  else if (activiteIds) { params.push(activiteIds.split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
   if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
   if (dateFin)   { params.push(dateFin);   wheres.push(`p.date_perte <= $${params.length}`); }
   if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
@@ -830,7 +834,8 @@ const exportClientPertesPdf = async (req, res) => {
 // ── Entreprise pertes — export PDF ────────────────────────────────────────────
 
 const exportEntreprisePertesPdf = async (req, res) => {
-  const { activiteId, dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
+  if (req.user.role === 'gerant') { if (!scopeGerantActivite(req, res)) return; }
+  const { activiteId, activiteIds, dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
   const companyCheck = await pool.query(
     `SELECT pe.id FROM profil_entreprise pe WHERE pe.client_id = $1`,
     [req.user.gerant_parent_id || req.user.id]
@@ -841,6 +846,7 @@ const exportEntreprisePertesPdf = async (req, res) => {
   const params = [entrepriseId];
   const wheres = [`a.entreprise_id = $1`];
   if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
+  else if (activiteIds) { params.push(activiteIds.split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
   if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
   if (dateFin)   { params.push(dateFin);   wheres.push(`p.date_perte <= $${params.length}`); }
   if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }

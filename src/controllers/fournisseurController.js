@@ -8,46 +8,18 @@ const getEntrepriseId = async (clientId) => {
 const listFournisseurs = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   const isGerant = req.user.role === 'gerant';
-  const gerantActiviteId = req.user.gerant_activite_id;
-  const gerantActiviteType = req.user.gerant_activite_type;
   try {
     const entrepriseId = await getEntrepriseId(clientId);
     if (!entrepriseId) return res.json([]);
 
-    // Gérant scoping: only show fournisseurs for their specific activité or labo
-    if (isGerant && gerantActiviteId) {
-      let scopedResult;
-      if (gerantActiviteType === 'labo') {
-        scopedResult = await pool.query(
-          `SELECT f.id, f.nom, f.adresse, f.telephone, f.is_labo, f.created_at,
-                  ARRAY[${gerantActiviteId}]::integer[] as activite_ids,
-                  ARRAY[${gerantActiviteId}]::integer[] as labo_ids,
-                  0 as appro_count, '[]'::json as appro_by_activite
-           FROM fournisseurs f
-           JOIN fournisseur_labos fl ON fl.fournisseur_id = f.id
-           WHERE f.entreprise_id = $1 AND f.nom != 'AUTO' AND fl.labo_id = $2
-           ORDER BY f.nom`,
-          [entrepriseId, gerantActiviteId]
-        );
-      } else {
-        scopedResult = await pool.query(
-          `SELECT f.id, f.nom, f.adresse, f.telephone, f.is_labo, f.created_at,
-                  ARRAY[${gerantActiviteId}]::integer[] as activite_ids,
-                  '[]'::json as labo_ids,
-                  0 as appro_count, '[]'::json as appro_by_activite
-           FROM fournisseurs f
-           JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id
-           WHERE f.entreprise_id = $1 AND f.nom != 'AUTO' AND fa.activite_id = $2
-           ORDER BY f.nom`,
-          [entrepriseId, gerantActiviteId]
-        );
-      }
-      return res.json(scopedResult.rows.map((r) => ({
-        id: r.id, nom: r.nom, adresse: r.adresse, telephone: r.telephone,
-        isLabo: r.is_labo ?? false, createdAt: r.created_at,
-        activiteIds: r.activite_ids ?? [], laboIds: r.labo_ids ?? [],
-        hasAppros: false, approCount: 0, approByActivite: [],
-      })));
+    const params = [entrepriseId];
+    let gerantClause = '';
+    if (isGerant) {
+      const actIds = (req.user.gerantActiviteIds || []);
+      const laboIds = (req.user.gerantLaboIds || []);
+      params.push(actIds.length ? actIds : [-1]); const _ai = params.length;
+      params.push(laboIds.length ? laboIds : [-1]); const _li = params.length;
+      gerantClause = ` AND (EXISTS (SELECT 1 FROM fournisseur_activites fag WHERE fag.fournisseur_id = f.id AND fag.activite_id = ANY($${_ai}::int[])) OR EXISTS (SELECT 1 FROM fournisseur_labos flg WHERE flg.fournisseur_id = f.id AND flg.labo_id = ANY($${_li}::int[])))`;
     }
 
     const result = await pool.query(
@@ -73,10 +45,10 @@ const listFournisseurs = async (req, res) => {
        FROM fournisseurs f
        LEFT JOIN fournisseur_activites fa ON fa.fournisseur_id = f.id
        LEFT JOIN fournisseur_labos fl ON fl.fournisseur_id = f.id
-       WHERE f.entreprise_id = $1 AND f.nom != 'AUTO'
+       WHERE f.entreprise_id = $1 AND f.nom != 'AUTO'${gerantClause}
        GROUP BY f.id
        ORDER BY f.is_labo DESC, f.nom`,
-      [entrepriseId]
+      params
     );
     res.json(result.rows.map((r) => ({
       id: r.id,
@@ -100,6 +72,10 @@ const listFournisseurs = async (req, res) => {
 const getFournisseursForActivite = async (req, res) => {
   const { activiteId } = req.params;
   const clientId = req.user.gerant_parent_id || req.user.id;
+  // Périmètre gérant : interdire l'accès à une activité non affectée
+  if (req.user.role === 'gerant' && !(req.user.gerantActiviteIds || []).includes(Number(activiteId))) {
+    return res.status(403).json({ message: 'Accès non autorisé à cette activité' });
+  }
   try {
     const check = await pool.query(
       `SELECT a.id FROM activites a
@@ -199,10 +175,15 @@ const updateFournisseur = async (req, res) => {
     if (check.rows[0].is_labo) return res.status(403).json({ message: 'Ce fournisseur est géré automatiquement par le labo.' });
 
     // Gérant: verify this fournisseur belongs to their activité/labo
-    if (isGerant && gerantActiviteId) {
-      const scopeCheck = gerantActiviteType === 'labo'
-        ? await pool.query('SELECT fournisseur_id FROM fournisseur_labos WHERE fournisseur_id = $1 AND labo_id = $2', [id, gerantActiviteId])
-        : await pool.query('SELECT fournisseur_id FROM fournisseur_activites WHERE fournisseur_id = $1 AND activite_id = $2', [id, gerantActiviteId]);
+    if (isGerant) {
+      const actIds = req.user.gerantActiviteIds || [];
+      const laboIds = req.user.gerantLaboIds || [];
+      const scopeCheck = await pool.query(
+        `SELECT 1 FROM fournisseurs f WHERE f.id = $1 AND (
+           EXISTS (SELECT 1 FROM fournisseur_activites fa WHERE fa.fournisseur_id = f.id AND fa.activite_id = ANY($2::int[]))
+           OR EXISTS (SELECT 1 FROM fournisseur_labos fl WHERE fl.fournisseur_id = f.id AND fl.labo_id = ANY($3::int[])))`,
+        [id, actIds.length ? actIds : [-1], laboIds.length ? laboIds : [-1]]
+      );
       if (scopeCheck.rows.length === 0) return res.status(403).json({ message: 'Accès refusé' });
     }
 
@@ -252,10 +233,15 @@ const deleteFournisseur = async (req, res) => {
     if (check.rows[0].is_labo) return res.status(403).json({ message: 'Ce fournisseur est géré automatiquement par le labo.' });
 
     // Gérant: verify this fournisseur belongs to their activité/labo
-    if (isGerant && gerantActiviteId) {
-      const scopeCheck = gerantActiviteType === 'labo'
-        ? await pool.query('SELECT fournisseur_id FROM fournisseur_labos WHERE fournisseur_id = $1 AND labo_id = $2', [id, gerantActiviteId])
-        : await pool.query('SELECT fournisseur_id FROM fournisseur_activites WHERE fournisseur_id = $1 AND activite_id = $2', [id, gerantActiviteId]);
+    if (isGerant) {
+      const actIds = req.user.gerantActiviteIds || [];
+      const laboIds = req.user.gerantLaboIds || [];
+      const scopeCheck = await pool.query(
+        `SELECT 1 FROM fournisseurs f WHERE f.id = $1 AND (
+           EXISTS (SELECT 1 FROM fournisseur_activites fa WHERE fa.fournisseur_id = f.id AND fa.activite_id = ANY($2::int[]))
+           OR EXISTS (SELECT 1 FROM fournisseur_labos fl WHERE fl.fournisseur_id = f.id AND fl.labo_id = ANY($3::int[])))`,
+        [id, actIds.length ? actIds : [-1], laboIds.length ? laboIds : [-1]]
+      );
       if (scopeCheck.rows.length === 0) return res.status(403).json({ message: 'Accès refusé' });
     }
     await pool.query('DELETE FROM fournisseurs WHERE id = $1', [id]);
