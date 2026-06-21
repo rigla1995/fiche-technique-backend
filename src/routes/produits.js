@@ -396,11 +396,13 @@ router.post('/', authenticate, requireClient, [
     return true;
   }),
   body('type').optional().isIn(['utilisable', 'vendable']),
+  body('categorieProduitId').optional({ nullable: true }).isInt({ min: 1 }),
 ], create);
 router.put('/:id', authenticate, requireClient, [
   body('name').optional().trim().notEmpty(),
   body('nom').optional().trim().notEmpty(),
   body('type').optional().isIn(['utilisable', 'vendable']),
+  body('categorieProduitId').optional({ nullable: true }).isInt({ min: 1 }),
 ], update);
 router.delete('/:id', authenticate, requireClient, remove);
 
