@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
+const { scopeGerantActivite } = require('../middleware/auth');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { buildHistoriqueApproPdf } = require('../services/histoPdfService');
 const { upsertFacture } = require('../services/facturesService');
@@ -1059,10 +1060,9 @@ const getHistoryEntreprise = async (req, res) => {
 // ─── Historique Approvisionnement ─────────────────────────────────────────────
 
 const getHistoriqueAppro = async (req, res) => {
-  // Enforce activiteId scope for gérant accounts
-  if (req.user.role === 'gerant' && req.user.gerant_activite_id) {
-    req.query.activiteId = String(req.user.gerant_activite_id);
-    delete req.query.activiteIds;
+  // Enforce activité scope for gérant accounts (multi-affectations)
+  if (req.user.role === 'gerant') {
+    if (!scopeGerantActivite(req, res)) return;
     delete req.query.entType;
   }
   const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId, limit, offset } = req.query;

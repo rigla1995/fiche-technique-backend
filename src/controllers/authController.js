@@ -201,6 +201,8 @@ const me = async (req, res) => {
       gerantActiviteId: u.gerant_activite_id,
       gerantActiviteType: u.gerant_activite_type,
       gerantActiviteNom,
+      gerantActiviteIds: req.user.gerantActiviteIds || [],
+      gerantLaboIds: req.user.gerantLaboIds || [],
     } : {};
 
     res.json({

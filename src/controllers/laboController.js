@@ -106,14 +106,22 @@ const listLabos = async (req, res) => {
       [clientId]
     );
     if (peRes.rows.length === 0) return res.json([]);
+    // Gérant : restreindre aux labos affectés
+    const params = [peRes.rows[0].id];
+    let gerantClause = '';
+    if (req.user.role === 'gerant') {
+      const laboIds = req.user.gerantLaboIds || [];
+      params.push(laboIds.length ? laboIds : [-1]);
+      gerantClause = ` AND l.id = ANY($${params.length}::int[])`;
+    }
     const result = await pool.query(
       `SELECT l.*, COUNT(fl.fournisseur_id)::int AS fournisseur_count
        FROM labos l
        LEFT JOIN fournisseur_labos fl ON fl.labo_id = l.id
-       WHERE l.entreprise_id = $1
+       WHERE l.entreprise_id = $1${gerantClause}
        GROUP BY l.id
        ORDER BY l.nom`,
-      [peRes.rows[0].id]
+      params
     );
     res.json(result.rows.map((r) => ({ ...mapLabo(r), fournisseurCount: r.fournisseur_count })));
   } catch (err) {

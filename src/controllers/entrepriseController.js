@@ -74,6 +74,14 @@ const listActivites = async (req, res) => {
       [clientId]
     );
     if (entreprise.rows.length === 0) return res.json([]);
+    // Gérant : restreindre aux activités affectées
+    const params = [entreprise.rows[0].id];
+    let gerantClause = '';
+    if (req.user.role === 'gerant') {
+      const actIds = req.user.gerantActiviteIds || [];
+      params.push(actIds.length ? actIds : [-1]);
+      gerantClause = ` AND a.id = ANY($${params.length}::int[])`;
+    }
     const result = await pool.query(
       `SELECT a.*, l.nom AS labo_nom, l.referent_tel AS labo_tel, l.adresse AS labo_adresse,
               CASE WHEN a.labo_id IS NOT NULL THEN COALESCE(lis.cnt, 0)
@@ -84,8 +92,8 @@ const listActivites = async (req, res) => {
               ON ais.activite_id = a.id
        LEFT JOIN (SELECT labo_id, COUNT(*) AS cnt FROM labo_ingredient_selections GROUP BY labo_id) lis
               ON lis.labo_id = a.labo_id
-       WHERE a.entreprise_id = $1 ORDER BY a.created_at ASC`,
-      [entreprise.rows[0].id]
+       WHERE a.entreprise_id = $1${gerantClause} ORDER BY a.created_at ASC`,
+      params
     );
     res.json(result.rows.map(mapActivite));
   } catch (err) {

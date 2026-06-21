@@ -36,10 +36,30 @@ const authenticate = async (req, res, next) => {
     }
 
     const row = result.rows[0];
+
+    // Charger les affectations (multi-activités / multi-labos) pour les gérants
+    let gerantActiviteIds = [];
+    let gerantLaboIds = [];
+    if (row.role === 'gerant') {
+      const aff = await pool.query(
+        `SELECT activite_id, labo_id FROM gerant_affectations WHERE gerant_id = $1`,
+        [row.id]
+      );
+      gerantActiviteIds = aff.rows.filter(r => r.activite_id != null).map(r => Number(r.activite_id));
+      gerantLaboIds = aff.rows.filter(r => r.labo_id != null).map(r => Number(r.labo_id));
+      // Compat ascendante : si pas encore d'affectations, retomber sur l'affectation unique
+      if (gerantActiviteIds.length === 0 && gerantLaboIds.length === 0 && row.gerant_activite_id) {
+        if (row.gerant_activite_type === 'labo') gerantLaboIds = [Number(row.gerant_activite_id)];
+        else gerantActiviteIds = [Number(row.gerant_activite_id)];
+      }
+    }
+
     req.user = {
       ...row,
       compteType: row.compte_type,
       modeCompte: row.mode_compte || 'actif',
+      gerantActiviteIds,
+      gerantLaboIds,
     };
     next();
   } catch (err) {
@@ -113,7 +133,44 @@ const requireModuleVente = async (req, res, next) => {
   }
 };
 
+// ─── Helpers de périmètre gérant ──────────────────────────────────────────────
+// Un gérant n'a accès qu'aux activités / labos qui lui sont affectés.
+const gerantAllowsActivite = (req, activiteId) => {
+  if (req.user.role !== 'gerant') return true;
+  return (req.user.gerantActiviteIds || []).includes(Number(activiteId));
+};
+const gerantAllowsLabo = (req, laboId) => {
+  if (req.user.role !== 'gerant') return true;
+  return (req.user.gerantLaboIds || []).includes(Number(laboId));
+};
+
+// Restreint req.query.activiteId au périmètre du gérant.
+// - activiteId fourni → doit appartenir au périmètre (sinon 403).
+// - sinon, 1 seule activité → on la force ; plusieurs → req.query.activiteIds = liste.
+// Retourne false si l'accès est refusé (la réponse 403 a déjà été envoyée).
+const scopeGerantActivite = (req, res) => {
+  if (req.user.role !== 'gerant') return true;
+  const ids = req.user.gerantActiviteIds || [];
+  if (req.query.activiteId) {
+    if (!ids.includes(Number(req.query.activiteId))) {
+      res.status(403).json({ message: 'Accès non autorisé à cette activité' });
+      return false;
+    }
+    delete req.query.activiteIds;
+    return true;
+  }
+  if (ids.length > 1) {
+    req.query.activiteIds = ids.join(',');
+  } else {
+    // 0 ou 1 activité : on force (−1 = aucune correspondance → résultat vide)
+    req.query.activiteId = ids.length === 1 ? String(ids[0]) : '-1';
+    delete req.query.activiteIds;
+  }
+  return true;
+};
+
 module.exports = {
   authenticate, requireSuperAdmin, requireClient, requireEntreprise,
   requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
+  gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
 };
