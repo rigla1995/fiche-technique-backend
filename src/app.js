@@ -41,6 +41,10 @@ const { authenticate, requireWriteAccess } = require('./middleware/auth');
 
 const app = express();
 
+// Derrière le reverse proxy (Coolify/nginx) : faire confiance au 1er hop
+// pour que req.ip / X-Forwarded-For soient corrects (requis par express-rate-limit).
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 
