@@ -4,6 +4,12 @@ const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { sendInviteEmail, generateInviteToken } = require('../services/emailService');
 
+// Mot de passe robuste : ≥8 car., 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial.
+const isStrongPassword = (v) =>
+  typeof v === 'string' && v.length >= 8 &&
+  /[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v) && /[@$!%*?&_\-#]/.test(v);
+const WEAK_PWD_MSG = 'Mot de passe trop faible : minimum 8 caractères, avec majuscule, minuscule, chiffre et caractère spécial.';
+
 const login = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -279,6 +285,9 @@ const updateProfile = async (req, res) => {
       if (!currentPassword) {
         return res.status(400).json({ message: 'Mot de passe actuel requis pour changer le mot de passe' });
       }
+      if (!isStrongPassword(newPassword)) {
+        return res.status(400).json({ message: WEAK_PWD_MSG });
+      }
       const isValid = await bcrypt.compare(currentPassword, user.mot_de_passe);
       if (!isValid) {
         return res.status(400).json({ message: 'Mot de passe actuel incorrect' });
@@ -362,8 +371,8 @@ const verifyInviteToken = async (req, res) => {
 
 const acceptInvite = async (req, res) => {
   const { token, password } = req.body;
-  if (!token || !password || password.length < 8)
-    return res.status(400).json({ message: 'Token et mot de passe (8 caractères min) requis' });
+  if (!token) return res.status(400).json({ message: 'Token requis' });
+  if (!isStrongPassword(password)) return res.status(400).json({ message: WEAK_PWD_MSG });
 
   try {
     const result = await pool.query(
