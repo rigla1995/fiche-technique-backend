@@ -4,7 +4,18 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY || 're_test_key');
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
-const APP_NAME = process.env.APP_NAME || 'Fiche Technique';
+const APP_NAME = process.env.APP_NAME || 'LabFlow';
+
+// Bloc logo de marque pour les en-têtes d'emails (diamant dégradé + wordmark LabFlow).
+// Compatible clients mail (table + styles inline ; le diamant reste un carré coloré sous Outlook).
+const BRAND_LOGO = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 2px;"><tr>
+        <td style="padding-right:12px;vertical-align:middle;">
+          <div style="width:28px;height:28px;background:linear-gradient(135deg,#0ea5e9,#6366f1 55%,#a855f7);border-radius:8px;transform:rotate(45deg);box-shadow:0 4px 14px rgba(99,102,241,0.45);"></div>
+        </td>
+        <td style="vertical-align:middle;">
+          <span style="font-size:25px;font-weight:600;letter-spacing:1.5px;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Lab<span style="color:rgba(255,255,255,0.6);">Flow</span></span>
+        </td>
+      </tr></table>`;
 
 const sendInviteEmail = async ({ to, nom, token, role }) => {
   const inviteUrl = `${APP_URL}/invite/${token}`;
@@ -17,8 +28,8 @@ const sendInviteEmail = async ({ to, nom, token, role }) => {
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:32px 40px;">
-      <h1 style="margin:0;color:#fff;font-size:1.4rem;font-weight:800;letter-spacing:-0.02em;">${APP_NAME}</h1>
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:32px 40px;border-bottom:4px solid #d97706">
+      ${BRAND_LOGO}
     </div>
     <div style="padding:36px 40px;">
       <h2 style="margin:0 0 12px;color:#111827;font-size:1.15rem;font-weight:700;">Bonjour ${nom},</h2>
@@ -72,8 +83,8 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
-    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;">
-      <h1 style="margin:0 0 6px;color:#fff;font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;">${APP_NAME}</h1>
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ${BRAND_LOGO}
       <p style="margin:0;color:#c7d2fe;font-size:0.85rem;">Plateforme de gestion des fiches techniques</p>
     </div>
     <div style="padding:40px 48px;">
@@ -135,8 +146,8 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl }) => {
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
-    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;">
-      <h1 style="margin:0 0 6px;color:#fff;font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;">${APP_NAME}</h1>
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ${BRAND_LOGO}
       <p style="margin:0;color:#c7d2fe;font-size:0.85rem;">Signature électronique de votre contrat</p>
     </div>
     <div style="padding:40px 48px;">
@@ -219,8 +230,8 @@ const sendAvenantEmail = async ({
   <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
 
     <!-- Header -->
-    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;">
-      <h1 style="margin:0 0 4px;color:#fff;font-size:1.4rem;font-weight:800;letter-spacing:-0.02em;">${APP_NAME}</h1>
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ${BRAND_LOGO}
       <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Contrat Avenant — Ajout de capacité</p>
     </div>
 
