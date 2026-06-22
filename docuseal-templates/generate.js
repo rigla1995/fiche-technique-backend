@@ -194,12 +194,17 @@ function buildContrat(outPath) {
   txt("Frais d'activation (onboarding), payables une fois", ML + 8, y + 9, 8, false, '#374151');
   fieldTag('Montant onboarding', RXcol(ctx), y + 6, 110);
   y += 28;
-  // Mensualité
+  // Mensualité applicable (promo incluse le cas échéant)
   fill(ML, y, CW, 34, '#dbeafe'); hline(y, '#93c5fd'); hline(y + 34, '#1d4ed8');
-  txt('Abonnement mensuel récurrent', ML + 8, y + 11, 9, true, '#1e40af');
+  txt('Mensualité applicable (promotion incluse)', ML + 8, y + 11, 9, true, '#1e40af');
   fieldTag('Montant mensuel', RXcol(ctx), y + 9, 110);
-  y += 42;
-  const payTxt = `Le Client s'acquitte des frais d'activation à la souscription, puis de la mensualité par avance au début de chaque période mensuelle. Tout retard de paiement supérieur à 15 jours peut entraîner la suspension de l'accès au service. Les montants sont exprimés en dinars tunisiens (DT).`;
+  y += 40;
+  // Conditions particulières / promotion (résumé complet : prix de base, durée, date de reprise)
+  fill(ML, y, CW, 36, '#fffbeb'); hline(y, '#fde68a'); hline(y + 36, '#fde68a');
+  txt('CONDITIONS PARTICULIÈRES', ML + 8, y + 7, 7, true, '#b45309');
+  fieldTag('Détail promotion', ML + 8, y + 18, CW - 16);
+  y += 44;
+  const payTxt = `Le Client s'acquitte des frais d'activation à la souscription, puis de la mensualité par avance au début de chaque période mensuelle. En cas de promotion, le tarif promotionnel s'applique pour la durée indiquée ci-dessus, puis le tarif de base reprend automatiquement. Tout retard de paiement supérieur à 15 jours peut entraîner la suspension de l'accès au service. Les montants sont exprimés en dinars tunisiens (DT).`;
   const pH = doc.fontSize(8).font('Helvetica').heightOfString(payTxt, { width: CW - 12 }) + 4;
   doc.fontSize(8).font('Helvetica').fillColor('#475569').text(payTxt, ML, y, { width: CW - 12, lineGap: 2 });
   y += pH + 12;
