@@ -39,7 +39,8 @@ async function generalChat(history, userMessage, contextLine, clientId) {
   const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   const systemPrompt = `Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ${today}.
 Contexte client : ${contextLine}
-Réponds en français (ou darija), sois concis et professionnel. 4-6 lignes max.`;
+Réponds en français (ou darija), sois concis et professionnel. 4-6 lignes max.
+Pour toute question conceptuelle / définition / conseil (fiche technique, food cost, pertes…), appelle d'abord l'outil search_knowledge_base et appuie-toi uniquement dessus. N'invente jamais une définition métier.`;
 
   const messages = [
     { role: 'system', content: systemPrompt },

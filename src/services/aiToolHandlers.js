@@ -241,17 +241,41 @@ async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, d
   return rows;
 }
 
+// ── Base de connaissances LabFlow (RAG simple, recherche par mots-clés) ────────
+const normalizeKb = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+async function toolSearchKnowledge(toolInput) {
+  const query = (toolInput?.query || '').trim();
+  const { rows } = await pool.query('SELECT titre, contenu, mots_cles FROM ai_knowledge_base WHERE actif = true');
+  if (rows.length === 0) return { results: [], note: 'Base de connaissances vide.' };
+  const terms = normalizeKb(query).split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+  const scored = rows.map((r) => {
+    const titreN = normalizeKb(r.titre);
+    const hay = normalizeKb(`${r.titre} ${r.mots_cles || ''} ${r.contenu}`);
+    let score = 0;
+    for (const t of terms) {
+      if (hay.includes(t)) score += 1;
+      if (titreN.includes(t)) score += 2; // boost si le terme est dans le titre
+    }
+    return { titre: r.titre, contenu: r.contenu, score };
+  }).filter((r) => r.score > 0).sort((a, b) => b.score - a.score).slice(0, 4);
+  if (scored.length === 0) {
+    return { results: [], disponibles: rows.map((r) => r.titre).slice(0, 25) };
+  }
+  return { results: scored.map(({ titre, contenu }) => ({ titre, contenu })) };
+}
+
 async function executeToolCall(clientId, toolName, toolInput) {
   try {
     switch (toolName) {
-      case 'get_client_info':   return await toolGetClientInfo(clientId);
-      case 'get_stock':         return await toolGetStock(clientId, toolInput);
-      case 'get_appros':        return await toolGetAppros(clientId, toolInput);
-      case 'get_pertes':        return await toolGetPertes(clientId, toolInput);
-      case 'get_inventaires':   return await toolGetInventaires(clientId, toolInput);
-      case 'get_transferts':    return await toolGetTransferts(clientId, toolInput);
-      case 'ask_clarification': return { __clarification: true, question: toolInput.question, options: toolInput.options };
-      default:                  return { error: `Outil inconnu: ${toolName}` };
+      case 'get_client_info':      return await toolGetClientInfo(clientId);
+      case 'get_stock':            return await toolGetStock(clientId, toolInput);
+      case 'get_appros':           return await toolGetAppros(clientId, toolInput);
+      case 'get_pertes':           return await toolGetPertes(clientId, toolInput);
+      case 'get_inventaires':      return await toolGetInventaires(clientId, toolInput);
+      case 'get_transferts':       return await toolGetTransferts(clientId, toolInput);
+      case 'search_knowledge_base': return await toolSearchKnowledge(toolInput);
+      case 'ask_clarification':    return { __clarification: true, question: toolInput.question, options: toolInput.options };
+      default:                     return { error: `Outil inconnu: ${toolName}` };
     }
   } catch (err) {
     return { error: err.message };
@@ -343,6 +367,17 @@ const TOOLS_ANTHROPIC = [
         limit: { type: 'integer' },
       },
       required: [],
+    },
+  },
+  {
+    name: 'search_knowledge_base',
+    description: "Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (fiche technique, food cost, coût matière, stock, approvisionnements, pertes, inventaire, transferts, articles valorisés, produits vendables/utilisables, seuil minimum, TVA, marge, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Mots-clés ou question du concept à rechercher (ex: "fiche technique", "comment est calculé le food cost")' },
+      },
+      required: ['query'],
     },
   },
   {

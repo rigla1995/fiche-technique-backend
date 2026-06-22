@@ -169,4 +169,11 @@ router.post('/clients', authenticate, requireSuperAdmin, validateCreate, create)
 router.put('/clients/:id', authenticate, requireSuperAdmin, validateUpdate, update);
 router.delete('/clients/:id', authenticate, requireSuperAdmin, remove);
 
+// ── Base de connaissances des agents IA ───────────────────────────────────────
+const { list: kbList, create: kbCreate, update: kbUpdate, remove: kbRemove } = require('../controllers/aiKnowledgeController');
+router.get('/knowledge-base', authenticate, requireSuperAdmin, kbList);
+router.post('/knowledge-base', authenticate, requireSuperAdmin, kbCreate);
+router.put('/knowledge-base/:id', authenticate, requireSuperAdmin, kbUpdate);
+router.delete('/knowledge-base/:id', authenticate, requireSuperAdmin, kbRemove);
+
 module.exports = router;
