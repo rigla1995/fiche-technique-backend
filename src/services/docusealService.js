@@ -66,27 +66,43 @@ const createSubmission = async ({
     ...extraFields,
   ].filter((f) => f.default_value !== '' && f.default_value !== '—');
 
-  const subRes = await fetch(`${baseUrl}/api/submissions`, {
-    method: 'POST',
-    headers: {
-      'X-Auth-Token': token,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      template_id: templateId,
-      send_email: false,
-      submitters: [
-        { role: 'Première partie', email: clientEmail, name: clientName, fields },
-      ],
-    }),
-  });
+  // Envoi résilient : si un champ n'existe pas dans le template Docuseal (422 "Unknown field"),
+  // on le retire et on réessaie — la soumission part même si le template est légèrement
+  // en retard sur le code (ex. champ "Détail promotion" pas encore ajouté au template).
+  let activeFields = fields;
+  let subData = null;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const subRes = await fetch(`${baseUrl}/api/submissions`, {
+      method: 'POST',
+      headers: {
+        'X-Auth-Token': token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        template_id: templateId,
+        send_email: false,
+        submitters: [
+          { role: 'Première partie', email: clientEmail, name: clientName, fields: activeFields },
+        ],
+      }),
+    });
 
-  if (!subRes.ok) {
+    if (subRes.ok) { subData = await subRes.json(); break; }
+
     const errText = await subRes.text();
+    const m = errText.match(/Unknown field:\s*(.+?)"/);
+    if (subRes.status === 422 && m) {
+      const bad = m[1].trim();
+      const filtered = activeFields.filter((f) => f.name !== bad);
+      if (filtered.length < activeFields.length) {
+        console.warn(`[docuseal] champ absent du template, ignoré : "${bad}"`);
+        activeFields = filtered;
+        continue;
+      }
+    }
     throw new Error(`Docuseal submission error ${subRes.status}: ${errText}`);
   }
-
-  const subData = await subRes.json();
+  if (!subData) throw new Error('Docuseal submission: échec après filtrage des champs inconnus');
   const firstSubmitter = Array.isArray(subData) ? subData[0] : subData?.submitters?.[0];
   const submissionId = firstSubmitter?.submission_id ?? firstSubmitter?.id ?? (Array.isArray(subData) ? null : subData.id);
   const signingSlug = firstSubmitter?.slug ?? null;
