@@ -292,11 +292,66 @@ function buildAvenant(outPath) {
   return new Promise((res) => stream.on('finish', res));
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// 3) RÉSILIATION DU CONTRAT
+// ══════════════════════════════════════════════════════════════════════════════
+function buildResiliation(outPath) {
+  const ctx = makeDoc();
+  const { doc, ML, CW, fill, hline, txt, sectionHdr, fieldTag } = ctx;
+  const stream = fs.createWriteStream(outPath);
+  doc.pipe(stream);
+
+  header(ctx, "RÉSILIATION DU CONTRAT D'ABONNEMENT");
+  let y = 138;
+
+  // CLIENT
+  y = sectionHdr('CLIENT CONCERNÉ', y);
+  fill(ML, y, CW, 50, '#f8fafc'); hline(y, '#e2e8f0'); hline(y + 50, '#e2e8f0');
+  txt('LE CLIENT', ML + 8, y + 8, 7, true, '#374151');
+  fieldTag('Nom du client', ML + 8, y + 20, CW / 2 - 16);
+  fieldTag('Email', ML + CW / 2, y + 20, CW / 2 - 16);
+  y += 58;
+
+  // OBJET
+  y = sectionHdr("ARTICLE 1 — OBJET", y);
+  const objet = `Le présent document constate la résiliation du contrat d'abonnement conclu entre ${PRESTATAIRE.nom} et le Client. Il met fin à la mise à disposition de la plateforme dans les conditions définies ci-après.`;
+  const oH = doc.fontSize(8).font('Helvetica').heightOfString(objet, { width: CW - 16 }) + 16;
+  fill(ML, y, CW, oH, '#fef2f2'); hline(y, '#fecaca'); hline(y + oH, '#fecaca');
+  doc.fontSize(8).font('Helvetica').fillColor('#7f1d1d').text(objet, ML + 8, y + 8, { width: CW - 16, lineGap: 2 });
+  y += oH + 12;
+
+  // DATE D'EFFET (bandeau)
+  y = sectionHdr("ARTICLE 2 — DATE D'EFFET ET PRÉAVIS", y);
+  fill(ML, y, CW, 30, '#fff7ed'); hline(y, '#fed7aa'); hline(y + 30, '#fed7aa');
+  txt("Date de la demande de résiliation", ML + 8, y + 10, 8, false, '#9a3412');
+  fieldTag('Date du contrat', RXcol(ctx), y + 7, 110);
+  y += 38;
+  const preavis = "La résiliation prend effet à l'issue d'un préavis de 30 jours à compter de la date ci-dessus. Le service reste accessible et facturé jusqu'au terme de ce préavis ; aucune nouvelle mensualité n'est due au-delà.";
+  const pH = doc.fontSize(8).font('Helvetica').heightOfString(preavis, { width: CW - 12 }) + 4;
+  doc.fontSize(8).font('Helvetica').fillColor('#475569').text(preavis, ML, y, { width: CW - 12, lineGap: 2 });
+  y += pH + 12;
+
+  // CLAUSES
+  y = clauses(ctx, y, [
+    { title: 'Article 3 — Effets de la résiliation', body: "Au terme du préavis, l'accès du Client et de ses gérants à la plateforme est désactivé. Les sommes échues avant la date d'effet restent dues." },
+    { title: 'Article 4 — Sort des données', body: `Le Client peut demander l'export de ses données avant la date d'effet. À défaut, ${PRESTATAIRE.nom} conserve les données pendant 30 jours après la résiliation, puis procède à leur suppression définitive.` },
+    { title: 'Article 5 — Solde de tout compte', body: "La résiliation ne donne lieu à aucun remboursement des sommes déjà réglées au titre des périodes échues ou en cours, sauf disposition contraire convenue entre les parties." },
+    { title: 'Article 6 — Droit applicable', body: "La présente résiliation est soumise au droit tunisien. Tout litige relève de la compétence des tribunaux de Tunis." },
+  ]);
+
+  y = signatures(ctx, y);
+  stampFooters(ctx, 'Résiliation de contrat');
+  doc.end();
+  return new Promise((res) => stream.on('finish', res));
+}
+
 (async () => {
   const dir = __dirname;
   await buildContrat(path.join(dir, 'contrat-labflow.pdf'));
   await buildAvenant(path.join(dir, 'avenant-labflow.pdf'));
+  await buildResiliation(path.join(dir, 'resiliation-labflow.pdf'));
   console.log('✅ Templates générés :');
   console.log('   -', path.join(dir, 'contrat-labflow.pdf'));
   console.log('   -', path.join(dir, 'avenant-labflow.pdf'));
+  console.log('   -', path.join(dir, 'resiliation-labflow.pdf'));
 })();

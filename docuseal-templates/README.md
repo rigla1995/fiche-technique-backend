@@ -6,6 +6,7 @@ Deux modèles PDF à uploader dans DocuSeal comme **templates**, prêts à être
 |---|---|---|
 | `contrat-labflow.pdf` | Contrat d'abonnement (création de client) | `DOCUSEAL_TEMPLATE_ID` |
 | `avenant-labflow.pdf` | Avenant (ajout de capacité / changement de tarif) | `DOCUSEAL_TEMPLATE_AVENANT_ID` |
+| `resiliation-labflow.pdf` | Résiliation du contrat | `DOCUSEAL_TEMPLATE_RESILIATION_ID` |
 
 Régénérer après modification : `node docuseal-templates/generate.js`
 
