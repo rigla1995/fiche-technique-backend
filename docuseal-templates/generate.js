@@ -67,9 +67,8 @@ function header(ctx, title) {
   fill(0, 108, PW, 11, AMBER);
   txt(PRESTATAIRE.nom, ML, 28, 22, true, '#ffffff');
   txt(title, ML, 52, 10, false, '#fde68a');
-  // Réf + date : laissés en balises pour DocuSeal
-  txt('Réf. {{Réf}}', ML, 28, 8, false, '#fbbf24', { align: 'right', width: CW });
-  txt('Date : {{Date du contrat}}', ML, 42, 8, false, '#fcd34d', { align: 'right', width: CW });
+  // Date remplie par le backend (champ "Date du contrat")
+  txt('Date : {{Date du contrat}}', ML, 34, 8, false, '#fcd34d', { align: 'right', width: CW });
 }
 
 // Stampe le footer sur toutes les pages réellement remplies, puis supprime une
