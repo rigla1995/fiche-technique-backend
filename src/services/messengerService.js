@@ -77,7 +77,8 @@ const findClientByMessengerToken = async (token) => {
 
 const findClientByPsid = async (psid) => {
   const { rows } = await pool.query(
-    `SELECT aic.client_id, aic.confidence_threshold, u.nom, u.email
+    `SELECT aic.client_id, aic.confidence_threshold, u.nom,
+            COALESCE(aic.report_email, u.email) AS email
      FROM ai_assistant_config aic
      JOIN utilisateurs u ON u.id = aic.client_id
      WHERE aic.messenger_psid = $1 AND aic.enabled = true`,
@@ -114,14 +115,16 @@ async function handleMessengerEvent(event) {
     );
     return sendMessage(
       psid,
-      `👋 Bonjour ${client.nom} !\n\nJe suis votre agent LabFlow. Je peux vous aider avec :\n\n` +
-      `📦 Stock — état actuel, historique\n` +
-      `🛒 Appros — approvisionnements et prix\n` +
-      `📉 Pertes — suivi et analyse\n` +
-      `📊 Inventaires — historique et écarts\n` +
-      `🔄 Transferts — labo vers activités\n` +
-      `📄 Rapports — Excel ou PDF par email\n\n` +
-      `Posez-moi votre question !`
+      `👋 Bonjour ${client.nom} !\n\nJe suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :\n\n` +
+      `🏪 Activités & 🏭 labos\n` +
+      `📦 Stock, seuils & 🛒 approvisionnements\n` +
+      `🔄 Transferts labo → activités\n` +
+      `📉 Pertes & 📊 inventaires\n` +
+      `🧾 Ventes, CA & food cost\n` +
+      `📚 Référentiel, fournisseurs & produits\n` +
+      `💳 Abonnement & configuration de vente\n` +
+      `📄 Rapports Excel/PDF par email\n\n` +
+      `Exemple : « les transferts du mois actuel » ou « mon food cost de septembre ». Posez votre question !`
     );
   }
 

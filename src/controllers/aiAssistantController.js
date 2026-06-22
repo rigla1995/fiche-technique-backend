@@ -11,7 +11,7 @@ const getAiConfig = async (req, res) => {
     const { clientId } = req.params;
     const result = await pool.query(
       `SELECT client_id, enabled, whatsapp_number, telegram_chat_id,
-              invite_token, messenger_psid, messenger_invite_token, confidence_threshold
+              invite_token, messenger_psid, messenger_invite_token, report_email, confidence_threshold
        FROM ai_assistant_config WHERE client_id = $1`,
       [clientId]
     );
@@ -36,6 +36,7 @@ const getAiConfig = async (req, res) => {
       messengerLinked: !!r.messenger_psid,
       messengerPsid: r.messenger_psid,
       messengerInviteLink,
+      reportEmail: r.report_email || null,
       confidenceThreshold: parseFloat(r.confidence_threshold) || 0.75,
     });
   } catch (err) {
@@ -183,30 +184,36 @@ const generateMessengerInviteLink = async (req, res) => {
       return res.status(503).json({ message: 'MESSENGER_PAGE_USERNAME non configuré' });
     }
 
+    // Email de destination : saisi par l'admin (peut différer de l'email du compte, ex.
+    // l'email lié au Messenger personnel du propriétaire) ; à défaut, l'email connu du client.
+    const clientRow = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
+    const { nom, email: clientEmail } = clientRow.rows[0] || {};
+    const rawEmail = (req.body?.email || '').trim();
+    const reportEmail = rawEmail || clientEmail || null;
+    if (!reportEmail) {
+      return res.status(400).json({ message: 'Aucun email disponible pour envoyer l\'activation. Saisissez un email.' });
+    }
+
     const inviteToken = crypto.randomBytes(24).toString('hex');
 
     await pool.query(
-      `INSERT INTO ai_assistant_config (client_id, enabled, messenger_invite_token, updated_at)
-       VALUES ($1, false, $2, NOW())
+      `INSERT INTO ai_assistant_config (client_id, enabled, messenger_invite_token, report_email, updated_at)
+       VALUES ($1, false, $2, $3, NOW())
        ON CONFLICT (client_id) DO UPDATE
-         SET messenger_invite_token = $2, messenger_psid = NULL, updated_at = NOW()`,
-      [clientId, inviteToken]
+         SET messenger_invite_token = $2, report_email = $3, messenger_psid = NULL, updated_at = NOW()`,
+      [clientId, inviteToken, reportEmail]
     );
 
     const inviteLink = `https://m.me/${messengerPageUsername}?ref=${inviteToken}`;
 
-    const clientRow = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
-    const { nom, email } = clientRow.rows[0] || {};
-    if (email) {
-      sendMessengerInviteEmail({
-        to: email,
-        clientNom: nom || 'Client',
-        inviteLink,
-        appName: process.env.APP_NAME,
-      }).catch(e => console.warn('[AI] Messenger invite email error:', e.message));
-    }
+    sendMessengerInviteEmail({
+      to: reportEmail,
+      clientNom: nom || 'Client',
+      inviteLink,
+      appName: process.env.APP_NAME,
+    }).catch(e => console.warn('[AI] Messenger invite email error:', e.message));
 
-    res.json({ messengerInviteLink: inviteLink });
+    res.json({ messengerInviteLink: inviteLink, reportEmail });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -223,6 +230,9 @@ const getActiveAgents = async (req, res) => {
          aic.enabled,
          aic.telegram_chat_id,
          aic.invite_token,
+         aic.messenger_psid,
+         aic.messenger_invite_token,
+         aic.report_email,
          aic.updated_at,
          u.nom,
          u.email,
@@ -273,6 +283,7 @@ const getActiveAgents = async (req, res) => {
       clientId: r.client_id,
       clientNom: r.nom,
       clientEmail: r.email,
+      reportEmail: r.report_email || null,
       enabled: r.enabled,
       telegramLinked: !!r.telegram_chat_id,
       messengerLinked: !!r.messenger_psid,

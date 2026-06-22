@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { generateAndSendReport } = require('./reportService');
 
 const CLIENT_SCOPE_CTE = `
   WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1),
@@ -264,6 +265,184 @@ async function toolSearchKnowledge(toolInput) {
   return { results: scored.map(({ titre, contenu }) => ({ titre, contenu })) };
 }
 
+// ── Référentiel articles (ingrédients : nom, prix de référence, unité) ─────────
+async function toolGetReferentiel(clientId, { search, limit = 100 } = {}) {
+  const safeLimit = Math.min(parseInt(limit) || 100, 300);
+  const params = [clientId];
+  let extra = '';
+  if (search) { params.push(`%${search}%`); extra = `AND i.nom ILIKE $${params.length}`; }
+  const { rows } = await pool.query(
+    `SELECT i.nom, i.prix, u.nom AS unite
+     FROM articles i
+     LEFT JOIN unites u ON u.id = i.unite_id
+     WHERE i.client_id = $1 ${extra}
+     ORDER BY i.nom
+     LIMIT ${safeLimit}`,
+    params
+  );
+  return rows;
+}
+
+// ── Fournisseurs de l'entreprise ──────────────────────────────────────────────
+async function toolGetFournisseurs(clientId, { search } = {}) {
+  const params = [clientId];
+  let extra = '';
+  if (search) { params.push(`%${search}%`); extra = `AND f.nom ILIKE $${params.length}`; }
+  const { rows } = await pool.query(
+    `WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1)
+     SELECT f.nom, f.adresse, f.telephone
+     FROM fournisseurs f
+     WHERE f.entreprise_id IN (SELECT id FROM pe) ${extra}
+     ORDER BY f.nom
+     LIMIT 200`,
+    params
+  );
+  return rows;
+}
+
+// ── Abonnement & capacité souscrite ───────────────────────────────────────────
+async function toolGetAbonnement(clientId) {
+  const { rows } = await pool.query(
+    `SELECT a.mode_compte, a.contrat_accepte_le,
+            ac.nb_activites, ac.nb_labos, ac.nb_gerants, ac.montant_onboarding
+     FROM abonnements a
+     LEFT JOIN abonnement_config ac ON ac.abonnement_id = a.id
+     WHERE a.client_id = $1
+     ORDER BY a.id DESC
+     LIMIT 1`,
+    [clientId]
+  );
+  return rows[0] || { note: 'Aucun abonnement trouvé.' };
+}
+
+// ── Ventes : CA, coût matière, food cost, panier moyen, canaux ────────────────
+async function toolGetVentes(clientId, { activite_id, date_from, date_to, canal } = {}) {
+  const params = [clientId];
+  const cond = [`v.activite_id IN (SELECT id FROM client_activites)`, `v.statut = 'confirmee'`];
+  if (activite_id) { params.push(activite_id); cond.push(`v.activite_id = $${params.length}`); }
+  if (date_from) { params.push(date_from); cond.push(`v.date_vente >= $${params.length}`); }
+  if (date_to) { params.push(date_to); cond.push(`v.date_vente <= $${params.length}`); }
+  if (canal === 'directe' || canal === 'prestataire') { params.push(canal); cond.push(`v.type_vente = $${params.length}`); }
+  const where = cond.join(' AND ');
+
+  const totRes = await pool.query(
+    `${CLIENT_SCOPE_CTE}
+     SELECT COUNT(DISTINCT v.id) AS nb_ventes,
+            COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) AS ca_ttc,
+            COALESCE(SUM(vl.quantite * COALESCE(vl.cout_unitaire, 0)), 0) AS cout_matiere
+     FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
+     WHERE ${where}`,
+    params
+  );
+  const canalRes = await pool.query(
+    `${CLIENT_SCOPE_CTE}
+     SELECT CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, 'Prestataire') END AS canal,
+            COUNT(DISTINCT v.id) AS nb_ventes,
+            COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) AS ca_ttc
+     FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
+     LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
+     WHERE ${where}
+     GROUP BY 1 ORDER BY ca_ttc DESC`,
+    params
+  );
+  const t = totRes.rows[0] || {};
+  const ca = parseFloat(t.ca_ttc) || 0;
+  const cm = parseFloat(t.cout_matiere) || 0;
+  const nb = parseInt(t.nb_ventes) || 0;
+  return {
+    nb_ventes: nb,
+    ca_ttc: Math.round(ca * 1000) / 1000,
+    cout_matiere: Math.round(cm * 1000) / 1000,
+    food_cost_pct: ca > 0 ? Math.round((cm / ca) * 1000) / 10 : null,
+    marge_brute: Math.round((ca - cm) * 1000) / 1000,
+    panier_moyen: nb > 0 ? Math.round((ca / nb) * 1000) / 1000 : null,
+    par_canal: canalRes.rows,
+  };
+}
+
+// ── Produits / fiches techniques du client ────────────────────────────────────
+async function toolGetProduits(clientId, { search, limit = 100 } = {}) {
+  const safeLimit = Math.min(parseInt(limit) || 100, 300);
+  const params = [clientId];
+  let extra = '';
+  if (search) { params.push(`%${search}%`); extra = `AND p.nom ILIKE $${params.length}`; }
+  const { rows } = await pool.query(
+    `SELECT p.nom, p.description
+     FROM produits p
+     WHERE p.client_id = $1 ${extra}
+     ORDER BY p.nom
+     LIMIT ${safeLimit}`,
+    params
+  );
+  return rows;
+}
+
+// ── Configuration de vente : prestataires, charges fixes, articles vendables ──
+async function toolGetConfigVente(clientId, { activite_id } = {}) {
+  const presta = await pool.query(
+    `WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1)
+     SELECT pl.nom, pl.commission_pct
+     FROM entreprise_prestataires ep
+     JOIN prestataires_livraison pl ON pl.id = ep.prestataire_id
+     WHERE ep.entreprise_id IN (SELECT id FROM pe) AND pl.actif = true
+     ORDER BY pl.nom`,
+    [clientId]
+  );
+
+  const chParams = [clientId];
+  let chExtra = '';
+  if (activite_id) { chParams.push(activite_id); chExtra = `AND cf.activite_id = $${chParams.length}`; }
+  const charges = await pool.query(
+    `${CLIENT_SCOPE_CTE}
+     SELECT a.nom AS activite, cf.mode, cf.montant_global, cf.loyer,
+            cf.charges_personnel, cf.electricite_gaz, cf.eau
+     FROM charges_fixes cf
+     JOIN activites a ON a.id = cf.activite_id
+     WHERE cf.activite_id IN (SELECT id FROM client_activites) ${chExtra}
+     ORDER BY a.nom`,
+    chParams
+  );
+
+  const vParams = [clientId];
+  let vExtra = '';
+  if (activite_id) { vParams.push(activite_id); vExtra = `AND aav.activite_id = $${vParams.length}`; }
+  const vendables = await pool.query(
+    `${CLIENT_SCOPE_CTE}
+     SELECT a.nom AS activite, aav.article_type,
+            COALESCE(pr.nom, art.nom) AS article, aav.prix_vente, aav.actif
+     FROM activite_articles_vendables aav
+     JOIN activites a ON a.id = aav.activite_id
+     LEFT JOIN produits pr ON aav.article_type = 'produit' AND pr.id = aav.article_id
+     LEFT JOIN articles art ON aav.article_type = 'ingredient' AND art.id = aav.article_id
+     WHERE aav.activite_id IN (SELECT id FROM client_activites) ${vExtra}
+     ORDER BY a.nom, article
+     LIMIT 300`,
+    vParams
+  );
+
+  return {
+    prestataires_livraison: presta.rows,
+    charges_fixes: charges.rows,
+    articles_vendables: vendables.rows,
+  };
+}
+
+// ── Génération + envoi d'un rapport par email ─────────────────────────────────
+async function toolSendReport(clientId, { format } = {}) {
+  const { rows } = await pool.query(
+    `SELECT COALESCE(aic.report_email, u.email) AS email, u.nom
+     FROM utilisateurs u
+     LEFT JOIN ai_assistant_config aic ON aic.client_id = u.id
+     WHERE u.id = $1`,
+    [clientId]
+  );
+  const dest = rows[0] || {};
+  if (!dest.email) return { error: "Aucun email configuré pour l'envoi du rapport." };
+  const fmt = format === 'pdf' ? 'pdf' : 'excel';
+  const filename = await generateAndSendReport(clientId, dest.email, dest.nom || 'Client', fmt);
+  return { sent: true, email: dest.email, format: fmt, filename };
+}
+
 async function executeToolCall(clientId, toolName, toolInput) {
   try {
     switch (toolName) {
@@ -273,6 +452,13 @@ async function executeToolCall(clientId, toolName, toolInput) {
       case 'get_pertes':           return await toolGetPertes(clientId, toolInput);
       case 'get_inventaires':      return await toolGetInventaires(clientId, toolInput);
       case 'get_transferts':       return await toolGetTransferts(clientId, toolInput);
+      case 'get_referentiel':      return await toolGetReferentiel(clientId, toolInput);
+      case 'get_fournisseurs':     return await toolGetFournisseurs(clientId, toolInput);
+      case 'get_abonnement':       return await toolGetAbonnement(clientId);
+      case 'get_ventes':           return await toolGetVentes(clientId, toolInput);
+      case 'get_produits':         return await toolGetProduits(clientId, toolInput);
+      case 'get_config_vente':     return await toolGetConfigVente(clientId, toolInput);
+      case 'send_report':          return await toolSendReport(clientId, toolInput);
       case 'search_knowledge_base': return await toolSearchKnowledge(toolInput);
       case 'ask_clarification':    return { __clarification: true, question: toolInput.question, options: toolInput.options };
       default:                     return { error: `Outil inconnu: ${toolName}` };
@@ -365,6 +551,82 @@ const TOOLS_ANTHROPIC = [
         date_from: { type: 'string' },
         date_to: { type: 'string' },
         limit: { type: 'integer' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_referentiel',
+    description: 'Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d\'articles.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        search: { type: 'string', description: 'Nom partiel d\'article (recherche ILIKE)' },
+        limit: { type: 'integer', description: 'Max résultats (défaut 100, max 300)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_fournisseurs',
+    description: 'Récupère la liste des fournisseurs de l\'entreprise (nom, adresse, téléphone).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        search: { type: 'string', description: 'Nom partiel de fournisseur (recherche ILIKE)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_abonnement',
+    description: 'Récupère l\'abonnement et la capacité souscrite du client : mode du compte, nombre d\'activités/labos/gérants, montant d\'onboarding, date d\'acceptation du contrat.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'get_ventes',
+    description: 'Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost %, marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        activite_id: { type: 'integer', description: 'ID de l\'activité' },
+        date_from: { type: 'string', description: 'Date de début ISO 8601' },
+        date_to: { type: 'string', description: 'Date de fin ISO 8601' },
+        canal: { type: 'string', enum: ['directe', 'prestataire'], description: 'Filtrer par canal de vente' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_produits',
+    description: 'Récupère la liste des produits / fiches techniques du client (nom, description).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        search: { type: 'string', description: 'Nom partiel de produit (recherche ILIKE)' },
+        limit: { type: 'integer', description: 'Max résultats (défaut 100, max 300)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_config_vente',
+    description: 'Récupère la configuration de vente : prestataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        activite_id: { type: 'integer', description: 'ID de l\'activité' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'send_report',
+    description: "Génère et envoie par email un rapport (Excel ou PDF) récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).",
+    input_schema: {
+      type: 'object',
+      properties: {
+        format: { type: 'string', enum: ['excel', 'pdf'], description: 'Format du rapport (défaut excel)' },
       },
       required: [],
     },
