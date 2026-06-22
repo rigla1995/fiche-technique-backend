@@ -64,7 +64,9 @@ const createSubmission = async ({
     { name: 'Montant onboarding',  default_value: fmtDt(montantOnboarding) },
     { name: 'Montant mensuel',     default_value: fmtDt(montantMensuel) },
     ...extraFields,
-  ].filter((f) => f.default_value !== '' && f.default_value !== '—');
+  ].filter((f) => f.default_value !== '' && f.default_value !== '—')
+   // Lecture seule : le client ne « valide » pas chaque champ, il n'a plus qu'à signer.
+   .map((f) => ({ ...f, readonly: true }));
 
   // Envoi résilient : si un champ n'existe pas dans le template Docuseal (422 "Unknown field"),
   // on le retire et on réessaie — la soumission part même si le template est légèrement
