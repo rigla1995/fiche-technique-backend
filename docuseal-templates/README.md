@@ -22,9 +22,16 @@ Les balises `{{...}}` présentes dans les PDF sont **détectées automatiquement
 | `Nb activités` | nombre d'activités souscrites |
 | `Nb labos` | nombre de labos |
 | `Nb gérants` | nombre de gérants |
-| `Montant onboarding` | frais d'activation (DT) |
-| `Montant mensuel` | mensualité (DT) |
+| `Montant onboarding` | frais d'activation **effectifs** (après promo) |
+| `Montant mensuel` | mensualité **effective** (promo incluse) |
+| `Détail promotion` | résumé promo : prix de base, durée, date de reprise (contrat uniquement) |
 | `Signature` | signature électronique du client |
+
+## Flux câblés dans l'application
+
+- **Contrat** : envoyé à la création du client (reflète la promotion).
+- **Avenant** : envoyé automatiquement quand le client demande un ajout de capacité ; à la signature, la capacité est appliquée et la demande validée (webhook).
+- **Résiliation** : envoyée automatiquement quand l'admin supprime un client (archive/formalité).
 
 ⚠️ Ne **pas renommer** ces champs dans DocuSeal, sinon le pré-remplissage ne marche plus.
 
