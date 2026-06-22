@@ -115,4 +115,59 @@ const createSubmission = async ({
 const createContractSubmission = ({ clientName, clientEmail, ...rest }) =>
   createSubmission({ clientName, clientEmail, type: 'contrat', ...rest });
 
-module.exports = { createSubmission, createContractSubmission, isConfigured };
+// Configuré pour l'approche "PDF rempli" : seuls l'URL + le token sont requis (pas de template).
+const isConfiguredPdf = () => !!(DOCUSEAL_URL() && DOCUSEAL_TOKEN());
+
+/**
+ * Crée une soumission à partir d'un PDF DÉJÀ REMPLI (base64).
+ * Docuseal crée un template à la volée depuis le PDF et parse la balise {{Signature}}.
+ * Aucune configuration de champ nécessaire dans l'UI Docuseal.
+ * @returns { templateId, submissionId, signingUrl }
+ */
+const createSubmissionFromPdf = async ({ pdfBase64, documentName, clientName, clientEmail }) => {
+  if (!isConfiguredPdf()) {
+    throw new Error('Docuseal non configuré (DOCUSEAL_URL / DOCUSEAL_API_TOKEN)');
+  }
+  const token = DOCUSEAL_TOKEN();
+  const baseUrl = DOCUSEAL_URL();
+
+  // 1) Template depuis le PDF (la balise {{Signature;type=signature}} est détectée par l'API)
+  const tplRes = await fetch(`${baseUrl}/api/templates/pdf`, {
+    method: 'POST',
+    headers: { 'X-Auth-Token': token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: documentName,
+      documents: [{ name: documentName, file: pdfBase64 }],
+    }),
+  });
+  if (!tplRes.ok) {
+    const t = await tplRes.text();
+    throw new Error(`Docuseal template/pdf error ${tplRes.status}: ${t}`);
+  }
+  const tpl = await tplRes.json();
+  const templateId = tpl?.id ?? (Array.isArray(tpl) ? tpl[0]?.id : null);
+  if (!templateId) throw new Error('Docuseal template/pdf: id manquant');
+
+  // 2) Soumission (un seul signataire)
+  const subRes = await fetch(`${baseUrl}/api/submissions`, {
+    method: 'POST',
+    headers: { 'X-Auth-Token': token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      template_id: templateId,
+      send_email: false,
+      submitters: [{ email: clientEmail, name: clientName }],
+    }),
+  });
+  if (!subRes.ok) {
+    const t = await subRes.text();
+    throw new Error(`Docuseal submission error ${subRes.status}: ${t}`);
+  }
+  const subData = await subRes.json();
+  const firstSubmitter = Array.isArray(subData) ? subData[0] : subData?.submitters?.[0];
+  const submissionId = firstSubmitter?.submission_id ?? firstSubmitter?.id ?? (Array.isArray(subData) ? null : subData.id);
+  const signingSlug = firstSubmitter?.slug ?? null;
+  const signingUrl = signingSlug ? `${baseUrl}/s/${signingSlug}` : null;
+  return { templateId, submissionId, signingUrl };
+};
+
+module.exports = { createSubmission, createContractSubmission, createSubmissionFromPdf, isConfigured, isConfiguredPdf };
