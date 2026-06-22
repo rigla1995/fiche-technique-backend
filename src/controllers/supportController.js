@@ -4,7 +4,8 @@ const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
 const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeAvenantPricing } = require('./abonnementController');
-const { createSubmission, isConfigured: docusealConfigured } = require('../services/docusealService');
+const { createSubmissionFromPdf, isConfiguredPdf: docusealConfigured } = require('../services/docusealService');
+const { generateAvenantFilled } = require('../services/contractDocs');
 const { sendDocusealSigningEmail } = require('../services/emailService');
 
 const fmtDtS = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
@@ -116,20 +117,15 @@ const create = async (req, res) => {
         const clientEmail = emailRes.rows[0]?.email || null;
         const clientNomFull = emailRes.rows[0]?.nom || clientNom || 'Client';
         if (clientEmail) {
-          const pricing = await computeAvenantPricing(clientId, {
-            addActivites: req.body.nbActivitesSupp || 0,
-            addLabos: req.body.nbLabosSupp || 0,
-            addGerants: req.body.nbGerantsSupp || 0,
+          const addA = req.body.nbActivitesSupp || 0, addL = req.body.nbLabosSupp || 0, addG = req.body.nbGerantsSupp || 0;
+          const pricing = await computeAvenantPricing(clientId, { addActivites: addA, addLabos: addL, addGerants: addG });
+          const ajout = [addA && `+${addA} activité${addA > 1 ? 's' : ''}`, addL && `+${addL} labo${addL > 1 ? 's' : ''}`, addG && `+${addG} gérant${addG > 1 ? 's' : ''}`].filter(Boolean).join(', ');
+          const pdfB64 = await generateAvenantFilled({
+            nom: clientNomFull, email: clientEmail,
+            nbActivites: pricing?.nbActivites, nbLabos: pricing?.nbLabos, nbGerants: pricing?.nbGerants,
+            montantMensuel: pricing?.effMensuel, ajout,
           });
-          const sub = await createSubmission({
-            type: 'avenant',
-            clientName: clientNomFull,
-            clientEmail,
-            nbActivites: pricing?.nbActivites,
-            nbLabos: pricing?.nbLabos,
-            nbGerants: pricing?.nbGerants,
-            montantMensuel: pricing?.effMensuel,
-          });
+          const sub = await createSubmissionFromPdf({ pdfBase64: pdfB64, documentName: `Avenant - ${clientNomFull}`, clientName: clientNomFull, clientEmail });
           if (sub?.submissionId) {
             await pool.query('UPDATE support_demandes SET docuseal_submission_id = $1 WHERE id = $2',
               [String(sub.submissionId), demande.id]);
