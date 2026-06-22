@@ -17,12 +17,12 @@ const PDFDocument = require('pdfkit');
 // ── Identité prestataire (À COMPLÉTER avec les infos légales réelles) ──────────
 const PRESTATAIRE = {
   nom: 'LabFlow',
-  forme: 'SARL', // forme juridique — à confirmer
-  matricule: '________________',     // matricule fiscal
-  rc: '________________',            // registre de commerce
-  adresse: '________________________________', // adresse du siège
+  forme: 'SARL', // forme juridique — à confirmer avec l'avocat
+  matricule: '1234567/A/M/000',                       // matricule fiscal (placeholder)
+  rc: 'B0123452024',                                  // registre de commerce (placeholder)
+  adresse: 'Avenue Habib Bourguiba, 1000 Tunis, Tunisie', // siège (placeholder)
   email: 'contact@labflow-tn.com',
-  tel: '________________',
+  tel: '+216 71 000 000',                             // (placeholder)
 };
 
 const INDIGO = '#1e1b4b';
