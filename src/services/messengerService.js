@@ -65,11 +65,14 @@ async function sendTypingOn(psid) {
 }
 
 const findClientByMessengerToken = async (token) => {
+  // On NE filtre PAS sur enabled ici : ouvrir un lien d'invitation valide doit lier le compte
+  // (et activer l'agent), même si le flag enabled n'a pas encore été basculé.
   const { rows } = await pool.query(
-    `SELECT aic.client_id, aic.confidence_threshold, u.nom, u.email
+    `SELECT aic.client_id, aic.confidence_threshold, u.nom,
+            COALESCE(aic.report_email, u.email) AS email
      FROM ai_assistant_config aic
      JOIN utilisateurs u ON u.id = aic.client_id
-     WHERE aic.messenger_invite_token = $1 AND aic.enabled = true`,
+     WHERE aic.messenger_invite_token = $1`,
     [token]
   );
   return rows[0] || null;
@@ -105,11 +108,13 @@ async function handleMessengerEvent(event) {
     const inviteToken = refMatch[1];
     const client = await findClientByMessengerToken(inviteToken);
     if (!client) {
+      logger.warn('messenger_invite_token_not_found', { tokenPrefix: inviteToken.slice(0, 8) });
       return sendMessage(psid, '❌ Lien expiré ou invalide. Contactez votre administrateur LabFlow.');
     }
+    // Ouvrir le lien lie le PSID ET active l'agent (idempotent vis-à-vis du flag enabled).
     await pool.query(
       `UPDATE ai_assistant_config
-       SET messenger_psid = $1, messenger_invite_token = NULL, updated_at = NOW()
+       SET messenger_psid = $1, messenger_invite_token = NULL, enabled = true, updated_at = NOW()
        WHERE client_id = $2`,
       [psid, client.client_id]
     );
