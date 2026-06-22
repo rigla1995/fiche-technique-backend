@@ -1,5 +1,7 @@
 const pool = require('../config/database');
 const { sendWelcomeWithContractEmail, generateInviteToken } = require('../services/emailService');
+const { saveNotificationToAdmins } = require('./notificationController');
+const { pushToAdmins } = require('../services/sseService');
 
 /**
  * POST /api/webhooks/docuseal
@@ -20,6 +22,42 @@ const docusealWebhook = async (req, res) => {
     // We care about a single signer completing or the whole submission completing
     if (event_type !== 'form.completed' && event_type !== 'submission.completed') return;
 
+    // ── 1) AVENANT ? — une demande de capacité liée à cette soumission ────────────
+    // Routage par submission_id : si une demande 'en_attente' correspond, on applique
+    // la capacité et on valide automatiquement (idempotent via le filtre statut).
+    const submissionId = data.submission_id != null ? String(data.submission_id)
+      : (data.id != null ? String(data.id) : null);
+    if (submissionId) {
+      const dem = await pool.query(
+        `UPDATE support_demandes
+            SET statut = 'validée', traite_le = NOW()
+          WHERE docuseal_submission_id = $1 AND statut = 'en_attente'
+          RETURNING *`,
+        [submissionId]
+      );
+      if (dem.rows.length > 0) {
+        const d = dem.rows[0];
+        // Appliquer la capacité demandée à l'abonnement
+        await pool.query(
+          `UPDATE abonnement_config ac
+              SET nb_activites = nb_activites + $1,
+                  nb_labos     = nb_labos     + $2,
+                  nb_gerants   = nb_gerants   + $3,
+                  updated_at   = NOW()
+             FROM abonnements a
+            WHERE a.id = ac.abonnement_id AND a.client_id = $4`,
+          [d.nb_activites_supp || 0, d.nb_labos_supp || 0, d.nb_gerants_supp || 0, d.client_id]
+        );
+        // Notifier les super admins
+        const payload = { eventType: 'avenant_signe', demandeId: d.id, type: 'supplement', clientNom: d.client_nom || 'Client', statut: 'validée' };
+        try { pushToAdmins('avenant_signe', payload); } catch (_) { /* sse best-effort */ }
+        saveNotificationToAdmins(payload).catch(() => {});
+        console.log(`[docuseal-webhook] Avenant signé → capacité appliquée (demande ${d.id})`);
+        return; // ne pas exécuter le flux contrat
+      }
+    }
+
+    // ── 2) CONTRAT ────────────────────────────────────────────────────────────────
     // Extract signer email — shape differs between event types
     let signerEmail = null;
     if (event_type === 'form.completed') {

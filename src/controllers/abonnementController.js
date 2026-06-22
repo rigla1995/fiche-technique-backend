@@ -1510,9 +1510,54 @@ const computeEffectivePricing = async (clientId) => {
   };
 };
 
+// Calcule la tarification d'un avenant : nouvelle config (actuelle + suppléments) et
+// nouvelle mensualité effective (promo mensualité active appliquée). Pour l'avenant Docuseal.
+const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0, addGerants = 0 }) => {
+  const tarifs = await loadAllTarifs();
+  const aboRes = await pool.query(
+    `SELECT id FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1`,
+    [clientId]
+  );
+  if (aboRes.rows.length === 0) return null;
+  const aboId = aboRes.rows[0].id;
+  const cfgRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
+  const cur = cfgRes.rows[0] || { nb_activites: 1, nb_labos: 0, nb_gerants: 0 };
+
+  const newCfg = {
+    nb_activites: (parseInt(cur.nb_activites) || 0) + (addActivites || 0),
+    nb_labos:     (parseInt(cur.nb_labos)     || 0) + (addLabos     || 0),
+    nb_gerants:   (parseInt(cur.nb_gerants)   || 0) + (addGerants   || 0),
+  };
+
+  const baseMensuel = (computeBaseMensuelFromConfig(newCfg, tarifs) || 0)
+                    + (computeBaseLaboFromConfig(newCfg, tarifs) || 0)
+                    + (computeBaseGerantFromConfig(newCfg, tarifs) || 0);
+
+  const promoRes = await pool.query(
+    `SELECT * FROM promotions
+      WHERE abonnement_id = $1
+        AND date_debut <= CURRENT_DATE
+        AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
+        AND applies_to IN ('mensualite', 'les_deux')
+      ORDER BY date_debut DESC LIMIT 1`,
+    [aboId]
+  );
+  const promoMens = promoRes.rows[0] || null;
+  const effMensuel = promoMens ? applyPromoMensualite(baseMensuel, promoMens) : baseMensuel;
+
+  return {
+    abonnementId: aboId,
+    nbActivites: newCfg.nb_activites, nbLabos: newCfg.nb_labos, nbGerants: newCfg.nb_gerants,
+    baseMensuel, effMensuel,
+    promoMens,
+    promoMonths: promoMens ? (promoMens.months_duration || null) : null,
+    hasPromo: !!promoMens,
+  };
+};
+
 module.exports = {
   getTarifs, updateTarif,
-  computeEffectivePricing,
+  computeEffectivePricing, computeAvenantPricing,
   listAbonnements, getAbonnement, createAbonnement,
   updateOnboarding, updateProlongation, updateNotes, updateMode, toggleModuleVente,
   upsertPaiement,
