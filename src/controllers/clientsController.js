@@ -3,8 +3,7 @@ const pool = require('../config/database');
 const { createAbonnement, insertPromoForAbonnement, computeEffectivePricing } = require('./abonnementController');
 const { generateInviteToken, sendWelcomeWithContractEmail, sendDocusealSigningEmail } = require('../services/emailService');
 const { generateContratPdf } = require('../services/pdfService');
-const { createSubmissionFromPdf, isConfiguredPdf: docusealConfigured } = require('../services/docusealService');
-const { generateContratFilled, generateResiliationFilled } = require('../services/contractDocs');
+const { createContractSubmission, createSubmission, isConfigured: docusealConfigured } = require('../services/docusealService');
 
 // Formatage pour les champs Docuseal
 const fmtDtC = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
@@ -219,23 +218,21 @@ const create = async (req, res) => {
         dateContrat: new Date(),
       });
 
-      // Contrat e-signature : on génère le PDF DÉJÀ REMPLI (prix/promo inclus) et on
-      // l'envoie à Docuseal (seule la signature est ajoutée). Aucun template à configurer.
+      // Contrat e-signature via template Docuseal (pré-rempli par nom de champ).
       if (docusealConfigured()) {
         const aboConfigForDocuseal = config || {};
         const pricing = await computeEffectivePricing(user.id).catch(() => null);
         const pf = buildContractPricingFields(pricing);
-        const detailPromotion = (pf.extraFields.find((f) => f.name === 'Détail promotion') || {}).default_value || '';
-        generateContratFilled({
-          nom, email,
-          nbActivites: aboConfigForDocuseal.nbActivites ?? 1,
-          nbLabos:     aboConfigForDocuseal.nbLabos ?? 0,
-          nbGerants:   aboConfigForDocuseal.nbGerants ?? 0,
+        createContractSubmission({
+          clientName: nom,
+          clientEmail: email,
+          nbActivites:       aboConfigForDocuseal.nbActivites ?? 1,
+          nbLabos:           aboConfigForDocuseal.nbLabos ?? 0,
+          nbGerants:         aboConfigForDocuseal.nbGerants ?? 0,
           montantOnboarding: pf.montantOnboarding ?? montantOnboarding ?? null,
           montantMensuel:    pf.montantMensuel ?? null,
-          detailPromotion,
+          extraFields:       pf.extraFields,
         })
-          .then((pdfB64) => createSubmissionFromPdf({ pdfBase64: pdfB64, documentName: `Contrat - ${nom}`, clientName: nom, clientEmail: email }))
           .then(({ submissionId, signingUrl }) => {
             console.log(`[docuseal] Contrat soumis: ${submissionId} pour ${email}`);
             if (signingUrl) {
@@ -417,16 +414,10 @@ const remove = async (req, res) => {
 
     await dbClient.query('COMMIT');
 
-    // Le client est supprimé. On lui envoie son acte de résiliation Docuseal (PDF rempli)
-    // pour archive/formalité (best-effort, n'impacte pas la suppression déjà effectuée).
-    if (deletedClient.email && docusealConfigured()) {
-      generateResiliationFilled({ nom: deletedClient.nom || 'Client', email: deletedClient.email })
-        .then((pdfB64) => createSubmissionFromPdf({
-          pdfBase64: pdfB64,
-          documentName: `Résiliation - ${deletedClient.nom || 'Client'}`,
-          clientName: deletedClient.nom || 'Client',
-          clientEmail: deletedClient.email,
-        }))
+    // Le client est supprimé. On lui envoie son acte de résiliation Docuseal pour
+    // archive/formalité (best-effort, n'impacte pas la suppression déjà effectuée).
+    if (deletedClient.email && docusealConfigured('resiliation')) {
+      createSubmission({ type: 'resiliation', clientName: deletedClient.nom || 'Client', clientEmail: deletedClient.email })
         .then(({ signingUrl }) => signingUrl
           ? sendDocusealSigningEmail({ to: deletedClient.email, nom: deletedClient.nom || 'Client', signingUrl })
           : null)
