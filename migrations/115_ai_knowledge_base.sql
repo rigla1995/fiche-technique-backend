@@ -1,0 +1,58 @@
+-- Base de connaissances sémantique pour les agents IA LabFlow (Messenger/Telegram).
+-- L'agent y accède via l'outil search_knowledge_base (RAG simple par mots-clés).
+CREATE TABLE IF NOT EXISTS ai_knowledge_base (
+  id SERIAL PRIMARY KEY,
+  titre      VARCHAR(200) NOT NULL,
+  contenu    TEXT NOT NULL,
+  mots_cles  TEXT,
+  categorie  VARCHAR(80),
+  actif      BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_kb_titre ON ai_knowledge_base (lower(titre));
+
+INSERT INTO ai_knowledge_base (titre, contenu, mots_cles, categorie) VALUES
+('Fiche technique',
+ $$La fiche technique est le coût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé soit en MOYENNE des prix d'achat constatés en stock, soit par SIMULATION de prix manuels (saisis à la main). Elle sert à connaître le coût de revient d'un produit et à fixer son prix de vente.$$,
+ $$fiche technique, recette, cout de revient, cout detaille, formule, simulation prix, moyenne prix$$, 'concept'),
+('Food cost',
+ $$Le food cost (ratio de coût matière) = coût matière ÷ chiffre d'affaires, en %. Repères LabFlow : moins de 30% = sain, 30 à 40% = à surveiller, plus de 40% = élevé (revoir prix ou portions). Plus il est bas, plus la marge est élevée.$$,
+ $$food cost, ratio cout matiere, ratio, pourcentage cout$$, 'concept'),
+('Coût matière',
+ $$Le coût matière est la valeur des ingrédients consommés pour réaliser les ventes d'une période. C'est le numérateur du food cost.$$,
+ $$cout matiere, cout des ingredients, consommation$$, 'concept'),
+('Valeur du stock',
+ $$La valeur du stock = somme (quantité en stock × prix unitaire) de chaque article à une date donnée. Elle représente l'argent immobilisé en marchandises.$$,
+ $$valeur stock, valeur du stock, stock valorise, argent immobilise$$, 'concept'),
+('Approvisionnement (appro)',
+ $$Un approvisionnement (appro) est une entrée de stock : un achat d'ingrédient avec quantité, prix unitaire HT, TVA et fournisseur. Les appros alimentent le stock et mettent à jour le coût moyen.$$,
+ $$appro, approvisionnement, achat, entree stock, fournisseur$$, 'process'),
+('Pertes',
+ $$Une perte est une sortie de stock non vendue : avarie (produit abîmé ou périmé) ou déchet (épluchures, casse). Les pertes réduisent le stock et la rentabilité. On les suit par type et par catégorie.$$,
+ $$perte, pertes, avarie, dechet, gaspillage$$, 'concept'),
+('Inventaire',
+ $$L'inventaire est le comptage réel des quantités en stock à une date. L'écart entre le stock théorique et le stock compté révèle des pertes non déclarées, des erreurs de saisie ou du gaspillage.$$,
+ $$inventaire, comptage, ecart stock, stock theorique$$, 'process'),
+('Transferts',
+ $$Un transfert déplace du stock du LABO (production centrale) vers une ACTIVITÉ (point de vente). Le labo s'approvisionne en gros puis alimente les activités.$$,
+ $$transfert, transferts, labo vers activite, approvisionnement interne$$, 'process'),
+('Article valorisé',
+ $$Un article valorisé est un article (famille non consommable vendable) vendu tel quel, sans décomposition en ingrédients. À la vente il est déduit directement du stock de l'article. On lui affecte une catégorie et un prix de vente.$$,
+ $$article valorise, valorises, vente directe, non decompose$$, 'concept'),
+('Produits vendables et utilisables',
+ $$Un produit VENDABLE est vendu au client final (a un prix de vente). Un produit UTILISABLE (sous-produit) est fabriqué puis intégré dans d'autres produits ; il peut être mis en stock et géré comme un ingrédient.$$,
+ $$produit vendable, produit utilisable, sous-produit, supplement$$, 'concept'),
+('Seuil minimum',
+ $$Le seuil minimum est la quantité plancher d'un article. En dessous, l'article passe en alerte (à réapprovisionner). Sert à éviter les ruptures de stock.$$,
+ $$seuil minimum, seuil, alerte stock, rupture, plancher$$, 'concept'),
+('TVA (HT / TTC)',
+ $$Les prix d'achat sont saisis HT (hors taxe) avec un taux de TVA ; le TTC = HT × (1 + TVA). LabFlow suit les deux pour le calcul des coûts et la facturation.$$,
+ $$tva, ht, ttc, hors taxe, taxe$$, 'concept'),
+('Marge brute',
+ $$La marge brute = chiffre d'affaires − coût matière. Le taux de marge = marge ÷ CA. C'est ce qui reste après le coût des ingrédients pour couvrir les charges.$$,
+ $$marge, marge brute, taux de marge, rentabilite$$, 'concept'),
+('Panier moyen',
+ $$Le panier moyen = chiffre d'affaires ÷ nombre de ventes. Il indique le montant moyen dépensé par transaction.$$,
+ $$panier moyen, ticket moyen, montant moyen vente$$, 'concept')
+ON CONFLICT (lower(titre)) DO NOTHING;
