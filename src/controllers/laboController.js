@@ -4,6 +4,7 @@ const { isoDate, todayStr } = require('../utils/dateUtils');
 const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
 const { buildLaboHistoriqueApproPdf, buildTransferHistoriquePdf } = require('../services/histoPdfService');
 const { upsertFacture } = require('../services/facturesService');
+const { withTransaction } = require('../utils/db');
 
 // ─── Ownership check helper ───────────────────────────────────────────────────
 
@@ -765,85 +766,92 @@ const updateLaboStock = async (req, res) => {
         }
       }
 
-      // Save PT appro — always insert a new row (multiple rows per day allowed)
-      await pool.query(
-        `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-        [laboId, produitId, da, qty, finalPrix, customPortionsJson]
-      );
+      // Atomic: producing a PT (insert PT row + deduct each recipe ingredient) must be
+      // all-or-nothing, else the PT is recorded while ingredients are only partly deducted.
+      await withTransaction(async (client) => {
+        // Save PT appro — always insert a new row (multiple rows per day allowed)
+        await client.query(
+          `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          [laboId, produitId, da, qty, finalPrix, customPortionsJson]
+        );
 
-      // Deduct recipe ingredients from labo ingredient stock (negative entries)
-      if (ingRes.rows.length > 0 && qty > 0) {
-        // Find or create AUTO fournisseur for this labo
-        const laboEntRes = await pool.query(`SELECT entreprise_id FROM labos WHERE id = $1`, [laboId]);
-        let autoFournisseurId = null;
-        if (laboEntRes.rows.length > 0) {
-          const entrepriseId = laboEntRes.rows[0].entreprise_id;
-          const foRes = await pool.query(
-            `SELECT id FROM fournisseurs WHERE entreprise_id = $1 AND nom = 'AUTO' LIMIT 1`, [entrepriseId]
-          );
-          if (foRes.rows.length > 0) {
-            autoFournisseurId = foRes.rows[0].id;
-          } else {
-            const newFo = await pool.query(
-              `INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`, [entrepriseId]
+        // Deduct recipe ingredients from labo ingredient stock (negative entries)
+        if (ingRes.rows.length > 0 && qty > 0) {
+          // Find or create AUTO fournisseur for this labo
+          const laboEntRes = await client.query(`SELECT entreprise_id FROM labos WHERE id = $1`, [laboId]);
+          let autoFournisseurId = null;
+          if (laboEntRes.rows.length > 0) {
+            const entrepriseId = laboEntRes.rows[0].entreprise_id;
+            const foRes = await client.query(
+              `SELECT id FROM fournisseurs WHERE entreprise_id = $1 AND nom = 'AUTO' LIMIT 1`, [entrepriseId]
             );
-            autoFournisseurId = newFo.rows[0].id;
+            if (foRes.rows.length > 0) {
+              autoFournisseurId = foRes.rows[0].id;
+            } else {
+              const newFo = await client.query(
+                `INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`, [entrepriseId]
+              );
+              autoFournisseurId = newFo.rows[0].id;
+            }
+          }
+          const yearStr = String(new Date().getFullYear()).slice(-2);
+          for (const ing of ingRes.rows) {
+            const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
+            const consumed = -(portion * qty);
+            await client.query(
+              `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, type_appro, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+              [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, `${ing.ing_nom}-${yearStr}`, 'PT']
+            );
           }
         }
-        const yearStr = String(new Date().getFullYear()).slice(-2);
-        for (const ing of ingRes.rows) {
-          const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
-          const consumed = -(portion * qty);
-          await pool.query(
-            `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, type_appro, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-            [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, `${ing.ing_nom}-${yearStr}`, 'PT']
-          );
-        }
-      }
+      });
 
       return res.json({ success: true, prixCalcule: finalPrix });
     }
 
     const tva = tauxTva != null ? parseFloat(tauxTva) : 0;
     const prixUnitaireTva = prixUnitaire != null ? parseFloat(prixUnitaire) * (1 + tva / 100) : null;
-    const laboInsRes = await pool.query(
-      `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, type_appro, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'manuel', NOW())
-       RETURNING id`,
-      [laboId, ingredientIdRaw, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, tva, prixUnitaireTva]
-    );
-    if (refFacture) {
-      const laboClientRes = await pool.query(
-        `SELECT pe.client_id FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE l.id = $1`,
-        [laboId]
+    // Atomic: the labo stock row and its linked facture are written together (or not at all).
+    await withTransaction(async (client) => {
+      const laboInsRes = await client.query(
+        `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, type_appro, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'manuel', NOW())
+         RETURNING id`,
+        [laboId, ingredientIdRaw, da, quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, tva, prixUnitaireTva]
       );
-      if (laboClientRes.rows.length > 0) {
-        const laboClientId = laboClientRes.rows[0].client_id;
-        const qty = parseFloat(quantite) || 0;
-        const pu = parseFloat(prixUnitaire) || 0;
-        const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
-        const montantHT = qty * pu;
-        const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
-        const montantTTC = qty * puTva;
-        await upsertFacture(laboClientId, {
-          refFacture,
-          dateAppro: da,
-          fournisseurId: fournisseurId || null,
-          activiteId: null,
-          laboId: parseInt(laboId),
-          typeSource: 'manuel',
-          montantHT,
-          montantTva,
-          montantTTC,
-          timbreFiscal: !!timbreFiscal,
-          createdBy: req.user.id,
-          stockTable: 'stock_labo_daily',
-          stockRowId: laboInsRes.rows[0].id,
-        });
+      if (refFacture) {
+        const laboClientRes = await client.query(
+          `SELECT pe.client_id FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE l.id = $1`,
+          [laboId]
+        );
+        if (laboClientRes.rows.length > 0) {
+          const laboClientId = laboClientRes.rows[0].client_id;
+          const qty = parseFloat(quantite) || 0;
+          const pu = parseFloat(prixUnitaire) || 0;
+          const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
+          const montantHT = qty * pu;
+          const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
+          const montantTTC = qty * puTva;
+          await upsertFacture(laboClientId, {
+            refFacture,
+            dateAppro: da,
+            fournisseurId: fournisseurId || null,
+            activiteId: null,
+            laboId: parseInt(laboId),
+            typeSource: 'manuel',
+            montantHT,
+            montantTva,
+            montantTTC,
+            timbreFiscal: !!timbreFiscal,
+            createdBy: req.user.id,
+            stockTable: 'stock_labo_daily',
+            stockRowId: laboInsRes.rows[0].id,
+          }, client);
+        }
       }
-    }
+    });
     res.json({ success: true });
   } catch (err) {
     console.error(err);

@@ -4,6 +4,7 @@ const { scopeGerantActivite } = require('../middleware/auth');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { buildHistoriqueApproPdf } = require('../services/histoPdfService');
 const { upsertFacture } = require('../services/facturesService');
+const { withTransaction } = require('../utils/db');
 
 // ─── Stock Client (independant) ──────────────────────────────────────────────
 
@@ -347,37 +348,40 @@ const updateStockClient = async (req, res) => {
 
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const insRes = await pool.query(
-      `INSERT INTO stock_client_daily
-         (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
-       RETURNING id`,
-      [clientId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
-       fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
-    );
-    if (refFacture) {
-      const qty = parseFloat(quantite) || 0;
-      const pu = parseFloat(prixUnitaire) || 0;
-      const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
-      const montantHT = qty * pu;
-      const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
-      const montantTTC = qty * puTva;
-      await upsertFacture(clientId, {
-        refFacture,
-        dateAppro: da,
-        fournisseurId: fournisseurId ?? null,
-        activiteId: null,
-        laboId: null,
-        typeSource: 'manuel',
-        montantHT,
-        montantTva,
-        montantTTC,
-        timbreFiscal: !!timbreFiscal,
-        createdBy: req.user.id,
-        stockTable: 'stock_client_daily',
-        stockRowId: insRes.rows[0].id,
-      });
-    }
+    // Atomic: the stock row and its linked facture are written together (or not at all).
+    await withTransaction(async (client) => {
+      const insRes = await client.query(
+        `INSERT INTO stock_client_daily
+           (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
+         VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
+         RETURNING id`,
+        [clientId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
+         fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
+      );
+      if (refFacture) {
+        const qty = parseFloat(quantite) || 0;
+        const pu = parseFloat(prixUnitaire) || 0;
+        const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
+        const montantHT = qty * pu;
+        const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
+        const montantTTC = qty * puTva;
+        await upsertFacture(clientId, {
+          refFacture,
+          dateAppro: da,
+          fournisseurId: fournisseurId ?? null,
+          activiteId: null,
+          laboId: null,
+          typeSource: 'manuel',
+          montantHT,
+          montantTva,
+          montantTTC,
+          timbreFiscal: !!timbreFiscal,
+          createdBy: req.user.id,
+          stockTable: 'stock_client_daily',
+          stockRowId: insRes.rows[0].id,
+        }, client);
+      }
+    });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -940,37 +944,40 @@ const updateStockEntreprise = async (req, res) => {
       return res.status(404).json({ message: 'Activité introuvable' });
 
     const clientId = req.user.gerant_parent_id || req.user.id;
-    const insRes = await pool.query(
-      `INSERT INTO stock_entreprise_daily
-         (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
-       RETURNING id`,
-      [activiteId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
-       fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
-    );
-    if (refFacture) {
-      const qty = parseFloat(quantite) || 0;
-      const pu = parseFloat(prixUnitaire) || 0;
-      const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
-      const montantHT = qty * pu;
-      const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
-      const montantTTC = qty * puTva;
-      await upsertFacture(clientId, {
-        refFacture,
-        dateAppro: da,
-        fournisseurId: fournisseurId ?? null,
-        activiteId: parseInt(activiteId),
-        laboId: null,
-        typeSource: 'manuel',
-        montantHT,
-        montantTva,
-        montantTTC,
-        timbreFiscal: !!timbreFiscal,
-        createdBy: req.user.id,
-        stockTable: 'stock_entreprise_daily',
-        stockRowId: insRes.rows[0].id,
-      });
-    }
+    // Atomic: the stock row and its linked facture are written together (or not at all).
+    await withTransaction(async (client) => {
+      const insRes = await client.query(
+        `INSERT INTO stock_entreprise_daily
+           (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
+         VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
+         RETURNING id`,
+        [activiteId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
+         fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
+      );
+      if (refFacture) {
+        const qty = parseFloat(quantite) || 0;
+        const pu = parseFloat(prixUnitaire) || 0;
+        const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
+        const montantHT = qty * pu;
+        const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
+        const montantTTC = qty * puTva;
+        await upsertFacture(clientId, {
+          refFacture,
+          dateAppro: da,
+          fournisseurId: fournisseurId ?? null,
+          activiteId: parseInt(activiteId),
+          laboId: null,
+          typeSource: 'manuel',
+          montantHT,
+          montantTva,
+          montantTTC,
+          timbreFiscal: !!timbreFiscal,
+          createdBy: req.user.id,
+          stockTable: 'stock_entreprise_daily',
+          stockRowId: insRes.rows[0].id,
+        }, client);
+      }
+    });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -1287,26 +1294,30 @@ const updateHistoriqueEntry = async (req, res) => {
       const entry = check.rows[0];
       if (req.user.role === 'gerant' && entry.created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
-      await pool.query(
-        `UPDATE stock_entreprise_daily SET quantite=$1, prix_unitaire=$2, fournisseur_id=$3, ref_facture=$4, updated_at=NOW()
-         WHERE id=$5`,
-        [quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, id]
-      );
-      // If transfert, adjust labo stock
-      if (entry.type_appro === 'transfert') {
-        const oldQty = parseFloat(entry.old_quantite) || 0;
-        const newQty = parseFloat(quantite) || 0;
-        const delta = oldQty - newQty;
-        if (delta !== 0) {
-          await pool.query(
-            `UPDATE stock_labo_daily SET quantite = COALESCE(quantite,0) + $1, updated_at=NOW()
-             WHERE ingredient_id=$2 AND date_appro=$3 AND labo_id=(
-               SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id=l.entreprise_id
-               JOIN activites a ON a.entreprise_id=pe.id WHERE a.id=$4 LIMIT 1)`,
-            [delta, entry.ingredient_id, entry.date_appro, entry.activite_id]
-          );
+      // Atomic: the stock_entreprise update and the compensating labo-stock adjustment
+      // must both succeed or both roll back (else the quantities silently desync).
+      await withTransaction(async (client) => {
+        await client.query(
+          `UPDATE stock_entreprise_daily SET quantite=$1, prix_unitaire=$2, fournisseur_id=$3, ref_facture=$4, updated_at=NOW()
+           WHERE id=$5`,
+          [quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, id]
+        );
+        // If transfert, adjust labo stock
+        if (entry.type_appro === 'transfert') {
+          const oldQty = parseFloat(entry.old_quantite) || 0;
+          const newQty = parseFloat(quantite) || 0;
+          const delta = oldQty - newQty;
+          if (delta !== 0) {
+            await client.query(
+              `UPDATE stock_labo_daily SET quantite = COALESCE(quantite,0) + $1, updated_at=NOW()
+               WHERE ingredient_id=$2 AND date_appro=$3 AND labo_id=(
+                 SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id=l.entreprise_id
+                 JOIN activites a ON a.entreprise_id=pe.id WHERE a.id=$4 LIMIT 1)`,
+              [delta, entry.ingredient_id, entry.date_appro, entry.activite_id]
+            );
+          }
         }
-      }
+      });
     } else {
       const check = await pool.query(
         `SELECT id, created_by FROM stock_client_daily WHERE id=$1 AND client_id=$2`,
@@ -1348,18 +1359,21 @@ const deleteHistoriqueEntry = async (req, res) => {
       if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
       const entry = check.rows[0];
-      await pool.query('DELETE FROM stock_entreprise_daily WHERE id=$1', [id]);
-      // If transfert, restore labo stock
-      if (entry.type_appro === 'transfert') {
-        const qty = parseFloat(entry.quantite) || 0;
-        await pool.query(
-          `UPDATE stock_labo_daily SET quantite = COALESCE(quantite,0) + $1, updated_at=NOW()
-           WHERE ingredient_id=$2 AND date_appro=$3 AND labo_id=(
-             SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id=l.entreprise_id
-             JOIN activites a ON a.entreprise_id=pe.id WHERE a.id=$4 LIMIT 1)`,
-          [qty, entry.ingredient_id, entry.date_appro, entry.activite_id]
-        );
-      }
+      // Atomic: deleting the stock row and restoring the labo stock must not desync.
+      await withTransaction(async (client) => {
+        await client.query('DELETE FROM stock_entreprise_daily WHERE id=$1', [id]);
+        // If transfert, restore labo stock
+        if (entry.type_appro === 'transfert') {
+          const qty = parseFloat(entry.quantite) || 0;
+          await client.query(
+            `UPDATE stock_labo_daily SET quantite = COALESCE(quantite,0) + $1, updated_at=NOW()
+             WHERE ingredient_id=$2 AND date_appro=$3 AND labo_id=(
+               SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id=l.entreprise_id
+               JOIN activites a ON a.entreprise_id=pe.id WHERE a.id=$4 LIMIT 1)`,
+            [qty, entry.ingredient_id, entry.date_appro, entry.activite_id]
+          );
+        }
+      });
     } else {
       const check = await pool.query(
         `SELECT id, created_by FROM stock_client_daily WHERE id=$1 AND client_id=$2`,

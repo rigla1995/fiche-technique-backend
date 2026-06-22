@@ -18,9 +18,12 @@ const pool = require('../config/database');
  * @param {boolean}      opts.timbreFiscal  - whether to apply 1 DT timbre fiscal charge
  * @param {string}       opts.stockTable    - 'stock_client_daily' | 'stock_entreprise_daily' | 'stock_labo_daily'
  * @param {number}       opts.stockRowId    - id of the stock row to link
+ * @param {object}       [db=pool]          - optional transaction client; pass a pg client
+ *                                            to run within the caller's transaction (atomicity
+ *                                            with the stock write). Defaults to the shared pool.
  * @returns {Promise<number>} factureId
  */
-async function upsertFacture(clientId, opts) {
+async function upsertFacture(clientId, opts, db = pool) {
   const {
     refFacture,
     dateAppro,
@@ -76,7 +79,7 @@ async function upsertFacture(clientId, opts) {
       newTimbre = 0;
     }
 
-    await pool.query(
+    await db.query(
       `UPDATE factures SET montant_ht = $1, montant_tva = $2, montant_ttc = $3, timbre_fiscal = $4, montant_timbre = $5 WHERE id = $6`,
       [newHT, newTva, newTTC, newTimbreFiscal, newTimbre, existing.id]
     );
@@ -102,7 +105,7 @@ async function upsertFacture(clientId, opts) {
     // Only allow known tables to prevent injection
     const allowed = ['stock_client_daily', 'stock_entreprise_daily', 'stock_labo_daily'];
     if (allowed.includes(stockTable)) {
-      await pool.query(
+      await db.query(
         `UPDATE ${stockTable} SET facture_id = $1 WHERE id = $2`,
         [factureId, stockRowId]
       );

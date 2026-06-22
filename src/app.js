@@ -4,12 +4,20 @@ if (!process.env.JWT_SECRET) {
   console.error('FATAL: JWT_SECRET manquant dans .env');
   process.exit(1);
 }
+if (process.env.JWT_SECRET === 'changez_moi_en_production') {
+  console.error('FATAL: JWT_SECRET est encore la valeur d\'exemple. Générez-en un fort : node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+  process.exit(1);
+}
+if (process.env.JWT_SECRET.length < 32) {
+  console.warn('[secu] JWT_SECRET court (<32 caractères) — utilisez ≥64 octets aléatoires en production.');
+}
 
 const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const migrate = require('./config/migrate');
+const logger = require('./utils/logger');
 
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
@@ -46,14 +54,20 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(cors());
-app.use(express.json());
-
-// Swagger UI — available at /api-docs
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'Fiche Technique API',
-  swaggerOptions: { persistAuthorization: true },
+// Capture the raw request body so webhook handlers can verify HMAC/secret signatures.
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf; },
 }));
-app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
+
+// Swagger UI — exposed only outside production to avoid handing a full API map to
+// attackers. Set NODE_ENV=production in the deployment env (Coolify) to disable it.
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: 'Fiche Technique API',
+    swaggerOptions: { persistAuthorization: true },
+  }));
+  app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
+}
 
 // Enforce read-only / suspended mode for all mutating API calls (non-GET, non-auth, non-admin)
 app.use('/api', (req, res, next) => {
@@ -102,8 +116,22 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.use((req, res) => res.status(404).json({ message: 'Route introuvable' }));
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error('unhandled_request_error', {
+    method: req.method,
+    path: req.originalUrl,
+    userId: req.user?.id || null,
+    error: err.message,
+    stack: err.stack,
+  });
   res.status(500).json({ message: 'Erreur serveur interne' });
+});
+
+// Never let an unhandled async error silently crash the process without a trace.
+process.on('unhandledRejection', (reason) => {
+  logger.error('unhandled_rejection', { error: reason?.message || String(reason), stack: reason?.stack });
+});
+process.on('uncaughtException', (err) => {
+  logger.error('uncaught_exception', { error: err?.message, stack: err?.stack });
 });
 
 const PORT = process.env.PORT || 3000;

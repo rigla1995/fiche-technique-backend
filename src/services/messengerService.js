@@ -2,6 +2,8 @@ const pool = require('../config/database');
 const { chatWithClaude } = require('./claudeService');
 const { chatWithDeepSeek } = require('./deepseekService');
 const { generateAndSendReport } = require('./reportService');
+const { verifyMetaSignature } = require('../utils/webhookSignature');
+const logger = require('../utils/logger');
 
 const GRAPH_API_URL = 'https://graph.facebook.com/v19.0/me/messages';
 
@@ -188,6 +190,23 @@ function verifyWebhook(req, res) {
 
 // Webhook events (POST)
 async function receiveWebhook(req, res) {
+  // Verify the payload really comes from Meta (HMAC-SHA256 over the raw body with the
+  // app secret). Without this, anyone could forge events: link a PSID to a client,
+  // inject messages, or trigger report emails. Enforced as soon as MESSENGER_APP_SECRET
+  // is set; fail-open with a warning until then so the live agent keeps working.
+  const { ok, enforced } = verifyMetaSignature(
+    req.rawBody,
+    req.headers['x-hub-signature-256'],
+    process.env.MESSENGER_APP_SECRET
+  );
+  if (enforced && !ok) {
+    logger.warn('messenger_webhook_rejected', { reason: 'invalid_signature' });
+    return res.sendStatus(401);
+  }
+  if (!enforced) {
+    logger.warn('messenger_webhook_unverified', { reason: 'MESSENGER_APP_SECRET not set — webhook is NOT authenticated' });
+  }
+
   const body = req.body;
   if (body.object !== 'page') return res.sendStatus(404);
 

@@ -2,6 +2,8 @@ const pool = require('../config/database');
 const { sendWelcomeWithContractEmail, generateInviteToken } = require('../services/emailService');
 const { saveNotificationToAdmins } = require('./notificationController');
 const { pushToAdmins } = require('../services/sseService');
+const { verifyDocusealSignature } = require('../utils/webhookSignature');
+const logger = require('../utils/logger');
 
 /**
  * POST /api/webhooks/docuseal
@@ -12,6 +14,25 @@ const { pushToAdmins } = require('../services/sseService');
  * We record contrat_accepte_le on the matching abonnement row.
  */
 const docusealWebhook = async (req, res) => {
+  // ── Authenticate the webhook before doing ANYTHING ────────────────────────────
+  // Without this, anyone on the internet could forge a "contract signed" / avenant
+  // event and grant subscription capacity without paying. Enforced as soon as
+  // DOCUSEAL_WEBHOOK_SECRET is set (in Coolify) + the matching header/secret is
+  // configured in Docuseal. Fail-open with a warning until then, so onboarding
+  // is not interrupted during rollout.
+  const { ok, enforced } = verifyDocusealSignature(
+    req.rawBody,
+    req.headers,
+    process.env.DOCUSEAL_WEBHOOK_SECRET
+  );
+  if (enforced && !ok) {
+    logger.warn('docuseal_webhook_rejected', { reason: 'invalid_signature', ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress });
+    return res.status(401).json({ message: 'Invalid signature' });
+  }
+  if (!enforced) {
+    logger.warn('docuseal_webhook_unverified', { reason: 'DOCUSEAL_WEBHOOK_SECRET not set — webhook is NOT authenticated' });
+  }
+
   // Acknowledge immediately — Docuseal retries on non-2xx
   res.status(200).json({ received: true });
 

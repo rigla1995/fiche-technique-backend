@@ -4,11 +4,10 @@
   "description": "Backend pour l'application de fiches techniques restaurants",
   "main": "src/app.js",
   "scripts": {
-    "prestart": "npm install --prefer-offline 2>/dev/null || npm install",
-    "predev": "npm install --prefer-offline 2>/dev/null || npm install",
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "migrate": "node src/config/migrate.js"
+    "migrate": "node src/config/migrate.js",
+    "test": "node --test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

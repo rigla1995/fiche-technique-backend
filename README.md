@@ -51,9 +51,13 @@ createdb fiche_technique
 npm run migrate
 ```
 
-Le script de migration crée toutes les tables et insère un Super Admin par défaut :
-- **Email :** `admin@fiche-technique.tn`
-- **Mot de passe :** `Admin@1234`
+Le script de migration crée toutes les tables et insère un compte Super Admin initial
+(`admin@fiche-technique.tn`).
+
+> ⚠️ **Sécurité — en production :** changez **immédiatement** le mot de passe de ce compte
+> (ou supprimez-le au profit d'un compte nominatif). Le mot de passe initial ne doit jamais
+> être laissé tel quel. Vérifiez aussi que `JWT_SECRET` est un secret fort et distinct par
+> environnement (`node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`).
 
 ## Démarrage
 
