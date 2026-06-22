@@ -3,6 +3,7 @@ const { chatWithClaude } = require('./claudeService');
 const { chatWithDeepSeek } = require('./deepseekService');
 const { generateAndSendReport } = require('./reportService');
 const { verifyMetaSignature } = require('../utils/webhookSignature');
+const { withTransaction } = require('../utils/db');
 const logger = require('../utils/logger');
 
 const GRAPH_API_URL = 'https://graph.facebook.com/v19.0/me/messages';
@@ -112,12 +113,22 @@ async function handleMessengerEvent(event) {
       return sendMessage(psid, '❌ Lien expiré ou invalide. Contactez votre administrateur LabFlow.');
     }
     // Ouvrir le lien lie le PSID ET active l'agent (idempotent vis-à-vis du flag enabled).
-    await pool.query(
-      `UPDATE ai_assistant_config
-       SET messenger_psid = $1, messenger_invite_token = NULL, enabled = true, updated_at = NOW()
-       WHERE client_id = $2`,
-      [psid, client.client_id]
-    );
+    // Un PSID est unique (1 compte Messenger ↔ 1 client) : on le détache d'abord de tout autre
+    // client pour permettre au propriétaire de déplacer son Messenger d'un client à l'autre
+    // (le dernier lien ouvert gagne) — sinon la contrainte unique fait échouer la liaison.
+    await withTransaction(async (c) => {
+      await c.query(
+        `UPDATE ai_assistant_config SET messenger_psid = NULL, updated_at = NOW()
+         WHERE messenger_psid = $1 AND client_id <> $2`,
+        [psid, client.client_id]
+      );
+      await c.query(
+        `UPDATE ai_assistant_config
+         SET messenger_psid = $1, messenger_invite_token = NULL, enabled = true, updated_at = NOW()
+         WHERE client_id = $2`,
+        [psid, client.client_id]
+      );
+    });
     return sendMessage(
       psid,
       `👋 Bonjour ${client.nom} !\n\nJe suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :\n\n` +
