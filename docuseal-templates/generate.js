@@ -51,11 +51,9 @@ function makeDoc() {
     txt(label, ML + 8, y + 6, 8, true, '#3730a3');
     return y + 26;
   };
-  // Cellule de champ : encadré gris clair affichant le NOM du champ à créer dans Docuseal.
-  // Le nom sert de repère ; le champ Docuseal posé par-dessus le recouvre.
-  const fieldTag = (tag, x, y, w) => {
-    doc.save().roundedRect(x, y, w, 16, 3).fillAndStroke('#f8fafc', '#cbd5e1').restore();
-    txt(tag, x + 5, y + 4.5, 7.5, false, '#cbd5e1', { width: w - 10 });
+  // Cellule de champ : simple encadré clair (sans texte), le champ Docuseal rempli s'affiche dessus.
+  const fieldTag = (_tag, x, y, w) => {
+    doc.save().roundedRect(x, y, w, 16, 3).fillAndStroke('#ffffff', '#e2e8f0').restore();
     return y;
   };
 
@@ -123,12 +121,10 @@ function signatures(ctx, y) {
   doc.save().strokeColor('#e2e8f0').lineWidth(0.5).rect(sx2, y, sw, 92).stroke().restore();
   txt('LE CLIENT', sx2 + 8, y + 10, 7, true, '#374151');
   txt('Lu et approuvé, bon pour accord', sx2 + 8, y + 22, 7, false, '#64748b');
-  // Zone de signature (champ Signature) + date (champ Date) côte à côte
+  // Zone de signature (champ Signature) + date (champ Date) côte à côte — sans texte repère
   const halfSw = (sw - 24) / 2;
-  doc.save().roundedRect(sx2 + 8, y + 34, halfSw, 22, 3).fillAndStroke('#ffffff', '#cbd5e1').restore();
-  txt('Signature', sx2 + 12, y + 42, 7, false, '#cbd5e1');
-  doc.save().roundedRect(sx2 + 8 + halfSw + 8, y + 34, halfSw, 22, 3).fillAndStroke('#ffffff', '#cbd5e1').restore();
-  txt('Date', sx2 + 12 + halfSw + 8, y + 42, 7, false, '#cbd5e1');
+  doc.save().roundedRect(sx2 + 8, y + 34, halfSw, 22, 3).fillAndStroke('#ffffff', '#e2e8f0').restore();
+  doc.save().roundedRect(sx2 + 8 + halfSw + 8, y + 34, halfSw, 22, 3).fillAndStroke('#ffffff', '#e2e8f0').restore();
   txt('Signature électronique  ·  Date de signature', sx2 + 8, y + 62, 7, false, '#9ca3af');
   return y + 102;
 }
