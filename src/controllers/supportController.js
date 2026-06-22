@@ -3,7 +3,11 @@ const { sendAvenantEmail } = require('../services/emailService');
 const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
-const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig } = require('./abonnementController');
+const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeAvenantPricing } = require('./abonnementController');
+const { createSubmission, isConfigured: docusealConfigured } = require('../services/docusealService');
+const { sendDocusealSigningEmail } = require('../services/emailService');
+
+const fmtDtS = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -102,13 +106,52 @@ const create = async (req, res) => {
 
     const result = await pool.query(sql, params);
     const demande = mapDemande(result.rows[0]);
+
+    // Nouveau flux : une demande de capacité déclenche un avenant Docuseal à signer.
+    // À la signature (webhook), la capacité est appliquée et la demande validée automatiquement.
+    let signingUrl = null;
+    if (type === 'supplement' && docusealConfigured('avenant')) {
+      try {
+        const emailRes = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
+        const clientEmail = emailRes.rows[0]?.email || null;
+        const clientNomFull = emailRes.rows[0]?.nom || clientNom || 'Client';
+        if (clientEmail) {
+          const pricing = await computeAvenantPricing(clientId, {
+            addActivites: req.body.nbActivitesSupp || 0,
+            addLabos: req.body.nbLabosSupp || 0,
+            addGerants: req.body.nbGerantsSupp || 0,
+          });
+          const sub = await createSubmission({
+            type: 'avenant',
+            clientName: clientNomFull,
+            clientEmail,
+            nbActivites: pricing?.nbActivites,
+            nbLabos: pricing?.nbLabos,
+            nbGerants: pricing?.nbGerants,
+            montantMensuel: pricing?.effMensuel,
+          });
+          if (sub?.submissionId) {
+            await pool.query('UPDATE support_demandes SET docuseal_submission_id = $1 WHERE id = $2',
+              [String(sub.submissionId), demande.id]);
+          }
+          if (sub?.signingUrl) {
+            signingUrl = sub.signingUrl;
+            sendDocusealSigningEmail({ to: clientEmail, nom: clientNomFull, signingUrl: sub.signingUrl })
+              .catch((e) => console.error('[avenant] envoi email signature:', e.message));
+          }
+        }
+      } catch (e) {
+        console.error('[avenant] création soumission Docuseal:', e.message);
+      }
+    }
+
     const notifPayload = { eventType: 'new_demande', demandeId: demande.id, type: demande.type, clientNom: clientNom || 'Client' };
     // Don't notify admins for auto-validated aide requests
     if (type !== 'aide') {
       pushToAdmins('new_demande', notifPayload);
       saveNotificationToAdmins(notifPayload).catch(console.error);
     }
-    res.status(201).json(demande);
+    res.status(201).json({ ...demande, signingUrl });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -168,6 +211,12 @@ const traiter = async (req, res) => {
     );
     if (demandeRes.rows.length === 0) return res.status(404).json({ message: 'Demande introuvable' });
     const demande = demandeRes.rows[0];
+
+    // Une demande de capacité avec avenant Docuseal en attente est validée automatiquement
+    // à la signature du client — l'admin ne peut pas la valider manuellement (mais peut la refuser).
+    if (statut === 'validée' && demande.type === 'supplement' && demande.docuseal_submission_id && demande.statut === 'en_attente') {
+      return res.status(409).json({ message: "Cette demande sera validée automatiquement dès que le client aura signé l'avenant." });
+    }
 
     const result = await pool.query(
       `UPDATE support_demandes
@@ -229,8 +278,10 @@ const traiter = async (req, res) => {
       // Admin no longer creates global articles — each client manages their own referential
     }
 
-    // Update abonnement_config when supplement request is validated
-    if (statut === 'validée' && demande.type === 'supplement') {
+    // Update abonnement_config when supplement request is validated.
+    // Skip if an avenant Docuseal is pending (docuseal_submission_id) : la capacité
+    // est alors appliquée automatiquement par le webhook à la signature (évite le double).
+    if (statut === 'validée' && demande.type === 'supplement' && !demande.docuseal_submission_id) {
       await pool.query(
         `UPDATE abonnement_config ac
          SET nb_activites = nb_activites + $1,
@@ -243,8 +294,8 @@ const traiter = async (req, res) => {
       );
     }
 
-    // Send avenant email only when supplement request is validated
-    if (statut === 'validée' && demande.type === 'supplement') {
+    // Send avenant email (PDF) only for the manual fallback (no Docuseal submission)
+    if (statut === 'validée' && demande.type === 'supplement' && !demande.docuseal_submission_id) {
       const clientEmail = demande.client_email;
       const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
       if (clientEmail) {
