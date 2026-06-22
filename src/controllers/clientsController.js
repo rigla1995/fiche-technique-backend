@@ -3,7 +3,7 @@ const pool = require('../config/database');
 const { createAbonnement, insertPromoForAbonnement, computeEffectivePricing } = require('./abonnementController');
 const { generateInviteToken, sendWelcomeWithContractEmail, sendDocusealSigningEmail } = require('../services/emailService');
 const { generateContratPdf } = require('../services/pdfService');
-const { createContractSubmission, isConfigured: docusealConfigured } = require('../services/docusealService');
+const { createContractSubmission, createSubmission, isConfigured: docusealConfigured } = require('../services/docusealService');
 
 // Formatage pour les champs Docuseal
 const fmtDtC = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
@@ -340,13 +340,14 @@ const remove = async (req, res) => {
     await dbClient.query('BEGIN');
 
     const check = await dbClient.query(
-      "SELECT id FROM utilisateurs WHERE id = $1 AND role = 'client'",
+      "SELECT id, nom, email FROM utilisateurs WHERE id = $1 AND role = 'client'",
       [id]
     );
     if (check.rows.length === 0) {
       await dbClient.query('ROLLBACK');
       return res.status(404).json({ message: 'Client introuvable' });
     }
+    const deletedClient = check.rows[0];
 
     // Collect all user IDs owned by this client (client + its gérants)
     const usersRes = await dbClient.query(
@@ -414,6 +415,22 @@ const remove = async (req, res) => {
     );
 
     await dbClient.query('COMMIT');
+
+    // Le client est supprimé. On lui envoie son acte de résiliation Docuseal pour
+    // archive/formalité (best-effort, n'impacte pas la suppression déjà effectuée).
+    if (deletedClient.email && docusealConfigured('resiliation')) {
+      createSubmission({
+        type: 'resiliation',
+        clientName: deletedClient.nom || 'Client',
+        clientEmail: deletedClient.email,
+      })
+        .then(({ signingUrl }) => signingUrl
+          ? sendDocusealSigningEmail({ to: deletedClient.email, nom: deletedClient.nom || 'Client', signingUrl })
+          : null)
+        .then(() => console.log(`[resiliation] acte envoyé à ${deletedClient.email}`))
+        .catch((e) => console.error('[resiliation] envoi échoué:', e.message));
+    }
+
     res.status(204).send();
   } catch (err) {
     await dbClient.query('ROLLBACK');
