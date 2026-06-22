@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { sendWelcomeWithContractEmail, generateInviteToken } = require('../services/emailService');
 
 /**
  * POST /api/webhooks/docuseal
@@ -49,6 +50,42 @@ const docusealWebhook = async (req, res) => {
           AND a.contrat_accepte_le IS NULL`,
       [signedAt, ip, signerEmail]
     );
+
+    // Une fois le contrat signé, on envoie le mail d'activation du compte.
+    // Idempotent : `abonnements.invite_sent = FALSE` garantit un seul envoi malgré les
+    // événements multiples de Docuseal (form.completed + submission.completed) et ses retries.
+    // L'UPDATE atomique « revendique » l'envoi (FALSE → TRUE) et retourne le client.
+    const claim = await pool.query(
+      `UPDATE abonnements a
+          SET invite_sent = TRUE
+         FROM utilisateurs u
+        WHERE a.client_id = u.id
+          AND LOWER(u.email) = LOWER($1)
+          AND u.role = 'client'
+          AND u.activated_at IS NULL
+          AND a.invite_sent = FALSE
+        RETURNING u.id, u.nom, u.email`,
+      [signerEmail]
+    );
+    if (claim.rows.length > 0) {
+      const u = claim.rows[0];
+      // On régénère le token car les 48h initiales peuvent être écoulées entre l'envoi
+      // du contrat et la signature.
+      const newToken = generateInviteToken();
+      const newExpires = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      await pool.query(
+        `UPDATE utilisateurs SET invite_token = $1, invite_token_expires_at = $2 WHERE id = $3`,
+        [newToken, newExpires, u.id]
+      );
+      try {
+        await sendWelcomeWithContractEmail({ to: u.email, nom: u.nom, token: newToken, contractPdfBase64: null });
+        console.log(`[docuseal-webhook] Mail d'activation envoyé à ${u.email} après signature`);
+      } catch (mailErr) {
+        // Échec d'envoi : on remet invite_sent à FALSE pour réessai au prochain événement
+        await pool.query(`UPDATE abonnements SET invite_sent = FALSE WHERE client_id = $1`, [u.id]).catch(() => {});
+        console.error('[docuseal-webhook] Échec envoi mail activation:', mailErr.message);
+      }
+    }
 
     console.log(`[docuseal-webhook] Contrat signé par ${signerEmail} (${event_type})`);
   } catch (err) {

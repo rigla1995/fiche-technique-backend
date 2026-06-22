@@ -197,14 +197,13 @@ const create = async (req, res) => {
             }
           })
           .catch((err) => console.error('[docuseal] Erreur création submission:', err.message));
-        // Welcome email without PDF — signing email sent separately above
-        await sendWelcomeWithContractEmail({ to: email, nom, token: inviteToken, contractPdfBase64: null });
+        // Mail d'activation DIFFÉRÉ : il sera envoyé par le webhook Docuseal une fois le contrat signé.
+        // invite_sent reste FALSE pour que le webhook puisse le revendiquer (envoi unique).
       } else {
-        // Fallback: attach PDF directly to welcome email
+        // Fallback (Docuseal non configuré) : on envoie l'activation immédiatement avec le PDF en pièce jointe
         await sendWelcomeWithContractEmail({ to: email, nom, token: inviteToken, contractPdfBase64: pdfBase64 });
+        await pool.query(`UPDATE abonnements SET invite_sent = TRUE WHERE client_id = $1`, [user.id]).catch(() => {});
       }
-
-      await pool.query(`UPDATE utilisateurs SET invite_sent = TRUE WHERE id = $1`, [user.id]).catch(() => {});
     } catch (emailErr) {
       console.error('Welcome email error:', emailErr.message);
     }
