@@ -1,9 +1,51 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
-const { createAbonnement, insertPromoForAbonnement } = require('./abonnementController');
+const { createAbonnement, insertPromoForAbonnement, computeEffectivePricing } = require('./abonnementController');
 const { generateInviteToken, sendWelcomeWithContractEmail, sendDocusealSigningEmail } = require('../services/emailService');
 const { generateContratPdf } = require('../services/pdfService');
 const { createContractSubmission, isConfigured: docusealConfigured } = require('../services/docusealService');
+
+// Formatage pour les champs Docuseal
+const fmtDtC = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
+const fmtDateC = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '';
+
+// Construit les champs promo du contrat à partir du détail tarifaire effectif.
+// Retourne { montantOnboarding, montantMensuel, extraFields } pour la soumission Docuseal.
+const buildContractPricingFields = (pricing) => {
+  if (!pricing) return { montantOnboarding: null, montantMensuel: null, extraFields: [] };
+  const { baseOnboarding, effOnboarding, baseMensuel, effMensuel, promoMens, promoOb, promoMonths, baseResumeDate, hasPromo } = pricing;
+
+  let detail;
+  if (!hasPromo) {
+    detail = 'Aucune promotion — tarifs standard.';
+  } else {
+    const parts = [];
+    if (promoOb) {
+      parts.push(effOnboarding === 0
+        ? "Frais d'activation offerts (au lieu de " + fmtDtC(baseOnboarding) + ')'
+        : `Frais d'activation : ${fmtDtC(effOnboarding)} au lieu de ${fmtDtC(baseOnboarding)}`);
+    }
+    if (promoMens) {
+      let m = effMensuel === 0
+        ? `Mensualité offerte (au lieu de ${fmtDtC(baseMensuel)})`
+        : `Mensualité : ${fmtDtC(effMensuel)} au lieu de ${fmtDtC(baseMensuel)}`;
+      if (promoMonths) m += ` pendant ${promoMonths} mois`;
+      if (baseResumeDate) m += `, puis ${fmtDtC(baseMensuel)} à partir du ${fmtDateC(baseResumeDate)}`;
+      parts.push(m);
+    }
+    detail = parts.join('  ·  ');
+  }
+
+  return {
+    montantOnboarding: effOnboarding,
+    montantMensuel: effMensuel,
+    extraFields: [
+      { name: 'Détail promotion', default_value: detail },
+      { name: 'Mensualité après promo', default_value: hasPromo && promoMens ? fmtDtC(baseMensuel) : '' },
+      { name: 'Reprise prix de base', default_value: baseResumeDate ? fmtDateC(baseResumeDate) : '' },
+    ],
+  };
+};
 
 const mapClient = (row) => ({
   id: row.id,
@@ -179,14 +221,18 @@ const create = async (req, res) => {
       // Send contract via Docuseal for e-signature — our backend sends the signing email via Resend
       if (docusealConfigured()) {
         const aboConfigForDocuseal = config || {};
+        // Détail tarifaire effectif (base + promotion) pour pré-remplir le contrat
+        const pricing = await computeEffectivePricing(user.id).catch(() => null);
+        const pf = buildContractPricingFields(pricing);
         createContractSubmission({
           clientName: nom,
           clientEmail: email,
           nbActivites:       aboConfigForDocuseal.nbActivites ?? 1,
           nbLabos:           aboConfigForDocuseal.nbLabos ?? 0,
           nbGerants:         aboConfigForDocuseal.nbGerants ?? 0,
-          montantOnboarding: montantOnboarding ?? null,
-          montantMensuel:    montantOnboarding ?? null,
+          montantOnboarding: pf.montantOnboarding ?? montantOnboarding ?? null,
+          montantMensuel:    pf.montantMensuel ?? null,
+          extraFields:       pf.extraFields,
         })
           .then(({ submissionId, signingUrl }) => {
             console.log(`[docuseal] Submission créée: ${submissionId} pour ${email}, signingUrl: ${signingUrl}`);

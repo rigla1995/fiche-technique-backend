@@ -1450,8 +1450,69 @@ const toggleModuleVente = async (req, res) => {
   }
 };
 
+// Calcule le détail tarifaire effectif (base + promotion active) d'un client.
+// Réutilisé pour les contrats et avenants Docuseal. Lit tout depuis la base.
+const computeEffectivePricing = async (clientId) => {
+  const tarifs = await loadAllTarifs();
+  const aboRes = await pool.query(
+    `SELECT id, montant_onboarding FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1`,
+    [clientId]
+  );
+  if (aboRes.rows.length === 0) return null;
+  const abo = aboRes.rows[0];
+  const cfgRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [abo.id]);
+  const config = cfgRes.rows[0] || null;
+
+  let baseMensuel, baseOnboarding;
+  if (config) {
+    baseMensuel = (computeBaseMensuelFromConfig(config, tarifs) || 0)
+                + (computeBaseLaboFromConfig(config, tarifs) || 0)
+                + (computeBaseGerantFromConfig(config, tarifs) || 0);
+    baseOnboarding = parseFloat(config.montant_onboarding) || parseFloat(abo.montant_onboarding) || 0;
+  } else {
+    baseMensuel = parseFloat(tarifs['entreprise_mensuel'] || 0);
+    baseOnboarding = parseFloat(abo.montant_onboarding || tarifs['entreprise_onboarding'] || 0);
+  }
+
+  const promoRes = await pool.query(
+    `SELECT * FROM promotions
+      WHERE abonnement_id = $1
+        AND date_debut <= CURRENT_DATE
+        AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
+      ORDER BY date_debut DESC`,
+    [abo.id]
+  );
+  const promos = promoRes.rows;
+  const promoMens = promos.find((p) => ['mensualite', 'les_deux'].includes(p.applies_to)) || null;
+  const promoOb   = promos.find((p) => ['onboarding', 'les_deux'].includes(p.applies_to)) || null;
+
+  const effOnboarding = promoOb ? applyPromoOnboarding(baseOnboarding, promoOb) : baseOnboarding;
+  const effMensuel    = promoMens ? applyPromoMensualite(baseMensuel, promoMens) : baseMensuel;
+
+  // Durée promo mensualité + date de reprise du tarif de base
+  let promoMonths = null, baseResumeDate = null;
+  if (promoMens) {
+    promoMonths = promoMens.months_duration || null;
+    if (promoMens.date_fin) {
+      const d = new Date(promoMens.date_fin);
+      d.setDate(d.getDate() + 1);
+      baseResumeDate = d;
+    }
+  }
+
+  return {
+    abonnementId: abo.id,
+    baseOnboarding, effOnboarding,
+    baseMensuel, effMensuel,
+    promoMens, promoOb,
+    promoMonths, baseResumeDate,
+    hasPromo: !!(promoMens || promoOb),
+  };
+};
+
 module.exports = {
   getTarifs, updateTarif,
+  computeEffectivePricing,
   listAbonnements, getAbonnement, createAbonnement,
   updateOnboarding, updateProlongation, updateNotes, updateMode, toggleModuleVente,
   upsertPaiement,
