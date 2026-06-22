@@ -1348,14 +1348,21 @@ const getSupplementPricing = async (req, res) => {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (!aboRes.rows.length) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
-    const [configRes, promoRes] = await Promise.all([
+    const [configRes, promoRes, mensPromoRes] = await Promise.all([
       pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]),
       pool.query(`SELECT applies_to, type, discount_supplement, fixed_supplement
                   FROM promotions WHERE abonnement_id = $1
                     AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
                     AND applies_to IN ('supplement_activite','supplement_labo','supplement_gerant')`, [aboId]),
+      pool.query(`SELECT type, discount_mensualite, fixed_mensualite, applies_to
+                  FROM promotions WHERE abonnement_id = $1
+                    AND date_debut <= CURRENT_DATE
+                    AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
+                    AND applies_to IN ('mensualite','les_deux')
+                  ORDER BY date_debut DESC LIMIT 1`, [aboId]),
     ]);
     const config = configRes.rows[0] || null;
+    const mensPromo = mensPromoRes.rows[0] || null;
 
     const nbA = parseInt(config?.nb_activites) || 0;
     const nbL = parseInt(config?.nb_labos) || 0;
@@ -1371,6 +1378,8 @@ const getSupplementPricing = async (req, res) => {
       prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160),
       prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
       currentMensuel,
+      currentMensuelEffectif: applyPromoMensualite(currentMensuel, mensPromo),
+      mensPromo,
       nbActivites: nbA, nbLabos: nbL, nbGerants: nbG,
       activitePromo: extractSupplPromo(promoRes.rows, 'supplement_activite'),
       laboPromo:     extractSupplPromo(promoRes.rows, 'supplement_labo'),
@@ -1390,14 +1399,21 @@ const getClientSupplementPricing = async (req, res) => {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (!aboRes.rows.length) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
-    const [configRes, promoRes] = await Promise.all([
+    const [configRes, promoRes, mensPromoRes] = await Promise.all([
       pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]),
       pool.query(`SELECT applies_to, type, discount_supplement, fixed_supplement
                   FROM promotions WHERE abonnement_id = $1
                     AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
                     AND applies_to IN ('supplement_activite','supplement_labo','supplement_gerant')`, [aboId]),
+      pool.query(`SELECT type, discount_mensualite, fixed_mensualite, applies_to
+                  FROM promotions WHERE abonnement_id = $1
+                    AND date_debut <= CURRENT_DATE
+                    AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
+                    AND applies_to IN ('mensualite','les_deux')
+                  ORDER BY date_debut DESC LIMIT 1`, [aboId]),
     ]);
     const config = configRes.rows[0] || null;
+    const mensPromo = mensPromoRes.rows[0] || null;
 
     const nbA = parseInt(config?.nb_activites) || 0;
     const nbL = parseInt(config?.nb_labos) || 0;
@@ -1412,6 +1428,8 @@ const getClientSupplementPricing = async (req, res) => {
       prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160),
       prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
       currentMensuel, activiteCost, laboCost, gerantCost,
+      currentMensuelEffectif: applyPromoMensualite(currentMensuel, mensPromo),
+      mensPromo,
       nbActivites: nbA, nbLabos: nbL, nbGerants: nbG,
       activitePromo: extractSupplPromo(promoRes.rows, 'supplement_activite'),
       laboPromo:     extractSupplPromo(promoRes.rows, 'supplement_labo'),
