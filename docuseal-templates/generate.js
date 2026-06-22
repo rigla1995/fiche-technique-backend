@@ -51,10 +51,11 @@ function makeDoc() {
     txt(label, ML + 8, y + 6, 8, true, '#3730a3');
     return y + 26;
   };
-  // Cellule "label : {{tag}}" — la balise apparaît en gris encadré, prête pour DocuSeal
+  // Cellule de champ : encadré gris clair affichant le NOM du champ à créer dans Docuseal.
+  // Le nom sert de repère ; le champ Docuseal posé par-dessus le recouvre.
   const fieldTag = (tag, x, y, w) => {
-    doc.save().roundedRect(x, y, w, 16, 3).fillAndStroke('#ffffff', '#cbd5e1').restore();
-    txt(`{{${tag}}}`, x + 5, y + 4.5, 8, false, '#94a3b8', { width: w - 10 });
+    doc.save().roundedRect(x, y, w, 16, 3).fillAndStroke('#f8fafc', '#cbd5e1').restore();
+    txt(tag, x + 5, y + 4.5, 7.5, false, '#cbd5e1', { width: w - 10 });
     return y;
   };
 
@@ -67,8 +68,7 @@ function header(ctx, title) {
   fill(0, 108, PW, 11, AMBER);
   txt(PRESTATAIRE.nom, ML, 28, 22, true, '#ffffff');
   txt(title, ML, 52, 10, false, '#fde68a');
-  // Date remplie par le backend (champ "Date du contrat")
-  txt('Date : {{Date du contrat}}', ML, 34, 8, false, '#fcd34d', { align: 'right', width: CW });
+  // Pas de date dans l'en-tête : la date est portée par la signature (champ Date Docuseal).
 }
 
 // Stampe le footer sur toutes les pages réellement remplies, puis supprime une
@@ -122,12 +122,14 @@ function signatures(ctx, y) {
   fill(sx2, y, sw, 92, '#f8fafc');
   doc.save().strokeColor('#e2e8f0').lineWidth(0.5).rect(sx2, y, sw, 92).stroke().restore();
   txt('LE CLIENT', sx2 + 8, y + 10, 7, true, '#374151');
-  txt('{{Nom du client}}', sx2 + 8, y + 24, 8, false, '#94a3b8');
-  txt('Lu et approuvé, bon pour accord', sx2 + 8, y + 38, 7, false, '#64748b');
-  // Zone de signature DocuSeal
-  doc.save().roundedRect(sx2 + 8, y + 52, sw - 16, 22, 3).fillAndStroke('#ffffff', '#cbd5e1').restore();
-  txt('{{Signature;type=signature}}', sx2 + 12, y + 60, 7, false, '#94a3b8');
-  txt('Signature électronique', sx2 + 8, y + 80, 7, false, '#9ca3af');
+  txt('Lu et approuvé, bon pour accord', sx2 + 8, y + 22, 7, false, '#64748b');
+  // Zone de signature (champ Signature) + date (champ Date) côte à côte
+  const halfSw = (sw - 24) / 2;
+  doc.save().roundedRect(sx2 + 8, y + 34, halfSw, 22, 3).fillAndStroke('#ffffff', '#cbd5e1').restore();
+  txt('Signature', sx2 + 12, y + 42, 7, false, '#cbd5e1');
+  doc.save().roundedRect(sx2 + 8 + halfSw + 8, y + 34, halfSw, 22, 3).fillAndStroke('#ffffff', '#cbd5e1').restore();
+  txt('Date', sx2 + 12 + halfSw + 8, y + 42, 7, false, '#cbd5e1');
+  txt('Signature électronique  ·  Date de signature', sx2 + 8, y + 62, 7, false, '#9ca3af');
   return y + 102;
 }
 
