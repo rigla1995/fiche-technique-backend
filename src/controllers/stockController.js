@@ -1143,7 +1143,7 @@ const getHistoriqueAppro = async (req, res) => {
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
          LEFT JOIN utilisateurs ub ON ub.id = sed.created_by
-         WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
+         WHERE sed.activite_id IN (${idList}) AND sed.date_appro >= make_date($${activiteIds.length + 1}::int, 1, 1) AND sed.date_appro < make_date($${activiteIds.length + 1}::int + 1, 1, 1)${extraWhere}
          ORDER BY sed.date_appro DESC, i.nom
          ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`,
         params
@@ -1217,7 +1217,7 @@ const getHistoriqueAppro = async (req, res) => {
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
          LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
-         WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
+         WHERE scd.client_id = $1 AND scd.date_appro >= make_date($2::int, 1, 1) AND scd.date_appro < make_date($2::int + 1, 1, 1)${extraWhere}
          ORDER BY scd.date_appro DESC, i.nom
          ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`,
         params
@@ -1484,14 +1484,14 @@ const exportHistoriqueExcel = async (req, res) => {
          JOIN articles i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
          LEFT JOIN utilisateurs ub ON ub.id = sed.created_by
-         WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
+         WHERE sed.activite_id IN (${idList}) AND sed.date_appro >= make_date($${activiteIds.length + 1}::int, 1, 1) AND sed.date_appro < make_date($${activiteIds.length + 1}::int + 1, 1, 1)${extraWhere}
          ORDER BY sed.date_appro DESC, i.nom`, params
       );
       rows = result.rows;
 
       // Append PT rows for entreprise
       const ptParamsEnt = [currentYear, ...activiteIds];
-      let ptWhereEnt = `EXTRACT(YEAR FROM spt.date_appro) = $1 AND spt.activite_id IN (${activiteIds.map((_, i) => `$${i + 2}`).join(',')})`;
+      let ptWhereEnt = `spt.date_appro >= make_date($1::int, 1, 1) AND spt.date_appro < make_date($1::int + 1, 1, 1) AND spt.activite_id IN (${activiteIds.map((_, i) => `$${i + 2}`).join(',')})`;
       if (ptProduitId) { ptParamsEnt.push(ptProduitId); ptWhereEnt += ` AND spt.produit_id = $${ptParamsEnt.length}`; }
       if (startDate) { ptParamsEnt.push(startDate); ptWhereEnt += ` AND spt.date_appro >= $${ptParamsEnt.length}`; }
       if (endDate) { ptParamsEnt.push(endDate); ptWhereEnt += ` AND spt.date_appro <= $${ptParamsEnt.length}`; }
@@ -1530,7 +1530,7 @@ const exportHistoriqueExcel = async (req, res) => {
            JOIN articles i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
            LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
            LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
-           WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
+           WHERE scd.client_id = $1 AND scd.date_appro >= make_date($2::int, 1, 1) AND scd.date_appro < make_date($2::int + 1, 1, 1)${extraWhere}
            ORDER BY scd.date_appro DESC, i.nom`, params
         );
         rows = result.rows;
@@ -1538,7 +1538,7 @@ const exportHistoriqueExcel = async (req, res) => {
 
       // Append PT rows for indép
       const ptParamsIndep = [req.user.id, currentYear];
-      let ptWhereIndep = `spt.client_id = $1 AND EXTRACT(YEAR FROM spt.date_appro) = $2`;
+      let ptWhereIndep = `spt.client_id = $1 AND spt.date_appro >= make_date($2::int, 1, 1) AND spt.date_appro < make_date($2::int + 1, 1, 1)`;
       if (ptProduitId) { ptParamsIndep.push(ptProduitId); ptWhereIndep += ` AND spt.produit_id = $${ptParamsIndep.length}`; }
       if (startDate) { ptParamsIndep.push(startDate); ptWhereIndep += ` AND spt.date_appro >= $${ptParamsIndep.length}`; }
       if (endDate) { ptParamsIndep.push(endDate); ptWhereIndep += ` AND spt.date_appro <= $${ptParamsIndep.length}`; }
@@ -1881,7 +1881,7 @@ const exportHistoriquePdf = async (req, res) => {
          FROM stock_entreprise_daily sed
          JOIN articles i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
-         WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
+         WHERE sed.activite_id IN (${idList}) AND sed.date_appro >= make_date($${activiteIds.length + 1}::int, 1, 1) AND sed.date_appro < make_date($${activiteIds.length + 1}::int + 1, 1, 1)${extraWhere}
          ORDER BY sed.date_appro DESC, i.nom`, params
       );
       rows = result.rows.map((r) => ({ ...r, activite_nom: activiteNames[r.activite_id] || '' }));
@@ -1902,7 +1902,7 @@ const exportHistoriquePdf = async (req, res) => {
          FROM stock_client_daily scd
          JOIN articles i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
-         WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
+         WHERE scd.client_id = $1 AND scd.date_appro >= make_date($2::int, 1, 1) AND scd.date_appro < make_date($2::int + 1, 1, 1)${extraWhere}
          ORDER BY scd.date_appro DESC, i.nom`, params
       );
       rows = result.rows;

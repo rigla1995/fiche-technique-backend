@@ -1147,7 +1147,7 @@ const getTransferHistory = async (req, res) => {
          FROM labo_transfers lt
          JOIN produits p ON p.id = lt.produit_id
          JOIN activites a ON a.id = lt.activite_id
-         WHERE lt.labo_id = $1 AND EXTRACT(YEAR FROM lt.date_transfert) = $2${extraWhere}
+         WHERE lt.labo_id = $1 AND lt.date_transfert >= make_date($2::int, 1, 1) AND lt.date_transfert < make_date($2::int + 1, 1, 1)${extraWhere}
          ORDER BY lt.date_transfert DESC, lt.created_at DESC${limit ? ` LIMIT ${parseInt(limit, 10)}` : ''}`,
         params
       );
@@ -1180,7 +1180,7 @@ const getTransferHistory = async (req, res) => {
        LEFT JOIN categories c ON i.categorie_id = c.id
        JOIN activites a ON a.id = lt.activite_id
        LEFT JOIN utilisateurs ub ON ub.id = lt.created_by
-       WHERE lt.labo_id = $1 AND EXTRACT(YEAR FROM lt.date_transfert) = $2${extraWhere}
+       WHERE lt.labo_id = $1 AND lt.date_transfert >= make_date($2::int, 1, 1) AND lt.date_transfert < make_date($2::int + 1, 1, 1)${extraWhere}
        ORDER BY lt.date_transfert DESC, lt.created_at DESC${limit ? ` LIMIT ${parseInt(limit, 10)}` : ''}`,
       params
     );

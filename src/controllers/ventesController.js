@@ -885,7 +885,7 @@ const statsVentes = async (req, res) => {
        LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
        LEFT JOIN articles i ON vl.article_type = 'ingredient' AND i.id = vl.article_id
        WHERE ${whereCol} = $1 AND v.statut = 'confirmee'
-         AND date_trunc('month', v.date_vente) = date_trunc('month', CURRENT_DATE)
+         AND v.date_vente >= date_trunc('month', CURRENT_DATE) AND v.date_vente < date_trunc('month', CURRENT_DATE) + interval '1 month'
        GROUP BY vl.article_type, vl.article_id,
                 (CASE vl.article_type WHEN 'produit' THEN p.nom WHEN 'ingredient' THEN i.nom END)
        ORDER BY total_ca DESC LIMIT 10`,
@@ -897,7 +897,7 @@ const statsVentes = async (req, res) => {
        FROM ventes v
        JOIN vente_lignes vl ON vl.vente_id = v.id
        WHERE ${whereCol} = $1 AND v.statut = 'confirmee'
-         AND date_trunc('month', v.date_vente) = date_trunc('month', CURRENT_DATE)
+         AND v.date_vente >= date_trunc('month', CURRENT_DATE) AND v.date_vente < date_trunc('month', CURRENT_DATE) + interval '1 month'
        GROUP BY v.type_vente`,
       [whereVal]
     );
