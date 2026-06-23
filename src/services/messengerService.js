@@ -132,6 +132,9 @@ async function handleMessengerEvent(event) {
         [psid, client.client_id]
       );
     });
+    // Réchauffe le snapshot de config statique du client (début de session Messenger)
+    require('./clientConfigService').buildClientConfigSnapshot(client.client_id)
+      .catch((e) => logger.warn('messenger_warmup_failed', { error: e.message }));
     return sendMessage(
       psid,
       `👋 Bonjour ${client.nom} !\n\nJe suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :\n\n` +

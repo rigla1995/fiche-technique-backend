@@ -45,13 +45,20 @@ async function toolGetClientInfo(clientId) {
 // Périmètre client résumé pour injection dans le system prompt (évite un appel get_client_info
 // à chaque message → moins de latence). Inclut les IDs pour que l'agent filtre directement.
 async function getClientContextLine(clientId) {
-  const info = await toolGetClientInfo(clientId);
-  const acts = (info.activites || []).map((a) => `${a.id}=${a.nom}`).join(', ') || 'aucune';
-  const labos = (info.labos || []).map((l) => `${l.id}=${l.nom}`).join(', ') || 'aucun';
-  return {
-    nom: info.nom,
-    line: `Client: ${info.nom || '—'} | Mode du compte: ${info.mode_compte || '—'} | Activités: ${acts} | Labos: ${labos}`,
-  };
+  try {
+    // Lit le snapshot de config statique préchargé (cache mémoire/DB) au lieu de relancer 3 SQL.
+    const { getContextLine } = require('./clientConfigService');
+    return await getContextLine(clientId);
+  } catch (_) {
+    // Repli direct si le cache de config est indisponible
+    const info = await toolGetClientInfo(clientId);
+    const acts = (info.activites || []).map((a) => `${a.id}=${a.nom}`).join(', ') || 'aucune';
+    const labos = (info.labos || []).map((l) => `${l.id}=${l.nom}`).join(', ') || 'aucun';
+    return {
+      nom: info.nom,
+      line: `Client: ${info.nom || '—'} | Mode du compte: ${info.mode_compte || '—'} | Activités: ${acts} | Labos: ${labos}`,
+    };
+  }
 }
 
 async function toolGetStock(clientId, { activite_id, labo_id, ingredient, date_from, date_to, limit = 50 }) {
@@ -120,13 +127,19 @@ async function toolGetAppros(clientId, { activite_id, labo_id, ingredient, date_
               sed.activite_id, NULL::int AS labo_id
        FROM stock_entreprise_daily sed
        WHERE sed.activite_id IN (SELECT id FROM client_activites)
-         AND sed.prix_unitaire IS NOT NULL
+         AND COALESCE(sed.type_appro, 'manuel') = 'manuel' AND sed.quantite > 0
        UNION ALL
        SELECT sld.ingredient_id, sld.quantite, sld.date_appro, sld.prix_unitaire,
               NULL::int AS activite_id, sld.labo_id
        FROM stock_labo_daily sld
        WHERE sld.labo_id IN (SELECT id FROM client_labos)
-         AND sld.prix_unitaire IS NOT NULL
+         AND COALESCE(sld.type_appro, 'manuel') = 'manuel' AND sld.quantite > 0
+       UNION ALL
+       SELECT scd.ingredient_id, scd.quantite, scd.date_appro, scd.prix_unitaire,
+              NULL::int AS activite_id, NULL::int AS labo_id
+       FROM stock_client_daily scd
+       WHERE scd.client_id = $1
+         AND COALESCE(scd.type_appro, 'manuel') = 'manuel' AND scd.quantite > 0
      ) s
      JOIN articles i ON i.id = s.ingredient_id
      LEFT JOIN activites a ON a.id = s.activite_id
@@ -139,7 +152,7 @@ async function toolGetAppros(clientId, { activite_id, labo_id, ingredient, date_
   return rows;
 }
 
-async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, date_from, date_to, limit = 100 }) {
+async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, type_perte, date_from, date_to, limit = 100 }) {
   const safeLimit = Math.min(parseInt(limit) || 100, 1000);
   const params = [clientId];
   const conditions = [];
@@ -148,6 +161,7 @@ async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, date_
   if (labo_id && !activite_id) { params.push(labo_id); conditions.push(`p.labo_id = $${params.length}`); }
   if (date_from) { params.push(date_from); conditions.push(`p.date_perte >= $${params.length}`); }
   if (date_to) { params.push(date_to); conditions.push(`p.date_perte <= $${params.length}`); }
+  if (type_perte && ['avarie', 'dechet'].includes(type_perte)) { params.push(type_perte); conditions.push(`p.type_perte = $${params.length}`); }
   if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`i.nom ILIKE $${params.length}`); }
 
   const whereExtra = conditions.length ? 'AND ' + conditions.join(' AND ') : '';
@@ -173,6 +187,7 @@ async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, date_
               NULL::int AS activite_id, NULL::int AS labo_id
        FROM client_pertes cp
        WHERE cp.client_id = $1
+         AND cp.ingredient_id IS NOT NULL
      ) p
      JOIN articles i ON i.id = p.ingredient_id
      LEFT JOIN activites a ON a.id = p.activite_id
@@ -192,10 +207,10 @@ async function toolGetInventaires(clientId, { activite_id, labo_id, ingredient, 
 
   if (activite_id) {
     params.push(activite_id);
-    conditions.push(`inv.activite_id = $${params.length}`);
+    conditions.push(`inv.activite_id = $${params.length} AND inv.activite_id IN (SELECT id FROM client_activites)`);
   } else if (labo_id) {
     params.push(labo_id);
-    conditions.push(`inv.labo_id = $${params.length}`);
+    conditions.push(`inv.labo_id = $${params.length} AND inv.labo_id IN (SELECT id FROM client_labos)`);
   } else {
     conditions.push(
       `(inv.client_id = $1 OR inv.activite_id IN (SELECT id FROM client_activites) OR inv.labo_id IN (SELECT id FROM client_labos))`
@@ -204,17 +219,18 @@ async function toolGetInventaires(clientId, { activite_id, labo_id, ingredient, 
 
   if (date_from) { params.push(date_from); conditions.push(`inv.date_inventaire >= $${params.length}`); }
   if (date_to) { params.push(date_to); conditions.push(`inv.date_inventaire <= $${params.length}`); }
-  if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`i.nom ILIKE $${params.length}`); }
+  if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`COALESCE(i.nom, p.nom) ILIKE $${params.length}`); }
 
   const { rows } = await pool.query(
     `${CLIENT_SCOPE_CTE}
-     SELECT i.nom AS ingredient, inv.quantite_reelle, inv.date_inventaire,
+     SELECT COALESCE(i.nom, p.nom) AS ingredient, inv.quantite_reelle, inv.date_inventaire,
             COALESCE(a.nom, l.nom, 'Global') AS source
      FROM inventaires inv
-     JOIN articles i ON i.id = inv.ingredient_id
+     LEFT JOIN articles i ON i.id = inv.ingredient_id
+     LEFT JOIN produits p ON p.id = inv.produit_id
      LEFT JOIN activites a ON a.id = inv.activite_id
      LEFT JOIN labos l ON l.id = inv.labo_id
-     WHERE inv.ingredient_id IS NOT NULL
+     WHERE (inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)
        AND ${conditions.join(' AND ')}
      ORDER BY inv.date_inventaire DESC
      LIMIT ${safeLimit}`,
@@ -229,23 +245,24 @@ async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, d
   const conditions = [];
 
   if (activite_id) { params.push(activite_id); conditions.push(`lt.activite_id = $${params.length}`); }
-  if (labo_id) { params.push(labo_id); conditions.push(`lt.labo_id = $${params.length}`); }
+  if (labo_id) { params.push(labo_id); conditions.push(`lt.labo_id = $${params.length} AND lt.labo_id IN (SELECT id FROM client_labos)`); }
   if (date_from) { params.push(date_from); conditions.push(`lt.date_transfert >= $${params.length}`); }
   if (date_to) { params.push(date_to); conditions.push(`lt.date_transfert <= $${params.length}`); }
-  if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`i.nom ILIKE $${params.length}`); }
+  if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`COALESCE(i.nom, p.nom) ILIKE $${params.length}`); }
 
   const whereExtra = conditions.length ? 'AND ' + conditions.join(' AND ') : '';
 
   const { rows } = await pool.query(
     `${CLIENT_SCOPE_CTE}
-     SELECT i.nom AS ingredient, lt.quantite, lt.date_transfert,
+     SELECT COALESCE(i.nom, p.nom) AS ingredient, lt.quantite, lt.date_transfert,
             a.nom AS activite, l.nom AS labo
      FROM labo_transfers lt
-     JOIN articles i ON i.id = lt.ingredient_id
+     LEFT JOIN articles i ON i.id = lt.ingredient_id
+     LEFT JOIN produits p ON p.id = lt.produit_id
      LEFT JOIN activites a ON a.id = lt.activite_id
      LEFT JOIN labos l ON l.id = lt.labo_id
      WHERE lt.activite_id IN (SELECT id FROM client_activites)
-       AND lt.ingredient_id IS NOT NULL
+       AND (lt.ingredient_id IS NOT NULL OR lt.produit_id IS NOT NULL)
        ${whereExtra}
      ORDER BY lt.date_transfert DESC
      LIMIT ${safeLimit}`,
@@ -341,10 +358,11 @@ async function toolGetAbonnement(clientId) {
 }
 
 // ── Ventes : CA, coût matière, food cost, panier moyen, canaux ────────────────
-async function toolGetVentes(clientId, { activite_id, date_from, date_to, canal } = {}) {
+async function toolGetVentes(clientId, { activite_id, labo_id, date_from, date_to, canal } = {}) {
   const params = [clientId];
-  const cond = [`v.activite_id IN (SELECT id FROM client_activites)`, `v.statut = 'confirmee'`];
+  const cond = [`(v.activite_id IN (SELECT id FROM client_activites) OR v.labo_id IN (SELECT id FROM client_labos))`, `v.statut = 'confirmee'`];
   if (activite_id) { params.push(activite_id); cond.push(`v.activite_id = $${params.length}`); }
+  if (labo_id) { params.push(labo_id); cond.push(`v.labo_id = $${params.length}`); }
   if (date_from) { params.push(date_from); cond.push(`v.date_vente >= $${params.length}`); }
   if (date_to) { params.push(date_to); cond.push(`v.date_vente <= $${params.length}`); }
   if (canal === 'directe' || canal === 'prestataire') { params.push(canal); cond.push(`v.type_vente = $${params.length}`); }
@@ -518,7 +536,7 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_appros',
-    description: 'Récupère l\'historique des approvisionnements (achats) avec quantités et prix unitaires en TND.',
+    description: 'Récupère l\'historique des approvisionnements manuels (achats) avec quantités et prix unitaires en TND. Les réassorts par transfert labo→activité relèvent de get_transferts.',
     input_schema: {
       type: 'object',
       properties: {
@@ -534,13 +552,14 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_pertes',
-    description: 'Récupère l\'historique des pertes d\'ingrédients.',
+    description: 'Récupère l\'historique des pertes d\'ingrédients. Filtrable par type de perte (avarie / déchet).',
     input_schema: {
       type: 'object',
       properties: {
         activite_id: { type: 'integer' },
         labo_id: { type: 'integer' },
         ingredient: { type: 'string' },
+        type_perte: { type: 'string', enum: ['avarie', 'dechet'], description: 'Filtrer par type de perte' },
         date_from: { type: 'string' },
         date_to: { type: 'string' },
         limit: { type: 'integer' },
@@ -615,6 +634,7 @@ const TOOLS_ANTHROPIC = [
       type: 'object',
       properties: {
         activite_id: { type: 'integer', description: 'ID de l\'activité' },
+        labo_id: { type: 'integer', description: 'ID du labo (pour les ventes saisies au niveau labo)' },
         date_from: { type: 'string', description: 'Date de début ISO 8601' },
         date_to: { type: 'string', description: 'Date de fin ISO 8601' },
         canal: { type: 'string', enum: ['directe', 'prestataire'], description: 'Filtrer par canal de vente' },
@@ -691,4 +711,4 @@ const TOOLS_OPENAI = TOOLS_ANTHROPIC.map(t => ({
   },
 }));
 
-module.exports = { executeToolCall, TOOLS_ANTHROPIC, TOOLS_OPENAI, getClientContextLine };
+module.exports = { executeToolCall, TOOLS_ANTHROPIC, TOOLS_OPENAI, getClientContextLine, toolGetClientInfo, toolGetAbonnement };

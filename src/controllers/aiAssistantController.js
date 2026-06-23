@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const pool = require('../config/database');
 const { getBotUsername, sendWelcomeMessage } = require('../services/telegramService');
 const { sendAiAgentInviteEmail, sendMessengerInviteEmail } = require('../services/emailService');
-const { generateClientContext } = require('../services/intentRouter');
+const { buildClientConfigSnapshot } = require('../services/clientConfigService');
 
 // ── Admin: get AI config for a client ────────────────────────────────────────
 
@@ -80,9 +80,9 @@ const setAiConfig = async (req, res) => {
       [clientId, enabled, threshold, inviteToken]
     );
 
-    // Pre-generate (or refresh) client context when enabling
+    // Précharge/rafraîchit le snapshot de config statique de l'agent à l'activation
     if (enabled) {
-      generateClientContext(clientId).catch(e => console.warn('[AI] Context generation error:', e.message));
+      buildClientConfigSnapshot(clientId).catch(e => console.warn('[AI] Préchargement config agent échoué:', e.message));
     }
 
     // If re-activating and already linked, send welcome message
