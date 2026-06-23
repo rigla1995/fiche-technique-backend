@@ -743,10 +743,11 @@ const affecterActivites = async (req, res) => {
 
     // Replace full set: delete existing then insert new ones
     await pool.query(`DELETE FROM produit_activite_affectation WHERE produit_id = $1`, [produitId]);
-    for (const actId of activiteIds) {
+    if (activiteIds.length > 0) {
       await pool.query(
-        `INSERT INTO produit_activite_affectation (produit_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [produitId, parseInt(actId)]
+        `INSERT INTO produit_activite_affectation (produit_id, activite_id)
+         SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`,
+        [produitId, activiteIds.map((a) => parseInt(a))]
       );
     }
     res.json({ ok: true, activiteIds });

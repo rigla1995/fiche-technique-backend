@@ -175,11 +175,11 @@ const traiter = async (req, res) => {
          WHERE client_id = $2 RETURNING id`,
         [entrepriseId, demandeur_id]
       );
-      for (const f of fourn.rows) {
+      if (fourn.rows.length > 0) {
         await client.query(
           `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
-           VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [f.id, activiteId]
+           SELECT unnest($1::int[]), $2 ON CONFLICT DO NOTHING`,
+          [fourn.rows.map((f) => f.id), activiteId]
         );
       }
 

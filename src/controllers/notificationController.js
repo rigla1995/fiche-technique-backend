@@ -11,10 +11,13 @@ const saveNotification = async (userId, { eventType, demandeId, type, clientNom,
 
 // Save to all admin users
 const saveNotificationToAdmins = async (data) => {
-  const admins = await pool.query(`SELECT id FROM utilisateurs WHERE role = 'super_admin' AND actif = true`);
-  for (const admin of admins.rows) {
-    await saveNotification(admin.id, data);
-  }
+  const { eventType, demandeId, type, clientNom, statut, notesAdmin } = data;
+  await pool.query(
+    `INSERT INTO notifications (user_id, event_type, demande_id, type, client_nom, statut, notes_admin)
+     SELECT u.id, $1, $2, $3, $4, $5, $6
+     FROM utilisateurs u WHERE u.role = 'super_admin' AND u.actif = true`,
+    [eventType, demandeId || null, type || null, clientNom || null, statut || null, notesAdmin || null]
+  );
 };
 
 // GET /api/notifications — list for current user

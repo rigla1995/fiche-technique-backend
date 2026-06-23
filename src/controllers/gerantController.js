@@ -121,11 +121,11 @@ const create = async (req, res) => {
        isGratuit, montant, inviteToken, inviteExpires]
     );
     const gerantId = result.rows[0].id;
-    for (const aId of activiteIds) {
-      await pool.query('INSERT INTO gerant_affectations (gerant_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [gerantId, aId]);
+    if (activiteIds.length > 0) {
+      await pool.query('INSERT INTO gerant_affectations (gerant_id, activite_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [gerantId, activiteIds]);
     }
-    for (const lId of laboIds) {
-      await pool.query('INSERT INTO gerant_affectations (gerant_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [gerantId, lId]);
+    if (laboIds.length > 0) {
+      await pool.query('INSERT INTO gerant_affectations (gerant_id, labo_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [gerantId, laboIds]);
     }
     await sendInviteEmail({ to: email, nom, token: inviteToken, role: 'gerant' });
     res.status(201).json(mapGerant(result.rows[0]));
@@ -177,11 +177,11 @@ const update = async (req, res) => {
 
     if (hasAffectations) {
       await pool.query('DELETE FROM gerant_affectations WHERE gerant_id = $1', [id]);
-      for (const aId of activiteIds) {
-        await pool.query('INSERT INTO gerant_affectations (gerant_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [id, aId]);
+      if (activiteIds.length > 0) {
+        await pool.query('INSERT INTO gerant_affectations (gerant_id, activite_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [id, activiteIds]);
       }
-      for (const lId of laboIds) {
-        await pool.query('INSERT INTO gerant_affectations (gerant_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [id, lId]);
+      if (laboIds.length > 0) {
+        await pool.query('INSERT INTO gerant_affectations (gerant_id, labo_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [id, laboIds]);
       }
     }
     res.json(mapGerant(result.rows[0]));
