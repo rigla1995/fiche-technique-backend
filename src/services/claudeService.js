@@ -1,16 +1,19 @@
 const pool = require('../config/database');
-const { executeToolCall, TOOLS_ANTHROPIC } = require('./aiToolHandlers');
+const { executeToolCall, TOOLS_ANTHROPIC, getClientContextLine } = require('./aiToolHandlers');
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 const ANTHROPIC_VERSION = '2023-06-01';
 const MAX_TOOL_ITERATIONS = 8;
 
-function buildSystemPrompt() {
+function buildSystemPrompt(contextLine = null) {
   const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const contextBlock = contextLine
+    ? `\n\n## Périmètre du client (DÉJÀ CONNU — n'appelle PAS get_client_info)\n${contextLine}\nUtilise directement ces IDs d'activités/labos dès que le client nomme une activité ou un labo.`
+    : '';
   return `Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ${today}.
 Tu communiques avec le client via Telegram, Messenger ou le chat web. Tes réponses doivent être professionnelles, structurées et bien formatées (Markdown léger).
-Le client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.
+Le client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.${contextBlock}
 
 ## Règles de communication
 - Réponds dans la langue du client (français ou darija tunisienne)
@@ -24,8 +27,8 @@ Le client utilise l'agent pour CONSULTER ses données comme s'il était dans l'a
 Le client peut tout consulter : profil & périmètre (\`get_client_info\`), stock (\`get_stock\`), approvisionnements (\`get_appros\`), pertes (\`get_pertes\`), inventaires (\`get_inventaires\`), transferts labo→activités (\`get_transferts\`), référentiel d'articles (\`get_referentiel\`), fournisseurs (\`get_fournisseurs\`), abonnement & capacité (\`get_abonnement\`), ventes / CA / food cost / canaux (\`get_ventes\`), produits & fiches techniques (\`get_produits\`), configuration de vente : prestataires, charges fixes, articles vendables (\`get_config_vente\`). Choisis l'outil correspondant au flux demandé et applique les filtres (activité, labo, période, article…).
 
 ## Utilisation des outils — règles STRICTES
-1. TOUJOURS commencer par \`get_client_info\` pour connaître les activités/labos du client
-2. Si le client a plusieurs activités et ne précise pas laquelle : utilise \`ask_clarification\` AVANT d'appeler les données
+1. Le périmètre du client (activités/labos avec leurs IDs) est fourni ci-dessus : n'appelle PAS \`get_client_info\` (sauf si tu as besoin de l'email du compte). Va directement à l'outil de données.
+2. Si le client a plusieurs activités et ne précise pas laquelle : utilise \`ask_clarification\` AVANT d'appeler les données. S'il n'a qu'une activité, procède directement sans demander.
 3. Si le client dit "toutes" ou n'a qu'une seule activité : procède directement
 4. Pour les périodes ("mois actuel", "année dernière") : convertis en dates ISO 8601
 5. Pour TOUTE question conceptuelle, définition, conseil ou interprétation (ex : « c'est quoi une fiche technique ? », « mon food cost est-il bon ? », « comment réduire mes pertes ? ») : appelle d'abord \`search_knowledge_base\` et appuie-toi UNIQUEMENT sur ce qu'elle renvoie pour expliquer. N'invente jamais une définition métier.
@@ -92,7 +95,9 @@ async function chatWithClaude(clientId, chatSessionId, userMessage, confidenceTh
   const history = (conv?.messages ?? []).slice(-16);
   history.push({ role: 'user', content: userMessage });
 
-  const systemPrompt = buildSystemPrompt();
+  let ctxLine = null;
+  try { ctxLine = (await getClientContextLine(clientId))?.line || null; } catch (_) { /* prompt sans contexte */ }
+  const systemPrompt = buildSystemPrompt(ctxLine);
   let messages = [...history];
   let finalText = null;
   let confidence = null;

@@ -42,6 +42,18 @@ async function toolGetClientInfo(clientId) {
   };
 }
 
+// Périmètre client résumé pour injection dans le system prompt (évite un appel get_client_info
+// à chaque message → moins de latence). Inclut les IDs pour que l'agent filtre directement.
+async function getClientContextLine(clientId) {
+  const info = await toolGetClientInfo(clientId);
+  const acts = (info.activites || []).map((a) => `${a.id}=${a.nom}`).join(', ') || 'aucune';
+  const labos = (info.labos || []).map((l) => `${l.id}=${l.nom}`).join(', ') || 'aucun';
+  return {
+    nom: info.nom,
+    line: `Client: ${info.nom || '—'} | Mode du compte: ${info.mode_compte || '—'} | Activités: ${acts} | Labos: ${labos}`,
+  };
+}
+
 async function toolGetStock(clientId, { activite_id, labo_id, ingredient, date_from, date_to, limit = 50 }) {
   const safeLimit = Math.min(parseInt(limit) || 50, 500);
   const params = [clientId];
@@ -300,7 +312,7 @@ async function toolGetFournisseurs(clientId, { search } = {}) {
   return rows;
 }
 
-// ── Abonnement & capacité souscrite ───────────────────────────────────────────
+// ── Abonnement & capacité souscrite (+ mensualité calculée) ───────────────────
 async function toolGetAbonnement(clientId) {
   const { rows } = await pool.query(
     `SELECT a.mode_compte, a.contrat_accepte_le,
@@ -312,7 +324,20 @@ async function toolGetAbonnement(clientId) {
      LIMIT 1`,
     [clientId]
   );
-  return rows[0] || { note: 'Aucun abonnement trouvé.' };
+  const base = rows[0] || { note: 'Aucun abonnement trouvé.' };
+  // Le montant mensuel n'est pas stocké : il se calcule depuis la config + les tarifs (+ promo).
+  try {
+    const { computeEffectivePricing } = require('../controllers/abonnementController');
+    const p = await computeEffectivePricing(clientId);
+    if (p) {
+      const r3 = (n) => Math.round((n || 0) * 1000) / 1000;
+      base.mensuel_base_tnd = r3(p.baseMensuel);
+      base.mensuel_effectif_tnd = r3(p.effMensuel);
+      base.onboarding_effectif_tnd = r3(p.effOnboarding);
+      base.promotion_active = !!p.hasPromo;
+    }
+  } catch (_) { /* pricing optionnel : on renvoie au moins la capacité */ }
+  return base;
 }
 
 // ── Ventes : CA, coût matière, food cost, panier moyen, canaux ────────────────
@@ -666,4 +691,4 @@ const TOOLS_OPENAI = TOOLS_ANTHROPIC.map(t => ({
   },
 }));
 
-module.exports = { executeToolCall, TOOLS_ANTHROPIC, TOOLS_OPENAI };
+module.exports = { executeToolCall, TOOLS_ANTHROPIC, TOOLS_OPENAI, getClientContextLine };

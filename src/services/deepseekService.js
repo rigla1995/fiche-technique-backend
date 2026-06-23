@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const { recordTokenUsage } = require('./aiFormatter');
-const { executeToolCall, TOOLS_OPENAI } = require('./aiToolHandlers');
+const { executeToolCall, TOOLS_OPENAI, getClientContextLine } = require('./aiToolHandlers');
 const { buildSystemPrompt, parseConfidence } = require('./claudeService');
 
 // Groq (OpenAI-compatible) agent with NATIVE tool-calling — accède aux mêmes outils que Claude.
@@ -79,8 +79,10 @@ async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidence
   const conv = await getConversation(clientId, chatSessionId);
   const history = (conv?.messages ?? []).slice(-12);
 
+  let ctxLine = null;
+  try { ctxLine = (await getClientContextLine(clientId))?.line || null; } catch (_) { /* prompt sans contexte */ }
   const messages = [
-    { role: 'system', content: buildSystemPrompt() },
+    { role: 'system', content: buildSystemPrompt(ctxLine) },
     ...history,
     { role: 'user', content: userMessage },
   ];
