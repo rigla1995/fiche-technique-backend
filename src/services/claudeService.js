@@ -175,4 +175,4 @@ async function chatWithClaude(clientId, chatSessionId, userMessage, confidenceTh
   return { assistantMessage: finalText, confidence, clientEmail, clientNom };
 }
 
-module.exports = { chatWithClaude };
+module.exports = { chatWithClaude, buildSystemPrompt, parseConfidence };

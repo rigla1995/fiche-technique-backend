@@ -315,9 +315,10 @@ const { chatWithClaude } = require('../services/claudeService');
 const { chatWithDeepSeek } = require('../services/deepseekService');
 
 async function _chatWithAI(clientId, sessionId, message, threshold) {
-  if (process.env.ANTHROPIC_API_KEY) {
-    return chatWithClaude(clientId, sessionId, message, threshold);
-  }
+  const provider = (process.env.AI_PROVIDER || '').toLowerCase();
+  const useGroq = provider === 'groq' || (provider !== 'claude' && !!process.env.GROQ_API_KEY);
+  if (useGroq) return chatWithDeepSeek(clientId, sessionId, message, threshold);
+  if (process.env.ANTHROPIC_API_KEY) return chatWithClaude(clientId, sessionId, message, threshold);
   return chatWithDeepSeek(clientId, sessionId, message, threshold);
 }
 

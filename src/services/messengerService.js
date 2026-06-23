@@ -31,9 +31,12 @@ function stripMarkdown(text) {
 }
 
 async function chatWithAI(clientId, sessionId, userMessage, confidenceThreshold) {
-  if (process.env.ANTHROPIC_API_KEY) {
-    return chatWithClaude(clientId, sessionId, userMessage, confidenceThreshold);
-  }
+  const provider = (process.env.AI_PROVIDER || '').toLowerCase();
+  // Par défaut on privilégie Groq (llama-3.3-70b, tool-use fiable) dès qu'une clé Groq existe.
+  // AI_PROVIDER=claude force Claude ; AI_PROVIDER=groq force Groq.
+  const useGroq = provider === 'groq' || (provider !== 'claude' && !!process.env.GROQ_API_KEY);
+  if (useGroq) return chatWithDeepSeek(clientId, sessionId, userMessage, confidenceThreshold);
+  if (process.env.ANTHROPIC_API_KEY) return chatWithClaude(clientId, sessionId, userMessage, confidenceThreshold);
   return chatWithDeepSeek(clientId, sessionId, userMessage, confidenceThreshold);
 }
 

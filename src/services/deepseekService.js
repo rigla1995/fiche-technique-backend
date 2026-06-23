@@ -1,9 +1,14 @@
 const pool = require('../config/database');
-const { routeMessage } = require('./intentRouter');
-const { formatWithGroq, recordTokenUsage } = require('./aiFormatter');
+const { recordTokenUsage } = require('./aiFormatter');
+const { executeToolCall, TOOLS_OPENAI } = require('./aiToolHandlers');
+const { buildSystemPrompt, parseConfidence } = require('./claudeService');
 
+// Groq (OpenAI-compatible) agent with NATIVE tool-calling — accède aux mêmes outils que Claude.
+// llama-3.3-70b est nettement plus fiable que Haiku pour le tool-use multi-tours (moins
+// d'hallucinations, respecte mieux les consignes).
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const MAX_TOOL_ITERATIONS = 8;
 
 async function getConversation(clientId, sessionId) {
   const { rows } = await pool.query(
@@ -32,44 +37,39 @@ async function saveConversation(clientId, sessionId, conversationId, messages, c
   }
 }
 
-// Fallback for general (non-data) messages — simple single Groq call
-async function generalChat(history, userMessage, contextLine, clientId) {
-  if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY non configurée');
-
-  const today = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
-  const systemPrompt = `Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ${today}.
-Contexte client : ${contextLine}
-Réponds en français (ou darija), sois concis et professionnel. 4-6 lignes max.
-Pour toute question conceptuelle / définition / conseil (fiche technique, food cost, pertes…), appelle d'abord l'outil search_knowledge_base et appuie-toi uniquement dessus. N'invente jamais une définition métier.`;
-
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    ...history.slice(-6),
-    { role: 'user', content: userMessage },
-  ];
-
-  let retries = 3;
+// Single Groq chat call with tools, retrying on 429 rate-limit.
+async function groqChat(messages) {
+  const retries = 3;
   for (let attempt = 0; attempt <= retries; attempt++) {
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
-      body: JSON.stringify({ model: GROQ_MODEL, messages, max_tokens: 400, stream: false }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages,
+        tools: TOOLS_OPENAI,
+        tool_choice: 'auto',
+        max_tokens: 1024,
+        temperature: 0.2,
+        stream: false,
+      }),
     });
 
     if (response.status === 429) {
       const errText = await response.text();
       const waitMatch = errText.match(/try again in ([\d.]+)s/i);
-      const waitMs = waitMatch ? Math.ceil(parseFloat(waitMatch[1]) * 1000) + 200 : 5000;
+      const waitMs = waitMatch ? Math.ceil(parseFloat(waitMatch[1]) * 1000) + 200 : 4000;
       if (attempt < retries) { await new Promise(r => setTimeout(r, waitMs)); continue; }
-      return 'Service temporairement surchargé. Veuillez réessayer dans quelques secondes.';
+      throw new Error('Groq rate-limited (429)');
     }
-
-    if (!response.ok) throw new Error(`Groq error ${response.status}`);
-    const data = await response.json();
-    if (clientId && data.usage) {
-      recordTokenUsage(clientId, data.usage.prompt_tokens, data.usage.completion_tokens);
+    if (!response.ok) {
+      const t = await response.text();
+      throw new Error(`Groq error ${response.status}: ${t.slice(0, 300)}`);
     }
-    return data.choices?.[0]?.message?.content ?? 'Désolé, je n\'ai pas pu répondre.';
+    return response.json();
   }
 }
 
@@ -77,49 +77,70 @@ async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidence
   if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY non configurée');
 
   const conv = await getConversation(clientId, chatSessionId);
-  const history = (conv?.messages ?? []).slice(-8);
+  const history = (conv?.messages ?? []).slice(-12);
 
-  // Route the message
-  const routed = await routeMessage(clientId, userMessage);
-
-  // Context line for prompts
-  const { context } = routed;
-  const ctxLine = context
-    ? `Activités: ${context.activites.map(a => a.nom).join(', ')} | Labos: ${context.labos.map(l => l.nom).join(', ')}`
-    : '';
-
-  let assistantMessage;
-
-  if (routed.clarification) {
-    // Need more info — no Groq call
-    assistantMessage = routed.clarification;
-  } else if (routed.intent === 'general') {
-    // Conversational message — simple Groq call, no data
-    assistantMessage = await generalChat(history, userMessage, ctxLine, clientId);
-  } else {
-    // Data response — format with Groq
-    assistantMessage = await formatWithGroq(
-      userMessage,
-      routed.intent,
-      routed.data,
-      context,
-      routed.dates ?? null,
-      clientId
-    );
-  }
-
-  // Save conversation (only human-readable messages)
-  const updatedHistory = [
+  const messages = [
+    { role: 'system', content: buildSystemPrompt() },
     ...history,
     { role: 'user', content: userMessage },
-    { role: 'assistant', content: assistantMessage },
   ];
-  await saveConversation(clientId, chatSessionId, conv?.id ?? null, updatedHistory, null);
+
+  let finalText = null;
+  let confidence = null;
+
+  for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+    const data = await groqChat(messages);
+    if (clientId && data.usage) {
+      recordTokenUsage(clientId, data.usage.prompt_tokens, data.usage.completion_tokens);
+    }
+    const msg = data.choices?.[0]?.message;
+    if (!msg) { finalText = 'Désolé, je n\'ai pas pu répondre.'; break; }
+
+    // Keep the assistant turn (with its tool_calls) in the running context.
+    messages.push(msg);
+
+    const toolCalls = msg.tool_calls || [];
+    if (toolCalls.length === 0) {
+      const parsed = parseConfidence(msg.content || '');
+      finalText = parsed.message || 'Désolé, je n\'ai pas pu répondre.';
+      confidence = parsed.confidence;
+      break;
+    }
+
+    for (const tc of toolCalls) {
+      let args = {};
+      try { args = JSON.parse(tc.function?.arguments || '{}'); } catch (_) { args = {}; }
+      const result = await executeToolCall(clientId, tc.function?.name, args);
+
+      if (result?.__clarification) {
+        let clarificationText = result.question;
+        if (result.options?.length) {
+          clarificationText += '\n\n' + result.options.map((o, idx) => `${idx + 1}. ${o}`).join('\n');
+        }
+        const storable = history.concat(
+          { role: 'user', content: userMessage },
+          { role: 'assistant', content: clarificationText }
+        );
+        await saveConversation(clientId, chatSessionId, conv?.id ?? null, storable, null);
+        return { assistantMessage: clarificationText, confidence: null, isClarification: true };
+      }
+
+      messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
+    }
+  }
+
+  if (!finalText) finalText = 'Désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.';
+
+  const storable = history.concat(
+    { role: 'user', content: userMessage },
+    { role: 'assistant', content: finalText }
+  );
+  await saveConversation(clientId, chatSessionId, conv?.id ?? null, storable, confidence);
 
   const { rows } = await pool.query('SELECT email, nom FROM utilisateurs WHERE id = $1', [clientId]);
   const { email: clientEmail, nom: clientNom } = rows[0] || {};
 
-  return { assistantMessage, confidence: null, clientEmail, clientNom };
+  return { assistantMessage: finalText, confidence, clientEmail, clientNom };
 }
 
 module.exports = { chatWithDeepSeek };
