@@ -483,7 +483,7 @@ const deleteMine = async (req, res) => {
   }
 };
 
-// Client: lien de téléchargement du contrat (avenant) signé d'une demande
+// Client: télécharge le contrat (avenant) signé — proxifié pour ne PAS exposer Docuseal au client
 const getContratSigne = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
@@ -496,7 +496,16 @@ const getContratSigne = async (req, res) => {
     if (!dem.docuseal_submission_id) return res.status(404).json({ message: 'Aucun avenant associé à cette demande' });
     const docs = await getSubmissionDocuments(dem.docuseal_submission_id);
     if (!docs.length) return res.status(404).json({ message: "Le contrat signé n'est pas encore disponible" });
-    res.json({ url: docs[0].url, name: docs[0].name });
+    // Récupère le PDF côté serveur et le renvoie en pièce jointe (le client ne voit jamais Docuseal)
+    const fileRes = await fetch(docs[0].url);
+    if (!fileRes.ok) return res.status(502).json({ message: 'Contrat momentanément indisponible' });
+    const buf = Buffer.from(await fileRes.arrayBuffer());
+    const base = String(docs[0].name || 'contrat-avenant').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filename = base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buf.length);
+    return res.send(buf);
   } catch (err) {
     console.error('[contrat-signe]', err.message);
     res.status(500).json({ message: 'Erreur lors de la récupération du contrat signé' });
