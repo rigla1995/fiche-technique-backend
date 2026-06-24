@@ -1098,15 +1098,16 @@ const createTransfer = async (req, res) => {
           [laboId, ingId, dateTransfert, -qty, prixUnit, tva, prixUnitaireTva, refFacture || null, req.user.id]
         );
 
-        await client.query(
+        const sedTransfertIns = await client.query(
           `INSERT INTO stock_entreprise_daily
              (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
-           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, $8, $9, NOW(), $10)`,
+           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, $8, $9, NOW(), $10)
+           RETURNING id`,
           [t.activiteId, ingId, dateTransfert, qty, prixUnit, laboFournisseurId, refFacture || null, tva, prixUnitaireTva, req.user.id]
         );
 
         // Le transfert (côté activité) alimente aussi la facture, comme un appro manuel,
-        // mais SANS timbre fiscal. Accumulé par réf. (upsertFacture additionne les lignes).
+        // mais SANS timbre fiscal. On lie la ligne stock (facture_id) pour le détail de la facture.
         if (refFacture) {
           await upsertFacture(req.user.gerant_parent_id || req.user.id, {
             refFacture,
@@ -1120,6 +1121,8 @@ const createTransfer = async (req, res) => {
             montantTTC: qty * (prixUnitaireTva != null ? prixUnitaireTva : (prixUnit || 0)),
             timbreFiscal: false,
             createdBy: req.user.id,
+            stockTable: 'stock_entreprise_daily',
+            stockRowId: sedTransfertIns.rows[0].id,
           }, client);
         }
 
