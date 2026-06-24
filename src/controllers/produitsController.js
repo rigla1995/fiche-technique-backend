@@ -633,21 +633,23 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
     [produitId]
   );
 
+  // Sous-produits calculés en parallèle (même calcul, même ordre — exécution concurrente)
   let coutSousProduits = 0;
-  const lignesSousProduits = [];
-
-  for (const sp of sousProduits.rows) {
-    const detailSp = await calculerCout(sp.sous_produit_id, clientId, new Set(visited));
+  const subDetails = await Promise.all(
+    sousProduits.rows.map((sp) => calculerCout(sp.sous_produit_id, clientId, new Set(visited)))
+  );
+  const lignesSousProduits = sousProduits.rows.map((sp, i) => {
+    const detailSp = subDetails[i];
     const coutSp = parseFloat(sp.portion) * detailSp.cout_total;
     coutSousProduits += coutSp;
-    lignesSousProduits.push({
+    return {
       nom: sp.sous_produit_nom,
       portion: parseFloat(sp.portion),
       cout_unitaire: detailSp.cout_total,
       cout: parseFloat(coutSp.toFixed(3)),
       details: detailSp,
-    });
-  }
+    };
+  });
 
   const coutTotal = coutIngredients + coutSousProduits;
 
@@ -840,20 +842,23 @@ async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = 
     [produitId]
   );
 
+  // Sous-produits calculés en parallèle (même calcul, même ordre — exécution concurrente)
   let coutSousProduits = 0;
-  const lignesSousProduits = [];
-  for (const sp of sousProduits.rows) {
-    const detailSp = await calculerCoutAvecPrixMap(sp.sous_produit_id, clientId, priceMap, new Set(visited));
+  const subDetails = await Promise.all(
+    sousProduits.rows.map((sp) => calculerCoutAvecPrixMap(sp.sous_produit_id, clientId, priceMap, new Set(visited)))
+  );
+  const lignesSousProduits = sousProduits.rows.map((sp, i) => {
+    const detailSp = subDetails[i];
     const coutSp = parseFloat(sp.portion) * detailSp.cout_total;
     coutSousProduits += coutSp;
-    lignesSousProduits.push({
+    return {
       nom: sp.sous_produit_nom,
       portion: parseFloat(sp.portion),
       cout_unitaire: detailSp.cout_total,
       cout: parseFloat(coutSp.toFixed(3)),
       details: detailSp,
-    });
-  }
+    };
+  });
 
   const coutTotal = coutIngredients + coutSousProduits;
   return {

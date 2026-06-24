@@ -752,10 +752,15 @@ const updateLaboStock = async (req, res) => {
 
       // Vérifier que chaque ingrédient de la recette a assez de stock
       if (ingRes.rows.length > 0 && qty > 0) {
-        for (const ing of ingRes.rows) {
+        // Stock courant de tous les ingrédients en parallèle (même calcul, exécution concurrente)
+        const stocksCourants = await Promise.all(
+          ingRes.rows.map((ing) => computeStockCourant('labo', laboId, ing.ingredient_id))
+        );
+        for (let idx = 0; idx < ingRes.rows.length; idx++) {
+          const ing = ingRes.rows[idx];
           const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
           const needed  = portion * qty;
-          const stockCourant = await computeStockCourant('labo', laboId, ing.ingredient_id);
+          const stockCourant = stocksCourants[idx];
           if (needed > stockCourant) {
             return res.status(422).json({
               message: `Stock insuffisant pour "${ing.ing_nom}" (recette)`,
@@ -1000,9 +1005,14 @@ const createTransfer = async (req, res) => {
         ingQtyMap[ingId] = (ingQtyMap[ingId] || 0) + qty;
       }
     }
-    // Ingrédients
-    for (const [ingId, totalQty] of Object.entries(ingQtyMap)) {
-      const stockCourant = await computeStockCourant('labo', laboId, parseInt(ingId));
+    // Ingrédients — stock courant calculé en parallèle (même calcul, concurrent)
+    const ingEntries = Object.entries(ingQtyMap);
+    const ingStocks = await Promise.all(
+      ingEntries.map(([ingId]) => computeStockCourant('labo', laboId, parseInt(ingId)))
+    );
+    for (let idx = 0; idx < ingEntries.length; idx++) {
+      const [ingId, totalQty] = ingEntries[idx];
+      const stockCourant = ingStocks[idx];
       if (totalQty > stockCourant) {
         const ingRow = await pool.query('SELECT nom FROM articles WHERE id = $1', [ingId]);
         const ingNom = ingRow.rows[0]?.nom ?? `ingrédient #${ingId}`;
@@ -1013,9 +1023,14 @@ const createTransfer = async (req, res) => {
         });
       }
     }
-    // Produits transformés
-    for (const [produitId, totalQty] of Object.entries(ptQtyMap)) {
-      const ptStock = await computeStockPTCourant('labo', laboId, parseInt(produitId));
+    // Produits transformés — stock courant calculé en parallèle
+    const ptEntries = Object.entries(ptQtyMap);
+    const ptStocks = await Promise.all(
+      ptEntries.map(([produitId]) => computeStockPTCourant('labo', laboId, parseInt(produitId)))
+    );
+    for (let idx = 0; idx < ptEntries.length; idx++) {
+      const [produitId, totalQty] = ptEntries[idx];
+      const ptStock = ptStocks[idx];
       if (totalQty > ptStock) {
         const ptRow = await pool.query('SELECT nom FROM produits WHERE id = $1', [produitId]);
         const ptNom = ptRow.rows[0]?.nom ?? `PT #${produitId}`;
