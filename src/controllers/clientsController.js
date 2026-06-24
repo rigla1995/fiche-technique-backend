@@ -235,6 +235,10 @@ const create = async (req, res) => {
         })
           .then(({ submissionId, signingUrl }) => {
             console.log(`[docuseal] Contrat soumis: ${submissionId} pour ${email}`);
+            if (submissionId) {
+              pool.query('UPDATE abonnements SET contrat_submission_id = $1 WHERE client_id = $2', [String(submissionId), user.id])
+                .catch((e) => console.error('[docuseal] Stockage contrat_submission_id échoué:', e.message));
+            }
             if (signingUrl) {
               sendDocusealSigningEmail({ to: email, nom, signingUrl })
                 .then(() => console.log(`[docuseal] Email de signature envoyé à ${email}`))

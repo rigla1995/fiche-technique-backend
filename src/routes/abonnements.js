@@ -463,6 +463,7 @@ router.get('/mon-abonnement', authenticate, requireClient, async (req, res) => {
   req.query.withPricing = '1';
   return ab.getAbonnement(req, res);
 });
+router.get('/contrat-actif', authenticate, requireClient, ab.getContratActif);
 router.get('/supplement-pricing', authenticate, requireClient, ab.getSupplementPricing);
 router.get('/client/:clientId/supplement-pricing', authenticate, requireSuperAdmin, ab.getClientSupplementPricing);
 
