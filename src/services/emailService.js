@@ -139,7 +139,36 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
 
 const generateInviteToken = () => crypto.randomBytes(32).toString('hex');
 
-const sendDocusealSigningEmail = async ({ to, nom, signingUrl }) => {
+const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null }) => {
+  const isAvenant = !!avenant;
+  // Rappel de la capacité demandée (uniquement pour un avenant)
+  const supParts = [];
+  if (isAvenant) {
+    const n = (v) => parseInt(v, 10) || 0;
+    if (n(avenant.addActivites) > 0) supParts.push(`${n(avenant.addActivites)} activité${n(avenant.addActivites) > 1 ? 's' : ''}`);
+    if (n(avenant.addLabos) > 0) supParts.push(`${n(avenant.addLabos)} labo${n(avenant.addLabos) > 1 ? 's' : ''}`);
+    if (n(avenant.addGerants) > 0) supParts.push(`${n(avenant.addGerants)} gérant${n(avenant.addGerants) > 1 ? 's' : ''}`);
+  }
+  const supText = supParts.join(', ') || 'capacité supplémentaire';
+
+  const subtitle = isAvenant ? 'Signature électronique de votre avenant' : 'Signature électronique de votre contrat';
+  const intro = isAvenant
+    ? `Suite à votre demande d'ajout de <strong>${supText}</strong>, votre <strong>avenant au contrat d'abonnement ${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
+        Cliquez sur le bouton ci-dessous pour consulter et signer votre avenant.`
+    : `Votre contrat d'abonnement <strong>${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
+        Cliquez sur le bouton ci-dessous pour consulter et signer votre contrat.`;
+  const cardTitle = isAvenant ? `Avenant au contrat d'abonnement — ${APP_NAME}` : `Contrat d'abonnement — ${APP_NAME}`;
+  const cardSub = isAvenant
+    ? "Ce document acte l'ajout de capacité demandé et votre nouvelle tarification."
+    : 'Ce document est personnalisé avec vos informations et votre tarification.';
+  const buttonText = isAvenant ? 'Signer mon avenant' : 'Signer mon contrat';
+  const footerText = isAvenant
+    ? "Si vous n'avez pas demandé cet avenant, ignorez cet email."
+    : "Si vous n'avez pas demandé ce contrat, ignorez cet email.";
+  const subject = isAvenant
+    ? `${APP_NAME} — Signez votre avenant d'abonnement`
+    : `${APP_NAME} — Signez votre contrat d'abonnement`;
+
   const html = `
 <!DOCTYPE html>
 <html lang="fr">
@@ -148,29 +177,28 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl }) => {
   <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
     <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
       ${BRAND_LOGO}
-      <p style="margin:0;color:#c7d2fe;font-size:0.85rem;">Signature électronique de votre contrat</p>
+      <p style="margin:0;color:#c7d2fe;font-size:0.85rem;">${subtitle}</p>
     </div>
     <div style="padding:40px 48px;">
       <h2 style="margin:0 0 8px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ${nom},</h2>
       <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.7;">
-        Votre contrat d'abonnement <strong>${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
-        Cliquez sur le bouton ci-dessous pour consulter et signer votre contrat.
+        ${intro}
       </p>
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;">
         <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">✍️ Signature requise</p>
-        <p style="margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;">Contrat d'abonnement — ${APP_NAME}</p>
-        <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">Ce document est personnalisé avec vos informations et votre tarification.</p>
+        <p style="margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;">${cardTitle}</p>
+        <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">${cardSub}</p>
       </div>
       <div style="text-align:center;margin:0 0 28px;">
         <a href="${signingUrl}" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
-          Signer mon contrat
+          ${buttonText}
         </a>
       </div>
       <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ${signingUrl}</p>
     </div>
     <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
       <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
-        Si vous n'avez pas demandé ce contrat, ignorez cet email. &mdash; ${APP_NAME}
+        ${footerText} &mdash; ${APP_NAME}
       </p>
     </div>
   </div>
@@ -178,14 +206,14 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl }) => {
 </html>`;
 
   if (!process.env.RESEND_API_KEY) {
-    console.log(`[DEV] Docuseal signing email to ${to}: ${signingUrl}`);
+    console.log(`[DEV] Docuseal signing email (${isAvenant ? 'avenant' : 'contrat'}) to ${to}: ${signingUrl}`);
     return { success: true, dev: true, signingUrl };
   }
 
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: `${APP_NAME} — Signez votre contrat d'abonnement`,
+    subject,
     html,
   });
 

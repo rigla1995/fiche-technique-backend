@@ -136,7 +136,16 @@ const create = async (req, res) => {
           }
           if (sub?.signingUrl) {
             signingUrl = sub.signingUrl;
-            sendDocusealSigningEmail({ to: clientEmail, nom: clientNomFull, signingUrl: sub.signingUrl })
+            sendDocusealSigningEmail({
+              to: clientEmail,
+              nom: clientNomFull,
+              signingUrl: sub.signingUrl,
+              avenant: {
+                addActivites: req.body.nbActivitesSupp || 0,
+                addLabos: req.body.nbLabosSupp || 0,
+                addGerants: req.body.nbGerantsSupp || 0,
+              },
+            })
               .catch((e) => console.error('[avenant] envoi email signature:', e.message));
           }
         }
