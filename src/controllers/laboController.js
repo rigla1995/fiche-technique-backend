@@ -1105,6 +1105,24 @@ const createTransfer = async (req, res) => {
           [t.activiteId, ingId, dateTransfert, qty, prixUnit, laboFournisseurId, refFacture || null, tva, prixUnitaireTva, req.user.id]
         );
 
+        // Le transfert (côté activité) alimente aussi la facture, comme un appro manuel,
+        // mais SANS timbre fiscal. Accumulé par réf. (upsertFacture additionne les lignes).
+        if (refFacture) {
+          await upsertFacture(req.user.gerant_parent_id || req.user.id, {
+            refFacture,
+            dateAppro: dateTransfert,
+            fournisseurId: laboFournisseurId,
+            activiteId: parseInt(t.activiteId),
+            laboId: null,
+            typeSource: 'transfert',
+            montantHT: qty * (prixUnit || 0),
+            montantTva: prixUnit != null ? qty * (prixUnit || 0) * (tva / 100) : 0,
+            montantTTC: qty * (prixUnitaireTva != null ? prixUnitaireTva : (prixUnit || 0)),
+            timbreFiscal: false,
+            createdBy: req.user.id,
+          }, client);
+        }
+
         await client.query(
           `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture, prix_unitaire, taux_tva, prix_unitaire_tva, created_by)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
