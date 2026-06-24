@@ -546,7 +546,8 @@ const listVentes = async (req, res) => {
        LEFT JOIN articles a ON vl.article_type = 'ingredient' AND a.id = vl.article_id
        WHERE ${whereCol} = $1 AND v.statut != 'annulee'${where}
        GROUP BY v.id, pl.nom, ub.nom
-       ORDER BY v.date_vente DESC, v.created_at DESC`,
+       ORDER BY v.date_vente DESC, v.created_at DESC
+       LIMIT 2000`,
       params
     );
 
@@ -652,32 +653,67 @@ const createVente = async (req, res) => {
     const ptTotals = new Map();         // sous_produit_id -> total qty to deduct
     const dateApproValue = date_vente || new Date().toISOString().slice(0, 10);
 
+    // Pré-chargement en lot (mêmes calculs qu'avant, mais hors de la boucle).
+    const ingArticleIds = [...new Set(lignes.filter((l) => l.article_type === 'ingredient').map((l) => Number(l.article_id)))];
+    const prodArticleIds = [...new Set(lignes.filter((l) => l.article_type === 'produit').map((l) => Number(l.article_id)))];
+
+    const ingCostMap = new Map();   // ingredient_id -> AVG prix (ou null)
+    if (ingArticleIds.length > 0) {
+      const r = await client.query(
+        `SELECT ingredient_id, AVG(prix_unitaire) AS avg_prix
+         FROM stock_client_daily
+         WHERE ingredient_id = ANY($1::int[]) AND client_id = $2 AND quantite > 0
+         GROUP BY ingredient_id`,
+        [ingArticleIds, cid]
+      );
+      for (const row of r.rows) ingCostMap.set(row.ingredient_id, row.avg_prix != null ? parseFloat(row.avg_prix) : null);
+    }
+
+    const prodCostMap = new Map();  // produit_id -> coût recette (ou null)
+    const prodIngMap = new Map();   // produit_id -> [{ingredient_id, portion}]
+    const prodSpMap = new Map();    // produit_id -> [{sous_produit_id, portion}]
+    if (prodArticleIds.length > 0) {
+      const cr = await client.query(
+        `SELECT pi.produit_id, SUM(pi.portion * COALESCE(last_prix.prix_unitaire, 0)) AS cout
+         FROM produit_ingredients pi
+         LEFT JOIN LATERAL (
+           SELECT prix_unitaire FROM stock_client_daily
+           WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
+           ORDER BY date_appro DESC LIMIT 1
+         ) last_prix ON true
+         WHERE pi.produit_id = ANY($1::int[])
+         GROUP BY pi.produit_id`,
+        [prodArticleIds, cid]
+      );
+      for (const row of cr.rows) prodCostMap.set(row.produit_id, row.cout != null ? parseFloat(row.cout) : null);
+
+      const ir = await client.query(
+        'SELECT produit_id, ingredient_id, portion FROM produit_ingredients WHERE produit_id = ANY($1::int[])',
+        [prodArticleIds]
+      );
+      for (const row of ir.rows) {
+        if (!prodIngMap.has(row.produit_id)) prodIngMap.set(row.produit_id, []);
+        prodIngMap.get(row.produit_id).push(row);
+      }
+      const sr = await client.query(
+        'SELECT produit_id, sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = ANY($1::int[])',
+        [prodArticleIds]
+      );
+      for (const row of sr.rows) {
+        if (!prodSpMap.has(row.produit_id)) prodSpMap.set(row.produit_id, []);
+        prodSpMap.get(row.produit_id).push(row);
+      }
+    }
+
     for (const ligne of lignes) {
       const { article_type, article_id, quantite, prix_unitaire } = ligne;
 
-      // Calculate cout_unitaire from stock
+      // cout_unitaire depuis les maps pré-chargées (même valeur qu'une requête par ligne)
       let cout = null;
       if (article_type === 'ingredient') {
-        const coutRes = await client.query(
-          `SELECT AVG(prix_unitaire) as avg_prix
-           FROM stock_client_daily
-           WHERE ingredient_id = $1 AND client_id = $2 AND quantite > 0`,
-          [article_id, cid]
-        );
-        cout = coutRes.rows[0]?.avg_prix != null ? parseFloat(coutRes.rows[0].avg_prix) : null;
+        cout = ingCostMap.has(Number(article_id)) ? ingCostMap.get(Number(article_id)) : null;
       } else if (article_type === 'produit') {
-        const coutRes = await client.query(
-          `SELECT SUM(pi.portion * COALESCE(last_prix.prix_unitaire, 0)) as cout
-           FROM produit_ingredients pi
-           LEFT JOIN LATERAL (
-             SELECT prix_unitaire FROM stock_client_daily
-             WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
-             ORDER BY date_appro DESC LIMIT 1
-           ) last_prix ON true
-           WHERE pi.produit_id = $1`,
-          [article_id, cid]
-        );
-        cout = coutRes.rows[0]?.cout != null ? parseFloat(coutRes.rows[0].cout) : null;
+        cout = prodCostMap.has(Number(article_id)) ? prodCostMap.get(Number(article_id)) : null;
       }
 
       await client.query(
@@ -688,19 +724,11 @@ const createVente = async (req, res) => {
 
       // Accumulate ingredient and PT sub-product totals for stock deduction
       if (activite_id && moduleVenteActif && article_type === 'produit') {
-        const ftRes = await client.query(
-          'SELECT ingredient_id, portion FROM produit_ingredients WHERE produit_id = $1',
-          [article_id]
-        );
-        for (const pi of ftRes.rows) {
+        for (const pi of (prodIngMap.get(Number(article_id)) || [])) {
           ingredientTotals.set(pi.ingredient_id,
             (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(quantite));
         }
-        const ptRes = await client.query(
-          'SELECT sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = $1',
-          [article_id]
-        );
-        for (const sp of ptRes.rows) {
+        for (const sp of (prodSpMap.get(Number(article_id)) || [])) {
           ptTotals.set(sp.sous_produit_id,
             (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(quantite));
         }
@@ -791,21 +819,35 @@ const annulerVente = async (req, res) => {
       if (mvActif) {
         const ingredientTotals = new Map();
         const ptTotals = new Map();
+        // Pré-chargement en lot des compositions (mêmes accumulations qu'avant)
+        const annulProdIds = [...new Set(lignesRes.rows.filter((l) => l.article_type === 'produit').map((l) => Number(l.article_id)))];
+        const annulIngMap = new Map();
+        const annulSpMap = new Map();
+        if (annulProdIds.length > 0) {
+          const ir = await client.query(
+            'SELECT produit_id, ingredient_id, portion FROM produit_ingredients WHERE produit_id = ANY($1::int[])',
+            [annulProdIds]
+          );
+          for (const row of ir.rows) {
+            if (!annulIngMap.has(row.produit_id)) annulIngMap.set(row.produit_id, []);
+            annulIngMap.get(row.produit_id).push(row);
+          }
+          const sr = await client.query(
+            'SELECT produit_id, sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = ANY($1::int[])',
+            [annulProdIds]
+          );
+          for (const row of sr.rows) {
+            if (!annulSpMap.has(row.produit_id)) annulSpMap.set(row.produit_id, []);
+            annulSpMap.get(row.produit_id).push(row);
+          }
+        }
         for (const ligne of lignesRes.rows) {
           if (ligne.article_type === 'produit') {
-            const ftRes = await client.query(
-              'SELECT ingredient_id, portion FROM produit_ingredients WHERE produit_id = $1',
-              [ligne.article_id]
-            );
-            for (const pi of ftRes.rows) {
+            for (const pi of (annulIngMap.get(Number(ligne.article_id)) || [])) {
               ingredientTotals.set(pi.ingredient_id,
                 (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(ligne.quantite));
             }
-            const ptRes = await client.query(
-              'SELECT sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = $1',
-              [ligne.article_id]
-            );
-            for (const sp of ptRes.rows) {
+            for (const sp of (annulSpMap.get(Number(ligne.article_id)) || [])) {
               ptTotals.set(sp.sous_produit_id,
                 (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(ligne.quantite));
             }

@@ -1163,7 +1163,7 @@ const getTransferHistory = async (req, res) => {
          JOIN produits p ON p.id = lt.produit_id
          JOIN activites a ON a.id = lt.activite_id
          WHERE lt.labo_id = $1 AND lt.date_transfert >= make_date($2::int, 1, 1) AND lt.date_transfert < make_date($2::int + 1, 1, 1)${extraWhere}
-         ORDER BY lt.date_transfert DESC, lt.created_at DESC${limit ? ` LIMIT ${parseInt(limit, 10)}` : ''}`,
+         ORDER BY lt.date_transfert DESC, lt.created_at DESC LIMIT ${limit ? parseInt(limit, 10) : 2000}`,
         params
       );
       return res.json(result.rows.map((r) => ({
@@ -1196,7 +1196,7 @@ const getTransferHistory = async (req, res) => {
        JOIN activites a ON a.id = lt.activite_id
        LEFT JOIN utilisateurs ub ON ub.id = lt.created_by
        WHERE lt.labo_id = $1 AND lt.date_transfert >= make_date($2::int, 1, 1) AND lt.date_transfert < make_date($2::int + 1, 1, 1)${extraWhere}
-       ORDER BY lt.date_transfert DESC, lt.created_at DESC${limit ? ` LIMIT ${parseInt(limit, 10)}` : ''}`,
+       ORDER BY lt.date_transfert DESC, lt.created_at DESC LIMIT ${limit ? parseInt(limit, 10) : 2000}`,
       params
     );
 
