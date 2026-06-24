@@ -154,7 +154,7 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null })
   const subtitle = isAvenant ? 'Signature électronique de votre avenant' : 'Signature électronique de votre contrat';
   const intro = isAvenant
     ? `Suite à votre demande d'ajout de <strong>${supText}</strong>, votre <strong>avenant au contrat d'abonnement ${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
-        Cliquez sur le bouton ci-dessous pour consulter et signer votre avenant.`
+        Cliquez sur le bouton ci-dessous pour le consulter et le signer — <strong>dès la signature, votre nouvelle capacité sera immédiatement disponible dans votre espace</strong>.`
     : `Votre contrat d'abonnement <strong>${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
         Cliquez sur le bouton ci-dessous pour consulter et signer votre contrat.`;
   const cardTitle = isAvenant ? `Avenant au contrat d'abonnement — ${APP_NAME}` : `Contrat d'abonnement — ${APP_NAME}`;

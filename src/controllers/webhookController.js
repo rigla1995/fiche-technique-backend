@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 const { sendWelcomeWithContractEmail, generateInviteToken } = require('../services/emailService');
-const { saveNotificationToAdmins } = require('./notificationController');
-const { pushToAdmins } = require('../services/sseService');
+const { saveNotificationToAdmins, saveNotification } = require('./notificationController');
+const { pushToAdmins, pushTo } = require('../services/sseService');
 const { verifyDocusealSignature } = require('../utils/webhookSignature');
 const logger = require('../utils/logger');
 
@@ -73,6 +73,13 @@ const docusealWebhook = async (req, res) => {
         const payload = { eventType: 'avenant_signe', demandeId: d.id, type: 'supplement', clientNom: d.client_nom || 'Client', statut: 'validée' };
         try { pushToAdmins('avenant_signe', payload); } catch (_) { /* sse best-effort */ }
         saveNotificationToAdmins(payload).catch(() => {});
+        // Notifier le CLIENT (instantané + persisté). Redirection au clic selon le type de capacité :
+        // activité/labo -> Mes activités ; uniquement gérant(s) -> Gérants.
+        const onlyGerant = (d.nb_activites_supp || 0) === 0 && (d.nb_labos_supp || 0) === 0 && (d.nb_gerants_supp || 0) > 0;
+        const clientEvent = onlyGerant ? 'demande_gerant_validee' : 'demande_capacite_validee';
+        const clientPayload = { eventType: clientEvent, demandeId: d.id, type: 'supplement', clientNom: d.client_nom || 'Client', statut: 'validée' };
+        try { pushTo(d.client_id, clientEvent, clientPayload); } catch (_) { /* sse best-effort */ }
+        saveNotification(d.client_id, { eventType: clientEvent, demandeId: d.id, type: 'supplement', clientNom: d.client_nom, statut: 'validée' }).catch(() => {});
         console.log(`[docuseal-webhook] Avenant signé → capacité appliquée (demande ${d.id})`);
         return; // ne pas exécuter le flux contrat
       }
