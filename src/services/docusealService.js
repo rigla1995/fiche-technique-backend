@@ -172,4 +172,21 @@ const createSubmissionFromPdf = async ({ pdfBase64, documentName, clientName, cl
   return { templateId, submissionId, signingUrl };
 };
 
-module.exports = { createSubmission, createContractSubmission, createSubmissionFromPdf, isConfigured, isConfiguredPdf };
+/**
+ * Récupère les documents (PDF signés) d'une soumission terminée.
+ * @returns Array<{ name, url }> (vide si pas encore disponible)
+ */
+const getSubmissionDocuments = async (submissionId) => {
+  if (!isConfiguredPdf() || !submissionId) return [];
+  const token = DOCUSEAL_TOKEN();
+  const baseUrl = DOCUSEAL_URL();
+  const res = await fetch(`${baseUrl}/api/submissions/${submissionId}`, {
+    headers: { 'X-Auth-Token': token },
+  });
+  if (!res.ok) throw new Error(`Docuseal get submission ${res.status}`);
+  const data = await res.json();
+  const docs = Array.isArray(data?.documents) ? data.documents : [];
+  return docs.filter((d) => d && d.url).map((d) => ({ name: d.name || 'contrat', url: d.url }));
+};
+
+module.exports = { createSubmission, createContractSubmission, createSubmissionFromPdf, getSubmissionDocuments, isConfigured, isConfiguredPdf };
