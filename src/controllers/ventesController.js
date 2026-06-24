@@ -740,6 +740,33 @@ const createVente = async (req, res) => {
       }
     }
 
+    // Coût matière par ingrédient (même source que le calcul de coût) + fournisseur AUTO, pour
+    // tracer les sorties 'vente' avec prix HT / TVA 0 / TTC = HT (lignes hors calcul d'appro).
+    let venteAutoFournId = null;
+    const venteCostByIng = new Map();
+    if (activite_id && ingredientTotals.size > 0) {
+      const ingIds = [...ingredientTotals.keys()].map(Number);
+      const cr = await client.query(
+        `SELECT ingredient_id, AVG(prix_unitaire) AS c FROM stock_client_daily
+          WHERE ingredient_id = ANY($1::int[]) AND client_id = $2 AND quantite > 0 GROUP BY ingredient_id`,
+        [ingIds, cid]
+      );
+      for (const row of cr.rows) venteCostByIng.set(row.ingredient_id, row.c != null ? parseFloat(row.c) : 0);
+      const fo = await client.query(
+        `SELECT f.id FROM fournisseurs f JOIN activites a ON a.entreprise_id = f.entreprise_id
+          WHERE a.id = $1 AND f.nom = 'AUTO' LIMIT 1`,
+        [activite_id]
+      );
+      if (fo.rows[0]) venteAutoFournId = fo.rows[0].id;
+      else {
+        const ent = await client.query(`SELECT entreprise_id FROM activites WHERE id = $1`, [activite_id]);
+        if (ent.rows[0]) {
+          const nf = await client.query(`INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`, [ent.rows[0].entreprise_id]);
+          venteAutoFournId = nf.rows[0].id;
+        }
+      }
+    }
+
     // UPSERT per ingredient — accumulate into existing 'vente' row if same day
     for (const [ingredientId, total] of ingredientTotals) {
       const upd = await client.query(
@@ -749,11 +776,12 @@ const createVente = async (req, res) => {
         [total, activite_id, ingredientId, dateApproValue]
       );
       if (upd.rowCount === 0) {
+        const c = venteCostByIng.get(Number(ingredientId)) ?? 0;
         await client.query(
           `INSERT INTO stock_entreprise_daily
-             (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
-           VALUES ($1, $2, $3, $4, 'vente', 0, 0, 0, NOW(), $5)`,
-          [activite_id, ingredientId, -total, dateApproValue, req.user.id]
+             (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, fournisseur_id, ref_facture, updated_at, created_by)
+           VALUES ($1, $2, $3, $4, 'vente', $5, 0, $5, $6, $7, NOW(), $8)`,
+          [activite_id, ingredientId, -total, dateApproValue, c, venteAutoFournId, `vente-${dateApproValue}`, req.user.id]
         );
       }
     }

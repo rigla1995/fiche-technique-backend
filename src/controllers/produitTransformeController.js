@@ -647,15 +647,15 @@ const saveStockPT = async (req, res) => {
 
       if (actId) {
         await pool.query(
-          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, 'PT', autoFournisseurId, `${ing.nom}-${yearStr}`]
+          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
+           VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
+          [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
         );
       } else {
         await pool.query(
-          `INSERT INTO stock_client_daily (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, 'PT', autoFournisseurId, `${ing.nom}-${yearStr}`]
+          `INSERT INTO stock_client_daily (client_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
+           VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
+          [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
         );
       }
     }
