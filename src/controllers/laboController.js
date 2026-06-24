@@ -805,9 +805,9 @@ const updateLaboStock = async (req, res) => {
             const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
             const consumed = -(portion * qty);
             await client.query(
-              `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, fournisseur_id, ref_facture, type_appro, updated_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-              [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, `${ing.ing_nom}-${yearStr}`, 'PT']
+              `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, fournisseur_id, ref_facture, type_appro, updated_at, created_by)
+               VALUES ($1, $2, $3, $4, $5, 0, $5, $6, $7, 'PT', NOW(), $8)`,
+              [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, `PT-${da}`, req.user.id]
             );
           }
         }
