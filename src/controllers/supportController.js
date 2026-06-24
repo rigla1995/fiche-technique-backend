@@ -151,7 +151,8 @@ const create = async (req, res) => {
       pushToAdmins('new_demande', notifPayload);
       saveNotificationToAdmins(notifPayload).catch(console.error);
     }
-    res.status(201).json({ ...demande, signingUrl });
+    // On n'expose PAS le lien de signature au front : le client signe l'avenant via l'email reçu.
+    res.status(201).json({ ...demande, avenantEmailSent: !!signingUrl });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
