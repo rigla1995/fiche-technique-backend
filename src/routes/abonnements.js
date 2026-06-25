@@ -251,6 +251,7 @@ router.put('/client/:clientId/mode', authenticate, requireSuperAdmin, ab.updateM
 router.put('/client/:clientId/notes', authenticate, requireSuperAdmin, ab.updateNotes);
 router.put('/client/:clientId/module-vente', authenticate, requireSuperAdmin, ab.toggleModuleVente);
 router.post('/client/:clientId/paiements', authenticate, requireSuperAdmin, ab.upsertPaiement);
+router.get('/paiements/:paiementId/facture', authenticate, requireSuperAdmin, ab.downloadFactureAdmin);
 router.get('/client/:clientId/montant-mois', authenticate, requireSuperAdmin, ab.getMontantMois);
 
 /**
@@ -463,6 +464,7 @@ router.get('/mon-abonnement', authenticate, requireClient, async (req, res) => {
   req.query.withPricing = '1';
   return ab.getAbonnement(req, res);
 });
+router.get('/mon-abonnement/paiements/:paiementId/facture', authenticate, requireClient, ab.downloadFactureClient);
 router.get('/contrat-actif', authenticate, requireClient, ab.getContratActif);
 router.get('/supplement-pricing', authenticate, requireClient, ab.getSupplementPricing);
 router.get('/client/:clientId/supplement-pricing', authenticate, requireSuperAdmin, ab.getClientSupplementPricing);

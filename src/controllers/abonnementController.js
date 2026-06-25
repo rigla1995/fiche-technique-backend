@@ -1,6 +1,37 @@
 const pool = require('../config/database');
-const { sendInviteEmail } = require('../services/emailService');
+const { sendInviteEmail, sendFactureEmail } = require('../services/emailService');
 const { getSubmissionDocuments } = require('../services/docusealService');
+const { generateFacturePdf } = require('../services/pdfService');
+
+// ── Facture d'abonnement ──────────────────────────────────────────────────────
+// Taux de TVA applicable aux factures (Tunisie : 19 %). Le montant enregistré
+// (paiements.montant_dt) est considéré TTC ; HT et TVA en sont déduits afin que
+// le TTC affiché corresponde exactement au montant réglé.
+const FACTURE_TVA_RATE = Number(process.env.FACTURE_TVA_RATE || 19);
+
+// Construit les données de facture déterministes à partir d'une ligne de paiement.
+// Déterministe => la facture jointe à l'email et celle téléchargée sont identiques.
+const buildFactureData = (paiement, client) => {
+  const moisDate = new Date(paiement.mois);
+  const year = moisDate.getFullYear();
+  const numero = `LF-${year}-${String(paiement.id).padStart(5, '0')}`;
+  const periodeLabel = moisDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const ttc = Math.round((Number(paiement.montant_dt) || 0) * 1000) / 1000;
+  const ht = Math.round((ttc / (1 + FACTURE_TVA_RATE / 100)) * 1000) / 1000;
+  const tva = Math.round((ttc - ht) * 1000) / 1000;
+  // Date déterministe : date de règlement persistée, sinon repli sur le mois facturé
+  // (toujours présent) — jamais l'horloge courante, pour que email == téléchargement.
+  const dateFacture = paiement.date_paiement || paiement.mois;
+  return {
+    numero, periodeLabel, ttc, ht, tva, dateFacture,
+    pdfParams: {
+      numero, dateFacture, periodeLabel,
+      clientNom: client?.nom || 'Client',
+      clientEmail: client?.email || '',
+      montantHt: ht, montantTva: tva, montantTtc: ttc, tvaRate: FACTURE_TVA_RATE,
+    },
+  };
+};
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -633,6 +664,13 @@ const upsertPaiement = async (req, res) => {
     moisDate.setDate(1);
     const moisStr = moisDate.toISOString().slice(0, 10);
 
+    // Statut précédent (pour n'envoyer la facture qu'au PASSAGE à « payé »)
+    const prevRes = await pool.query(
+      'SELECT statut FROM paiements WHERE abonnement_id = $1 AND mois = $2',
+      [aboId, moisStr]
+    );
+    const prevStatut = prevRes.rows[0]?.statut ?? null;
+
     // If no montant supplied, compute from config/tarif + promo
     let finalMontant = montant != null ? Number(montant) : null;
     if (finalMontant === null) {
@@ -651,21 +689,106 @@ const upsertPaiement = async (req, res) => {
       finalMontant = applyPromoMensualite(base, promo);
     }
 
+    // Date de règlement : si « payé » sans date explicite, on PERSISTE NOW() une seule
+    // fois (sinon la facture émise par email et celle re-téléchargée porteraient des dates
+    // différentes). Une date déjà enregistrée n'est jamais écrasée sans saisie explicite.
+    const fallbackPayDate = statut === 'payé' ? new Date() : null;
     const result = await pool.query(
       `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut, saisie_par, date_saisie, date_paiement, notes)
-       VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)
+       VALUES ($1, $2, $3, $4, $5, NOW(), COALESCE($6, $8), $7)
        ON CONFLICT (abonnement_id, mois) DO UPDATE
        SET statut = $4, montant_dt = COALESCE($3, paiements.montant_dt),
            saisie_par = $5, date_saisie = NOW(),
-           date_paiement = COALESCE($6, paiements.date_paiement),
+           date_paiement = COALESCE($6, paiements.date_paiement, $8),
            notes = COALESCE($7, paiements.notes)
        RETURNING *`,
-      [aboId, moisStr, finalMontant, statut, req.user.id, datePaiement || null, notes || null]
+      [aboId, moisStr, finalMontant, statut, req.user.id, datePaiement || null, notes || null, fallbackPayDate]
     );
-    res.json(mapPaiement(result.rows[0]));
+    const paiement = result.rows[0];
+
+    // Facture pro à la VALIDATION d'un paiement (passage à « payé »).
+    // Best-effort : n'impacte pas la réponse ni l'enregistrement du paiement.
+    if (statut === 'payé' && prevStatut !== 'payé' && Number(paiement.montant_dt) > 0) {
+      (async () => {
+        try {
+          const u = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
+          const client = u.rows[0];
+          if (client?.email) {
+            const fac = buildFactureData(paiement, client);
+            const pdfBase64 = await generateFacturePdf(fac.pdfParams);
+            await sendFactureEmail({
+              to: client.email, nom: client.nom || 'Client',
+              numero: fac.numero, periodeLabel: fac.periodeLabel,
+              montantTtc: fac.ttc, dateReglement: fac.dateFacture, pdfBase64,
+            });
+            console.log(`[facture] ${fac.numero} envoyée à ${client.email}`);
+          }
+        } catch (e) {
+          console.error('[facture] génération/envoi échoué:', e.message);
+        }
+      })();
+    }
+
+    res.json(mapPaiement(paiement));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// GET facture PDF d'un paiement payé (téléchargement admin ou client).
+// scopeClientId : si fourni (client connecté), restreint au paiement de ce client.
+const getFactureForPaiement = async (paiementId, scopeClientId = null) => {
+  const params = [paiementId];
+  let scopeCond = '';
+  if (scopeClientId != null) { params.push(scopeClientId); scopeCond = ' AND a.client_id = $2'; }
+  const r = await pool.query(
+    `SELECT p.id, p.mois, p.montant_dt, p.statut, p.date_paiement,
+            a.client_id, u.nom AS client_nom, u.email AS client_email
+       FROM paiements p
+       JOIN abonnements a ON a.id = p.abonnement_id
+       LEFT JOIN utilisateurs u ON u.id = a.client_id
+      WHERE p.id = $1${scopeCond}`,
+    params
+  );
+  if (r.rows.length === 0) return { error: 404 };
+  const row = r.rows[0];
+  if (row.statut !== 'payé' || !(Number(row.montant_dt) > 0)) return { error: 400 };
+  const fac = buildFactureData(
+    { id: row.id, mois: row.mois, montant_dt: row.montant_dt, date_paiement: row.date_paiement },
+    { nom: row.client_nom, email: row.client_email }
+  );
+  const pdfBase64 = await generateFacturePdf(fac.pdfParams);
+  return { numero: fac.numero, buffer: Buffer.from(pdfBase64, 'base64') };
+};
+
+// Route admin : GET /api/abonnements/paiements/:paiementId/facture
+const downloadFactureAdmin = async (req, res) => {
+  try {
+    const out = await getFactureForPaiement(parseInt(req.params.paiementId), null);
+    if (out.error === 404) return res.status(404).json({ message: 'Paiement introuvable' });
+    if (out.error === 400) return res.status(400).json({ message: 'Facture disponible uniquement pour un paiement réglé' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="facture-${out.numero}.pdf"`);
+    res.send(out.buffer);
+  } catch (err) {
+    console.error('[facture] download admin:', err);
+    res.status(500).json({ message: 'Erreur lors de la génération de la facture' });
+  }
+};
+
+// Route client : GET /api/abonnements/mon-abonnement/paiements/:paiementId/facture
+const downloadFactureClient = async (req, res) => {
+  try {
+    const out = await getFactureForPaiement(parseInt(req.params.paiementId), req.user.id);
+    if (out.error === 404) return res.status(404).json({ message: 'Facture introuvable' });
+    if (out.error === 400) return res.status(400).json({ message: 'Facture disponible uniquement pour un paiement réglé' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="facture-${out.numero}.pdf"`);
+    res.send(out.buffer);
+  } catch (err) {
+    console.error('[facture] download client:', err);
+    res.status(500).json({ message: 'Erreur lors de la génération de la facture' });
   }
 };
 
@@ -1632,6 +1755,7 @@ module.exports = {
   listAbonnements, getAbonnement, createAbonnement,
   updateOnboarding, updateProlongation, updateNotes, updateMode, toggleModuleVente,
   upsertPaiement,
+  downloadFactureAdmin, downloadFactureClient,
   getMontantMois,
   listPromotions, createPromotion, updatePromotion, deletePromotion, insertPromoForAbonnement,
   getAbonnementConfig, updateAbonnementConfig, getPricingPreview, getSupplementPricing, getClientSupplementPricing,
