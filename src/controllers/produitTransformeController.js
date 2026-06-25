@@ -497,6 +497,18 @@ const saveStockPT = async (req, res) => {
       return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
     }
 
+    // Garde-fou (refonte Espace Produits) : un produit d'ORIGINE LABO s'approvisionne en activité
+    // UNIQUEMENT par transfert depuis le labo — pas de fabrication / appro manuel côté activité.
+    // (La fabrication au labo passe par updateLaboStock, qui reste autorisée.)
+    if (actId) {
+      const origineRes = await pool.query('SELECT origine FROM produits WHERE id = $1', [produitId]);
+      if (origineRes.rows[0]?.origine === 'labo') {
+        return res.status(400).json({
+          message: "Ce produit est fabriqué au labo : côté activité il s'approvisionne uniquement par transfert, pas par appro manuel.",
+        });
+      }
+    }
+
     // Fetch produit name for type_appro
     const produitRes = await pool.query(`SELECT nom FROM produits WHERE id = $1`, [produitId]);
     const produitNom = produitRes.rows[0]?.nom ?? 'PT';
