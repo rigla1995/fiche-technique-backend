@@ -421,6 +421,11 @@ const update = async (req, res) => {
   const ingredients = req.body.ingredients;
   const subProducts = req.body.subProducts;
   const origine = req.body.origine === 'labo' ? 'labo' : req.body.origine === 'activite' ? 'activite' : undefined;
+  // Ré-affectation (édition d'un produit labo) : laboIds + activités cochées. undefined = ne pas toucher.
+  const laboIds = Array.isArray(req.body.laboIds)
+    ? req.body.laboIds.map(Number).filter((n) => Number.isInteger(n) && n > 0) : undefined;
+  const activiteIds = Array.isArray(req.body.activiteIds)
+    ? req.body.activiteIds.map(Number).filter((n) => Number.isInteger(n) && n > 0) : undefined;
 
   // Si on bascule (ou reste) en vendable et qu'une catégorie est explicitement fournie mais vide → refus.
   if (categorieProvided && type !== 'utilisable' && !categorieProduitId) {
@@ -488,6 +493,33 @@ const update = async (req, res) => {
            VALUES ($1, $2, $3)
            ON CONFLICT (produit_id, sous_produit_id) DO UPDATE SET portion = $3`,
           [id, sousProduitId, portion]
+        );
+      }
+    }
+
+    // Ré-affectation d'un produit labo (édition) : recompose labo_pt_selections + produit_activite_stock
+    // (activités cochées rattachées aux labos choisis). Le stock réel (transferts) n'est pas touché.
+    if ((origine === 'labo' || result.rows[0].origine === 'labo') && laboIds !== undefined) {
+      const cId = req.user.gerant_parent_id || req.user.id;
+      const ownLabos = await client.query(
+        `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id
+         WHERE pe.client_id = $1 AND l.id = ANY($2::int[])`,
+        [cId, laboIds.length ? laboIds : [-1]]
+      );
+      const ownLaboIds = ownLabos.rows.map((r) => r.id);
+      await client.query('DELETE FROM labo_pt_selections WHERE produit_id = $1', [id]);
+      await client.query('DELETE FROM produit_activite_stock WHERE produit_id = $1', [id]);
+      for (const laboId of ownLaboIds) {
+        await client.query('INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [laboId, id]);
+      }
+      if (ownLaboIds.length > 0 && activiteIds && activiteIds.length > 0) {
+        await client.query(
+          `INSERT INTO produit_activite_stock (produit_id, activite_id, labo_id)
+           SELECT $1, a.id, a.labo_id FROM activites a
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE pe.client_id = $2 AND a.id = ANY($3::int[]) AND a.labo_id = ANY($4::int[])
+           ON CONFLICT (produit_id, activite_id) DO NOTHING`,
+          [id, cId, activiteIds, ownLaboIds]
         );
       }
     }

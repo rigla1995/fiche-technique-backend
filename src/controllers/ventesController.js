@@ -276,6 +276,10 @@ const upsertArticleVendable = async (req, res) => {
     if (!['produit', 'ingredient'].includes(article_type)) {
       return res.status(400).json({ message: "article_type doit être 'produit' ou 'ingredient'" });
     }
+    // On ne peut pas rendre un article/produit vendable ACTIF sans prix de vente > 0.
+    if (actif === true && (prix_vente == null || parseFloat(prix_vente) <= 0)) {
+      return res.status(400).json({ message: 'Saisissez un prix de vente supérieur à 0 avant d\'activer cet article.' });
+    }
     const cid = clientId(req);
     await assertActiviteOwner(activite_id, cid);
 
@@ -310,6 +314,18 @@ const updateArticleVendable = async (req, res) => {
     const { prix_vente, portion, actif } = req.body;
     const categorieProduitId = req.body.categorie_produit_id ?? req.body.categorieProduitId;
     const categorieProvided = categorieProduitId !== undefined;
+
+    // On ne peut pas activer sans prix > 0 : on contrôle le prix effectif (nouveau ou existant).
+    if (actif === true) {
+      let effPrix = prix_vente;
+      if (effPrix == null) {
+        const cur = await pool.query('SELECT prix_vente FROM activite_articles_vendables WHERE id = $1', [id]);
+        effPrix = cur.rows[0]?.prix_vente;
+      }
+      if (effPrix == null || parseFloat(effPrix) <= 0) {
+        return res.status(400).json({ message: 'Saisissez un prix de vente supérieur à 0 avant d\'activer cet article.' });
+      }
+    }
 
     const r = await pool.query(
       `UPDATE activite_articles_vendables SET
