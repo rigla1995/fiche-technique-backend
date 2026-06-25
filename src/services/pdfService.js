@@ -354,4 +354,130 @@ const generateContratPdf = (params) => new Promise((resolve, reject) => {
   }
 });
 
-module.exports = { generateAvenantPdf, generateContratPdf };
+// Facture mensuelle d'abonnement (générée à la validation d'un paiement).
+// Même identité visuelle que le contrat/avenant (en-tête bleu nuit + barre ambre).
+// Prestataire & identifiants fiscaux configurables par env (placeholders par défaut).
+const generateFacturePdf = (params) => new Promise((resolve, reject) => {
+  const {
+    numero, dateFacture, periodeLabel,
+    clientNom, clientEmail,
+    montantHt, montantTva, montantTtc, tvaRate,
+  } = params;
+  try {
+    // CreationDate déterministe (date de facture) → la copie email et la copie
+    // téléchargée sont identiques au byte près, métadonnées PDF comprises.
+    const creationDate = dateFacture ? new Date(dateFacture) : new Date(0);
+    const doc = new PDFDocument({
+      size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 }, autoFirstPage: true,
+      info: { Title: `Facture ${numero}`, Author: 'LabFlow', Subject: `Abonnement ${periodeLabel}`, CreationDate: creationDate },
+    });
+    const chunks = [];
+    doc.on('data', (c) => chunks.push(c));
+    doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+    doc.on('error', reject);
+
+    const PW = doc.page.width;
+    const PH = doc.page.height;
+    const ML = 54;
+    const CW = PW - ML * 2;
+    const RX = ML + CW;
+    const dateStr = fmtDate(dateFacture);
+
+    const PRESTATAIRE = process.env.FACTURE_PRESTATAIRE_NOM || 'LabFlow';
+    const SIRET = process.env.FACTURE_SIRET || 'SIRET : 000 000 000 00000';
+    const ADRESSE = process.env.FACTURE_ADRESSE || 'Adresse du prestataire (a completer)';
+    const MF = process.env.FACTURE_MATRICULE_FISCAL || 'Matricule fiscal : 0000000/A/M/000';
+    const fmt = (n) => `${Number(n || 0).toFixed(3)} DT`;
+
+    const fill = (x, y, w, h, hex) => { doc.rect(x, y, w, h).fill(hex); };
+    const hline = (y, hex = '#e2e8f0', x1 = ML, x2 = RX) => {
+      doc.save().moveTo(x1, y).lineTo(x2, y).lineWidth(0.5).stroke(hex).restore();
+    };
+    const txt = (str, x, y, size, bold, hex, opts = {}) => {
+      doc.fontSize(size).font(bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(hex)
+         .text(str, x, y, { lineBreak: false, ...opts });
+    };
+    const sectionHdr = (label, y) => {
+      fill(ML, y, CW, 20, '#f0f4ff');
+      hline(y, '#c7d2fe'); hline(y + 20, '#c7d2fe');
+      txt(label, ML + 8, y + 6, 8, true, '#3730a3');
+      return y + 26;
+    };
+
+    let y = 0;
+
+    // Header
+    fill(0, 0, PW, 119, '#1e1b4b');
+    fill(0, 108, PW, 11, '#d97706');
+    txt(PRESTATAIRE, ML, 28, 22, true, '#ffffff');
+    txt('FACTURE', ML, 52, 10, false, '#fde68a');
+    txt(`Réf. ${numero}`, ML, 28, 8, false, '#fbbf24', { align: 'right', width: CW });
+    txt(`Émise le ${dateStr}`, ML, 42, 8, false, '#fcd34d', { align: 'right', width: CW });
+    y = 140;
+
+    // Émetteur & client
+    y = sectionHdr('ÉMETTEUR & CLIENT', y);
+    fill(ML, y, CW, 72, '#f8fafc');
+    hline(y, '#e2e8f0'); hline(y + 72, '#e2e8f0');
+    txt('PRESTATAIRE', ML + 8, y + 8, 7, true, '#374151');
+    txt(PRESTATAIRE, ML + 8, y + 20, 9, true, '#0f172a');
+    txt(SIRET, ML + 8, y + 33, 7.5, false, '#64748b');
+    txt(MF, ML + 8, y + 44, 7.5, false, '#64748b');
+    txt(ADRESSE, ML + 8, y + 55, 7.5, false, '#64748b', { width: CW / 2 - 16 });
+    txt('CLIENT', ML + CW / 2, y + 8, 7, true, '#374151');
+    txt(clientNom, ML + CW / 2, y + 20, 9, true, '#0f172a');
+    if (clientEmail) txt(clientEmail, ML + CW / 2, y + 33, 7.5, false, '#64748b');
+    y += 80;
+
+    // Objet
+    y = sectionHdr('OBJET', y);
+    fill(ML, y, CW, 30, '#fffbeb');
+    hline(y, '#fde68a'); hline(y + 30, '#fde68a');
+    txt(`Abonnement ${PRESTATAIRE} · ${periodeLabel}`, ML + 8, y + 11, 9, true, '#78350f');
+    y += 40;
+
+    // Détail
+    y = sectionHdr('DÉTAIL', y);
+    fill(ML, y, CW, 22, '#eef2ff'); hline(y, '#c7d2fe'); hline(y + 22, '#c7d2fe');
+    txt('Désignation', ML + 8, y + 7, 7, true, '#4338ca');
+    txt('Montant HT', ML + 232, y + 7, 7, true, '#4338ca');
+    txt(`TVA ${tvaRate}%`, ML + 332, y + 7, 7, true, '#4338ca');
+    txt('TTC', ML, y + 7, 7, true, '#4338ca', { align: 'right', width: CW - 8 });
+    y += 22;
+    fill(ML, y, CW, 24, '#fafbff'); hline(y + 24, '#f1f5f9');
+    txt(`Abonnement mensuel · ${periodeLabel}`, ML + 8, y + 8, 8.5, false, '#0f172a');
+    txt(fmt(montantHt), ML + 232, y + 8, 8, false, '#374151');
+    txt(fmt(montantTva), ML + 332, y + 8, 8, false, '#374151');
+    txt(fmt(montantTtc), ML, y + 8, 8.5, true, '#0f172a', { align: 'right', width: CW - 8 });
+    y += 24;
+
+    // Total TTC
+    fill(ML, y, CW, 28, '#dbeafe'); hline(y, '#93c5fd'); hline(y + 28, '#1d4ed8');
+    txt('Total TTC', ML + 8, y + 9, 9, true, '#1e40af');
+    txt(fmt(montantTtc), ML, y + 8, 11, true, '#1d4ed8', { align: 'right', width: CW - 8 });
+    y += 40;
+
+    // Acquittement
+    fill(ML, y, CW, 30, '#f0fdf4'); hline(y, '#bbf7d0'); hline(y + 30, '#bbf7d0');
+    txt('FACTURE ACQUITTÉE', ML + 8, y + 10, 9, true, '#15803d');
+    txt(`Réglée le ${dateStr}`, ML, y + 10, 8, false, '#16a34a', { align: 'right', width: CW - 8 });
+    y += 42;
+
+    // Mentions
+    fill(ML, y, CW, 26, '#f8fafc'); hline(y, '#e2e8f0'); hline(y + 26, '#e2e8f0');
+    doc.fontSize(7).font('Helvetica').fillColor('#94a3b8')
+       .text('Facture acquittée — abonnement mensuel au service en ligne ' + PRESTATAIRE + '. Montants exprimés en dinars tunisiens (DT), TTC = HT + TVA.',
+         ML + 8, y + 7, { width: CW - 16, lineBreak: true });
+
+    // Footer — date déterministe (date de facture, pas l'horloge) pour que la copie
+    // jointe à l'email et la copie re-téléchargée soient identiques.
+    fill(0, PH - 28, PW, 28, '#1e1b4b');
+    txt(`${PRESTATAIRE}  ·  Facture ${numero}  ·  ${dateStr}`, ML, PH - 14, 7, false, '#fbbf24', { align: 'center', width: CW });
+
+    doc.end();
+  } catch (err) {
+    reject(err);
+  }
+});
+
+module.exports = { generateAvenantPdf, generateContratPdf, generateFacturePdf };

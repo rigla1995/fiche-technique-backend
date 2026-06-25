@@ -1,8 +1,8 @@
 const ExcelJS = require('exceljs');
 const pool = require('../config/database');
-const { calculerCout, calculerCoutAvecPrixMap, buildDpPriceMap, buildMpPriceMap } = require('./produitsController');
+const { calculerCout, calculerCoutAvecPrixMap, buildDpPriceMap, buildMpPriceMap, buildDpPriceMapLabo, buildMpPriceMapLabo, laboOwnedByClient } = require('./produitsController');
 
-function fillFtWorksheet(sheet, coutData, ftMode, ftDate, actId, activityInfo, pricingLabel) {
+function fillFtWorksheet(sheet, coutData, ftMode, ftDate, actId, activityInfo, pricingLabel, ctxLabel) {
   sheet.columns = [
     { width: 35 },
     { width: 12 },
@@ -49,10 +49,11 @@ function fillFtWorksheet(sheet, coutData, ftMode, ftDate, actId, activityInfo, p
   hdr++;
 
   let rowIndex = hdr;
-  if (activityInfo && actId) {
+  const ctxText = ctxLabel || ((activityInfo && actId) ? `Activité : ${activityInfo.nom}` : null);
+  if (ctxText) {
     sheet.mergeCells(`A${hdr}:E${hdr}`);
     const ctxCell = sheet.getCell(`A${hdr}`);
-    ctxCell.value = `Activité : ${activityInfo.nom}`;
+    ctxCell.value = ctxText;
     ctxCell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: 'FFFFFF' } };
     ctxCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '3A6BBF' } };
     ctxCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -238,10 +239,28 @@ function fillFtWorksheet(sheet, coutData, ftMode, ftDate, actId, activityInfo, p
 
 const exportExcel = async (req, res) => {
   const { id } = req.params;
-  const { mode, activiteId, date, fg, pricingMethod } = req.query;
+  const { mode, activiteId, date, fg, pricingMethod, laboId } = req.query;
+  const ownerId = req.user.gerant_parent_id || req.user.id;
   const actId = parseInt(activiteId) || 0;
 
   try {
+    // Contexte labo (produit valorisé composé) : prix d'appro du labo, sans activité.
+    const labIdRaw = parseInt(laboId) || 0;
+    const useLabo = labIdRaw > 0 && await laboOwnedByClient(labIdRaw, ownerId);
+    const labId = useLabo ? labIdRaw : 0;
+    // Contexte (activité ou labo) pour l'en-tête et le nom de fichier.
+    let ctxName = null;     // nom affiché
+    let ctxLabel = null;    // ligne d'en-tête « Labo : … » (null = comportement activité par défaut)
+    if (useLabo) {
+      const lr = await pool.query('SELECT nom FROM labos WHERE id = $1', [labId]);
+      ctxName = lr.rows[0]?.nom ?? null;
+      if (ctxName) ctxLabel = `Labo : ${ctxName}`;
+    } else if (actId) {
+      const ar = await pool.query('SELECT nom FROM activites WHERE id = $1', [actId]);
+      ctxName = ar.rows[0]?.nom ?? null;
+    }
+    const safeCtx = ctxName ? ctxName.replace(/[^a-zA-Z0-9À-ÿ]/g, '-') : '';
+
     let coutData;
     let ftMode = null;
     let ftDate = null;
@@ -252,18 +271,15 @@ const exportExcel = async (req, res) => {
 
       if (pricingMethod === 'both') {
         // Build both price maps and generate 2-sheet workbook
-        const dpMap = await buildDpPriceMap(actId, req.user.id);
-        const mpMap = await buildMpPriceMap(actId, req.user.id);
+        const dpMap = useLabo ? await buildDpPriceMapLabo(labId) : await buildDpPriceMap(actId, ownerId);
+        const mpMap = useLabo ? await buildMpPriceMapLabo(labId) : await buildMpPriceMap(actId, ownerId);
         const [dpData, mpData] = await Promise.all([
-          calculerCoutAvecPrixMap(parseInt(id), req.user.id, dpMap),
-          calculerCoutAvecPrixMap(parseInt(id), req.user.id, mpMap),
+          calculerCoutAvecPrixMap(parseInt(id), ownerId, dpMap),
+          calculerCoutAvecPrixMap(parseInt(id), ownerId, mpMap),
         ]);
 
-        const actRes2 = actId ? await pool.query('SELECT nom FROM activites WHERE id = $1', [actId]) : null;
-        const activityInfo2 = actRes2?.rows[0] ?? null;
         const safeProduit2 = dpData.produit.replace(/[^a-zA-Z0-9À-ÿ]/g, '-');
-        const safeAct2 = activityInfo2 ? activityInfo2.nom.replace(/[^a-zA-Z0-9À-ÿ]/g, '-') : '';
-        const filename2 = safeAct2 ? `FT-${safeAct2}-${safeProduit2}.xlsx` : `FT-${safeProduit2}.xlsx`;
+        const filename2 = safeCtx ? `FT-${safeCtx}-${safeProduit2}.xlsx` : `FT-${safeProduit2}.xlsx`;
 
         const workbook2 = new ExcelJS.Workbook();
         workbook2.creator = 'Fiche Technique App';
@@ -273,8 +289,9 @@ const exportExcel = async (req, res) => {
         const dpSheet = workbook2.addWorksheet((tabBase2 + ' — DP').slice(0, 31), { pageSetup: { paperSize: 9, orientation: 'portrait' } });
         const mpSheet = workbook2.addWorksheet((tabBase2 + ' — MP').slice(0, 31), { pageSetup: { paperSize: 9, orientation: 'portrait' } });
 
-        fillFtWorksheet(dpSheet, dpData, ftMode, ftDate, actId, activityInfo2, 'DP — Dernier Prix');
-        fillFtWorksheet(mpSheet, mpData, ftMode, ftDate, actId, activityInfo2, 'MP — Moyenne des Prix');
+        const ctxInfo2 = ctxName ? { nom: ctxName } : null;
+        fillFtWorksheet(dpSheet, dpData, ftMode, ftDate, actId, ctxInfo2, 'DP — Dernier Prix', ctxLabel);
+        fillFtWorksheet(mpSheet, mpData, ftMode, ftDate, actId, ctxInfo2, 'MP — Moyenne des Prix', ctxLabel);
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="${filename2}"`);
@@ -283,40 +300,34 @@ const exportExcel = async (req, res) => {
       }
 
       // Single sheet: dp (default) or mp
-      const priceMap = pricingMethod === 'mp'
-        ? await buildMpPriceMap(actId, req.user.id)
-        : await buildDpPriceMap(actId, req.user.id);
-      coutData = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
+      const priceMap = useLabo
+        ? (pricingMethod === 'mp' ? await buildMpPriceMapLabo(labId) : await buildDpPriceMapLabo(labId))
+        : (pricingMethod === 'mp' ? await buildMpPriceMap(actId, ownerId) : await buildDpPriceMap(actId, ownerId));
+      coutData = await calculerCoutAvecPrixMap(parseInt(id), ownerId, priceMap);
     } else if (mode === 'manual') {
-      // Build price map from manual prices
+      // Build price map from manual prices (labo ou activité)
       const r = await pool.query(
         `SELECT ingredient_id, prix_unitaire, updated_at
          FROM fiche_technique_manual_prices
-         WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3`,
-        [id, req.user.id, actId]
+         WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3 AND labo_id = $4`,
+        [id, ownerId, useLabo ? 0 : actId, labId]
       );
       const priceMap = {};
       r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
       const latestUpdated = r.rows.length > 0 ? r.rows[0].updated_at : new Date();
-      coutData = await calculerCoutAvecPrixMap(parseInt(id), req.user.id, priceMap);
+      coutData = await calculerCoutAvecPrixMap(parseInt(id), ownerId, priceMap);
       ftMode = 'Manuel';
       ftDate = latestUpdated instanceof Date
         ? latestUpdated.toISOString().slice(0, 10)
         : String(latestUpdated).slice(0, 10);
     } else {
-      coutData = await calculerCout(parseInt(id), req.user.id);
+      coutData = await calculerCout(parseInt(id), ownerId);
     }
 
-    // Look up activity details for context row + filename
-    let activityInfo = null;
-    if (actId) {
-      const actRes = await pool.query('SELECT nom FROM activites WHERE id = $1', [actId]);
-      if (actRes.rows.length > 0) activityInfo = actRes.rows[0];
-    }
+    const activityInfo = ctxName ? { nom: ctxName } : null;
 
     const safeProduit = coutData.produit.replace(/[^a-zA-Z0-9À-ÿ]/g, '-');
-    const safeActivity = activityInfo ? activityInfo.nom.replace(/[^a-zA-Z0-9À-ÿ]/g, '-') : '';
-    const filename = safeActivity ? `FT-${safeActivity}-${safeProduit}.xlsx` : `FT-${safeProduit}.xlsx`;
+    const filename = safeCtx ? `FT-${safeCtx}-${safeProduit}.xlsx` : `FT-${safeProduit}.xlsx`;
     const sheetTabName = filename.replace('.xlsx', '').replace(/[\\/?*[\]:]/g, '-').slice(0, 31);
 
     const workbook = new ExcelJS.Workbook();
@@ -325,7 +336,7 @@ const exportExcel = async (req, res) => {
 
     const sheet = workbook.addWorksheet(sheetTabName, { pageSetup: { paperSize: 9, orientation: 'portrait' } });
     const pricingLabel = mode === 'stock' ? (pricingMethod === 'mp' ? 'MP — Moyenne des Prix' : 'DP — Dernier Prix') : null;
-    fillFtWorksheet(sheet, coutData, ftMode, ftDate, actId, activityInfo, pricingLabel);
+    fillFtWorksheet(sheet, coutData, ftMode, ftDate, actId, activityInfo, pricingLabel, ctxLabel);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

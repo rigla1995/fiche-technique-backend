@@ -423,7 +423,7 @@ const remove = async (req, res) => {
     if (deletedClient.email && docusealConfigured('resiliation')) {
       createSubmission({ type: 'resiliation', clientName: deletedClient.nom || 'Client', clientEmail: deletedClient.email })
         .then(({ signingUrl }) => signingUrl
-          ? sendDocusealSigningEmail({ to: deletedClient.email, nom: deletedClient.nom || 'Client', signingUrl })
+          ? sendDocusealSigningEmail({ to: deletedClient.email, nom: deletedClient.nom || 'Client', signingUrl, type: 'resiliation' })
           : null)
         .then(() => console.log(`[resiliation] acte envoyé à ${deletedClient.email}`))
         .catch((e) => console.error('[resiliation] envoi échoué:', e.message));
