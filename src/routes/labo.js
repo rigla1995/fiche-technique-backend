@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   createLabo, updateLabo, deleteLabo, listLabos, getLaboById,
-  getLaboIngredients, toggleLaboIngredient, getLabosArticlesConsommables,
+  getLaboIngredients, toggleLaboIngredient,
   getLaboStock, updateLaboStock, getLaboStockHistory,
   getLaboFournisseurs, syncLaboFournisseurs,
   updateLaboSeuilMin,
@@ -738,8 +738,6 @@ const { laboVentes, laboVentesStats } = require('../controllers/ventesController
 router.get('/', authenticate, requireEntreprise, listLabos);
 router.get('/ventes', authenticate, requireEntreprise, laboVentes);
 router.get('/ventes/stats', authenticate, requireEntreprise, laboVentesStats);
-// Articles consommables affectés à TOUS les labos fournis (?laboIds=1,2) — intersection. Refonte Espace Produits.
-router.get('/articles-consommables', authenticate, requireEntreprise, getLabosArticlesConsommables);
 router.post('/', authenticate, requireEntreprise, createLabo);
 router.get('/:laboId', authenticate, requireEntreprise, getLaboById);
 router.put('/:laboId', authenticate, requireEntreprise, updateLabo);

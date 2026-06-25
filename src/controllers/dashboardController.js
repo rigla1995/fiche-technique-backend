@@ -324,7 +324,6 @@ const getRapportVentes = async (req, res) => {
     const prodRes = await pool.query(
       `SELECT COALESCE(p.nom, a.nom, '—') AS nom,
               COALESCE(p.is_supplement, FALSE) AS is_supplement,
-              COALESCE(p.origine, '') AS origine,
               vl.article_type,
               SUM(vl.quantite) AS qte,
               SUM(vl.quantite * vl.prix_unitaire) AS ca,
@@ -333,7 +332,7 @@ const getRapportVentes = async (req, res) => {
        LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
        LEFT JOIN articles a ON vl.article_type = 'ingredient' AND a.id = vl.article_id
        WHERE ${where}
-       GROUP BY 1,2,3,4 ORDER BY ca DESC`,
+       GROUP BY 1,2,3 ORDER BY ca DESC`,
       params
     );
     const canalRes = await pool.query(
@@ -356,7 +355,7 @@ const getRapportVentes = async (req, res) => {
       produits: prodRes.rows.map((r) => {
         const pca = num(r.ca); const pcm = num(r.cm);
         return {
-          nom: r.nom, type: (r.article_type === 'ingredient' || r.origine === 'labo') ? 'valorise' : (r.is_supplement ? 'supplement' : 'produit'),
+          nom: r.nom, type: r.article_type === 'ingredient' ? 'valorise' : (r.is_supplement ? 'supplement' : 'produit'),
           qte: num(r.qte), ca: pca, marge: pca - pcm,
           food_cost_pct: pca > 0 ? Math.round((pcm / pca) * 100) : null,
         };
