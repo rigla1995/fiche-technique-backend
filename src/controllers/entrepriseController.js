@@ -585,61 +585,6 @@ const getCatalogueGlobalIngredients = async (req, res) => {
   }
 };
 
-// Articles consommables affectés à TOUTES les activités fournies (intersection).
-// Alimente l'étape "Articles" du wizard de création des Produits Activités (origine = activite).
-// Query: ?activiteIds=1,2,3  → article présent si sélectionné dans CHACUNE des activités.
-const getActivitesArticlesConsommables = async (req, res) => {
-  const clientId = req.user.gerant_parent_id || req.user.id;
-  const ids = String(req.query.activiteIds || '')
-    .split(',')
-    .map((s) => parseInt(s.trim(), 10))
-    .filter((n) => Number.isInteger(n) && n > 0);
-  if (ids.length === 0) return res.json([]);
-  try {
-    // Garde-fou : toutes les activités doivent appartenir au client.
-    const own = await pool.query(
-      `SELECT a.id FROM activites a
-       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-       WHERE pe.client_id = $1 AND a.id = ANY($2::int[])`,
-      [clientId, ids]
-    );
-    const ownedIds = own.rows.map((r) => r.id);
-    if (ownedIds.length === 0) return res.json([]);
-
-    const result = await pool.query(
-      `SELECT a.id, a.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie,
-              a.categorie_id, f.id AS famille_id, f.nom AS famille_nom,
-              MIN(ais.prix_unitaire) AS prix_unitaire
-       FROM articles a
-       JOIN unites u ON a.unite_id = u.id
-       LEFT JOIN categories c ON a.categorie_id = c.id
-       LEFT JOIN familles f ON c.famille_id = f.id
-       JOIN activite_ingredient_selections ais ON ais.ingredient_id = a.id AND ais.activite_id = ANY($2::int[])
-       WHERE a.client_id = $1
-         AND (f.id IS NULL OR f.consommable = true)
-       GROUP BY a.id, a.nom, u.nom, c.nom, a.categorie_id, f.id, f.nom
-       HAVING COUNT(DISTINCT ais.activite_id) = $3
-       ORDER BY f.nom NULLS LAST, c.nom NULLS LAST, a.nom`,
-      [clientId, ownedIds, ownedIds.length]
-    );
-
-    res.json(result.rows.map((r) => ({
-      id: r.id,
-      nom: r.nom,
-      unite: r.unite,
-      categorie: r.categorie,
-      categorieId: r.categorie_id ?? null,
-      familleId: r.famille_id ?? null,
-      familleNom: r.famille_nom ?? null,
-      prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
-      selected: true,
-    })));
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
 module.exports = {
   getEntreprise, upsertEntreprise,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
@@ -648,5 +593,4 @@ module.exports = {
   getActiviteTypesSummary,
   getActiviteSelectedIngredients, getTypeSelectedIngredients,
   getCatalogueGlobalIngredients,
-  getActivitesArticlesConsommables,
 };
