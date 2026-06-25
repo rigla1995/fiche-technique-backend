@@ -139,8 +139,11 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
 
 const generateInviteToken = () => crypto.randomBytes(32).toString('hex');
 
-const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null }) => {
-  const isAvenant = !!avenant;
+const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, type = null }) => {
+  // kind ∈ 'contrat' | 'avenant' | 'resiliation' (avenant prioritaire pour rétro-compat)
+  const kind = avenant ? 'avenant' : (type || 'contrat');
+  const isAvenant = kind === 'avenant';
+  const isResiliation = kind === 'resiliation';
   // Rappel de la capacité demandée (uniquement pour un avenant)
   const supParts = [];
   if (isAvenant) {
@@ -151,23 +154,38 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null })
   }
   const supText = supParts.join(', ') || 'capacité supplémentaire';
 
-  const subtitle = isAvenant ? 'Signature électronique de votre avenant' : 'Signature électronique de votre contrat';
-  const intro = isAvenant
-    ? `Suite à votre demande d'ajout de <strong>${supText}</strong>, votre <strong>avenant au contrat d'abonnement ${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
-        Cliquez sur le bouton ci-dessous pour le consulter et le signer — <strong>dès la signature, votre nouvelle capacité sera immédiatement disponible dans votre espace</strong>.`
-    : `Votre contrat d'abonnement <strong>${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
-        Cliquez sur le bouton ci-dessous pour consulter et signer votre contrat.`;
-  const cardTitle = isAvenant ? `Avenant au contrat d'abonnement — ${APP_NAME}` : `Contrat d'abonnement — ${APP_NAME}`;
-  const cardSub = isAvenant
-    ? "Ce document acte l'ajout de capacité demandé et votre nouvelle tarification."
-    : 'Ce document est personnalisé avec vos informations et votre tarification.';
-  const buttonText = isAvenant ? 'Signer mon avenant' : 'Signer mon contrat';
-  const footerText = isAvenant
-    ? "Si vous n'avez pas demandé cet avenant, ignorez cet email."
-    : "Si vous n'avez pas demandé ce contrat, ignorez cet email.";
-  const subject = isAvenant
-    ? `${APP_NAME} — Signez votre avenant d'abonnement`
-    : `${APP_NAME} — Signez votre contrat d'abonnement`;
+  let subtitle, intro, cardTitle, cardSub, buttonText, footerText, subject, cardIcon;
+  if (isAvenant) {
+    subtitle = 'Signature électronique de votre avenant';
+    intro = `Suite à votre demande d'ajout de <strong>${supText}</strong>, votre <strong>avenant au contrat d'abonnement ${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
+        Cliquez sur le bouton ci-dessous pour le consulter et le signer — <strong>dès la signature, votre nouvelle capacité sera immédiatement disponible dans votre espace</strong>.`;
+    cardTitle = `Avenant au contrat d'abonnement — ${APP_NAME}`;
+    cardSub = "Ce document acte l'ajout de capacité demandé et votre nouvelle tarification.";
+    buttonText = 'Consulter et signer mon avenant';
+    footerText = "Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email.";
+    subject = `${APP_NAME} — Signature de votre avenant d'abonnement`;
+    cardIcon = '✍️ Signature requise';
+  } else if (isResiliation) {
+    subtitle = "Acte de résiliation de votre abonnement";
+    intro = `Nous vous confirmons la clôture de votre abonnement <strong>${APP_NAME}</strong>.<br>
+        Pour finaliser la résiliation dans les règles, il vous suffit de signer électroniquement votre acte de résiliation ci-dessous. Nous vous remercions sincèrement de la confiance que vous nous avez accordée.`;
+    cardTitle = `Acte de résiliation — ${APP_NAME}`;
+    cardSub = "Ce document formalise la fin de votre abonnement. Signature 100 % en ligne et sécurisée.";
+    buttonText = "Consulter et signer l'acte";
+    footerText = "Une question sur votre résiliation ? Notre équipe reste à votre disposition.";
+    subject = `${APP_NAME} — Acte de résiliation de votre abonnement`;
+    cardIcon = '📄 Document à signer';
+  } else {
+    subtitle = 'Signature électronique de votre contrat';
+    intro = `Nous avons le plaisir de vous accueillir sur <strong>${APP_NAME}</strong>.<br>
+        Pour lancer la mise en service de votre espace, il ne reste qu'une étape : la signature électronique de votre contrat d'abonnement. Une fois le contrat signé, vous recevrez votre lien d'activation pour configurer votre accès.`;
+    cardTitle = `Contrat d'abonnement — ${APP_NAME}`;
+    cardSub = 'Document personnalisé avec votre configuration et votre tarification. Signature 100 % en ligne et sécurisée.';
+    buttonText = 'Consulter et signer mon contrat';
+    footerText = "Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email.";
+    subject = `${APP_NAME} — Signature de votre contrat d'abonnement`;
+    cardIcon = '✍️ Signature requise';
+  }
 
   const html = `
 <!DOCTYPE html>
@@ -185,7 +203,7 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null })
         ${intro}
       </p>
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;">
-        <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">✍️ Signature requise</p>
+        <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">${cardIcon}</p>
         <p style="margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;">${cardTitle}</p>
         <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">${cardSub}</p>
       </div>
@@ -206,7 +224,7 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null })
 </html>`;
 
   if (!process.env.RESEND_API_KEY) {
-    console.log(`[DEV] Docuseal signing email (${isAvenant ? 'avenant' : 'contrat'}) to ${to}: ${signingUrl}`);
+    console.log(`[DEV] Docuseal signing email (${kind}) to ${to}: ${signingUrl}`);
     return { success: true, dev: true, signingUrl };
   }
 
@@ -339,6 +357,88 @@ const sendAvenantEmail = async ({
     from: FROM_EMAIL,
     to,
     subject: `${APP_NAME} — Avenant validé : ${addedParts}`,
+    html,
+    attachments,
+  });
+  if (error) throw new Error(error.message);
+  return { success: true, id: data?.id };
+};
+
+// Email professionnel envoyé au client à la validation d'un paiement, avec la facture PDF jointe.
+const sendFactureEmail = async ({ to, nom, numero, periodeLabel, montantTtc, dateReglement, pdfBase64 }) => {
+  const fmtDt = (n) => (n != null ? `${Number(n).toFixed(3)} DT` : '—');
+  const dateStr = dateReglement
+    ? new Date(dateReglement).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ${BRAND_LOGO}
+      <p style="margin:0;color:#c7d2fe;font-size:0.85rem;">Facture de votre abonnement</p>
+    </div>
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 8px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ${nom},</h2>
+      <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Nous vous confirmons la bonne réception de votre paiement. Vous trouverez ci-joint votre <strong>facture acquittée</strong> pour la période <strong>${periodeLabel}</strong>. Nous vous remercions pour votre confiance.
+      </p>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;">N° de facture</td>
+            <td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">${numero}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;">Période</td>
+            <td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">${periodeLabel}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#6b7280;">Réglée le</td>
+            <td style="padding:6px 0;text-align:right;font-weight:700;color:#111827;">${dateStr}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0 2px;font-weight:800;color:#1e40af;">Montant TTC</td>
+            <td style="padding:10px 0 2px;text-align:right;font-weight:900;color:#1e40af;font-size:1.05rem;">${fmtDt(montantTtc)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 20px;margin-bottom:24px;">
+        <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:0.05em;">📎 Document joint</p>
+        <p style="margin:0;font-size:0.9rem;color:#14532d;font-weight:600;">Facture ${numero} (PDF)</p>
+        <p style="margin:4px 0 0;font-size:0.8rem;color:#3f6212;">Retrouvez également toutes vos factures dans votre espace, rubrique « Historique paiements ».</p>
+      </div>
+
+      <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">
+        Pour toute question relative à cette facture, notre équipe reste à votre disposition.
+      </p>
+    </div>
+    <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">${APP_NAME} · Facture ${numero}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const attachments = pdfBase64 ? [{
+    filename: `facture-${numero}.pdf`,
+    content: pdfBase64,
+  }] : [];
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV] Facture email to ${to}: ${numero} (PDF attached: ${!!pdfBase64})`);
+    return { success: true, dev: true };
+  }
+
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `${APP_NAME} — Votre facture ${periodeLabel}`,
     html,
     attachments,
   });
@@ -489,4 +589,4 @@ const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) 
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail, sendRapportEmail, sendRapportWithAttachment, sendAiAgentInviteEmail, sendMessengerInviteEmail, sendDocusealSigningEmail };
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendAiAgentInviteEmail, sendMessengerInviteEmail, sendDocusealSigningEmail };

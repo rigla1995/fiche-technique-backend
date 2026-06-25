@@ -219,13 +219,21 @@ const getById = async (req, res) => {
     );
 
     // Affectations (pour l'édition d'un produit labo / valorisé composé).
-    const laboSel = await pool.query('SELECT labo_id FROM labo_pt_selections WHERE produit_id = $1', [id]);
+    const laboSel = await pool.query(
+      `SELECT lps.labo_id, l.nom
+         FROM labo_pt_selections lps
+         JOIN labos l ON l.id = lps.labo_id
+        WHERE lps.produit_id = $1
+        ORDER BY l.nom`,
+      [id]
+    );
     const actStock = await pool.query('SELECT activite_id FROM produit_activite_stock WHERE produit_id = $1', [id]);
 
     res.json({
       ...mapProduit(produit.rows[0]),
       refProduit: produit.rows[0].ref_produit || null,
       laboIds: laboSel.rows.map((r) => r.labo_id),
+      labos: laboSel.rows.map((r) => ({ id: r.labo_id, nom: r.nom })),
       activiteStockIds: actStock.rows.map((r) => r.activite_id),
       ingredients: ingredients.rows.map((r) => ({
         id: r.id,
@@ -888,17 +896,75 @@ async function buildMpPriceMap(actId, clientId) {
   return priceMap;
 }
 
+// ── Variantes LABO : coût d'une fiche technique calculé DIRECTEMENT sur les prix
+// d'appro du labo (stock_labo_daily), indépendamment de toute activité. Utilisé pour
+// les produits valorisés composés (origine 'labo'), fabriqués au labo puis transférés.
+
+// Vérifie qu'un labo appartient bien au client (sécurité : laboId fourni côté client).
+async function laboOwnedByClient(laboId, clientId) {
+  if (!laboId) return false;
+  const r = await pool.query(
+    `SELECT 1 FROM labos l
+       JOIN profil_entreprise pe ON l.entreprise_id = pe.id
+      WHERE l.id = $1 AND pe.client_id = $2 LIMIT 1`,
+    [laboId, clientId]
+  );
+  return r.rows.length > 0;
+}
+
+// DP labo : dernier prix d'appro par article dans le stock du labo.
+async function buildDpPriceMapLabo(laboId) {
+  const priceMap = {};
+  if (!laboId) return priceMap;
+  const r = await pool.query(
+    `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+       FROM stock_labo_daily
+      WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+      ORDER BY ingredient_id, date_appro DESC`,
+    [laboId]
+  );
+  r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+  return priceMap;
+}
+
+// MP labo : moyenne des prix d'appro par article depuis le dernier inventaire du labo.
+async function buildMpPriceMapLabo(laboId) {
+  const priceMap = {};
+  if (!laboId) return priceMap;
+  const r = await pool.query(
+    `WITH last_inv AS (
+       SELECT DISTINCT ON (ingredient_id) ingredient_id, date_inventaire
+       FROM inventaires
+       WHERE labo_id = $1 AND ingredient_id IS NOT NULL
+       ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
+     )
+     SELECT sld.ingredient_id, AVG(sld.prix_unitaire) AS avg_prix
+     FROM stock_labo_daily sld
+     LEFT JOIN last_inv li ON li.ingredient_id = sld.ingredient_id
+     WHERE sld.labo_id = $1
+       AND sld.prix_unitaire IS NOT NULL AND sld.prix_unitaire > 0
+       AND (li.date_inventaire IS NULL OR sld.date_appro >= li.date_inventaire)
+     GROUP BY sld.ingredient_id`,
+    [laboId]
+  );
+  r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.avg_prix); });
+  return priceMap;
+}
+
 const getCout = async (req, res) => {
   const { id } = req.params;
-  const { mode, activiteId, pricingMethod } = req.query;
+  const { mode, activiteId, pricingMethod, laboId } = req.query;
   const ownerId = req.user.gerant_parent_id || req.user.id;
   try {
+    // Contexte labo (produit valorisé composé) : prix d'appro du labo, sans activité.
+    const labId = (parseInt(laboId) || 0);
+    const useLabo = labId > 0 && await laboOwnedByClient(labId, ownerId);
     if (mode === 'manual') {
-      const actId = parseInt(activiteId) || 0;
+      const actId = useLabo ? 0 : (parseInt(activiteId) || 0);
       const pricesResult = await pool.query(
         `SELECT ingredient_id, prix_unitaire FROM fiche_technique_manual_prices
-         WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3`,
-        [id, ownerId, actId]
+         WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3 AND labo_id = $4`,
+        [id, ownerId, actId, useLabo ? labId : 0]
       );
       const priceMap = {};
       for (const row of pricesResult.rows) {
@@ -909,9 +975,16 @@ const getCout = async (req, res) => {
     }
     if (mode === 'stock') {
       const actId = parseInt(activiteId) || 0;
-      const priceMap = pricingMethod === 'mp'
-        ? await buildMpPriceMap(actId, ownerId)
-        : await buildDpPriceMap(actId, ownerId);
+      let priceMap;
+      if (useLabo) {
+        priceMap = pricingMethod === 'mp'
+          ? await buildMpPriceMapLabo(labId)
+          : await buildDpPriceMapLabo(labId);
+      } else {
+        priceMap = pricingMethod === 'mp'
+          ? await buildMpPriceMap(actId, ownerId)
+          : await buildDpPriceMap(actId, ownerId);
+      }
       const result = await calculerCoutAvecPrixMap(parseInt(id), ownerId, priceMap);
       return res.json(mapCout(result));
     }
@@ -1119,9 +1192,11 @@ async function collectIngredientsStructured(produitId, label, depth, visitedProd
 const getStockCheck = async (req, res) => {
   const { id } = req.params;
   const actId = parseInt(req.query.activiteId) || 0;
+  const labId = parseInt(req.query.laboId) || 0;
 
   try {
     const ownerId = req.user.gerant_parent_id || req.user.id;
+    const useLabo = labId > 0 && await laboOwnedByClient(labId, ownerId);
     const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, ownerId]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
@@ -1135,7 +1210,19 @@ const getStockCheck = async (req, res) => {
     // Fetch valid stock — check only the chosen activity's stock (activity-specific, no labo fallback)
     const validIdsSet = new Set();
 
-    if (actId) {
+    if (useLabo) {
+      // Contexte labo (produit valorisé composé) : on vérifie le stock DIRECTEMENT au labo.
+      const r = await pool.query(
+        `SELECT DISTINCT ON (ingredient_id) ingredient_id
+         FROM stock_labo_daily
+         WHERE labo_id = $1 AND ingredient_id = ANY($2::int[])
+           AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+           AND quantite IS NOT NULL AND quantite > 0
+         ORDER BY ingredient_id, date_appro DESC`,
+        [labId, ingredientIds]
+      );
+      r.rows.forEach((row) => validIdsSet.add(row.ingredient_id));
+    } else if (actId) {
       // Stock de l'activité choisie
       const r1 = await pool.query(
         `SELECT DISTINCT ON (ingredient_id) ingredient_id
@@ -1182,7 +1269,16 @@ const getStockCheck = async (req, res) => {
     if (missingIngredients.length > 0) {
       const missingIds = missingIngredients.map((i) => i.ingredientId);
       let lkRows = [];
-      if (actId) {
+      if (useLabo) {
+        const r = await pool.query(
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id, quantite, prix_unitaire, date_appro
+           FROM stock_labo_daily
+           WHERE labo_id = $1 AND ingredient_id = ANY($2::int[])
+           ORDER BY ingredient_id, date_appro DESC`,
+          [labId, missingIds]
+        );
+        lkRows = r.rows;
+      } else if (actId) {
         const r = await pool.query(
           `SELECT DISTINCT ON (ingredient_id) ingredient_id, quantite, prix_unitaire, date_appro
            FROM stock_entreprise_daily
@@ -1232,10 +1328,13 @@ const getStockCheck = async (req, res) => {
 // GET /products/:id/manual-prices?activiteId=:aid
 const getManualPrices = async (req, res) => {
   const { id } = req.params;
-  const actId = parseInt(req.query.activiteId) || 0;
+  const labIdRaw = parseInt(req.query.laboId) || 0;
 
   try {
     const ownerId = req.user.gerant_parent_id || req.user.id;
+    const useLabo = labIdRaw > 0 && await laboOwnedByClient(labIdRaw, ownerId);
+    const actId = useLabo ? 0 : (parseInt(req.query.activiteId) || 0);
+    const labId = useLabo ? labIdRaw : 0;
     const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, ownerId]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
@@ -1252,9 +1351,9 @@ const getManualPrices = async (req, res) => {
       const pricesResult = await pool.query(
         `SELECT ingredient_id, prix_unitaire, updated_at
          FROM fiche_technique_manual_prices
-         WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3
-           AND ingredient_id = ANY($4::int[])`,
-        [id, ownerId, actId, ingredientIds]
+         WHERE produit_id = $1 AND client_id = $2 AND activite_id = $3 AND labo_id = $4
+           AND ingredient_id = ANY($5::int[])`,
+        [id, ownerId, actId, labId, ingredientIds]
       );
       for (const row of pricesResult.rows) {
         priceMap[row.ingredient_id] = { prixUnitaire: row.prix_unitaire, updatedAt: row.updated_at };
@@ -1298,8 +1397,7 @@ const getManualPrices = async (req, res) => {
 // POST /products/:id/manual-prices
 const saveManualPrices = async (req, res) => {
   const { id } = req.params;
-  const { activiteId, prices } = req.body;
-  const actId = parseInt(activiteId) || 0;
+  const { activiteId, laboId, prices } = req.body;
 
   if (!Array.isArray(prices)) {
     return res.status(400).json({ message: 'Le champ prices doit être un tableau' });
@@ -1309,19 +1407,24 @@ const saveManualPrices = async (req, res) => {
   }
 
   try {
-    const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]);
+    const ownerId = req.user.gerant_parent_id || req.user.id;
+    const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, ownerId]);
     if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
 
-    const ownerId = req.user.gerant_parent_id || req.user.id;
+    const labIdRaw = parseInt(laboId) || 0;
+    const useLabo = labIdRaw > 0 && await laboOwnedByClient(labIdRaw, ownerId);
+    const actId = useLabo ? 0 : (parseInt(activiteId) || 0);
+    const labId = useLabo ? labIdRaw : 0;
+
     const now = new Date();
     const ingredientIds = prices.map((p) => p.ingredientId);
     const prixUnitaires = prices.map((p) => p.prixUnitaire);
     await pool.query(
-      `INSERT INTO fiche_technique_manual_prices (produit_id, ingredient_id, client_id, activite_id, prix_unitaire, updated_at)
-       SELECT $1, unnest($2::int[]), $3, $4, unnest($5::numeric[]), $6
-       ON CONFLICT (produit_id, ingredient_id, client_id, activite_id)
+      `INSERT INTO fiche_technique_manual_prices (produit_id, ingredient_id, client_id, activite_id, labo_id, prix_unitaire, updated_at)
+       SELECT $1, unnest($2::int[]), $3, $4, $5, unnest($6::numeric[]), $7
+       ON CONFLICT (produit_id, ingredient_id, client_id, activite_id, labo_id)
        DO UPDATE SET prix_unitaire = EXCLUDED.prix_unitaire, updated_at = EXCLUDED.updated_at`,
-      [id, ingredientIds, ownerId, actId, prixUnitaires, now]
+      [id, ingredientIds, ownerId, actId, labId, prixUnitaires, now]
     );
     res.json({ updatedAt: now });
   } catch (err) {
@@ -1579,6 +1682,7 @@ module.exports = {
   addSousProduit, removeSousProduit,
   getCout, calculerCout, calculerCoutAvecPrixMap,
   buildDpPriceMap, buildMpPriceMap,
+  buildDpPriceMapLabo, buildMpPriceMapLabo, laboOwnedByClient,
   getStockDates, getStockCheck, getManualPrices, saveManualPrices,
   exportListExcel, getUtilisablesPerimetre,
 };
