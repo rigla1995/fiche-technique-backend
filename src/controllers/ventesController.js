@@ -1567,7 +1567,7 @@ const getArticlesValorisés = async (req, res) => {
        ORDER BY cp.nom, a.nom`,
       [activiteId, cid]
     );
-    res.json(r.rows.map(row => ({
+    const articleRows = r.rows.map(row => ({
       id: row.id,
       nom: row.nom,
       unite_nom: row.unite_nom,
@@ -1575,6 +1575,7 @@ const getArticlesValorisés = async (req, res) => {
       famille_nom: row.famille_nom ?? null,
       categorie_produit_id: row.categorie_produit_id ?? null,
       categorie_produit_nom: row.categorie_produit_nom ?? null,
+      article_type: 'ingredient',
       vendable: row.av_id ? {
         id: String(row.av_id),
         article_type: 'ingredient',
@@ -1584,7 +1585,44 @@ const getArticlesValorisés = async (req, res) => {
         actif: row.actif,
         categorie_produit_id: row.categorie_produit_id ?? null,
       } : null,
-    })));
+    }));
+
+    // Produits valorisés COMPOSÉS (origine labo, vendable) ayant un PT dans cette activité.
+    // Vendus tels quels comme valorisés (article_type='produit').
+    const rc = await pool.query(
+      `SELECT p.id, p.nom, p.categorie_produit_id, cp.nom as categorie_produit_nom,
+              av.id as av_id, av.prix_vente, av.actif
+       FROM produits p
+       JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
+       LEFT JOIN activite_articles_vendables av
+         ON av.article_id = p.id AND av.activite_id = $1 AND av.article_type = 'produit'
+       LEFT JOIN categories_produit cp ON cp.id = p.categorie_produit_id
+       WHERE p.client_id = $2 AND p.origine = 'labo' AND p.type = 'vendable'
+       ORDER BY cp.nom NULLS LAST, p.nom`,
+      [activiteId, cid]
+    );
+    const composeRows = rc.rows.map(row => ({
+      id: row.id,
+      nom: row.nom,
+      unite_nom: null,
+      categorie_nom: 'Produits composés (labo)',
+      famille_nom: null,
+      categorie_produit_id: row.categorie_produit_id ?? null,
+      categorie_produit_nom: row.categorie_produit_nom ?? null,
+      article_type: 'produit',
+      compose: true,
+      vendable: row.av_id ? {
+        id: String(row.av_id),
+        article_type: 'produit',
+        article_id: row.id,
+        prix_vente: parseFloat(row.prix_vente ?? 0),
+        portion: null,
+        actif: row.actif,
+        categorie_produit_id: row.categorie_produit_id ?? null,
+      } : null,
+    }));
+
+    res.json([...composeRows, ...articleRows]);
   } catch (e) {
     if (e.status) return res.status(e.status).json({ message: e.message });
     res.status(500).json({ message: e.message });
