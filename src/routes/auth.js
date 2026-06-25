@@ -156,7 +156,7 @@ router.put('/profile', authenticate, [
 
 router.get('/invite/:token', verifyInviteToken);
 router.post('/invite/accept', acceptInvite);
-router.post('/invite/resend/:userId', authenticate, resendInvite);
+router.post('/invite/resend/:userId', authenticate, requireSuperAdmin, resendInvite);
 
 router.post('/upgrade', authenticate, requireClient, upgradeToEntreprise);
 

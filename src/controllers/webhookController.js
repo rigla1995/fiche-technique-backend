@@ -1,7 +1,9 @@
 const pool = require('../config/database');
 const { sendWelcomeWithContractEmail, generateInviteToken } = require('../services/emailService');
-const { saveNotificationToAdmins } = require('./notificationController');
-const { pushToAdmins } = require('../services/sseService');
+const { saveNotificationToAdmins, saveNotification } = require('./notificationController');
+const { pushToAdmins, pushTo } = require('../services/sseService');
+const { verifyDocusealSignature } = require('../utils/webhookSignature');
+const logger = require('../utils/logger');
 
 /**
  * POST /api/webhooks/docuseal
@@ -12,6 +14,25 @@ const { pushToAdmins } = require('../services/sseService');
  * We record contrat_accepte_le on the matching abonnement row.
  */
 const docusealWebhook = async (req, res) => {
+  // ── Authenticate the webhook before doing ANYTHING ────────────────────────────
+  // Without this, anyone on the internet could forge a "contract signed" / avenant
+  // event and grant subscription capacity without paying. Enforced as soon as
+  // DOCUSEAL_WEBHOOK_SECRET is set (in Coolify) + the matching header/secret is
+  // configured in Docuseal. Fail-open with a warning until then, so onboarding
+  // is not interrupted during rollout.
+  const { ok, enforced } = verifyDocusealSignature(
+    req.rawBody,
+    req.headers,
+    process.env.DOCUSEAL_WEBHOOK_SECRET
+  );
+  if (enforced && !ok) {
+    logger.warn('docuseal_webhook_rejected', { reason: 'invalid_signature', ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress });
+    return res.status(401).json({ message: 'Invalid signature' });
+  }
+  if (!enforced) {
+    logger.warn('docuseal_webhook_unverified', { reason: 'DOCUSEAL_WEBHOOK_SECRET not set — webhook is NOT authenticated' });
+  }
+
   // Acknowledge immediately — Docuseal retries on non-2xx
   res.status(200).json({ received: true });
 
@@ -52,6 +73,13 @@ const docusealWebhook = async (req, res) => {
         const payload = { eventType: 'avenant_signe', demandeId: d.id, type: 'supplement', clientNom: d.client_nom || 'Client', statut: 'validée' };
         try { pushToAdmins('avenant_signe', payload); } catch (_) { /* sse best-effort */ }
         saveNotificationToAdmins(payload).catch(() => {});
+        // Notifier le CLIENT (instantané + persisté). Redirection au clic selon le type de capacité :
+        // activité/labo -> Mes activités ; uniquement gérant(s) -> Gérants.
+        const onlyGerant = (d.nb_activites_supp || 0) === 0 && (d.nb_labos_supp || 0) === 0 && (d.nb_gerants_supp || 0) > 0;
+        const clientEvent = onlyGerant ? 'demande_gerant_validee' : 'demande_capacite_validee';
+        const clientPayload = { eventType: clientEvent, demandeId: d.id, type: 'supplement', clientNom: d.client_nom || 'Client', statut: 'validée' };
+        try { pushTo(d.client_id, clientEvent, clientPayload); } catch (_) { /* sse best-effort */ }
+        saveNotification(d.client_id, { eventType: clientEvent, demandeId: d.id, type: 'supplement', clientNom: d.client_nom, statut: 'validée' }).catch(() => {});
         console.log(`[docuseal-webhook] Avenant signé → capacité appliquée (demande ${d.id})`);
         return; // ne pas exécuter le flux contrat
       }

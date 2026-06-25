@@ -4,6 +4,7 @@ const { scopeGerantActivite } = require('../middleware/auth');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { buildHistoriqueApproPdf } = require('../services/histoPdfService');
 const { upsertFacture } = require('../services/facturesService');
+const { withTransaction } = require('../utils/db');
 
 // ─── Stock Client (independant) ──────────────────────────────────────────────
 
@@ -347,37 +348,40 @@ const updateStockClient = async (req, res) => {
 
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const insRes = await pool.query(
-      `INSERT INTO stock_client_daily
-         (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
-       RETURNING id`,
-      [clientId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
-       fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
-    );
-    if (refFacture) {
-      const qty = parseFloat(quantite) || 0;
-      const pu = parseFloat(prixUnitaire) || 0;
-      const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
-      const montantHT = qty * pu;
-      const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
-      const montantTTC = qty * puTva;
-      await upsertFacture(clientId, {
-        refFacture,
-        dateAppro: da,
-        fournisseurId: fournisseurId ?? null,
-        activiteId: null,
-        laboId: null,
-        typeSource: 'manuel',
-        montantHT,
-        montantTva,
-        montantTTC,
-        timbreFiscal: !!timbreFiscal,
-        createdBy: req.user.id,
-        stockTable: 'stock_client_daily',
-        stockRowId: insRes.rows[0].id,
-      });
-    }
+    // Atomic: the stock row and its linked facture are written together (or not at all).
+    await withTransaction(async (client) => {
+      const insRes = await client.query(
+        `INSERT INTO stock_client_daily
+           (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
+         VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
+         RETURNING id`,
+        [clientId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
+         fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
+      );
+      if (refFacture) {
+        const qty = parseFloat(quantite) || 0;
+        const pu = parseFloat(prixUnitaire) || 0;
+        const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
+        const montantHT = qty * pu;
+        const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
+        const montantTTC = qty * puTva;
+        await upsertFacture(clientId, {
+          refFacture,
+          dateAppro: da,
+          fournisseurId: fournisseurId ?? null,
+          activiteId: null,
+          laboId: null,
+          typeSource: 'manuel',
+          montantHT,
+          montantTva,
+          montantTTC,
+          timbreFiscal: !!timbreFiscal,
+          createdBy: req.user.id,
+          stockTable: 'stock_client_daily',
+          stockRowId: insRes.rows[0].id,
+        }, client);
+      }
+    });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -940,37 +944,40 @@ const updateStockEntreprise = async (req, res) => {
       return res.status(404).json({ message: 'Activité introuvable' });
 
     const clientId = req.user.gerant_parent_id || req.user.id;
-    const insRes = await pool.query(
-      `INSERT INTO stock_entreprise_daily
-         (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
-       RETURNING id`,
-      [activiteId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
-       fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
-    );
-    if (refFacture) {
-      const qty = parseFloat(quantite) || 0;
-      const pu = parseFloat(prixUnitaire) || 0;
-      const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
-      const montantHT = qty * pu;
-      const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
-      const montantTTC = qty * puTva;
-      await upsertFacture(clientId, {
-        refFacture,
-        dateAppro: da,
-        fournisseurId: fournisseurId ?? null,
-        activiteId: parseInt(activiteId),
-        laboId: null,
-        typeSource: 'manuel',
-        montantHT,
-        montantTva,
-        montantTTC,
-        timbreFiscal: !!timbreFiscal,
-        createdBy: req.user.id,
-        stockTable: 'stock_entreprise_daily',
-        stockRowId: insRes.rows[0].id,
-      });
-    }
+    // Atomic: the stock row and its linked facture are written together (or not at all).
+    await withTransaction(async (client) => {
+      const insRes = await client.query(
+        `INSERT INTO stock_entreprise_daily
+           (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
+         VALUES ($1, $2, $3, $4, $5, 'manuel', $6, $7, $8, $9, NOW(), $10)
+         RETURNING id`,
+        [activiteId, ingredientId, da, quantite ?? null, prixUnitaire ?? null,
+         fournisseurId ?? null, refFacture ?? null, tva, prixUnitaireTva, req.user.id]
+      );
+      if (refFacture) {
+        const qty = parseFloat(quantite) || 0;
+        const pu = parseFloat(prixUnitaire) || 0;
+        const puTva = prixUnitaireTva != null ? parseFloat(prixUnitaireTva) : pu;
+        const montantHT = qty * pu;
+        const montantTva = tva != null ? qty * pu * (tva / 100) : 0;
+        const montantTTC = qty * puTva;
+        await upsertFacture(clientId, {
+          refFacture,
+          dateAppro: da,
+          fournisseurId: fournisseurId ?? null,
+          activiteId: parseInt(activiteId),
+          laboId: null,
+          typeSource: 'manuel',
+          montantHT,
+          montantTva,
+          montantTTC,
+          timbreFiscal: !!timbreFiscal,
+          createdBy: req.user.id,
+          stockTable: 'stock_entreprise_daily',
+          stockRowId: insRes.rows[0].id,
+        }, client);
+      }
+    });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -1136,7 +1143,7 @@ const getHistoriqueAppro = async (req, res) => {
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
          LEFT JOIN utilisateurs ub ON ub.id = sed.created_by
-         WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
+         WHERE sed.activite_id IN (${idList}) AND sed.date_appro >= make_date($${activiteIds.length + 1}::int, 1, 1) AND sed.date_appro < make_date($${activiteIds.length + 1}::int + 1, 1, 1)${extraWhere}
          ORDER BY sed.date_appro DESC, i.nom
          ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`,
         params
@@ -1210,7 +1217,7 @@ const getHistoriqueAppro = async (req, res) => {
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
          LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
-         WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
+         WHERE scd.client_id = $1 AND scd.date_appro >= make_date($2::int, 1, 1) AND scd.date_appro < make_date($2::int + 1, 1, 1)${extraWhere}
          ORDER BY scd.date_appro DESC, i.nom
          ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`,
         params
@@ -1287,26 +1294,30 @@ const updateHistoriqueEntry = async (req, res) => {
       const entry = check.rows[0];
       if (req.user.role === 'gerant' && entry.created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
-      await pool.query(
-        `UPDATE stock_entreprise_daily SET quantite=$1, prix_unitaire=$2, fournisseur_id=$3, ref_facture=$4, updated_at=NOW()
-         WHERE id=$5`,
-        [quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, id]
-      );
-      // If transfert, adjust labo stock
-      if (entry.type_appro === 'transfert') {
-        const oldQty = parseFloat(entry.old_quantite) || 0;
-        const newQty = parseFloat(quantite) || 0;
-        const delta = oldQty - newQty;
-        if (delta !== 0) {
-          await pool.query(
-            `UPDATE stock_labo_daily SET quantite = COALESCE(quantite,0) + $1, updated_at=NOW()
-             WHERE ingredient_id=$2 AND date_appro=$3 AND labo_id=(
-               SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id=l.entreprise_id
-               JOIN activites a ON a.entreprise_id=pe.id WHERE a.id=$4 LIMIT 1)`,
-            [delta, entry.ingredient_id, entry.date_appro, entry.activite_id]
-          );
+      // Atomic: the stock_entreprise update and the compensating labo-stock adjustment
+      // must both succeed or both roll back (else the quantities silently desync).
+      await withTransaction(async (client) => {
+        await client.query(
+          `UPDATE stock_entreprise_daily SET quantite=$1, prix_unitaire=$2, fournisseur_id=$3, ref_facture=$4, updated_at=NOW()
+           WHERE id=$5`,
+          [quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, id]
+        );
+        // If transfert, adjust labo stock
+        if (entry.type_appro === 'transfert') {
+          const oldQty = parseFloat(entry.old_quantite) || 0;
+          const newQty = parseFloat(quantite) || 0;
+          const delta = oldQty - newQty;
+          if (delta !== 0) {
+            await client.query(
+              `UPDATE stock_labo_daily SET quantite = COALESCE(quantite,0) + $1, updated_at=NOW()
+               WHERE ingredient_id=$2 AND date_appro=$3 AND labo_id=(
+                 SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id=l.entreprise_id
+                 JOIN activites a ON a.entreprise_id=pe.id WHERE a.id=$4 LIMIT 1)`,
+              [delta, entry.ingredient_id, entry.date_appro, entry.activite_id]
+            );
+          }
         }
-      }
+      });
     } else {
       const check = await pool.query(
         `SELECT id, created_by FROM stock_client_daily WHERE id=$1 AND client_id=$2`,
@@ -1348,18 +1359,21 @@ const deleteHistoriqueEntry = async (req, res) => {
       if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
       const entry = check.rows[0];
-      await pool.query('DELETE FROM stock_entreprise_daily WHERE id=$1', [id]);
-      // If transfert, restore labo stock
-      if (entry.type_appro === 'transfert') {
-        const qty = parseFloat(entry.quantite) || 0;
-        await pool.query(
-          `UPDATE stock_labo_daily SET quantite = COALESCE(quantite,0) + $1, updated_at=NOW()
-           WHERE ingredient_id=$2 AND date_appro=$3 AND labo_id=(
-             SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id=l.entreprise_id
-             JOIN activites a ON a.entreprise_id=pe.id WHERE a.id=$4 LIMIT 1)`,
-          [qty, entry.ingredient_id, entry.date_appro, entry.activite_id]
-        );
-      }
+      // Atomic: deleting the stock row and restoring the labo stock must not desync.
+      await withTransaction(async (client) => {
+        await client.query('DELETE FROM stock_entreprise_daily WHERE id=$1', [id]);
+        // If transfert, restore labo stock
+        if (entry.type_appro === 'transfert') {
+          const qty = parseFloat(entry.quantite) || 0;
+          await client.query(
+            `UPDATE stock_labo_daily SET quantite = COALESCE(quantite,0) + $1, updated_at=NOW()
+             WHERE ingredient_id=$2 AND date_appro=$3 AND labo_id=(
+               SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id=l.entreprise_id
+               JOIN activites a ON a.entreprise_id=pe.id WHERE a.id=$4 LIMIT 1)`,
+            [qty, entry.ingredient_id, entry.date_appro, entry.activite_id]
+          );
+        }
+      });
     } else {
       const check = await pool.query(
         `SELECT id, created_by FROM stock_client_daily WHERE id=$1 AND client_id=$2`,
@@ -1470,14 +1484,14 @@ const exportHistoriqueExcel = async (req, res) => {
          JOIN articles i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
          LEFT JOIN utilisateurs ub ON ub.id = sed.created_by
-         WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
+         WHERE sed.activite_id IN (${idList}) AND sed.date_appro >= make_date($${activiteIds.length + 1}::int, 1, 1) AND sed.date_appro < make_date($${activiteIds.length + 1}::int + 1, 1, 1)${extraWhere}
          ORDER BY sed.date_appro DESC, i.nom`, params
       );
       rows = result.rows;
 
       // Append PT rows for entreprise
       const ptParamsEnt = [currentYear, ...activiteIds];
-      let ptWhereEnt = `EXTRACT(YEAR FROM spt.date_appro) = $1 AND spt.activite_id IN (${activiteIds.map((_, i) => `$${i + 2}`).join(',')})`;
+      let ptWhereEnt = `spt.date_appro >= make_date($1::int, 1, 1) AND spt.date_appro < make_date($1::int + 1, 1, 1) AND spt.activite_id IN (${activiteIds.map((_, i) => `$${i + 2}`).join(',')})`;
       if (ptProduitId) { ptParamsEnt.push(ptProduitId); ptWhereEnt += ` AND spt.produit_id = $${ptParamsEnt.length}`; }
       if (startDate) { ptParamsEnt.push(startDate); ptWhereEnt += ` AND spt.date_appro >= $${ptParamsEnt.length}`; }
       if (endDate) { ptParamsEnt.push(endDate); ptWhereEnt += ` AND spt.date_appro <= $${ptParamsEnt.length}`; }
@@ -1516,7 +1530,7 @@ const exportHistoriqueExcel = async (req, res) => {
            JOIN articles i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
            LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
            LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
-           WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
+           WHERE scd.client_id = $1 AND scd.date_appro >= make_date($2::int, 1, 1) AND scd.date_appro < make_date($2::int + 1, 1, 1)${extraWhere}
            ORDER BY scd.date_appro DESC, i.nom`, params
         );
         rows = result.rows;
@@ -1524,7 +1538,7 @@ const exportHistoriqueExcel = async (req, res) => {
 
       // Append PT rows for indép
       const ptParamsIndep = [req.user.id, currentYear];
-      let ptWhereIndep = `spt.client_id = $1 AND EXTRACT(YEAR FROM spt.date_appro) = $2`;
+      let ptWhereIndep = `spt.client_id = $1 AND spt.date_appro >= make_date($2::int, 1, 1) AND spt.date_appro < make_date($2::int + 1, 1, 1)`;
       if (ptProduitId) { ptParamsIndep.push(ptProduitId); ptWhereIndep += ` AND spt.produit_id = $${ptParamsIndep.length}`; }
       if (startDate) { ptParamsIndep.push(startDate); ptWhereIndep += ` AND spt.date_appro >= $${ptParamsIndep.length}`; }
       if (endDate) { ptParamsIndep.push(endDate); ptWhereIndep += ` AND spt.date_appro <= $${ptParamsIndep.length}`; }
@@ -1867,7 +1881,7 @@ const exportHistoriquePdf = async (req, res) => {
          FROM stock_entreprise_daily sed
          JOIN articles i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
-         WHERE sed.activite_id IN (${idList}) AND EXTRACT(YEAR FROM sed.date_appro) = $${activiteIds.length + 1}${extraWhere}
+         WHERE sed.activite_id IN (${idList}) AND sed.date_appro >= make_date($${activiteIds.length + 1}::int, 1, 1) AND sed.date_appro < make_date($${activiteIds.length + 1}::int + 1, 1, 1)${extraWhere}
          ORDER BY sed.date_appro DESC, i.nom`, params
       );
       rows = result.rows.map((r) => ({ ...r, activite_nom: activiteNames[r.activite_id] || '' }));
@@ -1888,7 +1902,7 @@ const exportHistoriquePdf = async (req, res) => {
          FROM stock_client_daily scd
          JOIN articles i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
          LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
-         WHERE scd.client_id = $1 AND EXTRACT(YEAR FROM scd.date_appro) = $2${extraWhere}
+         WHERE scd.client_id = $1 AND scd.date_appro >= make_date($2::int, 1, 1) AND scd.date_appro < make_date($2::int + 1, 1, 1)${extraWhere}
          ORDER BY scd.date_appro DESC, i.nom`, params
       );
       rows = result.rows;

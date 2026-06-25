@@ -2,6 +2,9 @@ const pool = require('../config/database');
 const { chatWithClaude } = require('./claudeService');
 const { chatWithDeepSeek } = require('./deepseekService');
 const { generateAndSendReport } = require('./reportService');
+const { verifyMetaSignature } = require('../utils/webhookSignature');
+const { withTransaction } = require('../utils/db');
+const logger = require('../utils/logger');
 
 const GRAPH_API_URL = 'https://graph.facebook.com/v19.0/me/messages';
 
@@ -28,9 +31,12 @@ function stripMarkdown(text) {
 }
 
 async function chatWithAI(clientId, sessionId, userMessage, confidenceThreshold) {
-  if (process.env.ANTHROPIC_API_KEY) {
-    return chatWithClaude(clientId, sessionId, userMessage, confidenceThreshold);
-  }
+  const provider = (process.env.AI_PROVIDER || '').toLowerCase();
+  // Par défaut on privilégie Groq (llama-3.3-70b, tool-use fiable) dès qu'une clé Groq existe.
+  // AI_PROVIDER=claude force Claude ; AI_PROVIDER=groq force Groq.
+  const useGroq = provider === 'groq' || (provider !== 'claude' && !!process.env.GROQ_API_KEY);
+  if (useGroq) return chatWithDeepSeek(clientId, sessionId, userMessage, confidenceThreshold);
+  if (process.env.ANTHROPIC_API_KEY) return chatWithClaude(clientId, sessionId, userMessage, confidenceThreshold);
   return chatWithDeepSeek(clientId, sessionId, userMessage, confidenceThreshold);
 }
 
@@ -63,11 +69,14 @@ async function sendTypingOn(psid) {
 }
 
 const findClientByMessengerToken = async (token) => {
+  // On NE filtre PAS sur enabled ici : ouvrir un lien d'invitation valide doit lier le compte
+  // (et activer l'agent), même si le flag enabled n'a pas encore été basculé.
   const { rows } = await pool.query(
-    `SELECT aic.client_id, aic.confidence_threshold, u.nom, u.email
+    `SELECT aic.client_id, aic.confidence_threshold, u.nom,
+            COALESCE(aic.report_email, u.email) AS email
      FROM ai_assistant_config aic
      JOIN utilisateurs u ON u.id = aic.client_id
-     WHERE aic.messenger_invite_token = $1 AND aic.enabled = true`,
+     WHERE aic.messenger_invite_token = $1`,
     [token]
   );
   return rows[0] || null;
@@ -75,7 +84,8 @@ const findClientByMessengerToken = async (token) => {
 
 const findClientByPsid = async (psid) => {
   const { rows } = await pool.query(
-    `SELECT aic.client_id, aic.confidence_threshold, u.nom, u.email
+    `SELECT aic.client_id, aic.confidence_threshold, u.nom,
+            COALESCE(aic.report_email, u.email) AS email
      FROM ai_assistant_config aic
      JOIN utilisateurs u ON u.id = aic.client_id
      WHERE aic.messenger_psid = $1 AND aic.enabled = true`,
@@ -102,24 +112,41 @@ async function handleMessengerEvent(event) {
     const inviteToken = refMatch[1];
     const client = await findClientByMessengerToken(inviteToken);
     if (!client) {
+      logger.warn('messenger_invite_token_not_found', { tokenPrefix: inviteToken.slice(0, 8) });
       return sendMessage(psid, '❌ Lien expiré ou invalide. Contactez votre administrateur LabFlow.');
     }
-    await pool.query(
-      `UPDATE ai_assistant_config
-       SET messenger_psid = $1, messenger_invite_token = NULL, updated_at = NOW()
-       WHERE client_id = $2`,
-      [psid, client.client_id]
-    );
+    // Ouvrir le lien lie le PSID ET active l'agent (idempotent vis-à-vis du flag enabled).
+    // Un PSID est unique (1 compte Messenger ↔ 1 client) : on le détache d'abord de tout autre
+    // client pour permettre au propriétaire de déplacer son Messenger d'un client à l'autre
+    // (le dernier lien ouvert gagne) — sinon la contrainte unique fait échouer la liaison.
+    await withTransaction(async (c) => {
+      await c.query(
+        `UPDATE ai_assistant_config SET messenger_psid = NULL, updated_at = NOW()
+         WHERE messenger_psid = $1 AND client_id <> $2`,
+        [psid, client.client_id]
+      );
+      await c.query(
+        `UPDATE ai_assistant_config
+         SET messenger_psid = $1, messenger_invite_token = NULL, enabled = true, updated_at = NOW()
+         WHERE client_id = $2`,
+        [psid, client.client_id]
+      );
+    });
+    // Réchauffe le snapshot de config statique du client (début de session Messenger)
+    require('./clientConfigService').buildClientConfigSnapshot(client.client_id)
+      .catch((e) => logger.warn('messenger_warmup_failed', { error: e.message }));
     return sendMessage(
       psid,
-      `👋 Bonjour ${client.nom} !\n\nJe suis votre agent LabFlow. Je peux vous aider avec :\n\n` +
-      `📦 Stock — état actuel, historique\n` +
-      `🛒 Appros — approvisionnements et prix\n` +
-      `📉 Pertes — suivi et analyse\n` +
-      `📊 Inventaires — historique et écarts\n` +
-      `🔄 Transferts — labo vers activités\n` +
-      `📄 Rapports — Excel ou PDF par email\n\n` +
-      `Posez-moi votre question !`
+      `👋 Bonjour ${client.nom} !\n\nJe suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :\n\n` +
+      `🏪 Activités & 🏭 labos\n` +
+      `📦 Stock, seuils & 🛒 approvisionnements\n` +
+      `🔄 Transferts labo → activités\n` +
+      `📉 Pertes & 📊 inventaires\n` +
+      `🧾 Ventes, CA & food cost\n` +
+      `📚 Référentiel, fournisseurs & produits\n` +
+      `💳 Abonnement & configuration de vente\n` +
+      `📄 Rapports Excel/PDF par email\n\n` +
+      `Exemple : « les transferts du mois actuel » ou « mon food cost de septembre ». Posez votre question !`
     );
   }
 
@@ -188,6 +215,23 @@ function verifyWebhook(req, res) {
 
 // Webhook events (POST)
 async function receiveWebhook(req, res) {
+  // Verify the payload really comes from Meta (HMAC-SHA256 over the raw body with the
+  // app secret). Without this, anyone could forge events: link a PSID to a client,
+  // inject messages, or trigger report emails. Enforced as soon as MESSENGER_APP_SECRET
+  // is set; fail-open with a warning until then so the live agent keeps working.
+  const { ok, enforced } = verifyMetaSignature(
+    req.rawBody,
+    req.headers['x-hub-signature-256'],
+    process.env.MESSENGER_APP_SECRET
+  );
+  if (enforced && !ok) {
+    logger.warn('messenger_webhook_rejected', { reason: 'invalid_signature' });
+    return res.sendStatus(401);
+  }
+  if (!enforced) {
+    logger.warn('messenger_webhook_unverified', { reason: 'MESSENGER_APP_SECRET not set — webhook is NOT authenticated' });
+  }
+
   const body = req.body;
   if (body.object !== 'page') return res.sendStatus(404);
 

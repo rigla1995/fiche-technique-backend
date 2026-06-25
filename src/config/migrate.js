@@ -3,9 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const pool = require('./database');
 
-async function migrate() {
+// Constant key for the global advisory lock guarding the migration run.
+// Ensures a single instance migrates at a time (rolling deploy / scale-up safe).
+const MIGRATION_LOCK_KEY = 947812365;
+
+async function runSetup(client) {
   // Ensure tracking table exists
-  await pool.query(`
+  await client.query(`
     CREATE TABLE IF NOT EXISTS _migrations (
       filename TEXT PRIMARY KEY,
       applied_at TIMESTAMPTZ DEFAULT NOW()
@@ -14,9 +18,9 @@ async function migrate() {
 
   // Backfill for existing DBs that predate tracking:
   // If _migrations is empty but labo_pertes exists, all 034 migrations are already applied.
-  const { rows: countRows } = await pool.query('SELECT COUNT(*) FROM _migrations');
+  const { rows: countRows } = await client.query('SELECT COUNT(*) FROM _migrations');
   if (parseInt(countRows[0].count) === 0) {
-    const { rows: tableRows } = await pool.query(`
+    const { rows: tableRows } = await client.query(`
       SELECT EXISTS(
         SELECT 1 FROM information_schema.tables WHERE table_name = 'labo_pertes'
       ) AS has_labo_pertes,
@@ -44,7 +48,7 @@ async function migrate() {
       for (const file of allFiles) {
         const num = parseInt(file.split('_')[0], 10);
         if (num <= maxApplied) {
-          await pool.query(
+          await client.query(
             'INSERT INTO _migrations (filename) VALUES ($1) ON CONFLICT DO NOTHING',
             [file]
           );
@@ -53,34 +57,61 @@ async function migrate() {
       console.log(`Base de données existante détectée — migrations 001-0${maxApplied} marquées comme appliquées`);
     }
   }
+}
 
-  // Load applied set
-  const { rows: appliedRows } = await pool.query('SELECT filename FROM _migrations');
-  const appliedSet = new Set(appliedRows.map(r => r.filename));
+async function migrate() {
+  const client = await pool.connect();
+  let locked = false;
+  try {
+    // Migrations may run heavy DDL/backfills — don't let the pool's statement_timeout kill them.
+    await client.query('SET statement_timeout = 0');
 
-  const migrationsDir = path.join(__dirname, '../../migrations');
-  const files = fs.readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.sql'))
-    .sort();
+    // Serialize migrations across instances: only one process holds the lock and migrates,
+    // the others block here and then find everything already applied.
+    await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_KEY]);
+    locked = true;
 
-  for (const file of files) {
-    if (appliedSet.has(file)) {
-      console.log(`Migration deja appliquee: ${file}`);
-      continue;
+    await runSetup(client);
+
+    // Load applied set (after acquiring the lock, so we see another instance's work)
+    const { rows: appliedRows } = await client.query('SELECT filename FROM _migrations');
+    const appliedSet = new Set(appliedRows.map(r => r.filename));
+
+    const migrationsDir = path.join(__dirname, '../../migrations');
+    const files = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+
+    for (const file of files) {
+      if (appliedSet.has(file)) {
+        console.log(`Migration deja appliquee: ${file}`);
+        continue;
+      }
+      const sqlPath = path.join(migrationsDir, file);
+      const sql = fs.readFileSync(sqlPath, 'utf-8');
+      // Apply the file SQL and record it in _migrations ATOMICALLY: if the SQL fails
+      // mid-file it rolls back entirely, so the schema is never left half-applied and
+      // the file is not marked done (it will be retried cleanly on the next boot).
+      try {
+        await client.query('BEGIN');
+        await client.query(sql);
+        await client.query('INSERT INTO _migrations (filename) VALUES ($1)', [file]);
+        await client.query('COMMIT');
+        console.log(`Migration appliquee: ${file}`);
+      } catch (err) {
+        try { await client.query('ROLLBACK'); } catch (_) { /* connection may be broken */ }
+        console.error(`Erreur lors de la migration ${file}:`, err.message);
+        throw err;
+      }
     }
-    const sqlPath = path.join(migrationsDir, file);
-    const sql = fs.readFileSync(sqlPath, 'utf-8');
-    try {
-      await pool.query(sql);
-      await pool.query('INSERT INTO _migrations (filename) VALUES ($1)', [file]);
-      console.log(`Migration appliquee: ${file}`);
-    } catch (err) {
-      console.error(`Erreur lors de la migration ${file}:`, err.message);
-      throw err;
+
+    console.log('Toutes les migrations effectuees avec succes');
+  } finally {
+    if (locked) {
+      try { await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]); } catch (_) { /* ignore */ }
     }
+    client.release();
   }
-
-  console.log('Toutes les migrations effectuees avec succes');
 }
 
 module.exports = migrate;

@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { generateAndSendReport } = require('./reportService');
 
 const CLIENT_SCOPE_CTE = `
   WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1),
@@ -39,6 +40,25 @@ async function toolGetClientInfo(clientId) {
     activites: activitesRow.rows,
     labos: labosRow.rows,
   };
+}
+
+// Périmètre client résumé pour injection dans le system prompt (évite un appel get_client_info
+// à chaque message → moins de latence). Inclut les IDs pour que l'agent filtre directement.
+async function getClientContextLine(clientId) {
+  try {
+    // Lit le snapshot de config statique préchargé (cache mémoire/DB) au lieu de relancer 3 SQL.
+    const { getContextLine } = require('./clientConfigService');
+    return await getContextLine(clientId);
+  } catch (_) {
+    // Repli direct si le cache de config est indisponible
+    const info = await toolGetClientInfo(clientId);
+    const acts = (info.activites || []).map((a) => `${a.id}=${a.nom}`).join(', ') || 'aucune';
+    const labos = (info.labos || []).map((l) => `${l.id}=${l.nom}`).join(', ') || 'aucun';
+    return {
+      nom: info.nom,
+      line: `Client: ${info.nom || '—'} | Mode du compte: ${info.mode_compte || '—'} | Activités: ${acts} | Labos: ${labos}`,
+    };
+  }
 }
 
 async function toolGetStock(clientId, { activite_id, labo_id, ingredient, date_from, date_to, limit = 50 }) {
@@ -107,13 +127,19 @@ async function toolGetAppros(clientId, { activite_id, labo_id, ingredient, date_
               sed.activite_id, NULL::int AS labo_id
        FROM stock_entreprise_daily sed
        WHERE sed.activite_id IN (SELECT id FROM client_activites)
-         AND sed.prix_unitaire IS NOT NULL
+         AND COALESCE(sed.type_appro, 'manuel') = 'manuel' AND sed.quantite > 0
        UNION ALL
        SELECT sld.ingredient_id, sld.quantite, sld.date_appro, sld.prix_unitaire,
               NULL::int AS activite_id, sld.labo_id
        FROM stock_labo_daily sld
        WHERE sld.labo_id IN (SELECT id FROM client_labos)
-         AND sld.prix_unitaire IS NOT NULL
+         AND COALESCE(sld.type_appro, 'manuel') = 'manuel' AND sld.quantite > 0
+       UNION ALL
+       SELECT scd.ingredient_id, scd.quantite, scd.date_appro, scd.prix_unitaire,
+              NULL::int AS activite_id, NULL::int AS labo_id
+       FROM stock_client_daily scd
+       WHERE scd.client_id = $1
+         AND COALESCE(scd.type_appro, 'manuel') = 'manuel' AND scd.quantite > 0
      ) s
      JOIN articles i ON i.id = s.ingredient_id
      LEFT JOIN activites a ON a.id = s.activite_id
@@ -126,7 +152,7 @@ async function toolGetAppros(clientId, { activite_id, labo_id, ingredient, date_
   return rows;
 }
 
-async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, date_from, date_to, limit = 100 }) {
+async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, type_perte, date_from, date_to, limit = 100 }) {
   const safeLimit = Math.min(parseInt(limit) || 100, 1000);
   const params = [clientId];
   const conditions = [];
@@ -135,6 +161,7 @@ async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, date_
   if (labo_id && !activite_id) { params.push(labo_id); conditions.push(`p.labo_id = $${params.length}`); }
   if (date_from) { params.push(date_from); conditions.push(`p.date_perte >= $${params.length}`); }
   if (date_to) { params.push(date_to); conditions.push(`p.date_perte <= $${params.length}`); }
+  if (type_perte && ['avarie', 'dechet'].includes(type_perte)) { params.push(type_perte); conditions.push(`p.type_perte = $${params.length}`); }
   if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`i.nom ILIKE $${params.length}`); }
 
   const whereExtra = conditions.length ? 'AND ' + conditions.join(' AND ') : '';
@@ -160,6 +187,7 @@ async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, date_
               NULL::int AS activite_id, NULL::int AS labo_id
        FROM client_pertes cp
        WHERE cp.client_id = $1
+         AND cp.ingredient_id IS NOT NULL
      ) p
      JOIN articles i ON i.id = p.ingredient_id
      LEFT JOIN activites a ON a.id = p.activite_id
@@ -179,10 +207,10 @@ async function toolGetInventaires(clientId, { activite_id, labo_id, ingredient, 
 
   if (activite_id) {
     params.push(activite_id);
-    conditions.push(`inv.activite_id = $${params.length}`);
+    conditions.push(`inv.activite_id = $${params.length} AND inv.activite_id IN (SELECT id FROM client_activites)`);
   } else if (labo_id) {
     params.push(labo_id);
-    conditions.push(`inv.labo_id = $${params.length}`);
+    conditions.push(`inv.labo_id = $${params.length} AND inv.labo_id IN (SELECT id FROM client_labos)`);
   } else {
     conditions.push(
       `(inv.client_id = $1 OR inv.activite_id IN (SELECT id FROM client_activites) OR inv.labo_id IN (SELECT id FROM client_labos))`
@@ -191,17 +219,18 @@ async function toolGetInventaires(clientId, { activite_id, labo_id, ingredient, 
 
   if (date_from) { params.push(date_from); conditions.push(`inv.date_inventaire >= $${params.length}`); }
   if (date_to) { params.push(date_to); conditions.push(`inv.date_inventaire <= $${params.length}`); }
-  if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`i.nom ILIKE $${params.length}`); }
+  if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`COALESCE(i.nom, p.nom) ILIKE $${params.length}`); }
 
   const { rows } = await pool.query(
     `${CLIENT_SCOPE_CTE}
-     SELECT i.nom AS ingredient, inv.quantite_reelle, inv.date_inventaire,
+     SELECT COALESCE(i.nom, p.nom) AS ingredient, inv.quantite_reelle, inv.date_inventaire,
             COALESCE(a.nom, l.nom, 'Global') AS source
      FROM inventaires inv
-     JOIN articles i ON i.id = inv.ingredient_id
+     LEFT JOIN articles i ON i.id = inv.ingredient_id
+     LEFT JOIN produits p ON p.id = inv.produit_id
      LEFT JOIN activites a ON a.id = inv.activite_id
      LEFT JOIN labos l ON l.id = inv.labo_id
-     WHERE inv.ingredient_id IS NOT NULL
+     WHERE (inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)
        AND ${conditions.join(' AND ')}
      ORDER BY inv.date_inventaire DESC
      LIMIT ${safeLimit}`,
@@ -216,23 +245,24 @@ async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, d
   const conditions = [];
 
   if (activite_id) { params.push(activite_id); conditions.push(`lt.activite_id = $${params.length}`); }
-  if (labo_id) { params.push(labo_id); conditions.push(`lt.labo_id = $${params.length}`); }
+  if (labo_id) { params.push(labo_id); conditions.push(`lt.labo_id = $${params.length} AND lt.labo_id IN (SELECT id FROM client_labos)`); }
   if (date_from) { params.push(date_from); conditions.push(`lt.date_transfert >= $${params.length}`); }
   if (date_to) { params.push(date_to); conditions.push(`lt.date_transfert <= $${params.length}`); }
-  if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`i.nom ILIKE $${params.length}`); }
+  if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`COALESCE(i.nom, p.nom) ILIKE $${params.length}`); }
 
   const whereExtra = conditions.length ? 'AND ' + conditions.join(' AND ') : '';
 
   const { rows } = await pool.query(
     `${CLIENT_SCOPE_CTE}
-     SELECT i.nom AS ingredient, lt.quantite, lt.date_transfert,
+     SELECT COALESCE(i.nom, p.nom) AS ingredient, lt.quantite, lt.date_transfert,
             a.nom AS activite, l.nom AS labo
      FROM labo_transfers lt
-     JOIN articles i ON i.id = lt.ingredient_id
+     LEFT JOIN articles i ON i.id = lt.ingredient_id
+     LEFT JOIN produits p ON p.id = lt.produit_id
      LEFT JOIN activites a ON a.id = lt.activite_id
      LEFT JOIN labos l ON l.id = lt.labo_id
      WHERE lt.activite_id IN (SELECT id FROM client_activites)
-       AND lt.ingredient_id IS NOT NULL
+       AND (lt.ingredient_id IS NOT NULL OR lt.produit_id IS NOT NULL)
        ${whereExtra}
      ORDER BY lt.date_transfert DESC
      LIMIT ${safeLimit}`,
@@ -264,6 +294,198 @@ async function toolSearchKnowledge(toolInput) {
   return { results: scored.map(({ titre, contenu }) => ({ titre, contenu })) };
 }
 
+// ── Référentiel articles (ingrédients : nom, prix de référence, unité) ─────────
+async function toolGetReferentiel(clientId, { search, limit = 100 } = {}) {
+  const safeLimit = Math.min(parseInt(limit) || 100, 300);
+  const params = [clientId];
+  let extra = '';
+  if (search) { params.push(`%${search}%`); extra = `AND i.nom ILIKE $${params.length}`; }
+  const { rows } = await pool.query(
+    `SELECT i.nom, i.prix, u.nom AS unite
+     FROM articles i
+     LEFT JOIN unites u ON u.id = i.unite_id
+     WHERE i.client_id = $1 ${extra}
+     ORDER BY i.nom
+     LIMIT ${safeLimit}`,
+    params
+  );
+  return rows;
+}
+
+// ── Fournisseurs de l'entreprise ──────────────────────────────────────────────
+async function toolGetFournisseurs(clientId, { search } = {}) {
+  const params = [clientId];
+  let extra = '';
+  if (search) { params.push(`%${search}%`); extra = `AND f.nom ILIKE $${params.length}`; }
+  const { rows } = await pool.query(
+    `WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1)
+     SELECT f.nom, f.adresse, f.telephone
+     FROM fournisseurs f
+     WHERE f.entreprise_id IN (SELECT id FROM pe) ${extra}
+     ORDER BY f.nom
+     LIMIT 200`,
+    params
+  );
+  return rows;
+}
+
+// ── Abonnement & capacité souscrite (+ mensualité calculée) ───────────────────
+async function toolGetAbonnement(clientId) {
+  const { rows } = await pool.query(
+    `SELECT a.mode_compte, a.contrat_accepte_le,
+            ac.nb_activites, ac.nb_labos, ac.nb_gerants, ac.montant_onboarding
+     FROM abonnements a
+     LEFT JOIN abonnement_config ac ON ac.abonnement_id = a.id
+     WHERE a.client_id = $1
+     ORDER BY a.id DESC
+     LIMIT 1`,
+    [clientId]
+  );
+  const base = rows[0] || { note: 'Aucun abonnement trouvé.' };
+  // Le montant mensuel n'est pas stocké : il se calcule depuis la config + les tarifs (+ promo).
+  try {
+    const { computeEffectivePricing } = require('../controllers/abonnementController');
+    const p = await computeEffectivePricing(clientId);
+    if (p) {
+      const r3 = (n) => Math.round((n || 0) * 1000) / 1000;
+      base.mensuel_base_tnd = r3(p.baseMensuel);
+      base.mensuel_effectif_tnd = r3(p.effMensuel);
+      base.onboarding_effectif_tnd = r3(p.effOnboarding);
+      base.promotion_active = !!p.hasPromo;
+    }
+  } catch (_) { /* pricing optionnel : on renvoie au moins la capacité */ }
+  return base;
+}
+
+// ── Ventes : CA, coût matière, food cost, panier moyen, canaux ────────────────
+async function toolGetVentes(clientId, { activite_id, labo_id, date_from, date_to, canal } = {}) {
+  const params = [clientId];
+  const cond = [`(v.activite_id IN (SELECT id FROM client_activites) OR v.labo_id IN (SELECT id FROM client_labos))`, `v.statut = 'confirmee'`];
+  if (activite_id) { params.push(activite_id); cond.push(`v.activite_id = $${params.length}`); }
+  if (labo_id) { params.push(labo_id); cond.push(`v.labo_id = $${params.length}`); }
+  if (date_from) { params.push(date_from); cond.push(`v.date_vente >= $${params.length}`); }
+  if (date_to) { params.push(date_to); cond.push(`v.date_vente <= $${params.length}`); }
+  if (canal === 'directe' || canal === 'prestataire') { params.push(canal); cond.push(`v.type_vente = $${params.length}`); }
+  const where = cond.join(' AND ');
+
+  const totRes = await pool.query(
+    `${CLIENT_SCOPE_CTE}
+     SELECT COUNT(DISTINCT v.id) AS nb_ventes,
+            COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) AS ca_ttc,
+            COALESCE(SUM(vl.quantite * COALESCE(vl.cout_unitaire, 0)), 0) AS cout_matiere
+     FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
+     WHERE ${where}`,
+    params
+  );
+  const canalRes = await pool.query(
+    `${CLIENT_SCOPE_CTE}
+     SELECT CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, 'Prestataire') END AS canal,
+            COUNT(DISTINCT v.id) AS nb_ventes,
+            COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) AS ca_ttc
+     FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
+     LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
+     WHERE ${where}
+     GROUP BY 1 ORDER BY ca_ttc DESC`,
+    params
+  );
+  const t = totRes.rows[0] || {};
+  const ca = parseFloat(t.ca_ttc) || 0;
+  const cm = parseFloat(t.cout_matiere) || 0;
+  const nb = parseInt(t.nb_ventes) || 0;
+  return {
+    nb_ventes: nb,
+    ca_ttc: Math.round(ca * 1000) / 1000,
+    cout_matiere: Math.round(cm * 1000) / 1000,
+    food_cost_pct: ca > 0 ? Math.round((cm / ca) * 1000) / 10 : null,
+    marge_brute: Math.round((ca - cm) * 1000) / 1000,
+    panier_moyen: nb > 0 ? Math.round((ca / nb) * 1000) / 1000 : null,
+    par_canal: canalRes.rows,
+  };
+}
+
+// ── Produits / fiches techniques du client ────────────────────────────────────
+async function toolGetProduits(clientId, { search, limit = 100 } = {}) {
+  const safeLimit = Math.min(parseInt(limit) || 100, 300);
+  const params = [clientId];
+  let extra = '';
+  if (search) { params.push(`%${search}%`); extra = `AND p.nom ILIKE $${params.length}`; }
+  const { rows } = await pool.query(
+    `SELECT p.nom, p.description
+     FROM produits p
+     WHERE p.client_id = $1 ${extra}
+     ORDER BY p.nom
+     LIMIT ${safeLimit}`,
+    params
+  );
+  return rows;
+}
+
+// ── Configuration de vente : prestataires, charges fixes, articles vendables ──
+async function toolGetConfigVente(clientId, { activite_id } = {}) {
+  const presta = await pool.query(
+    `WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1)
+     SELECT pl.nom, pl.commission_pct
+     FROM entreprise_prestataires ep
+     JOIN prestataires_livraison pl ON pl.id = ep.prestataire_id
+     WHERE ep.entreprise_id IN (SELECT id FROM pe) AND pl.actif = true
+     ORDER BY pl.nom`,
+    [clientId]
+  );
+
+  const chParams = [clientId];
+  let chExtra = '';
+  if (activite_id) { chParams.push(activite_id); chExtra = `AND cf.activite_id = $${chParams.length}`; }
+  const charges = await pool.query(
+    `${CLIENT_SCOPE_CTE}
+     SELECT a.nom AS activite, cf.mode, cf.montant_global, cf.loyer,
+            cf.charges_personnel, cf.electricite_gaz, cf.eau
+     FROM charges_fixes cf
+     JOIN activites a ON a.id = cf.activite_id
+     WHERE cf.activite_id IN (SELECT id FROM client_activites) ${chExtra}
+     ORDER BY a.nom`,
+    chParams
+  );
+
+  const vParams = [clientId];
+  let vExtra = '';
+  if (activite_id) { vParams.push(activite_id); vExtra = `AND aav.activite_id = $${vParams.length}`; }
+  const vendables = await pool.query(
+    `${CLIENT_SCOPE_CTE}
+     SELECT a.nom AS activite, aav.article_type,
+            COALESCE(pr.nom, art.nom) AS article, aav.prix_vente, aav.actif
+     FROM activite_articles_vendables aav
+     JOIN activites a ON a.id = aav.activite_id
+     LEFT JOIN produits pr ON aav.article_type = 'produit' AND pr.id = aav.article_id
+     LEFT JOIN articles art ON aav.article_type = 'ingredient' AND art.id = aav.article_id
+     WHERE aav.activite_id IN (SELECT id FROM client_activites) ${vExtra}
+     ORDER BY a.nom, article
+     LIMIT 300`,
+    vParams
+  );
+
+  return {
+    prestataires_livraison: presta.rows,
+    charges_fixes: charges.rows,
+    articles_vendables: vendables.rows,
+  };
+}
+
+// ── Génération + envoi d'un rapport par email ─────────────────────────────────
+async function toolSendReport(clientId, { format } = {}) {
+  const { rows } = await pool.query(
+    `SELECT COALESCE(aic.report_email, u.email) AS email, u.nom
+     FROM utilisateurs u
+     LEFT JOIN ai_assistant_config aic ON aic.client_id = u.id
+     WHERE u.id = $1`,
+    [clientId]
+  );
+  const dest = rows[0] || {};
+  if (!dest.email) return { error: "Aucun email configuré pour l'envoi du rapport." };
+  const fmt = format === 'pdf' ? 'pdf' : 'excel';
+  const filename = await generateAndSendReport(clientId, dest.email, dest.nom || 'Client', fmt);
+  return { sent: true, email: dest.email, format: fmt, filename };
+}
+
 async function executeToolCall(clientId, toolName, toolInput) {
   try {
     switch (toolName) {
@@ -273,6 +495,13 @@ async function executeToolCall(clientId, toolName, toolInput) {
       case 'get_pertes':           return await toolGetPertes(clientId, toolInput);
       case 'get_inventaires':      return await toolGetInventaires(clientId, toolInput);
       case 'get_transferts':       return await toolGetTransferts(clientId, toolInput);
+      case 'get_referentiel':      return await toolGetReferentiel(clientId, toolInput);
+      case 'get_fournisseurs':     return await toolGetFournisseurs(clientId, toolInput);
+      case 'get_abonnement':       return await toolGetAbonnement(clientId);
+      case 'get_ventes':           return await toolGetVentes(clientId, toolInput);
+      case 'get_produits':         return await toolGetProduits(clientId, toolInput);
+      case 'get_config_vente':     return await toolGetConfigVente(clientId, toolInput);
+      case 'send_report':          return await toolSendReport(clientId, toolInput);
       case 'search_knowledge_base': return await toolSearchKnowledge(toolInput);
       case 'ask_clarification':    return { __clarification: true, question: toolInput.question, options: toolInput.options };
       default:                     return { error: `Outil inconnu: ${toolName}` };
@@ -307,7 +536,7 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_appros',
-    description: 'Récupère l\'historique des approvisionnements (achats) avec quantités et prix unitaires en TND.',
+    description: 'Récupère l\'historique des approvisionnements manuels (achats) avec quantités et prix unitaires en TND. Les réassorts par transfert labo→activité relèvent de get_transferts.',
     input_schema: {
       type: 'object',
       properties: {
@@ -323,13 +552,14 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_pertes',
-    description: 'Récupère l\'historique des pertes d\'ingrédients.',
+    description: 'Récupère l\'historique des pertes d\'ingrédients. Filtrable par type de perte (avarie / déchet).',
     input_schema: {
       type: 'object',
       properties: {
         activite_id: { type: 'integer' },
         labo_id: { type: 'integer' },
         ingredient: { type: 'string' },
+        type_perte: { type: 'string', enum: ['avarie', 'dechet'], description: 'Filtrer par type de perte' },
         date_from: { type: 'string' },
         date_to: { type: 'string' },
         limit: { type: 'integer' },
@@ -370,6 +600,83 @@ const TOOLS_ANTHROPIC = [
     },
   },
   {
+    name: 'get_referentiel',
+    description: 'Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d\'articles.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        search: { type: 'string', description: 'Nom partiel d\'article (recherche ILIKE)' },
+        limit: { type: 'integer', description: 'Max résultats (défaut 100, max 300)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_fournisseurs',
+    description: 'Récupère la liste des fournisseurs de l\'entreprise (nom, adresse, téléphone).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        search: { type: 'string', description: 'Nom partiel de fournisseur (recherche ILIKE)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_abonnement',
+    description: 'Récupère l\'abonnement et la capacité souscrite du client : mode du compte, nombre d\'activités/labos/gérants, montant d\'onboarding, date d\'acceptation du contrat.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'get_ventes',
+    description: 'Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost %, marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        activite_id: { type: 'integer', description: 'ID de l\'activité' },
+        labo_id: { type: 'integer', description: 'ID du labo (pour les ventes saisies au niveau labo)' },
+        date_from: { type: 'string', description: 'Date de début ISO 8601' },
+        date_to: { type: 'string', description: 'Date de fin ISO 8601' },
+        canal: { type: 'string', enum: ['directe', 'prestataire'], description: 'Filtrer par canal de vente' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_produits',
+    description: 'Récupère la liste des produits / fiches techniques du client (nom, description).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        search: { type: 'string', description: 'Nom partiel de produit (recherche ILIKE)' },
+        limit: { type: 'integer', description: 'Max résultats (défaut 100, max 300)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_config_vente',
+    description: 'Récupère la configuration de vente : prestataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        activite_id: { type: 'integer', description: 'ID de l\'activité' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'send_report',
+    description: "Génère et envoie par email un rapport (Excel ou PDF) récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).",
+    input_schema: {
+      type: 'object',
+      properties: {
+        format: { type: 'string', enum: ['excel', 'pdf'], description: 'Format du rapport (défaut excel)' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'search_knowledge_base',
     description: "Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (fiche technique, food cost, coût matière, stock, approvisionnements, pertes, inventaire, transferts, articles valorisés, produits vendables/utilisables, seuil minimum, TVA, marge, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.",
     input_schema: {
@@ -404,4 +711,4 @@ const TOOLS_OPENAI = TOOLS_ANTHROPIC.map(t => ({
   },
 }));
 
-module.exports = { executeToolCall, TOOLS_ANTHROPIC, TOOLS_OPENAI };
+module.exports = { executeToolCall, TOOLS_ANTHROPIC, TOOLS_OPENAI, getClientContextLine, toolGetClientInfo, toolGetAbonnement };

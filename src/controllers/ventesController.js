@@ -546,7 +546,8 @@ const listVentes = async (req, res) => {
        LEFT JOIN articles a ON vl.article_type = 'ingredient' AND a.id = vl.article_id
        WHERE ${whereCol} = $1 AND v.statut != 'annulee'${where}
        GROUP BY v.id, pl.nom, ub.nom
-       ORDER BY v.date_vente DESC, v.created_at DESC`,
+       ORDER BY v.date_vente DESC, v.created_at DESC
+       LIMIT 2000`,
       params
     );
 
@@ -652,32 +653,88 @@ const createVente = async (req, res) => {
     const ptTotals = new Map();         // sous_produit_id -> total qty to deduct
     const dateApproValue = date_vente || new Date().toISOString().slice(0, 10);
 
+    // Pré-chargement en lot (mêmes calculs qu'avant, mais hors de la boucle).
+    const ingArticleIds = [...new Set(lignes.filter((l) => l.article_type === 'ingredient').map((l) => Number(l.article_id)))];
+    const prodArticleIds = [...new Set(lignes.filter((l) => l.article_type === 'produit').map((l) => Number(l.article_id)))];
+
+    const ingCostMap = new Map();   // ingredient_id -> AVG prix (ou null)
+    if (ingArticleIds.length > 0) {
+      const r = await client.query(
+        `SELECT ingredient_id, AVG(prix_unitaire) AS avg_prix
+         FROM stock_client_daily
+         WHERE ingredient_id = ANY($1::int[]) AND client_id = $2 AND quantite > 0
+         GROUP BY ingredient_id`,
+        [ingArticleIds, cid]
+      );
+      for (const row of r.rows) ingCostMap.set(row.ingredient_id, row.avg_prix != null ? parseFloat(row.avg_prix) : null);
+    }
+
+    const prodCostMap = new Map();  // produit_id -> coût recette (ou null)
+    const prodIngMap = new Map();   // produit_id -> [{ingredient_id, portion}]
+    const prodSpMap = new Map();    // produit_id -> [{sous_produit_id, portion}]
+    if (prodArticleIds.length > 0) {
+      const cr = await client.query(
+        `SELECT pi.produit_id, SUM(pi.portion * COALESCE(last_prix.prix_unitaire, 0)) AS cout
+         FROM produit_ingredients pi
+         LEFT JOIN LATERAL (
+           SELECT prix_unitaire FROM stock_client_daily
+           WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
+           ORDER BY date_appro DESC LIMIT 1
+         ) last_prix ON true
+         WHERE pi.produit_id = ANY($1::int[])
+         GROUP BY pi.produit_id`,
+        [prodArticleIds, cid]
+      );
+      for (const row of cr.rows) prodCostMap.set(row.produit_id, row.cout != null ? parseFloat(row.cout) : null);
+
+      const ir = await client.query(
+        'SELECT produit_id, ingredient_id, portion FROM produit_ingredients WHERE produit_id = ANY($1::int[])',
+        [prodArticleIds]
+      );
+      for (const row of ir.rows) {
+        if (!prodIngMap.has(row.produit_id)) prodIngMap.set(row.produit_id, []);
+        prodIngMap.get(row.produit_id).push(row);
+      }
+      const sr = await client.query(
+        'SELECT produit_id, sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = ANY($1::int[])',
+        [prodArticleIds]
+      );
+      for (const row of sr.rows) {
+        if (!prodSpMap.has(row.produit_id)) prodSpMap.set(row.produit_id, []);
+        prodSpMap.get(row.produit_id).push(row);
+      }
+    }
+
+    // Origine des produits vendus (refonte Espace Produits) : un produit d'ORIGINE LABO est un PT
+    // vendu comme valorisé — à la vente on déstocke le PT de l'activité (et non sa recette en
+    // articles labo, qui ne sont pas en stock activité). Son coût = coût moyen du PT reçu (transferts).
+    const prodOrigineMap = new Map(); // produit_id -> 'labo' | 'activite'
+    if (prodArticleIds.length > 0) {
+      const or = await client.query('SELECT id, origine FROM produits WHERE id = ANY($1::int[])', [prodArticleIds]);
+      for (const row of or.rows) prodOrigineMap.set(row.id, row.origine || 'activite');
+      if (activite_id) {
+        const laboProdIds = or.rows.filter((r) => (r.origine || 'activite') === 'labo').map((r) => r.id);
+        if (laboProdIds.length > 0) {
+          const pc = await client.query(
+            `SELECT produit_id, AVG(prix_calcule) AS c FROM stock_produits_transformes
+             WHERE produit_id = ANY($1::int[]) AND activite_id = $2 AND quantite > 0 AND prix_calcule IS NOT NULL
+             GROUP BY produit_id`,
+            [laboProdIds, activite_id]
+          );
+          for (const row of pc.rows) prodCostMap.set(row.produit_id, row.c != null ? parseFloat(row.c) : null);
+        }
+      }
+    }
+
     for (const ligne of lignes) {
       const { article_type, article_id, quantite, prix_unitaire } = ligne;
 
-      // Calculate cout_unitaire from stock
+      // cout_unitaire depuis les maps pré-chargées (même valeur qu'une requête par ligne)
       let cout = null;
       if (article_type === 'ingredient') {
-        const coutRes = await client.query(
-          `SELECT AVG(prix_unitaire) as avg_prix
-           FROM stock_client_daily
-           WHERE ingredient_id = $1 AND client_id = $2 AND quantite > 0`,
-          [article_id, cid]
-        );
-        cout = coutRes.rows[0]?.avg_prix != null ? parseFloat(coutRes.rows[0].avg_prix) : null;
+        cout = ingCostMap.has(Number(article_id)) ? ingCostMap.get(Number(article_id)) : null;
       } else if (article_type === 'produit') {
-        const coutRes = await client.query(
-          `SELECT SUM(pi.portion * COALESCE(last_prix.prix_unitaire, 0)) as cout
-           FROM produit_ingredients pi
-           LEFT JOIN LATERAL (
-             SELECT prix_unitaire FROM stock_client_daily
-             WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
-             ORDER BY date_appro DESC LIMIT 1
-           ) last_prix ON true
-           WHERE pi.produit_id = $1`,
-          [article_id, cid]
-        );
-        cout = coutRes.rows[0]?.cout != null ? parseFloat(coutRes.rows[0].cout) : null;
+        cout = prodCostMap.has(Number(article_id)) ? prodCostMap.get(Number(article_id)) : null;
       }
 
       await client.query(
@@ -688,27 +745,53 @@ const createVente = async (req, res) => {
 
       // Accumulate ingredient and PT sub-product totals for stock deduction
       if (activite_id && moduleVenteActif && article_type === 'produit') {
-        const ftRes = await client.query(
-          'SELECT ingredient_id, portion FROM produit_ingredients WHERE produit_id = $1',
-          [article_id]
-        );
-        for (const pi of ftRes.rows) {
-          ingredientTotals.set(pi.ingredient_id,
-            (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(quantite));
-        }
-        const ptRes = await client.query(
-          'SELECT sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = $1',
-          [article_id]
-        );
-        for (const sp of ptRes.rows) {
-          ptTotals.set(sp.sous_produit_id,
-            (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(quantite));
+        if (prodOrigineMap.get(Number(article_id)) === 'labo') {
+          // Produit labo (PT) vendu comme valorisé : déstocke le PT de l'activité directement.
+          ptTotals.set(Number(article_id),
+            (ptTotals.get(Number(article_id)) || 0) + parseFloat(quantite));
+        } else {
+          // Produit activité : explose la recette (articles + sous-produits PT).
+          for (const pi of (prodIngMap.get(Number(article_id)) || [])) {
+            ingredientTotals.set(pi.ingredient_id,
+              (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(quantite));
+          }
+          for (const sp of (prodSpMap.get(Number(article_id)) || [])) {
+            ptTotals.set(sp.sous_produit_id,
+              (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(quantite));
+          }
         }
       }
       // Direct ingredient sale (valorisé article) — deduct quantity directly from stock
       if (activite_id && moduleVenteActif && article_type === 'ingredient') {
         ingredientTotals.set(article_id,
           (ingredientTotals.get(article_id) || 0) + parseFloat(quantite));
+      }
+    }
+
+    // Coût matière par ingrédient (même source que le calcul de coût) + fournisseur AUTO, pour
+    // tracer les sorties 'vente' avec prix HT / TVA 0 / TTC = HT (lignes hors calcul d'appro).
+    let venteAutoFournId = null;
+    const venteCostByIng = new Map();
+    if (activite_id && ingredientTotals.size > 0) {
+      const ingIds = [...ingredientTotals.keys()].map(Number);
+      const cr = await client.query(
+        `SELECT ingredient_id, AVG(prix_unitaire) AS c FROM stock_client_daily
+          WHERE ingredient_id = ANY($1::int[]) AND client_id = $2 AND quantite > 0 GROUP BY ingredient_id`,
+        [ingIds, cid]
+      );
+      for (const row of cr.rows) venteCostByIng.set(row.ingredient_id, row.c != null ? parseFloat(row.c) : 0);
+      const fo = await client.query(
+        `SELECT f.id FROM fournisseurs f JOIN activites a ON a.entreprise_id = f.entreprise_id
+          WHERE a.id = $1 AND f.nom = 'AUTO' LIMIT 1`,
+        [activite_id]
+      );
+      if (fo.rows[0]) venteAutoFournId = fo.rows[0].id;
+      else {
+        const ent = await client.query(`SELECT entreprise_id FROM activites WHERE id = $1`, [activite_id]);
+        if (ent.rows[0]) {
+          const nf = await client.query(`INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`, [ent.rows[0].entreprise_id]);
+          venteAutoFournId = nf.rows[0].id;
+        }
       }
     }
 
@@ -721,11 +804,12 @@ const createVente = async (req, res) => {
         [total, activite_id, ingredientId, dateApproValue]
       );
       if (upd.rowCount === 0) {
+        const c = venteCostByIng.get(Number(ingredientId)) ?? 0;
         await client.query(
           `INSERT INTO stock_entreprise_daily
-             (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, updated_at, created_by)
-           VALUES ($1, $2, $3, $4, 'vente', 0, 0, 0, NOW(), $5)`,
-          [activite_id, ingredientId, -total, dateApproValue, req.user.id]
+             (activite_id, ingredient_id, quantite, date_appro, type_appro, prix_unitaire, taux_tva, prix_unitaire_tva, fournisseur_id, ref_facture, updated_at, created_by)
+           VALUES ($1, $2, $3, $4, 'vente', $5, 0, $5, $6, $7, NOW(), $8)`,
+          [activite_id, ingredientId, -total, dateApproValue, c, venteAutoFournId, `vente-${dateApproValue}`, req.user.id]
         );
       }
     }
@@ -791,23 +875,48 @@ const annulerVente = async (req, res) => {
       if (mvActif) {
         const ingredientTotals = new Map();
         const ptTotals = new Map();
+        // Pré-chargement en lot des compositions (mêmes accumulations qu'avant)
+        const annulProdIds = [...new Set(lignesRes.rows.filter((l) => l.article_type === 'produit').map((l) => Number(l.article_id)))];
+        const annulIngMap = new Map();
+        const annulSpMap = new Map();
+        if (annulProdIds.length > 0) {
+          const ir = await client.query(
+            'SELECT produit_id, ingredient_id, portion FROM produit_ingredients WHERE produit_id = ANY($1::int[])',
+            [annulProdIds]
+          );
+          for (const row of ir.rows) {
+            if (!annulIngMap.has(row.produit_id)) annulIngMap.set(row.produit_id, []);
+            annulIngMap.get(row.produit_id).push(row);
+          }
+          const sr = await client.query(
+            'SELECT produit_id, sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = ANY($1::int[])',
+            [annulProdIds]
+          );
+          for (const row of sr.rows) {
+            if (!annulSpMap.has(row.produit_id)) annulSpMap.set(row.produit_id, []);
+            annulSpMap.get(row.produit_id).push(row);
+          }
+        }
+        // Origine des produits (refonte) : un produit labo se réintègre comme PT de l'activité.
+        const annulOrigineMap = new Map();
+        if (annulProdIds.length > 0) {
+          const or = await client.query('SELECT id, origine FROM produits WHERE id = ANY($1::int[])', [annulProdIds]);
+          for (const row of or.rows) annulOrigineMap.set(row.id, row.origine || 'activite');
+        }
         for (const ligne of lignesRes.rows) {
           if (ligne.article_type === 'produit') {
-            const ftRes = await client.query(
-              'SELECT ingredient_id, portion FROM produit_ingredients WHERE produit_id = $1',
-              [ligne.article_id]
-            );
-            for (const pi of ftRes.rows) {
-              ingredientTotals.set(pi.ingredient_id,
-                (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(ligne.quantite));
-            }
-            const ptRes = await client.query(
-              'SELECT sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = $1',
-              [ligne.article_id]
-            );
-            for (const sp of ptRes.rows) {
-              ptTotals.set(sp.sous_produit_id,
-                (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(ligne.quantite));
+            if (annulOrigineMap.get(Number(ligne.article_id)) === 'labo') {
+              ptTotals.set(Number(ligne.article_id),
+                (ptTotals.get(Number(ligne.article_id)) || 0) + parseFloat(ligne.quantite));
+            } else {
+              for (const pi of (annulIngMap.get(Number(ligne.article_id)) || [])) {
+                ingredientTotals.set(pi.ingredient_id,
+                  (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(ligne.quantite));
+              }
+              for (const sp of (annulSpMap.get(Number(ligne.article_id)) || [])) {
+                ptTotals.set(sp.sous_produit_id,
+                  (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(ligne.quantite));
+              }
             }
           }
           if (ligne.article_type === 'ingredient') {
@@ -885,7 +994,7 @@ const statsVentes = async (req, res) => {
        LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
        LEFT JOIN articles i ON vl.article_type = 'ingredient' AND i.id = vl.article_id
        WHERE ${whereCol} = $1 AND v.statut = 'confirmee'
-         AND date_trunc('month', v.date_vente) = date_trunc('month', CURRENT_DATE)
+         AND v.date_vente >= date_trunc('month', CURRENT_DATE) AND v.date_vente < date_trunc('month', CURRENT_DATE) + interval '1 month'
        GROUP BY vl.article_type, vl.article_id,
                 (CASE vl.article_type WHEN 'produit' THEN p.nom WHEN 'ingredient' THEN i.nom END)
        ORDER BY total_ca DESC LIMIT 10`,
@@ -897,7 +1006,7 @@ const statsVentes = async (req, res) => {
        FROM ventes v
        JOIN vente_lignes vl ON vl.vente_id = v.id
        WHERE ${whereCol} = $1 AND v.statut = 'confirmee'
-         AND date_trunc('month', v.date_vente) = date_trunc('month', CURRENT_DATE)
+         AND v.date_vente >= date_trunc('month', CURRENT_DATE) AND v.date_vente < date_trunc('month', CURRENT_DATE) + interval '1 month'
        GROUP BY v.type_vente`,
       [whereVal]
     );

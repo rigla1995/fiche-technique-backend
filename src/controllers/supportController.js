@@ -4,7 +4,7 @@ const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
 const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeAvenantPricing } = require('./abonnementController');
-const { createSubmission, isConfigured: docusealConfigured } = require('../services/docusealService');
+const { createSubmission, getSubmissionDocuments, isConfigured: docusealConfigured } = require('../services/docusealService');
 const { sendDocusealSigningEmail } = require('../services/emailService');
 
 const fmtDtS = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
@@ -26,6 +26,7 @@ const mapDemande = (row) => ({
   nbActivitesSupp: row.nb_activites_supp,
   nbLabosSupp: row.nb_labos_supp,
   nbGerantsSupp: row.nb_gerants_supp,
+  docusealSubmissionId: row.docuseal_submission_id || null,
   // aide
   description: row.description,
   // admin
@@ -45,10 +46,12 @@ const listMine = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT sd.*, da.nom AS domaine_nom,
-              cb.nom AS created_by_nom_joined
+              cb.nom AS created_by_nom_joined,
+              cu.email AS client_email
        FROM support_demandes sd
        LEFT JOIN domaines_activite da ON da.id = sd.domaine_id
        LEFT JOIN utilisateurs cb ON cb.id = sd.created_by
+       LEFT JOIN utilisateurs cu ON cu.id = sd.client_id
        WHERE sd.client_id = $1
        ORDER BY sd.created_at DESC`,
       [clientId]
@@ -136,7 +139,16 @@ const create = async (req, res) => {
           }
           if (sub?.signingUrl) {
             signingUrl = sub.signingUrl;
-            sendDocusealSigningEmail({ to: clientEmail, nom: clientNomFull, signingUrl: sub.signingUrl })
+            sendDocusealSigningEmail({
+              to: clientEmail,
+              nom: clientNomFull,
+              signingUrl: sub.signingUrl,
+              avenant: {
+                addActivites: req.body.nbActivitesSupp || 0,
+                addLabos: req.body.nbLabosSupp || 0,
+                addGerants: req.body.nbGerantsSupp || 0,
+              },
+            })
               .catch((e) => console.error('[avenant] envoi email signature:', e.message));
           }
         }
@@ -151,7 +163,8 @@ const create = async (req, res) => {
       pushToAdmins('new_demande', notifPayload);
       saveNotificationToAdmins(notifPayload).catch(console.error);
     }
-    res.status(201).json({ ...demande, signingUrl });
+    // On n'expose PAS le lien de signature au front : le client signe l'avenant via l'email reçu.
+    res.status(201).json({ ...demande, avenantEmailSent: !!signingUrl });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -470,4 +483,33 @@ const deleteMine = async (req, res) => {
   }
 };
 
-module.exports = { listMine, create, listAll, traiter, deleteMine, previewAvenant };
+// Client: télécharge le contrat (avenant) signé — proxifié pour ne PAS exposer Docuseal au client
+const getContratSigne = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const { rows } = await pool.query(
+      'SELECT docuseal_submission_id FROM support_demandes WHERE id = $1 AND client_id = $2',
+      [req.params.id, clientId]
+    );
+    const dem = rows[0];
+    if (!dem) return res.status(404).json({ message: 'Demande introuvable' });
+    if (!dem.docuseal_submission_id) return res.status(404).json({ message: 'Aucun avenant associé à cette demande' });
+    const docs = await getSubmissionDocuments(dem.docuseal_submission_id);
+    if (!docs.length) return res.status(404).json({ message: "Le contrat signé n'est pas encore disponible" });
+    // Récupère le PDF côté serveur et le renvoie en pièce jointe (le client ne voit jamais Docuseal)
+    const fileRes = await fetch(docs[0].url);
+    if (!fileRes.ok) return res.status(502).json({ message: 'Contrat momentanément indisponible' });
+    const buf = Buffer.from(await fileRes.arrayBuffer());
+    const base = String(docs[0].name || 'contrat-avenant').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filename = base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buf.length);
+    return res.send(buf);
+  } catch (err) {
+    console.error('[contrat-signe]', err.message);
+    res.status(500).json({ message: 'Erreur lors de la récupération du contrat signé' });
+  }
+};
+
+module.exports = { listMine, create, listAll, traiter, deleteMine, previewAvenant, getContratSigne };

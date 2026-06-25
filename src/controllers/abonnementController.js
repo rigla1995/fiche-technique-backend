@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { sendInviteEmail } = require('../services/emailService');
+const { getSubmissionDocuments } = require('../services/docusealService');
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1573,7 +1574,59 @@ const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0,
   };
 };
 
+// Contrat actif du client = dernier avenant signé, sinon le contrat initial.
+const findActiveContract = async (clientId) => {
+  const av = await pool.query(
+    `SELECT docuseal_submission_id, traite_le
+       FROM support_demandes
+      WHERE client_id = $1 AND type = 'supplement'
+        AND docuseal_submission_id IS NOT NULL AND statut = 'validée'
+      ORDER BY traite_le DESC NULLS LAST, id DESC
+      LIMIT 1`,
+    [clientId]
+  );
+  if (av.rows[0]?.docuseal_submission_id) {
+    return { submissionId: av.rows[0].docuseal_submission_id, date: av.rows[0].traite_le, kind: 'avenant' };
+  }
+  const ab = await pool.query(
+    `SELECT contrat_submission_id, contrat_accepte_le
+       FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1`,
+    [clientId]
+  );
+  if (ab.rows[0]?.contrat_submission_id) {
+    return { submissionId: ab.rows[0].contrat_submission_id, date: ab.rows[0].contrat_accepte_le, kind: 'contrat' };
+  }
+  return null;
+};
+
+// GET /api/abonnements/contrat-actif[?info=1] — info (dispo + date) ou téléchargement du PDF (proxifié).
+const getContratActif = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const active = await findActiveContract(clientId);
+    if (req.query.info === '1') {
+      return res.json({ available: !!active, date: active?.date || null, kind: active?.kind || null });
+    }
+    if (!active) return res.status(404).json({ message: 'Aucun contrat signé disponible' });
+    const docs = await getSubmissionDocuments(active.submissionId);
+    if (!docs.length) return res.status(404).json({ message: "Le contrat signé n'est pas encore disponible" });
+    const fileRes = await fetch(docs[0].url);
+    if (!fileRes.ok) return res.status(502).json({ message: 'Contrat momentanément indisponible' });
+    const buf = Buffer.from(await fileRes.arrayBuffer());
+    const base = String(docs[0].name || (active.kind === 'avenant' ? 'contrat-avenant' : 'contrat')).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filename = base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buf.length);
+    return res.send(buf);
+  } catch (err) {
+    console.error('[contrat-actif]', err.message);
+    res.status(500).json({ message: 'Erreur lors de la récupération du contrat' });
+  }
+};
+
 module.exports = {
+  getContratActif,
   getTarifs, updateTarif,
   computeEffectivePricing, computeAvenantPricing,
   listAbonnements, getAbonnement, createAbonnement,

@@ -139,7 +139,36 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
 
 const generateInviteToken = () => crypto.randomBytes(32).toString('hex');
 
-const sendDocusealSigningEmail = async ({ to, nom, signingUrl }) => {
+const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null }) => {
+  const isAvenant = !!avenant;
+  // Rappel de la capacité demandée (uniquement pour un avenant)
+  const supParts = [];
+  if (isAvenant) {
+    const n = (v) => parseInt(v, 10) || 0;
+    if (n(avenant.addActivites) > 0) supParts.push(`${n(avenant.addActivites)} activité${n(avenant.addActivites) > 1 ? 's' : ''}`);
+    if (n(avenant.addLabos) > 0) supParts.push(`${n(avenant.addLabos)} labo${n(avenant.addLabos) > 1 ? 's' : ''}`);
+    if (n(avenant.addGerants) > 0) supParts.push(`${n(avenant.addGerants)} gérant${n(avenant.addGerants) > 1 ? 's' : ''}`);
+  }
+  const supText = supParts.join(', ') || 'capacité supplémentaire';
+
+  const subtitle = isAvenant ? 'Signature électronique de votre avenant' : 'Signature électronique de votre contrat';
+  const intro = isAvenant
+    ? `Suite à votre demande d'ajout de <strong>${supText}</strong>, votre <strong>avenant au contrat d'abonnement ${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
+        Cliquez sur le bouton ci-dessous pour le consulter et le signer — <strong>dès la signature, votre nouvelle capacité sera immédiatement disponible dans votre espace</strong>.`
+    : `Votre contrat d'abonnement <strong>${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
+        Cliquez sur le bouton ci-dessous pour consulter et signer votre contrat.`;
+  const cardTitle = isAvenant ? `Avenant au contrat d'abonnement — ${APP_NAME}` : `Contrat d'abonnement — ${APP_NAME}`;
+  const cardSub = isAvenant
+    ? "Ce document acte l'ajout de capacité demandé et votre nouvelle tarification."
+    : 'Ce document est personnalisé avec vos informations et votre tarification.';
+  const buttonText = isAvenant ? 'Signer mon avenant' : 'Signer mon contrat';
+  const footerText = isAvenant
+    ? "Si vous n'avez pas demandé cet avenant, ignorez cet email."
+    : "Si vous n'avez pas demandé ce contrat, ignorez cet email.";
+  const subject = isAvenant
+    ? `${APP_NAME} — Signez votre avenant d'abonnement`
+    : `${APP_NAME} — Signez votre contrat d'abonnement`;
+
   const html = `
 <!DOCTYPE html>
 <html lang="fr">
@@ -148,29 +177,28 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl }) => {
   <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
     <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
       ${BRAND_LOGO}
-      <p style="margin:0;color:#c7d2fe;font-size:0.85rem;">Signature électronique de votre contrat</p>
+      <p style="margin:0;color:#c7d2fe;font-size:0.85rem;">${subtitle}</p>
     </div>
     <div style="padding:40px 48px;">
       <h2 style="margin:0 0 8px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ${nom},</h2>
       <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.7;">
-        Votre contrat d'abonnement <strong>${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
-        Cliquez sur le bouton ci-dessous pour consulter et signer votre contrat.
+        ${intro}
       </p>
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;">
         <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">✍️ Signature requise</p>
-        <p style="margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;">Contrat d'abonnement — ${APP_NAME}</p>
-        <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">Ce document est personnalisé avec vos informations et votre tarification.</p>
+        <p style="margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;">${cardTitle}</p>
+        <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">${cardSub}</p>
       </div>
       <div style="text-align:center;margin:0 0 28px;">
         <a href="${signingUrl}" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
-          Signer mon contrat
+          ${buttonText}
         </a>
       </div>
       <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ${signingUrl}</p>
     </div>
     <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
       <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
-        Si vous n'avez pas demandé ce contrat, ignorez cet email. &mdash; ${APP_NAME}
+        ${footerText} &mdash; ${APP_NAME}
       </p>
     </div>
   </div>
@@ -178,14 +206,14 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl }) => {
 </html>`;
 
   if (!process.env.RESEND_API_KEY) {
-    console.log(`[DEV] Docuseal signing email to ${to}: ${signingUrl}`);
+    console.log(`[DEV] Docuseal signing email (${isAvenant ? 'avenant' : 'contrat'}) to ${to}: ${signingUrl}`);
     return { success: true, dev: true, signingUrl };
   }
 
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: `${APP_NAME} — Signez votre contrat d'abonnement`,
+    subject,
     html,
   });
 
@@ -399,34 +427,63 @@ const sendAiAgentInviteEmail = async ({ to, clientNom, inviteLink, appName }) =>
 
 const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) => {
   const name = appName || APP_NAME;
+  const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <!-- Header marque : logo en valeur -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:40px 48px 34px;border-bottom:4px solid #d97706;text-align:center;">
+      ${BRAND_LOGO}
+      <p style="margin:14px 0 0;color:#c7d2fe;font-size:0.9rem;font-weight:600;">🤖 Votre assistant IA est prêt sur Messenger</p>
+    </div>
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ${clientNom},</h2>
+      <p style="margin:0 0 22px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Votre assistant IA <strong>${name}</strong> vient d'être activé sur <strong>Facebook Messenger</strong>.
+        Vous pouvez l'utiliser comme l'application — en consultation — pour interroger toutes vos données :
+      </p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:26px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:0.9rem;color:#1e293b;line-height:1.9;">
+          <tr><td style="width:50%;">🏪 Activités &amp; labos</td><td>🧾 Ventes &amp; CA</td></tr>
+          <tr><td>📦 Stock &amp; seuils</td><td>🛒 Approvisionnements</td></tr>
+          <tr><td>🔄 Transferts</td><td>📉 Pertes &amp; inventaires</td></tr>
+          <tr><td>📚 Référentiel &amp; fournisseurs</td><td>💳 Abonnement &amp; produits</td></tr>
+        </table>
+        <p style="margin:12px 0 0;font-size:0.82rem;color:#64748b;">Filtrez par activité, labo ou période — et demandez un <strong>rapport Excel/PDF par email</strong> quand vous voulez.</p>
+      </div>
+      <div style="text-align:center;margin:0 0 26px;">
+        <a href="${inviteLink}" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
+          💬 Ouvrir mon assistant sur Messenger
+        </a>
+      </div>
+      <ol style="margin:0 0 8px;color:#374151;font-size:0.85rem;line-height:1.9;padding-left:20px;">
+        <li>Cliquez sur le bouton ci-dessus</li>
+        <li>Messenger s'ouvre — envoyez votre premier message</li>
+        <li>L'agent vous répond et vous accueille instantanément ✅</li>
+      </ol>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ${inviteLink}</p>
+    </div>
+    <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Si vous n'attendiez pas cette activation, ignorez cet email. &mdash; ${name}
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV] Messenger invite email to ${to}: ${inviteLink}`);
+    return { success: true, dev: true, inviteLink };
+  }
+
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
     subject: `${name} — Votre assistant IA Messenger est activé ! 🤖`,
-    html: `<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
-      <div style="background:linear-gradient(135deg,#1877f2,#0a66c2);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
-        <div style="font-size:40px;margin-bottom:8px">💬</div>
-        <h1 style="color:#fff;margin:0;font-size:22px">Votre agent IA ${name} est prêt sur Messenger !</h1>
-      </div>
-      <p style="color:#374151;font-size:15px;line-height:1.6">Bonjour <strong>${clientNom}</strong>,</p>
-      <p style="color:#374151;font-size:14px;line-height:1.6">
-        Votre assistant IA personnel vient d'être activé sur <strong>Facebook Messenger</strong>. Il peut répondre à vos questions sur votre <strong>stock</strong>, vos <strong>inventaires</strong>, vos <strong>pertes</strong> et vous envoyer des <strong>rapports par email</strong>.
-      </p>
-      <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin:20px 0">
-        <p style="margin:0 0 12px;font-size:13px;color:#374151;font-weight:600">Pour démarrer, cliquez sur le bouton ci-dessous :</p>
-        <a href="${inviteLink}" style="display:inline-block;background:linear-gradient(135deg,#1877f2,#0a66c2);color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px">
-          💬 Ouvrir mon assistant sur Messenger
-        </a>
-        <p style="margin:12px 0 0;font-size:11px;color:#94a3b8">Lien : ${inviteLink}</p>
-      </div>
-      <ol style="color:#374151;font-size:13px;line-height:1.8;padding-left:20px">
-        <li>Cliquez sur le bouton ci-dessus</li>
-        <li>Messenger s'ouvre — envoyez votre premier message</li>
-        <li>L'agent vous répond instantanément ✅</li>
-      </ol>
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0">
-      <p style="font-size:11px;color:#94a3b8;text-align:center">${name} · Votre assistant IA personnel</p>
-    </div>`,
+    html,
   });
   if (error) throw new Error(error.message);
   return { success: true, id: data?.id };

@@ -201,16 +201,16 @@ const importReferentiel = [
                 [existingArticleId]
               );
               if (hasAny.rows.length === 0) {
-                for (const actId of activiteIds) {
+                if (activiteIds.length > 0) {
                   await client.query(
-                    'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING',
-                    [actId, existingArticleId]
+                    'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire) SELECT unnest($1::int[]), $2, 0 ON CONFLICT DO NOTHING',
+                    [activiteIds, existingArticleId]
                   );
                 }
-                for (const laboId of laboIds) {
+                if (laboIds.length > 0) {
                   await client.query(
-                    'INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                    [laboId, existingArticleId]
+                    'INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) SELECT unnest($1::int[]), $2 ON CONFLICT DO NOTHING',
+                    [laboIds, existingArticleId]
                   );
                 }
                 rowResult.autoAssigned = true;
@@ -227,16 +227,16 @@ const importReferentiel = [
             rowResult.created.push('article');
 
             // Auto-assign to all activités and labos
-            for (const actId of activiteIds) {
+            if (activiteIds.length > 0) {
               await client.query(
-                'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire) VALUES ($1, $2, 0) ON CONFLICT DO NOTHING',
-                [actId, newArticleId]
+                'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire) SELECT unnest($1::int[]), $2, 0 ON CONFLICT DO NOTHING',
+                [activiteIds, newArticleId]
               );
             }
-            for (const laboId of laboIds) {
+            if (laboIds.length > 0) {
               await client.query(
-                'INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                [laboId, newArticleId]
+                'INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) SELECT unnest($1::int[]), $2 ON CONFLICT DO NOTHING',
+                [laboIds, newArticleId]
               );
             }
           }

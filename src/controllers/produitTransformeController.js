@@ -497,6 +497,18 @@ const saveStockPT = async (req, res) => {
       return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
     }
 
+    // Garde-fou (refonte Espace Produits) : un produit d'ORIGINE LABO s'approvisionne en activité
+    // UNIQUEMENT par transfert depuis le labo — pas de fabrication / appro manuel côté activité.
+    // (La fabrication au labo passe par updateLaboStock, qui reste autorisée.)
+    if (actId) {
+      const origineRes = await pool.query('SELECT origine FROM produits WHERE id = $1', [produitId]);
+      if (origineRes.rows[0]?.origine === 'labo') {
+        return res.status(400).json({
+          message: "Ce produit est fabriqué au labo : côté activité il s'approvisionne uniquement par transfert, pas par appro manuel.",
+        });
+      }
+    }
+
     // Fetch produit name for type_appro
     const produitRes = await pool.query(`SELECT nom FROM produits WHERE id = $1`, [produitId]);
     const produitNom = produitRes.rows[0]?.nom ?? 'PT';
@@ -647,15 +659,15 @@ const saveStockPT = async (req, res) => {
 
       if (actId) {
         await pool.query(
-          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, 'PT', autoFournisseurId, `${ing.nom}-${yearStr}`]
+          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
+           VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
+          [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
         );
       } else {
         await pool.query(
-          `INSERT INTO stock_client_daily (client_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, 'PT', autoFournisseurId, `${ing.nom}-${yearStr}`]
+          `INSERT INTO stock_client_daily (client_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
+           VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
+          [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
         );
       }
     }
@@ -743,10 +755,11 @@ const affecterActivites = async (req, res) => {
 
     // Replace full set: delete existing then insert new ones
     await pool.query(`DELETE FROM produit_activite_affectation WHERE produit_id = $1`, [produitId]);
-    for (const actId of activiteIds) {
+    if (activiteIds.length > 0) {
       await pool.query(
-        `INSERT INTO produit_activite_affectation (produit_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [produitId, parseInt(actId)]
+        `INSERT INTO produit_activite_affectation (produit_id, activite_id)
+         SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`,
+        [produitId, activiteIds.map((a) => parseInt(a))]
       );
     }
     res.json({ ok: true, activiteIds });
