@@ -1461,6 +1461,51 @@ const exportListExcel = async (req, res) => {
   }
 };
 
+// Produits utilisables (PU) disponibles pour un périmètre — étape "Produits Utilisables" du wizard.
+// origine=labo  : PU des labos choisis (labo_pt_selections).
+// origine=activite : PU des activités choisies (produit_activite_stock) + PU des labos liés à ces activités.
+const getUtilisablesPerimetre = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const origine = req.query.origine === 'labo' ? 'labo' : 'activite';
+  const ids = String(req.query.ids || '')
+    .split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => Number.isInteger(n) && n > 0);
+  if (ids.length === 0) return res.json([]);
+  try {
+    let rows;
+    if (origine === 'labo') {
+      ({ rows } = await pool.query(
+        `SELECT DISTINCT p.id, p.nom AS name
+         FROM produits p
+         JOIN labo_pt_selections lps ON lps.produit_id = p.id
+         JOIN labos l ON l.id = lps.labo_id
+         JOIN profil_entreprise pe ON pe.id = l.entreprise_id
+         WHERE p.client_id = $1 AND p.type = 'utilisable' AND pe.client_id = $1 AND lps.labo_id = ANY($2::int[])
+         ORDER BY p.nom`,
+        [clientId, ids]
+      ));
+    } else {
+      ({ rows } = await pool.query(
+        `SELECT DISTINCT p.id, p.nom AS name
+         FROM produits p
+         WHERE p.client_id = $1 AND p.type = 'utilisable' AND (
+           EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = ANY($2::int[]))
+           OR EXISTS (
+             SELECT 1 FROM labo_pt_selections lps
+             JOIN activites a ON a.labo_id = lps.labo_id
+             WHERE lps.produit_id = p.id AND a.id = ANY($2::int[])
+           )
+         )
+         ORDER BY p.nom`,
+        [clientId, ids]
+      ));
+    }
+    res.json(rows.map((r) => ({ id: r.id, name: r.name })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   list, getById, create, update, remove,
   addIngredient, removeIngredient,
@@ -1468,5 +1513,5 @@ module.exports = {
   getCout, calculerCout, calculerCoutAvecPrixMap,
   buildDpPriceMap, buildMpPriceMap,
   getStockDates, getStockCheck, getManualPrices, saveManualPrices,
-  exportListExcel,
+  exportListExcel, getUtilisablesPerimetre,
 };
