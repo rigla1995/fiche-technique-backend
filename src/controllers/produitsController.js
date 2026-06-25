@@ -7,6 +7,7 @@ const mapProduit = (row) => ({
   description: row.description,
   refProduit: row.ref_produit || null,
   type: row.type || 'vendable',
+  origine: row.origine || 'activite',
   clientId: row.client_id,
   activiteId: row.activite_id || null,
   activites: row.activites_list || [],
@@ -260,21 +261,40 @@ const create = async (req, res) => {
   const activiteId = req.body.activiteId || null;
   const categorieProduitId = req.body.categorieProduitId || req.body.categorie_produit_id || null;
 
+  // Refonte Espace Produits : origine du produit + périmètre (labos OU activités).
+  const origine = req.body.origine === 'labo' ? 'labo' : 'activite';
+  const laboIds = Array.isArray(req.body.laboIds)
+    ? req.body.laboIds.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
+  const activiteIds = Array.isArray(req.body.activiteIds)
+    ? req.body.activiteIds.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
+
   // Catégorie obligatoire pour les produits vendables/suppléments (pas pour les utilisables).
   if (type === 'vendable' && !categorieProduitId) {
     return res.status(400).json({ message: 'La catégorie de produit est obligatoire pour un produit vendable ou un supplément' });
   }
 
+  // Un supplément vendable se compose d'EXACTEMENT 1 élément (1 article OU 1 produit utilisable).
+  if (isSupplement) {
+    const nbComposants = (ingredients?.length || 0) + (subProducts?.length || 0);
+    if (nbComposants !== 1) {
+      return res.status(400).json({ message: 'Un supplément doit contenir exactement 1 élément (un article ou un produit utilisable).' });
+    }
+  }
+
+  // Activité principale (mono, legacy) : la 1ʳᵉ activité choisie pour l'origine activité ; null pour l'origine labo.
+  const activitePrincipale = origine === 'activite' ? (activiteIds[0] || activiteId || null) : null;
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const isStockIngredient = type === 'utilisable' ? true : false;
+    // PT (suivi de stock) si produit utilisable OU produit d'origine labo (fabriqué au labo, transféré).
+    const isStockIngredient = (type === 'utilisable' || origine === 'labo');
     const clientId = req.user.gerant_parent_id || req.user.id;
     const catId = type === 'utilisable' ? null : categorieProduitId;
     const result = await client.query(
-      'INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id, categorie_produit_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activiteId, catId]
+      'INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id, categorie_produit_id, origine) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activitePrincipale, catId, origine]
     );
     const produitId = result.rows[0].id;
 
@@ -310,6 +330,54 @@ const create = async (req, res) => {
       );
     }
 
+    // ── Affectation automatique selon l'origine (refonte Espace Produits) ──────
+    // N'opère que si le périmètre est fourni (nouveau flux). L'ancien flux (activiteId +
+    // appels séparés affecter-activites / toggle-stock-ingredient) reste inchangé.
+    if (origine === 'labo' && laboIds.length > 0) {
+      const ownLabos = await client.query(
+        `SELECT l.id FROM labos l
+         JOIN profil_entreprise pe ON l.entreprise_id = pe.id
+         WHERE pe.client_id = $1 AND l.id = ANY($2::int[])`,
+        [clientId, laboIds]
+      );
+      for (const { id: laboId } of ownLabos.rows) {
+        // Le produit devient un PT du labo (fabrication + transfert).
+        await client.query(
+          'INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [laboId, produitId]
+        );
+        // Il apparaît sous le stock PT de chaque activité rattachée au labo (réception par transfert).
+        await client.query(
+          `INSERT INTO produit_activite_stock (produit_id, activite_id, labo_id)
+           SELECT $1, a.id, $2 FROM activites a WHERE a.labo_id = $2
+           ON CONFLICT (produit_id, activite_id) DO NOTHING`,
+          [produitId, laboId]
+        );
+      }
+    } else if (origine === 'activite' && activiteIds.length > 0) {
+      const ownActs = await client.query(
+        `SELECT a.id FROM activites a
+         JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+         WHERE pe.client_id = $1 AND a.id = ANY($2::int[])`,
+        [clientId, activiteIds]
+      );
+      for (const { id: actId } of ownActs.rows) {
+        if (type === 'vendable') {
+          // Produit vendable : affectation d'affichage à l'activité (vendu via sa recette).
+          await client.query(
+            'INSERT INTO produit_activite_affectation (produit_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [produitId, actId]
+          );
+        } else {
+          // PU dédié activité : stock PT au niveau de l'activité, sans labo (pas de transfert).
+          await client.query(
+            'INSERT INTO produit_activite_stock (produit_id, activite_id, labo_id) VALUES ($1, $2, NULL) ON CONFLICT (produit_id, activite_id) DO NOTHING',
+            [produitId, actId]
+          );
+        }
+      }
+    }
+
     await client.query('COMMIT');
     res.status(201).json(mapProduit(result.rows[0]));
   } catch (err) {
@@ -338,10 +406,19 @@ const update = async (req, res) => {
   const categorieProvided = categorieProduitId !== undefined;
   const ingredients = req.body.ingredients;
   const subProducts = req.body.subProducts;
+  const origine = req.body.origine === 'labo' ? 'labo' : req.body.origine === 'activite' ? 'activite' : undefined;
 
   // Si on bascule (ou reste) en vendable et qu'une catégorie est explicitement fournie mais vide → refus.
   if (categorieProvided && type !== 'utilisable' && !categorieProduitId) {
     return res.status(400).json({ message: 'La catégorie de produit est obligatoire pour un produit vendable ou un supplément' });
+  }
+
+  // Supplément = exactement 1 élément (validé quand la composition est fournie à l'édition).
+  if (isSupplement === true && ingredients !== undefined && subProducts !== undefined) {
+    const nbComposants = (ingredients?.length || 0) + (subProducts?.length || 0);
+    if (nbComposants !== 1) {
+      return res.status(400).json({ message: 'Un supplément doit contenir exactement 1 élément (un article ou un produit utilisable).' });
+    }
   }
 
   const client = await pool.connect();
@@ -354,8 +431,9 @@ const update = async (req, res) => {
        type = COALESCE($4, type),
        is_supplement = COALESCE($7, is_supplement),
        categorie_produit_id = CASE WHEN $8::boolean THEN $9 ELSE categorie_produit_id END,
+       origine = COALESCE($10, origine),
        updated_at = NOW() WHERE id = $5 AND client_id = $6 RETURNING *`,
-      [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.gerant_parent_id || req.user.id, isSupplement !== undefined ? isSupplement : null, categorieProvided, categorieProvided ? (categorieProduitId || null) : null]
+      [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.gerant_parent_id || req.user.id, isSupplement !== undefined ? isSupplement : null, categorieProvided, categorieProvided ? (categorieProduitId || null) : null, origine || null]
     );
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');
