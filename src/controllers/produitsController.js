@@ -218,9 +218,15 @@ const getById = async (req, res) => {
       [id]
     );
 
+    // Affectations (pour l'édition d'un produit labo / valorisé composé).
+    const laboSel = await pool.query('SELECT labo_id FROM labo_pt_selections WHERE produit_id = $1', [id]);
+    const actStock = await pool.query('SELECT activite_id FROM produit_activite_stock WHERE produit_id = $1', [id]);
+
     res.json({
       ...mapProduit(produit.rows[0]),
       refProduit: produit.rows[0].ref_produit || null,
+      laboIds: laboSel.rows.map((r) => r.labo_id),
+      activiteStockIds: actStock.rows.map((r) => r.activite_id),
       ingredients: ingredients.rows.map((r) => ({
         id: r.id,
         ingredientId: r.ingredient_id,
