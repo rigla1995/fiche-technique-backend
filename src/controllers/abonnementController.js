@@ -689,17 +689,19 @@ const upsertPaiement = async (req, res) => {
       finalMontant = applyPromoMensualite(base, promo);
     }
 
-    // Date de règlement : si « payé » sans date explicite, on PERSISTE NOW() une seule
-    // fois (sinon la facture émise par email et celle re-téléchargée porteraient des dates
-    // différentes). Une date déjà enregistrée n'est jamais écrasée sans saisie explicite.
-    const fallbackPayDate = statut === 'payé' ? new Date() : null;
+    // Date de règlement : si « payé » sans date explicite, on PERSISTE la date du jour une
+    // seule fois (sinon la facture émise par email et celle re-téléchargée porteraient des
+    // dates différentes). Une date déjà enregistrée n'est jamais écrasée sans saisie explicite.
+    // Casts ::date explicites : deux paramètres inconnus dans un COALESCE sont sinon inférés
+    // en text par Postgres → erreur 42804 contre la colonne date.
+    const fallbackPayDate = statut === 'payé' ? new Date().toISOString().slice(0, 10) : null;
     const result = await pool.query(
       `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut, saisie_par, date_saisie, date_paiement, notes)
-       VALUES ($1, $2, $3, $4, $5, NOW(), COALESCE($6, $8), $7)
+       VALUES ($1, $2, $3, $4, $5, NOW(), COALESCE($6::date, $8::date), $7)
        ON CONFLICT (abonnement_id, mois) DO UPDATE
        SET statut = $4, montant_dt = COALESCE($3, paiements.montant_dt),
            saisie_par = $5, date_saisie = NOW(),
-           date_paiement = COALESCE($6, paiements.date_paiement, $8),
+           date_paiement = COALESCE($6::date, paiements.date_paiement, $8::date),
            notes = COALESCE($7, paiements.notes)
        RETURNING *`,
       [aboId, moisStr, finalMontant, statut, req.user.id, datePaiement || null, notes || null, fallbackPayDate]
