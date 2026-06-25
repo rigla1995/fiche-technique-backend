@@ -705,27 +705,6 @@ const createVente = async (req, res) => {
       }
     }
 
-    // Origine des produits vendus (refonte Espace Produits) : un produit d'ORIGINE LABO est un PT
-    // vendu comme valorisé — à la vente on déstocke le PT de l'activité (et non sa recette en
-    // articles labo, qui ne sont pas en stock activité). Son coût = coût moyen du PT reçu (transferts).
-    const prodOrigineMap = new Map(); // produit_id -> 'labo' | 'activite'
-    if (prodArticleIds.length > 0) {
-      const or = await client.query('SELECT id, origine FROM produits WHERE id = ANY($1::int[])', [prodArticleIds]);
-      for (const row of or.rows) prodOrigineMap.set(row.id, row.origine || 'activite');
-      if (activite_id) {
-        const laboProdIds = or.rows.filter((r) => (r.origine || 'activite') === 'labo').map((r) => r.id);
-        if (laboProdIds.length > 0) {
-          const pc = await client.query(
-            `SELECT produit_id, AVG(prix_calcule) AS c FROM stock_produits_transformes
-             WHERE produit_id = ANY($1::int[]) AND activite_id = $2 AND quantite > 0 AND prix_calcule IS NOT NULL
-             GROUP BY produit_id`,
-            [laboProdIds, activite_id]
-          );
-          for (const row of pc.rows) prodCostMap.set(row.produit_id, row.c != null ? parseFloat(row.c) : null);
-        }
-      }
-    }
-
     for (const ligne of lignes) {
       const { article_type, article_id, quantite, prix_unitaire } = ligne;
 
@@ -745,20 +724,13 @@ const createVente = async (req, res) => {
 
       // Accumulate ingredient and PT sub-product totals for stock deduction
       if (activite_id && moduleVenteActif && article_type === 'produit') {
-        if (prodOrigineMap.get(Number(article_id)) === 'labo') {
-          // Produit labo (PT) vendu comme valorisé : déstocke le PT de l'activité directement.
-          ptTotals.set(Number(article_id),
-            (ptTotals.get(Number(article_id)) || 0) + parseFloat(quantite));
-        } else {
-          // Produit activité : explose la recette (articles + sous-produits PT).
-          for (const pi of (prodIngMap.get(Number(article_id)) || [])) {
-            ingredientTotals.set(pi.ingredient_id,
-              (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(quantite));
-          }
-          for (const sp of (prodSpMap.get(Number(article_id)) || [])) {
-            ptTotals.set(sp.sous_produit_id,
-              (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(quantite));
-          }
+        for (const pi of (prodIngMap.get(Number(article_id)) || [])) {
+          ingredientTotals.set(pi.ingredient_id,
+            (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(quantite));
+        }
+        for (const sp of (prodSpMap.get(Number(article_id)) || [])) {
+          ptTotals.set(sp.sous_produit_id,
+            (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(quantite));
         }
       }
       // Direct ingredient sale (valorisé article) — deduct quantity directly from stock
@@ -897,26 +869,15 @@ const annulerVente = async (req, res) => {
             annulSpMap.get(row.produit_id).push(row);
           }
         }
-        // Origine des produits (refonte) : un produit labo se réintègre comme PT de l'activité.
-        const annulOrigineMap = new Map();
-        if (annulProdIds.length > 0) {
-          const or = await client.query('SELECT id, origine FROM produits WHERE id = ANY($1::int[])', [annulProdIds]);
-          for (const row of or.rows) annulOrigineMap.set(row.id, row.origine || 'activite');
-        }
         for (const ligne of lignesRes.rows) {
           if (ligne.article_type === 'produit') {
-            if (annulOrigineMap.get(Number(ligne.article_id)) === 'labo') {
-              ptTotals.set(Number(ligne.article_id),
-                (ptTotals.get(Number(ligne.article_id)) || 0) + parseFloat(ligne.quantite));
-            } else {
-              for (const pi of (annulIngMap.get(Number(ligne.article_id)) || [])) {
-                ingredientTotals.set(pi.ingredient_id,
-                  (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(ligne.quantite));
-              }
-              for (const sp of (annulSpMap.get(Number(ligne.article_id)) || [])) {
-                ptTotals.set(sp.sous_produit_id,
-                  (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(ligne.quantite));
-              }
+            for (const pi of (annulIngMap.get(Number(ligne.article_id)) || [])) {
+              ingredientTotals.set(pi.ingredient_id,
+                (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(ligne.quantite));
+            }
+            for (const sp of (annulSpMap.get(Number(ligne.article_id)) || [])) {
+              ptTotals.set(sp.sous_produit_id,
+                (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(ligne.quantite));
             }
           }
           if (ligne.article_type === 'ingredient') {

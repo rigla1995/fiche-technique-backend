@@ -7,7 +7,6 @@ const {
   getActiviteTypesSummary,
   getActiviteSelectedIngredients, getTypeSelectedIngredients,
   getCatalogueGlobalIngredients,
-  getActivitesArticlesConsommables,
 } = require('../controllers/entrepriseController');
 const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur } = require('../controllers/fournisseurController');
 const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, exportEntreprisePertesPdf, getPrixEntreprisePerte, getDateRangeEntreprisePerte } = require('../controllers/pertesController');
@@ -75,8 +74,6 @@ router.put('/', authenticate, requireEntreprise, upsertEntreprise);
 router.get('/activites/has', authenticate, requireEntreprise, hasActivites);
 router.get('/activites/types-summary', authenticate, requireEntreprise, getActiviteTypesSummary);
 router.get('/activites/selected-ingredients', authenticate, requireEntreprise, getTypeSelectedIngredients);
-// Articles consommables affectés à TOUTES les activités fournies (?activiteIds=1,2) — intersection. Refonte Espace Produits.
-router.get('/activites/articles-consommables', authenticate, requireEntreprise, getActivitesArticlesConsommables);
 
 /**
  * @openapi
