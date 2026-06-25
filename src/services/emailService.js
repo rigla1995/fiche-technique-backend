@@ -6,14 +6,17 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 const APP_NAME = process.env.APP_NAME || 'LabFlow';
 
-// Bloc logo de marque pour les en-têtes d'emails (diamant dégradé + wordmark LabFlow).
-// Compatible clients mail (table + styles inline ; le diamant reste un carré coloré sous Outlook).
+// Bloc logo de marque pour les en-têtes d'emails (tuile « L » + wordmark LabFlow).
+// Robuste tous clients : la tuile utilise l'attribut bgcolor (Outlook) + background-color
+// solide en repli, avec le dégradé en amélioration progressive — donc toujours visible.
 const BRAND_LOGO = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 2px;"><tr>
-        <td style="padding-right:12px;vertical-align:middle;">
-          <div style="width:28px;height:28px;background:linear-gradient(135deg,#0ea5e9,#6366f1 55%,#a855f7);border-radius:8px;transform:rotate(45deg);box-shadow:0 4px 14px rgba(99,102,241,0.45);"></div>
+        <td style="padding-right:11px;vertical-align:middle;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td width="30" height="30" align="center" valign="middle" bgcolor="#6366f1" style="width:30px;height:30px;background-color:#6366f1;background-image:linear-gradient(135deg,#0ea5e9,#6366f1 55%,#a855f7);border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;font-weight:800;color:#ffffff;line-height:30px;">L</td>
+          </tr></table>
         </td>
         <td style="vertical-align:middle;">
-          <span style="font-size:25px;font-weight:600;letter-spacing:1.5px;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Lab<span style="color:rgba(255,255,255,0.6);">Flow</span></span>
+          <span style="font-size:24px;font-weight:600;letter-spacing:1.4px;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Lab<span style="color:rgba(255,255,255,0.6);">Flow</span></span>
         </td>
       </tr></table>`;
 
@@ -76,6 +79,21 @@ const sendInviteEmail = async ({ to, nom, token, role }) => {
 
 const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 }) => {
   const activateUrl = `${APP_URL}/invite/${token}`;
+  const hasContract = !!contractPdfBase64;
+
+  // Sans pièce jointe (activation après signature DocuSeal) : pas de bloc « document joint ».
+  const intro = hasContract
+    ? `Nous avons le plaisir de vous accueillir sur <strong>${APP_NAME}</strong>. Votre contrat d'abonnement figure en pièce jointe au format PDF.<br>
+        Pour accéder à votre espace, il vous suffit d'activer votre compte et de définir votre mot de passe.`
+    : `Nous vous remercions pour la signature de votre contrat. Votre espace <strong>${APP_NAME}</strong> est désormais prêt.<br>
+        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.`;
+
+  const contractBlock = hasContract ? `
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;">
+        <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">📎 Document joint</p>
+        <p style="margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;">Contrat d'abonnement — ${APP_NAME}</p>
+        <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">En activant votre compte, vous acceptez les termes de ce contrat.</p>
+      </div>` : '';
 
   const html = `
 <!DOCTYPE html>
@@ -85,30 +103,25 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
   <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
     <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
       ${BRAND_LOGO}
-      <p style="margin:0;color:#c7d2fe;font-size:0.85rem;">Plateforme de gestion des fiches techniques</p>
+      <p style="margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;">Activation de votre compte</p>
     </div>
     <div style="padding:40px 48px;">
-      <h2 style="margin:0 0 8px;color:#111827;font-size:1.2rem;font-weight:700;">Bienvenue, ${nom} !</h2>
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bienvenue, ${nom}</h2>
       <p style="margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;">
-        Votre espace <strong>${APP_NAME}</strong> est prêt. Votre contrat d'abonnement est joint à cet email en PDF.<br>
-        Cliquez sur le bouton ci-dessous pour activer votre compte et définir votre mot de passe.
+        ${intro}
       </p>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;">
-        <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">📎 Document joint</p>
-        <p style="margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;">Contrat d'abonnement — ${APP_NAME}</p>
-        <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">En activant votre compte, vous acceptez les termes de ce contrat.</p>
-      </div>
+      ${contractBlock}
       <div style="text-align:center;margin:0 0 28px;">
         <a href="${activateUrl}" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
-          Activer mon compte &amp; signer le contrat
+          Activer mon compte
         </a>
       </div>
-      <p style="margin:0 0 6px;color:#6b7280;font-size:0.8rem;">⏳ Ce lien est valable <strong>48 heures</strong>.</p>
+      <p style="margin:0 0 6px;color:#6b7280;font-size:0.8rem;">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>
       <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ${activateUrl}</p>
     </div>
     <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
       <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
-        Si vous n'avez pas demandé ce compte, ignorez cet email. &mdash; ${APP_NAME}
+        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; ${APP_NAME}
       </p>
     </div>
   </div>
