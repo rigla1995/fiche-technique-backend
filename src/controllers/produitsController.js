@@ -1136,7 +1136,7 @@ const getStockCheck = async (req, res) => {
     const validIdsSet = new Set();
 
     if (actId) {
-      // Only check stock_entreprise_daily for the chosen activity
+      // Stock de l'activité choisie
       const r1 = await pool.query(
         `SELECT DISTINCT ON (ingredient_id) ingredient_id
          FROM stock_entreprise_daily
@@ -1147,6 +1147,21 @@ const getStockCheck = async (req, res) => {
         [actId, ingredientIds]
       );
       r1.rows.forEach((r) => validIdsSet.add(r.ingredient_id));
+      // Repli LABO : un produit composé (origine labo) a ses articles dans le stock du labo de l'activité.
+      const actRes = await pool.query('SELECT labo_id FROM activites WHERE id = $1', [actId]);
+      const laboId = actRes.rows[0]?.labo_id;
+      if (laboId) {
+        const r2 = await pool.query(
+          `SELECT DISTINCT ON (ingredient_id) ingredient_id
+           FROM stock_labo_daily
+           WHERE labo_id = $1 AND ingredient_id = ANY($2::int[])
+             AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+             AND quantite IS NOT NULL AND quantite > 0
+           ORDER BY ingredient_id, date_appro DESC`,
+          [laboId, ingredientIds]
+        );
+        r2.rows.forEach((r) => validIdsSet.add(r.ingredient_id));
+      }
     } else {
       const r = await pool.query(
         `SELECT DISTINCT ON (ingredient_id) ingredient_id
