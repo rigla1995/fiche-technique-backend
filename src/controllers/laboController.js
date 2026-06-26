@@ -116,15 +116,17 @@ const listLabos = async (req, res) => {
       gerantClause = ` AND l.id = ANY($${params.length}::int[])`;
     }
     const result = await pool.query(
-      `SELECT l.*, COUNT(fl.fournisseur_id)::int AS fournisseur_count
+      `SELECT l.*, COUNT(DISTINCT fl.fournisseur_id)::int AS fournisseur_count,
+              COUNT(DISTINCT lis.ingredient_id)::int AS ingredient_count
        FROM labos l
        LEFT JOIN fournisseur_labos fl ON fl.labo_id = l.id
+       LEFT JOIN labo_ingredient_selections lis ON lis.labo_id = l.id
        WHERE l.entreprise_id = $1${gerantClause}
        GROUP BY l.id
        ORDER BY l.nom`,
       params
     );
-    res.json(result.rows.map((r) => ({ ...mapLabo(r), fournisseurCount: r.fournisseur_count })));
+    res.json(result.rows.map((r) => ({ ...mapLabo(r), fournisseurCount: r.fournisseur_count, ingredientCount: r.ingredient_count })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -1852,6 +1854,14 @@ const deleteLabo = async (req, res) => {
     );
     if (laboRes.rows.length === 0)
       return res.status(404).json({ message: 'Labo introuvable' });
+
+    // Suppression impossible si des articles sont affectés au labo.
+    const used = await pool.query(
+      'SELECT 1 FROM labo_ingredient_selections WHERE labo_id = $1 LIMIT 1', [laboId]
+    );
+    if (used.rows.length > 0) {
+      return res.status(409).json({ message: "Suppression impossible : des articles sont affectés à ce labo." });
+    }
 
     // Unassign labo from activities
     await pool.query(
