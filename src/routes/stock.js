@@ -283,20 +283,6 @@ const inventaireValidation = [
  *       200:
  *         description: Historique supprimé
  */
-router.get('/client/summary', authenticate, requireClient, getStockClientSummary);
-router.get('/client/ingredient-selections', authenticate, requireClient, getClientIngredientSelections);
-router.get('/client', authenticate, requireClient, getStockClient);
-router.put('/client/:ingredientId', authenticate, requireClient, approValidation, validate, updateStockClient);
-router.put('/client/:ingredientId/seuil-min', authenticate, requireClient, seuilMinValidation, validate, updateSeuilMinClient);
-router.post('/client/pertes', authenticate, requireClient, perteValidation, validate, createClientPerte);
-router.get('/client/pertes/export-excel', authenticate, requireClient, exportClientPertes);
-router.get('/client/pertes/export-pdf', authenticate, requireClient, exportClientPertesPdf);
-router.get('/client/pertes/prix', authenticate, requireClient, getPrixClientPerte);
-router.get('/client/pertes/date-range', authenticate, requireClient, getDateRangeClientPerte);
-router.get('/client/pertes', authenticate, requireClient, listClientPertes);
-router.put('/client/pertes/:id', authenticate, requireClient, updateClientPerte);
-router.delete('/client/pertes/:id', authenticate, requireClient, deleteClientPerte);
-router.get('/client/:ingredientId/history', authenticate, requireClient, getHistoryClient);
 
 /**
  * @openapi
@@ -426,9 +412,7 @@ router.get('/entreprise/:activiteId', authenticate, requireEntreprise, getStockE
 router.put('/entreprise/:activiteId/:ingredientId', authenticate, requireEntreprise, approValidation, validate, updateStockEntreprise);
 router.get('/entreprise/:activiteId/:ingredientId/history', authenticate, requireEntreprise, getHistoryEntreprise);
 router.put('/entreprise/:activiteId/:ingredientId/seuil-min', authenticate, requireEntreprise, seuilMinValidation, validate, updateSeuilMin);
-router.get('/client/:ingredientId/cascade-info', authenticate, requireClient, getCascadeInfoClient);
 router.get('/entreprise/:activiteId/:ingredientId/cascade-info', authenticate, requireEntreprise, getCascadeInfoEntreprise);
-router.delete('/client/:ingredientId/all-history', authenticate, requireClient, deleteClientIngredientHistory);
 router.delete('/entreprise/:activiteId/:ingredientId/all-history', authenticate, requireEntreprise, deleteEntrepriseIngredientHistory);
 
 /**
@@ -777,11 +761,6 @@ const {
   getClientInventaireHistorique, exportClientInventaireExcel,
   exportActiviteInventaireHistoriquePdf, exportClientInventaireHistoriquePdf,
 } = require('../controllers/inventaireController');
-router.get('/client/inventaire', authenticate, requireClient, getClientInventaireStock);
-router.post('/client/inventaire', authenticate, requireClient, inventaireValidation, validate, saveClientInventaire);
-router.get('/client/inventaire/historique', authenticate, requireClient, getClientInventaireHistorique);
-router.get('/client/inventaire/historique/export-excel', authenticate, requireClient, exportClientInventaireExcel);
-router.get('/client/inventaire/historique/export-pdf', authenticate, requireClient, exportClientInventaireHistoriquePdf);
 router.get('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, getActiviteInventaireStock);
 router.post('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, inventaireValidation, validate, saveActiviteInventaire);
 router.get('/entreprise/:activiteId/inventaire/historique', authenticate, requireEntreprise, getActiviteInventaireHistorique);
