@@ -1205,17 +1205,22 @@ const getTransferHistory = async (req, res) => {
       })));
     }
 
+    // LEFT JOIN articles + produits : inclut aussi les transferts de Produits Transformés
+    // (ligne PT : produit_id renseigné, ingredient_id NULL → exclus par un JOIN articles strict).
     result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
               lt.created_by, ub.nom as created_by_nom,
-              i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
+              lt.ingredient_id, lt.produit_id,
+              COALESCE(i.nom, p.nom) as ingredient_nom,
+              COALESCE(u.nom, 'unité') as unite_nom,
               a.id as activite_id, a.nom as activite_nom,
-              COALESCE(c.nom, 'Sans catégorie') as categorie_nom
+              COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
        FROM labo_transfers lt
-       JOIN articles i ON i.id = lt.ingredient_id
-       JOIN unites u ON i.unite_id = u.id
+       LEFT JOIN articles i ON i.id = lt.ingredient_id
+       LEFT JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
+       LEFT JOIN produits p ON p.id = lt.produit_id
        JOIN activites a ON a.id = lt.activite_id
        LEFT JOIN utilisateurs ub ON ub.id = lt.created_by
        WHERE lt.labo_id = $1 AND lt.date_transfert >= make_date($2::int, 1, 1) AND lt.date_transfert < make_date($2::int + 1, 1, 1)${extraWhere}
@@ -1235,7 +1240,7 @@ const getTransferHistory = async (req, res) => {
       prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
       tauxTva: r.taux_tva != null ? parseFloat(r.taux_tva) : null,
       prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
-      ingredientId: r.ingredient_id,
+      ingredientId: r.produit_id != null ? -(r.produit_id) : r.ingredient_id,
       ingredientNom: r.ingredient_nom,
       uniteNom: r.unite_nom,
       categorieNom: r.categorie_nom,
@@ -1948,15 +1953,16 @@ const exportLaboTransferExcel = async (req, res) => {
 
     const result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
-              lt.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
+              lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, COALESCE(u.nom, 'unité') AS unite_nom,
+              COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) AS categorie_nom,
               lt.activite_id, a.nom AS activite_nom,
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
               ub.nom AS created_by_nom
        FROM labo_transfers lt
-       JOIN articles i ON i.id = lt.ingredient_id
-       JOIN unites u ON u.id = i.unite_id
+       LEFT JOIN articles i ON i.id = lt.ingredient_id
+       LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
+       LEFT JOIN produits p ON p.id = lt.produit_id
        JOIN activites a ON a.id = lt.activite_id
        LEFT JOIN utilisateurs ub ON ub.id = lt.created_by
        WHERE ${conditions.join(' AND ')}
@@ -2397,14 +2403,15 @@ async function exportLaboTransferHistoriquePdf(req, res) {
     if (activiteId) { conditions.push(`lt.activite_id = $${idx++}`); params.push(activiteId); }
     const result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
-              lt.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
+              lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, COALESCE(u.nom, 'unité') AS unite_nom,
+              COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) AS categorie_nom,
               lt.activite_id, a.nom AS activite_nom,
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva
        FROM labo_transfers lt
-       JOIN articles i ON i.id = lt.ingredient_id
-       JOIN unites u ON u.id = i.unite_id
+       LEFT JOIN articles i ON i.id = lt.ingredient_id
+       LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
+       LEFT JOIN produits p ON p.id = lt.produit_id
        JOIN activites a ON a.id = lt.activite_id
        WHERE ${conditions.join(' AND ')}
        ORDER BY lt.date_transfert DESC, lt.id DESC`,
