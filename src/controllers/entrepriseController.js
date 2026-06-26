@@ -225,6 +225,20 @@ const deleteActivite = async (req, res) => {
     );
     if (entreprise.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
 
+    // Suppression impossible si des articles sont affectés à l'activité (ou à son labo) :
+    // même règle que le compteur affiché côté client (mapActivite.ingredientCount).
+    const used = await pool.query(
+      `SELECT CASE WHEN a.labo_id IS NOT NULL
+                THEN (SELECT COUNT(*) FROM labo_ingredient_selections WHERE labo_id = a.labo_id)
+                ELSE (SELECT COUNT(*) FROM activite_ingredient_selections WHERE activite_id = a.id) END AS cnt
+         FROM activites a WHERE a.id = $1 AND a.entreprise_id = $2`,
+      [id, entreprise.rows[0].id]
+    );
+    if (used.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (parseInt(used.rows[0].cnt, 10) > 0) {
+      return res.status(409).json({ message: "Suppression impossible : des articles sont affectés à cette activité." });
+    }
+
     const result = await pool.query(
       'DELETE FROM activites WHERE id = $1 AND entreprise_id = $2 RETURNING id',
       [id, entreprise.rows[0].id]
