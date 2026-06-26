@@ -771,79 +771,8 @@ const getHistoriqueAppro = async (req, res) => {
 
       res.json(regularRows);
     } else {
-      const params = [req.user.gerant_parent_id || req.user.id, currentYear];
-      let extraWhere = '';
-      if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
-      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
-      if (startDate) { params.push(startDate); extraWhere += ` AND scd.date_appro >= $${params.length}`; }
-      if (endDate) { params.push(endDate); extraWhere += ` AND scd.date_appro <= $${params.length}`; }
-      if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND scd.fournisseur_id = $${params.length}`; }
-      if (refFacture) { params.push(`%${refFacture}%`); extraWhere += ` AND scd.ref_facture ILIKE $${params.length}`; }
-
-      const result = await pool.query(
-        `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
-                scd.ref_facture, scd.fournisseur_id, f.nom as fournisseur_nom, scd.updated_at,
-                scd.created_by, ub.nom as created_by_nom,
-                scd.taux_tva, scd.prix_unitaire_tva,
-                i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
-                COALESCE(c.nom, 'Sans catégorie') as categorie_nom
-         FROM stock_client_daily scd
-         JOIN articles i ON i.id = scd.ingredient_id
-         JOIN unites u ON i.unite_id = u.id
-         LEFT JOIN categories c ON i.categorie_id = c.id
-         LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
-         LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
-         WHERE scd.client_id = $1 AND scd.date_appro >= make_date($2::int, 1, 1) AND scd.date_appro < make_date($2::int + 1, 1, 1)${extraWhere}
-         ORDER BY scd.date_appro DESC, i.nom
-         ${parsedLimit ? `LIMIT ${parsedLimit} OFFSET ${parsedOffset}` : ''}`,
-        params
-      );
-
-      let regularRows = result.rows.map(mapHistoriqueEntry);
-
-      // Append PT entries if no category filter is active or ptOnly is requested
-      if (ptOnly === 'true' || (!categorieId && !ingredientId)) {
-        const ptParams = [req.user.gerant_parent_id || req.user.id];
-        let ptWhere = `spt.client_id = $1`;
-        if (startDate) { ptParams.push(startDate); ptWhere += ` AND spt.date_appro >= $${ptParams.length}`; }
-        if (endDate) { ptParams.push(endDate); ptWhere += ` AND spt.date_appro <= $${ptParams.length}`; }
-        if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND spt.produit_id = $${ptParams.length}`; }
-        const ptResult = await pool.query(
-          `SELECT spt.id, spt.client_id, spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at, p.nom as produit_nom, p.id as produit_id
-           FROM stock_produits_transformes spt
-           JOIN produits p ON p.id = spt.produit_id
-           WHERE ${ptWhere}
-           ORDER BY spt.date_appro DESC`,
-          ptParams
-        );
-        const ptEntries = ptResult.rows.map((spt) => ({
-          id: spt.id,
-          activiteId: null,
-          dateAppro: isoDate(spt.date_appro),
-          quantite: spt.quantite !== null ? parseFloat(spt.quantite) : null,
-          prixUnitaire: spt.prix_calcule !== null ? parseFloat(spt.prix_calcule) : null,
-          typeAppro: 'produit_transformé',
-          refFacture: null,
-          fournisseurId: null,
-          fournisseurNom: null,
-          updatedAt: spt.created_at,
-          ingredientId: -(spt.produit_id),
-          ingredientNom: spt.produit_nom,
-          uniteNom: 'unité',
-          categorieNom: 'Produits Transformés',
-        }));
-        if (ptOnly === 'true') {
-          regularRows = ptEntries;
-        } else {
-          regularRows = [...regularRows, ...ptEntries].sort((a, b) => {
-            if (!a.dateAppro) return 1;
-            if (!b.dateAppro) return -1;
-            return b.dateAppro.localeCompare(a.dateAppro);
-          });
-        }
-      }
-
-      res.json(regularRows);
+      // Aucun filtre activité/labo (cas indép supprimé) : rien à retourner.
+      res.json([]);
     }
   } catch (err) {
     console.error(err);
@@ -894,19 +823,6 @@ const updateHistoriqueEntry = async (req, res) => {
           }
         }
       });
-    } else {
-      const check = await pool.query(
-        `SELECT id, created_by FROM stock_client_daily WHERE id=$1 AND client_id=$2`,
-        [id, req.user.gerant_parent_id || req.user.id]
-      );
-      if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
-      if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
-        return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
-      await pool.query(
-        `UPDATE stock_client_daily SET quantite=$1, prix_unitaire=$2, fournisseur_id=$3, ref_facture=$4, updated_at=NOW()
-         WHERE id=$5`,
-        [quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, id]
-      );
     }
     res.json({ success: true });
   } catch (err) {
@@ -950,15 +866,6 @@ const deleteHistoriqueEntry = async (req, res) => {
           );
         }
       });
-    } else {
-      const check = await pool.query(
-        `SELECT id, created_by FROM stock_client_daily WHERE id=$1 AND client_id=$2`,
-        [id, req.user.gerant_parent_id || req.user.id]
-      );
-      if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
-      if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
-        return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
-      await pool.query('DELETE FROM stock_client_daily WHERE id=$1', [id]);
     }
     res.json({ success: true });
   } catch (err) {
@@ -1087,52 +994,6 @@ const exportHistoriqueExcel = async (req, res) => {
       );
       if (ptOnly === 'true') rows = ptResultEnt.rows;
       else rows = rows.concat(ptResultEnt.rows);
-    } else {
-      if (ptOnly !== 'true') {
-        const params = [req.user.gerant_parent_id || req.user.id, currentYear];
-        let extraWhere = '';
-        if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
-        else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
-        if (startDate) { params.push(startDate); extraWhere += ` AND scd.date_appro >= $${params.length}`; }
-        if (endDate) { params.push(endDate); extraWhere += ` AND scd.date_appro <= $${params.length}`; }
-        if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND scd.fournisseur_id = $${params.length}`; }
-        if (refFacture) { params.push(`%${refFacture}%`); extraWhere += ` AND scd.ref_facture ILIKE $${params.length}`; }
-        const result = await pool.query(
-          `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
-                  scd.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
-                  u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
-                  scd.taux_tva, scd.prix_unitaire_tva, ub.nom as created_by_nom
-           FROM stock_client_daily scd
-           JOIN articles i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
-           LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
-           LEFT JOIN utilisateurs ub ON ub.id = scd.created_by
-           WHERE scd.client_id = $1 AND scd.date_appro >= make_date($2::int, 1, 1) AND scd.date_appro < make_date($2::int + 1, 1, 1)${extraWhere}
-           ORDER BY scd.date_appro DESC, i.nom`, params
-        );
-        rows = result.rows;
-      }
-
-      // Append PT rows for indép
-      const ptParamsIndep = [req.user.id, currentYear];
-      let ptWhereIndep = `spt.client_id = $1 AND spt.date_appro >= make_date($2::int, 1, 1) AND spt.date_appro < make_date($2::int + 1, 1, 1)`;
-      if (ptProduitId) { ptParamsIndep.push(ptProduitId); ptWhereIndep += ` AND spt.produit_id = $${ptParamsIndep.length}`; }
-      if (startDate) { ptParamsIndep.push(startDate); ptWhereIndep += ` AND spt.date_appro >= $${ptParamsIndep.length}`; }
-      if (endDate) { ptParamsIndep.push(endDate); ptWhereIndep += ` AND spt.date_appro <= $${ptParamsIndep.length}`; }
-      const ptResultIndep = await pool.query(
-        `SELECT spt.id, spt.date_appro, spt.quantite, spt.prix_calcule AS prix_unitaire,
-                'produit_transforme' AS type_appro,
-                NULL AS fournisseur_nom, NULL AS ref_facture,
-                p.nom AS ingredient_nom,
-                'Produits Transformés' AS categorie_nom,
-                'unité' AS unite_nom,
-                NULL AS taux_tva, NULL AS prix_unitaire_tva, NULL AS created_by_nom
-         FROM stock_produits_transformes spt
-         JOIN produits p ON p.id = spt.produit_id
-         WHERE ${ptWhereIndep}
-         ORDER BY spt.date_appro DESC, p.nom`,
-        ptParamsIndep
-      );
-      rows = rows.concat(ptResultIndep.rows);
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -1360,27 +1221,6 @@ const exportHistoriquePdf = async (req, res) => {
          ORDER BY sed.date_appro DESC, i.nom`, params
       );
       rows = result.rows.map((r) => ({ ...r, activite_nom: activiteNames[r.activite_id] || '' }));
-    } else {
-      const params = [req.user.gerant_parent_id || req.user.id, currentYear];
-      let extraWhere = '';
-      if (ingredientId) { params.push(ingredientId); extraWhere += ` AND scd.ingredient_id = $${params.length}`; }
-      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
-      if (startDate) { params.push(startDate); extraWhere += ` AND scd.date_appro >= $${params.length}`; }
-      if (endDate)   { params.push(endDate);   extraWhere += ` AND scd.date_appro <= $${params.length}`; }
-      if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND scd.fournisseur_id = $${params.length}`; }
-      if (refFacture)    { params.push(`%${refFacture}%`); extraWhere += ` AND scd.ref_facture ILIKE $${params.length}`; }
-      const result = await pool.query(
-        `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.type_appro,
-                scd.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
-                u.nom as unite_nom, COALESCE(c.nom,'Sans catégorie') as categorie_nom,
-                scd.taux_tva, scd.prix_unitaire_tva
-         FROM stock_client_daily scd
-         JOIN articles i ON i.id = scd.ingredient_id JOIN unites u ON i.unite_id = u.id
-         LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
-         WHERE scd.client_id = $1 AND scd.date_appro >= make_date($2::int, 1, 1) AND scd.date_appro < make_date($2::int + 1, 1, 1)${extraWhere}
-         ORDER BY scd.date_appro DESC, i.nom`, params
-      );
-      rows = result.rows;
     }
 
     await buildHistoriqueApproPdf(res, rows, { startDate, endDate });

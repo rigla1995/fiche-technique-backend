@@ -361,8 +361,8 @@ const remove = async (req, res) => {
     // SET NULL on created_by columns that have no ON DELETE action.
     // Use SAVEPOINT per table so a missing table/column doesn't abort the transaction.
     const auditTables = [
-      'stock_client_daily', 'stock_entreprise_daily', 'stock_labo_daily',
-      'client_pertes', 'pertes', 'labo_transfers', 'inventaires', 'ventes',
+      'stock_entreprise_daily', 'stock_labo_daily',
+      'pertes', 'labo_transfers', 'inventaires', 'ventes',
     ];
     for (const t of auditTables) {
       await dbClient.query('SAVEPOINT sp_audit');

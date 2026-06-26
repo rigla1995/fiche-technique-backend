@@ -118,27 +118,7 @@ const getLignes = async (req, res) => {
 
     let rows = [];
 
-    // stock_client_daily (client-level, no activite_id, no labo_id)
-    if (!facture.activite_id && !facture.labo_id) {
-      const r = await pool.query(
-        `SELECT scd.id, scd.date_appro, scd.quantite, scd.prix_unitaire, scd.taux_tva, scd.prix_unitaire_tva,
-                scd.type_appro, scd.ref_facture,
-                i.nom AS ingredient_nom, i.id AS ingredient_id,
-                u.nom AS unite_nom,
-                COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-                f.nom AS fournisseur_nom, scd.fournisseur_id,
-                NULL::int AS activite_id, NULL::text AS activite_nom
-         FROM stock_client_daily scd
-         JOIN articles i ON i.id = scd.ingredient_id
-         JOIN unites u ON u.id = i.unite_id
-         LEFT JOIN categories c ON c.id = i.categorie_id
-         LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
-         WHERE scd.facture_id = $1
-         ORDER BY scd.date_appro, i.nom`,
-        [id]
-      );
-      rows = r.rows;
-    } else if (facture.activite_id) {
+    if (facture.activite_id) {
       // stock_entreprise_daily
       const r = await pool.query(
         `SELECT sed.id, sed.date_appro, sed.quantite, sed.prix_unitaire, sed.taux_tva, sed.prix_unitaire_tva,

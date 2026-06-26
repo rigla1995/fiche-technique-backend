@@ -675,13 +675,22 @@ const createVente = async (req, res) => {
 
     const ingCostMap = new Map();   // ingredient_id -> AVG prix (ou null)
     if (ingArticleIds.length > 0) {
-      const r = await client.query(
-        `SELECT ingredient_id, AVG(prix_unitaire) AS avg_prix
-         FROM stock_client_daily
-         WHERE ingredient_id = ANY($1::int[]) AND client_id = $2 AND quantite > 0
-         GROUP BY ingredient_id`,
-        [ingArticleIds, cid]
-      );
+      // Coût matière = prix moyen dans le stock du périmètre de la vente (activité ou labo).
+      const r = activite_id
+        ? await client.query(
+            `SELECT ingredient_id, AVG(prix_unitaire) AS avg_prix
+             FROM stock_entreprise_daily
+             WHERE ingredient_id = ANY($1::int[]) AND activite_id = $2 AND quantite > 0
+             GROUP BY ingredient_id`,
+            [ingArticleIds, activite_id]
+          )
+        : await client.query(
+            `SELECT ingredient_id, AVG(prix_unitaire) AS avg_prix
+             FROM stock_labo_daily
+             WHERE ingredient_id = ANY($1::int[]) AND labo_id = $2 AND quantite > 0
+             GROUP BY ingredient_id`,
+            [ingArticleIds, labo_id]
+          );
       for (const row of r.rows) ingCostMap.set(row.ingredient_id, row.avg_prix != null ? parseFloat(row.avg_prix) : null);
     }
 
@@ -693,13 +702,13 @@ const createVente = async (req, res) => {
         `SELECT pi.produit_id, SUM(pi.portion * COALESCE(last_prix.prix_unitaire, 0)) AS cout
          FROM produit_ingredients pi
          LEFT JOIN LATERAL (
-           SELECT prix_unitaire FROM stock_client_daily
-           WHERE ingredient_id = pi.ingredient_id AND client_id = $2 AND quantite > 0
+           SELECT prix_unitaire FROM ${activite_id ? 'stock_entreprise_daily' : 'stock_labo_daily'}
+           WHERE ingredient_id = pi.ingredient_id AND ${activite_id ? 'activite_id' : 'labo_id'} = $2 AND quantite > 0
            ORDER BY date_appro DESC LIMIT 1
          ) last_prix ON true
          WHERE pi.produit_id = ANY($1::int[])
          GROUP BY pi.produit_id`,
-        [prodArticleIds, cid]
+        [prodArticleIds, activite_id || labo_id]
       );
       for (const row of cr.rows) prodCostMap.set(row.produit_id, row.cout != null ? parseFloat(row.cout) : null);
 
@@ -791,9 +800,9 @@ const createVente = async (req, res) => {
     if (activite_id && ingredientTotals.size > 0) {
       const ingIds = [...ingredientTotals.keys()].map(Number);
       const cr = await client.query(
-        `SELECT ingredient_id, AVG(prix_unitaire) AS c FROM stock_client_daily
-          WHERE ingredient_id = ANY($1::int[]) AND client_id = $2 AND quantite > 0 GROUP BY ingredient_id`,
-        [ingIds, cid]
+        `SELECT ingredient_id, AVG(prix_unitaire) AS c FROM stock_entreprise_daily
+          WHERE ingredient_id = ANY($1::int[]) AND activite_id = $2 AND quantite > 0 GROUP BY ingredient_id`,
+        [ingIds, activite_id]
       );
       for (const row of cr.rows) venteCostByIng.set(row.ingredient_id, row.c != null ? parseFloat(row.c) : 0);
       const fo = await client.query(
