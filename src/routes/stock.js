@@ -2,18 +2,15 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const {
-  getStockClient, updateStockClient, getStockClientSummary,
   getStockEntreprise, updateStockEntreprise,
-  getHistoryClient, getHistoryEntreprise,
+  getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
-  updateSeuilMin, updateSeuilMinClient, createClientPerte,
+  updateSeuilMin,
   exportHistoriqueExcel, exportHistoriquePdf,
-  deleteClientIngredientHistory, deleteEntrepriseIngredientHistory,
-  getCascadeInfoClient, getCascadeInfoEntreprise,
-  getClientIngredientSelections,
+  deleteEntrepriseIngredientHistory,
+  getCascadeInfoEntreprise,
 } = require('../controllers/stockController');
 const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
-const { listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, exportClientPertesPdf, getPrixClientPerte, getDateRangeClientPerte } = require('../controllers/pertesController');
 
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -757,9 +754,7 @@ const {
   getActiviteInventaireStock, saveActiviteInventaire,
   getActiviteInventaireHistorique, exportActiviteInventaireExcel,
   updateInventaireEntry,
-  getClientInventaireStock, saveClientInventaire,
-  getClientInventaireHistorique, exportClientInventaireExcel,
-  exportActiviteInventaireHistoriquePdf, exportClientInventaireHistoriquePdf,
+  exportActiviteInventaireHistoriquePdf,
 } = require('../controllers/inventaireController');
 router.get('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, getActiviteInventaireStock);
 router.post('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, inventaireValidation, validate, saveActiviteInventaire);

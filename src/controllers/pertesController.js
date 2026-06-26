@@ -147,104 +147,6 @@ const listPertes = async (req, res) => {
   }
 };
 
-// ── Client indép — list ───────────────────────────────────────────────────────
-
-const listClientPertes = async (req, res) => {
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
-  const params = [req.user.gerant_parent_id || req.user.id];
-  const wheres = [`cp.client_id = $1`, `cp.ingredient_id IS NOT NULL`];
-
-  if (dateDebut) { params.push(dateDebut); wheres.push(`cp.date_perte >= $${params.length}`); }
-  if (dateFin)   { params.push(dateFin);   wheres.push(`cp.date_perte <= $${params.length}`); }
-  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`cp.type_perte = $${params.length}`); }
-  if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
-  if (ingredientId) { params.push(ingredientId); wheres.push(`cp.ingredient_id = $${params.length}`); }
-  if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
-
-  try {
-    const result = await pool.query(
-      `SELECT cp.id, cp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at, cp.created_by,
-              ub.nom AS created_by_nom
-       FROM client_pertes cp
-       JOIN articles i ON i.id = cp.ingredient_id
-       JOIN unites u ON i.unite_id = u.id
-       LEFT JOIN categories c ON i.categorie_id = c.id
-       LEFT JOIN utilisateurs ub ON ub.id = cp.created_by
-       WHERE ${wheres.join(' AND ')}
-       ORDER BY cp.date_perte DESC, cp.created_at DESC`,
-      params
-    );
-    res.json(result.rows.map(mapPerte));
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
-// ── Client indép — update ─────────────────────────────────────────────────────
-
-const updateClientPerte = async (req, res) => {
-  const { id } = req.params;
-  const { quantite, typePerte, datePerte } = req.body;
-  if (!quantite || !typePerte) return res.status(400).json({ message: 'quantite et typePerte requis' });
-  if (!['avarie', 'dechet'].includes(typePerte)) return res.status(400).json({ message: 'typePerte invalide' });
-  if (parseFloat(quantite) <= 0) return res.status(400).json({ message: 'quantite doit être > 0' });
-  try {
-    // Fetch existing row to get ingredient_id and resolve datePerte
-    const existing = await pool.query(
-      `SELECT ingredient_id, date_perte, created_by FROM client_pertes WHERE id = $1 AND client_id = $2`,
-      [id, req.user.gerant_parent_id || req.user.id]
-    );
-    if (existing.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
-    if (req.user.role === 'gerant' && existing.rows[0].created_by !== req.user.id)
-      return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
-    const ingredientId = existing.rows[0].ingredient_id;
-    const effectiveDate = datePerte || (existing.rows[0].date_perte instanceof Date
-      ? existing.rows[0].date_perte.toISOString().slice(0, 10)
-      : String(existing.rows[0].date_perte).slice(0, 10));
-
-    const clientId = req.user.gerant_parent_id || req.user.id;
-    const prixUnitaire = await getPrixPourPerte('stock_client_daily', 'client_id', clientId, ingredientId, effectiveDate);
-
-    const r = await pool.query(
-      `UPDATE client_pertes SET quantite = $1, type_perte = $2, prix_unitaire = $3
-       WHERE id = $4 AND client_id = $5 RETURNING id`,
-      [quantite, typePerte, prixUnitaire, id, clientId]
-    );
-    if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
-    res.json({ message: 'Mise à jour effectuée' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
-// ── Client indép — delete ─────────────────────────────────────────────────────
-
-const deleteClientPerte = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const checkDel = await pool.query(
-      `SELECT created_by FROM client_pertes WHERE id = $1 AND client_id = $2`,
-      [id, req.user.gerant_parent_id || req.user.id]
-    );
-    if (checkDel.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
-    if (req.user.role === 'gerant' && checkDel.rows[0].created_by !== req.user.id)
-      return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
-    const r = await pool.query(
-      `DELETE FROM client_pertes WHERE id = $1 RETURNING id`,
-      [id]
-    );
-    if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
-    res.json({ message: 'Perte supprimée' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
 // ── Entreprise — list (all activités) ────────────────────────────────────────
 
 const listEntreprisePertes = async (req, res) => {
@@ -496,43 +398,6 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
   res.end();
 };
 
-// ── Client indép — export Excel ───────────────────────────────────────────────
-
-const exportClientPertes = async (req, res) => {
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds } = req.query;
-  const params = [req.user.gerant_parent_id || req.user.id];
-  const wheres = [`cp.client_id = $1`, `cp.ingredient_id IS NOT NULL`];
-
-  if (dateDebut) { params.push(dateDebut); wheres.push(`cp.date_perte >= $${params.length}`); }
-  if (dateFin)   { params.push(dateFin);   wheres.push(`cp.date_perte <= $${params.length}`); }
-  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`cp.type_perte = $${params.length}`); }
-  if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
-  if (ingredientId) { params.push(ingredientId); wheres.push(`cp.ingredient_id = $${params.length}`); }
-  if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
-
-  // selectedIds are used only for Excel highlighting, not for WHERE filtering
-  const idList = selectedIds ? String(selectedIds).split(',').map(Number).filter(Boolean) : [];
-
-  try {
-    const result = await pool.query(
-      `SELECT cp.id, cp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte, cp.created_at, cp.created_by
-       FROM client_pertes cp
-       JOIN articles i ON i.id = cp.ingredient_id
-       JOIN unites u ON i.unite_id = u.id
-       LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE ${wheres.join(' AND ')}
-       ORDER BY cp.date_perte DESC, cp.created_at DESC`,
-      params
-    );
-    await buildExcelPertes(res, result.rows, false, { dateDebut, dateFin, selectedIds: idList });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur génération Excel' });
-  }
-};
-
 // ── Entreprise — export Excel ─────────────────────────────────────────────────
 
 const exportEntreprisePertes = async (req, res) => {
@@ -585,18 +450,6 @@ const exportEntreprisePertes = async (req, res) => {
 
 // ── Prix lookup endpoints ─────────────────────────────────────────────────────
 
-const getPrixClientPerte = async (req, res) => {
-  const { ingredientId, date } = req.query;
-  if (!ingredientId || !date) return res.status(400).json({ message: 'ingredientId et date requis' });
-  try {
-    const prixUnitaire = await getPrixPourPerte('stock_client_daily', 'client_id', req.user.gerant_parent_id || req.user.id, ingredientId, date);
-    res.json({ prixUnitaire });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
 const getPrixEntreprisePerte = async (req, res) => {
   const { activiteId, ingredientId, date } = req.query;
   if (!activiteId || !ingredientId || !date) return res.status(400).json({ message: 'activiteId, ingredientId et date requis' });
@@ -631,24 +484,6 @@ const getPrixLaboPerte = async (req, res) => {
 };
 
 // ── Date range lookup endpoints ───────────────────────────────────────────────
-
-const getDateRangeClientPerte = async (req, res) => {
-  const { ingredientId } = req.query;
-  if (!ingredientId) return res.status(400).json({ message: 'ingredientId requis' });
-  try {
-    const r = await pool.query(
-      `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
-       FROM stock_client_daily
-       WHERE client_id = $1 AND ingredient_id = $2`,
-      [req.user.gerant_parent_id || req.user.id, ingredientId]
-    );
-    const row = r.rows[0];
-    res.json({
-      minDate: row.min_date ? (row.min_date instanceof Date ? row.min_date.toISOString().slice(0, 10) : String(row.min_date).slice(0, 10)) : null,
-      maxDate: row.max_date ? (row.max_date instanceof Date ? row.max_date.toISOString().slice(0, 10) : String(row.max_date).slice(0, 10)) : null,
-    });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Erreur serveur' }); }
-};
 
 const getDateRangeEntreprisePerte = async (req, res) => {
   const { activiteId, ingredientId } = req.query;
@@ -803,38 +638,6 @@ const exportLaboPerteExcel = async (req, res) => {
   }
 };
 
-// ── Client pertes — export PDF ────────────────────────────────────────────────
-
-const exportClientPertesPdf = async (req, res) => {
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
-  const params = [req.user.gerant_parent_id || req.user.id];
-  const wheres = [`cp.client_id = $1`, `cp.ingredient_id IS NOT NULL`];
-
-  if (dateDebut) { params.push(dateDebut); wheres.push(`cp.date_perte >= $${params.length}`); }
-  if (dateFin)   { params.push(dateFin);   wheres.push(`cp.date_perte <= $${params.length}`); }
-  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`cp.type_perte = $${params.length}`); }
-  if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
-  if (ingredientId) { params.push(ingredientId); wheres.push(`cp.ingredient_id = $${params.length}`); }
-  if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
-
-  try {
-    const result = await pool.query(
-      `SELECT cp.id, cp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              cp.quantite, cp.prix_unitaire, cp.type_perte, cp.date_perte
-       FROM client_pertes cp
-       JOIN articles i ON i.id = cp.ingredient_id JOIN unites u ON i.unite_id = u.id
-       LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE ${wheres.join(' AND ')} ORDER BY cp.date_perte DESC, cp.created_at DESC`,
-      params
-    );
-    await buildHistoriquePertesPdf(res, result.rows, { dateDebut, dateFin });
-  } catch (err) {
-    console.error(err);
-    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
-  }
-};
-
 // ── Entreprise pertes — export PDF ────────────────────────────────────────────
 
 const exportEntreprisePertesPdf = async (req, res) => {
@@ -921,8 +724,6 @@ const exportLaboPertesPdf = async (req, res) => {
 
 module.exports = {
   createPerte, listPertes,
-  listClientPertes, updateClientPerte, deleteClientPerte, exportClientPertes, exportClientPertesPdf,
-  getPrixClientPerte, getDateRangeClientPerte,
   listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, exportEntreprisePertesPdf,
   getPrixEntreprisePerte, getDateRangeEntreprisePerte,
   getPrixLaboPerte, getDateRangeLaboPerte,
