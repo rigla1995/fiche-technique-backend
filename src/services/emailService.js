@@ -6,19 +6,11 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 const APP_NAME = process.env.APP_NAME || 'LabFlow';
 
-// Bloc logo de marque pour les en-têtes d'emails (tuile « L » + wordmark LabFlow).
-// Robuste tous clients : la tuile utilise l'attribut bgcolor (Outlook) + background-color
-// solide en repli, avec le dégradé en amélioration progressive — donc toujours visible.
-const BRAND_LOGO = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 2px;"><tr>
-        <td style="padding-right:11px;vertical-align:middle;">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="30" height="30" align="center" valign="middle" bgcolor="#6366f1" style="width:30px;height:30px;background-color:#6366f1;background-image:linear-gradient(135deg,#0ea5e9,#6366f1 55%,#a855f7);border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;font-weight:800;color:#ffffff;line-height:30px;">L</td>
-          </tr></table>
-        </td>
-        <td style="vertical-align:middle;">
-          <span style="font-size:24px;font-weight:600;letter-spacing:1.4px;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Lab<span style="color:rgba(255,255,255,0.6);">Flow</span></span>
-        </td>
-      </tr></table>`;
+// Logo de marque pour les en-têtes d'emails : image PNG hébergée (le même logo losange
+// que la page de connexion, rendu blanc sur fond sombre). Une image PNG s'affiche dans
+// tous les clients mail (contrairement au SVG/au dégradé CSS). Repli (images bloquées) :
+// le texte alt « LabFlow » stylé en blanc. Source : public/logo-email.png du frontend.
+const BRAND_LOGO = `<img src="${APP_URL}/logo-email.png" alt="LabFlow" width="138" height="34" style="display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;" />`;
 
 const sendInviteEmail = async ({ to, nom, token, role }) => {
   const inviteUrl = `${APP_URL}/invite/${token}`;
