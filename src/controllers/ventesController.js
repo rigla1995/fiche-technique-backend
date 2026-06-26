@@ -1174,7 +1174,7 @@ const laboVentesStats = async (req, res) => {
 
 const exportVentesExcel = async (req, res) => {
   try {
-    const { activiteId, from, to, type, prestataireId, selectedIds: selParam } = req.query;
+    const { activiteId, from, to, type, prestataireId, typeProduit, selectedIds: selParam } = req.query;
     if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
     const cid = clientId(req);
     await assertActiviteOwner(activiteId, cid);
@@ -1186,6 +1186,16 @@ const exportVentesExcel = async (req, res) => {
     if (to)            { params.push(to);             where += ` AND v.date_vente <= $${params.length}`; }
     if (type)          { params.push(type);           where += ` AND v.type_vente = $${params.length}`; }
     if (prestataireId) { params.push(prestataireId);  where += ` AND v.prestataire_id = $${params.length}`; }
+    // Filtre « type produit » au niveau ligne (aligné sur l'affichage frontend : n'agrège que les
+    // lignes correspondantes et exclut les ventes sans ligne correspondante). 'produit' inclut les
+    // ventes sans ligne (comme le front : une vente sans ligne compte comme « produit »).
+    if (typeProduit === 'valorise') {
+      where += ` AND vl.article_type = 'ingredient'`;
+    } else if (typeProduit === 'supplement') {
+      where += ` AND vl.article_type = 'produit' AND COALESCE(p.is_supplement, FALSE) = TRUE`;
+    } else if (typeProduit === 'produit') {
+      where += ` AND (vl.id IS NULL OR (vl.article_type = 'produit' AND COALESCE(p.is_supplement, FALSE) = FALSE))`;
+    }
 
     const r = await pool.query(
       `SELECT v.id, v.date_vente, v.type_vente, pl.nom as prestataire_nom, v.statut,
@@ -1194,6 +1204,7 @@ const exportVentesExcel = async (req, res) => {
        FROM ventes v
        LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
        LEFT JOIN vente_lignes vl ON vl.vente_id = v.id
+       LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
        WHERE v.activite_id = $1 AND v.statut != 'annulee'${where}
        GROUP BY v.id, pl.nom
        ORDER BY v.date_vente DESC, v.created_at DESC`,
