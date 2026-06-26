@@ -226,18 +226,23 @@ const importReferentiel = [
             stats.articles++;
             rowResult.created.push('article');
 
-            // Auto-assign to all activités and labos
-            if (activiteIds.length > 0) {
-              await client.query(
-                'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire) SELECT unnest($1::int[]), $2, 0 ON CONFLICT DO NOTHING',
-                [activiteIds, newArticleId]
-              );
-            }
-            if (laboIds.length > 0) {
-              await client.query(
-                'INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) SELECT unnest($1::int[]), $2 ON CONFLICT DO NOTHING',
-                [laboIds, newArticleId]
-              );
+            // Auto-affecte l'article à toutes les activités et labos du client (débloque
+            // dynamiquement les espaces côté client) et le comptabilise.
+            if (activiteIds.length > 0 || laboIds.length > 0) {
+              if (activiteIds.length > 0) {
+                await client.query(
+                  'INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire) SELECT unnest($1::int[]), $2, 0 ON CONFLICT DO NOTHING',
+                  [activiteIds, newArticleId]
+                );
+              }
+              if (laboIds.length > 0) {
+                await client.query(
+                  'INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) SELECT unnest($1::int[]), $2 ON CONFLICT DO NOTHING',
+                  [laboIds, newArticleId]
+                );
+              }
+              rowResult.autoAssigned = true;
+              stats.autoAssigned++;
             }
           }
 
