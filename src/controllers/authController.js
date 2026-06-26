@@ -121,11 +121,9 @@ const me = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u.nom, u.email, u.telephone, u.role,
-              COALESCE(u.compte_type, p.compte_type) AS compte_type,
               u.onboarding_step,
               u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type
        FROM utilisateurs u
-       LEFT JOIN utilisateurs p ON p.id = u.gerant_parent_id
        WHERE u.id = $1`,
       [req.user.id]
     );

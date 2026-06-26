@@ -53,7 +53,6 @@ const mapClient = (row) => ({
   email: row.email,
   phone: row.telephone,
   role: row.role,
-  compteType: row.compte_type || null,
   onboardingStep: row.onboarding_step ?? 0,
   active: row.actif,
   createdAt: row.created_at,
@@ -75,7 +74,7 @@ const saveClientDomaines = async (client, clientId, domaineIds) => {
 const list = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.compte_type, u.onboarding_step, u.actif, u.created_at, u.activated_at,
+      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.activated_at,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
        FROM utilisateurs u
        LEFT JOIN client_domaines cd ON cd.client_id = u.id
@@ -94,7 +93,7 @@ const getById = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.compte_type, u.onboarding_step, u.actif, u.created_at,
+      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
        FROM utilisateurs u
        LEFT JOIN client_domaines cd ON cd.client_id = u.id
