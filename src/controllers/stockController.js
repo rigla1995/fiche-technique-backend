@@ -90,7 +90,7 @@ const getStockEntreprise = async (req, res) => {
     }
 
     const ptRes = await pool.query(`
-      SELECT p.id as produit_id, p.nom, p.seuil_min_pt,
+      SELECT p.id as produit_id, p.nom, p.seuil_min_pt, p.origine,
              last_spt.date_appro   as last_date_appro,
              last_spt.prix_calcule as last_prix_calcule
       FROM produits p
@@ -439,6 +439,9 @@ const getStockEntreprise = async (req, res) => {
         ingredientId: -(r.produit_id),
         produitId: r.produit_id,
         isPT: true,
+        // origine='labo' => PT reçu UNIQUEMENT par transfert côté activité (pas d'appro manuel).
+        // Le front bloque alors la saisie de quantité et affiche un indicateur (garde-fou aligné sur saveStockPT).
+        origine: r.origine || 'activite',
         nom: r.nom,
         unite: 'unité',
         categorie: 'Produits Transformés',
