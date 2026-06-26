@@ -20,7 +20,6 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const result = await pool.query(
       `SELECT u.id, u.nom, u.email, u.role,
-              COALESCE(u.compte_type, p.compte_type) AS compte_type,
               u.actif,
               u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type,
               a.mode_compte
@@ -56,7 +55,6 @@ const authenticate = async (req, res, next) => {
 
     req.user = {
       ...row,
-      compteType: row.compte_type,
       modeCompte: row.mode_compte || 'actif',
       gerantActiviteIds,
       gerantLaboIds,
