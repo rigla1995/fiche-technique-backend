@@ -20,8 +20,7 @@ const list = async (req, res) => {
                 SELECT 1 FROM articles a
                 JOIN categories c ON c.id = a.categorie_id
                 WHERE c.famille_id = f.id AND a.client_id = $1
-                AND (EXISTS (SELECT 1 FROM stock_client_daily       WHERE ingredient_id = a.id) OR
-                     EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
+                AND (EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
                      EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id))
               ) AS has_appros
        FROM familles f WHERE f.client_id = $1 ORDER BY f.nom`,
@@ -102,8 +101,7 @@ const remove = async (req, res) => {
        JOIN categories c ON c.id = a.categorie_id
        WHERE c.famille_id = $1 AND a.client_id = $2
        AND (
-         EXISTS (SELECT 1 FROM stock_client_daily       WHERE ingredient_id = a.id LIMIT 1)
-         OR EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = a.id LIMIT 1)
+         EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = a.id LIMIT 1)
          OR EXISTS (SELECT 1 FROM stock_labo_daily       WHERE ingredient_id = a.id LIMIT 1)
        ) LIMIT 1`,
       [req.params.id, clientId]
