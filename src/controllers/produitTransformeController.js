@@ -191,14 +191,6 @@ const deleteStockPTHistory = async (req, res) => {
         [produitId, clientId]
       );
       await pool.query(
-        `DELETE FROM stock_client_daily
-         WHERE client_id = $1
-           AND ingredient_id IN (SELECT ingredient_id FROM produit_ingredients WHERE produit_id = $2)
-           AND quantite < 0
-           AND type_appro = 'PT'`,
-        [clientId, produitId]
-      );
-      await pool.query(
         `DELETE FROM stock_entreprise_daily
          WHERE activite_id IN (
            SELECT a.id FROM activites a
@@ -391,7 +383,7 @@ const getPTRecipe = async (req, res) => {
   const actId = req.query.activiteId ? parseInt(req.query.activiteId) : null;
 
   try {
-    let rows;
+    let rows = [];
     if (actId) {
       const r = await pool.query(
         `SELECT pi.ingredient_id, pi.portion AS portion_standard,
@@ -416,32 +408,6 @@ const getPTRecipe = async (req, res) => {
          WHERE pi.produit_id = $1
          ORDER BY COALESCE(c.nom,''), i.nom`,
         [produitId, actId]
-      );
-      rows = r.rows;
-    } else {
-      const r = await pool.query(
-        `SELECT pi.ingredient_id, pi.portion AS portion_standard,
-                i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
-                (SELECT SUM(scd.quantite * scd.prix_unitaire) / NULLIF(SUM(scd.quantite), 0)
-                 FROM stock_client_daily scd
-                 WHERE scd.ingredient_id = pi.ingredient_id AND scd.client_id = $2
-                   AND scd.quantite > 0 AND scd.prix_unitaire IS NOT NULL
-                   AND scd.type_appro IN ('manuel', 'transfert')
-                   AND scd.date_appro >= COALESCE(
-                     (SELECT date_inventaire FROM inventaires
-                      WHERE client_id = $2 AND ingredient_id = pi.ingredient_id
-                      ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
-                     (SELECT MIN(date_appro) FROM stock_client_daily
-                      WHERE client_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
-                   )
-                ) AS last_prix
-         FROM produit_ingredients pi
-         JOIN articles i ON i.id = pi.ingredient_id
-         JOIN unites u ON u.id = i.unite_id
-         LEFT JOIN categories c ON c.id = i.categorie_id
-         WHERE pi.produit_id = $1
-         ORDER BY COALESCE(c.nom,''), i.nom`,
-        [produitId, userId]
       );
       rows = r.rows;
     }
@@ -514,7 +480,7 @@ const saveStockPT = async (req, res) => {
     const produitNom = produitRes.rows[0]?.nom ?? 'PT';
 
     // 2. Calculate prix_calcule from recipe ingredients
-    let ingRows;
+    let ingRows = [];
     if (actId) {
       const ingRes = await pool.query(
         `SELECT pi.ingredient_id, pi.portion, i.nom as nom,
@@ -535,28 +501,6 @@ const saveStockPT = async (req, res) => {
          JOIN articles i ON i.id = pi.ingredient_id
          WHERE pi.produit_id = $1`,
         [produitId, actId]
-      );
-      ingRows = ingRes.rows;
-    } else {
-      const ingRes = await pool.query(
-        `SELECT pi.ingredient_id, pi.portion, i.nom as nom,
-           (SELECT SUM(scd.quantite * scd.prix_unitaire) / NULLIF(SUM(scd.quantite), 0)
-            FROM stock_client_daily scd
-            WHERE scd.ingredient_id = pi.ingredient_id AND scd.client_id = $2
-              AND scd.quantite > 0 AND scd.prix_unitaire IS NOT NULL
-              AND scd.type_appro IN ('manuel', 'transfert')
-              AND scd.date_appro >= COALESCE(
-                (SELECT date_inventaire FROM inventaires
-                 WHERE client_id = $2 AND ingredient_id = pi.ingredient_id
-                 ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
-                (SELECT MIN(date_appro) FROM stock_client_daily
-                 WHERE client_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
-              )
-           ) AS last_prix
-         FROM produit_ingredients pi
-         JOIN articles i ON i.id = pi.ingredient_id
-         WHERE pi.produit_id = $1`,
-        [produitId, userId]
       );
       ingRows = ingRes.rows;
     }
@@ -662,12 +606,6 @@ const saveStockPT = async (req, res) => {
           `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
            VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
           [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
-        );
-      } else {
-        await pool.query(
-          `INSERT INTO stock_client_daily (client_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
-           VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
-          [userId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
         );
       }
     }

@@ -16,7 +16,7 @@ const pool = require('../config/database');
  * @param {number}       opts.montantTTC
  * @param {number|null}  opts.createdBy
  * @param {boolean}      opts.timbreFiscal  - whether to apply 1 DT timbre fiscal charge
- * @param {string}       opts.stockTable    - 'stock_client_daily' | 'stock_entreprise_daily' | 'stock_labo_daily'
+ * @param {string}       opts.stockTable    - 'stock_entreprise_daily' | 'stock_labo_daily'
  * @param {number}       opts.stockRowId    - id of the stock row to link
  * @param {object}       [db=pool]          - optional transaction client; pass a pg client
  *                                            to run within the caller's transaction (atomicity
@@ -103,7 +103,7 @@ async function upsertFacture(clientId, opts, db = pool) {
   // Link the stock row to this facture
   if (stockTable && stockRowId) {
     // Only allow known tables to prevent injection
-    const allowed = ['stock_client_daily', 'stock_entreprise_daily', 'stock_labo_daily'];
+    const allowed = ['stock_entreprise_daily', 'stock_labo_daily'];
     if (allowed.includes(stockTable)) {
       await db.query(
         `UPDATE ${stockTable} SET facture_id = $1 WHERE id = $2`,

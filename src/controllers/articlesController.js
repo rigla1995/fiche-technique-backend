@@ -35,8 +35,7 @@ const list = async (req, res) => {
 
     const result = await pool.query(
       `SELECT a.*, u.nom as unite_nom, c.nom as categorie_nom, f.nom as famille_nom, f.id as famille_id,
-              (EXISTS (SELECT 1 FROM stock_client_daily       WHERE ingredient_id = a.id) OR
-               EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
+              (EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
                EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id)) AS has_appros
        FROM articles a
        JOIN unites u ON a.unite_id = u.id
@@ -178,8 +177,7 @@ const remove = async (req, res) => {
   try {
     const appro = await pool.query(
       `SELECT 1 WHERE
-         EXISTS (SELECT 1 FROM stock_client_daily     WHERE ingredient_id = $1)
-         OR EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = $1)
+         EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = $1)
          OR EXISTS (SELECT 1 FROM stock_labo_daily     WHERE ingredient_id = $1)`,
       [req.params.id]
     );
