@@ -240,28 +240,6 @@ const advanceOnboarding = async (req, res) => {
   }
 };
 
-const upgradeToEntreprise = async (req, res) => {
-  if (req.user.compte_type === 'entreprise') {
-    return res.json({ compteType: 'entreprise', message: 'Déjà un compte entreprise' });
-  }
-  try {
-    await pool.query(
-      `UPDATE utilisateurs SET compte_type = 'entreprise', updated_at = NOW() WHERE id = $1`,
-      [req.user.id]
-    );
-    await pool.query(
-      `INSERT INTO profil_entreprise (client_id, nom, email)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (client_id) DO NOTHING`,
-      [req.user.id, req.user.nom, req.user.email]
-    );
-    res.json({ compteType: 'entreprise' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
 const updateProfile = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -317,32 +295,6 @@ const updateProfile = async (req, res) => {
 
     const u = result.rows[0];
     res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
-const completeUpgradeWizard = async (req, res) => {
-  const { activiteNom } = req.body;
-  try {
-    const peRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [req.user.id]);
-    if (peRes.rows.length === 0) return res.status(404).json({ message: 'Profil entreprise introuvable' });
-    const entrepriseId = peRes.rows[0].id;
-
-    if (activiteNom) {
-      await pool.query(
-        `UPDATE activites SET nom = $1, updated_at = NOW() WHERE entreprise_id = $2 AND nom IS NULL`,
-        [activiteNom, entrepriseId]
-      );
-    }
-
-    await pool.query(
-      'UPDATE utilisateurs SET onboarding_step = 0, updated_at = NOW() WHERE id = $1',
-      [req.user.id]
-    );
-
-    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -436,6 +388,6 @@ const resendInvite = async (req, res) => {
 };
 
 module.exports = {
-  login, register, me, updateProfile, upgradeToEntreprise, advanceOnboarding, completeUpgradeWizard,
+  login, register, me, updateProfile, advanceOnboarding,
   verifyInviteToken, acceptInvite, resendInvite,
 };

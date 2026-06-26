@@ -2,7 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
-const { login, register, me, updateProfile, upgradeToEntreprise, advanceOnboarding, completeUpgradeWizard, verifyInviteToken, acceptInvite, resendInvite } = require('../controllers/authController');
+const { login, register, me, updateProfile, advanceOnboarding, verifyInviteToken, acceptInvite, resendInvite } = require('../controllers/authController');
 const { authenticate, requireSuperAdmin, requireClient } = require('../middleware/auth');
 const pool = require('../config/database');
 
@@ -158,8 +158,6 @@ router.get('/invite/:token', verifyInviteToken);
 router.post('/invite/accept', acceptInvite);
 router.post('/invite/resend/:userId', authenticate, requireSuperAdmin, resendInvite);
 
-router.post('/upgrade', authenticate, requireClient, upgradeToEntreprise);
-
 /**
  * @openapi
  * /auth/onboarding-step:
@@ -184,6 +182,5 @@ router.post('/upgrade', authenticate, requireClient, upgradeToEntreprise);
  *         description: Accès réservé aux comptes entreprise
  */
 router.post('/onboarding-step', authenticate, requireClient, advanceOnboarding);
-router.post('/upgrade-wizard-complete', authenticate, requireClient, completeUpgradeWizard);
 
 module.exports = router;
