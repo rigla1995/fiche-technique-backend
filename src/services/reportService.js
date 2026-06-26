@@ -25,10 +25,6 @@ async function fetchReportData(clientId) {
          SELECT sld.ingredient_id, sld.quantite, sld.date_appro, sld.prix_unitaire
          FROM stock_labo_daily sld
          WHERE sld.labo_id IN (SELECT id FROM client_labos)
-         UNION ALL
-         SELECT scd.ingredient_id, scd.quantite, scd.date_appro, scd.prix_unitaire
-         FROM stock_client_daily scd
-         WHERE scd.client_id = $1
        ) s
        JOIN articles i ON i.id = s.ingredient_id
        ORDER BY s.date_appro DESC LIMIT 200`,
@@ -46,10 +42,6 @@ async function fetchReportData(clientId) {
          SELECT lp.ingredient_id, lp.quantite, lp.type_perte, lp.date_perte
          FROM labo_pertes lp
          WHERE lp.labo_id IN (SELECT id FROM client_labos) AND lp.ingredient_id IS NOT NULL
-         UNION ALL
-         SELECT cp.ingredient_id, cp.quantite, cp.type_perte, cp.date_perte
-         FROM client_pertes cp
-         WHERE cp.client_id = $1
        ) p
        JOIN articles i ON i.id = p.ingredient_id
        ORDER BY p.date_perte DESC LIMIT 100`,
@@ -63,8 +55,7 @@ async function fetchReportData(clientId) {
        JOIN articles i ON i.id = inv.ingredient_id
        WHERE inv.ingredient_id IS NOT NULL
          AND (
-           inv.client_id = $1
-           OR inv.activite_id IN (SELECT id FROM client_activites)
+           inv.activite_id IN (SELECT id FROM client_activites)
            OR inv.labo_id IN (SELECT id FROM client_labos)
          )
        ORDER BY inv.date_inventaire DESC LIMIT 100`,
