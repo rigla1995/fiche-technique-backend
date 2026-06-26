@@ -40,7 +40,6 @@ const mapAbonnement = (row) => ({
   clientId: row.client_id,
   clientNom: row.client_nom,
   clientEmail: row.client_email,
-  compteType: row.compte_type,
   statutOnboarding: row.statut_onboarding,
   montantOnboarding: row.montant_onboarding,
   dateOnboarding: row.date_onboarding,
@@ -529,9 +528,9 @@ const getMontantMois = async (req, res) => {
   const moisStr = mois + '-01';
 
   try {
-    const aboRes = await pool.query('SELECT id, compte_type FROM abonnements WHERE client_id = $1', [clientId]);
+    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
-    const { id: aboId, compte_type: compteType } = aboRes.rows[0];
+    const { id: aboId } = aboRes.rows[0];
 
     // Check for existing payment this month
     const existingRes = await pool.query(
@@ -655,9 +654,9 @@ const upsertPaiement = async (req, res) => {
   if (!allowed.includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
 
   try {
-    const aboRes = await pool.query('SELECT id, compte_type FROM abonnements WHERE client_id = $1', [clientId]);
+    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
-    const { id: aboId, compte_type: compteType } = aboRes.rows[0];
+    const { id: aboId } = aboRes.rows[0];
 
     // Normalize mois to first of month
     const moisDate = new Date(mois);

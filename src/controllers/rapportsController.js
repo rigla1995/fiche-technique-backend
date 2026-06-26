@@ -27,12 +27,11 @@ const getLaboIds = async (clientId) => {
 const getRapportPertes = async (req, res) => {
   const { dateFrom, dateTo, categorieId, activiteId } = req.query;
   const clientId = req.user.id;
-  const isEntreprise = true;
 
   try {
     let rows = [];
 
-    if (isEntreprise) {
+    {
       const activiteIds = activiteId
         ? [parseInt(activiteId)]
         : await getActiviteIds(clientId);
@@ -70,36 +69,6 @@ const getRapportPertes = async (req, res) => {
          WHERE p.activite_id IN (${actParams}) ${whereStr}
          ORDER BY p.date_perte DESC`,
         fullParams
-      );
-      rows = q.rows;
-    } else {
-      // Indépendant — client_pertes (alias: cp)
-      const params = [clientId];
-      const wheres = [`cp.client_id = $1`];
-      let pIdx = 2;
-
-      if (dateFrom)    { wheres.push(`cp.date_perte >= $${pIdx++}`); params.push(dateFrom); }
-      if (dateTo)      { wheres.push(`cp.date_perte <= $${pIdx++}`); params.push(dateTo); }
-      if (categorieId) { wheres.push(`c.id = $${pIdx++}`); params.push(categorieId); }
-
-      const q = await pool.query(
-        `SELECT
-           i.nom AS ingredient_nom,
-           COALESCE(c.nom, 'Non classé') AS categorie,
-           u.nom AS unite,
-           NULL AS activite_nom,
-           cp.type_perte,
-           cp.date_perte,
-           cp.quantite,
-           COALESCE(cp.prix_unitaire, 0) AS prix_unitaire,
-           cp.quantite * COALESCE(cp.prix_unitaire, 0) AS valeur
-         FROM client_pertes cp
-         JOIN articles i ON i.id = cp.ingredient_id
-         JOIN unites u ON u.id = i.unite_id
-         LEFT JOIN categories c ON c.id = i.categorie_id
-         WHERE ${wheres.join(' AND ')}
-         ORDER BY cp.date_perte DESC`,
-        params
       );
       rows = q.rows;
     }
@@ -147,12 +116,11 @@ const getRapportPertes = async (req, res) => {
 const getRapportCoutMatiere = async (req, res) => {
   const { dateFrom, dateTo, categorieId, activiteId } = req.query;
   const clientId = req.user.id;
-  const isEntreprise = true;
 
   try {
     let rows = [];
 
-    if (isEntreprise) {
+    {
       const activiteIds = activiteId
         ? [parseInt(activiteId)]
         : await getActiviteIds(clientId);
@@ -188,35 +156,6 @@ const getRapportCoutMatiere = async (req, res) => {
         params
       );
       rows = q.rows;
-    } else {
-      const params = [];
-      const wheres = [`scd.client_id = $1`, `scd.type_appro = 'manuel'`];
-      params.push(clientId);
-      let pIdx = 2;
-
-      if (dateFrom) { wheres.push(`scd.date_appro >= $${pIdx++}`); params.push(dateFrom); }
-      if (dateTo)   { wheres.push(`scd.date_appro <= $${pIdx++}`); params.push(dateTo); }
-      if (categorieId) { wheres.push(`c.id = $${pIdx++}`); params.push(categorieId); }
-
-      const q = await pool.query(
-        `SELECT
-           i.id AS ingredient_id,
-           i.nom AS ingredient_nom,
-           COALESCE(c.nom, 'Non classé') AS categorie,
-           u.nom AS unite,
-           SUM(scd.quantite) AS quantite_totale,
-           AVG(scd.prix_unitaire) AS prix_moyen,
-           SUM(scd.quantite * scd.prix_unitaire) AS cout_total
-         FROM stock_client_daily scd
-         JOIN articles i ON i.id = scd.ingredient_id
-         JOIN unites u ON u.id = i.unite_id
-         LEFT JOIN categories c ON c.id = i.categorie_id
-         WHERE ${wheres.join(' AND ')}
-         GROUP BY i.id, i.nom, c.nom, u.nom
-         ORDER BY cout_total DESC`,
-        params
-      );
-      rows = q.rows;
     }
 
     const total = rows.reduce((s, r) => s + parseFloat(r.cout_total || 0), 0);
@@ -234,21 +173,14 @@ const getRapportCoutMatiere = async (req, res) => {
       }, {})
     ).sort((a, b) => b.cout_total - a.cout_total);
 
-    // Monthly trend from stock_client_daily / stock_entreprise_daily
-    const monthParams = isEntreprise
-      ? [await getActiviteIds(clientId)]
-      : [clientId];
+    // Monthly trend from stock_entreprise_daily
+    const monthParams = [await getActiviteIds(clientId)];
 
     const monthQ = await pool.query(
-      isEntreprise
-        ? `SELECT to_char(date_appro, 'YYYY-MM') AS mois, SUM(quantite * prix_unitaire) AS cout
-           FROM stock_entreprise_daily
-           WHERE activite_id = ANY($1::int[]) AND type_appro = 'manuel'
-           GROUP BY mois ORDER BY mois`
-        : `SELECT to_char(date_appro, 'YYYY-MM') AS mois, SUM(quantite * prix_unitaire) AS cout
-           FROM stock_client_daily
-           WHERE client_id = $1 AND type_appro = 'manuel'
-           GROUP BY mois ORDER BY mois`,
+      `SELECT to_char(date_appro, 'YYYY-MM') AS mois, SUM(quantite * prix_unitaire) AS cout
+       FROM stock_entreprise_daily
+       WHERE activite_id = ANY($1::int[]) AND type_appro = 'manuel'
+       GROUP BY mois ORDER BY mois`,
       monthParams
     );
 
@@ -264,12 +196,11 @@ const getRapportCoutMatiere = async (req, res) => {
 const getRapportAppros = async (req, res) => {
   const { dateFrom, dateTo, fournisseurId, activiteId, typeAppro } = req.query;
   const clientId = req.user.id;
-  const isEntreprise = true;
 
   try {
     let rows = [];
 
-    if (isEntreprise) {
+    {
       const activiteIds = activiteId
         ? [parseInt(activiteId)]
         : await getActiviteIds(clientId);
@@ -306,37 +237,6 @@ const getRapportAppros = async (req, res) => {
         params
       );
       rows = q.rows;
-    } else {
-      const params = [clientId];
-      const wheres = [`scd.client_id = $1`];
-      let pIdx = 2;
-
-      if (dateFrom)     { wheres.push(`scd.date_appro >= $${pIdx++}`); params.push(dateFrom); }
-      if (dateTo)       { wheres.push(`scd.date_appro <= $${pIdx++}`); params.push(dateTo); }
-      if (fournisseurId){ wheres.push(`scd.fournisseur_id = $${pIdx++}`); params.push(fournisseurId); }
-      if (typeAppro)    { wheres.push(`scd.type_appro = $${pIdx++}`); params.push(typeAppro); }
-
-      const q = await pool.query(
-        `SELECT
-           scd.date_appro, scd.type_appro, scd.ref_facture,
-           i.nom AS ingredient_nom,
-           COALESCE(c.nom, 'Non classé') AS categorie,
-           u.nom AS unite,
-           scd.quantite,
-           scd.prix_unitaire,
-           scd.quantite * scd.prix_unitaire AS total,
-           f.nom AS fournisseur_nom,
-           NULL AS activite_nom
-         FROM stock_client_daily scd
-         JOIN articles i ON i.id = scd.ingredient_id
-         JOIN unites u ON u.id = i.unite_id
-         LEFT JOIN categories c ON c.id = i.categorie_id
-         LEFT JOIN fournisseurs f ON f.id = scd.fournisseur_id
-         WHERE ${wheres.join(' AND ')}
-         ORDER BY scd.date_appro DESC`,
-        params
-      );
-      rows = q.rows;
     }
 
     const byFournisseur = Object.values(
@@ -370,12 +270,11 @@ const getRapportAppros = async (req, res) => {
 const getRapportStock = async (req, res) => {
   const { activiteId } = req.query;
   const clientId = req.user.id;
-  const isEntreprise = true;
 
   try {
     let rows = [];
 
-    if (isEntreprise) {
+    {
       const activiteIds = activiteId
         ? [parseInt(activiteId)]
         : await getActiviteIds(clientId);
@@ -405,31 +304,6 @@ const getRapportStock = async (req, res) => {
          HAVING SUM(CASE WHEN EXTRACT(YEAR FROM sed.date_appro) = EXTRACT(YEAR FROM NOW()) THEN sed.quantite ELSE 0 END) > 0
          ORDER BY categorie, ingredient_nom`,
         [activiteIds]
-      );
-      rows = q.rows;
-    } else {
-      const q = await pool.query(
-        `SELECT
-           i.nom AS ingredient_nom,
-           COALESCE(c.nom, 'Non classé') AS categorie,
-           u.nom AS unite,
-           NULL AS activite_nom,
-           i.seuil_min,
-           COALESCE(
-             (SELECT scd2.prix_unitaire FROM stock_client_daily scd2
-              WHERE scd2.client_id = $1 AND scd2.ingredient_id = scd.ingredient_id
-              ORDER BY scd2.date_appro DESC LIMIT 1), 0
-           ) AS prix_unitaire,
-           SUM(CASE WHEN EXTRACT(YEAR FROM scd.date_appro) = EXTRACT(YEAR FROM NOW()) THEN scd.quantite ELSE 0 END) AS quantite
-         FROM stock_client_daily scd
-         JOIN articles i ON i.id = scd.ingredient_id
-         JOIN unites u ON u.id = i.unite_id
-         LEFT JOIN categories c ON c.id = i.categorie_id
-         WHERE scd.client_id = $1
-         GROUP BY i.id, i.nom, c.nom, u.nom, i.seuil_min, scd.ingredient_id
-         HAVING SUM(CASE WHEN EXTRACT(YEAR FROM scd.date_appro) = EXTRACT(YEAR FROM NOW()) THEN scd.quantite ELSE 0 END) > 0
-         ORDER BY categorie, ingredient_nom`,
-        [clientId]
       );
       rows = q.rows;
     }
@@ -527,30 +401,22 @@ const getRapportActivites = async (req, res) => {
 
 const getRapportFilters = async (req, res) => {
   const clientId = req.user.id;
-  const isEntreprise = true;
 
   try {
     const [catRes, fourn, acts] = await Promise.all([
       pool.query('SELECT id, nom FROM categories ORDER BY nom'),
-      isEntreprise
-        ? pool.query(
-            `SELECT f.id, f.nom FROM fournisseurs f
-             JOIN profil_entreprise pe ON pe.id = f.entreprise_id
-             WHERE pe.client_id = $1 ORDER BY f.nom`,
-            [clientId]
-          )
-        : pool.query(
-            `SELECT id, nom FROM fournisseurs WHERE client_id = $1 ORDER BY nom`,
-            [clientId]
-          ),
-      isEntreprise
-        ? pool.query(
-            `SELECT a.id, a.nom FROM activites a
-             JOIN profil_entreprise pe ON pe.id = a.entreprise_id
-             WHERE pe.client_id = $1 ORDER BY a.nom`,
-            [clientId]
-          )
-        : Promise.resolve({ rows: [] }),
+      pool.query(
+        `SELECT f.id, f.nom FROM fournisseurs f
+         JOIN profil_entreprise pe ON pe.id = f.entreprise_id
+         WHERE pe.client_id = $1 ORDER BY f.nom`,
+        [clientId]
+      ),
+      pool.query(
+        `SELECT a.id, a.nom FROM activites a
+         JOIN profil_entreprise pe ON pe.id = a.entreprise_id
+         WHERE pe.client_id = $1 ORDER BY a.nom`,
+        [clientId]
+      ),
     ]);
 
     res.json({

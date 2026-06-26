@@ -88,11 +88,6 @@ async function toolGetStock(clientId, { activite_id, labo_id, ingredient, date_f
               NULL::int AS activite_id, sld.labo_id
        FROM stock_labo_daily sld
        WHERE sld.labo_id IN (SELECT id FROM client_labos)
-       UNION ALL
-       SELECT scd.ingredient_id, scd.quantite, scd.date_appro, scd.prix_unitaire,
-              NULL::int AS activite_id, NULL::int AS labo_id
-       FROM stock_client_daily scd
-       WHERE scd.client_id = $1
      ) s
      JOIN articles i ON i.id = s.ingredient_id
      LEFT JOIN activites a ON a.id = s.activite_id
@@ -134,12 +129,6 @@ async function toolGetAppros(clientId, { activite_id, labo_id, ingredient, date_
        FROM stock_labo_daily sld
        WHERE sld.labo_id IN (SELECT id FROM client_labos)
          AND COALESCE(sld.type_appro, 'manuel') = 'manuel' AND sld.quantite > 0
-       UNION ALL
-       SELECT scd.ingredient_id, scd.quantite, scd.date_appro, scd.prix_unitaire,
-              NULL::int AS activite_id, NULL::int AS labo_id
-       FROM stock_client_daily scd
-       WHERE scd.client_id = $1
-         AND COALESCE(scd.type_appro, 'manuel') = 'manuel' AND scd.quantite > 0
      ) s
      JOIN articles i ON i.id = s.ingredient_id
      LEFT JOIN activites a ON a.id = s.activite_id
@@ -182,12 +171,6 @@ async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, type_
        FROM labo_pertes lp
        WHERE lp.labo_id IN (SELECT id FROM client_labos)
          AND lp.ingredient_id IS NOT NULL
-       UNION ALL
-       SELECT cp.ingredient_id, cp.quantite, cp.type_perte, cp.date_perte,
-              NULL::int AS activite_id, NULL::int AS labo_id
-       FROM client_pertes cp
-       WHERE cp.client_id = $1
-         AND cp.ingredient_id IS NOT NULL
      ) p
      JOIN articles i ON i.id = p.ingredient_id
      LEFT JOIN activites a ON a.id = p.activite_id
