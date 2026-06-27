@@ -474,11 +474,16 @@ const getStockEntreprise = async (req, res) => {
       let coutTotal = 0;
       let coutTotalTTC = 0;
       if (b.hasInv) {
-        const coutInvHT = (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
-        const coutInvTTC = (b.invQty > 0 && b.pmpHistTTC !== null) ? b.invQty * b.pmpHistTTC : (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
+        // La quantité d'inventaire n'entre dans le PMP que si elle a une base de coût (pmpHist).
+        // Sinon (pas d'appro avant l'inventaire), la valoriser à 0 tout en la comptant au
+        // dénominateur diluerait le PMP des achats/transferts réels — on l'exclut alors.
+        const invValued = b.invQty > 0 && b.pmpHistHT !== null;
+        const invQtyForPmp = invValued ? b.invQty : 0;
+        const coutInvHT = invValued ? b.invQty * b.pmpHistHT : 0;
+        const coutInvTTC = invValued ? b.invQty * (b.pmpHistTTC !== null ? b.pmpHistTTC : b.pmpHistHT) : 0;
         const totalCostInHT = coutInvHT + (b.approCostPostHT || 0) + (b.transferCostPostHT || 0);
         const totalCostInTTC = coutInvTTC + (b.approCostPostTTC || 0) + (b.transferCostPostTTC || 0);
-        const totalQtyIn = b.invQty + (b.approCostPostQty || 0) + (b.transferCostPostQty || 0);
+        const totalQtyIn = invQtyForPmp + (b.approCostPostQty || 0) + (b.transferCostPostQty || 0);
         const pmpHT = totalQtyIn > 0 ? totalCostInHT / totalQtyIn : null;
         const pmpTTC = totalQtyIn > 0 ? totalCostInTTC / totalQtyIn : null;
         coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;

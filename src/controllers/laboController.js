@@ -478,11 +478,17 @@ const getLaboStock = async (req, res) => {
       let coutTotalTTC = 0;
       let pmpUnitHT = null;
       if (b.hasInv) {
-        const coutInvHT = (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
-        const coutInvTTC = (b.invQty > 0 && b.pmpHistTTC !== null) ? b.invQty * b.pmpHistTTC : (b.invQty > 0 && b.pmpHistHT !== null) ? b.invQty * b.pmpHistHT : 0;
+        // La quantité d'inventaire n'entre dans le PMP que si elle a une base de coût
+        // (pmpHist issu des appros antérieurs à l'inventaire). Sans appro avant l'inventaire,
+        // pmpHist est null : la valoriser à 0 tout en la comptant au dénominateur diluerait
+        // le PMP des achats réels (ex. 2 appros à 16,500 → PMP 15,608). On l'exclut alors.
+        const invValued = b.invQty > 0 && b.pmpHistHT !== null;
+        const invQtyForPmp = invValued ? b.invQty : 0;
+        const coutInvHT = invValued ? b.invQty * b.pmpHistHT : 0;
+        const coutInvTTC = invValued ? b.invQty * (b.pmpHistTTC !== null ? b.pmpHistTTC : b.pmpHistHT) : 0;
         const totalCostInHT = coutInvHT + (b.approCostPostHT || 0);
         const totalCostInTTC = coutInvTTC + (b.approCostPostTTC || 0);
-        const totalQtyIn = b.invQty + (b.approCostPostQty || 0);
+        const totalQtyIn = invQtyForPmp + (b.approCostPostQty || 0);
         const pmpHT = totalQtyIn > 0 ? totalCostInHT / totalQtyIn : null;
         const pmpTTC = totalQtyIn > 0 ? totalCostInTTC / totalQtyIn : null;
         pmpUnitHT = pmpHT;
