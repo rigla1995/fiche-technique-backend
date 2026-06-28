@@ -890,7 +890,9 @@ async function buildDpPriceMapLabo(laboId) {
   return priceMap;
 }
 
-// MP labo : moyenne des prix d'appro par article depuis le dernier inventaire du labo.
+// MP labo : PMP pondéré par les quantités des appros manuels par article depuis le
+// dernier inventaire du labo. Même base que le coût figé à l'appro (saveLaboStock) et
+// que le prix affiché en stock/transfert (getLaboStock) → cohérence des 3 écrans.
 async function buildMpPriceMapLabo(laboId) {
   const priceMap = {};
   if (!laboId) return priceMap;
@@ -901,11 +903,12 @@ async function buildMpPriceMapLabo(laboId) {
        WHERE labo_id = $1 AND ingredient_id IS NOT NULL
        ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
      )
-     SELECT sld.ingredient_id, AVG(sld.prix_unitaire) AS avg_prix
+     SELECT sld.ingredient_id, SUM(sld.quantite * sld.prix_unitaire) / NULLIF(SUM(sld.quantite), 0) AS avg_prix
      FROM stock_labo_daily sld
      LEFT JOIN last_inv li ON li.ingredient_id = sld.ingredient_id
      WHERE sld.labo_id = $1
        AND sld.prix_unitaire IS NOT NULL AND sld.prix_unitaire > 0
+       AND sld.quantite > 0 AND sld.type_appro = 'manuel'
        AND (li.date_inventaire IS NULL OR sld.date_appro >= li.date_inventaire)
      GROUP BY sld.ingredient_id`,
     [laboId]
