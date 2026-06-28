@@ -527,9 +527,30 @@ const getDateRangeLaboPerte = async (req, res) => {
 };
 
 // ── Labo — list pertes historique ────────────────────────────────────────────
+// Pertes de produits transformés du labo (table labo_pertes, produit_id renseigné).
+// Projetées au même schéma de colonnes que les pertes d'articles (ingredient_id négatif).
+async function fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId }) {
+  const params = [laboId];
+  const wheres = [`lp.labo_id = $1`, `lp.produit_id IS NOT NULL`];
+  if (dateDebut) { params.push(dateDebut); wheres.push(`lp.date_perte >= $${params.length}`); }
+  if (dateFin)   { params.push(dateFin);   wheres.push(`lp.date_perte <= $${params.length}`); }
+  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
+  if (ptProduitId) { params.push(ptProduitId); wheres.push(`lp.produit_id = $${params.length}`); }
+  const r = await pool.query(
+    `SELECT lp.id, -(lp.produit_id) AS ingredient_id, lp.produit_id,
+            p.nom AS ingredient_nom, 'unité'::text AS unite_nom, 'Produits Transformés'::text AS categorie_nom,
+            lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte, lp.created_at, lp.created_by
+     FROM labo_pertes lp JOIN produits p ON p.id = lp.produit_id
+     WHERE ${wheres.join(' AND ')}
+     ORDER BY lp.date_perte DESC, lp.created_at DESC`,
+    params
+  );
+  return r.rows;
+}
+
 const listLaboPertes = async (req, res) => {
   const { laboId } = req.params;
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
+  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, ptOnly, ptProduitId } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
 
   try {
@@ -568,7 +589,8 @@ const listLaboPertes = async (req, res) => {
       params
     );
 
-    res.json(result.rows.map((r) => ({
+    const mapDate = (d) => d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10);
+    let rows = result.rows.map((r) => ({
       id: r.id,
       laboId: r.labo_id,
       ingredientId: r.ingredient_id,
@@ -578,11 +600,37 @@ const listLaboPertes = async (req, res) => {
       quantite: parseFloat(r.quantite),
       prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
       typePerte: r.type_perte,
-      datePerte: r.date_perte instanceof Date ? r.date_perte.toISOString().slice(0, 10) : String(r.date_perte).slice(0, 10),
+      datePerte: mapDate(r.date_perte),
       createdAt: r.created_at,
       createdBy: r.created_by ?? null,
       createdByNom: r.created_by_nom ?? null,
-    })));
+    }));
+
+    // Pertes de produits transformés (table séparée) — incluses par défaut sans filtre
+    // article/catégorie/recherche, ou seules si ptOnly.
+    const includePt = ptOnly === 'true' || (!categorieId && !ingredientId && !search);
+    if (includePt) {
+      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId });
+      const ptMapped = ptRows.map((r) => ({
+        id: r.id,
+        laboId: Number(laboId),
+        ingredientId: r.ingredient_id,
+        ingredientNom: r.ingredient_nom,
+        uniteNom: 'unité',
+        categorieNom: 'Produits Transformés',
+        quantite: parseFloat(r.quantite),
+        prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
+        typePerte: r.type_perte,
+        datePerte: mapDate(r.date_perte),
+        createdAt: r.created_at,
+        createdBy: r.created_by ?? null,
+        createdByNom: null,
+      }));
+      rows = ptOnly === 'true' ? ptMapped
+        : [...rows, ...ptMapped].sort((a, b) => (b.datePerte || '').localeCompare(a.datePerte || ''));
+    }
+
+    res.json(rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -593,7 +641,7 @@ const listLaboPertes = async (req, res) => {
 
 const exportLaboPerteExcel = async (req, res) => {
   const { laboId } = req.params;
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds } = req.query;
+  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds, ptOnly, ptProduitId } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
 
   try {
@@ -629,8 +677,15 @@ const exportLaboPerteExcel = async (req, res) => {
        ORDER BY lp.date_perte DESC, lp.created_at DESC`,
       params
     );
+    let exRows = result.rows;
+    const includePt = ptOnly === 'true' || (!categorieId && !ingredientId && !search);
+    if (includePt) {
+      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId });
+      exRows = ptOnly === 'true' ? ptRows
+        : [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
+    }
     res.setHeader('Content-Disposition', `attachment; filename="Historique-Pertes-Labo-${laboNom}.xlsx"`);
-    await buildExcelPertes(res, result.rows, false, { dateDebut, dateFin, selectedIds: idList });
+    await buildExcelPertes(res, exRows, false, { dateDebut, dateFin, selectedIds: idList });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur génération Excel' });
@@ -683,7 +738,7 @@ const exportEntreprisePertesPdf = async (req, res) => {
 
 const exportLaboPertesPdf = async (req, res) => {
   const { laboId } = req.params;
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
+  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, ptOnly, ptProduitId } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
 
   try {
@@ -714,7 +769,14 @@ const exportLaboPertesPdf = async (req, res) => {
        WHERE ${wheres.join(' AND ')} ORDER BY lp.date_perte DESC, lp.created_at DESC`,
       params
     );
-    await buildLaboHistoriquePertesPdf(res, result.rows, laboNom, { dateDebut, dateFin });
+    let pdfRows = result.rows;
+    const includePt = ptOnly === 'true' || (!categorieId && !ingredientId && !search);
+    if (includePt) {
+      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId });
+      pdfRows = ptOnly === 'true' ? ptRows
+        : [...pdfRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
+    }
+    await buildLaboHistoriquePertesPdf(res, pdfRows, laboNom, { dateDebut, dateFin });
   } catch (err) {
     console.error(err);
     if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });

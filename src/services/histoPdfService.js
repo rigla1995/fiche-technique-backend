@@ -158,8 +158,8 @@ const buildHistoriqueApproPdf = (res, rows, filters = {}) => {
       mainColor: '#1e40af',
     },
     {
-      main: r.type_appro === 'transfert' ? 'Transf.' : (r.type_appro ? 'Manuel' : '—'),
-      mainColor: r.type_appro === 'transfert' ? '#0369a1' : '#059669',
+      main: r.type_appro === 'transfert' ? 'Transf.' : (r.type_appro === 'produit_transforme' ? 'PT' : (r.type_appro ? 'Manuel' : '—')),
+      mainColor: r.type_appro === 'transfert' ? '#0369a1' : (r.type_appro === 'produit_transforme' ? '#7e22ce' : '#059669'),
     },
     { main: fmtN(r.quantite), sub: r.unite_nom, align: 'right', mainColor: '#0f766e' },
     { main: r.prix_unitaire != null ? fmtN(r.prix_unitaire) + ' DT' : '—', mainColor: '#1d4ed8' },
@@ -239,8 +239,8 @@ const buildLaboHistoriqueApproPdf = (res, rows, laboNom, filters = {}) => {
     { main: r.ingredient_nom, sub: `${r.unite_nom}  ·  ${r.categorie_nom || '—'}`, mainBold: true },
     { main: fmtD(r.date_appro), mainColor: '#7e22ce' },
     {
-      main: r.type_appro === 'transfert' ? 'Transf.' : (r.type_appro ? 'Manuel' : '—'),
-      mainColor: r.type_appro === 'transfert' ? '#0369a1' : '#059669',
+      main: r.type_appro === 'transfert' ? 'Transf.' : (r.type_appro === 'produit_transforme' ? 'PT' : (r.type_appro ? 'Manuel' : '—')),
+      mainColor: r.type_appro === 'transfert' ? '#0369a1' : (r.type_appro === 'produit_transforme' ? '#7e22ce' : '#059669'),
     },
     { main: fmtN(r.quantite), sub: r.unite_nom, mainColor: '#0f766e' },
     { main: r.prix_unitaire != null ? fmtN(r.prix_unitaire) + ' DT' : '—', mainColor: '#1d4ed8' },

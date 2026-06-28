@@ -1229,6 +1229,27 @@ const exportHistoriquePdf = async (req, res) => {
          ORDER BY sed.date_appro DESC, i.nom`, params
       );
       rows = result.rows.map((r) => ({ ...r, activite_nom: activiteNames[r.activite_id] || '' }));
+
+      // Append PT (table séparée) — même règle que la liste / l'export Excel.
+      if (ptOnly === 'true' || (!categorieId && !ingredientId)) {
+        const ptParamsEnt = [currentYear, ...activiteIds];
+        let ptWhereEnt = `spt.date_appro >= make_date($1::int, 1, 1) AND spt.date_appro < make_date($1::int + 1, 1, 1) AND spt.activite_id IN (${activiteIds.map((_, i) => `$${i + 2}`).join(',')})`;
+        if (ptProduitId) { ptParamsEnt.push(ptProduitId); ptWhereEnt += ` AND spt.produit_id = $${ptParamsEnt.length}`; }
+        if (startDate) { ptParamsEnt.push(startDate); ptWhereEnt += ` AND spt.date_appro >= $${ptParamsEnt.length}`; }
+        if (endDate) { ptParamsEnt.push(endDate); ptWhereEnt += ` AND spt.date_appro <= $${ptParamsEnt.length}`; }
+        const ptResultEnt = await pool.query(
+          `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule AS prix_unitaire,
+                  'produit_transforme' AS type_appro, NULL AS fournisseur_nom, NULL AS ref_facture,
+                  p.nom AS ingredient_nom, 'Produits Transformés' AS categorie_nom, 'unité' AS unite_nom,
+                  NULL AS taux_tva, NULL AS prix_unitaire_tva
+           FROM stock_produits_transformes spt JOIN produits p ON p.id = spt.produit_id
+           WHERE ${ptWhereEnt} ORDER BY spt.date_appro DESC, p.nom`,
+          ptParamsEnt
+        );
+        const ptRows = ptResultEnt.rows.map((r) => ({ ...r, activite_nom: activiteNames[r.activite_id] || '' }));
+        rows = ptOnly === 'true' ? ptRows
+          : [...rows, ...ptRows].sort((a, b) => new Date(b.date_appro) - new Date(a.date_appro));
+      }
     }
 
     await buildHistoriqueApproPdf(res, rows, { startDate, endDate });

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   createLabo, updateLabo, deleteLabo, listLabos, getLaboById,
-  getLaboIngredients, toggleLaboIngredient, getLabosArticlesConsommables,
+  getLaboIngredients, getLaboPT, toggleLaboIngredient, getLabosArticlesConsommables,
   getLaboStock, updateLaboStock, getLaboStockHistory,
   getLaboFournisseurs, syncLaboFournisseurs,
   updateLaboSeuilMin,
@@ -746,6 +746,7 @@ router.put('/:laboId', authenticate, requireEntreprise, updateLabo);
 router.delete('/:laboId', authenticate, requireEntreprise, deleteLabo);
 
 router.get('/:laboId/ingredients', authenticate, requireEntreprise, getLaboIngredients);
+router.get('/:laboId/pt', authenticate, requireEntreprise, getLaboPT);
 router.post('/:laboId/ingredients/:ingredientId/select', authenticate, requireEntreprise, toggleLaboIngredient);
 
 router.get('/:laboId/stock', authenticate, requireEntreprise, getLaboStock);

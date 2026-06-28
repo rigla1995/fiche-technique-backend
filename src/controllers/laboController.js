@@ -199,6 +199,27 @@ const getLaboIngredients = async (req, res) => {
   }
 };
 
+// GET /api/labo/:laboId/pt — liste des produits transformés rattachés au labo (pour les filtres)
+const getLaboPT = async (req, res) => {
+  const { laboId } = req.params;
+  try {
+    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
+    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    const result = await pool.query(
+      `SELECT p.id as produit_id, p.nom
+       FROM labo_pt_selections lps
+       JOIN produits p ON p.id = lps.produit_id
+       WHERE lps.labo_id = $1
+       ORDER BY p.nom`,
+      [laboId]
+    );
+    res.json(result.rows.map((r) => ({ produitId: r.produit_id, nom: r.nom })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 const toggleLaboIngredient = async (req, res) => {
   const { laboId, ingredientId } = req.params;
   try {
@@ -530,7 +551,7 @@ const getLaboStock = async (req, res) => {
 
     // ── PT products for this labo ──────────────────────────────────────────────
     const ptResult = await pool.query(`
-      SELECT p.id as produit_id, p.nom,
+      SELECT p.id as produit_id, p.nom, p.type, p.origine,
         a.id as activite_id, a.nom as activite_nom,
         lps.seuil_min,
         COALESCE(SUM(slpt.quantite) FILTER (WHERE date_trunc('year', slpt.date_appro) = date_trunc('year', CURRENT_DATE)), 0) as total_quantite,
@@ -548,17 +569,17 @@ const getLaboStock = async (req, res) => {
               ORDER BY lt2.date_transfert DESC LIMIT 30) as recent_transfer_dates,
         (
           COALESCE((SELECT SUM(pi2.portion * (
-             SELECT COALESCE(sld2.prix_unitaire_tva, sld2.prix_unitaire) FROM stock_labo_daily sld2
+             SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
              WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id
-               AND sld2.type_appro = 'manuel' AND COALESCE(sld2.prix_unitaire_tva, sld2.prix_unitaire) IS NOT NULL
+               AND sld2.type_appro = 'manuel' AND sld2.prix_unitaire IS NOT NULL
              ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1
           )) FROM produit_ingredients pi2 WHERE pi2.produit_id = p.id), 0)
           +
           COALESCE((SELECT SUM(psp.portion * (
              SELECT COALESCE(SUM(pi3.portion * (
-                SELECT COALESCE(sld3.prix_unitaire_tva, sld3.prix_unitaire) FROM stock_labo_daily sld3
+                SELECT sld3.prix_unitaire FROM stock_labo_daily sld3
                 WHERE sld3.labo_id = $1 AND sld3.ingredient_id = pi3.ingredient_id
-                  AND sld3.type_appro = 'manuel' AND COALESCE(sld3.prix_unitaire_tva, sld3.prix_unitaire) IS NOT NULL
+                  AND sld3.type_appro = 'manuel' AND sld3.prix_unitaire IS NOT NULL
                 ORDER BY sld3.date_appro DESC NULLS LAST LIMIT 1
              )), 0) FROM produit_ingredients pi3 WHERE pi3.produit_id = psp.sous_produit_id
           )) FROM produit_sous_produits psp WHERE psp.produit_id = p.id), 0)
@@ -568,7 +589,7 @@ const getLaboStock = async (req, res) => {
       LEFT JOIN activites a ON a.id = p.activite_id
       LEFT JOIN stock_labo_pt_daily slpt ON slpt.produit_id = p.id AND slpt.labo_id = $1
       WHERE lps.labo_id = $1
-      GROUP BY p.id, p.nom, a.id, a.nom, lps.seuil_min
+      GROUP BY p.id, p.nom, p.type, p.origine, a.id, a.nom, lps.seuil_min
       ORDER BY p.nom
     `, [laboId]);
 
@@ -668,6 +689,8 @@ const getLaboStock = async (req, res) => {
         ingredientId: -(row.produit_id),
         produitId: row.produit_id,
         isPT: true,
+        type: row.type || 'vendable',
+        origine: row.origine || 'activite',
         nom: row.nom,
         unite: 'unité',
         categorie: 'Produits Transformés',
@@ -1262,7 +1285,7 @@ const getTransferHistory = async (req, res) => {
 // GET /api/labo/:laboId/historique
 const getLaboHistorique = async (req, res) => {
   const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, categorieId, fournisseurId, activiteId, typeFilter, refFacture, limit, offset } = req.query;
+  const { startDate, endDate, ingredientId, categorieId, fournisseurId, activiteId, typeFilter, refFacture, limit, offset, ptOnly, ptProduitId } = req.query;
   const parsedLimit = parseInt(limit, 10) || null;
   const parsedOffset = parseInt(offset, 10) || 0;
   try {
@@ -1361,7 +1384,7 @@ const getLaboHistorique = async (req, res) => {
 
     const result = await pool.query(sql, params);
 
-    res.json(result.rows.map((r) => ({
+    let rows = result.rows.map((r) => ({
       id: r.id,
       ingredientId: r.ingredient_id,
       ingredientNom: r.ingredient_nom,
@@ -1381,7 +1404,54 @@ const getLaboHistorique = async (req, res) => {
       updatedAt: r.updated_at,
       createdBy: r.created_by ?? null,
       createdByNom: r.created_by_nom ?? null,
-    })));
+    }));
+
+    // Fabrications de produits transformés (table séparée stock_labo_pt_daily) — incluses
+    // par défaut quand aucun filtre article/catégorie/fournisseur, ou seules si ptOnly.
+    // Convention front : ingredientId = -(produitId), catégorie « Produits Transformés ».
+    const includePt = ptOnly === 'true'
+      || (includeManuel && !ingredientId && !categorieId && !fournisseurId && !refFacture);
+    if (includePt) {
+      const ptParams = [laboId];
+      let ptWhere = `slpt.labo_id = $1`;
+      if (startDate) { ptParams.push(startDate); ptWhere += ` AND slpt.date_appro >= $${ptParams.length}`; }
+      if (endDate) { ptParams.push(endDate); ptWhere += ` AND slpt.date_appro <= $${ptParams.length}`; }
+      if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND slpt.produit_id = $${ptParams.length}`; }
+      const ptRes = await pool.query(
+        `SELECT slpt.id, slpt.produit_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire, slpt.updated_at, p.nom as produit_nom
+         FROM stock_labo_pt_daily slpt
+         JOIN produits p ON p.id = slpt.produit_id
+         WHERE ${ptWhere}
+         ORDER BY slpt.date_appro DESC`,
+        ptParams
+      );
+      const ptEntries = ptRes.rows.map((spt) => ({
+        id: spt.id,
+        ingredientId: -(spt.produit_id),
+        ingredientNom: spt.produit_nom,
+        uniteNom: 'unité',
+        categorieNom: 'Produits Transformés',
+        dateAppro: isoDate(spt.date_appro),
+        quantite: spt.quantite !== null ? parseFloat(spt.quantite) : null,
+        prixUnitaire: spt.prix_unitaire !== null ? parseFloat(spt.prix_unitaire) : null,
+        tauxTva: null,
+        prixUnitaireTva: null,
+        refFacture: null,
+        typeAppro: 'produit_transformé',
+        fournisseurId: null,
+        fournisseurNom: null,
+        activiteId: null,
+        activiteNom: null,
+        updatedAt: spt.updated_at,
+        createdBy: null,
+        createdByNom: null,
+      }));
+      rows = ptOnly === 'true'
+        ? ptEntries
+        : [...rows, ...ptEntries].sort((a, b) => (b.dateAppro || '').localeCompare(a.dateAppro || ''));
+    }
+
+    res.json(rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -1599,7 +1669,7 @@ const toggleActivityAssignment = async (req, res) => {
 // ─── Export Excel Historique Labo ────────────────────────────────────────────
 const exportLaboHistoriqueExcel = async (req, res) => {
   const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture, selectedIds: selectedIdsParam } = req.query;
+  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture, selectedIds: selectedIdsParam, ptOnly, ptProduitId } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
 
   try {
@@ -1632,7 +1702,28 @@ const exportLaboHistoriqueExcel = async (req, res) => {
        WHERE ${conditions.join(' AND ')}
        ORDER BY sld.date_appro DESC, sld.updated_at DESC`, params
     );
-    const rows = result.rows;
+    let rows = result.rows;
+
+    // Append des fabrications de produits transformés (table séparée), même règle que la liste.
+    const includePt = ptOnly === 'true' || (!ingredientId && !categorieId && !fournisseurId && !refFacture);
+    if (includePt) {
+      const ptParams = [laboId];
+      let ptWhere = `slpt.labo_id = $1`;
+      if (startDate) { ptParams.push(startDate); ptWhere += ` AND slpt.date_appro >= $${ptParams.length}`; }
+      if (endDate) { ptParams.push(endDate); ptWhere += ` AND slpt.date_appro <= $${ptParams.length}`; }
+      if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND slpt.produit_id = $${ptParams.length}`; }
+      const ptRes = await pool.query(
+        `SELECT slpt.id, -(slpt.produit_id) as ingredient_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire,
+                NULL::text as ref_facture, 'produit_transforme'::text as type_appro, NULL::numeric as taux_tva, NULL::numeric as prix_unitaire_tva,
+                p.nom as ingredient_nom, 'unité'::text as unite_nom, 'Produits Transformés'::text as categorie_nom,
+                NULL::text as fournisseur_nom, NULL::text as created_by_nom
+         FROM stock_labo_pt_daily slpt JOIN produits p ON p.id = slpt.produit_id
+         WHERE ${ptWhere}
+         ORDER BY slpt.date_appro DESC`, ptParams
+      );
+      rows = ptOnly === 'true' ? ptRes.rows
+        : [...rows, ...ptRes.rows].sort((a, b) => new Date(b.date_appro) - new Date(a.date_appro));
+    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
@@ -2336,7 +2427,7 @@ const getLabosArticlesConsommables = async (req, res) => {
 
 module.exports = {
   createLabo, updateLabo, deleteLabo, listLabos, getLaboById,
-  getLaboIngredients, toggleLaboIngredient, getLabosArticlesConsommables,
+  getLaboIngredients, getLaboPT, toggleLaboIngredient, getLabosArticlesConsommables,
   getLaboStock, updateLaboStock, getLaboStockHistory,
   getLaboFournisseurs, syncLaboFournisseurs,
   updateLaboSeuilMin,
@@ -2354,7 +2445,7 @@ module.exports = {
 // (declared after module.exports to allow hoisting reference; attach directly)
 async function exportLaboHistoriquePdf(req, res) {
   const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture } = req.query;
+  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture, ptOnly, ptProduitId } = req.query;
 
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
@@ -2384,7 +2475,27 @@ async function exportLaboHistoriquePdf(req, res) {
        WHERE ${conditions.join(' AND ')} ORDER BY sld.date_appro DESC, sld.updated_at DESC`,
       params
     );
-    await buildLaboHistoriqueApproPdf(res, result.rows, laboNom, { startDate, endDate });
+    let pdfRows = result.rows;
+
+    // Append des fabrications de produits transformés (table séparée), même règle que la liste.
+    const includePt = ptOnly === 'true' || (!ingredientId && !categorieId && !fournisseurId && !refFacture);
+    if (includePt) {
+      const ptParams = [laboId];
+      let ptWhere = `slpt.labo_id = $1`;
+      if (startDate) { ptParams.push(startDate); ptWhere += ` AND slpt.date_appro >= $${ptParams.length}`; }
+      if (endDate) { ptParams.push(endDate); ptWhere += ` AND slpt.date_appro <= $${ptParams.length}`; }
+      if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND slpt.produit_id = $${ptParams.length}`; }
+      const ptRes = await pool.query(
+        `SELECT slpt.id, -(slpt.produit_id) as ingredient_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire,
+                NULL::text as ref_facture, 'produit_transforme'::text as type_appro, NULL::numeric as taux_tva, NULL::numeric as prix_unitaire_tva,
+                p.nom as ingredient_nom, 'unité'::text as unite_nom, 'Produits Transformés'::text as categorie_nom, NULL::text as fournisseur_nom
+         FROM stock_labo_pt_daily slpt JOIN produits p ON p.id = slpt.produit_id
+         WHERE ${ptWhere} ORDER BY slpt.date_appro DESC`, ptParams
+      );
+      pdfRows = ptOnly === 'true' ? ptRes.rows
+        : [...pdfRows, ...ptRes.rows].sort((a, b) => new Date(b.date_appro) - new Date(a.date_appro));
+    }
+    await buildLaboHistoriqueApproPdf(res, pdfRows, laboNom, { startDate, endDate });
   } catch (err) {
     console.error(err);
     if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
