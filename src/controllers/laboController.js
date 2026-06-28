@@ -720,6 +720,28 @@ const getLaboStock = async (req, res) => {
       };
     });
 
+    // Source de vérité UNIQUE du coût d'un PT composé : on recalcule prixCalcule avec la
+    // MÊME fonction que la fiche technique (mode MP) → stock/transfert == FT-MP garanti.
+    // = PMP pondéré des appros manuels (prix>0) de chaque article de la recette depuis le
+    // dernier inventaire du labo.
+    if (ptRows.length > 0) {
+      try {
+        const { buildMpPriceMapLabo, calculerCoutAvecPrixMap } = require('./produitsController');
+        const ownerId = req.user.gerant_parent_id || req.user.id;
+        const mpMap = await buildMpPriceMapLabo(laboId);
+        await Promise.all(ptRows.map(async (row) => {
+          try {
+            const r = await calculerCoutAvecPrixMap(row.produitId, ownerId, mpMap);
+            const c = r && r.cout_total != null ? parseFloat(r.cout_total) : null;
+            if (c != null && c > 0) {
+              row.prixCalcule = c;
+              if (row.prixUnitaire == null) row.prixUnitaire = c;
+            }
+          } catch { /* repli sur la valeur SQL */ }
+        }));
+      } catch { /* repli sur les valeurs SQL */ }
+    }
+
     res.json([...ingredientRows, ...ptRows]);
   } catch (err) {
     console.error(err);
