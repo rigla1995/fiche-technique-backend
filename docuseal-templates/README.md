@@ -1,50 +1,58 @@
-# Templates de contrats DocuSeal
+# Documents contractuels LabFlow (PDF)
 
-Deux modèles PDF à uploader dans DocuSeal comme **templates**, prêts à être pré-remplis automatiquement par l'application.
+Trois documents PDF — **contrat d'abonnement**, **avenant**, **résiliation** — générés par
+`generate.js` (pdfkit). Refonte 2026-06 : design professionnel conforme au thème (logo
+vectoriel, dégradé sky→indigo→violet), **valeurs rendues en dur** (plus de cases vides) et
+**signature du prestataire pré-apposée** (cachet électronique).
 
-| Fichier | Usage | Variable d'env DocuSeal |
-|---|---|---|
-| `contrat-labflow.pdf` | Contrat d'abonnement (création de client) | `DOCUSEAL_TEMPLATE_ID` |
-| `avenant-labflow.pdf` | Avenant (ajout de capacité / changement de tarif) | `DOCUSEAL_TEMPLATE_AVENANT_ID` |
-| `resiliation-labflow.pdf` | Résiliation du contrat | `DOCUSEAL_TEMPLATE_RESILIATION_ID` |
+## Approche « PDF rempli » (et non plus « template à champs »)
 
-Régénérer après modification : `node docuseal-templates/generate.js`
+L'ancienne approche uploadait un template à cases vides dans DocuSeal, qui remplissait des
+champs nommés au moment de l'envoi. La nouvelle approche génère le document **par client,
+déjà rempli avec ses vraies valeurs et déjà signé de notre part**. Seule la **signature du
+client** reste à recueillir : elle est portée par la balise `{{Signature;type=signature}}`
+détectée automatiquement par DocuSeal via `createSubmissionFromPdf` (voir
+`src/services/docusealService.js`). Aucun champ à configurer côté DocuSeal.
 
-## Champs pré-remplis automatiquement
+## Builders (data-driven)
 
-Les balises `{{...}}` présentes dans les PDF sont **détectées automatiquement par DocuSeal à l'upload** et deviennent des champs. L'API les remplit par leur **nom exact** (voir `src/services/docusealService.js`) :
+`generate.js` exporte `buildContrat / buildAvenant / buildResiliation (outPath, data)`.
+Chaque builder accepte un objet `data` et écrit un PDF. Lancé en CLI, le fichier génère
+un **aperçu** avec des valeurs d'exemple :
 
-| Champ DocuSeal | Source |
-|---|---|
-| `Nom du client` | nom du client |
-| `Email` | email du client |
-| `Date du contrat` | date d'émission |
-| `Nb activités` | nombre d'activités souscrites |
-| `Nb labos` | nombre de labos |
-| `Nb gérants` | nombre de gérants |
-| `Montant onboarding` | frais d'activation **effectifs** (après promo) |
-| `Montant mensuel` | mensualité **effective** (promo incluse) |
-| `Détail promotion` | résumé promo : prix de base, durée, date de reprise (contrat uniquement) |
-| `Signature` | signature électronique du client |
+```
+node docuseal-templates/generate.js
+```
 
-## Flux câblés dans l'application
+Forme du `data` :
 
-- **Contrat** : envoyé à la création du client (reflète la promotion).
-- **Avenant** : envoyé automatiquement quand le client demande un ajout de capacité ; à la signature, la capacité est appliquée et la demande validée (webhook).
-- **Résiliation** : envoyée automatiquement quand l'admin supprime un client (archive/formalité).
+| Champ | Contrat | Avenant | Résiliation |
+|---|---|---|---|
+| `ref`, `date` (chaînes formatées) | ✔ | ✔ | ✔ |
+| `client { nom, email?, tel?, adresse? }` | ✔ | ✔ | ✔ |
+| `config { activites, labos, gerants }` | ✔ | ✔ | — |
+| `pricing { onboarding?, mensuel, mensuelBase?, promoDetail? }` | ✔ | ✔ (mensuel) | — |
+| `ajout` (texte capacité ajoutée) | — | ✔ | — |
+| `contratRef`, `contratDate` (contrat initial visé) | — | ✔ | — |
+| `previewMode` (true = aperçu ; **false = balise DocuSeal posée**) | ✔ | ✔ | ✔ |
 
-⚠️ Ne **pas renommer** ces champs dans DocuSeal, sinon le pré-remplissage ne marche plus.
+Robustesse : tous les champs variables sont **wrappés** (jamais tronqués silencieusement) ;
+les cartes « parties » ont une hauteur dynamique ; les zones contraintes (cachet, pied de
+page) clippent proprement avec « … ». Testé avec noms/adresses longs.
 
-## Procédure d'upload (à faire une fois par template)
+## Identité prestataire — À COMPLÉTER avant la prod
 
-1. DocuSeal → **New template** → uploader le PDF.
-2. DocuSeal détecte les `{{balises}}` et crée les champs. Vérifier qu'ils portent bien les noms ci-dessus.
-3. Assigner tous les champs au **même signataire** (rôle `Première partie` — c'est le rôle utilisé par l'API).
-4. (Optionnel) Marquer les champs de prix/configuration en **lecture seule** pour que le client ne puisse pas les modifier.
-5. Copier l'**ID du template** et le mettre dans la variable d'env correspondante (Coolify).
+L'objet `PRESTATAIRE` (haut de `generate.js`) contient des **placeholders** :
+`raisonSociale`, `forme`, `matricule` (MF), `rc`, `capital`, `adresse`, `ville`, `email`,
+`tel`, `signataire`. Renseigner les **vraies mentions légales** avant toute génération
+destinée à un client (un acte signé avec une identité inexacte est juridiquement vicié).
 
-## À compléter avant mise en production
+## Reste à câbler (après validation du rendu)
 
-Les informations légales du prestataire sont des **placeholders** dans `generate.js` (objet `PRESTATAIRE`) :
-`forme` juridique, `matricule` fiscal, `rc` (registre de commerce), `adresse`, `tel`.
-Les renseigner puis régénérer les PDF.
+1. Lever les builders dans un service backend (ex. `contractPdfService.js`) appelé par
+   client avec `previewMode:false`, puis envoyer le PDF via `createSubmissionFromPdf`.
+2. Renseigner `PRESTATAIRE` (mentions légales réelles) + idéalement les variables d'env
+   `FACTURE_*` correspondantes.
+3. (Option) clauses juridiques additionnelles : protection des données (loi 2004-63),
+   force majeure, régime TVA, identification du signataire client, mention loi 2000-83
+   sur la signature électronique.
