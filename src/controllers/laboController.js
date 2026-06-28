@@ -571,7 +571,7 @@ const getLaboStock = async (req, res) => {
           COALESCE((SELECT SUM(pi2.portion * (
              SELECT SUM(sld2.quantite * sld2.prix_unitaire) / NULLIF(SUM(sld2.quantite), 0) FROM stock_labo_daily sld2
              WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id
-               AND sld2.type_appro = 'manuel' AND sld2.prix_unitaire IS NOT NULL AND sld2.quantite > 0
+               AND sld2.type_appro = 'manuel' AND sld2.prix_unitaire IS NOT NULL AND sld2.prix_unitaire > 0 AND sld2.quantite > 0
                AND sld2.date_appro >= COALESCE(
                  (SELECT date_inventaire FROM inventaires WHERE labo_id = $1 AND ingredient_id = pi2.ingredient_id ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
                  (SELECT MIN(date_appro) FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = pi2.ingredient_id AND quantite > 0)
@@ -582,7 +582,7 @@ const getLaboStock = async (req, res) => {
              SELECT COALESCE(SUM(pi3.portion * (
                 SELECT SUM(sld3.quantite * sld3.prix_unitaire) / NULLIF(SUM(sld3.quantite), 0) FROM stock_labo_daily sld3
                 WHERE sld3.labo_id = $1 AND sld3.ingredient_id = pi3.ingredient_id
-                  AND sld3.type_appro = 'manuel' AND sld3.prix_unitaire IS NOT NULL AND sld3.quantite > 0
+                  AND sld3.type_appro = 'manuel' AND sld3.prix_unitaire IS NOT NULL AND sld3.prix_unitaire > 0 AND sld3.quantite > 0
                   AND sld3.date_appro >= COALESCE(
                     (SELECT date_inventaire FROM inventaires WHERE labo_id = $1 AND ingredient_id = pi3.ingredient_id ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
                     (SELECT MIN(date_appro) FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = pi3.ingredient_id AND quantite > 0)
