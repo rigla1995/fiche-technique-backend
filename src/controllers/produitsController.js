@@ -875,24 +875,27 @@ async function laboOwnedByClient(laboId, clientId) {
   return r.rows.length > 0;
 }
 
-// DP labo : dernier prix d'appro par article dans le stock du labo.
+// DP labo : dernier prix d'appro TTC par article dans le stock du labo.
+// TTC = COALESCE(prix_unitaire_tva, prix_unitaire) : le coût du PT est composé des
+// prix TTC des articles de la recette (le PMP/coût affiché est donc déjà taxé).
 async function buildDpPriceMapLabo(laboId) {
   const priceMap = {};
   if (!laboId) return priceMap;
   const r = await pool.query(
-    `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+    `SELECT DISTINCT ON (ingredient_id) ingredient_id, COALESCE(prix_unitaire_tva, prix_unitaire) AS prix
        FROM stock_labo_daily
-      WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+      WHERE labo_id = $1 AND COALESCE(prix_unitaire_tva, prix_unitaire) IS NOT NULL AND COALESCE(prix_unitaire_tva, prix_unitaire) > 0
       ORDER BY ingredient_id, date_appro DESC`,
     [laboId]
   );
-  r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix_unitaire); });
+  r.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.prix); });
   return priceMap;
 }
 
 // MP labo : PMP pondéré par les quantités des appros manuels par article depuis le
-// dernier inventaire du labo. Même base que le coût figé à l'appro (saveLaboStock) et
-// que le prix affiché en stock/transfert (getLaboStock) → cohérence des 3 écrans.
+// dernier inventaire du labo, sur les prix TTC (COALESCE(prix_unitaire_tva, prix_unitaire)).
+// Même base que le coût figé à l'appro (saveLaboStock) et que le prix affiché en
+// stock/transfert (getLaboStock) → cohérence des écrans, valeur déjà taxée (TTC).
 async function buildMpPriceMapLabo(laboId) {
   const priceMap = {};
   if (!laboId) return priceMap;
@@ -903,11 +906,12 @@ async function buildMpPriceMapLabo(laboId) {
        WHERE labo_id = $1 AND ingredient_id IS NOT NULL
        ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
      )
-     SELECT sld.ingredient_id, SUM(sld.quantite * sld.prix_unitaire) / NULLIF(SUM(sld.quantite), 0) AS avg_prix
+     SELECT sld.ingredient_id,
+            SUM(sld.quantite * COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire)) / NULLIF(SUM(sld.quantite), 0) AS avg_prix
      FROM stock_labo_daily sld
      LEFT JOIN last_inv li ON li.ingredient_id = sld.ingredient_id
      WHERE sld.labo_id = $1
-       AND sld.prix_unitaire IS NOT NULL AND sld.prix_unitaire > 0
+       AND COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire) IS NOT NULL AND COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire) > 0
        AND sld.quantite > 0 AND sld.type_appro = 'manuel'
        AND (li.date_inventaire IS NULL OR sld.date_appro >= li.date_inventaire)
      GROUP BY sld.ingredient_id`,
