@@ -11,6 +11,7 @@ const mapProduit = (row) => ({
   clientId: row.client_id,
   activiteId: row.activite_id || null,
   activites: row.activites_list || [],
+  labos: row.labos_list || [],
   isStockIngredient: !!row.is_stock_ingredient,
   isSupplement: !!row.is_supplement,
   categorieProduitId: row.categorie_produit_id || null,
@@ -158,6 +159,9 @@ const list = async (req, res) => {
            JOIN activites a ON a.id = paa.activite_id
            WHERE paa.produit_id = p.id
          ) t) AS activites_list,
+        (SELECT JSON_AGG(JSON_BUILD_OBJECT('id', l.id, 'nom', l.nom) ORDER BY l.nom)
+         FROM labo_pt_selections lps JOIN labos l ON l.id = lps.labo_id
+         WHERE lps.produit_id = p.id) AS labos_list,
         (SELECT cp.nom FROM categories_produit cp WHERE cp.id = p.categorie_produit_id) AS categorie_produit_nom
        FROM produits p
        WHERE p.client_id = $1${whereExtra}
