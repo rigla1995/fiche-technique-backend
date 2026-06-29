@@ -435,6 +435,13 @@ const getStockEntreprise = async (req, res) => {
       const avgPrix = pb.hasInv ? (pb.avgPrixPost ?? pb.avgPrixAll ?? null) : (pb.avgPrixAll ?? null);
       const pertesDepuisInv = pb.hasInv ? pb.postPertesQty : pb.allPertesQty;
       const venteDepuisInv = pb.hasInv ? pb.postVenteQty : pb.allVenteQty;
+      // Prix affiché = DERNIER prix de réception (transfert/appro) depuis le dernier inventaire ;
+      // repli sur le coût recette (ptPrixMap) si aucune réception depuis l'inventaire.
+      const lastRecepDate = r.last_date_appro ? String(r.last_date_appro).slice(0, 10) : null;
+      const invDate = pb.hasInv && pb.invDate ? String(pb.invDate).slice(0, 10) : null;
+      const lastRecepPrice = (r.last_prix_calcule != null && lastRecepDate && (!invDate || lastRecepDate >= invDate))
+        ? parseFloat(r.last_prix_calcule) : null;
+      const ptPrix = (lastRecepPrice != null && lastRecepPrice > 0) ? lastRecepPrice : pInfo.prixCalcule;
       return {
         ingredientId: -(r.produit_id),
         produitId: r.produit_id,
@@ -445,13 +452,13 @@ const getStockEntreprise = async (req, res) => {
         nom: r.nom,
         unite: 'unité',
         categorie: 'Produits Transformés',
-        prixUnitaire: pInfo.prixCalcule,
-        prixCalcule: pInfo.prixCalcule,
+        prixUnitaire: ptPrix,
+        prixCalcule: ptPrix,
         quantite,
         totalQuantite: quantite,
         dateAppro: isoDate(r.last_date_appro),
         seuilMin: r.seuil_min_pt !== null ? parseFloat(r.seuil_min_pt) : null,
-        coutTotal: avgPrix !== null && quantite > 0 ? quantite * avgPrix : (pInfo.prixCalcule != null && pInfo.prixCalcule > 0 && quantite > 0 ? pInfo.prixCalcule * quantite : 0),
+        coutTotal: avgPrix !== null && quantite > 0 ? quantite * avgPrix : (ptPrix != null && ptPrix > 0 && quantite > 0 ? ptPrix * quantite : 0),
         lastFournisseurId: null,
         lastRefFacture: null,
         lastInvDate: pb.hasInv ? pb.invDate : null,

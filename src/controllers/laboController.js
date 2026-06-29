@@ -1121,7 +1121,15 @@ const createTransfer = async (req, res) => {
              ORDER BY date_appro DESC LIMIT 1`,
             [laboId, produitId]
           );
-          const ptPrix = latestPtRes.rows.length > 0 ? parseFloat(latestPtRes.rows[0].prix_unitaire || 0) : 0;
+          const laboCost = latestPtRes.rows.length > 0 ? parseFloat(latestPtRes.rows[0].prix_unitaire || 0) : 0;
+
+          // Prix de cession SAISI au transfert (le front envoie le HT ; TTC = HT*(1+TVA)).
+          // À défaut (pas de prix saisi) on retombe sur le coût de fabrication labo.
+          const ptPrixUnit = t.prixUnitaire != null && parseFloat(t.prixUnitaire) > 0 ? parseFloat(t.prixUnitaire) : null;
+          const ptTva = tauxTva != null ? parseFloat(tauxTva) : 0;
+          const ptPrixTtc = ptPrixUnit != null ? ptPrixUnit * (1 + ptTva / 100) : null;
+          // Le stock activité valorise le PT au prix de cession TTC (sinon coût labo en repli).
+          const receptionPrice = ptPrixTtc != null ? ptPrixTtc : laboCost;
 
           // Deduct from labo PT stock (negative entry)
           await client.query(
@@ -1134,14 +1142,14 @@ const createTransfer = async (req, res) => {
           await client.query(
             `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
              VALUES ($1, $2, $3, $4, $5)`,
-            [produitId, t.activiteId, dateTransfert, qty, ptPrix]
+            [produitId, t.activiteId, dateTransfert, qty, receptionPrice]
           );
 
-          // Record PT transfer
+          // Record PT transfer (avec prix HT/TVA/TTC de cession)
           await client.query(
-            `INSERT INTO labo_transfers (labo_id, activite_id, produit_id, quantite, date_transfert, note, ref_facture, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [laboId, t.activiteId, produitId, qty, dateTransfert, note || null, refFacture || null, req.user.id]
+            `INSERT INTO labo_transfers (labo_id, activite_id, produit_id, quantite, date_transfert, note, ref_facture, prix_unitaire, taux_tva, prix_unitaire_tva, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [laboId, t.activiteId, produitId, qty, dateTransfert, note || null, refFacture || null, ptPrixUnit, ptTva, ptPrixTtc, req.user.id]
           );
           continue;
         }
