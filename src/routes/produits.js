@@ -440,12 +440,13 @@ router.get('/:id/stock-check', authenticate, requireClient, getStockCheck);
 router.get('/:id/manual-prices', authenticate, requireClient, getManualPrices);
 router.post('/:id/manual-prices', authenticate, requireClient, saveManualPrices);
 
-const { toggleStockIngredient, deleteStockPTHistory, getStockActivites, affecterActivites, toggleAffectation, getParentProducts } = require('../controllers/produitTransformeController');
+const { toggleStockIngredient, deleteStockPTHistory, getStockActivites, affecterActivites, toggleAffectation, toggleLabo, getParentProducts } = require('../controllers/produitTransformeController');
 router.get('/:id/stock-activites', authenticate, requireClient, getStockActivites);
 router.post('/:id/toggle-stock-ingredient', authenticate, requireClientOwner, toggleStockIngredient);
 router.delete('/:id/stock-pt-history', authenticate, requireClientOwner, deleteStockPTHistory);
 router.post('/:id/affecter-activites', authenticate, requireClientOwner, affecterActivites);
 router.post('/:id/toggle-affectation', authenticate, requireClientOwner, toggleAffectation);
+router.post('/:id/toggle-labo', authenticate, requireClientOwner, toggleLabo);
 router.get('/:id/parent-products', authenticate, requireClient, getParentProducts);
 
 module.exports = router;

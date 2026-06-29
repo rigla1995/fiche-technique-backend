@@ -775,6 +775,42 @@ const toggleAffectation = async (req, res) => {
   }
 };
 
+// Assignation produit ↔ labo (indicateur stock labo), calqué sur toggleAffectation.
+const toggleLabo = async (req, res) => {
+  const produitId = parseInt(req.params.id);
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const laboId = req.body.laboId ? parseInt(req.body.laboId) : null;
+  if (!laboId) return res.status(400).json({ message: 'laboId requis' });
+
+  try {
+    const ownerRes = await pool.query(
+      `SELECT id FROM produits WHERE id = $1 AND client_id = $2`,
+      [produitId, clientId]
+    );
+    if (ownerRes.rows.length === 0) return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+
+    const laboRes = await pool.query(
+      `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id WHERE l.id = $1 AND pe.client_id = $2`,
+      [laboId, clientId]
+    );
+    if (laboRes.rows.length === 0) return res.status(403).json({ message: 'Labo introuvable ou accès refusé' });
+
+    const existing = await pool.query(
+      `SELECT 1 FROM labo_pt_selections WHERE produit_id = $1 AND labo_id = $2`,
+      [produitId, laboId]
+    );
+    if (existing.rows.length > 0) {
+      await pool.query(`DELETE FROM labo_pt_selections WHERE produit_id = $1 AND labo_id = $2`, [produitId, laboId]);
+    } else {
+      await pool.query(`INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [laboId, produitId]);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[toggleLabo]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   toggleStockIngredient,
   deleteStockPTHistory,
@@ -786,5 +822,6 @@ module.exports = {
   updateSeuilMinPT,
   affecterActivites,
   toggleAffectation,
+  toggleLabo,
   getParentProducts,
 };
