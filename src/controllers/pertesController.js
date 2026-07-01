@@ -38,7 +38,7 @@ const getPrixPourPerte = async (table, ownerCol, ownerId, ingredientId, datePert
   const expectedCol = STOCK_TABLE_ALLOWLIST[table];
   if (!expectedCol || expectedCol !== ownerCol) throw new Error(`Table non autorisée: ${table}`);
   const r = await pool.query(
-    `SELECT prix_unitaire FROM ${table}
+    `SELECT prix_unitaire, COALESCE(prix_unitaire_tva, prix_unitaire) AS prix_ttc FROM ${table}
      WHERE ${ownerCol} = $1 AND ingredient_id = $2
        AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
        AND date_appro <= $3
@@ -46,7 +46,9 @@ const getPrixPourPerte = async (table, ownerCol, ownerId, ingredientId, datePert
      LIMIT 1`,
     [ownerId, ingredientId, datePerte]
   );
-  return r.rows.length > 0 ? parseFloat(r.rows[0].prix_unitaire) : null;
+  return r.rows.length > 0
+    ? { ht: parseFloat(r.rows[0].prix_unitaire), ttc: r.rows[0].prix_ttc != null ? parseFloat(r.rows[0].prix_ttc) : null }
+    : { ht: null, ttc: null };
 };
 
 // ── Entreprise — existing create ─────────────────────────────────────────────
@@ -78,7 +80,7 @@ const createPerte = async (req, res) => {
     const minApproStr = minAppro instanceof Date ? minAppro.toISOString().slice(0, 10) : String(minAppro).slice(0, 10);
     if (datePerte < minApproStr) return res.status(400).json({ message: `La date de perte doit être >= au premier appro (${minApproStr.split('-').reverse().join('/')}).` });
 
-    const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, datePerte);
+    const prixPerte = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, datePerte);
 
     const stockCourant = await computeStockCourant('activite', activiteId, ingredientId);
     const qty = parseFloat(quantite);
@@ -91,9 +93,9 @@ const createPerte = async (req, res) => {
     }
 
     const r = await pool.query(
-      `INSERT INTO pertes (activite_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [activiteId, ingredientId, quantite, typePerte, datePerte, prixUnitaire, req.user.id]
+      `INSERT INTO pertes (activite_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [activiteId, ingredientId, quantite, typePerte, datePerte, prixPerte.ht, prixPerte.ttc, req.user.id]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -225,15 +227,15 @@ const updateEntreprisePerte = async (req, res) => {
       ? date_perte.toISOString().slice(0, 10)
       : String(date_perte).slice(0, 10));
 
-    const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, effectiveDate);
+    const prixPerte = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, effectiveDate);
 
     const r = await pool.query(
-      `UPDATE pertes p SET quantite = $1, type_perte = $2, prix_unitaire = $3
+      `UPDATE pertes p SET quantite = $1, type_perte = $2, prix_unitaire = $3, prix_unitaire_tva = $6
        FROM activites a
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE p.id = $4 AND p.activite_id = a.id AND pe.client_id = $5
        RETURNING p.id`,
-      [quantite, typePerte, prixUnitaire, id, req.user.gerant_parent_id || req.user.id]
+      [quantite, typePerte, prixPerte.ht, id, req.user.gerant_parent_id || req.user.id, prixPerte.ttc]
     );
     if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     res.json({ message: 'Mise à jour effectuée' });
@@ -461,8 +463,8 @@ const getPrixEntreprisePerte = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
-    const prixUnitaire = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, date);
-    res.json({ prixUnitaire });
+    const prixPerte = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, date);
+    res.json({ prixUnitaire: prixPerte.ht });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -474,8 +476,8 @@ const getPrixLaboPerte = async (req, res) => {
   const { ingredientId, date } = req.query;
   if (!ingredientId || !date) return res.status(400).json({ message: 'ingredientId et date requis' });
   try {
-    const prixUnitaire = await getPrixPourPerte('stock_labo_daily', 'labo_id', laboId, ingredientId, date);
-    res.json({ prixUnitaire });
+    const prixPerte = await getPrixPourPerte('stock_labo_daily', 'labo_id', laboId, ingredientId, date);
+    res.json({ prixUnitaire: prixPerte.ht });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
