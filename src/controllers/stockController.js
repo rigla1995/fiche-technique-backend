@@ -94,9 +94,10 @@ const getStockEntreprise = async (req, res) => {
              last_spt.prix_calcule as last_prix_calcule
       FROM produits p
       LEFT JOIN LATERAL (
+        -- Dernière réception valorisée (appro/transfert, quantité +) : exclut les consommations de sous-PT (quantité -, prix NULL).
         SELECT date_appro, prix_calcule FROM stock_produits_transformes
-        WHERE produit_id = p.id AND activite_id = $1
-        ORDER BY date_appro DESC LIMIT 1
+        WHERE produit_id = p.id AND activite_id = $1 AND quantite > 0 AND prix_calcule IS NOT NULL
+        ORDER BY date_appro DESC, id DESC LIMIT 1
       ) last_spt ON true
       JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
       ORDER BY p.nom
@@ -343,10 +344,11 @@ const getStockEntreprise = async (req, res) => {
          GROUP BY p.produit_id
        ),
        post_ventes AS (
+         -- Exclut les consommations de sous-PT à la production (type_appro='PT') : ce ne sont pas des ventes.
          SELECT spt.produit_id, SUM(ABS(spt.quantite)) as qty
          FROM stock_produits_transformes spt
          JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro >= li.date_inventaire
-         WHERE spt.activite_id = $1 AND spt.quantite < 0
+         WHERE spt.activite_id = $1 AND spt.quantite < 0 AND spt.type_appro IS DISTINCT FROM 'PT'
          GROUP BY spt.produit_id
        ),
        avg_prix_post AS (
@@ -363,9 +365,10 @@ const getStockEntreprise = async (req, res) => {
          GROUP BY produit_id
        ),
        all_ventes AS (
+         -- Exclut les consommations de sous-PT à la production (type_appro='PT') : ce ne sont pas des ventes.
          SELECT produit_id, SUM(ABS(quantite)) as qty
          FROM stock_produits_transformes
-         WHERE activite_id = $1 AND quantite < 0
+         WHERE activite_id = $1 AND quantite < 0 AND type_appro IS DISTINCT FROM 'PT'
          GROUP BY produit_id
        ),
        all_pertes AS (
