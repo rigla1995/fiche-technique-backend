@@ -75,7 +75,7 @@ const getClientDashboard = async (req, res) => {
 
     // ── Pertes (valeur) sur la période ──
     const pertesRes = await pool.query(
-      `SELECT COALESCE(SUM(p.quantite * COALESCE(p.prix_unitaire, 0)), 0) AS valeur
+      `SELECT COALESCE(SUM(p.quantite * COALESCE(p.prix_unitaire_tva, p.prix_unitaire, 0)), 0) AS valeur
        FROM pertes p
        WHERE p.activite_id = ANY($1::int[]) AND p.date_perte >= $2 AND p.date_perte <= $3`,
       [actIds, from, to]
@@ -86,9 +86,9 @@ const getClientDashboard = async (req, res) => {
     const stockRes = await pool.query(
       `SELECT sed.ingredient_id, ais.seuil_min,
               SUM(sed.quantite) AS quantite,
-              (SELECT s2.prix_unitaire FROM stock_entreprise_daily s2
+              (SELECT COALESCE(s2.prix_unitaire_tva, s2.prix_unitaire) FROM stock_entreprise_daily s2
                WHERE s2.activite_id = sed.activite_id AND s2.ingredient_id = sed.ingredient_id
-                 AND s2.prix_unitaire IS NOT NULL ORDER BY s2.date_appro DESC LIMIT 1) AS prix
+                 AND COALESCE(s2.prix_unitaire_tva, s2.prix_unitaire) IS NOT NULL ORDER BY s2.date_appro DESC LIMIT 1) AS prix
        FROM stock_entreprise_daily sed
        LEFT JOIN activite_ingredient_selections ais
          ON ais.activite_id = sed.activite_id AND ais.ingredient_id = sed.ingredient_id
@@ -232,9 +232,9 @@ const getLaboDashboard = async (req, res) => {
     // Valeur du stock labo (dernier prix par article)
     const stockRes = await pool.query(
       `SELECT sld.ingredient_id, SUM(sld.quantite) AS quantite,
-              (SELECT s2.prix_unitaire FROM stock_labo_daily s2
+              (SELECT COALESCE(s2.prix_unitaire_tva, s2.prix_unitaire) FROM stock_labo_daily s2
                WHERE s2.labo_id = sld.labo_id AND s2.ingredient_id = sld.ingredient_id
-                 AND s2.prix_unitaire IS NOT NULL ORDER BY s2.date_appro DESC LIMIT 1) AS prix
+                 AND COALESCE(s2.prix_unitaire_tva, s2.prix_unitaire) IS NOT NULL ORDER BY s2.date_appro DESC LIMIT 1) AS prix
        FROM stock_labo_daily sld WHERE sld.labo_id = $1
        GROUP BY sld.labo_id, sld.ingredient_id`,
       [laboId]
@@ -243,23 +243,23 @@ const getLaboDashboard = async (req, res) => {
     for (const r of stockRes.rows) valeurStock += num(r.quantite) * num(r.prix);
 
     const approsRes = await pool.query(
-      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire,0)),0) AS valeur, COUNT(*) AS nb
+      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)),0) AS valeur, COUNT(*) AS nb
        FROM stock_labo_daily WHERE labo_id = $1 AND date_appro >= $2 AND date_appro <= $3`,
       [laboId, from, to]
     );
     const pertesRes = await pool.query(
-      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire,0)),0) AS valeur
+      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)),0) AS valeur
        FROM labo_pertes WHERE labo_id = $1 AND date_perte >= $2 AND date_perte <= $3`,
       [laboId, from, to]
     );
     const transRes = await pool.query(
-      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire,0)),0) AS valeur, COUNT(*) AS nb
+      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)),0) AS valeur, COUNT(*) AS nb
        FROM labo_transfers WHERE labo_id = $1 AND date_transfert >= $2 AND date_transfert <= $3`,
       [laboId, from, to]
     );
     // Top articles transférés (par valeur)
     const topTransRes = await pool.query(
-      `SELECT i.nom, SUM(lt.quantite) AS qte, SUM(lt.quantite * COALESCE(lt.prix_unitaire,0)) AS valeur
+      `SELECT i.nom, SUM(lt.quantite) AS qte, SUM(lt.quantite * COALESCE(lt.prix_unitaire_tva, lt.prix_unitaire, 0)) AS valeur
        FROM labo_transfers lt JOIN articles i ON i.id = lt.ingredient_id
        WHERE lt.labo_id = $1 AND lt.date_transfert >= $2 AND lt.date_transfert <= $3
        GROUP BY i.nom ORDER BY valeur DESC LIMIT 8`,
@@ -267,7 +267,7 @@ const getLaboDashboard = async (req, res) => {
     );
     // Transferts par activité destinataire
     const parActiviteRes = await pool.query(
-      `SELECT a.nom AS activite, COALESCE(SUM(lt.quantite * COALESCE(lt.prix_unitaire,0)),0) AS valeur
+      `SELECT a.nom AS activite, COALESCE(SUM(lt.quantite * COALESCE(lt.prix_unitaire_tva, lt.prix_unitaire, 0)),0) AS valeur
        FROM labo_transfers lt JOIN activites a ON a.id = lt.activite_id
        WHERE lt.labo_id = $1 AND lt.date_transfert >= $2 AND lt.date_transfert <= $3
        GROUP BY a.nom ORDER BY valeur DESC`,
@@ -381,9 +381,9 @@ const getActivitesDashboard = async (req, res) => {
     const stockRes = await pool.query(
       `SELECT i.nom AS article, COALESCE(c.nom,'Sans catégorie') AS categorie, ais.seuil_min,
               SUM(sed.quantite) AS quantite,
-              (SELECT s2.prix_unitaire FROM stock_entreprise_daily s2
+              (SELECT COALESCE(s2.prix_unitaire_tva, s2.prix_unitaire) FROM stock_entreprise_daily s2
                WHERE s2.activite_id = sed.activite_id AND s2.ingredient_id = sed.ingredient_id
-                 AND s2.prix_unitaire IS NOT NULL ORDER BY s2.date_appro DESC LIMIT 1) AS prix
+                 AND COALESCE(s2.prix_unitaire_tva, s2.prix_unitaire) IS NOT NULL ORDER BY s2.date_appro DESC LIMIT 1) AS prix
        FROM stock_entreprise_daily sed
        JOIN articles i ON i.id = sed.ingredient_id
        LEFT JOIN categories c ON c.id = i.categorie_id
@@ -403,7 +403,7 @@ const getActivitesDashboard = async (req, res) => {
     // Achats (appros) sur la période + par catégorie
     const approRes = await pool.query(
       `SELECT COALESCE(c.nom,'Sans catégorie') AS categorie,
-              COALESCE(SUM(sed.quantite * COALESCE(sed.prix_unitaire,0)),0) AS valeur, COUNT(*) AS nb
+              COALESCE(SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire, 0)),0) AS valeur, COUNT(*) AS nb
        FROM stock_entreprise_daily sed JOIN articles i ON i.id = sed.ingredient_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        WHERE sed.activite_id = ANY($1::int[]) AND sed.date_appro >= $2 AND sed.date_appro <= $3${catCond}
@@ -415,7 +415,7 @@ const getActivitesDashboard = async (req, res) => {
     // Pertes sur la période : total + par type + par catégorie + top articles
     const pertesRes = await pool.query(
       `SELECT p.type_perte, COALESCE(c.nom,'Sans catégorie') AS categorie, i.nom AS article,
-              COALESCE(SUM(p.quantite * COALESCE(p.prix_unitaire,0)),0) AS valeur
+              COALESCE(SUM(p.quantite * COALESCE(p.prix_unitaire_tva, p.prix_unitaire,0)),0) AS valeur
        FROM pertes p JOIN articles i ON i.id = p.ingredient_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        WHERE p.activite_id = ANY($1::int[]) AND p.date_perte >= $2 AND p.date_perte <= $3${catCond}

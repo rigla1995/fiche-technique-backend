@@ -50,14 +50,14 @@ const getDashboard = async (req, res) => {
              approsMonthly, pertesMonthly, venteKpi, venteMonthly] = await Promise.all([
         // Appros (filtered period + optional type)
         pool.query(
-          `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
+          `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
            FROM stock_entreprise_daily
            WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}`,
           [gerant_activite_id, dateFrom, dateTo]
         ),
         // Pertes
         pool.query(
-          `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire, 0)), 0) AS valeur
+          `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
            FROM pertes
            WHERE activite_id = $1 AND date_perte BETWEEN $2 AND $3`,
           [gerant_activite_id, dateFrom, dateTo]
@@ -76,7 +76,7 @@ const getDashboard = async (req, res) => {
         ),
         // Appros breakdown by type (full period, no type filter)
         pool.query(
-          `SELECT type_appro, COUNT(*) AS count, COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
+          `SELECT type_appro, COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
            FROM stock_entreprise_daily
            WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3
            GROUP BY type_appro ORDER BY count DESC`,
@@ -85,7 +85,7 @@ const getDashboard = async (req, res) => {
         // Monthly appros (12 months, full year, optional type)
         pool.query(
           `SELECT EXTRACT(MONTH FROM date_appro) AS mois,
-                  COUNT(*) AS count, COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
+                  COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
            FROM stock_entreprise_daily
            WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}
            GROUP BY mois ORDER BY mois`,
@@ -94,7 +94,7 @@ const getDashboard = async (req, res) => {
         // Monthly pertes (12 months)
         pool.query(
           `SELECT EXTRACT(MONTH FROM date_perte) AS mois,
-                  COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire, 0)), 0) AS valeur
+                  COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
            FROM pertes
            WHERE activite_id = $1 AND date_perte BETWEEN $2 AND $3
            GROUP BY mois ORDER BY mois`,
@@ -176,7 +176,7 @@ const getDashboard = async (req, res) => {
 
       const [approsKpi, pertesKpi, invKpi, stockCount, approsParType, approsMonthly, pertesMonthly] = await Promise.all([
         pool.query(
-          `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
+          `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
            FROM stock_labo_daily
            WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}`,
           [gerant_activite_id, dateFrom, dateTo]
@@ -198,7 +198,7 @@ const getDashboard = async (req, res) => {
           [gerant_activite_id]
         ),
         pool.query(
-          `SELECT type_appro, COUNT(*) AS count, COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
+          `SELECT type_appro, COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
            FROM stock_labo_daily
            WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3
            GROUP BY type_appro ORDER BY count DESC`,
@@ -206,7 +206,7 @@ const getDashboard = async (req, res) => {
         ),
         pool.query(
           `SELECT EXTRACT(MONTH FROM date_appro) AS mois,
-                  COUNT(*) AS count, COALESCE(SUM(quantite * prix_unitaire), 0) AS valeur
+                  COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
            FROM stock_labo_daily
            WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}
            GROUP BY mois ORDER BY mois`,
