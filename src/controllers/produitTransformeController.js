@@ -282,11 +282,11 @@ const getStockPT = async (req, res) => {
            p.seuil_min_pt AS seuil_min,
            COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM spt.date_appro) = $2 AND EXTRACT(YEAR FROM spt.date_appro) = $3 THEN spt.quantite ELSE 0 END), 0) AS total_quantite,
            (SELECT spt2.date_appro FROM stock_produits_transformes spt2
-            WHERE spt2.produit_id = p.id AND spt2.activite_id = $1
-            ORDER BY spt2.date_appro DESC LIMIT 1) AS last_date_appro,
+            WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 AND spt2.quantite > 0 AND spt2.prix_calcule IS NOT NULL
+            ORDER BY spt2.date_appro DESC, spt2.id DESC LIMIT 1) AS last_date_appro,
            (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2
-            WHERE spt2.produit_id = p.id AND spt2.activite_id = $1
-            ORDER BY spt2.date_appro DESC LIMIT 1) AS last_prix_calcule
+            WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 AND spt2.quantite > 0 AND spt2.prix_calcule IS NOT NULL
+            ORDER BY spt2.date_appro DESC, spt2.id DESC LIMIT 1) AS last_prix_calcule
          FROM produits p
          JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
          LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.activite_id = $1
@@ -303,11 +303,11 @@ const getStockPT = async (req, res) => {
            p.seuil_min_pt AS seuil_min,
            COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM spt.date_appro) = $2 AND EXTRACT(YEAR FROM spt.date_appro) = $3 THEN spt.quantite ELSE 0 END), 0) AS total_quantite,
            (SELECT spt2.date_appro FROM stock_produits_transformes spt2
-            WHERE spt2.produit_id = p.id AND spt2.client_id = $1
-            ORDER BY spt2.date_appro DESC LIMIT 1) AS last_date_appro,
+            WHERE spt2.produit_id = p.id AND spt2.client_id = $1 AND spt2.quantite > 0 AND spt2.prix_calcule IS NOT NULL
+            ORDER BY spt2.date_appro DESC, spt2.id DESC LIMIT 1) AS last_date_appro,
            (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2
-            WHERE spt2.produit_id = p.id AND spt2.client_id = $1
-            ORDER BY spt2.date_appro DESC LIMIT 1) AS last_prix_calcule
+            WHERE spt2.produit_id = p.id AND spt2.client_id = $1 AND spt2.quantite > 0 AND spt2.prix_calcule IS NOT NULL
+            ORDER BY spt2.date_appro DESC, spt2.id DESC LIMIT 1) AS last_prix_calcule
          FROM produits p
          LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.client_id = $1
          WHERE p.client_id = $1 AND p.is_stock_ingredient = TRUE
@@ -347,18 +347,27 @@ const getStockPTHistory = async (req, res) => {
 
     if (activiteId) {
       const actId = parseInt(activiteId);
+      // Mouvements de stock PT (gestion de stock) : production/consommation/transfert/vente
+      // (stock_produits_transformes) + pertes (table séparée). type_appro pour la colonne TYPE ;
+      // repli sur le signe pour les lignes legacy (négatif = vente, positif = transfert/réception).
       result = await pool.query(
-        `SELECT spt.id, spt.produit_id, spt.activite_id, spt.client_id,
-                spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at
-         FROM stock_produits_transformes spt
-         WHERE spt.produit_id = $1 AND spt.activite_id = $2
-         ORDER BY spt.date_appro DESC`,
+        `SELECT * FROM (
+           SELECT spt.date_appro AS d, spt.quantite, spt.prix_calcule AS prix,
+                  COALESCE(spt.type_appro, CASE WHEN spt.quantite < 0 THEN 'vente' ELSE 'transfert' END) AS type
+           FROM stock_produits_transformes spt
+           WHERE spt.produit_id = $1 AND spt.activite_id = $2
+           UNION ALL
+           SELECT p.date_perte AS d, -p.quantite AS quantite, NULL::numeric AS prix, 'perte' AS type
+           FROM pertes p
+           WHERE p.produit_id = $1 AND p.activite_id = $2
+         ) h
+         ORDER BY d DESC, type LIMIT 30`,
         [produitId, actId]
       );
     } else {
       result = await pool.query(
-        `SELECT spt.id, spt.produit_id, spt.activite_id, spt.client_id,
-                spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at
+        `SELECT spt.date_appro AS d, spt.quantite, spt.prix_calcule AS prix,
+                COALESCE(spt.type_appro, CASE WHEN spt.quantite < 0 THEN 'vente' ELSE 'manuel' END) AS type
          FROM stock_produits_transformes spt
          WHERE spt.produit_id = $1 AND spt.client_id = $2
          ORDER BY spt.date_appro DESC`,
@@ -367,15 +376,11 @@ const getStockPTHistory = async (req, res) => {
     }
 
     res.json(result.rows.map(r => ({
-      id: r.id,
-      produitId: r.produit_id,
-      activiteId: r.activite_id,
-      clientId: r.client_id,
-      dateAppro: r.date_appro,
-      quantite: r.quantite,
-      prixCalcule: r.prix_calcule,
-      createdAt: r.created_at,
-      typeAppro: parseFloat(r.quantite) < 0 ? 'vente' : 'manuel',
+      dateAppro: r.d,
+      quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
+      prixCalcule: r.prix !== null ? parseFloat(r.prix) : null,
+      prixUnitaire: r.prix !== null ? parseFloat(r.prix) : null,
+      typeAppro: r.type,
     })));
   } catch (err) {
     console.error('[getStockPTHistory]', err);
@@ -560,6 +565,28 @@ const saveStockPT = async (req, res) => {
       }
     }
 
+    // Override: prix = coût recette RÉCURSIF au PMP activité (source de vérité = affichage getStockEntreprise,
+    // qui prend le prix de la dernière réception = cette ligne de production). On calcule aussi le coût
+    // récursif de chaque sous-PT pour valoriser sa ligne de consommation. Repli sur le calcul par boucles.
+    const spCosts = {};
+    if (actId) {
+      const { buildMpPriceMap, calculerCoutAvecPrixMap } = require('./produitsController');
+      const ownerId = req.user.gerant_parent_id || req.user.id;
+      try {
+        const mpMap = await buildMpPriceMap(actId, ownerId);
+        const [parentCout, ...spCoutList] = await Promise.all([
+          calculerCoutAvecPrixMap(produitId, ownerId, mpMap),
+          ...spRows.map((sp) => calculerCoutAvecPrixMap(sp.sous_produit_id, ownerId, mpMap)),
+        ]);
+        const rc = parentCout && parentCout.cout_total != null ? parseFloat(parentCout.cout_total) : 0;
+        if (rc > 0) prixCalcule = rc;
+        spRows.forEach((sp, i) => {
+          const c = spCoutList[i] && spCoutList[i].cout_total != null ? parseFloat(spCoutList[i].cout_total) : null;
+          spCosts[sp.sous_produit_id] = c != null && c > 0 ? c : null;
+        });
+      } catch { /* repli sur prixCalcule des boucles */ }
+    }
+
     const customPortionsJson = (Object.keys(customPortionsMap).length > 0 || Object.keys(customSpMap).length > 0)
       ? JSON.stringify(customPortions)
       : null;
@@ -618,13 +645,13 @@ const saveStockPT = async (req, res) => {
       const upsertResult = actId
         ? await client.query(
             `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, custom_portions, type_appro)
-             VALUES ($1, $2, $3, $4, $5, $6, 'production')
+             VALUES ($1, $2, $3, $4, $5, $6, 'manuel')
              RETURNING id`,
             [produitId, actId, dateAppro, qty, prixCalcule, customPortionsJson]
           )
         : await client.query(
             `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule, custom_portions, type_appro)
-             VALUES ($1, $2, $3, $4, $5, $6, 'production')
+             VALUES ($1, $2, $3, $4, $5, $6, 'manuel')
              RETURNING id`,
             [produitId, userId, dateAppro, qty, prixCalcule, customPortionsJson]
           );
@@ -641,15 +668,16 @@ const saveStockPT = async (req, res) => {
             [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
           );
         }
-        // Déduction des SOUS-PT de composition (un seul niveau) : ligne négative, prix NULL,
-        // type_appro='PT' → réduit le stock du sous-PT sans être comptée comme une vente.
+        // Déduction des SOUS-PT de composition (un seul niveau) : ligne négative, prix = coût récursif
+        // du sous-PT, type_appro='PT' → réduit le stock du sous-PT sans être comptée comme une vente
+        // (le prix n'entre pas dans le PMP : les CTE de moyenne filtrent quantite > 0).
         for (const sp of spRows) {
           const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
           const consumed = -(portion * qty);
           await client.query(
             `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, type_appro)
-             VALUES ($1, $2, $3, $4, NULL, 'PT')`,
-            [sp.sous_produit_id, actId, dateAppro, consumed]
+             VALUES ($1, $2, $3, $4, $5, 'PT')`,
+            [sp.sous_produit_id, actId, dateAppro, consumed, spCosts[sp.sous_produit_id] ?? null]
           );
         }
       }
