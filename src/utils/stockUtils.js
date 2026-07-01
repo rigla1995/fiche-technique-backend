@@ -124,13 +124,15 @@ async function computeStockPTCourant(scope, scopeId, produitId) {
          ORDER BY date_inventaire DESC, created_at DESC LIMIT 1
        ),
        appro AS (
+         -- Inclut les appros (+) ET les consommations de sous-PT (type_appro='PT', quantite -),
+         -- mais PAS les transferts (quantite -, type_appro NULL) qui sont soustraits via le CTE transfers.
          SELECT
            COALESCE(SUM(quantite) FILTER (
              WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
                AND date_appro >= (SELECT date_inventaire FROM last_inv)
-               AND quantite > 0
+               AND (quantite > 0 OR type_appro = 'PT')
            ), 0) AS post_qty,
-           COALESCE(SUM(quantite) FILTER (WHERE quantite > 0), 0) AS all_qty
+           COALESCE(SUM(quantite) FILTER (WHERE quantite > 0 OR type_appro = 'PT'), 0) AS all_qty
          FROM stock_labo_pt_daily
          WHERE labo_id = $1 AND produit_id = $2
        ),
