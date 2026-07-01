@@ -678,14 +678,14 @@ const createVente = async (req, res) => {
       // Coût matière = prix moyen dans le stock du périmètre de la vente (activité ou labo).
       const r = activite_id
         ? await client.query(
-            `SELECT ingredient_id, AVG(prix_unitaire) AS avg_prix
+            `SELECT ingredient_id, AVG(COALESCE(prix_unitaire_tva, prix_unitaire)) AS avg_prix
              FROM stock_entreprise_daily
              WHERE ingredient_id = ANY($1::int[]) AND activite_id = $2 AND quantite > 0
              GROUP BY ingredient_id`,
             [ingArticleIds, activite_id]
           )
         : await client.query(
-            `SELECT ingredient_id, AVG(prix_unitaire) AS avg_prix
+            `SELECT ingredient_id, AVG(COALESCE(prix_unitaire_tva, prix_unitaire)) AS avg_prix
              FROM stock_labo_daily
              WHERE ingredient_id = ANY($1::int[]) AND labo_id = $2 AND quantite > 0
              GROUP BY ingredient_id`,
@@ -699,10 +699,10 @@ const createVente = async (req, res) => {
     const prodSpMap = new Map();    // produit_id -> [{sous_produit_id, portion}]
     if (prodArticleIds.length > 0) {
       const cr = await client.query(
-        `SELECT pi.produit_id, SUM(pi.portion * COALESCE(last_prix.prix_unitaire, 0)) AS cout
+        `SELECT pi.produit_id, SUM(pi.portion * COALESCE(last_prix.prix, 0)) AS cout
          FROM produit_ingredients pi
          LEFT JOIN LATERAL (
-           SELECT prix_unitaire FROM ${activite_id ? 'stock_entreprise_daily' : 'stock_labo_daily'}
+           SELECT COALESCE(prix_unitaire_tva, prix_unitaire) AS prix FROM ${activite_id ? 'stock_entreprise_daily' : 'stock_labo_daily'}
            WHERE ingredient_id = pi.ingredient_id AND ${activite_id ? 'activite_id' : 'labo_id'} = $2 AND quantite > 0
            ORDER BY date_appro DESC LIMIT 1
          ) last_prix ON true

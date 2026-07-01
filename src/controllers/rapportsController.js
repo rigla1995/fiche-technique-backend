@@ -59,8 +59,8 @@ const getRapportPertes = async (req, res) => {
            p.type_perte,
            p.date_perte,
            p.quantite,
-           COALESCE(p.prix_unitaire, 0) AS prix_unitaire,
-           p.quantite * COALESCE(p.prix_unitaire, 0) AS valeur
+           COALESCE(p.prix_unitaire_tva, p.prix_unitaire, 0) AS prix_unitaire,
+           p.quantite * COALESCE(p.prix_unitaire_tva, p.prix_unitaire, 0) AS valeur
          FROM pertes p
          JOIN articles i ON i.id = p.ingredient_id
          JOIN unites u ON u.id = i.unite_id
@@ -144,8 +144,8 @@ const getRapportCoutMatiere = async (req, res) => {
            COALESCE(c.nom, 'Non classé') AS categorie,
            u.nom AS unite,
            SUM(sed.quantite) AS quantite_totale,
-           AVG(sed.prix_unitaire) AS prix_moyen,
-           SUM(sed.quantite * sed.prix_unitaire) AS cout_total
+           AVG(COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire)) AS prix_moyen,
+           SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire)) AS cout_total
          FROM stock_entreprise_daily sed
          JOIN articles i ON i.id = sed.ingredient_id
          JOIN unites u ON u.id = i.unite_id
@@ -177,7 +177,7 @@ const getRapportCoutMatiere = async (req, res) => {
     const monthParams = [await getActiviteIds(clientId)];
 
     const monthQ = await pool.query(
-      `SELECT to_char(date_appro, 'YYYY-MM') AS mois, SUM(quantite * prix_unitaire) AS cout
+      `SELECT to_char(date_appro, 'YYYY-MM') AS mois, SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire)) AS cout
        FROM stock_entreprise_daily
        WHERE activite_id = ANY($1::int[]) AND type_appro = 'manuel'
        GROUP BY mois ORDER BY mois`,
@@ -222,8 +222,8 @@ const getRapportAppros = async (req, res) => {
            COALESCE(c.nom, 'Non classé') AS categorie,
            u.nom AS unite,
            sed.quantite,
-           sed.prix_unitaire,
-           sed.quantite * sed.prix_unitaire AS total,
+           COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire) AS prix_unitaire,
+           sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire) AS total,
            f.nom AS fournisseur_nom,
            a.nom AS activite_nom
          FROM stock_entreprise_daily sed
@@ -288,7 +288,7 @@ const getRapportStock = async (req, res) => {
            a.nom AS activite_nom,
            ais.seuil_min,
            COALESCE(
-             (SELECT sed2.prix_unitaire FROM stock_entreprise_daily sed2
+             (SELECT COALESCE(sed2.prix_unitaire_tva, sed2.prix_unitaire) FROM stock_entreprise_daily sed2
               WHERE sed2.activite_id = sed.activite_id AND sed2.ingredient_id = sed.ingredient_id
               ORDER BY sed2.date_appro DESC LIMIT 1), 0
            ) AS prix_unitaire,
@@ -356,7 +356,7 @@ const getRapportActivites = async (req, res) => {
        FROM activites a
        LEFT JOIN (
          SELECT activite_id,
-           SUM(quantite * prix_unitaire) AS cout_total
+           SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire)) AS cout_total
          FROM stock_entreprise_daily
          WHERE activite_id = ANY($1::int[])
            AND type_appro = 'manuel'
@@ -365,7 +365,7 @@ const getRapportActivites = async (req, res) => {
        ) appros ON appros.activite_id = a.id
        LEFT JOIN (
          SELECT activite_id,
-           SUM(quantite * COALESCE(prix_unitaire, 0)) AS valeur_pertes
+           SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)) AS valeur_pertes
          FROM pertes
          WHERE activite_id = ANY($1::int[])
            AND EXTRACT(YEAR FROM date_perte) = $2
@@ -377,7 +377,7 @@ const getRapportActivites = async (req, res) => {
          FROM (
            SELECT activite_id, ingredient_id,
              SUM(CASE WHEN EXTRACT(YEAR FROM date_appro) = $2 THEN quantite ELSE 0 END) AS quantite_stock,
-             MAX(prix_unitaire) AS prix_u
+             MAX(COALESCE(prix_unitaire_tva, prix_unitaire)) AS prix_u
            FROM stock_entreprise_daily
            WHERE activite_id = ANY($1::int[])
            GROUP BY activite_id, ingredient_id

@@ -799,12 +799,12 @@ async function buildDpPriceMap(actId, clientId) {
   const priceMap = {};
   if (actId) {
     const r1 = await pool.query(
-      `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+      `SELECT DISTINCT ON (ingredient_id) ingredient_id, COALESCE(prix_unitaire_tva, prix_unitaire) AS prix_unitaire
        FROM stock_entreprise_daily sed
        JOIN activites a ON sed.activite_id = a.id
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
        WHERE sed.activite_id = $1 AND pe.client_id = $2
-         AND sed.prix_unitaire IS NOT NULL AND sed.prix_unitaire > 0
+         AND COALESCE(prix_unitaire_tva, prix_unitaire) IS NOT NULL AND COALESCE(prix_unitaire_tva, prix_unitaire) > 0
        ORDER BY ingredient_id, date_appro DESC`,
       [actId, clientId]
     );
@@ -813,9 +813,9 @@ async function buildDpPriceMap(actId, clientId) {
     const laboId = actRes.rows[0]?.labo_id;
     if (laboId) {
       const r2 = await pool.query(
-        `SELECT DISTINCT ON (ingredient_id) ingredient_id, prix_unitaire
+        `SELECT DISTINCT ON (ingredient_id) ingredient_id, COALESCE(prix_unitaire_tva, prix_unitaire) AS prix_unitaire
          FROM stock_labo_daily
-         WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+         WHERE labo_id = $1 AND COALESCE(prix_unitaire_tva, prix_unitaire) IS NOT NULL AND COALESCE(prix_unitaire_tva, prix_unitaire) > 0
          ORDER BY ingredient_id, date_appro DESC`,
         [laboId]
       );
@@ -835,13 +835,13 @@ async function buildMpPriceMap(actId, clientId) {
         WHERE activite_id = $1 AND ingredient_id IS NOT NULL
         ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
       )
-      SELECT sed.ingredient_id, AVG(sed.prix_unitaire) AS avg_prix
+      SELECT sed.ingredient_id, AVG(COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire)) AS avg_prix
       FROM stock_entreprise_daily sed
       JOIN activites a ON sed.activite_id = a.id
       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
       LEFT JOIN last_inv li ON li.ingredient_id = sed.ingredient_id
       WHERE sed.activite_id = $1 AND pe.client_id = $2
-        AND sed.prix_unitaire IS NOT NULL AND sed.prix_unitaire > 0
+        AND COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire) IS NOT NULL AND COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire) > 0
         AND (li.date_inventaire IS NULL OR sed.date_appro >= li.date_inventaire)
       GROUP BY sed.ingredient_id`,
       [actId, clientId]
@@ -851,9 +851,9 @@ async function buildMpPriceMap(actId, clientId) {
     const laboId = actRes.rows[0]?.labo_id;
     if (laboId) {
       const r2 = await pool.query(
-        `SELECT ingredient_id, AVG(prix_unitaire) AS avg_prix
+        `SELECT ingredient_id, AVG(COALESCE(prix_unitaire_tva, prix_unitaire)) AS avg_prix
          FROM stock_labo_daily
-         WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
+         WHERE labo_id = $1 AND COALESCE(prix_unitaire_tva, prix_unitaire) IS NOT NULL AND COALESCE(prix_unitaire_tva, prix_unitaire) > 0
          GROUP BY ingredient_id`,
         [laboId]
       );

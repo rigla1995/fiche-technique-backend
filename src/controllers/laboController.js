@@ -2009,7 +2009,7 @@ const createLaboPerte = async (req, res) => {
       if (effectiveDate < minApproStr) return res.status(400).json({ message: `La date de perte doit être >= au premier appro (${minApproStr.split('-').reverse().join('/')}).` });
 
       const priceRow = await pool.query(
-        `SELECT prix_unitaire FROM stock_labo_daily
+        `SELECT prix_unitaire, COALESCE(prix_unitaire_tva, prix_unitaire) AS prix_ttc FROM stock_labo_daily
          WHERE labo_id = $1 AND ingredient_id = $2
            AND prix_unitaire IS NOT NULL AND prix_unitaire > 0
            AND date_appro <= $3
@@ -2017,6 +2017,7 @@ const createLaboPerte = async (req, res) => {
         [laboId, ingredientIdRaw, effectiveDate]
       );
       const prixUnitaire = priceRow.rows.length > 0 ? parseFloat(priceRow.rows[0].prix_unitaire) : null;
+      const prixUnitaireTva = priceRow.rows.length > 0 && priceRow.rows[0].prix_ttc != null ? parseFloat(priceRow.rows[0].prix_ttc) : null;
       const stockCourant = await computeStockCourant('labo', laboId, ingredientIdRaw);
       const qtyDemandee = parseFloat(quantite);
       if (qtyDemandee > stockCourant) {
@@ -2028,9 +2029,9 @@ const createLaboPerte = async (req, res) => {
       }
 
       await pool.query(
-        `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [laboId, ingredientIdRaw, parseFloat(quantite), typePerte || 'avarie', effectiveDate, prixUnitaire, req.user.id]
+        `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [laboId, ingredientIdRaw, parseFloat(quantite), typePerte || 'avarie', effectiveDate, prixUnitaire, prixUnitaireTva, req.user.id]
       );
     }
     res.json({ success: true });
