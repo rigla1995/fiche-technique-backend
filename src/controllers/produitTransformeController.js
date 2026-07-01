@@ -21,6 +21,13 @@ const toggleStockIngredient = async (req, res) => {
 
     if (actId) {
       // ── Entreprise mode: per-activité toggle via produit_activite_stock ──
+      // Un produit géré par le stock d'activité (PT / composé valorisé) ne doit pas
+      // figurer aussi dans l'affectation d'affichage (réservée aux vendables d'activité).
+      // Les deux tables restent ainsi mutuellement exclusives pour un même couple.
+      await pool.query(
+        `DELETE FROM produit_activite_affectation WHERE produit_id = $1 AND activite_id = $2`,
+        [produitId, actId]
+      );
       const existing = await pool.query(
         `SELECT id FROM produit_activite_stock WHERE produit_id = $1 AND activite_id = $2`,
         [produitId, actId]
