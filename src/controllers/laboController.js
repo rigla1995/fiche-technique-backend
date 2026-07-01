@@ -635,16 +635,17 @@ const getLaboStock = async (req, res) => {
          GROUP BY produit_id
        ),
        avg_prix_post AS (
+         -- quantite > 0 : n'agrège que les entrées valorisées (production/réception), pas les consommations 'PT' (négatives, désormais valorisées).
          SELECT slpt.produit_id, AVG(slpt.prix_unitaire) as avg_prix
          FROM stock_labo_pt_daily slpt
          JOIN last_inv li ON li.produit_id = slpt.produit_id AND slpt.date_appro >= li.date_inventaire
-         WHERE slpt.labo_id = $1 AND slpt.prix_unitaire IS NOT NULL
+         WHERE slpt.labo_id = $1 AND slpt.prix_unitaire IS NOT NULL AND slpt.quantite > 0
          GROUP BY slpt.produit_id
        ),
        avg_prix_all AS (
          SELECT produit_id, AVG(prix_unitaire) as avg_prix
          FROM stock_labo_pt_daily
-         WHERE labo_id = $1 AND prix_unitaire IS NOT NULL
+         WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND quantite > 0
          GROUP BY produit_id
        )
        SELECT lps.produit_id,
@@ -829,6 +830,27 @@ const updateLaboStock = async (req, res) => {
           prixCalcule += portion * parseFloat(sp.last_prix);
         }
       }
+      // Prix du PT = coût recette RÉCURSIF au PMP (même source de vérité que l'affichage getLaboPT
+      // et la fiche technique). On calcule aussi le coût récursif de chaque sous-PT pour valoriser
+      // sa ligne de consommation. Repli sur le calcul par boucles (prixCalcule) puis prix manuel.
+      const spCosts = {};
+      {
+        const { buildMpPriceMapLabo, calculerCoutAvecPrixMap } = require('./produitsController');
+        const ownerId = req.user.gerant_parent_id || req.user.id;
+        try {
+          const mpMap = await buildMpPriceMapLabo(laboId);
+          const [parentCout, ...spCoutList] = await Promise.all([
+            calculerCoutAvecPrixMap(produitId, ownerId, mpMap),
+            ...spRes.rows.map((sp) => calculerCoutAvecPrixMap(sp.sous_produit_id, ownerId, mpMap)),
+          ]);
+          const rc = parentCout && parentCout.cout_total != null ? parseFloat(parentCout.cout_total) : 0;
+          if (rc > 0) prixCalcule = rc;
+          spRes.rows.forEach((sp, i) => {
+            const c = spCoutList[i] && spCoutList[i].cout_total != null ? parseFloat(spCoutList[i].cout_total) : null;
+            spCosts[sp.sous_produit_id] = c != null && c > 0 ? c : null;
+          });
+        } catch { /* repli sur prixCalcule des boucles */ }
+      }
       const finalPrix = prixCalcule > 0 ? prixCalcule : (prixUnitaire ? parseFloat(prixUnitaire) : null);
       const customPortionsJson = (Object.keys(customPortionsMap).length > 0 || Object.keys(customSpMap).length > 0) ? JSON.stringify(customPortions) : null;
 
@@ -878,7 +900,7 @@ const updateLaboStock = async (req, res) => {
         // Save PT appro — always insert a new row (multiple rows per day allowed)
         await client.query(
           `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, type_appro, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, 'production', NOW())`,
+           VALUES ($1, $2, $3, $4, $5, $6, 'manuel', NOW())`,
           [laboId, produitId, da, qty, finalPrix, customPortionsJson]
         );
 
@@ -914,16 +936,17 @@ const updateLaboStock = async (req, res) => {
         }
 
         // Déduire les sous-PT de composition (un seul niveau) du stock PT du labo.
-        // Ligne de consommation : quantité négative, prix NULL, type_appro='PT'
-        // (réduit le stock du sous-PT sans être comptée comme appro/transfert/vente).
+        // Ligne de consommation : quantité négative, prix = coût récursif du sous-PT, type_appro='PT'
+        // (réduit le stock du sous-PT sans être comptée comme appro/transfert/vente ; le prix
+        //  n'entre pas dans le PMP car les CTE de moyenne filtrent quantite > 0).
         if (spRes.rows.length > 0 && qty > 0) {
           for (const sp of spRes.rows) {
             const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
             const consumed = -(portion * qty);
             await client.query(
               `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, type_appro, updated_at)
-               VALUES ($1, $2, $3, $4, NULL, 'PT', NOW())`,
-              [laboId, sp.sous_produit_id, da, consumed]
+               VALUES ($1, $2, $3, $4, $5, 'PT', NOW())`,
+              [laboId, sp.sous_produit_id, da, consumed, spCosts[sp.sous_produit_id] ?? null]
             );
           }
         }
@@ -989,19 +1012,39 @@ const getLaboStockHistory = async (req, res) => {
 
     if (ingredientIdRaw < 0) {
       const produitId = -ingredientIdRaw;
+      // Historique complet des mouvements PT (gestion de stock) : production/consommation (stock_labo_pt_daily),
+      // transferts (labo_transfers) et pertes (labo_pertes), avec leur type_appro pour la colonne TYPE.
       const result = await pool.query(
-        `SELECT date_appro, quantite, prix_unitaire
-         FROM stock_labo_pt_daily
-         WHERE labo_id = $1 AND produit_id = $2
-         ORDER BY date_appro DESC LIMIT 10`,
+        `SELECT * FROM (
+           SELECT date_appro AS d, quantite, prix_unitaire AS prix, COALESCE(type_appro, 'manuel') AS type,
+                  NULL::text AS ref, NULL::numeric AS tva, NULL::numeric AS ttc, NULL::text AS fournisseur
+           FROM stock_labo_pt_daily
+           WHERE labo_id = $1 AND produit_id = $2
+             AND (type_appro IN ('manuel','PT') OR (type_appro IS NULL AND quantite > 0))
+           UNION ALL
+           SELECT lt.date_transfert AS d, -lt.quantite AS quantite, lt.prix_unitaire AS prix, 'transfert' AS type,
+                  lt.ref_facture AS ref, lt.taux_tva AS tva, lt.prix_unitaire_tva AS ttc, a.nom AS fournisseur
+           FROM labo_transfers lt
+           LEFT JOIN activites a ON a.id = lt.activite_id
+           WHERE lt.labo_id = $1 AND lt.produit_id = $2
+           UNION ALL
+           SELECT date_perte AS d, -quantite AS quantite, NULL::numeric AS prix, 'perte' AS type,
+                  NULL::text AS ref, NULL::numeric AS tva, NULL::numeric AS ttc, NULL::text AS fournisseur
+           FROM labo_pertes
+           WHERE labo_id = $1 AND produit_id = $2
+         ) h
+         ORDER BY d DESC, type LIMIT 15`,
         [laboId, produitId]
       );
       return res.json(result.rows.map((r) => ({
-        dateAppro: isoDate(r.date_appro),
+        dateAppro: isoDate(r.d),
         quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
-        prixUnitaire: r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : null,
-        refFacture: null,
-        fournisseurNom: null,
+        prixUnitaire: r.prix !== null ? parseFloat(r.prix) : null,
+        typeAppro: r.type,
+        refFacture: r.ref,
+        fournisseurNom: r.fournisseur,
+        tauxTva: r.tva !== null ? parseFloat(r.tva) : null,
+        prixUnitaireTva: r.ttc !== null ? parseFloat(r.ttc) : null,
       })));
     }
 
@@ -1174,8 +1217,8 @@ const createTransfer = async (req, res) => {
 
           const latestPtRes = await client.query(
             `SELECT quantite, prix_unitaire FROM stock_labo_pt_daily
-             WHERE labo_id = $1 AND produit_id = $2
-             ORDER BY date_appro DESC LIMIT 1`,
+             WHERE labo_id = $1 AND produit_id = $2 AND quantite > 0 AND prix_unitaire IS NOT NULL
+             ORDER BY date_appro DESC, id DESC LIMIT 1`,
             [laboId, produitId]
           );
           const laboCost = latestPtRes.rows.length > 0 ? parseFloat(latestPtRes.rows[0].prix_unitaire || 0) : 0;
