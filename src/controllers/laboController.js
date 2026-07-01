@@ -559,10 +559,10 @@ const getLaboStock = async (req, res) => {
           AVG(slpt.prix_unitaire) FILTER (WHERE date_trunc('year', slpt.date_appro) = date_trunc('year', CURRENT_DATE) AND slpt.quantite > 0)
           * SUM(slpt.quantite) FILTER (WHERE date_trunc('year', slpt.date_appro) = date_trunc('year', CURRENT_DATE))
         , 0) as cout_total,
-        (SELECT slpt2.prix_unitaire FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as prix_unitaire,
-        (SELECT slpt2.date_appro FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id ORDER BY slpt2.date_appro DESC LIMIT 1) as date_appro,
+        (SELECT slpt2.prix_unitaire FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id AND slpt2.quantite > 0 AND slpt2.prix_unitaire IS NOT NULL ORDER BY slpt2.date_appro DESC, slpt2.id DESC LIMIT 1) as prix_unitaire,
+        (SELECT slpt2.date_appro FROM stock_labo_pt_daily slpt2 WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id AND slpt2.quantite > 0 AND slpt2.prix_unitaire IS NOT NULL ORDER BY slpt2.date_appro DESC, slpt2.id DESC LIMIT 1) as date_appro,
         ARRAY(SELECT DISTINCT slpt2.date_appro FROM stock_labo_pt_daily slpt2
-              WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id
+              WHERE slpt2.labo_id = $1 AND slpt2.produit_id = p.id AND slpt2.quantite > 0
               ORDER BY slpt2.date_appro DESC LIMIT 30) as recent_dates,
         ARRAY(SELECT DISTINCT lt2.date_transfert FROM labo_transfers lt2
               WHERE lt2.labo_id = $1 AND lt2.produit_id = p.id
@@ -768,7 +768,7 @@ const updateLaboStock = async (req, res) => {
       const qty = parseFloat(quantite) || 0;
 
       // Get product name for type_appro label and recipe ingredients with last labo prices
-      const [prodRes, ingRes] = await Promise.all([
+      const [prodRes, ingRes, spRes] = await Promise.all([
         pool.query(`SELECT nom FROM produits WHERE id = $1`, [produitId]),
         pool.query(
           `SELECT pi.ingredient_id, pi.portion, i.nom as ing_nom,
@@ -790,13 +790,29 @@ const updateLaboStock = async (req, res) => {
            WHERE pi.produit_id = $1`,
           [produitId, laboId]
         ),
+        // Sous-PT de composition + dernier prix d'appro (positif) du sous-PT au labo
+        pool.query(
+          `SELECT psp.sous_produit_id, psp.portion, p.nom AS sp_nom,
+             (SELECT slpt.prix_unitaire FROM stock_labo_pt_daily slpt
+               WHERE slpt.labo_id = $2 AND slpt.produit_id = psp.sous_produit_id
+                 AND slpt.quantite > 0 AND slpt.prix_unitaire IS NOT NULL
+               ORDER BY slpt.date_appro DESC, slpt.id DESC LIMIT 1) AS last_prix
+           FROM produit_sous_produits psp
+           JOIN produits p ON p.id = psp.sous_produit_id
+           WHERE psp.produit_id = $1`,
+          [produitId, laboId]
+        ),
       ]);
       const produitNom = prodRes.rows[0]?.nom ?? 'PT';
 
-      // Build custom portions map
+      // Build custom portions map (articles ET sous-PT cohabitent dans le même tableau customPortions)
       const customPortionsMap = {};
+      const customSpMap = {};
       if (Array.isArray(customPortions)) {
-        for (const cp of customPortions) { customPortionsMap[cp.ingredientId] = parseFloat(cp.portionCustom); }
+        for (const cp of customPortions) {
+          if (cp.sousProduitId != null) customSpMap[cp.sousProduitId] = parseFloat(cp.portionCustom);
+          else if (cp.ingredientId != null) customPortionsMap[cp.ingredientId] = parseFloat(cp.portionCustom);
+        }
       }
 
       let prixCalcule = 0;
@@ -806,8 +822,15 @@ const updateLaboStock = async (req, res) => {
           prixCalcule += portion * parseFloat(ing.last_prix);
         }
       }
+      // Le coût du PT inclut aussi ses sous-PT de composition (dernier prix d'appro du sous-PT).
+      for (const sp of spRes.rows) {
+        const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
+        if (sp.last_prix !== null) {
+          prixCalcule += portion * parseFloat(sp.last_prix);
+        }
+      }
       const finalPrix = prixCalcule > 0 ? prixCalcule : (prixUnitaire ? parseFloat(prixUnitaire) : null);
-      const customPortionsJson = Object.keys(customPortionsMap).length > 0 ? JSON.stringify(customPortions) : null;
+      const customPortionsJson = (Object.keys(customPortionsMap).length > 0 || Object.keys(customSpMap).length > 0) ? JSON.stringify(customPortions) : null;
 
       // Vérifier que chaque ingrédient de la recette a assez de stock
       if (ingRes.rows.length > 0 && qty > 0) {
@@ -830,13 +853,32 @@ const updateLaboStock = async (req, res) => {
         }
       }
 
+      // Vérifier que chaque sous-PT de la recette a assez de stock au labo
+      if (spRes.rows.length > 0 && qty > 0) {
+        const stocksSp = await Promise.all(
+          spRes.rows.map((sp) => computeStockPTCourant('labo', laboId, sp.sous_produit_id))
+        );
+        for (let idx = 0; idx < spRes.rows.length; idx++) {
+          const sp = spRes.rows[idx];
+          const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
+          const needed = portion * qty;
+          if (needed > stocksSp[idx]) {
+            return res.status(422).json({
+              message: `Stock insuffisant pour le sous-produit "${sp.sp_nom}" (recette)`,
+              disponible: Math.max(0, stocksSp[idx]),
+              demande: needed,
+            });
+          }
+        }
+      }
+
       // Atomic: producing a PT (insert PT row + deduct each recipe ingredient) must be
       // all-or-nothing, else the PT is recorded while ingredients are only partly deducted.
       await withTransaction(async (client) => {
         // Save PT appro — always insert a new row (multiple rows per day allowed)
         await client.query(
-          `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, type_appro, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, 'production', NOW())`,
           [laboId, produitId, da, qty, finalPrix, customPortionsJson]
         );
 
@@ -867,6 +909,21 @@ const updateLaboStock = async (req, res) => {
               `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, fournisseur_id, ref_facture, type_appro, updated_at, created_by)
                VALUES ($1, $2, $3, $4, $5, 0, $5, $6, $7, 'PT', NOW(), $8)`,
               [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, `PT-${da}`, req.user.id]
+            );
+          }
+        }
+
+        // Déduire les sous-PT de composition (un seul niveau) du stock PT du labo.
+        // Ligne de consommation : quantité négative, prix NULL, type_appro='PT'
+        // (réduit le stock du sous-PT sans être comptée comme appro/transfert/vente).
+        if (spRes.rows.length > 0 && qty > 0) {
+          for (const sp of spRes.rows) {
+            const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
+            const consumed = -(portion * qty);
+            await client.query(
+              `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, type_appro, updated_at)
+               VALUES ($1, $2, $3, $4, NULL, 'PT', NOW())`,
+              [laboId, sp.sous_produit_id, da, consumed]
             );
           }
         }
@@ -2267,6 +2324,7 @@ const updateTransfer = async (req, res) => {
            WHERE id = (
              SELECT id FROM stock_labo_pt_daily
              WHERE labo_id = $2 AND produit_id = $3 AND date_appro = $4 AND quantite = $5
+               AND type_appro IS DISTINCT FROM 'PT'
              ORDER BY id ASC LIMIT 1
            )`,
           [-newQty, laboId, t.produit_id, t.date_transfert, -oldQty]
@@ -2348,6 +2406,7 @@ const deleteTransfer = async (req, res) => {
            WHERE id = (
              SELECT id FROM stock_labo_pt_daily
              WHERE labo_id = $1 AND produit_id = $2 AND date_appro = $3 AND quantite = $4
+               AND type_appro IS DISTINCT FROM 'PT'
              ORDER BY id ASC LIMIT 1
            )`,
           [laboId, t.produit_id, t.date_transfert, -qty]

@@ -843,7 +843,8 @@ const createVente = async (req, res) => {
       const upd = await client.query(
         `UPDATE stock_produits_transformes
          SET quantite = quantite - $1
-         WHERE produit_id = $2 AND activite_id = $3 AND date_appro = $4 AND quantite < 0 AND prix_calcule IS NULL`,
+         WHERE produit_id = $2 AND activite_id = $3 AND date_appro = $4 AND quantite < 0 AND prix_calcule IS NULL
+           AND type_appro IS DISTINCT FROM 'PT'`,
         [total, sousProduitId, activite_id, dateApproValue]
       );
       if (upd.rowCount === 0) {
@@ -968,7 +969,8 @@ const annulerVente = async (req, res) => {
           await client.query(
             `UPDATE stock_produits_transformes
              SET quantite = quantite + $1
-             WHERE produit_id = $2 AND activite_id = $3 AND date_appro = $4 AND quantite < 0 AND prix_calcule IS NULL`,
+             WHERE produit_id = $2 AND activite_id = $3 AND date_appro = $4 AND quantite < 0 AND prix_calcule IS NULL
+               AND type_appro IS DISTINCT FROM 'PT'`,
             [total, sousProduitId, vente.activite_id, vente.date_vente]
           );
         }

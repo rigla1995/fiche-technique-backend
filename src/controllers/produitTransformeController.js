@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { withTransaction } = require('../utils/db');
 
 // ─── toggleStockIngredient ────────────────────────────────────────────────────
 // POST /api/produits/:id/toggle-stock-ingredient
@@ -512,11 +513,30 @@ const saveStockPT = async (req, res) => {
       ingRows = ingRes.rows;
     }
 
-    // Build custom portions map: ingredientId → portionCustom
+    // Sous-PT de composition + dernier prix courant (réception/production positive) du sous-PT en activité
+    let spRows = [];
+    if (actId) {
+      const spRes = await pool.query(
+        `SELECT psp.sous_produit_id, psp.portion, p.nom AS sp_nom,
+           (SELECT spt.prix_calcule FROM stock_produits_transformes spt
+             WHERE spt.produit_id = psp.sous_produit_id AND spt.activite_id = $2
+               AND spt.quantite > 0 AND spt.prix_calcule IS NOT NULL
+             ORDER BY spt.date_appro DESC, spt.id DESC LIMIT 1) AS last_prix
+         FROM produit_sous_produits psp
+         JOIN produits p ON p.id = psp.sous_produit_id
+         WHERE psp.produit_id = $1`,
+        [produitId, actId]
+      );
+      spRows = spRes.rows;
+    }
+
+    // Build custom portions maps (articles ET sous-PT cohabitent dans le même tableau customPortions)
     const customPortionsMap = {};
+    const customSpMap = {};
     if (Array.isArray(customPortions)) {
       for (const cp of customPortions) {
-        customPortionsMap[cp.ingredientId] = parseFloat(cp.portionCustom);
+        if (cp.sousProduitId != null) customSpMap[cp.sousProduitId] = parseFloat(cp.portionCustom);
+        else if (cp.ingredientId != null) customPortionsMap[cp.ingredientId] = parseFloat(cp.portionCustom);
       }
     }
 
@@ -530,32 +550,21 @@ const saveStockPT = async (req, res) => {
         prixCalcule += portion * parseFloat(ing.last_prix);
       }
     }
+    // Le coût du PT inclut aussi ses sous-PT de composition (dernier prix courant du sous-PT).
+    for (const sp of spRows) {
+      const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
+      if (sp.last_prix === null) {
+        prixPartiel = true;
+      } else {
+        prixCalcule += portion * parseFloat(sp.last_prix);
+      }
+    }
 
-    const customPortionsJson = Object.keys(customPortionsMap).length > 0
+    const customPortionsJson = (Object.keys(customPortionsMap).length > 0 || Object.keys(customSpMap).length > 0)
       ? JSON.stringify(customPortions)
       : null;
 
-    // 3. INSERT into stock_produits_transformes
-    let upsertResult;
-    if (actId) {
-      upsertResult = await pool.query(
-        `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, custom_portions)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id`,
-        [produitId, actId, dateAppro, qty, prixCalcule, customPortionsJson]
-      );
-    } else {
-      upsertResult = await pool.query(
-        `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule, custom_portions)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id`,
-        [produitId, userId, dateAppro, qty, prixCalcule, customPortionsJson]
-      );
-    }
-    const sptId = upsertResult.rows[0].id;
-
-    // 4. Create consumption entries in ingredient stock (negative quantities)
-    // Resolve or create AUTO fournisseur
+    // 3. Résoudre/créer le fournisseur AUTO (idempotent) — avant la transaction.
     let autoFournisseurId = null;
     if (actId) {
       const entRes = await pool.query(
@@ -602,20 +611,49 @@ const saveStockPT = async (req, res) => {
       }
     }
 
-    const yearStr = String(new Date().getFullYear()).slice(-2);
-
-    for (const ing of ingRows) {
-      const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
-      const quantiteConsumed = -(portion * qty);
+    // 4. Écritures de stock ATOMIQUES : appro du PT (+) puis déductions des articles et
+    //    des sous-PT de composition (-). Tout-ou-rien pour éviter un stock incohérent.
+    let sptId;
+    await withTransaction(async (client) => {
+      const upsertResult = actId
+        ? await client.query(
+            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, custom_portions, type_appro)
+             VALUES ($1, $2, $3, $4, $5, $6, 'production')
+             RETURNING id`,
+            [produitId, actId, dateAppro, qty, prixCalcule, customPortionsJson]
+          )
+        : await client.query(
+            `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule, custom_portions, type_appro)
+             VALUES ($1, $2, $3, $4, $5, $6, 'production')
+             RETURNING id`,
+            [produitId, userId, dateAppro, qty, prixCalcule, customPortionsJson]
+          );
+      sptId = upsertResult.rows[0].id;
 
       if (actId) {
-        await pool.query(
-          `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
-           VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
-          [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
-        );
+        // Déduction des ARTICLES de la recette (lignes négatives dans le stock d'articles).
+        for (const ing of ingRows) {
+          const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
+          const quantiteConsumed = -(portion * qty);
+          await client.query(
+            `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
+             VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
+            [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
+          );
+        }
+        // Déduction des SOUS-PT de composition (un seul niveau) : ligne négative, prix NULL,
+        // type_appro='PT' → réduit le stock du sous-PT sans être comptée comme une vente.
+        for (const sp of spRows) {
+          const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
+          const consumed = -(portion * qty);
+          await client.query(
+            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, type_appro)
+             VALUES ($1, $2, $3, $4, NULL, 'PT')`,
+            [sp.sous_produit_id, actId, dateAppro, consumed]
+          );
+        }
       }
-    }
+    });
 
     // 5. Recalculate totalQuantite for current month
     const now = new Date();
