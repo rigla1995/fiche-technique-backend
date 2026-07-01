@@ -79,8 +79,7 @@ const getStockEntreprise = async (req, res) => {
       FROM produits p
       WHERE p.id IN (
         SELECT pas.produit_id FROM produit_activite_stock pas
-        JOIN produits p2 ON p2.id = pas.produit_id
-        WHERE pas.activite_id = $1 AND p2.is_stock_ingredient = TRUE
+        WHERE pas.activite_id = $1
       )
     `, [activiteId]);
     const ptPrixMap = {};
@@ -383,8 +382,7 @@ const getStockEntreprise = async (req, res) => {
        ),
        pt_list AS (
          SELECT pas.produit_id FROM produit_activite_stock pas
-         JOIN produits p ON p.id = pas.produit_id
-         WHERE pas.activite_id = $1 AND p.is_stock_ingredient = TRUE
+         WHERE pas.activite_id = $1
        )
        SELECT pl.produit_id,
               li.quantite_reelle        as inv_qty,
