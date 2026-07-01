@@ -352,10 +352,11 @@ const getStockEntreprise = async (req, res) => {
          GROUP BY spt.produit_id
        ),
        avg_prix_post AS (
+         -- quantite > 0 : ne valorise que les entrées (appro/transfert), pas les consommations/ventes (prix éventuel).
          SELECT spt.produit_id, AVG(spt.prix_calcule) as avg_prix
          FROM stock_produits_transformes spt
          JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro >= li.date_inventaire
-         WHERE spt.activite_id = $1 AND spt.prix_calcule IS NOT NULL
+         WHERE spt.activite_id = $1 AND spt.prix_calcule IS NOT NULL AND spt.quantite > 0
          GROUP BY spt.produit_id
        ),
        all_appro AS (
@@ -378,9 +379,10 @@ const getStockEntreprise = async (req, res) => {
          GROUP BY produit_id
        ),
        avg_prix_all AS (
+         -- quantite > 0 : ne valorise que les entrées (appro/transfert), pas les consommations/ventes (prix éventuel).
          SELECT produit_id, AVG(prix_calcule) as avg_prix
          FROM stock_produits_transformes
-         WHERE activite_id = $1 AND prix_calcule IS NOT NULL
+         WHERE activite_id = $1 AND prix_calcule IS NOT NULL AND quantite > 0
          GROUP BY produit_id
        ),
        pt_list AS (
@@ -754,7 +756,7 @@ const getHistoriqueAppro = async (req, res) => {
           `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at, p.nom as produit_nom, p.id as produit_id
            FROM stock_produits_transformes spt
            JOIN produits p ON p.id = spt.produit_id
-           WHERE ${ptWhere}
+           WHERE ${ptWhere} AND spt.type_appro IS DISTINCT FROM 'PT'
            ORDER BY spt.date_appro DESC`,
           ptParams
         );
@@ -1004,7 +1006,7 @@ const exportHistoriqueExcel = async (req, res) => {
                 NULL AS taux_tva, NULL AS prix_unitaire_tva, NULL AS created_by_nom
          FROM stock_produits_transformes spt
          JOIN produits p ON p.id = spt.produit_id
-         WHERE ${ptWhereEnt}
+         WHERE ${ptWhereEnt} AND spt.type_appro IS DISTINCT FROM 'PT'
          ORDER BY spt.date_appro DESC, p.nom`,
         ptParamsEnt
       );
@@ -1251,7 +1253,7 @@ const exportHistoriquePdf = async (req, res) => {
                   p.nom AS ingredient_nom, 'Produits Transformés' AS categorie_nom, 'unité' AS unite_nom,
                   NULL AS taux_tva, NULL AS prix_unitaire_tva
            FROM stock_produits_transformes spt JOIN produits p ON p.id = spt.produit_id
-           WHERE ${ptWhereEnt} ORDER BY spt.date_appro DESC, p.nom`,
+           WHERE ${ptWhereEnt} AND spt.type_appro IS DISTINCT FROM 'PT' ORDER BY spt.date_appro DESC, p.nom`,
           ptParamsEnt
         );
         const ptRows = ptResultEnt.rows.map((r) => ({ ...r, activite_nom: activiteNames[r.activite_id] || '' }));
