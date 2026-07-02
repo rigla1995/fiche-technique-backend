@@ -71,6 +71,31 @@ const getRapportPertes = async (req, res) => {
         fullParams
       );
       rows = q.rows;
+
+      // Pertes PT (produit_id) — incluses sauf si un filtre catégorie est actif ; valorisées au coût du PT.
+      if (!categorieId) {
+        const ptParams = [];
+        const ptWheres = [];
+        let ptIdx = 1;
+        if (dateFrom) { ptWheres.push(`p.date_perte >= $${ptIdx++}`); ptParams.push(dateFrom); }
+        if (dateTo)   { ptWheres.push(`p.date_perte <= $${ptIdx++}`); ptParams.push(dateTo); }
+        const ptActParams = activiteIds.map((_, i) => `$${ptIdx + i}`).join(',');
+        const ptFull = [...ptParams, ...activiteIds];
+        const ptWhereStr = ptWheres.length ? `AND ${ptWheres.join(' AND ')}` : '';
+        const ptq = await pool.query(
+          `SELECT pr.nom AS ingredient_nom, 'Produits Transformés' AS categorie, 'unité' AS unite,
+                  a.nom AS activite_nom, p.type_perte, p.date_perte, p.quantite,
+                  COALESCE(p.prix_unitaire_tva, p.prix_unitaire, 0) AS prix_unitaire,
+                  p.quantite * COALESCE(p.prix_unitaire_tva, p.prix_unitaire, 0) AS valeur
+           FROM pertes p
+           JOIN produits pr ON pr.id = p.produit_id
+           JOIN activites a ON a.id = p.activite_id
+           WHERE p.produit_id IS NOT NULL AND p.activite_id IN (${ptActParams}) ${ptWhereStr}
+           ORDER BY p.date_perte DESC`,
+          ptFull
+        );
+        rows = [...rows, ...ptq.rows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
+      }
     }
 
     // Aggregates for charts
