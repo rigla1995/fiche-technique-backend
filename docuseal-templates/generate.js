@@ -13,36 +13,56 @@
  *
  * Usage : node docuseal-templates/generate.js
  */
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 
-// ── Identité prestataire (À COMPLÉTER avec les infos légales réelles) ──────────
+// ── Identité prestataire ────────────────────────────────────────────────────────
+// Renseignée par variables d'environnement (Coolify) ; les valeurs par défaut sont
+// des PLACEHOLDERS détectés par checkPrestatairePlaceholders (FACTURE_STRICT=1 en
+// prod pour refuser toute génération tant qu'ils subsistent). Nom, adresse et
+// matricule retombent sur les FACTURE_* déjà utilisées par les factures
+// (pdfService) : une seule source à configurer.
+const envOr = (names, fallback) => {
+  for (const n of names) if (process.env[n]) return process.env[n];
+  return fallback;
+};
+// FACTURE_MATRICULE_FISCAL est parfois saisi avec son libellé (« Matricule fiscal : … »
+// pour le pied de facture) — ici on ne veut que la valeur.
+const stripMfLabel = (v) => String(v).replace(/^\s*(matricule\s+fiscal|mf)\s*:?\s*/i, '').trim();
+const PRESTATAIRE_NOM = envOr(['PRESTATAIRE_NOM', 'FACTURE_PRESTATAIRE_NOM'], 'LabFlow');
+const PRESTATAIRE_FORME = envOr(['PRESTATAIRE_FORME'], 'SARL');
 const PRESTATAIRE = {
-  nom: 'LabFlow',
-  forme: 'SARL',
-  raisonSociale: 'LabFlow SARL',
-  matricule: '1234567/A/M/000',                            // matricule fiscal (placeholder)
-  rc: 'B0123452024',                                       // registre de commerce (placeholder)
-  capital: '10 000 DT',                                    // capital social (placeholder)
-  adresse: 'Avenue Habib Bourguiba, 1000 Tunis, Tunisie', // siège (placeholder)
-  ville: 'Tunis',                                          // lieu de signature
-  email: 'contact@labflow-tn.com',
-  tel: '+216 71 000 000',                                  // (placeholder)
-  signataire: 'La Direction',                              // signataire du prestataire (placeholder)
+  nom: PRESTATAIRE_NOM,
+  forme: PRESTATAIRE_FORME,
+  raisonSociale: envOr(['PRESTATAIRE_RAISON_SOCIALE'], `${PRESTATAIRE_NOM} ${PRESTATAIRE_FORME}`),
+  matricule: stripMfLabel(envOr(['PRESTATAIRE_MATRICULE', 'FACTURE_MATRICULE_FISCAL'], '1234567/A/M/000')),
+  rc: envOr(['PRESTATAIRE_RC'], 'B0123452024'),
+  capital: envOr(['PRESTATAIRE_CAPITAL'], '10 000 DT'),
+  adresse: envOr(['PRESTATAIRE_ADRESSE', 'FACTURE_ADRESSE'], 'Avenue Habib Bourguiba, 1000 Tunis, Tunisie'),
+  ville: envOr(['PRESTATAIRE_VILLE'], 'Tunis'),
+  email: envOr(['PRESTATAIRE_EMAIL'], 'contact@labflow-tn.com'),
+  tel: envOr(['PRESTATAIRE_TEL'], '+216 71 000 000'),
+  signataire: envOr(['PRESTATAIRE_SIGNATAIRE'], 'La Direction'),
 };
 
-// Taux de TVA applicable (Tunisie). Les montants saisis sont considérés HORS TAXES.
-const TVA_RATE = 19;
+// Taux de TVA affiché dans les clauses — même source que la facturation.
+// Les montants d'abonnement saisis dans l'app sont TTC (la facture en déduit le HT).
+const TVA_RATE = Number(process.env.FACTURE_TVA_RATE || 19);
 
-// Garde-fou : signale (sans bloquer l'aperçu) les mentions légales encore fictives.
-// En prod, passer FACTURE_STRICT=1 pour faire échouer la génération si un placeholder subsiste.
+// Garde-fou : signale les mentions légales encore fictives. STRICT (génération refusée,
+// le backend se replie sur le flux template) si FACTURE_STRICT=1 ou par DÉFAUT en
+// production — un acte signé avec une identité fictive est juridiquement vicié.
+// FACTURE_STRICT=0 désactive explicitement le mode strict (déconseillé en prod).
 function checkPrestatairePlaceholders() {
-  const fictifs = ['1234567/A/M/000', 'B0123452024', 'Avenue Habib Bourguiba, 1000 Tunis, Tunisie', 'La Direction'];
+  const fictifs = ['1234567/A/M/000', 'B0123452024', 'Avenue Habib Bourguiba, 1000 Tunis, Tunisie', 'La Direction', '+216 71 000 000'];
   const found = Object.entries(PRESTATAIRE).filter(([, v]) => fictifs.includes(v)).map(([k]) => k);
   if (found.length) {
+    const strict = process.env.FACTURE_STRICT === '1'
+      || (process.env.NODE_ENV === 'production' && process.env.FACTURE_STRICT !== '0');
     const msg = `[contrats] ⚠ mentions légales prestataire encore fictives : ${found.join(', ')} — à renseigner avant la prod.`;
-    if (process.env.FACTURE_STRICT === '1') throw new Error(msg);
+    if (strict) throw new Error(msg);
     console.warn(msg);
   }
 }
@@ -468,8 +488,18 @@ function stampFooters(ctx, label) {
   }
 }
 
+// outPath renseigné → écrit le fichier ; outPath null → résout avec le Buffer du PDF
+// (mode service backend : le document part en base64 vers DocuSeal, rien sur disque).
 function finish(ctx, outPath) {
   return new Promise((resolve, reject) => {
+    if (!outPath) {
+      const chunks = [];
+      ctx.doc.on('data', (c) => chunks.push(c));
+      ctx.doc.on('end', () => resolve(Buffer.concat(chunks)));
+      ctx.doc.on('error', reject);
+      ctx.doc.end();
+      return;
+    }
     const stream = fs.createWriteStream(outPath);
     ctx.doc.pipe(stream);
     stream.on('finish', resolve);
@@ -511,7 +541,7 @@ async function buildContrat(outPath, data) {
   y = pricingBlock(ctx, y, data.pricing);
   y = clauses(ctx, y, [{
     title: '', body:
-      `Le Client s'acquitte des frais d'activation à la souscription, puis de la mensualité par avance au début de chaque période mensuelle. En cas de promotion, le tarif promotionnel s'applique pour la durée indiquée ci-dessus, puis le tarif de base reprend automatiquement. Tout retard de paiement supérieur à 15 jours peut entraîner la suspension de l'accès au service. Les montants sont exprimés en dinars tunisiens (DT), hors taxes ; la taxe sur la valeur ajoutée au taux en vigueur (${TVA_RATE} %) s'y ajoute et figure sur la facture conforme émise à chaque échéance.`,
+      `Le Client s'acquitte des frais d'activation à la souscription, puis de la mensualité par avance au début de chaque période mensuelle. En cas de promotion, le tarif promotionnel s'applique pour la durée indiquée ci-dessus, puis le tarif de base reprend automatiquement. Tout retard de paiement supérieur à 15 jours peut entraîner la suspension de l'accès au service. Les montants sont exprimés en dinars tunisiens (DT), toutes taxes comprises (TVA au taux en vigueur de ${TVA_RATE} % incluse) ; la facture conforme émise à chaque échéance en présente la ventilation (hors taxes, TVA, TTC).`,
   }]);
   y += 4;
 
@@ -577,7 +607,7 @@ async function buildAvenant(outPath, data) {
   y = pricingBlock(ctx, y, { mensuel: data.pricing.mensuel, mensuelBase: data.pricing.mensuelBase });
   y = clauses(ctx, y, [{
     title: '', body:
-      `La nouvelle mensualité s'applique à compter de la première échéance suivant la signature du présent avenant. Elle s'entend hors taxes, la TVA au taux en vigueur (${TVA_RATE} %) s'y ajoutant sur la facture. Les frais d'activation déjà réglés ne sont pas dus à nouveau et les modalités de paiement du contrat initial restent applicables.`,
+      `La nouvelle mensualité s'applique à compter de la première échéance suivant la signature du présent avenant. Elle s'entend toutes taxes comprises (TVA au taux en vigueur de ${TVA_RATE} % incluse), la facture émise à chaque échéance en présentant la ventilation. Les frais d'activation déjà réglés ne sont pas dus à nouveau et les modalités de paiement du contrat initial restent applicables.`,
   }]);
   y += 4;
 
@@ -689,16 +719,20 @@ const SAMPLE = {
   },
 };
 
-(async () => {
-  const dir = __dirname;
-  checkPrestatairePlaceholders();
-  await buildContrat(path.join(dir, 'contrat-labflow.pdf'), SAMPLE.contrat);
-  await buildAvenant(path.join(dir, 'avenant-labflow.pdf'), SAMPLE.avenant);
-  await buildResiliation(path.join(dir, 'resiliation-labflow.pdf'), SAMPLE.resiliation);
-  console.log('✅ Documents générés (aperçu avec valeurs d\'exemple) :');
-  console.log('   -', path.join(dir, 'contrat-labflow.pdf'));
-  console.log('   -', path.join(dir, 'avenant-labflow.pdf'));
-  console.log('   -', path.join(dir, 'resiliation-labflow.pdf'));
-})();
+// Aperçu CLI uniquement — ce module est aussi requis par le backend
+// (contractPdfService) et ne doit alors RIEN générer au chargement.
+if (require.main === module) {
+  (async () => {
+    const dir = __dirname;
+    checkPrestatairePlaceholders();
+    await buildContrat(path.join(dir, 'contrat-labflow.pdf'), SAMPLE.contrat);
+    await buildAvenant(path.join(dir, 'avenant-labflow.pdf'), SAMPLE.avenant);
+    await buildResiliation(path.join(dir, 'resiliation-labflow.pdf'), SAMPLE.resiliation);
+    console.log('✅ Documents générés (aperçu avec valeurs d\'exemple) :');
+    console.log('   -', path.join(dir, 'contrat-labflow.pdf'));
+    console.log('   -', path.join(dir, 'avenant-labflow.pdf'));
+    console.log('   -', path.join(dir, 'resiliation-labflow.pdf'));
+  })();
+}
 
-module.exports = { buildContrat, buildAvenant, buildResiliation, PRESTATAIRE };
+module.exports = { buildContrat, buildAvenant, buildResiliation, checkPrestatairePlaceholders, PRESTATAIRE };

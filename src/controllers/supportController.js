@@ -4,10 +4,50 @@ const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
 const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeAvenantPricing } = require('./abonnementController');
-const { createSubmission, getSubmissionDocuments, isConfigured: docusealConfigured } = require('../services/docusealService');
+const {
+  createSubmission, createSubmissionFromPdf, getSubmissionDocuments,
+  isConfigured: docusealConfigured, isConfiguredPdf: docusealPdfConfigured,
+} = require('../services/docusealService');
+const { buildAvenantDocument } = require('../services/contractPdfService');
 const { sendDocusealSigningEmail } = require('../services/emailService');
 
 const fmtDtS = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
+
+// Soumission Docuseal de l'avenant : flux « PDF rempli » (document généré pour le
+// client, prestataire pré-signé) avec REPLI sur le flux template historique si la
+// génération ou l'API échoue. Retourne { submissionId, signingUrl }.
+const submitAvenantForSignature = async ({ demandeId, info, pricing, ajouts }) => {
+  const clientName = info.nom || 'Client';
+  if (docusealPdfConfigured() && pricing) {
+    try {
+      const docu = await buildAvenantDocument({
+        demandeId,
+        client: { nom: clientName, email: info.email, telephone: info.telephone, adresse: info.adresse },
+        pricing,
+        ajouts,
+        abonnementId: info.abo_id,
+        abonnementDate: info.abo_created_at,
+      });
+      return await createSubmissionFromPdf({
+        pdfBase64: docu.base64,
+        documentName: docu.documentName,
+        clientName,
+        clientEmail: info.email,
+      });
+    } catch (e) {
+      console.error('[avenant] flux PDF rempli échoué, repli sur le template:', e.message);
+    }
+  }
+  return createSubmission({
+    type: 'avenant',
+    clientName,
+    clientEmail: info.email,
+    nbActivites: pricing?.nbActivites,
+    nbLabos: pricing?.nbLabos,
+    nbGerants: pricing?.nbGerants,
+    montantMensuel: pricing?.effMensuel,
+  });
+};
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -113,26 +153,30 @@ const create = async (req, res) => {
     // Nouveau flux : une demande de capacité déclenche un avenant Docuseal à signer.
     // À la signature (webhook), la capacité est appliquée et la demande validée automatiquement.
     let signingUrl = null;
-    if (type === 'supplement' && docusealConfigured('avenant')) {
+    if (type === 'supplement' && (docusealPdfConfigured() || docusealConfigured('avenant'))) {
       try {
-        const emailRes = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
-        const clientEmail = emailRes.rows[0]?.email || null;
-        const clientNomFull = emailRes.rows[0]?.nom || clientNom || 'Client';
+        const infoRes = await pool.query(
+          `SELECT u.nom, u.email, u.telephone, pe.adresse,
+                  a.id AS abo_id, a.created_at AS abo_created_at
+             FROM utilisateurs u
+             LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
+             LEFT JOIN abonnements a ON a.client_id = u.id
+            WHERE u.id = $1
+            ORDER BY a.id DESC
+            LIMIT 1`,
+          [clientId]
+        );
+        const info = infoRes.rows[0] || {};
+        const clientEmail = info.email || null;
+        const clientNomFull = info.nom || clientNom || 'Client';
         if (clientEmail) {
-          const pricing = await computeAvenantPricing(clientId, {
+          const ajouts = {
             addActivites: req.body.nbActivitesSupp || 0,
             addLabos: req.body.nbLabosSupp || 0,
             addGerants: req.body.nbGerantsSupp || 0,
-          });
-          const sub = await createSubmission({
-            type: 'avenant',
-            clientName: clientNomFull,
-            clientEmail,
-            nbActivites: pricing?.nbActivites,
-            nbLabos: pricing?.nbLabos,
-            nbGerants: pricing?.nbGerants,
-            montantMensuel: pricing?.effMensuel,
-          });
+          };
+          const pricing = await computeAvenantPricing(clientId, ajouts);
+          const sub = await submitAvenantForSignature({ demandeId: demande.id, info, pricing, ajouts });
           if (sub?.submissionId) {
             await pool.query('UPDATE support_demandes SET docuseal_submission_id = $1 WHERE id = $2',
               [String(sub.submissionId), demande.id]);
