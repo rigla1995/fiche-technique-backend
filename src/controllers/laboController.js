@@ -1993,10 +1993,19 @@ const createLaboPerte = async (req, res) => {
           demande: qtyPT,
         });
       }
+      // Valoriser la perte au coût recette TTC du PT (buildMpPriceMapLabo = TTC), pour rapports/exports.
+      let coutPt = null;
+      try {
+        const { buildMpPriceMapLabo, calculerCoutAvecPrixMap } = require('./produitsController');
+        const ownerId = req.user.gerant_parent_id || req.user.id;
+        const map = await buildMpPriceMapLabo(parseInt(laboId));
+        const c = await calculerCoutAvecPrixMap(produitId, ownerId, map);
+        coutPt = c && c.cout_total != null && parseFloat(c.cout_total) > 0 ? parseFloat(c.cout_total) : null;
+      } catch { /* coût indisponible → prix null */ }
       await pool.query(
-        `INSERT INTO labo_pertes (labo_id, produit_id, quantite, type_perte, date_perte, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [laboId, produitId, qtyPT, typePerte || 'avarie', effectiveDate, req.user.id]
+        `INSERT INTO labo_pertes (labo_id, produit_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $6, $7)`,
+        [laboId, produitId, qtyPT, typePerte || 'avarie', effectiveDate, coutPt, req.user.id]
       );
     } else {
       const minRow = await pool.query(
