@@ -18,13 +18,17 @@
  * production n'est pas reconstituable).
  *
  * Run : node scripts/backfill-pt-activite-ttc.js
+ * Également exécuté UNE FOIS au boot par src/config/migrate.js (clé _migrations
+ * « 137_backfill_pt_activite_ttc.js ») — la PROD n'a pas d'accès shell simple.
  */
 
 require('dotenv').config();
 const pool = require('../src/config/database');
-const { buildMpPriceMap, calculerCoutAvecPrixMap } = require('../src/controllers/produitsController');
 
-async function main() {
+async function run() {
+  // require inline : produitsController est au cœur du graphe de modules (cycles connus),
+  // on ne le charge qu'à l'exécution, jamais au chargement de ce fichier.
+  const { buildMpPriceMap, calculerCoutAvecPrixMap } = require('../src/controllers/produitsController');
   const cibles = await pool.query(
     `SELECT DISTINCT spt.produit_id, spt.activite_id, pe.client_id
        FROM stock_produits_transformes spt
@@ -59,6 +63,11 @@ async function main() {
     }
   }
   console.log(`Backfill terminé : ${recalcules} PT recalculés, ${updatedRows} lignes de production mises à jour en TTC.`);
+  return { recalcules, updatedRows };
 }
 
-main().then(() => pool.end()).catch((e) => { console.error(e); process.exit(1); });
+module.exports = { run };
+
+if (require.main === module) {
+  run().then(() => pool.end()).catch((e) => { console.error(e); process.exit(1); });
+}

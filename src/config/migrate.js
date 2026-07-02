@@ -105,6 +105,31 @@ async function migrate() {
       }
     }
 
+    // ── Backfills applicatifs one-shot (JS) ─────────────────────────────────────
+    // Même tracking _migrations que les .sql (le suffixe .js les distingue) et même
+    // advisory lock : une seule instance exécute. Non bloquants pour le boot : ces
+    // backfills corrigent des DONNÉES d'affichage, pas le schéma — un échec est
+    // loggé et retenté au prochain démarrage, sans marquer la clé comme appliquée.
+    const jsBackfills = [
+      {
+        key: '137_backfill_pt_activite_ttc.js',
+        run: () => require('../../scripts/backfill-pt-activite-ttc').run(),
+      },
+    ];
+    for (const bf of jsBackfills) {
+      if (appliedSet.has(bf.key)) {
+        console.log(`Migration deja appliquee: ${bf.key}`);
+        continue;
+      }
+      try {
+        await bf.run();
+        await client.query('INSERT INTO _migrations (filename) VALUES ($1)', [bf.key]);
+        console.log(`Migration appliquee: ${bf.key}`);
+      } catch (err) {
+        console.error(`Backfill ${bf.key} échoué (sera retenté au prochain démarrage):`, err.message);
+      }
+    }
+
     console.log('Toutes les migrations effectuees avec succes');
   } finally {
     if (locked) {
