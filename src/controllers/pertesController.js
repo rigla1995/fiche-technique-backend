@@ -81,10 +81,19 @@ const createPerte = async (req, res) => {
       if (qtyPt > ptStock) {
         return res.status(422).json({ message: 'Stock insuffisant', disponible: Math.max(0, ptStock), demande: qtyPt });
       }
+      // Valoriser la perte au coût recette TTC du PT (comme le stock/FT), pour les rapports/exports.
+      let coutPt = null;
+      try {
+        const { buildMpPriceMap, calculerCoutAvecPrixMap } = require('./produitsController');
+        const ownerId = req.user.gerant_parent_id || req.user.id;
+        const map = await buildMpPriceMap(parseInt(activiteId), ownerId);
+        const c = await calculerCoutAvecPrixMap(produitId, ownerId, map);
+        coutPt = c && c.cout_total != null && parseFloat(c.cout_total) > 0 ? parseFloat(c.cout_total) : null;
+      } catch { /* coût indisponible → prix null */ }
       const rpt = await pool.query(
-        `INSERT INTO pertes (activite_id, produit_id, quantite, type_perte, date_perte, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [activiteId, produitId, qtyPt, typePerte, datePerte, req.user.id]
+        `INSERT INTO pertes (activite_id, produit_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $6, $7) RETURNING *`,
+        [activiteId, produitId, qtyPt, typePerte, datePerte, coutPt, req.user.id]
       );
       return res.status(201).json(rpt.rows[0]);
     }
@@ -166,6 +175,31 @@ const listPertes = async (req, res) => {
   }
 };
 
+// Pertes de PT en activité (table pertes, produit_id renseigné) — projetées au schéma article
+// (ingredient_id négatif), pour être fusionnées avec les pertes d'articles dans listes/exports/rapports.
+async function fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte }) {
+  const params = [entrepriseId];
+  const wheres = [`a.entreprise_id = $1`, `p.produit_id IS NOT NULL`];
+  if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
+  else if (activiteIds) { params.push(String(activiteIds).split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
+  if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
+  if (dateFin)   { params.push(dateFin);   wheres.push(`p.date_perte <= $${params.length}`); }
+  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
+  const r = await pool.query(
+    `SELECT p.id, p.activite_id, a.nom AS activite_nom, -(p.produit_id) AS ingredient_id, p.produit_id,
+            pr.nom AS ingredient_nom, 'unité'::text AS unite_nom, 'Produits Transformés'::text AS categorie_nom,
+            p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at, p.created_by, ub.nom AS created_by_nom
+     FROM pertes p
+     JOIN activites a ON a.id = p.activite_id
+     JOIN produits pr ON pr.id = p.produit_id
+     LEFT JOIN utilisateurs ub ON ub.id = p.created_by
+     WHERE ${wheres.join(' AND ')}
+     ORDER BY p.date_perte DESC, p.created_at DESC`,
+    params
+  );
+  return r.rows;
+}
+
 // ── Entreprise — list (all activités) ────────────────────────────────────────
 
 const listEntreprisePertes = async (req, res) => {
@@ -184,7 +218,7 @@ const listEntreprisePertes = async (req, res) => {
   const entrepriseId = companyCheck.rows[0].id;
 
   const params = [entrepriseId];
-  const wheres = [`a.entreprise_id = $1`];
+  const wheres = [`a.entreprise_id = $1`, `p.ingredient_id IS NOT NULL`];
 
   if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
   else if (activiteIds) { params.push(activiteIds.split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
@@ -212,7 +246,14 @@ const listEntreprisePertes = async (req, res) => {
        ORDER BY p.date_perte DESC, p.created_at DESC`,
       params
     );
-    res.json(result.rows.map(mapPerte));
+    let rows = result.rows.map(mapPerte);
+    // Inclure les pertes PT (produit_id) sauf si un filtre article/catégorie/recherche est actif.
+    const includePt = !categorieId && !ingredientId && !search;
+    if (includePt) {
+      const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte });
+      rows = [...rows, ...ptRows.map(mapPerte)].sort((a, b) => (b.datePerte || '').localeCompare(a.datePerte || ''));
+    }
+    res.json(rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -230,7 +271,7 @@ const updateEntreprisePerte = async (req, res) => {
   try {
     // Fetch existing row to get ingredient_id, activite_id, date_perte
     const existing = await pool.query(
-      `SELECT p.ingredient_id, p.activite_id, p.date_perte, p.created_by
+      `SELECT p.ingredient_id, p.produit_id, p.activite_id, p.date_perte, p.created_by
        FROM pertes p
        JOIN activites a ON a.id = p.activite_id
        JOIN profil_entreprise pe ON a.entreprise_id = pe.id
@@ -240,10 +281,33 @@ const updateEntreprisePerte = async (req, res) => {
     if (existing.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
     if (req.user.role === 'gerant' && existing.rows[0].created_by !== req.user.id)
       return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
-    const { ingredient_id: ingredientId, activite_id: activiteId, date_perte } = existing.rows[0];
+    const { ingredient_id: ingredientId, produit_id: produitId, activite_id: activiteId, date_perte } = existing.rows[0];
     const effectiveDate = datePerte || (date_perte instanceof Date
       ? date_perte.toISOString().slice(0, 10)
       : String(date_perte).slice(0, 10));
+
+    // Perte de PT : pas de prix article — on RE-CALCULE le coût recette TTC du PT (sinon getPrixPourPerte
+    // avec ingredient_id NULL renverrait NULL et effacerait la valorisation Phase A).
+    if (produitId) {
+      let coutPt = null;
+      try {
+        const { buildMpPriceMap, calculerCoutAvecPrixMap } = require('./produitsController');
+        const ownerId = req.user.gerant_parent_id || req.user.id;
+        const map = await buildMpPriceMap(activiteId, ownerId);
+        const c = await calculerCoutAvecPrixMap(produitId, ownerId, map);
+        coutPt = c && c.cout_total != null && parseFloat(c.cout_total) > 0 ? parseFloat(c.cout_total) : null;
+      } catch { /* coût indisponible → prix null */ }
+      const rpt = await pool.query(
+        `UPDATE pertes p SET quantite = $1, type_perte = $2, prix_unitaire = $3, prix_unitaire_tva = $3
+         FROM activites a
+         JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+         WHERE p.id = $4 AND p.activite_id = a.id AND pe.client_id = $5
+         RETURNING p.id`,
+        [quantite, typePerte, coutPt, id, req.user.gerant_parent_id || req.user.id]
+      );
+      if (rpt.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+      return res.json({ message: 'Mise à jour effectuée' });
+    }
 
     const prixPerte = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, effectiveDate);
 
@@ -431,7 +495,7 @@ const exportEntreprisePertes = async (req, res) => {
   const entrepriseId = companyCheck.rows[0].id;
 
   const params = [entrepriseId];
-  const wheres = [`a.entreprise_id = $1`];
+  const wheres = [`a.entreprise_id = $1`, `p.ingredient_id IS NOT NULL`];
 
   if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
   else if (activiteIds) { params.push(activiteIds.split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
@@ -460,7 +524,13 @@ const exportEntreprisePertes = async (req, res) => {
        ORDER BY p.date_perte DESC, p.created_at DESC`,
       params
     );
-    await buildExcelPertes(res, result.rows, true, { dateDebut, dateFin, selectedIds: idList });
+    let exRows = result.rows;
+    const includePt = !categorieId && !ingredientId && !search;
+    if (includePt) {
+      const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte });
+      exRows = [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
+    }
+    await buildExcelPertes(res, exRows, true, { dateDebut, dateFin, selectedIds: idList });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur génération Excel' });
@@ -725,7 +795,7 @@ const exportEntreprisePertesPdf = async (req, res) => {
   const entrepriseId = companyCheck.rows[0].id;
 
   const params = [entrepriseId];
-  const wheres = [`a.entreprise_id = $1`];
+  const wheres = [`a.entreprise_id = $1`, `p.ingredient_id IS NOT NULL`];
   if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
   else if (activiteIds) { params.push(activiteIds.split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
   if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
@@ -747,7 +817,13 @@ const exportEntreprisePertesPdf = async (req, res) => {
        WHERE ${wheres.join(' AND ')} ORDER BY p.date_perte DESC, p.created_at DESC`,
       params
     );
-    await buildHistoriquePertesPdf(res, result.rows, { dateDebut, dateFin });
+    let pdfRows = result.rows;
+    const includePt = !categorieId && !ingredientId && !search;
+    if (includePt) {
+      const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte });
+      pdfRows = [...pdfRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
+    }
+    await buildHistoriquePertesPdf(res, pdfRows, { dateDebut, dateFin });
   } catch (err) {
     console.error(err);
     if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
