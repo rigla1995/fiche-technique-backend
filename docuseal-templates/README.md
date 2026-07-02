@@ -40,19 +40,34 @@ Robustesse : tous les champs variables sont **wrappés** (jamais tronqués silen
 les cartes « parties » ont une hauteur dynamique ; les zones contraintes (cachet, pied de
 page) clippent proprement avec « … ». Testé avec noms/adresses longs.
 
-## Identité prestataire — À COMPLÉTER avant la prod
+## Identité prestataire — variables d'environnement (Coolify)
 
-L'objet `PRESTATAIRE` (haut de `generate.js`) contient des **placeholders** :
-`raisonSociale`, `forme`, `matricule` (MF), `rc`, `capital`, `adresse`, `ville`, `email`,
-`tel`, `signataire`. Renseigner les **vraies mentions légales** avant toute génération
-destinée à un client (un acte signé avec une identité inexacte est juridiquement vicié).
+L'objet `PRESTATAIRE` (haut de `generate.js`) lit les **variables d'environnement**
+(voir le bloc « Identité légale du prestataire » de `.env.example`) avec des
+placeholders fictifs en repli : `FACTURE_PRESTATAIRE_NOM`, `FACTURE_ADRESSE`,
+`FACTURE_MATRICULE_FISCAL` (partagées avec les factures) + `PRESTATAIRE_FORME`,
+`PRESTATAIRE_RAISON_SOCIALE`, `PRESTATAIRE_RC`, `PRESTATAIRE_CAPITAL`,
+`PRESTATAIRE_VILLE`, `PRESTATAIRE_EMAIL`, `PRESTATAIRE_TEL`, `PRESTATAIRE_SIGNATAIRE`.
+Renseigner les **vraies mentions légales** avant toute génération destinée à un client
+(un acte signé avec une identité inexacte est juridiquement vicié). Tant qu'un
+placeholder subsiste, la génération est refusée **par défaut en production** (ou
+partout avec `FACTURE_STRICT=1`) et le backend se replie sur le flux template
+historique ; le flux PDF s'active automatiquement dès que les variables sont saisies.
 
-## Reste à câbler (après validation du rendu)
+## Câblage backend (fait — 2026-07)
 
-1. Lever les builders dans un service backend (ex. `contractPdfService.js`) appelé par
-   client avec `previewMode:false`, puis envoyer le PDF via `createSubmissionFromPdf`.
-2. Renseigner `PRESTATAIRE` (mentions légales réelles) + idéalement les variables d'env
-   `FACTURE_*` correspondantes.
-3. (Option) clauses juridiques additionnelles : protection des données (loi 2004-63),
-   force majeure, régime TVA, identification du signataire client, mention loi 2000-83
-   sur la signature électronique.
+`src/services/contractPdfService.js` lève les builders avec `previewMode:false` et
+retourne `{ base64, ref, documentName }` (référence type `CTR-2026-00042` dérivée de
+l'id d'abonnement / de demande / de client). Appelé par :
+
+- **Contrat** : `clientsController.create` → `submitContratForSignature`
+- **Avenant** : `supportController.create` (demande `supplement`) → `submitAvenantForSignature`
+- **Résiliation** : `clientsController.remove` → `submitResiliationForSignature`
+
+Chaque helper tente le flux « PDF rempli » (`createSubmissionFromPdf`) puis **se replie
+sur l'ancien flux template** (`createSubmission`) si la génération ou l'API échoue.
+Le webhook Docuseal est inchangé : il route par email du signataire (contrat) et par
+`submission_id` (avenant), indépendamment du template.
+
+Montants : **TTC** (comme partout dans l'app — la facture présente la ventilation
+HT/TVA/TTC) ; les clauses des articles 3 le précisent.
