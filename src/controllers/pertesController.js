@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
-const { computeStockCourant } = require('../utils/stockUtils');
+const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
 const { buildHistoriquePertesPdf, buildLaboHistoriquePertesPdf } = require('../services/histoPdfService');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -70,6 +70,24 @@ const createPerte = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+
+    // PT (produit transformé) : pas d'appro article — on vérifie le stock PT et on enregistre la perte
+    // par produit_id (pas de prix : valorisé 0 comme au labo). computeStockPTCourant intègre déjà les
+    // pertes PT → le stock du PT se déduit automatiquement.
+    if (parseInt(ingredientId) < 0) {
+      const produitId = -parseInt(ingredientId);
+      const qtyPt = parseFloat(quantite);
+      const ptStock = await computeStockPTCourant('activite', activiteId, produitId);
+      if (qtyPt > ptStock) {
+        return res.status(422).json({ message: 'Stock insuffisant', disponible: Math.max(0, ptStock), demande: qtyPt });
+      }
+      const rpt = await pool.query(
+        `INSERT INTO pertes (activite_id, produit_id, quantite, type_perte, date_perte, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [activiteId, produitId, qtyPt, typePerte, datePerte, req.user.id]
+      );
+      return res.status(201).json(rpt.rows[0]);
+    }
 
     const minRow = await pool.query(
       `SELECT MIN(date_appro) AS min_date FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2`,
