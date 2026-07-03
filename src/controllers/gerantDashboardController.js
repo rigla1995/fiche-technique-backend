@@ -48,11 +48,22 @@ const getDashboard = async (req, res) => {
 
       const [approsKpi, pertesKpi, invKpi, stockCount, approsParType,
              approsMonthly, pertesMonthly, venteKpi, venteMonthly] = await Promise.all([
-        // Appros (filtered period + optional type)
+        // Appros (filtered period + optional type) — PT inclus (productions/réceptions
+        // positives valorisées TTC) quand aucun filtre de type article n'est actif.
         pool.query(
-          `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
-           FROM stock_entreprise_daily
-           WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}`,
+          typeApproFilter
+            ? `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
+               FROM stock_entreprise_daily
+               WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}`
+            : `SELECT COUNT(*) AS count, COALESCE(SUM(v), 0) AS valeur FROM (
+                 SELECT quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0) AS v
+                 FROM stock_entreprise_daily
+                 WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3
+                 UNION ALL
+                 SELECT quantite * COALESCE(prix_calcule, 0)
+                 FROM stock_produits_transformes
+                 WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3 AND quantite > 0
+               ) t`,
           [gerant_activite_id, dateFrom, dateTo]
         ),
         // Pertes
@@ -175,10 +186,21 @@ const getDashboard = async (req, res) => {
       const typeWhere = typeApproFilter ? `AND type_appro = '${typeApproFilter}'` : '';
 
       const [approsKpi, pertesKpi, invKpi, stockCount, approsParType, approsMonthly, pertesMonthly] = await Promise.all([
+        // Appros labo — fabrications PT incluses (positives, 'manuel') hors filtre de type.
         pool.query(
-          `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
-           FROM stock_labo_daily
-           WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}`,
+          typeApproFilter
+            ? `SELECT COUNT(*) AS count, COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS valeur
+               FROM stock_labo_daily
+               WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}`
+            : `SELECT COUNT(*) AS count, COALESCE(SUM(v), 0) AS valeur FROM (
+                 SELECT quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0) AS v
+                 FROM stock_labo_daily
+                 WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3
+                 UNION ALL
+                 SELECT quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)
+                 FROM stock_labo_pt_daily
+                 WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3 AND quantite > 0 AND type_appro = 'manuel'
+               ) t`,
           [gerant_activite_id, dateFrom, dateTo]
         ),
         pool.query(

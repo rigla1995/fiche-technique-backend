@@ -89,7 +89,7 @@ const getStockEntreprise = async (req, res) => {
     }
 
     const ptRes = await pool.query(`
-      SELECT p.id as produit_id, p.nom, p.seuil_min_pt, p.origine,
+      SELECT p.id as produit_id, p.nom, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min_pt, p.origine,
              last_spt.date_appro   as last_date_appro,
              last_spt.prix_calcule as last_prix_calcule
       FROM produits p

@@ -280,7 +280,7 @@ const getStockPT = async (req, res) => {
         `SELECT
            p.id AS produit_id,
            p.nom,
-           p.seuil_min_pt AS seuil_min,
+           COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min,
            COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM spt.date_appro) = $2 AND EXTRACT(YEAR FROM spt.date_appro) = $3 THEN spt.quantite ELSE 0 END), 0) AS total_quantite,
            (SELECT spt2.date_appro FROM stock_produits_transformes spt2
             WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 AND spt2.quantite > 0 AND spt2.prix_calcule IS NOT NULL
@@ -291,7 +291,7 @@ const getStockPT = async (req, res) => {
          FROM produits p
          JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
          LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.activite_id = $1
-         GROUP BY p.id, p.nom, p.seuil_min_pt`,
+         GROUP BY p.id, p.nom, pas.seuil_min, p.seuil_min_pt`,
         [actId, currentMonth, currentYear]
       );
       rows = result.rows;
@@ -752,13 +752,37 @@ const saveStockPT = async (req, res) => {
 
 // ─── updateSeuilMinPT ─────────────────────────────────────────────────────────
 // PUT /api/stock/pt/:produitId/seuil-min
-// Body: { seuilMin }
+// Body: { seuilMin, activiteId? } — avec activiteId : seuil PAR ACTIVITÉ
+// (produit_activite_stock.seuil_min, migr 139 — aligné sur les articles et le labo) ;
+// sans activiteId : seuil global legacy (produits.seuil_min_pt), qui sert de repli.
 const updateSeuilMinPT = async (req, res) => {
   const userId = req.user.id;
+  const clientId = req.user.gerant_parent_id || req.user.id;
   const produitId = parseInt(req.params.produitId);
-  const { seuilMin } = req.body;
+  const { seuilMin, activiteId } = req.body;
+  const actId = activiteId ? parseInt(activiteId) : null;
 
   try {
+    if (actId) {
+      const own = await pool.query(
+        `SELECT 1 FROM activites a JOIN profil_entreprise pe ON pe.id = a.entreprise_id
+          WHERE a.id = $1 AND pe.client_id = $2`,
+        [actId, clientId]
+      );
+      if (own.rows.length === 0) {
+        return res.status(403).json({ message: 'Activité introuvable ou accès refusé' });
+      }
+      const upd = await pool.query(
+        `UPDATE produit_activite_stock SET seuil_min = $1
+          WHERE produit_id = $2 AND activite_id = $3 RETURNING seuil_min`,
+        [seuilMin !== undefined ? seuilMin : null, produitId, actId]
+      );
+      if (upd.rows.length === 0) {
+        return res.status(404).json({ message: 'Produit non affecté à cette activité' });
+      }
+      return res.json({ produitId, activiteId: actId, seuilMin: upd.rows[0].seuil_min });
+    }
+
     const result = await pool.query(
       `UPDATE produits SET seuil_min_pt = $1 WHERE id = $2 AND client_id = $3 RETURNING id, seuil_min_pt`,
       [seuilMin !== undefined ? seuilMin : null, produitId, userId]
