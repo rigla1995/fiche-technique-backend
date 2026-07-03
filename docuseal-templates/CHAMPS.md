@@ -15,7 +15,15 @@ champs listés ci-dessous **sur les cases en pointillé** prévues dans le docum
   arriver vides. Le backend les envoie en lecture seule (readonly), le client n'a
   que la signature à poser.
 - Un même champ peut avoir **plusieurs zones** (ex. « Nom du client » apparaît 2×) :
-  dans Docuseal, re-poser le même champ (même nom) au 2ᵉ emplacement.
+  dessiner une nouvelle case au 2ᵉ emplacement et lui donner **exactement le même
+  nom** — Docuseal la rattache au même champ (une seule valeur, affichée partout).
+  En dernier recours, laisser la case secondaire sans champ : le document reste
+  valide, la case reste simplement vide.
+- **Comptage cases vs champs** (le fond contient plus de cases que de champs à créer,
+  à cause des zones multiples) :
+  - contrat : **12 champs → 14 cases** (Nom du client ×2, Date du contrat ×2)
+  - avenant : **10 champs → 12 cases** (Nom du client ×2, Date du contrat ×2)
+  - résiliation : **4 champs → 7 cases** (Nom du client ×2, Date du contrat ×3)
 
 ## 1. contrat-template.pdf → `DOCUSEAL_TEMPLATE_ID`
 
