@@ -103,6 +103,27 @@ const getClientDashboard = async (req, res) => {
       valeurStock += q * num(r.prix);
       if (r.seuil_min != null && q <= num(r.seuil_min)) stockBas += 1;
     }
+    // ── Stock PT : même règle (Σ quantités × dernière réception valorisée TTC),
+    //    seuil par activité (COALESCE(pas.seuil_min, p.seuil_min_pt), migr 139) ──
+    const stockPtRes = await pool.query(
+      `SELECT spt.produit_id, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min,
+              SUM(spt.quantite) AS quantite,
+              (SELECT s2.prix_calcule FROM stock_produits_transformes s2
+               WHERE s2.activite_id = spt.activite_id AND s2.produit_id = spt.produit_id
+                 AND s2.quantite > 0 AND s2.prix_calcule IS NOT NULL
+               ORDER BY s2.date_appro DESC, s2.id DESC LIMIT 1) AS prix
+       FROM stock_produits_transformes spt
+       JOIN produits p ON p.id = spt.produit_id
+       LEFT JOIN produit_activite_stock pas ON pas.produit_id = spt.produit_id AND pas.activite_id = spt.activite_id
+       WHERE spt.activite_id = ANY($1::int[])
+       GROUP BY spt.activite_id, spt.produit_id, p.seuil_min_pt, pas.seuil_min`,
+      [actIds]
+    );
+    for (const r of stockPtRes.rows) {
+      const q = num(r.quantite);
+      valeurStock += q * num(r.prix);
+      if (r.seuil_min != null && q <= num(r.seuil_min)) stockBas += 1;
+    }
 
     // ── Évolution hebdomadaire (CA + marge) ──
     const evoRes = await pool.query(
@@ -241,10 +262,30 @@ const getLaboDashboard = async (req, res) => {
     );
     let valeurStock = 0;
     for (const r of stockRes.rows) valeurStock += num(r.quantite) * num(r.prix);
+    // Stock PT du labo : Σ quantités (les sorties de transfert, négatives, netten le stock)
+    // × dernière production valorisée TTC.
+    const stockPtRes = await pool.query(
+      `SELECT slpt.produit_id, SUM(slpt.quantite) AS quantite,
+              (SELECT COALESCE(s2.prix_unitaire_tva, s2.prix_unitaire) FROM stock_labo_pt_daily s2
+               WHERE s2.labo_id = slpt.labo_id AND s2.produit_id = slpt.produit_id
+                 AND s2.quantite > 0 AND s2.prix_unitaire IS NOT NULL
+               ORDER BY s2.date_appro DESC, s2.id DESC LIMIT 1) AS prix
+       FROM stock_labo_pt_daily slpt WHERE slpt.labo_id = $1
+       GROUP BY slpt.labo_id, slpt.produit_id`,
+      [laboId]
+    );
+    for (const r of stockPtRes.rows) valeurStock += num(r.quantite) * num(r.prix);
 
     const approsRes = await pool.query(
       `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)),0) AS valeur, COUNT(*) AS nb
        FROM stock_labo_daily WHERE labo_id = $1 AND date_appro >= $2 AND date_appro <= $3`,
+      [laboId, from, to]
+    );
+    // Fabrications PT du labo sur la période (productions manuelles valorisées TTC)
+    const approsPtRes = await pool.query(
+      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)),0) AS valeur, COUNT(*) AS nb
+       FROM stock_labo_pt_daily
+       WHERE labo_id = $1 AND date_appro >= $2 AND date_appro <= $3 AND quantite > 0 AND type_appro = 'manuel'`,
       [laboId, from, to]
     );
     const pertesRes = await pool.query(
@@ -278,8 +319,8 @@ const getLaboDashboard = async (req, res) => {
       periode: { from, to },
       kpis: {
         valeur_stock: Math.round(valeurStock * 1000) / 1000,
-        appros: num(approsRes.rows[0].valeur),
-        nb_appros: parseInt(approsRes.rows[0].nb, 10) || 0,
+        appros: num(approsRes.rows[0].valeur) + num(approsPtRes.rows[0].valeur),
+        nb_appros: (parseInt(approsRes.rows[0].nb, 10) || 0) + (parseInt(approsPtRes.rows[0].nb, 10) || 0),
         pertes: num(pertesRes.rows[0].valeur),
         transferts: num(transRes.rows[0].valeur),
         nb_transferts: parseInt(transRes.rows[0].nb, 10) || 0,
@@ -399,6 +440,29 @@ const getActivitesDashboard = async (req, res) => {
       stockParCat[r.categorie] = (stockParCat[r.categorie] || 0) + v;
       if (r.seuil_min != null && q <= num(r.seuil_min)) alertes.push({ article: r.article, categorie: r.categorie, quantite: q, seuil: num(r.seuil_min) });
     }
+    // Stock PT — catégorie virtuelle « Produits Transformés » (hors filtre de catégorie article)
+    if (!catId) {
+      const stockPtRes = await pool.query(
+        `SELECT p.nom AS article, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min,
+                SUM(spt.quantite) AS quantite,
+                (SELECT s2.prix_calcule FROM stock_produits_transformes s2
+                 WHERE s2.activite_id = spt.activite_id AND s2.produit_id = spt.produit_id
+                   AND s2.quantite > 0 AND s2.prix_calcule IS NOT NULL
+                 ORDER BY s2.date_appro DESC, s2.id DESC LIMIT 1) AS prix
+         FROM stock_produits_transformes spt
+         JOIN produits p ON p.id = spt.produit_id
+         LEFT JOIN produit_activite_stock pas ON pas.produit_id = spt.produit_id AND pas.activite_id = spt.activite_id
+         WHERE spt.activite_id = ANY($1::int[])
+         GROUP BY spt.activite_id, spt.produit_id, p.nom, p.seuil_min_pt, pas.seuil_min`,
+        [actIds]
+      );
+      for (const r of stockPtRes.rows) {
+        const q = num(r.quantite); const v = q * num(r.prix);
+        valeurStock += v;
+        stockParCat['Produits Transformés'] = (stockParCat['Produits Transformés'] || 0) + v;
+        if (r.seuil_min != null && q <= num(r.seuil_min)) alertes.push({ article: r.article, categorie: 'Produits Transformés', quantite: q, seuil: num(r.seuil_min) });
+      }
+    }
 
     // Achats (appros) sur la période + par catégorie
     const approRes = await pool.query(
@@ -410,6 +474,19 @@ const getActivitesDashboard = async (req, res) => {
        GROUP BY 1 ORDER BY valeur DESC`,
       [actIds, from, to]
     );
+    // Appros PT (productions + réceptions de transfert, lignes positives valorisées TTC)
+    if (!catId) {
+      const approPtRes = await pool.query(
+        `SELECT COALESCE(SUM(spt.quantite * COALESCE(spt.prix_calcule, 0)),0) AS valeur, COUNT(*) AS nb
+         FROM stock_produits_transformes spt
+         WHERE spt.activite_id = ANY($1::int[]) AND spt.date_appro >= $2 AND spt.date_appro <= $3
+           AND spt.quantite > 0`,
+        [actIds, from, to]
+      );
+      if (num(approPtRes.rows[0].valeur) > 0) {
+        approRes.rows.push({ categorie: 'Produits Transformés', valeur: approPtRes.rows[0].valeur, nb: approPtRes.rows[0].nb });
+      }
+    }
     const achats = approRes.rows.reduce((s, r) => s + num(r.valeur), 0);
 
     // Pertes sur la période : total + par type + par catégorie + top articles
