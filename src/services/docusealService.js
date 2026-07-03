@@ -117,8 +117,15 @@ const createSubmission = async ({
 const createContractSubmission = ({ clientName, clientEmail, ...rest }) =>
   createSubmission({ clientName, clientEmail, type: 'contrat', ...rest });
 
-// Configuré pour l'approche "PDF rempli" : seuls l'URL + le token sont requis (pas de template).
-const isConfiguredPdf = () => !!(DOCUSEAL_URL() && DOCUSEAL_TOKEN());
+// Accès API de base (lecture soumissions, création depuis template) : URL + token.
+const hasApiAccess = () => !!(DOCUSEAL_URL() && DOCUSEAL_TOKEN());
+
+// Flux « PDF rempli » (createSubmissionFromPdf → POST /api/templates/pdf) : cet
+// endpoint est réservé à l'édition PRO de Docuseal — sur la Community il répond
+// 404 "available in Pro Edition". Opt-in via DOCUSEAL_PDF_FLOW=1 pour ne pas
+// tenter un appel voué à l'échec à chaque contrat ; les contrôleurs restent sur
+// le flux template tant que le flag est absent.
+const isConfiguredPdf = () => hasApiAccess() && process.env.DOCUSEAL_PDF_FLOW === '1';
 
 /**
  * Crée une soumission à partir d'un PDF DÉJÀ REMPLI (base64).
@@ -177,7 +184,7 @@ const createSubmissionFromPdf = async ({ pdfBase64, documentName, clientName, cl
  * @returns Array<{ name, url }> (vide si pas encore disponible)
  */
 const getSubmissionDocuments = async (submissionId) => {
-  if (!isConfiguredPdf() || !submissionId) return [];
+  if (!hasApiAccess() || !submissionId) return [];
   const token = DOCUSEAL_TOKEN();
   const baseUrl = DOCUSEAL_URL();
   const res = await fetch(`${baseUrl}/api/submissions/${submissionId}`, {
