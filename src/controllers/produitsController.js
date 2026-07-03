@@ -395,12 +395,31 @@ const create = async (req, res) => {
             [produitId, actId]
           );
         } else {
-          // PU dédié activité : stock PT au niveau de l'activité, sans labo (pas de transfert).
+          // PU en appros libres : stock PT au niveau de l'activité (appro manuel ET
+          // réception de transfert acceptés — labo_id NULL, le produit n'est pas lié à un labo).
           await client.query(
             'INSERT INTO produit_activite_stock (produit_id, activite_id, labo_id) VALUES ($1, $2, NULL) ON CONFLICT (produit_id, activite_id) DO NOTHING',
             [produitId, actId]
           );
         }
+      }
+    }
+
+    // Mode APPROS LIBRES (PU) : les labos cochés à la création gèrent aussi le produit
+    // (appro manuel au labo, transfert possible vers les activités affectées) — même
+    // effet que le toggle labo post-création, intégré au wizard.
+    if (origine === 'activite' && type !== 'vendable' && Array.isArray(laboIds) && laboIds.length > 0) {
+      const ownLabos = await client.query(
+        `SELECT l.id FROM labos l
+         JOIN profil_entreprise pe ON l.entreprise_id = pe.id
+         WHERE pe.client_id = $1 AND l.id = ANY($2::int[])`,
+        [clientId, laboIds]
+      );
+      for (const { id: laboId } of ownLabos.rows) {
+        await client.query(
+          'INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [laboId, produitId]
+        );
       }
     }
 
