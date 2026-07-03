@@ -1,9 +1,14 @@
-# Documents contractuels LabFlow (PDF)
+# Documents LabFlow (PDF) — charte commune
 
-Trois documents PDF — **contrat d'abonnement**, **avenant**, **résiliation** — générés par
-`generate.js` (pdfkit). Refonte 2026-06 : design professionnel conforme au thème (logo
-vectoriel, dégradé sky→indigo→violet), **valeurs rendues en dur** (plus de cases vides) et
-**signature du prestataire pré-apposée** (cachet électronique).
+Quatre documents PDF partagent la même charte (logo vectoriel, dégradé sky→indigo→violet,
+blocs parties, pied légal env-driven), tous générés par `generate.js` (pdfkit) :
+**contrat d'abonnement**, **avenant**, **résiliation** (flux Docuseal) et **facture
+d'abonnement** (`buildFacture`, appelée par `pdfService.generateFacturePdf` à la
+validation d'un paiement — sortie **déterministe** : CreationDate = date de facture,
+la copie email et la copie re-téléchargée sont identiques au byte près).
+
+Refonte 2026-06/07 : design professionnel conforme au thème, **valeurs rendues en dur**
+(plus de cases vides) et **signature du prestataire pré-apposée** (cachet électronique).
 
 ## Approche « PDF rempli » (et non plus « template à champs »)
 

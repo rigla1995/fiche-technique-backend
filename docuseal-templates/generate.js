@@ -230,7 +230,7 @@ function drawLogo(ctx, x, yTop, h, variant = 'dark', iconOnly = false) {
 }
 
 // ── En-tête de document ─────────────────────────────────────────────────────
-function header(ctx, { eyebrow, title, subtitle, ref, date }) {
+function header(ctx, { eyebrow, title, subtitle, ref, date, dateLabel = 'Établi le' }) {
   const { txt, gradientRule } = ctx;
   ctx.docMeta = { eyebrow, ref };          // réutilisé par newPage (pages 2+)
   drawLogo(ctx, ML, 40, 30, 'dark');
@@ -240,7 +240,7 @@ function header(ctx, { eyebrow, title, subtitle, ref, date }) {
   txt(eyebrow, ML, 40, 7.5, true, C.indigo, { align: 'right', width: CW, characterSpacing: 1.4 });
   if (!ctx.templateMode) {
     txt(`Réf. ${ref}`, ML, 53, 8, false, C.muted, { align: 'right', width: CW });
-    txt(`Établi le ${date}`, ML, 64, 8, false, C.faint, { align: 'right', width: CW });
+    txt(`${dateLabel} ${date}`, ML, 64, 8, false, C.faint, { align: 'right', width: CW });
   }
 
   // Filet dégradé pleine largeur
@@ -292,8 +292,12 @@ function calloutBox(ctx, y, text, tone = 'warn') {
 
 // ── Bloc « parties » (prestataire + client) en deux colonnes ──────────────────
 // Hauteur calculée dynamiquement : aucun champ data n'est tronqué ni ne déborde.
-function partiesBlock(ctx, y, client) {
+// opts : labels = [émetteur, destinataire] (défaut contrat), mention = ligne
+// « Ci-après dénommé » (défaut true — false pour les factures).
+function partiesBlock(ctx, y, client, opts = {}) {
   const { txt, wrap, roundFill, measure, slot } = ctx;
+  const [labelPres, labelCli] = opts.labels || ['LE PRESTATAIRE', 'LE CLIENT'];
+  const withMention = opts.mention !== false;
   const colW = (CW - 14) / 2;
   const cx2 = ML + colW + 14;
   const innerW = colW - 24;
@@ -302,7 +306,7 @@ function partiesBlock(ctx, y, client) {
   // Spécification des lignes de chaque colonne (w = donnée variable → wrap ;
   // slotH = case vide à recouvrir d'un champ Docuseal en mode template).
   const presLines = [
-    { t: 'LE PRESTATAIRE', s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
+    { t: labelPres, s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
     { t: PRESTATAIRE.raisonSociale, s: 10, b: true, c: C.ink, w: true, gap: 4 },
     { t: `Matricule fiscal : ${PRESTATAIRE.matricule}`, s: 7.5, c: C.muted, w: true, gap: 2 },
     { t: `RC : ${PRESTATAIRE.rc}  ·  Capital : ${PRESTATAIRE.capital}`, s: 7.5, c: C.muted, w: true, gap: 2 },
@@ -310,21 +314,24 @@ function partiesBlock(ctx, y, client) {
     { t: `${PRESTATAIRE.email}  ·  ${PRESTATAIRE.tel}`, s: 7.5, c: C.muted, w: true, gap: 0 },
   ];
   const idClient = [client.forme, client.mfrc].filter(Boolean).join('  ·  ');
-  const cliLines = ctx.templateMode ? [
-    { t: 'LE CLIENT', s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
+  const mentionLine = withMention
+    ? { t: 'Ci-après dénommé « le Client »', s: 7.5, c: C.faint, gapBefore: 6, lh: 11 }
+    : null;
+  const cliLines = (ctx.templateMode ? [
+    { t: labelCli, s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
     { slotW: innerW, slotH: 15, gap: 4 },            // champ « Nom du client »
     { slotW: innerW * 0.85, slotH: 13, gap: 2 },     // champ « Email »
-    { t: 'Ci-après dénommé « le Client »', s: 7.5, c: C.faint, gapBefore: 6, lh: 11 },
+    mentionLine,
   ] : [
-    { t: 'LE CLIENT', s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
+    { t: labelCli, s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
     { t: client.nom, s: 10, b: true, c: C.ink, w: true, gap: 4 },
     idClient && { t: idClient, s: 7.5, c: C.muted, w: true, gap: 2 },
     client.representant && { t: `Représenté par ${client.representant}`, s: 7.5, c: C.muted, w: true, gap: 2 },
     client.email && { t: client.email, s: 7.5, c: C.muted, w: true, gap: 2 },
     client.tel && { t: client.tel, s: 7.5, c: C.muted, w: true, gap: 2 },
     client.adresse && { t: client.adresse, s: 7.5, c: C.muted, w: true, gap: 2 },
-    { t: 'Ci-après dénommé « le Client »', s: 7.5, c: C.faint, gapBefore: 6, lh: 11 },
-  ].filter(Boolean);
+    mentionLine,
+  ]).filter(Boolean);
 
   // Mesure de la hauteur d'une colonne (sans dessiner)
   const colHeight = (lines) => lines.reduce((acc, ln) => {
@@ -562,8 +569,8 @@ function signatures(ctx, y, { client, date, previewMode = true }) {
   return y + h + 8 + noteH + 6;
 }
 
-// ── Footer (toutes les pages) ────────────────────────────────────────────────
-function stampFooters(ctx, label) {
+// ── Footer (toutes les pages) — note personnalisable (contrats vs factures) ──
+function stampFooters(ctx, label, note = 'Document confidentiel — usage strictement contractuel') {
   const { doc, txt, fitText, gradientRule } = ctx;
   const range = doc.bufferedPageRange();
   for (let i = range.start; i < range.start + range.count; i++) {
@@ -573,7 +580,7 @@ function stampFooters(ctx, label) {
     const legal = fitText(`${PRESTATAIRE.raisonSociale}  ·  MF ${PRESTATAIRE.matricule}  ·  RC ${PRESTATAIRE.rc}`, 6.5, CW * 0.62);
     txt(legal, ML, PAGE.h - 30, 6.5, false, C.faint, { lineBreak: false });
     txt(`${label}  ·  Page ${i + 1}/${range.count}`, ML, PAGE.h - 30, 6.5, false, C.muted, { align: 'right', width: CW });
-    txt('Document confidentiel — usage strictement contractuel', ML, PAGE.h - 20, 6.5, false, C.faint, { lineBreak: false });
+    txt(note, ML, PAGE.h - 20, 6.5, false, C.faint, { lineBreak: false });
   }
 }
 
@@ -801,6 +808,90 @@ async function buildResiliation(outPath, data) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// 4) FACTURE D'ABONNEMENT — même charte que les contrats (émise au règlement)
+// ══════════════════════════════════════════════════════════════════════════════
+// data : { numero, dateFacture, periodeLabel, clientNom, clientEmail,
+//          montantHt, montantTva, montantTtc, tvaRate }
+// DÉTERMINISTE : CreationDate = date de facture (jamais l'horloge) → la copie
+// jointe à l'email et la copie re-téléchargée sont identiques au byte près.
+async function buildFacture(outPath, data) {
+  const dateStr = new Date(data.dateFacture || 0)
+    .toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const fmt = (n) => `${Number(n || 0).toFixed(3)} DT`;
+  const ctx = makeCtx({
+    Title: `Facture ${data.numero}`,
+    Author: PRESTATAIRE.nom,
+    Subject: `Abonnement ${data.periodeLabel}`,
+    CreationDate: data.dateFacture ? new Date(data.dateFacture) : new Date(0),
+  });
+  const { fill, hline, txt, doc } = ctx;
+  header(ctx, {
+    eyebrow: 'FACTURE',
+    title: "Facture d'abonnement",
+    subtitle: 'Plateforme LabFlow — abonnement mensuel au service en ligne',
+    ref: data.numero, date: dateStr, dateLabel: 'Émise le',
+  });
+  let y = TOPY;
+
+  y = section(ctx, y, 'ÉMETTEUR ET CLIENT');
+  y = partiesBlock(ctx, y, { nom: data.clientNom || 'Client', email: data.clientEmail || undefined },
+    { labels: ['ÉMETTEUR', 'FACTURÉ À'], mention: false });
+
+  y = section(ctx, y, 'OBJET');
+  y = calloutBox(ctx, y,
+    `Abonnement mensuel à la plateforme ${PRESTATAIRE.nom} — période : ${data.periodeLabel}. La présente facture est émise au règlement de l'échéance et vaut reçu.`,
+    'neutral');
+
+  y = section(ctx, y, 'DÉTAIL');
+  const cHt = ML + 305, cTva = ML + 390, cTtc = RX - 10;
+  fill(ML, y, CW, 22, C.indigoSoft); hline(y, '#dfe3ff'); hline(y + 22, '#dfe3ff');
+  txt('Désignation', ML + 10, y + 7, 7, true, C.indigo, { characterSpacing: 0.5 });
+  txt('Montant HT', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cHt - ML });
+  txt(`TVA ${data.tvaRate} %`, ML, y + 7, 7, true, C.indigo, { align: 'right', width: cTva - ML });
+  txt('Total TTC', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cTtc - ML });
+  y += 22;
+  fill(ML, y, CW, 26, '#fcfcff'); hline(y + 26, C.hairSoft);
+  txt(`Abonnement mensuel · ${data.periodeLabel}`, ML + 10, y + 9, 9, false, C.ink);
+  txt(fmt(data.montantHt), ML, y + 9, 8.5, false, C.body, { align: 'right', width: cHt - ML });
+  txt(fmt(data.montantTva), ML, y + 9, 8.5, false, C.body, { align: 'right', width: cTva - ML });
+  txt(fmt(data.montantTtc), ML, y + 9, 9, true, C.ink, { align: 'right', width: cTtc - ML });
+  y += 26 + 12;
+
+  // Totaux — même langage visuel que le bloc tarification des contrats
+  fill(ML, y, CW, 26, C.panel); hline(y, C.hair); hline(y + 26, C.hair);
+  txt('Total hors taxes', ML + 10, y + 9, 8.5, false, C.body);
+  txt(fmt(data.montantHt), ML, y + 8, 9.5, false, C.ink, { align: 'right', width: CW - 12 });
+  y += 26;
+  fill(ML, y, CW, 26, C.panel2); hline(y + 26, C.hair);
+  txt(`TVA (${data.tvaRate} %)`, ML + 10, y + 9, 8.5, false, C.body);
+  txt(fmt(data.montantTva), ML, y + 8, 9.5, false, C.ink, { align: 'right', width: CW - 12 });
+  y += 26;
+  const th = 36;
+  fill(ML, y, CW, th, '#eef2ff'); hline(y, '#c7d2fe'); hline(y + th, C.indigo);
+  ctx.gradientRule(ML, y, 3, th);
+  txt('TOTAL TTC', ML + 12, y + 12, 9.5, true, C.indigo, { characterSpacing: 0.6 });
+  txt(fmt(data.montantTtc), ML, y + 10, 13, true, C.indigo, { align: 'right', width: CW - 12 });
+  y += th + 12;
+
+  // Acquittement — pastille pleine largeur avec coche vectorielle (langage contrats)
+  const ah = 30;
+  fill(ML, y, CW, ah, C.okSoft); hline(y, C.okLine); hline(y + ah, C.okLine);
+  doc.save().lineWidth(1.6).strokeColor(C.okText)
+     .moveTo(ML + 12, y + 15).lineTo(ML + 16, y + 19).lineTo(ML + 23, y + 10).stroke().restore();
+  txt('FACTURE ACQUITTÉE', ML + 32, y + 11, 9, true, C.okText, { characterSpacing: 0.6 });
+  txt(`Réglée le ${dateStr}`, ML, y + 11, 8.5, false, '#16a34a', { align: 'right', width: CW - 12 });
+  y += ah + 12;
+
+  // Mentions
+  doc.fontSize(7).font('Helvetica').fillColor(C.faint)
+     .text(`Montants exprimés en dinars tunisiens (DT), toutes taxes comprises — TVA ${data.tvaRate} % incluse (TTC = HT + TVA). Facture générée et émise électroniquement, valable sans signature ni cachet.`,
+       ML, y, { width: CW, lineGap: 2 });
+
+  stampFooters(ctx, `Facture ${data.numero}`, 'Facture acquittée — émise électroniquement par la plateforme LabFlow');
+  return finish(ctx, outPath);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Données d'exemple (APERÇU) + génération
 // ══════════════════════════════════════════════════════════════════════════════
 const SAMPLE = {
@@ -833,6 +924,11 @@ const SAMPLE = {
     date: '27 juin 2026',
     client: { nom: 'Restaurant Le Carthage', forme: 'SARL', mfrc: 'MF 9876543/B/M/000', representant: 'M. Karim Ben Ali, gérant', email: 'gerant@lecarthage.tn' },
   },
+  facture: {
+    numero: 'LF-2026-00123', dateFacture: '2026-06-27', periodeLabel: 'juin 2026',
+    clientNom: 'Restaurant Le Carthage', clientEmail: 'gerant@lecarthage.tn',
+    montantHt: 319.328, montantTva: 60.672, montantTtc: 380, tvaRate: 19,
+  },
 };
 
 // CLI uniquement — ce module est aussi requis par le backend (contractPdfService)
@@ -863,11 +959,13 @@ if (require.main === module) {
     await buildContrat(path.join(dir, 'contrat-labflow.pdf'), SAMPLE.contrat);
     await buildAvenant(path.join(dir, 'avenant-labflow.pdf'), SAMPLE.avenant);
     await buildResiliation(path.join(dir, 'resiliation-labflow.pdf'), SAMPLE.resiliation);
+    await buildFacture(path.join(dir, 'facture-labflow.pdf'), SAMPLE.facture);
     console.log('✅ Documents générés (aperçu avec valeurs d\'exemple) :');
     console.log('   -', path.join(dir, 'contrat-labflow.pdf'));
     console.log('   -', path.join(dir, 'avenant-labflow.pdf'));
     console.log('   -', path.join(dir, 'resiliation-labflow.pdf'));
+    console.log('   -', path.join(dir, 'facture-labflow.pdf'));
   })();
 }
 
-module.exports = { buildContrat, buildAvenant, buildResiliation, checkPrestatairePlaceholders, PRESTATAIRE };
+module.exports = { buildContrat, buildAvenant, buildResiliation, buildFacture, checkPrestatairePlaceholders, PRESTATAIRE };
