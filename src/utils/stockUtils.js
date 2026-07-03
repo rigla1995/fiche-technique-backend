@@ -213,4 +213,19 @@ async function computeStockPTCourant(scope, scopeId, produitId) {
   return Math.round(parseFloat(r.rows[0]?.stock_courant ?? 0) * 1000) / 1000;
 }
 
-module.exports = { computeStockCourant, computeStockPTCourant };
+/**
+ * Référence auto d'une écriture de stock liée à un PT (règle métier) :
+ *   nom multi-mots    → initiale de chaque mot + année YY   (« Crème Pâtissière » → CP-26)
+ *   nom d'un seul mot → 3 premières lettres + année YY      (« Cookies » → COO-26)
+ * Majuscules, sans accents ; l'année (YY, pas YYYY) est celle de la date d'appro.
+ */
+function buildAutoRef(nom, when) {
+  const clean = String(nom || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  const base = words.length > 1 ? words.map((w) => w[0]).join('') : (words[0] || 'PT').slice(0, 3);
+  const d = when ? new Date(when) : new Date();
+  const year = Number.isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+  return `${base.toUpperCase()}-${String(year).slice(-2)}`;
+}
+
+module.exports = { computeStockCourant, computeStockPTCourant, buildAutoRef };
