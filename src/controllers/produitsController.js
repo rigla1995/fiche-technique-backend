@@ -825,6 +825,12 @@ async function buildDpPriceMap(actId, clientId) {
   return priceMap;
 }
 
+// MP activité : PMP pondérée par les quantités des ENTRÉES valorisées (appros manuels
+// + réceptions de transfert) par article depuis le dernier inventaire de l'activité,
+// sur les prix TTC (COALESCE(prix_unitaire_tva, prix_unitaire)). Même règle que
+// buildMpPriceMapLabo et que la PMP de déduction de saveStockPT : les lignes négatives
+// (consommations 'PT', ventes) et le legacy sans type sont exclus — une moyenne simple
+// non filtrée absorbait les consommations valorisées en HT et faussait les coûts.
 async function buildMpPriceMap(actId, clientId) {
   const priceMap = {};
   if (actId) {
@@ -835,29 +841,26 @@ async function buildMpPriceMap(actId, clientId) {
         WHERE activite_id = $1 AND ingredient_id IS NOT NULL
         ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
       )
-      SELECT sed.ingredient_id, AVG(COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire)) AS avg_prix
+      SELECT sed.ingredient_id,
+             SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire)) / NULLIF(SUM(sed.quantite), 0) AS avg_prix
       FROM stock_entreprise_daily sed
       JOIN activites a ON sed.activite_id = a.id
       JOIN profil_entreprise pe ON a.entreprise_id = pe.id
       LEFT JOIN last_inv li ON li.ingredient_id = sed.ingredient_id
       WHERE sed.activite_id = $1 AND pe.client_id = $2
         AND COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire) IS NOT NULL AND COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire) > 0
+        AND sed.quantite > 0 AND sed.type_appro IN ('manuel', 'transfert')
         AND (li.date_inventaire IS NULL OR sed.date_appro >= li.date_inventaire)
       GROUP BY sed.ingredient_id`,
       [actId, clientId]
     );
     r1.rows.forEach((row) => { priceMap[row.ingredient_id] = parseFloat(row.avg_prix); });
+    // Repli : articles sans prix côté activité → PMP TTC du labo lié (même règle labo).
     const actRes = await pool.query('SELECT labo_id FROM activites WHERE id = $1', [actId]);
     const laboId = actRes.rows[0]?.labo_id;
     if (laboId) {
-      const r2 = await pool.query(
-        `SELECT ingredient_id, AVG(COALESCE(prix_unitaire_tva, prix_unitaire)) AS avg_prix
-         FROM stock_labo_daily
-         WHERE labo_id = $1 AND COALESCE(prix_unitaire_tva, prix_unitaire) IS NOT NULL AND COALESCE(prix_unitaire_tva, prix_unitaire) > 0
-         GROUP BY ingredient_id`,
-        [laboId]
-      );
-      r2.rows.forEach((row) => { if (!priceMap[row.ingredient_id]) priceMap[row.ingredient_id] = parseFloat(row.avg_prix); });
+      const laboMap = await buildMpPriceMapLabo(laboId);
+      Object.entries(laboMap).forEach(([ingId, prix]) => { if (!priceMap[ingId]) priceMap[ingId] = prix; });
     }
   }
   return priceMap;
