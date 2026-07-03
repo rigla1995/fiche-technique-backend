@@ -91,6 +91,10 @@ const C = {
   dangerSoft: '#fef2f2', dangerLine: '#fecaca', dangerText: '#b91c1c',
 };
 
+// Cases-repères des zones de champs (mode template) : visibles uniquement avec
+// `--guides` en CLI. Le require côté backend n'a jamais ce flag → zones invisibles.
+const SLOT_GUIDES = process.argv.includes('--guides');
+
 // ── Géométrie page ─────────────────────────────────────────────────────────────
 const ML = 56;                 // marge gauche/droite
 const PAGE = { w: 595.28, h: 841.89 };
@@ -162,10 +166,12 @@ function makeCtx(info) {
     doc.rect(x, y, w, h).fill(g);
   };
 
-  // Case à remplir (mode TEMPLATE Docuseal) : zone discrète, sans texte, que
-  // l'admin recouvre d'un champ nommé dans l'interface Docuseal. Reste élégante
-  // si le champ arrive vide (pas de promo, etc.).
+  // Zone réservée à un champ Docuseal (mode TEMPLATE). Par défaut la zone est
+  // INVISIBLE : le fond reste net sous les valeurs remplies dans le document
+  // final. `--guides` (CLI) dessine les cases en pointillé — version repère pour
+  // le placement des champs dans l'UI, à ne PAS uploader comme template.
   const slot = (x, y, w, h) => {
+    if (!SLOT_GUIDES) return;
     doc.save().roundedRect(x, y, w, h, 3).lineWidth(0.7).dash(2, { space: 1.6 })
        .fillAndStroke('#fcfdff', '#c7d2fe').undash().restore();
   };
@@ -831,22 +837,27 @@ const SAMPLE = {
 
 // CLI uniquement — ce module est aussi requis par le backend (contractPdfService)
 // et ne doit alors RIEN générer au chargement.
-//   node docuseal-templates/generate.js               → aperçus (valeurs d'exemple)
-//   node docuseal-templates/generate.js --templates   → fonds de TEMPLATE Docuseal
-//     (cases vides à recouvrir de champs nommés dans l'UI — flux gratuit/Community)
+//   node docuseal-templates/generate.js                        → aperçus (valeurs d'exemple)
+//   node docuseal-templates/generate.js --templates            → fonds de TEMPLATE Docuseal
+//     (zones de champs invisibles — fond net, à uploader dans l'UI ; flux Community)
+//   node docuseal-templates/generate.js --templates --guides   → *-template-guides.pdf
+//     (cases en pointillé visibles : plan de placement des champs, ne pas uploader)
 if (require.main === module) {
   (async () => {
     const dir = __dirname;
     checkPrestatairePlaceholders();
     if (process.argv.includes('--templates')) {
       const tm = { templateMode: true, client: {}, config: {}, pricing: {} };
-      await buildContrat(path.join(dir, 'contrat-template.pdf'), tm);
-      await buildAvenant(path.join(dir, 'avenant-template.pdf'), tm);
-      await buildResiliation(path.join(dir, 'resiliation-template.pdf'), tm);
-      console.log('✅ Fonds de template Docuseal générés (à uploader dans l\'UI, voir CHAMPS.md) :');
-      console.log('   -', path.join(dir, 'contrat-template.pdf'));
-      console.log('   -', path.join(dir, 'avenant-template.pdf'));
-      console.log('   -', path.join(dir, 'resiliation-template.pdf'));
+      const suffix = SLOT_GUIDES ? '-template-guides.pdf' : '-template.pdf';
+      await buildContrat(path.join(dir, `contrat${suffix}`), tm);
+      await buildAvenant(path.join(dir, `avenant${suffix}`), tm);
+      await buildResiliation(path.join(dir, `resiliation${suffix}`), tm);
+      console.log(SLOT_GUIDES
+        ? '✅ Versions REPÈRES générées (cases visibles — pour placer les champs, ne pas uploader) :'
+        : '✅ Fonds de template Docuseal générés (à uploader dans l\'UI, voir CHAMPS.md) :');
+      console.log('   -', path.join(dir, `contrat${suffix}`));
+      console.log('   -', path.join(dir, `avenant${suffix}`));
+      console.log('   -', path.join(dir, `resiliation${suffix}`));
       return;
     }
     await buildContrat(path.join(dir, 'contrat-labflow.pdf'), SAMPLE.contrat);
