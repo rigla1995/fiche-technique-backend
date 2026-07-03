@@ -8,7 +8,7 @@ const {
   createSubmission, createSubmissionFromPdf, getSubmissionDocuments,
   isConfigured: docusealConfigured, isConfiguredPdf: docusealPdfConfigured,
 } = require('../services/docusealService');
-const { buildAvenantDocument } = require('../services/contractPdfService');
+const { buildAvenantDocument, avenantExtraFields } = require('../services/contractPdfService');
 const { sendDocusealSigningEmail } = require('../services/emailService');
 
 const fmtDtS = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
@@ -46,6 +46,7 @@ const submitAvenantForSignature = async ({ demandeId, info, pricing, ajouts }) =
     nbLabos: pricing?.nbLabos,
     nbGerants: pricing?.nbGerants,
     montantMensuel: pricing?.effMensuel,
+    extraFields: avenantExtraFields({ ajouts, abonnementId: info.abo_id, abonnementDate: info.abo_created_at }),
   });
 };
 
