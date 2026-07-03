@@ -496,6 +496,8 @@ const saveStockPT = async (req, res) => {
     // 2. Calculate prix_calcule from recipe ingredients
     let ingRows = [];
     if (actId) {
+      // PMP de déduction : HT (prix_unitaire) ET TTC (COALESCE(prix_unitaire_tva, prix_unitaire)
+      // — TVA absente ⇒ TTC = HT), mêmes lignes et mêmes filtres pour les deux moyennes.
       const ingRes = await pool.query(
         `SELECT pi.ingredient_id, pi.portion, i.nom as nom,
            (SELECT SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0)
@@ -510,7 +512,20 @@ const saveStockPT = async (req, res) => {
                 (SELECT MIN(date_appro) FROM stock_entreprise_daily
                  WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
               )
-           ) AS last_prix
+           ) AS last_prix,
+           (SELECT SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire)) / NULLIF(SUM(sed.quantite), 0)
+            FROM stock_entreprise_daily sed
+            WHERE sed.ingredient_id = pi.ingredient_id AND sed.activite_id = $2
+              AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
+              AND sed.type_appro IN ('manuel', 'transfert')
+              AND sed.date_appro >= COALESCE(
+                (SELECT date_inventaire FROM inventaires
+                 WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id
+                 ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                (SELECT MIN(date_appro) FROM stock_entreprise_daily
+                 WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+              )
+           ) AS last_prix_ttc
          FROM produit_ingredients pi
          JOIN articles i ON i.id = pi.ingredient_id
          WHERE pi.produit_id = $1`,
@@ -553,7 +568,8 @@ const saveStockPT = async (req, res) => {
       if (ing.last_prix === null) {
         prixPartiel = true;
       } else {
-        prixCalcule += portion * parseFloat(ing.last_prix);
+        // Repli du prix PT en TTC (la ligne PT est TTC par convention) — plus de repli HT.
+        prixCalcule += portion * parseFloat(ing.last_prix_ttc ?? ing.last_prix);
       }
     }
     // Le coût du PT inclut aussi ses sous-PT de composition (dernier prix courant du sous-PT).
@@ -663,15 +679,21 @@ const saveStockPT = async (req, res) => {
       sptId = upsertResult.rows[0].id;
 
       if (actId) {
-        // Déduction des ARTICLES de la recette (lignes négatives dans le stock d'articles).
+        // Déduction des ARTICLES de la recette (lignes négatives dans le stock d'articles),
+        // valorisée à la PMP réelle HT ET TTC de l'article (TVA absente ⇒ taux 0, TTC = HT).
+        // Le taux écrit est dérivé du ratio TTC/HT pour garder chaque ligne arithmétiquement
+        // cohérente (prix_unitaire_tva = prix_unitaire × (1 + taux/100)).
         // Référence auto par article consommé (règle initiales+YY sur le nom de l'article).
         for (const ing of ingRows) {
           const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
           const quantiteConsumed = -(portion * qty);
+          const pmpHt = parseFloat(ing.last_prix) || 0;
+          const pmpTtc = ing.last_prix_ttc != null ? parseFloat(ing.last_prix_ttc) : pmpHt;
+          const tauxEff = pmpHt > 0 ? Math.round(((pmpTtc / pmpHt) - 1) * 10000) / 100 : 0;
           await client.query(
             `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
-             VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
-            [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, buildAutoRef(ing.nom, dateAppro), userId]
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'PT', $8, $9, $10)`,
+            [actId, ing.ingredient_id, dateAppro, quantiteConsumed, pmpHt, tauxEff, pmpTtc, autoFournisseurId, buildAutoRef(ing.nom, dateAppro), userId]
           );
         }
         // Déduction des SOUS-PT de composition (un seul niveau) : ligne négative, prix = coût récursif

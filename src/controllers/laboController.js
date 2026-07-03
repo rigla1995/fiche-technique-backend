@@ -789,6 +789,7 @@ const updateLaboStock = async (req, res) => {
       // Get product name for type_appro label and recipe ingredients with last labo prices
       const [prodRes, ingRes, spRes] = await Promise.all([
         pool.query(`SELECT nom FROM produits WHERE id = $1`, [produitId]),
+        // PMP de déduction : HT ET TTC (COALESCE — TVA absente ⇒ TTC = HT), mêmes filtres.
         pool.query(
           `SELECT pi.ingredient_id, pi.portion, i.nom as ing_nom,
              (SELECT SUM(sld.quantite * sld.prix_unitaire) / NULLIF(SUM(sld.quantite), 0)
@@ -803,7 +804,20 @@ const updateLaboStock = async (req, res) => {
                   (SELECT MIN(date_appro) FROM stock_labo_daily
                    WHERE labo_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
                 )
-             ) AS last_prix
+             ) AS last_prix,
+             (SELECT SUM(sld.quantite * COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire)) / NULLIF(SUM(sld.quantite), 0)
+              FROM stock_labo_daily sld
+              WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id
+                AND sld.quantite > 0 AND sld.prix_unitaire IS NOT NULL
+                AND sld.type_appro = 'manuel'
+                AND sld.date_appro >= COALESCE(
+                  (SELECT date_inventaire FROM inventaires
+                   WHERE labo_id = $2 AND ingredient_id = pi.ingredient_id
+                   ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                  (SELECT MIN(date_appro) FROM stock_labo_daily
+                   WHERE labo_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+                )
+             ) AS last_prix_ttc
            FROM produit_ingredients pi
            JOIN articles i ON i.id = pi.ingredient_id
            WHERE pi.produit_id = $1`,
@@ -838,7 +852,8 @@ const updateLaboStock = async (req, res) => {
       for (const ing of ingRes.rows) {
         const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
         if (ing.last_prix !== null) {
-          prixCalcule += portion * parseFloat(ing.last_prix);
+          // Repli du prix PT en TTC (la ligne PT est TTC par convention) — plus de repli HT.
+          prixCalcule += portion * parseFloat(ing.last_prix_ttc ?? ing.last_prix);
         }
       }
       // Le coût du PT inclut aussi ses sous-PT de composition (dernier prix d'appro du sous-PT).
@@ -926,15 +941,20 @@ const updateLaboStock = async (req, res) => {
           [laboId, produitId, da, qty, finalPrix, customPortionsJson, autoFournisseurId, buildAutoRef(produitNom, da)]
         );
 
-        // Deduct recipe ingredients from labo ingredient stock (negative entries)
+        // Deduct recipe ingredients from labo ingredient stock (negative entries),
+        // valorisées à la PMP réelle HT ET TTC (TVA absente ⇒ taux 0, TTC = HT) ;
+        // taux dérivé du ratio TTC/HT pour la cohérence arithmétique de la ligne.
         if (ingRes.rows.length > 0 && qty > 0) {
           for (const ing of ingRes.rows) {
             const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
             const consumed = -(portion * qty);
+            const pmpHt = parseFloat(ing.last_prix) || 0;
+            const pmpTtc = ing.last_prix_ttc != null ? parseFloat(ing.last_prix_ttc) : pmpHt;
+            const tauxEff = pmpHt > 0 ? Math.round(((pmpTtc / pmpHt) - 1) * 10000) / 100 : 0;
             await client.query(
               `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, fournisseur_id, ref_facture, type_appro, updated_at, created_by)
-               VALUES ($1, $2, $3, $4, $5, 0, $5, $6, $7, 'PT', NOW(), $8)`,
-              [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, buildAutoRef(ing.ing_nom, da), req.user.id]
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PT', NOW(), $10)`,
+              [laboId, ing.ingredient_id, da, consumed, pmpHt, tauxEff, pmpTtc, autoFournisseurId, buildAutoRef(ing.ing_nom, da), req.user.id]
             );
           }
         }
