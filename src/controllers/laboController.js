@@ -1,10 +1,28 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
-const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
+const { computeStockCourant, computeStockPTCourant, buildAutoRef } = require('../utils/stockUtils');
 const { buildLaboHistoriqueApproPdf, buildTransferHistoriquePdf } = require('../services/histoPdfService');
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
+
+// ─── Fournisseur système « AUTO » ─────────────────────────────────────────────
+// Get-or-create du fournisseur AUTO de l'entreprise du labo, porté par les écritures
+// générées par le système (consommations recette à la production, sortie de transfert
+// PT). db = pool ou client de transaction.
+async function getAutoFournisseurIdForLabo(db, laboId) {
+  const entRes = await db.query('SELECT entreprise_id FROM labos WHERE id = $1', [laboId]);
+  if (entRes.rows.length === 0) return null;
+  const entrepriseId = entRes.rows[0].entreprise_id;
+  const foRes = await db.query(
+    `SELECT id FROM fournisseurs WHERE entreprise_id = $1 AND nom = 'AUTO' LIMIT 1`, [entrepriseId]
+  );
+  if (foRes.rows.length > 0) return foRes.rows[0].id;
+  const newFo = await db.query(
+    `INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`, [entrepriseId]
+  );
+  return newFo.rows[0].id;
+}
 
 // ─── Ownership check helper ───────────────────────────────────────────────────
 
@@ -897,40 +915,26 @@ const updateLaboStock = async (req, res) => {
       // Atomic: producing a PT (insert PT row + deduct each recipe ingredient) must be
       // all-or-nothing, else the PT is recorded while ingredients are only partly deducted.
       await withTransaction(async (client) => {
+        // Traçabilité (migr 138) : fournisseur AUTO + référence auto (initiales + YY)
+        // sur la ligne de production ET les consommations ; TVA 0 pour un PT → TTC = coût.
+        const autoFournisseurId = await getAutoFournisseurIdForLabo(client, laboId);
+
         // Save PT appro — always insert a new row (multiple rows per day allowed)
         await client.query(
-          `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, type_appro, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, 'manuel', NOW())`,
-          [laboId, produitId, da, qty, finalPrix, customPortionsJson]
+          `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, 'manuel', $7, $8, 0, $5, NOW())`,
+          [laboId, produitId, da, qty, finalPrix, customPortionsJson, autoFournisseurId, buildAutoRef(produitNom, da)]
         );
 
         // Deduct recipe ingredients from labo ingredient stock (negative entries)
         if (ingRes.rows.length > 0 && qty > 0) {
-          // Find or create AUTO fournisseur for this labo
-          const laboEntRes = await client.query(`SELECT entreprise_id FROM labos WHERE id = $1`, [laboId]);
-          let autoFournisseurId = null;
-          if (laboEntRes.rows.length > 0) {
-            const entrepriseId = laboEntRes.rows[0].entreprise_id;
-            const foRes = await client.query(
-              `SELECT id FROM fournisseurs WHERE entreprise_id = $1 AND nom = 'AUTO' LIMIT 1`, [entrepriseId]
-            );
-            if (foRes.rows.length > 0) {
-              autoFournisseurId = foRes.rows[0].id;
-            } else {
-              const newFo = await client.query(
-                `INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`, [entrepriseId]
-              );
-              autoFournisseurId = newFo.rows[0].id;
-            }
-          }
-          const yearStr = String(new Date().getFullYear()).slice(-2);
           for (const ing of ingRes.rows) {
             const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
             const consumed = -(portion * qty);
             await client.query(
               `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, fournisseur_id, ref_facture, type_appro, updated_at, created_by)
                VALUES ($1, $2, $3, $4, $5, 0, $5, $6, $7, 'PT', NOW(), $8)`,
-              [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, `PT-${da}`, req.user.id]
+              [laboId, ing.ingredient_id, da, consumed, ing.last_prix || 0, autoFournisseurId, buildAutoRef(ing.ing_nom, da), req.user.id]
             );
           }
         }
@@ -944,9 +948,9 @@ const updateLaboStock = async (req, res) => {
             const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
             const consumed = -(portion * qty);
             await client.query(
-              `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, type_appro, updated_at)
-               VALUES ($1, $2, $3, $4, $5, 'PT', NOW())`,
-              [laboId, sp.sous_produit_id, da, consumed, spCosts[sp.sous_produit_id] ?? null]
+              `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at)
+               VALUES ($1, $2, $3, $4, $5, 'PT', $6, $7, 0, $5, NOW())`,
+              [laboId, sp.sous_produit_id, da, consumed, spCosts[sp.sous_produit_id] ?? null, autoFournisseurId, buildAutoRef(sp.sp_nom, da)]
             );
           }
         }
@@ -1150,6 +1154,32 @@ const createTransfer = async (req, res) => {
     );
     const laboFournisseurId = laboFournisseurRes.rows.length > 0 ? laboFournisseurRes.rows[0].id : null;
 
+    // Défense en profondeur : un PT ne part que vers une activité AFFECTÉE au produit
+    // (produit_activite_stock) — l'UI ne propose déjà que celles-ci, on re-vérifie côté
+    // serveur pour bloquer un appel forgé.
+    const ptPairs = transfers
+      .filter((t) => parseInt(t.ingredientId) < 0 && (parseFloat(t.quantite) || 0) > 0)
+      .map((t) => ({ produitId: -parseInt(t.ingredientId), activiteId: parseInt(t.activiteId) }));
+    if (ptPairs.length > 0) {
+      const pasRes = await pool.query(
+        `SELECT produit_id, activite_id FROM produit_activite_stock
+          WHERE produit_id = ANY($1::int[]) AND activite_id = ANY($2::int[])`,
+        [[...new Set(ptPairs.map((p) => p.produitId))], [...new Set(ptPairs.map((p) => p.activiteId))]]
+      );
+      const assigned = new Set(pasRes.rows.map((r) => `${r.produit_id}-${r.activite_id}`));
+      const missing = ptPairs.find((p) => !assigned.has(`${p.produitId}-${p.activiteId}`));
+      if (missing) {
+        const nomRes = await pool.query('SELECT nom FROM produits WHERE id = $1', [missing.produitId]);
+        return res.status(400).json({
+          message: `Le produit "${nomRes.rows[0]?.nom ?? `PT #${missing.produitId}`}" n'est pas affecté à cette activité — transfert refusé.`,
+        });
+      }
+    }
+
+    // Fournisseur AUTO du compte : porté par la sortie de transfert PT côté labo
+    // (l'entrée côté activité porte, elle, le fournisseur du labo — comme les articles).
+    const autoFournisseurId = ptPairs.length > 0 ? await getAutoFournisseurIdForLabo(pool, laboId) : null;
+
     // Vérification stock labo avant transaction (ingrédients + PT)
     const ingQtyMap = {};
     const ptQtyMap  = {};
@@ -1231,18 +1261,22 @@ const createTransfer = async (req, res) => {
           // Le stock activité valorise le PT au prix de cession TTC (sinon coût labo en repli).
           const receptionPrice = ptPrixTtc != null ? ptPrixTtc : laboCost;
 
-          // Deduct from labo PT stock (negative entry)
+          // Deduct from labo PT stock (negative entry). type_appro reste NULL : la
+          // déduction du stock passe par le CTE labo_transfers de computeStockPTCourant
+          // (cette ligne en est le miroir comptable). Traçabilité migr 138 : prix de
+          // cession HT/TTC (TVA 0 → HT = TTC), fournisseur AUTO, réf saisie au transfert.
           await client.query(
-            `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, updated_at)
-             VALUES ($1, $2, $3, $4, NOW())`,
-            [laboId, produitId, dateTransfert, -qty]
+            `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, fournisseur_id, ref_facture, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
+            [laboId, produitId, dateTransfert, -qty, ptPrixUnit ?? laboCost, ptTva, receptionPrice, autoFournisseurId, refFacture || null]
           );
 
-          // Add to activité PT stock (stock_produits_transformes)
+          // Add to activité PT stock (stock_produits_transformes) — fournisseur = LE LABO
+          // (comme le transfert des articles) + réf saisie + paire HT/TTC (TVA 0).
           await client.query(
-            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [produitId, t.activiteId, dateTransfert, qty, receptionPrice]
+            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, prix_unitaire, taux_tva, fournisseur_id, ref_facture)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [produitId, t.activiteId, dateTransfert, qty, receptionPrice, ptPrixUnit ?? laboCost, ptTva, laboFournisseurId, refFacture || null]
           );
 
           // Record PT transfer (avec prix HT/TVA/TTC de cession)
@@ -1554,9 +1588,11 @@ const getLaboHistorique = async (req, res) => {
       if (endDate) { ptParams.push(endDate); ptWhere += ` AND slpt.date_appro <= $${ptParams.length}`; }
       if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND slpt.produit_id = $${ptParams.length}`; }
       const ptRes = await pool.query(
-        `SELECT slpt.id, slpt.produit_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire, slpt.updated_at, p.nom as produit_nom
+        `SELECT slpt.id, slpt.produit_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire, slpt.updated_at, p.nom as produit_nom,
+                slpt.taux_tva, slpt.prix_unitaire_tva, slpt.ref_facture, slpt.fournisseur_id, f.nom AS fournisseur_nom
          FROM stock_labo_pt_daily slpt
          JOIN produits p ON p.id = slpt.produit_id
+         LEFT JOIN fournisseurs f ON f.id = slpt.fournisseur_id
          WHERE ${ptWhere}
          ORDER BY slpt.date_appro DESC`,
         ptParams
@@ -1570,12 +1606,12 @@ const getLaboHistorique = async (req, res) => {
         dateAppro: isoDate(spt.date_appro),
         quantite: spt.quantite !== null ? parseFloat(spt.quantite) : null,
         prixUnitaire: spt.prix_unitaire !== null ? parseFloat(spt.prix_unitaire) : null,
-        tauxTva: null,
-        prixUnitaireTva: null,
-        refFacture: null,
+        tauxTva: spt.taux_tva !== null ? parseFloat(spt.taux_tva) : null,
+        prixUnitaireTva: spt.prix_unitaire_tva !== null ? parseFloat(spt.prix_unitaire_tva) : null,
+        refFacture: spt.ref_facture || null,
         typeAppro: 'produit_transformé',
-        fournisseurId: null,
-        fournisseurNom: null,
+        fournisseurId: spt.fournisseur_id || null,
+        fournisseurNom: spt.fournisseur_nom || null,
         activiteId: null,
         activiteNom: null,
         updatedAt: spt.updated_at,
@@ -1850,10 +1886,11 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND slpt.produit_id = $${ptParams.length}`; }
       const ptRes = await pool.query(
         `SELECT slpt.id, -(slpt.produit_id) as ingredient_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire,
-                NULL::text as ref_facture, 'produit_transforme'::text as type_appro, NULL::numeric as taux_tva, NULL::numeric as prix_unitaire_tva,
+                slpt.ref_facture, 'produit_transforme'::text as type_appro, slpt.taux_tva, slpt.prix_unitaire_tva,
                 p.nom as ingredient_nom, 'unité'::text as unite_nom, 'Produits Transformés'::text as categorie_nom,
-                NULL::text as fournisseur_nom, NULL::text as created_by_nom
+                f.nom as fournisseur_nom, NULL::text as created_by_nom
          FROM stock_labo_pt_daily slpt JOIN produits p ON p.id = slpt.produit_id
+         LEFT JOIN fournisseurs f ON f.id = slpt.fournisseur_id
          WHERE ${ptWhere}
          ORDER BY slpt.date_appro DESC`, ptParams
       );
@@ -2635,9 +2672,10 @@ async function exportLaboHistoriquePdf(req, res) {
       if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND slpt.produit_id = $${ptParams.length}`; }
       const ptRes = await pool.query(
         `SELECT slpt.id, -(slpt.produit_id) as ingredient_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire,
-                NULL::text as ref_facture, 'produit_transforme'::text as type_appro, NULL::numeric as taux_tva, NULL::numeric as prix_unitaire_tva,
-                p.nom as ingredient_nom, 'unité'::text as unite_nom, 'Produits Transformés'::text as categorie_nom, NULL::text as fournisseur_nom
+                slpt.ref_facture, 'produit_transforme'::text as type_appro, slpt.taux_tva, slpt.prix_unitaire_tva,
+                p.nom as ingredient_nom, 'unité'::text as unite_nom, 'Produits Transformés'::text as categorie_nom, f.nom as fournisseur_nom
          FROM stock_labo_pt_daily slpt JOIN produits p ON p.id = slpt.produit_id
+         LEFT JOIN fournisseurs f ON f.id = slpt.fournisseur_id
          WHERE ${ptWhere} ORDER BY slpt.date_appro DESC`, ptParams
       );
       pdfRows = ptOnly === 'true' ? ptRes.rows

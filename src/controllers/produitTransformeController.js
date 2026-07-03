@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { withTransaction } = require('../utils/db');
+const { buildAutoRef } = require('../utils/stockUtils');
 
 // ─── toggleStockIngredient ────────────────────────────────────────────────────
 // POST /api/produits/:id/toggle-stock-ingredient
@@ -641,31 +642,36 @@ const saveStockPT = async (req, res) => {
     // 4. Écritures de stock ATOMIQUES : appro du PT (+) puis déductions des articles et
     //    des sous-PT de composition (-). Tout-ou-rien pour éviter un stock incohérent.
     let sptId;
+    // Traçabilité (migr 138) : la ligne de production porte le fournisseur AUTO, une
+    // référence auto (initiales du nom + YY) et la paire HT/TTC — TVA 0 pour un PT,
+    // donc prix_unitaire (HT) = prix_calcule (TTC).
+    const ptRef = buildAutoRef(produitNom, dateAppro);
     await withTransaction(async (client) => {
       const upsertResult = actId
         ? await client.query(
-            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, custom_portions, type_appro)
-             VALUES ($1, $2, $3, $4, $5, $6, 'manuel')
+            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, custom_portions, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire)
+             VALUES ($1, $2, $3, $4, $5, $6, 'manuel', $7, $8, 0, $5)
              RETURNING id`,
-            [produitId, actId, dateAppro, qty, prixCalcule, customPortionsJson]
+            [produitId, actId, dateAppro, qty, prixCalcule, customPortionsJson, autoFournisseurId, ptRef]
           )
         : await client.query(
-            `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule, custom_portions, type_appro)
-             VALUES ($1, $2, $3, $4, $5, $6, 'manuel')
+            `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule, custom_portions, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire)
+             VALUES ($1, $2, $3, $4, $5, $6, 'manuel', $7, $8, 0, $5)
              RETURNING id`,
-            [produitId, userId, dateAppro, qty, prixCalcule, customPortionsJson]
+            [produitId, userId, dateAppro, qty, prixCalcule, customPortionsJson, autoFournisseurId, ptRef]
           );
       sptId = upsertResult.rows[0].id;
 
       if (actId) {
         // Déduction des ARTICLES de la recette (lignes négatives dans le stock d'articles).
+        // Référence auto par article consommé (règle initiales+YY sur le nom de l'article).
         for (const ing of ingRows) {
           const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
           const quantiteConsumed = -(portion * qty);
           await client.query(
             `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
              VALUES ($1, $2, $3, $4, $5, 0, $5, 'PT', $6, $7, $8)`,
-            [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, `PT-${dateAppro}`, userId]
+            [actId, ing.ingredient_id, dateAppro, quantiteConsumed, ing.last_prix || 0, autoFournisseurId, buildAutoRef(ing.nom, dateAppro), userId]
           );
         }
         // Déduction des SOUS-PT de composition (un seul niveau) : ligne négative, prix = coût récursif
@@ -675,9 +681,9 @@ const saveStockPT = async (req, res) => {
           const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
           const consumed = -(portion * qty);
           await client.query(
-            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, type_appro)
-             VALUES ($1, $2, $3, $4, $5, 'PT')`,
-            [sp.sous_produit_id, actId, dateAppro, consumed, spCosts[sp.sous_produit_id] ?? null]
+            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire)
+             VALUES ($1, $2, $3, $4, $5, 'PT', $6, $7, 0, $5)`,
+            [sp.sous_produit_id, actId, dateAppro, consumed, spCosts[sp.sous_produit_id] ?? null, autoFournisseurId, buildAutoRef(sp.sp_nom, dateAppro)]
           );
         }
       }
