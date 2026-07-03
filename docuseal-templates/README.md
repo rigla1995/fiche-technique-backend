@@ -54,20 +54,35 @@ placeholder subsiste, la génération est refusée **par défaut en production**
 partout avec `FACTURE_STRICT=1`) et le backend se replie sur le flux template
 historique ; le flux PDF s'active automatiquement dès que les variables sont saisies.
 
-## Câblage backend (fait — 2026-07)
+## Deux flux d'envoi (selon l'édition Docuseal)
 
+⚠️ **`POST /api/templates/pdf` est réservé à l'édition PRO de Docuseal** (vérifié sur
+notre instance Community : `404 "This feature is available in Pro Edition"`). D'où
+deux chemins, pilotés par `DOCUSEAL_PDF_FLOW` :
+
+### A. Édition Community (actuel) — flux TEMPLATE avec les nouveaux fonds
+`node docuseal-templates/generate.js --templates` génère `*-template.pdf` : les mêmes
+documents (design, clauses, **cachet prestataire pré-apposé** — statique donc conservé)
+avec des **cases en pointillé** à la place des valeurs. On les uploade dans l'UI
+Docuseal et on pose les champs nommés dessus : voir **CHAMPS.md** (noms exacts, rôle
+`Première partie`). L'API remplit ces champs à chaque envoi (`createSubmission`),
+comme avant — l'avenant envoie en plus « Capacité ajoutée » et « Contrat initial ».
+
+### B. Édition Pro — flux « PDF rempli » (`DOCUSEAL_PDF_FLOW=1`)
 `src/services/contractPdfService.js` lève les builders avec `previewMode:false` et
 retourne `{ base64, ref, documentName }` (référence type `CTR-2026-00042` dérivée de
-l'id d'abonnement / de demande / de client). Appelé par :
+l'id d'abonnement / de demande / de client) ; envoi via `createSubmissionFromPdf`
+(document par client, balise `{{Signature}}`). Sans le flag, ce chemin est ignoré.
 
+### Points d'appel (communs)
 - **Contrat** : `clientsController.create` → `submitContratForSignature`
 - **Avenant** : `supportController.create` (demande `supplement`) → `submitAvenantForSignature`
 - **Résiliation** : `clientsController.remove` → `submitResiliationForSignature`
 
-Chaque helper tente le flux « PDF rempli » (`createSubmissionFromPdf`) puis **se replie
-sur l'ancien flux template** (`createSubmission`) si la génération ou l'API échoue.
-Le webhook Docuseal est inchangé : il route par email du signataire (contrat) et par
-`submission_id` (avenant), indépendamment du template.
+Chaque helper tente le flux « PDF rempli » (si `DOCUSEAL_PDF_FLOW=1`) puis **se replie
+sur le flux template** si la génération ou l'API échoue. Le webhook Docuseal est
+inchangé : il route par email du signataire (contrat) et par `submission_id` (avenant),
+indépendamment du template.
 
 Montants : **TTC** (comme partout dans l'app — la facture présente la ventilation
 HT/TVA/TTC) ; les clauses des articles 3 le précisent.

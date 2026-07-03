@@ -162,7 +162,15 @@ function makeCtx(info) {
     doc.rect(x, y, w, h).fill(g);
   };
 
-  return { doc, fill, roundFill, hline, txt, oblique, measure, wrap, fitText, gradientRule };
+  // Case à remplir (mode TEMPLATE Docuseal) : zone discrète, sans texte, que
+  // l'admin recouvre d'un champ nommé dans l'interface Docuseal. Reste élégante
+  // si le champ arrive vide (pas de promo, etc.).
+  const slot = (x, y, w, h) => {
+    doc.save().roundedRect(x, y, w, h, 3).lineWidth(0.7).dash(2, { space: 1.6 })
+       .fillAndStroke('#fcfdff', '#c7d2fe').undash().restore();
+  };
+
+  return { doc, fill, roundFill, hline, txt, oblique, measure, wrap, fitText, gradientRule, slot };
 }
 
 // ── Logo LabFlow vectoriel (losange dégradé + monogramme LF + wordmark) ────────
@@ -221,10 +229,13 @@ function header(ctx, { eyebrow, title, subtitle, ref, date }) {
   ctx.docMeta = { eyebrow, ref };          // réutilisé par newPage (pages 2+)
   drawLogo(ctx, ML, 40, 30, 'dark');
 
-  // Méta document, alignée à droite
+  // Méta document, alignée à droite (mode template : la date vit dans le champ
+  // « Date du contrat » posé plus bas, pas de réf figée dans le fond de page)
   txt(eyebrow, ML, 40, 7.5, true, C.indigo, { align: 'right', width: CW, characterSpacing: 1.4 });
-  txt(`Réf. ${ref}`, ML, 53, 8, false, C.muted, { align: 'right', width: CW });
-  txt(`Établi le ${date}`, ML, 64, 8, false, C.faint, { align: 'right', width: CW });
+  if (!ctx.templateMode) {
+    txt(`Réf. ${ref}`, ML, 53, 8, false, C.muted, { align: 'right', width: CW });
+    txt(`Établi le ${date}`, ML, 64, 8, false, C.faint, { align: 'right', width: CW });
+  }
 
   // Filet dégradé pleine largeur
   gradientRule(ML, 88, CW, 2.5);
@@ -276,13 +287,14 @@ function calloutBox(ctx, y, text, tone = 'warn') {
 // ── Bloc « parties » (prestataire + client) en deux colonnes ──────────────────
 // Hauteur calculée dynamiquement : aucun champ data n'est tronqué ni ne déborde.
 function partiesBlock(ctx, y, client) {
-  const { txt, wrap, roundFill, measure } = ctx;
+  const { txt, wrap, roundFill, measure, slot } = ctx;
   const colW = (CW - 14) / 2;
   const cx2 = ML + colW + 14;
   const innerW = colW - 24;
   const padTop = 12, padBot = 12;
 
-  // Spécification des lignes de chaque colonne (w = donnée variable → wrap).
+  // Spécification des lignes de chaque colonne (w = donnée variable → wrap ;
+  // slotH = case vide à recouvrir d'un champ Docuseal en mode template).
   const presLines = [
     { t: 'LE PRESTATAIRE', s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
     { t: PRESTATAIRE.raisonSociale, s: 10, b: true, c: C.ink, w: true, gap: 4 },
@@ -292,7 +304,12 @@ function partiesBlock(ctx, y, client) {
     { t: `${PRESTATAIRE.email}  ·  ${PRESTATAIRE.tel}`, s: 7.5, c: C.muted, w: true, gap: 0 },
   ];
   const idClient = [client.forme, client.mfrc].filter(Boolean).join('  ·  ');
-  const cliLines = [
+  const cliLines = ctx.templateMode ? [
+    { t: 'LE CLIENT', s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
+    { slotW: innerW, slotH: 15, gap: 4 },            // champ « Nom du client »
+    { slotW: innerW * 0.85, slotH: 13, gap: 2 },     // champ « Email »
+    { t: 'Ci-après dénommé « le Client »', s: 7.5, c: C.faint, gapBefore: 6, lh: 11 },
+  ] : [
     { t: 'LE CLIENT', s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
     { t: client.nom, s: 10, b: true, c: C.ink, w: true, gap: 4 },
     idClient && { t: idClient, s: 7.5, c: C.muted, w: true, gap: 2 },
@@ -306,7 +323,8 @@ function partiesBlock(ctx, y, client) {
   // Mesure de la hauteur d'une colonne (sans dessiner)
   const colHeight = (lines) => lines.reduce((acc, ln) => {
     const before = ln.gapBefore || 0;
-    const hh = ln.w ? measure(ln.t, innerW, ln.s, 1.5) + (ln.gap || 0) : (ln.lh || 12);
+    const hh = ln.slotH ? ln.slotH + (ln.gap || 0)
+      : ln.w ? measure(ln.t, innerW, ln.s, 1.5) + (ln.gap || 0) : (ln.lh || 12);
     return acc + before + hh;
   }, 0);
 
@@ -327,7 +345,10 @@ function partiesBlock(ctx, y, client) {
     let cy = y + padTop;
     for (const ln of lines) {
       cy += ln.gapBefore || 0;
-      if (ln.w) {
+      if (ln.slotH) {
+        slot(x, cy, ln.slotW, ln.slotH);
+        cy += ln.slotH + (ln.gap || 0);
+      } else if (ln.w) {
         cy += wrap(ln.t, x, cy, ln.s, ln.b, ln.c, innerW, 1.5) + (ln.gap || 0);
       } else {
         txt(ln.t, x, cy, ln.s, ln.b, ln.c, ln.sp ? { characterSpacing: ln.sp } : {});
@@ -343,7 +364,7 @@ function partiesBlock(ctx, y, client) {
 
 // ── Tableau ressource / quantité ──────────────────────────────────────────────
 function configTable(ctx, y, rows, qtyHeader = 'Quantité souscrite') {
-  const { fill, hline, txt } = ctx;
+  const { fill, hline, txt, slot } = ctx;
   fill(ML, y, CW, 22, C.indigoSoft); hline(y, '#dfe3ff'); hline(y + 22, '#dfe3ff');
   txt('Ressource', ML + 10, y + 7, 7, true, C.indigo, { characterSpacing: 0.5 });
   txt(qtyHeader, ML, y + 7, 7, true, C.indigo, { align: 'right', width: CW - 10, characterSpacing: 0.5 });
@@ -352,15 +373,55 @@ function configTable(ctx, y, rows, qtyHeader = 'Quantité souscrite') {
     fill(ML, y, CW, 24, i % 2 === 0 ? '#fcfcff' : C.white);
     hline(y + 24, C.hairSoft);
     txt(label, ML + 10, y + 8, 9, false, C.ink);
-    txt(String(qty), ML, y + 7, 10, true, C.indigo, { align: 'right', width: CW - 12 });
+    if (ctx.templateMode) {
+      slot(RX - 12 - 64, y + 5, 64, 14);   // champs « Nb activités / Nb labos / Nb gérants »
+    } else {
+      txt(String(qty), ML, y + 7, 10, true, C.indigo, { align: 'right', width: CW - 12 });
+    }
     y += 24;
   });
   return y + 12;
 }
 
+// ── Bloc tarification (mode TEMPLATE : cases fixes pour les champs Docuseal) ──
+// withOnboarding/withPromo pilotent les zones présentes (contrat = tout, avenant =
+// mensualité seule). Les champs vides à l'envoi laissent des cases discrètes.
+function pricingBlockTemplate(ctx, y, { withOnboarding, withPromo }) {
+  const { fill, hline, txt, slot } = ctx;
+  if (withOnboarding) {
+    fill(ML, y, CW, 30, C.panel); hline(y, C.hair); hline(y + 30, C.hair);
+    txt("Frais d'activation (onboarding) — payables une seule fois", ML + 10, y + 10, 8.5, false, C.body);
+    slot(RX - 12 - 96, y + 7, 96, 16);                       // champ « Montant onboarding »
+    y += 30;
+  }
+  const h = 46;
+  fill(ML, y, CW, h, '#eef2ff'); hline(y, '#c7d2fe'); hline(y + h, C.indigo);
+  ctx.gradientRule(ML, y, 3, h);
+  txt('Mensualité applicable', ML + 12, y + 10, 9.5, true, C.indigo);
+  slot(RX - 12 - 32 - 96, y + 7, 96, 16);                    // champ « Montant mensuel »
+  txt('/ mois', RX - 12 - 28, y + 11, 10, true, C.indigo);
+  txt('Facturation mensuelle récurrente, par avance', ML + 12, y + 28, 7.5, false, '#6366f1');
+  y += h + 10;
+
+  if (withPromo) {
+    const innerW = CW - 24;
+    const ph = 78;
+    fill(ML, y, CW, ph, C.violetSoft); hline(y, '#e9d5ff'); hline(y + ph, '#e9d5ff');
+    txt('CONDITIONS PARTICULIÈRES (LE CAS ÉCHÉANT)', ML + 12, y + 8, 6.8, true, C.violet, { characterSpacing: 1 });
+    slot(ML + 12, y + 19, innerW, 27);                        // champ « Détail promotion »
+    txt('Tarif de base mensuel :', ML + 12, y + 55, 8, false, '#5b21b6');
+    slot(ML + 104, y + 52, 72, 13);                           // champ « Mensualité après promo »
+    txt('Reprise du tarif de base :', ML + 208, y + 55, 8, false, '#5b21b6');
+    slot(ML + 308, y + 52, 96, 13);                           // champ « Reprise prix de base »
+    y += ph + 12;
+  }
+  return y;
+}
+
 // ── Bloc tarification ─────────────────────────────────────────────────────────
-function pricingBlock(ctx, y, { onboarding, mensuel, mensuelBase, promoDetail }) {
+function pricingBlock(ctx, y, { onboarding, mensuel, mensuelBase, promoDetail, withOnboarding, withPromo }) {
   const { fill, hline, txt } = ctx;
+  if (ctx.templateMode) return pricingBlockTemplate(ctx, y, { withOnboarding, withPromo });
   if (onboarding != null) {
     fill(ML, y, CW, 30, C.panel); hline(y, C.hair); hline(y + 30, C.hair);
     txt("Frais d'activation (onboarding) — payables une seule fois", ML + 10, y + 10, 8.5, false, C.body);
@@ -412,13 +473,28 @@ function clauses(ctx, y, items) {
 
 // ── Bloc signatures : prestataire pré-signé (cachet) + client ────────────────
 function signatures(ctx, y, { client, date, previewMode = true }) {
-  const { doc, hline, txt, wrap, fitText, oblique, roundFill } = ctx;
+  const { doc, hline, txt, wrap, fitText, oblique, roundFill, slot } = ctx;
+  const tm = !!ctx.templateMode;
   const h = 96, need = 14 + 25 + h + 32;
   if (y > BOTTOM_LIMIT - need) { y = newPage(ctx); }
 
   // Mention de clôture (équilibre le bas de page + valeur juridique)
-  txt(`Fait à ${PRESTATAIRE.ville}, le ${date}, en deux exemplaires originaux.`,
-      ML, y, 8.5, false, C.muted, { align: 'center', width: CW });
+  if (tm) {
+    // « Fait à <ville>, le [champ Date du contrat], en deux exemplaires originaux. »
+    const pre = `Fait à ${PRESTATAIRE.ville}, le`;
+    const post = ', en deux exemplaires originaux.';
+    const slotW = 88;
+    doc.fontSize(8.5).font('Helvetica');
+    const total = doc.widthOfString(pre) + 6 + slotW + 2 + doc.widthOfString(post);
+    let x = ML + (CW - total) / 2;
+    txt(pre, x, y + 2, 8.5, false, C.muted);
+    x += doc.widthOfString(pre) + 6;
+    slot(x, y - 1, slotW, 13);                                // champ « Date du contrat »
+    txt(post, x + slotW + 2, y + 2, 8.5, false, C.muted);
+  } else {
+    txt(`Fait à ${PRESTATAIRE.ville}, le ${date}, en deux exemplaires originaux.`,
+        ML, y, 8.5, false, C.muted, { align: 'center', width: CW });
+  }
   y += 14;
 
   y = section(ctx, y, 'SIGNATURES');
@@ -442,27 +518,34 @@ function signatures(ctx, y, { client, date, previewMode = true }) {
   hline(y + 63, '#cbd5e1', sx1 + 12, sx1 + sw - 12, 0.8);
   txt(fitText(`Pour ${PRESTATAIRE.nom} — ${PRESTATAIRE.signataire}`, 7.5, sw - 24), sx1 + 12, y + 67, 7.5, false, C.muted);
   // pastille « signé » avec coche vectorielle — largeur ajustée au texte
-  const okLabel = `Signé électroniquement le ${date}`;
+  const okLabel = tm ? 'Signé électroniquement le' : `Signé électroniquement le ${date}`;
   doc.fontSize(7.5).font('Helvetica');
-  const okY = y + 78, pillW = Math.min(sw - 24, doc.widthOfString(okLabel) + 27);
+  const okY = y + 78, pillW = Math.min(sw - 24, doc.widthOfString(okLabel) + 27 + (tm ? 66 : 0));
   doc.save().roundedRect(sx1 + 12, okY, pillW, 15, 7.5).fill(C.okSoft).restore();
   doc.save().lineWidth(1.3).strokeColor(C.okText)
      .moveTo(sx1 + 19, okY + 7.5).lineTo(sx1 + 21.5, okY + 10).lineTo(sx1 + 26, okY + 5).stroke().restore();
   txt(okLabel, sx1 + 31, okY + 4.3, 7.5, false, C.okText);
+  if (tm) slot(sx1 + 33 + doc.widthOfString(okLabel), okY + 1.5, 62, 12);   // champ « Date du contrat » (2e zone)
 
   // ── LE CLIENT (à signer) ──
   roundFill(sx2, y, sw, h, 6, C.white, C.hair);
   txt('LE CLIENT', sx2 + 12, y + 12, 6.8, true, C.faint, { characterSpacing: 1 });
-  txt(fitText(client.nom, 9, sw - 24, true), sx2 + 12, y + 23, 9, true, C.ink);
-  txt('Lu et approuvé, bon pour accord', sx2 + 12, y + 34, 7.5, false, C.muted);
+  if (tm) {
+    slot(sx2 + 12, y + 21, sw - 24, 13);                                     // champ « Nom du client » (2e zone)
+  } else {
+    txt(fitText(client.nom, 9, sw - 24, true), sx2 + 12, y + 23, 9, true, C.ink);
+  }
+  txt('Lu et approuvé, bon pour accord', sx2 + 12, y + 36, 7.5, false, C.muted);
   // zone de signature (≥ 40pt pour une image de signature manuscrite)
-  doc.save().roundedRect(sx2 + 12, y + 44, sw - 24, 40, 5)
+  doc.save().roundedRect(sx2 + 12, y + 46, sw - 24, 38, 5)
      .lineWidth(0.8).dash(3, { space: 2 }).stroke('#cbd5e1').undash().restore();
-  if (previewMode) {
-    txt('Signature électronique du client', sx2 + 12, y + 61, 7.5, false, '#cbd5e1', { align: 'center', width: sw - 24 });
+  if (tm) {
+    // zone laissée vierge : l'admin y pose le champ « Signature » dans l'UI Docuseal
+  } else if (previewMode) {
+    txt('Signature électronique du client', sx2 + 12, y + 62, 7.5, false, '#cbd5e1', { align: 'center', width: sw - 24 });
   } else {
     // En production : balise détectée par DocuSeal (texte blanc, invisible)
-    txt('{{Signature;type=signature}}', sx2 + 16, y + 58, 7, false, C.white);
+    txt('{{Signature;type=signature}}', sx2 + 16, y + 59, 7, false, C.white);
   }
   txt('Nom, qualité et date', sx2 + 12, y + 88, 7.5, false, C.faint);
 
@@ -513,7 +596,11 @@ function finish(ctx, outPath) {
 // ══════════════════════════════════════════════════════════════════════════════
 async function buildContrat(outPath, data) {
   const previewMode = data.previewMode !== false;
-  const ctx = makeCtx({ Title: `Contrat d'abonnement — ${data.client.nom}`, Author: PRESTATAIRE.raisonSociale });
+  const ctx = makeCtx({
+    Title: data.templateMode ? "Contrat d'abonnement LabFlow" : `Contrat d'abonnement — ${data.client.nom}`,
+    Author: PRESTATAIRE.raisonSociale,
+  });
+  ctx.templateMode = data.templateMode === true;
   header(ctx, {
     eyebrow: "CONTRAT D'ABONNEMENT",
     title: "Contrat d'abonnement SaaS",
@@ -538,7 +625,7 @@ async function buildContrat(outPath, data) {
   ]);
 
   y = section(ctx, y, 'ARTICLE 3 — PRIX ET MODALITÉS DE PAIEMENT');
-  y = pricingBlock(ctx, y, data.pricing);
+  y = pricingBlock(ctx, y, { ...data.pricing, withOnboarding: true, withPromo: true });
   y = clauses(ctx, y, [{
     title: '', body:
       `Le Client s'acquitte des frais d'activation à la souscription, puis de la mensualité par avance au début de chaque période mensuelle. En cas de promotion, le tarif promotionnel s'applique pour la durée indiquée ci-dessus, puis le tarif de base reprend automatiquement. Tout retard de paiement supérieur à 15 jours peut entraîner la suspension de l'accès au service. Les montants sont exprimés en dinars tunisiens (DT), toutes taxes comprises (TVA au taux en vigueur de ${TVA_RATE} % incluse) ; la facture conforme émise à chaque échéance en présente la ventilation (hors taxes, TVA, TTC).`,
@@ -571,7 +658,11 @@ async function buildContrat(outPath, data) {
 // ══════════════════════════════════════════════════════════════════════════════
 async function buildAvenant(outPath, data) {
   const previewMode = data.previewMode !== false;
-  const ctx = makeCtx({ Title: `Avenant — ${data.client.nom}`, Author: PRESTATAIRE.raisonSociale });
+  const ctx = makeCtx({
+    Title: data.templateMode ? 'Avenant au contrat LabFlow' : `Avenant — ${data.client.nom}`,
+    Author: PRESTATAIRE.raisonSociale,
+  });
+  ctx.templateMode = data.templateMode === true;
   header(ctx, {
     eyebrow: 'AVENANT AU CONTRAT',
     title: "Avenant au contrat d'abonnement",
@@ -590,8 +681,14 @@ async function buildAvenant(outPath, data) {
   y = calloutBox(ctx, y,
     `Le présent avenant modifie ${refInitial} conclu entre ${PRESTATAIRE.nom} et le Client. Il prend effet à la date de signature ci-dessous et complète les termes du contrat initial sans s'y substituer. Seules les clauses expressément modifiées par le présent avenant sont concernées ; toutes les autres dispositions du contrat demeurent inchangées.`,
     'neutral');
+  if (ctx.templateMode) {
+    // Ligne « Contrat visé » : champ « Contrat initial » (réf + date du contrat d'origine)
+    ctx.txt('Contrat visé :', ML, y + 2, 8.5, true, C.indigoDeep);
+    ctx.slot(ML + 62, y - 1, 210, 13);
+    y += 20;
+  }
 
-  if (data.ajout) {
+  if (data.ajout || ctx.templateMode) {
     if (y + 60 > BOTTOM_LIMIT) y = newPage(ctx);
     y = fillAddedBanner(ctx, y, data.ajout);
   }
@@ -604,7 +701,7 @@ async function buildAvenant(outPath, data) {
   ], 'Nouvelle quantité');
 
   y = section(ctx, y, 'ARTICLE 3 — NOUVELLE TARIFICATION');
-  y = pricingBlock(ctx, y, { mensuel: data.pricing.mensuel, mensuelBase: data.pricing.mensuelBase });
+  y = pricingBlock(ctx, y, { mensuel: data.pricing.mensuel, mensuelBase: data.pricing.mensuelBase });   // template : mensualité seule
   y = clauses(ctx, y, [{
     title: '', body:
       `La nouvelle mensualité s'applique à compter de la première échéance suivant la signature du présent avenant. Elle s'entend toutes taxes comprises (TVA au taux en vigueur de ${TVA_RATE} % incluse), la facture émise à chaque échéance en présentant la ventilation. Les frais d'activation déjà réglés ne sont pas dus à nouveau et les modalités de paiement du contrat initial restent applicables.`,
@@ -624,15 +721,20 @@ async function buildAvenant(outPath, data) {
 }
 
 // Bandeau « capacité ajoutée » (avenant) — hauteur dynamique, texte wrappé
+// (mode template : case pour le champ « Capacité ajoutée »)
 function fillAddedBanner(ctx, y, ajout) {
-  const { fill, hline, txt, wrap, measure } = ctx;
+  const { fill, hline, txt, wrap, measure, slot } = ctx;
   const innerW = CW - 24;
-  const ajoutH = measure(ajout, innerW, 12, 1);
+  const ajoutH = ctx.templateMode ? 17 : measure(ajout, innerW, 12, 1);
   const h = 22 + ajoutH + 9;
   fill(ML, y, CW, h, C.okSoft); hline(y, C.okLine); hline(y + h, C.okLine);
   ctx.gradientRule(ML, y, 3, h);
   txt('CAPACITÉ AJOUTÉE PAR CET AVENANT', ML + 12, y + 9, 6.8, true, C.okText, { characterSpacing: 1 });
-  wrap(ajout, ML + 12, y + 22, 12, true, '#14532d', innerW, 1);
+  if (ctx.templateMode) {
+    slot(ML + 12, y + 21, innerW, 17);
+  } else {
+    wrap(ajout, ML + 12, y + 22, 12, true, '#14532d', innerW, 1);
+  }
   return y + h + 12;
 }
 
@@ -641,7 +743,11 @@ function fillAddedBanner(ctx, y, ajout) {
 // ══════════════════════════════════════════════════════════════════════════════
 async function buildResiliation(outPath, data) {
   const previewMode = data.previewMode !== false;
-  const ctx = makeCtx({ Title: `Résiliation — ${data.client.nom}`, Author: PRESTATAIRE.raisonSociale });
+  const ctx = makeCtx({
+    Title: data.templateMode ? 'Résiliation de contrat LabFlow' : `Résiliation — ${data.client.nom}`,
+    Author: PRESTATAIRE.raisonSociale,
+  });
+  ctx.templateMode = data.templateMode === true;
   header(ctx, {
     eyebrow: 'RÉSILIATION DE CONTRAT',
     title: "Résiliation du contrat d'abonnement",
@@ -662,7 +768,11 @@ async function buildResiliation(outPath, data) {
   const { fill, hline, txt } = ctx;
   fill(ML, y, CW, 30, '#fff7ed'); hline(y, '#fed7aa'); hline(y + 30, '#fed7aa');
   txt('Date de la demande de résiliation', ML + 10, y + 10, 8.5, false, '#9a3412');
-  txt(data.date, ML, y + 8, 11, true, '#9a3412', { align: 'right', width: CW - 12 });
+  if (ctx.templateMode) {
+    ctx.slot(RX - 12 - 100, y + 7, 100, 16);   // champ « Date du contrat »
+  } else {
+    txt(data.date, ML, y + 8, 11, true, '#9a3412', { align: 'right', width: CW - 12 });
+  }
   y += 38;
   y = clauses(ctx, y, [{
     title: '', body:
@@ -719,12 +829,26 @@ const SAMPLE = {
   },
 };
 
-// Aperçu CLI uniquement — ce module est aussi requis par le backend
-// (contractPdfService) et ne doit alors RIEN générer au chargement.
+// CLI uniquement — ce module est aussi requis par le backend (contractPdfService)
+// et ne doit alors RIEN générer au chargement.
+//   node docuseal-templates/generate.js               → aperçus (valeurs d'exemple)
+//   node docuseal-templates/generate.js --templates   → fonds de TEMPLATE Docuseal
+//     (cases vides à recouvrir de champs nommés dans l'UI — flux gratuit/Community)
 if (require.main === module) {
   (async () => {
     const dir = __dirname;
     checkPrestatairePlaceholders();
+    if (process.argv.includes('--templates')) {
+      const tm = { templateMode: true, client: {}, config: {}, pricing: {} };
+      await buildContrat(path.join(dir, 'contrat-template.pdf'), tm);
+      await buildAvenant(path.join(dir, 'avenant-template.pdf'), tm);
+      await buildResiliation(path.join(dir, 'resiliation-template.pdf'), tm);
+      console.log('✅ Fonds de template Docuseal générés (à uploader dans l\'UI, voir CHAMPS.md) :');
+      console.log('   -', path.join(dir, 'contrat-template.pdf'));
+      console.log('   -', path.join(dir, 'avenant-template.pdf'));
+      console.log('   -', path.join(dir, 'resiliation-template.pdf'));
+      return;
+    }
     await buildContrat(path.join(dir, 'contrat-labflow.pdf'), SAMPLE.contrat);
     await buildAvenant(path.join(dir, 'avenant-labflow.pdf'), SAMPLE.avenant);
     await buildResiliation(path.join(dir, 'resiliation-labflow.pdf'), SAMPLE.resiliation);

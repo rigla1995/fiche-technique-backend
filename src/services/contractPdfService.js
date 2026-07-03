@@ -58,6 +58,33 @@ const generate = async (builder, data) => {
   return buffer.toString('base64');
 };
 
+// « +1 activité   ·   +2 comptes gérants » — partagé entre le PDF rempli et les
+// champs du flux template (avenantExtraFields).
+const ajoutTextOf = (ajouts = {}) => {
+  const plur = (n, sing, plu) => `+${n} ${n > 1 ? plu : sing}`;
+  const parts = [];
+  if (ajouts.addActivites) parts.push(plur(ajouts.addActivites, 'activité', 'activités'));
+  if (ajouts.addLabos) parts.push(plur(ajouts.addLabos, 'laboratoire', 'laboratoires'));
+  if (ajouts.addGerants) parts.push(plur(ajouts.addGerants, 'compte gérant', 'comptes gérants'));
+  return parts.join('   ·   ');
+};
+
+// Champs additionnels de l'avenant pour le flux TEMPLATE Docuseal (« Capacité
+// ajoutée », « Contrat initial »). Sans risque : createSubmission retire de
+// lui-même les champs absents du template (retry 422).
+const avenantExtraFields = ({ ajouts = {}, abonnementId = null, abonnementDate = null } = {}) => {
+  const fields = [];
+  const ajout = ajoutTextOf(ajouts);
+  if (ajout) fields.push({ name: 'Capacité ajoutée', default_value: ajout });
+  if (abonnementId) {
+    fields.push({
+      name: 'Contrat initial',
+      default_value: `${refFor('CTR', abonnementId, abonnementDate)} du ${fmtDateFr(abonnementDate)}`,
+    });
+  }
+  return fields;
+};
+
 /**
  * Contrat d'abonnement. `pricing` = résultat de computeEffectivePricing (requis).
  * `config` = { nbActivites, nbLabos, nbGerants } ; `montantOnboarding` = repli si
@@ -94,18 +121,13 @@ const buildContratDocument = async ({ abonnementId, client, config = {}, pricing
 const buildAvenantDocument = async ({ demandeId, client, pricing, ajouts = {}, abonnementId = null, abonnementDate = null }) => {
   if (!pricing) throw new Error("détail tarifaire indisponible pour l'avenant");
   const ref = refFor('AVN', demandeId);
-  const plur = (n, sing, plu) => `+${n} ${n > 1 ? plu : sing}`;
-  const parts = [];
-  if (ajouts.addActivites) parts.push(plur(ajouts.addActivites, 'activité', 'activités'));
-  if (ajouts.addLabos) parts.push(plur(ajouts.addLabos, 'laboratoire', 'laboratoires'));
-  if (ajouts.addGerants) parts.push(plur(ajouts.addGerants, 'compte gérant', 'comptes gérants'));
   const base64 = await generate(buildAvenant, {
     ref,
     date: fmtDateFr(),
     contratRef: abonnementId ? refFor('CTR', abonnementId, abonnementDate) : undefined,
     contratDate: abonnementDate ? fmtDateFr(abonnementDate) : undefined,
     client: clientBlock(client),
-    ajout: parts.join('   ·   ') || undefined,
+    ajout: ajoutTextOf(ajouts) || undefined,
     config: {
       activites: pricing.nbActivites,
       labos: pricing.nbLabos,
@@ -127,4 +149,4 @@ const buildResiliationDocument = async ({ clientId, client }) => {
   return { base64, ref, documentName: `Résiliation de contrat LabFlow — ${ref}` };
 };
 
-module.exports = { buildContratDocument, buildAvenantDocument, buildResiliationDocument };
+module.exports = { buildContratDocument, buildAvenantDocument, buildResiliationDocument, avenantExtraFields };
