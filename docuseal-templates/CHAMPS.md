@@ -2,8 +2,14 @@
 
 Fonds de page générés par `node docuseal-templates/generate.js --templates` :
 `contrat-template.pdf`, `avenant-template.pdf`, `resiliation-template.pdf`.
-Dans l'UI Docuseal : **créer un template** en uploadant chaque PDF, puis poser les
-champs listés ci-dessous **sur les cases en pointillé** prévues dans le document.
+Les zones de champs y sont **invisibles** (fond net dans le document final signé).
+Ajouter `--guides` génère les versions repères `*-template-guides.pdf` (cases en
+pointillé visibles) : à garder sous les yeux pour placer les champs, **ne pas les
+uploader**.
+
+Dans l'UI Docuseal : **créer un template** en uploadant chaque `*-template.pdf`
+(version propre), puis poser les champs listés ci-dessous aux emplacements montrés
+par la version repère.
 
 ## Règles impératives
 

@@ -63,9 +63,10 @@ deux chemins, pilotés par `DOCUSEAL_PDF_FLOW` :
 ### A. Édition Community (actuel) — flux TEMPLATE avec les nouveaux fonds
 `node docuseal-templates/generate.js --templates` génère `*-template.pdf` : les mêmes
 documents (design, clauses, **cachet prestataire pré-apposé** — statique donc conservé)
-avec des **cases en pointillé** à la place des valeurs. On les uploade dans l'UI
-Docuseal et on pose les champs nommés dessus : voir **CHAMPS.md** (noms exacts, rôle
-`Première partie`). L'API remplit ces champs à chaque envoi (`createSubmission`),
+avec des **zones de valeurs laissées vierges** (fond net dans le document signé).
+`--guides` produit les versions repères `*-template-guides.pdf` (cases visibles, pour
+le placement uniquement). On uploade les fonds propres dans l'UI Docuseal et on pose
+les champs nommés dessus : voir **CHAMPS.md** (noms exacts, rôle `Première partie`). L'API remplit ces champs à chaque envoi (`createSubmission`),
 comme avant — l'avenant envoie en plus « Capacité ajoutée » et « Contrat initial ».
 
 ### B. Édition Pro — flux « PDF rempli » (`DOCUSEAL_PDF_FLOW=1`)
