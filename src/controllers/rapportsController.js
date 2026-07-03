@@ -262,6 +262,36 @@ const getRapportAppros = async (req, res) => {
         params
       );
       rows = q.rows;
+
+      // PT : productions + réceptions de transfert (lignes positives valorisées TTC),
+      // inclus quand aucun filtre fournisseur/type n'est actif (mêmes règles que les historiques).
+      if (!fournisseurId && !typeAppro) {
+        const ptParams = [activiteIds];
+        const ptWheres = [`spt.activite_id = ANY($1::int[])`, `spt.quantite > 0`];
+        let ptIdx = 2;
+        if (dateFrom) { ptWheres.push(`spt.date_appro >= $${ptIdx++}`); ptParams.push(dateFrom); }
+        if (dateTo)   { ptWheres.push(`spt.date_appro <= $${ptIdx++}`); ptParams.push(dateTo); }
+        const qPt = await pool.query(
+          `SELECT
+             spt.date_appro, 'produit_transforme' AS type_appro, spt.ref_facture,
+             p.nom AS ingredient_nom,
+             'Produits Transformés' AS categorie,
+             'unité' AS unite,
+             spt.quantite,
+             spt.prix_calcule AS prix_unitaire,
+             spt.quantite * COALESCE(spt.prix_calcule, 0) AS total,
+             f.nom AS fournisseur_nom,
+             a.nom AS activite_nom
+           FROM stock_produits_transformes spt
+           JOIN produits p ON p.id = spt.produit_id
+           JOIN activites a ON a.id = spt.activite_id
+           LEFT JOIN fournisseurs f ON f.id = spt.fournisseur_id
+           WHERE ${ptWheres.join(' AND ')}
+           ORDER BY spt.date_appro DESC`,
+          ptParams
+        );
+        rows = rows.concat(qPt.rows).sort((x, y) => new Date(y.date_appro) - new Date(x.date_appro));
+      }
     }
 
     const byFournisseur = Object.values(
@@ -331,6 +361,34 @@ const getRapportStock = async (req, res) => {
         [activiteIds]
       );
       rows = q.rows;
+
+      // PT : mêmes colonnes, catégorie virtuelle « Produits Transformés », dernière
+      // réception valorisée TTC, seuil par activité (repli seuil global legacy).
+      const qPt = await pool.query(
+        `SELECT
+           p.nom AS ingredient_nom,
+           'Produits Transformés' AS categorie,
+           'unité' AS unite,
+           a.nom AS activite_nom,
+           COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min,
+           COALESCE(
+             (SELECT s2.prix_calcule FROM stock_produits_transformes s2
+              WHERE s2.activite_id = spt.activite_id AND s2.produit_id = spt.produit_id
+                AND s2.quantite > 0 AND s2.prix_calcule IS NOT NULL
+              ORDER BY s2.date_appro DESC, s2.id DESC LIMIT 1), 0
+           ) AS prix_unitaire,
+           SUM(CASE WHEN EXTRACT(YEAR FROM spt.date_appro) = EXTRACT(YEAR FROM NOW()) THEN spt.quantite ELSE 0 END) AS quantite
+         FROM stock_produits_transformes spt
+         JOIN produits p ON p.id = spt.produit_id
+         JOIN activites a ON a.id = spt.activite_id
+         LEFT JOIN produit_activite_stock pas ON pas.produit_id = spt.produit_id AND pas.activite_id = spt.activite_id
+         WHERE spt.activite_id = ANY($1::int[])
+         GROUP BY p.id, p.nom, a.id, a.nom, pas.seuil_min, p.seuil_min_pt, spt.activite_id, spt.produit_id
+         HAVING SUM(CASE WHEN EXTRACT(YEAR FROM spt.date_appro) = EXTRACT(YEAR FROM NOW()) THEN spt.quantite ELSE 0 END) > 0
+         ORDER BY ingredient_nom`,
+        [activiteIds]
+      );
+      rows = rows.concat(qPt.rows);
     }
 
     const rowsWithValeur = rows.map((r) => ({
