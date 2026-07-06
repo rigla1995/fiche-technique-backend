@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { ptCategorieSql } = require('../utils/stockUtils');
 
 // ── Ownership guard helpers ──────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ const getRapportPertes = async (req, res) => {
         const ptFull = [...ptParams, ...activiteIds];
         const ptWhereStr = ptWheres.length ? `AND ${ptWheres.join(' AND ')}` : '';
         const ptq = await pool.query(
-          `SELECT pr.nom AS ingredient_nom, 'Produits Transformés' AS categorie, 'unité' AS unite,
+          `SELECT pr.nom AS ingredient_nom, ${ptCategorieSql('pr')} AS categorie, 'unité' AS unite,
                   a.nom AS activite_nom, p.type_perte, p.date_perte, p.quantite,
                   COALESCE(p.prix_unitaire_tva, p.prix_unitaire, 0) AS prix_unitaire,
                   p.quantite * COALESCE(p.prix_unitaire_tva, p.prix_unitaire, 0) AS valeur
@@ -275,7 +276,7 @@ const getRapportAppros = async (req, res) => {
           `SELECT
              spt.date_appro, 'produit_transforme' AS type_appro, spt.ref_facture,
              p.nom AS ingredient_nom,
-             'Produits Transformés' AS categorie,
+             ${ptCategorieSql('p')} AS categorie,
              'unité' AS unite,
              spt.quantite,
              spt.prix_calcule AS prix_unitaire,
@@ -367,7 +368,7 @@ const getRapportStock = async (req, res) => {
       const qPt = await pool.query(
         `SELECT
            p.nom AS ingredient_nom,
-           'Produits Transformés' AS categorie,
+           ${ptCategorieSql('p')} AS categorie,
            'unité' AS unite,
            a.nom AS activite_nom,
            COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min,

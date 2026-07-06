@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { ptCategorie } = require('../utils/stockUtils');
 const ExcelJS = require('exceljs');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
@@ -79,7 +80,7 @@ const getLaboInventaireStock = async (req, res) => {
 
     // PT products assigned to this labo via labo_pt_selections
     const ptRes = await pool.query(
-      `SELECT lps.produit_id, p.nom FROM labo_pt_selections lps
+      `SELECT lps.produit_id, p.nom, p.type, p.origine FROM labo_pt_selections lps
        JOIN produits p ON p.id = lps.produit_id
        WHERE lps.labo_id = $1 ORDER BY p.nom`,
       [laboId]
@@ -244,7 +245,7 @@ const getLaboInventaireStock = async (req, res) => {
       isPT: true,
       nom: r.nom,
       unite: 'unité',
-      categorie: 'Produits Transformés',
+      categorie: ptCategorie(r.type, r.origine),
       seuilMin: null,
       totalStock: totalStockPTMap[r.produit_id] ?? null,
       recentInventaires: recentPTInvMap[r.produit_id] || [],
@@ -410,7 +411,7 @@ const getActiviteInventaireStock = async (req, res) => {
 
     // PT products assigned to this activité's stock
     const ptRes = await pool.query(
-      `SELECT p.id AS produit_id, p.nom FROM produits p
+      `SELECT p.id AS produit_id, p.nom, p.type, p.origine FROM produits p
        JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
        ORDER BY p.nom`,
       [activiteId]
@@ -562,7 +563,7 @@ const getActiviteInventaireStock = async (req, res) => {
       isPT: true,
       nom: r.nom,
       unite: 'unité',
-      categorie: 'Produits Transformés',
+      categorie: ptCategorie(r.type, r.origine),
       seuilMin: null,
       totalStock: totalStockPTActMap[r.produit_id] ?? null,
       recentInventaires: recentPTInvMap[r.produit_id] || [],
@@ -701,7 +702,7 @@ const getLaboInventaireHistorique = async (req, res) => {
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom,
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom,
               l.nom as labo_nom, ub.nom as created_by_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id
@@ -771,7 +772,7 @@ const getActiviteInventaireHistorique = async (req, res) => {
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom,
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom,
               a.nom as activite_nom, ub.nom as created_by_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id
@@ -878,7 +879,7 @@ const exportLaboInventaireExcel = async (req, res) => {
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
@@ -1009,7 +1010,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
@@ -1110,7 +1111,7 @@ const inventaireHistoriqueQuery = async (pool, conditions, params) => {
     `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
             COALESCE(i.nom, p.nom) as ingredient_nom,
             COALESCE(u.nom, 'unité') as unite_nom,
-            COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) as categorie_nom
+            COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
      FROM inventaires inv
      LEFT JOIN articles i ON i.id = inv.ingredient_id
      LEFT JOIN unites u ON u.id = i.unite_id
