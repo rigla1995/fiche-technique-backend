@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
-const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
+const { computeStockCourant, computeStockPTCourant, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
 const { buildHistoriquePertesPdf, buildLaboHistoriquePertesPdf } = require('../services/histoPdfService');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ async function fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, da
   if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
   const r = await pool.query(
     `SELECT p.id, p.activite_id, a.nom AS activite_nom, -(p.produit_id) AS ingredient_id, p.produit_id,
-            pr.nom AS ingredient_nom, 'unité'::text AS unite_nom, 'Produits Transformés'::text AS categorie_nom,
+            pr.nom AS ingredient_nom, 'unité'::text AS unite_nom, ${ptCategorieSql('pr')} AS categorie_nom,
             p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at, p.created_by, ub.nom AS created_by_nom
      FROM pertes p
      JOIN activites a ON a.id = p.activite_id
@@ -619,16 +619,17 @@ const getDateRangeLaboPerte = async (req, res) => {
 // ── Labo — list pertes historique ────────────────────────────────────────────
 // Pertes de produits transformés du labo (table labo_pertes, produit_id renseigné).
 // Projetées au même schéma de colonnes que les pertes d'articles (ingredient_id négatif).
-async function fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId }) {
+async function fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType }) {
   const params = [laboId];
   const wheres = [`lp.labo_id = $1`, `lp.produit_id IS NOT NULL`];
   if (dateDebut) { params.push(dateDebut); wheres.push(`lp.date_perte >= $${params.length}`); }
   if (dateFin)   { params.push(dateFin);   wheres.push(`lp.date_perte <= $${params.length}`); }
   if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
   if (ptProduitId) { params.push(ptProduitId); wheres.push(`lp.produit_id = $${params.length}`); }
+  if (ptType) wheres.push(ptTypeSql('p', ptType));
   const r = await pool.query(
     `SELECT lp.id, -(lp.produit_id) AS ingredient_id, lp.produit_id,
-            p.nom AS ingredient_nom, 'unité'::text AS unite_nom, 'Produits Transformés'::text AS categorie_nom,
+            p.nom AS ingredient_nom, 'unité'::text AS unite_nom, ${ptCategorieSql('p')} AS categorie_nom,
             lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte, lp.created_at, lp.created_by
      FROM labo_pertes lp JOIN produits p ON p.id = lp.produit_id
      WHERE ${wheres.join(' AND ')}
@@ -640,7 +641,7 @@ async function fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProd
 
 const listLaboPertes = async (req, res) => {
   const { laboId } = req.params;
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, ptOnly, ptProduitId } = req.query;
+  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, ptOnly, ptProduitId, ptType } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
 
   try {
@@ -700,14 +701,14 @@ const listLaboPertes = async (req, res) => {
     // article/catégorie/recherche, ou seules si ptOnly.
     const includePt = ptOnly === 'true' || (!categorieId && !ingredientId && !search);
     if (includePt) {
-      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId });
+      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType });
       const ptMapped = ptRows.map((r) => ({
         id: r.id,
         laboId: Number(laboId),
         ingredientId: r.ingredient_id,
         ingredientNom: r.ingredient_nom,
         uniteNom: 'unité',
-        categorieNom: 'Produits Transformés',
+        categorieNom: r.categorie_nom,
         quantite: parseFloat(r.quantite),
         prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
         typePerte: r.type_perte,
@@ -731,7 +732,7 @@ const listLaboPertes = async (req, res) => {
 
 const exportLaboPerteExcel = async (req, res) => {
   const { laboId } = req.params;
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds, ptOnly, ptProduitId } = req.query;
+  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds, ptOnly, ptProduitId, ptType } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
 
   try {
@@ -770,7 +771,7 @@ const exportLaboPerteExcel = async (req, res) => {
     let exRows = result.rows;
     const includePt = ptOnly === 'true' || (!categorieId && !ingredientId && !search);
     if (includePt) {
-      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId });
+      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType });
       exRows = ptOnly === 'true' ? ptRows
         : [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
     }
@@ -834,7 +835,7 @@ const exportEntreprisePertesPdf = async (req, res) => {
 
 const exportLaboPertesPdf = async (req, res) => {
   const { laboId } = req.params;
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, ptOnly, ptProduitId } = req.query;
+  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, ptOnly, ptProduitId, ptType } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
 
   try {
@@ -868,7 +869,7 @@ const exportLaboPertesPdf = async (req, res) => {
     let pdfRows = result.rows;
     const includePt = ptOnly === 'true' || (!categorieId && !ingredientId && !search);
     if (includePt) {
-      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId });
+      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType });
       pdfRows = ptOnly === 'true' ? ptRows
         : [...pdfRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
     }

@@ -283,6 +283,8 @@ const create = async (req, res) => {
   //                         qui reçoivent le PT (sous-ensemble des activités des labos choisis).
   //  - origine 'activite' : activiteIds = activités de gestion directe (appros libres).
   const origine = req.body.origine === 'labo' ? 'labo' : 'activite';
+  // Vendable géré en STOCK (option du wizard, défaut off) : circuits des PU appros libres.
+  const stockActif = req.body.stockActif === true || req.body.stockActif === 'true';
   const laboIds = Array.isArray(req.body.laboIds)
     ? req.body.laboIds.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
   const activiteIds = Array.isArray(req.body.activiteIds)
@@ -394,6 +396,14 @@ const create = async (req, res) => {
             'INSERT INTO produit_activite_affectation (produit_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
             [produitId, actId]
           );
+          // Option « géré en stock » : le vendable rejoint aussi le circuit de stock
+          // des PU appros libres (catégorie « Produits Transformés Vendables »).
+          if (stockActif) {
+            await client.query(
+              'INSERT INTO produit_activite_stock (produit_id, activite_id, labo_id) VALUES ($1, $2, NULL) ON CONFLICT (produit_id, activite_id) DO NOTHING',
+              [produitId, actId]
+            );
+          }
         } else {
           // PU en appros libres : stock PT au niveau de l'activité (appro manuel ET
           // réception de transfert acceptés — labo_id NULL, le produit n'est pas lié à un labo).
@@ -405,10 +415,10 @@ const create = async (req, res) => {
       }
     }
 
-    // Mode APPROS LIBRES (PU) : les labos cochés à la création gèrent aussi le produit
-    // (appro manuel au labo, transfert possible vers les activités affectées) — même
-    // effet que le toggle labo post-création, intégré au wizard.
-    if (origine === 'activite' && type !== 'vendable' && Array.isArray(laboIds) && laboIds.length > 0) {
+    // Mode APPROS LIBRES (PU, ou vendable géré en stock) : les labos cochés à la création
+    // gèrent aussi le produit (appro manuel au labo, transfert possible vers les activités
+    // affectées) — même effet que le toggle labo post-création, intégré au wizard.
+    if (origine === 'activite' && (type !== 'vendable' || stockActif) && Array.isArray(laboIds) && laboIds.length > 0) {
       const ownLabos = await client.query(
         `SELECT l.id FROM labos l
          JOIN profil_entreprise pe ON l.entreprise_id = pe.id
@@ -452,6 +462,9 @@ const update = async (req, res) => {
   const ingredients = req.body.ingredients;
   const subProducts = req.body.subProducts;
   const origine = req.body.origine === 'labo' ? 'labo' : req.body.origine === 'activite' ? 'activite' : undefined;
+  // Vendable géré en STOCK : tri-state (undefined = ne pas toucher au circuit de stock).
+  const stockActif = req.body.stockActif !== undefined
+    ? (req.body.stockActif === true || req.body.stockActif === 'true') : undefined;
   // Ré-affectation (édition d'un produit labo) : laboIds + activités cochées. undefined = ne pas toucher.
   const laboIds = Array.isArray(req.body.laboIds)
     ? req.body.laboIds.map(Number).filter((n) => Number.isInteger(n) && n > 0) : undefined;
@@ -592,6 +605,35 @@ const update = async (req, res) => {
            ON CONFLICT DO NOTHING`,
           [id, cId, activiteIds]
         );
+      }
+      // Option « géré en stock » (circuit des PU appros libres) : recomposée quand le
+      // wizard fournit stockActif — true = activités en stock direct + labos cochés,
+      // false = retiré des stocks (le stock réel/historique n'est pas touché).
+      if (stockActif !== undefined) {
+        await client.query('DELETE FROM labo_pt_selections WHERE produit_id = $1', [id]);
+        await client.query('DELETE FROM produit_activite_stock WHERE produit_id = $1', [id]);
+        if (stockActif === true) {
+          if (activiteIds.length > 0) {
+            await client.query(
+              `INSERT INTO produit_activite_stock (produit_id, activite_id, labo_id)
+               SELECT $1, a.id, NULL FROM activites a
+               JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+               WHERE pe.client_id = $2 AND a.id = ANY($3::int[])
+               ON CONFLICT (produit_id, activite_id) DO NOTHING`,
+              [id, cId, activiteIds]
+            );
+          }
+          if (Array.isArray(laboIds) && laboIds.length > 0) {
+            const ownLabos = await client.query(
+              `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id
+               WHERE pe.client_id = $1 AND l.id = ANY($2::int[])`,
+              [cId, laboIds]
+            );
+            for (const { id: laboId } of ownLabos.rows) {
+              await client.query('INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [laboId, id]);
+            }
+          }
+        }
       }
     }
 
