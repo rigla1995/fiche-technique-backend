@@ -41,7 +41,6 @@ const referentielRoutes = require('./routes/referentiel');
 const gerantRoutes = require('./routes/gerant');
 const facturesRoutes = require('./routes/factures');
 const manuelRoutes = require('./routes/manuel');
-const { initTelegram } = require('./services/telegramService');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 const { docusealWebhook } = require('./controllers/webhookController');
 
@@ -162,8 +161,6 @@ migrate()
     scheduleDailyCheck();
     process.on('SIGTERM', () => { if (dailyInterval) clearInterval(dailyInterval); server.close(() => process.exit(0)); });
     process.on('SIGINT', () => { if (dailyInterval) clearInterval(dailyInterval); server.close(() => process.exit(0)); });
-    // Initialize Telegram bot (requires TELEGRAM_BOT_TOKEN in .env)
-    initTelegram();
   })
   .catch((err) => {
     console.error('Échec des migrations, serveur non démarré:', err.message);

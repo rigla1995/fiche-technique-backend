@@ -206,7 +206,7 @@ async function generatePdf(clientId) {
   });
 }
 
-// Main entry point for Telegram bot
+// Point d'entrée des envois de rapport par les agents IA (chat web, Messenger)
 async function generateAndSendReport(clientId, email, clientNom, format) {
   const { sendRapportWithAttachment } = require('./emailService');
 
