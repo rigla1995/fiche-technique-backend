@@ -1040,11 +1040,13 @@ const getLaboStockHistory = async (req, res) => {
       // transferts (labo_transfers) et pertes (labo_pertes), avec leur type_appro pour la colonne TYPE.
       const result = await pool.query(
         `SELECT * FROM (
-           SELECT date_appro AS d, quantite, prix_unitaire AS prix, COALESCE(type_appro, 'manuel') AS type,
-                  NULL::text AS ref, NULL::numeric AS tva, NULL::numeric AS ttc, NULL::text AS fournisseur
-           FROM stock_labo_pt_daily
-           WHERE labo_id = $1 AND produit_id = $2
-             AND (type_appro IN ('manuel','PT') OR (type_appro IS NULL AND quantite > 0))
+           SELECT slpt.date_appro AS d, slpt.quantite, slpt.prix_unitaire AS prix, COALESCE(slpt.type_appro, 'manuel') AS type,
+                  slpt.ref_facture AS ref, COALESCE(slpt.taux_tva, 0) AS tva,
+                  COALESCE(slpt.prix_unitaire_tva, slpt.prix_unitaire) AS ttc, f.nom AS fournisseur
+           FROM stock_labo_pt_daily slpt
+           LEFT JOIN fournisseurs f ON f.id = slpt.fournisseur_id
+           WHERE slpt.labo_id = $1 AND slpt.produit_id = $2
+             AND (slpt.type_appro IN ('manuel','PT') OR (slpt.type_appro IS NULL AND slpt.quantite > 0))
            UNION ALL
            SELECT lt.date_transfert AS d, -lt.quantite AS quantite, lt.prix_unitaire AS prix, 'transfert' AS type,
                   lt.ref_facture AS ref, lt.taux_tva AS tva, lt.prix_unitaire_tva AS ttc, a.nom AS fournisseur
@@ -1052,10 +1054,10 @@ const getLaboStockHistory = async (req, res) => {
            LEFT JOIN activites a ON a.id = lt.activite_id
            WHERE lt.labo_id = $1 AND lt.produit_id = $2
            UNION ALL
-           SELECT date_perte AS d, -quantite AS quantite, NULL::numeric AS prix, 'perte' AS type,
-                  NULL::text AS ref, NULL::numeric AS tva, NULL::numeric AS ttc, NULL::text AS fournisseur
-           FROM labo_pertes
-           WHERE labo_id = $1 AND produit_id = $2
+           SELECT lp.date_perte AS d, -lp.quantite AS quantite, lp.prix_unitaire AS prix, 'perte' AS type,
+                  NULL::text AS ref, NULL::numeric AS tva, lp.prix_unitaire_tva AS ttc, NULL::text AS fournisseur
+           FROM labo_pertes lp
+           WHERE lp.labo_id = $1 AND lp.produit_id = $2
          ) h
          ORDER BY d DESC, type LIMIT 15`,
         [laboId, produitId]
@@ -1399,6 +1401,7 @@ const getTransferHistory = async (req, res) => {
     if (isPTQuery) {
       result = await pool.query(
         `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
+                lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
                 p.id as produit_id, p.nom as produit_nom,
                 a.id as activite_id, a.nom as activite_nom
          FROM labo_transfers lt
@@ -1415,6 +1418,10 @@ const getTransferHistory = async (req, res) => {
         note: r.note,
         refFacture: r.ref_facture,
         createdAt: r.created_at,
+        // Prix de cession du transfert (PT : TVA 0 → HT = TTC)
+        prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
+        tauxTva: r.taux_tva != null ? parseFloat(r.taux_tva) : null,
+        prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
         ingredientId: -(r.produit_id),
         ingredientNom: r.produit_nom,
         uniteNom: 'unité',
