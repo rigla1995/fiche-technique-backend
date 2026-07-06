@@ -351,14 +351,22 @@ const getStockPTHistory = async (req, res) => {
       // Mouvements de stock PT (gestion de stock) : production/consommation/transfert/vente
       // (stock_produits_transformes) + pertes (table séparée). type_appro pour la colonne TYPE ;
       // repli sur le signe pour les lignes legacy (négatif = vente, positif = transfert/réception).
+      // Traçabilité (migr 138/140) : HT, TVA, TTC, fournisseur (AUTO ou labo) et réf par ligne.
       result = await pool.query(
         `SELECT * FROM (
            SELECT spt.date_appro AS d, spt.quantite, spt.prix_calcule AS prix,
+                  COALESCE(spt.prix_unitaire, spt.prix_calcule) AS prix_ht,
+                  COALESCE(spt.taux_tva, 0) AS taux_tva,
+                  spt.ref_facture, f.nom AS fournisseur_nom,
                   COALESCE(spt.type_appro, CASE WHEN spt.quantite < 0 THEN 'vente' ELSE 'transfert' END) AS type
            FROM stock_produits_transformes spt
+           LEFT JOIN fournisseurs f ON f.id = spt.fournisseur_id
            WHERE spt.produit_id = $1 AND spt.activite_id = $2
            UNION ALL
-           SELECT p.date_perte AS d, -p.quantite AS quantite, NULL::numeric AS prix, 'perte' AS type
+           SELECT p.date_perte AS d, -p.quantite AS quantite, p.prix_unitaire_tva AS prix,
+                  p.prix_unitaire AS prix_ht, NULL::numeric AS taux_tva,
+                  NULL::varchar AS ref_facture, NULL::varchar AS fournisseur_nom,
+                  'perte' AS type
            FROM pertes p
            WHERE p.produit_id = $1 AND p.activite_id = $2
          ) h
@@ -368,8 +376,12 @@ const getStockPTHistory = async (req, res) => {
     } else {
       result = await pool.query(
         `SELECT spt.date_appro AS d, spt.quantite, spt.prix_calcule AS prix,
+                COALESCE(spt.prix_unitaire, spt.prix_calcule) AS prix_ht,
+                COALESCE(spt.taux_tva, 0) AS taux_tva,
+                spt.ref_facture, f.nom AS fournisseur_nom,
                 COALESCE(spt.type_appro, CASE WHEN spt.quantite < 0 THEN 'vente' ELSE 'manuel' END) AS type
          FROM stock_produits_transformes spt
+         LEFT JOIN fournisseurs f ON f.id = spt.fournisseur_id
          WHERE spt.produit_id = $1 AND spt.client_id = $2
          ORDER BY spt.date_appro DESC`,
         [produitId, userId]
@@ -380,7 +392,12 @@ const getStockPTHistory = async (req, res) => {
       dateAppro: r.d,
       quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
       prixCalcule: r.prix !== null ? parseFloat(r.prix) : null,
-      prixUnitaire: r.prix !== null ? parseFloat(r.prix) : null,
+      // Prix HT (repli TTC : TVA 0 pour un PT → HT = TTC) + TTC + taux pour l'affichage
+      prixUnitaire: r.prix_ht !== null ? parseFloat(r.prix_ht) : (r.prix !== null ? parseFloat(r.prix) : null),
+      prixUnitaireTva: r.prix !== null ? parseFloat(r.prix) : null,
+      tauxTva: r.taux_tva !== null ? parseFloat(r.taux_tva) : null,
+      refFacture: r.ref_facture || null,
+      fournisseurNom: r.fournisseur_nom || null,
       typeAppro: r.type,
     })));
   } catch (err) {
