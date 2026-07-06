@@ -45,25 +45,6 @@ const ai = require('../controllers/aiAssistantController');
  *       200:
  *         description: Config mise à jour
  *
- * /api/ai-assistant/config/{clientId}/invite:
- *   post:
- *     tags: [Agent IA]
- *     summary: Générer un lien d'invitation pour l'agent IA web (super_admin)
- *     parameters:
- *       - in: path
- *         name: clientId
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Lien d'invitation généré
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 inviteUrl: { type: string }
- *
  * /api/ai-assistant/config/{clientId}/messenger-invite:
  *   post:
  *     tags: [Agent IA]
@@ -168,7 +149,6 @@ const ai = require('../controllers/aiAssistantController');
  */
 router.get('/config/:clientId', authenticate, requireSuperAdmin, ai.getAiConfig);
 router.put('/config/:clientId', authenticate, requireSuperAdmin, ai.setAiConfig);
-router.post('/config/:clientId/invite', authenticate, requireSuperAdmin, ai.generateInviteLink);
 router.post('/config/:clientId/messenger-invite', authenticate, requireSuperAdmin, ai.generateMessengerInviteLink);
 router.get('/agents', authenticate, requireSuperAdmin, ai.getActiveAgents);
 router.get('/status', authenticate, ai.getClientStatus);

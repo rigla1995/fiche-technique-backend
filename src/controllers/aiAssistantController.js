@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const pool = require('../config/database');
-const { getBotUsername, sendWelcomeMessage } = require('../services/telegramService');
-const { sendAiAgentInviteEmail, sendMessengerInviteEmail } = require('../services/emailService');
+const { sendMessengerInviteEmail } = require('../services/emailService');
 const { buildClientConfigSnapshot } = require('../services/clientConfigService');
 
 // ── Admin: get AI config for a client ────────────────────────────────────────
@@ -10,19 +9,14 @@ const getAiConfig = async (req, res) => {
   try {
     const { clientId } = req.params;
     const result = await pool.query(
-      `SELECT client_id, enabled, whatsapp_number, telegram_chat_id,
-              invite_token, messenger_psid, messenger_invite_token, report_email, confidence_threshold
+      `SELECT client_id, enabled, messenger_psid, messenger_invite_token, report_email, confidence_threshold
        FROM ai_assistant_config WHERE client_id = $1`,
       [clientId]
     );
     if (result.rows.length === 0) {
-      return res.json({ clientId: parseInt(clientId), enabled: false, telegramLinked: false, messengerLinked: false, confidenceThreshold: 0.75 });
+      return res.json({ clientId: parseInt(clientId), enabled: false, messengerLinked: false, confidenceThreshold: 0.75 });
     }
     const r = result.rows[0];
-    const botUser = getBotUsername();
-    const telegramInviteLink = r.invite_token && botUser
-      ? `https://t.me/${botUser}?start=${r.invite_token}`
-      : null;
     const messengerPageUsername = process.env.MESSENGER_PAGE_USERNAME;
     const messengerInviteLink = r.messenger_invite_token && messengerPageUsername
       ? `https://m.me/${messengerPageUsername}?ref=${r.messenger_invite_token}`
@@ -30,9 +24,6 @@ const getAiConfig = async (req, res) => {
     res.json({
       clientId: r.client_id,
       enabled: r.enabled,
-      telegramLinked: !!r.telegram_chat_id,
-      telegramChatId: r.telegram_chat_id,
-      inviteLink: telegramInviteLink,
       messengerLinked: !!r.messenger_psid,
       messengerPsid: r.messenger_psid,
       messengerInviteLink,
@@ -56,28 +47,17 @@ const setAiConfig = async (req, res) => {
 
     const threshold = Math.min(1, Math.max(0, parseFloat(confidenceThreshold) || 0.75));
 
-    // Check existing state
     const existing = await pool.query(
-      'SELECT enabled, telegram_chat_id, invite_token FROM ai_assistant_config WHERE client_id = $1',
+      'SELECT enabled, messenger_psid, messenger_invite_token FROM ai_assistant_config WHERE client_id = $1',
       [clientId]
     );
-    const wasDisabled = !existing.rows[0]?.enabled;
-    const hasChatId = !!existing.rows[0]?.telegram_chat_id;
-
-    // Generate new invite token if enabling and not yet linked
-    let inviteToken = existing.rows[0]?.invite_token || null;
-    if (enabled && !hasChatId) {
-      inviteToken = crypto.randomBytes(24).toString('hex');
-    }
 
     await pool.query(
-      `INSERT INTO ai_assistant_config (client_id, enabled, confidence_threshold, invite_token, updated_at)
-       VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO ai_assistant_config (client_id, enabled, confidence_threshold, updated_at)
+       VALUES ($1, $2, $3, NOW())
        ON CONFLICT (client_id) DO UPDATE
-         SET enabled = $2, confidence_threshold = $3,
-             invite_token = COALESCE(EXCLUDED.invite_token, ai_assistant_config.invite_token),
-             updated_at = NOW()`,
-      [clientId, enabled, threshold, inviteToken]
+         SET enabled = $2, confidence_threshold = $3, updated_at = NOW()`,
+      [clientId, enabled, threshold]
     );
 
     // Précharge/rafraîchit le snapshot de config statique de l'agent à l'activation
@@ -85,89 +65,18 @@ const setAiConfig = async (req, res) => {
       buildClientConfigSnapshot(clientId).catch(e => console.warn('[AI] Préchargement config agent échoué:', e.message));
     }
 
-    // If re-activating and already linked, send welcome message
-    if (enabled && wasDisabled && hasChatId) {
-      const chatId = existing.rows[0].telegram_chat_id;
-      const clientRow = await pool.query('SELECT nom FROM utilisateurs WHERE id = $1', [clientId]);
-      const nom = clientRow.rows[0]?.nom || 'Client';
-      try {
-        await sendWelcomeMessage(chatId, nom);
-      } catch (e) {
-        console.warn('[AI] Welcome message error:', e.message);
-      }
-    }
-
-    const botUser = getBotUsername();
-    const inviteLink = inviteToken && botUser && !hasChatId
-      ? `https://t.me/${botUser}?start=${inviteToken}`
-      : null;
-
     const messengerPageUsername = process.env.MESSENGER_PAGE_USERNAME;
     const messengerInviteLink = existing.rows[0]?.messenger_invite_token && messengerPageUsername && !existing.rows[0]?.messenger_psid
       ? `https://m.me/${messengerPageUsername}?ref=${existing.rows[0].messenger_invite_token}`
       : null;
 
-    // Send invitation email when activating a new (non-linked) agent
-    if (enabled && wasDisabled && !hasChatId && inviteLink) {
-      const clientRow = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
-      const { nom, email } = clientRow.rows[0] || {};
-      if (email) {
-        sendAiAgentInviteEmail({
-          to: email,
-          clientNom: nom || 'Client',
-          inviteLink,
-          appName: process.env.APP_NAME,
-        }).catch(e => console.warn('[AI] Invite email error:', e.message));
-      }
-    }
-
     res.json({
       clientId: parseInt(clientId),
       enabled,
-      telegramLinked: hasChatId,
-      inviteLink,
       messengerLinked: !!existing.rows[0]?.messenger_psid,
       messengerInviteLink,
       confidenceThreshold: threshold,
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
-// ── Admin: generate fresh invite link ────────────────────────────────────────
-
-const generateInviteLink = async (req, res) => {
-  try {
-    const { clientId } = req.params;
-    const inviteToken = crypto.randomBytes(24).toString('hex');
-
-    await pool.query(
-      `INSERT INTO ai_assistant_config (client_id, enabled, invite_token, updated_at)
-       VALUES ($1, false, $2, NOW())
-       ON CONFLICT (client_id) DO UPDATE SET invite_token = $2, telegram_chat_id = NULL, updated_at = NOW()`,
-      [clientId, inviteToken]
-    );
-
-    const botUser = getBotUsername();
-    if (!botUser) return res.status(503).json({ message: 'Bot Telegram non connecté — vérifiez TELEGRAM_BOT_TOKEN' });
-
-    const inviteLink = `https://t.me/${botUser}?start=${inviteToken}`;
-
-    // Send new invite link by email
-    const clientRow = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [clientId]);
-    const { nom, email } = clientRow.rows[0] || {};
-    if (email) {
-      sendAiAgentInviteEmail({
-        to: email,
-        clientNom: nom || 'Client',
-        inviteLink,
-        appName: process.env.APP_NAME,
-      }).catch(e => console.warn('[AI] Invite email error:', e.message));
-    }
-
-    res.json({ inviteLink });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -228,8 +137,6 @@ const getActiveAgents = async (req, res) => {
       `SELECT
          aic.client_id,
          aic.enabled,
-         aic.telegram_chat_id,
-         aic.invite_token,
          aic.messenger_psid,
          aic.messenger_invite_token,
          aic.report_email,
@@ -277,7 +184,6 @@ const getActiveAgents = async (req, res) => {
        ORDER BY aic.enabled DESC, stats.last_activity DESC NULLS LAST`
     );
 
-    const botUser = getBotUsername();
     const messengerPageUsername = process.env.MESSENGER_PAGE_USERNAME;
     const agents = result.rows.map(r => ({
       clientId: r.client_id,
@@ -285,7 +191,6 @@ const getActiveAgents = async (req, res) => {
       clientEmail: r.email,
       reportEmail: r.report_email || null,
       enabled: r.enabled,
-      telegramLinked: !!r.telegram_chat_id,
       messengerLinked: !!r.messenger_psid,
       messageCount: parseInt(r.message_count),
       lastActivity: r.last_activity,
@@ -293,9 +198,6 @@ const getActiveAgents = async (req, res) => {
       avgConfidenceMonth: r.avg_confidence_month != null ? parseFloat(r.avg_confidence_month) : null,
       tokensMonth: parseInt(r.tokens_month) || 0,
       tokensTotal: parseInt(r.tokens_total) || 0,
-      inviteLink: r.invite_token && botUser && !r.telegram_chat_id
-        ? `https://t.me/${botUser}?start=${r.invite_token}`
-        : null,
       messengerInviteLink: r.messenger_invite_token && messengerPageUsername && !r.messenger_psid
         ? `https://m.me/${messengerPageUsername}?ref=${r.messenger_invite_token}`
         : null,
@@ -392,6 +294,6 @@ const clearClientConversation = async (req, res) => {
 };
 
 module.exports = {
-  getAiConfig, setAiConfig, generateInviteLink, generateMessengerInviteLink, getActiveAgents,
+  getAiConfig, setAiConfig, generateMessengerInviteLink, getActiveAgents,
   getClientStatus, getClientConversation, clientChat, clearClientConversation,
 };
