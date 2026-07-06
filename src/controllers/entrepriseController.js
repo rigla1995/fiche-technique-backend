@@ -391,6 +391,14 @@ const toggleActiviteIngredient = async (req, res) => {
 const getActiviteTypesSummary = async (req, res) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
+    // Gérant : mêmes règles de périmètre que listActivites — les drapeaux ne
+    // reflètent que ses activités/labos affectés (pas tout le compte).
+    const isGerant = req.user.role === 'gerant';
+    const actClause = isGerant ? ' AND a.id = ANY($2::int[])' : '';
+    const laboClause = isGerant ? ' AND l.id = ANY($2::int[])' : '';
+    const scoped = (ids) => (isGerant ? [clientId, (ids && ids.length) ? ids : [-1]] : [clientId]);
+    const actParams = scoped(req.user.gerantActiviteIds);
+    const laboParams = scoped(req.user.gerantLaboIds);
     const [actResult, approResult, fourn, laboIngResult, artResult] = await Promise.all([
       pool.query(
         `SELECT
@@ -407,36 +415,37 @@ const getActiviteTypesSummary = async (req, res) => {
            FROM activite_ingredient_selections
            GROUP BY activite_id
          ) sel ON sel.activite_id = a.id
-         WHERE pe.client_id = $1`,
-        [clientId]
+         WHERE pe.client_id = $1${actClause}`,
+        actParams
       ),
       pool.query(
         `SELECT EXISTS (
            SELECT 1 FROM stock_entreprise_daily sed
            JOIN activites a ON sed.activite_id = a.id
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-           WHERE pe.client_id = $1
+           WHERE pe.client_id = $1${actClause}
          ) AS has_appro`,
-        [clientId]
+        actParams
       ),
       pool.query(
         `SELECT EXISTS (
            SELECT 1 FROM fournisseur_activites fa
            JOIN activites a ON fa.activite_id = a.id
            JOIN profil_entreprise pe ON a.entreprise_id = pe.id
-           WHERE pe.client_id = $1
+           WHERE pe.client_id = $1${actClause}
          ) AS has_fournisseurs`,
-        [clientId]
+        actParams
       ),
       pool.query(
         `SELECT EXISTS (
            SELECT 1 FROM labo_ingredient_selections lis
            JOIN labos l ON l.id = lis.labo_id
            JOIN profil_entreprise pe ON l.entreprise_id = pe.id
-           WHERE pe.client_id = $1
+           WHERE pe.client_id = $1${laboClause}
          ) AS has_labo_ingredients`,
-        [clientId]
+        laboParams
       ),
+      // Le référentiel d'articles est commun au compte : pas de périmètre gérant.
       pool.query(
         `SELECT EXISTS (SELECT 1 FROM articles WHERE client_id = $1) AS has_articles`,
         [clientId]
