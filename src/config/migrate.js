@@ -115,6 +115,10 @@ async function migrate() {
         key: '137_backfill_pt_activite_ttc.js',
         run: () => require('../../scripts/backfill-pt-activite-ttc').run(),
       },
+      {
+        key: '141_backfill_pt_refs_fournisseur.js',
+        run: () => require('../../scripts/backfill-pt-refs-fournisseur').run(),
+      },
     ];
     for (const bf of jsBackfills) {
       if (appliedSet.has(bf.key)) {
