@@ -1087,7 +1087,7 @@ const laboVentes = async (req, res) => {
           WHEN lt.produit_id IS NOT NULL THEN 'produit'
         END as article_type,
         CASE WHEN lt.ingredient_id IS NOT NULL THEN u.nom ELSE NULL END as unite_nom,
-        CASE WHEN lt.ingredient_id IS NOT NULL THEN COALESCE(cat.nom, 'Sans catégorie') ELSE 'Produits Transformés' END as categorie_nom,
+        CASE WHEN lt.ingredient_id IS NOT NULL THEN COALESCE(cat.nom, 'Sans catégorie') ELSE (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = lt.produit_id) END as categorie_nom,
         COALESCE(lt.quantite * lt.prix_unitaire, 0) as valeur,
         CASE
           WHEN lt.ingredient_id IS NOT NULL THEN (
@@ -1466,7 +1466,7 @@ const exportLaboVentesExcel = async (req, res) => {
         a.nom as activite_nom,
         CASE WHEN lt.ingredient_id IS NOT NULL THEN i.nom WHEN lt.produit_id IS NOT NULL THEN p.nom END as article_nom,
         CASE WHEN lt.ingredient_id IS NOT NULL THEN u.nom ELSE NULL END as unite_nom,
-        CASE WHEN lt.ingredient_id IS NOT NULL THEN COALESCE(cat.nom, 'Sans catégorie') ELSE 'Produits Transformés' END as categorie_nom,
+        CASE WHEN lt.ingredient_id IS NOT NULL THEN COALESCE(cat.nom, 'Sans catégorie') ELSE (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = lt.produit_id) END as categorie_nom,
         COALESCE(lt.quantite * lt.prix_unitaire, 0) as valeur,
         CASE
           WHEN lt.ingredient_id IS NOT NULL THEN (

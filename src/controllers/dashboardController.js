@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { ptCategorie, ptCategorieSql } = require('../utils/stockUtils');
 
 // Bornes du mois en cours par défaut, sinon les valeurs fournies (YYYY-MM-DD).
 const resolvePeriode = (from, to) => {
@@ -440,10 +441,11 @@ const getActivitesDashboard = async (req, res) => {
       stockParCat[r.categorie] = (stockParCat[r.categorie] || 0) + v;
       if (r.seuil_min != null && q <= num(r.seuil_min)) alertes.push({ article: r.article, categorie: r.categorie, quantite: q, seuil: num(r.seuil_min) });
     }
-    // Stock PT — catégorie virtuelle « Produits Transformés » (hors filtre de catégorie article)
+    // Stock PT — catégories virtuelles par sous-type (Utilisables / Vendables / Composés Valorisés),
+    // hors filtre de catégorie article. Une catégorie n'apparaît que si elle a au moins une ligne.
     if (!catId) {
       const stockPtRes = await pool.query(
-        `SELECT p.nom AS article, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min,
+        `SELECT p.nom AS article, p.type, p.origine, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min,
                 SUM(spt.quantite) AS quantite,
                 (SELECT s2.prix_calcule FROM stock_produits_transformes s2
                  WHERE s2.activite_id = spt.activite_id AND s2.produit_id = spt.produit_id
@@ -453,14 +455,15 @@ const getActivitesDashboard = async (req, res) => {
          JOIN produits p ON p.id = spt.produit_id
          LEFT JOIN produit_activite_stock pas ON pas.produit_id = spt.produit_id AND pas.activite_id = spt.activite_id
          WHERE spt.activite_id = ANY($1::int[])
-         GROUP BY spt.activite_id, spt.produit_id, p.nom, p.seuil_min_pt, pas.seuil_min`,
+         GROUP BY spt.activite_id, spt.produit_id, p.nom, p.type, p.origine, p.seuil_min_pt, pas.seuil_min`,
         [actIds]
       );
       for (const r of stockPtRes.rows) {
         const q = num(r.quantite); const v = q * num(r.prix);
+        const cat = ptCategorie(r.type, r.origine);
         valeurStock += v;
-        stockParCat['Produits Transformés'] = (stockParCat['Produits Transformés'] || 0) + v;
-        if (r.seuil_min != null && q <= num(r.seuil_min)) alertes.push({ article: r.article, categorie: 'Produits Transformés', quantite: q, seuil: num(r.seuil_min) });
+        stockParCat[cat] = (stockParCat[cat] || 0) + v;
+        if (r.seuil_min != null && q <= num(r.seuil_min)) alertes.push({ article: r.article, categorie: cat, quantite: q, seuil: num(r.seuil_min) });
       }
     }
 
@@ -474,17 +477,21 @@ const getActivitesDashboard = async (req, res) => {
        GROUP BY 1 ORDER BY valeur DESC`,
       [actIds, from, to]
     );
-    // Appros PT (productions + réceptions de transfert, lignes positives valorisées TTC)
+    // Appros PT (productions + réceptions de transfert, lignes positives valorisées TTC),
+    // ventilées par catégorie virtuelle de PT.
     if (!catId) {
       const approPtRes = await pool.query(
-        `SELECT COALESCE(SUM(spt.quantite * COALESCE(spt.prix_calcule, 0)),0) AS valeur, COUNT(*) AS nb
+        `SELECT ${ptCategorieSql('p')} AS categorie,
+                COALESCE(SUM(spt.quantite * COALESCE(spt.prix_calcule, 0)),0) AS valeur, COUNT(*) AS nb
          FROM stock_produits_transformes spt
+         JOIN produits p ON p.id = spt.produit_id
          WHERE spt.activite_id = ANY($1::int[]) AND spt.date_appro >= $2 AND spt.date_appro <= $3
-           AND spt.quantite > 0`,
+           AND spt.quantite > 0
+         GROUP BY 1`,
         [actIds, from, to]
       );
-      if (num(approPtRes.rows[0].valeur) > 0) {
-        approRes.rows.push({ categorie: 'Produits Transformés', valeur: approPtRes.rows[0].valeur, nb: approPtRes.rows[0].nb });
+      for (const row of approPtRes.rows) {
+        if (num(row.valeur) > 0) approRes.rows.push(row);
       }
     }
     const achats = approRes.rows.reduce((s, r) => s + num(r.valeur), 0);
@@ -492,7 +499,7 @@ const getActivitesDashboard = async (req, res) => {
     // Pertes sur la période : total + par type + par catégorie + top articles
     const pertesRes = await pool.query(
       `SELECT p.type_perte,
-              COALESCE(c.nom, CASE WHEN p.produit_id IS NOT NULL THEN 'Produits Transformés' ELSE 'Sans catégorie' END) AS categorie,
+              COALESCE(c.nom, CASE WHEN p.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = p.produit_id) ELSE 'Sans catégorie' END) AS categorie,
               COALESCE(i.nom, pr.nom) AS article,
               COALESCE(SUM(p.quantite * COALESCE(p.prix_unitaire_tva, p.prix_unitaire,0)),0) AS valeur
        FROM pertes p

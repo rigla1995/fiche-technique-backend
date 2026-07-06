@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { ptCategorie, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
 const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
 const { isoDate, todayStr } = require('../utils/dateUtils');
@@ -89,7 +90,7 @@ const getStockEntreprise = async (req, res) => {
     }
 
     const ptRes = await pool.query(`
-      SELECT p.id as produit_id, p.nom, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min_pt, p.origine,
+      SELECT p.id as produit_id, p.nom, p.type, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min_pt, p.origine,
              last_spt.date_appro   as last_date_appro,
              last_spt.prix_calcule as last_prix_calcule
       FROM produits p
@@ -454,7 +455,7 @@ const getStockEntreprise = async (req, res) => {
         origine: r.origine || 'activite',
         nom: r.nom,
         unite: 'unité',
-        categorie: 'Produits Transformés',
+        categorie: ptCategorie(r.type, r.origine),
         prixUnitaire: ptPrix,
         prixCalcule: ptPrix,
         quantite,
@@ -666,7 +667,7 @@ const getHistoriqueAppro = async (req, res) => {
     if (!scopeGerantActivite(req, res)) return;
     delete req.query.entType;
   }
-  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId, limit, offset } = req.query;
+  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId, ptType, limit, offset } = req.query;
   const parsedLimit = parseInt(limit, 10) || null;
   const parsedOffset = parseInt(offset, 10) || 0;
   const currentYear = new Date().getFullYear();
@@ -752,8 +753,9 @@ const getHistoriqueAppro = async (req, res) => {
         if (startDate) { ptParams.push(startDate); ptWhere += ` AND spt.date_appro >= $${ptParams.length}`; }
         if (endDate) { ptParams.push(endDate); ptWhere += ` AND spt.date_appro <= $${ptParams.length}`; }
         if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND spt.produit_id = $${ptParams.length}`; }
+        if (ptType) ptWhere += ` AND ${ptTypeSql('p', ptType)}`;
         const ptResult = await pool.query(
-          `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at, p.nom as produit_nom, p.id as produit_id,
+          `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at, p.nom as produit_nom, p.id as produit_id, p.type, p.origine,
                   spt.ref_facture, spt.fournisseur_id, f.nom AS fournisseur_nom
            FROM stock_produits_transformes spt
            JOIN produits p ON p.id = spt.produit_id
@@ -776,7 +778,7 @@ const getHistoriqueAppro = async (req, res) => {
           ingredientId: -(spt.produit_id),
           ingredientNom: spt.produit_nom,
           uniteNom: 'unité',
-          categorieNom: 'Produits Transformés',
+          categorieNom: ptCategorie(spt.type, spt.origine),
         }));
         if (ptOnly === 'true') {
           regularRows = ptEntries;
@@ -941,7 +943,7 @@ function mapHistoriqueEntry(r) {
 
 // ─── Export Excel Historique Appro ───────────────────────────────────────────
 const exportHistoriqueExcel = async (req, res) => {
-  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam, ptOnly, ptProduitId } = req.query;
+  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId, startDate, endDate, fournisseurId, refFacture, selectedIds: selectedIdsParam, ptOnly, ptProduitId, ptType } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
   const currentYear = new Date().getFullYear();
   const isEntreprise = !!(activiteId || activiteIdsParam || entType);
@@ -996,6 +998,7 @@ const exportHistoriqueExcel = async (req, res) => {
       const ptParamsEnt = [currentYear, ...activiteIds];
       let ptWhereEnt = `spt.date_appro >= make_date($1::int, 1, 1) AND spt.date_appro < make_date($1::int + 1, 1, 1) AND spt.activite_id IN (${activiteIds.map((_, i) => `$${i + 2}`).join(',')})`;
       if (ptProduitId) { ptParamsEnt.push(ptProduitId); ptWhereEnt += ` AND spt.produit_id = $${ptParamsEnt.length}`; }
+        if (ptType) ptWhereEnt += ` AND ${ptTypeSql('p', ptType)}`;
       if (startDate) { ptParamsEnt.push(startDate); ptWhereEnt += ` AND spt.date_appro >= $${ptParamsEnt.length}`; }
       if (endDate) { ptParamsEnt.push(endDate); ptWhereEnt += ` AND spt.date_appro <= $${ptParamsEnt.length}`; }
       const ptResultEnt = await pool.query(
@@ -1003,7 +1006,7 @@ const exportHistoriqueExcel = async (req, res) => {
                 'produit_transforme' AS type_appro,
                 f.nom AS fournisseur_nom, spt.ref_facture,
                 p.nom AS ingredient_nom,
-                'Produits Transformés' AS categorie_nom,
+                ${ptCategorieSql('p')} AS categorie_nom,
                 'unité' AS unite_nom,
                 spt.taux_tva, spt.prix_calcule AS prix_unitaire_tva, NULL AS created_by_nom
          FROM stock_produits_transformes spt
@@ -1197,7 +1200,7 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
 
 const exportHistoriquePdf = async (req, res) => {
   const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId,
-          startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId } = req.query;
+          startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId, ptType } = req.query;
   const currentYear = new Date().getFullYear();
   const isEntreprise = !!(activiteId || activiteIdsParam || entType);
 
@@ -1248,12 +1251,13 @@ const exportHistoriquePdf = async (req, res) => {
         const ptParamsEnt = [currentYear, ...activiteIds];
         let ptWhereEnt = `spt.date_appro >= make_date($1::int, 1, 1) AND spt.date_appro < make_date($1::int + 1, 1, 1) AND spt.activite_id IN (${activiteIds.map((_, i) => `$${i + 2}`).join(',')})`;
         if (ptProduitId) { ptParamsEnt.push(ptProduitId); ptWhereEnt += ` AND spt.produit_id = $${ptParamsEnt.length}`; }
+        if (ptType) ptWhereEnt += ` AND ${ptTypeSql('p', ptType)}`;
         if (startDate) { ptParamsEnt.push(startDate); ptWhereEnt += ` AND spt.date_appro >= $${ptParamsEnt.length}`; }
         if (endDate) { ptParamsEnt.push(endDate); ptWhereEnt += ` AND spt.date_appro <= $${ptParamsEnt.length}`; }
         const ptResultEnt = await pool.query(
           `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule AS prix_unitaire,
                   'produit_transforme' AS type_appro, f.nom AS fournisseur_nom, spt.ref_facture,
-                  p.nom AS ingredient_nom, 'Produits Transformés' AS categorie_nom, 'unité' AS unite_nom,
+                  p.nom AS ingredient_nom, ${ptCategorieSql('p')} AS categorie_nom, 'unité' AS unite_nom,
                   spt.taux_tva, spt.prix_calcule AS prix_unitaire_tva
            FROM stock_produits_transformes spt JOIN produits p ON p.id = spt.produit_id
            LEFT JOIN fournisseurs f ON f.id = spt.fournisseur_id

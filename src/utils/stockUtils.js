@@ -228,4 +228,33 @@ function buildAutoRef(nom, when) {
   return `${base.toUpperCase()}-${String(year).slice(-2)}`;
 }
 
-module.exports = { computeStockCourant, computeStockPTCourant, buildAutoRef };
+/**
+ * Catégorie virtuelle d'un produit transformé (stocks, historiques, exports, rapports) :
+ *   type 'utilisable'              → « Produits Transformés Utilisables »
+ *   type 'vendable' origine 'labo' → « Produits Composés Valorisés »
+ *   type 'vendable' (activité)     → « Produits Transformés Vendables »
+ * Une catégorie n'apparaît à l'écran que si elle contient au moins un produit
+ * (les regroupements se font sur les lignes réelles).
+ */
+function ptCategorie(type, origine) {
+  if (type === 'utilisable') return 'Produits Transformés Utilisables';
+  return origine === 'labo' ? 'Produits Composés Valorisés' : 'Produits Transformés Vendables';
+}
+
+// Même règle en SQL — `alias` = alias de la table produits dans la requête.
+function ptCategorieSql(alias) {
+  return `CASE WHEN ${alias}.type = 'utilisable' THEN 'Produits Transformés Utilisables' ` +
+         `WHEN ${alias}.origine = 'labo' THEN 'Produits Composés Valorisés' ` +
+         `ELSE 'Produits Transformés Vendables' END`;
+}
+
+// Prédicat SQL du filtre par sous-type de PT (param ptType des historiques/exports) :
+// 'utilisable' | 'vendable' | 'valorise' — sinon pas de restriction.
+function ptTypeSql(alias, ptType) {
+  if (ptType === 'utilisable') return `${alias}.type = 'utilisable'`;
+  if (ptType === 'valorise') return `(${alias}.type = 'vendable' AND ${alias}.origine = 'labo')`;
+  if (ptType === 'vendable') return `(${alias}.type = 'vendable' AND ${alias}.origine <> 'labo')`;
+  return '1=1';
+}
+
+module.exports = { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, ptCategorieSql, ptTypeSql };
