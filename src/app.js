@@ -40,6 +40,7 @@ const ventesRoutes = require('./routes/ventes');
 const referentielRoutes = require('./routes/referentiel');
 const gerantRoutes = require('./routes/gerant');
 const facturesRoutes = require('./routes/factures');
+const manuelRoutes = require('./routes/manuel');
 const { initTelegram } = require('./services/telegramService');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 const { docusealWebhook } = require('./controllers/webhookController');
@@ -106,6 +107,7 @@ app.use('/api', ventesRoutes);
 app.use('/api/referentiel', referentielRoutes);
 app.use('/api/gerant', gerantRoutes);
 app.use('/api/factures', facturesRoutes);
+app.use('/api/manuel', manuelRoutes);
 
 app.use('/api/products', produitsRoutes);
 

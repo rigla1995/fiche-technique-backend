@@ -258,7 +258,21 @@ async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, d
 const normalizeKb = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 async function toolSearchKnowledge(toolInput) {
   const query = (toolInput?.query || '').trim();
-  const { rows } = await pool.query('SELECT titre, contenu, mots_cles FROM ai_knowledge_base WHERE actif = true');
+  // Deux sources : la base de connaissances IA + le manuel d'utilisation (source de vérité,
+  // éditable depuis l'admin). Les fiches du manuel sont préfixées pour citer la source.
+  const [kb, manuel] = await Promise.all([
+    pool.query('SELECT titre, contenu, mots_cles FROM ai_knowledge_base WHERE actif = true'),
+    pool.query('SELECT titre, partie, contenu, mots_cles FROM manuel_sections WHERE actif = true'),
+  ]);
+  const TRUNC = 6000;
+  const rows = [
+    ...kb.rows,
+    ...manuel.rows.map((r) => ({
+      titre: `Manuel — ${r.partie} › ${r.titre}`,
+      contenu: r.contenu.length > TRUNC ? `${r.contenu.slice(0, TRUNC)}…` : r.contenu,
+      mots_cles: r.mots_cles,
+    })),
+  ];
   if (rows.length === 0) return { results: [], note: 'Base de connaissances vide.' };
   const terms = normalizeKb(query).split(/[^a-z0-9]+/).filter((w) => w.length > 2);
   const scored = rows.map((r) => {

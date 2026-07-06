@@ -176,4 +176,12 @@ router.post('/knowledge-base', authenticate, requireSuperAdmin, kbCreate);
 router.put('/knowledge-base/:id', authenticate, requireSuperAdmin, kbUpdate);
 router.delete('/knowledge-base/:id', authenticate, requireSuperAdmin, kbRemove);
 
+// ── Manuel d'utilisation (centre d'aide) ──────────────────────────────────────
+const manuel = require('../controllers/manuelController');
+router.get('/manuel', authenticate, requireSuperAdmin, manuel.adminList);
+router.post('/manuel', authenticate, requireSuperAdmin, manuel.create);
+router.put('/manuel/:id', authenticate, requireSuperAdmin, manuel.update);
+router.post('/manuel/:id/restore', authenticate, requireSuperAdmin, manuel.restore);
+router.delete('/manuel/:id', authenticate, requireSuperAdmin, manuel.remove);
+
 module.exports = router;
