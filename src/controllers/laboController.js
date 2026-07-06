@@ -564,6 +564,8 @@ const getLaboStock = async (req, res) => {
         pertesDepuisInv,
         ptUsageDepuisInv,
         transfertsDepuisInv,
+        // Appros positives (mêmes quantités que la base de coût PMP) pour la ventilation.
+        approDepuisInv: b.hasInv ? (b.approCostPostQty ?? 0) : (b.approCostAllQty ?? 0),
       };
     });
 
@@ -627,7 +629,10 @@ const getLaboStock = async (req, res) => {
          ORDER BY produit_id, date_inventaire DESC, created_at DESC
        ),
        post_appro AS (
-         SELECT slpt.produit_id, SUM(slpt.quantite) as qty
+         -- qty = mouvement net (productions + conso 'PT' + miroirs négatifs de transfert) ;
+         -- pos_qty = entrées positives seules (productions/réceptions) pour la ventilation affichée.
+         SELECT slpt.produit_id, SUM(slpt.quantite) as qty,
+                COALESCE(SUM(slpt.quantite) FILTER (WHERE slpt.quantite > 0), 0) as pos_qty
          FROM stock_labo_pt_daily slpt
          JOIN last_inv li ON li.produit_id = slpt.produit_id AND slpt.date_appro >= li.date_inventaire
          WHERE slpt.labo_id = $1
@@ -640,10 +645,24 @@ const getLaboStock = async (req, res) => {
          WHERE lp.labo_id = $1 AND lp.produit_id IS NOT NULL
          GROUP BY lp.produit_id
        ),
+       post_transfers AS (
+         SELECT lt.produit_id, SUM(lt.quantite) as qty
+         FROM labo_transfers lt
+         JOIN last_inv li ON li.produit_id = lt.produit_id AND lt.date_transfert >= li.date_inventaire
+         WHERE lt.labo_id = $1 AND lt.produit_id IS NOT NULL
+         GROUP BY lt.produit_id
+       ),
        all_appro AS (
-         SELECT produit_id, SUM(quantite) as qty
+         SELECT produit_id, SUM(quantite) as qty,
+                COALESCE(SUM(quantite) FILTER (WHERE quantite > 0), 0) as pos_qty
          FROM stock_labo_pt_daily
          WHERE labo_id = $1
+         GROUP BY produit_id
+       ),
+       all_transfers AS (
+         SELECT produit_id, SUM(quantite) as qty
+         FROM labo_transfers
+         WHERE labo_id = $1 AND produit_id IS NOT NULL
          GROUP BY produit_id
        ),
        all_pertes AS (
@@ -670,18 +689,24 @@ const getLaboStock = async (req, res) => {
               li.quantite_reelle       as inv_qty,
               li.date_inventaire       as inv_date,
               COALESCE(pa.qty, 0)      as post_appro_qty,
+              COALESCE(pa.pos_qty, 0)  as post_pos_appro_qty,
               COALESCE(pp.qty, 0)      as post_pertes_qty,
+              COALESCE(pt.qty, 0)      as post_transfers_qty,
               app.avg_prix             as avg_prix_post,
               COALESCE(aa.qty, 0)      as all_appro_qty,
+              COALESCE(aa.pos_qty, 0)  as all_pos_appro_qty,
               COALESCE(ap.qty, 0)      as all_pertes_qty,
+              COALESCE(atr.qty, 0)     as all_transfers_qty,
               apy.avg_prix             as avg_prix_all
        FROM labo_pt_selections lps
        LEFT JOIN last_inv li        ON li.produit_id  = lps.produit_id
        LEFT JOIN post_appro pa      ON pa.produit_id  = lps.produit_id
        LEFT JOIN post_pertes pp     ON pp.produit_id  = lps.produit_id
+       LEFT JOIN post_transfers pt  ON pt.produit_id  = lps.produit_id
        LEFT JOIN avg_prix_post app  ON app.produit_id = lps.produit_id
        LEFT JOIN all_appro aa      ON aa.produit_id  = lps.produit_id
        LEFT JOIN all_pertes ap     ON ap.produit_id  = lps.produit_id
+       LEFT JOIN all_transfers atr ON atr.produit_id = lps.produit_id
        LEFT JOIN avg_prix_all apy  ON apy.produit_id = lps.produit_id
        WHERE lps.labo_id = $1`,
       [laboId]
@@ -693,10 +718,14 @@ const getLaboStock = async (req, res) => {
         invQty: r.inv_qty !== null ? parseFloat(r.inv_qty) : 0,
         invDate: r.inv_date ? isoDate(r.inv_date) : null,
         postApproQty: parseFloat(r.post_appro_qty) || 0,
+        postPosApproQty: parseFloat(r.post_pos_appro_qty) || 0,
         postPertesQty: parseFloat(r.post_pertes_qty) || 0,
+        postTransfersQty: parseFloat(r.post_transfers_qty) || 0,
         avgPrixPost: r.avg_prix_post !== null ? parseFloat(r.avg_prix_post) : null,
         allApproQty: parseFloat(r.all_appro_qty) || 0,
+        allPosApproQty: parseFloat(r.all_pos_appro_qty) || 0,
         allPertesQty: parseFloat(r.all_pertes_qty) || 0,
+        allTransfersQty: parseFloat(r.all_transfers_qty) || 0,
         avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
       };
     }
@@ -736,6 +765,10 @@ const getLaboStock = async (req, res) => {
         lastInvQty: pb.hasInv ? pb.invQty : null,
         pertesDepuisInv,
         ptUsageDepuisInv: 0,
+        // Ventilation du stock actuel (comme le stock activité) : appros positives,
+        // transferts sortants (affichés en négatif par le front).
+        approDepuisInv: pb.hasInv ? (pb.postPosApproQty ?? 0) : (pb.allPosApproQty ?? 0),
+        transfertsDepuisInv: pb.hasInv ? (pb.postTransfersQty ?? 0) : (pb.allTransfersQty ?? 0),
       };
     });
 
