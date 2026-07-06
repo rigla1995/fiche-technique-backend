@@ -528,10 +528,13 @@ const update = async (req, res) => {
       }
     }
 
-    // Ré-affectation d'un produit labo (édition) : recompose labo_pt_selections + produit_activite_stock
-    // (activités cochées rattachées aux labos choisis). Le stock réel (transferts) n'est pas touché.
-    if ((origine === 'labo' || result.rows[0].origine === 'labo') && laboIds !== undefined) {
-      const cId = req.user.gerant_parent_id || req.user.id;
+    // Ré-affectation (édition) : recomposition symétrique du create selon l'ORIGINE
+    // FINALE du produit (result = ligne mise à jour) — gère aussi la bascule de mode
+    // libres ↔ limités. Le stock réel (appros/transferts) n'est jamais touché.
+    const updated = result.rows[0];
+    const cId = req.user.gerant_parent_id || req.user.id;
+    if (updated.origine === 'labo' && laboIds !== undefined) {
+      // Mode LIMITÉS AUX TRANSFERTS : labos choisis + activités cochées liées à ces labos.
       const ownLabos = await client.query(
         `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id
          WHERE pe.client_id = $1 AND l.id = ANY($2::int[])`,
@@ -551,6 +554,43 @@ const update = async (req, res) => {
            WHERE pe.client_id = $2 AND a.id = ANY($3::int[]) AND a.labo_id = ANY($4::int[])
            ON CONFLICT (produit_id, activite_id) DO NOTHING`,
           [id, cId, activiteIds, ownLaboIds]
+        );
+      }
+    } else if (updated.origine === 'activite' && updated.type !== 'vendable' && activiteIds !== undefined) {
+      // Mode APPROS LIBRES (PU) : activités en stock direct (labo_id NULL) + labos cochés.
+      await client.query('DELETE FROM labo_pt_selections WHERE produit_id = $1', [id]);
+      await client.query('DELETE FROM produit_activite_stock WHERE produit_id = $1', [id]);
+      if (activiteIds.length > 0) {
+        await client.query(
+          `INSERT INTO produit_activite_stock (produit_id, activite_id, labo_id)
+           SELECT $1, a.id, NULL FROM activites a
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE pe.client_id = $2 AND a.id = ANY($3::int[])
+           ON CONFLICT (produit_id, activite_id) DO NOTHING`,
+          [id, cId, activiteIds]
+        );
+      }
+      if (Array.isArray(laboIds) && laboIds.length > 0) {
+        const ownLabos = await client.query(
+          `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id
+           WHERE pe.client_id = $1 AND l.id = ANY($2::int[])`,
+          [cId, laboIds]
+        );
+        for (const { id: laboId } of ownLabos.rows) {
+          await client.query('INSERT INTO labo_pt_selections (labo_id, produit_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [laboId, id]);
+        }
+      }
+    } else if (updated.origine === 'activite' && updated.type === 'vendable' && activiteIds !== undefined) {
+      // Produit VENDABLE : affectation d'affichage aux activités qui le vendent.
+      await client.query('DELETE FROM produit_activite_affectation WHERE produit_id = $1', [id]);
+      if (activiteIds.length > 0) {
+        await client.query(
+          `INSERT INTO produit_activite_affectation (produit_id, activite_id)
+           SELECT $1, a.id FROM activites a
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           WHERE pe.client_id = $2 AND a.id = ANY($3::int[])
+           ON CONFLICT DO NOTHING`,
+          [id, cId, activiteIds]
         );
       }
     }
