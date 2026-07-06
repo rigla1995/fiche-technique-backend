@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { getClientDashboard, getLaboDashboard, getRapportVentes, getActivitesDashboard } = require('../controllers/dashboardController');
+const { getDashboardV2 } = require('../controllers/dashboardV2Controller');
 const { authenticate, requireClient } = require('../middleware/auth');
+
+// GET /api/dashboard/v2?tab=overview|ventes|achats|pertes|labo|filtres
+//   + filtres multi (listes CSV) : activites, labos, canaux, prestataires,
+//     catProduits, typesProduit, catArticles, familles, fournisseurs, typesPerte
+router.get('/v2', authenticate, requireClient, getDashboardV2);
 
 // GET /api/dashboard/client?from=YYYY-MM-DD&to=YYYY-MM-DD&activiteId=
 router.get('/client', authenticate, requireClient, getClientDashboard);
