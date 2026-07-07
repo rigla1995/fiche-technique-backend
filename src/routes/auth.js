@@ -2,7 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
-const { login, register, me, updateProfile, advanceOnboarding, verifyInviteToken, acceptInvite, resendInvite } = require('../controllers/authController');
+const { login, register, me, updateProfile, advanceOnboarding, verifyInviteToken, acceptInvite, resendInvite, forgotPassword, verifyResetToken, resetPassword } = require('../controllers/authController');
 const { authenticate, requireSuperAdmin, requireClient } = require('../middleware/auth');
 const pool = require('../config/database');
 
@@ -157,6 +157,18 @@ router.put('/profile', authenticate, [
 router.get('/invite/:token', verifyInviteToken);
 router.post('/invite/accept', acceptInvite);
 router.post('/invite/resend/:userId', authenticate, requireSuperAdmin, resendInvite);
+
+// Mot de passe oublié (routes publiques, limitées — la demande envoie un email).
+const forgotLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { message: 'Trop de demandes de réinitialisation, réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.post('/forgot-password', forgotLimiter, forgotPassword);
+router.get('/reset/:token', verifyResetToken);
+router.post('/reset', resetPassword);
 
 /**
  * @openapi
