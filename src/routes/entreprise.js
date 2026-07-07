@@ -6,7 +6,6 @@ const {
   hasActivites, getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,
   getActiviteSelectedIngredients, getTypeSelectedIngredients,
-  getCatalogueGlobalIngredients,
   getActivitesArticlesConsommables,
 } = require('../controllers/entrepriseController');
 const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur } = require('../controllers/fournisseurController');
@@ -77,46 +76,6 @@ router.get('/activites/types-summary', authenticate, requireEntreprise, getActiv
 router.get('/activites/selected-ingredients', authenticate, requireEntreprise, getTypeSelectedIngredients);
 // Articles consommables affectés à TOUTES les activités fournies (?activiteIds=1,2) — intersection. Refonte Espace Produits.
 router.get('/activites/articles-consommables', authenticate, requireEntreprise, getActivitesArticlesConsommables);
-
-/**
- * @openapi
- * /api/entreprise/catalogue-global-ingredients:
- *   get:
- *     tags: [Entreprise]
- *     summary: Récupérer le catalogue global d'ingrédients avec filtrage par domaine
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: domaineId
- *         schema:
- *           type: integer
- *         description: Filtrer par domaine
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Recherche textuelle
- *     responses:
- *       200:
- *         description: Liste d'ingrédients du catalogue
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   nom:
- *                     type: string
- *                   unite:
- *                     type: string
- *       401:
- *         description: Non authentifié
- */
-router.get('/catalogue-global-ingredients', authenticate, requireEntreprise, getCatalogueGlobalIngredients);
 
 /**
  * @openapi
