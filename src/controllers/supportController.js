@@ -254,8 +254,6 @@ const listAll = async (req, res) => {
 const traiter = async (req, res) => {
   const { id } = req.params;
   const { statut, notesAdmin } = req.body;
-  // Admin-editable overrides for ingredient requests
-  const { domaineId: adminDomaineId, domaineIds: adminDomaineIds, categorieNom: adminCategorieNom, uniteNom: adminUniteNom, nomIngredient: adminNomIngredient } = req.body;
 
   if (!['validée', 'refusée'].includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
 
@@ -293,48 +291,9 @@ const traiter = async (req, res) => {
     pushTo(demande.client_id, 'demande_traitee', traiteePayload);
     saveNotification(demande.client_id, traiteePayload).catch(console.error);
 
-    // Auto-create ingredient in global catalogue when ingredient request is validated
-    if (statut === 'validée' && demande.type === 'ingredient_manquant' && (adminNomIngredient || demande.nom_ingredient)) {
-      const finalDomaineIds = Array.isArray(adminDomaineIds) && adminDomaineIds.length > 0
-        ? adminDomaineIds.map(Number).filter(Boolean)
-        : adminDomaineId != null ? [Number(adminDomaineId)]
-        : demande.domaine_id ? [Number(demande.domaine_id)]
-        : [];
-      const finalCategorieNom = adminCategorieNom != null ? adminCategorieNom : demande.categorie_nom;
-      const finalUniteNom = adminUniteNom != null ? adminUniteNom : demande.unite_nom;
-      const finalNomIngredient = adminNomIngredient != null ? adminNomIngredient.trim() : demande.nom_ingredient;
-
-      // Resolve or create unit (global: client_id IS NULL)
-      let uniteId = null;
-      if (finalUniteNom) {
-        const existingUnite = await pool.query(
-          'SELECT id FROM unites WHERE nom = $1 AND client_id IS NULL LIMIT 1',
-          [finalUniteNom]
-        );
-        if (existingUnite.rows.length > 0) {
-          uniteId = existingUnite.rows[0].id;
-        } else {
-          const newUnite = await pool.query(
-            'INSERT INTO unites (nom) VALUES ($1) RETURNING id',
-            [finalUniteNom]
-          );
-          uniteId = newUnite.rows[0].id;
-        }
-      }
-
-      // Resolve or create category
-      let categorieId = null;
-      if (finalCategorieNom) {
-        const catRes = await pool.query(
-          `INSERT INTO categories (nom) VALUES ($1)
-           ON CONFLICT (nom) DO UPDATE SET nom = EXCLUDED.nom RETURNING id`,
-          [finalCategorieNom]
-        );
-        categorieId = catRes.rows[0].id;
-      }
-
-      // Admin no longer creates global articles — each client manages their own referential
-    }
+    // NOTE : plus aucun catalogue commun — chaque client gère son propre référentiel.
+    // La validation d'une demande « ingrédient manquant » ne crée plus rien : l'admin
+    // répond via notes_admin et le client crée l'article dans son référentiel.
 
     // Update abonnement_config when supplement request is validated.
     // Skip if an avenant Docuseal is pending (docuseal_submission_id) : la capacité
