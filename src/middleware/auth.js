@@ -20,7 +20,7 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const result = await pool.query(
       `SELECT u.id, u.nom, u.email, u.role,
-              u.actif,
+              u.actif, u.password_changed_at,
               u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type,
               a.mode_compte
        FROM utilisateurs u
@@ -35,6 +35,15 @@ const authenticate = async (req, res, next) => {
     }
 
     const row = result.rows[0];
+
+    // Un JWT émis avant le dernier changement de mot de passe est révoqué
+    // (iat en secondes ; comparaison stricte pour tolérer un token émis dans la même seconde).
+    const pwdChangedSec = row.password_changed_at
+      ? Math.floor(new Date(row.password_changed_at).getTime() / 1000)
+      : 0;
+    if (decoded.iat && decoded.iat < pwdChangedSec) {
+      return res.status(401).json({ message: 'Session expirée — veuillez vous reconnecter' });
+    }
 
     // Charger les affectations (multi-activités / multi-labos) pour les gérants
     let gerantActiviteIds = [];

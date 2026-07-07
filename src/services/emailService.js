@@ -144,6 +144,60 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
 
 const generateInviteToken = () => crypto.randomBytes(32).toString('hex');
 
+// Mot de passe oublié — même charte que le mail d'activation (en-tête indigo,
+// liseré ambre, CTA dégradé), lien court (1 h) vers /reset-password/<token>.
+const sendPasswordResetEmail = async ({ to, nom, token }) => {
+  const resetUrl = `${APP_URL}/reset-password/${token}`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ${BRAND_LOGO}
+      <p style="margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;">Réinitialisation de votre mot de passe</p>
+    </div>
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour, ${nom}</h2>
+      <p style="margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Une demande de réinitialisation du mot de passe de votre compte <strong>${APP_NAME}</strong> vient d'être effectuée.<br>
+        Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.
+      </p>
+      <div style="text-align:center;margin:0 0 28px;">
+        <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
+          Réinitialiser mon mot de passe
+        </a>
+      </div>
+      <p style="margin:0 0 6px;color:#6b7280;font-size:0.8rem;">⏳ Ce lien est valable <strong>1 heure</strong>.</p>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ${resetUrl}</p>
+    </div>
+    <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email &mdash; votre mot de passe reste inchangé. &mdash; ${APP_NAME}
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV] Password reset email to ${to}: ${resetUrl}`);
+    return { success: true, dev: true, resetUrl };
+  }
+
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `${APP_NAME} — Réinitialisation de votre mot de passe`,
+    html,
+  });
+
+  if (error) throw new Error(error.message);
+  return { success: true, id: data?.id };
+};
+
 const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, type = null }) => {
   // kind ∈ 'contrat' | 'avenant' | 'resiliation' (avenant prioritaire pour rétro-compat)
   const kind = avenant ? 'avenant' : (type || 'contrat');
@@ -559,4 +613,4 @@ const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) 
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail };
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail };
