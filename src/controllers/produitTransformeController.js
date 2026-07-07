@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const { withTransaction } = require('../utils/db');
-const { buildAutoRef } = require('../utils/stockUtils');
+const { buildAutoRef, computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
 
 // ─── toggleStockIngredient ────────────────────────────────────────────────────
 // POST /api/produits/:id/toggle-stock-ingredient
@@ -473,6 +473,10 @@ const saveStockPT = async (req, res) => {
   const qty = parseFloat(quantite);
   const actId = activiteId ? parseInt(activiteId) : null;
 
+  if (!Number.isFinite(qty) || qty <= 0) {
+    return res.status(400).json({ message: 'Quantité invalide : elle doit être strictement positive' });
+  }
+
   try {
     // 1. Verify product ownership
     let ownerCheck;
@@ -575,6 +579,44 @@ const saveStockPT = async (req, res) => {
       for (const cp of customPortions) {
         if (cp.sousProduitId != null) customSpMap[cp.sousProduitId] = parseFloat(cp.portionCustom);
         else if (cp.ingredientId != null) customPortionsMap[cp.ingredientId] = parseFloat(cp.portionCustom);
+      }
+    }
+
+    // Garde de stock (alignée sur updateLaboStock côté labo) : la production consomme la
+    // recette — refuser si un article ou un sous-PT n'a pas le stock suffisant dans
+    // l'activité, sinon le stock passerait en négatif (absurde métier).
+    if (actId && ingRows.length > 0) {
+      const stocks = await Promise.all(
+        ingRows.map((ing) => computeStockCourant('activite', actId, ing.ingredient_id))
+      );
+      for (let idx = 0; idx < ingRows.length; idx++) {
+        const ing = ingRows[idx];
+        const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
+        const needed = Math.round(portion * qty * 1000) / 1000;
+        if (needed > stocks[idx]) {
+          return res.status(422).json({
+            message: `Stock insuffisant pour "${ing.nom}" (recette) : disponible ${Math.max(0, stocks[idx])}, nécessaire ${needed}`,
+            disponible: Math.max(0, stocks[idx]),
+            demande: needed,
+          });
+        }
+      }
+    }
+    if (actId && spRows.length > 0) {
+      const stocksSp = await Promise.all(
+        spRows.map((sp) => computeStockPTCourant('activite', actId, sp.sous_produit_id))
+      );
+      for (let idx = 0; idx < spRows.length; idx++) {
+        const sp = spRows[idx];
+        const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
+        const needed = Math.round(portion * qty * 1000) / 1000;
+        if (needed > stocksSp[idx]) {
+          return res.status(422).json({
+            message: `Stock insuffisant pour le sous-produit "${sp.sp_nom}" (recette) : disponible ${Math.max(0, stocksSp[idx])}, nécessaire ${needed}`,
+            disponible: Math.max(0, stocksSp[idx]),
+            demande: needed,
+          });
+        }
       }
     }
 
@@ -700,7 +742,8 @@ const saveStockPT = async (req, res) => {
         // valorisée à la PMP réelle HT ET TTC de l'article (TVA absente ⇒ taux 0, TTC = HT).
         // Le taux écrit est dérivé du ratio TTC/HT pour garder chaque ligne arithmétiquement
         // cohérente (prix_unitaire_tva = prix_unitaire × (1 + taux/100)).
-        // Référence auto par article consommé (règle initiales+YY sur le nom de l'article).
+        // Référence = celle du PT FABRIQUÉ (initiales + YY de son nom) : on identifie d'un
+        // coup d'œil quelle production a consommé l'article.
         for (const ing of ingRows) {
           const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
           const quantiteConsumed = -(portion * qty);
@@ -710,7 +753,7 @@ const saveStockPT = async (req, res) => {
           await client.query(
             `INSERT INTO stock_entreprise_daily (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, fournisseur_id, ref_facture, created_by)
              VALUES ($1, $2, $3, $4, $5, $6, $7, 'PT', $8, $9, $10)`,
-            [actId, ing.ingredient_id, dateAppro, quantiteConsumed, pmpHt, tauxEff, pmpTtc, autoFournisseurId, buildAutoRef(ing.nom, dateAppro), userId]
+            [actId, ing.ingredient_id, dateAppro, quantiteConsumed, pmpHt, tauxEff, pmpTtc, autoFournisseurId, ptRef, userId]
           );
         }
         // Déduction des SOUS-PT de composition (un seul niveau) : ligne négative, prix = coût récursif
@@ -722,7 +765,7 @@ const saveStockPT = async (req, res) => {
           await client.query(
             `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire)
              VALUES ($1, $2, $3, $4, $5, 'PT', $6, $7, 0, $5)`,
-            [sp.sous_produit_id, actId, dateAppro, consumed, spCosts[sp.sous_produit_id] ?? null, autoFournisseurId, buildAutoRef(sp.sp_nom, dateAppro)]
+            [sp.sous_produit_id, actId, dateAppro, consumed, spCosts[sp.sous_produit_id] ?? null, autoFournisseurId, ptRef]
           );
         }
       }

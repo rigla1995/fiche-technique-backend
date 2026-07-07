@@ -933,7 +933,7 @@ const updateLaboStock = async (req, res) => {
           const stockCourant = stocksCourants[idx];
           if (needed > stockCourant) {
             return res.status(422).json({
-              message: `Stock insuffisant pour "${ing.ing_nom}" (recette)`,
+              message: `Stock insuffisant pour "${ing.ing_nom}" (recette) : disponible ${Math.max(0, stockCourant)}, nécessaire ${Math.round(needed * 1000) / 1000}`,
               disponible: Math.max(0, stockCourant),
               demande: needed,
             });
@@ -952,7 +952,7 @@ const updateLaboStock = async (req, res) => {
           const needed = portion * qty;
           if (needed > stocksSp[idx]) {
             return res.status(422).json({
-              message: `Stock insuffisant pour le sous-produit "${sp.sp_nom}" (recette)`,
+              message: `Stock insuffisant pour le sous-produit "${sp.sp_nom}" (recette) : disponible ${Math.max(0, stocksSp[idx])}, nécessaire ${Math.round(needed * 1000) / 1000}`,
               disponible: Math.max(0, stocksSp[idx]),
               demande: needed,
             });
@@ -962,16 +962,18 @@ const updateLaboStock = async (req, res) => {
 
       // Atomic: producing a PT (insert PT row + deduct each recipe ingredient) must be
       // all-or-nothing, else the PT is recorded while ingredients are only partly deducted.
+      // Référence auto du PT FABRIQUÉ (initiales + YY) — portée par la ligne de production
+      // ET par toutes les lignes de consommation, pour identifier la production d'origine.
+      const ptRef = buildAutoRef(produitNom, da);
       await withTransaction(async (client) => {
-        // Traçabilité (migr 138) : fournisseur AUTO + référence auto (initiales + YY)
-        // sur la ligne de production ET les consommations ; TVA 0 pour un PT → TTC = coût.
+        // Traçabilité (migr 138) : fournisseur AUTO ; TVA 0 pour un PT → TTC = coût.
         const autoFournisseurId = await getAutoFournisseurIdForLabo(client, laboId);
 
         // Save PT appro — always insert a new row (multiple rows per day allowed)
         await client.query(
           `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, custom_portions, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, 'manuel', $7, $8, 0, $5, NOW())`,
-          [laboId, produitId, da, qty, finalPrix, customPortionsJson, autoFournisseurId, buildAutoRef(produitNom, da)]
+          [laboId, produitId, da, qty, finalPrix, customPortionsJson, autoFournisseurId, ptRef]
         );
 
         // Deduct recipe ingredients from labo ingredient stock (negative entries),
@@ -987,7 +989,7 @@ const updateLaboStock = async (req, res) => {
             await client.query(
               `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, fournisseur_id, ref_facture, type_appro, updated_at, created_by)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PT', NOW(), $10)`,
-              [laboId, ing.ingredient_id, da, consumed, pmpHt, tauxEff, pmpTtc, autoFournisseurId, buildAutoRef(ing.ing_nom, da), req.user.id]
+              [laboId, ing.ingredient_id, da, consumed, pmpHt, tauxEff, pmpTtc, autoFournisseurId, ptRef, req.user.id]
             );
           }
         }
@@ -1003,7 +1005,7 @@ const updateLaboStock = async (req, res) => {
             await client.query(
               `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at)
                VALUES ($1, $2, $3, $4, $5, 'PT', $6, $7, 0, $5, NOW())`,
-              [laboId, sp.sous_produit_id, da, consumed, spCosts[sp.sous_produit_id] ?? null, autoFournisseurId, buildAutoRef(sp.sp_nom, da)]
+              [laboId, sp.sous_produit_id, da, consumed, spCosts[sp.sous_produit_id] ?? null, autoFournisseurId, ptRef]
             );
           }
         }
