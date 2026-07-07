@@ -587,6 +587,31 @@ const getLaboStock = async (req, res) => {
         ARRAY(SELECT DISTINCT lt2.date_transfert FROM labo_transfers lt2
               WHERE lt2.labo_id = $1 AND lt2.produit_id = p.id
               ORDER BY lt2.date_transfert DESC LIMIT 30) as recent_transfer_dates,
+        -- Prix partiel : au moins un composant de la recette sans prix au labo (article via
+        -- la fenêtre PMP, ou sous-PT sans prix courant). Le front masque alors le prix.
+        (
+          EXISTS (
+            SELECT 1 FROM produit_ingredients pip
+            WHERE pip.produit_id = p.id
+              AND (SELECT SUM(sldp.quantite * sldp.prix_unitaire) / NULLIF(SUM(sldp.quantite), 0)
+                   FROM stock_labo_daily sldp
+                   WHERE sldp.labo_id = $1 AND sldp.ingredient_id = pip.ingredient_id
+                     AND sldp.type_appro = 'manuel' AND sldp.prix_unitaire IS NOT NULL AND sldp.quantite > 0
+                     AND sldp.date_appro >= COALESCE(
+                       (SELECT date_inventaire FROM inventaires WHERE labo_id = $1 AND ingredient_id = pip.ingredient_id ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                       (SELECT MIN(date_appro) FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = pip.ingredient_id AND quantite > 0)
+                     )
+                  ) IS NULL
+          )
+          OR EXISTS (
+            SELECT 1 FROM produit_sous_produits pspp
+            WHERE pspp.produit_id = p.id
+              AND (SELECT slpt3.prix_unitaire FROM stock_labo_pt_daily slpt3
+                    WHERE slpt3.labo_id = $1 AND slpt3.produit_id = pspp.sous_produit_id
+                      AND slpt3.quantite > 0 AND slpt3.prix_unitaire IS NOT NULL
+                    ORDER BY slpt3.date_appro DESC, slpt3.id DESC LIMIT 1) IS NULL
+          )
+        ) as prix_partiel,
         (
           COALESCE((SELECT SUM(pi2.portion * (
              SELECT SUM(sld2.quantite * sld2.prix_unitaire) / NULLIF(SUM(sld2.quantite), 0) FROM stock_labo_daily sld2
@@ -748,6 +773,7 @@ const getLaboStock = async (req, res) => {
         nom: row.nom,
         unite: 'unité',
         categorie: ptCategorie(row.type, row.origine),
+        prixPartiel: row.prix_partiel === true,
         activite: row.activite_nom || null,
         activiteId: row.activite_id ?? null,
         quantite,
@@ -2158,30 +2184,66 @@ const getLaboPTRecipe = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
-    const r = await pool.query(
-      `SELECT pi.ingredient_id, pi.portion AS portion_standard,
-              i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
-              (SELECT sld.prix_unitaire FROM stock_labo_daily sld
-               WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id AND sld.quantite > 0
-               ORDER BY sld.date_appro DESC LIMIT 1) AS last_prix
-       FROM produit_ingredients pi
-       JOIN articles i ON i.id = pi.ingredient_id
-       JOIN unites u ON u.id = i.unite_id
-       LEFT JOIN categories c ON c.id = i.categorie_id
-       WHERE pi.produit_id = $1
-       ORDER BY COALESCE(c.nom,''), i.nom`,
-      [produitId, laboId]
-    );
+    const [r, spR] = await Promise.all([
+      pool.query(
+        `SELECT pi.ingredient_id, pi.portion AS portion_standard,
+                i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
+                (SELECT sld.prix_unitaire FROM stock_labo_daily sld
+                 WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id AND sld.quantite > 0
+                 ORDER BY sld.date_appro DESC LIMIT 1) AS last_prix
+         FROM produit_ingredients pi
+         JOIN articles i ON i.id = pi.ingredient_id
+         JOIN unites u ON u.id = i.unite_id
+         LEFT JOIN categories c ON c.id = i.categorie_id
+         WHERE pi.produit_id = $1
+         ORDER BY COALESCE(c.nom,''), i.nom`,
+        [produitId, laboId]
+      ),
+      // Sous-PT de composition : nécessaires au contrôle de stock dynamique du front
+      // (mêmes chiffres que la garde 422 d'updateLaboStock).
+      pool.query(
+        `SELECT psp.sous_produit_id, psp.portion AS portion_standard, p.nom,
+                (SELECT slpt.prix_unitaire FROM stock_labo_pt_daily slpt
+                  WHERE slpt.labo_id = $2 AND slpt.produit_id = psp.sous_produit_id
+                    AND slpt.quantite > 0 AND slpt.prix_unitaire IS NOT NULL
+                  ORDER BY slpt.date_appro DESC, slpt.id DESC LIMIT 1) AS last_prix
+         FROM produit_sous_produits psp
+         JOIN produits p ON p.id = psp.sous_produit_id
+         WHERE psp.produit_id = $1
+         ORDER BY p.nom`,
+        [produitId, laboId]
+      ),
+    ]);
+    // Stock courant SERVEUR de chaque composant (même calcul que la garde de production).
+    const [stocksArt, stocksSp] = await Promise.all([
+      Promise.all(r.rows.map((row) => computeStockCourant('labo', Number(laboId), row.ingredient_id))),
+      Promise.all(spR.rows.map((row) => computeStockPTCourant('labo', Number(laboId), row.sous_produit_id))),
+    ]);
 
-    res.json(r.rows.map((row) => ({
-      ingredientId: row.ingredient_id,
-      nom: row.nom,
-      unite: row.unite,
-      categorie: row.categorie,
-      categorieId: row.categorie_id,
-      portionStandard: parseFloat(row.portion_standard),
-      lastPrix: row.last_prix != null ? parseFloat(row.last_prix) : null,
-    })));
+    res.json([
+      ...r.rows.map((row, i) => ({
+        type: 'article',
+        ingredientId: row.ingredient_id,
+        nom: row.nom,
+        unite: row.unite,
+        categorie: row.categorie,
+        categorieId: row.categorie_id,
+        portionStandard: parseFloat(row.portion_standard),
+        lastPrix: row.last_prix != null ? parseFloat(row.last_prix) : null,
+        stockCourant: stocksArt[i] ?? 0,
+      })),
+      ...spR.rows.map((row, i) => ({
+        type: 'sous_pt',
+        sousProduitId: row.sous_produit_id,
+        nom: row.nom,
+        unite: 'unité',
+        categorie: 'Sous-produit',
+        categorieId: null,
+        portionStandard: parseFloat(row.portion_standard),
+        lastPrix: row.last_prix != null ? parseFloat(row.last_prix) : null,
+        stockCourant: stocksSp[i] ?? 0,
+      })),
+    ]);
   } catch (err) {
     console.error('[getLaboPTRecipe]', err);
     res.status(500).json({ message: 'Erreur serveur' });
