@@ -88,27 +88,6 @@ const options = {
             seuilMin: { type: 'number', nullable: true },
           },
         },
-        CatalogueIngredient: {
-          type: 'object',
-          properties: {
-            id: { type: 'integer' },
-            nom: { type: 'string' },
-            unite: { type: 'string' },
-            categorie: { type: 'string' },
-            contexts: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  type: { type: 'string', enum: ['activite', 'labo'] },
-                  id: { type: 'integer' },
-                  nom: { type: 'string' },
-                  assigned: { type: 'boolean' },
-                },
-              },
-            },
-          },
-        },
         Fournisseur: {
           type: 'object',
           properties: {
@@ -125,9 +104,9 @@ const options = {
     security: [{ bearerAuth: [] }],
     tags: [
       { name: 'Auth', description: 'Authentification et profil utilisateur' },
-      { name: 'Entreprise', description: 'Profil entreprise et catalogue global' },
+      { name: 'Entreprise', description: 'Profil entreprise et affectations d\'articles' },
       { name: 'Activites', description: 'Gestion des activités entreprise' },
-      { name: 'Ingrédients', description: 'Catalogue global des ingrédients' },
+      { name: 'Ingrédients', description: 'Articles du référentiel client' },
       { name: 'Référentiel', description: 'Unités, catégories, familles, articles, domaines' },
       { name: 'Labo', description: 'Gestion des laboratoires' },
       { name: 'Stock', description: 'Stock par activité et historique appros' },
