@@ -285,6 +285,7 @@ const updateProfile = async (req, res) => {
            email = COALESCE($2, email),
            telephone = COALESCE($3, telephone),
            mot_de_passe = COALESCE($4, mot_de_passe),
+           password_changed_at = CASE WHEN $4::text IS NOT NULL THEN NOW() ELSE password_changed_at END,
            updated_at = NOW()
        WHERE id = $5
        RETURNING id, nom, email, telephone, role`,
@@ -340,7 +341,7 @@ const acceptInvite = async (req, res) => {
     await pool.query(
       `UPDATE utilisateurs
        SET mot_de_passe = $1, invite_token = NULL, invite_token_expires_at = NULL,
-           activated_at = NOW(), onboarding_step = $2, updated_at = NOW()
+           activated_at = NOW(), onboarding_step = $2, password_changed_at = NOW(), updated_at = NOW()
        WHERE id = $3`,
       [hash, newStep, u.id]
     );
@@ -392,15 +393,17 @@ const resendInvite = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
   const email = String(req.body?.email || '').trim();
-  const done = () => res.json({ ok: true });
-  if (!email) return done();
-  try {
+  // Réponse identique ET immédiate quel que soit l'email : sans ça, l'attente de
+  // l'envoi Resend (~centaines de ms) trahirait l'existence du compte (timing).
+  res.json({ ok: true });
+  if (!email) return;
+  (async () => {
     const result = await pool.query(
       `SELECT id, nom, email FROM utilisateurs
        WHERE LOWER(email) = LOWER($1) AND actif = true AND mot_de_passe IS NOT NULL`,
       [email]
     );
-    if (result.rows.length === 0) return done();
+    if (result.rows.length === 0) return;
 
     const u = result.rows[0];
     const token = generateInviteToken();
@@ -410,11 +413,7 @@ const forgotPassword = async (req, res) => {
       [token, expires, u.id]
     );
     await sendPasswordResetEmail({ to: u.email, nom: u.nom, token });
-    return done();
-  } catch (err) {
-    console.error('forgotPassword:', err);
-    return done();
-  }
+  })().catch((err) => console.error('forgotPassword:', err));
 };
 
 const verifyResetToken = async (req, res) => {
@@ -452,7 +451,8 @@ const resetPassword = async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     await pool.query(
       `UPDATE utilisateurs
-       SET mot_de_passe = $1, reset_token = NULL, reset_token_expires_at = NULL, updated_at = NOW()
+       SET mot_de_passe = $1, reset_token = NULL, reset_token_expires_at = NULL,
+           password_changed_at = NOW(), updated_at = NOW()
        WHERE id = $2`,
       [hash, result.rows[0].id]
     );
