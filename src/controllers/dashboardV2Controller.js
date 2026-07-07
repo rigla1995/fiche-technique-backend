@@ -23,9 +23,9 @@ const resolvePeriode = (from, to) => {
   if (from && to) return { from, to };
   const now = new Date();
   const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
   const fmt = (d) => d.toISOString().slice(0, 10);
-  return { from: fmt(first), to: fmt(last) };
+  // Défaut aligné sur le front : du 1er du mois courant à AUJOURD'HUI.
+  return { from: fmt(first), to: fmt(now) };
 };
 
 const daysBetween = (from, to) =>
