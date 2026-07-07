@@ -95,8 +95,11 @@ const getStockEntreprise = async (req, res) => {
              last_spt.prix_calcule as last_prix_calcule,
              -- Prix partiel : au moins un composant de la recette sans prix (article via la
              -- fenêtre PMP de l'activité, ou sous-PT sans prix courant). Le front masque
-             -- alors le prix unitaire (un coût partiel serait trompeur).
+             -- alors le prix unitaire (un coût partiel serait trompeur). Sans objet pour les
+             -- PT d'origine labo : ils sont valorisés à la PMP des transferts reçus.
              (
+               p.origine IS DISTINCT FROM 'labo'
+               AND (
                EXISTS (
                  SELECT 1 FROM produit_ingredients pi
                  WHERE pi.produit_id = p.id
@@ -121,6 +124,7 @@ const getStockEntreprise = async (req, res) => {
                          WHERE spt3.produit_id = psp.sous_produit_id AND spt3.activite_id = $1
                            AND spt3.quantite > 0 AND spt3.prix_calcule IS NOT NULL
                          ORDER BY spt3.date_appro DESC, spt3.id DESC LIMIT 1) IS NULL
+               )
                )
              ) AS prix_partiel
       FROM produits p
@@ -416,6 +420,21 @@ const getStockEntreprise = async (req, res) => {
          WHERE activite_id = $1 AND prix_calcule IS NOT NULL AND quantite > 0
          GROUP BY produit_id
        ),
+       wavg_prix_post AS (
+         -- PMP PONDÉRÉE des réceptions depuis le dernier inventaire : prix affiché des PT
+         -- d'origine labo (reçus uniquement par transfert — pas de coût recette côté activité).
+         SELECT spt.produit_id, SUM(spt.quantite * spt.prix_calcule) / NULLIF(SUM(spt.quantite), 0) as wavg_prix
+         FROM stock_produits_transformes spt
+         JOIN last_inv li ON li.produit_id = spt.produit_id AND spt.date_appro >= li.date_inventaire
+         WHERE spt.activite_id = $1 AND spt.prix_calcule IS NOT NULL AND spt.quantite > 0
+         GROUP BY spt.produit_id
+       ),
+       wavg_prix_all AS (
+         SELECT produit_id, SUM(quantite * prix_calcule) / NULLIF(SUM(quantite), 0) as wavg_prix
+         FROM stock_produits_transformes
+         WHERE activite_id = $1 AND prix_calcule IS NOT NULL AND quantite > 0
+         GROUP BY produit_id
+       ),
        pt_list AS (
          SELECT pas.produit_id FROM produit_activite_stock pas
          WHERE pas.activite_id = $1
@@ -430,7 +449,9 @@ const getStockEntreprise = async (req, res) => {
               COALESCE(aa.qty, 0)       as all_appro_qty,
               COALESCE(av.qty, 0)       as all_vente_qty,
               COALESCE(ap.qty, 0)       as all_pertes_qty,
-              apy.avg_prix              as avg_prix_all
+              apy.avg_prix              as avg_prix_all,
+              wpp.wavg_prix             as wavg_prix_post,
+              wpa.wavg_prix             as wavg_prix_all
        FROM pt_list pl
        LEFT JOIN last_inv li        ON li.produit_id = pl.produit_id
        LEFT JOIN post_appro pa      ON pa.produit_id = pl.produit_id
@@ -440,7 +461,9 @@ const getStockEntreprise = async (req, res) => {
        LEFT JOIN all_appro aa       ON aa.produit_id = pl.produit_id
        LEFT JOIN all_ventes av      ON av.produit_id = pl.produit_id
        LEFT JOIN all_pertes ap      ON ap.produit_id = pl.produit_id
-       LEFT JOIN avg_prix_all apy   ON apy.produit_id = pl.produit_id`,
+       LEFT JOIN avg_prix_all apy   ON apy.produit_id = pl.produit_id
+       LEFT JOIN wavg_prix_post wpp ON wpp.produit_id = pl.produit_id
+       LEFT JOIN wavg_prix_all wpa  ON wpa.produit_id = pl.produit_id`,
       [activiteId]
     );
     const ptBaselineMap = {};
@@ -457,6 +480,8 @@ const getStockEntreprise = async (req, res) => {
         allVenteQty: parseFloat(r.all_vente_qty) || 0,
         allPertesQty: parseFloat(r.all_pertes_qty) || 0,
         avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
+        wavgPrixPost: r.wavg_prix_post !== null ? parseFloat(r.wavg_prix_post) : null,
+        wavgPrixAll: r.wavg_prix_all !== null ? parseFloat(r.wavg_prix_all) : null,
       };
     }
 
@@ -475,7 +500,12 @@ const getStockEntreprise = async (req, res) => {
       const invDate = pb.hasInv && pb.invDate ? String(pb.invDate).slice(0, 10) : null;
       const lastRecepPrice = (r.last_prix_calcule != null && lastRecepDate && (!invDate || lastRecepDate >= invDate))
         ? parseFloat(r.last_prix_calcule) : null;
-      const ptPrix = (lastRecepPrice != null && lastRecepPrice > 0) ? lastRecepPrice : pInfo.prixCalcule;
+      // PT d'origine labo (transfert uniquement) : prix affiché = PMP PONDÉRÉE des
+      // transferts reçus (le coût recette côté activité n'a pas de sens pour eux).
+      const pmpReceptions = pb.hasInv ? (pb.wavgPrixPost ?? pb.wavgPrixAll ?? null) : (pb.wavgPrixAll ?? null);
+      const ptPrix = (r.origine === 'labo' && pmpReceptions != null && pmpReceptions > 0)
+        ? Math.round(pmpReceptions * 1000) / 1000
+        : ((lastRecepPrice != null && lastRecepPrice > 0) ? lastRecepPrice : pInfo.prixCalcule);
       return {
         ingredientId: -(r.produit_id),
         produitId: r.produit_id,
