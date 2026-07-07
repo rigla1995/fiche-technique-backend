@@ -92,7 +92,37 @@ const getStockEntreprise = async (req, res) => {
     const ptRes = await pool.query(`
       SELECT p.id as produit_id, p.nom, p.type, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min_pt, p.origine,
              last_spt.date_appro   as last_date_appro,
-             last_spt.prix_calcule as last_prix_calcule
+             last_spt.prix_calcule as last_prix_calcule,
+             -- Prix partiel : au moins un composant de la recette sans prix (article via la
+             -- fenêtre PMP de l'activité, ou sous-PT sans prix courant). Le front masque
+             -- alors le prix unitaire (un coût partiel serait trompeur).
+             (
+               EXISTS (
+                 SELECT 1 FROM produit_ingredients pi
+                 WHERE pi.produit_id = p.id
+                   AND (SELECT SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0)
+                        FROM stock_entreprise_daily sed
+                        WHERE sed.ingredient_id = pi.ingredient_id AND sed.activite_id = $1
+                          AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
+                          AND sed.type_appro IN ('manuel', 'transfert')
+                          AND sed.date_appro >= COALESCE(
+                            (SELECT date_inventaire FROM inventaires
+                             WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id
+                             ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                            (SELECT MIN(date_appro) FROM stock_entreprise_daily
+                             WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+                          )
+                       ) IS NULL
+               )
+               OR EXISTS (
+                 SELECT 1 FROM produit_sous_produits psp
+                 WHERE psp.produit_id = p.id
+                   AND (SELECT spt3.prix_calcule FROM stock_produits_transformes spt3
+                         WHERE spt3.produit_id = psp.sous_produit_id AND spt3.activite_id = $1
+                           AND spt3.quantite > 0 AND spt3.prix_calcule IS NOT NULL
+                         ORDER BY spt3.date_appro DESC, spt3.id DESC LIMIT 1) IS NULL
+               )
+             ) AS prix_partiel
       FROM produits p
       LEFT JOIN LATERAL (
         -- Dernière réception valorisée (appro/transfert, quantité +) : exclut les consommations de sous-PT (quantité -, prix NULL).
@@ -456,6 +486,7 @@ const getStockEntreprise = async (req, res) => {
         nom: r.nom,
         unite: 'unité',
         categorie: ptCategorie(r.type, r.origine),
+        prixPartiel: r.prix_partiel === true,
         prixUnitaire: ptPrix,
         prixCalcule: ptPrix,
         quantite,

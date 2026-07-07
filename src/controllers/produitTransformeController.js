@@ -287,7 +287,37 @@ const getStockPT = async (req, res) => {
             ORDER BY spt2.date_appro DESC, spt2.id DESC LIMIT 1) AS last_date_appro,
            (SELECT spt2.prix_calcule FROM stock_produits_transformes spt2
             WHERE spt2.produit_id = p.id AND spt2.activite_id = $1 AND spt2.quantite > 0 AND spt2.prix_calcule IS NOT NULL
-            ORDER BY spt2.date_appro DESC, spt2.id DESC LIMIT 1) AS last_prix_calcule
+            ORDER BY spt2.date_appro DESC, spt2.id DESC LIMIT 1) AS last_prix_calcule,
+           -- Prix partiel : au moins un composant de la recette (article via la fenêtre PMP
+           -- de l'activité, ou sous-PT via son dernier prix courant) n'a AUCUN prix.
+           -- Afficher un prix unitaire serait alors trompeur (coût partiel).
+           (
+             EXISTS (
+               SELECT 1 FROM produit_ingredients pi
+               WHERE pi.produit_id = p.id
+                 AND (SELECT SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0)
+                      FROM stock_entreprise_daily sed
+                      WHERE sed.ingredient_id = pi.ingredient_id AND sed.activite_id = $1
+                        AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
+                        AND sed.type_appro IN ('manuel', 'transfert')
+                        AND sed.date_appro >= COALESCE(
+                          (SELECT date_inventaire FROM inventaires
+                           WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id
+                           ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                          (SELECT MIN(date_appro) FROM stock_entreprise_daily
+                           WHERE activite_id = $1 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+                        )
+                     ) IS NULL
+             )
+             OR EXISTS (
+               SELECT 1 FROM produit_sous_produits psp
+               WHERE psp.produit_id = p.id
+                 AND (SELECT spt3.prix_calcule FROM stock_produits_transformes spt3
+                       WHERE spt3.produit_id = psp.sous_produit_id AND spt3.activite_id = $1
+                         AND spt3.quantite > 0 AND spt3.prix_calcule IS NOT NULL
+                       ORDER BY spt3.date_appro DESC, spt3.id DESC LIMIT 1) IS NULL
+             )
+           ) AS prix_partiel
          FROM produits p
          JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
          LEFT JOIN stock_produits_transformes spt ON spt.produit_id = p.id AND spt.activite_id = $1
@@ -325,7 +355,7 @@ const getStockPT = async (req, res) => {
       lastDateAppro: r.last_date_appro ? new Date(r.last_date_appro).toISOString().slice(0, 10) : null,
       lastPrixCalcule: r.last_prix_calcule !== null ? parseFloat(r.last_prix_calcule) : null,
       seuilMin: r.seuil_min !== null ? parseFloat(r.seuil_min) : null,
-      prixPartiel: false, // not stored per-row; returned per-save
+      prixPartiel: r.prix_partiel === true,
     }));
 
     res.json(data);
@@ -415,43 +445,84 @@ const getPTRecipe = async (req, res) => {
 
   try {
     let rows = [];
+    let spRows = [];
+    let stocksArt = [];
+    let stocksSp = [];
     if (actId) {
-      const r = await pool.query(
-        `SELECT pi.ingredient_id, pi.portion AS portion_standard,
-                i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
-                (SELECT SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0)
-                 FROM stock_entreprise_daily sed
-                 WHERE sed.ingredient_id = pi.ingredient_id AND sed.activite_id = $2
-                   AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
-                   AND sed.type_appro IN ('manuel', 'transfert')
-                   AND sed.date_appro >= COALESCE(
-                     (SELECT date_inventaire FROM inventaires
-                      WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id
-                      ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
-                     (SELECT MIN(date_appro) FROM stock_entreprise_daily
-                      WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
-                   )
-                ) AS last_prix
-         FROM produit_ingredients pi
-         JOIN articles i ON i.id = pi.ingredient_id
-         JOIN unites u ON u.id = i.unite_id
-         LEFT JOIN categories c ON c.id = i.categorie_id
-         WHERE pi.produit_id = $1
-         ORDER BY COALESCE(c.nom,''), i.nom`,
-        [produitId, actId]
-      );
+      const [r, spR] = await Promise.all([
+        pool.query(
+          `SELECT pi.ingredient_id, pi.portion AS portion_standard,
+                  i.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, i.categorie_id,
+                  (SELECT SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0)
+                   FROM stock_entreprise_daily sed
+                   WHERE sed.ingredient_id = pi.ingredient_id AND sed.activite_id = $2
+                     AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
+                     AND sed.type_appro IN ('manuel', 'transfert')
+                     AND sed.date_appro >= COALESCE(
+                       (SELECT date_inventaire FROM inventaires
+                        WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id
+                        ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
+                       (SELECT MIN(date_appro) FROM stock_entreprise_daily
+                        WHERE activite_id = $2 AND ingredient_id = pi.ingredient_id AND quantite > 0)
+                     )
+                  ) AS last_prix
+           FROM produit_ingredients pi
+           JOIN articles i ON i.id = pi.ingredient_id
+           JOIN unites u ON u.id = i.unite_id
+           LEFT JOIN categories c ON c.id = i.categorie_id
+           WHERE pi.produit_id = $1
+           ORDER BY COALESCE(c.nom,''), i.nom`,
+          [produitId, actId]
+        ),
+        // Sous-PT de composition : nécessaires au contrôle de stock et au prix — le front
+        // en a besoin pour afficher les manques AVANT d'enregistrer (mêmes chiffres que
+        // la garde 422 de saveStockPT).
+        pool.query(
+          `SELECT psp.sous_produit_id, psp.portion AS portion_standard, p.nom,
+                  (SELECT spt.prix_calcule FROM stock_produits_transformes spt
+                    WHERE spt.produit_id = psp.sous_produit_id AND spt.activite_id = $2
+                      AND spt.quantite > 0 AND spt.prix_calcule IS NOT NULL
+                    ORDER BY spt.date_appro DESC, spt.id DESC LIMIT 1) AS last_prix
+           FROM produit_sous_produits psp
+           JOIN produits p ON p.id = psp.sous_produit_id
+           WHERE psp.produit_id = $1
+           ORDER BY p.nom`,
+          [produitId, actId]
+        ),
+      ]);
       rows = r.rows;
+      spRows = spR.rows;
+      // Stock courant SERVEUR de chaque composant (même calcul que la garde de production).
+      [stocksArt, stocksSp] = await Promise.all([
+        Promise.all(rows.map((row) => computeStockCourant('activite', actId, row.ingredient_id))),
+        Promise.all(spRows.map((row) => computeStockPTCourant('activite', actId, row.sous_produit_id))),
+      ]);
     }
 
-    res.json(rows.map((r) => ({
-      ingredientId: r.ingredient_id,
-      nom: r.nom,
-      unite: r.unite,
-      categorie: r.categorie,
-      categorieId: r.categorie_id,
-      portionStandard: parseFloat(r.portion_standard),
-      lastPrix: r.last_prix != null ? parseFloat(r.last_prix) : null,
-    })));
+    res.json([
+      ...rows.map((r, i) => ({
+        type: 'article',
+        ingredientId: r.ingredient_id,
+        nom: r.nom,
+        unite: r.unite,
+        categorie: r.categorie,
+        categorieId: r.categorie_id,
+        portionStandard: parseFloat(r.portion_standard),
+        lastPrix: r.last_prix != null ? parseFloat(r.last_prix) : null,
+        stockCourant: stocksArt[i] ?? 0,
+      })),
+      ...spRows.map((r, i) => ({
+        type: 'sous_pt',
+        sousProduitId: r.sous_produit_id,
+        nom: r.nom,
+        unite: 'unité',
+        categorie: 'Sous-produit',
+        categorieId: null,
+        portionStandard: parseFloat(r.portion_standard),
+        lastPrix: r.last_prix != null ? parseFloat(r.last_prix) : null,
+        stockCourant: stocksSp[i] ?? 0,
+      })),
+    ]);
   } catch (err) {
     console.error('[getPTRecipe]', err);
     res.status(500).json({ message: 'Erreur serveur' });
