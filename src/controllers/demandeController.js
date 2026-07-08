@@ -20,7 +20,7 @@ const mapDemande = (row) => ({
 // POST /api/demandes — client creates a request
 const create = async (req, res) => {
   const { typeDemande, notes } = req.body;
-  const allowed = ['gerant_sup', 'labo_sup', 'activer_module_vente'];
+  const allowed = ['gerant_sup', 'labo_sup', 'activer_module_vente', 'activer_module_acheteurs'];
   if (!allowed.includes(typeDemande)) return res.status(400).json({ message: 'Type invalide' });
 
   try {
@@ -28,6 +28,7 @@ const create = async (req, res) => {
     if (typeDemande === 'labo_sup') cle = 'labo_sup_mensuel';
     else if (typeDemande === 'gerant_sup') cle = 'gerant_sup_mensuel';
     else if (typeDemande === 'activer_module_vente') cle = 'module_vente';
+    else if (typeDemande === 'activer_module_acheteurs') cle = 'module_acheteurs';
     const tarifRes = cle
       ? await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [cle])
       : { rows: [] };
@@ -120,6 +121,24 @@ const traiter = async (req, res) => {
         `UPDATE profil_entreprise
          SET module_vente_actif = true,
              module_vente_activated_at = COALESCE(module_vente_activated_at, NOW())
+         WHERE client_id = $1`,
+        [demandeur_id]
+      );
+    }
+
+    // Validation d'une demande d'activation du module Acheteurs (même mécanique).
+    // NB : le quota nb_acheteurs reste à régler par l'admin dans la config du compte.
+    if (statut === 'validée' && type_demande === 'activer_module_acheteurs') {
+      await client.query(
+        `INSERT INTO profil_entreprise (client_id, nom, email)
+         SELECT $1, nom, email FROM utilisateurs WHERE id = $1
+         ON CONFLICT (client_id) DO NOTHING`,
+        [demandeur_id]
+      );
+      await client.query(
+        `UPDATE profil_entreprise
+         SET module_acheteurs_actif = true,
+             module_acheteurs_activated_at = COALESCE(module_acheteurs_activated_at, NOW())
          WHERE client_id = $1`,
         [demandeur_id]
       );

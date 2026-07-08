@@ -15,7 +15,7 @@ const BRAND_LOGO = `<img src="${APP_URL}/logo-email.png" alt="LabFlow" width="13
 const sendInviteEmail = async ({ to, nom, token, role }) => {
   const inviteUrl = `${APP_URL}/invite/${token}`;
 
-  const roleLabel = role === 'gerant' ? 'gérant' : 'client';
+  const roleLabel = role === 'gerant' ? 'gérant' : role === 'acheteur' ? 'acheteur' : 'client';
 
   const html = `
 <!DOCTYPE html>

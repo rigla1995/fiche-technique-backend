@@ -46,6 +46,8 @@ const mapEntreprise = (row) => ({
   memeActivite: row.meme_activite,
   module_vente_actif: row.module_vente_actif ?? false,
   module_vente_activated_at: row.module_vente_activated_at ?? null,
+  module_acheteurs_actif: row.module_acheteurs_actif ?? false,
+  module_acheteurs_activated_at: row.module_acheteurs_activated_at ?? null,
   createdAt: row.created_at,
 });
 
