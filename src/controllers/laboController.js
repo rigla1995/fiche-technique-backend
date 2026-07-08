@@ -399,6 +399,22 @@ const getLaboStock = async (req, res) => {
          WHERE labo_id = $1 AND quantite < 0 AND type_appro NOT IN ('manuel', 'transfert')
          GROUP BY ingredient_id
        ),
+       post_ventes_ach AS (
+         -- Ventes aux acheteurs (module Acheteurs) : flux des commandes VALIDÉES
+         SELECT cal.article_id AS ingredient_id, SUM(cal.quantite_unites) as qty
+         FROM commande_acheteur_lignes cal
+         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
+         JOIN last_inv li ON li.ingredient_id = cal.article_id AND ca.date_commande >= li.date_inventaire
+         WHERE ca.labo_id = $1 AND ca.statut = 'validee' AND cal.article_type = 'ingredient'
+         GROUP BY cal.article_id
+       ),
+       all_ventes_ach AS (
+         SELECT cal.article_id AS ingredient_id, SUM(cal.quantite_unites) as qty
+         FROM commande_acheteur_lignes cal
+         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
+         WHERE ca.labo_id = $1 AND ca.statut = 'validee' AND cal.article_type = 'ingredient'
+         GROUP BY cal.article_id
+       ),
        prev_inv AS (
          SELECT ingredient_id, date_inventaire FROM (
            SELECT ingredient_id, date_inventaire,
@@ -459,6 +475,8 @@ const getLaboStock = async (req, res) => {
               COALESCE(atr.qty, 0)          as all_transfer_qty,
               COALESCE(ap.qty, 0)           as all_pertes_qty,
               COALESCE(apu.qty, 0)          as all_pt_usage_qty,
+              COALESCE(pva.qty, 0)          as post_ventes_ach_qty,
+              COALESCE(ava.qty, 0)          as all_ventes_ach_qty,
               COALESCE(aca.qty, 0)          as appro_cost_all_qty,
               COALESCE(aca.cost_ht, 0)      as appro_cost_all_ht,
               COALESCE(aca.cost_tva, 0)     as appro_cost_all_tva
@@ -474,6 +492,8 @@ const getLaboStock = async (req, res) => {
        LEFT JOIN all_transfer atr ON atr.ingredient_id = lis.ingredient_id
        LEFT JOIN all_pertes ap   ON ap.ingredient_id  = lis.ingredient_id
        LEFT JOIN year_pt_usage apu ON apu.ingredient_id = lis.ingredient_id
+       LEFT JOIN post_ventes_ach pva ON pva.ingredient_id = lis.ingredient_id
+       LEFT JOIN all_ventes_ach ava ON ava.ingredient_id = lis.ingredient_id
        LEFT JOIN appro_cost_all aca ON aca.ingredient_id = lis.ingredient_id
        WHERE lis.labo_id = $1`,
       [laboId]
@@ -497,6 +517,8 @@ const getLaboStock = async (req, res) => {
         allTransferQty: parseFloat(r.all_transfer_qty) || 0,
         allPertesQty: parseFloat(r.all_pertes_qty) || 0,
         allPtUsageQty: parseFloat(r.all_pt_usage_qty) || 0,
+        postVentesAchQty: parseFloat(r.post_ventes_ach_qty) || 0,
+        allVentesAchQty: parseFloat(r.all_ventes_ach_qty) || 0,
         approCostAllQty: parseFloat(r.appro_cost_all_qty) || 0,
         approCostAllHT: parseFloat(r.appro_cost_all_ht) || 0,
         approCostAllTTC: parseFloat(r.appro_cost_all_tva) || 0,
@@ -507,8 +529,8 @@ const getLaboStock = async (req, res) => {
       const totalTransfere = parseFloat(row.total_transfere);
       const b = invBaselineMap[row.ingredient_id] || {};
       const quantiteRaw = b.hasInv
-        ? b.invQty + b.postApproQty - b.postTransferQty - b.postPertesQty
-        : b.allApproQty - b.allTransferQty - b.allPertesQty;
+        ? b.invQty + b.postApproQty - b.postTransferQty - b.postPertesQty - b.postVentesAchQty
+        : b.allApproQty - b.allTransferQty - b.allPertesQty - b.allVentesAchQty;
       const quantite = Math.round(quantiteRaw * 1000) / 1000;
       const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
       const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
@@ -564,6 +586,7 @@ const getLaboStock = async (req, res) => {
         pertesDepuisInv,
         ptUsageDepuisInv,
         transfertsDepuisInv,
+        ventesAcheteursDepuisInv: b.hasInv ? (b.postVentesAchQty ?? 0) : (b.allVentesAchQty ?? 0),
         // Appros positives (mêmes quantités que la base de coût PMP) pour la ventilation.
         approDepuisInv: b.hasInv ? (b.approCostPostQty ?? 0) : (b.approCostAllQty ?? 0),
       };
@@ -709,6 +732,22 @@ const getLaboStock = async (req, res) => {
          FROM stock_labo_pt_daily
          WHERE labo_id = $1 AND prix_unitaire IS NOT NULL AND quantite > 0
          GROUP BY produit_id
+       ),
+       post_ventes_ach AS (
+         -- Ventes aux acheteurs (module Acheteurs) : flux des commandes VALIDÉES
+         SELECT cal.article_id AS produit_id, SUM(cal.quantite_unites) as qty
+         FROM commande_acheteur_lignes cal
+         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
+         JOIN last_inv li ON li.produit_id = cal.article_id AND ca.date_commande >= li.date_inventaire
+         WHERE ca.labo_id = $1 AND ca.statut = 'validee' AND cal.article_type = 'produit'
+         GROUP BY cal.article_id
+       ),
+       all_ventes_ach AS (
+         SELECT cal.article_id AS produit_id, SUM(cal.quantite_unites) as qty
+         FROM commande_acheteur_lignes cal
+         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
+         WHERE ca.labo_id = $1 AND ca.statut = 'validee' AND cal.article_type = 'produit'
+         GROUP BY cal.article_id
        )
        SELECT lps.produit_id,
               li.quantite_reelle       as inv_qty,
@@ -722,6 +761,8 @@ const getLaboStock = async (req, res) => {
               COALESCE(aa.pos_qty, 0)  as all_pos_appro_qty,
               COALESCE(ap.qty, 0)      as all_pertes_qty,
               COALESCE(atr.qty, 0)     as all_transfers_qty,
+              COALESCE(pva.qty, 0)     as post_ventes_ach_qty,
+              COALESCE(ava.qty, 0)     as all_ventes_ach_qty,
               apy.avg_prix             as avg_prix_all
        FROM labo_pt_selections lps
        LEFT JOIN last_inv li        ON li.produit_id  = lps.produit_id
@@ -732,6 +773,8 @@ const getLaboStock = async (req, res) => {
        LEFT JOIN all_appro aa      ON aa.produit_id  = lps.produit_id
        LEFT JOIN all_pertes ap     ON ap.produit_id  = lps.produit_id
        LEFT JOIN all_transfers atr ON atr.produit_id = lps.produit_id
+       LEFT JOIN post_ventes_ach pva ON pva.produit_id = lps.produit_id
+       LEFT JOIN all_ventes_ach ava ON ava.produit_id = lps.produit_id
        LEFT JOIN avg_prix_all apy  ON apy.produit_id = lps.produit_id
        WHERE lps.labo_id = $1`,
       [laboId]
@@ -751,6 +794,8 @@ const getLaboStock = async (req, res) => {
         allPosApproQty: parseFloat(r.all_pos_appro_qty) || 0,
         allPertesQty: parseFloat(r.all_pertes_qty) || 0,
         allTransfersQty: parseFloat(r.all_transfers_qty) || 0,
+        postVentesAchQty: parseFloat(r.post_ventes_ach_qty) || 0,
+        allVentesAchQty: parseFloat(r.all_ventes_ach_qty) || 0,
         avgPrixAll: r.avg_prix_all !== null ? parseFloat(r.avg_prix_all) : null,
       };
     }
@@ -760,8 +805,8 @@ const getLaboStock = async (req, res) => {
       const prixUnitaire = row.prix_unitaire !== null ? parseFloat(row.prix_unitaire) : (prixCalcule && prixCalcule > 0 ? prixCalcule : null);
       const pb = ptBaselineMap[row.produit_id] || {};
       const quantite = pb.hasInv
-        ? pb.invQty + pb.postApproQty - pb.postPertesQty
-        : pb.allApproQty - pb.allPertesQty;
+        ? pb.invQty + pb.postApproQty - pb.postPertesQty - pb.postVentesAchQty
+        : pb.allApproQty - pb.allPertesQty - pb.allVentesAchQty;
       const avgPrix = pb.hasInv ? (pb.avgPrixPost ?? pb.avgPrixAll ?? null) : (pb.avgPrixAll ?? null);
       const pertesDepuisInv = pb.hasInv ? pb.postPertesQty : pb.allPertesQty;
       return {
@@ -795,6 +840,7 @@ const getLaboStock = async (req, res) => {
         // transferts sortants (affichés en négatif par le front).
         approDepuisInv: pb.hasInv ? (pb.postPosApproQty ?? 0) : (pb.allPosApproQty ?? 0),
         transfertsDepuisInv: pb.hasInv ? (pb.postTransfersQty ?? 0) : (pb.allTransfersQty ?? 0),
+        ventesAcheteursDepuisInv: pb.hasInv ? (pb.postVentesAchQty ?? 0) : (pb.allVentesAchQty ?? 0),
       };
     });
 
@@ -1119,6 +1165,15 @@ const getLaboStockHistory = async (req, res) => {
                   NULL::text AS ref, NULL::numeric AS tva, lp.prix_unitaire_tva AS ttc, NULL::text AS fournisseur
            FROM labo_pertes lp
            WHERE lp.labo_id = $1 AND lp.produit_id = $2
+           UNION ALL
+           SELECT ca.date_commande AS d, -cal.quantite_unites AS quantite, cal.cout_unitaire_ttc AS prix, 'vente' AS type,
+                  fa.numero AS ref, cal.taux_tva AS tva, cal.cout_unitaire_ttc AS ttc, ach.nom AS fournisseur
+           FROM commande_acheteur_lignes cal
+           JOIN commandes_acheteur ca ON ca.id = cal.commande_id
+           JOIN acheteurs ach ON ach.id = ca.acheteur_id
+           LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
+           WHERE ca.labo_id = $1 AND ca.statut = 'validee'
+             AND cal.article_type = 'produit' AND cal.article_id = $2
          ) h
          ORDER BY d DESC, type LIMIT 15`,
         [laboId, produitId]
@@ -1136,12 +1191,25 @@ const getLaboStockHistory = async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT sld.date_appro, sld.quantite, sld.prix_unitaire, sld.ref_facture,
-              sld.type_appro, f.nom as fournisseur_nom, sld.taux_tva, sld.prix_unitaire_tva
-       FROM stock_labo_daily sld
-       LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
-       WHERE sld.labo_id = $1 AND sld.ingredient_id = $2
-       ORDER BY sld.date_appro DESC LIMIT 10`,
+      `SELECT * FROM (
+         SELECT sld.date_appro, sld.quantite, sld.prix_unitaire, sld.ref_facture,
+                sld.type_appro, f.nom as fournisseur_nom, sld.taux_tva, sld.prix_unitaire_tva
+         FROM stock_labo_daily sld
+         LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
+         WHERE sld.labo_id = $1 AND sld.ingredient_id = $2
+         UNION ALL
+         SELECT ca.date_commande AS date_appro, -cal.quantite_unites AS quantite,
+                cal.cout_unitaire_ttc AS prix_unitaire, fa.numero AS ref_facture,
+                'vente' AS type_appro, ach.nom AS fournisseur_nom,
+                cal.taux_tva, cal.cout_unitaire_ttc AS prix_unitaire_tva
+         FROM commande_acheteur_lignes cal
+         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
+         JOIN acheteurs ach ON ach.id = ca.acheteur_id
+         LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
+         WHERE ca.labo_id = $1 AND ca.statut = 'validee'
+           AND cal.article_type = 'ingredient' AND cal.article_id = $2
+       ) h
+       ORDER BY date_appro DESC LIMIT 10`,
       [laboId, ingredientIdRaw]
     );
     res.json(result.rows.map((r) => ({
@@ -1553,9 +1621,12 @@ const getLaboHistorique = async (req, res) => {
     // activiteId implies we only care about transfers
     const includeManuel = (!typeFilter || typeFilter === 'manuel') && !activiteId;
     const includeTransfert = !typeFilter || typeFilter === 'transfert';
+    // Ventes acheteurs (module Acheteurs) : sorties de stock, sans fournisseur ni activité
+    const includeVentes = (!typeFilter || typeFilter === 'vente') && !activiteId && !fournisseurId;
 
     const manuelConds = [`sld.labo_id = $1`, `sld.type_appro != 'transfert'`, `NOT (sld.type_appro = 'manuel' AND sld.quantite < 0)`];
     const transferConds = [`lt.labo_id = $1`];
+    const venteConds = [`ca.labo_id = $1`, `ca.statut = 'validee'`];
     const params = [laboId];
     let idx = 2;
 
@@ -1563,24 +1634,28 @@ const getLaboHistorique = async (req, res) => {
       params.push(startDate);
       manuelConds.push(`sld.date_appro >= $${idx}`);
       transferConds.push(`lt.date_transfert >= $${idx}`);
+      venteConds.push(`ca.date_commande >= $${idx}`);
       idx++;
     }
     if (endDate) {
       params.push(endDate);
       manuelConds.push(`sld.date_appro <= $${idx}`);
       transferConds.push(`lt.date_transfert <= $${idx}`);
+      venteConds.push(`ca.date_commande <= $${idx}`);
       idx++;
     }
     if (ingredientId) {
       params.push(ingredientId);
       manuelConds.push(`sld.ingredient_id = $${idx}`);
       transferConds.push(`lt.ingredient_id = $${idx}`);
+      venteConds.push(`(cal.article_type = 'ingredient' AND cal.article_id = $${idx})`);
       idx++;
     }
     if (categorieId) {
       params.push(categorieId);
       manuelConds.push(`i.categorie_id = $${idx}`);
       transferConds.push(`i.categorie_id = $${idx}`);
+      venteConds.push(`i.categorie_id = $${idx}`);
       idx++;
     }
     if (fournisseurId) {
@@ -1592,6 +1667,7 @@ const getLaboHistorique = async (req, res) => {
       params.push(`%${refFacture}%`);
       manuelConds.push(`sld.ref_facture ILIKE $${idx}`);
       transferConds.push(`lt.ref_facture ILIKE $${idx}`);
+      venteConds.push(`fa.numero ILIKE $${idx}`);
       idx++;
     }
     if (activiteId) {
@@ -1630,9 +1706,33 @@ const getLaboHistorique = async (req, res) => {
       JOIN activites a ON a.id = lt.activite_id
       WHERE ${transferConds.join(' AND ')}`;
 
+    // Ventes acheteurs — ligne article OU produit composé (ids négatifs, convention front).
+    // Le « fournisseur » affiché = l'acheteur (destinataire) ; prix = coût matière TTC figé.
+    const venteSql = `
+      SELECT cal.id, CASE WHEN cal.article_type = 'produit' THEN -cal.article_id ELSE cal.article_id END as ingredient_id,
+             ca.date_commande as date_appro, -cal.quantite_unites as quantite, cal.cout_unitaire_ttc as prix_unitaire,
+             fa.numero as ref_facture, 'vente'::text as type_appro, ca.created_at as updated_at, ca.created_by,
+             cal.taux_tva, cal.cout_unitaire_ttc as prix_unitaire_tva,
+             cal.designation as ingredient_nom, COALESCE(u.nom, 'unité') as unite_nom,
+             CASE WHEN cal.article_type = 'produit' THEN ${ptCategorieSql('p')}
+                  ELSE COALESCE(c.nom, 'Sans catégorie') END as categorie_nom,
+             ach.nom as fournisseur_nom, NULL::int as fournisseur_id,
+             NULL::int as activite_id, NULL::text as activite_nom
+      FROM commande_acheteur_lignes cal
+      JOIN commandes_acheteur ca ON ca.id = cal.commande_id
+      JOIN acheteurs ach ON ach.id = ca.acheteur_id
+      LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
+      LEFT JOIN articles i ON cal.article_type = 'ingredient' AND i.id = cal.article_id
+      LEFT JOIN unites u ON u.id = i.unite_id
+      LEFT JOIN categories c ON c.id = i.categorie_id
+      LEFT JOIN produits p ON cal.article_type = 'produit' AND p.id = cal.article_id
+      WHERE ${venteConds.join(' AND ')}`;
+
     const parts = [];
     if (includeManuel) parts.push(manuelSql);
     if (includeTransfert) parts.push(transferSql);
+    if (includeVentes) parts.push(venteSql);
+    if (parts.length === 0) return res.json([]);
 
     const sql = `SELECT combined.*, ub.nom as created_by_nom
                  FROM (${parts.join(' UNION ALL ')}) combined

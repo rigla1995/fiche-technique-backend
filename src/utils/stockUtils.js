@@ -47,6 +47,20 @@ async function computeStockCourant(scope, scopeId, ingredientId) {
            COALESCE(SUM(quantite), 0) AS all_qty
          FROM labo_pertes
          WHERE labo_id = $1 AND ingredient_id = $2
+       ),
+       ventes_ach AS (
+         -- Ventes aux acheteurs (module Acheteurs) : table de FLUX, seules les
+         -- commandes VALIDÉES sortent du stock (annulation = réintégration mécanique).
+         SELECT
+           COALESCE(SUM(cal.quantite_unites) FILTER (
+             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
+               AND ca.date_commande >= (SELECT date_inventaire FROM last_inv)
+           ), 0) AS post_qty,
+           COALESCE(SUM(cal.quantite_unites), 0) AS all_qty
+         FROM commande_acheteur_lignes cal
+         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
+         WHERE ca.labo_id = $1 AND ca.statut = 'validee'
+           AND cal.article_type = 'ingredient' AND cal.article_id = $2
        )
        SELECT CASE
          WHEN (SELECT date_inventaire FROM last_inv) IS NOT NULL
@@ -54,10 +68,12 @@ async function computeStockCourant(scope, scopeId, ingredientId) {
                 + (SELECT post_qty FROM appro)
                 - (SELECT post_qty FROM transfers)
                 - (SELECT post_qty FROM pertes)
+                - (SELECT post_qty FROM ventes_ach)
          ELSE
                 (SELECT all_qty FROM appro)
                 - (SELECT all_qty FROM transfers)
                 - (SELECT all_qty FROM pertes)
+                - (SELECT all_qty FROM ventes_ach)
        END AS stock_courant`,
       [scopeId, ingredientId]
     );
@@ -155,6 +171,19 @@ async function computeStockPTCourant(scope, scopeId, produitId) {
            COALESCE(SUM(quantite), 0) AS all_qty
          FROM labo_pertes
          WHERE labo_id = $1 AND produit_id = $2
+       ),
+       ventes_ach AS (
+         -- Ventes aux acheteurs (module Acheteurs) : flux des commandes VALIDÉES.
+         SELECT
+           COALESCE(SUM(cal.quantite_unites) FILTER (
+             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
+               AND ca.date_commande >= (SELECT date_inventaire FROM last_inv)
+           ), 0) AS post_qty,
+           COALESCE(SUM(cal.quantite_unites), 0) AS all_qty
+         FROM commande_acheteur_lignes cal
+         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
+         WHERE ca.labo_id = $1 AND ca.statut = 'validee'
+           AND cal.article_type = 'produit' AND cal.article_id = $2
        )
        SELECT CASE
          WHEN (SELECT date_inventaire FROM last_inv) IS NOT NULL
@@ -162,10 +191,12 @@ async function computeStockPTCourant(scope, scopeId, produitId) {
                 + (SELECT post_qty FROM appro)
                 - (SELECT post_qty FROM transfers)
                 - (SELECT post_qty FROM pertes)
+                - (SELECT post_qty FROM ventes_ach)
          ELSE
                 (SELECT all_qty FROM appro)
                 - (SELECT all_qty FROM transfers)
                 - (SELECT all_qty FROM pertes)
+                - (SELECT all_qty FROM ventes_ach)
        END AS stock_courant`,
       [scopeId, produitId]
     );
