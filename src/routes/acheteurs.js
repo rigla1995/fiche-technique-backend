@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { list, create, update, remove, inviter, getTemplate, importAcheteurs } = require('../controllers/acheteursController');
+const {
+  listOffres, upsertOffre, getOffreHistorique,
+  createVente, listCommandes, getCommande, annulerCommande, downloadFacturePdf,
+} = require('../controllers/acheteurVentesController');
 const { authenticate, requireEntreprise, requireModuleAcheteurs } = require('../middleware/auth');
 
 // Module opt-in : TOUTES les routes du carnet exigent le module actif (403 sinon).
@@ -73,6 +77,17 @@ router.get('/template', authenticate, requireEntreprise, requireModuleAcheteurs,
 router.get('/', authenticate, requireEntreprise, requireModuleAcheteurs, list);
 router.post('/', authenticate, requireEntreprise, requireModuleAcheteurs, create);
 router.post('/import', authenticate, requireEntreprise, requireModuleAcheteurs, importAcheteurs);
+
+// ── Lot 2 : tarifs (offres), ventes/commandes, factures ────────────────────
+router.get('/offres', authenticate, requireEntreprise, requireModuleAcheteurs, listOffres);
+router.post('/offres', authenticate, requireEntreprise, requireModuleAcheteurs, upsertOffre);
+router.get('/offres/:id/historique', authenticate, requireEntreprise, requireModuleAcheteurs, getOffreHistorique);
+router.post('/ventes', authenticate, requireEntreprise, requireModuleAcheteurs, createVente);
+router.get('/commandes', authenticate, requireEntreprise, requireModuleAcheteurs, listCommandes);
+router.get('/commandes/:id', authenticate, requireEntreprise, requireModuleAcheteurs, getCommande);
+router.post('/commandes/:id/annuler', authenticate, requireEntreprise, requireModuleAcheteurs, annulerCommande);
+router.get('/factures/:id/pdf', authenticate, requireEntreprise, requireModuleAcheteurs, downloadFacturePdf);
+
 router.post('/:id/inviter', authenticate, requireEntreprise, requireModuleAcheteurs, inviter);
 router.put('/:id', authenticate, requireEntreprise, requireModuleAcheteurs, update);
 router.delete('/:id', authenticate, requireEntreprise, requireModuleAcheteurs, remove);
