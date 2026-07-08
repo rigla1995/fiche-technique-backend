@@ -129,7 +129,11 @@ const applyPromoSupplement = (baseAmount, promo) => {
 // Avec labo: all = base*(1-rl%) each
 const computeBaseMensuelFromConfig = (config, tarifs) => {
   if (!config) return null;
-  const n   = parseInt(config.nb_activites) || 1;
+  // Compte dépôt : 0 activité est une valeur VALIDE (coût activités = 0),
+  // le repli à 1 ne s'applique qu'aux valeurs absentes/invalides.
+  const nRaw = parseInt(config.nb_activites);
+  const n   = Number.isFinite(nRaw) && nRaw >= 0 ? nRaw : 1;
+  if (n === 0) return 0;
   const nbl = parseInt(config.nb_labos)     || 0;
   const base = parseFloat(tarifs['prix_base_activite'] ?? tarifs['activite_1'] ?? 200);
   const hasLabo = nbl > 0;
@@ -379,7 +383,7 @@ const createAbonnement = async (clientId, montantOnboarding, config = null) => {
     await pool.query(
       `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, montant_onboarding)
        VALUES ($1, $2, $3, $4, $5)`,
-      [aboId, config.nbActivites || 1, config.nbLabos || 0, config.nbGerants || 0, config.montantOnboarding || 0]
+      [aboId, config.nbActivites ?? 1, config.nbLabos || 0, config.nbGerants || 0, config.montantOnboarding || 0]
     );
   }
 
@@ -1382,7 +1386,12 @@ const getAbonnementConfig = async (req, res) => {
 const updateAbonnementConfig = async (req, res) => {
   const { clientId } = req.params;
   const { nbActivites, nbLabos, nbGerants, nbAcheteurs, montantOnboarding } = req.body;
-  if (!nbActivites || nbActivites < 1) return res.status(400).json({ message: 'nb_activites >= 1 requis' });
+  const nA = parseInt(nbActivites, 10);
+  if (!Number.isFinite(nA) || nA < 0) return res.status(400).json({ message: 'nb_activites >= 0 requis' });
+  // Compte dépôt : 0 activité autorisé SEULEMENT avec au moins un labo
+  if (nA === 0 && (parseInt(nbLabos, 10) || 0) < 1) {
+    return res.status(400).json({ message: 'Un compte sans activité doit avoir au moins un labo (compte dépôt)' });
+  }
   try {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
@@ -1414,7 +1423,8 @@ const getPricingPreview = async (req, res) => {
   const { nbActivites, nbLabos, nbGerants } = req.query;
   try {
     const tarifs = await loadAllTarifs();
-    const nb  = parseInt(nbActivites) || 1;
+    const nbRaw = parseInt(nbActivites);
+    const nb  = Number.isFinite(nbRaw) && nbRaw >= 0 ? nbRaw : 1;
     const nbl = parseInt(nbLabos)     || 0;
     const nbg = parseInt(nbGerants)   || 0;
 

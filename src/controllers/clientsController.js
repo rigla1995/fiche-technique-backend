@@ -181,15 +181,19 @@ const create = async (req, res) => {
   const { email, telephone, adresse } = req.body;
   const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : [];
 
-  // New config-based fields (new modal flow)
-  const nbActivites  = req.body.nbActivites  ? parseInt(req.body.nbActivites)  : null;
-  const nbLabos      = req.body.nbLabos      ? parseInt(req.body.nbLabos)      : null;
-  const nbGerants    = req.body.nbGerants    ? parseInt(req.body.nbGerants)    : null;
+  // New config-based fields (new modal flow).
+  // != null (et pas truthy) : 0 activité est valide (compte dépôt = labo + acheteurs).
+  const nbActivites  = req.body.nbActivites  != null ? parseInt(req.body.nbActivites)  : null;
+  const nbLabos      = req.body.nbLabos      != null ? parseInt(req.body.nbLabos)      : null;
+  const nbGerants    = req.body.nbGerants    != null ? parseInt(req.body.nbGerants)    : null;
   const montantOnboardingConfig = req.body.montantOnboarding != null ? parseFloat(req.body.montantOnboarding) : null;
   const contractPdfBase64 = req.body.contractPdfBase64 || null;
 
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   if (!email) return res.status(400).json({ message: 'Email requis' });
+  if (nbActivites === 0 && (nbLabos || 0) < 1) {
+    return res.status(400).json({ message: 'Un compte sans activité doit avoir au moins un labo (compte dépôt)' });
+  }
 
   if (telephone) {
     const telCheck = await pool.query('SELECT id FROM utilisateurs WHERE telephone = $1', [telephone]);

@@ -332,7 +332,8 @@ const traiter = async (req, res) => {
             const cfg = configRes.rows[0];
             if (!cfg) return;
 
-            const nbA = parseInt(cfg.nb_activites) || 1;
+            const nbARaw = parseInt(cfg.nb_activites);
+            const nbA = Number.isFinite(nbARaw) && nbARaw >= 0 ? nbARaw : 1;
             const nbL = parseInt(cfg.nb_labos) || 0;
             const nbG = parseInt(cfg.nb_gerants) || 0;
 
@@ -423,7 +424,7 @@ const previewAvenant = async (req, res) => {
     // Simulate config after supplement is applied
     const cfgAfter = {
       ...cfg,
-      nb_activites: (parseInt(cfg.nb_activites) || 1) + (demande.nb_activites_supp || 0),
+      nb_activites: ((v) => (Number.isFinite(v) && v >= 0 ? v : 1))(parseInt(cfg.nb_activites)) + (demande.nb_activites_supp || 0),
       nb_labos:     (parseInt(cfg.nb_labos)     || 0) + (demande.nb_labos_supp     || 0),
       nb_gerants:   (parseInt(cfg.nb_gerants)   || 0) + (demande.nb_gerants_supp   || 0),
     };

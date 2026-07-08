@@ -158,8 +158,11 @@ const me = async (req, res) => {
     const gerantActiviteNom = gerantNomRes.rows[0]?.nom || null;
 
     // Auto-heal: advance clients who are blocked at onboarding steps they've already completed.
-    // Also collect activitesCount in the same query to avoid an extra round trip.
+    // Also collect activitesCount/labosCount in the same query to avoid an extra round trip.
+    // Compte « dépôt » (labo + acheteurs, 0 activité) : les sélections LABO débloquent
+    // aussi l'étape 3 (sinon un compte sans activité restait coincé pour toujours).
     let activitesCount = 0;
+    let labosCount = 0;
     if (!isGerant && entrepriseId) {
       if (step > 0) {
         const healRes = await pool.query(
@@ -167,19 +170,23 @@ const me = async (req, res) => {
              COUNT(DISTINCT a.id) > 0 AS has_activities,
              COUNT(DISTINCT l.id) > 0 AS has_labos,
              COUNT(DISTINCT ais.activite_id) > 0 AS has_selections,
-             COUNT(DISTINCT a.id) AS activites_count
+             COUNT(DISTINCT lis.labo_id) > 0 AS has_labo_selections,
+             COUNT(DISTINCT a.id) AS activites_count,
+             COUNT(DISTINCT l.id) AS labos_count
            FROM profil_entreprise pe
            LEFT JOIN activites a ON a.entreprise_id = pe.id
            LEFT JOIN labos l ON l.entreprise_id = pe.id
            LEFT JOIN activite_ingredient_selections ais ON ais.activite_id = a.id
+           LEFT JOIN labo_ingredient_selections lis ON lis.labo_id = l.id
            WHERE pe.id = $1`,
           [entrepriseId]
         );
         const row = healRes.rows[0];
         activitesCount = parseInt(row.activites_count) || 0;
+        labosCount = parseInt(row.labos_count) || 0;
         const hasActivitiesOrLabos = row.has_activities || row.has_labos;
         if (hasActivitiesOrLabos) {
-          step = row.has_selections ? 0 : 3;
+          step = (row.has_selections || row.has_labo_selections) ? 0 : 3;
           await pool.query(
             'UPDATE utilisateurs SET onboarding_step = $1, updated_at = NOW() WHERE id = $2',
             [step, u.id]
@@ -193,10 +200,13 @@ const me = async (req, res) => {
         }
       } else {
         const actCountRes = await pool.query(
-          'SELECT COUNT(*) FROM activites WHERE entreprise_id = $1',
+          `SELECT
+             (SELECT COUNT(*) FROM activites WHERE entreprise_id = $1) AS activites_count,
+             (SELECT COUNT(*) FROM labos WHERE entreprise_id = $1) AS labos_count`,
           [entrepriseId]
         );
-        activitesCount = parseInt(actCountRes.rows[0].count) || 0;
+        activitesCount = parseInt(actCountRes.rows[0].activites_count) || 0;
+        labosCount = parseInt(actCountRes.rows[0].labos_count) || 0;
       }
     }
 
@@ -215,6 +225,7 @@ const me = async (req, res) => {
       onboardingStep: step, entrepriseName,
       modeCompte, prolongationJours,
       activitesCount,
+      labosCount,
       ...gerantFields,
     });
   } catch (err) {
