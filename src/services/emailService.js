@@ -613,4 +613,48 @@ const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) 
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail };
+// Statut d'une commande passée sur le portail acheteur (validée → facture, annulée → motif)
+const sendCommandeAcheteurEmail = async ({ to, nom, statut, numero, montantTtc, motif }) => {
+  const validee = statut === 'validee';
+  const titre = validee ? 'Votre commande est validée ✅' : 'Votre commande a été annulée';
+  const corps = validee
+    ? `Votre commande a été validée par votre fournisseur.${numero ? ` La facture <strong>${numero}</strong>${montantTtc != null ? ` (${Number(montantTtc).toFixed(3)} DT TTC)` : ''} est disponible dans votre portail.` : ''}`
+    : `Votre commande a été annulée par votre fournisseur.${motif ? ` Motif : <em>${motif}</em>` : ''} Vous pouvez le contacter pour plus de détails.`;
+  const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#4c1d95 0%,#6d28d9 100%);padding:32px 40px;">
+      ${BRAND_LOGO}
+    </div>
+    <div style="padding:36px 40px;">
+      <h2 style="margin:0 0 12px;color:#111827;font-size:1.15rem;font-weight:700;">Bonjour ${nom},</h2>
+      <p style="margin:0 0 8px;color:#374151;font-size:1rem;font-weight:700;">${titre}</p>
+      <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.6;">${corps}</p>
+      <div style="text-align:center;margin:24px 0 4px;">
+        <a href="${APP_URL}/portail/commandes" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;padding:13px 30px;border-radius:8px;font-size:0.95rem;font-weight:700;">
+          Voir mes commandes
+        </a>
+      </div>
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">Notification automatique du portail acheteur LabFlow.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV] Commande acheteur email to ${to}: ${statut}`);
+    return { success: true, dev: true };
+  }
+  const { data, error } = await resend.emails.send({
+    from: `${APP_NAME} <${FROM_EMAIL}>`,
+    to, subject: `${APP_NAME} — ${titre.replace(' ✅', '')}`, html,
+  });
+  if (error) throw new Error(error.message);
+  return { success: true, id: data?.id };
+};
+
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail, sendCommandeAcheteurEmail };

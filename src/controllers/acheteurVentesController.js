@@ -180,6 +180,23 @@ const getOffreHistorique = async (req, res) => {
 
 const round3 = (v) => Math.round(v * 1000) / 1000;
 
+// Totaux de facture (partagé vente manuelle / validation de commande portail) :
+// brut TTC → remise proportionnelle → HT dérivé du TTC ligne à ligne (jamais re-taxé) → timbre.
+const computeTotauxFacture = (lignes, remisePct, timbreFiscal, montantTimbre) => {
+  const brutTtc = round3(lignes.reduce((s, l) => s + Number(l.prixTtc ?? l.prix_ttc) * Number(l.quantite), 0));
+  const facteur = 1 - remisePct / 100;
+  let montantHt = 0;
+  for (const l of lignes) {
+    const ttcNet = Number(l.prixTtc ?? l.prix_ttc) * Number(l.quantite) * facteur;
+    montantHt += ttcNet / (1 + (Number(l.tauxTva ?? l.taux_tva) || 0) / 100);
+  }
+  montantHt = round3(montantHt);
+  const netLignesTtc = round3(brutTtc * facteur);
+  const montantTva = round3(netLignesTtc - montantHt);
+  const timbre = timbreFiscal ? montantTimbre : 0;
+  return { brutTtc, montantHt, montantTva, montantTimbre: timbre, montantTtc: round3(netLignesTtc + timbre) };
+};
+
 // Coût matière TTC par unité au labo (figé sur la ligne à la validation) :
 // articles = moyenne TTC des appros manuels ; produits = moyenne TTC des réceptions/productions.
 const buildCostMaps = async (laboId, artIds, prodIds) => {
@@ -326,18 +343,7 @@ const createVente = async (req, res) => {
     // Coûts matière TTC figés (marge)
     const { artMap, prodMap } = await buildCostMaps(laboId, artIds, prodIds);
 
-    // Totaux facture : remise proportionnelle, HT dérivé du TTC ligne à ligne (jamais re-taxé)
-    const brutTtc = round3(lignes.reduce((s, l) => s + l.prixTtc * l.quantite, 0));
-    const facteurRemise = 1 - remisePct / 100;
-    let montantHt = 0;
-    for (const l of lignes) {
-      const ligneTtcNet = l.prixTtc * l.quantite * facteurRemise;
-      montantHt += ligneTtcNet / (1 + (l.tauxTva || 0) / 100);
-    }
-    montantHt = round3(montantHt);
-    const netLignesTtc = round3(brutTtc * facteurRemise);
-    const montantTva = round3(netLignesTtc - montantHt);
-    const montantTtc = round3(netLignesTtc + montantTimbre);
+    const { brutTtc, montantHt, montantTva, montantTtc } = computeTotauxFacture(lignes, remisePct, timbreFiscal, montantTimbre);
 
     const db = await pool.connect();
     try {
@@ -499,6 +505,113 @@ const getCommande = async (req, res) => {
   }
 };
 
+// POST /api/acheteurs/commandes/:id/valider — validation d'une commande PORTAIL
+// (en attente) : le vendeur choisit le labo source, le stock est contrôlé puis
+// déduit (flux), les coûts sont figés et la facture est générée.
+const validerCommande = async (req, res) => {
+  const clientId = clientIdOf(req);
+  const laboId = Number(req.body.laboId);
+  if (!Number.isFinite(laboId)) return res.status(400).json({ message: 'Labo requis pour valider la commande' });
+  const timbreFiscal = req.body.timbreFiscal !== false;
+  const montantTimbre = timbreFiscal ? (Number.isFinite(Number(req.body.montantTimbre)) ? Number(req.body.montantTimbre) : 1.0) : 0;
+
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    const c = await db.query(
+      `SELECT ca.*, ach.nom AS acheteur_nom, ach.email AS acheteur_email
+       FROM commandes_acheteur ca JOIN acheteurs ach ON ach.id = ca.acheteur_id
+       WHERE ca.id = $1 AND ca.client_id = $2 FOR UPDATE OF ca`,
+      [req.params.id, clientId]
+    );
+    if (c.rows.length === 0) { await db.query('ROLLBACK'); return res.status(404).json({ message: 'Commande introuvable' }); }
+    const cmd = c.rows[0];
+    if (cmd.statut !== 'en_attente') {
+      await db.query('ROLLBACK');
+      return res.status(409).json({ message: `Cette commande est déjà ${cmd.statut === 'validee' ? 'validée' : 'annulée'}` });
+    }
+    const labo = await db.query(
+      `SELECT l.id, l.nom FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id
+       WHERE l.id = $1 AND pe.client_id = $2`,
+      [laboId, clientId]
+    );
+    if (labo.rows.length === 0) { await db.query('ROLLBACK'); return res.status(404).json({ message: 'Labo introuvable' }); }
+    if (!gerantAllowsLabo(req, laboId)) { await db.query('ROLLBACK'); return res.status(403).json({ message: 'Labo hors de votre périmètre' }); }
+
+    const lignesRes = await db.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id`, [cmd.id]);
+    const lignes = lignesRes.rows;
+    if (lignes.length === 0) { await db.query('ROLLBACK'); return res.status(400).json({ message: 'Commande sans ligne' }); }
+
+    // Contrôle de stock sur le labo choisi (agrégat par article, en unités)
+    const besoins = new Map();
+    for (const l of lignes) {
+      const key = `${l.article_type}:${l.article_id}`;
+      const b = besoins.get(key) || { type: l.article_type, id: l.article_id, nom: l.designation, unites: 0 };
+      b.unites = round3(b.unites + Number(l.quantite_unites));
+      besoins.set(key, b);
+    }
+    const manquants = [];
+    for (const b of besoins.values()) {
+      const dispo = b.type === 'ingredient'
+        ? await computeStockCourant('labo', laboId, b.id)
+        : await computeStockPTCourant('labo', laboId, b.id);
+      if (dispo < b.unites) {
+        manquants.push({ nom: b.nom, unite: '', disponible: dispo, necessaire: b.unites, manquant: round3(b.unites - dispo) });
+      }
+    }
+    if (manquants.length > 0) {
+      await db.query('ROLLBACK');
+      return res.status(422).json({ message: 'Stock labo insuffisant', manquants });
+    }
+
+    // Coûts matière figés + facture
+    const artIds = [...new Set(lignes.filter((l) => l.article_type === 'ingredient').map((l) => l.article_id))];
+    const prodIds = [...new Set(lignes.filter((l) => l.article_type === 'produit').map((l) => l.article_id))];
+    const { artMap, prodMap } = await buildCostMaps(laboId, artIds, prodIds);
+    for (const l of lignes) {
+      const coutU = l.article_type === 'ingredient' ? artMap.get(l.article_id) ?? null : prodMap.get(l.article_id) ?? null;
+      await db.query(`UPDATE commande_acheteur_lignes SET cout_unitaire_ttc = $1 WHERE id = $2`, [coutU, l.id]);
+    }
+
+    const remisePct = num(cmd.remise_pct) ?? 0;
+    const totaux = computeTotauxFacture(lignes, remisePct, timbreFiscal, montantTimbre);
+    const dateFacture = new Date().toISOString().slice(0, 10);
+    const numero = await nextNumeroFacture(db, clientId, dateFacture);
+    const fact = await db.query(
+      `INSERT INTO factures_acheteur
+         (client_id, acheteur_id, commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING id`,
+      [clientId, cmd.acheteur_id, cmd.id, numero, dateFacture, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc]
+    );
+    await db.query(
+      `UPDATE commandes_acheteur SET statut = 'validee', labo_id = $1, traite_le = NOW(), traite_par = $2 WHERE id = $3`,
+      [laboId, req.user.id, cmd.id]
+    );
+    await db.query('COMMIT');
+
+    // Email à l'acheteur (best-effort)
+    if (cmd.acheteur_email) {
+      const { sendCommandeAcheteurEmail } = require('../services/emailService');
+      sendCommandeAcheteurEmail({
+        to: cmd.acheteur_email, nom: cmd.acheteur_nom, statut: 'validee',
+        numero, montantTtc: totaux.montantTtc,
+      }).catch((e) => console.error('Email commande acheteur:', e));
+    }
+
+    res.json({
+      commande: { id: cmd.id, statut: 'validee', laboNom: labo.rows[0].nom },
+      facture: { id: fact.rows[0].id, numero, ...totaux },
+    });
+  } catch (err) {
+    await db.query('ROLLBACK').catch(() => {});
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  } finally {
+    db.release();
+  }
+};
+
 // POST /api/acheteurs/commandes/:id/annuler — annulation (motif requis).
 // Statut → 'annulee' : le stock se réintègre mécaniquement (CTE sur statut='validee').
 // La facture est SUPPRIMÉE (choix v1 : pas d'avoir ; trou de numérotation possible).
@@ -509,7 +622,9 @@ const annulerCommande = async (req, res) => {
   try {
     await db.query('BEGIN');
     const c = await db.query(
-      `SELECT * FROM commandes_acheteur WHERE id = $1 AND client_id = $2 FOR UPDATE`,
+      `SELECT ca.*, ach.nom AS acheteur_nom, ach.email AS acheteur_email
+       FROM commandes_acheteur ca JOIN acheteurs ach ON ach.id = ca.acheteur_id
+       WHERE ca.id = $1 AND ca.client_id = $2 FOR UPDATE OF ca`,
       [req.params.id, clientId]
     );
     if (c.rows.length === 0) {
@@ -521,8 +636,9 @@ const annulerCommande = async (req, res) => {
       await db.query('ROLLBACK');
       return res.status(409).json({ message: 'Commande déjà annulée' });
     }
-    // Un gérant n'annule que ses propres commandes (même règle que les transferts)
-    if (req.user.role === 'gerant' && cmd.created_by !== req.user.id) {
+    // Un gérant n'annule que ses propres ventes — mais peut refuser les commandes
+    // du portail (les traiter fait partie de son périmètre).
+    if (req.user.role === 'gerant' && cmd.source !== 'portail' && cmd.created_by !== req.user.id) {
       await db.query('ROLLBACK');
       return res.status(403).json({ message: 'Vous ne pouvez annuler que vos propres ventes' });
     }
@@ -534,7 +650,13 @@ const annulerCommande = async (req, res) => {
       [motif || null, req.user.id, cmd.id]
     );
     await db.query('COMMIT');
-    res.json({ message: 'Commande annulée — le stock a été réintégré' });
+    // Une commande passée depuis le portail : prévenir l'acheteur (best-effort)
+    if (cmd.source === 'portail' && cmd.acheteur_email) {
+      const { sendCommandeAcheteurEmail } = require('../services/emailService');
+      sendCommandeAcheteurEmail({ to: cmd.acheteur_email, nom: cmd.acheteur_nom, statut: 'annulee', motif })
+        .catch((e) => console.error('Email commande acheteur:', e));
+    }
+    res.json({ message: cmd.statut === 'validee' ? 'Commande annulée — le stock a été réintégré' : 'Commande annulée' });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
     console.error(err);
@@ -577,5 +699,5 @@ const downloadFacturePdf = async (req, res) => {
 
 module.exports = {
   listOffres, upsertOffre, getOffreHistorique,
-  createVente, listCommandes, getCommande, annulerCommande, downloadFacturePdf,
+  createVente, listCommandes, getCommande, validerCommande, annulerCommande, downloadFacturePdf,
 };

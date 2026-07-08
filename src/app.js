@@ -42,6 +42,7 @@ const gerantRoutes = require('./routes/gerant');
 const facturesRoutes = require('./routes/factures');
 const manuelRoutes = require('./routes/manuel');
 const acheteursRoutes = require('./routes/acheteurs');
+const portailRoutes = require('./routes/portail');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 const { docusealWebhook } = require('./controllers/webhookController');
 
@@ -108,6 +109,7 @@ app.use('/api/referentiel', referentielRoutes);
 app.use('/api/gerant', gerantRoutes);
 app.use('/api/factures', facturesRoutes);
 app.use('/api/acheteurs', acheteursRoutes);
+app.use('/api/portail', portailRoutes);
 app.use('/api/manuel', manuelRoutes);
 
 app.use('/api/products', produitsRoutes);

@@ -3,7 +3,7 @@ const router = express.Router();
 const { list, create, update, remove, inviter, getTemplate, importAcheteurs } = require('../controllers/acheteursController');
 const {
   listOffres, upsertOffre, getOffreHistorique,
-  createVente, listCommandes, getCommande, annulerCommande, downloadFacturePdf,
+  createVente, listCommandes, getCommande, validerCommande, annulerCommande, downloadFacturePdf,
 } = require('../controllers/acheteurVentesController');
 const { authenticate, requireEntreprise, requireModuleAcheteurs } = require('../middleware/auth');
 
@@ -85,6 +85,7 @@ router.get('/offres/:id/historique', authenticate, requireEntreprise, requireMod
 router.post('/ventes', authenticate, requireEntreprise, requireModuleAcheteurs, createVente);
 router.get('/commandes', authenticate, requireEntreprise, requireModuleAcheteurs, listCommandes);
 router.get('/commandes/:id', authenticate, requireEntreprise, requireModuleAcheteurs, getCommande);
+router.post('/commandes/:id/valider', authenticate, requireEntreprise, requireModuleAcheteurs, validerCommande);
 router.post('/commandes/:id/annuler', authenticate, requireEntreprise, requireModuleAcheteurs, annulerCommande);
 router.get('/factures/:id/pdf', authenticate, requireEntreprise, requireModuleAcheteurs, downloadFacturePdf);
 
