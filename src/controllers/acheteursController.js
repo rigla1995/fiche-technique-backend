@@ -234,6 +234,8 @@ const update = async (req, res) => {
 };
 
 // DELETE /api/acheteurs/:id — supprime la fiche ET le compte de connexion lié.
+// Un acheteur avec des commandes/factures est PROTÉGÉ (FK ON DELETE RESTRICT,
+// traçabilité fiscale) : on répond 409 en orientant vers la désactivation.
 const remove = async (req, res) => {
   const clientId = clientIdOf(req);
   const { id } = req.params;
@@ -245,6 +247,16 @@ const remove = async (req, res) => {
       await db.query('ROLLBACK');
       return res.status(404).json({ message: 'Acheteur introuvable' });
     }
+    // Contrôle explicite AVANT le DELETE (message clair plutôt qu'une violation FK)
+    const hasCmd = await db.query('SELECT 1 FROM commandes_acheteur WHERE acheteur_id = $1 LIMIT 1', [id]);
+    if (hasCmd.rows.length > 0) {
+      await db.query('ROLLBACK');
+      return res.status(409).json({
+        message: 'Impossible de supprimer : cet acheteur a des commandes et factures dans l\'historique. '
+          + 'Désactivez-le plutôt (interrupteur « Actif ») — il ne pourra plus se connecter ni recevoir de ventes.',
+        code: 'ACHETEUR_A_COMMANDES',
+      });
+    }
     await db.query('DELETE FROM acheteurs WHERE id = $1 AND client_id = $2', [id, clientId]);
     if (cur.rows[0].user_id) {
       await db.query(`DELETE FROM utilisateurs WHERE id = $1 AND role = 'acheteur'`, [cur.rows[0].user_id]);
@@ -253,6 +265,13 @@ const remove = async (req, res) => {
     res.json({ message: 'Acheteur supprimé' });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
+    // Filet de sécurité si une autre référence apparaît (course, futur module)
+    if (err.code === '23503') {
+      return res.status(409).json({
+        message: 'Impossible de supprimer : cet acheteur est référencé par des données existantes. Désactivez-le plutôt.',
+        code: 'ACHETEUR_REFERENCE',
+      });
+    }
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   } finally {

@@ -155,6 +155,14 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   const item2 = body.offres?.find((o) => o.articleId === artId);
   check('badge rupture (stock 2 ≤ seuil 9)', item2?.disponible === false);
 
+  // ── 8. Suppression protégée : un acheteur avec commandes/factures → 409 explicite
+  r = await fetch(`${BASE}/api/acheteurs/${acheteurId}`, { method: 'DELETE', headers: H });
+  body = await r.json();
+  check('suppression acheteur avec commandes → 409 clair', r.status === 409 && body.code === 'ACHETEUR_A_COMMANDES',
+    `${r.status} — ${body.message}`);
+  const encore = await pool.query(`SELECT 1 FROM acheteurs WHERE id = $1`, [acheteurId]);
+  check('fiche acheteur intacte après le 409', encore.rows.length === 1);
+
   // ── Nettoyage
   await wipe();
   const failed = results.filter((x) => !x.ok);
