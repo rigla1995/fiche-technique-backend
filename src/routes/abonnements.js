@@ -250,6 +250,7 @@ router.put('/client/:clientId/prolongation', authenticate, requireSuperAdmin, ab
 router.put('/client/:clientId/mode', authenticate, requireSuperAdmin, ab.updateMode);
 router.put('/client/:clientId/notes', authenticate, requireSuperAdmin, ab.updateNotes);
 router.put('/client/:clientId/module-vente', authenticate, requireSuperAdmin, ab.toggleModuleVente);
+router.put('/client/:clientId/module-acheteurs', authenticate, requireSuperAdmin, ab.toggleModuleAcheteurs);
 router.post('/client/:clientId/paiements', authenticate, requireSuperAdmin, ab.upsertPaiement);
 router.get('/paiements/:paiementId/facture', authenticate, requireSuperAdmin, ab.downloadFactureAdmin);
 router.get('/client/:clientId/montant-mois', authenticate, requireSuperAdmin, ab.getMontantMois);
