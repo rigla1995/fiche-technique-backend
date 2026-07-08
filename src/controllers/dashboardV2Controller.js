@@ -627,9 +627,41 @@ const tabLabo = async (req, ctx, from, to) => {
     ),
   ]);
 
+  // Module Acheteurs : CA facturé sur la période + déduction du stock vendu
+  // (les ventes acheteurs sont une table de FLUX — absentes des tables de stock).
+  const [ventesAchRes, ventesAchStockRes] = await Promise.all([
+    pool.query(
+      `SELECT COALESCE(SUM(fa.montant_ttc), 0) AS ca, COUNT(*) AS nb
+       FROM factures_acheteur fa
+       JOIN commandes_acheteur cac ON cac.id = fa.commande_id
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut = 'validee'
+         AND fa.date_facture >= $2 AND fa.date_facture <= $3`,
+      [laboIds, from, to]
+    ),
+    pool.query(
+      `SELECT COALESCE(SUM(cal.quantite_unites * COALESCE(
+                CASE WHEN cal.article_type = 'ingredient' THEN
+                  (SELECT COALESCE(s2.prix_unitaire_tva, s2.prix_unitaire) FROM stock_labo_daily s2
+                   WHERE s2.labo_id = cac.labo_id AND s2.ingredient_id = cal.article_id
+                     AND COALESCE(s2.prix_unitaire_tva, s2.prix_unitaire) IS NOT NULL
+                   ORDER BY s2.date_appro DESC LIMIT 1)
+                ELSE
+                  (SELECT COALESCE(s3.prix_unitaire_tva, s3.prix_unitaire) FROM stock_labo_pt_daily s3
+                   WHERE s3.labo_id = cac.labo_id AND s3.produit_id = cal.article_id
+                     AND s3.quantite > 0 AND s3.prix_unitaire IS NOT NULL
+                   ORDER BY s3.date_appro DESC, s3.id DESC LIMIT 1)
+                END, 0)), 0) AS valeur
+       FROM commande_acheteur_lignes cal
+       JOIN commandes_acheteur cac ON cac.id = cal.commande_id
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut = 'validee'`,
+      [laboIds]
+    ),
+  ]);
+
   let valeurStock = 0;
   for (const r of stockArt.rows) valeurStock += num(r.quantite) * num(r.prix);
   for (const r of stockPt.rows) valeurStock += num(r.quantite) * num(r.prix);
+  valeurStock -= num(ventesAchStockRes.rows[0].valeur);
   const pertesTotalLabo = pertesRes.rows.reduce((s, r) => s + num(r.valeur), 0);
 
   return {
@@ -644,6 +676,8 @@ const tabLabo = async (req, ctx, from, to) => {
       pertes: r3(pertesTotalLabo),
       ventes_labo: r3(num(ventesRes.rows[0].ca)),
       nb_ventes_labo: parseInt(ventesRes.rows[0].nb, 10) || 0,
+      ventes_acheteurs: r3(num(ventesAchRes.rows[0].ca)),
+      nb_ventes_acheteurs: parseInt(ventesAchRes.rows[0].nb, 10) || 0,
     },
     production_par_produit: prodTopRes.rows.map((r) => ({ nom: r.nom, qte: r3(num(r.qte)), valeur: r3(num(r.valeur)) })),
     pertes_par_type: pertesRes.rows.map((r) => ({ type: r.type_perte, valeur: r3(num(r.valeur)) })),
