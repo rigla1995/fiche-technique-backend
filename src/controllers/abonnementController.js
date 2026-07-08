@@ -53,6 +53,8 @@ const mapAbonnement = (row) => ({
   inviteSent: row.invite_sent ?? false,
   moduleVenteActif: row.module_vente_actif ?? false,
   moduleVenteActivatedAt: row.module_vente_activated_at ?? null,
+  moduleAcheteursActif: row.module_acheteurs_actif ?? false,
+  moduleAcheteursActivatedAt: row.module_acheteurs_activated_at ?? null,
   contratAccepteLe: row.contrat_accepte_le ?? null,
   contratAccepteIp: row.contrat_accepte_ip ?? null,
   createdAt: row.created_at,
@@ -186,6 +188,7 @@ const mapAbonnementConfig = (row) => row ? ({
   nbActivites: row.nb_activites,
   nbLabos: row.nb_labos,
   nbGerants: row.nb_gerants,
+  nbAcheteurs: row.nb_acheteurs ?? 0,
   montantOnboarding: row.montant_onboarding,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -244,6 +247,7 @@ const listAbonnements = async (req, res) => {
     const result = await pool.query(`
       SELECT a.*, u.nom AS client_nom, u.email AS client_email,
         pe.module_vente_actif, pe.module_vente_activated_at,
+        pe.module_acheteurs_actif, pe.module_acheteurs_activated_at,
         EXISTS(
           SELECT 1 FROM promotions pr
           WHERE pr.abonnement_id = a.id
@@ -268,6 +272,7 @@ const getAbonnement = async (req, res) => {
     const result = await pool.query(`
       SELECT a.*, u.nom AS client_nom, u.email AS client_email,
         pe.module_vente_actif, pe.module_vente_activated_at,
+        pe.module_acheteurs_actif, pe.module_acheteurs_activated_at,
         EXISTS(
           SELECT 1 FROM promotions pr
           WHERE pr.abonnement_id = a.id
@@ -1376,23 +1381,25 @@ const getAbonnementConfig = async (req, res) => {
 
 const updateAbonnementConfig = async (req, res) => {
   const { clientId } = req.params;
-  const { nbActivites, nbLabos, nbGerants, montantOnboarding } = req.body;
+  const { nbActivites, nbLabos, nbGerants, nbAcheteurs, montantOnboarding } = req.body;
   if (!nbActivites || nbActivites < 1) return res.status(400).json({ message: 'nb_activites >= 1 requis' });
   try {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
+    // nb_acheteurs : préservé si le payload ne l'envoie pas (NULL → valeur courante).
     const result = await pool.query(
-      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, montant_onboarding)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, montant_onboarding)
+       VALUES ($1, $2, $3, $4, COALESCE($5::int, 0), $6)
        ON CONFLICT (abonnement_id) DO UPDATE
        SET nb_activites = EXCLUDED.nb_activites,
            nb_labos = EXCLUDED.nb_labos,
            nb_gerants = EXCLUDED.nb_gerants,
+           nb_acheteurs = COALESCE($5::int, abonnement_config.nb_acheteurs),
            montant_onboarding = EXCLUDED.montant_onboarding,
            updated_at = NOW()
        RETURNING *`,
-      [aboId, nbActivites, nbLabos ?? 0, nbGerants ?? 0, montantOnboarding ?? 0]
+      [aboId, nbActivites, nbLabos ?? 0, nbGerants ?? 0, nbAcheteurs ?? null, montantOnboarding ?? 0]
     );
     res.json(mapAbonnementConfig(result.rows[0]));
   } catch (err) {
@@ -1593,6 +1600,50 @@ const toggleModuleVente = async (req, res) => {
   }
 };
 
+// PUT /api/abonnements/client/:clientId/module-acheteurs — activation admin directe.
+// Body { actif, nbAcheteurs? } : nbAcheteurs met à jour le quota de la config (si config existante).
+const toggleModuleAcheteurs = async (req, res) => {
+  const { clientId } = req.params;
+  const { actif, nbAcheteurs } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO profil_entreprise (client_id, nom, email)
+       SELECT $1, nom, email FROM utilisateurs WHERE id = $1
+       ON CONFLICT (client_id) DO NOTHING`,
+      [clientId]
+    );
+    const r = await pool.query(
+      `UPDATE profil_entreprise
+       SET module_acheteurs_actif = $1,
+           module_acheteurs_activated_at = CASE WHEN $1 THEN COALESCE(module_acheteurs_activated_at, NOW()) ELSE NULL END
+       WHERE client_id = $2
+       RETURNING module_acheteurs_actif, module_acheteurs_activated_at`,
+      [!!actif, clientId]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ message: 'Client introuvable' });
+
+    let quota = null;
+    const nb = parseInt(nbAcheteurs, 10);
+    if (Number.isFinite(nb) && nb >= 0) {
+      const q = await pool.query(
+        `UPDATE abonnement_config SET nb_acheteurs = $1, updated_at = NOW()
+         WHERE abonnement_id = (SELECT id FROM abonnements WHERE client_id = $2)
+         RETURNING nb_acheteurs`,
+        [nb, clientId]
+      );
+      quota = q.rows[0]?.nb_acheteurs ?? null;
+    }
+    res.json({
+      moduleAcheteursActif: r.rows[0].module_acheteurs_actif,
+      moduleAcheteursActivatedAt: r.rows[0].module_acheteurs_activated_at,
+      nbAcheteurs: quota,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // Calcule le détail tarifaire effectif (base + promotion active) d'un client.
 // Réutilisé pour les contrats et avenants Docuseal. Lit tout depuis la base.
 const computeEffectivePricing = async (clientId) => {
@@ -1754,7 +1805,7 @@ module.exports = {
   getTarifs, updateTarif,
   computeEffectivePricing, computeAvenantPricing,
   listAbonnements, getAbonnement, createAbonnement,
-  updateOnboarding, updateProlongation, updateNotes, updateMode, toggleModuleVente,
+  updateOnboarding, updateProlongation, updateNotes, updateMode, toggleModuleVente, toggleModuleAcheteurs,
   upsertPaiement,
   downloadFactureAdmin, downloadFactureClient,
   getMontantMois,

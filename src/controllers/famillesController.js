@@ -6,6 +6,8 @@ const mapFamille = (row) => ({
   name: row.nom,
   consommable: row.consommable !== false,
   vendable: row.vendable !== false,
+  // Module Acheteurs : articles proposables aux acheteurs (défaut false, opt-in)
+  achetable: row.achetable === true,
   hasAppros: row.has_appros === true,
   clientId: row.client_id,
   createdAt: row.created_at,
@@ -55,10 +57,11 @@ const create = async (req, res) => {
   const nom = req.body.name || req.body.nom;
   const consommable = req.body.consommable !== false;
   const vendable = req.body.vendable !== false;
+  const achetable = req.body.achetable === true;
   try {
     const result = await pool.query(
-      'INSERT INTO familles (nom, client_id, consommable, vendable) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nom, clientId, consommable, vendable]
+      'INSERT INTO familles (nom, client_id, consommable, vendable, achetable) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [nom, clientId, consommable, vendable, achetable]
     );
     res.status(201).json(mapFamille(result.rows[0]));
   } catch (err) {
@@ -75,14 +78,17 @@ const update = async (req, res) => {
   const nom = req.body.name || req.body.nom;
   const consommable = req.body.consommable !== undefined ? req.body.consommable !== false : undefined;
   const vendable = req.body.vendable !== undefined ? req.body.vendable !== false : undefined;
+  const achetable = req.body.achetable !== undefined ? req.body.achetable === true : undefined;
   try {
     const result = await pool.query(
       `UPDATE familles
        SET nom = $1,
            consommable = CASE WHEN $3::boolean THEN $2 ELSE consommable END,
-           vendable = CASE WHEN $5::boolean THEN $4 ELSE vendable END
-       WHERE id = $6 AND client_id = $7 RETURNING *`,
-      [nom, consommable ?? true, consommable !== undefined, vendable ?? true, vendable !== undefined, req.params.id, clientId]
+           vendable = CASE WHEN $5::boolean THEN $4 ELSE vendable END,
+           achetable = CASE WHEN $7::boolean THEN $6 ELSE achetable END
+       WHERE id = $8 AND client_id = $9 RETURNING *`,
+      [nom, consommable ?? true, consommable !== undefined, vendable ?? true, vendable !== undefined,
+       achetable ?? false, achetable !== undefined, req.params.id, clientId]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Famille introuvable' });
     res.json(mapFamille(result.rows[0]));

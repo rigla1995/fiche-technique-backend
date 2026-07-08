@@ -22,10 +22,12 @@ const authenticate = async (req, res, next) => {
       `SELECT u.id, u.nom, u.email, u.role,
               u.actif, u.password_changed_at,
               u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type,
+              ach.id AS acheteur_id, ach.client_id AS acheteur_client_id, ach.actif AS acheteur_actif,
               a.mode_compte
        FROM utilisateurs u
        LEFT JOIN utilisateurs p ON p.id = u.gerant_parent_id
-       LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, u.id)
+       LEFT JOIN acheteurs ach ON ach.user_id = u.id AND u.role = 'acheteur'
+       LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)
        WHERE u.id = $1`,
       [decoded.userId]
     );
@@ -35,6 +37,12 @@ const authenticate = async (req, res, next) => {
     }
 
     const row = result.rows[0];
+
+    // Un compte acheteur n'est valide que si sa fiche carnet existe et est active
+    // (le client peut désactiver un acheteur sans supprimer son compte).
+    if (row.role === 'acheteur' && (!row.acheteur_id || row.acheteur_actif === false)) {
+      return res.status(401).json({ message: 'Compte acheteur désactivé' });
+    }
 
     // Un JWT émis avant le dernier changement de mot de passe est révoqué
     // (iat en secondes ; comparaison stricte pour tolérer un token émis dans la même seconde).
@@ -67,6 +75,9 @@ const authenticate = async (req, res, next) => {
       modeCompte: row.mode_compte || 'actif',
       gerantActiviteIds,
       gerantLaboIds,
+      // Rôle acheteur : fiche carnet + compte client parent (périmètre du portail).
+      acheteurId: row.acheteur_id || null,
+      acheteurClientId: row.acheteur_client_id || null,
     };
     next();
   } catch (err) {
@@ -148,6 +159,33 @@ const requireModuleVente = async (req, res, next) => {
   }
 };
 
+// Gating serveur du module Acheteurs — contrairement au module Vente, ce
+// middleware est réellement branché sur les routes (403 si module inactif).
+// Compte de référence : client propriétaire, parent du gérant, ou client
+// parent de l'acheteur (portail).
+const requireModuleAcheteurs = async (req, res, next) => {
+  try {
+    const clientId = req.user.gerant_parent_id || req.user.acheteurClientId || req.user.id;
+    const r = await pool.query(
+      `SELECT module_acheteurs_actif FROM profil_entreprise WHERE client_id = $1`,
+      [clientId]
+    );
+    if (!r.rows[0]?.module_acheteurs_actif) {
+      return res.status(403).json({ message: 'Module Acheteurs non activé', code: 'MODULE_ACHETEURS_INACTIVE' });
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+const requireAcheteur = (req, res, next) => {
+  if (req.user.role !== 'acheteur') {
+    return res.status(403).json({ message: 'Accès réservé aux acheteurs' });
+  }
+  next();
+};
+
 // ─── Helpers de périmètre gérant ──────────────────────────────────────────────
 // Un gérant n'a accès qu'aux activités / labos qui lui sont affectés.
 const gerantAllowsActivite = (req, activiteId) => {
@@ -187,5 +225,6 @@ const scopeGerantActivite = (req, res) => {
 module.exports = {
   authenticate, requireSuperAdmin, requireClient, requireEntreprise,
   requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
+  requireModuleAcheteurs, requireAcheteur,
   requireClientOwner, gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
 };
