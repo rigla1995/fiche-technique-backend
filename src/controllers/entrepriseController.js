@@ -5,12 +5,18 @@ const pool = require('../config/database');
 const getEntreprise = async (req, res) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
-    const result = await pool.query(
-      'SELECT * FROM profil_entreprise WHERE client_id = $1',
-      [clientId]
-    );
+    const [result, formuleRes] = await Promise.all([
+      pool.query('SELECT * FROM profil_entreprise WHERE client_id = $1', [clientId]),
+      pool.query(
+        `SELECT ac.formule_activites
+         FROM abonnements a JOIN abonnement_config ac ON ac.abonnement_id = a.id
+         WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
+        [clientId]
+      ),
+    ]);
     if (result.rows.length === 0) return res.json(null);
-    res.json(mapEntreprise(result.rows[0]));
+    // La formule des activités gate l'Espace Produit côté front (basique = masqué)
+    res.json({ ...mapEntreprise(result.rows[0]), formule_activites: formuleRes.rows[0]?.formule_activites || null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

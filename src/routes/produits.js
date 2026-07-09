@@ -9,7 +9,7 @@ const {
   exportListExcel, getUtilisablesPerimetre,
 } = require('../controllers/produitsController');
 const { exportExcel } = require('../controllers/exportController');
-const { authenticate, requireClient, requireClientOwner } = require('../middleware/auth');
+const { authenticate, requireClient, requireClientOwner, requireFormulePremium } = require('../middleware/auth');
 
 /**
  * @openapi
@@ -392,7 +392,7 @@ router.get('/export-list', authenticate, requireClient, exportListExcel);
 // PU disponibles pour un périmètre (origine + ids) — étape Produits Utilisables du wizard. Refonte Espace Produits.
 router.get('/utilisables-perimetre', authenticate, requireClient, getUtilisablesPerimetre);
 router.get('/:id', authenticate, requireClient, getById);
-router.post('/', authenticate, requireClientOwner, [
+router.post('/', authenticate, requireClientOwner, requireFormulePremium, [
   body().custom((b) => {
     if (!b.name && !b.nom) throw new Error('Nom requis');
     return true;
@@ -400,15 +400,15 @@ router.post('/', authenticate, requireClientOwner, [
   body('type').optional().isIn(['utilisable', 'vendable']),
   body('categorieProduitId').optional({ nullable: true }).isInt({ min: 1 }),
 ], create);
-router.put('/:id', authenticate, requireClientOwner, [
+router.put('/:id', authenticate, requireClientOwner, requireFormulePremium, [
   body('name').optional().trim().notEmpty(),
   body('nom').optional().trim().notEmpty(),
   body('type').optional().isIn(['utilisable', 'vendable']),
   body('categorieProduitId').optional({ nullable: true }).isInt({ min: 1 }),
 ], update);
-router.delete('/:id', authenticate, requireClientOwner, remove);
+router.delete('/:id', authenticate, requireClientOwner, requireFormulePremium, remove);
 
-router.post('/:id/ingredients', authenticate, requireClientOwner, [
+router.post('/:id/ingredients', authenticate, requireClientOwner, requireFormulePremium, [
   body().custom((b) => {
     const id = b.ingredientId || b.ingredient_id;
     if (!id || parseInt(id) < 1) throw new Error('Ingrédient invalide');
@@ -421,9 +421,9 @@ router.post('/:id/ingredients', authenticate, requireClientOwner, [
     return true;
   }),
 ], addIngredient);
-router.delete('/:id/ingredients/:ingredientId', authenticate, requireClientOwner, removeIngredient);
+router.delete('/:id/ingredients/:ingredientId', authenticate, requireClientOwner, requireFormulePremium, removeIngredient);
 
-router.post('/:id/sous-produits', authenticate, requireClientOwner, [
+router.post('/:id/sous-produits', authenticate, requireClientOwner, requireFormulePremium, [
   body().custom((b) => {
     const id = b.productId || b.produit_id;
     if (!id || parseInt(id) < 1) throw new Error('Sous-produit invalide');
@@ -431,22 +431,22 @@ router.post('/:id/sous-produits', authenticate, requireClientOwner, [
   }),
   body('portion').isFloat({ min: 0.001 }).withMessage('Portion invalide'),
 ], addSousProduit);
-router.delete('/:id/sous-produits/:sousProduitId', authenticate, requireClientOwner, removeSousProduit);
+router.delete('/:id/sous-produits/:sousProduitId', authenticate, requireClientOwner, requireFormulePremium, removeSousProduit);
 
 router.get('/:id/cout', authenticate, requireClient, getCout);
 router.get('/:id/export', authenticate, requireClient, exportExcel);
 router.get('/:id/stock-dates', authenticate, requireClient, getStockDates);
 router.get('/:id/stock-check', authenticate, requireClient, getStockCheck);
 router.get('/:id/manual-prices', authenticate, requireClient, getManualPrices);
-router.post('/:id/manual-prices', authenticate, requireClient, saveManualPrices);
+router.post('/:id/manual-prices', authenticate, requireClient, requireFormulePremium, saveManualPrices);
 
 const { toggleStockIngredient, deleteStockPTHistory, getStockActivites, affecterActivites, toggleAffectation, toggleLabo, getParentProducts } = require('../controllers/produitTransformeController');
 router.get('/:id/stock-activites', authenticate, requireClient, getStockActivites);
-router.post('/:id/toggle-stock-ingredient', authenticate, requireClientOwner, toggleStockIngredient);
-router.delete('/:id/stock-pt-history', authenticate, requireClientOwner, deleteStockPTHistory);
-router.post('/:id/affecter-activites', authenticate, requireClientOwner, affecterActivites);
-router.post('/:id/toggle-affectation', authenticate, requireClientOwner, toggleAffectation);
-router.post('/:id/toggle-labo', authenticate, requireClientOwner, toggleLabo);
+router.post('/:id/toggle-stock-ingredient', authenticate, requireClientOwner, requireFormulePremium, toggleStockIngredient);
+router.delete('/:id/stock-pt-history', authenticate, requireClientOwner, requireFormulePremium, deleteStockPTHistory);
+router.post('/:id/affecter-activites', authenticate, requireClientOwner, requireFormulePremium, affecterActivites);
+router.post('/:id/toggle-affectation', authenticate, requireClientOwner, requireFormulePremium, toggleAffectation);
+router.post('/:id/toggle-labo', authenticate, requireClientOwner, requireFormulePremium, toggleLabo);
 router.get('/:id/parent-products', authenticate, requireClient, getParentProducts);
 
 module.exports = router;

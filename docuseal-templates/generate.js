@@ -631,11 +631,18 @@ async function buildContrat(outPath, data) {
     'neutral');
 
   y = section(ctx, y, 'ARTICLE 2 — CONFIGURATION SOUSCRITE');
-  y = configTable(ctx, y, [
-    ['Points de vente (activités)', data.config.activites],
-    ['Laboratoires de production', data.config.labos],
-    ['Comptes gérants', data.config.gerants],
-  ]);
+  {
+    // Formule + option Acheteurs : uniquement dans les PDF remplis au fil de l'eau
+    // (le template DocuSeal Community garde ses champs d'origine — cf CHAMPS.md)
+    const configRows = [
+      ['Points de vente (activités)', data.config.activites],
+      ['Laboratoires de production', data.config.labos],
+      ['Comptes gérants', data.config.gerants],
+    ];
+    if (!ctx.templateMode && data.config.formule) configRows.splice(1, 0, ["Formule d'activités", data.config.formule]);
+    if (!ctx.templateMode && data.config.acheteurs) configRows.push(['Option Acheteurs', data.config.acheteurs]);
+    y = configTable(ctx, y, configRows);
+  }
 
   y = section(ctx, y, 'ARTICLE 3 — PRIX ET MODALITÉS DE PAIEMENT');
   y = pricingBlock(ctx, y, { ...data.pricing, withOnboarding: true, withPromo: true });
@@ -707,11 +714,16 @@ async function buildAvenant(outPath, data) {
   }
 
   y = section(ctx, y, 'ARTICLE 2 — NOUVELLE CONFIGURATION');
-  y = configTable(ctx, y, [
-    ['Points de vente (activités)', data.config.activites],
-    ['Laboratoires de production', data.config.labos],
-    ['Comptes gérants', data.config.gerants],
-  ], 'Nouvelle quantité');
+  {
+    const configRows = [
+      ['Points de vente (activités)', data.config.activites],
+      ['Laboratoires de production', data.config.labos],
+      ['Comptes gérants', data.config.gerants],
+    ];
+    if (!ctx.templateMode && data.config.formule) configRows.splice(1, 0, ["Formule d'activités", data.config.formule]);
+    if (!ctx.templateMode && data.config.acheteurs) configRows.push(['Option Acheteurs', data.config.acheteurs]);
+    y = configTable(ctx, y, configRows, 'Nouvelle quantité');
+  }
 
   y = section(ctx, y, 'ARTICLE 3 — NOUVELLE TARIFICATION');
   y = pricingBlock(ctx, y, { mensuel: data.pricing.mensuel, mensuelBase: data.pricing.mensuelBase });   // template : mensualité seule

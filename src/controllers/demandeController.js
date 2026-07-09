@@ -20,15 +20,23 @@ const mapDemande = (row) => ({
 // POST /api/demandes — client creates a request
 const create = async (req, res) => {
   const { typeDemande, notes } = req.body;
-  const allowed = ['gerant_sup', 'labo_sup', 'activer_module_vente', 'activer_module_acheteurs'];
+  const allowed = ['gerant_sup', 'labo_sup', 'activer_module_vente', 'activer_module_acheteurs', 'passer_formule_premium'];
   if (!allowed.includes(typeDemande)) return res.status(400).json({ message: 'Type invalide' });
 
   try {
+    // Une seule demande EN ATTENTE par type et par demandeur
+    const pending = await pool.query(
+      `SELECT 1 FROM demandes WHERE demandeur_id = $1 AND type_demande = $2 AND statut = 'en_attente' LIMIT 1`,
+      [req.user.id, typeDemande]
+    );
+    if (pending.rows.length > 0) {
+      return res.status(409).json({ message: 'Une demande identique est déjà en attente de validation' });
+    }
     let cle = null;
     if (typeDemande === 'labo_sup') cle = 'labo_sup_mensuel';
     else if (typeDemande === 'gerant_sup') cle = 'gerant_sup_mensuel';
-    else if (typeDemande === 'activer_module_vente') cle = 'module_vente';
-    else if (typeDemande === 'activer_module_acheteurs') cle = 'module_acheteurs';
+    else if (typeDemande === 'activer_module_acheteurs') cle = 'acheteurs_palier_10'; // tarif « à partir de »
+    // passer_formule_premium : pas de montant affiché (le surcoût réel dépend de la config — delta calculé par l'admin)
     const tarifRes = cle
       ? await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [cle])
       : { rows: [] };
@@ -122,6 +130,21 @@ const traiter = async (req, res) => {
          SET module_vente_actif = true,
              module_vente_activated_at = COALESCE(module_vente_activated_at, NOW())
          WHERE client_id = $1`,
+        [demandeur_id]
+      );
+    }
+
+    // Validation d'un passage en formule Premium : la config bascule, le nouveau
+    // prix s'applique aux mensualités suivantes (recalcul mensuel par le cron).
+    // COALESCE(gerant_parent_id, id) : une demande envoyée par un GÉRANT doit
+    // basculer le compte PARENT (sinon UPDATE 0 ligne, silencieux).
+    if (statut === 'validée' && type_demande === 'passer_formule_premium') {
+      await client.query(
+        `UPDATE abonnement_config SET formule_activites = 'premium', updated_at = NOW()
+         WHERE nb_activites >= 1 AND abonnement_id = (
+           SELECT a.id FROM abonnements a
+           WHERE a.client_id = (SELECT COALESCE(gerant_parent_id, id) FROM utilisateurs WHERE id = $1)
+           ORDER BY a.id DESC LIMIT 1)`,
         [demandeur_id]
       );
     }
