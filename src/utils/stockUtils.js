@@ -54,7 +54,7 @@ async function computeStockCourant(scope, scopeId, ingredientId) {
          SELECT
            COALESCE(SUM(cal.quantite_unites) FILTER (
              WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND ca.date_commande >= (SELECT date_inventaire FROM last_inv)
+               AND COALESCE(ca.date_expedition, ca.date_commande) >= (SELECT date_inventaire FROM last_inv)
            ), 0) AS post_qty,
            COALESCE(SUM(cal.quantite_unites), 0) AS all_qty
          FROM commande_acheteur_lignes cal
@@ -177,7 +177,7 @@ async function computeStockPTCourant(scope, scopeId, produitId) {
          SELECT
            COALESCE(SUM(cal.quantite_unites) FILTER (
              WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND ca.date_commande >= (SELECT date_inventaire FROM last_inv)
+               AND COALESCE(ca.date_expedition, ca.date_commande) >= (SELECT date_inventaire FROM last_inv)
            ), 0) AS post_qty,
            COALESCE(SUM(cal.quantite_unites), 0) AS all_qty
          FROM commande_acheteur_lignes cal

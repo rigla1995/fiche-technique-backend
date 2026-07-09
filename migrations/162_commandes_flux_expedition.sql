@@ -41,14 +41,24 @@ CREATE TABLE IF NOT EXISTS commande_acheteur_statuts (
   date_effet DATE,
   motif TEXT,
   created_by INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_commande_acheteur_statuts_commande
   ON commande_acheteur_statuts(commande_id);
 
--- Seed de l'historique des commandes existantes : création + état courant
+-- Seed FIDÈLE de l'historique des commandes existantes (l'ordre des INSERT donne
+-- l'ordre d'affichage à timestamp égal) :
+--   1. en_attente : uniquement les commandes PORTAIL (les ventes manuelles
+--      étaient créées « validées d'office » et ne sont jamais passées par là) ;
+--   2. expediee : les commandes backfillées 'livree' (leur stock était sorti) ;
+--   3. l'état courant (livree / annulee) avec sa date et son motif.
 INSERT INTO commande_acheteur_statuts (commande_id, statut, date_effet, created_by, created_at)
-SELECT id, 'en_attente', date_commande, created_by, created_at FROM commandes_acheteur;
+SELECT id, 'en_attente', date_commande, created_by, created_at
+FROM commandes_acheteur WHERE source = 'portail';
+
+INSERT INTO commande_acheteur_statuts (commande_id, statut, date_effet, created_by, created_at)
+SELECT id, 'expediee', date_expedition, traite_par, COALESCE(traite_le, created_at)
+FROM commandes_acheteur WHERE statut = 'livree';
 
 INSERT INTO commande_acheteur_statuts (commande_id, statut, date_effet, motif, created_by, created_at)
 SELECT id, statut, COALESCE(traite_le::date, date_commande), motif_annulation, traite_par, COALESCE(traite_le, created_at)

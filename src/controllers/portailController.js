@@ -114,7 +114,9 @@ const createCommande = async (req, res) => {
       const nom = nomMap.get(key);
       if (!offre || !nom) return res.status(400).json({ message: `Ligne ${i + 1} : article non proposé` });
       const quantite = Number(l.quantite);
-      if (!Number.isFinite(quantite) || round3(quantite) <= 0) return res.status(400).json({ message: `Ligne ${i + 1} : quantité invalide` });
+      if (!Number.isFinite(quantite) || round3(quantite) <= 0 || quantite > 9999999.999) {
+        return res.status(400).json({ message: `Ligne ${i + 1} : quantité invalide` });
+      }
       lignes.push({
         articleType: l.articleType, articleId: Number(l.articleId), designation: nom,
         quantite,

@@ -187,12 +187,29 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   body = await r.json();
   check('acheteur voit annulée + motif', body.statut === 'annulee' && body.motifAnnulation === 'rupture de stock');
 
-  // ── 7. Badge rupture quand stock ≤ seuil (stock 4, seuil 9)
+  // ── 6bis. Gardes du nouveau flux
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/expedier`, { method: 'POST', headers: H, body: JSON.stringify({ laboId }) });
+  check('expédier une commande livrée → 409', r.status === 409);
+  r = await fetch(`${BASE}/api/portail/commandes`, {
+    method: 'POST', headers: HP, body: JSON.stringify({ lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 1 }] }),
+  });
+  const cmd3 = (await r.json()).id;
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd3}/expedier`, { method: 'POST', headers: H, body: JSON.stringify({ laboId, dateExpedition: '2027-01-01' }) });
+  check('date d\'expédition future refusée 400', r.status === 400);
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd3}/expedier`, { method: 'POST', headers: H, body: JSON.stringify({ laboId, quantites: [{ ligneId: 99999999, quantite: 2 }] }) });
+  check('ajustement sur ligne étrangère refusé 400', r.status === 400);
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd3}/valider`, { method: 'POST', headers: H, body: JSON.stringify({ laboId, timbreFiscal: false }) });
+  body = await r.json();
+  check('alias /valider = expédier (compat)', r.status === 200 && body.commande?.statut === 'expediee', JSON.stringify(body.commande));
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd3}/livrer`, { method: 'POST', headers: H, body: JSON.stringify({ dateLivraison: '2026-01-01' }) });
+  check('livraison avant expédition refusée 400', r.status === 400);
+
+  // ── 7. Badge rupture quand stock ≤ seuil (stock 3, seuil 9)
   await pool.query(`UPDATE labo_ingredient_selections SET seuil_min = 9 WHERE labo_id = $1 AND ingredient_id = $2`, [laboId, artId]);
   r = await fetch(`${BASE}/api/portail/catalogue`, { headers: HP });
   body = await r.json();
   const item2 = body.offres?.find((o) => o.articleId === artId);
-  check('badge rupture (stock 4 ≤ seuil 9)', item2?.disponible === false);
+  check('badge rupture (stock 3 ≤ seuil 9)', item2?.disponible === false);
 
   // ── 8. Suppression protégée : un acheteur avec commandes/factures → 409 explicite
   r = await fetch(`${BASE}/api/acheteurs/${acheteurId}`, { method: 'DELETE', headers: H });

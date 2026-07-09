@@ -250,6 +250,9 @@ const logStatut = (db, commandeId, statut, dateEffet, motif, userId) => db.query
 );
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+// Plafond du schéma NUMERIC(10,3) des quantités — au-delà : 400 propre, pas un 500 SQL
+const MAX_QTE = 9999999.999;
+const aujourdHui = () => new Date().toISOString().slice(0, 10);
 
 // Numéro de facture séquentiel par client et par année : FA-2026-0001.
 // Advisory lock transactionnel → pas de doublon même en concurrence.
@@ -280,8 +283,18 @@ const createVente = async (req, res) => {
   const statut = req.body.statut === 'livree' ? 'livree' : 'expediee';
   const dateExpedition = req.body.dateExpedition || dateCommande;
   const dateLivraison = statut === 'livree' ? (req.body.dateLivraison || dateExpedition) : null;
-  if (!DATE_RE.test(dateExpedition) || (dateLivraison && !DATE_RE.test(dateLivraison))) {
+  if (!DATE_RE.test(dateCommande) || !DATE_RE.test(dateExpedition) || (dateLivraison && !DATE_RE.test(dateLivraison))) {
     return res.status(400).json({ message: 'Date invalide (AAAA-MM-JJ)' });
+  }
+  // La facture est datée/numérotée à l'expédition : pas d'antidatage hors exercice ni de date future
+  const ajd = aujourdHui();
+  if (dateExpedition > ajd) return res.status(400).json({ message: 'La date d\'expédition ne peut pas être dans le futur' });
+  if (dateExpedition.slice(0, 4) !== ajd.slice(0, 4)) {
+    return res.status(400).json({ message: `La date d'expédition doit être dans l'exercice en cours (${ajd.slice(0, 4)})` });
+  }
+  if (dateExpedition < dateCommande) return res.status(400).json({ message: 'La date d\'expédition ne peut pas précéder la date de commande' });
+  if (dateLivraison && dateLivraison < dateExpedition) {
+    return res.status(400).json({ message: 'La date de livraison ne peut pas précéder la date d\'expédition' });
   }
 
   try {
@@ -340,7 +353,7 @@ const createVente = async (req, res) => {
         return res.status(400).json({ message: `Ligne ${i + 1} : article sans offre active — configurez d'abord vos Tarifs Acheteurs` });
       }
       const quantite = Number(l.quantite);
-      if (!Number.isFinite(quantite) || quantite <= 0) return res.status(400).json({ message: `Ligne ${i + 1} : quantité invalide` });
+      if (!Number.isFinite(quantite) || quantite <= 0 || quantite > MAX_QTE) return res.status(400).json({ message: `Ligne ${i + 1} : quantité invalide` });
       // != null : un prixHt absent OU null (JSON) retombe sur le tarif de l'offre
       const prixHt = l.prixHt != null && l.prixHt !== '' ? Number(l.prixHt) : num(offre.prix_unitaire_ht);
       if (!Number.isFinite(prixHt) || prixHt < 0) return res.status(400).json({ message: `Ligne ${i + 1} : prix invalide` });
@@ -572,8 +585,14 @@ const expedierCommande = async (req, res) => {
   if (remiseIn !== null && (!Number.isFinite(remiseIn) || remiseIn < 0 || remiseIn > 100)) {
     return res.status(400).json({ message: 'Remise invalide (0 à 100)' });
   }
-  const dateExpedition = req.body.dateExpedition || new Date().toISOString().slice(0, 10);
+  const dateExpedition = req.body.dateExpedition || aujourdHui();
   if (!DATE_RE.test(dateExpedition)) return res.status(400).json({ message: 'Date d\'expédition invalide (AAAA-MM-JJ)' });
+  // La facture est datée/numérotée à l'expédition : pas d'antidatage hors exercice ni de date future
+  const ajd = aujourdHui();
+  if (dateExpedition > ajd) return res.status(400).json({ message: 'La date d\'expédition ne peut pas être dans le futur' });
+  if (dateExpedition.slice(0, 4) !== ajd.slice(0, 4)) {
+    return res.status(400).json({ message: `La date d'expédition doit être dans l'exercice en cours (${ajd.slice(0, 4)})` });
+  }
   // Ajustements de quantités { ligneId → quantite } décidés par le vendeur
   const quantitesIn = Array.isArray(req.body.quantites) ? req.body.quantites : [];
   const qteMap = new Map();
@@ -581,7 +600,7 @@ const expedierCommande = async (req, res) => {
     const ligneId = Number(q.ligneId);
     const quantite = Number(q.quantite);
     if (!Number.isFinite(ligneId)) return res.status(400).json({ message: 'Ligne de quantité invalide' });
-    if (!Number.isFinite(quantite) || round3(quantite) <= 0) {
+    if (!Number.isFinite(quantite) || round3(quantite) <= 0 || quantite > MAX_QTE) {
       return res.status(400).json({ message: 'Quantité invalide (supérieure à 0)' });
     }
     qteMap.set(ligneId, round3(quantite));
@@ -613,6 +632,20 @@ const expedierCommande = async (req, res) => {
     const lignesRes = await db.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id FOR UPDATE`, [cmd.id]);
     const lignes = lignesRes.rows;
     if (lignes.length === 0) { await db.query('ROLLBACK'); return res.status(400).json({ message: 'Commande sans ligne' }); }
+    // Chronologie : l'expédition ne peut pas précéder la commande
+    const dateCommandeIso = cmd.date_commande instanceof Date ? cmd.date_commande.toISOString().slice(0, 10) : cmd.date_commande;
+    if (dateExpedition < dateCommandeIso) {
+      await db.query('ROLLBACK');
+      return res.status(400).json({ message: 'La date d\'expédition ne peut pas précéder la date de commande' });
+    }
+    // Tout ligneId d'ajustement doit appartenir à CETTE commande (pas d'ignorance silencieuse)
+    const idsLignes = new Set(lignes.map((l) => l.id));
+    for (const ligneId of qteMap.keys()) {
+      if (!idsLignes.has(ligneId)) {
+        await db.query('ROLLBACK');
+        return res.status(400).json({ message: 'Ajustement de quantité sur une ligne inconnue de cette commande' });
+      }
+    }
 
     // Ajustement des quantités décidé par le vendeur (prix figés inchangés)
     for (const l of lignes) {
@@ -720,6 +753,12 @@ const livrerCommande = async (req, res) => {
       return res.status(409).json({ message: `Seule une commande expédiée peut être livrée (statut : ${cmd.statut})` });
     }
     if (!gerantAllowsLabo(req, cmd.labo_id)) { await db.query('ROLLBACK'); return res.status(403).json({ message: 'Labo hors de votre périmètre' }); }
+    // Chronologie : la livraison ne peut pas précéder l'expédition
+    const dateExpIso = cmd.date_expedition instanceof Date ? cmd.date_expedition.toISOString().slice(0, 10) : cmd.date_expedition;
+    if (dateExpIso && dateLivraison < dateExpIso) {
+      await db.query('ROLLBACK');
+      return res.status(400).json({ message: 'La date de livraison ne peut pas précéder la date d\'expédition' });
+    }
     await db.query(
       `UPDATE commandes_acheteur SET statut = 'livree', date_livraison = $1, traite_le = NOW(), traite_par = $2 WHERE id = $3`,
       [dateLivraison, req.user.id, cmd.id]
@@ -765,6 +804,12 @@ const annulerCommande = async (req, res) => {
     if (req.user.role === 'gerant' && cmd.source !== 'portail' && cmd.created_by !== req.user.id) {
       await db.query('ROLLBACK');
       return res.status(403).json({ message: 'Vous ne pouvez annuler que vos propres ventes' });
+    }
+    // Périmètre labo (même règle que expedier/livrer) : une commande déjà expédiée
+    // depuis un labo hors périmètre ne peut pas être annulée par ce gérant.
+    if (cmd.labo_id && !gerantAllowsLabo(req, cmd.labo_id)) {
+      await db.query('ROLLBACK');
+      return res.status(403).json({ message: 'Labo hors de votre périmètre' });
     }
     await db.query(`DELETE FROM factures_acheteur WHERE commande_id = $1`, [cmd.id]);
     await db.query(
