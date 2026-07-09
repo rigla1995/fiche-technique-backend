@@ -14,6 +14,7 @@ const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
     nbActivitesAdded, nbLabosAdded, nbGerantsAdded,
     nbActivites, nbLabos, nbGerants,
     activiteCost, laboCost, gerantCost, newMensuel,
+    nbAcheteurs, acheteursCost,
     promoApplied, effectifMensuel,
     dateAvenant,
     ancienMensuel,
@@ -126,6 +127,8 @@ const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
     drawRow('Activités', nbActivites, fmtDt(activiteCost));
     if (nbLabos > 0)   drawRow('Labos', nbLabos, fmtDt(laboCost));
     if (nbGerants > 0) drawRow('Gérants', nbGerants, fmtDt(gerantCost));
+    // Option Acheteurs : sans elle, les postes ne sommeraient plus au total
+    if (acheteursCost > 0) drawRow('Option Acheteurs', nbAcheteurs ?? null, fmtDt(acheteursCost));
     drawRow('Total mensuel', null, fmtDt(newMensuel), true);
     y += 10;
 

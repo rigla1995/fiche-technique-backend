@@ -186,6 +186,10 @@ const create = async (req, res) => {
   const nbActivites  = req.body.nbActivites  != null ? parseInt(req.body.nbActivites)  : null;
   const nbLabos      = req.body.nbLabos      != null ? parseInt(req.body.nbLabos)      : null;
   const nbGerants    = req.body.nbGerants    != null ? parseInt(req.body.nbGerants)    : null;
+  // Option Acheteurs à la création : quota = borne du palier (0 = pas d'option)
+  const nbAcheteurs  = req.body.nbAcheteurs  != null ? parseInt(req.body.nbAcheteurs)  : 0;
+  // Formule des activités : basique | premium (défaut premium quand il y a des activités)
+  const formuleActivites = req.body.formuleActivites === 'basique' ? 'basique' : 'premium';
   const montantOnboardingConfig = req.body.montantOnboarding != null ? parseFloat(req.body.montantOnboarding) : null;
   const contractPdfBase64 = req.body.contractPdfBase64 || null;
 
@@ -193,6 +197,12 @@ const create = async (req, res) => {
   if (!email) return res.status(400).json({ message: 'Email requis' });
   if (nbActivites === 0 && (nbLabos || 0) < 1) {
     return res.status(400).json({ message: 'Un compte sans activité doit avoir au moins un labo (compte dépôt)' });
+  }
+  if (nbAcheteurs > 0 && (nbLabos || 0) < 1) {
+    return res.status(400).json({ message: "L'option Acheteurs nécessite au moins un labo (les ventes partent du stock labo)" });
+  }
+  if (nbAcheteurs < 0 || nbAcheteurs > 100) {
+    return res.status(400).json({ message: 'Quota acheteurs invalide (paliers de 1 à 100)' });
   }
 
   if (telephone) {
@@ -231,6 +241,15 @@ const create = async (req, res) => {
         [user.id, nom, email, telephone || null, adresse || null]
       );
 
+      // Option Acheteurs choisie dès la création : module activé immédiatement
+      if (nbAcheteurs > 0) {
+        await dbClient.query(
+          `UPDATE profil_entreprise SET module_acheteurs_actif = true, module_acheteurs_activated_at = NOW()
+           WHERE client_id = $1`,
+          [user.id]
+        );
+      }
+
       if (domaineIds.length > 0) {
         await saveClientDomaines(dbClient, user.id, domaineIds);
       }
@@ -246,14 +265,12 @@ const create = async (req, res) => {
     // Create abonnement with config if provided
     const config = nbActivites != null ? {
       nbActivites, nbLabos: nbLabos || 0, nbGerants: nbGerants || 0,
+      nbAcheteurs, formuleActivites,
       montantOnboarding: montantOnboardingConfig || 0,
     } : null;
 
-    let montantOnboarding = montantOnboardingConfig;
-    if (!config) {
-      const tarifRes = await pool.query(`SELECT valeur_dt FROM tarifs_config WHERE cle = 'entreprise_onboarding'`);
-      montantOnboarding = tarifRes.rows[0]?.valeur_dt || null;
-    }
+    // Plus de repli tarifaire legacy (entreprise_onboarding purgé avec l'ancien modèle)
+    const montantOnboarding = montantOnboardingConfig;
 
     const aboId = await createAbonnement(user.id, montantOnboarding, config);
 

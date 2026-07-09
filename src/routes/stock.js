@@ -10,7 +10,7 @@ const {
   deleteEntrepriseIngredientHistory,
   getCascadeInfoEntreprise,
 } = require('../controllers/stockController');
-const { authenticate, requireClient, requireEntreprise } = require('../middleware/auth');
+const { authenticate, requireClient, requireEntreprise, requireFormulePremium } = require('../middleware/auth');
 
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -580,7 +580,7 @@ const { getStockPT, getStockPTHistory, getPTRecipe, saveStockPT, updateSeuilMinP
 router.get('/pt', authenticate, requireClient, getStockPT);
 router.get('/pt/:produitId/recipe', authenticate, requireClient, getPTRecipe);
 router.get('/pt/:produitId/history', authenticate, requireClient, getStockPTHistory);
-router.put('/pt/:produitId', authenticate, requireClient, saveStockPT);
+router.put('/pt/:produitId', authenticate, requireClient, requireFormulePremium, saveStockPT);
 router.put('/pt/:produitId/seuil-min', authenticate, requireClient, updateSeuilMinPT);
 
 /**

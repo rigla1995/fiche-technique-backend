@@ -3,7 +3,7 @@ const { sendAvenantEmail } = require('../services/emailService');
 const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
-const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeAvenantPricing } = require('./abonnementController');
+const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeBaseAcheteursFromConfig, computeAvenantPricing } = require('./abonnementController');
 const {
   createSubmission, createSubmissionFromPdf, getSubmissionDocuments,
   isConfigured: docusealConfigured, isConfiguredPdf: docusealPdfConfigured,
@@ -304,6 +304,8 @@ const traiter = async (req, res) => {
          SET nb_activites = nb_activites + $1,
              nb_labos     = nb_labos     + $2,
              nb_gerants   = nb_gerants   + $3,
+             -- un compte dépôt qui gagne sa 1ère activité reçoit une formule (défaut premium)
+             formule_activites = CASE WHEN nb_activites +               >= 1 THEN COALESCE(formule_activites, 'premium') ELSE formule_activites END,
              updated_at   = NOW()
          FROM abonnements a
          WHERE a.id = ac.abonnement_id AND a.client_id = $4`,
@@ -347,12 +349,12 @@ const traiter = async (req, res) => {
             const ancienActivite = computeBaseMensuelFromConfig(cfgBefore, tarifs) || 0;
             const ancienLabo     = computeBaseLaboFromConfig(cfgBefore, tarifs)    || 0;
             const ancienGerant   = computeBaseGerantFromConfig(cfgBefore, tarifs)  || 0;
-            const ancienMensuel  = ancienActivite + ancienLabo + ancienGerant;
+            const ancienMensuel  = ancienActivite + ancienLabo + ancienGerant + (computeBaseAcheteursFromConfig(cfgBefore, tarifs) || 0);
 
             const activiteCost = computeBaseMensuelFromConfig(cfg, tarifs) || 0;
             const laboCost     = computeBaseLaboFromConfig(cfg, tarifs)    || 0;
             const gerantCost   = computeBaseGerantFromConfig(cfg, tarifs)  || 0;
-            const newMensuel   = activiteCost + laboCost + gerantCost;
+            const newMensuel   = activiteCost + laboCost + gerantCost + (computeBaseAcheteursFromConfig(cfg, tarifs) || 0);
             const dateAvenant  = new Date().toISOString();
 
             const pdfData = {
@@ -367,6 +369,8 @@ const traiter = async (req, res) => {
               activiteCost,
               laboCost,
               gerantCost,
+              nbAcheteurs: parseInt(cfg.nb_acheteurs) || 0,
+              acheteursCost: computeBaseAcheteursFromConfig(cfg, tarifs) || 0,
               newMensuel,
               ancienMensuel,
               promoApplied: false,
@@ -432,12 +436,12 @@ const previewAvenant = async (req, res) => {
     const ancienActivite = computeBaseMensuelFromConfig(cfg, tarifs)     || 0;
     const ancienLabo     = computeBaseLaboFromConfig(cfg, tarifs)         || 0;
     const ancienGerant   = computeBaseGerantFromConfig(cfg, tarifs)       || 0;
-    const ancienMensuel  = ancienActivite + ancienLabo + ancienGerant;
+    const ancienMensuel  = ancienActivite + ancienLabo + ancienGerant + (computeBaseAcheteursFromConfig(cfg, tarifs) || 0);
 
     const activiteCost = computeBaseMensuelFromConfig(cfgAfter, tarifs) || 0;
     const laboCost     = computeBaseLaboFromConfig(cfgAfter, tarifs)    || 0;
     const gerantCost   = computeBaseGerantFromConfig(cfgAfter, tarifs)  || 0;
-    const newMensuel   = activiteCost + laboCost + gerantCost;
+    const newMensuel   = activiteCost + laboCost + gerantCost + (computeBaseAcheteursFromConfig(cfgAfter, tarifs) || 0);
 
     const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
     const pdfData = {
@@ -452,6 +456,8 @@ const previewAvenant = async (req, res) => {
       activiteCost,
       laboCost,
       gerantCost,
+      nbAcheteurs: parseInt(cfg.nb_acheteurs) || 0,
+      acheteursCost: computeBaseAcheteursFromConfig(cfg, tarifs) || 0,
       newMensuel,
       ancienMensuel,
       promoApplied: false,
