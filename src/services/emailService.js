@@ -613,12 +613,12 @@ const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) 
   return { success: true, id: data?.id };
 };
 
-// Statut d'une commande passée sur le portail acheteur (validée → facture, annulée → motif)
+// Statut d'une commande passée sur le portail acheteur (expédiée → facture, annulée → motif)
 const sendCommandeAcheteurEmail = async ({ to, nom, statut, numero, montantTtc, motif }) => {
-  const validee = statut === 'validee';
-  const titre = validee ? 'Votre commande est validée ✅' : 'Votre commande a été annulée';
-  const corps = validee
-    ? `Votre commande a été validée par votre fournisseur.${numero ? ` La facture <strong>${numero}</strong>${montantTtc != null ? ` (${Number(montantTtc).toFixed(3)} DT TTC)` : ''} est disponible dans votre portail.` : ''}`
+  const expediee = statut === 'expediee' || statut === 'validee';
+  const titre = expediee ? 'Votre commande a été expédiée 🚚' : 'Votre commande a été annulée';
+  const corps = expediee
+    ? `Votre commande a été expédiée par votre fournisseur.${numero ? ` La facture <strong>${numero}</strong>${montantTtc != null ? ` (${Number(montantTtc).toFixed(3)} DT TTC)` : ''} est disponible dans votre portail.` : ''}`
     : `Votre commande a été annulée par votre fournisseur.${motif ? ` Motif : <em>${motif}</em>` : ''} Vous pouvez le contacter pour plus de détails.`;
   const html = `
 <!DOCTYPE html>

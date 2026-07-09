@@ -404,15 +404,15 @@ const getLaboStock = async (req, res) => {
          SELECT cal.article_id AS ingredient_id, SUM(cal.quantite_unites) as qty
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         JOIN last_inv li ON li.ingredient_id = cal.article_id AND ca.date_commande >= li.date_inventaire
-         WHERE ca.labo_id = $1 AND ca.statut = 'validee' AND cal.article_type = 'ingredient'
+         JOIN last_inv li ON li.ingredient_id = cal.article_id AND COALESCE(ca.date_expedition, ca.date_commande) >= li.date_inventaire
+         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'ingredient'
          GROUP BY cal.article_id
        ),
        all_ventes_ach AS (
          SELECT cal.article_id AS ingredient_id, SUM(cal.quantite_unites) as qty
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         WHERE ca.labo_id = $1 AND ca.statut = 'validee' AND cal.article_type = 'ingredient'
+         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'ingredient'
          GROUP BY cal.article_id
        ),
        prev_inv AS (
@@ -738,15 +738,15 @@ const getLaboStock = async (req, res) => {
          SELECT cal.article_id AS produit_id, SUM(cal.quantite_unites) as qty
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         JOIN last_inv li ON li.produit_id = cal.article_id AND ca.date_commande >= li.date_inventaire
-         WHERE ca.labo_id = $1 AND ca.statut = 'validee' AND cal.article_type = 'produit'
+         JOIN last_inv li ON li.produit_id = cal.article_id AND COALESCE(ca.date_expedition, ca.date_commande) >= li.date_inventaire
+         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'produit'
          GROUP BY cal.article_id
        ),
        all_ventes_ach AS (
          SELECT cal.article_id AS produit_id, SUM(cal.quantite_unites) as qty
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         WHERE ca.labo_id = $1 AND ca.statut = 'validee' AND cal.article_type = 'produit'
+         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'produit'
          GROUP BY cal.article_id
        )
        SELECT lps.produit_id,
@@ -1166,13 +1166,13 @@ const getLaboStockHistory = async (req, res) => {
            FROM labo_pertes lp
            WHERE lp.labo_id = $1 AND lp.produit_id = $2
            UNION ALL
-           SELECT ca.date_commande AS d, -cal.quantite_unites AS quantite, cal.cout_unitaire_ttc AS prix, 'vente' AS type,
+           SELECT COALESCE(ca.date_expedition, ca.date_commande) AS d, -cal.quantite_unites AS quantite, cal.cout_unitaire_ttc AS prix, 'vente' AS type,
                   fa.numero AS ref, cal.taux_tva AS tva, cal.cout_unitaire_ttc AS ttc, ach.nom AS fournisseur
            FROM commande_acheteur_lignes cal
            JOIN commandes_acheteur ca ON ca.id = cal.commande_id
            JOIN acheteurs ach ON ach.id = ca.acheteur_id
            LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
-           WHERE ca.labo_id = $1 AND ca.statut = 'validee'
+           WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
              AND cal.article_type = 'produit' AND cal.article_id = $2
          ) h
          ORDER BY d DESC, type LIMIT 15`,
@@ -1198,7 +1198,7 @@ const getLaboStockHistory = async (req, res) => {
          LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
          WHERE sld.labo_id = $1 AND sld.ingredient_id = $2
          UNION ALL
-         SELECT ca.date_commande AS date_appro, -cal.quantite_unites AS quantite,
+         SELECT COALESCE(ca.date_expedition, ca.date_commande) AS date_appro, -cal.quantite_unites AS quantite,
                 cal.cout_unitaire_ttc AS prix_unitaire, fa.numero AS ref_facture,
                 'vente' AS type_appro, ach.nom AS fournisseur_nom,
                 cal.taux_tva, cal.cout_unitaire_ttc AS prix_unitaire_tva
@@ -1206,7 +1206,7 @@ const getLaboStockHistory = async (req, res) => {
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
          JOIN acheteurs ach ON ach.id = ca.acheteur_id
          LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
-         WHERE ca.labo_id = $1 AND ca.statut = 'validee'
+         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
            AND cal.article_type = 'ingredient' AND cal.article_id = $2
        ) h
        ORDER BY date_appro DESC LIMIT 10`,
@@ -1626,7 +1626,7 @@ const getLaboHistorique = async (req, res) => {
 
     const manuelConds = [`sld.labo_id = $1`, `sld.type_appro != 'transfert'`, `NOT (sld.type_appro = 'manuel' AND sld.quantite < 0)`];
     const transferConds = [`lt.labo_id = $1`];
-    const venteConds = [`ca.labo_id = $1`, `ca.statut = 'validee'`];
+    const venteConds = [`ca.labo_id = $1`, `ca.statut IN ('expediee', 'livree')`];
     const params = [laboId];
     let idx = 2;
 
@@ -1634,14 +1634,14 @@ const getLaboHistorique = async (req, res) => {
       params.push(startDate);
       manuelConds.push(`sld.date_appro >= $${idx}`);
       transferConds.push(`lt.date_transfert >= $${idx}`);
-      venteConds.push(`ca.date_commande >= $${idx}`);
+      venteConds.push(`COALESCE(ca.date_expedition, ca.date_commande) >= $${idx}`);
       idx++;
     }
     if (endDate) {
       params.push(endDate);
       manuelConds.push(`sld.date_appro <= $${idx}`);
       transferConds.push(`lt.date_transfert <= $${idx}`);
-      venteConds.push(`ca.date_commande <= $${idx}`);
+      venteConds.push(`COALESCE(ca.date_expedition, ca.date_commande) <= $${idx}`);
       idx++;
     }
     if (ingredientId) {
@@ -1710,7 +1710,7 @@ const getLaboHistorique = async (req, res) => {
     // Le « fournisseur » affiché = l'acheteur (destinataire) ; prix = coût matière TTC figé.
     const venteSql = `
       SELECT cal.id, CASE WHEN cal.article_type = 'produit' THEN -cal.article_id ELSE cal.article_id END as ingredient_id,
-             ca.date_commande as date_appro, -cal.quantite_unites as quantite, cal.cout_unitaire_ttc as prix_unitaire,
+             COALESCE(ca.date_expedition, ca.date_commande) as date_appro, -cal.quantite_unites as quantite, cal.cout_unitaire_ttc as prix_unitaire,
              fa.numero as ref_facture, 'vente'::text as type_appro, ca.created_at as updated_at, ca.created_by,
              cal.taux_tva, cal.cout_unitaire_ttc as prix_unitaire_tva,
              cal.designation as ingredient_nom, COALESCE(u.nom, 'unité') as unite_nom,
