@@ -112,58 +112,87 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   const cmd = body.find((c) => c.id === cmdId);
   check('commande listée côté client (portail, en attente)', !!cmd && cmd.source === 'portail' && cmd.acheteurNom === 'TEST-L4-Resto');
 
-  // ── 4. Validation sans labo → 400 ; avec labo → facture + stock déduit
-  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, { method: 'POST', headers: H, body: JSON.stringify({}) });
-  check('valider sans labo 400', r.status === 400);
-  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, { method: 'POST', headers: H, body: JSON.stringify({ laboId, montantTimbre: -5 }) });
+  // ── 4. Expédition : gardes, puis quantités AJUSTÉES par le vendeur + stock déduit + facture
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/expedier`, { method: 'POST', headers: H, body: JSON.stringify({}) });
+  check('expédier sans labo 400', r.status === 400);
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/expedier`, { method: 'POST', headers: H, body: JSON.stringify({ laboId, montantTimbre: -5 }) });
   check('timbre négatif refusé 400', r.status === 400);
-  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, { method: 'POST', headers: H, body: JSON.stringify({ laboId, remisePct: 150 }) });
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/expedier`, { method: 'POST', headers: H, body: JSON.stringify({ laboId, remisePct: 150 }) });
   check('remise 150 refusée 400', r.status === 400);
-  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, {
-    method: 'POST', headers: H, body: JSON.stringify({ laboId, timbreFiscal: true, remisePct: 10 }),
+
+  // Le vendeur ramène la 2e ligne de 6 à 4 unités (2 + 4 = 6 unités expédiées)
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}`, { headers: H });
+  const detailAvant = await r.json();
+  const ligne2 = detailAvant.lignes[1];
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/expedier`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({
+      laboId, timbreFiscal: true, remisePct: 10, dateExpedition: '2026-07-09',
+      quantites: [{ ligneId: ligne2.id, quantite: 4 }],
+    }),
   });
   body = await r.json();
-  check('validation → facture', r.status === 200 && /^FA-\d{4}-\d{4}$/.test(body.facture?.numero || ''), JSON.stringify(body.facture));
-  // 8 u × 5 HT = 40 HT ; remise 10% saisie à la validation → HT 36 ; TVA 19% = 6.84 ; TTC 36 + 6.84 + 1 = 43.84
-  check('totaux : brut HT 40, remise 10% → TTC 43.840',
-    approx(body.facture?.brutHt, 40) && approx(body.facture?.montantHt, 36) && approx(body.facture?.montantTtc, 43.84),
+  check('expédition → facture', r.status === 200 && /^FA-\d{4}-\d{4}$/.test(body.facture?.numero || ''), JSON.stringify(body.facture));
+  // 6 u × 5 HT = 30 HT ; remise 10% → HT 27 ; TVA 19% = 5.13 ; TTC 27 + 5.13 + 1 = 33.13
+  check('totaux après ajustement : brut HT 30, remise 10% → TTC 33.130',
+    approx(body.facture?.brutHt, 30) && approx(body.facture?.montantHt, 27) && approx(body.facture?.montantTtc, 33.13),
     JSON.stringify(body.facture));
-  const remiseFigee = await pool.query(`SELECT remise_pct FROM commandes_acheteur WHERE id = $1`, [cmdId]);
-  check('remise figée sur la commande (10)', Number(remiseFigee.rows[0]?.remise_pct) === 10, String(remiseFigee.rows[0]?.remise_pct));
-  check('stock déduit après validation (2)', await computeStockCourant('labo', laboId, artId) === 2);
+  const remiseFigee = await pool.query(`SELECT remise_pct, statut, date_expedition FROM commandes_acheteur WHERE id = $1`, [cmdId]);
+  check('remise figée + statut expediee + date', Number(remiseFigee.rows[0]?.remise_pct) === 10
+    && remiseFigee.rows[0]?.statut === 'expediee', JSON.stringify(remiseFigee.rows[0]));
+  const qteMod = await pool.query(`SELECT quantite, quantite_unites FROM commande_acheteur_lignes WHERE id = $1`, [ligne2.id]);
+  check('quantité de la ligne ajustée (6 → 4)', Number(qteMod.rows[0]?.quantite) === 4 && Number(qteMod.rows[0]?.quantite_unites) === 4);
+  check('stock déduit après expédition (10 − 6 = 4)', await computeStockCourant('labo', laboId, artId) === 4);
   const lignesCout = await pool.query(`SELECT cout_unitaire_ttc FROM commande_acheteur_lignes WHERE commande_id = $1`, [cmdId]);
-  check('coûts figés à la validation', lignesCout.rows.every((l) => l.cout_unitaire_ttc !== null && approx(l.cout_unitaire_ttc, 2.38)));
+  check('coûts figés à l\'expédition', lignesCout.rows.every((l) => l.cout_unitaire_ttc !== null && approx(l.cout_unitaire_ttc, 2.38)));
 
-  // ── 5. Côté acheteur : commande validée + facture téléchargeable
+  // ── 4bis. Livraison
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/livrer`, {
+    method: 'POST', headers: H, body: JSON.stringify({ dateLivraison: '2026-07-10' }),
+  });
+  body = await r.json();
+  check('livraison 200', r.status === 200 && body.commande?.statut === 'livree');
+  check('stock inchangé après livraison (4)', await computeStockCourant('labo', laboId, artId) === 4);
+
+  // ── 5. Côté acheteur : détail COMPLET (statut, facture, remise, TVA, historique)
   r = await fetch(`${BASE}/api/portail/commandes`, { headers: HP });
   body = await r.json();
   const maCmd = body.find((c) => c.id === cmdId);
-  check('acheteur voit validée + numéro facture', maCmd?.statut === 'validee' && !!maCmd?.factureNumero, maCmd?.factureNumero);
+  check('acheteur voit livrée + numéro facture', maCmd?.statut === 'livree' && !!maCmd?.factureNumero, JSON.stringify({ s: maCmd?.statut, n: maCmd?.factureNumero }));
+  r = await fetch(`${BASE}/api/portail/commandes/${cmdId}`, { headers: HP });
+  body = await r.json();
+  check('détail portail : facture complète (remise 10, TTC 33.13)',
+    body.facture && body.facture.remisePct === 10 && approx(body.facture.montantTtc, 33.13) && approx(body.facture.montantTva, 5.13),
+    JSON.stringify(body.facture));
+  check('détail portail : historique en_attente → expediee → livree',
+    Array.isArray(body.historique) && body.historique.map((h) => h.statut).join(',') === 'en_attente,expediee,livree',
+    JSON.stringify(body.historique?.map((h) => h.statut)));
+  check('détail portail : quantité ajustée visible (4)', body.lignes?.[1]?.quantite === 4, JSON.stringify(body.lignes));
   r = await fetch(`${BASE}/api/portail/factures/${maCmd.factureId}/pdf`, { headers: { Authorization: HP.Authorization } });
   const pdf = Buffer.from(await r.arrayBuffer());
   check('facture PDF portail', r.status === 200 && pdf.slice(0, 4).toString() === '%PDF', `${pdf.length} octets`);
 
-  // ── 6. 2e commande : validation en stock insuffisant → 422 ; refus → annulée + motif visible acheteur
+  // ── 6. 2e commande : expédition en stock insuffisant → 422 ; refus → annulée + motif visible acheteur
   r = await fetch(`${BASE}/api/portail/commandes`, {
     method: 'POST', headers: HP,
     body: JSON.stringify({ lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 5 }] }),
   });
   const cmd2 = (await r.json()).id;
-  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd2}/valider`, { method: 'POST', headers: H, body: JSON.stringify({ laboId }) });
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd2}/expedier`, { method: 'POST', headers: H, body: JSON.stringify({ laboId }) });
   body = await r.json();
-  check('validation stock insuffisant 422', r.status === 422 && body.manquants?.length === 1, JSON.stringify(body.manquants));
+  check('expédition stock insuffisant 422', r.status === 422 && body.manquants?.length === 1, JSON.stringify(body.manquants));
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd2}/annuler`, { method: 'POST', headers: H, body: JSON.stringify({ motif: 'rupture de stock' }) });
   check('refus commande en attente 200', r.status === 200);
   r = await fetch(`${BASE}/api/portail/commandes/${cmd2}`, { headers: HP });
   body = await r.json();
   check('acheteur voit annulée + motif', body.statut === 'annulee' && body.motifAnnulation === 'rupture de stock');
 
-  // ── 7. Badge rupture quand stock ≤ seuil (stock 2, seuil 9)
+  // ── 7. Badge rupture quand stock ≤ seuil (stock 4, seuil 9)
   await pool.query(`UPDATE labo_ingredient_selections SET seuil_min = 9 WHERE labo_id = $1 AND ingredient_id = $2`, [laboId, artId]);
   r = await fetch(`${BASE}/api/portail/catalogue`, { headers: HP });
   body = await r.json();
   const item2 = body.offres?.find((o) => o.articleId === artId);
-  check('badge rupture (stock 2 ≤ seuil 9)', item2?.disponible === false);
+  check('badge rupture (stock 4 ≤ seuil 9)', item2?.disponible === false);
 
   // ── 8. Suppression protégée : un acheteur avec commandes/factures → 409 explicite
   r = await fetch(`${BASE}/api/acheteurs/${acheteurId}`, { method: 'DELETE', headers: H });

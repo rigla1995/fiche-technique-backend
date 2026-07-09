@@ -146,6 +146,12 @@ const createCommande = async (req, res) => {
           [commande.id, l.articleType, l.articleId, l.designation, l.quantite, l.quantiteUnites, l.prixHt, l.prixTtc, l.tauxTva]
         );
       }
+      // Historique des états : trace de la création
+      await db.query(
+        `INSERT INTO commande_acheteur_statuts (commande_id, statut, date_effet, created_by)
+         VALUES ($1, 'en_attente', CURRENT_DATE, $2)`,
+        [commande.id, req.user.id]
+      );
       await db.query('COMMIT');
     } catch (err) {
       await db.query('ROLLBACK').catch(() => {});
@@ -173,11 +179,14 @@ const createCommande = async (req, res) => {
   }
 };
 
+const isoDate = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
+
 // GET /api/portail/commandes — les commandes de l'acheteur connecté
 const listMesCommandes = async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT ca.id, ca.date_commande, ca.statut, ca.source, ca.remise_pct, ca.motif_annulation, ca.created_at,
+      `SELECT ca.id, ca.date_commande, ca.date_expedition, ca.date_livraison, ca.statut, ca.source,
+              ca.remise_pct, ca.motif_annulation, ca.created_at,
               fa.id AS facture_id, fa.numero AS facture_numero, fa.montant_ttc AS facture_ttc,
               (SELECT COUNT(*)::int FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS nb_lignes,
               (SELECT COALESCE(SUM(cal.prix_ttc * cal.quantite), 0) FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS total_brut
@@ -190,7 +199,9 @@ const listMesCommandes = async (req, res) => {
     );
     res.json(r.rows.map((c) => ({
       id: c.id,
-      dateCommande: c.date_commande instanceof Date ? c.date_commande.toISOString().slice(0, 10) : c.date_commande,
+      dateCommande: isoDate(c.date_commande),
+      dateExpedition: isoDate(c.date_expedition),
+      dateLivraison: isoDate(c.date_livraison),
       statut: c.statut,
       remisePct: num(c.remise_pct) ?? 0,
       motifAnnulation: c.motif_annulation,
@@ -206,29 +217,49 @@ const listMesCommandes = async (req, res) => {
   }
 };
 
-// GET /api/portail/commandes/:id — détail (lignes)
+// GET /api/portail/commandes/:id — détail COMPLET : lignes, facture (référence,
+// remise, HT/TVA/timbre/TTC) et historique des états.
 const getMaCommande = async (req, res) => {
   try {
     const c = await pool.query(
-      `SELECT ca.*, fa.numero AS facture_numero, fa.montant_ttc AS facture_ttc, fa.id AS facture_id
+      `SELECT ca.*, fa.id AS facture_id, fa.numero AS facture_numero, fa.montant_brut_ttc, fa.remise_pct AS fa_remise,
+              fa.montant_ht, fa.montant_tva, fa.timbre_fiscal, fa.montant_timbre, fa.montant_ttc
        FROM commandes_acheteur ca
        LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
        WHERE ca.id = $1 AND ca.acheteur_id = $2`,
       [req.params.id, req.user.acheteurId]
     );
     if (c.rows.length === 0) return res.status(404).json({ message: 'Commande introuvable' });
-    const lignes = await pool.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id`, [req.params.id]);
+    const [lignes, histo] = await Promise.all([
+      pool.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id`, [req.params.id]),
+      pool.query(
+        `SELECT statut, date_effet, motif, created_at FROM commande_acheteur_statuts
+         WHERE commande_id = $1 ORDER BY created_at, id`,
+        [req.params.id]
+      ),
+    ]);
     const row = c.rows[0];
     res.json({
       id: row.id,
-      dateCommande: row.date_commande instanceof Date ? row.date_commande.toISOString().slice(0, 10) : row.date_commande,
+      dateCommande: isoDate(row.date_commande),
+      dateExpedition: isoDate(row.date_expedition),
+      dateLivraison: isoDate(row.date_livraison),
       statut: row.statut,
       remisePct: num(row.remise_pct) ?? 0,
       motifAnnulation: row.motif_annulation,
       notes: row.notes,
       factureId: row.facture_id,
       factureNumero: row.facture_numero,
-      factureTtc: num(row.facture_ttc),
+      facture: row.facture_id ? {
+        id: row.facture_id, numero: row.facture_numero,
+        montantBrutTtc: num(row.montant_brut_ttc), remisePct: num(row.fa_remise) ?? 0,
+        montantHt: num(row.montant_ht), montantTva: num(row.montant_tva),
+        timbreFiscal: row.timbre_fiscal, montantTimbre: num(row.montant_timbre), montantTtc: num(row.montant_ttc),
+      } : null,
+      factureTtc: num(row.montant_ttc),
+      historique: histo.rows.map((h) => ({
+        statut: h.statut, dateEffet: isoDate(h.date_effet), motif: h.motif, le: h.created_at,
+      })),
       lignes: lignes.rows.map((l) => ({
         designation: l.designation, quantite: num(l.quantite),
         prixTtc: num(l.prix_ttc), tauxTva: num(l.taux_tva),

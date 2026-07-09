@@ -137,7 +137,10 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   });
   body = await r.json();
   const facture = body.facture;
-  check('vente validée 201', r.status === 201, JSON.stringify(facture));
+  check('vente créée 201, statut expediee (stock sorti)', r.status === 201 && body.commande?.statut === 'expediee', JSON.stringify(body.commande));
+  const venteId = body.commande?.id;
+  const h1 = await pool.query(`SELECT statut FROM commande_acheteur_statuts WHERE commande_id = $1 ORDER BY id`, [venteId]);
+  check('historique vente manuelle : 1 état (expediee)', h1.rows.length === 1 && h1.rows[0].statut === 'expediee', JSON.stringify(h1.rows));
   // brut HT = 2×5 + 6×4.5 = 37 ; remise 10% → HT net 33.3 ; TVA 19% = 6.327 ; TTC = 33.3 + 6.327 + 1 timbre
   check('numéro FA-YYYY-0001', /^FA-\d{4}-0001$/.test(facture?.numero || ''), facture?.numero);
   check('brut HT 37.000', approx(facture?.brutHt, 37), String(facture?.brutHt));
@@ -182,8 +185,21 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   // ── 6. Liste + détail + PDF
   r = await fetch(`${BASE}/api/acheteurs/commandes`, { headers: H });
   body = await r.json();
-  const cmd = body.find((c) => c.acheteurNom === 'TEST-L2-Grossiste' && c.statut === 'validee');
+  const cmd = body.find((c) => c.acheteurNom === 'TEST-L2-Grossiste' && c.statut === 'expediee');
   check('commande listée avec facture', !!cmd && cmd.factureNumero === facture.numero, cmd?.factureNumero);
+
+  // ── 6bis. Livraison : expediee → livree (jalon logistique, stock/facture inchangés)
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd.id}/livrer`, {
+    method: 'POST', headers: H, body: JSON.stringify({ dateLivraison: '2026-07-10' }),
+  });
+  body = await r.json();
+  check('livraison 200 (statut livree)', r.status === 200 && body.commande?.statut === 'livree', JSON.stringify(body));
+  check('stock inchangé après livraison (2)', await computeStockCourant('labo', laboId, artId) === 2);
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd.id}/livrer`, { method: 'POST', headers: H, body: JSON.stringify({}) });
+  check('double livraison 409', r.status === 409);
+  const h2 = await pool.query(`SELECT statut, date_effet FROM commande_acheteur_statuts WHERE commande_id = $1 ORDER BY id`, [cmd.id]);
+  check('historique : expediee puis livree', h2.rows.length === 2 && h2.rows[0].statut === 'expediee' && h2.rows[1].statut === 'livree',
+    JSON.stringify(h2.rows.map((x) => x.statut)));
 
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd.id}`, { headers: H });
   body = await r.json();
@@ -213,13 +229,20 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd.id}/annuler`, { method: 'POST', headers: H, body: JSON.stringify({}) });
   check('double annulation 409', r.status === 409);
 
-  // ── 9. Nouvelle vente après annulation → numérotation repart proprement
+  // ── 9. Nouvelle vente après annulation → numérotation repart proprement.
+  // Directement LIVRÉE (avec sa date) : l'historique trace expediee PUIS livree.
   r = await fetch(`${BASE}/api/acheteurs/ventes`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ acheteurId, laboId, remisePct: 0, timbreFiscal: false, lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 1, prixHt: 6 }] }),
+    body: JSON.stringify({
+      acheteurId, laboId, remisePct: 0, timbreFiscal: false, statut: 'livree', dateLivraison: '2026-07-11',
+      lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 1, prixHt: 6 }],
+    }),
   });
   body = await r.json();
   check('re-vente : prix HT modifié ligne (6) + sans timbre → TTC 7.140', r.status === 201 && approx(body.facture?.montantTtc, 7.14), JSON.stringify(body.facture));
+  check('re-vente directement livrée', body.commande?.statut === 'livree' && body.commande?.dateLivraison === '2026-07-11', JSON.stringify(body.commande));
+  const h3 = await pool.query(`SELECT statut FROM commande_acheteur_statuts WHERE commande_id = $1 ORDER BY id`, [body.commande?.id]);
+  check('historique vente livrée : expediee + livree', h3.rows.length === 2 && h3.rows[1].statut === 'livree', JSON.stringify(h3.rows.map((x) => x.statut)));
 
   // ── Nettoyage
   await wipe();

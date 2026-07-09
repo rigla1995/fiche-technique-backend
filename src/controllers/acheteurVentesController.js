@@ -241,6 +241,16 @@ const buildCostMaps = async (laboId, artIds, prodIds) => {
   return { artMap, prodMap };
 };
 
+// Trace d'une transition d'état (historique complet de la commande).
+// date_effet = date métier saisie (expédition / livraison), NULL sinon.
+const logStatut = (db, commandeId, statut, dateEffet, motif, userId) => db.query(
+  `INSERT INTO commande_acheteur_statuts (commande_id, statut, date_effet, motif, created_by)
+   VALUES ($1, $2, $3, $4, $5)`,
+  [commandeId, statut, dateEffet || null, motif || null, userId || null]
+);
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 // Numéro de facture séquentiel par client et par année : FA-2026-0001.
 // Advisory lock transactionnel → pas de doublon même en concurrence.
 const nextNumeroFacture = async (db, clientId, dateFacture) => {
@@ -254,7 +264,8 @@ const nextNumeroFacture = async (db, clientId, dateFacture) => {
   return `FA-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 };
 
-// POST /api/acheteurs/ventes — vente manuelle (commande source=client, validée d'office).
+// POST /api/acheteurs/ventes — vente manuelle (commande source=client) : le stock
+// sort immédiatement (statut 'expediee', ou 'livree' directement avec sa date).
 // Lignes pré-remplies au tarif côté front, prix HT modifiable ligne à ligne.
 // La remise se décide À CETTE COMMANDE (défaut 0 — plus de remise de fiche acheteur).
 const createVente = async (req, res) => {
@@ -265,6 +276,13 @@ const createVente = async (req, res) => {
   if (!Number.isFinite(Number(acheteurId))) return res.status(400).json({ message: 'Acheteur requis' });
   if (!Number.isFinite(Number(laboId))) return res.status(400).json({ message: 'Labo requis' });
   if (lignesIn.length === 0) return res.status(400).json({ message: 'Au moins une ligne est requise' });
+
+  const statut = req.body.statut === 'livree' ? 'livree' : 'expediee';
+  const dateExpedition = req.body.dateExpedition || dateCommande;
+  const dateLivraison = statut === 'livree' ? (req.body.dateLivraison || dateExpedition) : null;
+  if (!DATE_RE.test(dateExpedition) || (dateLivraison && !DATE_RE.test(dateLivraison))) {
+    return res.status(400).json({ message: 'Date invalide (AAAA-MM-JJ)' });
+  }
 
   try {
     // Gardes de périmètre
@@ -363,12 +381,16 @@ const createVente = async (req, res) => {
     try {
       await db.query('BEGIN');
       const cmd = await db.query(
-        `INSERT INTO commandes_acheteur (client_id, acheteur_id, labo_id, statut, source, remise_pct, date_commande, notes, traite_le, traite_par, created_by)
-         VALUES ($1, $2, $3, 'validee', 'client', $4, $5, $6, NOW(), $7, $7)
+        `INSERT INTO commandes_acheteur
+           (client_id, acheteur_id, labo_id, statut, source, remise_pct, date_commande, date_expedition, date_livraison, notes, traite_le, traite_par, created_by)
+         VALUES ($1, $2, $3, $4, 'client', $5, $6, $7, $8, $9, NOW(), $10, $10)
          RETURNING *`,
-        [clientId, acheteurId, laboId, remisePct, dateCommande, notes || null, req.user.id]
+        [clientId, acheteurId, laboId, statut, remisePct, dateCommande, dateExpedition, dateLivraison, notes || null, req.user.id]
       );
       const commande = cmd.rows[0];
+      // Historique : le stock sort à l'expédition ; la livraison directe trace les deux jalons
+      await logStatut(db, commande.id, 'expediee', dateExpedition, null, req.user.id);
+      if (statut === 'livree') await logStatut(db, commande.id, 'livree', dateLivraison, null, req.user.id);
       for (const l of lignes) {
         const coutU = l.articleType === 'ingredient' ? artMap.get(l.articleId) ?? null : prodMap.get(l.articleId) ?? null;
         await db.query(
@@ -388,7 +410,7 @@ const createVente = async (req, res) => {
       );
       await db.query('COMMIT');
       res.status(201).json({
-        commande: { id: commande.id, statut: commande.statut, dateCommande, remisePct, acheteurNom: ach.rows[0].nom, laboNom: labo.rows[0].nom },
+        commande: { id: commande.id, statut, dateCommande, dateExpedition, dateLivraison, remisePct, acheteurNom: ach.rows[0].nom, laboNom: labo.rows[0].nom },
         facture: {
           id: fact.rows[0].id, numero, montantHt, montantTva, montantTimbre, montantTtc, brutHt, brutTtc,
         },
@@ -411,7 +433,7 @@ const listCommandes = async (req, res) => {
     const clientId = clientIdOf(req);
     const conds = ['ca.client_id = $1'];
     const params = [clientId];
-    if (req.query.statut && ['en_attente', 'validee', 'annulee'].includes(req.query.statut)) {
+    if (req.query.statut && ['en_attente', 'expediee', 'livree', 'annulee'].includes(req.query.statut)) {
       params.push(req.query.statut);
       conds.push(`ca.statut = $${params.length}`);
     }
@@ -442,9 +464,12 @@ const listCommandes = async (req, res) => {
        LIMIT ${limit}`,
       params
     );
+    const isoDate = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
     res.json(r.rows.map((c) => ({
       id: c.id,
-      dateCommande: c.date_commande instanceof Date ? c.date_commande.toISOString().slice(0, 10) : c.date_commande,
+      dateCommande: isoDate(c.date_commande),
+      dateExpedition: isoDate(c.date_expedition),
+      dateLivraison: isoDate(c.date_livraison),
       statut: c.statut,
       source: c.source,
       acheteurId: c.acheteur_id,
@@ -485,14 +510,23 @@ const getCommande = async (req, res) => {
       [req.params.id, clientId]
     );
     if (c.rows.length === 0) return res.status(404).json({ message: 'Commande introuvable' });
-    const lignes = await pool.query(
-      `SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id`,
-      [req.params.id]
-    );
+    const [lignes, histo] = await Promise.all([
+      pool.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id`, [req.params.id]),
+      pool.query(
+        `SELECT s.statut, s.date_effet, s.motif, s.created_at, u.nom AS created_by_nom
+         FROM commande_acheteur_statuts s
+         LEFT JOIN utilisateurs u ON u.id = s.created_by
+         WHERE s.commande_id = $1 ORDER BY s.created_at, s.id`,
+        [req.params.id]
+      ),
+    ]);
     const row = c.rows[0];
+    const isoDate = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
     res.json({
       id: row.id,
-      dateCommande: row.date_commande instanceof Date ? row.date_commande.toISOString().slice(0, 10) : row.date_commande,
+      dateCommande: isoDate(row.date_commande),
+      dateExpedition: isoDate(row.date_expedition),
+      dateLivraison: isoDate(row.date_livraison),
       statut: row.statut,
       source: row.source,
       acheteurId: row.acheteur_id,
@@ -502,6 +536,10 @@ const getCommande = async (req, res) => {
       remisePct: num(row.remise_pct) ?? 0,
       notes: row.notes,
       motifAnnulation: row.motif_annulation,
+      historique: histo.rows.map((h) => ({
+        statut: h.statut, dateEffet: isoDate(h.date_effet), motif: h.motif,
+        parNom: h.created_by_nom, le: h.created_at,
+      })),
       facture: row.facture_id ? {
         id: row.facture_id, numero: row.facture_numero,
         montantBrutTtc: num(row.montant_brut_ttc), montantHt: num(row.montant_ht), montantTva: num(row.montant_tva),
@@ -519,20 +557,34 @@ const getCommande = async (req, res) => {
   }
 };
 
-// POST /api/acheteurs/commandes/:id/valider — validation d'une commande PORTAIL
-// (en attente) : le vendeur choisit le labo source ET la remise éventuelle de la
-// commande, le stock est contrôlé puis déduit (flux), les coûts sont figés et la
-// facture est générée.
-const validerCommande = async (req, res) => {
+// POST /api/acheteurs/commandes/:id/expedier — expédition d'une commande EN ATTENTE :
+// le vendeur choisit le labo source, peut AJUSTER LES QUANTITÉS demandées, fixe la
+// remise éventuelle et la date d'expédition ; le stock est contrôlé puis déduit
+// (flux), les coûts sont figés et la facture est générée.
+const expedierCommande = async (req, res) => {
   const clientId = clientIdOf(req);
   const laboId = Number(req.body.laboId);
-  if (!Number.isFinite(laboId)) return res.status(400).json({ message: 'Labo requis pour valider la commande' });
+  if (!Number.isFinite(laboId)) return res.status(400).json({ message: 'Labo requis pour expédier la commande' });
   const timbreFiscal = req.body.timbreFiscal !== false;
   const montantTimbre = timbreFiscal ? (Number.isFinite(Number(req.body.montantTimbre)) ? Number(req.body.montantTimbre) : 1.0) : 0;
   if (montantTimbre < 0) return res.status(400).json({ message: 'Timbre invalide' });
   const remiseIn = req.body.remisePct != null && req.body.remisePct !== '' ? Number(req.body.remisePct) : null;
   if (remiseIn !== null && (!Number.isFinite(remiseIn) || remiseIn < 0 || remiseIn > 100)) {
     return res.status(400).json({ message: 'Remise invalide (0 à 100)' });
+  }
+  const dateExpedition = req.body.dateExpedition || new Date().toISOString().slice(0, 10);
+  if (!DATE_RE.test(dateExpedition)) return res.status(400).json({ message: 'Date d\'expédition invalide (AAAA-MM-JJ)' });
+  // Ajustements de quantités { ligneId → quantite } décidés par le vendeur
+  const quantitesIn = Array.isArray(req.body.quantites) ? req.body.quantites : [];
+  const qteMap = new Map();
+  for (const q of quantitesIn) {
+    const ligneId = Number(q.ligneId);
+    const quantite = Number(q.quantite);
+    if (!Number.isFinite(ligneId)) return res.status(400).json({ message: 'Ligne de quantité invalide' });
+    if (!Number.isFinite(quantite) || round3(quantite) <= 0) {
+      return res.status(400).json({ message: 'Quantité invalide (supérieure à 0)' });
+    }
+    qteMap.set(ligneId, round3(quantite));
   }
 
   const db = await pool.connect();
@@ -548,7 +600,7 @@ const validerCommande = async (req, res) => {
     const cmd = c.rows[0];
     if (cmd.statut !== 'en_attente') {
       await db.query('ROLLBACK');
-      return res.status(409).json({ message: `Cette commande est déjà ${cmd.statut === 'validee' ? 'validée' : 'annulée'}` });
+      return res.status(409).json({ message: `Cette commande n'est plus en attente (statut : ${cmd.statut})` });
     }
     const labo = await db.query(
       `SELECT l.id, l.nom FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id
@@ -558,9 +610,22 @@ const validerCommande = async (req, res) => {
     if (labo.rows.length === 0) { await db.query('ROLLBACK'); return res.status(404).json({ message: 'Labo introuvable' }); }
     if (!gerantAllowsLabo(req, laboId)) { await db.query('ROLLBACK'); return res.status(403).json({ message: 'Labo hors de votre périmètre' }); }
 
-    const lignesRes = await db.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id`, [cmd.id]);
+    const lignesRes = await db.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id FOR UPDATE`, [cmd.id]);
     const lignes = lignesRes.rows;
     if (lignes.length === 0) { await db.query('ROLLBACK'); return res.status(400).json({ message: 'Commande sans ligne' }); }
+
+    // Ajustement des quantités décidé par le vendeur (prix figés inchangés)
+    for (const l of lignes) {
+      const nouvelle = qteMap.get(l.id);
+      if (nouvelle !== undefined && nouvelle !== Number(l.quantite)) {
+        await db.query(
+          `UPDATE commande_acheteur_lignes SET quantite = $1, quantite_unites = $1 WHERE id = $2`,
+          [nouvelle, l.id]
+        );
+        l.quantite = nouvelle;
+        l.quantite_unites = nouvelle;
+      }
+    }
 
     // Contrôle de stock sur le labo choisi (agrégat par article, en unités)
     const besoins = new Map();
@@ -593,35 +658,37 @@ const validerCommande = async (req, res) => {
       await db.query(`UPDATE commande_acheteur_lignes SET cout_unitaire_ttc = $1 WHERE id = $2`, [coutU, l.id]);
     }
 
-    // Remise décidée à la validation (défaut : celle déjà portée par la commande, 0 pour le portail)
+    // Remise décidée à l'expédition (défaut : celle déjà portée par la commande, 0 pour le portail)
     const remisePct = remiseIn !== null ? remiseIn : (num(cmd.remise_pct) ?? 0);
     const totaux = computeTotauxFacture(lignes, remisePct, timbreFiscal, montantTimbre);
-    const dateFacture = new Date().toISOString().slice(0, 10);
-    const numero = await nextNumeroFacture(db, clientId, dateFacture);
+    const numero = await nextNumeroFacture(db, clientId, dateExpedition);
     const fact = await db.query(
       `INSERT INTO factures_acheteur
          (client_id, acheteur_id, commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING id`,
-      [clientId, cmd.acheteur_id, cmd.id, numero, dateFacture, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc]
+      [clientId, cmd.acheteur_id, cmd.id, numero, dateExpedition, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc]
     );
     await db.query(
-      `UPDATE commandes_acheteur SET statut = 'validee', labo_id = $1, remise_pct = $2, traite_le = NOW(), traite_par = $3 WHERE id = $4`,
-      [laboId, remisePct, req.user.id, cmd.id]
+      `UPDATE commandes_acheteur
+       SET statut = 'expediee', labo_id = $1, remise_pct = $2, date_expedition = $3, traite_le = NOW(), traite_par = $4
+       WHERE id = $5`,
+      [laboId, remisePct, dateExpedition, req.user.id, cmd.id]
     );
+    await logStatut(db, cmd.id, 'expediee', dateExpedition, null, req.user.id);
     await db.query('COMMIT');
 
     // Email à l'acheteur (best-effort)
     if (cmd.acheteur_email) {
       const { sendCommandeAcheteurEmail } = require('../services/emailService');
       sendCommandeAcheteurEmail({
-        to: cmd.acheteur_email, nom: cmd.acheteur_nom, statut: 'validee',
+        to: cmd.acheteur_email, nom: cmd.acheteur_nom, statut: 'expediee',
         numero, montantTtc: totaux.montantTtc,
       }).catch((e) => console.error('Email commande acheteur:', e));
     }
 
     res.json({
-      commande: { id: cmd.id, statut: 'validee', laboNom: labo.rows[0].nom },
+      commande: { id: cmd.id, statut: 'expediee', dateExpedition, laboNom: labo.rows[0].nom },
       facture: { id: fact.rows[0].id, numero, ...totaux },
     });
   } catch (err) {
@@ -633,9 +700,45 @@ const validerCommande = async (req, res) => {
   }
 };
 
-// POST /api/acheteurs/commandes/:id/annuler — annulation (motif requis).
-// Statut → 'annulee' : le stock se réintègre mécaniquement (CTE sur statut='validee').
-// La facture est SUPPRIMÉE (choix v1 : pas d'avoir ; trou de numérotation possible).
+// POST /api/acheteurs/commandes/:id/livrer — clôture logistique d'une commande
+// EXPÉDIÉE : date de livraison + historique (le stock et la facture ne bougent pas).
+const livrerCommande = async (req, res) => {
+  const clientId = clientIdOf(req);
+  const dateLivraison = req.body.dateLivraison || new Date().toISOString().slice(0, 10);
+  if (!DATE_RE.test(dateLivraison)) return res.status(400).json({ message: 'Date de livraison invalide (AAAA-MM-JJ)' });
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    const c = await db.query(
+      `SELECT ca.* FROM commandes_acheteur ca WHERE ca.id = $1 AND ca.client_id = $2 FOR UPDATE`,
+      [req.params.id, clientId]
+    );
+    if (c.rows.length === 0) { await db.query('ROLLBACK'); return res.status(404).json({ message: 'Commande introuvable' }); }
+    const cmd = c.rows[0];
+    if (cmd.statut !== 'expediee') {
+      await db.query('ROLLBACK');
+      return res.status(409).json({ message: `Seule une commande expédiée peut être livrée (statut : ${cmd.statut})` });
+    }
+    if (!gerantAllowsLabo(req, cmd.labo_id)) { await db.query('ROLLBACK'); return res.status(403).json({ message: 'Labo hors de votre périmètre' }); }
+    await db.query(
+      `UPDATE commandes_acheteur SET statut = 'livree', date_livraison = $1, traite_le = NOW(), traite_par = $2 WHERE id = $3`,
+      [dateLivraison, req.user.id, cmd.id]
+    );
+    await logStatut(db, cmd.id, 'livree', dateLivraison, null, req.user.id);
+    await db.query('COMMIT');
+    res.json({ commande: { id: cmd.id, statut: 'livree', dateLivraison } });
+  } catch (err) {
+    await db.query('ROLLBACK').catch(() => {});
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  } finally {
+    db.release();
+  }
+};
+
+// POST /api/acheteurs/commandes/:id/annuler — annulation depuis n'importe quel état.
+// Statut → 'annulee' : le stock se réintègre mécaniquement (les CTE ne comptent que
+// 'expediee'/'livree'). La facture est SUPPRIMÉE (choix v1 : pas d'avoir).
 const annulerCommande = async (req, res) => {
   const clientId = clientIdOf(req);
   const motif = String(req.body.motif || '').trim();
@@ -670,6 +773,7 @@ const annulerCommande = async (req, res) => {
        WHERE id = $3`,
       [motif || null, req.user.id, cmd.id]
     );
+    await logStatut(db, cmd.id, 'annulee', new Date().toISOString().slice(0, 10), motif || null, req.user.id);
     await db.query('COMMIT');
     // Une commande passée depuis le portail : prévenir l'acheteur (best-effort)
     if (cmd.source === 'portail' && cmd.acheteur_email) {
@@ -677,7 +781,8 @@ const annulerCommande = async (req, res) => {
       sendCommandeAcheteurEmail({ to: cmd.acheteur_email, nom: cmd.acheteur_nom, statut: 'annulee', motif })
         .catch((e) => console.error('Email commande acheteur:', e));
     }
-    res.json({ message: cmd.statut === 'validee' ? 'Commande annulée — le stock a été réintégré' : 'Commande annulée' });
+    const stockConcerne = cmd.statut === 'expediee' || cmd.statut === 'livree';
+    res.json({ message: stockConcerne ? 'Commande annulée — le stock a été réintégré' : 'Commande annulée' });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
     console.error(err);
@@ -720,5 +825,5 @@ const downloadFacturePdf = async (req, res) => {
 
 module.exports = {
   listOffres, upsertOffre, getOffreHistorique,
-  createVente, listCommandes, getCommande, validerCommande, annulerCommande, downloadFacturePdf,
+  createVente, listCommandes, getCommande, expedierCommande, livrerCommande, annulerCommande, downloadFacturePdf,
 };
