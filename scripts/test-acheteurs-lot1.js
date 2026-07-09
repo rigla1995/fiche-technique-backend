@@ -143,20 +143,19 @@ const check = (name, ok, detail = '') => {
   await fetch(`${BASE}/api/acheteurs/${acheteur1.id}`, { method: 'PUT', headers: H, body: JSON.stringify({ actif: true }) });
 
   // ── 10. Article commandable (le flag est porté par l'article, plus par la famille)
-  r = await fetch(`${BASE}/api/articles`, { headers: H });
-  const articles = await r.json();
-  if (Array.isArray(articles) && articles.length > 0) {
-    const art = articles[0];
-    r = await fetch(`${BASE}/api/articles/${art.id}`, { method: 'PUT', headers: H, body: JSON.stringify({ commandable: true }) });
-    body = await r.json();
-    check('article commandable ON', r.status === 200 && body.commandable === true && body.categorieId === art.categorieId,
-      `commandable ${body.commandable}, catégorie préservée ${body.categorieId === art.categorieId}`);
-    r = await fetch(`${BASE}/api/articles/${art.id}`, { method: 'PUT', headers: H, body: JSON.stringify({ commandable: false }) });
-    body = await r.json();
-    check('article commandable OFF', r.status === 200 && body.commandable === false, `commandable ${body.commandable}`);
-  } else {
-    check('article commandable (aucun article à tester)', true, 'skip');
-  }
+  const uniTest = await pool.query(`SELECT id FROM unites ORDER BY id LIMIT 1`);
+  const artTest = await pool.query(
+    `INSERT INTO articles (nom, client_id, unite_id) VALUES ('TEST-Cmd-Article', $1, $2) RETURNING id, categorie_id`,
+    [clientId, uniTest.rows[0].id]);
+  const artTestId = artTest.rows[0].id;
+  r = await fetch(`${BASE}/api/articles/${artTestId}`, { method: 'PUT', headers: H, body: JSON.stringify({ commandable: true }) });
+  body = await r.json();
+  check('article commandable ON', r.status === 200 && body.commandable === true && body.name === 'TEST-Cmd-Article',
+    `commandable ${body.commandable}, nom préservé ${body.name}`);
+  r = await fetch(`${BASE}/api/articles/${artTestId}`, { method: 'PUT', headers: H, body: JSON.stringify({ commandable: false }) });
+  body = await r.json();
+  check('article commandable OFF', r.status === 200 && body.commandable === false, `commandable ${body.commandable}`);
+  await pool.query(`DELETE FROM articles WHERE id = $1`, [artTestId]);
 
   // ── 11. Suppression : fiche + compte lié
   r = await fetch(`${BASE}/api/acheteurs/${acheteur1.id}`, { method: 'DELETE', headers: H });
