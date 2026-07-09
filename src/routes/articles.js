@@ -126,6 +126,7 @@ router.put('/:id', authenticate, requireClient, [
   body('unitId').optional().isInt({ min: 1 }),
   body('unite_id').optional().isInt({ min: 1 }),
   body('categorieId').optional({ nullable: true }).isInt({ min: 1 }),
+  body('commandable').optional().isBoolean(),
 ], update);
 router.delete('/:id', authenticate, requireClient, remove);
 

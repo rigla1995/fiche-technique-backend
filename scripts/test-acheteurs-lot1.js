@@ -44,8 +44,8 @@ const check = (name, ok, detail = '') => {
   r = await fetch(`${BASE}/api/acheteurs`, {
     method: 'POST', headers: H,
     body: JSON.stringify({ acheteurs: [
-      { nom: 'TEST-Ahmed', entreprise: 'Superette Test', email: 'test-acheteur-1@example.com', telephone: '98111222', remisePct: 5, creerCompte: true },
-      { nom: 'TEST-Sami', remisePct: 0 },
+      { nom: 'TEST-Ahmed', entreprise: 'Superette Test', email: 'test-acheteur-1@example.com', telephone: '98111222', creerCompte: true },
+      { nom: 'TEST-Sami' },
     ] }),
   });
   body = await r.json();
@@ -77,10 +77,10 @@ const check = (name, ok, detail = '') => {
   // ── 7. Import Excel (1 valide, 1 sans nom, 1 email en doublon carnet)
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Acheteurs');
-  ws.addRow(['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal', 'Remise (%)']);
-  ws.addRow(['TEST-Import1', 'Resto Import', 'test-acheteur-2@example.com', '55123456', '', '', '2,5']);
-  ws.addRow(['', '', 'sans-nom@example.com', '', '', '', '']);
-  ws.addRow(['TEST-ImportDup', '', 'test-acheteur-1@example.com', '', '', '', '']);
+  ws.addRow(['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal']);
+  ws.addRow(['TEST-Import1', 'Resto Import', 'test-acheteur-2@example.com', '55123456', '', '1234567/A/M/000']);
+  ws.addRow(['', '', 'sans-nom@example.com', '', '', '']);
+  ws.addRow(['TEST-ImportDup', '', 'test-acheteur-1@example.com', '', '', '']);
   const buf = await wb.xlsx.writeBuffer();
   const form = new FormData();
   form.append('file', new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'import.xlsx');
@@ -90,8 +90,8 @@ const check = (name, ok, detail = '') => {
   const dupDetail = body.details?.find(d => d.nom === 'TEST-ImportDup');
   check('import : 1 créé, 2 erreurs', r.status === 200 && body.processed === 1 && body.errors === 2,
     `processed ${body.processed}, errors ${body.errors}, dup: ${dupDetail?.error}`);
-  const imp = await pool.query(`SELECT remise_pct FROM acheteurs WHERE client_id = $1 AND nom = 'TEST-Import1'`, [clientId]);
-  check('remise 2,5 parsée', Number(imp.rows[0]?.remise_pct) === 2.5, String(imp.rows[0]?.remise_pct));
+  const imp = await pool.query(`SELECT matricule_fiscal FROM acheteurs WHERE client_id = $1 AND nom = 'TEST-Import1'`, [clientId]);
+  check('matricule fiscal importé', imp.rows[0]?.matricule_fiscal === '1234567/A/M/000', String(imp.rows[0]?.matricule_fiscal));
 
   // ── 8. Invitation → activation → login acheteur
   const tok = await pool.query(
@@ -125,10 +125,10 @@ const check = (name, ok, detail = '') => {
   r = await fetch(`${BASE}/api/acheteurs`, { headers: { Authorization: `Bearer ${achToken}` } });
   check('acheteur bloqué sur /api/acheteurs', r.status === 403, `status ${r.status}`);
 
-  // ── 9. Update : remise + blocage email compte lié + re-inviter déjà activé
-  r = await fetch(`${BASE}/api/acheteurs/${acheteur2.id}`, { method: 'PUT', headers: H, body: JSON.stringify({ remisePct: 10 }) });
+  // ── 9. Update : fiche + blocage email compte lié + re-inviter déjà activé
+  r = await fetch(`${BASE}/api/acheteurs/${acheteur2.id}`, { method: 'PUT', headers: H, body: JSON.stringify({ entreprise: 'Sarl Test Maj' }) });
   body = await r.json();
-  check('update remise', r.status === 200 && body.remisePct === 10, String(body.remisePct));
+  check('update fiche (entreprise)', r.status === 200 && body.entreprise === 'Sarl Test Maj', String(body.entreprise));
 
   r = await fetch(`${BASE}/api/acheteurs/${acheteur1.id}`, { method: 'PUT', headers: H, body: JSON.stringify({ email: 'autre@example.com' }) });
   check('email compte lié bloqué 409', r.status === 409);
@@ -142,19 +142,20 @@ const check = (name, ok, detail = '') => {
   check('acheteur désactivé → 401', r.status === 401, `status ${r.status}`);
   await fetch(`${BASE}/api/acheteurs/${acheteur1.id}`, { method: 'PUT', headers: H, body: JSON.stringify({ actif: true }) });
 
-  // ── 10. Famille achetable
-  r = await fetch(`${BASE}/api/familles`, { headers: H });
-  const familles = await r.json();
-  if (familles.length > 0) {
-    const f = familles[0];
-    r = await fetch(`${BASE}/api/familles/${f.id}`, { method: 'PUT', headers: H, body: JSON.stringify({ nom: f.name, achetable: true }) });
-    body = await r.json();
-    check('famille achetable ON', r.status === 200 && body.achetable === true && body.consommable === f.consommable,
-      `achetable ${body.achetable}, consommable préservé ${body.consommable === f.consommable}`);
-    await fetch(`${BASE}/api/familles/${f.id}`, { method: 'PUT', headers: H, body: JSON.stringify({ nom: f.name, achetable: false }) });
-  } else {
-    check('famille achetable (aucune famille à tester)', true, 'skip');
-  }
+  // ── 10. Article commandable (le flag est porté par l'article, plus par la famille)
+  const uniTest = await pool.query(`SELECT id FROM unites ORDER BY id LIMIT 1`);
+  const artTest = await pool.query(
+    `INSERT INTO articles (nom, client_id, unite_id) VALUES ('TEST-Cmd-Article', $1, $2) RETURNING id, categorie_id`,
+    [clientId, uniTest.rows[0].id]);
+  const artTestId = artTest.rows[0].id;
+  r = await fetch(`${BASE}/api/articles/${artTestId}`, { method: 'PUT', headers: H, body: JSON.stringify({ commandable: true }) });
+  body = await r.json();
+  check('article commandable ON', r.status === 200 && body.commandable === true && body.name === 'TEST-Cmd-Article',
+    `commandable ${body.commandable}, nom préservé ${body.name}`);
+  r = await fetch(`${BASE}/api/articles/${artTestId}`, { method: 'PUT', headers: H, body: JSON.stringify({ commandable: false }) });
+  body = await r.json();
+  check('article commandable OFF', r.status === 200 && body.commandable === false, `commandable ${body.commandable}`);
+  await pool.query(`DELETE FROM articles WHERE id = $1`, [artTestId]);
 
   // ── 11. Suppression : fiche + compte lié
   r = await fetch(`${BASE}/api/acheteurs/${acheteur1.id}`, { method: 'DELETE', headers: H });

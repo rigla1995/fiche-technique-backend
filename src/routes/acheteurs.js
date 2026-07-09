@@ -41,7 +41,6 @@ const { authenticate, requireEntreprise, requireModuleAcheteurs } = require('../
  *                     telephone: { type: string }
  *                     adresse: { type: string }
  *                     matriculeFiscal: { type: string }
- *                     remisePct: { type: number }
  *                     creerCompte: { type: boolean }
  *     responses:
  *       201:

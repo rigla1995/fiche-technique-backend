@@ -13,6 +13,8 @@ const mapArticle = (row) => ({
   familleName: row.famille_nom || null,
   clientId: row.client_id || null,
   hasAppros: row.has_appros === true,
+  // Module Acheteurs : article proposable aux acheteurs (opt-in, défaut false)
+  commandable: row.commandable === true,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -136,6 +138,7 @@ const update = async (req, res) => {
   const categorie_id = req.body.categorieId !== undefined ? req.body.categorieId
     : req.body.categorie_id !== undefined ? req.body.categorie_id : undefined;
   const catChanged = categorie_id !== undefined;
+  const commandable = req.body.commandable !== undefined ? req.body.commandable === true : undefined;
 
   const client = await pool.connect();
   try {
@@ -146,13 +149,23 @@ const update = async (req, res) => {
        SET nom = COALESCE($1, nom),
            unite_id = COALESCE($2, unite_id),
            categorie_id = CASE WHEN $4::boolean THEN $3 ELSE categorie_id END,
+           commandable = CASE WHEN $6::boolean THEN $5 ELSE commandable END,
            updated_at = NOW()
-       WHERE id = $5 AND client_id = $6 RETURNING id`,
-      [nom, unite_id, categorie_id ?? null, catChanged, req.params.id, clientId]
+       WHERE id = $7 AND client_id = $8 RETURNING id`,
+      [nom, unite_id, categorie_id ?? null, catChanged, commandable ?? false, commandable !== undefined, req.params.id, clientId]
     );
     if (updated.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Article introuvable' });
+    }
+    // Article retiré du catalogue acheteurs → son offre éventuelle est désactivée
+    // (sinon elle resterait vendue au portail sans être visible dans les Tarifs).
+    if (commandable === false) {
+      await client.query(
+        `UPDATE acheteur_offres SET actif = false, updated_at = NOW()
+         WHERE client_id = $1 AND article_type = 'ingredient' AND article_id = $2 AND actif = true`,
+        [clientId, req.params.id]
+      );
     }
     await client.query('COMMIT');
 

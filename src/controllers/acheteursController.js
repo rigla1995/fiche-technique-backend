@@ -5,7 +5,7 @@ const { sendInviteEmail, generateInviteToken } = require('../services/emailServi
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-const HEADERS = ['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal', 'Remise (%)'];
+const HEADERS = ['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal'];
 const MAX_ROWS = 500;
 
 const clientIdOf = (req) => req.user.gerant_parent_id || req.user.id;
@@ -18,7 +18,6 @@ const mapAcheteur = (row) => ({
   telephone: row.telephone,
   adresse: row.adresse,
   matriculeFiscal: row.matricule_fiscal,
-  remisePct: row.remise_pct != null ? Number(row.remise_pct) : 0,
   notes: row.notes,
   actif: row.actif !== false,
   userId: row.user_id,
@@ -48,13 +47,6 @@ const normEmail = (v) => {
   return e || null;
 };
 const emailValide = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-
-const parseRemise = (v) => {
-  if (v == null || v === '') return 0;
-  const n = Number(String(v).replace(',', '.').replace('%', '').trim());
-  if (!Number.isFinite(n) || n < 0 || n > 100) return null;
-  return Math.round(n * 100) / 100;
-};
 
 // Crée le compte de connexion (utilisateurs role='acheteur') d'une fiche acheteur.
 // Retourne { userId, invite } ou { error } — n'envoie PAS l'email (l'appelant
@@ -96,7 +88,7 @@ const list = async (req, res) => {
 };
 
 // POST /api/acheteurs — ajout d'une ou plusieurs fiches (body { acheteurs: [...] } ou fiche unique).
-// Chaque item : { nom*, entreprise, email, telephone, adresse, matriculeFiscal, remisePct, notes, creerCompte }
+// Chaque item : { nom*, entreprise, email, telephone, adresse, matriculeFiscal, notes, creerCompte }
 const create = async (req, res) => {
   const clientId = clientIdOf(req);
   const items = Array.isArray(req.body.acheteurs) ? req.body.acheteurs : [req.body];
@@ -115,8 +107,6 @@ const create = async (req, res) => {
       if (seenEmails.has(email)) return res.status(400).json({ message: `Ligne ${i + 1} : email en double dans la saisie` });
       seenEmails.add(email);
     }
-    const remisePct = parseRemise(it.remisePct);
-    if (remisePct === null) return res.status(400).json({ message: `Ligne ${i + 1} : remise invalide (0 à 100)` });
     const creerCompte = it.creerCompte === true;
     if (creerCompte && !email) return res.status(400).json({ message: `Ligne ${i + 1} : un email est requis pour créer un compte` });
     prepared.push({
@@ -125,7 +115,6 @@ const create = async (req, res) => {
       telephone: String(it.telephone || '').trim() || null,
       adresse: String(it.adresse || '').trim() || null,
       matriculeFiscal: String(it.matriculeFiscal || '').trim() || null,
-      remisePct,
       notes: String(it.notes || '').trim() || null,
       creerCompte,
     });
@@ -154,9 +143,9 @@ const create = async (req, res) => {
       let row;
       try {
         const r = await db.query(
-          `INSERT INTO acheteurs (client_id, nom, entreprise, email, telephone, adresse, matricule_fiscal, remise_pct, notes, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-          [clientId, p.nom, p.entreprise, p.email, p.telephone, p.adresse, p.matriculeFiscal, p.remisePct, p.notes, req.user.id]
+          `INSERT INTO acheteurs (client_id, nom, entreprise, email, telephone, adresse, matricule_fiscal, notes, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+          [clientId, p.nom, p.entreprise, p.email, p.telephone, p.adresse, p.matriculeFiscal, p.notes, req.user.id]
         );
         row = r.rows[0];
       } catch (e) {
@@ -208,19 +197,17 @@ const update = async (req, res) => {
     if (a.user_id && (email || '') !== (a.email || '')) {
       return res.status(409).json({ message: "Cet acheteur a un compte : l'email de connexion ne peut pas être modifié ici" });
     }
-    const remisePct = req.body.remisePct !== undefined ? parseRemise(req.body.remisePct) : Number(a.remise_pct);
-    if (remisePct === null) return res.status(400).json({ message: 'Remise invalide (0 à 100)' });
     const actif = req.body.actif !== undefined ? req.body.actif === true : a.actif;
 
     const val = (body, curVal) => (body !== undefined ? (String(body || '').trim() || null) : curVal);
     const r = await pool.query(
       `UPDATE acheteurs SET nom=$1, entreprise=$2, email=$3, telephone=$4, adresse=$5,
-              matricule_fiscal=$6, remise_pct=$7, notes=$8, actif=$9, updated_at=NOW()
-       WHERE id=$10 AND client_id=$11
+              matricule_fiscal=$6, notes=$7, actif=$8, updated_at=NOW()
+       WHERE id=$9 AND client_id=$10
        RETURNING *`,
       [nom, val(req.body.entreprise, a.entreprise), email, val(req.body.telephone, a.telephone),
        val(req.body.adresse, a.adresse), val(req.body.matriculeFiscal, a.matricule_fiscal),
-       remisePct, val(req.body.notes, a.notes), actif, id, clientId]
+       val(req.body.notes, a.notes), actif, id, clientId]
     );
     const u = r.rows[0].user_id
       ? await pool.query('SELECT activated_at AS user_activated_at FROM utilisateurs WHERE id = $1', [r.rows[0].user_id])
@@ -349,8 +336,8 @@ const getTemplate = async (req, res) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
       cell.alignment = { horizontal: 'center' };
     });
-    ws.addRow(['Ahmed Ben Salah', 'Superette El Amen', 'ahmed@elamen.tn', '98 123 456', 'Rue de la Liberté, Tunis', '1234567/A/M/000', '5']);
-    ws.addRow(['Restaurant Le Golfe', '', 'contact@legolfe.tn', '71 987 654', 'Av. Bourguiba, Sousse', '', '0']);
+    ws.addRow(['Ahmed Ben Salah', 'Superette El Amen', 'ahmed@elamen.tn', '98 123 456', 'Rue de la Liberté, Tunis', '1234567/A/M/000']);
+    ws.addRow(['Restaurant Le Golfe', '', 'contact@legolfe.tn', '71 987 654', 'Av. Bourguiba, Sousse', '']);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="modele_acheteurs.xlsx"');
@@ -384,7 +371,7 @@ const importAcheteurs = [
         lignes.push({
           row: rowNumber,
           nom: cell(1), entreprise: cell(2), email: cell(3), telephone: cell(4),
-          adresse: cell(5), matriculeFiscal: cell(6), remise: cell(7),
+          adresse: cell(5), matriculeFiscal: cell(6),
         });
       });
       const nonVides = lignes.filter((l) => l.nom || l.email || l.entreprise);
@@ -401,9 +388,7 @@ const importAcheteurs = [
         if (email && !emailValide(email)) { details.push({ row: l.row, nom: l.nom, status: 'error', error: `Email invalide : ${l.email}` }); continue; }
         if (email && seenEmails.has(email)) { details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Email en double dans le fichier' }); continue; }
         if (email) seenEmails.add(email);
-        const remisePct = parseRemise(l.remise);
-        if (remisePct === null) { details.push({ row: l.row, nom: l.nom, status: 'error', error: `Remise invalide : ${l.remise}` }); continue; }
-        valides.push({ ...l, email, remisePct });
+        valides.push({ ...l, email });
       }
       if (valides.length === 0) {
         return res.status(400).json({ message: 'Aucune ligne valide', processed: 0, errors: details.length, details });
@@ -435,9 +420,9 @@ const importAcheteurs = [
           let row;
           try {
             const r = await db.query(
-              `INSERT INTO acheteurs (client_id, nom, entreprise, email, telephone, adresse, matricule_fiscal, remise_pct, created_by)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-              [clientId, v.nom, v.entreprise || null, v.email, v.telephone || null, v.adresse || null, v.matriculeFiscal || null, v.remisePct, req.user.id]
+              `INSERT INTO acheteurs (client_id, nom, entreprise, email, telephone, adresse, matricule_fiscal, created_by)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+              [clientId, v.nom, v.entreprise || null, v.email, v.telephone || null, v.adresse || null, v.matriculeFiscal || null, req.user.id]
             );
             row = r.rows[0];
           } catch (e) {

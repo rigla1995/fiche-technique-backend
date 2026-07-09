@@ -1,8 +1,8 @@
 const PDFDocument = require('pdfkit');
 
 // Facture fiscale du module Acheteurs : l'ÉMETTEUR est le compte client LabFlow
-// (profil_entreprise), le destinataire est l'acheteur B2B. Montants TTC saisis,
-// HT/TVA dérivés (règle HT/TTC de l'app : jamais re-taxé), timbre fiscal optionnel.
+// (profil_entreprise), le destinataire est l'acheteur B2B. Prix saisis HT,
+// remise appliquée sur le HT, TVA calculée par ligne, timbre fiscal optionnel.
 
 const VIOLET = '#4c1d95';
 const VIOLET_LIGHT = '#f5f3ff';
@@ -75,22 +75,21 @@ const buildFactureAcheteurPdf = (f, lignes) => new Promise((resolve, reject) => 
   doc.font('Helvetica-Bold').fontSize(7.5).fillColor(VIOLET);
   doc.text('DÉSIGNATION', cDes, y + 6);
   doc.text('QTÉ', ML, y + 6, { width: cQte - ML + 30, align: 'right' });
-  doc.text('PU TTC', ML, y + 6, { width: cPu - ML + 30, align: 'right' });
+  doc.text('PU HT', ML, y + 6, { width: cPu - ML + 30, align: 'right' });
   doc.text('TVA', ML, y + 6, { width: cTva - ML + 24, align: 'right' });
-  doc.text('TOTAL TTC', ML, y + 6, { width: cTot - ML, align: 'right' });
+  doc.text('TOTAL HT', ML, y + 6, { width: cTot - ML, align: 'right' });
   y += 20;
 
+  let brutHt = 0;
   for (const l of lignes) {
     if (y > doc.page.height - 220) { doc.addPage(); y = 46; }
-    const totalLigne = Number(l.prix_ttc) * Number(l.quantite);
-    const qtyLabel = l.mode === 'lot'
-      ? `${fmtQty(l.quantite)} lot${Number(l.quantite) > 1 ? 's' : ''} (×${fmtQty(l.taille_lot)})`
-      : fmtQty(l.quantite);
+    const totalLigne = Number(l.prix_ht) * Number(l.quantite);
+    brutHt += totalLigne;
     doc.moveTo(ML, y + 20).lineTo(RX, y + 20).lineWidth(0.5).strokeColor(HAIR).stroke();
     doc.font('Helvetica').fontSize(8.5).fillColor(INK).text(l.designation, cDes, y + 6, { width: cQte - cDes - 14, ellipsis: true, height: 12 });
     doc.fillColor(BODY);
-    doc.text(qtyLabel, ML, y + 6, { width: cQte - ML + 30, align: 'right' });
-    doc.text(fmt(l.prix_ttc), ML, y + 6, { width: cPu - ML + 30, align: 'right' });
+    doc.text(fmtQty(l.quantite), ML, y + 6, { width: cQte - ML + 30, align: 'right' });
+    doc.text(fmt(l.prix_ht), ML, y + 6, { width: cPu - ML + 30, align: 'right' });
     doc.text(`${Number(l.taux_tva || 0).toFixed(0)} %`, ML, y + 6, { width: cTva - ML + 24, align: 'right' });
     doc.font('Helvetica-Bold').fillColor(INK).text(fmt(totalLigne), ML, y + 6, { width: cTot - ML, align: 'right' });
     y += 20;
@@ -110,9 +109,9 @@ const buildFactureAcheteurPdf = (f, lignes) => new Promise((resolve, reject) => 
       .fillColor(opts.color || INK).text(value, totX, y + (opts.big ? 5 : 6), { width: totW - 10, align: 'right' });
     y += 20;
   };
-  totLine('Total brut TTC', fmt(f.montant_brut_ttc));
+  totLine('Total brut HT', fmt(brutHt));
   if (Number(f.remise_pct) > 0) {
-    const remiseVal = Number(f.montant_brut_ttc) * Number(f.remise_pct) / 100;
+    const remiseVal = brutHt - Number(f.montant_ht);
     totLine(`Remise ${Number(f.remise_pct).toFixed(Number.isInteger(Number(f.remise_pct)) ? 0 : 2)} %`, `− ${fmt(remiseVal)}`, { color: '#b91c1c' });
   }
   totLine('Total HT', fmt(f.montant_ht));
@@ -131,7 +130,7 @@ const buildFactureAcheteurPdf = (f, lignes) => new Promise((resolve, reject) => 
     y = doc.y + 14;
   }
   doc.font('Helvetica').fontSize(7).fillColor(MUTED)
-    .text('Montants exprimés en dinars tunisiens (DT). TVA calculée par ligne au taux indiqué (les prix saisis sont TTC). Facture générée électroniquement par LabFlow.',
+    .text('Montants exprimés en dinars tunisiens (DT). Prix saisis HT — TVA calculée par ligne au taux indiqué, après remise. Facture générée électroniquement par LabFlow.',
       ML, Math.max(y, doc.page.height - 80), { width: PW, lineGap: 2 });
 
   doc.end();
