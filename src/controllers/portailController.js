@@ -9,12 +9,15 @@ const { saveNotification } = require('./notificationController');
 // disponible / rupture (rupture si stock courant agrégé ≤ seuil agrégé, tous labos).
 
 const num = (v) => (v === null || v === undefined ? null : Number(v));
+const round3 = (v) => Math.round(v * 1000) / 1000;
+// Prix TTC affiché à l'acheteur, dérivé du tarif HT + TVA de l'offre.
+const ttcDeHt = (ht, tva) => round3(Number(ht || 0) * (1 + (Number(tva) || 0) / 100));
 
 // GET /api/portail/catalogue — offres actives du vendeur + badge dispo
 const getCatalogue = async (req, res) => {
   try {
     const clientId = req.user.acheteurClientId;
-    const [vendeur, labos, offres, fiche] = await Promise.all([
+    const [vendeur, labos, offres] = await Promise.all([
       pool.query(`SELECT nom, telephone, email FROM profil_entreprise WHERE client_id = $1`, [clientId]),
       pool.query(
         `SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE pe.client_id = $1`,
@@ -24,7 +27,9 @@ const getCatalogue = async (req, res) => {
         `SELECT o.*,
                 CASE WHEN o.article_type = 'ingredient' THEN a.nom ELSE p.nom END AS nom,
                 CASE WHEN o.article_type = 'ingredient' THEN u.nom ELSE 'unité' END AS unite,
-                CASE WHEN o.article_type = 'ingredient' THEN COALESCE(c.nom, 'Sans catégorie') ELSE 'Produit composé' END AS categorie,
+                CASE WHEN o.article_type = 'ingredient' THEN COALESCE(c.nom, 'Sans catégorie')
+                     WHEN p.type = 'utilisable' THEN 'Produits Utilisables'
+                     ELSE 'Produits Composés' END AS categorie,
                 CASE WHEN o.article_type = 'ingredient'
                      THEN (SELECT COALESCE(SUM(lis.seuil_min), 0) FROM labo_ingredient_selections lis
                            JOIN labos l2 ON l2.id = lis.labo_id
@@ -44,7 +49,6 @@ const getCatalogue = async (req, res) => {
          ORDER BY categorie, nom`,
         [clientId]
       ),
-      pool.query(`SELECT remise_pct FROM acheteurs WHERE id = $1`, [req.user.acheteurId]),
     ]);
 
     const laboIds = labos.rows.map((l) => l.id);
@@ -64,9 +68,7 @@ const getCatalogue = async (req, res) => {
         nom: o.nom,
         unite: o.unite,
         categorie: o.categorie,
-        prixUnitaireTtc: num(o.prix_unitaire_ttc) ?? 0,
-        tailleLot: num(o.taille_lot),
-        prixLotTtc: num(o.prix_lot_ttc),
+        prixUnitaireTtc: ttcDeHt(o.prix_unitaire_ht, o.taux_tva),
         // rupture quand le stock atteint le seuil (décision produit) — quantités jamais renvoyées
         disponible: stockTotal > seuil,
       });
@@ -74,7 +76,6 @@ const getCatalogue = async (req, res) => {
 
     res.json({
       vendeur: vendeur.rows[0]?.nom || 'Votre fournisseur',
-      remisePct: num(fiche.rows[0]?.remise_pct) ?? 0,
       offres: items,
     });
   } catch (err) {
@@ -112,42 +113,37 @@ const createCommande = async (req, res) => {
       const offre = offreMap.get(key);
       const nom = nomMap.get(key);
       if (!offre || !nom) return res.status(400).json({ message: `Ligne ${i + 1} : article non proposé` });
-      const mode = l.mode === 'lot' ? 'lot' : 'unite';
-      if (mode === 'lot' && (offre.taille_lot === null || offre.prix_lot_ttc === null)) {
-        return res.status(400).json({ message: `Ligne ${i + 1} : pas de vente par lot pour « ${nom} »` });
-      }
       const quantite = Number(l.quantite);
       if (!Number.isFinite(quantite) || quantite <= 0) return res.status(400).json({ message: `Ligne ${i + 1} : quantité invalide` });
-      const tailleLot = mode === 'lot' ? num(offre.taille_lot) : null;
       lignes.push({
         articleType: l.articleType, articleId: Number(l.articleId), designation: nom,
-        mode, quantite, tailleLot,
-        quantiteUnites: Math.round((mode === 'lot' ? quantite * tailleLot : quantite) * 1000) / 1000,
-        prixTtc: mode === 'lot' ? num(offre.prix_lot_ttc) : num(offre.prix_unitaire_ttc),
+        quantite,
+        quantiteUnites: round3(quantite),
+        prixHt: num(offre.prix_unitaire_ht) ?? 0,
+        prixTtc: ttcDeHt(offre.prix_unitaire_ht, offre.taux_tva),
         tauxTva: num(offre.taux_tva) ?? 0,
       });
     }
 
-    const fiche = await pool.query(`SELECT nom, remise_pct FROM acheteurs WHERE id = $1`, [acheteurId]);
-    const remisePct = num(fiche.rows[0]?.remise_pct) ?? 0;
-
+    const fiche = await pool.query(`SELECT nom FROM acheteurs WHERE id = $1`, [acheteurId]);
+    // La remise se décide côté vendeur À LA VALIDATION — la commande part sans remise.
     const db = await pool.connect();
     let commande;
     try {
       await db.query('BEGIN');
       const cmd = await db.query(
         `INSERT INTO commandes_acheteur (client_id, acheteur_id, labo_id, statut, source, remise_pct, date_commande, notes, created_by)
-         VALUES ($1, $2, NULL, 'en_attente', 'portail', $3, CURRENT_DATE, $4, $5)
+         VALUES ($1, $2, NULL, 'en_attente', 'portail', 0, CURRENT_DATE, $3, $4)
          RETURNING *`,
-        [clientId, acheteurId, remisePct, String(req.body.notes || '').trim() || null, req.user.id]
+        [clientId, acheteurId, String(req.body.notes || '').trim() || null, req.user.id]
       );
       commande = cmd.rows[0];
       for (const l of lignes) {
         await db.query(
           `INSERT INTO commande_acheteur_lignes
-             (commande_id, article_type, article_id, designation, mode, quantite, taille_lot, quantite_unites, prix_ttc, taux_tva)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [commande.id, l.articleType, l.articleId, l.designation, l.mode, l.quantite, l.tailleLot, l.quantiteUnites, l.prixTtc, l.tauxTva]
+             (commande_id, article_type, article_id, designation, quantite, quantite_unites, prix_ht, prix_ttc, taux_tva)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [commande.id, l.articleType, l.articleId, l.designation, l.quantite, l.quantiteUnites, l.prixHt, l.prixTtc, l.tauxTva]
         );
       }
       await db.query('COMMIT');
@@ -234,8 +230,8 @@ const getMaCommande = async (req, res) => {
       factureNumero: row.facture_numero,
       factureTtc: num(row.facture_ttc),
       lignes: lignes.rows.map((l) => ({
-        designation: l.designation, mode: l.mode, quantite: num(l.quantite),
-        tailleLot: num(l.taille_lot), prixTtc: num(l.prix_ttc), tauxTva: num(l.taux_tva),
+        designation: l.designation, quantite: num(l.quantite),
+        prixTtc: num(l.prix_ttc), tauxTva: num(l.taux_tva),
       })),
     });
   } catch (err) {

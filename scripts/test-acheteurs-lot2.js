@@ -1,5 +1,5 @@
 /* Test E2E local du lot 2 du module Acheteurs (backend démarré sur :3000).
- * Crée ses propres données de test (famille achetable, article, stock labo, acheteur)
+ * Crée ses propres données de test (article commandable, stock labo, acheteur)
  * puis nettoie tout à la fin. */
 require('dotenv').config();
 const pool = require('../src/config/database');
@@ -31,27 +31,32 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   const laboId = laboRes.rows[0]?.id;
   check('labo présent', !!laboId, `labo ${laboId}`);
 
-  // Nettoyage préalable puis données de test : famille achetable → catégorie → article → labo + stock 10
+  // Nettoyage préalable puis données de test : famille → catégorie → article commandable → labo + stock 10
   const wipe = async () => {
     await pool.query(`DELETE FROM factures_acheteur WHERE client_id = $1 AND acheteur_id IN (SELECT id FROM acheteurs WHERE nom LIKE 'TEST-L2%')`, [clientId]);
     await pool.query(`DELETE FROM commandes_acheteur WHERE client_id = $1 AND acheteur_id IN (SELECT id FROM acheteurs WHERE nom LIKE 'TEST-L2%')`, [clientId]);
     await pool.query(`DELETE FROM acheteurs WHERE client_id = $1 AND nom LIKE 'TEST-L2%'`, [clientId]);
-    await pool.query(`DELETE FROM acheteur_offres WHERE client_id = $1 AND article_id IN (SELECT id FROM articles WHERE nom = 'TEST-L2-Huile') AND article_type = 'ingredient'`, [clientId]);
+    await pool.query(`DELETE FROM acheteur_offres WHERE client_id = $1 AND article_id IN (SELECT id FROM articles WHERE nom LIKE 'TEST-L2-%') AND article_type = 'ingredient'`, [clientId]);
     await pool.query(`DELETE FROM stock_labo_daily WHERE ingredient_id IN (SELECT id FROM articles WHERE nom = 'TEST-L2-Huile')`);
     await pool.query(`DELETE FROM labo_ingredient_selections WHERE ingredient_id IN (SELECT id FROM articles WHERE nom = 'TEST-L2-Huile')`);
-    await pool.query(`DELETE FROM articles WHERE nom = 'TEST-L2-Huile' AND client_id = $1`, [clientId]);
+    await pool.query(`DELETE FROM articles WHERE nom LIKE 'TEST-L2-%' AND client_id = $1`, [clientId]);
     await pool.query(`DELETE FROM categories WHERE nom = 'TEST-L2-Cat' AND client_id = $1`, [clientId]);
     await pool.query(`DELETE FROM familles WHERE nom = 'TEST-L2-Fam' AND client_id = $1`, [clientId]);
   };
   await wipe();
 
-  const fam = await pool.query(`INSERT INTO familles (nom, client_id, consommable, vendable, achetable) VALUES ('TEST-L2-Fam', $1, true, true, true) RETURNING id`, [clientId]);
+  const fam = await pool.query(`INSERT INTO familles (nom, client_id, consommable, vendable) VALUES ('TEST-L2-Fam', $1, true, true) RETURNING id`, [clientId]);
   const cat = await pool.query(`INSERT INTO categories (nom, client_id, famille_id) VALUES ('TEST-L2-Cat', $1, $2) RETURNING id`, [clientId, fam.rows[0].id]);
   const uni = await pool.query(`SELECT id FROM unites WHERE client_id = $1 OR client_id IS NULL ORDER BY id LIMIT 1`, [clientId]);
   const art = await pool.query(
-    `INSERT INTO articles (nom, client_id, unite_id, categorie_id) VALUES ('TEST-L2-Huile', $1, $2, $3) RETURNING id`,
+    `INSERT INTO articles (nom, client_id, unite_id, categorie_id, commandable) VALUES ('TEST-L2-Huile', $1, $2, $3, true) RETURNING id`,
     [clientId, uni.rows[0].id, cat.rows[0].id]);
   const artId = art.rows[0].id;
+  // Deuxième article NON commandable (contrôle d'éligibilité)
+  const art2 = await pool.query(
+    `INSERT INTO articles (nom, client_id, unite_id, categorie_id) VALUES ('TEST-L2-Sel', $1, $2, $3) RETURNING id`,
+    [clientId, uni.rows[0].id, cat.rows[0].id]);
+  const artNonCmdId = art2.rows[0].id;
   await pool.query(`INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [laboId, artId]);
   await pool.query(
     `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro)
@@ -60,7 +65,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
 
   r = await fetch(`${BASE}/api/acheteurs`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ nom: 'TEST-L2-Grossiste', remisePct: 10 }),
+    body: JSON.stringify({ nom: 'TEST-L2-Grossiste' }),
   });
   const achBody = await r.json();
   const acheteurId = achBody.acheteurs?.[0]?.id;
@@ -70,47 +75,51 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/acheteurs/offres`, { headers: H });
   let body = await r.json();
   const eligible = body.articles?.find((a) => a.articleId === artId);
-  check('article éligible listé (famille achetable)', !!eligible, eligible?.nom);
+  check('article éligible listé (commandable)', !!eligible, eligible?.nom);
+  const nonEligible = body.articles?.find((a) => a.articleId === artNonCmdId);
+  check('article non commandable absent de la liste', !nonEligible);
 
   r = await fetch(`${BASE}/api/acheteurs/offres`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ articleType: 'ingredient', articleId: artId, prixUnitaireTtc: 0, actif: true }),
+    body: JSON.stringify({ articleType: 'ingredient', articleId: artId, prixUnitaireHt: 0, actif: true }),
   });
   check('activation sans prix refusée 400', r.status === 400);
 
   r = await fetch(`${BASE}/api/acheteurs/offres`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ articleType: 'ingredient', articleId: artId, prixUnitaireTtc: 5, tauxTva: 19, tailleLot: 6, prixLotTtc: 27, actif: true }),
+    body: JSON.stringify({ articleType: 'ingredient', articleId: artId, prixUnitaireHt: 5, tauxTva: 19, actif: true }),
   });
   body = await r.json();
-  check('offre créée (5 DT/u, lot 6 à 27 DT, TVA 19)', r.status === 200 && body.actif === true, JSON.stringify(body));
+  check('offre créée (5 DT HT/u, TVA 19)', r.status === 200 && body.actif === true && approx(body.prixUnitaireHt, 5), JSON.stringify(body));
+  check('prix TTC dérivé 5.950', approx(body.prixUnitaireTtc, 5.95), String(body.prixUnitaireTtc));
   const offreId = body.offreId;
 
   r = await fetch(`${BASE}/api/acheteurs/offres`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ articleType: 'ingredient', articleId: artId, prixUnitaireTtc: 5, tailleLot: 6, actif: true }),
+    body: JSON.stringify({ articleType: 'ingredient', articleId: artNonCmdId, prixUnitaireHt: 3, actif: true }),
   });
-  check('lot sans prix lot refusé 400', r.status === 400);
+  check('offre sur article non commandable refusée 400', r.status === 400);
 
-  // ── 2. Vente : 2 unités + 1 lot de 6 = 8 unités (stock 10)
+  // ── 2. Vente : 2 u à 5 HT + 6 u à 4.5 HT = 8 unités (stock 10), remise 10% saisie à la vente
   r = await fetch(`${BASE}/api/acheteurs/ventes`, {
     method: 'POST', headers: H,
     body: JSON.stringify({
-      acheteurId, laboId, timbreFiscal: true,
+      acheteurId, laboId, timbreFiscal: true, remisePct: 10,
       lignes: [
-        { articleType: 'ingredient', articleId: artId, mode: 'unite', quantite: 2 },
-        { articleType: 'ingredient', articleId: artId, mode: 'lot', quantite: 1 },
+        { articleType: 'ingredient', articleId: artId, quantite: 2 },
+        { articleType: 'ingredient', articleId: artId, quantite: 6, prixHt: 4.5 },
       ],
     }),
   });
   body = await r.json();
   const facture = body.facture;
   check('vente validée 201', r.status === 201, JSON.stringify(facture));
-  // brut = 2×5 + 1×27 = 37 ; remise acheteur 10% → net 33.3 ; HT = 33.3/1.19 ; TTC = net + 1 timbre
+  // brut HT = 2×5 + 6×4.5 = 37 ; remise 10% → HT net 33.3 ; TVA 19% = 6.327 ; TTC = 33.3 + 6.327 + 1 timbre
   check('numéro FA-YYYY-0001', /^FA-\d{4}-0001$/.test(facture?.numero || ''), facture?.numero);
-  check('brut 37.000', approx(facture?.brutTtc, 37));
-  check('HT 27.983 (remise 10% puis détaxe 19%)', approx(facture?.montantHt, 33.3 / 1.19, 0.005), String(facture?.montantHt));
-  check('TTC 34.300 (net 33.3 + timbre 1)', approx(facture?.montantTtc, 34.3), String(facture?.montantTtc));
+  check('brut HT 37.000', approx(facture?.brutHt, 37), String(facture?.brutHt));
+  check('HT net 33.300 (remise 10% sur le HT)', approx(facture?.montantHt, 33.3), String(facture?.montantHt));
+  check('TVA 6.327 (19% du net)', approx(facture?.montantTva, 6.327), String(facture?.montantTva));
+  check('TTC 40.627 (HT + TVA + timbre 1)', approx(facture?.montantTtc, 40.627), String(facture?.montantTtc));
 
   // ── 3. Stock déduit : 10 − 8 = 2 (calcul + affichage)
   const { computeStockCourant } = require('../src/utils/stockUtils');
@@ -124,7 +133,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   check('getLaboStock affiche 2', rowStock ? Number(rowStock.quantite) === 2 : false, JSON.stringify({ q: rowStock?.quantite }));
 
   // ── 4. Historique : ligne type 'vente'
-  // Une ligne d'historique PAR LIGNE de commande (2 unités puis 1 lot de 6) — total −8
+  // Une ligne d'historique PAR LIGNE de commande (2 unités puis 6 unités) — total −8
   r = await fetch(`${BASE}/api/labo/${laboId}/stock/${artId}/history`, { headers: H });
   body = await r.json();
   const ventesHist = (body || []).filter((h) => h.typeAppro === 'vente');
@@ -141,7 +150,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   // ── 5. Dépassement de stock → 422 avec manquants
   r = await fetch(`${BASE}/api/acheteurs/ventes`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ acheteurId, laboId, lignes: [{ articleType: 'ingredient', articleId: artId, mode: 'unite', quantite: 5 }] }),
+    body: JSON.stringify({ acheteurId, laboId, lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 5 }] }),
   });
   body = await r.json();
   check('vente > stock refusée 422', r.status === 422 && body.manquants?.length === 1, JSON.stringify(body.manquants));
@@ -155,7 +164,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd.id}`, { headers: H });
   body = await r.json();
   check('détail : 2 lignes + coût figé', body.lignes?.length === 2 && body.lignes.every((l) => l.coutUnitaireTtc !== null),
-    JSON.stringify(body.lignes?.map((l) => ({ m: l.mode, q: l.quantite, u: l.quantiteUnites, c: l.coutUnitaireTtc }))));
+    JSON.stringify(body.lignes?.map((l) => ({ ht: l.prixHt, q: l.quantite, u: l.quantiteUnites, c: l.coutUnitaireTtc }))));
   check('coût unitaire = PMP TTC 2.380', approx(body.lignes?.[0]?.coutUnitaireTtc, 2.38));
 
   r = await fetch(`${BASE}/api/acheteurs/factures/${facture.id}/pdf`, { headers: { Authorization: H.Authorization } });
@@ -165,7 +174,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   // ── 7. Historique de prix d'offre
   r = await fetch(`${BASE}/api/acheteurs/offres/${offreId}/historique`, { headers: H });
   body = await r.json();
-  check('historique prix : 1 entrée', Array.isArray(body) && body.length === 1 && approx(body[0].prixUnitaireTtc, 5));
+  check('historique prix : 1 entrée', Array.isArray(body) && body.length === 1 && approx(body[0].prixUnitaireHt, 5));
 
   // ── 8. Annulation → stock réintégré + facture supprimée
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd.id}/annuler`, {
@@ -183,10 +192,10 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   // ── 9. Nouvelle vente après annulation → numérotation repart proprement
   r = await fetch(`${BASE}/api/acheteurs/ventes`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ acheteurId, laboId, remisePct: 0, timbreFiscal: false, lignes: [{ articleType: 'ingredient', articleId: artId, mode: 'unite', quantite: 1, prixTtc: 6 }] }),
+    body: JSON.stringify({ acheteurId, laboId, remisePct: 0, timbreFiscal: false, lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 1, prixHt: 6 }] }),
   });
   body = await r.json();
-  check('re-vente : prix modifié ligne (6) + sans timbre', r.status === 201 && approx(body.facture?.montantTtc, 6), JSON.stringify(body.facture));
+  check('re-vente : prix HT modifié ligne (6) + sans timbre → TTC 7.140', r.status === 201 && approx(body.facture?.montantTtc, 7.14), JSON.stringify(body.facture));
 
   // ── Nettoyage
   await wipe();

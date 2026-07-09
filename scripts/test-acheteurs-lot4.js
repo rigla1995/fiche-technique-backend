@@ -41,10 +41,10 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   };
   await wipe();
 
-  const fam = await pool.query(`INSERT INTO familles (nom, client_id, achetable) VALUES ('TEST-L4-Fam', $1, true) RETURNING id`, [clientId]);
+  const fam = await pool.query(`INSERT INTO familles (nom, client_id) VALUES ('TEST-L4-Fam', $1) RETURNING id`, [clientId]);
   const cat = await pool.query(`INSERT INTO categories (nom, client_id, famille_id) VALUES ('TEST-L4-Cat', $1, $2) RETURNING id`, [clientId, fam.rows[0].id]);
   const uni = await pool.query(`SELECT id FROM unites ORDER BY id LIMIT 1`);
-  const art = await pool.query(`INSERT INTO articles (nom, client_id, unite_id, categorie_id) VALUES ('TEST-L4-Sucre', $1, $2, $3) RETURNING id`, [clientId, uni.rows[0].id, cat.rows[0].id]);
+  const art = await pool.query(`INSERT INTO articles (nom, client_id, unite_id, categorie_id, commandable) VALUES ('TEST-L4-Sucre', $1, $2, $3, true) RETURNING id`, [clientId, uni.rows[0].id, cat.rows[0].id]);
   const artId = art.rows[0].id;
   await pool.query(`INSERT INTO labo_ingredient_selections (labo_id, ingredient_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [laboId, artId]);
   await pool.query(`INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro) VALUES ($1, $2, CURRENT_DATE, 10, 2, 19, 2.38, 'manuel')`, [laboId, artId]);
@@ -52,7 +52,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   // Acheteur AVEC compte
   r = await fetch(`${BASE}/api/acheteurs`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ nom: 'TEST-L4-Resto', email: 'test-l4-acheteur@example.com', remisePct: 10, creerCompte: true }),
+    body: JSON.stringify({ nom: 'TEST-L4-Resto', email: 'test-l4-acheteur@example.com', creerCompte: true }),
   });
   const achBody = await r.json();
   const acheteurId = achBody.acheteurs?.[0]?.id;
@@ -70,10 +70,10 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   const HP = { 'Content-Type': 'application/json', Authorization: `Bearer ${achToken}` };
   check('login acheteur portail', !!achToken);
 
-  // Offre active (5 DT/u, lot 6 à 27, TVA 19)
+  // Offre active (5 DT HT/u, TVA 19 → TTC 5.95)
   await fetch(`${BASE}/api/acheteurs/offres`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ articleType: 'ingredient', articleId: artId, prixUnitaireTtc: 5, tauxTva: 19, tailleLot: 6, prixLotTtc: 27, actif: true }),
+    body: JSON.stringify({ articleType: 'ingredient', articleId: artId, prixUnitaireHt: 5, tauxTva: 19, actif: true }),
   });
 
   // ── 1. Catalogue portail
@@ -81,18 +81,19 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   let body = await r.json();
   const item = body.offres?.find((o) => o.articleId === artId);
   check('catalogue : offre visible + dispo', r.status === 200 && !!item && item.disponible === true, JSON.stringify(item));
-  check('catalogue : remise acheteur 10%', body.remisePct === 10, String(body.remisePct));
+  check('catalogue : prix TTC dérivé 5.950', approx(item?.prixUnitaireTtc, 5.95), String(item?.prixUnitaireTtc));
+  check('catalogue : pas de remise exposée', !('remisePct' in body));
   check('catalogue : AUCUNE quantité de stock exposée', item && !('stock' in item) && !('quantite' in item) && !('stockTotal' in item));
   // le client n'a pas accès au portail
   r = await fetch(`${BASE}/api/portail/catalogue`, { headers: H });
   check('client bloqué sur portail 403', r.status === 403);
 
-  // ── 2. Commande portail (2 unités + 1 lot de 6 = 8 unités)
+  // ── 2. Commande portail (2 + 6 = 8 unités)
   r = await fetch(`${BASE}/api/portail/commandes`, {
     method: 'POST', headers: HP,
     body: JSON.stringify({ notes: 'livrer mardi', lignes: [
-      { articleType: 'ingredient', articleId: artId, mode: 'unite', quantite: 2 },
-      { articleType: 'ingredient', articleId: artId, mode: 'lot', quantite: 1 },
+      { articleType: 'ingredient', articleId: artId, quantite: 2 },
+      { articleType: 'ingredient', articleId: artId, quantite: 6 },
     ] }),
   });
   body = await r.json();
@@ -115,11 +116,16 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, { method: 'POST', headers: H, body: JSON.stringify({}) });
   check('valider sans labo 400', r.status === 400);
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, {
-    method: 'POST', headers: H, body: JSON.stringify({ laboId, timbreFiscal: true }),
+    method: 'POST', headers: H, body: JSON.stringify({ laboId, timbreFiscal: true, remisePct: 10 }),
   });
   body = await r.json();
   check('validation → facture', r.status === 200 && /^FA-\d{4}-\d{4}$/.test(body.facture?.numero || ''), JSON.stringify(body.facture));
-  check('totaux : brut 37, TTC 34.3 (remise 10% + timbre)', approx(body.facture?.brutTtc, 37) && approx(body.facture?.montantTtc, 34.3));
+  // 8 u × 5 HT = 40 HT ; remise 10% saisie à la validation → HT 36 ; TVA 19% = 6.84 ; TTC 36 + 6.84 + 1 = 43.84
+  check('totaux : brut HT 40, remise 10% → TTC 43.840',
+    approx(body.facture?.brutHt, 40) && approx(body.facture?.montantHt, 36) && approx(body.facture?.montantTtc, 43.84),
+    JSON.stringify(body.facture));
+  const remiseFigee = await pool.query(`SELECT remise_pct FROM commandes_acheteur WHERE id = $1`, [cmdId]);
+  check('remise figée sur la commande (10)', Number(remiseFigee.rows[0]?.remise_pct) === 10, String(remiseFigee.rows[0]?.remise_pct));
   check('stock déduit après validation (2)', await computeStockCourant('labo', laboId, artId) === 2);
   const lignesCout = await pool.query(`SELECT cout_unitaire_ttc FROM commande_acheteur_lignes WHERE commande_id = $1`, [cmdId]);
   check('coûts figés à la validation', lignesCout.rows.every((l) => l.cout_unitaire_ttc !== null && approx(l.cout_unitaire_ttc, 2.38)));
@@ -136,7 +142,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   // ── 6. 2e commande : validation en stock insuffisant → 422 ; refus → annulée + motif visible acheteur
   r = await fetch(`${BASE}/api/portail/commandes`, {
     method: 'POST', headers: HP,
-    body: JSON.stringify({ lignes: [{ articleType: 'ingredient', articleId: artId, mode: 'unite', quantite: 5 }] }),
+    body: JSON.stringify({ lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 5 }] }),
   });
   const cmd2 = (await r.json()).id;
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd2}/valider`, { method: 'POST', headers: H, body: JSON.stringify({ laboId }) });

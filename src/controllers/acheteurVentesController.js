@@ -1,49 +1,66 @@
 const pool = require('../config/database');
-const { computeStockCourant, computeStockPTCourant, ptCategorie } = require('../utils/stockUtils');
+const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
 const { gerantAllowsLabo } = require('../middleware/auth');
 const { buildFactureAcheteurPdf } = require('../services/factureAcheteurPdf');
 
 const clientIdOf = (req) => req.user.gerant_parent_id || req.user.id;
 const num = (v) => (v === null || v === undefined ? null : Number(v));
+const round3 = (v) => Math.round(v * 1000) / 1000;
+// Prix TTC dérivé d'un prix HT et d'un taux de TVA (les tarifs acheteurs sont saisis HT).
+const ttcDeHt = (ht, tva) => round3(Number(ht || 0) * (1 + (Number(tva) || 0) / 100));
 
 // ═══════════════════════════════════════════════════════════════════════════
-// OFFRES (tarifs acheteurs) — 2 prix TTC (unité + lot optionnel) + taux TVA
+// OFFRES (tarifs acheteurs) — prix unitaire HT + taux TVA (TTC dérivé)
 // ═══════════════════════════════════════════════════════════════════════════
 
 const mapOffre = (row) => row ? ({
   offreId: row.id,
-  prixUnitaireTtc: num(row.prix_unitaire_ttc) ?? 0,
+  prixUnitaireHt: num(row.prix_unitaire_ht) ?? 0,
   tauxTva: num(row.taux_tva) ?? 0,
-  tailleLot: num(row.taille_lot),
-  prixLotTtc: num(row.prix_lot_ttc),
+  prixUnitaireTtc: ttcDeHt(row.prix_unitaire_ht, row.taux_tva),
   actif: row.actif === true,
-}) : ({ offreId: null, prixUnitaireTtc: 0, tauxTva: 0, tailleLot: null, prixLotTtc: null, actif: false });
+}) : ({ offreId: null, prixUnitaireHt: 0, tauxTva: 0, prixUnitaireTtc: 0, actif: false });
 
-// GET /api/acheteurs/offres — articles éligibles (familles achetables) + produits
-// composés labo, avec leur offre éventuelle. C'est l'écran « Tarifs Acheteurs ».
+// Prédicat SQL des produits proposables aux acheteurs : composés fabriqués au labo
+// + utilisables rattachés à au moins un labo du client ($n = paramètre clientId).
+const PRODUIT_ELIGIBLE_SQL = (p, n) => `(
+  ${p}.origine = 'labo'
+  OR (${p}.type = 'utilisable' AND EXISTS (
+    SELECT 1 FROM labo_pt_selections lps
+    JOIN labos lx ON lx.id = lps.labo_id
+    JOIN profil_entreprise pex ON pex.id = lx.entreprise_id
+    WHERE lps.produit_id = ${p}.id AND pex.client_id = $${n}
+  ))
+)`;
+
+// Sections de l'écran Tarifs et du portail pour les produits.
+const produitSection = (type) => (type === 'utilisable' ? 'Produits Utilisables' : 'Produits Composés');
+
+// GET /api/acheteurs/offres — articles commandables + produits (composés labo et
+// utilisables liés à un labo), avec leur offre éventuelle. Écran « Tarifs Acheteurs ».
 const listOffres = async (req, res) => {
   try {
     const clientId = clientIdOf(req);
     const [arts, prods] = await Promise.all([
       pool.query(
         `SELECT a.id, a.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, f.nom AS famille,
-                o.id AS o_id, o.prix_unitaire_ttc, o.taux_tva, o.taille_lot, o.prix_lot_ttc, o.actif
+                o.id AS o_id, o.prix_unitaire_ht, o.taux_tva, o.actif
          FROM articles a
          JOIN unites u ON u.id = a.unite_id
-         JOIN categories c ON c.id = a.categorie_id
-         JOIN familles f ON f.id = c.famille_id AND f.achetable = true
+         LEFT JOIN categories c ON c.id = a.categorie_id
+         LEFT JOIN familles f ON f.id = c.famille_id
          LEFT JOIN acheteur_offres o ON o.client_id = $1 AND o.article_type = 'ingredient' AND o.article_id = a.id
-         WHERE a.client_id = $1
-         ORDER BY f.nom, c.nom, a.nom`,
+         WHERE a.client_id = $1 AND a.commandable = true
+         ORDER BY COALESCE(c.nom, 'zzz'), a.nom`,
         [clientId]
       ),
       pool.query(
         `SELECT p.id, p.nom, p.type, p.origine,
-                o.id AS o_id, o.prix_unitaire_ttc, o.taux_tva, o.taille_lot, o.prix_lot_ttc, o.actif
+                o.id AS o_id, o.prix_unitaire_ht, o.taux_tva, o.actif
          FROM produits p
          LEFT JOIN acheteur_offres o ON o.client_id = $1 AND o.article_type = 'produit' AND o.article_id = p.id
-         WHERE p.client_id = $1 AND p.origine = 'labo'
-         ORDER BY p.nom`,
+         WHERE p.client_id = $1 AND ${PRODUIT_ELIGIBLE_SQL('p', 1)}
+         ORDER BY (p.type = 'utilisable'), p.nom`,
         [clientId]
       ),
     ]);
@@ -55,7 +72,7 @@ const listOffres = async (req, res) => {
       })),
       produits: prods.rows.map((r) => ({
         articleType: 'produit', articleId: r.id, nom: r.nom, unite: 'unité',
-        categorie: ptCategorie(r.type, r.origine), famille: null,
+        categorie: produitSection(r.type), famille: null,
         ...mapOffre(r.o_id ? { ...r, id: r.o_id } : null),
       })),
     });
@@ -69,16 +86,13 @@ const listOffres = async (req, res) => {
 const isEligible = async (clientId, articleType, articleId) => {
   if (articleType === 'ingredient') {
     const r = await pool.query(
-      `SELECT 1 FROM articles a
-       JOIN categories c ON c.id = a.categorie_id
-       JOIN familles f ON f.id = c.famille_id AND f.achetable = true
-       WHERE a.id = $1 AND a.client_id = $2`,
+      `SELECT 1 FROM articles WHERE id = $1 AND client_id = $2 AND commandable = true`,
       [articleId, clientId]
     );
     return r.rows.length > 0;
   }
   const r = await pool.query(
-    `SELECT 1 FROM produits WHERE id = $1 AND client_id = $2 AND origine = 'labo'`,
+    `SELECT 1 FROM produits p WHERE p.id = $1 AND p.client_id = $2 AND ${PRODUIT_ELIGIBLE_SQL('p', 2)}`,
     [articleId, clientId]
   );
   return r.rows.length > 0;
@@ -91,53 +105,43 @@ const upsertOffre = async (req, res) => {
   if (!['ingredient', 'produit'].includes(articleType) || !Number.isFinite(Number(articleId))) {
     return res.status(400).json({ message: 'Article invalide' });
   }
-  const prixU = Number(req.body.prixUnitaireTtc);
+  const prixU = Number(req.body.prixUnitaireHt);
   const tva = Number(req.body.tauxTva ?? 0);
-  const tailleLot = req.body.tailleLot != null && req.body.tailleLot !== '' ? Number(req.body.tailleLot) : null;
-  const prixLot = req.body.prixLotTtc != null && req.body.prixLotTtc !== '' ? Number(req.body.prixLotTtc) : null;
   const actif = req.body.actif === true;
 
   if (!Number.isFinite(prixU) || prixU < 0) return res.status(400).json({ message: 'Prix unitaire invalide' });
   if (!Number.isFinite(tva) || tva < 0 || tva > 100) return res.status(400).json({ message: 'Taux de TVA invalide (0 à 100)' });
-  if ((tailleLot === null) !== (prixLot === null)) {
-    return res.status(400).json({ message: 'Le prix par lot et la taille de lot vont ensemble (les deux ou aucun)' });
-  }
-  if (tailleLot !== null && (!Number.isFinite(tailleLot) || tailleLot <= 0)) return res.status(400).json({ message: 'Taille de lot invalide' });
-  if (prixLot !== null && (!Number.isFinite(prixLot) || prixLot < 0)) return res.status(400).json({ message: 'Prix par lot invalide' });
   if (actif && prixU <= 0) return res.status(400).json({ message: 'Impossible d\'activer une offre sans prix unitaire > 0' });
 
   try {
     if (!(await isEligible(clientId, articleType, articleId))) {
-      return res.status(400).json({ message: 'Article non proposable (famille non achetable ou produit hors labo)' });
+      return res.status(400).json({ message: 'Article non proposable (article non commandable ou produit hors labo)' });
     }
     const prev = await pool.query(
-      `SELECT id, prix_unitaire_ttc, taux_tva, taille_lot, prix_lot_ttc FROM acheteur_offres
+      `SELECT id, prix_unitaire_ht, taux_tva FROM acheteur_offres
        WHERE client_id = $1 AND article_type = $2 AND article_id = $3`,
       [clientId, articleType, articleId]
     );
     const r = await pool.query(
-      `INSERT INTO acheteur_offres (client_id, article_type, article_id, prix_unitaire_ttc, taux_tva, taille_lot, prix_lot_ttc, actif)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO acheteur_offres (client_id, article_type, article_id, prix_unitaire_ht, taux_tva, actif)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (client_id, article_type, article_id) DO UPDATE
-       SET prix_unitaire_ttc = EXCLUDED.prix_unitaire_ttc,
+       SET prix_unitaire_ht = EXCLUDED.prix_unitaire_ht,
            taux_tva = EXCLUDED.taux_tva,
-           taille_lot = EXCLUDED.taille_lot,
-           prix_lot_ttc = EXCLUDED.prix_lot_ttc,
            actif = EXCLUDED.actif,
            updated_at = NOW()
        RETURNING *`,
-      [clientId, articleType, articleId, prixU, tva, tailleLot, prixLot, actif]
+      [clientId, articleType, articleId, prixU, tva, actif]
     );
     const row = r.rows[0];
     // Historisation à chaque changement de prix (prix > 0), pattern module ventes
     const p = prev.rows[0];
-    const changed = !p || num(p.prix_unitaire_ttc) !== prixU || num(p.taille_lot) !== tailleLot
-      || num(p.prix_lot_ttc) !== prixLot || num(p.taux_tva) !== tva;
+    const changed = !p || num(p.prix_unitaire_ht) !== prixU || num(p.taux_tva) !== tva;
     if (prixU > 0 && changed) {
       await pool.query(
-        `INSERT INTO acheteur_offre_prix_historique (offre_id, prix_unitaire_ttc, taille_lot, prix_lot_ttc, taux_tva, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [row.id, prixU, tailleLot, prixLot, tva, req.user.id]
+        `INSERT INTO acheteur_offre_prix_historique (offre_id, prix_unitaire_ht, taux_tva, created_by)
+         VALUES ($1, $2, $3, $4)`,
+        [row.id, prixU, tva, req.user.id]
       );
     }
     res.json({ articleType, articleId, ...mapOffre(row) });
@@ -152,7 +156,7 @@ const getOffreHistorique = async (req, res) => {
   try {
     const clientId = clientIdOf(req);
     const r = await pool.query(
-      `SELECT h.prix_unitaire_ttc, h.taille_lot, h.prix_lot_ttc, h.taux_tva, h.saved_at, u.nom AS created_by_nom
+      `SELECT h.prix_unitaire_ht, h.taux_tva, h.saved_at, u.nom AS created_by_nom
        FROM acheteur_offre_prix_historique h
        JOIN acheteur_offres o ON o.id = h.offre_id AND o.client_id = $1
        LEFT JOIN utilisateurs u ON u.id = h.created_by
@@ -161,9 +165,7 @@ const getOffreHistorique = async (req, res) => {
       [clientId, req.params.id]
     );
     res.json(r.rows.map((h) => ({
-      prixUnitaireTtc: num(h.prix_unitaire_ttc),
-      tailleLot: num(h.taille_lot),
-      prixLotTtc: num(h.prix_lot_ttc),
+      prixUnitaireHt: num(h.prix_unitaire_ht),
       tauxTva: num(h.taux_tva),
       savedAt: h.saved_at,
       createdByNom: h.created_by_nom,
@@ -178,23 +180,29 @@ const getOffreHistorique = async (req, res) => {
 // VENTES (commandes) — vente manuelle du client, validée d'office
 // ═══════════════════════════════════════════════════════════════════════════
 
-const round3 = (v) => Math.round(v * 1000) / 1000;
-
 // Totaux de facture (partagé vente manuelle / validation de commande portail) :
-// brut TTC → remise proportionnelle → HT dérivé du TTC ligne à ligne (jamais re-taxé) → timbre.
+// prix saisis HT → remise proportionnelle sur le HT → TVA calculée ligne à ligne
+// sur le net remisé → timbre. Le TTC est toujours dérivé, jamais re-taxé.
 const computeTotauxFacture = (lignes, remisePct, timbreFiscal, montantTimbre) => {
-  const brutTtc = round3(lignes.reduce((s, l) => s + Number(l.prixTtc ?? l.prix_ttc) * Number(l.quantite), 0));
   const facteur = 1 - remisePct / 100;
+  let brutHt = 0;
+  let brutTtc = 0;
   let montantHt = 0;
+  let montantTva = 0;
   for (const l of lignes) {
-    const ttcNet = Number(l.prixTtc ?? l.prix_ttc) * Number(l.quantite) * facteur;
-    montantHt += ttcNet / (1 + (Number(l.tauxTva ?? l.taux_tva) || 0) / 100);
+    const ht = Number(l.prixHt ?? l.prix_ht) * Number(l.quantite);
+    const tva = (Number(l.tauxTva ?? l.taux_tva) || 0) / 100;
+    brutHt += ht;
+    brutTtc += ht * (1 + tva);
+    montantHt += ht * facteur;
+    montantTva += ht * facteur * tva;
   }
+  brutHt = round3(brutHt);
+  brutTtc = round3(brutTtc);
   montantHt = round3(montantHt);
-  const netLignesTtc = round3(brutTtc * facteur);
-  const montantTva = round3(netLignesTtc - montantHt);
+  montantTva = round3(montantTva);
   const timbre = timbreFiscal ? montantTimbre : 0;
-  return { brutTtc, montantHt, montantTva, montantTimbre: timbre, montantTtc: round3(netLignesTtc + timbre) };
+  return { brutHt, brutTtc, montantHt, montantTva, montantTimbre: timbre, montantTtc: round3(montantHt + montantTva + timbre) };
 };
 
 // Coût matière TTC par unité au labo (figé sur la ligne à la validation) :
@@ -239,7 +247,8 @@ const nextNumeroFacture = async (db, clientId, dateFacture) => {
 };
 
 // POST /api/acheteurs/ventes — vente manuelle (commande source=client, validée d'office).
-// Lignes pré-remplies au tarif côté front, prix TTC modifiable ligne à ligne.
+// Lignes pré-remplies au tarif côté front, prix HT modifiable ligne à ligne.
+// La remise se décide À CETTE COMMANDE (défaut 0 — plus de remise de fiche acheteur).
 const createVente = async (req, res) => {
   const clientId = clientIdOf(req);
   const { acheteurId, laboId, notes } = req.body;
@@ -266,7 +275,7 @@ const createVente = async (req, res) => {
 
     const remisePct = req.body.remisePct !== undefined && req.body.remisePct !== ''
       ? Number(req.body.remisePct)
-      : num(ach.rows[0].remise_pct) ?? 0;
+      : 0;
     if (!Number.isFinite(remisePct) || remisePct < 0 || remisePct > 100) {
       return res.status(400).json({ message: 'Remise invalide (0 à 100)' });
     }
@@ -274,7 +283,7 @@ const createVente = async (req, res) => {
     const montantTimbre = timbreFiscal ? (Number.isFinite(Number(req.body.montantTimbre)) ? Number(req.body.montantTimbre) : 1.0) : 0;
     if (montantTimbre < 0) return res.status(400).json({ message: 'Timbre invalide' });
 
-    // Offres ACTIVES des lignes demandées (prix par défaut + taille de lot figée)
+    // Offres ACTIVES des lignes demandées (prix HT par défaut + taux de TVA figé)
     const offres = await pool.query(
       `SELECT * FROM acheteur_offres WHERE client_id = $1 AND actif = true`,
       [clientId]
@@ -304,22 +313,17 @@ const createVente = async (req, res) => {
       if (!offre || !meta) {
         return res.status(400).json({ message: `Ligne ${i + 1} : article sans offre active — configurez d'abord vos Tarifs Acheteurs` });
       }
-      const mode = l.mode === 'lot' ? 'lot' : 'unite';
-      if (mode === 'lot' && (offre.taille_lot === null || offre.prix_lot_ttc === null)) {
-        return res.status(400).json({ message: `Ligne ${i + 1} : pas de prix par lot configuré pour « ${meta.nom} »` });
-      }
       const quantite = Number(l.quantite);
       if (!Number.isFinite(quantite) || quantite <= 0) return res.status(400).json({ message: `Ligne ${i + 1} : quantité invalide` });
-      const defaultPrix = mode === 'lot' ? num(offre.prix_lot_ttc) : num(offre.prix_unitaire_ttc);
-      const prixTtc = l.prixTtc !== undefined && l.prixTtc !== '' ? Number(l.prixTtc) : defaultPrix;
-      if (!Number.isFinite(prixTtc) || prixTtc < 0) return res.status(400).json({ message: `Ligne ${i + 1} : prix invalide` });
-      const tailleLot = mode === 'lot' ? num(offre.taille_lot) : null;
-      const quantiteUnites = round3(mode === 'lot' ? quantite * tailleLot : quantite);
+      const prixHt = l.prixHt !== undefined && l.prixHt !== '' ? Number(l.prixHt) : num(offre.prix_unitaire_ht);
+      if (!Number.isFinite(prixHt) || prixHt < 0) return res.status(400).json({ message: `Ligne ${i + 1} : prix invalide` });
+      const tauxTva = num(offre.taux_tva) ?? 0;
+      const quantiteUnites = round3(quantite);
 
       lignes.push({
         articleType: l.articleType, articleId: Number(l.articleId),
-        designation: meta.nom, unite: meta.unite, mode, quantite, tailleLot, quantiteUnites,
-        prixTtc, tauxTva: num(offre.taux_tva) ?? 0,
+        designation: meta.nom, unite: meta.unite, quantite, quantiteUnites,
+        prixHt, prixTtc: ttcDeHt(prixHt, tauxTva), tauxTva,
       });
       const b = besoins.get(key) || { nom: meta.nom, unite: meta.unite, type: l.articleType, id: Number(l.articleId), unites: 0 };
       b.unites = round3(b.unites + quantiteUnites);
@@ -343,7 +347,7 @@ const createVente = async (req, res) => {
     // Coûts matière TTC figés (marge)
     const { artMap, prodMap } = await buildCostMaps(laboId, artIds, prodIds);
 
-    const { brutTtc, montantHt, montantTva, montantTtc } = computeTotauxFacture(lignes, remisePct, timbreFiscal, montantTimbre);
+    const { brutHt, brutTtc, montantHt, montantTva, montantTtc } = computeTotauxFacture(lignes, remisePct, timbreFiscal, montantTimbre);
 
     const db = await pool.connect();
     try {
@@ -359,9 +363,9 @@ const createVente = async (req, res) => {
         const coutU = l.articleType === 'ingredient' ? artMap.get(l.articleId) ?? null : prodMap.get(l.articleId) ?? null;
         await db.query(
           `INSERT INTO commande_acheteur_lignes
-             (commande_id, article_type, article_id, designation, mode, quantite, taille_lot, quantite_unites, prix_ttc, taux_tva, cout_unitaire_ttc)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-          [commande.id, l.articleType, l.articleId, l.designation, l.mode, l.quantite, l.tailleLot, l.quantiteUnites, l.prixTtc, l.tauxTva, coutU]
+             (commande_id, article_type, article_id, designation, quantite, quantite_unites, prix_ht, prix_ttc, taux_tva, cout_unitaire_ttc)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [commande.id, l.articleType, l.articleId, l.designation, l.quantite, l.quantiteUnites, l.prixHt, l.prixTtc, l.tauxTva, coutU]
         );
       }
       const numero = await nextNumeroFacture(db, clientId, dateCommande);
@@ -376,7 +380,7 @@ const createVente = async (req, res) => {
       res.status(201).json({
         commande: { id: commande.id, statut: commande.statut, dateCommande, remisePct, acheteurNom: ach.rows[0].nom, laboNom: labo.rows[0].nom },
         facture: {
-          id: fact.rows[0].id, numero, montantHt, montantTva, montantTimbre, montantTtc, brutTtc,
+          id: fact.rows[0].id, numero, montantHt, montantTva, montantTimbre, montantTtc, brutHt, brutTtc,
         },
       });
     } catch (err) {
@@ -495,8 +499,8 @@ const getCommande = async (req, res) => {
       } : null,
       lignes: lignes.rows.map((l) => ({
         id: l.id, articleType: l.article_type, articleId: l.article_id, designation: l.designation,
-        mode: l.mode, quantite: num(l.quantite), tailleLot: num(l.taille_lot), quantiteUnites: num(l.quantite_unites),
-        prixTtc: num(l.prix_ttc), tauxTva: num(l.taux_tva), coutUnitaireTtc: num(l.cout_unitaire_ttc),
+        quantite: num(l.quantite), quantiteUnites: num(l.quantite_unites),
+        prixHt: num(l.prix_ht), prixTtc: num(l.prix_ttc), tauxTva: num(l.taux_tva), coutUnitaireTtc: num(l.cout_unitaire_ttc),
       })),
     });
   } catch (err) {
@@ -506,14 +510,19 @@ const getCommande = async (req, res) => {
 };
 
 // POST /api/acheteurs/commandes/:id/valider — validation d'une commande PORTAIL
-// (en attente) : le vendeur choisit le labo source, le stock est contrôlé puis
-// déduit (flux), les coûts sont figés et la facture est générée.
+// (en attente) : le vendeur choisit le labo source ET la remise éventuelle de la
+// commande, le stock est contrôlé puis déduit (flux), les coûts sont figés et la
+// facture est générée.
 const validerCommande = async (req, res) => {
   const clientId = clientIdOf(req);
   const laboId = Number(req.body.laboId);
   if (!Number.isFinite(laboId)) return res.status(400).json({ message: 'Labo requis pour valider la commande' });
   const timbreFiscal = req.body.timbreFiscal !== false;
   const montantTimbre = timbreFiscal ? (Number.isFinite(Number(req.body.montantTimbre)) ? Number(req.body.montantTimbre) : 1.0) : 0;
+  const remiseIn = req.body.remisePct !== undefined && req.body.remisePct !== '' ? Number(req.body.remisePct) : null;
+  if (remiseIn !== null && (!Number.isFinite(remiseIn) || remiseIn < 0 || remiseIn > 100)) {
+    return res.status(400).json({ message: 'Remise invalide (0 à 100)' });
+  }
 
   const db = await pool.connect();
   try {
@@ -573,7 +582,8 @@ const validerCommande = async (req, res) => {
       await db.query(`UPDATE commande_acheteur_lignes SET cout_unitaire_ttc = $1 WHERE id = $2`, [coutU, l.id]);
     }
 
-    const remisePct = num(cmd.remise_pct) ?? 0;
+    // Remise décidée à la validation (défaut : celle déjà portée par la commande, 0 pour le portail)
+    const remisePct = remiseIn !== null ? remiseIn : (num(cmd.remise_pct) ?? 0);
     const totaux = computeTotauxFacture(lignes, remisePct, timbreFiscal, montantTimbre);
     const dateFacture = new Date().toISOString().slice(0, 10);
     const numero = await nextNumeroFacture(db, clientId, dateFacture);
@@ -585,8 +595,8 @@ const validerCommande = async (req, res) => {
       [clientId, cmd.acheteur_id, cmd.id, numero, dateFacture, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc]
     );
     await db.query(
-      `UPDATE commandes_acheteur SET statut = 'validee', labo_id = $1, traite_le = NOW(), traite_par = $2 WHERE id = $3`,
-      [laboId, req.user.id, cmd.id]
+      `UPDATE commandes_acheteur SET statut = 'validee', labo_id = $1, remise_pct = $2, traite_le = NOW(), traite_par = $3 WHERE id = $4`,
+      [laboId, remisePct, req.user.id, cmd.id]
     );
     await db.query('COMMIT');
 
