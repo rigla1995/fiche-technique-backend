@@ -634,7 +634,7 @@ const tabLabo = async (req, ctx, from, to) => {
       `SELECT COALESCE(SUM(fa.montant_ttc), 0) AS ca, COUNT(*) AS nb
        FROM factures_acheteur fa
        JOIN commandes_acheteur cac ON cac.id = fa.commande_id
-       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut = 'validee'
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
          AND fa.date_facture >= $2 AND fa.date_facture <= $3`,
       [laboIds, from, to]
     ),
@@ -653,7 +653,7 @@ const tabLabo = async (req, ctx, from, to) => {
                 END, 0)), 0) AS valeur
        FROM commande_acheteur_lignes cal
        JOIN commandes_acheteur cac ON cac.id = cal.commande_id
-       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut = 'validee'`,
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')`,
       [laboIds]
     ),
   ]);

@@ -54,12 +54,12 @@ async function computeStockCourant(scope, scopeId, ingredientId) {
          SELECT
            COALESCE(SUM(cal.quantite_unites) FILTER (
              WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND ca.date_commande >= (SELECT date_inventaire FROM last_inv)
+               AND COALESCE(ca.date_expedition, ca.date_commande) >= (SELECT date_inventaire FROM last_inv)
            ), 0) AS post_qty,
            COALESCE(SUM(cal.quantite_unites), 0) AS all_qty
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         WHERE ca.labo_id = $1 AND ca.statut = 'validee'
+         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
            AND cal.article_type = 'ingredient' AND cal.article_id = $2
        )
        SELECT CASE
@@ -177,12 +177,12 @@ async function computeStockPTCourant(scope, scopeId, produitId) {
          SELECT
            COALESCE(SUM(cal.quantite_unites) FILTER (
              WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND ca.date_commande >= (SELECT date_inventaire FROM last_inv)
+               AND COALESCE(ca.date_expedition, ca.date_commande) >= (SELECT date_inventaire FROM last_inv)
            ), 0) AS post_qty,
            COALESCE(SUM(cal.quantite_unites), 0) AS all_qty
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         WHERE ca.labo_id = $1 AND ca.statut = 'validee'
+         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
            AND cal.article_type = 'produit' AND cal.article_id = $2
        )
        SELECT CASE
