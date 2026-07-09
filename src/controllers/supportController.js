@@ -304,6 +304,8 @@ const traiter = async (req, res) => {
          SET nb_activites = nb_activites + $1,
              nb_labos     = nb_labos     + $2,
              nb_gerants   = nb_gerants   + $3,
+             -- un compte dépôt qui gagne sa 1ère activité reçoit une formule (défaut premium)
+             formule_activites = CASE WHEN nb_activites +               >= 1 THEN COALESCE(formule_activites, 'premium') ELSE formule_activites END,
              updated_at   = NOW()
          FROM abonnements a
          WHERE a.id = ac.abonnement_id AND a.client_id = $4`,
@@ -367,6 +369,8 @@ const traiter = async (req, res) => {
               activiteCost,
               laboCost,
               gerantCost,
+              nbAcheteurs: parseInt(cfg.nb_acheteurs) || 0,
+              acheteursCost: computeBaseAcheteursFromConfig(cfg, tarifs) || 0,
               newMensuel,
               ancienMensuel,
               promoApplied: false,
@@ -452,6 +456,8 @@ const previewAvenant = async (req, res) => {
       activiteCost,
       laboCost,
       gerantCost,
+      nbAcheteurs: parseInt(cfg.nb_acheteurs) || 0,
+      acheteursCost: computeBaseAcheteursFromConfig(cfg, tarifs) || 0,
       newMensuel,
       ancienMensuel,
       promoApplied: false,

@@ -34,10 +34,20 @@ ON CONFLICT (cle) DO NOTHING;
 -- Purge : module_vente (inclus dans les bases, jamais facturé) + clés mortes de
 -- l'ancien modèle compte_type / forfaits (les fallbacks code sont retirés en même temps).
 DELETE FROM tarifs_config WHERE cle IN (
-  'module_vente',
+  'module_vente', 'module_acheteurs',
   'indep_mensuel', 'indep_onboarding', 'entreprise_mensuel', 'entreprise_onboarding',
   'activite_1', 'activite_2', 'activite_sup', 'labo_mensuel', 'gerant_mensuel'
 );
+
+-- Cohérence facturation : un compte dont le module Acheteurs est DÉSACTIVÉ ne doit
+-- pas porter de quota (sinon le palier serait facturé sans que l'option soit active).
+UPDATE abonnement_config ac SET nb_acheteurs = 0
+FROM abonnements a
+WHERE a.id = ac.abonnement_id AND ac.nb_acheteurs > 0
+  AND NOT EXISTS (
+    SELECT 1 FROM profil_entreprise pe
+    WHERE pe.client_id = a.client_id AND pe.module_acheteurs_actif = true
+  );
 
 -- Demande d'upgrade de formule (même mécanique que activer_module_vente)
 -- VARCHAR(20) d'origine trop court pour 'passer_formule_premium' (22 caractères)

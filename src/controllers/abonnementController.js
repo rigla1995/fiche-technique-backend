@@ -704,7 +704,7 @@ const getMontantMois = async (req, res) => {
           }
         : null,
       breakdown,
-      total,
+      total: Math.round(total * 100) / 100,
     });
   } catch (err) {
     console.error(err);
@@ -1444,6 +1444,14 @@ const updateAbonnementConfig = async (req, res) => {
   if (req.body.formuleActivites !== undefined && !['basique', 'premium'].includes(req.body.formuleActivites)) {
     return res.status(400).json({ message: 'Formule invalide (basique ou premium)' });
   }
+  // Option Acheteurs : mêmes gardes qu'à la création (palier ≤ 100, labo requis)
+  const nAch = nbAcheteurs != null ? parseInt(nbAcheteurs, 10) : null;
+  if (nAch !== null && (!Number.isFinite(nAch) || nAch < 0 || nAch > 100)) {
+    return res.status(400).json({ message: 'Quota acheteurs invalide (paliers de 1 à 100)' });
+  }
+  if (nAch !== null && nAch > 0 && (parseInt(nbLabos, 10) || 0) < 1) {
+    return res.status(400).json({ message: "L'option Acheteurs nécessite au moins un labo" });
+  }
   try {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
@@ -1693,6 +1701,9 @@ const toggleModuleAcheteurs = async (req, res) => {
     let quota = null;
     // Désactivation du module ⇒ quota remis à 0 (fin de la facturation par palier)
     const nb = actif ? parseInt(nbAcheteurs, 10) : 0;
+    if (Number.isFinite(nb) && nb > 100) {
+      return res.status(400).json({ message: 'Quota acheteurs invalide (paliers de 1 à 100)' });
+    }
     if (Number.isFinite(nb) && nb >= 0) {
       const q = await pool.query(
         `UPDATE abonnement_config SET nb_acheteurs = $1, updated_at = NOW()

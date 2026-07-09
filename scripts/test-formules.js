@@ -46,6 +46,8 @@ const approx = (a, b, eps = 0.01) => Math.abs(Number(a) - Number(b)) <= eps;
   )).rows[0];
   check('config client 38 sauvegardée', !!cfgBackup);
 
+  try {
+
   // ── 1. Clés tarifaires seedées / purgées (migration 164)
   r = await fetch(`${BASE}/api/abonnements/tarifs`, { headers: HA });
   const tarifs = await r.json();
@@ -84,6 +86,14 @@ const approx = (a, b, eps = 0.01) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/abonnements/pricing-preview?nbActivites=1&nbLabos=1&nbAcheteurs=35&formuleActivites=premium`, { headers: HA });
   body = await r.json();
   check('35 acheteurs → palier 50', body.acheteurs?.palier === 50 && approx(body.acheteurs?.total, p50), JSON.stringify(body.acheteurs));
+
+  // ── 2bis. Bornes exactes des paliers (10/11, 20/21, 50/51, 100)
+  const p10 = T('acheteurs_palier_10', 50), p100 = T('acheteurs_palier_100', 220);
+  for (const [n, palier, prix] of [[10, 10, p10], [11, 20, p20], [21, 50, p50], [51, 100, p100], [100, 100, p100]]) {
+    r = await fetch(`${BASE}/api/abonnements/pricing-preview?nbActivites=1&nbLabos=1&nbAcheteurs=${n}&formuleActivites=premium`, { headers: HA });
+    body = await r.json();
+    check(`borne palier : ${n} acheteurs → palier ${palier} (${prix} DT)`, body.acheteurs?.palier === palier && approx(body.acheteurs?.total, prix), JSON.stringify(body.acheteurs));
+  }
 
   // ── 3. Création client avec formule + palier
   r = await fetch(`${BASE}/admin/clients`, {
@@ -147,6 +157,18 @@ const approx = (a, b, eps = 0.01) => Math.abs(Number(a) - Number(b)) <= eps;
   body = await r.json();
   check(`nouveau mensuel premium = ${premium2LaboTotal}`, approx(body.pricing?.baseMensuel, premium2LaboTotal), String(body.pricing?.baseMensuel));
 
+  // ── 6bis. Gardes de la config (mêmes règles qu'à la création)
+  r = await fetch(`${BASE}/api/abonnements/client/${newClientId}/config`, {
+    method: 'PUT', headers: HA,
+    body: JSON.stringify({ nbActivites: 2, nbLabos: 1, nbGerants: 1, montantOnboarding: 700, nbAcheteurs: 150 }),
+  });
+  check('config : quota > 100 refusé 400', r.status === 400);
+  r = await fetch(`${BASE}/api/abonnements/client/${newClientId}/config`, {
+    method: 'PUT', headers: HA,
+    body: JSON.stringify({ nbActivites: 2, nbLabos: 0, nbGerants: 1, montantOnboarding: 700, nbAcheteurs: 20 }),
+  });
+  check('config : acheteurs sans labo refusé 400', r.status === 400);
+
   // ── 7. Désactivation module acheteurs → quota 0 → facturation stoppée
   r = await fetch(`${BASE}/api/abonnements/client/${newClientId}/module-acheteurs`, {
     method: 'PUT', headers: HA, body: JSON.stringify({ actif: false }),
@@ -158,14 +180,26 @@ const approx = (a, b, eps = 0.01) => Math.abs(Number(a) - Number(b)) <= eps;
   check(`mensuel sans option acheteurs = ${premium2LaboSansAch}`, approx(body.pricing?.baseMensuel, premium2LaboSansAch), String(body.pricing?.baseMensuel));
 
   // ── 8. Gating Espace Produit (formule basique) sur le client 38
+  // basique + labo dans la config : l'Espace Produit RESTE accessible (base Labo)
   r = await fetch(`${BASE}/api/abonnements/client/${clientId}/config`, {
     method: 'PUT', headers: HA,
     body: JSON.stringify({
-      nbActivites: cfgBackup.nb_activites, nbLabos: cfgBackup.nb_labos, nbGerants: cfgBackup.nb_gerants,
-      montantOnboarding: cfgBackup.montant_onboarding, formuleActivites: 'basique',
+      nbActivites: cfgBackup.nb_activites, nbLabos: Math.max(1, cfgBackup.nb_labos), nbGerants: cfgBackup.nb_gerants,
+      montantOnboarding: cfgBackup.montant_onboarding, formuleActivites: 'basique', nbAcheteurs: 0,
     }),
   });
-  check('client 38 passé en basique', r.status === 200);
+  check('client 38 passé en basique (avec labo)', r.status === 200);
+  r = await fetch(`${BASE}/api/produits`, { method: 'POST', headers: HC, body: JSON.stringify({}) });
+  check('basique AVEC labo : Espace Produit accessible (400 validation, pas 403)', r.status === 400, String(r.status));
+  // basique SANS labo : verrouillé
+  r = await fetch(`${BASE}/api/abonnements/client/${clientId}/config`, {
+    method: 'PUT', headers: HA,
+    body: JSON.stringify({
+      nbActivites: cfgBackup.nb_activites, nbLabos: 0, nbGerants: cfgBackup.nb_gerants,
+      montantOnboarding: cfgBackup.montant_onboarding, formuleActivites: 'basique', nbAcheteurs: 0,
+    }),
+  });
+  check('client 38 passé en basique (sans labo)', r.status === 200);
   r = await fetch(`${BASE}/api/entreprise`, { headers: HC });
   body = await r.json();
   check('/api/entreprise expose formule basique', body?.formule_activites === 'basique', String(body?.formule_activites));
@@ -182,6 +216,10 @@ const approx = (a, b, eps = 0.01) => Math.abs(Number(a) - Number(b)) <= eps;
   body = await r.json();
   check('demande passer_formule_premium créée', r.status === 201, JSON.stringify(body).slice(0, 100));
   const demandeId = body.id;
+  r = await fetch(`${BASE}/api/abonnements/demandes`, {
+    method: 'POST', headers: HC, body: JSON.stringify({ typeDemande: 'passer_formule_premium' }),
+  });
+  check('demande en double refusée 409', r.status === 409);
   r = await fetch(`${BASE}/api/abonnements/admin/demandes/${demandeId}`, {
     method: 'PUT', headers: HA, body: JSON.stringify({ statut: 'validée' }),
   });
@@ -194,15 +232,17 @@ const approx = (a, b, eps = 0.01) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/produits`, { method: 'POST', headers: HC, body: JSON.stringify({}) });
   check('write produit en premium → 400 (validation, plus de 403)', r.status === 400, String(r.status));
 
-  // ── Restauration + nettoyage
-  await pool.query(
-    `UPDATE abonnement_config SET nb_activites=$1, nb_labos=$2, nb_gerants=$3, nb_acheteurs=$4, formule_activites=$5, montant_onboarding=$6
-     WHERE abonnement_id = (SELECT id FROM abonnements WHERE client_id = $7)`,
-    [cfgBackup.nb_activites, cfgBackup.nb_labos, cfgBackup.nb_gerants, cfgBackup.nb_acheteurs,
-     cfgBackup.formule_activites || 'premium', cfgBackup.montant_onboarding, clientId]
-  );
-  await pool.query(`DELETE FROM demandes WHERE demandeur_id = $1 AND type_demande = 'passer_formule_premium'`, [clientId]);
-  await wipe();
+  } finally {
+    // ── Restauration + nettoyage (GARANTIS même si un check lève)
+    await pool.query(
+      `UPDATE abonnement_config SET nb_activites=$1, nb_labos=$2, nb_gerants=$3, nb_acheteurs=$4, formule_activites=$5, montant_onboarding=$6
+       WHERE abonnement_id = (SELECT id FROM abonnements WHERE client_id = $7)`,
+      [cfgBackup.nb_activites, cfgBackup.nb_labos, cfgBackup.nb_gerants, cfgBackup.nb_acheteurs,
+       cfgBackup.formule_activites || 'premium', cfgBackup.montant_onboarding, clientId]
+    ).catch((e) => console.error('RESTORE config 38 ÉCHOUÉ :', e.message));
+    await pool.query(`DELETE FROM demandes WHERE demandeur_id = $1 AND type_demande = 'passer_formule_premium'`, [clientId]).catch(() => {});
+    await wipe().catch(() => {});
+  }
 
   const failed = results.filter((x) => !x.ok);
   console.log(`\n${results.length - failed.length}/${results.length} tests OK${failed.length ? ' — ÉCHECS : ' + failed.map((f) => f.name).join(', ') : ''}`);
