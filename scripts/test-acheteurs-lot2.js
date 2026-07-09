@@ -100,6 +100,30 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   });
   check('offre sur article non commandable refusée 400', r.status === 400);
 
+  // ── 1bis. Offre orpheline : commandable OFF → offre désactivée, mais reste modifiable
+  r = await fetch(`${BASE}/api/articles/${artId}`, { method: 'PUT', headers: H, body: JSON.stringify({ commandable: false }) });
+  const offOrpheline = await pool.query(`SELECT actif FROM acheteur_offres WHERE id = $1`, [offreId]);
+  check('commandable OFF → offre désactivée', r.status === 200 && offOrpheline.rows[0]?.actif === false, String(offOrpheline.rows[0]?.actif));
+  r = await fetch(`${BASE}/api/acheteurs/offres`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({ articleType: 'ingredient', articleId: artId, prixUnitaireHt: 5, tauxTva: 19, actif: false }),
+  });
+  check('offre existante modifiable malgré inéligibilité', r.status === 200);
+  await fetch(`${BASE}/api/articles/${artId}`, { method: 'PUT', headers: H, body: JSON.stringify({ commandable: true }) });
+  r = await fetch(`${BASE}/api/acheteurs/offres`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({ articleType: 'ingredient', articleId: artId, prixUnitaireHt: 5, tauxTva: 19, actif: true }),
+  });
+  body = await r.json();
+  check('offre réactivée après retour commandable', r.status === 200 && body.actif === true);
+
+  // ── 1ter. Quantité quasi nulle refusée proprement (au lieu d'un 500 CHECK)
+  r = await fetch(`${BASE}/api/acheteurs/ventes`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({ acheteurId, laboId, lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 0.0004 }] }),
+  });
+  check('quantité ~0 refusée 400', r.status === 400);
+
   // ── 2. Vente : 2 u à 5 HT + 6 u à 4.5 HT = 8 unités (stock 10), remise 10% saisie à la vente
   r = await fetch(`${BASE}/api/acheteurs/ventes`, {
     method: 'POST', headers: H,

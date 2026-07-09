@@ -158,6 +158,15 @@ const update = async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Article introuvable' });
     }
+    // Article retiré du catalogue acheteurs → son offre éventuelle est désactivée
+    // (sinon elle resterait vendue au portail sans être visible dans les Tarifs).
+    if (commandable === false) {
+      await client.query(
+        `UPDATE acheteur_offres SET actif = false, updated_at = NOW()
+         WHERE client_id = $1 AND article_type = 'ingredient' AND article_id = $2 AND actif = true`,
+        [clientId, req.params.id]
+      );
+    }
     await client.query('COMMIT');
 
     const result = await pool.query(

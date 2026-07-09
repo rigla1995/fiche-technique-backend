@@ -3,9 +3,12 @@
 --   • acheteur_offres : prix_unitaire_ht remplace prix_unitaire_ttc (backfill
 --     détaxé : HT = TTC / (1 + TVA/100)), colonnes de lot supprimées.
 --   • historique des prix : même traitement.
---   • commande_acheteur_lignes : les anciennes lignes « lot » sont normalisées en
---     unités (prix unitaire recalculé, quantite = quantite_unites), prix_ht ajouté
---     (figé à la commande), colonnes mode/taille_lot supprimées.
+--   • commande_acheteur_lignes : prix_ht ajouté (figé, backfill détaxé), colonnes
+--     mode/taille_lot supprimées. Les anciennes lignes « lot » NE SONT PAS
+--     renormalisées en unités : quantite/prix_ttc gardent leurs valeurs exactes
+--     (quantite = nb de lots, prix = prix du lot) pour que les totaux des factures
+--     déjà émises restent arithmétiquement cohérents à la régénération du PDF.
+--     Le stock, lui, lit toujours quantite_unites (inchangé).
 -- Les CHECK liés aux colonnes supprimées tombent avec elles.
 
 ALTER TABLE acheteur_offres
@@ -25,12 +28,6 @@ ALTER TABLE acheteur_offre_prix_historique
   DROP COLUMN IF EXISTS prix_unitaire_ttc,
   DROP COLUMN IF EXISTS taille_lot,
   DROP COLUMN IF EXISTS prix_lot_ttc;
-
--- Normalisation des anciennes lignes « lot » : tout redevient de l'unité.
-UPDATE commande_acheteur_lignes
-  SET prix_ttc = ROUND(prix_ttc / NULLIF(taille_lot, 0), 3),
-      quantite = quantite_unites
-  WHERE mode = 'lot';
 
 ALTER TABLE commande_acheteur_lignes ADD COLUMN IF NOT EXISTS prix_ht NUMERIC(10,3);
 UPDATE commande_acheteur_lignes

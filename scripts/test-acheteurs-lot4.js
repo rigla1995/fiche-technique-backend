@@ -115,6 +115,10 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   // ── 4. Validation sans labo → 400 ; avec labo → facture + stock déduit
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, { method: 'POST', headers: H, body: JSON.stringify({}) });
   check('valider sans labo 400', r.status === 400);
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, { method: 'POST', headers: H, body: JSON.stringify({ laboId, montantTimbre: -5 }) });
+  check('timbre négatif refusé 400', r.status === 400);
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, { method: 'POST', headers: H, body: JSON.stringify({ laboId, remisePct: 150 }) });
+  check('remise 150 refusée 400', r.status === 400);
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/valider`, {
     method: 'POST', headers: H, body: JSON.stringify({ laboId, timbreFiscal: true, remisePct: 10 }),
   });
