@@ -102,6 +102,10 @@ const buildContratDocument = async ({ abonnementId, client, config = {}, pricing
       activites: config.nbActivites ?? 1,
       labos: config.nbLabos ?? 0,
       gerants: config.nbGerants ?? 0,
+      formule: (config.nbActivites ?? 1) >= 1
+        ? ((config.formuleActivites || pricing.formuleActivites) === 'basique' ? 'Activité Basique' : 'Activité Premium')
+        : undefined,
+      acheteurs: pricing.palierAcheteurs ? `palier jusqu'à ${pricing.palierAcheteurs} acheteurs` : undefined,
     },
     pricing: {
       onboarding: onboarding != null ? fmtDT(onboarding) : undefined,
@@ -132,6 +136,10 @@ const buildAvenantDocument = async ({ demandeId, client, pricing, ajouts = {}, a
       activites: pricing.nbActivites,
       labos: pricing.nbLabos,
       gerants: pricing.nbGerants,
+      formule: pricing.nbActivites >= 1
+        ? (pricing.formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium')
+        : undefined,
+      acheteurs: pricing.palierAcheteurs ? `palier jusqu'à ${pricing.palierAcheteurs} acheteurs` : undefined,
     },
     pricing: { mensuel: fmtDT(pricing.effMensuel), mensuelBase: fmtDT(pricing.baseMensuel) },
   });

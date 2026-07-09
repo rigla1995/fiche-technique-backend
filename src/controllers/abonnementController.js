@@ -124,6 +124,18 @@ const applyPromoSupplement = (baseAmount, promo) => {
   return baseAmount;
 };
 
+// Les configs circulent en snake_case (lignes DB) ou camelCase (payloads) selon
+// l'appelant — les fonctions de calcul acceptent les deux formes.
+const cfgVal = (config, snake, camel) => config?.[snake] ?? config?.[camel];
+
+// Prix de base d'une activité selon la FORMULE du compte (Basique = sans Espace
+// Produit, Premium = avec). Compat : l'ancienne clé prix_base_activite sert de
+// repli (elle valait le tarif « premium » avant la refonte formules).
+const prixBaseActivite = (config, tarifs) => {
+  const formule = cfgVal(config, 'formule_activites', 'formuleActivites') === 'basique' ? 'basique' : 'premium';
+  return parseFloat(tarifs[`prix_base_activite_${formule}`] ?? tarifs['prix_base_activite'] ?? 200);
+};
+
 // Tiered/degressive pricing model
 // Sans labo: 1er=base, 2ème=base*(1-r2%), 3ème+=base*(1-r3%) each
 // Avec labo: all = base*(1-rl%) each
@@ -131,11 +143,11 @@ const computeBaseMensuelFromConfig = (config, tarifs) => {
   if (!config) return null;
   // Compte dépôt : 0 activité est une valeur VALIDE (coût activités = 0),
   // le repli à 1 ne s'applique qu'aux valeurs absentes/invalides.
-  const nRaw = parseInt(config.nb_activites);
+  const nRaw = parseInt(cfgVal(config, 'nb_activites', 'nbActivites'));
   const n   = Number.isFinite(nRaw) && nRaw >= 0 ? nRaw : 1;
   if (n === 0) return 0;
-  const nbl = parseInt(config.nb_labos)     || 0;
-  const base = parseFloat(tarifs['prix_base_activite'] ?? tarifs['activite_1'] ?? 200);
+  const nbl = parseInt(cfgVal(config, 'nb_labos', 'nbLabos'))     || 0;
+  const base = prixBaseActivite(config, tarifs);
   const hasLabo = nbl > 0;
 
   if (hasLabo) {
@@ -154,23 +166,50 @@ const computeBaseMensuelFromConfig = (config, tarifs) => {
 
 const computeBaseGerantFromConfig = (config, tarifs) => {
   if (!config) return null;
-  const n = parseInt(config.nb_gerants) || 0;
+  const n = parseInt(cfgVal(config, 'nb_gerants', 'nbGerants')) || 0;
   if (n === 0) return 0;
-  return n * parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80);
+  return n * parseFloat(tarifs['gerant_sup_mensuel'] ?? 80);
 };
 
 const computeBaseLaboFromConfig = (config, tarifs) => {
   if (!config) return null;
-  const n = parseInt(config.nb_labos) || 0;
+  const n = parseInt(cfgVal(config, 'nb_labos', 'nbLabos')) || 0;
   if (n === 0) return 0;
-  return n * parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160);
+  return n * parseFloat(tarifs['labo_sup_mensuel'] ?? 160);
+};
+
+// Palier de facturation de l'option Acheteurs couvrant un quota donné
+// (1-10 / 11-20 / 21-50 / 51-100 ; quota exceptionnel > 100 = prix du palier 100).
+const palierAcheteurs = (nbAcheteurs) => {
+  const n = parseInt(nbAcheteurs) || 0;
+  if (n <= 0) return null;
+  return n <= 10 ? 10 : n <= 20 ? 20 : n <= 50 ? 50 : 100;
+};
+
+const computeBaseAcheteursFromConfig = (config, tarifs) => {
+  if (!config) return null;
+  const palier = palierAcheteurs(cfgVal(config, 'nb_acheteurs', 'nbAcheteurs'));
+  if (!palier) return 0;
+  return Math.round(parseFloat(tarifs[`acheteurs_palier_${palier}`] ?? 0) * 100) / 100;
+};
+
+// Mensuel TOTAL d'une config = activités (formule) + labos + gérants + option acheteurs.
+// Source unique — remplace les sommes dupliquées de l'ancien modèle.
+const computeMensuelTotalFromConfig = (config, tarifs) => {
+  if (!config) return null;
+  return Math.round((
+    (computeBaseMensuelFromConfig(config, tarifs) || 0)
+    + (computeBaseLaboFromConfig(config, tarifs) || 0)
+    + (computeBaseGerantFromConfig(config, tarifs) || 0)
+    + (computeBaseAcheteursFromConfig(config, tarifs) || 0)
+  ) * 100) / 100;
 };
 
 // Unit price for next supplement activité (tier n+1)
 const computeActiviteSupPrice = (config, tarifs) => {
-  if (!config) return parseFloat(tarifs['prix_base_activite'] ?? 200);
+  if (!config) return parseFloat(tarifs['prix_base_activite_premium'] ?? tarifs['prix_base_activite'] ?? 200);
   const nbl  = parseInt(config.nb_labos)     || 0;
-  const base = parseFloat(tarifs['prix_base_activite'] ?? tarifs['activite_1'] ?? 200);
+  const base = prixBaseActivite(config, tarifs);
   if (nbl > 0) {
     const rl = parseFloat(tarifs['remise_avec_labo'] ?? 30) / 100;
     return Math.round(base * (1 - rl) * 100) / 100;
@@ -193,6 +232,7 @@ const mapAbonnementConfig = (row) => row ? ({
   nbLabos: row.nb_labos,
   nbGerants: row.nb_gerants,
   nbAcheteurs: row.nb_acheteurs ?? 0,
+  formuleActivites: row.formule_activites || null,
   montantOnboarding: row.montant_onboarding,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -323,13 +363,13 @@ const getAbonnement = async (req, res) => {
 
       let baseMensuel, baseOnboarding;
       if (config) {
-        baseMensuel = (computeBaseMensuelFromConfig(config, tarifs) || 0)
-                    + (computeBaseLaboFromConfig(config, tarifs)    || 0)
-                    + (computeBaseGerantFromConfig(config, tarifs)  || 0);
+        baseMensuel = computeMensuelTotalFromConfig(config, tarifs);
         baseOnboarding = parseFloat(config.montant_onboarding) || null;
       } else {
-        baseMensuel = tarifs['entreprise_mensuel'] || null;
-        baseOnboarding = tarifs['entreprise_onboarding'] || null;
+        // Compte sans config d'abonnement : rien à facturer (les clés legacy
+        // entreprise_* ont été purgées avec l'ancien modèle compte_type)
+        baseMensuel = null;
+        baseOnboarding = null;
       }
 
       const rawPromoMens = promos.rows.find((p) => p.is_active && ['mensualite', 'les_deux'].includes(p.applies_to)) || null;
@@ -346,16 +386,20 @@ const getAbonnement = async (req, res) => {
         const nbA = parseInt(config.nb_activites) || 0;
         const nbL = parseInt(config.nb_labos) || 0;
         const nbG = parseInt(config.nb_gerants) || 0;
-        const activiteCost = computeBaseMensuelFromConfig(config, tarifs) || 0;
-        const laboCost     = computeBaseLaboFromConfig(config, tarifs)    || 0;
-        const gerantCost   = computeBaseGerantFromConfig(config, tarifs)  || 0;
+        const nbAch = parseInt(config.nb_acheteurs) || 0;
+        const activiteCost  = computeBaseMensuelFromConfig(config, tarifs) || 0;
+        const laboCost      = computeBaseLaboFromConfig(config, tarifs)    || 0;
+        const gerantCost    = computeBaseGerantFromConfig(config, tarifs)  || 0;
+        const acheteursCost = computeBaseAcheteursFromConfig(config, tarifs) || 0;
         abo.pricing.configBreakdown = {
-          activite: { nb: nbA, total: activiteCost },
-          labo:     { nb: nbL, total: laboCost },
-          gerant:   { nb: nbG, total: gerantCost },
+          formuleActivites: config.formule_activites || null,
+          activite:  { nb: nbA, total: activiteCost },
+          labo:      { nb: nbL, total: laboCost },
+          gerant:    { nb: nbG, total: gerantCost },
+          acheteurs: { nb: nbAch, palier: palierAcheteurs(nbAch), total: acheteursCost },
           prixActiviteSup: computeActiviteSupPrice(config, tarifs),
-          prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160),
-          prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
+          prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? 160),
+          prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? 80),
         };
       }
     }
@@ -368,7 +412,7 @@ const getAbonnement = async (req, res) => {
 };
 
 // Called internally when admin creates a client account
-// config: { nbActivites, nbLabos, nbGerants, montantOnboarding } — if provided, uses new pricing model
+// config: { nbActivites, nbLabos, nbGerants, nbAcheteurs, formuleActivites, montantOnboarding }
 const createAbonnement = async (clientId, montantOnboarding, config = null) => {
   const result = await pool.query(
     `INSERT INTO abonnements (client_id, montant_onboarding, date_debut)
@@ -380,10 +424,15 @@ const createAbonnement = async (clientId, montantOnboarding, config = null) => {
 
   // Save config if provided
   if (config) {
+    const nbActivites = config.nbActivites ?? 1;
+    // La formule n'a de sens qu'avec des activités (compte dépôt = NULL)
+    const formule = nbActivites >= 1
+      ? (config.formuleActivites === 'basique' ? 'basique' : 'premium')
+      : null;
     await pool.query(
-      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, montant_onboarding)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [aboId, config.nbActivites ?? 1, config.nbLabos || 0, config.nbGerants || 0, config.montantOnboarding || 0]
+      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, formule_activites, montant_onboarding)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [aboId, nbActivites, config.nbLabos || 0, config.nbGerants || 0, config.nbAcheteurs || 0, formule, config.montantOnboarding || 0]
     );
   }
 
@@ -395,9 +444,7 @@ const createAbonnement = async (clientId, montantOnboarding, config = null) => {
   let baseMontant = 0;
   if (config) {
     const tarifs = await loadAllTarifs();
-    baseMontant = (computeBaseMensuelFromConfig(config, tarifs) || 0)
-      + (computeBaseGerantFromConfig(config, tarifs) || 0)
-      + (computeBaseLaboFromConfig(config, tarifs) || 0);
+    baseMontant = computeMensuelTotalFromConfig(config, tarifs) || 0;
   }
 
   const activePromo = await getActivePromo(aboId, moisStr);
@@ -553,18 +600,20 @@ const getMontantMois = async (req, res) => {
     const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
     const config = configRes.rows[0] || null;
 
-    let baseMensuel, baseGerant, baseLabo;
-    let hasGerant, hasLabo;
+    let baseMensuel, baseGerant, baseLabo, baseAcheteurs;
+    let hasGerant, hasLabo, hasAcheteurs;
 
     if (config) {
-      baseMensuel = computeBaseMensuelFromConfig(config, tarifs) || 0;
-      baseGerant  = computeBaseGerantFromConfig(config, tarifs) || 0;
-      baseLabo    = computeBaseLaboFromConfig(config, tarifs) || 0;
-      hasGerant   = (config.nb_gerants || 0) > 0;
-      hasLabo     = (config.nb_labos || 0) > 0;
+      baseMensuel   = computeBaseMensuelFromConfig(config, tarifs) || 0;
+      baseGerant    = computeBaseGerantFromConfig(config, tarifs) || 0;
+      baseLabo      = computeBaseLaboFromConfig(config, tarifs) || 0;
+      baseAcheteurs = computeBaseAcheteursFromConfig(config, tarifs) || 0;
+      hasGerant     = (config.nb_gerants || 0) > 0;
+      hasLabo       = (config.nb_labos || 0) > 0;
+      hasAcheteurs  = (config.nb_acheteurs || 0) > 0;
     } else {
-      // Legacy fallback for accounts without config
-      baseMensuel = tarifs['entreprise_mensuel'] || 0;
+      // Compte sans config : rien à facturer (clés legacy entreprise_* purgées)
+      baseMensuel = 0;
       const gerantCountRes = await pool.query(
         'SELECT COUNT(*) FROM utilisateurs WHERE gerant_parent_id = $1 AND role = $2',
         [clientId, 'gerant']
@@ -577,6 +626,8 @@ const getMontantMois = async (req, res) => {
       hasLabo = parseInt(laboCountRes.rows[0].count) > 0;
       baseGerant = hasGerant ? (tarifs['gerant_sup_mensuel'] || 0) : 0;
       baseLabo   = hasLabo   ? (tarifs['labo_sup_mensuel']   || 0) : 0;
+      baseAcheteurs = 0;
+      hasAcheteurs = false;
     }
 
     // Active promos for this month
@@ -592,8 +643,9 @@ const getMontantMois = async (req, res) => {
     const promoGerant = promos.find((p) => p.applies_to === 'supplement_gerant') || null;
     const promoLabo   = promos.find((p) => p.applies_to === 'supplement_labo') || null;
 
-    // Mensualité promo applies to the FULL total (activités + labos + gérants)
-    const baseTotal = baseMensuel + (hasGerant ? baseGerant : 0) + (hasLabo ? baseLabo : 0);
+    // Mensualité promo applies to the FULL total (activités + labos + gérants + acheteurs)
+    const baseTotal = baseMensuel + (hasGerant ? baseGerant : 0) + (hasLabo ? baseLabo : 0)
+      + (hasAcheteurs ? baseAcheteurs : 0);
 
     let total, breakdown;
     if (promoMens) {
@@ -607,14 +659,17 @@ const getMontantMois = async (req, res) => {
           baseActivite: baseMensuel,
           baseGerant: hasGerant ? baseGerant : 0,
           baseLabo: hasLabo ? baseLabo : 0,
+          baseAcheteurs: hasAcheteurs ? baseAcheteurs : 0,
         },
         supplementGerant: { base: baseGerant, effectif: 0, active: hasGerant, hasPromo: false, promoType: null },
         supplementLabo:   { base: baseLabo,   effectif: 0, active: hasLabo,   hasPromo: false, promoType: null },
+        optionAcheteurs:  { base: baseAcheteurs, effectif: 0, active: hasAcheteurs, palier: palierAcheteurs(config?.nb_acheteurs) },
       };
     } else {
       const effectifGerant = hasGerant ? applyPromoSupplement(baseGerant, promoGerant) : 0;
       const effectifLabo   = hasLabo   ? applyPromoSupplement(baseLabo,   promoLabo)   : 0;
-      total = baseMensuel + effectifGerant + effectifLabo;
+      const effectifAcheteurs = hasAcheteurs ? baseAcheteurs : 0;
+      total = baseMensuel + effectifGerant + effectifLabo + effectifAcheteurs;
       breakdown = {
         mensualite: {
           base: baseMensuel, effectif: baseMensuel, hasPromo: false,
@@ -627,6 +682,10 @@ const getMontantMois = async (req, res) => {
         supplementLabo: {
           base: baseLabo, effectif: effectifLabo, active: hasLabo, hasPromo: !!promoLabo,
           promoType: promoLabo?.type || null,
+        },
+        optionAcheteurs: {
+          base: baseAcheteurs, effectif: effectifAcheteurs, active: hasAcheteurs,
+          palier: palierAcheteurs(config?.nb_acheteurs),
         },
       };
     }
@@ -686,12 +745,9 @@ const upsertPaiement = async (req, res) => {
       const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
       let base;
       if (configRes.rows.length > 0) {
-        const cfg = configRes.rows[0];
-        base = (computeBaseMensuelFromConfig(cfg, tarifs) || 0)
-          + (computeBaseGerantFromConfig(cfg, tarifs) || 0)
-          + (computeBaseLaboFromConfig(cfg, tarifs) || 0);
+        base = computeMensuelTotalFromConfig(configRes.rows[0], tarifs) || 0;
       } else {
-        base = tarifs['entreprise_mensuel'] || 0;
+        base = 0;
       }
       const promo = await getActivePromo(aboId, moisStr);
       finalMontant = applyPromoMensualite(base, promo);
@@ -919,12 +975,7 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
     let base = 0;
     if (config) {
       const tarifs = await loadAllTarifs();
-      base = (computeBaseMensuelFromConfig(config, tarifs) || 0)
-        + (computeBaseGerantFromConfig(config, tarifs) || 0)
-        + (computeBaseLaboFromConfig(config, tarifs) || 0);
-    } else {
-      const tarifRes = await pool.query(`SELECT valeur_dt FROM tarifs_config WHERE cle = 'entreprise_mensuel'`);
-      base = parseFloat(tarifRes.rows[0]?.valeur_dt || 0);
+      base = computeMensuelTotalFromConfig(config, tarifs) || 0;
     }
     const newMontant = applyPromoMensualite(base, promo);
     const newStatut = newMontant === 0 ? 'gratuit' : 'en_attente';
@@ -1223,14 +1274,7 @@ const enforcerStatuts = async () => {
 
     for (const abo of missingAbo.rows) {
       const cfg = configMap.get(abo.id) || null;
-      let base;
-      if (cfg) {
-        base = (computeBaseMensuelFromConfig(cfg, tarifs) || 0)
-          + (computeBaseGerantFromConfig(cfg, tarifs) || 0)
-          + (computeBaseLaboFromConfig(cfg, tarifs) || 0);
-      } else {
-        base = tarifs['entreprise_mensuel'] || 0;
-      }
+      const base = cfg ? (computeMensuelTotalFromConfig(cfg, tarifs) || 0) : 0;
       const promo = promoMap.get(abo.id) || null;
       const montant = applyPromoMensualite(base, promo);
       const statut = montant === 0 ? 'gratuit' : 'en_attente';
@@ -1392,23 +1436,34 @@ const updateAbonnementConfig = async (req, res) => {
   if (nA === 0 && (parseInt(nbLabos, 10) || 0) < 1) {
     return res.status(400).json({ message: 'Un compte sans activité doit avoir au moins un labo (compte dépôt)' });
   }
+  // Formule des activités : préservée si absente du payload ; forcée à NULL si 0 activité ;
+  // défaut premium quand des activités apparaissent sur un compte qui n'en avait pas.
+  const formuleIn = req.body.formuleActivites !== undefined
+    ? (req.body.formuleActivites === 'basique' ? 'basique' : 'premium')
+    : null;
+  if (req.body.formuleActivites !== undefined && !['basique', 'premium'].includes(req.body.formuleActivites)) {
+    return res.status(400).json({ message: 'Formule invalide (basique ou premium)' });
+  }
   try {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
-    // nb_acheteurs : préservé si le payload ne l'envoie pas (NULL → valeur courante).
+    // nb_acheteurs / formule : préservés si le payload ne les envoie pas.
     const result = await pool.query(
-      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, montant_onboarding)
-       VALUES ($1, $2, $3, $4, COALESCE($5::int, 0), $6)
+      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, formule_activites, montant_onboarding)
+       VALUES ($1, $2, $3, $4, COALESCE($5::int, 0),
+               CASE WHEN $2::int = 0 THEN NULL ELSE COALESCE($7, 'premium') END, $6)
        ON CONFLICT (abonnement_id) DO UPDATE
        SET nb_activites = EXCLUDED.nb_activites,
            nb_labos = EXCLUDED.nb_labos,
            nb_gerants = EXCLUDED.nb_gerants,
            nb_acheteurs = COALESCE($5::int, abonnement_config.nb_acheteurs),
+           formule_activites = CASE WHEN $2::int = 0 THEN NULL
+                                    ELSE COALESCE($7, abonnement_config.formule_activites, 'premium') END,
            montant_onboarding = EXCLUDED.montant_onboarding,
            updated_at = NOW()
        RETURNING *`,
-      [aboId, nbActivites, nbLabos ?? 0, nbGerants ?? 0, nbAcheteurs ?? null, montantOnboarding ?? 0]
+      [aboId, nbActivites, nbLabos ?? 0, nbGerants ?? 0, nbAcheteurs ?? null, montantOnboarding ?? 0, formuleIn]
     );
     res.json(mapAbonnementConfig(result.rows[0]));
   } catch (err) {
@@ -1420,35 +1475,39 @@ const updateAbonnementConfig = async (req, res) => {
 // ── Pricing preview (for add-client step 2) ───────────────────────────────────
 
 const getPricingPreview = async (req, res) => {
-  const { nbActivites, nbLabos, nbGerants } = req.query;
+  const { nbActivites, nbLabos, nbGerants, nbAcheteurs, formuleActivites } = req.query;
   try {
     const tarifs = await loadAllTarifs();
     const nbRaw = parseInt(nbActivites);
     const nb  = Number.isFinite(nbRaw) && nbRaw >= 0 ? nbRaw : 1;
     const nbl = parseInt(nbLabos)     || 0;
     const nbg = parseInt(nbGerants)   || 0;
+    const nba = parseInt(nbAcheteurs) || 0;
+    const formule = formuleActivites === 'basique' ? 'basique' : 'premium';
 
-    const mockConfig = { nb_activites: nb, nb_labos: nbl, nb_gerants: nbg };
-    const activiteCost = computeBaseMensuelFromConfig(mockConfig, tarifs) || 0;
-    const laboCost     = computeBaseLaboFromConfig(mockConfig, tarifs)    || 0;
-    const gerantCost   = computeBaseGerantFromConfig(mockConfig, tarifs)  || 0;
-    const total        = activiteCost + laboCost + gerantCost;
+    const mockConfig = { nb_activites: nb, nb_labos: nbl, nb_gerants: nbg, nb_acheteurs: nba, formule_activites: formule };
+    const activiteCost  = computeBaseMensuelFromConfig(mockConfig, tarifs) || 0;
+    const laboCost      = computeBaseLaboFromConfig(mockConfig, tarifs)    || 0;
+    const gerantCost    = computeBaseGerantFromConfig(mockConfig, tarifs)  || 0;
+    const acheteursCost = computeBaseAcheteursFromConfig(mockConfig, tarifs) || 0;
+    const total         = computeMensuelTotalFromConfig(mockConfig, tarifs) || 0;
 
-    const base   = parseFloat(tarifs['prix_base_activite'] ?? tarifs['activite_1'] ?? 200);
-    const pLabo  = parseFloat(tarifs['labo_sup_mensuel']  ?? tarifs['labo_mensuel']   ?? 160);
-    const pGer   = parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80);
+    const base   = prixBaseActivite(mockConfig, tarifs);
+    const pLabo  = parseFloat(tarifs['labo_sup_mensuel']  ?? 160);
+    const pGer   = parseFloat(tarifs['gerant_sup_mensuel'] ?? 80);
     const hasLabo = nbl > 0;
     const rl = parseFloat(tarifs['remise_avec_labo']            ?? 30) / 100;
     const r2 = parseFloat(tarifs['remise_2eme_sans_labo']       ?? 20) / 100;
     const r3 = parseFloat(tarifs['remise_3eme_plus_sans_labo']  ?? 40) / 100;
+    const formuleLabel = formule === 'basique' ? 'Basique' : 'Premium';
 
     // Build per-tier activity lines for PricingCard display
     const actLines = [];
-    if (hasLabo) {
+    if (hasLabo && nb >= 1) {
       const up = Math.round(base * (1 - rl) * 100) / 100;
-      actLines.push({ label: `${nb} activité${nb > 1 ? 's' : ''} × ${up} DT (avec labo −${Math.round(rl*100)}%)`, total: activiteCost });
+      actLines.push({ label: `${nb} activité${nb > 1 ? 's' : ''} ${formuleLabel} × ${up} DT (avec labo −${Math.round(rl*100)}%)`, total: activiteCost });
     } else {
-      if (nb >= 1) actLines.push({ label: `1ère activité`, unitPrice: base, total: base });
+      if (nb >= 1) actLines.push({ label: `1ère activité ${formuleLabel}`, unitPrice: base, total: base });
       if (nb >= 2) { const up2 = Math.round(base*(1-r2)*100)/100; actLines.push({ label: `2ème activité (−${Math.round(r2*100)}%)`, unitPrice: up2, total: up2 }); }
       if (nb >= 3) { const up3 = Math.round(base*(1-r3)*100)/100; actLines.push({ label: `${nb-2} activité${nb-2>1?'s':''} supp. × ${up3} DT (−${Math.round(r3*100)}%)`, total: Math.round((nb-2)*up3*100)/100 }); }
     }
@@ -1458,9 +1517,11 @@ const getPricingPreview = async (req, res) => {
     );
 
     res.json({
-      activite: { nb, total: activiteCost, lines: actLines },
-      labo:     { nb: nbl, unitPrice: pLabo, total: laboCost },
-      gerant:   { nb: nbg, unitPrice: pGer,  total: gerantCost },
+      formuleActivites: nb >= 1 ? formule : null,
+      activite:  { nb, total: activiteCost, lines: actLines },
+      labo:      { nb: nbl, unitPrice: pLabo, total: laboCost },
+      gerant:    { nb: nbg, unitPrice: pGer,  total: gerantCost },
+      acheteurs: { nb: nba, palier: palierAcheteurs(nba), total: acheteursCost },
       totalMensuel: total,
       onboardingPrice,
     });
@@ -1509,16 +1570,12 @@ const getSupplementPricing = async (req, res) => {
     const nbA = parseInt(config?.nb_activites) || 0;
     const nbL = parseInt(config?.nb_labos) || 0;
     const nbG = parseInt(config?.nb_gerants) || 0;
-    const currentMensuel = config
-      ? (computeBaseMensuelFromConfig(config, tarifs) || 0)
-        + (computeBaseLaboFromConfig(config, tarifs) || 0)
-        + (computeBaseGerantFromConfig(config, tarifs) || 0)
-      : 0;
+    const currentMensuel = config ? (computeMensuelTotalFromConfig(config, tarifs) || 0) : 0;
 
     res.json({
       prixActiviteSup: computeActiviteSupPrice(config, tarifs),
-      prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160),
-      prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
+      prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? 160),
+      prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? 80),
       currentMensuel,
       currentMensuelEffectif: applyPromoMensualite(currentMensuel, mensPromo),
       mensPromo,
@@ -1560,16 +1617,17 @@ const getClientSupplementPricing = async (req, res) => {
     const nbA = parseInt(config?.nb_activites) || 0;
     const nbL = parseInt(config?.nb_labos) || 0;
     const nbG = parseInt(config?.nb_gerants) || 0;
-    const activiteCost = config ? (computeBaseMensuelFromConfig(config, tarifs) || 0) : 0;
-    const laboCost     = config ? (computeBaseLaboFromConfig(config, tarifs) || 0) : 0;
-    const gerantCost   = config ? (computeBaseGerantFromConfig(config, tarifs) || 0) : 0;
-    const currentMensuel = activiteCost + laboCost + gerantCost;
+    const activiteCost  = config ? (computeBaseMensuelFromConfig(config, tarifs) || 0) : 0;
+    const laboCost      = config ? (computeBaseLaboFromConfig(config, tarifs) || 0) : 0;
+    const gerantCost    = config ? (computeBaseGerantFromConfig(config, tarifs) || 0) : 0;
+    const acheteursCost = config ? (computeBaseAcheteursFromConfig(config, tarifs) || 0) : 0;
+    const currentMensuel = Math.round((activiteCost + laboCost + gerantCost + acheteursCost) * 100) / 100;
 
     res.json({
       prixActiviteSup: computeActiviteSupPrice(config, tarifs),
-      prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? tarifs['labo_mensuel'] ?? 160),
-      prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? tarifs['gerant_mensuel'] ?? 80),
-      currentMensuel, activiteCost, laboCost, gerantCost,
+      prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? 160),
+      prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? 80),
+      currentMensuel, activiteCost, laboCost, gerantCost, acheteursCost,
       currentMensuelEffectif: applyPromoMensualite(currentMensuel, mensPromo),
       mensPromo,
       nbActivites: nbA, nbLabos: nbL, nbGerants: nbG,
@@ -1633,7 +1691,8 @@ const toggleModuleAcheteurs = async (req, res) => {
     if (r.rows.length === 0) return res.status(404).json({ message: 'Client introuvable' });
 
     let quota = null;
-    const nb = parseInt(nbAcheteurs, 10);
+    // Désactivation du module ⇒ quota remis à 0 (fin de la facturation par palier)
+    const nb = actif ? parseInt(nbAcheteurs, 10) : 0;
     if (Number.isFinite(nb) && nb >= 0) {
       const q = await pool.query(
         `UPDATE abonnement_config SET nb_acheteurs = $1, updated_at = NOW()
@@ -1647,6 +1706,7 @@ const toggleModuleAcheteurs = async (req, res) => {
       moduleAcheteursActif: r.rows[0].module_acheteurs_actif,
       moduleAcheteursActivatedAt: r.rows[0].module_acheteurs_activated_at,
       nbAcheteurs: quota,
+      palierAcheteurs: palierAcheteurs(quota),
     });
   } catch (err) {
     console.error(err);
@@ -1669,13 +1729,11 @@ const computeEffectivePricing = async (clientId) => {
 
   let baseMensuel, baseOnboarding;
   if (config) {
-    baseMensuel = (computeBaseMensuelFromConfig(config, tarifs) || 0)
-                + (computeBaseLaboFromConfig(config, tarifs) || 0)
-                + (computeBaseGerantFromConfig(config, tarifs) || 0);
+    baseMensuel = computeMensuelTotalFromConfig(config, tarifs) || 0;
     baseOnboarding = parseFloat(config.montant_onboarding) || parseFloat(abo.montant_onboarding) || 0;
   } else {
-    baseMensuel = parseFloat(tarifs['entreprise_mensuel'] || 0);
-    baseOnboarding = parseFloat(abo.montant_onboarding || tarifs['entreprise_onboarding'] || 0);
+    baseMensuel = 0;
+    baseOnboarding = parseFloat(abo.montant_onboarding || 0);
   }
 
   const promoRes = await pool.query(
@@ -1711,6 +1769,9 @@ const computeEffectivePricing = async (clientId) => {
     promoMens, promoOb,
     promoMonths, baseResumeDate,
     hasPromo: !!(promoMens || promoOb),
+    formuleActivites: config?.formule_activites || null,
+    nbAcheteurs: parseInt(config?.nb_acheteurs) || 0,
+    palierAcheteurs: palierAcheteurs(config?.nb_acheteurs),
   };
 };
 
@@ -1725,17 +1786,17 @@ const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0,
   if (aboRes.rows.length === 0) return null;
   const aboId = aboRes.rows[0].id;
   const cfgRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
-  const cur = cfgRes.rows[0] || { nb_activites: 1, nb_labos: 0, nb_gerants: 0 };
+  const cur = cfgRes.rows[0] || { nb_activites: 1, nb_labos: 0, nb_gerants: 0, nb_acheteurs: 0, formule_activites: 'premium' };
 
   const newCfg = {
     nb_activites: (parseInt(cur.nb_activites) || 0) + (addActivites || 0),
     nb_labos:     (parseInt(cur.nb_labos)     || 0) + (addLabos     || 0),
     nb_gerants:   (parseInt(cur.nb_gerants)   || 0) + (addGerants   || 0),
+    nb_acheteurs: parseInt(cur.nb_acheteurs) || 0,
+    formule_activites: cur.formule_activites || 'premium',
   };
 
-  const baseMensuel = (computeBaseMensuelFromConfig(newCfg, tarifs) || 0)
-                    + (computeBaseLaboFromConfig(newCfg, tarifs) || 0)
-                    + (computeBaseGerantFromConfig(newCfg, tarifs) || 0);
+  const baseMensuel = computeMensuelTotalFromConfig(newCfg, tarifs) || 0;
 
   const promoRes = await pool.query(
     `SELECT * FROM promotions
@@ -1752,6 +1813,9 @@ const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0,
   return {
     abonnementId: aboId,
     nbActivites: newCfg.nb_activites, nbLabos: newCfg.nb_labos, nbGerants: newCfg.nb_gerants,
+    formuleActivites: newCfg.formule_activites,
+    nbAcheteurs: newCfg.nb_acheteurs,
+    palierAcheteurs: palierAcheteurs(newCfg.nb_acheteurs),
     baseMensuel, effMensuel,
     promoMens,
     promoMonths: promoMens ? (promoMens.months_duration || null) : null,
@@ -1825,5 +1889,7 @@ module.exports = {
   allPaiements, allPromotions,
   enforcerStatuts,
   runSyncPromoStatuts,
-  computeBaseMensuelFromConfig, computeBaseGerantFromConfig, computeBaseLaboFromConfig, computeActiviteSupPrice, loadAllTarifs,
+  computeBaseMensuelFromConfig, computeBaseGerantFromConfig, computeBaseLaboFromConfig,
+  computeBaseAcheteursFromConfig, computeMensuelTotalFromConfig, palierAcheteurs,
+  computeActiviteSupPrice, loadAllTarifs,
 };

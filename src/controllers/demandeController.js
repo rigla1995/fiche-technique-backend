@@ -20,15 +20,15 @@ const mapDemande = (row) => ({
 // POST /api/demandes — client creates a request
 const create = async (req, res) => {
   const { typeDemande, notes } = req.body;
-  const allowed = ['gerant_sup', 'labo_sup', 'activer_module_vente', 'activer_module_acheteurs'];
+  const allowed = ['gerant_sup', 'labo_sup', 'activer_module_vente', 'activer_module_acheteurs', 'passer_formule_premium'];
   if (!allowed.includes(typeDemande)) return res.status(400).json({ message: 'Type invalide' });
 
   try {
     let cle = null;
     if (typeDemande === 'labo_sup') cle = 'labo_sup_mensuel';
     else if (typeDemande === 'gerant_sup') cle = 'gerant_sup_mensuel';
-    else if (typeDemande === 'activer_module_vente') cle = 'module_vente';
-    else if (typeDemande === 'activer_module_acheteurs') cle = 'module_acheteurs';
+    else if (typeDemande === 'activer_module_acheteurs') cle = 'acheteurs_palier_10'; // tarif « à partir de »
+    else if (typeDemande === 'passer_formule_premium') cle = 'prix_base_activite_premium';
     const tarifRes = cle
       ? await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [cle])
       : { rows: [] };
@@ -122,6 +122,16 @@ const traiter = async (req, res) => {
          SET module_vente_actif = true,
              module_vente_activated_at = COALESCE(module_vente_activated_at, NOW())
          WHERE client_id = $1`,
+        [demandeur_id]
+      );
+    }
+
+    // Validation d'un passage en formule Premium : la config bascule, le nouveau
+    // prix s'applique aux mensualités suivantes (recalcul mensuel par le cron).
+    if (statut === 'validée' && type_demande === 'passer_formule_premium') {
+      await client.query(
+        `UPDATE abonnement_config SET formule_activites = 'premium', updated_at = NOW()
+         WHERE abonnement_id = (SELECT id FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1)`,
         [demandeur_id]
       );
     }

@@ -179,6 +179,31 @@ const requireModuleAcheteurs = async (req, res, next) => {
   }
 };
 
+// Gating serveur de la formule d'activités : l'Espace Produit (écritures) est
+// réservé à la formule PREMIUM. Un compte sans config ou sans activité (dépôt)
+// passe — l'Espace Produit ne le concerne pas et ses écrans sont masqués côté front.
+const requireFormulePremium = async (req, res, next) => {
+  try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const r = await pool.query(
+      `SELECT ac.formule_activites
+       FROM abonnements a JOIN abonnement_config ac ON ac.abonnement_id = a.id
+       WHERE a.client_id = $1
+       ORDER BY a.id DESC LIMIT 1`,
+      [clientId]
+    );
+    if (r.rows[0]?.formule_activites === 'basique') {
+      return res.status(403).json({
+        message: 'L\'Espace Produit est réservé à la formule Activité Premium',
+        code: 'FORMULE_BASIQUE',
+      });
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 const requireAcheteur = (req, res, next) => {
   if (req.user.role !== 'acheteur') {
     return res.status(403).json({ message: 'Accès réservé aux acheteurs' });
@@ -225,6 +250,6 @@ const scopeGerantActivite = (req, res) => {
 module.exports = {
   authenticate, requireSuperAdmin, requireClient, requireEntreprise,
   requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
-  requireModuleAcheteurs, requireAcheteur,
+  requireModuleAcheteurs, requireAcheteur, requireFormulePremium,
   requireClientOwner, gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
 };
