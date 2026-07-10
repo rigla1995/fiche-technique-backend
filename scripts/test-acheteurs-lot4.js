@@ -28,8 +28,8 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
 
   const wipe = async () => {
     await pool.query(`DELETE FROM notifications WHERE event_type = 'nouvelle_commande_acheteur' AND user_id = $1`, [clientId]);
-    await pool.query(`DELETE FROM factures_acheteur WHERE client_id = $1 AND acheteur_id IN (SELECT id FROM acheteurs WHERE nom LIKE 'TEST-L4%')`, [clientId]);
-    await pool.query(`DELETE FROM commandes_acheteur WHERE client_id = $1 AND acheteur_id IN (SELECT id FROM acheteurs WHERE nom LIKE 'TEST-L4%')`, [clientId]);
+    await pool.query(`DELETE FROM factures_acheteur WHERE client_id = $1 AND (acheteur_nom LIKE 'TEST-L4%' OR acheteur_id IN (SELECT id FROM acheteurs WHERE nom LIKE 'TEST-L4%'))`, [clientId]);
+    await pool.query(`DELETE FROM commandes_acheteur WHERE client_id = $1 AND (acheteur_nom LIKE 'TEST-L4%' OR acheteur_id IN (SELECT id FROM acheteurs WHERE nom LIKE 'TEST-L4%'))`, [clientId]);
     await pool.query(`DELETE FROM utilisateurs WHERE role = 'acheteur' AND email = 'test-l4-acheteur@example.com'`);
     await pool.query(`DELETE FROM acheteurs WHERE client_id = $1 AND nom LIKE 'TEST-L4%'`, [clientId]);
     await pool.query(`DELETE FROM acheteur_offres WHERE client_id = $1 AND article_id IN (SELECT id FROM articles WHERE nom = 'TEST-L4-Sucre')`, [clientId]);
@@ -127,7 +127,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/expedier`, {
     method: 'POST', headers: H,
     body: JSON.stringify({
-      laboId, timbreFiscal: true, remisePct: 10, dateExpedition: '2026-07-09',
+      laboId, timbreFiscal: true, remisePct: 10, dateExpedition: new Date().toISOString().slice(0, 10),
       quantites: [{ ligneId: ligne2.id, quantite: 4 }],
     }),
   });
@@ -148,7 +148,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
 
   // ── 4bis. Livraison
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmdId}/livrer`, {
-    method: 'POST', headers: H, body: JSON.stringify({ dateLivraison: '2026-07-10' }),
+    method: 'POST', headers: H, body: JSON.stringify({ dateLivraison: new Date().toISOString().slice(0, 10) }),
   });
   body = await r.json();
   check('livraison 200', r.status === 200 && body.commande?.statut === 'livree');
@@ -211,13 +211,22 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   const item2 = body.offres?.find((o) => o.articleId === artId);
   check('badge rupture (stock 3 ≤ seuil 9)', item2?.disponible === false);
 
-  // ── 8. Suppression protégée : un acheteur avec commandes/factures → 409 explicite
+  // ── 8. Suppression d'un acheteur avec commandes/factures : depuis la migr 165,
+  // elle est PERMISE — les commandes expédiées/livrées et factures sont conservées
+  // (snapshot identité), les en_attente annulées, la fiche + le compte supprimés.
+  const nbCmdAvant = await pool.query(`SELECT COUNT(*)::int AS n FROM commandes_acheteur WHERE acheteur_id = $1 AND statut IN ('expediee','livree')`, [acheteurId]);
   r = await fetch(`${BASE}/api/acheteurs/${acheteurId}`, { method: 'DELETE', headers: H });
   body = await r.json();
-  check('suppression acheteur avec commandes → 409 clair', r.status === 409 && body.code === 'ACHETEUR_A_COMMANDES',
+  check('suppression acheteur avec commandes → 200 (transactions conservées)', r.status === 200,
     `${r.status} — ${body.message}`);
   const encore = await pool.query(`SELECT 1 FROM acheteurs WHERE id = $1`, [acheteurId]);
-  check('fiche acheteur intacte après le 409', encore.rows.length === 1);
+  check('fiche acheteur supprimée', encore.rows.length === 0);
+  const orphelines = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM commandes_acheteur WHERE client_id = $1 AND acheteur_id IS NULL AND acheteur_nom = 'TEST-L4-Resto' AND statut IN ('expediee','livree')`,
+    [clientId]
+  );
+  check('commandes expédiées/livrées conservées (détachées + snapshot)', orphelines.rows[0].n === nbCmdAvant.rows[0].n,
+    `${orphelines.rows[0].n}/${nbCmdAvant.rows[0].n}`);
 
   // ── Nettoyage
   await wipe();

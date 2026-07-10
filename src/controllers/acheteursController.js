@@ -220,44 +220,75 @@ const update = async (req, res) => {
   }
 };
 
-// DELETE /api/acheteurs/:id — supprime la fiche ET le compte de connexion lié.
-// Un acheteur avec des commandes/factures est PROTÉGÉ (FK ON DELETE RESTRICT,
-// traçabilité fiscale) : on répond 409 en orientant vers la désactivation.
+// DELETE /api/acheteurs/:id — supprime la fiche ET le compte de connexion lié,
+// en CONSERVANT tout ce qui a touché le stock : les commandes expédiées/livrées
+// (et annulées) restent dans l'historique avec leurs factures fiscales, l'identité
+// de l'acheteur figée en snapshot (migr 165, FK ON DELETE SET NULL). Les commandes
+// encore en attente n'ont jamais touché le stock : elles sont annulées et tracées.
 const remove = async (req, res) => {
   const clientId = clientIdOf(req);
   const { id } = req.params;
   const db = await pool.connect();
   try {
     await db.query('BEGIN');
-    const cur = await db.query('SELECT user_id FROM acheteurs WHERE id = $1 AND client_id = $2 FOR UPDATE', [id, clientId]);
+    // FOR NO KEY UPDATE (pas FOR UPDATE) : compatible avec le FOR KEY SHARE que
+    // prend l'INSERT de facture d'une expédition concurrente — évite le deadlock
+    // verrous croisés commande ↔ fiche (l'expédition gagne, la suppression suit).
+    const cur = await db.query('SELECT user_id FROM acheteurs WHERE id = $1 AND client_id = $2 FOR NO KEY UPDATE', [id, clientId]);
     if (cur.rows.length === 0) {
       await db.query('ROLLBACK');
       return res.status(404).json({ message: 'Acheteur introuvable' });
     }
-    // Contrôle explicite AVANT le DELETE (message clair plutôt qu'une violation FK)
-    const hasCmd = await db.query('SELECT 1 FROM commandes_acheteur WHERE acheteur_id = $1 LIMIT 1', [id]);
-    if (hasCmd.rows.length > 0) {
-      await db.query('ROLLBACK');
-      return res.status(409).json({
-        message: 'Impossible de supprimer : cet acheteur a des commandes et factures dans l\'historique. '
-          + 'Désactivez-le plutôt (interrupteur « Actif ») — il ne pourra plus se connecter ni recevoir de ventes.',
-        code: 'ACHETEUR_A_COMMANDES',
-      });
+    const motif = 'Acheteur supprimé du carnet';
+    const attente = await db.query(
+      `UPDATE commandes_acheteur
+       SET statut = 'annulee', motif_annulation = $3, traite_le = NOW(), traite_par = $4
+       WHERE acheteur_id = $1 AND client_id = $2 AND statut = 'en_attente'
+       RETURNING id`,
+      [id, clientId, motif, req.user.id]
+    );
+    for (const c of attente.rows) {
+      await db.query(
+        `INSERT INTO commande_acheteur_statuts (commande_id, statut, date_effet, motif, created_by)
+         VALUES ($1, 'annulee', CURRENT_DATE, $2, $3)`,
+        [c.id, motif, req.user.id]
+      );
     }
+    // Snapshot rafraîchi au DERNIER état de la fiche : PDF de facture et
+    // historiques continuent d'afficher la bonne identité après suppression.
+    await db.query(
+      `UPDATE commandes_acheteur ca SET acheteur_nom = a.nom, acheteur_entreprise = a.entreprise
+       FROM acheteurs a WHERE a.id = ca.acheteur_id AND ca.acheteur_id = $1`,
+      [id]
+    );
+    await db.query(
+      `UPDATE factures_acheteur fa
+       SET acheteur_nom = a.nom, acheteur_entreprise = a.entreprise, acheteur_adresse = a.adresse,
+           acheteur_matricule_fiscal = a.matricule_fiscal, acheteur_telephone = a.telephone, acheteur_email = a.email
+       FROM acheteurs a WHERE a.id = fa.acheteur_id AND fa.acheteur_id = $1`,
+      [id]
+    );
     await db.query('DELETE FROM acheteurs WHERE id = $1 AND client_id = $2', [id, clientId]);
     if (cur.rows[0].user_id) {
+      // Les références d'audit (created_by/traite_par) sont en ON DELETE SET NULL (migr 166).
       await db.query(`DELETE FROM utilisateurs WHERE id = $1 AND role = 'acheteur'`, [cur.rows[0].user_id]);
     }
     await db.query('COMMIT');
-    res.json({ message: 'Acheteur supprimé' });
+    res.json({
+      message: 'Acheteur supprimé — ses commandes et factures restent dans l\'historique',
+      commandesAnnulees: attente.rows.length,
+    });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
-    // Filet de sécurité si une autre référence apparaît (course, futur module)
+    // Filet de sécurité si une nouvelle référence apparaît (futur module)
     if (err.code === '23503') {
       return res.status(409).json({
         message: 'Impossible de supprimer : cet acheteur est référencé par des données existantes. Désactivez-le plutôt.',
         code: 'ACHETEUR_REFERENCE',
       });
+    }
+    if (err.code === '40P01') {
+      return res.status(409).json({ message: 'Opération concurrente sur cet acheteur — réessayez.' });
     }
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
