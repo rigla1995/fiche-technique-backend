@@ -127,17 +127,18 @@ const createCommande = async (req, res) => {
       });
     }
 
-    const fiche = await pool.query(`SELECT nom FROM acheteurs WHERE id = $1`, [acheteurId]);
+    const fiche = await pool.query(`SELECT nom, entreprise FROM acheteurs WHERE id = $1`, [acheteurId]);
     // La remise se décide côté vendeur À LA VALIDATION — la commande part sans remise.
     const db = await pool.connect();
     let commande;
     try {
       await db.query('BEGIN');
       const cmd = await db.query(
-        `INSERT INTO commandes_acheteur (client_id, acheteur_id, labo_id, statut, source, remise_pct, date_commande, notes, created_by)
-         VALUES ($1, $2, NULL, 'en_attente', 'portail', 0, CURRENT_DATE, $3, $4)
+        `INSERT INTO commandes_acheteur (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, labo_id, statut, source, remise_pct, date_commande, notes, created_by)
+         VALUES ($1, $2, $3, $4, NULL, 'en_attente', 'portail', 0, CURRENT_DATE, $5, $6)
          RETURNING *`,
-        [clientId, acheteurId, String(req.body.notes || '').trim() || null, req.user.id]
+        [clientId, acheteurId, fiche.rows[0]?.nom || null, fiche.rows[0]?.entreprise || null,
+         String(req.body.notes || '').trim() || null, req.user.id]
       );
       commande = cmd.rows[0];
       for (const l of lignes) {
@@ -278,12 +279,16 @@ const downloadMaFacture = async (req, res) => {
   try {
     const { buildFactureAcheteurPdf } = require('../services/factureAcheteurPdf');
     const f = await pool.query(
-      `SELECT fa.*, ach.nom AS acheteur_nom, ach.entreprise AS acheteur_entreprise, ach.adresse AS acheteur_adresse,
-              ach.matricule_fiscal AS acheteur_mf, ach.telephone AS acheteur_tel, ach.email AS acheteur_email,
+      `SELECT fa.*, COALESCE(ach.nom, fa.acheteur_nom) AS acheteur_nom,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_entreprise ELSE ach.entreprise END AS acheteur_entreprise,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_adresse ELSE ach.adresse END AS acheteur_adresse,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_matricule_fiscal ELSE ach.matricule_fiscal END AS acheteur_mf,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_telephone ELSE ach.telephone END AS acheteur_tel,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_email ELSE ach.email END AS acheteur_email,
               ca.date_commande, ca.notes,
               pe.nom AS vendeur_nom, pe.adresse AS vendeur_adresse, pe.telephone AS vendeur_tel, pe.email AS vendeur_email
        FROM factures_acheteur fa
-       JOIN acheteurs ach ON ach.id = fa.acheteur_id
+       LEFT JOIN acheteurs ach ON ach.id = fa.acheteur_id
        JOIN commandes_acheteur ca ON ca.id = fa.commande_id
        LEFT JOIN profil_entreprise pe ON pe.client_id = fa.client_id
        WHERE fa.id = $1 AND fa.acheteur_id = $2`,

@@ -443,6 +443,7 @@ const remove = async (req, res) => {
     const auditTables = [
       'stock_entreprise_daily', 'stock_labo_daily',
       'pertes', 'labo_transfers', 'inventaires', 'ventes',
+      'acheteurs', 'commandes_acheteur', 'acheteur_offre_prix_historique',
     ];
     for (const t of auditTables) {
       await dbClient.query('SAVEPOINT sp_audit');
@@ -455,6 +456,17 @@ const remove = async (req, res) => {
       } catch (_) {
         await dbClient.query('ROLLBACK TO SAVEPOINT sp_audit');
       }
+    }
+    // commandes_acheteur.traite_par référence aussi utilisateurs sans ON DELETE
+    await dbClient.query('SAVEPOINT sp_audit');
+    try {
+      await dbClient.query(
+        `UPDATE commandes_acheteur SET traite_par = NULL WHERE traite_par IN (${uPlaceholders})`,
+        userIds
+      );
+      await dbClient.query('RELEASE SAVEPOINT sp_audit');
+    } catch (_) {
+      await dbClient.query('ROLLBACK TO SAVEPOINT sp_audit');
     }
 
     // Delete RESTRICT-blocked tables before cascade reaches articles/produits/unites.
@@ -493,6 +505,17 @@ const remove = async (req, res) => {
     await dbClient.query(
       "DELETE FROM utilisateurs WHERE id = $1 AND role = 'client'",
       [id]
+    );
+
+    // Les comptes portail acheteurs ne cascadent pas (aucun lien gerant_parent_id) :
+    // balayage d'existence APRÈS le pivot — la fiche acheteurs a cascadé, le compte
+    // devenu orphelin est purgé (sinon son email resterait verrouillé à jamais).
+    // Étanche aux créations concurrentes (une fiche committée pendant la fenêtre a
+    // cascadé aussi) et nettoie au passage les orphelins historiques.
+    await dbClient.query(
+      `DELETE FROM utilisateurs u
+       WHERE u.role = 'acheteur'
+         AND NOT EXISTS (SELECT 1 FROM acheteurs a WHERE a.user_id = u.id)`
     );
 
     await dbClient.query('COMMIT');

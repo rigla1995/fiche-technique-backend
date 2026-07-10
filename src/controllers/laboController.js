@@ -1167,10 +1167,10 @@ const getLaboStockHistory = async (req, res) => {
            WHERE lp.labo_id = $1 AND lp.produit_id = $2
            UNION ALL
            SELECT COALESCE(ca.date_expedition, ca.date_commande) AS d, -cal.quantite_unites AS quantite, cal.cout_unitaire_ttc AS prix, 'vente' AS type,
-                  fa.numero AS ref, cal.taux_tva AS tva, cal.cout_unitaire_ttc AS ttc, ach.nom AS fournisseur
+                  fa.numero AS ref, cal.taux_tva AS tva, cal.cout_unitaire_ttc AS ttc, COALESCE(ach.nom, ca.acheteur_nom) AS fournisseur
            FROM commande_acheteur_lignes cal
            JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-           JOIN acheteurs ach ON ach.id = ca.acheteur_id
+           LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
            LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
            WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
              AND cal.article_type = 'produit' AND cal.article_id = $2
@@ -1200,11 +1200,11 @@ const getLaboStockHistory = async (req, res) => {
          UNION ALL
          SELECT COALESCE(ca.date_expedition, ca.date_commande) AS date_appro, -cal.quantite_unites AS quantite,
                 cal.cout_unitaire_ttc AS prix_unitaire, fa.numero AS ref_facture,
-                'vente' AS type_appro, ach.nom AS fournisseur_nom,
+                'vente' AS type_appro, COALESCE(ach.nom, ca.acheteur_nom) AS fournisseur_nom,
                 cal.taux_tva, cal.cout_unitaire_ttc AS prix_unitaire_tva
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         JOIN acheteurs ach ON ach.id = ca.acheteur_id
+         LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
          LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
          WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
            AND cal.article_type = 'ingredient' AND cal.article_id = $2
@@ -1716,11 +1716,11 @@ const getLaboHistorique = async (req, res) => {
              cal.designation as ingredient_nom, COALESCE(u.nom, 'unité') as unite_nom,
              CASE WHEN cal.article_type = 'produit' THEN ${ptCategorieSql('p')}
                   ELSE COALESCE(c.nom, 'Sans catégorie') END as categorie_nom,
-             ach.nom as fournisseur_nom, NULL::int as fournisseur_id,
+             COALESCE(ach.nom, ca.acheteur_nom) as fournisseur_nom, NULL::int as fournisseur_id,
              NULL::int as activite_id, NULL::text as activite_nom
       FROM commande_acheteur_lignes cal
       JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-      JOIN acheteurs ach ON ach.id = ca.acheteur_id
+      LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
       LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
       LEFT JOIN articles i ON cal.article_type = 'ingredient' AND i.id = cal.article_id
       LEFT JOIN unites u ON u.id = i.unite_id
