@@ -395,10 +395,10 @@ const createVente = async (req, res) => {
       await db.query('BEGIN');
       const cmd = await db.query(
         `INSERT INTO commandes_acheteur
-           (client_id, acheteur_id, labo_id, statut, source, remise_pct, date_commande, date_expedition, date_livraison, notes, traite_le, traite_par, created_by)
-         VALUES ($1, $2, $3, $4, 'client', $5, $6, $7, $8, $9, NOW(), $10, $10)
+           (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, labo_id, statut, source, remise_pct, date_commande, date_expedition, date_livraison, notes, traite_le, traite_par, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, 'client', $7, $8, $9, $10, $11, NOW(), $12, $12)
          RETURNING *`,
-        [clientId, acheteurId, laboId, statut, remisePct, dateCommande, dateExpedition, dateLivraison, notes || null, req.user.id]
+        [clientId, acheteurId, ach.rows[0].nom, ach.rows[0].entreprise, laboId, statut, remisePct, dateCommande, dateExpedition, dateLivraison, notes || null, req.user.id]
       );
       const commande = cmd.rows[0];
       // Historique : le stock sort à l'expédition ; la livraison directe trace les deux jalons
@@ -414,12 +414,15 @@ const createVente = async (req, res) => {
         );
       }
       const numero = await nextNumeroFacture(db, clientId, dateCommande);
+      const a0 = ach.rows[0];
       const fact = await db.query(
         `INSERT INTO factures_acheteur
-           (client_id, acheteur_id, commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, acheteur_adresse, acheteur_matricule_fiscal, acheteur_telephone, acheteur_email,
+            commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
          RETURNING *`,
-        [clientId, acheteurId, commande.id, numero, dateCommande, brutTtc, remisePct, montantHt, montantTva, timbreFiscal, montantTimbre, montantTtc]
+        [clientId, acheteurId, a0.nom, a0.entreprise, a0.adresse, a0.matricule_fiscal, a0.telephone, a0.email,
+         commande.id, numero, dateCommande, brutTtc, remisePct, montantHt, montantTva, timbreFiscal, montantTimbre, montantTtc]
       );
       await db.query('COMMIT');
       res.status(201).json({
@@ -450,7 +453,10 @@ const listCommandes = async (req, res) => {
       params.push(req.query.statut);
       conds.push(`ca.statut = $${params.length}`);
     }
-    if (req.query.acheteurId) { params.push(req.query.acheteurId); conds.push(`ca.acheteur_id = $${params.length}`); }
+    // 'supprimes' = commandes orphelines (acheteur supprimé, conservées par la migr 165)
+    if (req.query.acheteurId === 'supprimes') {
+      conds.push('ca.acheteur_id IS NULL');
+    } else if (req.query.acheteurId) { params.push(req.query.acheteurId); conds.push(`ca.acheteur_id = $${params.length}`); }
     if (req.query.from) { params.push(req.query.from); conds.push(`ca.date_commande >= $${params.length}`); }
     if (req.query.to) { params.push(req.query.to); conds.push(`ca.date_commande <= $${params.length}`); }
     // Gérant : ne voit que les commandes de ses labos (+ celles en attente sans labo, traitées au lot portail)
@@ -462,13 +468,15 @@ const listCommandes = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
 
     const r = await pool.query(
-      `SELECT ca.*, ach.nom AS acheteur_nom, ach.entreprise AS acheteur_entreprise, l.nom AS labo_nom,
+      `SELECT ca.*, COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom,
+              CASE WHEN ach.id IS NULL THEN ca.acheteur_entreprise ELSE ach.entreprise END AS acheteur_entreprise,
+              (ach.id IS NULL) AS acheteur_supprime, l.nom AS labo_nom,
               fa.id AS facture_id, fa.numero AS facture_numero, fa.montant_ttc AS facture_ttc,
               (SELECT COUNT(*)::int FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS nb_lignes,
               (SELECT COALESCE(SUM(cal.prix_ttc * cal.quantite), 0) FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS total_brut,
               ub.nom AS created_by_nom
        FROM commandes_acheteur ca
-       JOIN acheteurs ach ON ach.id = ca.acheteur_id
+       LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
        LEFT JOIN labos l ON l.id = ca.labo_id
        LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
        LEFT JOIN utilisateurs ub ON ub.id = ca.created_by
@@ -486,7 +494,7 @@ const listCommandes = async (req, res) => {
       statut: c.statut,
       source: c.source,
       acheteurId: c.acheteur_id,
-      acheteurNom: c.acheteur_nom,
+      acheteurNom: c.acheteur_supprime ? `${c.acheteur_nom || '—'} (supprimé)` : c.acheteur_nom,
       acheteurEntreprise: c.acheteur_entreprise,
       laboId: c.labo_id,
       laboNom: c.labo_nom,
@@ -512,11 +520,12 @@ const getCommande = async (req, res) => {
   try {
     const clientId = clientIdOf(req);
     const c = await pool.query(
-      `SELECT ca.*, ach.nom AS acheteur_nom, l.nom AS labo_nom,
+      `SELECT ca.*, COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom,
+              (ach.id IS NULL) AS acheteur_supprime, l.nom AS labo_nom,
               fa.id AS facture_id, fa.numero AS facture_numero, fa.montant_ht, fa.montant_tva,
               fa.timbre_fiscal, fa.montant_timbre, fa.montant_ttc, fa.montant_brut_ttc
        FROM commandes_acheteur ca
-       JOIN acheteurs ach ON ach.id = ca.acheteur_id
+       LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
        LEFT JOIN labos l ON l.id = ca.labo_id
        LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
        WHERE ca.id = $1 AND ca.client_id = $2`,
@@ -543,7 +552,7 @@ const getCommande = async (req, res) => {
       statut: row.statut,
       source: row.source,
       acheteurId: row.acheteur_id,
-      acheteurNom: row.acheteur_nom,
+      acheteurNom: row.acheteur_supprime ? `${row.acheteur_nom || '—'} (supprimé)` : row.acheteur_nom,
       laboId: row.labo_id,
       laboNom: row.labo_nom,
       remisePct: num(row.remise_pct) ?? 0,
@@ -610,8 +619,10 @@ const expedierCommande = async (req, res) => {
   try {
     await db.query('BEGIN');
     const c = await db.query(
-      `SELECT ca.*, ach.nom AS acheteur_nom, ach.email AS acheteur_email
-       FROM commandes_acheteur ca JOIN acheteurs ach ON ach.id = ca.acheteur_id
+      `SELECT ca.*, COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom, ach.email AS acheteur_email,
+              ach.entreprise AS acheteur_entr, ach.adresse AS acheteur_adr,
+              ach.matricule_fiscal AS acheteur_mf, ach.telephone AS acheteur_tel
+       FROM commandes_acheteur ca LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
        WHERE ca.id = $1 AND ca.client_id = $2 FOR UPDATE OF ca`,
       [req.params.id, clientId]
     );
@@ -697,10 +708,12 @@ const expedierCommande = async (req, res) => {
     const numero = await nextNumeroFacture(db, clientId, dateExpedition);
     const fact = await db.query(
       `INSERT INTO factures_acheteur
-         (client_id, acheteur_id, commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, acheteur_adresse, acheteur_matricule_fiscal, acheteur_telephone, acheteur_email,
+          commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        RETURNING id`,
-      [clientId, cmd.acheteur_id, cmd.id, numero, dateExpedition, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc]
+      [clientId, cmd.acheteur_id, cmd.acheteur_nom, cmd.acheteur_entr, cmd.acheteur_adr, cmd.acheteur_mf, cmd.acheteur_tel, cmd.acheteur_email,
+       cmd.id, numero, dateExpedition, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc]
     );
     await db.query(
       `UPDATE commandes_acheteur
@@ -726,6 +739,9 @@ const expedierCommande = async (req, res) => {
     });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
+    if (err.code === '40P01') {
+      return res.status(409).json({ message: 'Opération concurrente sur cette commande — réessayez.' });
+    }
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   } finally {
@@ -785,8 +801,8 @@ const annulerCommande = async (req, res) => {
   try {
     await db.query('BEGIN');
     const c = await db.query(
-      `SELECT ca.*, ach.nom AS acheteur_nom, ach.email AS acheteur_email
-       FROM commandes_acheteur ca JOIN acheteurs ach ON ach.id = ca.acheteur_id
+      `SELECT ca.*, COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom, ach.email AS acheteur_email
+       FROM commandes_acheteur ca LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
        WHERE ca.id = $1 AND ca.client_id = $2 FOR UPDATE OF ca`,
       [req.params.id, clientId]
     );
@@ -842,12 +858,16 @@ const downloadFacturePdf = async (req, res) => {
   try {
     const clientId = clientIdOf(req);
     const f = await pool.query(
-      `SELECT fa.*, ach.nom AS acheteur_nom, ach.entreprise AS acheteur_entreprise, ach.adresse AS acheteur_adresse,
-              ach.matricule_fiscal AS acheteur_mf, ach.telephone AS acheteur_tel, ach.email AS acheteur_email,
+      `SELECT fa.*, COALESCE(ach.nom, fa.acheteur_nom) AS acheteur_nom,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_entreprise ELSE ach.entreprise END AS acheteur_entreprise,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_adresse ELSE ach.adresse END AS acheteur_adresse,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_matricule_fiscal ELSE ach.matricule_fiscal END AS acheteur_mf,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_telephone ELSE ach.telephone END AS acheteur_tel,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_email ELSE ach.email END AS acheteur_email,
               ca.date_commande, ca.remise_pct AS cmd_remise, ca.notes,
               pe.nom AS vendeur_nom, pe.adresse AS vendeur_adresse, pe.telephone AS vendeur_tel, pe.email AS vendeur_email
        FROM factures_acheteur fa
-       JOIN acheteurs ach ON ach.id = fa.acheteur_id
+       LEFT JOIN acheteurs ach ON ach.id = fa.acheteur_id
        JOIN commandes_acheteur ca ON ca.id = fa.commande_id
        LEFT JOIN profil_entreprise pe ON pe.client_id = fa.client_id
        WHERE fa.id = $1 AND fa.client_id = $2`,
