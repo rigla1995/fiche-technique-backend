@@ -11,10 +11,10 @@ const fmtDate = (d) => d
 const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
   const {
     nom, notesAdmin,
-    nbActivitesAdded, nbLabosAdded, nbGerantsAdded,
+    nbActivitesAdded, nbLabosAdded, nbGerantsAdded, acheteursCible,
     nbActivites, nbLabos, nbGerants,
     activiteCost, laboCost, gerantCost, newMensuel,
-    nbAcheteurs, acheteursCost,
+    formuleActivites, nbAcheteurs, acheteursCost,
     promoApplied, effectifMensuel,
     dateAvenant,
     ancienMensuel,
@@ -94,6 +94,7 @@ const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
       nbActivitesAdded > 0 && `+${nbActivitesAdded} activité${nbActivitesAdded > 1 ? 's' : ''}`,
       nbLabosAdded > 0     && `+${nbLabosAdded} labo${nbLabosAdded > 1 ? 's' : ''}`,
       nbGerantsAdded > 0   && `+${nbGerantsAdded} gérant${nbGerantsAdded > 1 ? 's' : ''}`,
+      acheteursCible > 0   && `Option Acheteurs → palier jusqu'à ${acheteursCible}`,
     ].filter(Boolean).join('   ·   ');
     fill(ML, y, CW, 44, '#f0fdf4');
     hline(y, '#bbf7d0'); hline(y + 44, '#bbf7d0');
@@ -124,7 +125,10 @@ const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
       rowIdx++;
     };
 
-    drawRow('Activités', nbActivites, fmtDt(activiteCost));
+    const formuleLabel = formuleActivites
+      ? ` (${formuleActivites === 'basique' ? 'Basique' : 'Premium'})`
+      : '';
+    drawRow(`Activités${nbActivites >= 1 ? formuleLabel : ''}`, nbActivites, fmtDt(activiteCost));
     if (nbLabos > 0)   drawRow('Labos', nbLabos, fmtDt(laboCost));
     if (nbGerants > 0) drawRow('Gérants', nbGerants, fmtDt(gerantCost));
     // Option Acheteurs : sans elle, les postes ne sommeraient plus au total
@@ -211,7 +215,8 @@ const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
 });
 
 const generateContratPdf = (params) => new Promise((resolve, reject) => {
-  const { nom, email, telephone, adresse, montantMensuel, nbActivites, nbLabos, nbGerants, dateContrat } = params;
+  const { nom, email, telephone, adresse, montantMensuel, nbActivites, nbLabos, nbGerants,
+          formuleActivites, nbAcheteurs, dateContrat } = params;
   try {
     const doc = new PDFDocument({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 }, autoFirstPage: true });
     const chunks = [];
@@ -281,11 +286,18 @@ const generateContratPdf = (params) => new Promise((resolve, reject) => {
     txt('Poste', ML + 8, y + 7, 7, true, '#4338ca');
     txt('Quantité', ML, y + 7, 7, true, '#4338ca', { align: 'right', width: CW - 8 });
     y += 22;
+    // Palier de l'option Acheteurs (10/20/50/100) — miroir de palierAcheteurs backend
+    const palier = (n) => (n <= 10 ? 10 : n <= 20 ? 20 : n <= 50 ? 50 : 100);
     const rows = [
       ['Activités', nbActivites ?? 1],
-      ['Labos', nbLabos ?? 0],
-      ['Gérants', nbGerants ?? 0],
     ];
+    if ((nbActivites ?? 1) >= 1 && formuleActivites) {
+      rows.push(["Formule d'activités", formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium']);
+    }
+    rows.push(['Labos', nbLabos ?? 0], ['Gérants', nbGerants ?? 0]);
+    if ((nbAcheteurs || 0) > 0) {
+      rows.push(['Option Acheteurs', `palier jusqu'à ${palier(nbAcheteurs)} acheteurs`]);
+    }
     rows.forEach(([label, qty], i) => {
       fill(ML, y, CW, 22, i % 2 === 0 ? '#fafbff' : '#ffffff');
       hline(y + 22, '#f1f5f9');

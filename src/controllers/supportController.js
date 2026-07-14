@@ -46,7 +46,7 @@ const submitAvenantForSignature = async ({ demandeId, info, pricing, ajouts }) =
     nbLabos: pricing?.nbLabos,
     nbGerants: pricing?.nbGerants,
     montantMensuel: pricing?.effMensuel,
-    extraFields: avenantExtraFields({ ajouts, abonnementId: info.abo_id, abonnementDate: info.abo_created_at }),
+    extraFields: avenantExtraFields({ ajouts, abonnementId: info.abo_id, abonnementDate: info.abo_created_at, pricing }),
   });
 };
 
@@ -67,6 +67,8 @@ const mapDemande = (row) => ({
   nbActivitesSupp: row.nb_activites_supp,
   nbLabosSupp: row.nb_labos_supp,
   nbGerantsSupp: row.nb_gerants_supp,
+  // Option Acheteurs : QUOTA TOTAL cible (borne de palier), pas un incrément
+  nbAcheteursCible: row.nb_acheteurs_cible || null,
   docusealSubmissionId: row.docuseal_submission_id || null,
   // aide
   description: row.description,
@@ -133,12 +135,32 @@ const create = async (req, res) => {
       params = [clientId, clientNom, type, domaineId || null, categorieNom || null, uniteNom || null, nomIngredient, createdById, createdByNom];
     } else if (type === 'supplement') {
       const { nbActivitesSupp, nbLabosSupp, nbGerantsSupp } = req.body;
-      const total = (nbActivitesSupp || 0) + (nbLabosSupp || 0) + (nbGerantsSupp || 0);
+      // Option Acheteurs : quota TOTAL cible (palier 10/20/50/100) — pas un incrément
+      const nbAcheteursCible = req.body.nbAcheteursCible != null ? parseInt(req.body.nbAcheteursCible, 10) : null;
+      const total = (nbActivitesSupp || 0) + (nbLabosSupp || 0) + (nbGerantsSupp || 0) + (nbAcheteursCible ? 1 : 0);
       if (total === 0) return res.status(400).json({ message: 'Indiquez au moins un supplément' });
+      if (nbAcheteursCible != null) {
+        if (![10, 20, 50, 100].includes(nbAcheteursCible)) {
+          return res.status(400).json({ message: 'Palier acheteurs invalide (10, 20, 50 ou 100)' });
+        }
+        const cfgRes = await pool.query(
+          `SELECT ac.nb_acheteurs, ac.nb_labos FROM abonnement_config ac
+           JOIN abonnements a ON a.id = ac.abonnement_id WHERE a.client_id = $1`,
+          [clientId]
+        );
+        const curAcheteurs = parseInt(cfgRes.rows[0]?.nb_acheteurs) || 0;
+        const curLabos = parseInt(cfgRes.rows[0]?.nb_labos) || 0;
+        if (nbAcheteursCible <= curAcheteurs) {
+          return res.status(400).json({ message: `Le palier demandé doit être supérieur au quota actuel (${curAcheteurs} acheteurs)` });
+        }
+        if (curLabos + (nbLabosSupp || 0) < 1) {
+          return res.status(400).json({ message: "L'option Acheteurs nécessite au moins un labo (ajoutez-en un à la demande)" });
+        }
+      }
       sql = `INSERT INTO support_demandes
-             (client_id, client_nom, type, nb_activites_supp, nb_labos_supp, nb_gerants_supp, created_by, created_by_nom)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`;
-      params = [clientId, clientNom, type, nbActivitesSupp || 0, nbLabosSupp || 0, nbGerantsSupp || 0, createdById, createdByNom];
+             (client_id, client_nom, type, nb_activites_supp, nb_labos_supp, nb_gerants_supp, nb_acheteurs_cible, created_by, created_by_nom)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`;
+      params = [clientId, clientNom, type, nbActivitesSupp || 0, nbLabosSupp || 0, nbGerantsSupp || 0, nbAcheteursCible, createdById, createdByNom];
     } else {
       const { description } = req.body;
       if (!description?.trim()) return res.status(400).json({ message: 'Description requise' });
@@ -175,6 +197,7 @@ const create = async (req, res) => {
             addActivites: req.body.nbActivitesSupp || 0,
             addLabos: req.body.nbLabosSupp || 0,
             addGerants: req.body.nbGerantsSupp || 0,
+            setAcheteurs: demande.nbAcheteursCible || null,
           };
           const pricing = await computeAvenantPricing(clientId, ajouts);
           const sub = await submitAvenantForSignature({ demandeId: demande.id, info, pricing, ajouts });
@@ -192,6 +215,7 @@ const create = async (req, res) => {
                 addActivites: req.body.nbActivitesSupp || 0,
                 addLabos: req.body.nbLabosSupp || 0,
                 addGerants: req.body.nbGerantsSupp || 0,
+                setAcheteurs: demande.nbAcheteursCible || null,
               },
             })
               .catch((e) => console.error('[avenant] envoi email signature:', e.message));
@@ -298,19 +322,42 @@ const traiter = async (req, res) => {
     // Update abonnement_config when supplement request is validated.
     // Skip if an avenant Docuseal is pending (docuseal_submission_id) : la capacité
     // est alors appliquée automatiquement par le webhook à la signature (évite le double).
+    let acheteursAvant = null;
     if (statut === 'validée' && demande.type === 'supplement' && !demande.docuseal_submission_id) {
+      // Quota acheteurs AVANT application — nécessaire pour l'« ancien mensuel » de
+      // l'email d'avenant (la cible REMPLACE le quota, l'avant n'est pas dérivable après coup).
+      if (demande.nb_acheteurs_cible) {
+        const avantRes = await pool.query(
+          `SELECT ac.nb_acheteurs FROM abonnement_config ac
+           JOIN abonnements a ON a.id = ac.abonnement_id WHERE a.client_id = $1`,
+          [demande.client_id]
+        );
+        acheteursAvant = parseInt(avantRes.rows[0]?.nb_acheteurs) || 0;
+      }
       await pool.query(
         `UPDATE abonnement_config ac
          SET nb_activites = nb_activites + $1,
              nb_labos     = nb_labos     + $2,
              nb_gerants   = nb_gerants   + $3,
+             -- Option Acheteurs : quota TOTAL cible (palier), pas un incrément
+             nb_acheteurs = COALESCE($5::int, nb_acheteurs),
              -- un compte dépôt qui gagne sa 1ère activité reçoit une formule (défaut premium)
-             formule_activites = CASE WHEN nb_activites +               >= 1 THEN COALESCE(formule_activites, 'premium') ELSE formule_activites END,
+             formule_activites = CASE WHEN nb_activites + $1 >= 1 THEN COALESCE(formule_activites, 'premium') ELSE formule_activites END,
              updated_at   = NOW()
          FROM abonnements a
          WHERE a.id = ac.abonnement_id AND a.client_id = $4`,
-        [demande.nb_activites_supp || 0, demande.nb_labos_supp || 0, demande.nb_gerants_supp || 0, demande.client_id]
+        [demande.nb_activites_supp || 0, demande.nb_labos_supp || 0, demande.nb_gerants_supp || 0, demande.client_id, demande.nb_acheteurs_cible || null]
       );
+      // Passage/activation de l'option Acheteurs : le module doit être actif côté profil
+      if (demande.nb_acheteurs_cible) {
+        await pool.query(
+          `UPDATE profil_entreprise
+           SET module_acheteurs_actif = true,
+               module_acheteurs_activated_at = COALESCE(module_acheteurs_activated_at, NOW())
+           WHERE client_id = $1`,
+          [demande.client_id]
+        );
+      }
     }
 
     // Send avenant email (PDF) only for the manual fallback (no Docuseal submission)
@@ -345,6 +392,8 @@ const traiter = async (req, res) => {
               nb_activites: nbA - (demande.nb_activites_supp || 0),
               nb_labos:     nbL - (demande.nb_labos_supp     || 0),
               nb_gerants:   nbG - (demande.nb_gerants_supp   || 0),
+              // La cible acheteurs REMPLACE le quota : l'avant a été capturé avant l'UPDATE
+              nb_acheteurs: acheteursAvant != null ? acheteursAvant : (parseInt(cfg.nb_acheteurs) || 0),
             };
             const ancienActivite = computeBaseMensuelFromConfig(cfgBefore, tarifs) || 0;
             const ancienLabo     = computeBaseLaboFromConfig(cfgBefore, tarifs)    || 0;
@@ -363,12 +412,14 @@ const traiter = async (req, res) => {
               nbActivitesAdded: demande.nb_activites_supp || 0,
               nbLabosAdded:     demande.nb_labos_supp     || 0,
               nbGerantsAdded:   demande.nb_gerants_supp   || 0,
+              acheteursCible:   demande.nb_acheteurs_cible || null,
               nbActivites: nbA,
               nbLabos: nbL,
               nbGerants: nbG,
               activiteCost,
               laboCost,
               gerantCost,
+              formuleActivites: cfg.formule_activites || null,
               nbAcheteurs: parseInt(cfg.nb_acheteurs) || 0,
               acheteursCost: computeBaseAcheteursFromConfig(cfg, tarifs) || 0,
               newMensuel,
@@ -431,6 +482,8 @@ const previewAvenant = async (req, res) => {
       nb_activites: ((v) => (Number.isFinite(v) && v >= 0 ? v : 1))(parseInt(cfg.nb_activites)) + (demande.nb_activites_supp || 0),
       nb_labos:     (parseInt(cfg.nb_labos)     || 0) + (demande.nb_labos_supp     || 0),
       nb_gerants:   (parseInt(cfg.nb_gerants)   || 0) + (demande.nb_gerants_supp   || 0),
+      // Option Acheteurs : la cible remplace le quota
+      nb_acheteurs: demande.nb_acheteurs_cible || (parseInt(cfg.nb_acheteurs) || 0),
     };
 
     const ancienActivite = computeBaseMensuelFromConfig(cfg, tarifs)     || 0;
@@ -450,14 +503,16 @@ const previewAvenant = async (req, res) => {
       nbActivitesAdded: demande.nb_activites_supp || 0,
       nbLabosAdded:     demande.nb_labos_supp     || 0,
       nbGerantsAdded:   demande.nb_gerants_supp   || 0,
+      acheteursCible:   demande.nb_acheteurs_cible || null,
       nbActivites: cfgAfter.nb_activites,
       nbLabos:     cfgAfter.nb_labos,
       nbGerants:   cfgAfter.nb_gerants,
       activiteCost,
       laboCost,
       gerantCost,
-      nbAcheteurs: parseInt(cfg.nb_acheteurs) || 0,
-      acheteursCost: computeBaseAcheteursFromConfig(cfg, tarifs) || 0,
+      formuleActivites: cfg.formule_activites || null,
+      nbAcheteurs: parseInt(cfgAfter.nb_acheteurs) || 0,
+      acheteursCost: computeBaseAcheteursFromConfig(cfgAfter, tarifs) || 0,
       newMensuel,
       ancienMensuel,
       promoApplied: false,

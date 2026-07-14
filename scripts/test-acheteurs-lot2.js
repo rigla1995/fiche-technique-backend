@@ -189,8 +189,10 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   check('commande listée avec facture', !!cmd && cmd.factureNumero === facture.numero, cmd?.factureNumero);
 
   // ── 6bis. Livraison : expediee → livree (jalon logistique, stock/facture inchangés)
+  // Dates DYNAMIQUES : une date en dur périme les gardes chronologiques (livraison ≥ expédition)
+  const today = new Date().toISOString().slice(0, 10);
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd.id}/livrer`, {
-    method: 'POST', headers: H, body: JSON.stringify({ dateLivraison: '2026-07-10' }),
+    method: 'POST', headers: H, body: JSON.stringify({ dateLivraison: today }),
   });
   body = await r.json();
   check('livraison 200 (statut livree)', r.status === 200 && body.commande?.statut === 'livree', JSON.stringify(body));
@@ -234,13 +236,13 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/acheteurs/ventes`, {
     method: 'POST', headers: H,
     body: JSON.stringify({
-      acheteurId, laboId, remisePct: 0, timbreFiscal: false, statut: 'livree', dateLivraison: '2026-07-11',
+      acheteurId, laboId, remisePct: 0, timbreFiscal: false, statut: 'livree', dateLivraison: today,
       lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 1, prixHt: 6 }],
     }),
   });
   body = await r.json();
   check('re-vente : prix HT modifié ligne (6) + sans timbre → TTC 7.140', r.status === 201 && approx(body.facture?.montantTtc, 7.14), JSON.stringify(body.facture));
-  check('re-vente directement livrée', body.commande?.statut === 'livree' && body.commande?.dateLivraison === '2026-07-11', JSON.stringify(body.commande));
+  check('re-vente directement livrée', body.commande?.statut === 'livree' && body.commande?.dateLivraison === today, JSON.stringify(body.commande));
   const h3 = await pool.query(`SELECT statut FROM commande_acheteur_statuts WHERE commande_id = $1 ORDER BY id`, [body.commande?.id]);
   check('historique vente livrée : expediee + livree', h3.rows.length === 2 && h3.rows[1].statut === 'livree', JSON.stringify(h3.rows.map((x) => x.statut)));
 

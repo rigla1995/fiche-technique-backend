@@ -58,17 +58,34 @@ const docusealWebhook = async (req, res) => {
       );
       if (dem.rows.length > 0) {
         const d = dem.rows[0];
-        // Appliquer la capacité demandée à l'abonnement
+        // Appliquer la capacité demandée à l'abonnement.
+        // nb_acheteurs_cible = quota TOTAL (palier), pas un incrément. Un compte dépôt
+        // qui gagne sa 1ère activité reçoit une formule (défaut premium) — même règle
+        // que la validation manuelle (supportController.traiter).
         await pool.query(
           `UPDATE abonnement_config ac
               SET nb_activites = nb_activites + $1,
                   nb_labos     = nb_labos     + $2,
                   nb_gerants   = nb_gerants   + $3,
+                  nb_acheteurs = COALESCE($5::int, nb_acheteurs),
+                  formule_activites = CASE WHEN nb_activites + $1 >= 1
+                                           THEN COALESCE(formule_activites, 'premium')
+                                           ELSE formule_activites END,
                   updated_at   = NOW()
              FROM abonnements a
             WHERE a.id = ac.abonnement_id AND a.client_id = $4`,
-          [d.nb_activites_supp || 0, d.nb_labos_supp || 0, d.nb_gerants_supp || 0, d.client_id]
+          [d.nb_activites_supp || 0, d.nb_labos_supp || 0, d.nb_gerants_supp || 0, d.client_id, d.nb_acheteurs_cible || null]
         );
+        // Activation/upgrade de l'option Acheteurs : le module doit être actif côté profil
+        if (d.nb_acheteurs_cible) {
+          await pool.query(
+            `UPDATE profil_entreprise
+                SET module_acheteurs_actif = true,
+                    module_acheteurs_activated_at = COALESCE(module_acheteurs_activated_at, NOW())
+              WHERE client_id = $1`,
+            [d.client_id]
+          ).catch((e) => console.error('[docuseal-webhook] activation module acheteurs:', e.message));
+        }
         // Notifier les super admins
         const payload = { eventType: 'avenant_signe', demandeId: d.id, type: 'supplement', clientNom: d.client_nom || 'Client', statut: 'validée' };
         try { pushToAdmins('avenant_signe', payload); } catch (_) { /* sse best-effort */ }
