@@ -469,6 +469,10 @@ router.get('/mon-abonnement/paiements/:paiementId/facture', authenticate, requir
 router.get('/contrat-actif', authenticate, requireClient, ab.getContratActif);
 router.get('/supplement-pricing', authenticate, requireClient, ab.getSupplementPricing);
 router.get('/client/:clientId/supplement-pricing', authenticate, requireSuperAdmin, ab.getClientSupplementPricing);
+// Contrat côté admin : signé DocuSeal si disponible, sinon régénéré (charte contractuelle)
+router.get('/client/:clientId/contrat-pdf', authenticate, requireSuperAdmin, ab.getClientContratPdf);
+// Aperçu du contrat AVANT création (wizard Ajout Client) — même builder que l'envoi
+router.post('/contrat-preview', authenticate, requireSuperAdmin, ab.previewContratPdf);
 
 /**
  * @openapi

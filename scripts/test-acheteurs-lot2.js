@@ -212,6 +212,10 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/acheteurs/factures/${facture.id}/pdf`, { headers: { Authorization: H.Authorization } });
   const pdfBuf = Buffer.from(await r.arrayBuffer());
   check('facture PDF (200, %PDF, >2Ko)', r.status === 200 && pdfBuf.slice(0, 4).toString() === '%PDF' && pdfBuf.length > 2000, `${pdfBuf.length} octets`);
+  // Déterminisme (charte 2026-07) : un re-téléchargement doit être identique au byte près
+  r = await fetch(`${BASE}/api/acheteurs/factures/${facture.id}/pdf`, { headers: { Authorization: H.Authorization } });
+  const pdfBuf2 = Buffer.from(await r.arrayBuffer());
+  check('facture PDF déterministe (re-téléchargement identique)', Buffer.compare(pdfBuf, pdfBuf2) === 0, `${pdfBuf.length} vs ${pdfBuf2.length} octets`);
 
   // ── 7. Historique de prix d'offre
   r = await fetch(`${BASE}/api/acheteurs/offres/${offreId}/historique`, { headers: H });
