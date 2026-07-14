@@ -210,6 +210,7 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, t
     if (n(avenant.addActivites) > 0) supParts.push(`${n(avenant.addActivites)} activité${n(avenant.addActivites) > 1 ? 's' : ''}`);
     if (n(avenant.addLabos) > 0) supParts.push(`${n(avenant.addLabos)} labo${n(avenant.addLabos) > 1 ? 's' : ''}`);
     if (n(avenant.addGerants) > 0) supParts.push(`${n(avenant.addGerants)} gérant${n(avenant.addGerants) > 1 ? 's' : ''}`);
+    if (n(avenant.setAcheteurs) > 0) supParts.push(`l'option Acheteurs (palier jusqu'à ${n(avenant.setAcheteurs)} acheteurs)`);
   }
   const supText = supParts.join(', ') || 'capacité supplémentaire';
 

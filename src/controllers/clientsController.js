@@ -40,10 +40,22 @@ const buildContractPricingFields = (pricing) => {
     detail = parts.join('  ·  ');
   }
 
+  // Formule d'activités + option Acheteurs : nouvelles lignes du contrat (le
+  // template Docuseal doit porter les champs éponymes, cf docuseal-templates/CHAMPS.md ;
+  // createSubmission ignore proprement les champs absents d'un template en retard).
+  const formuleLabel = pricing.formuleActivites
+    ? (pricing.formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium')
+    : '';
+  const acheteursLabel = pricing.palierAcheteurs
+    ? `Palier jusqu'à ${pricing.palierAcheteurs} acheteurs`
+    : '';
+
   return {
     montantOnboarding: effOnboarding,
     montantMensuel: effMensuel,
     extraFields: [
+      { name: 'Formule', default_value: formuleLabel },
+      { name: 'Option Acheteurs', default_value: acheteursLabel },
       { name: 'Détail promotion', default_value: detail },
       { name: 'Mensualité après promo', default_value: hasPromo && promoMens ? fmtDtC(baseMensuel) : '' },
       { name: 'Reprise prix de base', default_value: baseResumeDate ? fmtDateC(baseResumeDate) : '' },
@@ -198,6 +210,11 @@ const create = async (req, res) => {
   if (nbActivites === 0 && (nbLabos || 0) < 1) {
     return res.status(400).json({ message: 'Un compte sans activité doit avoir au moins un labo (compte dépôt)' });
   }
+  // Un labo seul n'est pas une composition valide : la base Labo se combine avec
+  // des activités et/ou l'option Acheteurs (labo+activités / labo+acheteurs / les trois).
+  if (nbActivites === 0 && nbAcheteurs === 0) {
+    return res.status(400).json({ message: "Un labo sans activité nécessite l'option Acheteurs (compte dépôt = labo + acheteurs)" });
+  }
   if (nbAcheteurs > 0 && (nbLabos || 0) < 1) {
     return res.status(400).json({ message: "L'option Acheteurs nécessite au moins un labo (les ventes partent du stock labo)" });
   }
@@ -295,6 +312,8 @@ const create = async (req, res) => {
         nbActivites: aboConfig.nbActivites ?? 1,
         nbLabos: aboConfig.nbLabos ?? 0,
         nbGerants: aboConfig.nbGerants ?? 0,
+        formuleActivites: (aboConfig.nbActivites ?? 1) >= 1 ? formuleActivites : null,
+        nbAcheteurs,
         dateContrat: new Date(),
       });
 

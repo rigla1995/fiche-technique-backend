@@ -1456,6 +1456,18 @@ const updateAbonnementConfig = async (req, res) => {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
+    // Labo seul interdit : 0 activité exige l'option Acheteurs (valeur du payload,
+    // sinon quota déjà en base — nb_acheteurs est préservé quand il n'est pas envoyé).
+    if (nA === 0) {
+      let effAcheteurs = nAch;
+      if (effAcheteurs === null) {
+        const cur = await pool.query('SELECT nb_acheteurs FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
+        effAcheteurs = parseInt(cur.rows[0]?.nb_acheteurs) || 0;
+      }
+      if (effAcheteurs === 0) {
+        return res.status(400).json({ message: "Un labo sans activité nécessite l'option Acheteurs (compte dépôt = labo + acheteurs)" });
+      }
+    }
     // nb_acheteurs / formule : préservés si le payload ne les envoie pas.
     const result = await pool.query(
       `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, formule_activites, montant_onboarding)
@@ -1578,6 +1590,7 @@ const getSupplementPricing = async (req, res) => {
     const nbA = parseInt(config?.nb_activites) || 0;
     const nbL = parseInt(config?.nb_labos) || 0;
     const nbG = parseInt(config?.nb_gerants) || 0;
+    const nbAch = parseInt(config?.nb_acheteurs) || 0;
     const currentMensuel = config ? (computeMensuelTotalFromConfig(config, tarifs) || 0) : 0;
 
     res.json({
@@ -1588,6 +1601,16 @@ const getSupplementPricing = async (req, res) => {
       currentMensuelEffectif: applyPromoMensualite(currentMensuel, mensPromo),
       mensPromo,
       nbActivites: nbA, nbLabos: nbL, nbGerants: nbG,
+      // Option Acheteurs : quota/palier actuels + barème des paliers, pour proposer
+      // l'activation ou le passage à un palier supérieur depuis la page Demandes.
+      nbAcheteurs: nbAch,
+      palierAcheteurs: palierAcheteurs(nbAch),
+      acheteursCost: config ? (computeBaseAcheteursFromConfig(config, tarifs) || 0) : 0,
+      paliersAcheteurs: [10, 20, 50, 100].map((p) => ({
+        palier: p,
+        prix: Math.round(parseFloat(tarifs[`acheteurs_palier_${p}`] ?? 0) * 100) / 100,
+      })),
+      formuleActivites: config?.formule_activites || null,
       activitePromo: extractSupplPromo(promoRes.rows, 'supplement_activite'),
       laboPromo:     extractSupplPromo(promoRes.rows, 'supplement_labo'),
       gerantPromo:   extractSupplPromo(promoRes.rows, 'supplement_gerant'),
@@ -1625,6 +1648,7 @@ const getClientSupplementPricing = async (req, res) => {
     const nbA = parseInt(config?.nb_activites) || 0;
     const nbL = parseInt(config?.nb_labos) || 0;
     const nbG = parseInt(config?.nb_gerants) || 0;
+    const nbAch = parseInt(config?.nb_acheteurs) || 0;
     const activiteCost  = config ? (computeBaseMensuelFromConfig(config, tarifs) || 0) : 0;
     const laboCost      = config ? (computeBaseLaboFromConfig(config, tarifs) || 0) : 0;
     const gerantCost    = config ? (computeBaseGerantFromConfig(config, tarifs) || 0) : 0;
@@ -1639,6 +1663,13 @@ const getClientSupplementPricing = async (req, res) => {
       currentMensuelEffectif: applyPromoMensualite(currentMensuel, mensPromo),
       mensPromo,
       nbActivites: nbA, nbLabos: nbL, nbGerants: nbG,
+      nbAcheteurs: nbAch,
+      palierAcheteurs: palierAcheteurs(nbAch),
+      paliersAcheteurs: [10, 20, 50, 100].map((p) => ({
+        palier: p,
+        prix: Math.round(parseFloat(tarifs[`acheteurs_palier_${p}`] ?? 0) * 100) / 100,
+      })),
+      formuleActivites: config?.formule_activites || null,
       activitePromo: extractSupplPromo(promoRes.rows, 'supplement_activite'),
       laboPromo:     extractSupplPromo(promoRes.rows, 'supplement_labo'),
       gerantPromo:   extractSupplPromo(promoRes.rows, 'supplement_gerant'),
@@ -1788,7 +1819,9 @@ const computeEffectivePricing = async (clientId) => {
 
 // Calcule la tarification d'un avenant : nouvelle config (actuelle + suppléments) et
 // nouvelle mensualité effective (promo mensualité active appliquée). Pour l'avenant Docuseal.
-const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0, addGerants = 0 }) => {
+// setAcheteurs = QUOTA TOTAL cible de l'option Acheteurs (les paliers ne s'additionnent
+// pas) ; null/undefined = quota inchangé.
+const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0, addGerants = 0, setAcheteurs = null }) => {
   const tarifs = await loadAllTarifs();
   const aboRes = await pool.query(
     `SELECT id FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1`,
@@ -1803,7 +1836,7 @@ const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0,
     nb_activites: (parseInt(cur.nb_activites) || 0) + (addActivites || 0),
     nb_labos:     (parseInt(cur.nb_labos)     || 0) + (addLabos     || 0),
     nb_gerants:   (parseInt(cur.nb_gerants)   || 0) + (addGerants   || 0),
-    nb_acheteurs: parseInt(cur.nb_acheteurs) || 0,
+    nb_acheteurs: setAcheteurs != null ? (parseInt(setAcheteurs) || 0) : (parseInt(cur.nb_acheteurs) || 0),
     formule_activites: cur.formule_activites || 'premium',
   };
 

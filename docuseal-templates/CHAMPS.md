@@ -27,8 +27,8 @@ par la version repère.
   valide, la case reste simplement vide.
 - **Comptage cases vs champs** (le fond contient plus de cases que de champs à créer,
   à cause des zones multiples) :
-  - contrat : **12 champs → 14 cases** (Nom du client ×2, Date du contrat ×2)
-  - avenant : **10 champs → 12 cases** (Nom du client ×2, Date du contrat ×2)
+  - contrat : **14 champs → 16 cases** (Nom du client ×2, Date du contrat ×2)
+  - avenant : **12 champs → 14 cases** (Nom du client ×2, Date du contrat ×2)
   - résiliation : **4 champs → 7 cases** (Nom du client ×2, Date du contrat ×3)
 
 ## 1. contrat-template.pdf → `DOCUSEAL_TEMPLATE_ID`
@@ -38,8 +38,10 @@ par la version repère.
 | `Nom du client` | carte « LE CLIENT » (grande case) **+ 2ᵉ zone** : carte signature client |
 | `Email` | carte « LE CLIENT », 2ᵉ case |
 | `Nb activités` | tableau art. 2, ligne « Points de vente (activités) » |
+| `Formule` | tableau art. 2, ligne « Formule d'activités » (case large — optionnel, ex. « Activité Premium ») |
 | `Nb labos` | tableau art. 2, ligne « Laboratoires de production » |
 | `Nb gérants` | tableau art. 2, ligne « Comptes gérants » |
+| `Option Acheteurs` | tableau art. 2, ligne « Option Acheteurs » (case large — optionnel, ex. « Palier jusqu'à 20 acheteurs ») |
 | `Montant onboarding` | art. 3, case de la ligne « Frais d'activation » |
 | `Montant mensuel` | art. 3, case du bandeau « Mensualité applicable » (avant « / mois ») |
 | `Détail promotion` | grande case du bloc « Conditions particulières » |
@@ -55,8 +57,10 @@ par la version repère.
 | `Nom du client` | carte « LE CLIENT » **+ 2ᵉ zone** : carte signature client |
 | `Email` | carte « LE CLIENT », 2ᵉ case |
 | `Contrat initial` | ligne « Contrat visé : » (art. 1) |
-| `Capacité ajoutée` | bandeau vert « Capacité ajoutée par cet avenant » |
+| `Capacité ajoutée` | bandeau vert « Capacité ajoutée par cet avenant » (porte aussi « Option Acheteurs → palier X ») |
 | `Nb activités` / `Nb labos` / `Nb gérants` | tableau art. 2 (« Nouvelle quantité ») |
+| `Formule` | tableau art. 2, ligne « Formule d'activités » (case large — optionnel) |
+| `Option Acheteurs` | tableau art. 2, ligne « Option Acheteurs » (case large — optionnel) |
 | `Montant mensuel` | bandeau « Mensualité applicable » (avant « / mois ») |
 | `Date du contrat` | « Fait à …, le ___ » **+ 2ᵉ zone** : pastille « Signé électroniquement le ___ » |
 | `Signature` (type Signature) | zone en pointillé carte « LE CLIENT » |
@@ -81,3 +85,19 @@ par la version repère.
 NB : si le fond de page est régénéré (`--templates`) après modification des clauses,
 re-uploader le PDF dans le template Docuseal (« replace document ») et vérifier que
 les champs sont toujours bien positionnés.
+
+## ⚠️ Mise à jour 2026-07 — tarification en formules + option Acheteurs
+
+Les fonds `contrat-template.pdf` et `avenant-template.pdf` portent désormais deux
+lignes supplémentaires dans le tableau de configuration : « Formule d'activités »
+et « Option Acheteurs ». **Action requise dans Docuseal** :
+
+1. Re-uploader les deux fonds régénérés (« replace document »).
+2. Repositionner les champs existants si nécessaire (le tableau a grandi : les
+   blocs tarification/clauses sont décalés vers le bas).
+3. Créer les 2 nouveaux champs texte **optionnels non requis** : `Formule` et
+   `Option Acheteurs` (noms exacts), sur leurs lignes respectives — contrat ET avenant.
+
+Tant que les templates ne sont pas re-uploadés, l'envoi continue de fonctionner :
+l'API ignore les champs inconnus (retry 422) — les contrats partent simplement sans
+ces deux lignes remplies.

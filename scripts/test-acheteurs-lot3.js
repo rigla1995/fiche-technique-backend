@@ -41,15 +41,21 @@ const check = (name, ok, detail = '') => {
   check('preview dépôt : coût activités = 0', r.status === 200 && Number(body.activite?.total) === 0 && Number(body.labo?.total) > 0,
     `activités ${body.activite?.total}, labo ${body.labo?.total}, total ${body.totalMensuel}`);
 
-  // ── 2. Création client dépôt via l'API admin (0 activité + 1 labo + config)
+  // ── 2. Création client dépôt via l'API admin (0 activité + 1 labo + option Acheteurs)
   // NB : routes admin montées sur /admin SANS /api (piège récurrent)
+  // Règle 2026-07 : un labo SEUL n'est pas une composition valide — le dépôt exige l'option Acheteurs.
   r = await fetch(`${BASE}/admin/clients`, {
     method: 'POST', headers: HA,
     body: JSON.stringify({ nom: 'TEST-Depot', email: 'test-depot@example.com', nbActivites: 0, nbLabos: 1, nbGerants: 0, montantOnboarding: 0 }),
   });
+  check('labo seul (0 act, 0 acheteurs) refusé 400', r.status === 400);
+  r = await fetch(`${BASE}/admin/clients`, {
+    method: 'POST', headers: HA,
+    body: JSON.stringify({ nom: 'TEST-Depot', email: 'test-depot@example.com', nbActivites: 0, nbLabos: 1, nbGerants: 0, nbAcheteurs: 10, montantOnboarding: 0 }),
+  });
   body = await r.json().catch(() => ({}));
   const created = r.status === 201 || r.status === 200;
-  check('création client dépôt (0 activité, 1 labo)', created, `status ${r.status} ${body.message || ''}`);
+  check('création client dépôt (0 activité, 1 labo, 10 acheteurs)', created, `status ${r.status} ${body.message || ''}`);
 
   // ── 3. Création avec 0 activité ET 0 labo → 400
   r = await fetch(`${BASE}/admin/clients`, {
@@ -78,6 +84,12 @@ const check = (name, ok, detail = '') => {
     body: JSON.stringify({ nbActivites: 0, nbLabos: 0, nbGerants: 0 }),
   });
   check('config 0 activité + 0 labo refusée 400', r.status === 400);
+  // Labo seul explicite (0 act, 1 labo, 0 acheteurs) → refusé aussi en update
+  r = await fetch(`${BASE}/api/abonnements/client/${depotId}/config`, {
+    method: 'PUT', headers: HA,
+    body: JSON.stringify({ nbActivites: 0, nbLabos: 1, nbGerants: 0, nbAcheteurs: 0 }),
+  });
+  check('config labo seul (0 acheteurs) refusée 400', r.status === 400);
   r = await fetch(`${BASE}/api/abonnements/client/${depotId}/config`, {
     method: 'PUT', headers: HA,
     body: JSON.stringify({ nbActivites: 0, nbLabos: 1, nbGerants: 0, nbAcheteurs: 20 }),
