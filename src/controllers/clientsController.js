@@ -130,6 +130,8 @@ const mapClient = (row) => ({
   createdAt: row.created_at,
   activatedAt: row.activated_at || null,
   domaineIds: row.domaine_ids || [],
+  // Adresse portée par profil_entreprise (fiche « Consulter » côté admin)
+  adresse: row.adresse ?? null,
 });
 
 const saveClientDomaines = async (client, clientId, domaineIds) => {
@@ -147,11 +149,13 @@ const list = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.activated_at,
+              pe.adresse,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
        FROM utilisateurs u
+       LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
        LEFT JOIN client_domaines cd ON cd.client_id = u.id
        WHERE u.role = 'client'
-       GROUP BY u.id
+       GROUP BY u.id, pe.adresse
        ORDER BY u.nom`
     );
     res.json(result.rows.map(mapClient));
@@ -166,11 +170,13 @@ const getById = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at,
+              pe.adresse,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
        FROM utilisateurs u
+       LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
        LEFT JOIN client_domaines cd ON cd.client_id = u.id
        WHERE u.id = $1 AND u.role = 'client'
-       GROUP BY u.id`,
+       GROUP BY u.id, pe.adresse`,
       [id]
     );
     if (result.rows.length === 0) {

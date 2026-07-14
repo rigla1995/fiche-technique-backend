@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const { sendInviteEmail, sendFactureEmail } = require('../services/emailService');
 const { getSubmissionDocuments } = require('../services/docusealService');
 const { generateFacturePdf } = require('../services/pdfService');
+const { buildContratDocument } = require('../services/contractPdfService');
 
 // ── Facture d'abonnement ──────────────────────────────────────────────────────
 // Taux de TVA applicable aux factures (Tunisie : 19 %). Le montant enregistré
@@ -1918,8 +1919,180 @@ const getContratActif = async (req, res) => {
   }
 };
 
+// ── Contrat côté ADMIN ────────────────────────────────────────────────────────
+
+const intOr = (v, d) => (Number.isFinite(parseInt(v)) ? parseInt(v) : d);
+
+// Régénère le document contractuel d'un client depuis sa config réelle — MÊME
+// builder (charte contractuelle) que le document envoyé en signature DocuSeal.
+const regenerateContratPdf = async (clientId) => {
+  const infoRes = await pool.query(
+    `SELECT u.nom, u.email, u.telephone, pe.adresse,
+            a.created_at AS abo_created_at, a.contrat_accepte_le
+       FROM utilisateurs u
+       LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
+       LEFT JOIN abonnements a ON a.client_id = u.id
+      WHERE u.id = $1 AND u.role = 'client'
+      ORDER BY a.id DESC
+      LIMIT 1`,
+    [clientId]
+  );
+  if (!infoRes.rows.length) return null;
+  const info = infoRes.rows[0];
+  const pricing = await computeEffectivePricing(clientId);
+  if (!pricing) return null;
+  const cfgRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [pricing.abonnementId]);
+  const cfg = cfgRes.rows[0] || {};
+  return buildContratDocument({
+    abonnementId: pricing.abonnementId,
+    client: { nom: info.nom, email: info.email, telephone: info.telephone, adresse: info.adresse },
+    config: {
+      nbActivites: intOr(cfg.nb_activites, 1),
+      nbLabos: intOr(cfg.nb_labos, 0),
+      nbGerants: intOr(cfg.nb_gerants, 0),
+      formuleActivites: cfg.formule_activites || null,
+    },
+    pricing,
+    // Régénération d'un contrat EXISTANT : réf avec l'année d'origine (celle que
+    // visent les avenants « Contrat initial : CTR-YYYY-NNNNN ») et date d'origine.
+    abonnementDate: info.abo_created_at || null,
+    dateContrat: info.contrat_accepte_le || info.abo_created_at || null,
+    // Téléchargement admin : ne jamais échouer sur le garde placeholders (warn suffit)
+    strict: false,
+  });
+};
+
+// GET /api/abonnements/client/:clientId/contrat-pdf — super admin.
+// Renvoie le contrat tel que le client le connaît : le document SIGNÉ DocuSeal
+// (contrat initial ou dernier avenant) si disponible, sinon le document
+// contractuel régénéré depuis la config courante (même builder que l'envoi).
+const getClientContratPdf = async (req, res) => {
+  const { clientId } = req.params;
+  try {
+    const active = await findActiveContract(clientId);
+    if (active) {
+      try {
+        const docs = await getSubmissionDocuments(active.submissionId);
+        if (docs.length) {
+          const fileRes = await fetch(docs[0].url);
+          if (fileRes.ok) {
+            const buf = Buffer.from(await fileRes.arrayBuffer());
+            const base = String(docs[0].name || 'contrat').replace(/[^a-zA-Z0-9._-]/g, '_');
+            const filename = base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`;
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+            res.setHeader('Content-Length', buf.length);
+            return res.send(buf);
+          }
+        }
+      } catch (e) {
+        // Signé momentanément indisponible (DocuSeal) → on sert le régénéré
+        console.warn('[contrat-admin] contrat signé indisponible, régénération:', e.message);
+      }
+    }
+    const docu = await regenerateContratPdf(clientId);
+    if (!docu) return res.status(404).json({ message: 'Aucun contrat disponible pour ce client' });
+    const buf = Buffer.from(docu.base64, 'base64');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="contrat-${docu.ref}.pdf"`);
+    res.setHeader('Content-Length', buf.length);
+    return res.send(buf);
+  } catch (err) {
+    console.error('[contrat-admin]', err.message);
+    // 502 (jamais 500) : échec scopé à l'action — la 500 déclencherait la
+    // redirection globale /error/500 et éjecterait l'admin de la page Clients.
+    res.status(502).json({ message: 'Contrat momentanément indisponible' });
+  }
+};
+
+// POST /api/abonnements/contrat-preview — super admin (wizard Ajout Client).
+// Le client n'existe pas encore : la config arrive dans le body et le document
+// est généré avec le MÊME builder que celui envoyé en signature à la création.
+// Body : { nom, email, telephone, nbActivites, nbLabos, nbGerants,
+//          formuleActivites, nbAcheteurs, montantOnboarding, promotions[] }
+// (promotions au format mapPromoForApi du front : appliesTo/type/discount*/fixed*/monthsDuration/dateDebut)
+const previewContratPdf = async (req, res) => {
+  try {
+    const { nom, email, telephone } = req.body;
+    const nA = ((v) => (Number.isFinite(v) && v >= 0 ? v : 1))(parseInt(req.body.nbActivites));
+    const nbLabos = parseInt(req.body.nbLabos) || 0;
+    const nbGerants = parseInt(req.body.nbGerants) || 0;
+    const nbAcheteurs = parseInt(req.body.nbAcheteurs) || 0;
+    const formule = nA >= 1 ? (req.body.formuleActivites === 'basique' ? 'basique' : 'premium') : null;
+    const montantOnboarding = parseFloat(req.body.montantOnboarding) || 0;
+    const promotions = Array.isArray(req.body.promotions) ? req.body.promotions : [];
+
+    const tarifs = await loadAllTarifs();
+    const mockCfg = { nb_activites: nA, nb_labos: nbLabos, nb_gerants: nbGerants, nb_acheteurs: nbAcheteurs, formule_activites: formule || 'premium' };
+    const baseMensuel = computeMensuelTotalFromConfig(mockCfg, tarifs) || 0;
+
+    // Pseudo-rangées promo (clés snake_case de la table promotions) pour réutiliser
+    // applyPromoMensualite / applyPromoOnboarding à l'identique du flux réel.
+    const toRow = (p) => ({
+      type: p.type,
+      applies_to: p.appliesTo,
+      discount_mensualite: p.discountMensualite ?? null,
+      fixed_mensualite: p.fixedMensualite ?? null,
+      discount_onboarding: p.discountOnboarding ?? null,
+      fixed_onboarding: p.fixedOnboarding ?? null,
+    });
+    // Miroir de computeEffectivePricing (date_debut <= CURRENT_DATE) : une promo à
+    // date FUTURE ne figure pas sur le contrat réel envoyé à la signature — elle ne
+    // doit pas non plus figurer sur l'aperçu (sinon l'admin valide un document
+    // différent de celui que le client signera).
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isActive = (p) => !p.dateDebut || String(p.dateDebut).slice(0, 10) <= todayStr;
+    const srcMens = promotions.find((p) => ['mensualite', 'les_deux'].includes(p.appliesTo) && isActive(p)) || null;
+    const srcOb = promotions.find((p) => ['onboarding', 'les_deux'].includes(p.appliesTo) && isActive(p)) || null;
+    const promoMens = srcMens ? toRow(srcMens) : null;
+    const promoOb = srcOb ? toRow(srcOb) : null;
+    const effMensuel = promoMens ? applyPromoMensualite(baseMensuel, promoMens) : baseMensuel;
+    const effOnboarding = promoOb ? applyPromoOnboarding(montantOnboarding, promoOb) : montantOnboarding;
+
+    // Durée + date de reprise du tarif de base (promo mensualité limitée dans le temps)
+    let promoMonths = null;
+    let baseResumeDate = null;
+    if (srcMens && srcMens.monthsDuration) {
+      promoMonths = parseInt(srcMens.monthsDuration) || null;
+      if (promoMonths && srcMens.dateDebut) {
+        const d = new Date(srcMens.dateDebut);
+        if (!Number.isNaN(d.getTime())) {
+          d.setMonth(d.getMonth() + promoMonths);
+          baseResumeDate = d;
+        }
+      }
+    }
+
+    const pricing = {
+      abonnementId: 0,
+      baseOnboarding: montantOnboarding, effOnboarding,
+      baseMensuel, effMensuel,
+      promoMens, promoOb, promoMonths, baseResumeDate,
+      hasPromo: !!(promoMens || promoOb),
+      formuleActivites: formule,
+      nbAcheteurs,
+      palierAcheteurs: palierAcheteurs(nbAcheteurs),
+    };
+    const docu = await buildContratDocument({
+      abonnementId: 0,
+      client: { nom: nom || 'Client', email, telephone },
+      config: { nbActivites: nA, nbLabos, nbGerants, formuleActivites: formule },
+      pricing,
+      // Aperçu wizard : ne jamais bloquer la création de client sur le garde placeholders
+      strict: false,
+    });
+    res.json({ pdfBase64: docu.base64 });
+  } catch (err) {
+    console.error('[contrat-preview]', err.message);
+    // 422 (jamais 500) : l'intercepteur front redirige toute 500 vers /error/500,
+    // ce qui détruirait le wizard et la saisie de l'admin — ici l'échec doit rester
+    // inline (pdfError) et ne pas empêcher la création (repli backend).
+    res.status(422).json({ message: 'Erreur lors de la génération du contrat' });
+  }
+};
+
 module.exports = {
-  getContratActif,
+  getContratActif, getClientContratPdf, previewContratPdf,
   getTarifs, updateTarif,
   computeEffectivePricing, computeAvenantPricing,
   listAbonnements, getAbonnement, createAbonnement,

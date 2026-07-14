@@ -52,8 +52,16 @@ const promoDetailOf = (p) => {
   return parts.join('  ·  ');
 };
 
-const generate = async (builder, data) => {
-  checkPrestatairePlaceholders(); // warn — ou throw si FACTURE_STRICT=1
+// strict=true (défaut, flux SIGNATURE) : le garde placeholders peut throw en prod.
+// strict=false (aperçu wizard / téléchargement admin) : on dégrade en warn — un
+// aperçu avec identité placeholder vaut mieux qu'un échec de génération.
+const generate = async (builder, data, { strict = true } = {}) => {
+  try {
+    checkPrestatairePlaceholders(); // warn — ou throw si FACTURE_STRICT=1 / prod
+  } catch (e) {
+    if (strict) throw e;
+    console.warn('[contrat] identité prestataire placeholder (mode non strict):', e.message);
+  }
   const buffer = await builder(null, { ...data, previewMode: false }); // outPath null → Buffer
   return buffer.toString('base64');
 };
@@ -102,13 +110,16 @@ const avenantExtraFields = ({ ajouts = {}, abonnementId = null, abonnementDate =
  * `config` = { nbActivites, nbLabos, nbGerants } ; `montantOnboarding` = repli si
  * le pricing ne porte pas d'onboarding.
  */
-const buildContratDocument = async ({ abonnementId, client, config = {}, pricing, montantOnboarding = null }) => {
+// abonnementDate / dateContrat : pour RÉGÉNÉRER un contrat existant à l'identique
+// (réf avec l'année d'ORIGINE — celle que visent les avenants — et date d'origine),
+// pas la date/année du jour de régénération. Absents = comportement création (now).
+const buildContratDocument = async ({ abonnementId, client, config = {}, pricing, montantOnboarding = null, strict = true, abonnementDate = null, dateContrat = null }) => {
   if (!pricing) throw new Error('détail tarifaire indisponible pour le contrat');
-  const ref = refFor('CTR', abonnementId);
+  const ref = refFor('CTR', abonnementId, abonnementDate || undefined);
   const onboarding = pricing.effOnboarding ?? montantOnboarding;
   const base64 = await generate(buildContrat, {
     ref,
-    date: fmtDateFr(),
+    date: fmtDateFr(dateContrat || undefined),
     client: clientBlock(client),
     config: {
       activites: config.nbActivites ?? 1,
@@ -125,7 +136,7 @@ const buildContratDocument = async ({ abonnementId, client, config = {}, pricing
       mensuelBase: fmtDT(pricing.baseMensuel),
       promoDetail: promoDetailOf(pricing) || undefined,
     },
-  });
+  }, { strict });
   return { base64, ref, documentName: `Contrat d'abonnement LabFlow — ${ref}` };
 };
 
