@@ -58,21 +58,22 @@ const generate = async (builder, data) => {
   return buffer.toString('base64');
 };
 
-// « +1 activité   ·   +2 comptes gérants » — partagé entre le PDF rempli et les
-// champs du flux template (avenantExtraFields).
+// « +1 activité   ·   +2 comptes gérants   ·   Option Acheteurs → palier 20 » —
+// partagé entre le PDF rempli et les champs du flux template (avenantExtraFields).
 const ajoutTextOf = (ajouts = {}) => {
   const plur = (n, sing, plu) => `+${n} ${n > 1 ? plu : sing}`;
   const parts = [];
   if (ajouts.addActivites) parts.push(plur(ajouts.addActivites, 'activité', 'activités'));
   if (ajouts.addLabos) parts.push(plur(ajouts.addLabos, 'laboratoire', 'laboratoires'));
   if (ajouts.addGerants) parts.push(plur(ajouts.addGerants, 'compte gérant', 'comptes gérants'));
+  if (ajouts.setAcheteurs) parts.push(`Option Acheteurs → palier jusqu'à ${ajouts.setAcheteurs}`);
   return parts.join('   ·   ');
 };
 
 // Champs additionnels de l'avenant pour le flux TEMPLATE Docuseal (« Capacité
-// ajoutée », « Contrat initial »). Sans risque : createSubmission retire de
-// lui-même les champs absents du template (retry 422).
-const avenantExtraFields = ({ ajouts = {}, abonnementId = null, abonnementDate = null } = {}) => {
+// ajoutée », « Contrat initial », « Formule », « Option Acheteurs »). Sans risque :
+// createSubmission retire de lui-même les champs absents du template (retry 422).
+const avenantExtraFields = ({ ajouts = {}, abonnementId = null, abonnementDate = null, pricing = null } = {}) => {
   const fields = [];
   const ajout = ajoutTextOf(ajouts);
   if (ajout) fields.push({ name: 'Capacité ajoutée', default_value: ajout });
@@ -81,6 +82,17 @@ const avenantExtraFields = ({ ajouts = {}, abonnementId = null, abonnementDate =
       name: 'Contrat initial',
       default_value: `${refFor('CTR', abonnementId, abonnementDate)} du ${fmtDateFr(abonnementDate)}`,
     });
+  }
+  if (pricing) {
+    if (pricing.nbActivites >= 1 && pricing.formuleActivites) {
+      fields.push({
+        name: 'Formule',
+        default_value: pricing.formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium',
+      });
+    }
+    if (pricing.palierAcheteurs) {
+      fields.push({ name: 'Option Acheteurs', default_value: `Palier jusqu'à ${pricing.palierAcheteurs} acheteurs` });
+    }
   }
   return fields;
 };

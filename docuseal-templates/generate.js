@@ -376,18 +376,21 @@ function partiesBlock(ctx, y, client, opts = {}) {
 }
 
 // ── Tableau ressource / quantité ──────────────────────────────────────────────
+// Chaque ligne : [label, qty, slotW?] — slotW élargit la case du mode template
+// pour les valeurs textuelles (« Activité Premium », « Palier jusqu'à 100 acheteurs »).
 function configTable(ctx, y, rows, qtyHeader = 'Quantité souscrite') {
   const { fill, hline, txt, slot } = ctx;
   fill(ML, y, CW, 22, C.indigoSoft); hline(y, '#dfe3ff'); hline(y + 22, '#dfe3ff');
   txt('Ressource', ML + 10, y + 7, 7, true, C.indigo, { characterSpacing: 0.5 });
   txt(qtyHeader, ML, y + 7, 7, true, C.indigo, { align: 'right', width: CW - 10, characterSpacing: 0.5 });
   y += 22;
-  rows.forEach(([label, qty], i) => {
+  rows.forEach(([label, qty, slotW], i) => {
     fill(ML, y, CW, 24, i % 2 === 0 ? '#fcfcff' : C.white);
     hline(y + 24, C.hairSoft);
     txt(label, ML + 10, y + 8, 9, false, C.ink);
     if (ctx.templateMode) {
-      slot(RX - 12 - 64, y + 5, 64, 14);   // champs « Nb activités / Nb labos / Nb gérants »
+      const w = slotW || 64;
+      slot(RX - 12 - w, y + 5, w, 14);   // champs « Nb activités / Nb labos / Nb gérants / Formule / Option Acheteurs »
     } else {
       txt(String(qty), ML, y + 7, 10, true, C.indigo, { align: 'right', width: CW - 12 });
     }
@@ -632,15 +635,25 @@ async function buildContrat(outPath, data) {
 
   y = section(ctx, y, 'ARTICLE 2 — CONFIGURATION SOUSCRITE');
   {
-    // Formule + option Acheteurs : uniquement dans les PDF remplis au fil de l'eau
-    // (le template DocuSeal Community garde ses champs d'origine — cf CHAMPS.md)
-    const configRows = [
-      ['Points de vente (activités)', data.config.activites],
-      ['Laboratoires de production', data.config.labos],
-      ['Comptes gérants', data.config.gerants],
-    ];
-    if (!ctx.templateMode && data.config.formule) configRows.splice(1, 0, ["Formule d'activités", data.config.formule]);
-    if (!ctx.templateMode && data.config.acheteurs) configRows.push(['Option Acheteurs', data.config.acheteurs]);
+    // Formule + option Acheteurs : lignes présentes dans les PDF remplis (si valeurs)
+    // ET dans le fond de template (cases pour les champs « Formule » / « Option
+    // Acheteurs » — cf CHAMPS.md ; champs optionnels, vides si non concernés).
+    const configRows = ctx.templateMode ? [
+      ['Points de vente (activités)', ''],
+      ["Formule d'activités", '', 150],
+      ['Laboratoires de production', ''],
+      ['Comptes gérants', ''],
+      ['Option Acheteurs', '', 170],
+    ] : (() => {
+      const rows = [
+        ['Points de vente (activités)', data.config.activites],
+        ['Laboratoires de production', data.config.labos],
+        ['Comptes gérants', data.config.gerants],
+      ];
+      if (data.config.formule) rows.splice(1, 0, ["Formule d'activités", data.config.formule]);
+      if (data.config.acheteurs) rows.push(['Option Acheteurs', data.config.acheteurs]);
+      return rows;
+    })();
     y = configTable(ctx, y, configRows);
   }
 
@@ -715,13 +728,23 @@ async function buildAvenant(outPath, data) {
 
   y = section(ctx, y, 'ARTICLE 2 — NOUVELLE CONFIGURATION');
   {
-    const configRows = [
-      ['Points de vente (activités)', data.config.activites],
-      ['Laboratoires de production', data.config.labos],
-      ['Comptes gérants', data.config.gerants],
-    ];
-    if (!ctx.templateMode && data.config.formule) configRows.splice(1, 0, ["Formule d'activités", data.config.formule]);
-    if (!ctx.templateMode && data.config.acheteurs) configRows.push(['Option Acheteurs', data.config.acheteurs]);
+    // Mêmes lignes Formule / Option Acheteurs que le contrat (champs optionnels du template)
+    const configRows = ctx.templateMode ? [
+      ['Points de vente (activités)', ''],
+      ["Formule d'activités", '', 150],
+      ['Laboratoires de production', ''],
+      ['Comptes gérants', ''],
+      ['Option Acheteurs', '', 170],
+    ] : (() => {
+      const rows = [
+        ['Points de vente (activités)', data.config.activites],
+        ['Laboratoires de production', data.config.labos],
+        ['Comptes gérants', data.config.gerants],
+      ];
+      if (data.config.formule) rows.splice(1, 0, ["Formule d'activités", data.config.formule]);
+      if (data.config.acheteurs) rows.push(['Option Acheteurs', data.config.acheteurs]);
+      return rows;
+    })();
     y = configTable(ctx, y, configRows, 'Nouvelle quantité');
   }
 
