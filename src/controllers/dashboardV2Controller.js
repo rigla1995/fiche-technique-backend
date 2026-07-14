@@ -50,9 +50,14 @@ const deltaPct = (cur, prev) => (prev > 0 ? Math.round(((cur - prev) / prev) * 1
 // ── Périmètre : activités et labos du compte, restreints (gérant) puis filtrés ──
 const resolveContext = async (req) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
-  const pe = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [clientId]);
+  const pe = await pool.query(
+    'SELECT id, module_vente_actif, module_acheteurs_actif FROM profil_entreprise WHERE client_id = $1',
+    [clientId]
+  );
   if (pe.rows.length === 0) return null;
   const entrepriseId = pe.rows[0].id;
+  const moduleVente = !!pe.rows[0].module_vente_actif;
+  const moduleAcheteurs = !!pe.rows[0].module_acheteurs_actif;
   const [acts, labs] = await Promise.all([
     pool.query('SELECT id FROM activites WHERE entreprise_id = $1', [entrepriseId]),
     pool.query('SELECT id FROM labos WHERE entreprise_id = $1', [entrepriseId]),
@@ -69,7 +74,7 @@ const resolveContext = async (req) => {
   if (fActs.length) actIds = actIds.filter((id) => fActs.includes(id));
   const fLabos = parseIntList(req.query.labos);
   if (fLabos.length) laboIds = laboIds.filter((id) => fLabos.includes(id));
-  return { clientId, entrepriseId, actIds, laboIds };
+  return { clientId, entrepriseId, actIds, laboIds, moduleVente, moduleAcheteurs };
 };
 
 // ── Expressions partagées des requêtes ventes ────────────────────────────────
@@ -292,9 +297,30 @@ const tabOverview = async (req, ctx, from, to) => {
       ? pool.query(`SELECT MAX(date_inventaire) AS last FROM inventaires WHERE activite_id = ANY($1::int[])`, [ctx.actIds])
       : { rows: [{ last: null }] },
   ]);
+  // Module Acheteurs actif : le CA B2B facturé (période) rejoint la vue d'ensemble.
+  // Champ ABSENT quand le module est inactif — le front s'en sert pour masquer la carte.
+  let ventesAcheteurs = null;
+  if (ctx.moduleAcheteurs && ctx.laboIds.length) {
+    const va = await pool.query(
+      `SELECT COALESCE(SUM(fa.montant_ttc), 0) AS ca, COUNT(*) AS nb
+       FROM factures_acheteur fa
+       JOIN commandes_acheteur cac ON cac.id = fa.commande_id
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
+         AND fa.date_facture >= $2 AND fa.date_facture <= $3`,
+      [ctx.laboIds, from, to]
+    );
+    ventesAcheteurs = { ca: r3(num(va.rows[0].ca)), nb: parseInt(va.rows[0].nb, 10) || 0 };
+  } else if (ctx.moduleAcheteurs) {
+    ventesAcheteurs = { ca: 0, nb: 0 };
+  }
+
   const last = invRes.rows[0].last;
   return {
-    kpis: { ...kpis, valeur_stock: stock.valeur },
+    kpis: {
+      ...kpis,
+      valeur_stock: stock.valeur,
+      ...(ventesAcheteurs ? { ventes_acheteurs: ventesAcheteurs.ca, nb_ventes_acheteurs: ventesAcheteurs.nb } : {}),
+    },
     alertes: {
       stock_bas: stock.alertes.length,
       food_cost_eleve: parseInt(fcRes.rows[0].cnt, 10) || 0,
@@ -686,6 +712,125 @@ const tabLabo = async (req, ctx, from, to) => {
   };
 };
 
+// ── Onglet Acheteurs (B2B) — visible seulement quand le module est actif ──────
+// Conventions du module : flux = statut IN ('expediee','livree') ; le CA facturé
+// est ancré sur fa.date_facture (comme le KPI de l'onglet Labo), les lignes et
+// commandes sur COALESCE(date_expedition, date_commande). Lectures snapshot-aware
+// (acheteur supprimé → colonnes fa.acheteur_* + suffixe « (supprimé) »).
+const tabAcheteurs = async (req, ctx, from, to) => {
+  if (!ctx.moduleAcheteurs) return { vide: true };
+  const grain = resolveGrain(from, to);
+  const laboIds = ctx.laboIds.length ? ctx.laboIds : [-1];
+  const prev = previousPeriode(from, to);
+
+  const FACT_FROM = `
+    FROM factures_acheteur fa
+    JOIN commandes_acheteur cac ON cac.id = fa.commande_id
+    WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
+      AND fa.date_facture >= $2 AND fa.date_facture <= $3`;
+
+  const [aggRes, prevRes, evoRes, topAchRes, topArtRes, statutsRes, attenteRes, carnetRes] = await Promise.all([
+    pool.query(
+      `SELECT COALESCE(SUM(fa.montant_ttc), 0) AS ttc,
+              COALESCE(SUM(fa.montant_ht), 0) AS ht,
+              COALESCE(SUM(fa.montant_tva), 0) AS tva,
+              COALESCE(SUM(CASE WHEN fa.timbre_fiscal THEN COALESCE(fa.montant_timbre, 0) ELSE 0 END), 0) AS timbre,
+              COUNT(*) AS nb,
+              COUNT(DISTINCT COALESCE(fa.acheteur_id::text,
+                'supprime:' || COALESCE(fa.acheteur_nom, '') || '|' || COALESCE(fa.acheteur_entreprise, ''))) AS nb_acheteurs
+       ${FACT_FROM}`,
+      [laboIds, from, to]
+    ),
+    pool.query(
+      `SELECT COALESCE(SUM(fa.montant_ttc), 0) AS ttc, COUNT(*) AS nb ${FACT_FROM}`,
+      [laboIds, prev.from, prev.to]
+    ),
+    pool.query(
+      `SELECT to_char(date_trunc('${grain}', fa.date_facture), 'YYYY-MM-DD') AS bucket,
+              COALESCE(SUM(fa.montant_ttc), 0) AS valeur
+       ${FACT_FROM} GROUP BY 1 ORDER BY 1`,
+      [laboIds, from, to]
+    ),
+    // GROUP BY acheteur_id + libellé : deux acheteurs VIVANTS homonymes (même
+    // entreprise) restent des lignes distinctes ; les supprimés (id NULL) ne
+    // fusionnent qu'à identité snapshot identique — le mieux faisable post-suppression.
+    pool.query(
+      `SELECT CASE WHEN ach.id IS NULL
+                   THEN COALESCE(NULLIF(fa.acheteur_entreprise, ''), fa.acheteur_nom, '—') || ' (supprimé)'
+                   ELSE COALESCE(NULLIF(ach.entreprise, ''), ach.nom) END AS acheteur,
+              COALESCE(SUM(fa.montant_ttc), 0) AS valeur, COUNT(*) AS nb
+       FROM factures_acheteur fa
+       JOIN commandes_acheteur cac ON cac.id = fa.commande_id
+       LEFT JOIN acheteurs ach ON ach.id = fa.acheteur_id
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
+         AND fa.date_facture >= $2 AND fa.date_facture <= $3
+       GROUP BY fa.acheteur_id, 1 ORDER BY valeur DESC LIMIT 10`,
+      [laboIds, from, to]
+    ),
+    // Même ancrage que le CA (fa.date_facture) — un seul axe temporel pour tout
+    // l'onglet, sinon les widgets se contredisent (vente antidatée : lignes sur
+    // une période, CA sur une autre). qte en UNITÉS physiques (quantite_unites —
+    // les anciennes lignes « lot » portent le nb de lots dans quantite, migr 160) ;
+    // groupement par (type, id) : deux articles homonymes ne fusionnent pas.
+    pool.query(
+      `SELECT cal.designation AS nom, COALESCE(SUM(cal.quantite_unites), 0) AS qte,
+              COALESCE(SUM(cal.prix_ttc * cal.quantite), 0) AS valeur
+       FROM commande_acheteur_lignes cal
+       JOIN commandes_acheteur cac ON cac.id = cal.commande_id
+       JOIN factures_acheteur fa ON fa.commande_id = cac.id
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
+         AND fa.date_facture >= $2 AND fa.date_facture <= $3
+       GROUP BY cal.article_type, cal.article_id, cal.designation
+       ORDER BY valeur DESC LIMIT 10`,
+      [laboIds, from, to]
+    ),
+    // Commandes de la période par état — expédiées/livrées ancrées sur la date de
+    // FACTURE (même axe que le CA) ; en_attente/annulées (pas de facture, labo
+    // souvent NULL) sur la date de commande, scoping par client.
+    pool.query(
+      `SELECT cac.statut, COUNT(*) AS nb
+       FROM commandes_acheteur cac
+       LEFT JOIN factures_acheteur fa ON fa.commande_id = cac.id
+       WHERE cac.client_id = $4 AND (cac.labo_id IS NULL OR cac.labo_id = ANY($1::int[]))
+         AND COALESCE(fa.date_facture, cac.date_commande) >= $2
+         AND COALESCE(fa.date_facture, cac.date_commande) <= $3
+       GROUP BY 1`,
+      [laboIds, from, to, ctx.clientId]
+    ),
+    pool.query(
+      `SELECT COUNT(*) AS nb FROM commandes_acheteur WHERE client_id = $1 AND statut = 'en_attente'`,
+      [ctx.clientId]
+    ),
+    pool.query(
+      `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE actif) AS actifs FROM acheteurs WHERE client_id = $1`,
+      [ctx.clientId]
+    ),
+  ]);
+
+  const agg = aggRes.rows[0];
+  const caCur = num(agg.ttc);
+  const caPrev = num(prevRes.rows[0].ttc);
+  return {
+    kpis: {
+      ca: r3(caCur),
+      nb_factures: parseInt(agg.nb, 10) || 0,
+      total_ht: r3(num(agg.ht)),
+      total_tva: r3(num(agg.tva)),
+      total_timbre: r3(num(agg.timbre)),
+      acheteurs_factures: parseInt(agg.nb_acheteurs, 10) || 0,
+      commandes_en_attente: parseInt(attenteRes.rows[0].nb, 10) || 0,
+      carnet_total: parseInt(carnetRes.rows[0].total, 10) || 0,
+      carnet_actifs: parseInt(carnetRes.rows[0].actifs, 10) || 0,
+      deltas: { ca: deltaPct(caCur, caPrev) },
+    },
+    grain,
+    evolution: evoRes.rows.map((r) => ({ bucket: r.bucket, valeur: r3(num(r.valeur)) })),
+    top_acheteurs: topAchRes.rows.map((r) => ({ acheteur: r.acheteur, valeur: r3(num(r.valeur)), nb: parseInt(r.nb, 10) || 0 })),
+    top_articles: topArtRes.rows.map((r) => ({ nom: r.nom, qte: r3(num(r.qte)), valeur: r3(num(r.valeur)) })),
+    par_statut: statutsRes.rows.map((r) => ({ statut: r.statut, nb: parseInt(r.nb, 10) || 0 })),
+  };
+};
+
 // Options des filtres (listes déroulantes) — dérivées des données du compte.
 const tabFiltres = async (req, ctx) => {
   const [acts, labs, prests, catsP, catsA, fams, fourn] = await Promise.all([
@@ -724,6 +869,13 @@ const tabFiltres = async (req, ctx) => {
         )
       : { rows: [] },
   ]);
+  // Formule d'activités du compte (basique | premium | null si compte dépôt)
+  const formuleRes = await pool.query(
+    `SELECT ac.formule_activites FROM abonnement_config ac
+     JOIN abonnements a ON a.id = ac.abonnement_id
+     WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
+    [ctx.clientId]
+  );
   return {
     activites: acts.rows,
     labos: labs.rows,
@@ -733,13 +885,18 @@ const tabFiltres = async (req, ctx) => {
     familles: fams.rows,
     fournisseurs: fourn.rows,
     role: req.user.role,
+    // Métadonnées de config — le front en dérive les onglets visibles.
+    modules: { vente: ctx.moduleVente, acheteurs: ctx.moduleAcheteurs },
+    formule_activites: formuleRes.rows[0]?.formule_activites || null,
   };
 };
 
 const getDashboardV2 = async (req, res) => {
   try {
     const ctx = await resolveContext(req);
-    if (!ctx) return res.json({ vide: true });
+    // `tab` inclus même dans le cas vide : le front ne rend un onglet que si
+    // data.tab === tab (sans lui, il resterait sur « Chargement… » à l'infini).
+    if (!ctx) return res.json({ vide: true, tab: String(req.query.tab || 'overview') });
     const { from, to } = resolvePeriode(req.query.from, req.query.to);
     const tab = String(req.query.tab || 'overview');
 
@@ -750,6 +907,7 @@ const getDashboardV2 = async (req, res) => {
       case 'achats': data = await tabAchatsStock(req, ctx, from, to); break;
       case 'pertes': data = await tabPertes(req, ctx, from, to); break;
       case 'labo': data = await tabLabo(req, ctx, from, to); break;
+      case 'acheteurs': data = await tabAcheteurs(req, ctx, from, to); break;
       case 'filtres': data = await tabFiltres(req, ctx); break;
       default: return res.status(400).json({ message: `Onglet inconnu : ${tab}` });
     }
