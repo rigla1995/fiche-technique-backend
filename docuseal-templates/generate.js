@@ -305,7 +305,16 @@ function partiesBlock(ctx, y, client, opts = {}) {
 
   // Spécification des lignes de chaque colonne (w = donnée variable → wrap ;
   // slotH = case vide à recouvrir d'un champ Docuseal en mode template).
-  const presLines = [
+  // opts.emetteur = { nom, matricule?, adresse?, email?, tel? } substitue un émetteur
+  // arbitraire au PRESTATAIRE (ex. facture acheteur : émetteur = l'entreprise du client).
+  const em = opts.emetteur || null;
+  const presLines = em ? [
+    { t: labelPres, s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
+    { t: em.nom || 'Émetteur', s: 10, b: true, c: C.ink, w: true, gap: 4 },
+    em.matricule && { t: `Matricule fiscal : ${em.matricule}`, s: 7.5, c: C.muted, w: true, gap: 2 },
+    em.adresse && { t: em.adresse, s: 7.5, c: C.muted, w: true, gap: 2 },
+    (em.email || em.tel) && { t: [em.email, em.tel].filter(Boolean).join('  ·  '), s: 7.5, c: C.muted, w: true, gap: 0 },
+  ].filter(Boolean) : [
     { t: labelPres, s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
     { t: PRESTATAIRE.raisonSociale, s: 10, b: true, c: C.ink, w: true, gap: 4 },
     { t: `Matricule fiscal : ${PRESTATAIRE.matricule}`, s: 7.5, c: C.muted, w: true, gap: 2 },
@@ -572,15 +581,17 @@ function signatures(ctx, y, { client, date, previewMode = true }) {
   return y + h + 8 + noteH + 6;
 }
 
-// ── Footer (toutes les pages) — note personnalisable (contrats vs factures) ──
-function stampFooters(ctx, label, note = 'Document confidentiel — usage strictement contractuel') {
+// ── Footer (toutes les pages) — note et mention légale personnalisables ──
+// legalOverride : remplace la ligne légale PRESTATAIRE (ex. facture acheteur,
+// émise par l'entreprise du client et non par LabFlow).
+function stampFooters(ctx, label, note = 'Document confidentiel — usage strictement contractuel', legalOverride = null) {
   const { doc, txt, fitText, gradientRule } = ctx;
   const range = doc.bufferedPageRange();
   for (let i = range.start; i < range.start + range.count; i++) {
     doc.switchToPage(i);
     gradientRule(ML, PAGE.h - 38, CW, 1.5);
     // Mention légale sur UNE ligne (clippée) ; l'adresse complète est dans le bloc Parties.
-    const legal = fitText(`${PRESTATAIRE.raisonSociale}  ·  MF ${PRESTATAIRE.matricule}  ·  RC ${PRESTATAIRE.rc}`, 6.5, CW * 0.62);
+    const legal = fitText(legalOverride || `${PRESTATAIRE.raisonSociale}  ·  MF ${PRESTATAIRE.matricule}  ·  RC ${PRESTATAIRE.rc}`, 6.5, CW * 0.62);
     txt(legal, ML, PAGE.h - 30, 6.5, false, C.faint, { lineBreak: false });
     txt(`${label}  ·  Page ${i + 1}/${range.count}`, ML, PAGE.h - 30, 6.5, false, C.muted, { align: 'right', width: CW });
     txt(note, ML, PAGE.h - 20, 6.5, false, C.faint, { lineBreak: false });
@@ -927,6 +938,156 @@ async function buildFacture(outPath, data) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// 5) FACTURE DE VENTE ACHETEUR — même charte que la facture d'abonnement,
+//    mais émise par l'ENTREPRISE DU CLIENT (profil_entreprise) à un acheteur B2B.
+// ══════════════════════════════════════════════════════════════════════════════
+// data : { numero, dateFacture,
+//          vendeur:  { nom, adresse, tel, email },
+//          acheteur: { nom, entreprise, adresse, mf, tel, email },   // snapshot-aware
+//          lignes:   [{ designation, quantite, prixHt, tauxTva }],
+//          remisePct, montantHt, montantTva, timbreFiscal, montantTimbre,
+//          montantTtc, notes }
+// DÉTERMINISTE : CreationDate = date de facture (jamais l'horloge) → le PDF
+// re-téléchargé est identique au byte près, y compris après suppression de
+// l'acheteur (les données viennent alors du snapshot figé de la facture).
+async function buildFactureAcheteur(outPath, data) {
+  const dateStr = new Date(data.dateFacture || 0)
+    .toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const fmt = (n) => `${Number(n || 0).toFixed(3)} DT`;
+  const fmtQty = (n) => {
+    const x = Number(n || 0);
+    return Number.isInteger(x) ? String(x) : x.toFixed(3).replace(/\.?0+$/, '');
+  };
+  const vendeur = data.vendeur || {};
+  const ach = data.acheteur || {};
+  const ctx = makeCtx({
+    Title: `Facture ${data.numero}`,
+    Author: vendeur.nom || 'Vendeur',
+    Subject: 'Vente aux acheteurs professionnels',
+    CreationDate: data.dateFacture ? new Date(data.dateFacture) : new Date(0),
+  });
+  const { fill, hline, txt, doc, fitText } = ctx;
+  header(ctx, {
+    eyebrow: 'FACTURE',
+    title: 'Facture de vente',
+    subtitle: `${vendeur.nom || 'Vendeur'} — vente professionnelle, émise via la plateforme LabFlow`,
+    ref: data.numero, date: dateStr, dateLabel: 'Émise le',
+  });
+  let y = TOPY;
+
+  y = section(ctx, y, 'ÉMETTEUR ET CLIENT');
+  const achNom = ach.entreprise
+    ? [ach.entreprise, ach.nom].filter(Boolean).join(' — ')
+    : (ach.nom || 'Acheteur');
+  y = partiesBlock(ctx, y, {
+    nom: achNom,
+    mfrc: ach.mf ? `MF ${ach.mf}` : undefined,
+    email: ach.email || undefined,
+    tel: ach.tel || undefined,
+    adresse: ach.adresse || undefined,
+  }, {
+    labels: ['ÉMETTEUR', 'FACTURÉ À'], mention: false,
+    emetteur: { nom: vendeur.nom || 'Vendeur', adresse: vendeur.adresse, email: vendeur.email, tel: vendeur.tel },
+  });
+
+  // Tableau multi-lignes : Désignation | Qté | PU HT | TVA | Total HT
+  y = section(ctx, y, 'DÉTAIL');
+  const cQte = ML + 250, cPu = ML + 330, cTva = ML + 385, cTot = RX - 10;
+  const thead = () => {
+    fill(ML, y, CW, 22, C.indigoSoft); hline(y, '#dfe3ff'); hline(y + 22, '#dfe3ff');
+    txt('Désignation', ML + 10, y + 7, 7, true, C.indigo, { characterSpacing: 0.5 });
+    txt('Qté', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cQte - ML });
+    txt('PU HT', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cPu - ML });
+    txt('TVA', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cTva - ML });
+    txt('Total HT', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cTot - ML });
+    y += 22;
+  };
+  thead();
+  let brutHt = 0;
+  (data.lignes || []).forEach((l, i) => {
+    if (y + 24 > BOTTOM_LIMIT) { y = newPage(ctx); thead(); }
+    const totalLigne = Number(l.prixHt || 0) * Number(l.quantite || 0);
+    brutHt += totalLigne;
+    fill(ML, y, CW, 24, i % 2 === 0 ? '#fcfcff' : C.white); hline(y + 24, C.hairSoft);
+    txt(fitText(String(l.designation ?? ''), 8.5, cQte - ML - 65), ML + 10, y + 8, 8.5, false, C.ink);
+    txt(fmtQty(l.quantite), ML, y + 8, 8.5, false, C.body, { align: 'right', width: cQte - ML });
+    txt(fmt(l.prixHt), ML, y + 8, 8.5, false, C.body, { align: 'right', width: cPu - ML });
+    txt(`${Number(l.tauxTva || 0).toFixed(0)} %`, ML, y + 8, 8.5, false, C.body, { align: 'right', width: cTva - ML });
+    txt(fmt(totalLigne), ML, y + 8, 8.5, true, C.ink, { align: 'right', width: cTot - ML });
+    y += 24;
+  });
+  y += 12;
+
+  // Totaux — même langage visuel que la facture d'abonnement (bandes pleine largeur)
+  const totalRow = (label, value, opts = {}) => {
+    if (y + 26 > BOTTOM_LIMIT) y = newPage(ctx);
+    fill(ML, y, CW, 26, opts.bg || C.panel); hline(y, opts.line || C.hair); hline(y + 26, opts.line || C.hair);
+    txt(label, ML + 10, y + 9, 8.5, false, opts.color || C.body);
+    txt(value, ML, y + 8, 9.5, true, opts.valueColor || C.ink, { align: 'right', width: CW - 12 });
+    y += 26;
+  };
+  const remise = Number(data.remisePct || 0);
+  if (remise > 0) {
+    const remiseVal = brutHt - Number(data.montantHt || 0);
+    const remiseLabel = remise.toFixed(Number.isInteger(remise) ? 0 : 2);
+    totalRow('Total brut HT', fmt(brutHt));
+    totalRow(`Remise ${remiseLabel} %`, `− ${fmt(remiseVal)}`, { bg: C.dangerSoft, line: C.dangerLine, color: C.dangerText, valueColor: C.dangerText });
+    totalRow('Total HT net', fmt(data.montantHt));
+  } else {
+    totalRow('Total HT', fmt(data.montantHt));
+  }
+  totalRow('TVA', fmt(data.montantTva), { bg: C.panel2 });
+  if (data.timbreFiscal) totalRow('Timbre fiscal', fmt(data.montantTimbre), { bg: C.panel2 });
+
+  if (y + 48 > BOTTOM_LIMIT) y = newPage(ctx);
+  const th = 36;
+  fill(ML, y, CW, th, '#eef2ff'); hline(y, '#c7d2fe'); hline(y + th, C.indigo);
+  ctx.gradientRule(ML, y, 3, th);
+  txt('NET À PAYER', ML + 12, y + 12, 9.5, true, C.indigo, { characterSpacing: 0.6 });
+  txt(fmt(data.montantTtc), ML, y + 10, 13, true, C.indigo, { align: 'right', width: CW - 12 });
+  y += th + 12;
+
+  if (data.notes && String(data.notes).trim()) {
+    // Les notes de commande sont du texte libre NON borné : calloutBox n'a pas de
+    // garde de page. Court → panneau (avec garde de hauteur totale) ; long →
+    // découpage en blocs rendus par clauses(), qui pagine bloc par bloc.
+    const notesText = String(data.notes).trim();
+    const hNotes = ctx.measure(notesText, CW - 24, 8.5) + 22;
+    if (hNotes <= 300) {
+      if (y + 19 + hNotes > BOTTOM_LIMIT) y = newPage(ctx);
+      y = section(ctx, y, 'NOTES');
+      y = calloutBox(ctx, y, notesText, 'neutral');
+    } else {
+      y = section(ctx, y, 'NOTES');
+      const blocs = notesText.split(/\n+/).flatMap((p) => {
+        const out = [];
+        let rest = p.trim();
+        while (rest.length > 1200) {
+          let cut = rest.lastIndexOf(' ', 1200);
+          if (cut < 800) cut = 1200;
+          out.push(rest.slice(0, cut));
+          rest = rest.slice(cut).trimStart();
+        }
+        if (rest) out.push(rest);
+        return out;
+      });
+      y = clauses(ctx, y, blocs.map((b) => ({ title: '', body: b })));
+    }
+  }
+
+  // Mentions
+  if (y + 30 > BOTTOM_LIMIT) y = newPage(ctx);
+  doc.fontSize(7).font('Helvetica').fillColor(C.faint)
+     .text('Montants exprimés en dinars tunisiens (DT). Prix saisis hors taxes — TVA appliquée ligne à ligne sur le net après remise. Facture générée et émise électroniquement via la plateforme LabFlow, valable sans signature ni cachet.',
+       ML, y, { width: CW, lineGap: 2 });
+
+  stampFooters(ctx, `Facture ${data.numero}`,
+    'Facture de vente — émise électroniquement via la plateforme LabFlow',
+    [vendeur.nom || 'Vendeur', vendeur.adresse].filter(Boolean).join('  ·  '));
+  return finish(ctx, outPath);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Données d'exemple (APERÇU) + génération
 // ══════════════════════════════════════════════════════════════════════════════
 const SAMPLE = {
@@ -964,6 +1125,18 @@ const SAMPLE = {
     clientNom: 'Restaurant Le Carthage', clientEmail: 'gerant@lecarthage.tn',
     montantHt: 319.328, montantTva: 60.672, montantTtc: 380, tvaRate: 19,
   },
+  factureAcheteur: {
+    numero: 'FA-2026-0042', dateFacture: '2026-07-10',
+    vendeur: { nom: 'Restaurant Le Carthage', adresse: 'Rue de Marseille, 1000 Tunis', tel: '+216 22 345 678', email: 'gerant@lecarthage.tn' },
+    acheteur: { nom: 'Sami Trabelsi', entreprise: 'Épicerie du Lac', adresse: 'Les Berges du Lac, Tunis', mf: '1122334/C/M/000', tel: '+216 55 111 222', email: 'contact@epiceriedulac.tn' },
+    lignes: [
+      { designation: 'Farine pâtissière T45', quantite: 25, prixHt: 2.4, tauxTva: 7 },
+      { designation: 'Beurre doux plaquette 250 g', quantite: 40, prixHt: 5.85, tauxTva: 7 },
+      { designation: 'Tarte au citron meringuée (pièce)', quantite: 12, prixHt: 14.5, tauxTva: 19 },
+    ],
+    remisePct: 5, montantHt: 442.65, montantTva: 55.353, timbreFiscal: true, montantTimbre: 1,
+    montantTtc: 499.003, notes: 'Livraison chaque mardi avant 9h — bon de commande n° BC-118.',
+  },
 };
 
 // CLI uniquement — ce module est aussi requis par le backend (contractPdfService)
@@ -995,12 +1168,14 @@ if (require.main === module) {
     await buildAvenant(path.join(dir, 'avenant-labflow.pdf'), SAMPLE.avenant);
     await buildResiliation(path.join(dir, 'resiliation-labflow.pdf'), SAMPLE.resiliation);
     await buildFacture(path.join(dir, 'facture-labflow.pdf'), SAMPLE.facture);
+    await buildFactureAcheteur(path.join(dir, 'facture-acheteur-labflow.pdf'), SAMPLE.factureAcheteur);
     console.log('✅ Documents générés (aperçu avec valeurs d\'exemple) :');
     console.log('   -', path.join(dir, 'contrat-labflow.pdf'));
     console.log('   -', path.join(dir, 'avenant-labflow.pdf'));
     console.log('   -', path.join(dir, 'resiliation-labflow.pdf'));
     console.log('   -', path.join(dir, 'facture-labflow.pdf'));
+    console.log('   -', path.join(dir, 'facture-acheteur-labflow.pdf'));
   })();
 }
 
-module.exports = { buildContrat, buildAvenant, buildResiliation, buildFacture, checkPrestatairePlaceholders, PRESTATAIRE };
+module.exports = { buildContrat, buildAvenant, buildResiliation, buildFacture, buildFactureAcheteur, checkPrestatairePlaceholders, PRESTATAIRE };
