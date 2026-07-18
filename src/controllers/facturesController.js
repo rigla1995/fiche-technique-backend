@@ -185,4 +185,69 @@ const getLignes = async (req, res) => {
   }
 };
 
-module.exports = { list, getLignes };
+/**
+ * GET /api/factures/:id/pdf — facture d'approvisionnement en PDF, à la même
+ * charte que les factures acheteurs (émetteur = fournisseur, facturé à =
+ * l'entreprise du client, lignes de stock rattachées par facture_id).
+ */
+const downloadPdf = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  const { id } = req.params;
+
+  try {
+    const f = await pool.query(
+      `SELECT f.*,
+              fo.nom AS fournisseur_nom, fo.adresse AS fournisseur_adresse, fo.telephone AS fournisseur_tel,
+              a.nom AS activite_nom, l.nom AS labo_nom,
+              pe.nom AS entreprise_nom, pe.adresse AS entreprise_adresse,
+              pe.telephone AS entreprise_tel, pe.email AS entreprise_email
+       FROM factures f
+       LEFT JOIN fournisseurs fo ON fo.id = f.fournisseur_id
+       LEFT JOIN activites a ON a.id = f.activite_id
+       LEFT JOIN labos l ON l.id = f.labo_id
+       LEFT JOIN profil_entreprise pe ON pe.client_id = f.client_id
+       WHERE f.id = $1 AND f.client_id = $2`,
+      [id, clientId]
+    );
+    if (f.rows.length === 0) return res.status(404).json({ message: 'Facture introuvable' });
+    const facture = f.rows[0];
+
+    // Lignes de stock rattachées (mêmes requêtes que getLignes)
+    let lignes = [];
+    if (facture.activite_id) {
+      const r = await pool.query(
+        `SELECT sed.quantite, sed.prix_unitaire, sed.taux_tva, i.nom AS ingredient_nom, u.nom AS unite_nom
+         FROM stock_entreprise_daily sed
+         JOIN articles i ON i.id = sed.ingredient_id
+         JOIN unites u ON u.id = i.unite_id
+         WHERE sed.facture_id = $1
+         ORDER BY sed.date_appro, i.nom`,
+        [id]
+      );
+      lignes = r.rows;
+    } else if (facture.labo_id) {
+      const r = await pool.query(
+        `SELECT sld.quantite, sld.prix_unitaire, sld.taux_tva, i.nom AS ingredient_nom, u.nom AS unite_nom
+         FROM stock_labo_daily sld
+         JOIN articles i ON i.id = sld.ingredient_id
+         JOIN unites u ON u.id = i.unite_id
+         WHERE sld.facture_id = $1
+         ORDER BY sld.date_appro, i.nom`,
+        [id]
+      );
+      lignes = r.rows;
+    }
+
+    const { buildFactureApproPdf } = require('../services/factureApproPdf');
+    const buffer = await buildFactureApproPdf(facture, lignes);
+    const safeRef = String(facture.ref_facture || facture.id).replace(/[^a-zA-Z0-9À-ÿ_-]/g, '-');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Facture-${safeRef}.pdf"`);
+    res.send(buffer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur lors de la génération de la facture' });
+  }
+};
+
+module.exports = { list, getLignes, downloadPdf };
