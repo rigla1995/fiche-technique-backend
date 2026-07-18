@@ -1088,6 +1088,121 @@ async function buildFactureAcheteur(outPath, data) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// FACTURE D'APPROVISIONNEMENT (récapitulatif d'un appro fournisseur — pages
+// « Factures » activités et labo). Même charte que la facture acheteur :
+// émetteur = le FOURNISSEUR, facturé à = l'entreprise du client.
+// data : { refFacture, dateFacture, contexte, typeSource,
+//          fournisseur:{nom,adresse,tel}, entreprise:{nom,adresse,tel,email},
+//          lignes:[{designation,unite,quantite,prixHt,tauxTva}],
+//          montantHt, montantTva, montantTtc, notes }
+// ══════════════════════════════════════════════════════════════════════════════
+async function buildFactureAppro(outPath, data) {
+  const dateStr = data.dateFacture
+    ? new Date(data.dateFacture).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '—';
+  const fmt = (n) => `${Number(n || 0).toFixed(3)} DT`;
+  const fmtQty = (n) => {
+    const x = Number(n || 0);
+    return Number.isInteger(x) ? String(x) : x.toFixed(3).replace(/\.?0+$/, '');
+  };
+  const fo = data.fournisseur || {};
+  const ent = data.entreprise || {};
+  const ctx = makeCtx({
+    Title: `Facture ${data.refFacture}`,
+    Author: fo.nom || 'Fournisseur',
+    Subject: "Facture d'approvisionnement",
+    CreationDate: data.dateFacture ? new Date(data.dateFacture) : new Date(0),
+  });
+  const { fill, hline, txt, doc, fitText } = ctx;
+  const sousTitre = [
+    data.typeSource === 'transfert' ? 'Transfert labo → activité' : `Approvisionnement fournisseur — ${fo.nom || 'fournisseur'}`,
+    data.contexte,
+  ].filter(Boolean).join('  ·  ');
+  header(ctx, {
+    eyebrow: 'FACTURE D\'APPROVISIONNEMENT',
+    title: 'Facture d\'approvisionnement',
+    subtitle: sousTitre,
+    ref: data.refFacture, date: dateStr, dateLabel: 'Datée du',
+  });
+  let y = TOPY;
+
+  y = section(ctx, y, 'FOURNISSEUR ET CLIENT');
+  y = partiesBlock(ctx, y, {
+    nom: ent.nom || 'Entreprise',
+    email: ent.email || undefined,
+    tel: ent.tel || undefined,
+    adresse: ent.adresse || undefined,
+  }, {
+    labels: ['FOURNISSEUR', 'FACTURÉ À'], mention: false,
+    emetteur: { nom: fo.nom || 'Fournisseur', adresse: fo.adresse, tel: fo.tel },
+  });
+
+  // Tableau des lignes : Désignation | Qté | PU HT | TVA | Total HT
+  y = section(ctx, y, 'DÉTAIL DES LIGNES');
+  const cQte = ML + 250, cPu = ML + 330, cTva = ML + 385, cTot = RX - 10;
+  const thead = () => {
+    fill(ML, y, CW, 22, C.indigoSoft); hline(y, '#dfe3ff'); hline(y + 22, '#dfe3ff');
+    txt('Désignation', ML + 10, y + 7, 7, true, C.indigo, { characterSpacing: 0.5 });
+    txt('Qté', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cQte - ML });
+    txt('PU HT', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cPu - ML });
+    txt('TVA', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cTva - ML });
+    txt('Total HT', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cTot - ML });
+    y += 22;
+  };
+  thead();
+  (data.lignes || []).forEach((l, i) => {
+    if (y + 24 > BOTTOM_LIMIT) { y = newPage(ctx); thead(); }
+    const totalLigne = Number(l.prixHt || 0) * Number(l.quantite || 0);
+    fill(ML, y, CW, 24, i % 2 === 0 ? '#fcfcff' : C.white); hline(y + 24, C.hairSoft);
+    txt(fitText(String(l.designation ?? ''), 8.5, cQte - ML - 65), ML + 10, y + 8, 8.5, false, C.ink);
+    txt(`${fmtQty(l.quantite)}${l.unite ? ` ${l.unite}` : ''}`, ML, y + 8, 8.5, false, C.body, { align: 'right', width: cQte - ML });
+    txt(fmt(l.prixHt), ML, y + 8, 8.5, false, C.body, { align: 'right', width: cPu - ML });
+    txt(`${Number(l.tauxTva || 0).toFixed(0)} %`, ML, y + 8, 8.5, false, C.body, { align: 'right', width: cTva - ML });
+    txt(fmt(totalLigne), ML, y + 8, 8.5, true, C.ink, { align: 'right', width: cTot - ML });
+    y += 24;
+  });
+  y += 12;
+
+  // Totaux — bandes pleine largeur, même langage visuel que les autres factures
+  const totalRow = (label, value, opts = {}) => {
+    if (y + 26 > BOTTOM_LIMIT) y = newPage(ctx);
+    fill(ML, y, CW, 26, opts.bg || C.panel); hline(y, opts.line || C.hair); hline(y + 26, opts.line || C.hair);
+    txt(label, ML + 10, y + 9, 8.5, false, opts.color || C.body);
+    txt(value, ML, y + 8, 9.5, true, opts.valueColor || C.ink, { align: 'right', width: CW - 12 });
+    y += 26;
+  };
+  totalRow('Total HT', fmt(data.montantHt));
+  totalRow('TVA', fmt(data.montantTva), { bg: C.panel2 });
+
+  if (y + 48 > BOTTOM_LIMIT) y = newPage(ctx);
+  const th = 36;
+  fill(ML, y, CW, th, '#eef2ff'); hline(y, '#c7d2fe'); hline(y + th, C.indigo);
+  ctx.gradientRule(ML, y, 3, th);
+  txt('TOTAL TTC', ML + 12, y + 12, 9.5, true, C.indigo, { characterSpacing: 0.6 });
+  txt(fmt(data.montantTtc), ML, y + 10, 13, true, C.indigo, { align: 'right', width: CW - 12 });
+  y += th + 12;
+
+  if (data.notes && String(data.notes).trim()) {
+    const notesText = String(data.notes).trim();
+    const hNotes = ctx.measure(notesText, CW - 24, 8.5) + 22;
+    if (y + 19 + hNotes > BOTTOM_LIMIT) y = newPage(ctx);
+    y = section(ctx, y, 'NOTES');
+    y = calloutBox(ctx, y, notesText, 'neutral');
+  }
+
+  // Mentions
+  if (y + 30 > BOTTOM_LIMIT) y = newPage(ctx);
+  doc.fontSize(7).font('Helvetica').fillColor(C.faint)
+     .text('Montants exprimés en dinars tunisiens (DT), prix saisis hors taxes. Récapitulatif d\'approvisionnement généré électroniquement via la plateforme LabFlow à partir des lignes de stock saisies — il ne remplace pas la facture originale du fournisseur.',
+       ML, y, { width: CW, lineGap: 2 });
+
+  stampFooters(ctx, `Facture ${data.refFacture}`,
+    'Facture d\'approvisionnement — générée via la plateforme LabFlow',
+    [fo.nom || 'Fournisseur', fo.adresse].filter(Boolean).join('  ·  '));
+  return finish(ctx, outPath);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Données d'exemple (APERÇU) + génération
 // ══════════════════════════════════════════════════════════════════════════════
 const SAMPLE = {
@@ -1178,4 +1293,4 @@ if (require.main === module) {
   })();
 }
 
-module.exports = { buildContrat, buildAvenant, buildResiliation, buildFacture, buildFactureAcheteur, checkPrestatairePlaceholders, PRESTATAIRE };
+module.exports = { buildContrat, buildAvenant, buildResiliation, buildFacture, buildFactureAcheteur, buildFactureAppro, checkPrestatairePlaceholders, PRESTATAIRE };
