@@ -2,7 +2,7 @@ const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
 const { computeStockCourant, computeStockPTCourant, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
-const { buildHistoriquePertesPdf, buildLaboHistoriquePertesPdf } = require('../services/histoPdfService');
+const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -355,18 +355,13 @@ const deleteEntreprisePerte = async (req, res) => {
 };
 
 // ── Excel helpers ─────────────────────────────────────────────────────────────
+// Rendu 100 % charte LabFlow (excelBrandService). Le titre est fourni par
+// l'appelant ; selectedIds = surbrillance (ambre) uniquement, jamais un filtre.
 
 const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Fiche Technique App';
   const sheet = workbook.addWorksheet('Historique Pertes', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
-
-  const DARK_RED = '8B0000'; const RED = 'C0392B'; const WHITE = 'FFFFFF';
-  const ALT = 'FFF5F5'; const ORANGE_BG = 'FDECEA'; const GOLD = 'FFD700';
-  const thin = { style: 'thin', color: { argb: 'FFCCCC' } };
-  const border = { top: thin, left: thin, bottom: thin, right: thin };
-  const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
-  const bodyFont = { name: 'Calibri', size: 10 };
 
   const cols = [
     { header: 'Date', width: 12 },
@@ -379,32 +374,20 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
     { header: 'Prix Unit.', width: 13 },
     { header: 'Coût Total', width: 14 },
   ];
-  sheet.columns = cols.map((c) => ({ width: c.width }));
+  const colCount = cols.length;
 
-  // Title
-  const rangeLabel = (filters.dateDebut || filters.dateFin)
-    ? `DU : ${fmtDate(filters.dateDebut)}   AU : ${fmtDate(filters.dateFin)}`
+  const periodeLabel = (filters.dateDebut || filters.dateFin)
+    ? `Période du ${fmtDate(filters.dateDebut)} au ${fmtDate(filters.dateFin)}`
     : `Année ${new Date().getFullYear()}`;
-  const titleRow = sheet.addRow([`Historique Pertes  —  ${rangeLabel}`, ...Array(cols.length - 1).fill('')]);
-  sheet.mergeCells(1, 1, 1, cols.length);
-  titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
-  titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: DARK_RED } };
-  titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-  titleRow.height = 28;
-
-  // Header
-  const hdrRow = sheet.addRow(cols.map((c) => c.header));
-  hdrRow.eachCell({ includeEmpty: true }, (cell) => {
-    cell.font = hdrFont;
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: RED } };
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = border;
+  const headerIdx = brandHeader(workbook, sheet, {
+    titre: filters.titre || 'Historique des pertes',
+    sousTitre: filters.sousTitre || '',
+    meta: `Exporté le ${fmtDate(new Date())} · ${periodeLabel} · ${rows.length} ligne(s)`,
+    colCount,
   });
-  hdrRow.height = 22;
-  sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+  headerRow(sheet, headerIdx, cols.map((c) => c.header), { widths: cols.map((c) => c.width) });
 
-  // Data rows
-  let totalQty = 0;
+  // selectedIds are used only for Excel highlighting, not for row filtering
   const selectedIds = new Set((filters.selectedIds || []).map(Number));
 
   // Column indices (1-based)
@@ -412,67 +395,45 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
   const prixColIdx  = isEntreprise ? 8 : 7;
   const coutColIdx  = isEntreprise ? 9 : 8;
 
+  let totalQty = 0;
   rows.forEach((r, i) => {
     const qty = parseFloat(r.quantite);
     const prix = r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null;
     const cout = (prix != null) ? qty * prix : null;
     totalQty += qty;
-    const isSelected = selectedIds.size > 0 && selectedIds.has(Number(r.id));
-    const isAvarie = r.type_perte === 'avarie';
 
-    const rowData = [
+    const dataRow = sheet.addRow([
       fmtDate(r.date_perte),
       ...(isEntreprise ? [r.activite_nom || ''] : []),
       r.ingredient_nom,
       r.categorie_nom || '',
       qty,
       r.unite_nom,
-      isAvarie ? 'Avarie' : 'Déchet',
+      r.type_perte === 'avarie' ? 'Avarie' : 'Déchet',
       prix ?? '',
       cout ?? '',
-    ];
-    const dataRow = sheet.addRow(rowData);
-
-    let bg = i % 2 === 0 ? WHITE : ALT;
-    if (isSelected) bg = isAvarie ? 'FFB3B3' : 'FFCC99';
-
-    for (let c = 1; c <= cols.length; c++) {
-      const cell = dataRow.getCell(c);
-      cell.font = { ...bodyFont, bold: isSelected };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-      cell.border = border;
-      const isNumeric = [qtyColIdx, prixColIdx, coutColIdx].includes(c);
-      cell.alignment = { vertical: 'middle', horizontal: isNumeric ? 'right' : 'left' };
-    }
-    dataRow.getCell(qtyColIdx).numFmt = '#,##0.000';
-    if (prix != null) dataRow.getCell(prixColIdx).numFmt = '#,##0.000';
-    if (cout != null) dataRow.getCell(coutColIdx).numFmt = '#,##0.000';
-    dataRow.height = 16;
+    ]);
+    dataRowStyle(dataRow, { index: i, selected: selectedIds.size > 0 && selectedIds.has(Number(r.id)), colCount });
+    [qtyColIdx, prixColIdx, coutColIdx].forEach((c) => {
+      dataRow.getCell(c).alignment = { vertical: 'middle', horizontal: 'right' };
+    });
+    dataRow.getCell(qtyColIdx).numFmt = FMT_QTE;
+    if (prix != null) dataRow.getCell(prixColIdx).numFmt = FMT_DT;
+    if (cout != null) dataRow.getCell(coutColIdx).numFmt = FMT_DT;
   });
+  const lastDataRow = headerIdx + rows.length;
 
   // Total row
-  const totalRowData = Array(cols.length).fill('');
+  const totalRowData = Array(colCount).fill('');
   totalRowData[0] = 'TOTAL';
   totalRowData[qtyColIdx - 1] = totalQty;
   const totalRow = sheet.addRow(totalRowData);
-  totalRow.eachCell({ includeEmpty: true }, (cell) => {
-    cell.font = { name: 'Calibri', bold: true, size: 10 };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
-    cell.border = border;
-    cell.alignment = { vertical: 'middle', horizontal: 'right' };
-  });
-  totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-  totalRow.getCell(qtyColIdx).numFmt = '#,##0.000';
-  totalRow.height = 18;
+  totalRowStyle(totalRow, { colCount });
+  totalRow.getCell(qtyColIdx).numFmt = FMT_QTE;
+  totalRow.getCell(qtyColIdx).alignment = { vertical: 'middle', horizontal: 'right' };
 
-  // Footer
-  sheet.addRow([]);
-  const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — ${rows.length} perte(s)`]);
-  footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
-  if (selectedIds.size > 0) {
-    const noteRow = sheet.addRow([`⚠ ${selectedIds.size} perte(s) en surbrillance = sélectionnées pour comparaison`]);
-    noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: 'C0392B' } };
-  }
+  brandFooter(sheet, colCount);
+  finalize(sheet, { headerRowIdx: headerIdx, colCount, lastDataRow });
 
   const dateTag = filters.dateDebut ? filters.dateDebut : new Date().toISOString().slice(0, 10);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -530,7 +491,7 @@ const exportEntreprisePertes = async (req, res) => {
       const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte });
       exRows = [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
     }
-    await buildExcelPertes(res, exRows, true, { dateDebut, dateFin, selectedIds: idList });
+    await buildExcelPertes(res, exRows, true, { dateDebut, dateFin, selectedIds: idList, titre: 'Historique des pertes — Activités' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur génération Excel' });
@@ -776,114 +737,17 @@ const exportLaboPerteExcel = async (req, res) => {
         : [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
     }
     res.setHeader('Content-Disposition', `attachment; filename="Historique-Pertes-Labo-${laboNom}.xlsx"`);
-    await buildExcelPertes(res, exRows, false, { dateDebut, dateFin, selectedIds: idList });
+    await buildExcelPertes(res, exRows, false, { dateDebut, dateFin, selectedIds: idList, titre: 'Historique des pertes — Labo', sousTitre: laboNom });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur génération Excel' });
   }
 };
 
-// ── Entreprise pertes — export PDF ────────────────────────────────────────────
-
-const exportEntreprisePertesPdf = async (req, res) => {
-  if (req.user.role === 'gerant') { if (!scopeGerantActivite(req, res)) return; }
-  const { activiteId, activiteIds, dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
-  const companyCheck = await pool.query(
-    `SELECT pe.id FROM profil_entreprise pe WHERE pe.client_id = $1`,
-    [req.user.gerant_parent_id || req.user.id]
-  );
-  if (companyCheck.rows.length === 0) return res.status(404).json({ message: 'Entreprise introuvable' });
-  const entrepriseId = companyCheck.rows[0].id;
-
-  const params = [entrepriseId];
-  const wheres = [`a.entreprise_id = $1`, `p.ingredient_id IS NOT NULL`];
-  if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
-  else if (activiteIds) { params.push(activiteIds.split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
-  if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
-  if (dateFin)   { params.push(dateFin);   wheres.push(`p.date_perte <= $${params.length}`); }
-  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
-  if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
-  if (ingredientId) { params.push(ingredientId); wheres.push(`p.ingredient_id = $${params.length}`); }
-  if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
-
-  try {
-    const result = await pool.query(
-      `SELECT p.id, p.activite_id, a.nom AS activite_nom,
-              i.nom AS ingredient_nom, u.nom AS unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              p.quantite, p.prix_unitaire, p.type_perte, p.date_perte
-       FROM pertes p JOIN activites a ON a.id = p.activite_id
-       JOIN articles i ON i.id = p.ingredient_id JOIN unites u ON i.unite_id = u.id
-       LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE ${wheres.join(' AND ')} ORDER BY p.date_perte DESC, p.created_at DESC`,
-      params
-    );
-    let pdfRows = result.rows;
-    const includePt = !categorieId && !ingredientId && !search;
-    if (includePt) {
-      const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte });
-      pdfRows = [...pdfRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
-    }
-    await buildHistoriquePertesPdf(res, pdfRows, { dateDebut, dateFin });
-  } catch (err) {
-    console.error(err);
-    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
-  }
-};
-
-// ── Labo pertes — export PDF ──────────────────────────────────────────────────
-
-const exportLaboPertesPdf = async (req, res) => {
-  const { laboId } = req.params;
-  const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, ptOnly, ptProduitId, ptType } = req.query;
-  const clientId = req.user.gerant_parent_id || req.user.id;
-
-  try {
-    const ownerCheck = await pool.query(
-      `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id WHERE l.id = $1 AND pe.client_id = $2`,
-      [laboId, clientId]
-    );
-    if (ownerCheck.rows.length === 0) return res.status(404).json({ message: 'Labo introuvable' });
-
-    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
-    const laboNom = laboRes.rows[0]?.nom || 'Labo';
-
-    const params = [laboId];
-    const wheres = [`lp.labo_id = $1`, `lp.ingredient_id IS NOT NULL`];
-    if (dateDebut) { params.push(dateDebut); wheres.push(`lp.date_perte >= $${params.length}`); }
-    if (dateFin)   { params.push(dateFin);   wheres.push(`lp.date_perte <= $${params.length}`); }
-    if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
-    if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
-    if (ingredientId){ params.push(ingredientId); wheres.push(`lp.ingredient_id = $${params.length}`); }
-    if (search)      { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
-
-    const result = await pool.query(
-      `SELECT lp.id, lp.ingredient_id, i.nom AS ingredient_nom, u.nom AS unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') AS categorie_nom,
-              lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte
-       FROM labo_pertes lp JOIN articles i ON i.id = lp.ingredient_id
-       JOIN unites u ON i.unite_id = u.id LEFT JOIN categories c ON i.categorie_id = c.id
-       WHERE ${wheres.join(' AND ')} ORDER BY lp.date_perte DESC, lp.created_at DESC`,
-      params
-    );
-    let pdfRows = result.rows;
-    const includePt = ptOnly === 'true' || (!categorieId && !ingredientId && !search);
-    if (includePt) {
-      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType });
-      pdfRows = ptOnly === 'true' ? ptRows
-        : [...pdfRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
-    }
-    await buildLaboHistoriquePertesPdf(res, pdfRows, laboNom, { dateDebut, dateFin });
-  } catch (err) {
-    console.error(err);
-    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
-  }
-};
-
 module.exports = {
   createPerte, listPertes,
-  listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, exportEntreprisePertesPdf,
+  listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes,
   getPrixEntreprisePerte, getDateRangeEntreprisePerte,
   getPrixLaboPerte, getDateRangeLaboPerte,
-  listLaboPertes, exportLaboPerteExcel, exportLaboPertesPdf,
+  listLaboPertes, exportLaboPerteExcel,
 };

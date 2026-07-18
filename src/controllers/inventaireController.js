@@ -4,7 +4,7 @@ const ExcelJS = require('exceljs');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
 const { isoDate } = require('../utils/dateUtils');
-const { buildInventaireHistoriquePdf } = require('../services/histoPdfService');
+const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_QTE } = require('../services/excelBrandService');
 
 async function checkLaboOwner(laboId, userId) {
   const r = await pool.query(
@@ -895,79 +895,38 @@ const exportLaboInventaireExcel = async (req, res) => {
     workbook.creator = 'Fiche Technique App';
     const sheet = workbook.addWorksheet(`Inventaire ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
-    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'F59E0B';
-    const ALT = 'FFF7ED'; const GOLD = 'FFD700'; const TITLE_BG = '2E4A7A';
-    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
-    const border = { top: thin, left: thin, bottom: thin, right: thin };
-    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
-    const bodyFont = { name: 'Calibri', size: 10 };
-    const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
-
-    const cols = [
-      { header: 'Date', width: 12 },
-      { header: 'Ingrédient', width: 26 },
-      { header: 'Catégorie', width: 18 },
-      { header: 'Qté réelle', width: 13 },
-      { header: 'Unité', width: 9 },
-      { header: 'Labo', width: 18 },
-      { header: 'Note', width: 24 },
-    ];
-    sheet.columns = cols.map((c) => ({ width: c.width }));
-
-    const titleText = `Historique Inventaire — ${laboNom}  —  DU : ${fmtD(startDate)}   AU : ${fmtD(endDate)}`;
-    const titleRow = sheet.addRow([titleText, ...Array(cols.length - 1).fill('')]);
-    sheet.mergeCells(1, 1, 1, cols.length);
-    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
-    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
-    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    titleRow.height = 28;
-
-    const hdrRow = sheet.addRow(cols.map((c) => c.header));
-    hdrRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = hdrFont;
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = border;
+    const fmtD = (d) => (d ? d.split('-').reverse().join('/') : '—');
+    const COL_COUNT = 7;
+    const headerIdx = brandHeader(workbook, sheet, {
+      titre: 'Historique des inventaires — Labo',
+      sousTitre: laboNom,
+      meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · Période ${fmtD(startDate)} → ${fmtD(endDate)} · ${rows.length} ligne(s)`,
+      colCount: COL_COUNT,
     });
-    hdrRow.height = 22;
-    sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+    headerRow(sheet, headerIdx, ['Date', 'Ingrédient', 'Catégorie', 'Qté réelle', 'Unité', 'Labo', 'Note'], {
+      widths: [12, 26, 18, 13, 9, 18, 24],
+    });
 
     rows.forEach((r, i) => {
-      const qty = parseFloat(r.quantite_reelle);
       const isSelected = selectedSet.has(String(r.id));
       const dateStr = r.date_inventaire ? isoDate(r.date_inventaire).split('-').reverse().join('/') : '';
-      const dataRow = sheet.addRow([dateStr, r.ingredient_nom, r.categorie_nom, qty, r.unite_nom, laboNom, r.note || '']);
-      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
-      const txtColor = isSelected ? WHITE : '1a1a2e';
-      for (let c = 1; c <= cols.length; c++) {
-        const cell = dataRow.getCell(c);
-        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-        cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : (c === 5 ? 'center' : c === 4 ? 'right' : 'left') };
-      }
-      dataRow.getCell(4).numFmt = '#,##0.000';
-      dataRow.height = 16;
+      const dataRow = sheet.getRow(headerIdx + 1 + i);
+      dataRow.values = [dateStr, r.ingredient_nom, r.categorie_nom, parseFloat(r.quantite_reelle), r.unite_nom, laboNom, r.note || ''];
+      dataRowStyle(dataRow, { index: i, selected: isSelected, colCount: COL_COUNT });
+      dataRow.getCell(4).numFmt = FMT_QTE;
+      dataRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };
+      dataRow.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
-    const totalRow = sheet.addRow(['TOTAL', '', '', rows.reduce((s, r) => s + parseFloat(r.quantite_reelle), 0), '', '', '']);
-    totalRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = { name: 'Calibri', bold: true, size: 10 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
-      cell.border = border;
-      cell.alignment = { vertical: 'middle', horizontal: 'right' };
-    });
-    totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(4).numFmt = '#,##0.000';
-    totalRow.height = 18;
+    const lastDataRow = headerIdx + rows.length;
+    const totalRow = sheet.getRow(lastDataRow + 1);
+    totalRow.values = ['TOTAL', '', '', rows.reduce((s, r) => s + parseFloat(r.quantite_reelle), 0), '', '', ''];
+    totalRowStyle(totalRow, { colCount: COL_COUNT });
+    totalRow.getCell(4).numFmt = FMT_QTE;
+    totalRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };
 
-    sheet.addRow([]);
-    const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — Labo : ${laboNom} — ${rows.length} enregistrement(s)`]);
-    footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
-    if (selectedSet.size > 0) {
-      const noteRow = sheet.addRow([`⚠ ${selectedSet.size} inventaire(s) en surbrillance = sélectionnés`]);
-      noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: ORANGE } };
-    }
+    brandFooter(sheet, COL_COUNT);
+    finalize(sheet, { headerRowIdx: headerIdx, colCount: COL_COUNT, lastDataRow });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Inventaire-${laboNom}.xlsx"`);
@@ -1026,75 +985,38 @@ const exportActiviteInventaireExcel = async (req, res) => {
     workbook.creator = 'Fiche Technique App';
     const sheet = workbook.addWorksheet(`Inventaire ${activiteNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
-    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'F59E0B';
-    const ALT = 'FFF7ED'; const GOLD = 'FFD700'; const TITLE_BG = '2E4A7A';
-    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
-    const border = { top: thin, left: thin, bottom: thin, right: thin };
-    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
-    const bodyFont = { name: 'Calibri', size: 10 };
-    const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
-
-    const cols = [
-      { header: 'Date', width: 12 },
-      { header: 'Ingrédient', width: 26 },
-      { header: 'Catégorie', width: 18 },
-      { header: 'Qté réelle', width: 13 },
-      { header: 'Unité', width: 9 },
-      { header: 'Activité', width: 20 },
-      { header: 'Note', width: 24 },
-    ];
-    sheet.columns = cols.map((c) => ({ width: c.width }));
-
-    const titleText = `Historique Inventaire — ${activiteNom}  —  DU : ${fmtD(startDate)}   AU : ${fmtD(endDate)}`;
-    const titleRow = sheet.addRow([titleText, ...Array(cols.length - 1).fill('')]);
-    sheet.mergeCells(1, 1, 1, cols.length);
-    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
-    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
-    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    titleRow.height = 28;
-
-    const hdrRow = sheet.addRow(cols.map((c) => c.header));
-    hdrRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = hdrFont;
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = border;
+    const fmtD = (d) => (d ? d.split('-').reverse().join('/') : '—');
+    const COL_COUNT = 7;
+    const headerIdx = brandHeader(workbook, sheet, {
+      titre: 'Historique des inventaires — Activités',
+      sousTitre: activiteNom,
+      meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · Période ${fmtD(startDate)} → ${fmtD(endDate)} · ${rows.length} ligne(s)`,
+      colCount: COL_COUNT,
     });
-    hdrRow.height = 22;
-    sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+    headerRow(sheet, headerIdx, ['Date', 'Ingrédient', 'Catégorie', 'Qté réelle', 'Unité', 'Activité', 'Note'], {
+      widths: [12, 26, 18, 13, 9, 20, 24],
+    });
 
     rows.forEach((r, i) => {
-      const qty = parseFloat(r.quantite_reelle);
       const isSelected = selectedSet.has(String(r.id));
       const dateStr = r.date_inventaire ? isoDate(r.date_inventaire).split('-').reverse().join('/') : '';
-      const dataRow = sheet.addRow([dateStr, r.ingredient_nom, r.categorie_nom, qty, r.unite_nom, activiteNom, r.note || '']);
-      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
-      const txtColor = isSelected ? WHITE : '1a1a2e';
-      for (let c = 1; c <= cols.length; c++) {
-        const cell = dataRow.getCell(c);
-        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-        cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: c <= 3 ? 'left' : (c === 5 ? 'center' : c === 4 ? 'right' : 'left') };
-      }
-      dataRow.getCell(4).numFmt = '#,##0.000';
-      dataRow.height = 16;
+      const dataRow = sheet.getRow(headerIdx + 1 + i);
+      dataRow.values = [dateStr, r.ingredient_nom, r.categorie_nom, parseFloat(r.quantite_reelle), r.unite_nom, activiteNom, r.note || ''];
+      dataRowStyle(dataRow, { index: i, selected: isSelected, colCount: COL_COUNT });
+      dataRow.getCell(4).numFmt = FMT_QTE;
+      dataRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };
+      dataRow.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
-    const totalRow = sheet.addRow(['TOTAL', '', '', rows.reduce((s, r) => s + parseFloat(r.quantite_reelle), 0), '', '', '']);
-    totalRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = { name: 'Calibri', bold: true, size: 10 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
-      cell.border = border;
-      cell.alignment = { vertical: 'middle', horizontal: 'right' };
-    });
-    totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(4).numFmt = '#,##0.000';
-    totalRow.height = 18;
+    const lastDataRow = headerIdx + rows.length;
+    const totalRow = sheet.getRow(lastDataRow + 1);
+    totalRow.values = ['TOTAL', '', '', rows.reduce((s, r) => s + parseFloat(r.quantite_reelle), 0), '', '', ''];
+    totalRowStyle(totalRow, { colCount: COL_COUNT });
+    totalRow.getCell(4).numFmt = FMT_QTE;
+    totalRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };
 
-    sheet.addRow([]);
-    const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — Activité : ${activiteNom} — ${rows.length} enregistrement(s)`]);
-    footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
+    brandFooter(sheet, COL_COUNT);
+    finalize(sheet, { headerRowIdx: headerIdx, colCount: COL_COUNT, lastDataRow });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Inventaire-${activiteNom}.xlsx"`);
@@ -1103,77 +1025,6 @@ const exportActiviteInventaireExcel = async (req, res) => {
   } catch (err) {
     console.error('[exportActiviteInventaireExcel]', err);
     res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
-const inventaireHistoriqueQuery = async (pool, conditions, params) => {
-  const result = await pool.query(
-    `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
-            COALESCE(i.nom, p.nom) as ingredient_nom,
-            COALESCE(u.nom, 'unité') as unite_nom,
-            COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
-     FROM inventaires inv
-     LEFT JOIN articles i ON i.id = inv.ingredient_id
-     LEFT JOIN unites u ON u.id = i.unite_id
-     LEFT JOIN categories c ON c.id = i.categorie_id
-     LEFT JOIN produits p ON p.id = inv.produit_id
-     WHERE ${conditions.join(' AND ')} AND (inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)
-     ORDER BY inv.date_inventaire DESC, inv.created_at DESC`,
-    params
-  );
-  return result.rows;
-};
-
-const exportLaboInventaireHistoriquePdf = async (req, res) => {
-  const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, selectedIds: selectedIdsParam } = req.query;
-  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').filter(Boolean) : []);
-  try {
-    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
-    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
-    const laboNom = laboRes.rows[0]?.nom || 'Labo';
-    const ingIdNum = ingredientId ? Number(ingredientId) : null;
-    const conditions = ['inv.labo_id = $1'];
-    const params = [laboId];
-    let idx = 2;
-    if (startDate) { conditions.push(`inv.date_inventaire >= $${idx++}`); params.push(startDate); }
-    if (endDate)   { conditions.push(`inv.date_inventaire <= $${idx++}`); params.push(endDate); }
-    if (ingIdNum && ingIdNum > 0) { conditions.push(`inv.ingredient_id = $${idx++}`); params.push(ingIdNum); }
-    else if (ingIdNum && ingIdNum < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNum); }
-    let rows = await inventaireHistoriqueQuery(pool, conditions, params);
-    if (selectedSet.size > 0) rows = rows.filter((r) => selectedSet.has(String(r.id)));
-    await buildInventaireHistoriquePdf(res, rows, laboNom, { startDate, endDate });
-  } catch (err) {
-    console.error('[exportLaboInventaireHistoriquePdf]', err);
-    if (!res.headersSent) res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
-const exportActiviteInventaireHistoriquePdf = async (req, res) => {
-  const { activiteId } = req.params;
-  const { startDate, endDate, ingredientId, selectedIds: selectedIdsParam } = req.query;
-  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').filter(Boolean) : []);
-  try {
-    const actRes = await pool.query(
-      `SELECT a.nom FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE a.id = $1 AND pe.client_id = $2`,
-      [activiteId, req.user.id]
-    );
-    const activiteNom = actRes.rows[0]?.nom || 'Activité';
-    const ingIdNum = ingredientId ? Number(ingredientId) : null;
-    const conditions = ['inv.activite_id = $1'];
-    const params = [activiteId];
-    let idx = 2;
-    if (startDate) { conditions.push(`inv.date_inventaire >= $${idx++}`); params.push(startDate); }
-    if (endDate)   { conditions.push(`inv.date_inventaire <= $${idx++}`); params.push(endDate); }
-    if (ingIdNum && ingIdNum > 0) { conditions.push(`inv.ingredient_id = $${idx++}`); params.push(ingIdNum); }
-    else if (ingIdNum && ingIdNum < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNum); }
-    let rows = await inventaireHistoriqueQuery(pool, conditions, params);
-    if (selectedSet.size > 0) rows = rows.filter((r) => selectedSet.has(String(r.id)));
-    await buildInventaireHistoriquePdf(res, rows, activiteNom, { startDate, endDate });
-  } catch (err) {
-    console.error('[exportActiviteInventaireHistoriquePdf]', err);
-    if (!res.headersSent) res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
@@ -1187,6 +1038,4 @@ module.exports = {
   updateInventaireEntry,
   exportLaboInventaireExcel,
   exportActiviteInventaireExcel,
-  exportLaboInventaireHistoriquePdf,
-  exportActiviteInventaireHistoriquePdf,
 };

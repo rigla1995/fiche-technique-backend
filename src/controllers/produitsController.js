@@ -1472,12 +1472,10 @@ const saveManualPrices = async (req, res) => {
 };
 
 const ExcelJS = require('exceljs');
-
-const XCOLORS = {
-  navy: '1F3864', navyMid: '2E5597', white: 'FFFFFF',
-  altRow: 'EEF4FB', sectionBg: 'CFE2F3', totalBg: 'D9E1F2',
-  dateBg: 'F0F5FA', border: 'B8CCE4',
-};
+const {
+  brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize,
+  FMT_DT, FMT_QTE, BRAND, BORDER, fill,
+} = require('../services/excelBrandService');
 
 const exportListExcel = async (req, res) => {
   const { activiteId, type, search, isSupplement, withOtherSubTab } = req.query;
@@ -1520,55 +1518,19 @@ const exportListExcel = async (req, res) => {
       return rows;
     };
 
-    const thin = { style: 'thin', color: { argb: XCOLORS.border } };
-    const brd = { top: thin, left: thin, bottom: thin, right: thin };
+    const buildSheet = (ws, rows, sheetLabel) => {
+      const labels = ['Produit', 'Type', 'Activités', 'Référence', 'Coût estimé (DT)', 'Articles', ...(isVendable ? ['Produits util.'] : [])];
+      const widths = [36, 22, 32, 18, 18, 12, ...(isVendable ? [14] : [])];
+      const colCount = labels.length;
 
-    const buildSheet = (ws, rows, sheetTitle) => {
-      const colDefs = [
-        { key: 'a', width: 36 }, { key: 'b', width: 22 }, { key: 'c', width: 32 },
-        { key: 'd', width: 18 }, { key: 'e', width: 18 }, { key: 'f', width: 12 },
-        ...(isVendable ? [{ key: 'g', width: 14 }] : []),
-      ];
-      ws.columns = colDefs;
-      const colCount = colDefs.length;
-      const lastCol = String.fromCharCode(64 + colCount);
-      let r = 1;
-
-      const mergedRow = (text, bg, fontOpts, height) => {
-        ws.mergeCells(`A${r}:${lastCol}${r}`);
-        const cell = ws.getCell(`A${r}`);
-        cell.value = text;
-        cell.font = { name: 'Calibri', ...fontOpts };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        ws.getRow(r).height = height;
-        r++;
-      };
-
-      mergedRow('LabFlow', XCOLORS.navy, { bold: true, size: 16, color: { argb: XCOLORS.white } }, 32);
-      mergedRow(sheetTitle, XCOLORS.navyMid, { bold: true, size: 12, color: { argb: XCOLORS.white } }, 24);
-      const now = new Date();
-      mergedRow(
-        `Généré le ${now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} à ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
-        XCOLORS.dateBg, { italic: true, size: 9, color: { argb: '4A5568' } }, 16
-      );
-      ws.getRow(r).height = 8; r++; // spacer
-
-      // Column header row
-      const colHeaders = ['Produit', 'Type', 'Activités', 'Référence', 'Coût estimé (DT)', 'Articles', ...(isVendable ? ['Produits util.'] : [])];
-      const hRow = ws.getRow(r);
-      hRow.height = 22;
-      colHeaders.forEach((h, i) => {
-        const cell = hRow.getCell(i + 1);
-        cell.value = h;
-        cell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: XCOLORS.white } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XCOLORS.navy } };
-        cell.alignment = { horizontal: i === 0 || i === 2 ? 'left' : 'center', vertical: 'middle' };
-        cell.border = brd;
+      const headerIdx = brandHeader(wb, ws, {
+        titre: 'Liste des produits',
+        sousTitre: sheetLabel,
+        meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${rows.length} produit${rows.length !== 1 ? 's' : ''}`,
+        colCount,
       });
-      const headerRowNum = r;
-      ws.views = [{ state: 'frozen', ySplit: r }];
-      r++;
+      headerRow(ws, headerIdx, labels, { widths });
+      let r = headerIdx + 1;
 
       let altIdx = 0;
       let totalRowsWritten = 0;
@@ -1576,25 +1538,39 @@ const exportListExcel = async (req, res) => {
         const acts = product.activites_json || [];
         const activitesStr = overrideActivite !== null ? overrideActivite : acts.map(a => a.nom).join(', ');
         const typeLabel = product.is_supplement ? 'Supplément vendable' : product.type === 'vendable' ? 'Produit vendable' : 'Produit utilisable';
-        const values = [
+        const dataRow = ws.getRow(r);
+        dataRow.values = [
           product.nom, typeLabel, activitesStr, product.ref_produit || '',
           product.total_cost !== null ? parseFloat(product.total_cost) : 0,
           parseInt(product.ingredients_count),
           ...(isVendable ? [parseInt(product.sub_products_count)] : []),
         ];
-        const dataRow = ws.getRow(r);
         dataRow.height = 17;
-        const bg = altIdx % 2 === 0 ? XCOLORS.white : XCOLORS.altRow;
-        values.forEach((val, i) => {
-          const cell = dataRow.getCell(i + 1);
-          cell.value = val;
-          cell.font = { name: 'Calibri', size: 10 };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-          cell.border = brd;
-          cell.alignment = { vertical: 'middle', horizontal: i === 0 || i === 2 ? 'left' : 'center' };
-        });
-        if (product.total_cost !== null) dataRow.getCell(5).numFmt = '#,##0.000';
+        dataRowStyle(dataRow, { index: altIdx, colCount });
+        for (let c = 1; c <= colCount; c++) {
+          dataRow.getCell(c).alignment = { vertical: 'middle', horizontal: c === 1 || c === 3 ? 'left' : 'center' };
+        }
+        if (product.total_cost !== null) dataRow.getCell(5).numFmt = FMT_DT;
+        dataRow.getCell(6).numFmt = FMT_QTE;
+        if (isVendable) dataRow.getCell(7).numFmt = FMT_QTE;
         altIdx++; totalRowsWritten++; r++;
+      };
+
+      // Bande de section par activité (charte : indigo pâle)
+      const sectionBand = (label) => {
+        ws.mergeCells(r, 1, r, colCount);
+        const secRow = ws.getRow(r);
+        for (let c = 1; c <= colCount; c++) {
+          const cell = secRow.getCell(c);
+          cell.fill = fill(BRAND.indigoSoft);
+          cell.border = BORDER;
+        }
+        const secCell = secRow.getCell(1);
+        secCell.value = label;
+        secCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: BRAND.indigoInk } };
+        secCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+        secRow.height = 22;
+        r++;
       };
 
       if (!activiteId && rows.length > 0) {
@@ -1607,14 +1583,7 @@ const exportListExcel = async (req, res) => {
           sorted.forEach(([actId, actNom]) => {
             const actProducts = rows.filter(p => (p.activites_json || []).some(a => a.id === actId));
             if (actProducts.length === 0) return;
-            ws.mergeCells(`A${r}:${lastCol}${r}`);
-            const secCell = ws.getCell(`A${r}`);
-            secCell.value = `  ${actNom}  —  ${actProducts.length} produit${actProducts.length !== 1 ? 's' : ''}`;
-            secCell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: XCOLORS.navy } };
-            secCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XCOLORS.sectionBg } };
-            secCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
-            secCell.border = brd;
-            ws.getRow(r).height = 22; r++;
+            sectionBand(`${actNom}  —  ${actProducts.length} produit${actProducts.length !== 1 ? 's' : ''}`);
             altIdx = 0;
             actProducts.forEach(p => addDataRow(p, actNom));
             // No empty gap rows — they break Excel's auto-filter detection
@@ -1628,17 +1597,14 @@ const exportListExcel = async (req, res) => {
 
       // Summary — count all written rows (a product in 2 activities = 2 rows)
       const lastDataRow = r - 1;
-      ws.mergeCells(`A${r}:${lastCol}${r}`);
-      const totCell = ws.getCell(`A${r}`);
-      totCell.value = `Total : ${totalRowsWritten} produit${totalRowsWritten !== 1 ? 's' : ''}`;
-      totCell.font = { name: 'Calibri', bold: true, size: 10, color: { argb: XCOLORS.navy } };
-      totCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XCOLORS.totalBg } };
-      totCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      totCell.border = brd;
-      ws.getRow(r).height = 20;
+      ws.mergeCells(r, 1, r, colCount);
+      const totRow = ws.getRow(r);
+      totRow.getCell(1).value = `Total : ${totalRowsWritten} produit${totalRowsWritten !== 1 ? 's' : ''}`;
+      totalRowStyle(totRow, { colCount });
+      totRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
-      // Explicit range covering all data rows so Excel doesn't stop at empty/merged rows
-      ws.autoFilter = { from: { row: headerRowNum, column: 1 }, to: { row: lastDataRow, column: colCount } };
+      brandFooter(ws, colCount);
+      finalize(ws, { headerRowIdx: headerIdx, colCount, lastDataRow });
     };
 
     const wb = new ExcelJS.Workbook();
@@ -1646,16 +1612,14 @@ const exportListExcel = async (req, res) => {
     wb.created = new Date();
 
     const isCurrentSupp = isSupplement === 'true';
-    const mainTitle = isCurrentSupp ? 'SUPPLÉMENTS VENDABLES' : (isVendable ? 'PRODUITS VENDABLES' : 'PRODUITS UTILISABLES');
     const mainSheetName = isCurrentSupp ? 'Suppléments vendables' : (isVendable ? 'Produits vendables' : 'Produits utilisables');
 
-    buildSheet(wb.addWorksheet(mainSheetName), await fetchRows(isSupplement), mainTitle);
+    buildSheet(wb.addWorksheet(mainSheetName), await fetchRows(isSupplement), mainSheetName);
 
     if (withOtherSubTab === 'true' && isVendable) {
       const otherSupp = isCurrentSupp ? 'false' : 'true';
-      const otherTitle = otherSupp === 'true' ? 'SUPPLÉMENTS VENDABLES' : 'PRODUITS VENDABLES';
       const otherSheet = otherSupp === 'true' ? 'Suppléments vendables' : 'Produits vendables';
-      buildSheet(wb.addWorksheet(otherSheet), await fetchRows(otherSupp), otherTitle);
+      buildSheet(wb.addWorksheet(otherSheet), await fetchRows(otherSupp), otherSheet);
     }
 
     const filename = `labflow-${isCurrentSupp ? 'supplements' : isVendable ? 'produits-vendables' : 'produits-utilisables'}.xlsx`;

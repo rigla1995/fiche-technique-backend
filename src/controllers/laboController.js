@@ -2,7 +2,7 @@ const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
-const { buildLaboHistoriqueApproPdf, buildTransferHistoriquePdf } = require('../services/histoPdfService');
+const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
 
@@ -2092,46 +2092,23 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     workbook.creator = 'Fiche Technique App';
     const sheet = workbook.addWorksheet(`Hist Appro ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
-    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF6B00'; const ALT = 'EEF4FF'; const GOLD = 'FFD700';
-    const TITLE_BG = '2E4A7A';
-    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
-    const border = { top: thin, left: thin, bottom: thin, right: thin };
-    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
-    const bodyFont = { name: 'Calibri', size: 10 };
-
     // cols: Date | Ingrédient | Catégorie | Type | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Fournisseur | Réf. Facture | Créé par
-    const cols = [
-      { header: 'Date', width: 12 }, { header: 'Ingrédient', width: 26 }, { header: 'Catégorie', width: 18 },
-      { header: 'Type', width: 10 }, { header: 'Quantité', width: 11 }, { header: 'Unité', width: 9 },
-      { header: 'Prix U. HT', width: 13 }, { header: 'TVA %', width: 9 }, { header: 'Prix U. TTC', width: 13 },
-      { header: 'Coût HT', width: 14 }, { header: 'Coût TTC', width: 14 },
-      { header: 'Fournisseur', width: 18 }, { header: 'Réf. Facture', width: 16 }, { header: 'Créé par', width: 16 },
-    ];
-    sheet.columns = cols.map((c) => ({ width: c.width }));
+    const labels = ['Date', 'Ingrédient', 'Catégorie', 'Type', 'Quantité', 'Unité', 'Prix U. HT', 'TVA %', 'Prix U. TTC', 'Coût HT', 'Coût TTC', 'Fournisseur', 'Réf. Facture', 'Créé par'];
+    const widths = [12, 26, 18, 10, 11, 9, 13, 9, 13, 14, 14, 18, 16, 16];
+    const colCount = labels.length;
 
-    // Title row
     const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
-    const titleText = `Historique Appro — ${laboNom}  —  DU : ${fmtD(startDate)}   AU : ${fmtD(endDate)}`;
-    const titleRow = sheet.addRow([titleText, ...Array(cols.length - 1).fill('')]);
-    sheet.mergeCells(1, 1, 1, cols.length);
-    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
-    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
-    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    titleRow.height = 28;
-
-    // Header row (now row 2)
-    const hdrRow = sheet.addRow(cols.map((c) => c.header));
-    hdrRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = hdrFont;
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = border;
+    const headerIdx = brandHeader(workbook, sheet, {
+      titre: 'Historique des approvisionnements — Labo',
+      sousTitre: laboNom,
+      meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · Période ${fmtD(startDate)} → ${fmtD(endDate)} · ${rows.length} ligne(s)`,
+      colCount,
     });
-    hdrRow.height = 22;
-    sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+    headerRow(sheet, headerIdx, labels, { widths });
 
     // col5=Quantité, col7=Prix HT, col9=Prix TTC, col10=Coût HT, col11=Coût TTC
     let totalHT = 0; let totalTTC = 0;
+    let lastDataRow = headerIdx;
     rows.forEach((r, i) => {
       const qty = r.quantite !== null ? parseFloat(r.quantite) : 0;
       const prix = r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : 0;
@@ -2149,43 +2126,27 @@ const exportLaboHistoriqueExcel = async (req, res) => {
         coutHt, coutTtc,
         r.fournisseur_nom || '', r.ref_facture || '', r.created_by_nom || '',
       ]);
-      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
-      const txtColor = isSelected ? WHITE : '1a1a2e';
-      for (let c = 1; c <= cols.length; c++) {
-        const cell = dataRow.getCell(c);
-        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-        cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: (c <= 4 || c === cols.length) ? 'left' : (c === 6 ? 'center' : 'right') };
+      dataRowStyle(dataRow, { index: i, selected: isSelected, colCount });
+      for (let c = 1; c <= colCount; c++) {
+        dataRow.getCell(c).alignment = { vertical: 'middle', horizontal: (c <= 4 || c === colCount) ? 'left' : (c === 6 ? 'center' : 'right') };
       }
-      const numFmt = '#,##0.000';
-      dataRow.getCell(5).numFmt = numFmt;
-      dataRow.getCell(7).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(9).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(10).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(11).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(5).numFmt = FMT_QTE;
+      [7, 9, 10, 11].forEach((c) => { dataRow.getCell(c).numFmt = FMT_DT; });
       dataRow.height = 16;
+      lastDataRow = dataRow.number;
     });
 
     const totalRow = sheet.addRow(['TOTAL', '', '', '', '', '', '', '', '', totalHT, totalTTC, '', '', '']);
+    totalRowStyle(totalRow, { colCount });
     totalRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = { name: 'Calibri', bold: true, size: 10 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
-      cell.border = border;
       cell.alignment = { vertical: 'middle', horizontal: 'right' };
     });
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(10).numFmt = '#,##0.000 "DT"';
-    totalRow.getCell(11).numFmt = '#,##0.000 "DT"';
-    totalRow.height = 18;
+    totalRow.getCell(10).numFmt = FMT_DT;
+    totalRow.getCell(11).numFmt = FMT_DT;
 
-    sheet.addRow([]);
-    const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — Labo : ${laboNom} — ${rows.length} enregistrement(s)`]);
-    footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
-    if (selectedSet.size > 0) {
-      const noteRow = sheet.addRow([`⚠ ${selectedSet.size} appro(s) en surbrillance orange = sélectionnés`]);
-      noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: ORANGE } };
-    }
+    brandFooter(sheet, colCount);
+    finalize(sheet, { headerRowIdx: headerIdx, colCount, lastDataRow });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Historique-Labo-${laboNom}.xlsx"`);
@@ -2481,45 +2442,23 @@ const exportLaboTransferExcel = async (req, res) => {
     workbook.creator = 'Fiche Technique App';
     const sheet = workbook.addWorksheet(`Hist Transferts ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
-    const PURPLE = '4C1D95'; const LIGHT_PURPLE = '7C3AED'; const WHITE = 'FFFFFF';
-    const ALT = 'F5F3FF'; const ORANGE = 'FF6B00'; const GOLD = 'FFD700';
-    const thin = { style: 'thin', color: { argb: 'DDD6FE' } };
-    const border = { top: thin, left: thin, bottom: thin, right: thin };
-    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
-    const bodyFont = { name: 'Calibri', size: 10 };
-
     // Date | Activité | Ingrédient | Catégorie | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Créé par
-    const cols = [
-      { header: 'Date', width: 12 }, { header: 'Activité', width: 20 },
-      { header: 'Ingrédient', width: 26 }, { header: 'Catégorie', width: 18 },
-      { header: 'Quantité', width: 11 }, { header: 'Unité', width: 9 },
-      { header: 'Prix U. HT', width: 13 }, { header: 'TVA %', width: 9 }, { header: 'Prix U. TTC', width: 13 },
-      { header: 'Coût HT', width: 14 }, { header: 'Coût TTC', width: 14 },
-      { header: 'Créé par', width: 16 },
-    ];
-    sheet.columns = cols.map((c) => ({ width: c.width }));
+    const labels = ['Date', 'Activité', 'Ingrédient', 'Catégorie', 'Quantité', 'Unité', 'Prix U. HT', 'TVA %', 'Prix U. TTC', 'Coût HT', 'Coût TTC', 'Créé par'];
+    const widths = [12, 20, 26, 18, 11, 9, 13, 9, 13, 14, 14, 16];
+    const colCount = labels.length;
 
     const fmtD = (d) => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—';
-    const titleText = `Historique Transferts — ${laboNom}  —  DU : ${fmtD(startDate)}   AU : ${fmtD(endDate)}`;
-    const titleRow = sheet.addRow([titleText, ...Array(cols.length - 1).fill('')]);
-    sheet.mergeCells(1, 1, 1, cols.length);
-    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
-    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PURPLE } };
-    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    titleRow.height = 28;
-
-    const hdrRow = sheet.addRow(cols.map((c) => c.header));
-    hdrRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = hdrFont;
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_PURPLE } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = border;
+    const headerIdx = brandHeader(workbook, sheet, {
+      titre: 'Historique des transferts — Labo',
+      sousTitre: laboNom,
+      meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · Période ${fmtD(startDate)} → ${fmtD(endDate)} · ${rows.length} ligne(s)`,
+      colCount,
     });
-    hdrRow.height = 22;
-    sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+    headerRow(sheet, headerIdx, labels, { widths });
 
     // col5=Quantité, col7=Prix HT, col9=Prix TTC, col10=Coût HT, col11=Coût TTC
     let totalHT = 0; let totalTTC = 0;
+    let lastDataRow = headerIdx;
     rows.forEach((r, i) => {
       const qty = parseFloat(r.quantite);
       const prix = r.prix_unitaire !== null ? parseFloat(r.prix_unitaire) : 0;
@@ -2537,39 +2476,27 @@ const exportLaboTransferExcel = async (req, res) => {
         coutHt, coutTtc,
         r.created_by_nom || '',
       ]);
-      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
-      const txtColor = isSelected ? WHITE : '1a1a2e';
-      for (let c = 1; c <= cols.length; c++) {
-        const cell = dataRow.getCell(c);
-        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-        cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: (c <= 4 || c >= 12) ? 'left' : (c === 6 ? 'center' : 'right') };
+      dataRowStyle(dataRow, { index: i, selected: isSelected, colCount });
+      for (let c = 1; c <= colCount; c++) {
+        dataRow.getCell(c).alignment = { vertical: 'middle', horizontal: (c <= 4 || c >= 12) ? 'left' : (c === 6 ? 'center' : 'right') };
       }
-      const numFmt = '#,##0.000';
-      dataRow.getCell(5).numFmt = numFmt;
-      dataRow.getCell(7).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(9).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(10).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(11).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(5).numFmt = FMT_QTE;
+      [7, 9, 10, 11].forEach((c) => { dataRow.getCell(c).numFmt = FMT_DT; });
       dataRow.height = 16;
+      lastDataRow = dataRow.number;
     });
 
     const totalRow = sheet.addRow(['TOTAL', '', '', '', '', '', '', '', '', totalHT, totalTTC, '']);
+    totalRowStyle(totalRow, { colCount });
     totalRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = { name: 'Calibri', bold: true, size: 10 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
-      cell.border = border;
       cell.alignment = { vertical: 'middle', horizontal: 'right' };
     });
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(10).numFmt = '#,##0.000 "DT"';
-    totalRow.getCell(11).numFmt = '#,##0.000 "DT"';
-    totalRow.height = 18;
+    totalRow.getCell(10).numFmt = FMT_DT;
+    totalRow.getCell(11).numFmt = FMT_DT;
 
-    sheet.addRow([]);
-    const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — Labo : ${laboNom} — ${rows.length} transfert(s)`]);
-    footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
+    brandFooter(sheet, colCount);
+    finalize(sheet, { headerRowIdx: headerIdx, colCount, lastDataRow });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Historique-Transferts-${laboNom}.xlsx"`);
@@ -2845,113 +2772,8 @@ module.exports = {
   createTransfer, getTransferHistory, updateTransfer, deleteTransfer, getTransferPrix,
   getActivityAssignments, toggleActivityAssignment,
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
-  exportLaboHistoriqueExcel, exportLaboHistoriquePdf,
+  exportLaboHistoriqueExcel,
   createLaboPerte,
   getLaboPTRecipe,
   exportLaboTransferExcel,
-  exportLaboTransferHistoriquePdf,
 };
-
-// ── Labo appro — export PDF ────────────────────────────────────────────────────
-// (declared after module.exports to allow hoisting reference; attach directly)
-async function exportLaboHistoriquePdf(req, res) {
-  const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture, ptOnly, ptProduitId, ptType } = req.query;
-
-  try {
-    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
-
-    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
-    const laboNom = laboRes.rows[0]?.nom || 'Labo';
-
-    const conditions = ['sld.labo_id = $1'];
-    const params = [laboId];
-    let idx = 2;
-    if (startDate)    { conditions.push(`sld.date_appro >= $${idx++}`); params.push(startDate); }
-    if (endDate)      { conditions.push(`sld.date_appro <= $${idx++}`); params.push(endDate); }
-    if (ingredientId) { conditions.push(`sld.ingredient_id = $${idx++}`); params.push(ingredientId); }
-    if (categorieId)  { conditions.push(`i.categorie_id = $${idx++}`); params.push(categorieId); }
-    if (fournisseurId){ conditions.push(`sld.fournisseur_id = $${idx++}`); params.push(fournisseurId); }
-    if (refFacture)   { conditions.push(`sld.ref_facture ILIKE $${idx++}`); params.push(`%${refFacture}%`); }
-
-    const result = await pool.query(
-      `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
-              sld.ref_facture, sld.type_appro, sld.taux_tva, sld.prix_unitaire_tva,
-              i.nom as ingredient_nom, u.nom as unite_nom,
-              COALESCE(c.nom, 'Sans catégorie') as categorie_nom, f.nom as fournisseur_nom
-       FROM stock_labo_daily sld
-       JOIN articles i ON i.id = sld.ingredient_id JOIN unites u ON u.id = i.unite_id
-       LEFT JOIN categories c ON c.id = i.categorie_id LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
-       WHERE ${conditions.join(' AND ')} ORDER BY sld.date_appro DESC, sld.updated_at DESC`,
-      params
-    );
-    let pdfRows = result.rows;
-
-    // Append des fabrications de produits transformés (table séparée), même règle que la liste.
-    const includePt = ptOnly === 'true' || (!ingredientId && !categorieId && !fournisseurId && !refFacture);
-    if (includePt) {
-      const ptParams = [laboId];
-      let ptWhere = `slpt.labo_id = $1`;
-      if (startDate) { ptParams.push(startDate); ptWhere += ` AND slpt.date_appro >= $${ptParams.length}`; }
-      if (endDate) { ptParams.push(endDate); ptWhere += ` AND slpt.date_appro <= $${ptParams.length}`; }
-      if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND slpt.produit_id = $${ptParams.length}`; }
-      if (ptType) ptWhere += ` AND ${ptTypeSql('p', ptType)}`;
-      const ptRes = await pool.query(
-        `SELECT slpt.id, -(slpt.produit_id) as ingredient_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire,
-                slpt.ref_facture, 'produit_transforme'::text as type_appro, slpt.taux_tva, slpt.prix_unitaire_tva,
-                p.nom as ingredient_nom, 'unité'::text as unite_nom, ${ptCategorieSql('p')} as categorie_nom, f.nom as fournisseur_nom
-         FROM stock_labo_pt_daily slpt JOIN produits p ON p.id = slpt.produit_id
-         LEFT JOIN fournisseurs f ON f.id = slpt.fournisseur_id
-         WHERE ${ptWhere} ORDER BY slpt.date_appro DESC`, ptParams
-      );
-      pdfRows = ptOnly === 'true' ? ptRes.rows
-        : [...pdfRows, ...ptRes.rows].sort((a, b) => new Date(b.date_appro) - new Date(a.date_appro));
-    }
-    await buildLaboHistoriqueApproPdf(res, pdfRows, laboNom, { startDate, endDate });
-  } catch (err) {
-    console.error(err);
-    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
-  }
-}
-
-// ── Labo transfer — export PDF ─────────────────────────────────────────────────
-async function exportLaboTransferHistoriquePdf(req, res) {
-  const { laboId } = req.params;
-  const { startDate, endDate, activiteId, selectedIds: selectedIdsParam } = req.query;
-  const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
-  try {
-    const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
-    const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
-    const laboNom = laboRes.rows[0]?.nom || 'Labo';
-    const conditions = ['lt.labo_id = $1'];
-    const params = [laboId];
-    let idx = 2;
-    if (startDate)  { conditions.push(`lt.date_transfert >= $${idx++}`); params.push(startDate); }
-    if (endDate)    { conditions.push(`lt.date_transfert <= $${idx++}`); params.push(endDate); }
-    if (activiteId) { conditions.push(`lt.activite_id = $${idx++}`); params.push(activiteId); }
-    const result = await pool.query(
-      `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
-              lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, COALESCE(u.nom, 'unité') AS unite_nom,
-              COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) AS categorie_nom,
-              lt.activite_id, a.nom AS activite_nom,
-              lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva
-       FROM labo_transfers lt
-       LEFT JOIN articles i ON i.id = lt.ingredient_id
-       LEFT JOIN unites u ON u.id = i.unite_id
-       LEFT JOIN categories c ON c.id = i.categorie_id
-       LEFT JOIN produits p ON p.id = lt.produit_id
-       JOIN activites a ON a.id = lt.activite_id
-       WHERE ${conditions.join(' AND ')}
-       ORDER BY lt.date_transfert DESC, lt.id DESC`,
-      params
-    );
-    let rows = result.rows;
-    if (selectedSet.size > 0) rows = rows.filter((r) => selectedSet.has(r.id));
-    await buildTransferHistoriquePdf(res, rows, laboNom, { startDate, endDate });
-  } catch (err) {
-    console.error('[exportLaboTransferHistoriquePdf]', err);
-    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
-  }
-}

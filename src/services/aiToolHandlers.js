@@ -467,8 +467,8 @@ async function toolGetConfigVente(clientId, { activite_id } = {}) {
   };
 }
 
-// ── Génération + envoi d'un rapport par email ─────────────────────────────────
-async function toolSendReport(clientId, { format } = {}) {
+// ── Génération + envoi d'un rapport par email (toujours Excel) ────────────────
+async function toolSendReport(clientId) {
   const { rows } = await pool.query(
     `SELECT COALESCE(aic.report_email, u.email) AS email, u.nom
      FROM utilisateurs u
@@ -478,9 +478,8 @@ async function toolSendReport(clientId, { format } = {}) {
   );
   const dest = rows[0] || {};
   if (!dest.email) return { error: "Aucun email configuré pour l'envoi du rapport." };
-  const fmt = format === 'pdf' ? 'pdf' : 'excel';
-  const filename = await generateAndSendReport(clientId, dest.email, dest.nom || 'Client', fmt);
-  return { sent: true, email: dest.email, format: fmt, filename };
+  const filename = await generateAndSendReport(clientId, dest.email, dest.nom || 'Client');
+  return { sent: true, email: dest.email, filename };
 }
 
 async function executeToolCall(clientId, toolName, toolInput) {
@@ -498,7 +497,7 @@ async function executeToolCall(clientId, toolName, toolInput) {
       case 'get_ventes':           return await toolGetVentes(clientId, toolInput);
       case 'get_produits':         return await toolGetProduits(clientId, toolInput);
       case 'get_config_vente':     return await toolGetConfigVente(clientId, toolInput);
-      case 'send_report':          return await toolSendReport(clientId, toolInput);
+      case 'send_report':          return await toolSendReport(clientId);
       case 'search_knowledge_base': return await toolSearchKnowledge(toolInput);
       case 'ask_clarification':    return { __clarification: true, question: toolInput.question, options: toolInput.options };
       default:                     return { error: `Outil inconnu: ${toolName}` };
@@ -664,12 +663,10 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'send_report',
-    description: "Génère et envoie par email un rapport (Excel ou PDF) récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).",
+    description: "Génère et envoie par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).",
     input_schema: {
       type: 'object',
-      properties: {
-        format: { type: 'string', enum: ['excel', 'pdf'], description: 'Format du rapport (défaut excel)' },
-      },
+      properties: {},
       required: [],
     },
   },
