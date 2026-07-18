@@ -71,6 +71,27 @@ const login = async (req, res) => {
       gerantActiviteType: utilisateur.gerant_activite_type,
     } : {};
 
+    // Compteurs d'activités/labos dès le LOGIN (comme /auth/me) : la redirection
+    // d'accueil du front en dépend — sans eux, un client déjà configuré était
+    // envoyé vers « Mes Activités » au lieu du tableau de bord jusqu'au refresh.
+    let clientCounts = {};
+    if (utilisateur.role === 'client') {
+      const entRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [utilisateur.id]);
+      if (entRes.rows.length > 0) {
+        const c = await pool.query(
+          `SELECT (SELECT COUNT(*) FROM activites WHERE entreprise_id = $1) AS activites_count,
+                  (SELECT COUNT(*) FROM labos WHERE entreprise_id = $1) AS labos_count`,
+          [entRes.rows[0].id]
+        );
+        clientCounts = {
+          activitesCount: parseInt(c.rows[0].activites_count) || 0,
+          labosCount: parseInt(c.rows[0].labos_count) || 0,
+        };
+      } else {
+        clientCounts = { activitesCount: 0, labosCount: 0 };
+      }
+    }
+
     res.json({
       token,
       user: {
@@ -80,6 +101,7 @@ const login = async (req, res) => {
         role: utilisateur.role,
         onboardingStep,
         ...gerantFields,
+        ...clientCounts,
       },
     });
   } catch (err) {
