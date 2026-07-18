@@ -3,7 +3,7 @@ const { sendAvenantEmail } = require('../services/emailService');
 const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
-const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeBaseAcheteursFromConfig, computeAvenantPricing } = require('./abonnementController');
+const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeBaseAcheteursFromConfig, computeAvenantPricing, palierAcheteurs } = require('./abonnementController');
 const {
   createSubmission, createSubmissionFromPdf, getSubmissionDocuments,
   isConfigured: docusealConfigured, isConfiguredPdf: docusealPdfConfigured,
@@ -150,8 +150,11 @@ const create = async (req, res) => {
         );
         const curAcheteurs = parseInt(cfgRes.rows[0]?.nb_acheteurs) || 0;
         const curLabos = parseInt(cfgRes.rows[0]?.nb_labos) || 0;
-        if (nbAcheteursCible <= curAcheteurs) {
-          return res.status(400).json({ message: `Le palier demandé doit être supérieur au quota actuel (${curAcheteurs} acheteurs)` });
+        // Comparaison au PALIER courant, pas au quota brut : un quota de 4 est
+        // déjà couvert par le palier 10 — redemander « jusqu'à 10 » serait un no-op.
+        const palierActuel = palierAcheteurs(curAcheteurs) ?? 0;
+        if (nbAcheteursCible <= palierActuel) {
+          return res.status(400).json({ message: `Le palier demandé doit être supérieur au palier actuel (jusqu'à ${palierActuel} acheteurs)` });
         }
         if (curLabos + (nbLabosSupp || 0) < 1) {
           return res.status(400).json({ message: "L'option Acheteurs nécessite au moins un labo (ajoutez-en un à la demande)" });
