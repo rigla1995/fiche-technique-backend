@@ -9,21 +9,17 @@ const MAX_ROWS = 1000;
 
 const getTemplate = async (req, res) => {
   try {
+    const { brandTemplate } = require('../services/excelBrandService');
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Référentiel');
-
-    ws.columns = HEADERS.map(h => ({ header: h, key: h.toLowerCase(), width: 25 }));
-
-    const headerRow = ws.getRow(1);
-    headerRow.eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF16a34a' } };
-      cell.alignment = { horizontal: 'center' };
+    brandTemplate(wb, ws, {
+      titre: "Modèle d'import — Référentiel",
+      sousTitre: 'Ajout dynamique des articles : une ligne = un article',
+      meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import.",
+      headers: HEADERS,
+      widths: [28, 16, 22, 22],
+      exemple: ['Exemple : Poulet rôti', 'kg', 'Viandes', 'Food'],
     });
-
-    ws.addRow(['Poulet rôti', 'kg', 'Viandes', 'Food']);
-    ws.addRow(['Sauce tomate', 'litre', 'Sauces', 'Food']);
-
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="modele_referentiel.xlsx"');
     await wb.xlsx.write(res);
@@ -82,9 +78,14 @@ const importReferentiel = [
       const ws = wb.worksheets[0];
       if (!ws) return res.status(400).json({ message: 'Feuille Excel introuvable' });
 
+      // Les données commencent APRÈS la ligne d'en-têtes, où qu'elle soit
+      // (modèle de marque : bandeau au-dessus ; anciens modèles : ligne 1),
+      // et la ligne d'exemple grisée du modèle est ignorée.
+      const { findHeaderRow, isExampleRow } = require('../services/excelBrandService');
+      const headerRowNum = findHeaderRow(ws, HEADERS) ?? 1;
       const rows = [];
       ws.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return;
+        if (rowNumber <= headerRowNum || isExampleRow(row)) return;
         const article = String(row.getCell(1).value || '').trim();
         const unite   = String(row.getCell(2).value || '').trim();
         const categorie = String(row.getCell(3).value || '').trim();
