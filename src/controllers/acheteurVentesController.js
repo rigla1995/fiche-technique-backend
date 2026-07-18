@@ -57,9 +57,10 @@ const listOffres = async (req, res) => {
         [clientId]
       ),
       pool.query(
-        `SELECT p.id, p.nom, p.type, p.origine,
+        `SELECT p.id, p.nom, p.type, p.origine, cp.nom AS categorie_produit,
                 o.id AS o_id, o.prix_unitaire_ht, o.taux_tva, o.actif
          FROM produits p
+         LEFT JOIN categories_produit cp ON cp.id = p.categorie_produit_id
          LEFT JOIN acheteur_offres o ON o.client_id = $1 AND o.article_type = 'produit' AND o.article_id = p.id
          WHERE p.client_id = $1 AND (${PRODUIT_ELIGIBLE_SQL('p', 1)} OR o.actif = true)
          ORDER BY (p.type = 'utilisable'), p.nom`,
@@ -75,6 +76,7 @@ const listOffres = async (req, res) => {
       produits: prods.rows.map((r) => ({
         articleType: 'produit', articleId: r.id, nom: r.nom, unite: 'unité',
         categorie: produitSection(r.type), famille: null,
+        categorieProduit: r.categorie_produit || null,
         ...mapOffre(r.o_id ? { ...r, id: r.o_id } : null),
       })),
     });
