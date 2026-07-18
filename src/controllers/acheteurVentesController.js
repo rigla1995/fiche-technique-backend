@@ -580,9 +580,10 @@ const getCommande = async (req, res) => {
 };
 
 // POST /api/acheteurs/commandes/:id/expedier — expédition d'une commande EN ATTENTE :
-// le vendeur choisit le labo source, peut AJUSTER LES QUANTITÉS demandées, fixe la
-// remise éventuelle et la date d'expédition ; le stock est contrôlé puis déduit
-// (flux), les coûts sont figés et la facture est générée.
+// le vendeur choisit le labo source, peut AJUSTER LES QUANTITÉS demandées (0 =
+// ligne RETIRÉE de la commande), fixe la remise éventuelle et la date
+// d'expédition ; le stock est contrôlé puis déduit (flux), les coûts sont figés
+// et la facture est générée sur les lignes retenues.
 const expedierCommande = async (req, res) => {
   const clientId = clientIdOf(req);
   const laboId = Number(req.body.laboId);
@@ -602,15 +603,17 @@ const expedierCommande = async (req, res) => {
   if (dateExpedition.slice(0, 4) !== ajd.slice(0, 4)) {
     return res.status(400).json({ message: `La date d'expédition doit être dans l'exercice en cours (${ajd.slice(0, 4)})` });
   }
-  // Ajustements de quantités { ligneId → quantite } décidés par le vendeur
+  // Ajustements de quantités { ligneId → quantite } décidés par le vendeur.
+  // Une quantité de 0 exactement = ligne RETIRÉE de la commande.
   const quantitesIn = Array.isArray(req.body.quantites) ? req.body.quantites : [];
   const qteMap = new Map();
   for (const q of quantitesIn) {
     const ligneId = Number(q.ligneId);
     const quantite = Number(q.quantite);
     if (!Number.isFinite(ligneId)) return res.status(400).json({ message: 'Ligne de quantité invalide' });
+    if (quantite === 0) { qteMap.set(ligneId, 0); continue; }
     if (!Number.isFinite(quantite) || round3(quantite) <= 0 || quantite > MAX_QTE) {
-      return res.status(400).json({ message: 'Quantité invalide (supérieure à 0)' });
+      return res.status(400).json({ message: 'Quantité invalide (supérieure à 0, ou 0 pour retirer la ligne)' });
     }
     qteMap.set(ligneId, round3(quantite));
   }
@@ -658,9 +661,16 @@ const expedierCommande = async (req, res) => {
       }
     }
 
-    // Ajustement des quantités décidé par le vendeur (prix figés inchangés)
+    // Ajustements décidés par le vendeur : quantité 0 = ligne retirée (DELETE),
+    // sinon quantité mise à jour (prix figés inchangés). La facture, le stock et
+    // les coûts ne portent que sur les lignes retenues.
+    const lignesRetenues = [];
     for (const l of lignes) {
       const nouvelle = qteMap.get(l.id);
+      if (nouvelle === 0) {
+        await db.query(`DELETE FROM commande_acheteur_lignes WHERE id = $1`, [l.id]);
+        continue;
+      }
       if (nouvelle !== undefined && nouvelle !== Number(l.quantite)) {
         await db.query(
           `UPDATE commande_acheteur_lignes SET quantite = $1, quantite_unites = $1 WHERE id = $2`,
@@ -669,11 +679,16 @@ const expedierCommande = async (req, res) => {
         l.quantite = nouvelle;
         l.quantite_unites = nouvelle;
       }
+      lignesRetenues.push(l);
+    }
+    if (lignesRetenues.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(400).json({ message: 'Toutes les lignes ont été retirées — refusez plutôt la commande' });
     }
 
     // Contrôle de stock sur le labo choisi (agrégat par article, en unités)
     const besoins = new Map();
-    for (const l of lignes) {
+    for (const l of lignesRetenues) {
       const key = `${l.article_type}:${l.article_id}`;
       const b = besoins.get(key) || { type: l.article_type, id: l.article_id, nom: l.designation, unites: 0 };
       b.unites = round3(b.unites + Number(l.quantite_unites));
@@ -694,17 +709,17 @@ const expedierCommande = async (req, res) => {
     }
 
     // Coûts matière figés + facture
-    const artIds = [...new Set(lignes.filter((l) => l.article_type === 'ingredient').map((l) => l.article_id))];
-    const prodIds = [...new Set(lignes.filter((l) => l.article_type === 'produit').map((l) => l.article_id))];
+    const artIds = [...new Set(lignesRetenues.filter((l) => l.article_type === 'ingredient').map((l) => l.article_id))];
+    const prodIds = [...new Set(lignesRetenues.filter((l) => l.article_type === 'produit').map((l) => l.article_id))];
     const { artMap, prodMap } = await buildCostMaps(laboId, artIds, prodIds);
-    for (const l of lignes) {
+    for (const l of lignesRetenues) {
       const coutU = l.article_type === 'ingredient' ? artMap.get(l.article_id) ?? null : prodMap.get(l.article_id) ?? null;
       await db.query(`UPDATE commande_acheteur_lignes SET cout_unitaire_ttc = $1 WHERE id = $2`, [coutU, l.id]);
     }
 
     // Remise décidée à l'expédition (défaut : celle déjà portée par la commande, 0 pour le portail)
     const remisePct = remiseIn !== null ? remiseIn : (num(cmd.remise_pct) ?? 0);
-    const totaux = computeTotauxFacture(lignes, remisePct, timbreFiscal, montantTimbre);
+    const totaux = computeTotauxFacture(lignesRetenues, remisePct, timbreFiscal, montantTimbre);
     const numero = await nextNumeroFacture(db, clientId, dateExpedition);
     const fact = await db.query(
       `INSERT INTO factures_acheteur

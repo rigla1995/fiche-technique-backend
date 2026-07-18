@@ -80,7 +80,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/portail/catalogue`, { headers: HP });
   let body = await r.json();
   const item = body.offres?.find((o) => o.articleId === artId);
-  check('catalogue : offre visible + dispo', r.status === 200 && !!item && item.disponible === true, JSON.stringify(item));
+  check('catalogue : offre visible sans notion de dispo', r.status === 200 && !!item && !('disponible' in item), JSON.stringify(item));
   check('catalogue : prix TTC dérivé 5.950', approx(item?.prixUnitaireTtc, 5.95), String(item?.prixUnitaireTtc));
   check('catalogue : pas de remise exposée', !('remisePct' in body));
   check('catalogue : AUCUNE quantité de stock exposée', item && !('stock' in item) && !('quantite' in item) && !('stockTotal' in item));
@@ -204,12 +204,46 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd3}/livrer`, { method: 'POST', headers: H, body: JSON.stringify({ dateLivraison: '2026-01-01' }) });
   check('livraison avant expédition refusée 400', r.status === 400);
 
-  // ── 7. Badge rupture quand stock ≤ seuil (stock 3, seuil 9)
+  // ── 7. Plus de notion de disponibilité : stock (3) ≤ seuil (9) mais l'article
+  // reste commandable et aucun champ disponible n'est exposé au portail
   await pool.query(`UPDATE labo_ingredient_selections SET seuil_min = 9 WHERE labo_id = $1 AND ingredient_id = $2`, [laboId, artId]);
   r = await fetch(`${BASE}/api/portail/catalogue`, { headers: HP });
   body = await r.json();
   const item2 = body.offres?.find((o) => o.articleId === artId);
-  check('badge rupture (stock 3 ≤ seuil 9)', item2?.disponible === false);
+  check('catalogue : pas de champ disponible même sous seuil', !!item2 && !('disponible' in item2), JSON.stringify(item2));
+  r = await fetch(`${BASE}/api/portail/commandes`, {
+    method: 'POST', headers: HP, body: JSON.stringify({ lignes: [{ articleType: 'ingredient', articleId: artId, quantite: 50 }] }),
+  });
+  check('commande possible malgré stock sous seuil', r.status === 201 && !!(await r.json()).id);
+
+  // ── 7bis. Retrait de lignes à l'expédition (quantité 0 = ligne supprimée)
+  r = await fetch(`${BASE}/api/portail/commandes`, {
+    method: 'POST', headers: HP,
+    body: JSON.stringify({ lignes: [
+      { articleType: 'ingredient', articleId: artId, quantite: 2 },
+      { articleType: 'ingredient', articleId: artId, quantite: 1 },
+    ] }),
+  });
+  const cmd4 = (await r.json()).id;
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd4}`, { headers: H });
+  const lignesCmd4 = (await r.json()).lignes;
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd4}/expedier`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({ laboId, quantites: lignesCmd4.map((l) => ({ ligneId: l.id, quantite: 0 })) }),
+  });
+  check('retirer toutes les lignes refusé 400', r.status === 400, (await r.json()).message);
+  r = await fetch(`${BASE}/api/acheteurs/commandes/${cmd4}/expedier`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({ laboId, timbreFiscal: false, quantites: [{ ligneId: lignesCmd4[1].id, quantite: 0 }] }),
+  });
+  body = await r.json();
+  // 2 u × 5 HT = 10 HT ; TVA 19 % = 1.9 ; sans timbre → TTC 11.900
+  check('expédition avec ligne retirée → facture sur le reste',
+    r.status === 200 && approx(body.facture?.brutHt, 10) && approx(body.facture?.montantTtc, 11.9),
+    JSON.stringify(body.facture));
+  const lignesRestantes = await pool.query(`SELECT COUNT(*)::int AS n FROM commande_acheteur_lignes WHERE commande_id = $1`, [cmd4]);
+  check('ligne retirée supprimée en base (2 → 1)', lignesRestantes.rows[0].n === 1);
+  check('stock déduit sur les seules lignes retenues (3 − 2 = 1)', await computeStockCourant('labo', laboId, artId) === 1);
 
   // ── 8. Suppression d'un acheteur avec commandes/factures : depuis la migr 165,
   // elle est PERMISE — les commandes expédiées/livrées et factures sont conservées

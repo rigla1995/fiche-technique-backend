@@ -1,45 +1,31 @@
 const pool = require('../config/database');
-const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
 
 // Portail acheteur (rôle 'acheteur') : catalogue de commande + suivi.
 // Périmètre = le compte client parent (req.user.acheteurClientId), fiche = req.user.acheteurId.
-// L'acheteur ne voit JAMAIS les quantités de stock — uniquement un badge
-// disponible / rupture (rupture si stock courant agrégé ≤ seuil agrégé, tous labos).
+// L'acheteur ne voit RIEN de l'état des stocks : tout article proposé est
+// commandable — le vendeur ajuste les quantités (voire retire des lignes)
+// à l'expédition.
 
 const num = (v) => (v === null || v === undefined ? null : Number(v));
 const round3 = (v) => Math.round(v * 1000) / 1000;
 // Prix TTC affiché à l'acheteur, dérivé du tarif HT + TVA de l'offre.
 const ttcDeHt = (ht, tva) => round3(Number(ht || 0) * (1 + (Number(tva) || 0) / 100));
 
-// GET /api/portail/catalogue — offres actives du vendeur + badge dispo
+// GET /api/portail/catalogue — offres actives du vendeur, toutes commandables
 const getCatalogue = async (req, res) => {
   try {
     const clientId = req.user.acheteurClientId;
-    const [vendeur, labos, offres] = await Promise.all([
+    const [vendeur, offres] = await Promise.all([
       pool.query(`SELECT nom, telephone, email FROM profil_entreprise WHERE client_id = $1`, [clientId]),
-      pool.query(
-        `SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE pe.client_id = $1`,
-        [clientId]
-      ),
       pool.query(
         `SELECT o.*,
                 CASE WHEN o.article_type = 'ingredient' THEN a.nom ELSE p.nom END AS nom,
                 CASE WHEN o.article_type = 'ingredient' THEN u.nom ELSE 'unité' END AS unite,
                 CASE WHEN o.article_type = 'ingredient' THEN COALESCE(c.nom, 'Sans catégorie')
                      WHEN p.type = 'utilisable' THEN 'Produits Utilisables'
-                     ELSE 'Produits Composés' END AS categorie,
-                CASE WHEN o.article_type = 'ingredient'
-                     THEN (SELECT COALESCE(SUM(lis.seuil_min), 0) FROM labo_ingredient_selections lis
-                           JOIN labos l2 ON l2.id = lis.labo_id
-                           JOIN profil_entreprise pe2 ON pe2.id = l2.entreprise_id
-                           WHERE pe2.client_id = o.client_id AND lis.ingredient_id = o.article_id)
-                     ELSE (SELECT COALESCE(SUM(lps.seuil_min), 0) FROM labo_pt_selections lps
-                           JOIN labos l3 ON l3.id = lps.labo_id
-                           JOIN profil_entreprise pe3 ON pe3.id = l3.entreprise_id
-                           WHERE pe3.client_id = o.client_id AND lps.produit_id = o.article_id)
-                END AS seuil_total
+                     ELSE 'Produits Composés' END AS categorie
          FROM acheteur_offres o
          LEFT JOIN articles a ON o.article_type = 'ingredient' AND a.id = o.article_id
          LEFT JOIN unites u ON u.id = a.unite_id
@@ -51,32 +37,16 @@ const getCatalogue = async (req, res) => {
       ),
     ]);
 
-    const laboIds = labos.rows.map((l) => l.id);
-    const items = [];
-    for (const o of offres.rows) {
-      // Stock courant agrégé (multi-labo v1 : somme des labos ; jamais exposé, sert au badge)
-      let stockTotal = 0;
-      for (const laboId of laboIds) {
-        stockTotal += o.article_type === 'ingredient'
-          ? await computeStockCourant('labo', laboId, o.article_id)
-          : await computeStockPTCourant('labo', laboId, o.article_id);
-      }
-      const seuil = num(o.seuil_total) ?? 0;
-      items.push({
+    res.json({
+      vendeur: vendeur.rows[0]?.nom || 'Votre fournisseur',
+      offres: offres.rows.map((o) => ({
         articleType: o.article_type,
         articleId: o.article_id,
         nom: o.nom,
         unite: o.unite,
         categorie: o.categorie,
         prixUnitaireTtc: ttcDeHt(o.prix_unitaire_ht, o.taux_tva),
-        // rupture quand le stock atteint le seuil (décision produit) — quantités jamais renvoyées
-        disponible: stockTotal > seuil,
-      });
-    }
-
-    res.json({
-      vendeur: vendeur.rows[0]?.nom || 'Votre fournisseur',
-      offres: items,
+      })),
     });
   } catch (err) {
     console.error(err);
