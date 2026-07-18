@@ -141,12 +141,12 @@ const addActivitePrestataire = async (req, res) => {
     const cid = clientId(req);
     await assertActiviteOwner(activite_id, cid);
     const r = await pool.query(
-      `INSERT INTO activite_prestataires (activite_id, prestataire_id, taux_commission)
-       VALUES ($1,$2,$3)
+      `INSERT INTO activite_prestataires (activite_id, prestataire_id, taux_commission, created_by)
+       VALUES ($1,$2,$3,$4)
        ON CONFLICT (activite_id, prestataire_id) DO UPDATE
          SET taux_commission = EXCLUDED.taux_commission, actif = true
        RETURNING *`,
-      [activite_id, prestataire_id, taux_commission]
+      [activite_id, prestataire_id, taux_commission, req.user.id]
     );
     res.status(201).json(r.rows[0]);
   } catch (e) {
@@ -284,15 +284,15 @@ const upsertArticleVendable = async (req, res) => {
     await assertActiviteOwner(activite_id, cid);
 
     const r = await pool.query(
-      `INSERT INTO activite_articles_vendables (activite_id, article_type, article_id, prix_vente, portion, actif, categorie_produit_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO activite_articles_vendables (activite_id, article_type, article_id, prix_vente, portion, actif, categorie_produit_id, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (activite_id, article_type, article_id) DO UPDATE
          SET prix_vente = EXCLUDED.prix_vente,
              portion = EXCLUDED.portion,
              actif = EXCLUDED.actif,
              categorie_produit_id = EXCLUDED.categorie_produit_id
        RETURNING *`,
-      [activite_id, article_type, article_id, prix_vente ?? 0, portion ?? null, actif, categorieProduitId]
+      [activite_id, article_type, article_id, prix_vente ?? 0, portion ?? null, actif, categorieProduitId, req.user.id]
     );
     const pv = prix_vente ?? 0;
     if (pv > 0) {
@@ -462,12 +462,12 @@ const upsertArticlePrixPrestataire = async (req, res) => {
       return res.status(400).json({ message: 'article_vendable_id et activite_prestataire_id requis' });
     }
     const r = await pool.query(
-      `INSERT INTO article_prix_prestataire (article_vendable_id, activite_prestataire_id, prix_vente, updated_at)
-       VALUES ($1,$2,$3, NOW())
+      `INSERT INTO article_prix_prestataire (article_vendable_id, activite_prestataire_id, prix_vente, updated_at, created_by)
+       VALUES ($1,$2,$3, NOW(), $4)
        ON CONFLICT (article_vendable_id, activite_prestataire_id) DO UPDATE
          SET prix_vente = EXCLUDED.prix_vente, updated_at = NOW()
        RETURNING *`,
-      [article_vendable_id, activite_prestataire_id, prix_vente]
+      [article_vendable_id, activite_prestataire_id, prix_vente, req.user.id]
     );
     res.status(201).json(r.rows[0]);
   } catch (e) {
@@ -499,8 +499,8 @@ const upsertChargesFixes = async (req, res) => {
     await assertActiviteOwner(activite_id, cid);
     const r = await pool.query(
       `INSERT INTO charges_fixes
-         (activite_id, mode, montant_global, loyer, charges_personnel, electricite_gaz, eau, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7, NOW())
+         (activite_id, mode, montant_global, loyer, charges_personnel, electricite_gaz, eau, updated_at, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7, NOW(), $8)
        ON CONFLICT (activite_id) DO UPDATE SET
          mode = EXCLUDED.mode,
          montant_global = EXCLUDED.montant_global,
@@ -511,7 +511,7 @@ const upsertChargesFixes = async (req, res) => {
          updated_at = NOW()
        RETURNING *`,
       [activite_id, mode || 'global', montant_global ?? null, loyer ?? null,
-       charges_personnel ?? null, electricite_gaz ?? null, eau ?? null]
+       charges_personnel ?? null, electricite_gaz ?? null, eau ?? null, req.user.id]
     );
     res.status(201).json(r.rows[0]);
   } catch (e) {
@@ -814,7 +814,7 @@ const createVente = async (req, res) => {
       else {
         const ent = await client.query(`SELECT entreprise_id FROM activites WHERE id = $1`, [activite_id]);
         if (ent.rows[0]) {
-          const nf = await client.query(`INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`, [ent.rows[0].entreprise_id]);
+          const nf = await client.query(`INSERT INTO fournisseurs (entreprise_id, nom, created_by) VALUES ($1, 'AUTO', $2) RETURNING id`, [ent.rows[0].entreprise_id, req.user.id]);
           venteAutoFournId = nf.rows[0].id;
         }
       }
@@ -849,9 +849,9 @@ const createVente = async (req, res) => {
       );
       if (upd.rowCount === 0) {
         await client.query(
-          `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule)
-           VALUES ($1, $2, $3, $4, NULL)`,
-          [sousProduitId, activite_id, dateApproValue, -total]
+          `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, created_by)
+           VALUES ($1, $2, $3, $4, NULL, $5)`,
+          [sousProduitId, activite_id, dateApproValue, -total, req.user.id]
         );
       }
     }

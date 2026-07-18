@@ -759,8 +759,8 @@ const saveStockPT = async (req, res) => {
           );
         } else {
           const newFo = await pool.query(
-            `INSERT INTO fournisseurs (entreprise_id, nom) VALUES ($1, 'AUTO') RETURNING id`,
-            [entrepriseId]
+            `INSERT INTO fournisseurs (entreprise_id, nom, created_by) VALUES ($1, 'AUTO', $2) RETURNING id`,
+            [entrepriseId, userId]
           );
           autoFournisseurId = newFo.rows[0].id;
           await pool.query(
@@ -778,8 +778,8 @@ const saveStockPT = async (req, res) => {
         autoFournisseurId = foRes.rows[0].id;
       } else {
         const newFo = await pool.query(
-          `INSERT INTO fournisseurs (client_id, nom) VALUES ($1, 'AUTO') RETURNING id`,
-          [userId]
+          `INSERT INTO fournisseurs (client_id, nom, created_by) VALUES ($1, 'AUTO', $2) RETURNING id`,
+          [userId, userId]
         );
         autoFournisseurId = newFo.rows[0].id;
       }
@@ -795,16 +795,16 @@ const saveStockPT = async (req, res) => {
     await withTransaction(async (client) => {
       const upsertResult = actId
         ? await client.query(
-            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, custom_portions, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire)
-             VALUES ($1, $2, $3, $4, $5, $6, 'manuel', $7, $8, 0, $5)
+            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, custom_portions, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, 'manuel', $7, $8, 0, $5, $9)
              RETURNING id`,
-            [produitId, actId, dateAppro, qty, prixCalcule, customPortionsJson, autoFournisseurId, ptRef]
+            [produitId, actId, dateAppro, qty, prixCalcule, customPortionsJson, autoFournisseurId, ptRef, userId]
           )
         : await client.query(
-            `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule, custom_portions, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire)
-             VALUES ($1, $2, $3, $4, $5, $6, 'manuel', $7, $8, 0, $5)
+            `INSERT INTO stock_produits_transformes (produit_id, client_id, date_appro, quantite, prix_calcule, custom_portions, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire, created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, 'manuel', $7, $8, 0, $5, $9)
              RETURNING id`,
-            [produitId, userId, dateAppro, qty, prixCalcule, customPortionsJson, autoFournisseurId, ptRef]
+            [produitId, userId, dateAppro, qty, prixCalcule, customPortionsJson, autoFournisseurId, ptRef, userId]
           );
       sptId = upsertResult.rows[0].id;
 
@@ -834,9 +834,9 @@ const saveStockPT = async (req, res) => {
           const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
           const consumed = -(portion * qty);
           await client.query(
-            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire)
-             VALUES ($1, $2, $3, $4, $5, 'PT', $6, $7, 0, $5)`,
-            [sp.sous_produit_id, actId, dateAppro, consumed, spCosts[sp.sous_produit_id] ?? null, autoFournisseurId, ptRef]
+            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire, created_by)
+             VALUES ($1, $2, $3, $4, $5, 'PT', $6, $7, 0, $5, $8)`,
+            [sp.sous_produit_id, actId, dateAppro, consumed, spCosts[sp.sous_produit_id] ?? null, autoFournisseurId, ptRef, userId]
           );
         }
       }

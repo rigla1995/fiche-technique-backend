@@ -315,8 +315,8 @@ const create = async (req, res) => {
     const clientId = req.user.gerant_parent_id || req.user.id;
     const catId = type === 'utilisable' ? null : categorieProduitId;
     const result = await client.query(
-      'INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id, categorie_produit_id, origine) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activitePrincipale, catId, origine]
+      'INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id, categorie_produit_id, origine, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activitePrincipale, catId, origine, req.user.id]
     );
     const produitId = result.rows[0].id;
 

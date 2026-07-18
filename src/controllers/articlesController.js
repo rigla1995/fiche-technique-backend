@@ -105,9 +105,9 @@ const create = async (req, res) => {
     }
 
     const inserted = await client.query(
-      `INSERT INTO articles (nom, unite_id, client_id, categorie_id)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [nom, unite_id, clientId, categorie_id]
+      `INSERT INTO articles (nom, unite_id, client_id, categorie_id, created_by)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [nom, unite_id, clientId, categorie_id, req.user.id]
     );
     const newId = inserted.rows[0].id;
     await client.query('COMMIT');

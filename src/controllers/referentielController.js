@@ -219,8 +219,8 @@ const importReferentiel = [
             }
           } else {
             const newArt = await client.query(
-              'INSERT INTO articles (nom, client_id, unite_id, categorie_id) VALUES ($1, $2, $3, $4) RETURNING id',
-              [r.article, clientId, uniteId, categorieId]
+              'INSERT INTO articles (nom, client_id, unite_id, categorie_id, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+              [r.article, clientId, uniteId, categorieId, req.user.id]
             );
             const newArticleId = newArt.rows[0].id;
             stats.articles++;
