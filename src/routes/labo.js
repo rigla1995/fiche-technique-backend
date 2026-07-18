@@ -9,18 +9,16 @@ const {
   createTransfer, getTransferHistory, updateTransfer, deleteTransfer, getTransferPrix,
   getActivityAssignments, toggleActivityAssignment,
   getLaboHistorique, updateLaboHistoriqueEntry, deleteLaboHistoriqueEntry,
-  exportLaboHistoriqueExcel, exportLaboHistoriquePdf,
+  exportLaboHistoriqueExcel,
   createLaboPerte,
   getLaboPTRecipe,
   exportLaboTransferExcel,
-  exportLaboTransferHistoriquePdf,
 } = require('../controllers/laboController');
 const {
   getLaboInventaireStock, saveLaboInventaire,
   getLaboInventaireHistorique, exportLaboInventaireExcel,
-  exportLaboInventaireHistoriquePdf,
 } = require('../controllers/inventaireController');
-const { getPrixLaboPerte, getDateRangeLaboPerte, listLaboPertes, exportLaboPerteExcel, exportLaboPertesPdf } = require('../controllers/pertesController');
+const { getPrixLaboPerte, getDateRangeLaboPerte, listLaboPertes, exportLaboPerteExcel } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 const { laboVentes, laboVentesStats } = require('../controllers/ventesController');
 
@@ -269,22 +267,6 @@ const { laboVentes, laboVentesStats } = require('../controllers/ventesController
  *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
  *             schema: { type: string, format: binary }
  *
- * /api/labo/{laboId}/pertes/historique/export-pdf:
- *   get:
- *     tags: [Labo]
- *     summary: Exporter les pertes du labo en PDF
- *     parameters:
- *       - in: path
- *         name: laboId
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Fichier PDF
- *         content:
- *           application/pdf:
- *             schema: { type: string, format: binary }
- *
  * /api/labo/{laboId}/pertes/prix:
  *   get:
  *     tags: [Labo]
@@ -464,22 +446,6 @@ const { laboVentes, laboVentesStats } = require('../controllers/ventesController
  *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
  *             schema: { type: string, format: binary }
  *
- * /api/labo/{laboId}/historique/export-pdf:
- *   get:
- *     tags: [Labo]
- *     summary: Exporter l'historique appros du labo en PDF
- *     parameters:
- *       - in: path
- *         name: laboId
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Fichier PDF
- *         content:
- *           application/pdf:
- *             schema: { type: string, format: binary }
- *
  * /api/labo/{laboId}/historique/{entryId}:
  *   put:
  *     tags: [Labo]
@@ -574,22 +540,6 @@ const { laboVentes, laboVentesStats } = require('../controllers/ventesController
  *         description: Fichier Excel
  *         content:
  *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
- *             schema: { type: string, format: binary }
- *
- * /api/labo/{laboId}/transfers/export-pdf:
- *   get:
- *     tags: [Labo]
- *     summary: Exporter les transferts du labo en PDF
- *     parameters:
- *       - in: path
- *         name: laboId
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Fichier PDF
- *         content:
- *           application/pdf:
  *             schema: { type: string, format: binary }
  *
  * /api/labo/{laboId}/transfers/{transferId}/prix:
@@ -718,22 +668,6 @@ const { laboVentes, laboVentesStats } = require('../controllers/ventesController
  *         content:
  *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
  *             schema: { type: string, format: binary }
- *
- * /api/labo/{laboId}/inventaire/historique/export-pdf:
- *   get:
- *     tags: [Labo]
- *     summary: Exporter l'historique inventaire du labo en PDF
- *     parameters:
- *       - in: path
- *         name: laboId
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Fichier PDF
- *         content:
- *           application/pdf:
- *             schema: { type: string, format: binary }
  */
 router.get('/', authenticate, requireEntreprise, listLabos);
 router.get('/ventes', authenticate, requireEntreprise, laboVentes);
@@ -755,7 +689,6 @@ router.put('/:laboId/stock/:ingredientId', authenticate, requireEntreprise, upda
 router.get('/:laboId/stock/:ingredientId/history', authenticate, requireEntreprise, getLaboStockHistory);
 router.get('/:laboId/pertes/historique', authenticate, requireEntreprise, listLaboPertes);
 router.get('/:laboId/pertes/historique/export-excel', authenticate, requireEntreprise, exportLaboPerteExcel);
-router.get('/:laboId/pertes/historique/export-pdf', authenticate, requireEntreprise, exportLaboPertesPdf);
 router.get('/:laboId/pertes/prix', authenticate, requireEntreprise, getPrixLaboPerte);
 router.get('/:laboId/pertes/date-range', authenticate, requireEntreprise, getDateRangeLaboPerte);
 router.post('/:laboId/stock/:ingredientId/perte', authenticate, requireEntreprise, createLaboPerte);
@@ -770,14 +703,12 @@ router.post('/:laboId/ingredients/:ingredientId/assign-to-activity', authenticat
 
 router.get('/:laboId/historique', authenticate, requireEntreprise, getLaboHistorique);
 router.get('/:laboId/historique/export-excel', authenticate, requireEntreprise, exportLaboHistoriqueExcel);
-router.get('/:laboId/historique/export-pdf', authenticate, requireEntreprise, exportLaboHistoriquePdf);
 router.put('/:laboId/historique/:entryId', authenticate, requireEntreprise, updateLaboHistoriqueEntry);
 router.delete('/:laboId/historique/:entryId', authenticate, requireEntreprise, deleteLaboHistoriqueEntry);
 
 router.post('/:laboId/transfer', authenticate, requireEntreprise, createTransfer);
 router.get('/:laboId/transfers', authenticate, requireEntreprise, getTransferHistory);
 router.get('/:laboId/transfers/export-excel', authenticate, requireEntreprise, exportLaboTransferExcel);
-router.get('/:laboId/transfers/export-pdf', authenticate, requireEntreprise, exportLaboTransferHistoriquePdf);
 router.get('/:laboId/transfers/:transferId/prix', authenticate, requireEntreprise, getTransferPrix);
 router.patch('/:laboId/transfers/:transferId', authenticate, requireEntreprise, updateTransfer);
 router.delete('/:laboId/transfers/:transferId', authenticate, requireEntreprise, deleteTransfer);
@@ -786,6 +717,5 @@ router.get('/:laboId/inventaire', authenticate, requireEntreprise, getLaboInvent
 router.post('/:laboId/inventaire', authenticate, requireEntreprise, saveLaboInventaire);
 router.get('/:laboId/inventaire/historique', authenticate, requireEntreprise, getLaboInventaireHistorique);
 router.get('/:laboId/inventaire/historique/export-excel', authenticate, requireEntreprise, exportLaboInventaireExcel);
-router.get('/:laboId/inventaire/historique/export-pdf', authenticate, requireEntreprise, exportLaboInventaireHistoriquePdf);
 
 module.exports = router;

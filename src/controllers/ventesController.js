@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { isoDate } = require('../utils/dateUtils');
 const ExcelJS = require('exceljs');
+const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -1214,47 +1215,18 @@ const exportVentesExcel = async (req, res) => {
     );
 
     const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
-    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF6B00';
-    const ALT = 'EEF4FF'; const GOLD = 'FFD700'; const TITLE_BG = '2E4A7A';
-    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
-    const border = { top: thin, left: thin, bottom: thin, right: thin };
-    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
-    const bodyFont = { name: 'Calibri', size: 10 };
-    const numFmt = '#,##0.000 "DT"';
-
-    const cols = [
-      { header: 'Date',        width: 13 },
-      { header: 'Type',        width: 14 },
-      { header: 'Prestataire', width: 22 },
-      { header: 'CA (DT)',     width: 15 },
-      { header: 'Marge (DT)',  width: 15 },
-      { header: 'Statut',      width: 14 },
-    ];
+    const COLS = 6;
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'Fiche Technique App';
+    wb.creator = 'LabFlow';
     const ws = wb.addWorksheet('Historique Ventes', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
-    ws.columns = cols.map(c => ({ width: c.width }));
 
-    // Title row
-    const titleText = `Historique Ventes  —  DU : ${fmtD(from)}   AU : ${fmtD(to)}`;
-    const titleRow = ws.addRow([titleText, ...Array(cols.length - 1).fill('')]);
-    ws.mergeCells(1, 1, 1, cols.length);
-    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
-    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
-    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    titleRow.height = 28;
-
-    // Header row
-    const hdrRow = ws.addRow(cols.map(c => c.header));
-    hdrRow.eachCell({ includeEmpty: true }, cell => {
-      cell.font = hdrFont;
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = border;
-    });
-    hdrRow.height = 22;
-    ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+    const periode = (from || to) ? `Période ${fmtD(from)} → ${fmtD(to)}` : 'Toutes dates';
+    const meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${r.rows.length} vente(s)`
+      + (selectedSet.size > 0 ? ` · ${selectedSet.size} sélectionnée(s) (surlignées)` : '');
+    const headerIdx = brandHeader(wb, ws, { titre: 'Historique des ventes — Activités', meta, colCount: COLS });
+    headerRow(ws, headerIdx, ['Date', 'Type', 'Prestataire', 'CA (DT)', 'Marge (DT)', 'Statut'],
+      { widths: [13, 14, 22, 15, 15, 14] });
 
     // Data rows
     let totalCA = 0; let totalMarge = 0;
@@ -1262,46 +1234,30 @@ const exportVentesExcel = async (req, res) => {
       const ca = parseFloat(row.total_ca);
       const marge = parseFloat(row.total_marge);
       totalCA += ca; totalMarge += marge;
-      const isSelected = selectedSet.has(row.id);
-      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
-      const txtColor = isSelected ? WHITE : '1a1a2e';
       const dateStr = isoDate(row.date_vente)?.split('-').reverse().join('/') ?? '';
       const typeLabel = row.type_vente === 'directe' ? 'Directe' : 'Prestataire';
       const statutLabel = row.statut === 'confirmee' ? 'Confirmée' : row.statut;
       const dataRow = ws.addRow([dateStr, typeLabel, row.prestataire_nom || '', ca, marge, statutLabel]);
-      for (let c = 1; c <= cols.length; c++) {
-        const cell = dataRow.getCell(c);
-        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-        cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: c >= 4 && c <= 5 ? 'right' : (c === 6 ? 'center' : 'left') };
+      dataRowStyle(dataRow, { index: i, selected: selectedSet.has(String(row.id)), colCount: COLS });
+      for (let c = 1; c <= COLS; c++) {
+        dataRow.getCell(c).alignment = { vertical: 'middle', horizontal: c >= 4 && c <= 5 ? 'right' : (c === 6 ? 'center' : 'left') };
       }
-      dataRow.getCell(4).numFmt = numFmt;
-      dataRow.getCell(5).numFmt = numFmt;
-      dataRow.height = 16;
+      dataRow.getCell(4).numFmt = FMT_DT;
+      dataRow.getCell(5).numFmt = FMT_DT;
     });
+    const lastDataRow = headerIdx + r.rows.length;
 
     // Total row
     const totalRow = ws.addRow(['TOTAL', '', '', totalCA, totalMarge, '']);
-    totalRow.eachCell({ includeEmpty: true }, cell => {
-      cell.font = { name: 'Calibri', bold: true, size: 10 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
-      cell.border = border;
-      cell.alignment = { vertical: 'middle', horizontal: 'right' };
-    });
+    totalRowStyle(totalRow, { colCount: COLS });
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(4).numFmt = numFmt;
-    totalRow.getCell(5).numFmt = numFmt;
-    totalRow.height = 18;
+    totalRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };
+    totalRow.getCell(5).alignment = { horizontal: 'right', vertical: 'middle' };
+    totalRow.getCell(4).numFmt = FMT_DT;
+    totalRow.getCell(5).numFmt = FMT_DT;
 
-    // Footer
-    ws.addRow([]);
-    ws.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — ${r.rows.length} vente(s) — Montants en Dinars Tunisiens (DT)`])
-      .getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
-    if (selectedSet.size > 0) {
-      const noteRow = ws.addRow([`⚠ ${selectedSet.size} vente(s) en surbrillance orange = sélectionnées`]);
-      noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: ORANGE } };
-    }
+    brandFooter(ws, COLS);
+    finalize(ws, { headerRowIdx: headerIdx, colCount: COLS, lastDataRow });
 
     const dateRange = from && to ? `${from}_${to}` : new Date().getFullYear();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1347,51 +1303,21 @@ const exportPrixHistoriqueConfigExcel = async (req, res) => {
     );
 
     const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
-    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF6B00';
-    const ALT = 'EEF4FF'; const GOLD = 'FFD700'; const TITLE_BG = '2E4A7A';
-    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
-    const border = { top: thin, left: thin, bottom: thin, right: thin };
-    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
-    const bodyFont = { name: 'Calibri', size: 10 };
-    const numFmt = '#,##0.000 "DT"';
-
-    const cols = [
-      { header: 'Produit / Supplément', width: 30 },
-      { header: 'Type',                  width: 14 },
-      { header: 'Prix enregistré',       width: 18 },
-      { header: 'Date',                  width: 14 },
-    ];
+    const COLS = 4;
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'Fiche Technique App';
+    wb.creator = 'LabFlow';
     const ws = wb.addWorksheet('Historique Config Prix', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
-    ws.columns = cols.map(c => ({ width: c.width }));
 
-    // Title row
-    const titleText = `Historique Config Prix  —  DU : ${fmtD(from)}   AU : ${fmtD(to)}`;
-    const titleRow = ws.addRow([titleText, ...Array(cols.length - 1).fill('')]);
-    ws.mergeCells(1, 1, 1, cols.length);
-    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
-    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
-    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    titleRow.height = 28;
-
-    // Header row
-    const hdrRow = ws.addRow(cols.map(c => c.header));
-    hdrRow.eachCell({ includeEmpty: true }, cell => {
-      cell.font = hdrFont;
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = border;
-    });
-    hdrRow.height = 22;
-    ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+    const periode = (from || to) ? `Période ${fmtD(from)} → ${fmtD(to)}` : 'Toutes dates';
+    const meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${r.rows.length} entrée(s)`
+      + (selectedSet.size > 0 ? ` · ${selectedSet.size} sélectionnée(s) (surlignées)` : '');
+    const headerIdx = brandHeader(wb, ws, { titre: 'Historique de configuration des prix de vente', meta, colCount: COLS });
+    headerRow(ws, headerIdx, ['Produit / Supplément', 'Type', 'Prix enregistré', 'Date'],
+      { widths: [30, 14, 18, 14] });
 
     // Data rows
     r.rows.forEach((row, i) => {
-      const isSelected = selectedSet.has(Number(row.id));
-      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
-      const txtColor = isSelected ? WHITE : '1a1a2e';
       const dateStr = new Date(row.saved_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
       const dataRow = ws.addRow([
         row.produit_nom || '—',
@@ -1399,25 +1325,15 @@ const exportPrixHistoriqueConfigExcel = async (req, res) => {
         parseFloat(row.prix_vente),
         dateStr,
       ]);
-      for (let c = 1; c <= cols.length; c++) {
-        const cell = dataRow.getCell(c);
-        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-        cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: c === 3 ? 'right' : (c === 2 || c === 4 ? 'center' : 'left') };
+      dataRowStyle(dataRow, { index: i, selected: selectedSet.has(Number(row.id)), colCount: COLS });
+      for (let c = 1; c <= COLS; c++) {
+        dataRow.getCell(c).alignment = { vertical: 'middle', horizontal: c === 3 ? 'right' : (c === 2 || c === 4 ? 'center' : 'left') };
       }
-      dataRow.getCell(3).numFmt = numFmt;
-      dataRow.height = 16;
+      dataRow.getCell(3).numFmt = FMT_DT;
     });
 
-    // Footer
-    ws.addRow([]);
-    ws.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — ${r.rows.length} entrée(s) — Prix en Dinars Tunisiens (DT)`])
-      .getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
-    if (selectedSet.size > 0) {
-      const noteRow = ws.addRow([`⚠ ${selectedSet.size} entrée(s) en surbrillance orange = sélectionnées`]);
-      noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: ORANGE } };
-    }
+    brandFooter(ws, COLS);
+    finalize(ws, { headerRowIdx: headerIdx, colCount: COLS, lastDataRow: headerIdx + r.rows.length });
 
     const dateRange = from && to ? `${from}_${to}` : new Date().getFullYear();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1504,32 +1420,19 @@ const exportLaboVentesExcel = async (req, res) => {
 
     const selSet = selectedIds ? new Set(String(selectedIds).split(',').map(s => s.trim()).filter(Boolean)) : new Set();
 
-    const TITLE_BG = '2E4A7A', BLUE = '1F3864', ORANGE = 'FF6B00';
-    const ALT = 'EEF4FF', GOLD = 'FFD700';
-    const MON = { numFmt: '#,##0.000 "DT"' };
+    const COLS = 9;
+    const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
 
     const wb = new ExcelJS.Workbook();
+    wb.creator = 'LabFlow';
     const ws = wb.addWorksheet('Ventes Labo');
 
-    const dateLabel = from || to ? `DU: ${from || '…'} AU: ${to || '…'}` : 'Toutes dates';
-    const titleRow = ws.addRow([`Historique Ventes Labo — ${dateLabel}`]);
-    ws.mergeCells(1, 1, 1, 9);
-    const tc = titleRow.getCell(1);
-    tc.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 13 };
-    tc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + TITLE_BG } };
-    tc.alignment = { horizontal: 'center', vertical: 'middle' };
-    titleRow.height = 28;
-
-    const hRow = ws.addRow(['Date', 'Article', 'Unité', 'Catégorie', 'Activité', 'Qté', 'Val. transfert', 'Val. appro', 'Écart']);
-    hRow.eachCell(c => {
-      c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + BLUE } };
-      c.alignment = { horizontal: 'center', vertical: 'middle' };
-    });
-    ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: 9 } };
-    ws.getRow(2).height = 22;
-
-    [14, 26, 10, 18, 22, 8, 16, 16, 14].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+    const periode = (from || to) ? `Période ${fmtD(from)} → ${fmtD(to)}` : 'Toutes dates';
+    const meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${rows.length} ligne${rows.length !== 1 ? 's' : ''}`
+      + (selSet.size > 0 ? ` · ${selSet.size} ligne(s) sélectionnée(s) (surlignées)` : '');
+    const headerIdx = brandHeader(wb, ws, { titre: 'Ventes du labo — Transferts valorisés', meta, colCount: COLS });
+    headerRow(ws, headerIdx, ['Date', 'Article', 'Unité', 'Catégorie', 'Activité', 'Qté', 'Val. transfert', 'Val. appro', 'Écart'],
+      { widths: [14, 26, 10, 18, 22, 8, 16, 16, 14] });
 
     let totalTransfert = 0, totalAppro = 0;
     rows.forEach((row, idx) => {
@@ -1539,32 +1442,26 @@ const exportLaboVentesExcel = async (req, res) => {
       if (valAppro != null) totalAppro += valAppro;
       const ecart = valAppro != null ? valeur - valAppro : null;
 
-      const isSel = selSet.has(String(row.id));
       const dr = ws.addRow([
         row.date_transfert, row.article_nom, row.unite_nom ?? '', row.categorie_nom,
         row.activite_nom, row.quantite, valeur, valAppro ?? '', ecart ?? '',
       ]);
-      const bg = isSel ? ORANGE : (idx % 2 === 0 ? 'FFFFFFFF' : 'FF' + ALT);
-      dr.eachCell(c => {
-        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-        if (isSel) c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      });
+      dataRowStyle(dr, { index: idx, selected: selSet.has(String(row.id)), colCount: COLS });
+      dr.getCell(6).numFmt = FMT_QTE;
       [7, 8, 9].forEach(col => {
         const cell = dr.getCell(col);
-        if (cell.value !== '') Object.assign(cell, MON);
+        if (cell.value !== '') cell.numFmt = FMT_DT;
       });
     });
+    const lastDataRow = headerIdx + rows.length;
 
     const totalEcart = totalTransfert - totalAppro;
     const tr = ws.addRow(['Total', '', '', '', `${rows.length} ligne${rows.length !== 1 ? 's' : ''}`, '', totalTransfert, totalAppro, totalEcart]);
-    tr.eachCell(c => {
-      c.font = { bold: true, color: { argb: 'FF000000' } };
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + GOLD } };
-    });
-    [7, 8, 9].forEach(col => { Object.assign(tr.getCell(col), MON); });
+    totalRowStyle(tr, { colCount: COLS });
+    [7, 8, 9].forEach(col => { tr.getCell(col).numFmt = FMT_DT; });
 
-    ws.addRow([]);
-    ws.addRow([`Généré le ${new Date().toLocaleDateString('fr-FR')} — ${rows.length} ligne${rows.length !== 1 ? 's' : ''}${selSet.size > 0 ? ` — ${selSet.size} ligne(s) sélectionnée(s) (fond orange)` : ''}`]);
+    brandFooter(ws, COLS);
+    finalize(ws, { headerRowIdx: headerIdx, colCount: COLS, lastDataRow });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="historique-ventes-labo.xlsx"');

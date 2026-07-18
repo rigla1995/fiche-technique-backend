@@ -8,17 +8,16 @@ const logger = require('../utils/logger');
 
 const GRAPH_API_URL = 'https://graph.facebook.com/v19.0/me/messages';
 
-const REPORT_PATTERNS = [
-  { format: 'excel', keywords: ['rapport excel', 'fichier excel', 'export excel', 'envoie excel'] },
-  { format: 'pdf',   keywords: ['rapport pdf', 'fichier pdf', 'export pdf', 'envoie pdf'] },
+// Le rapport est toujours un Excel charté ; les anciennes formulations « pdf »
+// déclenchent aussi l'envoi (du rapport Excel).
+const REPORT_KEYWORDS = [
+  'rapport excel', 'fichier excel', 'export excel', 'envoie excel',
+  'rapport pdf', 'fichier pdf', 'export pdf', 'envoie pdf',
 ];
 
 function detectExplicitReportRequest(text) {
   const lower = text.toLowerCase();
-  for (const { format, keywords } of REPORT_PATTERNS) {
-    if (keywords.some(kw => lower.includes(kw))) return format;
-  }
-  return null;
+  return REPORT_KEYWORDS.some(kw => lower.includes(kw));
 }
 
 // Strip Markdown for Messenger (plain text only)
@@ -145,7 +144,7 @@ async function handleMessengerEvent(event) {
       `🧾 Ventes, CA & food cost\n` +
       `📚 Référentiel, fournisseurs & produits\n` +
       `💳 Abonnement & configuration de vente\n` +
-      `📄 Rapports Excel/PDF par email\n\n` +
+      `📄 Rapports Excel par email\n\n` +
       `Exemple : « les transferts du mois actuel » ou « mon food cost de septembre ». Posez votre question !`
     );
   }
@@ -160,12 +159,11 @@ async function handleMessengerEvent(event) {
   await sendTypingOn(psid);
 
   try {
-    const reportFormat = detectExplicitReportRequest(text);
-    if (reportFormat && client.email) {
-      await sendMessage(psid, `⏳ Génération de votre rapport ${reportFormat.toUpperCase()} en cours...`);
+    if (detectExplicitReportRequest(text) && client.email) {
+      await sendMessage(psid, `⏳ Génération de votre rapport Excel en cours...`);
       try {
-        const filename = await generateAndSendReport(client.client_id, client.email, client.nom, reportFormat);
-        await sendMessage(psid, `✅ Rapport ${reportFormat.toUpperCase()} envoyé\n\n📧 Destinataire : ${client.email}\n📎 Fichier : ${filename}`);
+        const filename = await generateAndSendReport(client.client_id, client.email, client.nom);
+        await sendMessage(psid, `✅ Rapport Excel envoyé\n\n📧 Destinataire : ${client.email}\n📎 Fichier : ${filename}`);
       } catch (e) {
         console.error('[Messenger] Report error:', e.message);
         await sendMessage(psid, '❌ Erreur lors de la génération du rapport. Veuillez réessayer.');

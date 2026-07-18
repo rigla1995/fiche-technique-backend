@@ -576,7 +576,7 @@ const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) 
           <tr><td>🔄 Transferts</td><td>📉 Pertes &amp; inventaires</td></tr>
           <tr><td>📚 Référentiel &amp; fournisseurs</td><td>💳 Abonnement &amp; produits</td></tr>
         </table>
-        <p style="margin:12px 0 0;font-size:0.82rem;color:#64748b;">Filtrez par activité, labo ou période — et demandez un <strong>rapport Excel/PDF par email</strong> quand vous voulez.</p>
+        <p style="margin:12px 0 0;font-size:0.82rem;color:#64748b;">Filtrez par activité, labo ou période — et demandez un <strong>rapport Excel par email</strong> quand vous voulez.</p>
       </div>
       <div style="text-align:center;margin:0 0 26px;">
         <a href="${inviteLink}" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
