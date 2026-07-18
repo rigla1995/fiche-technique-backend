@@ -112,9 +112,9 @@ const createFournisseur = async (req, res) => {
     if (!entrepriseId) return res.status(403).json({ message: 'Entreprise introuvable' });
 
     const r = await pool.query(
-      `INSERT INTO fournisseurs (entreprise_id, nom, adresse, telephone)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [entrepriseId, nom.trim(), adresse?.trim() || null, telephone?.trim() || null]
+      `INSERT INTO fournisseurs (entreprise_id, nom, adresse, telephone, created_by)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [entrepriseId, nom.trim(), adresse?.trim() || null, telephone?.trim() || null, req.user.id]
     );
     const fournisseur = r.rows[0];
 
