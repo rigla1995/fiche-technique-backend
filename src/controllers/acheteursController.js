@@ -358,18 +358,17 @@ const inviter = async (req, res) => {
 // GET /api/acheteurs/template — modèle Excel d'import du carnet
 const getTemplate = async (req, res) => {
   try {
+    const { brandTemplate } = require('../services/excelBrandService');
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Acheteurs');
-    ws.columns = HEADERS.map((h) => ({ header: h, key: h, width: h === 'Adresse' ? 34 : 22 }));
-    const headerRow = ws.getRow(1);
-    headerRow.eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
-      cell.alignment = { horizontal: 'center' };
+    brandTemplate(wb, ws, {
+      titre: "Modèle d'import — Carnet d'acheteurs",
+      sousTitre: 'Ajout dynamique des acheteurs B2B : une ligne = un acheteur',
+      meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Seul le nom est obligatoire.",
+      headers: HEADERS,
+      widths: HEADERS.map((h) => (h === 'Adresse' ? 34 : 22)),
+      exemple: ['Exemple : Ahmed Ben Salah', 'Superette El Amen', 'ahmed@elamen.tn', '98 123 456', 'Rue de la Liberté, Tunis', '1234567/A/M/000'],
     });
-    ws.addRow(['Ahmed Ben Salah', 'Superette El Amen', 'ahmed@elamen.tn', '98 123 456', 'Rue de la Liberté, Tunis', '1234567/A/M/000']);
-    ws.addRow(['Restaurant Le Golfe', '', 'contact@legolfe.tn', '71 987 654', 'Av. Bourguiba, Sousse', '']);
-
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="modele_acheteurs.xlsx"');
     await wb.xlsx.write(res);
@@ -395,9 +394,14 @@ const importAcheteurs = [
       const ws = wb.worksheets[0];
       if (!ws) return res.status(400).json({ message: 'Fichier Excel vide ou illisible' });
 
+      // Les données commencent APRÈS la ligne d'en-têtes, où qu'elle soit
+      // (modèle de marque : bandeau au-dessus ; anciens modèles : ligne 1),
+      // et la ligne d'exemple grisée du modèle est ignorée.
+      const { findHeaderRow, isExampleRow } = require('../services/excelBrandService');
+      const headerRowNum = findHeaderRow(ws, HEADERS) ?? 1;
       const lignes = [];
       ws.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return;
+        if (rowNumber <= headerRowNum || isExampleRow(row)) return;
         const cell = (i) => String(row.getCell(i).text || '').trim();
         lignes.push({
           row: rowNumber,

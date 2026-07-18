@@ -147,4 +147,44 @@ function finalize(ws, { headerRowIdx, colCount, lastDataRow, autoFilter = true }
   }
 }
 
-module.exports = { BRAND, FMT_DT, FMT_QTE, BORDER, fill, brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize };
+// ── Modèles d'import (Ajout Dynamique) ───────────────────────────────────────
+// Un modèle de marque = bandeau + en-têtes charte + UNE ligne d'exemple grisée
+// dont la première cellule commence par « Exemple : » — les parseurs d'import
+// la sautent via isExampleRow, et localisent les en-têtes via findHeaderRow
+// (compatibilité conservée avec les anciens modèles à en-têtes en ligne 1).
+function brandTemplate(wb, ws, { titre, sousTitre = '', meta = '', headers, widths, exemple }) {
+  const colCount = headers.length;
+  const headerIdx = brandHeader(wb, ws, { titre, sousTitre, meta, colCount });
+  headerRow(ws, headerIdx, headers, { widths });
+  const ex = ws.getRow(headerIdx + 1);
+  ex.values = exemple;
+  for (let c = 1; c <= colCount; c++) {
+    const cell = ex.getCell(c);
+    cell.fill = fill(BRAND.amber);
+    cell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: BRAND.muted } };
+    cell.border = BORDER;
+  }
+  ws.views = [{ state: 'frozen', ySplit: headerIdx }];
+  return headerIdx;
+}
+
+// Ligne (1-based) dont les cellules correspondent EXACTEMENT aux en-têtes
+// attendus ; null si introuvable dans les 15 premières lignes (ancien modèle).
+function findHeaderRow(ws, headers) {
+  const max = Math.min(ws.rowCount, 15);
+  for (let r = 1; r <= max; r++) {
+    const row = ws.getRow(r);
+    const ok = headers.every((h, i) =>
+      String(row.getCell(i + 1).text || '').trim().toLowerCase() === h.toLowerCase());
+    if (ok) return r;
+  }
+  return null;
+}
+
+// La ligne d'exemple du modèle (première cellule « Exemple : … ») est ignorée
+// à l'import même si le client ne l'a pas effacée.
+function isExampleRow(row) {
+  return String(row.getCell(1).text || '').trim().toLowerCase().startsWith('exemple');
+}
+
+module.exports = { BRAND, FMT_DT, FMT_QTE, BORDER, fill, brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, brandTemplate, findHeaderRow, isExampleRow };
