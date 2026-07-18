@@ -238,13 +238,14 @@ const exportExcel = async (req, res) => {
         workbook2.creator = 'Fiche Technique App';
         workbook2.created = new Date();
 
-        const tabBase2 = filename2.replace('.xlsx', '').replace(/[\\/?*[\]:]/g, '-');
-        const dpSheet = workbook2.addWorksheet((tabBase2 + ' — DP').slice(0, 31), { pageSetup: { paperSize: 9, orientation: 'portrait' } });
-        const mpSheet = workbook2.addWorksheet((tabBase2 + ' — MP').slice(0, 31), { pageSetup: { paperSize: 9, orientation: 'portrait' } });
+        // Suffixe d'onglet préservé même si le nom est long (limite Excel : 31 chars)
+        const tabBase2 = filename2.replace('.xlsx', '').replace(/[\\/?*[\]:]/g, '-').slice(0, 23);
+        const dpSheet = workbook2.addWorksheet(tabBase2 + ' — DP', { pageSetup: { paperSize: 9, orientation: 'portrait' } });
+        const mpSheet = workbook2.addWorksheet(tabBase2 + ' — PMP', { pageSetup: { paperSize: 9, orientation: 'portrait' } });
 
         const ctxInfo2 = ctxName ? { nom: ctxName } : null;
         fillFtWorksheet(workbook2, dpSheet, dpData, ftMode, ftDate, actId, ctxInfo2, 'DP — Dernier Prix', ctxLabel);
-        fillFtWorksheet(workbook2, mpSheet, mpData, ftMode, ftDate, actId, ctxInfo2, 'MP — Moyenne des Prix', ctxLabel);
+        fillFtWorksheet(workbook2, mpSheet, mpData, ftMode, ftDate, actId, ctxInfo2, 'PMP — Prix Moyen Pondéré', ctxLabel);
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="${filename2}"`);
@@ -288,7 +289,7 @@ const exportExcel = async (req, res) => {
     workbook.created = new Date();
 
     const sheet = workbook.addWorksheet(sheetTabName, { pageSetup: { paperSize: 9, orientation: 'portrait' } });
-    const pricingLabel = mode === 'stock' ? (pricingMethod === 'mp' ? 'MP — Moyenne des Prix' : 'DP — Dernier Prix') : null;
+    const pricingLabel = mode === 'stock' ? (pricingMethod === 'mp' ? 'PMP — Prix Moyen Pondéré' : 'DP — Dernier Prix') : null;
     fillFtWorksheet(workbook, sheet, coutData, ftMode, ftDate, actId, activityInfo, pricingLabel, ctxLabel);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
