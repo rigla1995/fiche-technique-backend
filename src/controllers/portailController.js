@@ -25,12 +25,14 @@ const getCatalogue = async (req, res) => {
                 CASE WHEN o.article_type = 'ingredient' THEN u.nom ELSE 'unité' END AS unite,
                 CASE WHEN o.article_type = 'ingredient' THEN COALESCE(c.nom, 'Sans catégorie')
                      WHEN p.type = 'utilisable' THEN 'Produits Utilisables'
-                     ELSE 'Produits Composés' END AS categorie
+                     ELSE 'Produits Composés' END AS categorie,
+                CASE WHEN o.article_type = 'produit' THEN cp.nom END AS categorie_produit
          FROM acheteur_offres o
          LEFT JOIN articles a ON o.article_type = 'ingredient' AND a.id = o.article_id
          LEFT JOIN unites u ON u.id = a.unite_id
          LEFT JOIN categories c ON c.id = a.categorie_id
          LEFT JOIN produits p ON o.article_type = 'produit' AND p.id = o.article_id
+         LEFT JOIN categories_produit cp ON cp.id = p.categorie_produit_id
          WHERE o.client_id = $1 AND o.actif = true
          ORDER BY categorie, nom`,
         [clientId]
@@ -45,6 +47,8 @@ const getCatalogue = async (req, res) => {
         nom: o.nom,
         unite: o.unite,
         categorie: o.categorie,
+        // Catégorie produit du client (cards du portail) — null pour les articles
+        categorieProduit: o.categorie_produit || null,
         prixUnitaireTtc: ttcDeHt(o.prix_unitaire_ht, o.taux_tva),
       })),
     });
