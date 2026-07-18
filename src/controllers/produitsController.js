@@ -1152,6 +1152,65 @@ async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = 
   };
 }
 
+// GET /products/:id/ft-contextes — données du flux Fiche Technique :
+// la RECETTE (composants + portions, sous-produits récursifs) et les CONTEXTES
+// de prix proposables = activités et labos ASSIGNÉS au produit. Règle métier :
+// un produit origine='labo' est limité aux transferts côté activité (pas
+// d'appro manuel) → seuls ses LABOS sont proposés comme base de prix.
+const getFtContextes = async (req, res) => {
+  const { id } = req.params;
+  const ownerId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const prod = await pool.query(`SELECT id, nom, origine FROM produits WHERE id = $1 AND client_id = $2`, [id, ownerId]);
+    if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
+    const origine = prod.rows[0].origine || 'activite';
+
+    const [acts, labs, recette] = await Promise.all([
+      origine === 'labo'
+        ? Promise.resolve({ rows: [] })
+        : pool.query(
+          `SELECT DISTINCT t.id, t.nom FROM (
+             SELECT a.id, a.nom FROM activites a JOIN produits p ON a.id = p.activite_id WHERE p.id = $1
+             UNION
+             SELECT a.id, a.nom FROM produit_activite_stock pas JOIN activites a ON a.id = pas.activite_id WHERE pas.produit_id = $1
+             UNION
+             SELECT a.id, a.nom FROM produit_activite_affectation paa JOIN activites a ON a.id = paa.activite_id WHERE paa.produit_id = $1
+           ) t ORDER BY t.nom`,
+          [id]
+        ),
+      pool.query(
+        `SELECT l.id, l.nom FROM labo_pt_selections lps JOIN labos l ON l.id = lps.labo_id
+         WHERE lps.produit_id = $1 ORDER BY l.nom`,
+        [id]
+      ),
+      // Structure de recette sans prix (map vide → prix 0, seuls portions/unités comptent)
+      calculerCoutAvecPrixMap(parseInt(id), ownerId, {}),
+    ]);
+
+    const mapSousProduits = (sps) => sps.map((sp) => ({
+      nom: sp.nom,
+      portion: sp.portion,
+      ingredients: (sp.details?.ingredients || []).map((i) => ({ nom: i.nom, portion: i.portion, unite: i.unite })),
+      sousProduits: mapSousProduits(sp.details?.sous_produits || []),
+    }));
+
+    res.json({
+      origine,
+      limiteTransferts: origine === 'labo',
+      activites: acts.rows,
+      labos: labs.rows,
+      recette: {
+        ingredients: recette.ingredients.map((i) => ({ nom: i.nom, portion: i.portion, unite: i.unite, categorie: i.categorie })),
+        sousProduits: mapSousProduits(recette.sous_produits),
+      },
+    });
+  } catch (err) {
+    if (err.message && err.message.includes('circulaire')) return res.status(400).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // GET /products/:id/stock-dates?activiteId=:aid&month=YYYY-MM
 // Omit month to get all available dates (not limited to current month)
 const getStockDates = async (req, res) => {
@@ -1686,5 +1745,6 @@ module.exports = {
   buildDpPriceMap, buildMpPriceMap,
   buildDpPriceMapLabo, buildMpPriceMapLabo, laboOwnedByClient,
   getStockDates, getStockCheck, getManualPrices, saveManualPrices,
+  getFtContextes,
   exportListExcel, getUtilisablesPerimetre,
 };
