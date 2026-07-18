@@ -349,13 +349,19 @@ const tabVentes = async (req, ctx, from, to) => {
   const [canalRes, catRes, typeRes, prodRes] = await Promise.all([
     pool.query(`SELECT ${L_CANAL} AS canal, ${sums} ${VENTE_FROM} WHERE ${where} GROUP BY 1 ORDER BY 2 DESC`, params),
     pool.query(
-      `SELECT COALESCE(cpn.nom, 'Sans catégorie') AS categorie, SUM(t.ca) AS ca, SUM(t.cout) AS cout, SUM(t.commission) AS commission, SUM(t.qte) AS qte
+      // Groupé par ID de catégorie (pas par nom) : deux catégories homonymes de
+      // types différents (« Burger » vendable vs valorisé) restent distinctes,
+      // et le libellé porte le type pour les différencier à l'écran.
+      `SELECT COALESCE(
+                CASE cpn.type_produit WHEN 'vendable' THEN 'P. Vendable / ' WHEN 'supplement' THEN 'Supplément / ' WHEN 'valorise' THEN 'P. Valorisé / ' ELSE '' END || cpn.nom,
+                'Sans catégorie') AS categorie,
+              SUM(t.ca) AS ca, SUM(t.cout) AS cout, SUM(t.commission) AS commission, SUM(t.qte) AS qte
        FROM (
          SELECT ${L_CAT_ID} AS cat_id, ${L_CA} AS ca, ${L_COUT} AS cout, ${L_COMMISSION} AS commission, vl.quantite AS qte
          ${VENTE_FROM} WHERE ${where}
        ) t
        LEFT JOIN categories_produit cpn ON cpn.id = t.cat_id
-       GROUP BY 1 ORDER BY 2 DESC`,
+       GROUP BY t.cat_id, cpn.nom, cpn.type_produit ORDER BY 2 DESC`,
       params
     ),
     pool.query(`SELECT ${L_TYPE} AS type, ${sums} ${VENTE_FROM} WHERE ${where} GROUP BY 1 ORDER BY 2 DESC`, params),
@@ -845,8 +851,15 @@ const tabFiltres = async (req, ctx) => {
         )
       : { rows: [] },
     pool.query(
-      `SELECT DISTINCT cp.id, cp.nom FROM categories_produit cp
-       JOIN produits p ON p.categorie_produit_id = cp.id WHERE p.client_id = $1 ORDER BY cp.nom`,
+      // type_produit exposé : deux catégories homonymes (« Burger » vendable /
+      // valorisé) doivent être différenciables dans le filtre. Les catégories
+      // de valorisés sont rattachées via activite_articles_vendables, pas produits.
+      `SELECT DISTINCT cp.id, cp.nom, cp.type_produit FROM categories_produit cp
+       WHERE cp.client_id = $1 AND (
+         EXISTS (SELECT 1 FROM produits p WHERE p.categorie_produit_id = cp.id AND p.client_id = $1)
+         OR EXISTS (SELECT 1 FROM activite_articles_vendables aav WHERE aav.categorie_produit_id = cp.id)
+       )
+       ORDER BY cp.nom`,
       [ctx.clientId]
     ),
     pool.query(
