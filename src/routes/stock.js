@@ -6,7 +6,7 @@ const {
   getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
   updateSeuilMin,
-  exportHistoriqueExcel, exportHistoriquePdf,
+  exportHistoriqueExcel,
   deleteEntrepriseIngredientHistory,
   getCascadeInfoEntreprise,
 } = require('../controllers/stockController');
@@ -180,17 +180,6 @@ const inventaireValidation = [
  *         description: Fichier Excel
  *         content:
  *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
- *             schema: { type: string, format: binary }
- *
- * /api/stock/client/pertes/export-pdf:
- *   get:
- *     tags: [Stock]
- *     summary: Exporter les pertes du client en PDF
- *     responses:
- *       200:
- *         description: Fichier PDF
- *         content:
- *           application/pdf:
  *             schema: { type: string, format: binary }
  *
  * /api/stock/client/pertes/prix:
@@ -449,17 +438,6 @@ router.delete('/entreprise/:activiteId/:ingredientId/all-history', authenticate,
  *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
  *             schema: { type: string, format: binary }
  *
- * /api/stock/historique/export-pdf:
- *   get:
- *     tags: [Stock]
- *     summary: Exporter l'historique des appros en PDF
- *     responses:
- *       200:
- *         description: Fichier PDF
- *         content:
- *           application/pdf:
- *             schema: { type: string, format: binary }
- *
  * /api/stock/historique/{id}:
  *   put:
  *     tags: [Stock]
@@ -495,7 +473,6 @@ router.delete('/entreprise/:activiteId/:ingredientId/all-history', authenticate,
  */
 router.get('/historique', authenticate, requireClient, getHistoriqueAppro);
 router.get('/historique/export-excel', authenticate, requireClient, exportHistoriqueExcel);
-router.get('/historique/export-pdf', authenticate, requireClient, exportHistoriquePdf);
 router.put('/historique/:id', authenticate, requireClient, updateHistoriqueEntry);
 router.delete('/historique/:id', authenticate, requireClient, deleteHistoriqueEntry);
 
@@ -634,17 +611,6 @@ router.put('/pt/:produitId/seuil-min', authenticate, requireClient, updateSeuilM
  *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
  *             schema: { type: string, format: binary }
  *
- * /api/stock/client/inventaire/historique/export-pdf:
- *   get:
- *     tags: [Stock]
- *     summary: Exporter l'historique des inventaires en PDF (client)
- *     responses:
- *       200:
- *         description: Fichier PDF
- *         content:
- *           application/pdf:
- *             schema: { type: string, format: binary }
- *
  * /api/stock/entreprise/{activiteId}/inventaire:
  *   get:
  *     tags: [Stock]
@@ -714,22 +680,6 @@ router.put('/pt/:produitId/seuil-min', authenticate, requireClient, updateSeuilM
  *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
  *             schema: { type: string, format: binary }
  *
- * /api/stock/entreprise/{activiteId}/inventaire/historique/export-pdf:
- *   get:
- *     tags: [Stock]
- *     summary: Exporter l'historique inventaire d'une activité en PDF
- *     parameters:
- *       - in: path
- *         name: activiteId
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Fichier PDF
- *         content:
- *           application/pdf:
- *             schema: { type: string, format: binary }
- *
  * /api/stock/inventaire/{inventaireId}:
  *   put:
  *     tags: [Stock]
@@ -754,13 +704,11 @@ const {
   getActiviteInventaireStock, saveActiviteInventaire,
   getActiviteInventaireHistorique, exportActiviteInventaireExcel,
   updateInventaireEntry,
-  exportActiviteInventaireHistoriquePdf,
 } = require('../controllers/inventaireController');
 router.get('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, getActiviteInventaireStock);
 router.post('/entreprise/:activiteId/inventaire', authenticate, requireEntreprise, inventaireValidation, validate, saveActiviteInventaire);
 router.get('/entreprise/:activiteId/inventaire/historique', authenticate, requireEntreprise, getActiviteInventaireHistorique);
 router.get('/entreprise/:activiteId/inventaire/historique/export-excel', authenticate, requireEntreprise, exportActiviteInventaireExcel);
-router.get('/entreprise/:activiteId/inventaire/historique/export-pdf', authenticate, requireEntreprise, exportActiviteInventaireHistoriquePdf);
 router.put('/inventaire/:inventaireId', authenticate, requireClient, updateInventaireEntry);
 
 module.exports = router;

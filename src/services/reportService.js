@@ -1,6 +1,6 @@
 const ExcelJS = require('exceljs');
-const PDFDocument = require('pdfkit');
 const pool = require('../config/database');
+const { brandHeader, headerRow, dataRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('./excelBrandService');
 
 const todayFr = () => new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
@@ -93,129 +93,72 @@ async function generateExcel(clientId) {
   workbook.creator = 'LabFlow AI Agent';
   workbook.created = new Date();
 
-  const headerStyle = { font: { bold: true, color: { argb: 'FFFFFFFF' } }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }, alignment: { horizontal: 'center' } };
-  const addHeader = (ws, cols) => {
-    ws.columns = cols;
-    const row = ws.getRow(1);
-    cols.forEach((c, i) => { row.getCell(i + 1).value = c.header; row.getCell(i + 1).style = headerStyle; });
-    ws.getRow(1).commit();
+  const exportedLe = new Date().toLocaleDateString('fr-FR');
+
+  // Feuille chartée : bandeau + filet + méta, en-têtes indigo, zébrage, footer.
+  // formats = numFmt par colonne (null = pas de format numérique).
+  const buildSheet = (name, { titre, labels, widths, formats, rows }) => {
+    const ws = workbook.addWorksheet(name);
+    const colCount = labels.length;
+    const headerIdx = brandHeader(workbook, ws, {
+      titre,
+      sousTitre: data.clientNom,
+      meta: `Exporté le ${exportedLe} · ${rows.length} ligne${rows.length > 1 ? 's' : ''}`,
+      colCount,
+    });
+    headerRow(ws, headerIdx, labels, { widths });
+    rows.forEach((values, i) => {
+      const row = ws.addRow(values);
+      dataRowStyle(row, { index: i, colCount });
+      formats.forEach((fmt, c) => { if (fmt) row.getCell(c + 1).numFmt = fmt; });
+    });
+    const lastDataRow = headerIdx + rows.length;
+    brandFooter(ws, colCount);
+    finalize(ws, { headerRowIdx: headerIdx, colCount, lastDataRow });
   };
 
-  // Stock sheet
-  const wsStock = workbook.addWorksheet('Stock');
-  addHeader(wsStock, [
-    { header: 'Ingrédient', key: 'ingredient', width: 30 },
-    { header: 'Quantité', key: 'quantite', width: 14 },
-    { header: 'Date appro', key: 'date_appro', width: 16 },
-    { header: 'Prix unitaire (TND)', key: 'prix_unitaire', width: 20 },
-  ]);
-  data.stock.forEach(r => wsStock.addRow({ ingredient: r.ingredient, quantite: Number(r.quantite), date_appro: fmtDate(r.date_appro), prix_unitaire: r.prix_unitaire ? Number(r.prix_unitaire) : '' }));
-  wsStock.eachRow((row, n) => { if (n > 1) row.eachCell(c => { c.alignment = { horizontal: 'left' }; }); });
+  buildSheet('Stock', {
+    titre: 'Rapport LabFlow — Stock actuel',
+    labels: ['Ingrédient', 'Quantité', 'Date appro', 'Prix unitaire (TND)'],
+    widths: [30, 14, 16, 20],
+    formats: [null, FMT_QTE, null, FMT_DT],
+    rows: data.stock.map(r => [r.ingredient, Number(r.quantite), fmtDate(r.date_appro), r.prix_unitaire ? Number(r.prix_unitaire) : '']),
+  });
 
-  // Pertes sheet
-  const wsPertes = workbook.addWorksheet('Pertes');
-  addHeader(wsPertes, [
-    { header: 'Ingrédient', key: 'ingredient', width: 30 },
-    { header: 'Quantité', key: 'quantite', width: 14 },
-    { header: 'Type', key: 'type_perte', width: 14 },
-    { header: 'Date', key: 'date_perte', width: 16 },
-  ]);
-  data.pertes.forEach(r => wsPertes.addRow({ ingredient: r.ingredient, quantite: Number(r.quantite), type_perte: r.type_perte, date_perte: fmtDate(r.date_perte) }));
+  buildSheet('Pertes', {
+    titre: 'Rapport LabFlow — Pertes récentes',
+    labels: ['Ingrédient', 'Quantité', 'Type', 'Date'],
+    widths: [30, 14, 14, 16],
+    formats: [null, FMT_QTE, null, null],
+    rows: data.pertes.map(r => [r.ingredient, Number(r.quantite), r.type_perte, fmtDate(r.date_perte)]),
+  });
 
-  // Inventaire sheet
-  const wsInv = workbook.addWorksheet('Inventaires');
-  addHeader(wsInv, [
-    { header: 'Ingrédient', key: 'ingredient', width: 30 },
-    { header: 'Quantité réelle', key: 'quantite_reelle', width: 18 },
-    { header: 'Date inventaire', key: 'date_inventaire', width: 18 },
-  ]);
-  data.inventaires.forEach(r => wsInv.addRow({ ingredient: r.ingredient, quantite_reelle: Number(r.quantite_reelle), date_inventaire: fmtDate(r.date_inventaire) }));
+  buildSheet('Inventaires', {
+    titre: 'Rapport LabFlow — Inventaires récents',
+    labels: ['Ingrédient', 'Quantité réelle', 'Date inventaire'],
+    widths: [30, 18, 18],
+    formats: [null, FMT_QTE, null],
+    rows: data.inventaires.map(r => [r.ingredient, Number(r.quantite_reelle), fmtDate(r.date_inventaire)]),
+  });
 
-  // Transferts sheet
-  const wsTrans = workbook.addWorksheet('Transferts Labo→Activité');
-  addHeader(wsTrans, [
-    { header: 'Ingrédient', key: 'ingredient', width: 30 },
-    { header: 'Quantité', key: 'quantite', width: 14 },
-    { header: 'Date transfert', key: 'date_transfert', width: 18 },
-  ]);
-  data.transferts.forEach(r => wsTrans.addRow({ ingredient: r.ingredient, quantite: Number(r.quantite), date_transfert: fmtDate(r.date_transfert) }));
+  buildSheet('Transferts Labo→Activité', {
+    titre: 'Rapport LabFlow — Transferts labo → activités',
+    labels: ['Ingrédient', 'Quantité', 'Date transfert'],
+    widths: [30, 14, 18],
+    formats: [null, FMT_QTE, null],
+    rows: data.transferts.map(r => [r.ingredient, Number(r.quantite), fmtDate(r.date_transfert)]),
+  });
 
   const buffer = await workbook.xlsx.writeBuffer();
   return { buffer, clientNom: data.clientNom, filename: `rapport-labflow-${todayFr().replace(/ /g, '-')}.xlsx`, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
 }
 
-async function generatePdf(clientId) {
-  const data = await fetchReportData(clientId);
-
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margins: { top: 40, bottom: 40, left: 50, right: 50 } });
-    const chunks = [];
-    doc.on('data', c => chunks.push(c));
-    doc.on('end', () => resolve({ buffer: Buffer.concat(chunks), clientNom: data.clientNom, filename: `rapport-labflow-${todayFr().replace(/ /g, '-')}.pdf`, mimeType: 'application/pdf' }));
-    doc.on('error', reject);
-
-    const INDIGO = '#4F46E5';
-    const GRAY = '#374151';
-    const LIGHT = '#6B7280';
-
-    // Header
-    doc.rect(0, 0, doc.page.width, 70).fill(INDIGO);
-    doc.fillColor('#fff').fontSize(20).font('Helvetica-Bold').text('LabFlow', 50, 18);
-    doc.fontSize(10).font('Helvetica').text(`Rapport — ${data.clientNom} — ${todayFr()}`, 50, 44);
-
-    const section = (title, y) => {
-      doc.moveDown(0.5);
-      doc.fillColor(INDIGO).fontSize(13).font('Helvetica-Bold').text(title, { underline: false });
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor(INDIGO).lineWidth(1).stroke();
-      doc.moveDown(0.3);
-    };
-
-    const row = (cols, widths, isHeader = false) => {
-      const x0 = 50;
-      let x = x0;
-      doc.fontSize(9).font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fillColor(isHeader ? INDIGO : GRAY);
-      cols.forEach((col, i) => { doc.text(col, x, doc.y, { width: widths[i], continued: i < cols.length - 1 }); x += widths[i]; });
-      doc.moveDown(0.2);
-    };
-
-    doc.moveDown(2);
-
-    // Stock
-    section('Stock actuel');
-    row(['Ingrédient', 'Quantité', 'Date appro', 'Prix (TND)'], [200, 80, 100, 80], true);
-    data.stock.slice(0, 40).forEach(r => row([r.ingredient, String(r.quantite ?? ''), fmtDate(r.date_appro), r.prix_unitaire ? String(r.prix_unitaire) : '—'], [200, 80, 100, 80]));
-
-    doc.addPage();
-
-    // Pertes
-    section('Pertes récentes');
-    row(['Ingrédient', 'Quantité', 'Type', 'Date'], [200, 80, 100, 80], true);
-    data.pertes.slice(0, 40).forEach(r => row([r.ingredient, String(r.quantite ?? ''), r.type_perte || '', fmtDate(r.date_perte)], [200, 80, 100, 80]));
-
-    doc.moveDown(1);
-
-    // Inventaires
-    section('Inventaires récents');
-    row(['Ingrédient', 'Quantité réelle', 'Date'], [220, 120, 100], true);
-    data.inventaires.slice(0, 40).forEach(r => row([r.ingredient, String(r.quantite_reelle ?? ''), fmtDate(r.date_inventaire)], [220, 120, 100]));
-
-    // Footer
-    doc.fontSize(8).fillColor(LIGHT).text(`Généré par l'assistant IA LabFlow · ${todayFr()}`, 50, doc.page.height - 50, { align: 'center', width: 495 });
-
-    doc.end();
-  });
-}
-
-// Point d'entrée des envois de rapport par les agents IA (chat web, Messenger)
-async function generateAndSendReport(clientId, email, clientNom, format) {
+// Point d'entrée des envois de rapport par les agents IA (chat web, Messenger).
+// Le rapport est toujours un classeur Excel charté.
+async function generateAndSendReport(clientId, email, clientNom) {
   const { sendRapportWithAttachment } = require('./emailService');
 
-  let reportData;
-  if (format === 'excel') {
-    reportData = await generateExcel(clientId);
-  } else {
-    reportData = await generatePdf(clientId);
-  }
+  const reportData = await generateExcel(clientId);
 
   await sendRapportWithAttachment({
     to: email,
@@ -223,7 +166,7 @@ async function generateAndSendReport(clientId, email, clientNom, format) {
     buffer: reportData.buffer,
     filename: reportData.filename,
     mimeType: reportData.mimeType,
-    format,
+    format: 'excel',
   });
 
   return reportData.filename;

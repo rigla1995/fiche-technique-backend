@@ -3,7 +3,7 @@ const { ptCategorie, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils'
 const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
 const { isoDate, todayStr } = require('../utils/dateUtils');
-const { buildHistoriqueApproPdf } = require('../services/histoPdfService');
+const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
 
@@ -1085,13 +1085,6 @@ const exportHistoriqueExcel = async (req, res) => {
     workbook.creator = 'Fiche Technique App';
     const sheet = workbook.addWorksheet('Historique Appro', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
-    const BLUE = '1F3864'; const WHITE = 'FFFFFF'; const ORANGE = 'FF6B00'; const ALT = 'EEF4FF'; const GOLD = 'FFD700';
-    const TITLE_BG = '2E4A7A';
-    const thin = { style: 'thin', color: { argb: 'B8CCE4' } };
-    const border = { top: thin, left: thin, bottom: thin, right: thin };
-    const hdrFont = { name: 'Calibri', bold: true, size: 10, color: { argb: WHITE } };
-    const bodyFont = { name: 'Calibri', size: 10 };
-
     const cols = [
       { header: 'Date', key: 'date', width: 12 },
       { header: 'Ingrédient', key: 'ing', width: 26 },
@@ -1114,28 +1107,21 @@ const exportHistoriqueExcel = async (req, res) => {
       ]),
       { header: 'Créé par', key: 'createdBy', width: 16 },
     ];
-    sheet.columns = cols.map((c) => ({ width: c.width }));
+    const colCount = cols.length;
 
-    // Title row
+    // Bandeau charte + en-têtes
     const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
-    const titleText = `Historique Appro  —  DU : ${fmtD(startDate)}   AU : ${fmtD(endDate)}`;
-    const titleRow = sheet.addRow([titleText, ...Array(cols.length - 1).fill('')]);
-    sheet.mergeCells(1, 1, 1, cols.length);
-    titleRow.getCell(1).font = { name: 'Calibri', bold: true, size: 13, color: { argb: WHITE } };
-    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TITLE_BG } };
-    titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-    titleRow.height = 28;
-
-    // Header row (now row 2)
-    const hdrRow = sheet.addRow(cols.map((c) => c.header));
-    hdrRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = hdrFont;
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = border;
+    const periode = (startDate || endDate) ? `Période du ${fmtD(startDate)} au ${fmtD(endDate)}` : `Année ${currentYear}`;
+    let meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${rows.length} ligne(s)`;
+    if (selectedSet.size > 0) meta += ` · ${selectedSet.size} sélectionnée(s) en surbrillance`;
+    const actNoms = Object.values(activiteNames);
+    const sousTitre = actNoms.length === 1 ? `Activité : ${actNoms[0]}`
+      : actNoms.length > 1 ? `Activités : ${actNoms.join(', ')}` : '';
+    const headerIdx = brandHeader(workbook, sheet, {
+      titre: 'Historique des approvisionnements — Activités',
+      sousTitre, meta, colCount,
     });
-    hdrRow.height = 22;
-    sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: cols.length } };
+    headerRow(sheet, headerIdx, cols.map((c) => c.header), { widths: cols.map((c) => c.width) });
 
     // Data rows
     // cols 1-10 are fixed; 11+ depend on isEntreprise
@@ -1167,46 +1153,30 @@ const exportHistoriqueExcel = async (req, res) => {
         r.created_by_nom || '',
       ];
       const dataRow = sheet.addRow(rowData);
-      const bg = isSelected ? ORANGE : (i % 2 === 0 ? WHITE : ALT);
-      const txtColor = isSelected ? WHITE : '1a1a2e';
-      for (let c = 1; c <= cols.length; c++) {
-        const cell = dataRow.getCell(c);
-        cell.font = { ...bodyFont, bold: isSelected, color: { argb: txtColor } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-        cell.border = border;
-        cell.alignment = { vertical: 'middle', horizontal: (c <= 3 || c === cols.length) ? 'left' : (c === 5 ? 'center' : 'right') };
+      dataRowStyle(dataRow, { index: i, selected: isSelected, colCount });
+      for (let c = 1; c <= colCount; c++) {
+        dataRow.getCell(c).alignment = { vertical: 'middle', horizontal: (c <= 3 || c === colCount) ? 'left' : (c === 5 ? 'center' : 'right') };
       }
-      const numFmt = '#,##0.000';
-      dataRow.getCell(4).numFmt = numFmt;
-      dataRow.getCell(6).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(8).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(9).numFmt = numFmt + ' "DT"';
-      dataRow.getCell(10).numFmt = numFmt + ' "DT"';
+      dataRow.getCell(4).numFmt = FMT_QTE;
+      dataRow.getCell(6).numFmt = FMT_DT;
+      dataRow.getCell(8).numFmt = FMT_DT;
+      dataRow.getCell(9).numFmt = FMT_DT;
+      dataRow.getCell(10).numFmt = FMT_DT;
       dataRow.height = 16;
     });
+    const lastDataRow = headerIdx + rows.length;
 
     // Total row — qty at col4, Coût HT at col9, Coût TTC at col10
-    const totalRowData = ['TOTAL', '', '', '', '', '', '', '', totalHT, totalTTC, ...Array(cols.length - 10).fill('')];
+    const totalRowData = ['TOTAL', '', '', '', '', '', '', '', totalHT, totalTTC, ...Array(colCount - 10).fill('')];
     const totalRow = sheet.addRow(totalRowData);
-    totalRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = { name: 'Calibri', bold: true, size: 10 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GOLD } };
-      cell.border = border;
-      cell.alignment = { vertical: 'middle', horizontal: 'right' };
-    });
+    totalRowStyle(totalRow, { colCount });
+    for (let c = 2; c <= colCount; c++) totalRow.getCell(c).alignment = { vertical: 'middle', horizontal: 'right' };
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(9).numFmt = '#,##0.000 "DT"';
-    totalRow.getCell(10).numFmt = '#,##0.000 "DT"';
-    totalRow.height = 18;
+    totalRow.getCell(9).numFmt = FMT_DT;
+    totalRow.getCell(10).numFmt = FMT_DT;
 
-    // Footer
-    sheet.addRow([]);
-    const footerRow = sheet.addRow([`Généré le ${new Date().toLocaleDateString('fr-TN', { dateStyle: 'long' })} — ${rows.length} enregistrement(s) — Prix en Dinars Tunisiens (DT)`]);
-    footerRow.getCell(1).font = { name: 'Calibri', italic: true, size: 9, color: { argb: '888888' } };
-    if (selectedSet.size > 0) {
-      const noteRow = sheet.addRow([`⚠ ${selectedSet.size} appro(s) en surbrillance orange = sélectionnés`]);
-      noteRow.getCell(1).font = { name: 'Calibri', bold: true, size: 9, color: { argb: ORANGE } };
-    }
+    brandFooter(sheet, colCount);
+    finalize(sheet, { headerRowIdx: headerIdx, colCount, lastDataRow });
 
     const dateRange = startDate && endDate ? `${startDate}_${endDate}` : currentYear;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1257,92 +1227,11 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
   }
 };
 
-// ── Historique Appro — export PDF ─────────────────────────────────────────────
-
-const exportHistoriquePdf = async (req, res) => {
-  const { activiteId, activiteIds: activiteIdsParam, entType, ingredientId, categorieId,
-          startDate, endDate, fournisseurId, refFacture, ptOnly, ptProduitId, ptType } = req.query;
-  const currentYear = new Date().getFullYear();
-  const isEntreprise = !!(activiteId || activiteIdsParam || entType);
-
-  try {
-    let rows = [];
-
-    if (isEntreprise) {
-      let activiteIds = [];
-      if (activiteId) activiteIds = [activiteId];
-      else if (activiteIdsParam) activiteIds = activiteIdsParam.split(',').map(Number).filter(Boolean);
-      else if (entType) {
-        const allRes = await pool.query(
-          `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE pe.client_id = $1`,
-          [req.user.gerant_parent_id || req.user.id]
-        );
-        activiteIds = allRes.rows.map((r) => r.id);
-      }
-      if (activiteIds.length === 0) return res.status(404).json({ message: 'Aucune activité' });
-
-      const actRes = await pool.query('SELECT id, nom FROM activites WHERE id = ANY($1)', [activiteIds]);
-      const activiteNames = {};
-      actRes.rows.forEach((r) => { activiteNames[r.id] = r.nom; });
-
-      const idList = activiteIds.map((_, i) => `$${i + 1}`).join(',');
-      const params = [...activiteIds, currentYear];
-      let extraWhere = '';
-      if (ingredientId) { params.push(ingredientId); extraWhere += ` AND sed.ingredient_id = $${params.length}`; }
-      else if (categorieId) { params.push(categorieId); extraWhere += ` AND i.categorie_id = $${params.length}`; }
-      if (startDate) { params.push(startDate); extraWhere += ` AND sed.date_appro >= $${params.length}`; }
-      if (endDate)   { params.push(endDate);   extraWhere += ` AND sed.date_appro <= $${params.length}`; }
-      if (fournisseurId) { params.push(fournisseurId); extraWhere += ` AND sed.fournisseur_id = $${params.length}`; }
-      if (refFacture)    { params.push(`%${refFacture}%`); extraWhere += ` AND sed.ref_facture ILIKE $${params.length}`; }
-      const result = await pool.query(
-        `SELECT sed.id, sed.activite_id, sed.date_appro, sed.quantite, sed.prix_unitaire, sed.type_appro,
-                sed.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
-                u.nom as unite_nom, COALESCE(c.nom,'Sans catégorie') as categorie_nom,
-                sed.taux_tva, sed.prix_unitaire_tva
-         FROM stock_entreprise_daily sed
-         JOIN articles i ON i.id = sed.ingredient_id JOIN unites u ON i.unite_id = u.id
-         LEFT JOIN categories c ON i.categorie_id = c.id LEFT JOIN fournisseurs f ON f.id = sed.fournisseur_id
-         WHERE sed.activite_id IN (${idList}) AND sed.date_appro >= make_date($${activiteIds.length + 1}::int, 1, 1) AND sed.date_appro < make_date($${activiteIds.length + 1}::int + 1, 1, 1)${extraWhere}
-         ORDER BY sed.date_appro DESC, i.nom`, params
-      );
-      rows = result.rows.map((r) => ({ ...r, activite_nom: activiteNames[r.activite_id] || '' }));
-
-      // Append PT (table séparée) — même règle que la liste / l'export Excel.
-      if (ptOnly === 'true' || (!categorieId && !ingredientId)) {
-        const ptParamsEnt = [currentYear, ...activiteIds];
-        let ptWhereEnt = `spt.date_appro >= make_date($1::int, 1, 1) AND spt.date_appro < make_date($1::int + 1, 1, 1) AND spt.activite_id IN (${activiteIds.map((_, i) => `$${i + 2}`).join(',')})`;
-        if (ptProduitId) { ptParamsEnt.push(ptProduitId); ptWhereEnt += ` AND spt.produit_id = $${ptParamsEnt.length}`; }
-        if (ptType) ptWhereEnt += ` AND ${ptTypeSql('p', ptType)}`;
-        if (startDate) { ptParamsEnt.push(startDate); ptWhereEnt += ` AND spt.date_appro >= $${ptParamsEnt.length}`; }
-        if (endDate) { ptParamsEnt.push(endDate); ptWhereEnt += ` AND spt.date_appro <= $${ptParamsEnt.length}`; }
-        const ptResultEnt = await pool.query(
-          `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule AS prix_unitaire,
-                  'produit_transforme' AS type_appro, f.nom AS fournisseur_nom, spt.ref_facture,
-                  p.nom AS ingredient_nom, ${ptCategorieSql('p')} AS categorie_nom, 'unité' AS unite_nom,
-                  spt.taux_tva, spt.prix_calcule AS prix_unitaire_tva
-           FROM stock_produits_transformes spt JOIN produits p ON p.id = spt.produit_id
-           LEFT JOIN fournisseurs f ON f.id = spt.fournisseur_id
-           WHERE ${ptWhereEnt} AND spt.type_appro IS DISTINCT FROM 'PT' ORDER BY spt.date_appro DESC, p.nom`,
-          ptParamsEnt
-        );
-        const ptRows = ptResultEnt.rows.map((r) => ({ ...r, activite_nom: activiteNames[r.activite_id] || '' }));
-        rows = ptOnly === 'true' ? ptRows
-          : [...rows, ...ptRows].sort((a, b) => new Date(b.date_appro) - new Date(a.date_appro));
-      }
-    }
-
-    await buildHistoriqueApproPdf(res, rows, { startDate, endDate });
-  } catch (err) {
-    console.error(err);
-    if (!res.headersSent) res.status(500).json({ message: 'Erreur génération PDF' });
-  }
-};
-
 module.exports = {
   getStockEntreprise, updateStockEntreprise, updateSeuilMin,
   getHistoryEntreprise,
   getHistoriqueAppro, updateHistoriqueEntry, deleteHistoriqueEntry,
-  exportHistoriqueExcel, exportHistoriquePdf,
+  exportHistoriqueExcel,
   deleteEntrepriseIngredientHistory,
   getCascadeInfoEntreprise,
 };

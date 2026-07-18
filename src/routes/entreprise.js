@@ -9,7 +9,7 @@ const {
   getActivitesArticlesConsommables,
 } = require('../controllers/entrepriseController');
 const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur } = require('../controllers/fournisseurController');
-const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, exportEntreprisePertesPdf, getPrixEntreprisePerte, getDateRangeEntreprisePerte } = require('../controllers/pertesController');
+const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, getPrixEntreprisePerte, getDateRangeEntreprisePerte } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
 /**
@@ -507,19 +507,6 @@ router.post('/activites/:activiteId/pertes', authenticate, requireEntreprise, cr
  *               type: string
  *               format: binary
  *
- * /api/entreprise/pertes/export-pdf:
- *   get:
- *     tags: [Pertes]
- *     summary: Exporter les pertes en PDF
- *     responses:
- *       200:
- *         description: Fichier PDF
- *         content:
- *           application/pdf:
- *             schema:
- *               type: string
- *               format: binary
- *
  * /api/entreprise/pertes/prix:
  *   get:
  *     tags: [Pertes]
@@ -580,7 +567,6 @@ router.get('/activites/:activiteId/pertes', authenticate, requireEntreprise, lis
 
 // Pertes historique (all activités combined)
 router.get('/pertes/export-excel', authenticate, requireEntreprise, exportEntreprisePertes);
-router.get('/pertes/export-pdf', authenticate, requireEntreprise, exportEntreprisePertesPdf);
 router.get('/pertes/prix', authenticate, requireEntreprise, getPrixEntreprisePerte);
 router.get('/pertes/date-range', authenticate, requireEntreprise, getDateRangeEntreprisePerte);
 router.get('/pertes', authenticate, requireEntreprise, listEntreprisePertes);
