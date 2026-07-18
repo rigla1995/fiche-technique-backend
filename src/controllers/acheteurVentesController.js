@@ -129,15 +129,15 @@ const upsertOffre = async (req, res) => {
       return res.status(400).json({ message: 'Article non proposable (article non commandable ou produit hors labo)' });
     }
     const r = await pool.query(
-      `INSERT INTO acheteur_offres (client_id, article_type, article_id, prix_unitaire_ht, taux_tva, actif)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO acheteur_offres (client_id, article_type, article_id, prix_unitaire_ht, taux_tva, actif, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (client_id, article_type, article_id) DO UPDATE
        SET prix_unitaire_ht = EXCLUDED.prix_unitaire_ht,
            taux_tva = EXCLUDED.taux_tva,
            actif = EXCLUDED.actif,
            updated_at = NOW()
        RETURNING *`,
-      [clientId, articleType, articleId, prixU, tva, actif]
+      [clientId, articleType, articleId, prixU, tva, actif, req.user.id]
     );
     const row = r.rows[0];
     // Historisation à chaque changement de prix (prix > 0), pattern module ventes
@@ -420,11 +420,11 @@ const createVente = async (req, res) => {
       const fact = await db.query(
         `INSERT INTO factures_acheteur
            (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, acheteur_adresse, acheteur_matricule_fiscal, acheteur_telephone, acheteur_email,
-            commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+            commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
          RETURNING *`,
         [clientId, acheteurId, a0.nom, a0.entreprise, a0.adresse, a0.matricule_fiscal, a0.telephone, a0.email,
-         commande.id, numero, dateCommande, brutTtc, remisePct, montantHt, montantTva, timbreFiscal, montantTimbre, montantTtc]
+         commande.id, numero, dateCommande, brutTtc, remisePct, montantHt, montantTva, timbreFiscal, montantTimbre, montantTtc, req.user.id]
       );
       await db.query('COMMIT');
       res.status(201).json({
@@ -726,11 +726,11 @@ const expedierCommande = async (req, res) => {
     const fact = await db.query(
       `INSERT INTO factures_acheteur
          (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, acheteur_adresse, acheteur_matricule_fiscal, acheteur_telephone, acheteur_email,
-          commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        RETURNING id`,
       [clientId, cmd.acheteur_id, cmd.acheteur_nom, cmd.acheteur_entr, cmd.acheteur_adr, cmd.acheteur_mf, cmd.acheteur_tel, cmd.acheteur_email,
-       cmd.id, numero, dateExpedition, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc]
+       cmd.id, numero, dateExpedition, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc, req.user.id]
     );
     await db.query(
       `UPDATE commandes_acheteur
