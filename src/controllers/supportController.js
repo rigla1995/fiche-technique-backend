@@ -57,12 +57,6 @@ const mapDemande = (row) => ({
   clientEmail: row.client_email || row.email || null,
   type: row.type,
   statut: row.statut,
-  // ingredient_manquant
-  domaineId: row.domaine_id,
-  domaineNom: row.domaine_nom || null,
-  categorieNom: row.categorie_nom,
-  uniteNom: row.unite_nom,
-  nomIngredient: row.nom_ingredient,
   // supplement
   nbActivitesSupp: row.nb_activites_supp,
   nbLabosSupp: row.nb_labos_supp,
@@ -88,11 +82,10 @@ const listMine = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const result = await pool.query(
-      `SELECT sd.*, da.nom AS domaine_nom,
+      `SELECT sd.*,
               cb.nom AS created_by_nom_joined,
               cu.email AS client_email
        FROM support_demandes sd
-       LEFT JOIN domaines_activite da ON da.id = sd.domaine_id
        LEFT JOIN utilisateurs cb ON cb.id = sd.created_by
        LEFT JOIN utilisateurs cu ON cu.id = sd.client_id
        WHERE sd.client_id = $1
@@ -126,14 +119,7 @@ const create = async (req, res) => {
     let params;
     let sql;
 
-    if (type === 'ingredient_manquant') {
-      const { domaineId, categorieNom, uniteNom, nomIngredient } = req.body;
-      if (!nomIngredient) return res.status(400).json({ message: 'Nom de l\'ingrédient requis' });
-      sql = `INSERT INTO support_demandes
-             (client_id, client_nom, type, domaine_id, categorie_nom, unite_nom, nom_ingredient, created_by, created_by_nom)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`;
-      params = [clientId, clientNom, type, domaineId || null, categorieNom || null, uniteNom || null, nomIngredient, createdById, createdByNom];
-    } else if (type === 'supplement') {
+    if (type === 'supplement') {
       const { nbActivitesSupp, nbLabosSupp, nbGerantsSupp } = req.body;
       // Option Acheteurs : quota TOTAL cible (palier 10/20/50/100) — pas un incrément
       const nbAcheteursCible = req.body.nbAcheteursCible != null ? parseInt(req.body.nbAcheteursCible, 10) : null;
@@ -256,12 +242,10 @@ const listAll = async (req, res) => {
     const result = await pool.query(
       `SELECT sd.*,
               u.nom AS client_nom, u.email AS client_email,
-              da.nom AS domaine_nom,
               admin.nom AS traite_par_nom,
               cb.nom AS created_by_nom_joined
        FROM support_demandes sd
        LEFT JOIN utilisateurs u       ON u.id = sd.client_id
-       LEFT JOIN domaines_activite da ON da.id = sd.domaine_id
        LEFT JOIN utilisateurs admin   ON admin.id = sd.traite_par
        LEFT JOIN utilisateurs cb      ON cb.id = sd.created_by
        WHERE ${conditions.join(' AND ')}
@@ -317,10 +301,6 @@ const traiter = async (req, res) => {
     };
     pushTo(demande.client_id, 'demande_traitee', traiteePayload);
     saveNotification(demande.client_id, traiteePayload).catch(console.error);
-
-    // NOTE : plus aucun catalogue commun — chaque client gère son propre référentiel.
-    // La validation d'une demande « ingrédient manquant » ne crée plus rien : l'admin
-    // répond via notes_admin et le client crée l'article dans son référentiel.
 
     // Update abonnement_config when supplement request is validated.
     // Skip if an avenant Docuseal is pending (docuseal_submission_id) : la capacité
