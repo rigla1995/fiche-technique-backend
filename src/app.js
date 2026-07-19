@@ -43,6 +43,8 @@ const facturesRoutes = require('./routes/factures');
 const manuelRoutes = require('./routes/manuel');
 const acheteursRoutes = require('./routes/acheteurs');
 const portailRoutes = require('./routes/portail');
+const publicSiteRoutes = require('./routes/publicSite');
+const adminSiteRoutes = require('./routes/adminSite');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 const { docusealWebhook } = require('./controllers/webhookController');
 
@@ -55,6 +57,9 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(cors());
+// Les logos partenaires (data-URI ≤ 300 000 caractères) dépassent la limite JSON
+// par défaut (100kb) : parser dédié monté AVANT le parser global.
+app.use('/admin/site', express.json({ limit: '1mb' }));
 // Capture the raw request body so webhook handlers can verify HMAC/secret signatures.
 app.use(express.json({
   verify: (req, _res, buf) => { req.rawBody = buf; },
@@ -70,6 +75,11 @@ if (process.env.NODE_ENV !== 'production') {
   app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
 }
 
+// Routes PUBLIQUES du site vitrine — montées AVANT le middleware /api ci-dessous
+// (comme /auth) pour rester accessibles sans aucune authentification, même si le
+// visiteur envoie un header Authorization parasite. Rate-limit dédié dans la route.
+app.use('/api/public', publicSiteRoutes);
+
 // Enforce read-only / suspended mode for all mutating API calls (non-GET, non-auth, non-admin)
 app.use('/api', (req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
@@ -81,6 +91,7 @@ app.use('/api', (req, res, next) => {
 });
 
 app.use('/auth', authRoutes);
+app.use('/admin/site', adminSiteRoutes);
 app.use('/admin', adminRoutes);
 
 // French routes
@@ -119,6 +130,10 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.use((req, res) => res.status(404).json({ message: 'Route introuvable' }));
 
 app.use((err, req, res, next) => {
+  // Corps JSON au-delà de la limite du parser (ex. logo partenaire trop lourd) → 413, pas 500.
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ message: 'Requête trop volumineuse' });
+  }
   logger.error('unhandled_request_error', {
     method: req.method,
     path: req.originalUrl,
