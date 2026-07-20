@@ -12,6 +12,8 @@ const num = (v) => (v === null || v === undefined ? null : Number(v));
 const round3 = (v) => Math.round(v * 1000) / 1000;
 // Prix TTC affiché à l'acheteur, dérivé du tarif HT + TVA de l'offre.
 const ttcDeHt = (ht, tva) => round3(Number(ht || 0) * (1 + (Number(tva) || 0) / 100));
+// Promotions (migration 174) : prix effectif = prix de référence − promo_pct %
+const { promoDe, prixEffectifHt } = require('../utils/offrePromo');
 
 // GET /api/portail/catalogue — offres actives du vendeur, toutes commandables
 const getCatalogue = async (req, res) => {
@@ -41,16 +43,23 @@ const getCatalogue = async (req, res) => {
 
     res.json({
       vendeur: vendeur.rows[0]?.nom || 'Votre fournisseur',
-      offres: offres.rows.map((o) => ({
-        articleType: o.article_type,
-        articleId: o.article_id,
-        nom: o.nom,
-        unite: o.unite,
-        categorie: o.categorie,
-        // Catégorie produit du client (cards du portail) — null pour les articles
-        categorieProduit: o.categorie_produit || null,
-        prixUnitaireTtc: ttcDeHt(o.prix_unitaire_ht, o.taux_tva),
-      })),
+      offres: offres.rows.map((o) => {
+        const promoPct = promoDe(o);
+        return {
+          articleType: o.article_type,
+          articleId: o.article_id,
+          nom: o.nom,
+          unite: o.unite,
+          categorie: o.categorie,
+          // Catégorie produit du client (cards du portail) — null pour les articles
+          categorieProduit: o.categorie_produit || null,
+          // Prix À PAYER (promo déduite si active) : c'est lui qui sert au panier
+          prixUnitaireTtc: ttcDeHt(prixEffectifHt(o), o.taux_tva),
+          // Prix de référence barré à l'affichage — null hors promo
+          prixInitialTtc: promoPct > 0 ? ttcDeHt(o.prix_unitaire_ht, o.taux_tva) : null,
+          promoPct,
+        };
+      }),
     });
   } catch (err) {
     console.error(err);
@@ -91,12 +100,15 @@ const createCommande = async (req, res) => {
       if (!Number.isFinite(quantite) || round3(quantite) <= 0 || quantite > 9999999.999) {
         return res.status(400).json({ message: `Ligne ${i + 1} : quantité invalide` });
       }
+      // Prix FIGÉ au moment de la commande, promo comprise : arrêter la promo
+      // plus tard ne modifie donc pas cette commande ni sa facture.
+      const prixHt = prixEffectifHt(offre);
       lignes.push({
         articleType: l.articleType, articleId: Number(l.articleId), designation: nom,
         quantite,
         quantiteUnites: round3(quantite),
-        prixHt: num(offre.prix_unitaire_ht) ?? 0,
-        prixTtc: ttcDeHt(offre.prix_unitaire_ht, offre.taux_tva),
+        prixHt,
+        prixTtc: ttcDeHt(prixHt, offre.taux_tva),
         tauxTva: num(offre.taux_tva) ?? 0,
       });
     }

@@ -8,18 +8,38 @@ const num = (v) => (v === null || v === undefined ? null : Number(v));
 const round3 = (v) => Math.round(v * 1000) / 1000;
 // Prix TTC dérivé d'un prix HT et d'un taux de TVA (les tarifs acheteurs sont saisis HT).
 const ttcDeHt = (ht, tva) => round3(Number(ht || 0) * (1 + (Number(tva) || 0) / 100));
+const { promoDe, prixEffectifHt } = require('../utils/offrePromo');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // OFFRES (tarifs acheteurs) — prix unitaire HT + taux TVA (TTC dérivé)
+// Une promo éventuelle (promo_pct + promo_active) remise sur le prix HT : le prix
+// de référence n'est jamais écrasé, le prix EFFECTIF est celui qui est facturé.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const mapOffre = (row) => row ? ({
-  offreId: row.id,
-  prixUnitaireHt: num(row.prix_unitaire_ht) ?? 0,
-  tauxTva: num(row.taux_tva) ?? 0,
-  prixUnitaireTtc: ttcDeHt(row.prix_unitaire_ht, row.taux_tva),
-  actif: row.actif === true,
-}) : ({ offreId: null, prixUnitaireHt: 0, tauxTva: 0, prixUnitaireTtc: 0, actif: false });
+const mapOffre = (row) => {
+  if (!row) {
+    return {
+      offreId: null, prixUnitaireHt: 0, tauxTva: 0, prixUnitaireTtc: 0, actif: false,
+      promoPct: 0, promoActive: false, prixPromoHt: 0, prixPromoTtc: 0,
+    };
+  }
+  const promoHt = prixEffectifHt(row);
+  return {
+    offreId: row.id,
+    prixUnitaireHt: num(row.prix_unitaire_ht) ?? 0,
+    tauxTva: num(row.taux_tva) ?? 0,
+    prixUnitaireTtc: ttcDeHt(row.prix_unitaire_ht, row.taux_tva),
+    actif: row.actif === true,
+    // Écran de configuration : on renvoie le taux STOCKÉ (même promo désactivée,
+    // pour ne pas perdre la saisie) et l'état d'activation séparément.
+    // Le taux réellement appliqué est promoDe(row) — cf. portail.
+    promoPct: num(row.promo_pct) ?? 0,
+    promoActive: row.promo_active === true,
+    // Prix réellement appliqué (= prix de référence si aucune promo active)
+    prixPromoHt: promoHt,
+    prixPromoTtc: ttcDeHt(promoHt, row.taux_tva),
+  };
+};
 
 // Prédicat SQL des produits proposables aux acheteurs : composés fabriqués au labo
 // + utilisables rattachés à au moins un labo du client ($n = paramètre clientId).
@@ -46,7 +66,7 @@ const listOffres = async (req, res) => {
     const [arts, prods] = await Promise.all([
       pool.query(
         `SELECT a.id, a.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie, f.nom AS famille,
-                o.id AS o_id, o.prix_unitaire_ht, o.taux_tva, o.actif
+                o.id AS o_id, o.prix_unitaire_ht, o.taux_tva, o.actif, o.promo_pct, o.promo_active
          FROM articles a
          JOIN unites u ON u.id = a.unite_id
          LEFT JOIN categories c ON c.id = a.categorie_id
@@ -58,7 +78,7 @@ const listOffres = async (req, res) => {
       ),
       pool.query(
         `SELECT p.id, p.nom, p.type, p.origine, cp.nom AS categorie_produit,
-                o.id AS o_id, o.prix_unitaire_ht, o.taux_tva, o.actif
+                o.id AS o_id, o.prix_unitaire_ht, o.taux_tva, o.actif, o.promo_pct, o.promo_active
          FROM produits p
          LEFT JOIN categories_produit cp ON cp.id = p.categorie_produit_id
          LEFT JOIN acheteur_offres o ON o.client_id = $1 AND o.article_type = 'produit' AND o.article_id = p.id
@@ -112,10 +132,26 @@ const upsertOffre = async (req, res) => {
   const prixU = Number(req.body.prixUnitaireHt);
   const tva = Number(req.body.tauxTva ?? 0);
   const actif = req.body.actif === true;
+  // Arrondi à la précision de la colonne NUMERIC(5,2) AVANT tout test : sinon un
+  // taux < 0,005 passerait la validation puis serait stocké 0.00, violant la
+  // contrainte promo_coherente (500 opaque au lieu d'un message clair).
+  const promoBrut = Number(req.body.promoPct ?? 0);
+  const promoPct = Number.isFinite(promoBrut) ? Math.round(promoBrut * 100) / 100 : NaN;
+  // Une promo sans taux est neutralisée (invariant repris par la contrainte SQL)
+  const promoActive = req.body.promoActive === true && promoPct > 0;
 
   if (!Number.isFinite(prixU) || prixU < 0) return res.status(400).json({ message: 'Prix unitaire invalide' });
   if (!Number.isFinite(tva) || tva < 0 || tva > 100) return res.status(400).json({ message: 'Taux de TVA invalide (0 à 100)' });
   if (actif && prixU <= 0) return res.status(400).json({ message: 'Impossible d\'activer une offre sans prix unitaire > 0' });
+  if (!Number.isFinite(promoPct) || promoPct < 0 || promoPct > 100) {
+    return res.status(400).json({ message: 'Taux de promotion invalide (0 à 100)' });
+  }
+  if (req.body.promoActive === true && promoPct <= 0) {
+    return res.status(400).json({ message: 'Taux de promotion trop faible (minimum 0,01 %)' });
+  }
+  if (promoActive && prixU <= 0) {
+    return res.status(400).json({ message: 'Impossible d\'activer une promotion sans prix unitaire > 0' });
+  }
 
   try {
     const prev = await pool.query(
@@ -129,15 +165,19 @@ const upsertOffre = async (req, res) => {
       return res.status(400).json({ message: 'Article non proposable (article non commandable ou produit hors labo)' });
     }
     const r = await pool.query(
-      `INSERT INTO acheteur_offres (client_id, article_type, article_id, prix_unitaire_ht, taux_tva, actif, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO acheteur_offres (client_id, article_type, article_id, prix_unitaire_ht, taux_tva, actif, promo_pct, promo_active, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (client_id, article_type, article_id) DO UPDATE
        SET prix_unitaire_ht = EXCLUDED.prix_unitaire_ht,
            taux_tva = EXCLUDED.taux_tva,
            actif = EXCLUDED.actif,
+           promo_pct = EXCLUDED.promo_pct,
+           promo_active = EXCLUDED.promo_active,
            updated_at = NOW()
        RETURNING *`,
-      [clientId, articleType, articleId, prixU, tva, actif, req.user.id]
+      // Le taux saisi est conservé même promo désactivée (on ne perd pas la saisie) ;
+      // seul `promo_active` décide de son application.
+      [clientId, articleType, articleId, prixU, tva, actif, promoPct, promoActive, req.user.id]
     );
     const row = r.rows[0];
     // Historisation à chaque changement de prix (prix > 0), pattern module ventes
@@ -357,7 +397,9 @@ const createVente = async (req, res) => {
       const quantite = Number(l.quantite);
       if (!Number.isFinite(quantite) || quantite <= 0 || quantite > MAX_QTE) return res.status(400).json({ message: `Ligne ${i + 1} : quantité invalide` });
       // != null : un prixHt absent OU null (JSON) retombe sur le tarif de l'offre
-      const prixHt = l.prixHt != null && l.prixHt !== '' ? Number(l.prixHt) : num(offre.prix_unitaire_ht);
+      // Défaut = prix EFFECTIF de l'offre (promo appliquée si active), pour qu'une
+      // vente manuelle facture le même prix que celui affiché au portail.
+      const prixHt = l.prixHt != null && l.prixHt !== '' ? Number(l.prixHt) : prixEffectifHt(offre);
       if (!Number.isFinite(prixHt) || prixHt < 0) return res.status(400).json({ message: `Ligne ${i + 1} : prix invalide` });
       const tauxTva = num(offre.taux_tva) ?? 0;
       const quantiteUnites = round3(quantite);
@@ -741,14 +783,8 @@ const expedierCommande = async (req, res) => {
     await logStatut(db, cmd.id, 'expediee', dateExpedition, null, req.user.id);
     await db.query('COMMIT');
 
-    // Email à l'acheteur (best-effort)
-    if (cmd.acheteur_email) {
-      const { sendCommandeAcheteurEmail } = require('../services/emailService');
-      sendCommandeAcheteurEmail({
-        to: cmd.acheteur_email, nom: cmd.acheteur_nom, statut: 'expediee',
-        numero, montantTtc: totaux.montantTtc,
-      }).catch((e) => console.error('Email commande acheteur:', e));
-    }
+    // Aucun email à l'acheteur sur les changements de statut (décision produit
+    // 2026-07-20) : il suit sa commande dans « Mes commandes » sur le portail.
 
     res.json({
       commande: { id: cmd.id, statut: 'expediee', dateExpedition, laboNom: labo.rows[0].nom },
@@ -818,9 +854,9 @@ const annulerCommande = async (req, res) => {
   try {
     await db.query('BEGIN');
     const c = await db.query(
-      `SELECT ca.*, COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom, ach.email AS acheteur_email
-       FROM commandes_acheteur ca LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
-       WHERE ca.id = $1 AND ca.client_id = $2 FOR UPDATE OF ca`,
+      // (plus de jointure sur acheteurs : l'email d'annulation a été supprimé)
+      `SELECT ca.* FROM commandes_acheteur ca
+       WHERE ca.id = $1 AND ca.client_id = $2 FOR UPDATE`,
       [req.params.id, clientId]
     );
     if (c.rows.length === 0) {
@@ -853,12 +889,8 @@ const annulerCommande = async (req, res) => {
     );
     await logStatut(db, cmd.id, 'annulee', new Date().toISOString().slice(0, 10), motif || null, req.user.id);
     await db.query('COMMIT');
-    // Une commande passée depuis le portail : prévenir l'acheteur (best-effort)
-    if (cmd.source === 'portail' && cmd.acheteur_email) {
-      const { sendCommandeAcheteurEmail } = require('../services/emailService');
-      sendCommandeAcheteurEmail({ to: cmd.acheteur_email, nom: cmd.acheteur_nom, statut: 'annulee', motif })
-        .catch((e) => console.error('Email commande acheteur:', e));
-    }
+    // Pas d'email à l'acheteur (cf. note dans emailService) : l'annulation et son
+    // motif s'affichent dans « Mes commandes » sur le portail.
     const stockConcerne = cmd.statut === 'expediee' || cmd.statut === 'livree';
     res.json({ message: stockConcerne ? 'Commande annulée — le stock a été réintégré' : 'Commande annulée' });
   } catch (err) {
