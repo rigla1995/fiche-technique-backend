@@ -19,7 +19,8 @@ const { promoDe, prixEffectifHt } = require('../utils/offrePromo');
 const getCatalogue = async (req, res) => {
   try {
     const clientId = req.user.acheteurClientId;
-    const [vendeur, offres] = await Promise.all([
+    const acheteurId = req.user.acheteurId;
+    const [vendeur, offres, histo] = await Promise.all([
       pool.query(`SELECT nom, telephone, email FROM profil_entreprise WHERE client_id = $1`, [clientId]),
       pool.query(
         `SELECT o.*,
@@ -28,7 +29,11 @@ const getCatalogue = async (req, res) => {
                 CASE WHEN o.article_type = 'ingredient' THEN COALESCE(c.nom, 'Sans catégorie')
                      WHEN p.type = 'utilisable' THEN 'Produits Utilisables'
                      ELSE 'Produits Composés' END AS categorie,
-                CASE WHEN o.article_type = 'produit' THEN cp.nom END AS categorie_produit
+                CASE WHEN o.article_type = 'produit' THEN cp.nom END AS categorie_produit,
+                -- « Maison » = produit composé fabriqué par le vendeur (un produit
+                -- utilisable est revendu). On n'utilise PAS p.origine : sa valeur par
+                -- défaut est 'activite', dire « fabriqué au labo » serait faux.
+                COALESCE(o.article_type = 'produit' AND p.type <> 'utilisable', false) AS fabrique_maison
          FROM acheteur_offres o
          LEFT JOIN articles a ON o.article_type = 'ingredient' AND a.id = o.article_id
          LEFT JOIN unites u ON u.id = a.unite_id
@@ -39,12 +44,45 @@ const getCatalogue = async (req, res) => {
          ORDER BY categorie, nom`,
         [clientId]
       ),
+      // Habitudes d'achat de CET acheteur (12 derniers mois) : ce qu'il a pris la
+      // dernière fois et combien de fois, pour le bouton « Reprendre ».
+      // ⚠️ acheteur_id = $2 est l'étanchéité entre acheteurs d'un même vendeur.
+      pool.query(
+        `WITH par_commande AS (
+           SELECT l.article_type, l.article_id, c.id AS commande_id,
+                  c.date_commande, c.created_at, c.statut,
+                  -- quantite_unites et JAMAIS quantite : sur les lignes antérieures à
+                  -- la migration 160, quantite est un nombre de LOTS.
+                  SUM(l.quantite_unites) AS quantite
+           FROM commande_acheteur_lignes l
+           JOIN commandes_acheteur c ON c.id = l.commande_id
+           WHERE c.client_id = $1
+             AND c.acheteur_id = $2
+             AND c.statut <> 'annulee'
+             AND c.date_commande >= CURRENT_DATE - INTERVAL '12 months'
+           GROUP BY l.article_type, l.article_id, c.id, c.date_commande, c.created_at, c.statut
+         ),
+         classe AS (
+           SELECT pc.*,
+                  ROW_NUMBER() OVER (PARTITION BY article_type, article_id
+                                     ORDER BY date_commande DESC, created_at DESC) AS rn,
+                  COUNT(*) OVER (PARTITION BY article_type, article_id) AS nb_commandes
+           FROM par_commande pc
+         )
+         SELECT article_type, article_id, nb_commandes::int AS nb_commandes,
+                TO_CHAR(date_commande, 'YYYY-MM-DD') AS derniere_date,
+                quantite AS derniere_quantite, statut AS dernier_statut
+         FROM classe WHERE rn = 1`,
+        [clientId, acheteurId]
+      ),
     ]);
+    const histoMap = new Map(histo.rows.map((h) => [`${h.article_type}:${h.article_id}`, h]));
 
     res.json({
       vendeur: vendeur.rows[0]?.nom || 'Votre fournisseur',
       offres: offres.rows.map((o) => {
         const promoPct = promoDe(o);
+        const h = histoMap.get(`${o.article_type}:${o.article_id}`);
         return {
           articleType: o.article_type,
           articleId: o.article_id,
@@ -58,6 +96,18 @@ const getCatalogue = async (req, res) => {
           // Prix de référence barré à l'affichage — null hors promo
           prixInitialTtc: promoPct > 0 ? ttcDeHt(o.prix_unitaire_ht, o.taux_tva) : null,
           promoPct,
+          // Un acheteur professionnel raisonne en HT (il récupère la TVA)
+          prixUnitaireHt: prixEffectifHt(o),
+          tauxTva: num(o.taux_tva) ?? 0,
+          fabriqueMaison: o.fabrique_maison === true,
+          // Habitudes de CET acheteur — null s'il n'a jamais pris cet article.
+          // Number() obligatoire : pg renvoie les NUMERIC en chaînes.
+          histo: h ? {
+            nbCommandes: Number(h.nb_commandes),
+            derniereDate: h.derniere_date,
+            derniereQuantite: Number(h.derniere_quantite),
+            dernierStatut: h.dernier_statut,
+          } : null,
         };
       }),
     });
