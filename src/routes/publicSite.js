@@ -1,7 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
-const { creerDemandeAcces, listPartenaires, getTarifsReference } = require('../controllers/publicSiteController');
+const { creerDemandeAcces, listPartenaires, getTarifsReference, verifierEmail } = require('../controllers/publicSiteController');
 
 // Rate-limit dédié au formulaire public du site vitrine (modèle : forgotLimiter
 // de routes/auth.js) — 5 demandes / 15 min / IP.
@@ -9,6 +9,16 @@ const demandeAccesLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { message: 'Trop de demandes envoyées, réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate-limit de la vérification d'email (appelée à la frappe/blur) : plus permissif
+// que l'envoi mais borné pour limiter l'énumération d'emails — 30 / 15 min / IP.
+const verifEmailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { existe: false, raison: null },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -64,6 +74,7 @@ const demandeAccesLimiter = rateLimit({
  *         description: Objet {cle: nombre}
  */
 router.post('/demande-acces', demandeAccesLimiter, creerDemandeAcces);
+router.get('/verifier-email', verifEmailLimiter, verifierEmail);
 router.get('/partenaires', listPartenaires);
 router.get('/tarifs-reference', getTarifsReference);
 

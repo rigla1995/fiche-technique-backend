@@ -78,6 +78,7 @@ const mapPromotion = (row) => ({
   dateFin: row.date_fin,
   notes: row.notes,
   createdAt: row.created_at,
+  isSystem: row.is_system ?? false,   // promo verrouillée (1er mois offert) : non supprimable
   isActive: row.is_active ?? null,
   // 'actif' = date_fin IS NULL or >= today; 'expiré' = date_fin < today
   statutPromo: row.statut_promo ?? (row.is_active ? 'actif' : 'expiré'),
@@ -894,6 +895,7 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
     fixedOnboarding, fixedMensualite,
     discountSupplement, fixedSupplement,
     dateDebut, monthsDuration,
+    isSystem,   // promo système (ex. 1er mois offert) : non supprimable ni éditable
   } = promoData;
 
   const isMonthOnly = appliesTo !== 'onboarding';
@@ -949,8 +951,8 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
         discount_onboarding, discount_mensualite,
         fixed_onboarding, fixed_mensualite,
         discount_supplement, fixed_supplement,
-        date_debut, months_duration, date_fin, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        date_debut, months_duration, date_fin, created_by, is_system)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
      RETURNING *, (date_debut <= CURRENT_DATE AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)) AS is_active`,
     [
       aboId, type, appliesTo,
@@ -958,7 +960,7 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
       fixedOnboarding || null, fixedMensualite || null,
       discountSupplement || null, fixedSupplement || null,
       dateDebut, monthsDuration || null, dateFin,
-      createdById,
+      createdById, isSystem === true,
     ]
   );
   const promo = result.rows[0];
@@ -1037,6 +1039,7 @@ const updatePromotion = async (req, res) => {
     const promoRes = await pool.query('SELECT * FROM promotions WHERE id = $1', [promoId]);
     if (promoRes.rows.length === 0) return res.status(404).json({ message: 'Promotion introuvable' });
     const existing = promoRes.rows[0];
+    if (existing.is_system) return res.status(403).json({ message: 'Cette promotion est offerte par le système (1er mois offert) et ne peut pas être modifiée.' });
 
     // Compute date_fin
     let dateFin = null;
@@ -1128,6 +1131,7 @@ const deletePromotion = async (req, res) => {
     const promoRes = await pool.query('SELECT * FROM promotions WHERE id = $1', [promoId]);
     if (promoRes.rows.length === 0) return res.status(404).json({ message: 'Promotion introuvable' });
     const p = promoRes.rows[0];
+    if (p.is_system) return res.status(403).json({ message: 'Cette promotion est offerte par le système (1er mois offert) et ne peut pas être supprimée.' });
 
     await pool.query('DELETE FROM promotions WHERE id = $1', [promoId]);
 

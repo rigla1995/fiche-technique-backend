@@ -38,6 +38,14 @@ const creerDemandeAcces = async (req, res) => {
     // ── Validation serveur (400 générique en cas d'échec) ────────────────────
     if (nom.length < 2 || nom.length > 150) return res.status(400).json(REPONSE_INVALIDE);
     if (!estEmailValide(email)) return res.status(400).json(REPONSE_INVALIDE);
+
+    // Bloquer explicitement si l'email a déjà un compte LabFlow (choix client :
+    // informer plutôt que dédup silencieuse). L'anti-énumération est compensée
+    // par le rate-limit de la route.
+    const compteRes = await pool.query('SELECT 1 FROM utilisateurs WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]);
+    if (compteRes.rows.length > 0) {
+      return res.status(409).json({ code: 'COMPTE_EXISTANT', message: 'Cet email est déjà associé à un compte LabFlow. Connectez-vous, ou contactez-nous si besoin.' });
+    }
     if (!estTelephoneTunisienValide(telephone) || telephone.length > 30) return res.status(400).json(REPONSE_INVALIDE);
     if (ville !== null && ville.length > 100) return res.status(400).json(REPONSE_INVALIDE);
     if (typeActivite !== null && !TYPES_ACTIVITE.includes(typeActivite)) return res.status(400).json(REPONSE_INVALIDE);
@@ -76,21 +84,23 @@ const creerDemandeAcces = async (req, res) => {
       ]
     );
 
-    // Réponse uniforme AVANT le travail annexe (et identique en cas de dédup).
+    // Aucune ligne insérée = une demande OUVERTE existe déjà pour cet email
+    // (index unique partiel). Choix client : l'informer explicitement.
+    if (result.rows.length === 0) {
+      return res.status(409).json({ code: 'DEMANDE_EN_COURS', message: 'Une demande est déjà en cours pour cet email — un conseiller vous recontacte. Inutile de la renvoyer.' });
+    }
+
     res.json(REPONSE_OK);
 
-    // Notification temps réel + persistante aux admins — best-effort, uniquement
-    // si une ligne a réellement été insérée. NB : notifications.demande_id
-    // référence support_demandes (FK) → on ne le renseigne pas ici.
-    if (result.rows.length > 0) {
-      try {
-        const demandeId = result.rows[0].id;
-        pushToAdmins('demande_acces_recue', { demandeId, nom });
-        saveNotificationToAdmins({ eventType: 'demande_acces_recue', clientNom: nom })
-          .catch((e) => console.error('[site] notification demande accès:', e.message));
-      } catch (e) {
-        console.error('[site] notification demande accès:', e.message);
-      }
+    // Notification temps réel + persistante aux admins — best-effort. NB :
+    // notifications.demande_id référence support_demandes (FK) → non renseigné ici.
+    try {
+      const demandeId = result.rows[0].id;
+      pushToAdmins('demande_acces_recue', { demandeId, nom });
+      saveNotificationToAdmins({ eventType: 'demande_acces_recue', clientNom: nom })
+        .catch((e) => console.error('[site] notification demande accès:', e.message));
+    } catch (e) {
+      console.error('[site] notification demande accès:', e.message);
     }
   } catch (err) {
     console.error(err);
@@ -153,4 +163,28 @@ const getTarifsReference = async (req, res) => {
   }
 };
 
-module.exports = { creerDemandeAcces, listPartenaires, getTarifsReference };
+// GET /api/public/verifier-email?email=X — le site vérifie AVANT envoi si l'email
+// a déjà un compte ou une demande en cours (rate-limité côté route, anti-abus).
+const verifierEmail = async (req, res) => {
+  try {
+    const email = typeof req.query.email === 'string' ? req.query.email.trim() : '';
+    if (!estEmailValide(email)) return res.json({ existe: false, raison: null });
+
+    const compte = await pool.query('SELECT 1 FROM utilisateurs WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]);
+    if (compte.rows.length > 0) return res.json({ existe: true, raison: 'compte' });
+
+    const demande = await pool.query(
+      `SELECT 1 FROM demandes_acces WHERE LOWER(email) = LOWER($1) AND statut IN ('nouvelle', 'contactee') LIMIT 1`,
+      [email]
+    );
+    if (demande.rows.length > 0) return res.json({ existe: true, raison: 'demande' });
+
+    res.json({ existe: false, raison: null });
+  } catch (err) {
+    console.error(err);
+    // En cas d'erreur, ne pas bloquer le formulaire : on laisse passer (le submit revérifie).
+    res.json({ existe: false, raison: null });
+  }
+};
+
+module.exports = { creerDemandeAcces, listPartenaires, getTarifsReference, verifierEmail };
