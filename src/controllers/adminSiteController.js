@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { pushToAdmins } = require('../services/sseService');
 const { deleteByRef } = require('./notificationController');
+const { sendDemandeAccesRefusEmail } = require('../services/emailService');
 
 const STATUTS_DEMANDE = ['nouvelle', 'contactee', 'convertie', 'refusee'];
 // Logo partenaire : data-URI image base64 uniquement, taille bornée (≈ 220 Ko d'image).
@@ -72,6 +73,23 @@ const updateDemandeAcces = async (req, res) => {
     if (convertedClientId !== undefined && convertedClientId !== null) {
       const clientRes = await pool.query('SELECT 1 FROM utilisateurs WHERE id = $1', [convertedClientId]);
       if (clientRes.rows.length === 0) return res.status(400).json({ message: 'Client converti introuvable' });
+    }
+
+    // Refus → email de courtoisie (best-effort), retrait de la notif « file
+    // d'attente », puis SUPPRESSION définitive de la demande (l'index unique
+    // partiel n'autorise qu'une demande OUVERTE : on n'archive pas les refus).
+    if (statut === 'refusee') {
+      const demande = current.rows[0];
+      try {
+        await sendDemandeAccesRefusEmail({ to: demande.email, nom: demande.nom });
+      } catch (e) {
+        console.error('[site] email refus demande accès:', e.message);
+      }
+      deleteByRef('demande_acces', Number(id), 'demande_acces_recue')
+        .then(() => pushToAdmins('notif_removed', { refKind: 'demande_acces', refId: Number(id) }))
+        .catch((e) => console.error('[site] retrait notif demande accès:', e.message));
+      await pool.query('DELETE FROM demandes_acces WHERE id = $1', [id]);
+      return res.json({ deleted: true, id: Number(id) });
     }
 
     const sets = ['updated_at = NOW()'];

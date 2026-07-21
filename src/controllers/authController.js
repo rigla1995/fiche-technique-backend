@@ -33,7 +33,7 @@ const login = async (req, res) => {
     const utilisateur = result.rows[0];
 
     // super_admin and pre-invite accounts (have a password but no activated_at) bypass the invite check
-    const needsActivation = !utilisateur.activated_at && utilisateur.role !== 'super_admin' && !utilisateur.mot_de_passe;
+    const needsActivation = !utilisateur.activated_at && utilisateur.role !== 'super_admin' && utilisateur.role !== 'boss' && !utilisateur.mot_de_passe;
     if (needsActivation) {
       return res.status(403).json({ message: 'invite_pending', detail: 'Votre compte n\'est pas encore activé. Consultez votre email d\'invitation.' });
     }
@@ -44,8 +44,8 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    // Check if account is blocked
-    if (utilisateur.role !== 'super_admin') {
+    // Check if account is blocked (boss hérite du super_admin : jamais blocable)
+    if (utilisateur.role !== 'super_admin' && utilisateur.role !== 'boss') {
       const aboClientId = utilisateur.role === 'gerant' ? utilisateur.gerant_parent_id : utilisateur.id;
       if (aboClientId) {
         const aboCheck = await pool.query(
@@ -186,7 +186,10 @@ const me = async (req, res) => {
     // aussi l'étape 3 (sinon un compte sans activité restait coincé pour toujours).
     let activitesCount = 0;
     let labosCount = 0;
-    if (!isGerant && entrepriseId) {
+    // Onboarding/compteurs : uniquement pour les vrais clients. Un super_admin ou
+    // un Boss (ex-client dont le profil_entreprise subsiste) n'exécute jamais cette
+    // logique — évite un JOIN d'auto-heal inutile à chaque appel /auth/me.
+    if (u.role === 'client' && entrepriseId) {
       if (step > 0) {
         const healRes = await pool.query(
           `SELECT

@@ -1,6 +1,10 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 
+// Le Boss hérite du super_admin : même périmètre « plateforme » (unités globales),
+// jamais scopé à son propre id de compte.
+const isAdminRole = (u) => u.role === 'super_admin' || u.role === 'boss';
+
 const mapUnite = (row) => ({
   id: row.id,
   name: row.nom,
@@ -15,7 +19,7 @@ const list = async (req, res) => {
   try {
     let query, params;
 
-    if (req.user.role === 'super_admin') {
+    if (isAdminRole(req.user)) {
       query = `
         SELECT u.*, util.nom as client_nom
         FROM unites u
@@ -53,7 +57,7 @@ const create = async (req, res) => {
   }
 
   const nom = req.body.name || req.body.nom;
-  const clientId = req.user.role === 'super_admin' ? (req.body.clientId || req.body.client_id || null) : (req.user.gerant_parent_id || req.user.id);
+  const clientId = isAdminRole(req.user) ? (req.body.clientId || req.body.client_id || null) : (req.user.gerant_parent_id || req.user.id);
 
   try {
     const result = await pool.query(
@@ -81,7 +85,7 @@ const update = async (req, res) => {
 
   try {
     let query, params;
-    if (req.user.role === 'super_admin') {
+    if (isAdminRole(req.user)) {
       query = 'UPDATE unites SET nom = $1, updated_at = NOW() WHERE id = $2 RETURNING *';
       params = [nom, id];
     } else {
@@ -108,7 +112,7 @@ const remove = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
 
   try {
-    if (req.user.role !== 'super_admin') {
+    if (!isAdminRole(req.user)) {
       const appro = await pool.query(
         `SELECT 1 FROM articles a WHERE a.unite_id = $1 AND a.client_id = $2
          AND (
@@ -123,7 +127,7 @@ const remove = async (req, res) => {
     }
 
     let query, params;
-    if (req.user.role === 'super_admin') {
+    if (isAdminRole(req.user)) {
       query = 'DELETE FROM unites WHERE id = $1 RETURNING id';
       params = [id];
     } else {

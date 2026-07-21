@@ -3,7 +3,9 @@ const pool = require('../config/database');
 const list = async (req, res) => {
   try {
     const { hasIngredients } = req.query;
-    const isSuperAdmin = req.user?.role === 'super_admin';
+    // Le Boss hérite du super_admin : il voit TOUS les domaines de la plateforme,
+    // pas le sous-ensemble scopé à son propre compte.
+    const isSuperAdmin = req.user?.role === 'super_admin' || req.user?.role === 'boss';
 
     let query, params = [];
 
