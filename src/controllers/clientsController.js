@@ -306,6 +306,25 @@ const create = async (req, res) => {
       }
     }
 
+    // Promo SYSTÈME « 1er mois offert » : mensualité du mois de création à 0 DT,
+    // créée automatiquement pour tout nouveau client (couvre la conversion d'une
+    // demande d'accès ET la création directe), et non supprimable (is_system).
+    // Insérée APRÈS les promos manuelles : si l'admin a déjà posé une promo
+    // mensualité sur ce mois, la sienne prime et la promo système est simplement
+    // ignorée (try/catch) — elle ne doit jamais faire échouer la création.
+    try {
+      const premierDuMois = `${new Date().toISOString().slice(0, 7)}-01`;
+      await insertPromoForAbonnement(aboId, premierDuMois, {
+        type: 'free_months',
+        appliesTo: 'mensualite',
+        dateDebut: premierDuMois,
+        monthsDuration: 1,
+        isSystem: true,
+      }, req.user.id);
+    } catch (promoErr) {
+      console.warn(`[clients.create] promo « 1er mois offert » non appliquée (abo ${aboId}) : ${promoErr.message}`);
+    }
+
     // Auto-generate contract PDF, send via Docuseal (e-signature) + welcome email
     try {
       const aboConfig = config || {};
