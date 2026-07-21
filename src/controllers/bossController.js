@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
 const { encryptPassword, decryptPassword, isConfigured } = require('../services/passwordCryptoService');
 const { sendBossRevealCode } = require('../services/emailService');
+const { invalidateAuthCache } = require('../middleware/auth');
 
 // Mot de passe robuste (même règle que authController).
 const isStrongPassword = (v) =>
@@ -108,6 +109,7 @@ const updateAdmin = async (req, res) => {
        RETURNING id, nom, email, role, actif, created_at`,
       params
     );
+    invalidateAuthCache(id); // email/mdp modifiés → contexte auth rafraîchi immédiatement
     const u = r.rows[0];
     res.json({ id: u.id, nom: u.nom, email: u.email, role: u.role, actif: u.actif, createdAt: u.created_at });
   } catch (err) {

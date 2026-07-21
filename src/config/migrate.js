@@ -82,9 +82,10 @@ async function migrate() {
       .filter(f => f.endsWith('.sql'))
       .sort();
 
+    let alreadyApplied = 0;
     for (const file of files) {
       if (appliedSet.has(file)) {
-        console.log(`Migration deja appliquee: ${file}`);
+        alreadyApplied++; // loggé en une ligne de synthèse (172 writes sync ralentissaient le boot)
         continue;
       }
       const sqlPath = path.join(migrationsDir, file);
@@ -122,7 +123,7 @@ async function migrate() {
     ];
     for (const bf of jsBackfills) {
       if (appliedSet.has(bf.key)) {
-        console.log(`Migration deja appliquee: ${bf.key}`);
+        alreadyApplied++;
         continue;
       }
       try {
@@ -134,7 +135,7 @@ async function migrate() {
       }
     }
 
-    console.log('Toutes les migrations effectuees avec succes');
+    console.log(`Toutes les migrations effectuees avec succes (${alreadyApplied} deja appliquees)`);
   } finally {
     if (locked) {
       try { await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]); } catch (_) { /* ignore */ }

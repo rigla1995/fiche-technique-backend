@@ -1,7 +1,36 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 
+// ── Cache TTL du contexte utilisateur ─────────────────────────────────────────
+// authenticate() tourne sur CHAQUE requête /api : sans cache, c'est 1 requête SQL
+// multi-jointures (+1 pour les gérants) par appel. On met en cache le résultat par
+// userId pendant AUTH_CACHE_TTL_MS (défaut 15 s). La signature JWT et la révocation
+// par password_changed_at restent vérifiées à CHAQUE requête (sur les données en
+// cache). Compromis assumé : désactivation / blocage / changement d'affectation
+// peuvent mettre jusqu'à TTL secondes à se propager.
+const AUTH_CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS) || 15000;
+const authCache = new Map(); // userId -> { at, row, gerantActiviteIds, gerantLaboIds }
+
+const getCachedAuth = (userId) => {
+  const e = authCache.get(userId);
+  if (!e) return null;
+  if (Date.now() - e.at > AUTH_CACHE_TTL_MS) { authCache.delete(userId); return null; }
+  return e;
+};
+// Borne mémoire simple : purge totale au-delà de 5000 entrées (jamais atteint en pratique).
+const setCachedAuth = (userId, entry) => {
+  if (authCache.size > 5000) authCache.clear();
+  authCache.set(userId, { at: Date.now(), ...entry });
+};
+// À appeler quand le contexte d'un utilisateur change immédiatement (mot de passe,
+// désactivation) pour ne pas attendre l'expiration du TTL sur cette instance.
+const invalidateAuthCache = (userId) => { authCache.delete(Number(userId)); };
+
 const authenticate = async (req, res, next) => {
+  // Idempotent : le write-guard global (app.js) a pu déjà authentifier cette requête —
+  // le authenticate par-route ne refait alors AUCUN travail (fini le double auth des mutations).
+  if (req.user) return next();
+
   const authHeader = req.headers.authorization;
   // SSE connections pass token via query param (EventSource doesn't support headers)
   const queryToken = req.query?.token;
@@ -18,25 +47,49 @@ const authenticate = async (req, res, next) => {
   }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const result = await pool.query(
-      `SELECT u.id, u.nom, u.email, u.role,
-              u.actif, u.password_changed_at,
-              u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type,
-              ach.id AS acheteur_id, ach.client_id AS acheteur_client_id, ach.actif AS acheteur_actif,
-              a.mode_compte
-       FROM utilisateurs u
-       LEFT JOIN utilisateurs p ON p.id = u.gerant_parent_id
-       LEFT JOIN acheteurs ach ON ach.user_id = u.id AND u.role = 'acheteur'
-       LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)
-       WHERE u.id = $1`,
-      [decoded.userId]
-    );
 
-    if (result.rows.length === 0 || !result.rows[0].actif) {
-      return res.status(401).json({ message: 'Utilisateur introuvable ou désactivé' });
+    let cached = getCachedAuth(decoded.userId);
+    if (!cached) {
+      const result = await pool.query(
+        `SELECT u.id, u.nom, u.email, u.role,
+                u.actif, u.password_changed_at,
+                u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type,
+                ach.id AS acheteur_id, ach.client_id AS acheteur_client_id, ach.actif AS acheteur_actif,
+                a.mode_compte
+         FROM utilisateurs u
+         LEFT JOIN acheteurs ach ON ach.user_id = u.id AND u.role = 'acheteur'
+         LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)
+         WHERE u.id = $1`,
+        [decoded.userId]
+      );
+
+      if (result.rows.length === 0 || !result.rows[0].actif) {
+        return res.status(401).json({ message: 'Utilisateur introuvable ou désactivé' });
+      }
+      const freshRow = result.rows[0];
+
+      // Charger les affectations (multi-activités / multi-labos) pour les gérants
+      let gerantActiviteIds = [];
+      let gerantLaboIds = [];
+      if (freshRow.role === 'gerant') {
+        const aff = await pool.query(
+          `SELECT activite_id, labo_id FROM gerant_affectations WHERE gerant_id = $1`,
+          [freshRow.id]
+        );
+        gerantActiviteIds = aff.rows.filter(r => r.activite_id != null).map(r => Number(r.activite_id));
+        gerantLaboIds = aff.rows.filter(r => r.labo_id != null).map(r => Number(r.labo_id));
+        // Compat ascendante : si pas encore d'affectations, retomber sur l'affectation unique
+        if (gerantActiviteIds.length === 0 && gerantLaboIds.length === 0 && freshRow.gerant_activite_id) {
+          if (freshRow.gerant_activite_type === 'labo') gerantLaboIds = [Number(freshRow.gerant_activite_id)];
+          else gerantActiviteIds = [Number(freshRow.gerant_activite_id)];
+        }
+      }
+
+      cached = { row: freshRow, gerantActiviteIds, gerantLaboIds };
+      setCachedAuth(decoded.userId, cached);
     }
 
-    const row = result.rows[0];
+    const { row, gerantActiviteIds, gerantLaboIds } = cached;
 
     // Un compte acheteur n'est valide que si sa fiche carnet existe et est active
     // (le client peut désactiver un acheteur sans supprimer son compte).
@@ -51,23 +104,6 @@ const authenticate = async (req, res, next) => {
       : 0;
     if (decoded.iat && decoded.iat < pwdChangedSec) {
       return res.status(401).json({ message: 'Session expirée — veuillez vous reconnecter' });
-    }
-
-    // Charger les affectations (multi-activités / multi-labos) pour les gérants
-    let gerantActiviteIds = [];
-    let gerantLaboIds = [];
-    if (row.role === 'gerant') {
-      const aff = await pool.query(
-        `SELECT activite_id, labo_id FROM gerant_affectations WHERE gerant_id = $1`,
-        [row.id]
-      );
-      gerantActiviteIds = aff.rows.filter(r => r.activite_id != null).map(r => Number(r.activite_id));
-      gerantLaboIds = aff.rows.filter(r => r.labo_id != null).map(r => Number(r.labo_id));
-      // Compat ascendante : si pas encore d'affectations, retomber sur l'affectation unique
-      if (gerantActiviteIds.length === 0 && gerantLaboIds.length === 0 && row.gerant_activite_id) {
-        if (row.gerant_activite_type === 'labo') gerantLaboIds = [Number(row.gerant_activite_id)];
-        else gerantActiviteIds = [Number(row.gerant_activite_id)];
-      }
     }
 
     req.user = {
@@ -259,7 +295,7 @@ const scopeGerantActivite = (req, res) => {
 };
 
 module.exports = {
-  authenticate, requireSuperAdmin, requireBoss, requireClient, requireEntreprise,
+  authenticate, invalidateAuthCache, requireSuperAdmin, requireBoss, requireClient, requireEntreprise,
   requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
   requireModuleAcheteurs, requireAcheteur, requireFormulePremium,
   requireClientOwner, gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
