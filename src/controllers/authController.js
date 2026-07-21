@@ -4,6 +4,7 @@ const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { sendInviteEmail, generateInviteToken, sendPasswordResetEmail } = require('../services/emailService');
 const { encryptPassword } = require('../services/passwordCryptoService');
+const { invalidateAuthCache } = require('../middleware/auth');
 
 // Mot de passe robuste : ≥8 car., 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial.
 const isStrongPassword = (v) =>
@@ -330,6 +331,7 @@ const updateProfile = async (req, res) => {
        RETURNING id, nom, email, telephone, role`,
       [nom || null, email || null, telephone || null, hashToSave, req.user.id, encToSave]
     );
+    if (newPassword) invalidateAuthCache(req.user.id); // révocation immédiate des anciens JWT
 
     const u = result.rows[0];
     res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role });
@@ -495,6 +497,7 @@ const resetPassword = async (req, res) => {
        WHERE id = $2`,
       [hash, result.rows[0].id, encryptPassword(password)]
     );
+    invalidateAuthCache(result.rows[0].id); // révocation immédiate des anciens JWT
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
