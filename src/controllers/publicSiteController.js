@@ -96,8 +96,10 @@ const creerDemandeAcces = async (req, res) => {
     // notifications.demande_id référence support_demandes (FK) → non renseigné ici.
     try {
       const demandeId = result.rows[0].id;
-      pushToAdmins('demande_acces_recue', { demandeId, nom });
-      saveNotificationToAdmins({ eventType: 'demande_acces_recue', clientNom: nom })
+      // ref_kind/ref_id rattachent la notif à la demande d'accès pour pouvoir la
+      // retirer automatiquement quand l'admin la traite (cf. adminSiteController).
+      pushToAdmins('demande_acces_recue', { demandeId, nom, clientNom: nom, refKind: 'demande_acces', refId: demandeId });
+      saveNotificationToAdmins({ eventType: 'demande_acces_recue', clientNom: nom, refKind: 'demande_acces', refId: demandeId })
         .catch((e) => console.error('[site] notification demande accès:', e.message));
     } catch (e) {
       console.error('[site] notification demande accès:', e.message);
