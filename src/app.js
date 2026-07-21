@@ -45,6 +45,7 @@ const acheteursRoutes = require('./routes/acheteurs');
 const portailRoutes = require('./routes/portail');
 const publicSiteRoutes = require('./routes/publicSite');
 const adminSiteRoutes = require('./routes/adminSite');
+const bossRoutes = require('./routes/boss');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 const { docusealWebhook } = require('./controllers/webhookController');
 
@@ -111,6 +112,7 @@ app.use('/api/labo', laboRoutes);
 app.use('/api/abonnements', abonnementsRoutes);
 app.use('/api/rapports', rapportsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/boss', bossRoutes);
 app.use('/api/ai-assistant', aiAssistantRoutes);
 app.get('/api/messenger/webhook', verifyWebhook);
 app.post('/api/messenger/webhook', receiveWebhook);
