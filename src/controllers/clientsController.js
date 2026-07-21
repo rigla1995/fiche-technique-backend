@@ -43,9 +43,13 @@ const buildContractPricingFields = (pricing) => {
   // Formule d'activités + option Acheteurs : nouvelles lignes du contrat (le
   // template Docuseal doit porter les champs éponymes, cf docuseal-templates/CHAMPS.md ;
   // createSubmission ignore proprement les champs absents d'un template en retard).
+  // Formule : Basique/Premium. Défense — si la formule manque alors qu'il y a des
+  // activités, on retombe sur « Activité Premium » (aligné sur buildContratDocument),
+  // pour ne jamais envoyer un champ Formule vide au contrat.
+  const aDesActivites = (pricing.nbActivites ?? 1) >= 1;
   const formuleLabel = pricing.formuleActivites
     ? (pricing.formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium')
-    : '';
+    : (aDesActivites ? 'Activité Premium' : '');
   const acheteursLabel = pricing.palierAcheteurs
     ? `Palier jusqu'à ${pricing.palierAcheteurs} acheteurs`
     : '';
