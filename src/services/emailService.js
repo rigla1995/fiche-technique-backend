@@ -668,4 +668,59 @@ const sendBossRevealCode = async ({ to, code, targetLabel }) => {
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail, sendBossRevealCode };
+// Email de courtoisie au demandeur lorsqu'une demande d'accès (site vitrine) est
+// refusée. Ton chaleureux et professionnel, AUCUNE raison n'est communiquée.
+// Même charte que les autres emails (en-tête indigo, liseré ambre, footer gris).
+const sendDemandeAccesRefusEmail = async ({ to, nom }) => {
+  const destinataire = nom || 'Madame, Monsieur';
+  const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ${BRAND_LOGO}
+      <p style="margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;">Votre demande d'accès</p>
+    </div>
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ${destinataire},</h2>
+      <p style="margin:0 0 20px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Nous vous remercions sincèrement de l'intérêt que vous portez à <strong>${APP_NAME}</strong> et du temps que vous avez consacré à votre demande d'accès.
+      </p>
+      <p style="margin:0 0 20px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Après étude attentive, nous ne sommes malheureusement pas en mesure de donner une suite favorable à votre demande pour le moment.
+      </p>
+      <p style="margin:0 0 20px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Cette décision ne remet nullement en cause la qualité de votre projet. N'hésitez pas à revenir vers nous ultérieurement : nous serions ravis d'étudier une nouvelle demande si votre situation venait à évoluer.
+      </p>
+      <p style="margin:0;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Nous vous souhaitons une pleine réussite dans vos projets.<br>
+        <strong>L'équipe ${APP_NAME}</strong>
+      </p>
+    </div>
+    <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Cet email fait suite à votre demande d'accès déposée sur ${APP_NAME}. &mdash; ${APP_NAME}
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV] Refus demande accès email to ${to} (${destinataire})`);
+    return { success: true, dev: true };
+  }
+
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `${APP_NAME} — Réponse à votre demande d'accès`,
+    html,
+  });
+  if (error) throw new Error(error.message);
+  return { success: true, id: data?.id };
+};
+
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail, sendBossRevealCode, sendDemandeAccesRefusEmail };
