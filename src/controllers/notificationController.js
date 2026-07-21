@@ -21,7 +21,7 @@ const saveNotificationToAdmins = async (data) => {
   await pool.query(
     `INSERT INTO notifications (user_id, event_type, demande_id, type, client_nom, statut, notes_admin, ref_id, ref_kind)
      SELECT u.id, $1, $2, $3, $4, $5, $6, $7, $8
-     FROM utilisateurs u WHERE u.role = 'super_admin' AND u.actif = true`,
+     FROM utilisateurs u WHERE u.role IN ('super_admin', 'boss') AND u.actif = true`,
     [eventType, demandeId || null, type || null, clientNom || null, statut || null, notesAdmin || null, refId || null, refKind || null]
   );
 };

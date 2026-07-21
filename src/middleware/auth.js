@@ -85,9 +85,18 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+// Le Boss hérite de TOUTES les capacités du super_admin.
 const requireSuperAdmin = (req, res, next) => {
-  if (req.user.role !== 'super_admin') {
+  if (req.user.role !== 'super_admin' && req.user.role !== 'boss') {
     return res.status(403).json({ message: 'Accès réservé au Super Admin' });
+  }
+  next();
+};
+
+// Capacités EXCLUSIVES au Boss (gestion des super_admins, annuaire identifiants).
+const requireBoss = (req, res, next) => {
+  if (req.user.role !== 'boss') {
+    return res.status(403).json({ message: 'Accès réservé au compte Boss' });
   }
   next();
 };
@@ -250,7 +259,7 @@ const scopeGerantActivite = (req, res) => {
 };
 
 module.exports = {
-  authenticate, requireSuperAdmin, requireClient, requireEntreprise,
+  authenticate, requireSuperAdmin, requireBoss, requireClient, requireEntreprise,
   requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
   requireModuleAcheteurs, requireAcheteur, requireFormulePremium,
   requireClientOwner, gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
