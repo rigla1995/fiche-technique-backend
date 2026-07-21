@@ -1,4 +1,6 @@
 const pool = require('../config/database');
+const { pushToAdmins } = require('../services/sseService');
+const { deleteByRef } = require('./notificationController');
 
 const STATUTS_DEMANDE = ['nouvelle', 'contactee', 'convertie', 'refusee'];
 // Logo partenaire : data-URI image base64 uniquement, taille bornée (≈ 220 Ko d'image).
@@ -94,6 +96,15 @@ const updateDemandeAcces = async (req, res) => {
     }
     params.push(id);
     await pool.query(`UPDATE demandes_acces SET ${sets.join(', ')} WHERE id = $${i}`, params);
+
+    // La demande est traitée dès qu'elle quitte l'état 'nouvelle' (contactée /
+    // refusée / convertie) → retrait de la notif « file d'attente » chez tous les
+    // admins : suppression en base + push SSE pour un retrait instantané.
+    if (statut !== undefined && statut !== 'nouvelle' && statut !== current.rows[0].statut) {
+      deleteByRef('demande_acces', Number(id), 'demande_acces_recue')
+        .then(() => pushToAdmins('notif_removed', { refKind: 'demande_acces', refId: Number(id) }))
+        .catch((e) => console.error('[site] retrait notif demande accès:', e.message));
+    }
 
     const updated = await pool.query(
       `SELECT da.*, admin.nom AS traite_par_nom

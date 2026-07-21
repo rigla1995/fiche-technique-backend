@@ -178,8 +178,19 @@ migrate()
       }, delay);
     };
     scheduleDailyCheck();
-    process.on('SIGTERM', () => { if (dailyInterval) clearInterval(dailyInterval); server.close(() => process.exit(0)); });
-    process.on('SIGINT', () => { if (dailyInterval) clearInterval(dailyInterval); server.close(() => process.exit(0)); });
+
+    // Purge périodique (30 min) des notifications informatives expirées (TTL 2 h).
+    // Les notifs « file d'attente » (demande_acces_recue) sont épargnées : elles ne
+    // partent qu'au traitement de la demande.
+    const { cleanupExpired } = require('./controllers/notificationController');
+    const notifCleanup = setInterval(() => {
+      cleanupExpired()
+        .then((n) => { if (n > 0) console.log(`[notif] ${n} notification(s) informative(s) expirée(s) purgée(s)`); })
+        .catch((e) => console.error('[notif] cleanup:', e.message));
+    }, 30 * 60 * 1000);
+
+    process.on('SIGTERM', () => { if (dailyInterval) clearInterval(dailyInterval); clearInterval(notifCleanup); server.close(() => process.exit(0)); });
+    process.on('SIGINT', () => { if (dailyInterval) clearInterval(dailyInterval); clearInterval(notifCleanup); server.close(() => process.exit(0)); });
   })
   .catch((err) => {
     console.error('Échec des migrations, serveur non démarré:', err.message);
