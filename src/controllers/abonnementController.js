@@ -1817,6 +1817,7 @@ const computeEffectivePricing = async (clientId) => {
     promoMonths, baseResumeDate,
     hasPromo: !!(promoMens || promoOb),
     formuleActivites: config?.formule_activites || null,
+    nbActivites: config ? (parseInt(config.nb_activites) || 0) : null,
     nbAcheteurs: parseInt(config?.nb_acheteurs) || 0,
     palierAcheteurs: palierAcheteurs(config?.nb_acheteurs),
   };
