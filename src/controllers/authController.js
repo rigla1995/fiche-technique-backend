@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { sendInviteEmail, generateInviteToken, sendPasswordResetEmail } = require('../services/emailService');
+const { encryptPassword } = require('../services/passwordCryptoService');
 
 // Mot de passe robuste : ≥8 car., 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial.
 const isStrongPassword = (v) =>
@@ -126,10 +127,10 @@ const register = async (req, res) => {
 
     const hash = await bcrypt.hash(mot_de_passe, 10);
     const result = await pool.query(
-      `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role)
-       VALUES ($1, $2, $3, $4, 'client')
+      `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, mot_de_passe_enc)
+       VALUES ($1, $2, $3, $4, 'client', $5)
        RETURNING id, nom, email, telephone, role, created_at`,
-      [nom, email, hash, telephone || null]
+      [nom, email, hash, telephone || null, encryptPassword(mot_de_passe)]
     );
 
     res.status(201).json(result.rows[0]);
@@ -311,6 +312,7 @@ const updateProfile = async (req, res) => {
     }
 
     const hashToSave = newPassword ? await bcrypt.hash(newPassword, 10) : null;
+    const encToSave = newPassword ? encryptPassword(newPassword) : null;
 
     const result = await pool.query(
       `UPDATE utilisateurs
@@ -318,11 +320,12 @@ const updateProfile = async (req, res) => {
            email = COALESCE($2, email),
            telephone = COALESCE($3, telephone),
            mot_de_passe = COALESCE($4, mot_de_passe),
+           mot_de_passe_enc = CASE WHEN $4::text IS NOT NULL THEN $6 ELSE mot_de_passe_enc END,
            password_changed_at = CASE WHEN $4::text IS NOT NULL THEN NOW() ELSE password_changed_at END,
            updated_at = NOW()
        WHERE id = $5
        RETURNING id, nom, email, telephone, role`,
-      [nom || null, email || null, telephone || null, hashToSave, req.user.id]
+      [nom || null, email || null, telephone || null, hashToSave, req.user.id, encToSave]
     );
 
     const u = result.rows[0];
@@ -373,10 +376,10 @@ const acceptInvite = async (req, res) => {
     const newStep = u.onboarding_step === 1 ? 2 : u.onboarding_step;
     await pool.query(
       `UPDATE utilisateurs
-       SET mot_de_passe = $1, invite_token = NULL, invite_token_expires_at = NULL,
+       SET mot_de_passe = $1, mot_de_passe_enc = $4, invite_token = NULL, invite_token_expires_at = NULL,
            activated_at = NOW(), onboarding_step = $2, password_changed_at = NOW(), updated_at = NOW()
        WHERE id = $3`,
-      [hash, newStep, u.id]
+      [hash, newStep, u.id, encryptPassword(password)]
     );
     // Record digital contract acceptance for main client accounts
     if (u.role === 'client') {
@@ -484,10 +487,10 @@ const resetPassword = async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     await pool.query(
       `UPDATE utilisateurs
-       SET mot_de_passe = $1, reset_token = NULL, reset_token_expires_at = NULL,
+       SET mot_de_passe = $1, mot_de_passe_enc = $3, reset_token = NULL, reset_token_expires_at = NULL,
            password_changed_at = NOW(), updated_at = NOW()
        WHERE id = $2`,
-      [hash, result.rows[0].id]
+      [hash, result.rows[0].id, encryptPassword(password)]
     );
     res.json({ ok: true });
   } catch (err) {

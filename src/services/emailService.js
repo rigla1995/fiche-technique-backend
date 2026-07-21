@@ -619,4 +619,53 @@ const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) 
 // de son compte et la réinitialisation de mot de passe. Les changements de statut
 // (expédiée, livrée, annulée) se consultent dans « Mes commandes » sur le portail.
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail };
+// Code de vérification (2FA) envoyé à l'adresse du compte Boss pour autoriser la
+// révélation d'un mot de passe client. Valide 10 min, usage unique.
+const sendBossRevealCode = async ({ to, code, targetLabel }) => {
+  const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:520px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:32px 44px;border-bottom:4px solid #d97706">
+      ${BRAND_LOGO}
+      <p style="margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;">Code de vérification — accès Boss</p>
+    </div>
+    <div style="padding:36px 44px;">
+      <p style="margin:0 0 20px;color:#374151;font-size:0.95rem;line-height:1.6;">
+        Une révélation de mot de passe a été demandée${targetLabel ? ` pour <strong>${targetLabel}</strong>` : ''}.
+        Saisissez ce code dans l'application pour l'autoriser :
+      </p>
+      <div style="text-align:center;margin:24px 0;">
+        <div style="display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:12px;padding:16px 28px;font-size:2rem;font-weight:900;letter-spacing:0.4em;color:#1e293b;">
+          ${code}
+        </div>
+      </div>
+      <p style="margin:0;color:#6b7280;font-size:0.8rem;">⏳ Valable <strong>10 minutes</strong>, à usage unique.</p>
+    </div>
+    <div style="padding:18px 44px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Vous n'êtes pas à l'origine de cette demande ? Ignorez cet email et changez votre mot de passe. &mdash; ${APP_NAME}
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[DEV] Boss reveal code to ${to}: ${code} (cible: ${targetLabel || '-'})`);
+    return { success: true, dev: true, code };
+  }
+
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `${APP_NAME} — Code de vérification (${code})`,
+    html,
+  });
+  if (error) throw new Error(error.message);
+  return { success: true, id: data?.id };
+};
+
+module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail, sendBossRevealCode };

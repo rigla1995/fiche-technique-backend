@@ -4,7 +4,7 @@ const clients = new Map();
 const adminClients = new Set();
 
 function addClient(userId, role, res) {
-  if (role === 'super_admin') {
+  if (role === 'super_admin' || role === 'boss') {
     adminClients.add(res);
   } else {
     if (!clients.has(userId)) clients.set(userId, new Set());
@@ -13,7 +13,7 @@ function addClient(userId, role, res) {
 }
 
 function removeClient(userId, role, res) {
-  if (role === 'super_admin') {
+  if (role === 'super_admin' || role === 'boss') {
     adminClients.delete(res);
   } else {
     clients.get(userId)?.delete(res);
