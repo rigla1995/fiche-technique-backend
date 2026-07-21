@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { addClient, removeClient } = require('../services/sseService');
-const { list, clearAll, deleteOne } = require('../controllers/notificationController');
+const { list, markSeen, clearAll, deleteOne } = require('../controllers/notificationController');
 
 /**
  * @openapi
@@ -85,6 +85,7 @@ router.get('/stream', authenticate, (req, res) => {
 });
 
 router.get('/', authenticate, list);
+router.post('/seen', authenticate, markSeen);
 router.delete('/', authenticate, clearAll);
 router.delete('/:id', authenticate, deleteOne);
 
