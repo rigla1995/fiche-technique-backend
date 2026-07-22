@@ -133,6 +133,8 @@ const mapClient = (row) => ({
   active: row.actif,
   createdAt: row.created_at,
   activatedAt: row.activated_at || null,
+  // 'site' = converti depuis une demande d'accès du site vitrine ; sinon 'manuel'.
+  origine: row.origine || 'manuel',
   domaineIds: row.domaine_ids || [],
   // Adresse portée par profil_entreprise (fiche « Consulter » côté admin)
   adresse: row.adresse ?? null,
@@ -152,7 +154,7 @@ const saveClientDomaines = async (client, clientId, domaineIds) => {
 const list = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.activated_at,
+      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.activated_at, u.origine,
               pe.adresse,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
        FROM utilisateurs u
@@ -173,7 +175,7 @@ const getById = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at,
+      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.origine,
               pe.adresse,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
        FROM utilisateurs u
