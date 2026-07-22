@@ -81,6 +81,22 @@ if (process.env.NODE_ENV !== 'production') {
 // visiteur envoie un header Authorization parasite. Rate-limit dédié dans la route.
 app.use('/api/public', publicSiteRoutes);
 
+// Journal minimal des requêtes : UNIQUEMENT les erreurs serveur (5xx) et les
+// requêtes lentes (> LOG_SLOW_MS, défaut 1000 ms). Pas de log d'accès complet —
+// bruit + coût CPU inutiles ; un serveur sain reste silencieux. Une rafale de
+// lignes « LENTE » (y compris /health) = signal de saturation CPU du conteneur.
+const SLOW_MS = parseInt(process.env.LOG_SLOW_MS) || 1000;
+app.use((req, res, next) => {
+  const t0 = process.hrtime.bigint();
+  res.on('finish', () => {
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    if (res.statusCode >= 500 || ms >= SLOW_MS) {
+      console.log(`[req] ${res.statusCode >= 500 ? 'ERREUR' : 'LENTE'} ${req.method} ${req.originalUrl} → ${res.statusCode} en ${Math.round(ms)} ms`);
+    }
+  });
+  next();
+});
+
 // Enforce read-only / suspended mode for all mutating API calls (non-GET, non-auth, non-admin)
 app.use('/api', (req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();

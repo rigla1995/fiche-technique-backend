@@ -62,7 +62,7 @@ const verifEmailLimiter = rateLimit({
  *     security: []
  *     responses:
  *       200:
- *         description: Liste [{nom, logo}]
+ *         description: "Liste [{nom, logo}]"
  *
  * /api/public/tarifs-reference:
  *   get:
@@ -71,7 +71,7 @@ const verifEmailLimiter = rateLimit({
  *     security: []
  *     responses:
  *       200:
- *         description: Objet {cle: nombre}
+ *         description: "Objet {cle: nombre}"
  */
 router.post('/demande-acces', demandeAccesLimiter, creerDemandeAcces);
 router.get('/verifier-email', verifEmailLimiter, verifierEmail);
