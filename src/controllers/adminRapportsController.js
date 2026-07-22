@@ -18,7 +18,8 @@ const getRapportsStats = async (req, res) => {
         SELECT
           COUNT(*) FILTER (WHERE role = 'client') AS total,
           COUNT(*) FILTER (WHERE role = 'client' AND activated_at IS NOT NULL) AS activated,
-          COUNT(*) FILTER (WHERE role = 'client' AND activated_at IS NULL AND mot_de_passe IS NULL) AS pending_invite
+          COUNT(*) FILTER (WHERE role = 'client' AND activated_at IS NULL AND mot_de_passe IS NULL) AS pending_invite,
+          COUNT(*) FILTER (WHERE role = 'client' AND origine = 'site') AS from_site
         FROM utilisateurs
       `),
 
@@ -88,6 +89,7 @@ const getRapportsStats = async (req, res) => {
         total: parseInt(clientsRes.rows[0].total),
         activated: parseInt(clientsRes.rows[0].activated),
         pendingInvite: parseInt(clientsRes.rows[0].pending_invite),
+        fromSite: parseInt(clientsRes.rows[0].from_site),
       },
       abonnements: {
         total: parseInt(aboRes.rows[0].total),
