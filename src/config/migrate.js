@@ -120,6 +120,12 @@ async function migrate() {
         key: '141_backfill_pt_refs_fournisseur.js',
         run: () => require('../../scripts/backfill-pt-refs-fournisseur').run(),
       },
+      {
+        // Purge des données « client » fantômes du compte promu boss (migr 178) —
+        // abonnement, profil, activités, stock… ; garde la ligne utilisateurs.
+        key: '180_cleanup_boss_client_data.js',
+        run: () => require('../../scripts/cleanup-boss-client-data').run(),
+      },
     ];
     for (const bf of jsBackfills) {
       if (appliedSet.has(bf.key)) {

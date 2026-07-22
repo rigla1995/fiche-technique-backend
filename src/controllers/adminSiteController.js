@@ -75,6 +75,25 @@ const updateDemandeAcces = async (req, res) => {
       if (clientRes.rows.length === 0) return res.status(400).json({ message: 'Client converti introuvable' });
     }
 
+    // Conversion → le prospect devient client : on marque sa provenance sur le
+    // COMPTE CLIENT (utilisateurs.origine='site' — c'est lui qui porte la stat
+    // désormais), on retire la notif, puis on SUPPRIME la demande (la file ne
+    // garde que les demandes ouvertes : nouvelle / contactée).
+    if (statut === 'convertie') {
+      const cid = convertedClientId !== undefined && convertedClientId !== null ? Number(convertedClientId) : null;
+      if (cid) {
+        await pool.query(
+          `UPDATE utilisateurs SET origine = 'site', updated_at = NOW() WHERE id = $1 AND role = 'client'`,
+          [cid]
+        );
+      }
+      deleteByRef('demande_acces', Number(id), 'demande_acces_recue')
+        .then(() => pushToAdmins('notif_removed', { refKind: 'demande_acces', refId: Number(id) }))
+        .catch((e) => console.error('[site] retrait notif demande accès:', e.message));
+      await pool.query('DELETE FROM demandes_acces WHERE id = $1', [id]);
+      return res.json({ deleted: true, converted: true, id: Number(id) });
+    }
+
     // Refus → email de courtoisie (best-effort), retrait de la notif « file
     // d'attente », puis SUPPRESSION définitive de la demande (l'index unique
     // partiel n'autorise qu'une demande OUVERTE : on n'archive pas les refus).
