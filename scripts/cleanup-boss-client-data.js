@@ -71,6 +71,16 @@ async function run() {
       await client.query('RELEASE SAVEPOINT sp');
     } catch (_) { await client.query('ROLLBACK TO SAVEPOINT sp'); }
 
+    // Commandes acheteurs AVANT le profil : commandes_acheteur.labo_id est la SEULE
+    // FK vers labos SANS ON DELETE — elle bloquerait la cascade des labos (erreur
+    // rencontrée en prod). Leurs lignes + factures cascadent avec (commande_id CASCADE).
+    await client.query('SAVEPOINT sp');
+    try {
+      await client.query('DELETE FROM factures_acheteur WHERE client_id = $1', [bossId]);
+      await client.query('RELEASE SAVEPOINT sp');
+    } catch (_) { await client.query('ROLLBACK TO SAVEPOINT sp'); }
+    await client.query('DELETE FROM commandes_acheteur WHERE client_id = $1', [bossId]);
+
     // Racines : profil (cascade activités/labos/stock/ventes/inventaires/fournisseurs),
     // carnet acheteurs, gérants, abonnement (cascade paiements/promotions/config).
     await client.query('DELETE FROM profil_entreprise WHERE client_id = $1', [bossId]);
