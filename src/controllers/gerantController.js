@@ -136,7 +136,7 @@ const create = async (req, res) => {
           gerant_est_gratuit, gerant_montant_mensuel, invite_token, invite_token_expires_at, gerant_acces_acheteurs)
        VALUES ($1, $2, NULL, $3, 'gerant', $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id, nom, email, telephone, gerant_parent_id, gerant_activite_id,
-                 gerant_activite_type, gerant_acces_acheteurs, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at`,
+                 gerant_activite_type, gerant_acces_acheteurs, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at, activated_at`,
       [nom, email, telephone,
        parentId, compatActiviteId, compatActiviteType,
        isGratuit, montant, inviteToken, inviteExpires, accesAcheteurs]
@@ -194,7 +194,7 @@ const update = async (req, res) => {
   try {
     // Appartenance vérifiée d'emblée (évite de sonder des ids hors compte via les 400 suivants).
     const own = await pool.query(
-      `SELECT id FROM utilisateurs WHERE id = $1 AND role = 'gerant' AND gerant_parent_id = $2`,
+      `SELECT id, gerant_acces_acheteurs FROM utilisateurs WHERE id = $1 AND role = 'gerant' AND gerant_parent_id = $2`,
       [id, req.user.id]
     );
     if (own.rows.length === 0) return res.status(404).json({ message: 'Gérant introuvable' });
@@ -216,7 +216,11 @@ const update = async (req, res) => {
       if (!hasLaboFinal) {
         return res.status(400).json({ message: 'L\'accès à la base acheteurs exige au moins un labo affecté' });
       }
-      if (!(await moduleAcheteursActif(req.user.id))) {
+      // Le module n'est validé que sur la transition faux → vrai : un flag déjà
+      // accordé reste ré-envoyable tel quel même si l'admin a coupé le module
+      // depuis (sinon toute édition du gérant serait bloquée en 400). L'accès
+      // effectif reste de toute façon gaté par requireModuleAcheteurs.
+      if (own.rows[0].gerant_acces_acheteurs !== true && !(await moduleAcheteursActif(req.user.id))) {
         return res.status(400).json({ message: 'La base acheteurs n\'est pas activée sur votre compte' });
       }
     } else if (accesAcheteurs === null && !hasLaboFinal) {
@@ -239,7 +243,7 @@ const update = async (req, res) => {
            updated_at = NOW()
        WHERE id = $7 AND role = 'gerant' AND gerant_parent_id = $8
        RETURNING id, nom, email, telephone, gerant_parent_id, gerant_activite_id,
-                 gerant_activite_type, gerant_acces_acheteurs, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at`,
+                 gerant_activite_type, gerant_acces_acheteurs, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at, activated_at`,
       [nom || null, telephone || null, compatActiviteId, compatActiviteType,
        actif !== undefined ? actif : null, accesAcheteurs, id, req.user.id]
     );
@@ -275,6 +279,8 @@ const remove = async (req, res) => {
       [id, req.user.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Gérant introuvable' });
+    // Gérant supprimé → purge immédiate du cache auth (TTL 15 s), comme update().
+    invalidateAuthCache(id);
     res.status(204).send();
   } catch (err) {
     console.error(err);
