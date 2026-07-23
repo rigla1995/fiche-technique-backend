@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { buildManuelContexte, manuelSectionVisible } = require('../utils/manuelVisibilite');
 
 const parseId = (v) => {
   const n = Number(v);
@@ -21,17 +22,23 @@ const mapSection = (r) => ({
   ...(r.modifie !== undefined ? { modifie: r.modifie } : {}),
 });
 
-// GET /api/manuel — lecture du manuel (client, gérant, super_admin)
+// GET /api/manuel — lecture du manuel (client, gérant, super_admin).
+// Filtré selon la CONFIG du compte (manuelVisibilite) : les fiches d'espaces
+// absents sont masquées, les fiches « vitrines » restent. Le PDF du manuel suit
+// automatiquement (généré côté front depuis cette réponse).
 const listPublic = async (req, res) => {
   try {
     const gerant = req.user.role === 'gerant';
-    const { rows } = await pool.query(
-      `SELECT id, slug, titre, icone, partie, ordre, contenu, mots_cles, ecran, visible_gerant, actif, updated_at
-         FROM manuel_sections
-        WHERE actif = true ${gerant ? 'AND visible_gerant = true' : ''}
-        ORDER BY ordre, id`
-    );
-    res.json(rows.map(mapSection));
+    const [{ rows }, ctx] = await Promise.all([
+      pool.query(
+        `SELECT id, slug, titre, icone, partie, ordre, contenu, mots_cles, ecran, visible_gerant, actif, updated_at
+           FROM manuel_sections
+          WHERE actif = true ${gerant ? 'AND visible_gerant = true' : ''}
+          ORDER BY ordre, id`
+      ),
+      buildManuelContexte(req.user),
+    ]);
+    res.json(rows.filter((r) => manuelSectionVisible(r.slug, ctx)).map(mapSection));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
