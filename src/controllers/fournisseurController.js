@@ -1,4 +1,11 @@
 const pool = require('../config/database');
+const ExcelJS = require('exceljs');
+const multer = require('multer');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+// Ajout dynamique (import Excel) — même gabarit que le carnet d'acheteurs
+const IMPORT_HEADERS = ['Nom', 'Téléphone', 'Adresse'];
+const IMPORT_MAX_ROWS = 500;
 
 const getEntrepriseId = async (clientId) => {
   const r = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [clientId]);
@@ -248,6 +255,156 @@ const deleteFournisseur = async (req, res) => {
   }
 };
 
+// GET /api/entreprise/fournisseurs/template — modèle Excel de l'ajout dynamique
+const getFournisseursTemplate = async (req, res) => {
+  try {
+    const { brandTemplate } = require('../services/excelBrandService');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Fournisseurs');
+    brandTemplate(wb, ws, {
+      titre: "Modèle d'import — Fournisseurs",
+      sousTitre: 'Ajout dynamique des fournisseurs : une ligne = un fournisseur',
+      meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Seul le nom est obligatoire.",
+      headers: IMPORT_HEADERS,
+      widths: [30, 20, 38],
+      exemple: ['Exemple : Société Ben Ammar', '71 234 567', 'Zone industrielle, Ben Arous'],
+    });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="modele_fournisseurs.xlsx"');
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur lors de la génération du modèle' });
+  }
+};
+
+// POST /api/entreprise/fournisseurs/import — ajout dynamique (Excel).
+// Chaque fournisseur importé est assigné à l'ENSEMBLE des activités et labos
+// (périmètre du gérant s'il importe en tant que gérant) ; les affectations
+// restent modifiables fournisseur par fournisseur après l'import.
+const importFournisseurs = [
+  upload.single('file'),
+  async (req, res) => {
+    if (!req.file) return res.status(400).json({ message: 'Fichier requis' });
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const isGerant = req.user.role === 'gerant';
+    try {
+      const entrepriseId = await getEntrepriseId(clientId);
+      if (!entrepriseId) return res.status(403).json({ message: 'Entreprise introuvable' });
+
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(req.file.buffer);
+      const ws = wb.worksheets[0];
+      if (!ws) return res.status(400).json({ message: 'Fichier Excel vide ou illisible' });
+
+      // Les données commencent APRÈS la ligne d'en-têtes (bandeau de marque au-dessus),
+      // et la ligne d'exemple grisée du modèle est ignorée.
+      const { findHeaderRow, isExampleRow } = require('../services/excelBrandService');
+      const headerRowNum = findHeaderRow(ws, IMPORT_HEADERS) ?? 1;
+      const lignes = [];
+      ws.eachRow((row, rowNumber) => {
+        if (rowNumber <= headerRowNum || isExampleRow(row)) return;
+        const cell = (i) => String(row.getCell(i).text || '').trim();
+        lignes.push({ row: rowNumber, nom: cell(1), telephone: cell(2), adresse: cell(3) });
+      });
+      const nonVides = lignes.filter((l) => l.nom || l.telephone || l.adresse);
+      if (nonVides.length === 0) return res.status(400).json({ message: 'Aucune ligne à importer' });
+      if (nonVides.length > IMPORT_MAX_ROWS) return res.status(400).json({ message: `Maximum ${IMPORT_MAX_ROWS} lignes par fichier` });
+
+      // Doublons : dans le fichier ET contre le répertoire existant (insensible à la casse)
+      const existants = await pool.query('SELECT LOWER(nom) AS nom FROM fournisseurs WHERE entreprise_id = $1', [entrepriseId]);
+      const dejaLa = new Set(existants.rows.map((r) => r.nom));
+      const vusFichier = new Set();
+      const valides = [];
+      const details = [];
+      for (const l of nonVides) {
+        if (!l.nom) { details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Nom requis' }); continue; }
+        const cle = l.nom.toLowerCase();
+        if (dejaLa.has(cle)) { details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Existe déjà dans votre répertoire' }); continue; }
+        if (vusFichier.has(cle)) { details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Nom en double dans le fichier' }); continue; }
+        vusFichier.add(cle);
+        valides.push(l);
+      }
+      if (valides.length === 0) {
+        return res.status(400).json({ message: 'Aucune ligne valide', processed: 0, errors: details.length, details });
+      }
+
+      // Cibles d'affectation : toutes les activités + tous les labos du compte
+      // (restreints au périmètre du gérant le cas échéant).
+      const [acts, labs] = await Promise.all([
+        pool.query('SELECT id FROM activites WHERE entreprise_id = $1', [entrepriseId]),
+        pool.query('SELECT id FROM labos WHERE entreprise_id = $1', [entrepriseId]),
+      ]);
+      let actIds = acts.rows.map((r) => Number(r.id));
+      let laboIds = labs.rows.map((r) => Number(r.id));
+      if (isGerant) {
+        const aOk = new Set(req.user.gerantActiviteIds || []);
+        const lOk = new Set(req.user.gerantLaboIds || []);
+        actIds = actIds.filter((id) => aOk.has(id));
+        laboIds = laboIds.filter((id) => lOk.has(id));
+      }
+
+      const db = await pool.connect();
+      let crees = 0;
+      try {
+        await db.query('BEGIN');
+        for (const v of valides) {
+          // SAVEPOINT par ligne : une erreur SQL isolée ne doit pas avorter
+          // silencieusement toute la transaction (leçon de l'import acheteurs).
+          await db.query('SAVEPOINT ligne');
+          try {
+            const r = await db.query(
+              `INSERT INTO fournisseurs (entreprise_id, nom, telephone, adresse, created_by)
+               VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+              [entrepriseId, v.nom, v.telephone || null, v.adresse || null, req.user.id]
+            );
+            const fid = r.rows[0].id;
+            if (actIds.length) {
+              await db.query(
+                `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
+                 SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`,
+                [fid, actIds]
+              );
+            }
+            if (laboIds.length) {
+              await db.query(
+                `INSERT INTO fournisseur_labos (fournisseur_id, labo_id)
+                 SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`,
+                [fid, laboIds]
+              );
+            }
+            crees++;
+            details.push({ row: v.row, nom: v.nom, status: 'ok' });
+          } catch (e) {
+            await db.query('ROLLBACK TO SAVEPOINT ligne');
+            details.push({ row: v.row, nom: v.nom, status: 'error', error: 'Ligne rejetée par la base' });
+            console.error('Import fournisseur ligne', v.row, e.message);
+          }
+        }
+        await db.query('COMMIT');
+      } catch (err) {
+        await db.query('ROLLBACK').catch(() => {});
+        throw err;
+      } finally {
+        db.release();
+      }
+
+      details.sort((a, b) => a.row - b.row);
+      res.json({
+        processed: crees,
+        stats: { crees, activites: actIds.length, labos: laboIds.length },
+        errors: details.filter((d) => d.status === 'error').length,
+        details,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Erreur lors de l'import" });
+    }
+  },
+];
+
 module.exports = {
   listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur,
+  getFournisseursTemplate, importFournisseurs,
 };
