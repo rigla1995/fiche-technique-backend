@@ -576,6 +576,11 @@ const getCommande = async (req, res) => {
       [req.params.id, clientId]
     );
     if (c.rows.length === 0) return res.status(404).json({ message: 'Commande introuvable' });
+    // Périmètre gérant : une commande rattachée à un labo hors affectations est invisible
+    // (comme dans la liste ; les commandes portail sans labo restent consultables).
+    if (c.rows[0].labo_id != null && !gerantAllowsLabo(req, c.rows[0].labo_id)) {
+      return res.status(404).json({ message: 'Commande introuvable' });
+    }
     const [lignes, histo] = await Promise.all([
       pool.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id`, [req.params.id]),
       pool.query(
@@ -913,7 +918,7 @@ const downloadFacturePdf = async (req, res) => {
               CASE WHEN ach.id IS NULL THEN fa.acheteur_matricule_fiscal ELSE ach.matricule_fiscal END AS acheteur_mf,
               CASE WHEN ach.id IS NULL THEN fa.acheteur_telephone ELSE ach.telephone END AS acheteur_tel,
               CASE WHEN ach.id IS NULL THEN fa.acheteur_email ELSE ach.email END AS acheteur_email,
-              ca.date_commande, ca.remise_pct AS cmd_remise, ca.notes,
+              ca.date_commande, ca.remise_pct AS cmd_remise, ca.notes, ca.labo_id AS cmd_labo_id,
               pe.nom AS vendeur_nom, pe.adresse AS vendeur_adresse, pe.telephone AS vendeur_tel, pe.email AS vendeur_email
        FROM factures_acheteur fa
        LEFT JOIN acheteurs ach ON ach.id = fa.acheteur_id
@@ -923,6 +928,10 @@ const downloadFacturePdf = async (req, res) => {
       [req.params.id, clientId]
     );
     if (f.rows.length === 0) return res.status(404).json({ message: 'Facture introuvable' });
+    // Périmètre gérant : facture liée à une commande d'un labo hors affectations → invisible.
+    if (f.rows[0].cmd_labo_id != null && !gerantAllowsLabo(req, f.rows[0].cmd_labo_id)) {
+      return res.status(404).json({ message: 'Facture introuvable' });
+    }
     const lignes = await pool.query(
       `SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id`,
       [f.rows[0].commande_id]

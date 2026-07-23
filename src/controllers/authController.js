@@ -67,11 +67,31 @@ const login = async (req, res) => {
 
     const onboardingStep = utilisateur.role === 'gerant' ? 0 : (utilisateur.onboarding_step ?? 0);
 
-    const gerantFields = utilisateur.role === 'gerant' ? {
-      gerantParentId: utilisateur.gerant_parent_id,
-      gerantActiviteId: utilisateur.gerant_activite_id,
-      gerantActiviteType: utilisateur.gerant_activite_type,
-    } : {};
+    // Affectations + accès acheteurs dès le LOGIN (comme /auth/me) : la sidebar et
+    // le guard de l'Espace Acheteurs en dépendent — le front ne rappelle /auth/me
+    // qu'au montage, pas après un login SPA. Même chargement (avec repli legacy)
+    // que le middleware authenticate.
+    let gerantFields = {};
+    if (utilisateur.role === 'gerant') {
+      const aff = await pool.query(
+        'SELECT activite_id, labo_id FROM gerant_affectations WHERE gerant_id = $1',
+        [utilisateur.id]
+      );
+      let gerantActiviteIds = aff.rows.filter((r) => r.activite_id != null).map((r) => Number(r.activite_id));
+      let gerantLaboIds = aff.rows.filter((r) => r.labo_id != null).map((r) => Number(r.labo_id));
+      if (gerantActiviteIds.length === 0 && gerantLaboIds.length === 0 && utilisateur.gerant_activite_id) {
+        if (utilisateur.gerant_activite_type === 'labo') gerantLaboIds = [Number(utilisateur.gerant_activite_id)];
+        else gerantActiviteIds = [Number(utilisateur.gerant_activite_id)];
+      }
+      gerantFields = {
+        gerantParentId: utilisateur.gerant_parent_id,
+        gerantActiviteId: utilisateur.gerant_activite_id,
+        gerantActiviteType: utilisateur.gerant_activite_type,
+        gerantActiviteIds,
+        gerantLaboIds,
+        gerantAccesAcheteurs: utilisateur.gerant_acces_acheteurs === true,
+      };
+    }
 
     // Compteurs d'activités/labos dès le LOGIN (comme /auth/me) : la redirection
     // d'accueil du front en dépend — sans eux, un client déjà configuré était
@@ -244,6 +264,7 @@ const me = async (req, res) => {
       gerantActiviteNom,
       gerantActiviteIds: req.user.gerantActiviteIds || [],
       gerantLaboIds: req.user.gerantLaboIds || [],
+      gerantAccesAcheteurs: req.user.gerant_acces_acheteurs === true,
     } : {};
 
     res.json({

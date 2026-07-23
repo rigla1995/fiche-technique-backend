@@ -53,7 +53,7 @@ const authenticate = async (req, res, next) => {
       const result = await pool.query(
         `SELECT u.id, u.nom, u.email, u.role,
                 u.actif, u.password_changed_at,
-                u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type,
+                u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type, u.gerant_acces_acheteurs,
                 ach.id AS acheteur_id, ach.client_id AS acheteur_client_id, ach.actif AS acheteur_actif,
                 a.mode_compte
          FROM utilisateurs u
@@ -224,6 +224,20 @@ const requireModuleAcheteurs = async (req, res, next) => {
   }
 };
 
+// Accès gérant à l'Espace Acheteurs : opt-in du compte client (gerant_acces_acheteurs)
+// ET au moins un labo affecté. Les autres rôles passent tels quels — le module
+// lui-même reste gaté par requireModuleAcheteurs.
+const requireGerantAcheteursAccess = (req, res, next) => {
+  if (req.user.role !== 'gerant') return next();
+  if (!req.user.gerant_acces_acheteurs || (req.user.gerantLaboIds || []).length === 0) {
+    return res.status(403).json({
+      message: 'Espace Acheteurs non autorisé pour ce gérant',
+      code: 'ACHETEURS_GERANT_NON_AUTORISE',
+    });
+  }
+  next();
+};
+
 // Gating serveur de la formule d'activités : l'Espace Produit (écritures) est
 // réservé à la formule PREMIUM. Exceptions qui passent :
 //   • compte sans config ou sans activité (dépôt) — l'Espace Produit ne le concerne pas ;
@@ -297,6 +311,6 @@ const scopeGerantActivite = (req, res) => {
 module.exports = {
   authenticate, invalidateAuthCache, requireSuperAdmin, requireBoss, requireClient, requireEntreprise,
   requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
-  requireModuleAcheteurs, requireAcheteur, requireFormulePremium,
+  requireModuleAcheteurs, requireGerantAcheteursAccess, requireAcheteur, requireFormulePremium,
   requireClientOwner, gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
 };
