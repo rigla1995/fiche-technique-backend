@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { sendInviteEmail, generateInviteToken } = require('../services/emailService');
+const { invalidateAuthCache } = require('../middleware/auth');
 
 const mapGerant = (row) => ({
   id: row.id,
@@ -11,6 +12,7 @@ const mapGerant = (row) => ({
   activiteType: row.gerant_activite_type,
   activiteIds: row.activite_ids || [],
   laboIds: row.labo_ids || [],
+  accesAcheteurs: row.gerant_acces_acheteurs === true,
   estGratuit: row.gerant_est_gratuit,
   montantMensuel: row.gerant_montant_mensuel,
   actif: row.actif,
@@ -18,12 +20,21 @@ const mapGerant = (row) => ({
   activatedAt: row.activated_at || null,
 });
 
+// La base acheteurs doit être active sur le compte pour accorder l'accès à un gérant.
+const moduleAcheteursActif = async (clientId) => {
+  const r = await pool.query(
+    `SELECT module_acheteurs_actif FROM profil_entreprise WHERE client_id = $1`,
+    [clientId]
+  );
+  return r.rows[0]?.module_acheteurs_actif === true;
+};
+
 // GET /api/gerants — list gérants for current user (indep or entreprise)
 const list = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u.nom, u.email, u.telephone, u.gerant_parent_id, u.gerant_activite_id,
-              u.gerant_activite_type, u.gerant_est_gratuit, u.gerant_montant_mensuel, u.actif, u.created_at, u.activated_at,
+              u.gerant_activite_type, u.gerant_acces_acheteurs, u.gerant_est_gratuit, u.gerant_montant_mensuel, u.actif, u.created_at, u.activated_at,
               COALESCE((SELECT json_agg(ga.activite_id) FROM gerant_affectations ga WHERE ga.gerant_id = u.id AND ga.activite_id IS NOT NULL), '[]') AS activite_ids,
               COALESCE((SELECT json_agg(ga.labo_id) FROM gerant_affectations ga WHERE ga.gerant_id = u.id AND ga.labo_id IS NOT NULL), '[]') AS labo_ids
        FROM utilisateurs u
@@ -87,6 +98,16 @@ const create = async (req, res) => {
     if (!(await assertOwnership(parentId, activiteIds, laboIds))) {
       return res.status(403).json({ message: 'Activité ou labo hors de votre périmètre' });
     }
+    // Accès base acheteurs : opt-in, exige au moins un labo affecté + module actif sur le compte.
+    const accesAcheteurs = req.body.accesAcheteurs === true;
+    if (accesAcheteurs) {
+      if (laboIds.length === 0) {
+        return res.status(400).json({ message: 'L\'accès à la base acheteurs exige au moins un labo affecté' });
+      }
+      if (!(await moduleAcheteursActif(parentId))) {
+        return res.status(400).json({ message: 'La base acheteurs n\'est pas activée sur votre compte' });
+      }
+    }
     const firstActiviteId = activiteIds[0] ?? null;
     const firstLaboId = laboIds[0] ?? null;
     const compatActiviteId = firstActiviteId ?? firstLaboId;
@@ -112,13 +133,13 @@ const create = async (req, res) => {
       `INSERT INTO utilisateurs
          (nom, email, mot_de_passe, telephone, role,
           gerant_parent_id, gerant_activite_id, gerant_activite_type,
-          gerant_est_gratuit, gerant_montant_mensuel, invite_token, invite_token_expires_at)
-       VALUES ($1, $2, NULL, $3, 'gerant', $4, $5, $6, $7, $8, $9, $10)
+          gerant_est_gratuit, gerant_montant_mensuel, invite_token, invite_token_expires_at, gerant_acces_acheteurs)
+       VALUES ($1, $2, NULL, $3, 'gerant', $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id, nom, email, telephone, gerant_parent_id, gerant_activite_id,
-                 gerant_activite_type, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at`,
+                 gerant_activite_type, gerant_acces_acheteurs, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at, activated_at`,
       [nom, email, telephone,
        parentId, compatActiviteId, compatActiviteType,
-       isGratuit, montant, inviteToken, inviteExpires]
+       isGratuit, montant, inviteToken, inviteExpires, accesAcheteurs]
     );
     const gerantId = result.rows[0].id;
     if (activiteIds.length > 0) {
@@ -128,14 +149,39 @@ const create = async (req, res) => {
       await pool.query('INSERT INTO gerant_affectations (gerant_id, labo_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [gerantId, laboIds]);
     }
     await sendInviteEmail({ to: email, nom, token: inviteToken, role: 'gerant' });
-    res.status(201).json(mapGerant(result.rows[0]));
+    // La row RETURNING ne porte pas les agrégats d'affectations : on renvoie celles écrites.
+    res.status(201).json({ ...mapGerant(result.rows[0]), activiteIds, laboIds });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
-// PUT /api/gerants/:id — update gérant (nom, tel, activite, actif)
+// ≥ 1 labo dans le périmètre du gérant (même repli legacy que le middleware auth :
+// sans aucune ligne d'affectation, l'affectation unique gerant_activite_id/type fait foi).
+const gerantHasLabo = async (gerantId) => {
+  const r = await pool.query(
+    `SELECT EXISTS(SELECT 1 FROM gerant_affectations WHERE gerant_id = u.id AND labo_id IS NOT NULL) AS has_labo,
+            NOT EXISTS(SELECT 1 FROM gerant_affectations WHERE gerant_id = u.id) AS no_aff,
+            (u.gerant_activite_type = 'labo' AND u.gerant_activite_id IS NOT NULL) AS legacy_labo
+     FROM utilisateurs u WHERE u.id = $1`,
+    [gerantId]
+  );
+  const row = r.rows[0];
+  return !!row && (row.has_labo || (row.no_aff && row.legacy_labo));
+};
+
+const fetchAffectations = async (gerantId) => {
+  const r = await pool.query(
+    `SELECT COALESCE(json_agg(activite_id) FILTER (WHERE activite_id IS NOT NULL), '[]') AS activite_ids,
+            COALESCE(json_agg(labo_id) FILTER (WHERE labo_id IS NOT NULL), '[]') AS labo_ids
+     FROM gerant_affectations WHERE gerant_id = $1`,
+    [gerantId]
+  );
+  return { activiteIds: r.rows[0].activite_ids || [], laboIds: r.rows[0].labo_ids || [] };
+};
+
+// PUT /api/gerants/:id — update gérant (nom, tel, affectations, accès acheteurs, actif)
 const update = async (req, res) => {
   const { id } = req.params;
   const { nom, telephone, actif } = req.body;
@@ -146,6 +192,13 @@ const update = async (req, res) => {
   let laboIds = Array.isArray(req.body.laboIds) ? [...new Set(req.body.laboIds.map(Number).filter(Number.isFinite))] : [];
 
   try {
+    // Appartenance vérifiée d'emblée (évite de sonder des ids hors compte via les 400 suivants).
+    const own = await pool.query(
+      `SELECT id, gerant_acces_acheteurs FROM utilisateurs WHERE id = $1 AND role = 'gerant' AND gerant_parent_id = $2`,
+      [id, req.user.id]
+    );
+    if (own.rows.length === 0) return res.status(404).json({ message: 'Gérant introuvable' });
+
     if (hasAffectations) {
       if (activiteIds.length === 0 && laboIds.length === 0) {
         return res.status(400).json({ message: 'Au moins une activité ou un labo doit être affecté' });
@@ -154,6 +207,26 @@ const update = async (req, res) => {
         return res.status(403).json({ message: 'Activité ou labo hors de votre périmètre' });
       }
     }
+
+    // Accès base acheteurs : opt-in, exige ≥ 1 labo affecté + module actif sur le compte.
+    // Si l'édition retire le dernier labo, l'accès est révoqué automatiquement.
+    let accesAcheteurs = typeof req.body.accesAcheteurs === 'boolean' ? req.body.accesAcheteurs : null;
+    const hasLaboFinal = hasAffectations ? laboIds.length > 0 : await gerantHasLabo(id);
+    if (accesAcheteurs === true) {
+      if (!hasLaboFinal) {
+        return res.status(400).json({ message: 'L\'accès à la base acheteurs exige au moins un labo affecté' });
+      }
+      // Le module n'est validé que sur la transition faux → vrai : un flag déjà
+      // accordé reste ré-envoyable tel quel même si l'admin a coupé le module
+      // depuis (sinon toute édition du gérant serait bloquée en 400). L'accès
+      // effectif reste de toute façon gaté par requireModuleAcheteurs.
+      if (own.rows[0].gerant_acces_acheteurs !== true && !(await moduleAcheteursActif(req.user.id))) {
+        return res.status(400).json({ message: 'La base acheteurs n\'est pas activée sur votre compte' });
+      }
+    } else if (accesAcheteurs === null && !hasLaboFinal) {
+      accesAcheteurs = false;
+    }
+
     const firstActiviteId = activiteIds[0] ?? null;
     const firstLaboId = laboIds[0] ?? null;
     const compatActiviteId = hasAffectations ? (firstActiviteId ?? firstLaboId) : null;
@@ -166,12 +239,13 @@ const update = async (req, res) => {
            gerant_activite_id = COALESCE($3, gerant_activite_id),
            gerant_activite_type = COALESCE($4, gerant_activite_type),
            actif = COALESCE($5, actif),
+           gerant_acces_acheteurs = COALESCE($6, gerant_acces_acheteurs),
            updated_at = NOW()
-       WHERE id = $6 AND role = 'gerant' AND gerant_parent_id = $7
+       WHERE id = $7 AND role = 'gerant' AND gerant_parent_id = $8
        RETURNING id, nom, email, telephone, gerant_parent_id, gerant_activite_id,
-                 gerant_activite_type, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at`,
+                 gerant_activite_type, gerant_acces_acheteurs, gerant_est_gratuit, gerant_montant_mensuel, actif, created_at, activated_at`,
       [nom || null, telephone || null, compatActiviteId, compatActiviteType,
-       actif !== undefined ? actif : null, id, req.user.id]
+       actif !== undefined ? actif : null, accesAcheteurs, id, req.user.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Gérant introuvable' });
 
@@ -184,7 +258,12 @@ const update = async (req, res) => {
         await pool.query('INSERT INTO gerant_affectations (gerant_id, labo_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [id, laboIds]);
       }
     }
-    res.json(mapGerant(result.rows[0]));
+    // Le périmètre effectif du gérant vit dans le cache auth (TTL 15 s) : on invalide
+    // pour que le changement d'affectations / d'accès soit immédiat sur cette instance.
+    invalidateAuthCache(id);
+
+    const affectations = hasAffectations ? { activiteIds, laboIds } : await fetchAffectations(id);
+    res.json({ ...mapGerant(result.rows[0]), ...affectations });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -200,6 +279,8 @@ const remove = async (req, res) => {
       [id, req.user.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Gérant introuvable' });
+    // Gérant supprimé → purge immédiate du cache auth (TTL 15 s), comme update().
+    invalidateAuthCache(id);
     res.status(204).send();
   } catch (err) {
     console.error(err);
