@@ -8,7 +8,7 @@ const {
   getActiviteSelectedIngredients, getTypeSelectedIngredients,
   getActivitesArticlesConsommables,
 } = require('../controllers/entrepriseController');
-const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur } = require('../controllers/fournisseurController');
+const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur, getFournisseursTemplate, importFournisseurs } = require('../controllers/fournisseurController');
 const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, getPrixEntreprisePerte, getDateRangeEntreprisePerte } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
@@ -409,6 +409,9 @@ router.put('/activites/:id/ingredients/:ingredientId/price', authenticate, requi
 
 // Fournisseurs
 router.get('/fournisseurs', authenticate, requireEntreprise, listFournisseurs);
+// Ajout dynamique (import Excel) — déclaré AVANT les routes à :id
+router.get('/fournisseurs/template', authenticate, requireEntreprise, getFournisseursTemplate);
+router.post('/fournisseurs/import', authenticate, requireEntreprise, importFournisseurs);
 router.post('/fournisseurs', authenticate, requireEntreprise, createFournisseur);
 router.put('/fournisseurs/:id', authenticate, requireEntreprise, updateFournisseur);
 router.delete('/fournisseurs/:id', authenticate, requireEntreprise, deleteFournisseur);
