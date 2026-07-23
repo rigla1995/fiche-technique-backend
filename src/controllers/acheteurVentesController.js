@@ -487,7 +487,7 @@ const createVente = async (req, res) => {
   }
 };
 
-// GET /api/acheteurs/commandes — historique (filtres : statut, acheteurId, from, to)
+// GET /api/acheteurs/commandes — historique (filtres : statut, acheteurId, from, to, source)
 const listCommandes = async (req, res) => {
   try {
     const clientId = clientIdOf(req);
@@ -496,6 +496,11 @@ const listCommandes = async (req, res) => {
     if (req.query.statut && ['en_attente', 'expediee', 'livree', 'annulee'].includes(req.query.statut)) {
       params.push(req.query.statut);
       conds.push(`ca.statut = $${params.length}`);
+    }
+    // Type de vente : 'client' = vente manuelle, 'portail' = commande du portail acheteur
+    if (req.query.source && ['client', 'portail'].includes(req.query.source)) {
+      params.push(req.query.source);
+      conds.push(`ca.source = $${params.length}`);
     }
     // 'supprimes' = commandes orphelines (acheteur supprimé, conservées par la migr 165)
     if (req.query.acheteurId === 'supprimes') {
@@ -652,6 +657,17 @@ const expedierCommande = async (req, res) => {
   if (dateExpedition.slice(0, 4) !== ajd.slice(0, 4)) {
     return res.status(400).json({ message: `La date d'expédition doit être dans l'exercice en cours (${ajd.slice(0, 4)})` });
   }
+  // Traitement direct en LIVRÉE (écran « Traiter ») : l'expédition et la livraison
+  // sont actées dans la même transaction — les deux jalons prennent les mêmes
+  // valeurs par défaut (date de livraison = date d'expédition si non fournie).
+  const statutFinal = req.body.statut === 'livree' ? 'livree' : 'expediee';
+  const dateLivraison = statutFinal === 'livree' ? (req.body.dateLivraison || dateExpedition) : null;
+  if (dateLivraison && !DATE_RE.test(dateLivraison)) {
+    return res.status(400).json({ message: 'Date de livraison invalide (AAAA-MM-JJ)' });
+  }
+  if (dateLivraison && dateLivraison < dateExpedition) {
+    return res.status(400).json({ message: 'La date de livraison ne peut pas précéder la date d\'expédition' });
+  }
   // Ajustements de quantités { ligneId → quantite } décidés par le vendeur.
   // Une quantité de 0 exactement = ligne RETIRÉE de la commande.
   const quantitesIn = Array.isArray(req.body.quantites) ? req.body.quantites : [];
@@ -781,18 +797,19 @@ const expedierCommande = async (req, res) => {
     );
     await db.query(
       `UPDATE commandes_acheteur
-       SET statut = 'expediee', labo_id = $1, remise_pct = $2, date_expedition = $3, traite_le = NOW(), traite_par = $4
-       WHERE id = $5`,
-      [laboId, remisePct, dateExpedition, req.user.id, cmd.id]
+       SET statut = $1, labo_id = $2, remise_pct = $3, date_expedition = $4, date_livraison = $5, traite_le = NOW(), traite_par = $6
+       WHERE id = $7`,
+      [statutFinal, laboId, remisePct, dateExpedition, dateLivraison, req.user.id, cmd.id]
     );
     await logStatut(db, cmd.id, 'expediee', dateExpedition, null, req.user.id);
+    if (statutFinal === 'livree') await logStatut(db, cmd.id, 'livree', dateLivraison, null, req.user.id);
     await db.query('COMMIT');
 
     // Aucun email à l'acheteur sur les changements de statut (décision produit
     // 2026-07-20) : il suit sa commande dans « Mes commandes » sur le portail.
 
     res.json({
-      commande: { id: cmd.id, statut: 'expediee', dateExpedition, laboNom: labo.rows[0].nom },
+      commande: { id: cmd.id, statut: statutFinal, dateExpedition, dateLivraison, laboNom: labo.rows[0].nom },
       facture: { id: fact.rows[0].id, numero, ...totaux },
     });
   } catch (err) {
