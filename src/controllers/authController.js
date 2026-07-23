@@ -244,6 +244,7 @@ const me = async (req, res) => {
       gerantActiviteNom,
       gerantActiviteIds: req.user.gerantActiviteIds || [],
       gerantLaboIds: req.user.gerantLaboIds || [],
+      gerantAccesAcheteurs: req.user.gerant_acces_acheteurs === true,
     } : {};
 
     res.json({

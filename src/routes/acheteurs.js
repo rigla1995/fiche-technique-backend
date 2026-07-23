@@ -5,10 +5,12 @@ const {
   listOffres, upsertOffre, getOffreHistorique,
   createVente, listCommandes, getCommande, expedierCommande, livrerCommande, annulerCommande, downloadFacturePdf,
 } = require('../controllers/acheteurVentesController');
-const { authenticate, requireEntreprise, requireModuleAcheteurs } = require('../middleware/auth');
+const { authenticate, requireEntreprise, requireModuleAcheteurs, requireGerantAcheteursAccess } = require('../middleware/auth');
 
 // Module opt-in : TOUTES les routes du carnet exigent le module actif (403 sinon).
-// Client ET gérant (le carnet est au niveau du compte).
+// Client ET gérant — mais le gérant doit être explicitement autorisé par le compte
+// (utilisateurs.gerant_acces_acheteurs) ET avoir au moins un labo affecté.
+router.use(authenticate, requireGerantAcheteursAccess);
 
 /**
  * @openapi
