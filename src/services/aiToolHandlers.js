@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { generateAndSendReport } = require('./reportService');
+const { buildManuelContexte, manuelSectionVisible } = require('../utils/manuelVisibilite');
 
 const CLIENT_SCOPE_CTE = `
   WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1),
@@ -256,18 +257,22 @@ async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, d
 
 // ── Base de connaissances LabFlow (RAG simple, recherche par mots-clés) ────────
 const normalizeKb = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-async function toolSearchKnowledge(toolInput) {
+async function toolSearchKnowledge(clientId, toolInput) {
   const query = (toolInput?.query || '').trim();
   // Deux sources : la base de connaissances IA + le manuel d'utilisation (source de vérité,
   // éditable depuis l'admin). Les fiches du manuel sont préfixées pour citer la source.
-  const [kb, manuel] = await Promise.all([
+  // Le manuel est FILTRÉ selon la config du compte (manuelVisibilite) : l'IA ne doit
+  // pas documenter des écrans que ce client ne voit pas. Sans clientId (ex. prospect
+  // Messenger non lié), le manuel complet reste consultable (vitrines comprises).
+  const [kb, manuel, ctx] = await Promise.all([
     pool.query('SELECT titre, contenu, mots_cles FROM ai_knowledge_base WHERE actif = true'),
-    pool.query('SELECT titre, partie, contenu, mots_cles FROM manuel_sections WHERE actif = true'),
+    pool.query('SELECT slug, titre, partie, contenu, mots_cles FROM manuel_sections WHERE actif = true'),
+    clientId ? buildManuelContexte({ role: 'client', id: clientId }) : Promise.resolve(null),
   ]);
   const TRUNC = 6000;
   const rows = [
     ...kb.rows,
-    ...manuel.rows.map((r) => ({
+    ...manuel.rows.filter((r) => manuelSectionVisible(r.slug, ctx)).map((r) => ({
       titre: `Manuel — ${r.partie} › ${r.titre}`,
       contenu: r.contenu.length > TRUNC ? `${r.contenu.slice(0, TRUNC)}…` : r.contenu,
       mots_cles: r.mots_cles,
@@ -498,7 +503,7 @@ async function executeToolCall(clientId, toolName, toolInput) {
       case 'get_produits':         return await toolGetProduits(clientId, toolInput);
       case 'get_config_vente':     return await toolGetConfigVente(clientId, toolInput);
       case 'send_report':          return await toolSendReport(clientId);
-      case 'search_knowledge_base': return await toolSearchKnowledge(toolInput);
+      case 'search_knowledge_base': return await toolSearchKnowledge(clientId, toolInput);
       case 'ask_clarification':    return { __clarification: true, question: toolInput.question, options: toolInput.options };
       default:                     return { error: `Outil inconnu: ${toolName}` };
     }
