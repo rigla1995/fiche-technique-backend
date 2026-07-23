@@ -7,7 +7,8 @@ const { ptCategorie, ptCategorieSql } = require('../utils/stockUtils');
 // Filtres (listes séparées par des virgules) :
 //   activites, labos, canaux (directe|prestataire), prestataires (uuid),
 //   catProduits, typesProduit (produit|supplement|valorise),
-//   catArticles, familles, fournisseurs, typesPerte (avarie|dechet)
+//   catArticles, familles, fournisseurs, typesPerte (avarie|dechet),
+//   sources (client|portail — type de vente de l'onglet Acheteurs B2B)
 // Tout en TTC. Marge à 3 étages : brute (CA − coût matière figé par ligne),
 // après commissions (taux prestataire par activité), nette estimée
 // (− prorata des charges fixes ANNUELLES sur la période).
@@ -729,11 +730,18 @@ const tabAcheteurs = async (req, ctx, from, to) => {
   const laboIds = ctx.laboIds.length ? ctx.laboIds : [-1];
   const prev = previousPeriode(from, to);
 
+  // Filtre « type de vente » : 'client' = vente manuelle, 'portail' = commande portail.
+  // Les deux valeurs cochées (ou aucune) = pas de restriction.
+  const sources = parseStrList(req.query.sources).filter((s) => ['client', 'portail'].includes(s));
+  const srcActif = sources.length === 1;
+  const srcCond = srcActif ? `AND cac.source = $4` : '';
+  const factParams = (f, t) => (srcActif ? [laboIds, f, t, sources[0]] : [laboIds, f, t]);
+
   const FACT_FROM = `
     FROM factures_acheteur fa
     JOIN commandes_acheteur cac ON cac.id = fa.commande_id
     WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
-      AND fa.date_facture >= $2 AND fa.date_facture <= $3`;
+      AND fa.date_facture >= $2 AND fa.date_facture <= $3 ${srcCond}`;
 
   const [aggRes, prevRes, evoRes, topAchRes, topArtRes, statutsRes, attenteRes, carnetRes] = await Promise.all([
     pool.query(
@@ -745,17 +753,17 @@ const tabAcheteurs = async (req, ctx, from, to) => {
               COUNT(DISTINCT COALESCE(fa.acheteur_id::text,
                 'supprime:' || COALESCE(fa.acheteur_nom, '') || '|' || COALESCE(fa.acheteur_entreprise, ''))) AS nb_acheteurs
        ${FACT_FROM}`,
-      [laboIds, from, to]
+      factParams(from, to)
     ),
     pool.query(
       `SELECT COALESCE(SUM(fa.montant_ttc), 0) AS ttc, COUNT(*) AS nb ${FACT_FROM}`,
-      [laboIds, prev.from, prev.to]
+      factParams(prev.from, prev.to)
     ),
     pool.query(
       `SELECT to_char(date_trunc('${grain}', fa.date_facture), 'YYYY-MM-DD') AS bucket,
               COALESCE(SUM(fa.montant_ttc), 0) AS valeur
        ${FACT_FROM} GROUP BY 1 ORDER BY 1`,
-      [laboIds, from, to]
+      factParams(from, to)
     ),
     // GROUP BY acheteur_id + libellé : deux acheteurs VIVANTS homonymes (même
     // entreprise) restent des lignes distinctes ; les supprimés (id NULL) ne
@@ -769,9 +777,9 @@ const tabAcheteurs = async (req, ctx, from, to) => {
        JOIN commandes_acheteur cac ON cac.id = fa.commande_id
        LEFT JOIN acheteurs ach ON ach.id = fa.acheteur_id
        WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
-         AND fa.date_facture >= $2 AND fa.date_facture <= $3
+         AND fa.date_facture >= $2 AND fa.date_facture <= $3 ${srcCond}
        GROUP BY fa.acheteur_id, 1 ORDER BY valeur DESC LIMIT 10`,
-      [laboIds, from, to]
+      factParams(from, to)
     ),
     // Même ancrage que le CA (fa.date_facture) — un seul axe temporel pour tout
     // l'onglet, sinon les widgets se contredisent (vente antidatée : lignes sur
@@ -785,10 +793,10 @@ const tabAcheteurs = async (req, ctx, from, to) => {
        JOIN commandes_acheteur cac ON cac.id = cal.commande_id
        JOIN factures_acheteur fa ON fa.commande_id = cac.id
        WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
-         AND fa.date_facture >= $2 AND fa.date_facture <= $3
+         AND fa.date_facture >= $2 AND fa.date_facture <= $3 ${srcCond}
        GROUP BY cal.article_type, cal.article_id, cal.designation
        ORDER BY valeur DESC LIMIT 10`,
-      [laboIds, from, to]
+      factParams(from, to)
     ),
     // Commandes de la période par état — expédiées/livrées ancrées sur la date de
     // FACTURE (même axe que le CA) ; en_attente/annulées (pas de facture, labo
@@ -800,12 +808,14 @@ const tabAcheteurs = async (req, ctx, from, to) => {
        WHERE cac.client_id = $4 AND (cac.labo_id IS NULL OR cac.labo_id = ANY($1::int[]))
          AND COALESCE(fa.date_facture, cac.date_commande) >= $2
          AND COALESCE(fa.date_facture, cac.date_commande) <= $3
+         ${srcActif ? 'AND cac.source = $5' : ''}
        GROUP BY 1`,
-      [laboIds, from, to, ctx.clientId]
+      srcActif ? [laboIds, from, to, ctx.clientId, sources[0]] : [laboIds, from, to, ctx.clientId]
     ),
     pool.query(
-      `SELECT COUNT(*) AS nb FROM commandes_acheteur WHERE client_id = $1 AND statut = 'en_attente'`,
-      [ctx.clientId]
+      `SELECT COUNT(*) AS nb FROM commandes_acheteur
+       WHERE client_id = $1 AND statut = 'en_attente' ${srcActif ? 'AND source = $2' : ''}`,
+      srcActif ? [ctx.clientId, sources[0]] : [ctx.clientId]
     ),
     pool.query(
       `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE actif) AS actifs FROM acheteurs WHERE client_id = $1`,
