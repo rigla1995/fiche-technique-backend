@@ -110,7 +110,9 @@ async function geminiChat(messages) {
         messages,
         tools: TOOLS_OPENAI,
         tool_choice: 'auto',
-        max_tokens: 1024,
+        // Le prompt exige de restituer TOUTES les lignes d'une liste de données
+        // (appros, ventes…) : 1024 tronquait les réponses en plein milieu.
+        max_tokens: 8192,
         temperature: 0.2,
         stream: false,
       }),
@@ -165,6 +167,11 @@ async function chatWithAI(clientId, chatSessionId, userMessage, confidenceThresh
     if (toolCalls.length === 0) {
       const parsed = parseConfidence(msg.content || '');
       finalText = parsed.message || 'Désolé, je n\'ai pas pu répondre.';
+      // Réponse coupée par le plafond de tokens : on le signale au lieu de
+      // laisser une phrase en suspens.
+      if (data.choices?.[0]?.finish_reason === 'length') {
+        finalText += '\n\n… _(réponse tronquée — demandez une période plus courte ou un rapport Excel par email)_';
+      }
       confidence = parsed.confidence;
       break;
     }
