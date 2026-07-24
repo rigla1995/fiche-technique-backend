@@ -215,19 +215,35 @@ const getActiveAgents = async (req, res) => {
 
 // Moteur IA unique : Gemini Flash via aiService (Groq et Claude retirés, 2026-07-24).
 const { chatWithAI } = require('../services/aiService');
+const { computeOnboardingEtat } = require('../services/onboardingEtat');
 
 async function _chatWithAI(clientId, sessionId, message, threshold) {
   return chatWithAI(clientId, sessionId, message, threshold);
 }
 
+// Le bot web est un GUIDE DE MISE EN ROUTE (décision client 2026-07-24) : il
+// n'est proposé qu'au rôle client, tant que sa configuration souscrite n'est
+// pas terminée — et il revient de lui-même après un avenant (l'état est
+// recalculé en direct, rien n'est stocké). Le flag admin ai_assistant_config
+// ne gate plus le chat web (il reste utilisé par l'agent Messenger).
 const getClientStatus = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const result = await pool.query(
-      'SELECT enabled FROM ai_assistant_config WHERE client_id = $1',
-      [clientId]
-    );
-    res.json({ enabled: result.rows[0]?.enabled ?? false });
+    if (req.user.role !== 'client') return res.json({ enabled: false });
+    const etat = await computeOnboardingEtat(clientId);
+    res.json({ enabled: !etat.complet });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// GET /api/ai-assistant/onboarding — état de mise en route pour le widget
+const getOnboardingEtat = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    if (req.user.role !== 'client') return res.json({ complet: true, etapes: [], aFaire: null });
+    res.json(await computeOnboardingEtat(clientId));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -258,14 +274,19 @@ const clientChat = async (req, res) => {
   if (!message?.trim()) return res.status(400).json({ message: 'Message requis' });
 
   try {
+    // Chat web réservé au client EN mise en route (l'agent Messenger garde son propre gating)
+    if (req.user.role !== 'client') {
+      return res.status(403).json({ message: 'Assistant réservé au compte client' });
+    }
+    const etat = await computeOnboardingEtat(clientId);
+    if (etat.complet) {
+      return res.status(403).json({ message: 'Votre mise en route est terminée — l\'assistant d\'onboarding n\'est plus actif' });
+    }
     const cfg = await pool.query(
-      'SELECT enabled, confidence_threshold FROM ai_assistant_config WHERE client_id = $1',
+      'SELECT confidence_threshold FROM ai_assistant_config WHERE client_id = $1',
       [clientId]
     );
-    if (!cfg.rows[0]?.enabled) {
-      return res.status(403).json({ message: 'Agent IA non activé pour ce compte' });
-    }
-    const threshold = parseFloat(cfg.rows[0].confidence_threshold) || 0.75;
+    const threshold = parseFloat(cfg.rows[0]?.confidence_threshold) || 0.75;
     const { assistantMessage } = await _chatWithAI(clientId, sessionId, message.trim(), threshold);
     res.json({ reply: assistantMessage });
   } catch (err) {
@@ -291,5 +312,5 @@ const clearClientConversation = async (req, res) => {
 
 module.exports = {
   getAiConfig, setAiConfig, generateMessengerInviteLink, getActiveAgents,
-  getClientStatus, getClientConversation, clientChat, clearClientConversation,
+  getClientStatus, getOnboardingEtat, getClientConversation, clientChat, clearClientConversation,
 };

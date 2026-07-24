@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { recordTokenUsage } = require('./aiFormatter');
 const { executeToolCall, TOOLS_OPENAI, getClientContextLine } = require('./aiToolHandlers');
+const { computeOnboardingEtat, onboardingPromptBlock } = require('./onboardingEtat');
 
 // ── Moteur IA UNIQUE de LabFlow : Google Gemini Flash, via l'endpoint
 // compatible OpenAI (mêmes messages/tools que l'ancien pipeline — décision
@@ -61,9 +62,11 @@ Commence TOUJOURS par [CONF:0.XX] (niveau de confiance 0.00-1.00 selon la compl�
 }
 
 function parseConfidence(rawMessage) {
-  const match = rawMessage.match(/^\[CONF:(0\.\d{1,2})\]\s*/);
+  // Accepte 0.xx ET 1.00 / 1 (le préfixe restait visible quand le modèle
+  // répondait [CONF:1.00])
+  const match = rawMessage.match(/^\[CONF:([01](?:\.\d{1,2})?)\]\s*/);
   if (match) {
-    return { confidence: parseFloat(match[1]), message: rawMessage.slice(match[0].length).trim() };
+    return { confidence: Math.min(parseFloat(match[1]), 1), message: rawMessage.slice(match[0].length).trim() };
   }
   return { confidence: null, message: rawMessage };
 }
@@ -143,8 +146,13 @@ async function chatWithAI(clientId, chatSessionId, userMessage, confidenceThresh
 
   let ctxLine = null;
   try { ctxLine = (await getClientContextLine(clientId))?.line || null; } catch (_) { /* prompt sans contexte */ }
+  // En phase de mise en route, le bot devient un GUIDE : son prompt reçoit
+  // l'avancement réel des étapes (aucun effet une fois l'onboarding terminé —
+  // cas de l'agent Messenger, qui sert aussi des clients en régime permanent).
+  let onboardingBlock = '';
+  try { onboardingBlock = onboardingPromptBlock(await computeOnboardingEtat(clientId)); } catch (_) { /* guide sans avancement */ }
   const messages = [
-    { role: 'system', content: buildSystemPrompt(ctxLine) },
+    { role: 'system', content: buildSystemPrompt(ctxLine) + onboardingBlock },
     ...history,
     { role: 'user', content: userMessage },
   ];
