@@ -67,10 +67,54 @@ async function groqChat(messages) {
     }
     if (!response.ok) {
       const t = await response.text();
+      // 413 : la requête dépasse à elle seule la limite tokens/minute du tier
+      // Groq — attendre ne changera rien, il faut REDUIRE le contexte envoyé.
+      // Remonté à l'appelant qui retente sans l'historique de conversation.
+      if (response.status === 413) {
+        return { __tooLarge: true };
+      }
+      // Llama émet parfois son appel d'outil dans un format MALFORMÉ (ex.
+      // `<function=search_knowledge_base{"query": …}`) que Groq rejette en 400
+      // tool_use_failed. On remonte la génération fautive à l'appelant qui la
+      // récupère (parse + exécution manuelle) au lieu de faire planter le chat.
+      if (response.status === 400) {
+        try {
+          const parsed = JSON.parse(t);
+          if (parsed?.error?.code === 'tool_use_failed') {
+            return { __toolUseFailed: true, failedGeneration: parsed.error.failed_generation || '' };
+          }
+        } catch (_) { /* corps non JSON : erreur brute ci-dessous */ }
+      }
       throw new Error(`Groq error ${response.status}: ${t.slice(0, 300)}`);
     }
     return response.json();
   }
+}
+
+// Récupère { name, args } depuis une génération d'appel d'outil malformée
+// (`function=nom{…}` avec ou sans chevrons/balises). Seuls les outils CONNUS
+// sont récupérés ; les arguments doivent être un JSON valide (accolades équilibrées).
+function recoverToolCall(gen) {
+  const s = String(gen || '');
+  const nameM = s.match(/function=([a-zA-Z0-9_]+)/);
+  if (!nameM) return null;
+  const name = nameM[1];
+  if (!TOOLS_OPENAI.some((t) => t.function.name === name)) return null;
+  let args = '{}';
+  const after = s.slice(s.indexOf(nameM[0]) + nameM[0].length);
+  const start = after.indexOf('{');
+  if (start !== -1) {
+    let depth = 0;
+    for (let j = start; j < after.length; j++) {
+      if (after[j] === '{') depth++;
+      else if (after[j] === '}' && --depth === 0) {
+        const cand = after.slice(start, j + 1);
+        try { JSON.parse(cand); args = cand; } catch (_) { /* JSON invalide : args vides */ }
+        break;
+      }
+    }
+  }
+  return { name, args };
 }
 
 async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidenceThreshold = 0.75) {
@@ -81,7 +125,7 @@ async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidence
 
   let ctxLine = null;
   try { ctxLine = (await getClientContextLine(clientId))?.line || null; } catch (_) { /* prompt sans contexte */ }
-  const messages = [
+  let messages = [
     { role: 'system', content: buildSystemPrompt(ctxLine) },
     ...history,
     { role: 'user', content: userMessage },
@@ -89,14 +133,46 @@ async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidence
 
   let finalText = null;
   let confidence = null;
+  let toolUseFailures = 0;
+  let histoAbandonne = false;
 
   for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
     const data = await groqChat(messages);
-    if (clientId && data.usage) {
-      recordTokenUsage(clientId, data.usage.prompt_tokens, data.usage.completion_tokens);
+
+    let msg;
+    if (data.__tooLarge) {
+      // Requête trop grosse pour le tier Groq : on abandonne l'historique de
+      // conversation (system + question seule) et on retente une fois.
+      if (!histoAbandonne) {
+        histoAbandonne = true;
+        messages = [messages[0], { role: 'user', content: userMessage }];
+        continue;
+      }
+      finalText = 'Votre question dépasse la capacité du moteur IA pour le moment — effacez la conversation (🗑️) puis reposez une question plus courte.';
+      break;
     }
-    const msg = data.choices?.[0]?.message;
-    if (!msg) { finalText = 'Désolé, je n\'ai pas pu répondre.'; break; }
+    if (data.__toolUseFailed) {
+      // Appel d'outil malformé : on récupère l'intention (outil + arguments) et on
+      // poursuit le tour normalement ; sinon on re-tente (génération stochastique).
+      const rec = recoverToolCall(data.failedGeneration);
+      if (rec) {
+        msg = {
+          role: 'assistant', content: null,
+          tool_calls: [{ id: `recovered_${i}`, type: 'function', function: { name: rec.name, arguments: rec.args } }],
+        };
+      } else if (++toolUseFailures <= 2) {
+        continue;
+      } else {
+        finalText = 'Désolé, je n\'ai pas réussi à consulter mes outils — reformulez votre question ou réessayez.';
+        break;
+      }
+    } else {
+      if (clientId && data.usage) {
+        recordTokenUsage(clientId, data.usage.prompt_tokens, data.usage.completion_tokens);
+      }
+      msg = data.choices?.[0]?.message;
+      if (!msg) { finalText = 'Désolé, je n\'ai pas pu répondre.'; break; }
+    }
 
     // Keep the assistant turn (with its tool_calls) in the running context.
     messages.push(msg);
@@ -145,4 +221,4 @@ async function chatWithDeepSeek(clientId, chatSessionId, userMessage, confidence
   return { assistantMessage: finalText, confidence, clientEmail, clientNom };
 }
 
-module.exports = { chatWithDeepSeek };
+module.exports = { chatWithDeepSeek, recoverToolCall };
