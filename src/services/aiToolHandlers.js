@@ -512,7 +512,8 @@ async function executeToolCall(clientId, toolName, toolInput) {
   }
 }
 
-// Tool definitions in Anthropic format (for claudeService)
+// Définitions source des outils (format Anthropic historique — conservé comme
+// pivot, converti au format OpenAI ci-dessous pour Gemini)
 const TOOLS_ANTHROPIC = [
   {
     name: 'get_client_info',
@@ -700,7 +701,7 @@ const TOOLS_ANTHROPIC = [
   },
 ];
 
-// Tool definitions in OpenAI format (for deepseekService / Groq)
+// Définitions au format OpenAI — consommées par aiService (Gemini, endpoint compatible OpenAI)
 const TOOLS_OPENAI = TOOLS_ANTHROPIC.map(t => ({
   type: 'function',
   function: {

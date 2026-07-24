@@ -1,9 +1,15 @@
 const pool = require('../config/database');
-const { executeToolCall, TOOLS_ANTHROPIC, getClientContextLine } = require('./aiToolHandlers');
+const { recordTokenUsage } = require('./aiFormatter');
+const { executeToolCall, TOOLS_OPENAI, getClientContextLine } = require('./aiToolHandlers');
 
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
-const ANTHROPIC_VERSION = '2023-06-01';
+// ── Moteur IA UNIQUE de LabFlow : Google Gemini Flash, via l'endpoint
+// compatible OpenAI (mêmes messages/tools que l'ancien pipeline — décision
+// client 2026-07-24 : Groq et Claude retirés). Tool-calling natif fiable,
+// gros contexte (fini les 413 du tier Groq), tier gratuit généreux.
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+// Alias « latest » : suit le modèle Flash stable courant — les modèles datés
+// finissent retirés pour les nouvelles clés (vécu avec gemini-2.5-flash).
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 const MAX_TOOL_ITERATIONS = 8;
 
 function buildSystemPrompt(contextLine = null) {
@@ -89,91 +95,109 @@ async function saveConversation(clientId, sessionId, conversationId, messages, c
   }
 }
 
-async function chatWithClaude(clientId, chatSessionId, userMessage, confidenceThreshold = 0.75) {
-  if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY non configurée');
+// Un appel Gemini (format OpenAI) avec outils, re-tentatives sur 429/503.
+async function geminiChat(messages) {
+  const retries = 3;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const response = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GEMINI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: GEMINI_MODEL,
+        messages,
+        tools: TOOLS_OPENAI,
+        tool_choice: 'auto',
+        max_tokens: 1024,
+        temperature: 0.2,
+        stream: false,
+      }),
+    });
+
+    // 429 (quota/minute) et 503 (surcharge) : attendre puis re-tenter
+    if (response.status === 429 || response.status === 503) {
+      const errText = await response.text();
+      const waitMatch = errText.match(/retry.*?([\d.]+)\s*s/i);
+      const waitMs = waitMatch ? Math.ceil(parseFloat(waitMatch[1]) * 1000) + 200 : 4000;
+      if (attempt < retries) { await new Promise(r => setTimeout(r, waitMs)); continue; }
+      throw new Error(`Gemini surchargé (${response.status}) — réessayez dans quelques secondes`);
+    }
+    if (!response.ok) {
+      const t = await response.text();
+      throw new Error(`Gemini error ${response.status}: ${t.slice(0, 300)}`);
+    }
+    return response.json();
+  }
+}
+
+// Boucle agentique : Gemini appelle les outils LabFlow jusqu'à sa réponse finale.
+async function chatWithAI(clientId, chatSessionId, userMessage, confidenceThreshold = 0.75) {
+  if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY non configurée');
 
   const conv = await getConversation(clientId, chatSessionId);
-  const history = (conv?.messages ?? []).slice(-16);
-  history.push({ role: 'user', content: userMessage });
+  const history = (conv?.messages ?? []).slice(-12);
 
   let ctxLine = null;
   try { ctxLine = (await getClientContextLine(clientId))?.line || null; } catch (_) { /* prompt sans contexte */ }
-  const systemPrompt = buildSystemPrompt(ctxLine);
-  let messages = [...history];
+  const messages = [
+    { role: 'system', content: buildSystemPrompt(ctxLine) },
+    ...history,
+    { role: 'user', content: userMessage },
+  ];
+
   let finalText = null;
   let confidence = null;
 
   for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-    const response = await fetch(CLAUDE_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': ANTHROPIC_VERSION,
-      },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: 1024,
-        system: systemPrompt,
-        tools: TOOLS_ANTHROPIC,
-        messages,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Claude API error ${response.status}: ${err}`);
+    const data = await geminiChat(messages);
+    if (clientId && data.usage) {
+      recordTokenUsage(clientId, data.usage.prompt_tokens, data.usage.completion_tokens);
     }
+    const msg = data.choices?.[0]?.message;
+    if (!msg) { finalText = 'Désolé, je n\'ai pas pu répondre.'; break; }
 
-    const data = await response.json();
-    const stopReason = data.stop_reason;
-    const content = data.content || [];
+    // Le tour assistant (avec ses tool_calls) reste dans le contexte courant.
+    messages.push(msg);
 
-    messages.push({ role: 'assistant', content });
-
-    if (stopReason === 'end_turn') {
-      const textBlock = content.find(b => b.type === 'text');
-      const raw = textBlock?.text ?? 'Désolé, je n\'ai pas pu répondre.';
-      const parsed = parseConfidence(raw);
-      finalText = parsed.message;
+    const toolCalls = msg.tool_calls || [];
+    if (toolCalls.length === 0) {
+      const parsed = parseConfidence(msg.content || '');
+      finalText = parsed.message || 'Désolé, je n\'ai pas pu répondre.';
       confidence = parsed.confidence;
       break;
     }
 
-    if (stopReason === 'tool_use') {
-      const toolUseBlocks = content.filter(b => b.type === 'tool_use');
-      const toolResults = [];
+    for (const tc of toolCalls) {
+      let args = {};
+      try { args = JSON.parse(tc.function?.arguments || '{}'); } catch (_) { args = {}; }
+      const result = await executeToolCall(clientId, tc.function?.name, args);
 
-      for (const toolUse of toolUseBlocks) {
-        const result = await executeToolCall(clientId, toolUse.name, toolUse.input);
-
-        if (result?.__clarification) {
-          let clarificationText = result.question;
-          if (result.options?.length) {
-            clarificationText += '\n\n' + result.options.map((o, idx) => `${idx + 1}. ${o}`).join('\n');
-          }
-          const storableMessages = history.concat({ role: 'assistant', content: clarificationText });
-          await saveConversation(clientId, chatSessionId, conv?.id ?? null, storableMessages, null);
-          return { assistantMessage: clarificationText, confidence: null, isClarification: true };
+      if (result?.__clarification) {
+        let clarificationText = result.question;
+        if (result.options?.length) {
+          clarificationText += '\n\n' + result.options.map((o, idx) => `${idx + 1}. ${o}`).join('\n');
         }
-
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: toolUse.id,
-          content: JSON.stringify(result),
-        });
+        const storable = history.concat(
+          { role: 'user', content: userMessage },
+          { role: 'assistant', content: clarificationText }
+        );
+        await saveConversation(clientId, chatSessionId, conv?.id ?? null, storable, null);
+        return { assistantMessage: clarificationText, confidence: null, isClarification: true };
       }
 
-      messages.push({ role: 'user', content: toolResults });
+      messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
     }
   }
 
-  if (!finalText) {
-    finalText = 'Désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.';
-  }
+  if (!finalText) finalText = 'Désolé, je n\'ai pas pu traiter votre demande. Veuillez réessayer.';
 
-  const storableMessages = history.concat({ role: 'assistant', content: finalText });
-  await saveConversation(clientId, chatSessionId, conv?.id ?? null, storableMessages, confidence);
+  const storable = history.concat(
+    { role: 'user', content: userMessage },
+    { role: 'assistant', content: finalText }
+  );
+  await saveConversation(clientId, chatSessionId, conv?.id ?? null, storable, confidence);
 
   const { rows } = await pool.query('SELECT email, nom FROM utilisateurs WHERE id = $1', [clientId]);
   const { email: clientEmail, nom: clientNom } = rows[0] || {};
@@ -181,4 +205,4 @@ async function chatWithClaude(clientId, chatSessionId, userMessage, confidenceTh
   return { assistantMessage: finalText, confidence, clientEmail, clientNom };
 }
 
-module.exports = { chatWithClaude, buildSystemPrompt, parseConfidence };
+module.exports = { chatWithAI, buildSystemPrompt, parseConfidence };
