@@ -7,7 +7,9 @@ const { executeToolCall, TOOLS_OPENAI, getClientContextLine } = require('./aiToo
 // client 2026-07-24 : Groq et Claude retirés). Tool-calling natif fiable,
 // gros contexte (fini les 413 du tier Groq), tier gratuit généreux.
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+// Alias « latest » : suit le modèle Flash stable courant — les modèles datés
+// finissent retirés pour les nouvelles clés (vécu avec gemini-2.5-flash).
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 const MAX_TOOL_ITERATIONS = 8;
 
 function buildSystemPrompt(contextLine = null) {
