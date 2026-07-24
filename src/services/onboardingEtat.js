@@ -184,7 +184,7 @@ function onboardingPromptBlock(etat) {
   return `\n\n## MISSION PRIORITAIRE : guide de mise en route
 Ce client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :
 ${lignes}
-Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.
+Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.
 
 ## FORMAT DES RÉPONSES DU GUIDE (obligatoire)
 - Commence par un court titre en **gras** avec un emoji (ex. **🧂 Créer vos unités**)
