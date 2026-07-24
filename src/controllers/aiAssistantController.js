@@ -238,12 +238,22 @@ const getClientStatus = async (req, res) => {
   }
 };
 
-// GET /api/ai-assistant/onboarding — état de mise en route pour le widget
+// GET /api/ai-assistant/onboarding — état de mise en route pour le widget.
+// Mise en route TERMINÉE ⇒ la conversation web du guide et son historique sont
+// SUPPRIMÉS (décision client 2026-07-24) : un futur avenant repart d'un chat
+// vierge. Les conversations Messenger (PSID) ne sont pas touchées.
 const getOnboardingEtat = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     if (req.user.role !== 'client') return res.json({ complet: true, etapes: [], aFaire: null });
-    res.json(await computeOnboardingEtat(clientId));
+    const etat = await computeOnboardingEtat(clientId);
+    if (etat.complet) {
+      await pool.query(
+        `DELETE FROM ai_conversations WHERE client_id = $1 AND whatsapp_number LIKE 'web_%'`,
+        [clientId]
+      );
+    }
+    res.json(etat);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

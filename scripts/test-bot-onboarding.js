@@ -81,11 +81,17 @@ const get = async (path, token) => {
     check('chat 200 pendant la mise en route', chat2.status === 200);
     check('le bot cite l\'étape manquante (activité)', /activit/i.test(rep), rep.slice(0, 160).replace(/\n/g, ' · '));
 
-    // ── Retour config d'origine : disparition dynamique
+    // ── Retour config d'origine : disparition dynamique + PURGE de la conversation
     await pool.query('UPDATE abonnement_config SET nb_activites = $1 WHERE abonnement_id = $2', [nbInitial, abonnementId]);
     nbInitial = null;
+    const convAvant = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM ai_conversations WHERE client_id = (SELECT id FROM utilisateurs WHERE email = $1) AND whatsapp_number LIKE 'web_%'`, [EMAIL]);
     r = await get('/api/ai-assistant/onboarding', T);
     check('retour config → complet=true (bot disparaît)', r.d.complet === true);
+    const convApres = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM ai_conversations WHERE client_id = (SELECT id FROM utilisateurs WHERE email = $1) AND whatsapp_number LIKE 'web_%'`, [EMAIL]);
+    check('conversation du guide PURGÉE à la complétion', convApres.rows[0].n === 0,
+      `${convAvant.rows[0].n} conversation(s) avant → ${convApres.rows[0].n} après`);
 
     // ── Gérant : jamais de bot
     const TG = await login(GERANT_EMAIL);
