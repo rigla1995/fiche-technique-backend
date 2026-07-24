@@ -7,6 +7,8 @@ const mapFamille = (row) => ({
   consommable: row.consommable !== false,
   vendable: row.vendable !== false,
   hasAppros: row.has_appros === true,
+  nbCategories: row.nb_categories != null ? parseInt(row.nb_categories, 10) : 0,
+  nbArticles: row.nb_articles != null ? parseInt(row.nb_articles, 10) : 0,
   clientId: row.client_id,
   createdAt: row.created_at,
 });
@@ -22,7 +24,10 @@ const list = async (req, res) => {
                 WHERE c.famille_id = f.id AND a.client_id = $1
                 AND (EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
                      EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id))
-              ) AS has_appros
+              ) AS has_appros,
+              (SELECT COUNT(*)::int FROM categories c2 WHERE c2.famille_id = f.id) AS nb_categories,
+              (SELECT COUNT(*)::int FROM articles a2 JOIN categories c3 ON c3.id = a2.categorie_id
+               WHERE c3.famille_id = f.id AND a2.client_id = $1) AS nb_articles
        FROM familles f WHERE f.client_id = $1 ORDER BY f.nom`,
       [clientId]
     );
@@ -97,18 +102,17 @@ const update = async (req, res) => {
 const remove = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const appro = await pool.query(
-      `SELECT 1 FROM articles a
-       JOIN categories c ON c.id = a.categorie_id
-       WHERE c.famille_id = $1 AND a.client_id = $2
-       AND (
-         EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = a.id LIMIT 1)
-         OR EXISTS (SELECT 1 FROM stock_labo_daily       WHERE ingredient_id = a.id LIMIT 1)
-       ) LIMIT 1`,
+    // Une famille qui contient encore des catégories (et donc potentiellement des
+    // articles) ne se supprime pas : avant cette garde, la suppression rendait les
+    // catégories ORPHELINES en silence (famille_id SET NULL).
+    const liees = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM categories WHERE famille_id = $1 AND client_id = $2`,
       [req.params.id, clientId]
     );
-    if (appro.rows.length > 0) {
-      return res.status(409).json({ message: "Cette famille contient des articles avec des approvisionnements et ne peut pas être supprimée" });
+    if (liees.rows[0].n > 0) {
+      return res.status(409).json({
+        message: `Cette famille contient ${liees.rows[0].n} catégorie${liees.rows[0].n > 1 ? 's' : ''} — supprimez-les ou changez leur famille avant`,
+      });
     }
     const result = await pool.query(
       'DELETE FROM familles WHERE id = $1 AND client_id = $2 RETURNING id',
