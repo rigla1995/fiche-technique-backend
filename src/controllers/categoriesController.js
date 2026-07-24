@@ -8,6 +8,7 @@ const mapCategorie = (row) => ({
   familleName: row.famille_nom || null,
   clientId: row.client_id || null,
   hasAppros: row.has_appros === true,
+  nbArticles: row.nb_articles != null ? parseInt(row.nb_articles, 10) : 0,
   createdAt: row.created_at,
 });
 
@@ -32,7 +33,8 @@ const list = async (req, res) => {
                 SELECT 1 FROM articles a WHERE a.categorie_id = c.id AND a.client_id = $1
                 AND (EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
                      EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id))
-              ) AS has_appros
+              ) AS has_appros,
+              (SELECT COUNT(*)::int FROM articles a2 WHERE a2.categorie_id = c.id AND a2.client_id = $1) AS nb_articles
        FROM categories c
        LEFT JOIN familles f ON f.id = c.famille_id
        ${where}
@@ -124,16 +126,16 @@ const update = async (req, res) => {
 const remove = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
-    const appro = await pool.query(
-      `SELECT 1 FROM articles a WHERE a.categorie_id = $1 AND a.client_id = $2
-       AND (
-         EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = a.id LIMIT 1)
-         OR EXISTS (SELECT 1 FROM stock_labo_daily       WHERE ingredient_id = a.id LIMIT 1)
-       ) LIMIT 1`,
+    // Une catégorie assignée à des articles ne se supprime pas (le front désactive
+    // le bouton ; garde serveur en défense en profondeur).
+    const lies = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM articles WHERE categorie_id = $1 AND client_id = $2`,
       [req.params.id, clientId]
     );
-    if (appro.rows.length > 0) {
-      return res.status(409).json({ message: "Cette catégorie contient des articles avec des approvisionnements et ne peut pas être supprimée" });
+    if (lies.rows[0].n > 0) {
+      return res.status(409).json({
+        message: `Cette catégorie est assignée à ${lies.rows[0].n} article${lies.rows[0].n > 1 ? 's' : ''} — supprimez-les ou changez leur catégorie avant`,
+      });
     }
     const result = await pool.query(
       'DELETE FROM categories WHERE id = $1 AND client_id = $2 RETURNING id',
