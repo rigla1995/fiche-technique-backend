@@ -64,6 +64,11 @@ const get = async (path, token) => {
     check('les étapes déjà faites restent cochées', r.d.etapes?.filter((e) => e.fait).length >= 6,
       `${r.d.etapes?.filter((e) => e.fait).length} faites / ${r.d.etapes?.length}`);
     check('étape acheteurs présente (module actif)', r.d.etapes?.some((e) => e.key === 'acheteurs'));
+    // Questions suivant la CONFIG : il manque des activités (pas le labo, déjà créé)
+    const capQ = r.d.etapes?.find((e) => e.key === 'capacites')?.questions || [];
+    check('questions capacités : création d\'activités proposée', capQ.some((q) => /activités \?/.test(q)), capQ.join(' | '));
+    check('questions capacités : PAS de création de labo (déjà créé)', !capQ.some((q) => /créer (mon|mes) labo/.test(q)));
+    check('questions capacités : différence activité/labo (config mixte)', capQ.some((q) => /différence/.test(q)));
     r = await get('/api/ai-assistant/status', T);
     check('status → enabled=true pendant l\'avenant', r.d.enabled === true);
 
