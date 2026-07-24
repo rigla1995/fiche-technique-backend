@@ -1,7 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
-const { creerDemandeAcces, listPartenaires, getTarifsReference, verifierEmail } = require('../controllers/publicSiteController');
+const { creerDemandeAcces, listPartenaires, verifierEmail } = require('../controllers/publicSiteController');
 
 // Rate-limit dédié au formulaire public du site vitrine (modèle : forgotLimiter
 // de routes/auth.js) — 5 demandes / 15 min / IP.
@@ -63,19 +63,13 @@ const verifEmailLimiter = rateLimit({
  *     responses:
  *       200:
  *         description: "Liste [{nom, logo}]"
- *
- * /api/public/tarifs-reference:
- *   get:
- *     tags: [Public]
- *     summary: Barème public pour le calculateur de tarif du site vitrine
- *     security: []
- *     responses:
- *       200:
- *         description: "Objet {cle: nombre}"
  */
+// /tarifs-reference SUPPRIMÉ (2026-07-24, décision client) : la grille tarifaire
+// ne doit JAMAIS être exposée ni simulée publiquement. Le calculateur du site
+// qui la consommait a disparu en D1 ; la table tarifs_config, elle, reste
+// (admin + facturation).
 router.post('/demande-acces', demandeAccesLimiter, creerDemandeAcces);
 router.get('/verifier-email', verifEmailLimiter, verifierEmail);
 router.get('/partenaires', listPartenaires);
-router.get('/tarifs-reference', getTarifsReference);
 
 module.exports = router;
