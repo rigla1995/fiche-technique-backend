@@ -131,40 +131,6 @@ const listPartenaires = async (req, res) => {
   }
 };
 
-// Seules ces clés de tarifs_config sont exposées publiquement (calculateur du site).
-const CLES_TARIFS_PUBLIQUES = [
-  'prix_base_activite_basique',
-  'prix_base_activite_premium',
-  'remise_2eme_sans_labo',
-  'remise_3eme_plus_sans_labo',
-  'remise_avec_labo',
-  'labo_sup_mensuel',
-  'gerant_sup_mensuel',
-  'acheteurs_palier_10',
-  'acheteurs_palier_20',
-  'acheteurs_palier_50',
-  'acheteurs_palier_100',
-  'onboarding_sans_labo',
-  'onboarding_avec_labo',
-];
-
-// GET /api/public/tarifs-reference — barème public pour le calculateur du site
-const getTarifsReference = async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT cle, valeur_dt FROM tarifs_config WHERE cle = ANY($1)',
-      [CLES_TARIFS_PUBLIQUES]
-    );
-    const tarifs = {};
-    for (const row of result.rows) tarifs[row.cle] = parseFloat(row.valeur_dt);
-    res.set('Cache-Control', 'public, max-age=300');
-    res.json(tarifs);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
 // GET /api/public/verifier-email?email=X — le site vérifie AVANT envoi si l'email
 // a déjà un compte ou une demande en cours (rate-limité côté route, anti-abus).
 const verifierEmail = async (req, res) => {
@@ -189,4 +155,4 @@ const verifierEmail = async (req, res) => {
   }
 };
 
-module.exports = { creerDemandeAcces, listPartenaires, getTarifsReference, verifierEmail };
+module.exports = { creerDemandeAcces, listPartenaires, verifierEmail };
