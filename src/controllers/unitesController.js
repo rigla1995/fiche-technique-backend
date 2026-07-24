@@ -11,6 +11,7 @@ const mapUnite = (row) => ({
   clientId: row.client_id,
   clientName: row.client_nom,
   hasAppros: row.has_appros === true,
+  nbArticles: row.nb_articles != null ? parseInt(row.nb_articles, 10) : 0,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -37,7 +38,8 @@ const list = async (req, res) => {
                  SELECT 1 FROM articles a WHERE a.unite_id = u.id AND a.client_id = $1
                  AND (EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
                       EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id))
-               ) AS has_appros
+               ) AS has_appros,
+               (SELECT COUNT(*)::int FROM articles a2 WHERE a2.unite_id = u.id AND a2.client_id = $1) AS nb_articles
                FROM unites u WHERE u.client_id = $1 ORDER BY u.nom`;
       params = [req.user.gerant_parent_id || req.user.id];
     }
@@ -113,16 +115,16 @@ const remove = async (req, res) => {
 
   try {
     if (!isAdminRole(req.user)) {
-      const appro = await pool.query(
-        `SELECT 1 FROM articles a WHERE a.unite_id = $1 AND a.client_id = $2
-         AND (
-           EXISTS (SELECT 1 FROM stock_entreprise_daily WHERE ingredient_id = a.id LIMIT 1)
-           OR EXISTS (SELECT 1 FROM stock_labo_daily     WHERE ingredient_id = a.id LIMIT 1)
-         ) LIMIT 1`,
+      // Une unité assignée à des articles ne se supprime pas (le front désactive
+      // le bouton ; garde serveur en défense en profondeur).
+      const lies = await pool.query(
+        `SELECT COUNT(*)::int AS n FROM articles WHERE unite_id = $1 AND client_id = $2`,
         [id, clientId]
       );
-      if (appro.rows.length > 0) {
-        return res.status(409).json({ message: "Cette unité est utilisée par des articles avec des approvisionnements et ne peut pas être supprimée" });
+      if (lies.rows[0].n > 0) {
+        return res.status(409).json({
+          message: `Cette unité est assignée à ${lies.rows[0].n} article${lies.rows[0].n > 1 ? 's' : ''} — supprimez-les ou changez leur unité avant`,
+        });
       }
     }
 
