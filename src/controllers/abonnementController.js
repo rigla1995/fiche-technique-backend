@@ -3,6 +3,25 @@ const { sendInviteEmail, sendFactureEmail } = require('../services/emailService'
 const { getSubmissionDocuments } = require('../services/docusealService');
 const { generateFacturePdf } = require('../services/pdfService');
 const { buildContratDocument } = require('../services/contractPdfService');
+// Moteur de tarification PUR (lot 1a) : les calculs vivent dans pricingEngine et
+// sont RÉ-EXPORTÉS en bas de ce fichier (les autres contrôleurs importent d'ici).
+const {
+  TARIF_KEYS_SURCHARGEABLES,
+  resolveTarifs, tarifsFor,
+  cfgVal, prixBaseActivite,
+  computeBaseMensuelFromConfig, computeBaseGerantFromConfig, computeBaseLaboFromConfig,
+  palierAcheteurs, computeBaseAcheteursFromConfig, computeMensuelTotalFromConfig,
+  computeActiviteSupPrice,
+  applyPromoMensualite, applyPromoOnboarding, applyPromoSupplement,
+  onboardingPriceFor,
+} = require('../services/pricingEngine');
+// Config par composant (lot 1a) : applyComposants = SEUL écrivain des compteurs nb_*.
+const {
+  CompositionError, deriveCompteurs, validerComposition, normCompteurs, erreursIntroduites,
+  resolveComposants, composantsDepuisCompteurs, composantsDelta, applyComposants, listComposantsConfig,
+} = require('../services/configComposantsService');
+// getDomaineDefautId (slug 'restauration') = source unique dans domaineProfilService (ré-exporté ici)
+const { getProfil, REGLES_DEFAUT, getDomaineDefautId } = require('../services/domaineProfilService');
 
 // ── Facture d'abonnement ──────────────────────────────────────────────────────
 // Taux de TVA applicable aux factures (Tunisie : 19 %). Le montant enregistré
@@ -85,9 +104,9 @@ const mapPromotion = (row) => ({
 });
 
 // Returns the active promo for an abonnement on a given date (ISO string)
-const getActivePromo = async (abonnementId, dateStr) => {
+const getActivePromo = async (abonnementId, dateStr, db = pool) => {
   // Only mensualite-applicable promos affect payment amounts
-  const result = await pool.query(
+  const result = await db.query(
     `SELECT * FROM promotions
      WHERE abonnement_id = $1
        AND date_debut <= $2::date
@@ -99,133 +118,28 @@ const getActivePromo = async (abonnementId, dateStr) => {
   return result.rows[0] || null;
 };
 
-const applyPromoMensualite = (baseAmount, promo) => {
-  if (!promo || !['mensualite', 'les_deux'].includes(promo.applies_to)) return baseAmount;
-  if (promo.type === 'free_months') return 0;
-  if (promo.type === 'percent_off' && promo.discount_mensualite != null)
-    return Math.round(baseAmount * (1 - promo.discount_mensualite / 100) * 100) / 100;
-  if (promo.type === 'fixed_price' && promo.fixed_mensualite != null) return parseFloat(promo.fixed_mensualite);
-  return baseAmount;
+// ── Grille tarifaire ────────────────────────────────────────────────────────
+// loadTarifs() → { base: {cle: valeur}, overridesByDomaine: {domaineId: {cle: valeur}} }
+// (2 requêtes). Les consommateurs résolvent la grille d'un compte avec
+// tarifsFor(t, cfg.domaine_id) : tarifs_domaine VIDE ⇒ grille générale, à l'identique.
+const loadTarifs = async (db = pool) => {
+  const [baseRes, ovRes] = await Promise.all([
+    db.query('SELECT cle, valeur_dt FROM tarifs_config'),
+    db.query('SELECT domaine_id, cle, valeur_dt FROM tarifs_domaine'),
+  ]);
+  const base = {};
+  baseRes.rows.forEach((r) => { base[r.cle] = parseFloat(r.valeur_dt); });
+  const overridesByDomaine = {};
+  ovRes.rows.forEach((r) => {
+    const k = String(r.domaine_id);
+    if (!overridesByDomaine[k]) overridesByDomaine[k] = {};
+    overridesByDomaine[k][r.cle] = parseFloat(r.valeur_dt);
+  });
+  return { base, overridesByDomaine };
 };
 
-const applyPromoOnboarding = (baseAmount, promo) => {
-  if (!promo || !['onboarding', 'les_deux'].includes(promo.applies_to)) return baseAmount;
-  if (promo.type === 'free_months') return 0;
-  if (promo.type === 'percent_off' && promo.discount_onboarding != null)
-    return Math.round(baseAmount * (1 - promo.discount_onboarding / 100) * 100) / 100;
-  if (promo.type === 'fixed_price' && promo.fixed_onboarding != null) return parseFloat(promo.fixed_onboarding);
-  return baseAmount;
-};
-
-const applyPromoSupplement = (baseAmount, promo) => {
-  if (!promo) return baseAmount;
-  if (promo.type === 'free_months') return 0;
-  if (promo.type === 'percent_off' && promo.discount_supplement != null)
-    return Math.round(baseAmount * (1 - promo.discount_supplement / 100) * 100) / 100;
-  if (promo.type === 'fixed_price' && promo.fixed_supplement != null) return parseFloat(promo.fixed_supplement);
-  return baseAmount;
-};
-
-// Les configs circulent en snake_case (lignes DB) ou camelCase (payloads) selon
-// l'appelant — les fonctions de calcul acceptent les deux formes.
-const cfgVal = (config, snake, camel) => config?.[snake] ?? config?.[camel];
-
-// Prix de base d'une activité selon la FORMULE du compte (Basique = sans Espace
-// Produit, Premium = avec). Compat : l'ancienne clé prix_base_activite sert de
-// repli (elle valait le tarif « premium » avant la refonte formules).
-const prixBaseActivite = (config, tarifs) => {
-  const formule = cfgVal(config, 'formule_activites', 'formuleActivites') === 'basique' ? 'basique' : 'premium';
-  return parseFloat(tarifs[`prix_base_activite_${formule}`] ?? tarifs['prix_base_activite'] ?? 200);
-};
-
-// Tiered/degressive pricing model
-// Sans labo: 1er=base, 2ème=base*(1-r2%), 3ème+=base*(1-r3%) each
-// Avec labo: all = base*(1-rl%) each
-const computeBaseMensuelFromConfig = (config, tarifs) => {
-  if (!config) return null;
-  // Compte dépôt : 0 activité est une valeur VALIDE (coût activités = 0),
-  // le repli à 1 ne s'applique qu'aux valeurs absentes/invalides.
-  const nRaw = parseInt(cfgVal(config, 'nb_activites', 'nbActivites'));
-  const n   = Number.isFinite(nRaw) && nRaw >= 0 ? nRaw : 1;
-  if (n === 0) return 0;
-  const nbl = parseInt(cfgVal(config, 'nb_labos', 'nbLabos'))     || 0;
-  const base = prixBaseActivite(config, tarifs);
-  const hasLabo = nbl > 0;
-
-  if (hasLabo) {
-    const rl = parseFloat(tarifs['remise_avec_labo'] ?? 30) / 100;
-    return Math.round(n * base * (1 - rl) * 100) / 100;
-  }
-
-  // Sans labo: tiered
-  const r2 = parseFloat(tarifs['remise_2eme_sans_labo']      ?? 20) / 100;
-  const r3 = parseFloat(tarifs['remise_3eme_plus_sans_labo'] ?? 40) / 100;
-  let cost = base; // 1st
-  if (n >= 2) cost += base * (1 - r2); // 2nd
-  if (n >= 3) cost += (n - 2) * base * (1 - r3); // 3rd+
-  return Math.round(cost * 100) / 100;
-};
-
-const computeBaseGerantFromConfig = (config, tarifs) => {
-  if (!config) return null;
-  const n = parseInt(cfgVal(config, 'nb_gerants', 'nbGerants')) || 0;
-  if (n === 0) return 0;
-  return n * parseFloat(tarifs['gerant_sup_mensuel'] ?? 80);
-};
-
-const computeBaseLaboFromConfig = (config, tarifs) => {
-  if (!config) return null;
-  const n = parseInt(cfgVal(config, 'nb_labos', 'nbLabos')) || 0;
-  if (n === 0) return 0;
-  return n * parseFloat(tarifs['labo_sup_mensuel'] ?? 160);
-};
-
-// Palier de facturation de l'option Acheteurs couvrant un quota donné
-// (1-10 / 11-20 / 21-50 / 51-100 ; quota exceptionnel > 100 = prix du palier 100).
-const palierAcheteurs = (nbAcheteurs) => {
-  const n = parseInt(nbAcheteurs) || 0;
-  if (n <= 0) return null;
-  return n <= 10 ? 10 : n <= 20 ? 20 : n <= 50 ? 50 : 100;
-};
-
-const computeBaseAcheteursFromConfig = (config, tarifs) => {
-  if (!config) return null;
-  const palier = palierAcheteurs(cfgVal(config, 'nb_acheteurs', 'nbAcheteurs'));
-  if (!palier) return 0;
-  return Math.round(parseFloat(tarifs[`acheteurs_palier_${palier}`] ?? 0) * 100) / 100;
-};
-
-// Mensuel TOTAL d'une config = activités (formule) + labos + gérants + option acheteurs.
-// Source unique — remplace les sommes dupliquées de l'ancien modèle.
-const computeMensuelTotalFromConfig = (config, tarifs) => {
-  if (!config) return null;
-  return Math.round((
-    (computeBaseMensuelFromConfig(config, tarifs) || 0)
-    + (computeBaseLaboFromConfig(config, tarifs) || 0)
-    + (computeBaseGerantFromConfig(config, tarifs) || 0)
-    + (computeBaseAcheteursFromConfig(config, tarifs) || 0)
-  ) * 100) / 100;
-};
-
-// Unit price for next supplement activité (tier n+1)
-const computeActiviteSupPrice = (config, tarifs) => {
-  if (!config) return parseFloat(tarifs['prix_base_activite_premium'] ?? tarifs['prix_base_activite'] ?? 200);
-  const nbl  = parseInt(config.nb_labos)     || 0;
-  const base = prixBaseActivite(config, tarifs);
-  if (nbl > 0) {
-    const rl = parseFloat(tarifs['remise_avec_labo'] ?? 30) / 100;
-    return Math.round(base * (1 - rl) * 100) / 100;
-  }
-  const r3 = parseFloat(tarifs['remise_3eme_plus_sans_labo'] ?? 40) / 100;
-  return Math.round(base * (1 - r3) * 100) / 100;
-};
-
-const loadAllTarifs = async () => {
-  const res = await pool.query('SELECT cle, valeur_dt FROM tarifs_config');
-  const t = {};
-  res.rows.forEach((r) => { t[r.cle] = parseFloat(r.valeur_dt); });
-  return t;
-};
+// Compat : grille générale seule (ancienne signature).
+const loadAllTarifs = async () => (await loadTarifs()).base;
 
 const mapAbonnementConfig = (row) => row ? ({
   id: row.id,
@@ -236,9 +150,40 @@ const mapAbonnementConfig = (row) => row ? ({
   nbAcheteurs: row.nb_acheteurs ?? 0,
   formuleActivites: row.formule_activites || null,
   montantOnboarding: row.montant_onboarding,
+  domaineId: row.domaine_id ?? null,
+  domaineSlug: row.domaine_slug ?? null,
+  domaineNom: row.domaine_nom ?? null,
+  // [{ composantId, code, libelle, libellePluriel, icone, typeTechnique, nb }]
+  composants: Array.isArray(row.composants) ? row.composants : [],
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 }) : null;
+
+// Ligne abonnement_config + domaine (slug/nom) + détail par composant — forme
+// attendue par mapAbonnementConfig. null si le compte n'a pas de config.
+const loadConfigComplete = async (aboId, db = pool) => {
+  const r = await db.query(
+    `SELECT ac.*, da.slug AS domaine_slug, da.nom AS domaine_nom
+       FROM abonnement_config ac
+       LEFT JOIN domaines_activite da ON da.id = ac.domaine_id
+      WHERE ac.abonnement_id = $1`,
+    [aboId]
+  );
+  if (!r.rows.length) return null;
+  const row = r.rows[0];
+  row.composants = await listComposantsConfig(aboId, db);
+  return row;
+};
+
+// Erreur de composition (400 { message, code, erreurs }) ou 500 — jamais 5xx pour
+// les 400 métier du wizard.
+const sendCompositionOrServerError = (res, err, tag = '') => {
+  if (err instanceof CompositionError || err?.status === 400) {
+    return res.status(400).json({ message: err.message, code: err.code || 'COMPOSITION_INVALIDE', erreurs: err.erreurs || [] });
+  }
+  console.error(tag, err);
+  return res.status(500).json({ message: 'Erreur serveur' });
+};
 
 const mapPaiement = (row) => ({
   id: row.id,
@@ -255,31 +200,116 @@ const mapPaiement = (row) => ({
 
 // ── Tarifs ───────────────────────────────────────────────────────────────────
 
+// Nombre de comptes dont la grille dépend d'un domaine (re-tarifés dès le prochain paiement).
+const countClientsImpactes = async (domaineId) => {
+  const r = await pool.query('SELECT COUNT(*)::int AS n FROM abonnement_config WHERE domaine_id = $1', [domaineId]);
+  return r.rows[0]?.n ?? 0;
+};
+
+const parseDomaineIdParam = (v) => {
+  if (v === undefined || v === null || v === '') return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n > 0 ? n : NaN;
+};
+
+// GET /api/abonnements/tarifs[?domaineId=] → { [cle]: { id, valeur, valeurGenerale, surcharge, description } }
+// Sans domaineId : surcharge = null, valeur = valeurGenerale.
+// Grille { [cle]: { id, valeur, valeurGenerale, surcharge, description } } — générale
+// (domaineId null) ou vue depuis un domaine (surcharges tarifs_domaine appliquées).
+// Réutilisée par GET /api/domaines/:id (tarifs). Le domaine doit exister (vérifié par l'appelant).
+const buildTarifsPourDomaine = async (domaineId = null) => {
+  const result = await pool.query('SELECT * FROM tarifs_config ORDER BY id');
+  const surcharges = {};
+  if (domaineId != null) {
+    const ov = await pool.query('SELECT cle, valeur_dt FROM tarifs_domaine WHERE domaine_id = $1', [domaineId]);
+    ov.rows.forEach((r) => { surcharges[r.cle] = parseFloat(r.valeur_dt); });
+  }
+  const tarifs = {};
+  result.rows.forEach((r) => {
+    const valeurGenerale = parseFloat(r.valeur_dt);
+    const surcharge = Object.prototype.hasOwnProperty.call(surcharges, r.cle) ? surcharges[r.cle] : null;
+    tarifs[r.cle] = {
+      id: r.id,
+      valeur: surcharge != null ? surcharge : valeurGenerale, // number homogène (type TS TarifsConfig.valeur)
+      valeurGenerale,
+      surcharge,
+      description: r.description,
+    };
+  });
+  return tarifs;
+};
+
 const getTarifs = async (req, res) => {
+  const domaineId = parseDomaineIdParam(req.query.domaineId);
+  if (Number.isNaN(domaineId)) return res.status(400).json({ message: 'domaineId invalide' });
   try {
-    const result = await pool.query('SELECT * FROM tarifs_config ORDER BY id');
-    const tarifs = {};
-    result.rows.forEach((r) => { tarifs[r.cle] = { id: r.id, valeur: r.valeur_dt, description: r.description }; });
-    res.json(tarifs);
+    if (domaineId != null) {
+      const dom = await pool.query('SELECT id FROM domaines_activite WHERE id = $1', [domaineId]);
+      if (dom.rows.length === 0) return res.status(404).json({ message: 'Domaine introuvable' });
+    }
+    res.json(await buildTarifsPourDomaine(domaineId));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
+// PUT /api/abonnements/tarifs/:cle  body { valeur, domaineId? }
+// Sans domaineId : grille générale (comportement historique). Avec domaineId :
+// surcharge du domaine (clé ∈ TARIF_KEYS_SURCHARGEABLES) → { cle, domaineId, valeur, clientsImpactes }.
 const updateTarif = async (req, res) => {
   const { cle } = req.params;
   const { valeur } = req.body;
-  if (valeur === undefined || isNaN(Number(valeur))) {
+  if (valeur === undefined || valeur === null || valeur === '' || isNaN(Number(valeur))) {
     return res.status(400).json({ message: 'Valeur numérique requise' });
   }
+  const domaineId = parseDomaineIdParam(req.body.domaineId);
+  if (Number.isNaN(domaineId)) return res.status(400).json({ message: 'domaineId invalide' });
   try {
-    const result = await pool.query(
-      `UPDATE tarifs_config SET valeur_dt = $1, updated_at = NOW() WHERE cle = $2 RETURNING *`,
-      [Number(valeur), cle]
+    if (domaineId == null) {
+      const result = await pool.query(
+        `UPDATE tarifs_config SET valeur_dt = $1, updated_at = NOW() WHERE cle = $2 RETURNING *`,
+        [Number(valeur), cle]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ message: 'Tarif introuvable' });
+      return res.json({ cle, valeur: result.rows[0].valeur_dt });
+    }
+    if (!TARIF_KEYS_SURCHARGEABLES.includes(cle)) {
+      return res.status(400).json({ message: `La clé « ${cle} » n'est pas surchargeable par domaine` });
+    }
+    const exists = await pool.query('SELECT 1 FROM tarifs_config WHERE cle = $1', [cle]);
+    if (exists.rows.length === 0) return res.status(404).json({ message: 'Tarif introuvable' });
+    const dom = await pool.query('SELECT id FROM domaines_activite WHERE id = $1', [domaineId]);
+    if (dom.rows.length === 0) return res.status(404).json({ message: 'Domaine introuvable' });
+    const up = await pool.query(
+      `INSERT INTO tarifs_domaine (domaine_id, cle, valeur_dt)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (domaine_id, cle) DO UPDATE SET valeur_dt = EXCLUDED.valeur_dt, updated_at = NOW()
+       RETURNING valeur_dt`,
+      [domaineId, cle, Number(valeur)]
     );
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Tarif introuvable' });
-    res.json({ cle, valeur: result.rows[0].valeur_dt });
+    const clientsImpactes = await countClientsImpactes(domaineId);
+    res.json({ cle, domaineId, valeur: parseFloat(up.rows[0].valeur_dt), clientsImpactes });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// DELETE /api/abonnements/tarifs/:cle?domaineId=  → supprime la surcharge (retour à l'héritage).
+const deleteTarifDomaine = async (req, res) => {
+  const { cle } = req.params;
+  const domaineId = parseDomaineIdParam(req.query.domaineId);
+  if (domaineId == null || Number.isNaN(domaineId)) {
+    return res.status(400).json({ message: 'domaineId requis (la grille générale ne se supprime pas)' });
+  }
+  try {
+    const del = await pool.query(
+      'DELETE FROM tarifs_domaine WHERE domaine_id = $1 AND cle = $2 RETURNING cle',
+      [domaineId, cle]
+    );
+    const clientsImpactes = await countClientsImpactes(domaineId);
+    res.json({ cle, domaineId, supprimee: del.rows.length > 0, clientsImpactes });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -355,13 +385,13 @@ const getAbonnement = async (req, res) => {
     );
     abo.promotions = promos.rows.map(mapPromotion);
 
-    // Include abonnement_config
-    const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [abo.id]);
-    abo.config = configRes.rows.length > 0 ? mapAbonnementConfig(configRes.rows[0]) : null;
+    // Include abonnement_config (+ domaine + composants, lot 1a)
+    const configRow = await loadConfigComplete(abo.id);
+    abo.config = mapAbonnementConfig(configRow);
 
     if (req.query.withPricing) {
-      const tarifs = await loadAllTarifs();
-      const config = configRes.rows[0] || null;
+      const config = configRow;
+      const tarifs = tarifsFor(await loadTarifs(), config?.domaine_id);
 
       let baseMensuel, baseOnboarding;
       if (config) {
@@ -414,49 +444,88 @@ const getAbonnement = async (req, res) => {
 };
 
 // Called internally when admin creates a client account
-// config: { nbActivites, nbLabos, nbGerants, nbAcheteurs, formuleActivites, montantOnboarding }
+// config: { nbActivites, nbLabos, nbGerants, nbAcheteurs, formuleActivites, montantOnboarding, domaineId? }
+// domaineId absent/inconnu → domaine par défaut (restauration) : jamais NULL en base.
+// config.composants ([{ code | composantId, nb }]) : détail par composant (lot 1a) ;
+// absent → dérivé des compteurs (1er composant actif de chaque type du domaine).
+// TRANSACTIONNEL : abonnement + config + composants (applyComposants = écrivain des
+// compteurs) + paiement du mois (total résolu sur la grille du domaine) — tout ou rien.
 const createAbonnement = async (clientId, montantOnboarding, config = null) => {
-  const result = await pool.query(
-    `INSERT INTO abonnements (client_id, montant_onboarding, date_debut)
-     VALUES ($1, $2, CURRENT_DATE)
-     RETURNING id`,
-    [clientId, config ? config.montantOnboarding : montantOnboarding]
-  );
-  const aboId = result.rows[0].id;
-
-  // Save config if provided
-  if (config) {
-    const nbActivites = config.nbActivites ?? 1;
-    // La formule n'a de sens qu'avec des activités (compte dépôt = NULL)
-    const formule = nbActivites >= 1
-      ? (config.formuleActivites === 'basique' ? 'basique' : 'premium')
-      : null;
-    await pool.query(
-      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, formule_activites, montant_onboarding)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [aboId, nbActivites, config.nbLabos || 0, config.nbGerants || 0, config.nbAcheteurs || 0, formule, config.montantOnboarding || 0]
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    const result = await db.query(
+      `INSERT INTO abonnements (client_id, montant_onboarding, date_debut)
+       VALUES ($1, $2, CURRENT_DATE)
+       RETURNING id`,
+      [clientId, config ? config.montantOnboarding : montantOnboarding]
     );
+    const aboId = result.rows[0].id;
+
+    let cfgRow = null;
+    if (config) {
+      const nbActivites = config.nbActivites ?? 1;
+      // La formule n'a de sens qu'avec des activités (compte dépôt = NULL)
+      const formule = nbActivites >= 1
+        ? (config.formuleActivites === 'basique' ? 'basique' : 'premium')
+        : null;
+      const domReq = parseInt(config.domaineId, 10);
+      const cfgIns = await db.query(
+        `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, formule_activites, montant_onboarding, domaine_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7,
+                 COALESCE((SELECT id FROM domaines_activite WHERE id = $8::int),
+                          (SELECT id FROM domaines_activite WHERE slug = 'restauration' LIMIT 1)))
+         RETURNING domaine_id`,
+        [aboId, nbActivites, config.nbLabos || 0, config.nbGerants || 0, config.nbAcheteurs || 0, formule, config.montantOnboarding || 0,
+         Number.isFinite(domReq) ? domReq : null]
+      );
+      const domaineIdEffectif = cfgIns.rows[0]?.domaine_id ?? null;
+      if (domaineIdEffectif == null) {
+        // Aucun domaine résolu (domaine demandé inconnu ET slug 'restauration' absent) :
+        // erreur métier explicite (400 côté appelant), jamais un INSERT NULL puis un 500.
+        const e = new Error("Aucun domaine d'activité disponible (domaine par défaut « restauration » introuvable)");
+        e.status = 400; e.code = 'DOMAINE_INTROUVABLE';
+        throw e;
+      }
+      const composants = Array.isArray(config.composants) && config.composants.length
+        ? config.composants
+        : await composantsDepuisCompteurs(domaineIdEffectif, {
+            nbActivites, nbLabos: config.nbLabos || 0, nbGerants: config.nbGerants || 0, nbAcheteurs: config.nbAcheteurs || 0,
+          }, db);
+      await applyComposants(db, aboId, { domaineId: domaineIdEffectif, composants, mode: 'set' });
+      // Formule explicite (applyComposants ne pose que le défaut premium / NULL)
+      if (formule) {
+        await db.query('UPDATE abonnement_config SET formule_activites = $2 WHERE abonnement_id = $1 AND nb_activites >= 1', [aboId, formule]);
+      }
+      cfgRow = (await db.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId])).rows[0];
+    }
+
+    // Auto-create current month payment record
+    const firstOfMonth = new Date();
+    firstOfMonth.setDate(1);
+    const moisStr = firstOfMonth.toISOString().slice(0, 10);
+
+    let baseMontant = 0;
+    if (cfgRow) {
+      const tarifs = tarifsFor(await loadTarifs(db), cfgRow.domaine_id);
+      baseMontant = computeMensuelTotalFromConfig(cfgRow, tarifs) || 0;
+    }
+
+    const activePromo = await getActivePromo(aboId, moisStr, db);
+    const montant = activePromo ? applyPromoMensualite(baseMontant, activePromo) : baseMontant;
+    const statut = montant === 0 ? 'gratuit' : 'en_attente';
+    await db.query(
+      `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut) VALUES ($1, $2, $3, $4)`,
+      [aboId, moisStr, montant, statut]
+    );
+    await db.query('COMMIT');
+    return aboId;
+  } catch (err) {
+    await db.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    db.release();
   }
-
-  // Auto-create current month payment record
-  const firstOfMonth = new Date();
-  firstOfMonth.setDate(1);
-  const moisStr = firstOfMonth.toISOString().slice(0, 10);
-
-  let baseMontant = 0;
-  if (config) {
-    const tarifs = await loadAllTarifs();
-    baseMontant = computeMensuelTotalFromConfig(config, tarifs) || 0;
-  }
-
-  const activePromo = await getActivePromo(aboId, moisStr);
-  const montant = activePromo ? applyPromoMensualite(baseMontant, activePromo) : baseMontant;
-  const statut = montant === 0 ? 'gratuit' : 'en_attente';
-  await pool.query(
-    `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut) VALUES ($1, $2, $3, $4)`,
-    [aboId, moisStr, montant, statut]
-  );
-  return aboId;
 };
 
 // Admin: update onboarding payment status + optional date
@@ -596,11 +665,9 @@ const getMontantMois = async (req, res) => {
       [aboId, moisStr]
     );
 
-    const tarifs = await loadAllTarifs();
-
-    // Try new config-based pricing first
-    const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
-    const config = configRes.rows[0] || null;
+    // Try new config-based pricing first (config complète : domaine + composants, comme les autres réponses)
+    const config = await loadConfigComplete(aboId);
+    const tarifs = tarifsFor(await loadTarifs(), config?.domaine_id);
 
     let baseMensuel, baseGerant, baseLabo, baseAcheteurs;
     let hasGerant, hasLabo, hasAcheteurs;
@@ -743,10 +810,10 @@ const upsertPaiement = async (req, res) => {
     // If no montant supplied, compute from config/tarif + promo
     let finalMontant = montant != null ? Number(montant) : null;
     if (finalMontant === null) {
-      const tarifs = await loadAllTarifs();
       const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
       let base;
       if (configRes.rows.length > 0) {
+        const tarifs = tarifsFor(await loadTarifs(), configRes.rows[0].domaine_id);
         base = computeMensuelTotalFromConfig(configRes.rows[0], tarifs) || 0;
       } else {
         base = 0;
@@ -887,6 +954,57 @@ const listPromotions = async (req, res) => {
   }
 };
 
+// Recalcule les paiements NON réglés (en_attente / gratuit) d'un abonnement à partir
+// du mois courant (défaut) ou de la fenêtre [fromMois, toMois] : montant = total de la
+// config × promo mensualité active CE MOIS-LÀ (la plus récente qui couvre le mois).
+// Appelé après tout changement de composants / formule / domaine et à l'insertion d'une
+// promo. `db` = pool ou client de transaction. Renvoie { base, updated }.
+// Un paiement SAISI PAR UN ADMIN (saisie_par non nul : montant/statut posés via
+// upsertPaiement) n'est pas recalculé par défaut — l'admin garde la main sur ce
+// qu'il a saisi ; `inclureSaisiesManuelles: true` (insertion d'une promo, comportement
+// historique) recalcule tout.
+// Sans fromMois : recalcul à partir du MOIS SUIVANT uniquement (« dès le prochain paiement »,
+// règle historique : un changement de config/formule/domaine ne re-tarife pas le mois en cours).
+// L'insertion d'une promo passe fromMois = date_debut (mois courant inclus, comme avant).
+const recalcPaiementsEnAttente = async (db, aboId, { fromMois = null, toMois = null, inclureSaisiesManuelles = false } = {}) => {
+  const cfgRes = await db.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
+  const cfg = cfgRes.rows[0] || null;
+  let base = 0;
+  if (cfg) {
+    const tarifs = tarifsFor(await loadTarifs(db), cfg.domaine_id);
+    base = computeMensuelTotalFromConfig(cfg, tarifs) || 0;
+  }
+  const params = [aboId, fromMois];
+  let sql = `
+    SELECT p.id, pr.type, pr.applies_to, pr.discount_mensualite, pr.fixed_mensualite
+      FROM paiements p
+      LEFT JOIN LATERAL (
+        SELECT x.type, x.applies_to, x.discount_mensualite, x.fixed_mensualite
+          FROM promotions x
+         WHERE x.abonnement_id = p.abonnement_id
+           AND x.date_debut <= p.mois
+           AND (x.date_fin IS NULL OR x.date_fin >= p.mois)
+           AND x.applies_to IN ('mensualite', 'les_deux')
+         ORDER BY x.created_at DESC
+         LIMIT 1
+      ) pr ON true
+     WHERE p.abonnement_id = $1
+       AND p.statut IN ('en_attente', 'gratuit')
+       AND p.mois >= COALESCE($2::date, (date_trunc('month', CURRENT_DATE) + interval '1 month')::date)`;
+  if (!inclureSaisiesManuelles) sql += ' AND p.saisie_par IS NULL';
+  if (toMois) { sql += ` AND p.mois <= $${params.length + 1}::date`; params.push(toMois); }
+  const rows = await db.query(sql, params);
+  let updated = 0;
+  for (const p of rows.rows) {
+    const promo = p.type ? { type: p.type, applies_to: p.applies_to, discount_mensualite: p.discount_mensualite, fixed_mensualite: p.fixed_mensualite } : null;
+    const montant = applyPromoMensualite(base, promo);
+    const statut = montant === 0 ? 'gratuit' : 'en_attente';
+    await db.query('UPDATE paiements SET montant_dt = $1, statut = $2 WHERE id = $3', [montant, statut, p.id]);
+    updated++;
+  }
+  return { base, updated };
+};
+
 // Core promo insertion logic — reusable from both the HTTP route and internal client creation
 const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, createdById) => {
   const {
@@ -973,19 +1091,9 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
   }
 
   if (['mensualite', 'les_deux'].includes(appliesTo)) {
-    const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
-    const config = configRes.rows[0] || null;
-    let base = 0;
-    if (config) {
-      const tarifs = await loadAllTarifs();
-      base = computeMensuelTotalFromConfig(config, tarifs) || 0;
-    }
-    const newMontant = applyPromoMensualite(base, promo);
-    const newStatut = newMontant === 0 ? 'gratuit' : 'en_attente';
-    const params = [aboId, dateDebut, newMontant, newStatut];
-    let sql = `UPDATE paiements SET montant_dt = $3, statut = $4 WHERE abonnement_id = $1 AND statut IN ('en_attente', 'gratuit') AND mois >= $2::date`;
-    if (dateFin) { sql += ` AND mois <= $5::date`; params.push(dateFin); }
-    await pool.query(sql, params);
+    // Paiements non réglés de la fenêtre de la promo : total résolu (grille du domaine)
+    // × promo active ce mois-là (= la promo qui vient d'être insérée, sans chevauchement).
+    await recalcPaiementsEnAttente(pool, aboId, { fromMois: dateDebut, toMois: dateFin, inclureSaisiesManuelles: true });
   }
 
   return promo;
@@ -1250,7 +1358,8 @@ const enforcerStatuts = async () => {
     // Auto-create monthly payment record if missing (apply promo if active)
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-    const tarifs = await loadAllTarifs();
+    // Grille chargée UNE fois, résolue par abonnement (domaine du compte)
+    const t = await loadTarifs();
     const missingAbo = await pool.query(`
       SELECT a.id
       FROM abonnements a
@@ -1279,7 +1388,7 @@ const enforcerStatuts = async () => {
 
     for (const abo of missingAbo.rows) {
       const cfg = configMap.get(abo.id) || null;
-      const base = cfg ? (computeMensuelTotalFromConfig(cfg, tarifs) || 0) : 0;
+      const base = cfg ? (computeMensuelTotalFromConfig(cfg, tarifsFor(t, cfg.domaine_id)) || 0) : 0;
       const promo = promoMap.get(abo.id) || null;
       const montant = applyPromoMensualite(base, promo);
       const statut = montant === 0 ? 'gratuit' : 'en_attente';
@@ -1424,76 +1533,168 @@ const getAbonnementConfig = async (req, res) => {
   try {
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
-    const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboRes.rows[0].id]);
-    res.json(configRes.rows.length > 0 ? mapAbonnementConfig(configRes.rows[0]) : null);
+    res.json(mapAbonnementConfig(await loadConfigComplete(aboRes.rows[0].id)));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
+// Composants existants d'un abonnement re-projetés sur un (autre) domaine : même code
+// s'il existe et est actif dans le domaine cible, sinon 1er composant actif du type
+// (code = type ⇒ identité créée par applyComposants). Renvoie [{ code, nb }].
+const remapperComposants = async (db, aboId, domaineCible, compteursRepli = null) => {
+  const actuels = await listComposantsConfig(aboId, db);
+  if (!actuels.length) {
+    const k = compteursRepli || (await db.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId])).rows[0] || {};
+    return composantsDepuisCompteurs(domaineCible, k, db);
+  }
+  const cibles = (await db.query(
+    'SELECT code, type_technique FROM domaine_composants WHERE domaine_id = $1 AND actif = true ORDER BY ordre, id',
+    [domaineCible]
+  )).rows;
+  const out = [];
+  for (const c of actuels) {
+    const memeCode = cibles.find((x) => x.code === c.code && x.type_technique === c.typeTechnique);
+    const premier = cibles.find((x) => x.type_technique === c.typeTechnique);
+    out.push({ code: memeCode ? memeCode.code : (premier ? premier.code : c.typeTechnique), nb: c.nb });
+  }
+  return out;
+};
+
+// PUT /api/abonnements/client/:clientId/config
+// Nouveau payload : { domaineId?, composants?: [{ code, nb }], formuleActivites?, montantOnboarding? }
+// OU ancien payload : { nbActivites, nbLabos, nbGerants, nbAcheteurs?, formuleActivites?, montantOnboarding }
+// (compat : 9 scripts E2E + AbonnementsManagement). Composition validée (règles du
+// domaine) → 400 { message, code } ; applyComposants(set) puis recalcPaiementsEnAttente.
 const updateAbonnementConfig = async (req, res) => {
   const { clientId } = req.params;
   const { nbActivites, nbLabos, nbGerants, nbAcheteurs, montantOnboarding } = req.body;
-  const nA = parseInt(nbActivites, 10);
-  if (!Number.isFinite(nA) || nA < 0) return res.status(400).json({ message: 'nb_activites >= 0 requis' });
-  // Compte dépôt : 0 activité autorisé SEULEMENT avec au moins un labo
-  if (nA === 0 && (parseInt(nbLabos, 10) || 0) < 1) {
-    return res.status(400).json({ message: 'Un compte sans activité doit avoir au moins un labo (compte dépôt)' });
+  const composantsIn = req.body.composants;
+  const legacy = nbActivites !== undefined && nbActivites !== null;
+  if (composantsIn !== undefined && !Array.isArray(composantsIn)) {
+    return res.status(400).json({ message: 'composants : tableau [{ code, nb }] attendu' });
   }
+  const nA = legacy ? parseInt(nbActivites, 10) : null;
+  if (legacy && (!Number.isFinite(nA) || nA < 0)) return res.status(400).json({ message: 'nb_activites >= 0 requis' });
   // Formule des activités : préservée si absente du payload ; forcée à NULL si 0 activité ;
   // défaut premium quand des activités apparaissent sur un compte qui n'en avait pas.
-  const formuleIn = req.body.formuleActivites !== undefined
-    ? (req.body.formuleActivites === 'basique' ? 'basique' : 'premium')
-    : null;
   if (req.body.formuleActivites !== undefined && !['basique', 'premium'].includes(req.body.formuleActivites)) {
     return res.status(400).json({ message: 'Formule invalide (basique ou premium)' });
   }
-  // Option Acheteurs : mêmes gardes qu'à la création (palier ≤ 100, labo requis)
-  const nAch = nbAcheteurs != null ? parseInt(nbAcheteurs, 10) : null;
+  const formuleIn = req.body.formuleActivites !== undefined ? req.body.formuleActivites : null;
+  // Option Acheteurs (ancien payload) : quota ≤ 100 (le reste des règles = validerComposition)
+  const nAch = legacy && nbAcheteurs != null ? parseInt(nbAcheteurs, 10) : null;
   if (nAch !== null && (!Number.isFinite(nAch) || nAch < 0 || nAch > 100)) {
     return res.status(400).json({ message: 'Quota acheteurs invalide (paliers de 1 à 100)' });
   }
-  if (nAch !== null && nAch > 0 && (parseInt(nbLabos, 10) || 0) < 1) {
-    return res.status(400).json({ message: "L'option Acheteurs nécessite au moins un labo" });
+  if (montantOnboarding !== undefined && montantOnboarding !== null && !Number.isFinite(Number(montantOnboarding))) {
+    return res.status(400).json({ message: 'montantOnboarding invalide' });
   }
+  // Domaine du compte : absent du payload → PRÉSERVÉ ; `domaineId: null` explicite →
+  // repli sur le domaine par défaut (restauration) ; inconnu → 400.
+  const domaineIdIn = req.body.domaineId;
+  let domaineIdEff = null; // null = ne pas toucher
+  const domaineExplicite = domaineIdIn !== undefined;
+  if (domaineExplicite && domaineIdIn !== null && domaineIdIn !== '') {
+    const d = parseInt(domaineIdIn, 10);
+    if (!Number.isFinite(d) || d <= 0) return res.status(400).json({ message: 'domaineId invalide' });
+    domaineIdEff = d;
+  }
+  const db = await pool.connect();
   try {
-    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
+    const aboRes = await db.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
-    // Labo seul interdit : 0 activité exige l'option Acheteurs (valeur du payload,
-    // sinon quota déjà en base — nb_acheteurs est préservé quand il n'est pas envoyé).
-    if (nA === 0) {
-      let effAcheteurs = nAch;
-      if (effAcheteurs === null) {
-        const cur = await pool.query('SELECT nb_acheteurs FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
-        effAcheteurs = parseInt(cur.rows[0]?.nb_acheteurs) || 0;
-      }
-      if (effAcheteurs === 0) {
-        return res.status(400).json({ message: "Un labo sans activité nécessite l'option Acheteurs (compte dépôt = labo + acheteurs)" });
+    if (domaineExplicite) {
+      if (domaineIdEff == null) {
+        domaineIdEff = await getDomaineDefautId();
+      } else {
+        const dom = await db.query('SELECT id FROM domaines_activite WHERE id = $1', [domaineIdEff]);
+        if (dom.rows.length === 0) return res.status(400).json({ message: 'Domaine inconnu' });
       }
     }
-    // nb_acheteurs / formule : préservés si le payload ne les envoie pas.
-    const result = await pool.query(
-      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, formule_activites, montant_onboarding)
-       VALUES ($1, $2, $3, $4, COALESCE($5::int, 0),
-               CASE WHEN $2::int = 0 THEN NULL ELSE COALESCE($7, 'premium') END, $6)
-       ON CONFLICT (abonnement_id) DO UPDATE
-       SET nb_activites = EXCLUDED.nb_activites,
-           nb_labos = EXCLUDED.nb_labos,
-           nb_gerants = EXCLUDED.nb_gerants,
-           nb_acheteurs = COALESCE($5::int, abonnement_config.nb_acheteurs),
-           formule_activites = CASE WHEN $2::int = 0 THEN NULL
-                                    ELSE COALESCE($7, abonnement_config.formule_activites, 'premium') END,
-           montant_onboarding = EXCLUDED.montant_onboarding,
-           updated_at = NOW()
-       RETURNING *`,
-      [aboId, nbActivites, nbLabos ?? 0, nbGerants ?? 0, nbAcheteurs ?? null, montantOnboarding ?? 0, formuleIn]
+
+    await db.query('BEGIN');
+    // Config existante (créée si absente — même comportement que l'ancien upsert)
+    let cur = (await db.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1 FOR UPDATE', [aboId])).rows[0];
+    if (!cur) {
+      cur = (await db.query(
+        `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, formule_activites, montant_onboarding, domaine_id)
+         VALUES ($1, 0, 0, 0, 0, NULL, 0, COALESCE($2::int, (SELECT id FROM domaines_activite WHERE slug = 'restauration' LIMIT 1)))
+         RETURNING *`,
+        [aboId, domaineIdEff]
+      )).rows[0];
+    }
+    const domaineFinal = domaineIdEff ?? cur.domaine_id ?? (await getDomaineDefautId(db));
+    const domaineChange = domaineFinal !== cur.domaine_id;
+
+    // Composition cible : composants du payload > compteurs legacy > existant (re-mappé si le domaine change)
+    const actuels = await listComposantsConfig(aboId, db);
+    let composants;
+    if (Array.isArray(composantsIn)) {
+      composants = composantsIn;
+    } else if (legacy) {
+      const cibles = {
+        nbActivites: nA, nbLabos: parseInt(nbLabos, 10) || 0, nbGerants: parseInt(nbGerants, 10) || 0,
+        // nb_acheteurs préservé quand il n'est pas envoyé (comportement historique)
+        nbAcheteurs: nAch !== null ? nAch : (parseInt(cur.nb_acheteurs, 10) || 0),
+      };
+      const kCible = normCompteurs(cibles);
+      const kCur = normCompteurs(cur);
+      const compteursInchanges = ['nb_activites', 'nb_labos', 'nb_gerants', 'nb_acheteurs'].every((f) => kCible[f] === kCur[f]);
+      if (domaineChange) {
+        // Nouveau domaine : re-projection du détail (même code sinon 1er du type), puis delta
+        const remap = await remapperComposants(db, aboId, domaineFinal, cibles);
+        composants = compteursInchanges ? remap : await composantsDelta(domaineFinal, cibles, await resolveComposants(db, domaineFinal, remap, { creer: false }), db);
+      } else if (compteursInchanges && actuels.length) {
+        // Ancien payload aux compteurs inchangés (ex. changement de formule seul) :
+        // le détail par composant est CONSERVÉ tel quel.
+        composants = null;
+      } else if (actuels.length) {
+        // Compteurs modifiés : DELTA par type sur le détail existant (jamais un remplacement total)
+        composants = await composantsDelta(domaineFinal, cibles, actuels, db);
+      } else {
+        composants = await composantsDepuisCompteurs(domaineFinal, cibles, db);
+      }
+    } else {
+      composants = domaineChange ? await remapperComposants(db, aboId, domaineFinal) : null;
+    }
+
+    // Validation (règles du domaine + bornes des composants) AVANT écriture — seules les
+    // erreurs INTRODUITES par la demande bloquent (un compte hérité hors règles reste modifiable)
+    const profil = await getProfil(domaineFinal);
+    if (composants) {
+      const resolus = await resolveComposants(db, domaineFinal, composants, { creer: false, actuels });
+      const erreursAvant = validerComposition({ compteurs: normCompteurs(cur), regles: profil?.regles, composants: actuels });
+      const erreurs = erreursIntroduites(erreursAvant, validerComposition({ compteurs: deriveCompteurs(resolus), regles: profil?.regles, composants: resolus }));
+      if (erreurs.length) throw new CompositionError(erreurs);
+    }
+
+    await db.query(
+      `UPDATE abonnement_config
+          SET formule_activites = COALESCE($2, formule_activites),
+              montant_onboarding = COALESCE($3::numeric, montant_onboarding),
+              domaine_id = $4,
+              updated_at = NOW()
+        WHERE abonnement_id = $1`,
+      [aboId, formuleIn, montantOnboarding != null ? Number(montantOnboarding) : null, domaineFinal]
     );
-    res.json(mapAbonnementConfig(result.rows[0]));
+    if (composants) await applyComposants(db, aboId, { domaineId: domaineFinal, composants, mode: 'set' });
+    else if (formuleIn) {
+      // Formule seule : NULL sans activité (même règle que les écrivains)
+      await db.query('UPDATE abonnement_config SET formule_activites = NULL WHERE abonnement_id = $1 AND nb_activites = 0', [aboId]);
+    }
+    await db.query('COMMIT');
+    // Les paiements non réglés (mois courant et suivants, hors saisies admin) suivent la
+    // nouvelle config / grille — best-effort : la config est déjà écrite, jamais un 500 ici
+    await recalcPaiementsEnAttente(pool, aboId).catch((e) => console.error('[config] recalc paiements:', e.message));
+    res.json(mapAbonnementConfig(await loadConfigComplete(aboId)));
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
+    await db.query('ROLLBACK').catch(() => {});
+    sendCompositionOrServerError(res, err, '[config]');
+  } finally {
+    db.release();
   }
 };
 
@@ -1501,16 +1702,46 @@ const updateAbonnementConfig = async (req, res) => {
 
 const getPricingPreview = async (req, res) => {
   const { nbActivites, nbLabos, nbGerants, nbAcheteurs, formuleActivites } = req.query;
+  // domaineId (optionnel) : grille du domaine ; absent → grille générale ; invalide → 400 ; inconnu → 404
+  const domReq = parseDomaineIdParam(req.query.domaineId);
+  if (Number.isNaN(domReq)) return res.status(400).json({ message: 'domaineId invalide' });
   try {
-    const tarifs = await loadAllTarifs();
-    const nbRaw = parseInt(nbActivites);
+    let domaine = null;
+    if (domReq != null) {
+      const d = await pool.query('SELECT id, slug, nom FROM domaines_activite WHERE id = $1', [domReq]);
+      if (!d.rows[0]) return res.status(404).json({ message: 'Domaine introuvable' });
+      domaine = { id: d.rows[0].id, slug: d.rows[0].slug, nom: d.rows[0].nom };
+    }
+    const tarifs = tarifsFor(await loadTarifs(), domaine?.id ?? null);
+    // composants (JSON encodé : [{ code, nb }]) → compteurs dérivés (sinon anciens params)
+    let composantsOut = [];
+    let compteursDerives = null;
+    if (req.query.composants !== undefined && req.query.composants !== '') {
+      let parsed;
+      try { parsed = JSON.parse(req.query.composants); } catch (_) { parsed = null; }
+      if (!Array.isArray(parsed)) return res.status(400).json({ message: 'composants : JSON [{ code, nb }] attendu' });
+      if (!domaine) return res.status(400).json({ message: 'domaineId requis avec composants' });
+      try {
+        const resolus = await resolveComposants(pool, domaine.id, parsed, { creer: false });
+        compteursDerives = deriveCompteurs(resolus);
+        composantsOut = resolus.map((c) => ({
+          code: c.code, libelle: c.libelle, libellePluriel: c.libellePluriel, icone: c.icone, typeTechnique: c.typeTechnique, nb: c.nb,
+        }));
+      } catch (err) {
+        if (err instanceof CompositionError) return res.status(400).json({ message: err.message, code: err.code, erreurs: err.erreurs });
+        throw err;
+      }
+    }
+    const profil = domaine ? await getProfil(domaine.id) : null;
+    const regles = profil?.regles || { ...REGLES_DEFAUT };
+    const nbRaw = compteursDerives ? compteursDerives.nb_activites : parseInt(nbActivites);
     const nb  = Number.isFinite(nbRaw) && nbRaw >= 0 ? nbRaw : 1;
-    const nbl = parseInt(nbLabos)     || 0;
-    const nbg = parseInt(nbGerants)   || 0;
-    const nba = parseInt(nbAcheteurs) || 0;
+    const nbl = compteursDerives ? compteursDerives.nb_labos : (parseInt(nbLabos) || 0);
+    const nbg = compteursDerives ? compteursDerives.nb_gerants : (parseInt(nbGerants) || 0);
+    const nba = compteursDerives ? compteursDerives.nb_acheteurs : (parseInt(nbAcheteurs) || 0);
     const formule = formuleActivites === 'basique' ? 'basique' : 'premium';
 
-    const mockConfig = { nb_activites: nb, nb_labos: nbl, nb_gerants: nbg, nb_acheteurs: nba, formule_activites: formule };
+    const mockConfig = { nb_activites: nb, nb_labos: nbl, nb_gerants: nbg, nb_acheteurs: nba, formule_activites: formule, domaine_id: domaine?.id ?? null };
     const activiteCost  = computeBaseMensuelFromConfig(mockConfig, tarifs) || 0;
     const laboCost      = computeBaseLaboFromConfig(mockConfig, tarifs)    || 0;
     const gerantCost    = computeBaseGerantFromConfig(mockConfig, tarifs)  || 0;
@@ -1537,9 +1768,7 @@ const getPricingPreview = async (req, res) => {
       if (nb >= 3) { const up3 = Math.round(base*(1-r3)*100)/100; actLines.push({ label: `${nb-2} activité${nb-2>1?'s':''} supp. × ${up3} DT (−${Math.round(r3*100)}%)`, total: Math.round((nb-2)*up3*100)/100 }); }
     }
 
-    const onboardingPrice = parseFloat(
-      nbl > 0 ? (tarifs['onboarding_avec_labo'] ?? 700) : (tarifs['onboarding_sans_labo'] ?? 500)
-    );
+    const onboardingPrice = onboardingPriceFor(mockConfig, tarifs);
 
     res.json({
       formuleActivites: nb >= 1 ? formule : null,
@@ -1549,6 +1778,10 @@ const getPricingPreview = async (req, res) => {
       acheteurs: { nb: nba, palier: palierAcheteurs(nba), total: acheteursCost },
       totalMensuel: total,
       onboardingPrice,
+      domaine,
+      // Lot 1a : détail par composant (mots du domaine) + règles résolues du domaine
+      composants: composantsOut,
+      regles,
     });
   } catch (err) {
     console.error(err);
@@ -1572,7 +1805,7 @@ const extractSupplPromo = (promoRows, appliesTo) => {
 const getSupplementPricing = async (req, res) => {
   const clientId = req.user.id;
   try {
-    const tarifs = await loadAllTarifs();
+    const t = await loadTarifs();
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (!aboRes.rows.length) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
@@ -1591,6 +1824,7 @@ const getSupplementPricing = async (req, res) => {
     ]);
     const config = configRes.rows[0] || null;
     const mensPromo = mensPromoRes.rows[0] || null;
+    const tarifs = tarifsFor(t, config?.domaine_id);
 
     const nbA = parseInt(config?.nb_activites) || 0;
     const nbL = parseInt(config?.nb_labos) || 0;
@@ -1630,7 +1864,7 @@ const getSupplementPricing = async (req, res) => {
 const getClientSupplementPricing = async (req, res) => {
   const { clientId } = req.params;
   try {
-    const tarifs = await loadAllTarifs();
+    const t = await loadTarifs();
     const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (!aboRes.rows.length) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
@@ -1649,6 +1883,7 @@ const getClientSupplementPricing = async (req, res) => {
     ]);
     const config = configRes.rows[0] || null;
     const mensPromo = mensPromoRes.rows[0] || null;
+    const tarifs = tarifsFor(t, config?.domaine_id);
 
     const nbA = parseInt(config?.nb_activites) || 0;
     const nbL = parseInt(config?.nb_labos) || 0;
@@ -1741,13 +1976,37 @@ const toggleModuleAcheteurs = async (req, res) => {
       return res.status(400).json({ message: 'Quota acheteurs invalide (paliers de 1 à 100)' });
     }
     if (Number.isFinite(nb) && nb >= 0) {
-      const q = await pool.query(
-        `UPDATE abonnement_config SET nb_acheteurs = $1, updated_at = NOW()
-         WHERE abonnement_id = (SELECT id FROM abonnements WHERE client_id = $2)
-         RETURNING nb_acheteurs`,
-        [nb, clientId]
-      );
-      quota = q.rows[0]?.nb_acheteurs ?? null;
+      const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1', [clientId]);
+      const aboId = aboRes.rows[0]?.id;
+      const cfgRes = aboId ? await pool.query('SELECT domaine_id FROM abonnement_config WHERE abonnement_id = $1', [aboId]) : { rows: [] };
+      if (aboId && cfgRes.rows.length) {
+        // Quota acheteurs via applyComposants (mode add : un composant acheteurs REMPLACE
+        // le quota ; 0 = plus aucune ligne acheteurs) — seul écrivain de nb_acheteurs.
+        // Désactivation (0) sans ligne acheteurs souscrite : rien à écrire (et surtout
+        // aucune création d'un composant identité dans le domaine par effet de bord).
+        const ligneAch = (await listComposantsConfig(aboId)).find((c) => c.typeTechnique === 'acheteurs') || null;
+        if (nb === 0 && !ligneAch) {
+          quota = 0;
+        } else {
+          const db = await pool.connect();
+          try {
+            await db.query('BEGIN');
+            // Ligne souscrite (même inactive : tolérée tant que le quota ne monte pas) sinon 1er composant actif
+            const composants = ligneAch && (nb === 0 || nb <= ligneAch.nb)
+              ? [{ composantId: ligneAch.composantId, nb }]
+              : (await composantsDepuisCompteurs(cfgRes.rows[0].domaine_id, { nbAcheteurs: nb > 0 ? nb : 1 }, db)).map((c) => ({ code: c.code, nb }));
+            const r2 = await applyComposants(db, aboId, { composants, mode: 'add' });
+            await db.query('COMMIT');
+            quota = r2.compteurs.nb_acheteurs;
+          } catch (e) {
+            await db.query('ROLLBACK').catch(() => {});
+            throw e;
+          } finally {
+            db.release();
+          }
+          await recalcPaiementsEnAttente(pool, aboId).catch((e) => console.error('[module-acheteurs] recalc paiements:', e.message));
+        }
+      }
     }
     res.json({
       moduleAcheteursActif: r.rows[0].module_acheteurs_actif,
@@ -1764,7 +2023,6 @@ const toggleModuleAcheteurs = async (req, res) => {
 // Calcule le détail tarifaire effectif (base + promotion active) d'un client.
 // Réutilisé pour les contrats et avenants Docuseal. Lit tout depuis la base.
 const computeEffectivePricing = async (clientId) => {
-  const tarifs = await loadAllTarifs();
   const aboRes = await pool.query(
     `SELECT id, montant_onboarding FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1`,
     [clientId]
@@ -1773,6 +2031,7 @@ const computeEffectivePricing = async (clientId) => {
   const abo = aboRes.rows[0];
   const cfgRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [abo.id]);
   const config = cfgRes.rows[0] || null;
+  const tarifs = tarifsFor(await loadTarifs(), config?.domaine_id);
 
   let baseMensuel, baseOnboarding;
   if (config) {
@@ -1828,7 +2087,6 @@ const computeEffectivePricing = async (clientId) => {
 // setAcheteurs = QUOTA TOTAL cible de l'option Acheteurs (les paliers ne s'additionnent
 // pas) ; null/undefined = quota inchangé.
 const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0, addGerants = 0, setAcheteurs = null }) => {
-  const tarifs = await loadAllTarifs();
   const aboRes = await pool.query(
     `SELECT id FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1`,
     [clientId]
@@ -1836,7 +2094,7 @@ const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0,
   if (aboRes.rows.length === 0) return null;
   const aboId = aboRes.rows[0].id;
   const cfgRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
-  const cur = cfgRes.rows[0] || { nb_activites: 1, nb_labos: 0, nb_gerants: 0, nb_acheteurs: 0, formule_activites: 'premium' };
+  const cur = cfgRes.rows[0] || { nb_activites: 1, nb_labos: 0, nb_gerants: 0, nb_acheteurs: 0, formule_activites: 'premium', domaine_id: null };
 
   const newCfg = {
     nb_activites: (parseInt(cur.nb_activites) || 0) + (addActivites || 0),
@@ -1844,8 +2102,10 @@ const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0,
     nb_gerants:   (parseInt(cur.nb_gerants)   || 0) + (addGerants   || 0),
     nb_acheteurs: setAcheteurs != null ? (parseInt(setAcheteurs) || 0) : (parseInt(cur.nb_acheteurs) || 0),
     formule_activites: cur.formule_activites || 'premium',
+    domaine_id: cur.domaine_id ?? null,
   };
 
+  const tarifs = tarifsFor(await loadTarifs(), newCfg.domaine_id);
   const baseMensuel = computeMensuelTotalFromConfig(newCfg, tarifs) || 0;
 
   const promoRes = await pool.query(
@@ -1860,6 +2120,42 @@ const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0,
   const promoMens = promoRes.rows[0] || null;
   const effMensuel = promoMens ? applyPromoMensualite(baseMensuel, promoMens) : baseMensuel;
 
+  // Nouvelle configuration PAR COMPOSANT (mots du domaine, pour l'avenant PDF) :
+  // détail actuel + ajouts sur le 1er composant de chaque type (comme le webhook).
+  let composants = [];
+  let domaineNom = null;
+  let domaineSlug = null;
+  try {
+    const actuels = await listComposantsConfig(aboId);
+    const ajouts = await composantsDepuisCompteurs(newCfg.domaine_id ?? (await getDomaineDefautId()), {
+      nbActivites: addActivites || 0, nbLabos: addLabos || 0, nbGerants: addGerants || 0,
+      nbAcheteurs: setAcheteurs != null ? (parseInt(setAcheteurs) || 0) : 0,
+    });
+    const parCode = new Map(actuels.map((c) => [c.code, { ...c }]));
+    const dispo = (await pool.query('SELECT * FROM domaine_composants WHERE domaine_id = $1 ORDER BY ordre, id', [newCfg.domaine_id])).rows;
+    for (const a of ajouts) {
+      const meta = dispo.find((d) => d.code === a.code);
+      const type = meta?.type_technique || a.code;
+      if (type === 'acheteurs') {
+        for (const c of parCode.values()) if (c.typeTechnique === 'acheteurs') c.nb = 0;
+      }
+      const cur = parCode.get(a.code) || {
+        code: a.code, libelle: meta?.libelle || a.code, libellePluriel: meta?.libelle_pluriel || null,
+        icone: meta?.icone || null, typeTechnique: type, nb: 0,
+      };
+      cur.nb = type === 'acheteurs' ? a.nb : cur.nb + a.nb;
+      parCode.set(a.code, cur);
+    }
+    composants = [...parCode.values()].filter((c) => c.nb > 0);
+    if (newCfg.domaine_id) {
+      const d = await pool.query('SELECT nom, slug FROM domaines_activite WHERE id = $1', [newCfg.domaine_id]);
+      domaineNom = d.rows[0]?.nom || null;
+      domaineSlug = d.rows[0]?.slug || null;
+    }
+  } catch (e) {
+    console.warn('[avenant] détail composants indisponible:', e.message);
+  }
+
   return {
     abonnementId: aboId,
     nbActivites: newCfg.nb_activites, nbLabos: newCfg.nb_labos, nbGerants: newCfg.nb_gerants,
@@ -1870,6 +2166,7 @@ const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0,
     promoMens,
     promoMonths: promoMens ? (promoMens.months_duration || null) : null,
     hasPromo: !!promoMens,
+    composants, domaineNom, domaineSlug,
   };
 };
 
@@ -1946,8 +2243,7 @@ const regenerateContratPdf = async (clientId) => {
   const info = infoRes.rows[0];
   const pricing = await computeEffectivePricing(clientId);
   if (!pricing) return null;
-  const cfgRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [pricing.abonnementId]);
-  const cfg = cfgRes.rows[0] || {};
+  const cfg = (await loadConfigComplete(pricing.abonnementId)) || {};
   return buildContratDocument({
     abonnementId: pricing.abonnementId,
     client: { nom: info.nom, email: info.email, telephone: info.telephone, adresse: info.adresse },
@@ -1956,6 +2252,10 @@ const regenerateContratPdf = async (clientId) => {
       nbLabos: intOr(cfg.nb_labos, 0),
       nbGerants: intOr(cfg.nb_gerants, 0),
       formuleActivites: cfg.formule_activites || null,
+      // Lot 1a : lignes par composant (mots du domaine) + domaine d'activité
+      composants: cfg.composants || [],
+      domaineNom: cfg.domaine_nom || null,
+      domaineSlug: cfg.domaine_slug || null,
     },
     pricing,
     // Régénération d'un contrat EXISTANT : réf avec l'année d'origine (celle que
@@ -2023,12 +2323,38 @@ const previewContratPdf = async (req, res) => {
     const nbLabos = parseInt(req.body.nbLabos) || 0;
     const nbGerants = parseInt(req.body.nbGerants) || 0;
     const nbAcheteurs = parseInt(req.body.nbAcheteurs) || 0;
-    const formule = nA >= 1 ? (req.body.formuleActivites === 'basique' ? 'basique' : 'premium') : null;
     const montantOnboarding = parseFloat(req.body.montantOnboarding) || 0;
     const promotions = Array.isArray(req.body.promotions) ? req.body.promotions : [];
 
-    const tarifs = await loadAllTarifs();
-    const mockCfg = { nb_activites: nA, nb_labos: nbLabos, nb_gerants: nbGerants, nb_acheteurs: nbAcheteurs, formule_activites: formule || 'premium' };
+    // Grille du domaine choisi dans le wizard (absent/inconnu → grille générale)
+    const domReq = parseDomaineIdParam(req.body.domaineId);
+    let domaineId = null;
+    let domaineNom = null;
+    let domaineSlug = null;
+    if (Number.isFinite(domReq) && domReq > 0) {
+      const d = await pool.query('SELECT id, nom, slug FROM domaines_activite WHERE id = $1', [domReq]);
+      domaineId = d.rows[0]?.id ?? null;
+      domaineNom = d.rows[0]?.nom ?? null;
+      domaineSlug = d.rows[0]?.slug ?? null;
+    }
+    // Composants du wizard ([{ code, nb }]) → lignes du contrat + compteurs dérivés ;
+    // sans composants : compteurs du body (lignes fixes). Composition invalide → 400.
+    let composantsContrat = [];
+    let nbA = nA, nbL = nbLabos, nbG = nbGerants, nbAch = nbAcheteurs;
+    if (Array.isArray(req.body.composants) && req.body.composants.length && domaineId) {
+      try {
+        const resolus = await resolveComposants(pool, domaineId, req.body.composants, { creer: false });
+        const k = deriveCompteurs(resolus);
+        nbA = k.nb_activites; nbL = k.nb_labos; nbG = k.nb_gerants; nbAch = k.nb_acheteurs;
+        composantsContrat = resolus.map((c) => ({ code: c.code, libelle: c.libelle, libellePluriel: c.libellePluriel, typeTechnique: c.typeTechnique, nb: c.nb }));
+      } catch (err) {
+        if (err instanceof CompositionError) return res.status(400).json({ message: err.message, code: err.code, erreurs: err.erreurs });
+        throw err;
+      }
+    }
+    const formuleEff = nbA >= 1 ? (req.body.formuleActivites === 'basique' ? 'basique' : 'premium') : null;
+    const tarifs = tarifsFor(await loadTarifs(), domaineId);
+    const mockCfg = { nb_activites: nbA, nb_labos: nbL, nb_gerants: nbG, nb_acheteurs: nbAch, formule_activites: formuleEff || 'premium', domaine_id: domaineId };
     const baseMensuel = computeMensuelTotalFromConfig(mockCfg, tarifs) || 0;
 
     // Pseudo-rangées promo (clés snake_case de la table promotions) pour réutiliser
@@ -2074,14 +2400,14 @@ const previewContratPdf = async (req, res) => {
       baseMensuel, effMensuel,
       promoMens, promoOb, promoMonths, baseResumeDate,
       hasPromo: !!(promoMens || promoOb),
-      formuleActivites: formule,
-      nbAcheteurs,
-      palierAcheteurs: palierAcheteurs(nbAcheteurs),
+      formuleActivites: formuleEff,
+      nbAcheteurs: nbAch,
+      palierAcheteurs: palierAcheteurs(nbAch),
     };
     const docu = await buildContratDocument({
       abonnementId: 0,
       client: { nom: nom || 'Client', email, telephone },
-      config: { nbActivites: nA, nbLabos, nbGerants, formuleActivites: formule },
+      config: { nbActivites: nbA, nbLabos: nbL, nbGerants: nbG, formuleActivites: formuleEff, composants: composantsContrat, domaineNom, domaineSlug },
       pricing,
       // Aperçu wizard : ne jamais bloquer la création de client sur le garde placeholders
       strict: false,
@@ -2098,8 +2424,13 @@ const previewContratPdf = async (req, res) => {
 
 module.exports = {
   getContratActif, getClientContratPdf, previewContratPdf,
-  getTarifs, updateTarif,
+  getTarifs, updateTarif, deleteTarifDomaine,
   computeEffectivePricing, computeAvenantPricing,
+  // Grille par domaine (lot 1a)
+  loadTarifs, tarifsFor, resolveTarifs, TARIF_KEYS_SURCHARGEABLES, getDomaineDefautId,
+  recalcPaiementsEnAttente, buildTarifsPourDomaine, loadConfigComplete, remapperComposants,
+  // Ré-exports du moteur pur (les autres contrôleurs importent d'ici)
+  cfgVal, prixBaseActivite, applyPromoMensualite, applyPromoOnboarding, applyPromoSupplement, onboardingPriceFor,
   listAbonnements, getAbonnement, createAbonnement,
   updateOnboarding, updateProlongation, updateNotes, updateMode, toggleModuleVente, toggleModuleAcheteurs,
   upsertPaiement,

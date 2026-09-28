@@ -62,20 +62,39 @@ const docusealWebhook = async (req, res) => {
         // nb_acheteurs_cible = quota TOTAL (palier), pas un incrément. Un compte dépôt
         // qui gagne sa 1ère activité reçoit une formule (défaut premium) — même règle
         // que la validation manuelle (supportController.traiter).
-        await pool.query(
-          `UPDATE abonnement_config ac
-              SET nb_activites = nb_activites + $1,
-                  nb_labos     = nb_labos     + $2,
-                  nb_gerants   = nb_gerants   + $3,
-                  nb_acheteurs = COALESCE($5::int, nb_acheteurs),
-                  formule_activites = CASE WHEN nb_activites + $1 >= 1
-                                           THEN COALESCE(formule_activites, 'premium')
-                                           ELSE formule_activites END,
-                  updated_at   = NOW()
-             FROM abonnements a
-            WHERE a.id = ac.abonnement_id AND a.client_id = $4`,
-          [d.nb_activites_supp || 0, d.nb_labos_supp || 0, d.nb_gerants_supp || 0, d.client_id, d.nb_acheteurs_cible || null]
-        );
+        // Lot 1a : capacité appliquée PAR COMPOSANT (mode add sur le 1er composant de
+        // chaque type, la cible acheteurs remplace le quota) via applyComposants — seul
+        // écrivain des compteurs — puis recalcul des paiements en attente.
+        {
+          const { applyComposants, composantsDepuisCompteurs } = require('../services/configComposantsService');
+          const { recalcPaiementsEnAttente } = require('./abonnementController');
+          const db = await pool.connect();
+          let aboId = null;
+          try {
+            await db.query('BEGIN');
+            const aboRes = await db.query(
+              `SELECT a.id, ac.domaine_id FROM abonnements a
+                 JOIN abonnement_config ac ON ac.abonnement_id = a.id
+                WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
+              [d.client_id]
+            );
+            if (aboRes.rows.length) {
+              aboId = aboRes.rows[0].id;
+              const composants = await composantsDepuisCompteurs(aboRes.rows[0].domaine_id, {
+                nbActivites: d.nb_activites_supp || 0, nbLabos: d.nb_labos_supp || 0,
+                nbGerants: d.nb_gerants_supp || 0, nbAcheteurs: d.nb_acheteurs_cible || 0,
+              }, db);
+              await applyComposants(db, aboId, { composants, mode: 'add' });
+            }
+            await db.query('COMMIT');
+          } catch (e) {
+            await db.query('ROLLBACK').catch(() => {});
+            throw e;
+          } finally {
+            db.release();
+          }
+          if (aboId) await recalcPaiementsEnAttente(pool, aboId).catch((e) => console.error('[docuseal-webhook] recalc paiements:', e.message));
+        }
         // Activation/upgrade de l'option Acheteurs : le module doit être actif côté profil
         if (d.nb_acheteurs_cible) {
           await pool.query(

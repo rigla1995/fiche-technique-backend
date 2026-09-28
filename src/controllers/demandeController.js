@@ -1,4 +1,6 @@
 const pool = require('../config/database');
+// Grille tarifaire résolue par domaine (lot 1a) — ré-exportée par abonnementController
+const { loadTarifs, tarifsFor, recalcPaiementsEnAttente } = require('./abonnementController');
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -37,10 +39,19 @@ const create = async (req, res) => {
     else if (typeDemande === 'gerant_sup') cle = 'gerant_sup_mensuel';
     else if (typeDemande === 'activer_module_acheteurs') cle = 'acheteurs_palier_10'; // tarif « à partir de »
     // passer_formule_premium : pas de montant affiché (le surcoût réel dépend de la config — delta calculé par l'admin)
-    const tarifRes = cle
-      ? await pool.query('SELECT valeur_dt FROM tarifs_config WHERE cle = $1', [cle])
-      : { rows: [] };
-    const montant = tarifRes.rows[0]?.valeur_dt || null;
+    // Tarif résolu sur la grille du DOMAINE du compte (surcharge tarifs_domaine, sinon grille générale)
+    let montant = null;
+    if (cle) {
+      const cfgRes = await pool.query(
+        `SELECT ac.domaine_id FROM abonnement_config ac
+         JOIN abonnements a ON a.id = ac.abonnement_id
+         WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
+        [req.user.id]
+      );
+      const tarifs = tarifsFor(await loadTarifs(), cfgRes.rows[0]?.domaine_id ?? null);
+      montant = Number.isFinite(tarifs[cle]) ? tarifs[cle] : null;
+      if (montant === 0) montant = null; // même sémantique que l'ancien `|| null`
+    }
 
     const result = await pool.query(
       `INSERT INTO demandes (demandeur_id, demandeur_type, type_demande, montant_mensuel_dt, notes_client)
@@ -138,15 +149,18 @@ const traiter = async (req, res) => {
     // prix s'applique aux mensualités suivantes (recalcul mensuel par le cron).
     // COALESCE(gerant_parent_id, id) : une demande envoyée par un GÉRANT doit
     // basculer le compte PARENT (sinon UPDATE 0 ligne, silencieux).
+    let aboIdPremium = null;
     if (statut === 'validée' && type_demande === 'passer_formule_premium') {
-      await client.query(
+      const up = await client.query(
         `UPDATE abonnement_config SET formule_activites = 'premium', updated_at = NOW()
          WHERE nb_activites >= 1 AND abonnement_id = (
            SELECT a.id FROM abonnements a
            WHERE a.client_id = (SELECT COALESCE(gerant_parent_id, id) FROM utilisateurs WHERE id = $1)
-           ORDER BY a.id DESC LIMIT 1)`,
+           ORDER BY a.id DESC LIMIT 1)
+         RETURNING abonnement_id`,
         [demandeur_id]
       );
+      aboIdPremium = up.rows[0]?.abonnement_id ?? null;
     }
 
     // Validation d'une demande d'activation du module Acheteurs (même mécanique).
@@ -178,6 +192,11 @@ const traiter = async (req, res) => {
     );
 
     await client.query('COMMIT');
+    // Changement de formule (lot 1a §2.4) : les paiements en attente (mois courant et
+    // suivants, hors saisies admin) suivent la nouvelle mensualité — best-effort après COMMIT
+    if (aboIdPremium) {
+      await recalcPaiementsEnAttente(pool, aboIdPremium).catch((e) => console.error('[demandes.traiter] recalc paiements:', e.message));
+    }
     res.json(mapDemande(result.rows[0]));
   } catch (err) {
     await client.query('ROLLBACK');

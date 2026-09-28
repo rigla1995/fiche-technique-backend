@@ -26,7 +26,7 @@ const buildManuelContexte = async (user) => {
     pool.query('SELECT COUNT(*)::int AS n FROM activites WHERE entreprise_id = $1', [entrepriseId]),
     pool.query('SELECT COUNT(*)::int AS n FROM labos WHERE entreprise_id = $1', [entrepriseId]),
     pool.query(
-      `SELECT ac.formule_activites FROM abonnement_config ac
+      `SELECT ac.formule_activites, ac.domaine_id FROM abonnement_config ac
        JOIN abonnements a ON a.id = ac.abonnement_id
        WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
       [clientId]
@@ -34,8 +34,15 @@ const buildManuelContexte = async (user) => {
   ]);
   const hasActivites = acts.rows[0].n > 0;
   const hasLabos = labs.rows[0].n > 0;
-  // Verrou Espace Produit : formule basique SANS labo (la base labo l'inclut)
-  const espaceProduit = !(formule.rows[0]?.formule_activites === 'basique' && !hasLabos);
+  // Verrou Espace Produit : formule basique SANS labo (la base labo l'inclut) —
+  // règle R1 paramétrée par domaine (domaineProfilService.espaceProduitVerrouille),
+  // évaluée ici sur les labos RÉELS du compte (comme avant).
+  const { getProfil, espaceProduitVerrouille } = require('../services/domaineProfilService');
+  const profil = formule.rows[0]?.domaine_id ? await getProfil(formule.rows[0].domaine_id) : null;
+  const espaceProduit = !espaceProduitVerrouille(
+    { formule_activites: formule.rows[0]?.formule_activites, nb_labos: hasLabos ? 1 : 0 },
+    profil?.regles
+  );
   return { role, hasActivites, hasLabos, moduleAcheteurs: pe.rows[0].module_acheteurs_actif === true, espaceProduit };
 };
 

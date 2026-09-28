@@ -222,9 +222,9 @@ async function main() {
   }
 
   await pool.query(
-    `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse, meme_activite, domaine_id, module_acheteurs_actif, module_acheteurs_activated_at)
-     VALUES ($1, 'Dar Yasmine', $2, NULL, 'Rue des Orangers, Zone d''activités La Soukra, 2036 Ariana', false, $3, true, NOW())`,
-    [clientId, EMAIL, domaineId]
+    `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse, meme_activite, module_acheteurs_actif, module_acheteurs_activated_at)
+     VALUES ($1, 'Dar Yasmine', $2, NULL, 'Rue des Orangers, Zone d''activités La Soukra, 2036 Ariana', false, true, NOW())`,
+    [clientId, EMAIL]
   );
   await pool.query(`INSERT INTO client_domaines (client_id, domaine_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [clientId, domaineId]);
 
@@ -236,10 +236,16 @@ async function main() {
   );
   const aboId = abo.id;
   await pool.query(
-    `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, formule_activites, montant_onboarding)
-     VALUES ($1, 2, 1, 1, 10, 'premium', 700)`,
-    [aboId]
+    `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, nb_acheteurs, formule_activites, montant_onboarding, domaine_id)
+     VALUES ($1, 2, 1, 1, 10, 'premium', 700, $2)`,
+    [aboId, domaineId]
   );
+  // Détail par composant (lot 1a) : compteurs → 1er composant de chaque type du domaine
+  {
+    const { composantsDepuisCompteurs, applyComposants } = require('../src/services/configComposantsService');
+    const composants = await composantsDepuisCompteurs(domaineId, { nbActivites: 2, nbLabos: 1, nbGerants: 1, nbAcheteurs: 10 });
+    await applyComposants(pool, aboId, { domaineId, composants, mode: 'set' });
+  }
   for (const [mois, statut, datePaie] of [
     ['2026-05-01', 'payé', '2026-05-05'],
     ['2026-06-01', 'payé', '2026-06-04'],

@@ -48,8 +48,11 @@ const support = require('../controllers/supportController');
  *       200:
  *         description: Tarif mis à jour
  */
+// Grille par domaine (lot 1a) : GET ?domaineId= (valeur/valeurGenerale/surcharge),
+// PUT { valeur, domaineId? } (surcharge si domaineId), DELETE ?domaineId= (retour à l'héritage).
 router.get('/tarifs', authenticate, requireSuperAdmin, ab.getTarifs);
 router.put('/tarifs/:cle', authenticate, requireSuperAdmin, ab.updateTarif);
+router.delete('/tarifs/:cle', authenticate, requireSuperAdmin, ab.deleteTarifDomaine);
 
 /**
  * @openapi

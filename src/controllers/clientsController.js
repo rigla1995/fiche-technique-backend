@@ -1,6 +1,14 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
-const { createAbonnement, insertPromoForAbonnement, computeEffectivePricing } = require('./abonnementController');
+const {
+  createAbonnement, insertPromoForAbonnement, computeEffectivePricing,
+  recalcPaiementsEnAttente, remapperComposants, loadConfigComplete,
+} = require('./abonnementController');
+const {
+  CompositionError, deriveCompteurs, validerComposition, erreursIntroduites, resolveComposants, composantsDepuisCompteurs,
+  applyComposants, listComposantsConfig,
+} = require('../services/configComposantsService');
+const { getProfil, getDomaineDefautId } = require('../services/domaineProfilService');
 const { generateInviteToken, sendWelcomeWithContractEmail, sendDocusealSigningEmail } = require('../services/emailService');
 const { generateContratPdf } = require('../services/pdfService');
 const {
@@ -15,7 +23,9 @@ const fmtDateC = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-di
 
 // Construit les champs promo du contrat à partir du détail tarifaire effectif.
 // Retourne { montantOnboarding, montantMensuel, extraFields } pour la soumission Docuseal.
-const buildContractPricingFields = (pricing) => {
+// `domaineNom` (lot 1a) : champ « Domaine » du flux template (filtré par le retry 422
+// tant que le template DocuSeal ne le porte pas — cf docuseal-templates/CHAMPS.md).
+const buildContractPricingFields = (pricing, domaineNom = null) => {
   if (!pricing) return { montantOnboarding: null, montantMensuel: null, extraFields: [] };
   const { baseOnboarding, effOnboarding, baseMensuel, effMensuel, promoMens, promoOb, promoMonths, baseResumeDate, hasPromo } = pricing;
 
@@ -63,6 +73,7 @@ const buildContractPricingFields = (pricing) => {
       { name: 'Détail promotion', default_value: detail },
       { name: 'Mensualité après promo', default_value: hasPromo && promoMens ? fmtDtC(baseMensuel) : '' },
       { name: 'Reprise prix de base', default_value: baseResumeDate ? fmtDateC(baseResumeDate) : '' },
+      { name: 'Domaine', default_value: domaineNom || '' },
     ],
   };
 };
@@ -91,7 +102,7 @@ const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone
       console.error('[docuseal] flux PDF rempli échoué, repli sur le template:', e.message);
     }
   }
-  const pf = buildContractPricingFields(pricing);
+  const pf = buildContractPricingFields(pricing, config?.domaineNom || null);
   return createContractSubmission({
     clientName: nom,
     clientEmail: email,
@@ -136,9 +147,23 @@ const mapClient = (row) => ({
   // 'site' = converti depuis une demande d'accès du site vitrine ; sinon 'manuel'.
   origine: row.origine || 'manuel',
   domaineIds: row.domaine_ids || [],
+  // Domaine du compte (lot 1a) : abonnement_config du dernier abonnement → domaines_activite
+  domaineId: row.domaine_id ?? null,
+  domaineNom: row.domaine_nom ?? null,
   // Adresse portée par profil_entreprise (fiche « Consulter » côté admin)
   adresse: row.adresse ?? null,
 });
+
+// Sous-requête LATERAL : domaine du dernier abonnement du client (id + nom)
+const DOMAINE_LATERAL = `
+       LEFT JOIN LATERAL (
+         SELECT da.id AS domaine_id, da.nom AS domaine_nom
+           FROM abonnements a
+           JOIN abonnement_config ac ON ac.abonnement_id = a.id
+           JOIN domaines_activite da ON da.id = ac.domaine_id
+          WHERE a.client_id = u.id
+          ORDER BY a.id DESC LIMIT 1
+       ) dom ON true`;
 
 const saveClientDomaines = async (client, clientId, domaineIds) => {
   await client.query('DELETE FROM client_domaines WHERE client_id = $1', [clientId]);
@@ -155,13 +180,14 @@ const list = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.activated_at, u.origine,
-              pe.adresse,
+              pe.adresse, dom.domaine_id, dom.domaine_nom,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
        FROM utilisateurs u
        LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
        LEFT JOIN client_domaines cd ON cd.client_id = u.id
+       ${DOMAINE_LATERAL}
        WHERE u.role = 'client'
-       GROUP BY u.id, pe.adresse
+       GROUP BY u.id, pe.adresse, dom.domaine_id, dom.domaine_nom
        ORDER BY u.nom`
     );
     res.json(result.rows.map(mapClient));
@@ -176,13 +202,14 @@ const getById = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.origine,
-              pe.adresse,
+              pe.adresse, dom.domaine_id, dom.domaine_nom,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
        FROM utilisateurs u
        LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
        LEFT JOIN client_domaines cd ON cd.client_id = u.id
+       ${DOMAINE_LATERAL}
        WHERE u.id = $1 AND u.role = 'client'
-       GROUP BY u.id, pe.adresse`,
+       GROUP BY u.id, pe.adresse, dom.domaine_id, dom.domaine_nom`,
       [id]
     );
     if (result.rows.length === 0) {
@@ -219,20 +246,46 @@ const create = async (req, res) => {
 
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   if (!email) return res.status(400).json({ message: 'Email requis' });
-  if (nbActivites === 0 && (nbLabos || 0) < 1) {
-    return res.status(400).json({ message: 'Un compte sans activité doit avoir au moins un labo (compte dépôt)' });
+
+  // ── Domaine du compte + composition (lot 1a) — validée AVANT toute écriture ──
+  // domaineId (int) sinon domaineIds[0] (legacy) sinon domaine par défaut (restauration).
+  // composants [{ code, nb }] sinon dérivés des compteurs nbActivites/nbLabos/nbGerants/nbAcheteurs.
+  const composantsIn = Array.isArray(req.body.composants) ? req.body.composants : null;
+  const aUneConfig = nbActivites != null || (composantsIn && composantsIn.length > 0);
+  const domaineIdReq = parseInt(req.body.domaineId, 10);
+  const domaineExplicite = (Number.isFinite(domaineIdReq) && domaineIdReq > 0) || domaineIds.length > 0;
+  let domaineId = Number.isFinite(domaineIdReq) && domaineIdReq > 0 ? domaineIdReq : (domaineIds[0] ?? null);
+  let config = null;
+  let composantsResolus = [];
+  try {
+    if (domaineId == null) domaineId = await getDomaineDefautId();
+    const profil = domaineId != null ? await getProfil(domaineId) : null;
+    if (domaineExplicite && !profil) return res.status(400).json({ message: 'Domaine inconnu' });
+    if (aUneConfig) {
+      if (!profil) return res.status(400).json({ message: "Aucun domaine d'activité disponible" });
+      const items = composantsIn && composantsIn.length
+        ? composantsIn
+        : await composantsDepuisCompteurs(domaineId, {
+            nbActivites: nbActivites ?? 1, nbLabos: nbLabos || 0, nbGerants: nbGerants || 0, nbAcheteurs,
+          });
+      composantsResolus = await resolveComposants(pool, domaineId, items, { creer: false });
+      const compteurs = deriveCompteurs(composantsResolus);
+      const erreurs = validerComposition({ compteurs, regles: profil.regles, composants: composantsResolus });
+      if (erreurs.length) throw new CompositionError(erreurs);
+      config = {
+        nbActivites: compteurs.nb_activites, nbLabos: compteurs.nb_labos, nbGerants: compteurs.nb_gerants,
+        nbAcheteurs: compteurs.nb_acheteurs, formuleActivites,
+        montantOnboarding: montantOnboardingConfig || 0,
+        domaineId,
+        composants: composantsResolus.map((c) => ({ code: c.code, nb: c.nb })),
+      };
+    }
+  } catch (err) {
+    if (err instanceof CompositionError) return res.status(400).json({ message: err.message, code: err.code, erreurs: err.erreurs });
+    console.error('[clients.create] validation composition:', err);
+    return res.status(400).json({ message: 'Configuration invalide' });
   }
-  // Un labo seul n'est pas une composition valide : la base Labo se combine avec
-  // des activités et/ou l'option Acheteurs (labo+activités / labo+acheteurs / les trois).
-  if (nbActivites === 0 && nbAcheteurs === 0) {
-    return res.status(400).json({ message: "Un labo sans activité nécessite l'option Acheteurs (compte dépôt = labo + acheteurs)" });
-  }
-  if (nbAcheteurs > 0 && (nbLabos || 0) < 1) {
-    return res.status(400).json({ message: "L'option Acheteurs nécessite au moins un labo (les ventes partent du stock labo)" });
-  }
-  if (nbAcheteurs < 0 || nbAcheteurs > 100) {
-    return res.status(400).json({ message: 'Quota acheteurs invalide (paliers de 1 à 100)' });
-  }
+  const nbAcheteursEff = config ? config.nbAcheteurs : nbAcheteurs;
 
   if (telephone) {
     const telCheck = await pool.query('SELECT id FROM utilisateurs WHERE telephone = $1', [telephone]);
@@ -271,7 +324,7 @@ const create = async (req, res) => {
       );
 
       // Option Acheteurs choisie dès la création : module activé immédiatement
-      if (nbAcheteurs > 0) {
+      if (nbAcheteursEff > 0) {
         await dbClient.query(
           `UPDATE profil_entreprise SET module_acheteurs_actif = true, module_acheteurs_activated_at = NOW()
            WHERE client_id = $1`,
@@ -279,8 +332,9 @@ const create = async (req, res) => {
         );
       }
 
-      if (domaineIds.length > 0) {
-        await saveClientDomaines(dbClient, user.id, domaineIds);
+      // Un seul domaine par compte : client_domaines = [domaineId] (legacy : domaineIds[0])
+      if (domaineId != null && (config || domaineExplicite)) {
+        await saveClientDomaines(dbClient, user.id, [domaineId]);
       }
 
       await dbClient.query('COMMIT');
@@ -291,17 +345,14 @@ const create = async (req, res) => {
       dbClient.release();
     }
 
-    // Create abonnement with config if provided
-    const config = nbActivites != null ? {
-      nbActivites, nbLabos: nbLabos || 0, nbGerants: nbGerants || 0,
-      nbAcheteurs, formuleActivites,
-      montantOnboarding: montantOnboardingConfig || 0,
-    } : null;
-
+    // Create abonnement with config (validée ci-dessus) — transactionnel dans createAbonnement :
+    // abonnements + abonnement_config (domaine_id) + composants + paiement du mois.
     // Plus de repli tarifaire legacy (entreprise_onboarding purgé avec l'ancien modèle)
     const montantOnboarding = montantOnboardingConfig;
 
     const aboId = await createAbonnement(user.id, montantOnboarding, config);
+    // Détail réel écrit en base (libellés des composants + nom du domaine) pour le contrat
+    const cfgComplete = config ? await loadConfigComplete(aboId).catch(() => null) : null;
 
     // Create promotions passed during client creation
     const promotions = Array.isArray(req.body.promotions) ? req.body.promotions : [];
@@ -344,13 +395,19 @@ const create = async (req, res) => {
         nbLabos: aboConfig.nbLabos ?? 0,
         nbGerants: aboConfig.nbGerants ?? 0,
         formuleActivites: (aboConfig.nbActivites ?? 1) >= 1 ? formuleActivites : null,
-        nbAcheteurs,
+        nbAcheteurs: nbAcheteursEff,
         dateContrat: new Date(),
       });
 
       // Contrat e-signature : PDF rempli par client (prioritaire) ou template Docuseal.
       if (docusealPdfConfigured() || docusealConfigured()) {
-        const aboConfigForDocuseal = config || {};
+        // + composants (libellés du domaine) et nom du domaine pour le document (lot 1a)
+        const aboConfigForDocuseal = {
+          ...(config || {}),
+          composants: cfgComplete?.composants || [],
+          domaineNom: cfgComplete?.domaine_nom || null,
+          domaineSlug: cfgComplete?.domaine_slug || null,
+        };
         const pricing = await computeEffectivePricing(user.id).catch(() => null);
         submitContratForSignature({
           aboId,
@@ -385,8 +442,16 @@ const create = async (req, res) => {
       console.error('Welcome email error:', emailErr.message);
     }
 
-    res.status(201).json({ ...mapClient(user), domaineIds });
+    const domaineIdsOut = domaineId != null && (config || domaineExplicite) ? [domaineId] : [];
+    res.status(201).json({
+      ...mapClient(user),
+      domaineIds: domaineIdsOut,
+      domaineId: domaineIdsOut[0] ?? null,
+      domaineNom: cfgComplete?.domaine_nom ?? null,
+    });
   } catch (err) {
+    // Erreur métier de createAbonnement (ex. DOMAINE_INTROUVABLE) : 400 explicite, jamais un 500 wizard
+    if (err?.status === 400) return res.status(400).json({ message: err.message, code: err.code || 'CONFIG_INVALIDE' });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -404,7 +469,19 @@ const update = async (req, res) => {
   const telephone = req.body.telephone || req.body.phone;
   const activeValue = active !== undefined ? active : actif;
   const onboardingStep = req.body.onboardingStep !== undefined ? req.body.onboardingStep : null;
-  const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : null;
+  // Domaine du compte (lot 1a) : domaineId (int) ou domaineIds legacy (= [domaineId]). 400 si inconnu.
+  const domaineIdsLegacy = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : null;
+  const domaineIdReq = parseInt(req.body.domaineId, 10);
+  let domaineId = null;
+  if (Number.isFinite(domaineIdReq) && domaineIdReq > 0) domaineId = domaineIdReq;
+  else if (domaineIdsLegacy && domaineIdsLegacy.length) domaineId = domaineIdsLegacy[0];
+  if (domaineId != null) {
+    const dom = await pool.query('SELECT id FROM domaines_activite WHERE id = $1', [domaineId]);
+    if (!dom.rows.length) return res.status(400).json({ message: 'Domaine inconnu' });
+  }
+  // `domaineIds: []` (legacy) est IGNORÉ : vider client_domaines casserait l'invariant
+  // « client_domaines = exactement le domaine de abonnement_config » (1 domaine par compte).
+  const domaineIds = domaineId != null ? [domaineId] : null;
 
   // Check tel uniqueness (exclude current user)
   if (telephone) {
@@ -444,18 +521,64 @@ const update = async (req, res) => {
       await saveClientDomaines(dbClient, id, domaineIds);
     }
 
-    await dbClient.query('COMMIT');
+    // Changement de domaine (lot 1a) : abonnement_config.domaine_id du dernier abonnement,
+    // composants re-mappés sur le nouveau domaine (même code sinon 1er composant du type,
+    // compteurs et mensualité conservés), paiements en attente recalculés sur sa grille.
+    let aboIdDomaine = null;
+    if (domaineId != null) {
+      const aboRes = await dbClient.query(
+        `SELECT a.id, ac.domaine_id FROM abonnements a
+           JOIN abonnement_config ac ON ac.abonnement_id = a.id
+          WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
+        [id]
+      );
+      if (aboRes.rows.length && aboRes.rows[0].domaine_id !== domaineId) {
+        aboIdDomaine = aboRes.rows[0].id;
+        const composants = await remapperComposants(dbClient, aboIdDomaine, domaineId);
+        // Composition re-mappée validée contre les règles / bornes (nb_min, nb_max) du
+        // domaine CIBLE : seules les erreurs introduites par le changement bloquent (400).
+        const actuels = await listComposantsConfig(aboIdDomaine, dbClient);
+        const cfgCur = (await dbClient.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboIdDomaine])).rows[0] || {};
+        const [profilAvant, profilCible] = await Promise.all([
+          aboRes.rows[0].domaine_id ? getProfil(aboRes.rows[0].domaine_id) : null, getProfil(domaineId),
+        ]);
+        const resolus = await resolveComposants(dbClient, domaineId, composants, { creer: false, actuels });
+        const erreurs = erreursIntroduites(
+          validerComposition({ compteurs: cfgCur, regles: profilAvant?.regles, composants: actuels }),
+          validerComposition({ compteurs: deriveCompteurs(resolus), regles: profilCible?.regles, composants: resolus })
+        );
+        if (erreurs.length) throw new CompositionError(erreurs);
+        await applyComposants(dbClient, aboIdDomaine, { domaineId, composants, mode: 'set' });
+      }
+    }
 
-    // Return with fresh domaineIds
-    const domainesRes = await pool.query(
-      'SELECT domaine_id FROM client_domaines WHERE client_id = $1',
-      [id]
-    );
-    res.json({ ...mapClient(updatedUser), domaineIds: domainesRes.rows.map((r) => r.domaine_id) });
+    await dbClient.query('COMMIT');
+    if (aboIdDomaine) {
+      await recalcPaiementsEnAttente(pool, aboIdDomaine).catch((e) => console.error('[clients.update] recalc paiements:', e.message));
+    }
+
+    // Return with fresh domaineIds + domaine du compte
+    const [domainesRes, domRes] = await Promise.all([
+      pool.query('SELECT domaine_id FROM client_domaines WHERE client_id = $1', [id]),
+      pool.query(
+        `SELECT da.id AS domaine_id, da.nom AS domaine_nom FROM abonnements a
+           JOIN abonnement_config ac ON ac.abonnement_id = a.id
+           JOIN domaines_activite da ON da.id = ac.domaine_id
+          WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
+        [id]
+      ),
+    ]);
+    res.json({
+      ...mapClient({ ...updatedUser, domaine_id: domRes.rows[0]?.domaine_id ?? null, domaine_nom: domRes.rows[0]?.domaine_nom ?? null }),
+      domaineIds: domainesRes.rows.map((r) => r.domaine_id),
+    });
   } catch (err) {
-    await dbClient.query('ROLLBACK');
+    await dbClient.query('ROLLBACK').catch(() => {});
     if (err.code === '23505') {
       return res.status(409).json({ message: 'Cet email est déjà utilisé' });
+    }
+    if (err instanceof CompositionError) {
+      return res.status(400).json({ message: err.message, code: err.code, erreurs: err.erreurs });
     }
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
