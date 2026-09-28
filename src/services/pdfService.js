@@ -322,7 +322,7 @@ const generateContratPdf = (params) => new Promise((resolve, reject) => {
     const cg = [
       'Durée : Le contrat est conclu pour une durée indéterminée, renouvelable tacitement chaque mois.',
       'Résiliation : Chaque partie peut résilier avec un préavis de 30 jours par email.',
-      'Confidentialité : Les données du Client sont traitées conformément au RGPD et à la politique de confidentialité de ' + APP_NAME + '.',
+      'Confidentialité : Les données du Client sont traitées conformément à la loi n° 2004-63 du 27 juillet 2004 relative à la protection des données à caractère personnel et à la politique de confidentialité de ' + APP_NAME + '.',
       'Disponibilité : Le service est accessible 24h/24 sous réserve de maintenance planifiée.',
     ];
     const cgText = cg.join('\n');
