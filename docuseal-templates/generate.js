@@ -28,6 +28,13 @@ const envOr = (names, fallback) => {
   for (const n of names) if (process.env[n]) return process.env[n];
   return fallback;
 };
+// Variable OPTIONNELLE : DÉFINIE VIDE (« PRESTATAIRE_RC= ») = « aucune » — cas d'un
+// prestataire auto-entrepreneur, sans registre de commerce ni capital ; ABSENTE =
+// valeur d'exemple (aperçus locaux, signalée par checkPrestatairePlaceholders).
+const envOpt = (names, fallback) => {
+  for (const n of names) if (n in process.env) return String(process.env[n]).trim();
+  return fallback;
+};
 // FACTURE_MATRICULE_FISCAL est parfois saisi avec son libellé (« Matricule fiscal : … »
 // pour le pied de facture) — ici on ne veut que la valeur.
 const stripMfLabel = (v) => String(v).replace(/^\s*(matricule\s+fiscal|mf)\s*:?\s*/i, '').trim();
@@ -38,14 +45,30 @@ const PRESTATAIRE = {
   forme: PRESTATAIRE_FORME,
   raisonSociale: envOr(['PRESTATAIRE_RAISON_SOCIALE'], `${PRESTATAIRE_NOM} ${PRESTATAIRE_FORME}`),
   matricule: stripMfLabel(envOr(['PRESTATAIRE_MATRICULE', 'FACTURE_MATRICULE_FISCAL'], '1234567/A/M/000')),
-  rc: envOr(['PRESTATAIRE_RC'], 'B0123452024'),
-  capital: envOr(['PRESTATAIRE_CAPITAL'], '10 000 DT'),
+  rc: envOpt(['PRESTATAIRE_RC'], 'B0123452024'),
+  capital: envOpt(['PRESTATAIRE_CAPITAL'], '10 000 DT'),
   adresse: envOr(['PRESTATAIRE_ADRESSE', 'FACTURE_ADRESSE'], 'Avenue Habib Bourguiba, 1000 Tunis, Tunisie'),
   ville: envOr(['PRESTATAIRE_VILLE'], 'Tunis'),
   email: envOr(['PRESTATAIRE_EMAIL'], 'contact@labflow-tn.com'),
   tel: envOr(['PRESTATAIRE_TEL'], '+216 71 000 000'),
   signataire: envOr(['PRESTATAIRE_SIGNATAIRE'], 'La Direction'),
 };
+// Régime de l'auto-entrepreneur (loi n° 2020-33) : pas de matricule fiscal classique
+// mais un « identifiant unique » (7 chiffres + lettre), pas de RC ni de capital.
+const PRESTATAIRE_AE = /auto.?entrepreneur/i.test(PRESTATAIRE.forme);
+const PRESTATAIRE_MF_LABEL = PRESTATAIRE_AE ? 'Identifiant unique' : 'Matricule fiscal';
+const PRESTATAIRE_MF_SHORT = PRESTATAIRE_AE ? 'ID' : 'MF';
+// Ligne « RC · Capital » : omise quand les deux sont vides (auto-entrepreneur).
+const prestataireRcCapital = () => [
+  PRESTATAIRE.rc && `RC : ${PRESTATAIRE.rc}`,
+  PRESTATAIRE.capital && `Capital : ${PRESTATAIRE.capital}`,
+].filter(Boolean).join('  ·  ');
+// Pied de page légal : raison sociale · MF/ID · RC (si présent).
+const prestataireLegalLine = () => [
+  PRESTATAIRE.raisonSociale,
+  `${PRESTATAIRE_MF_SHORT} ${PRESTATAIRE.matricule}`,
+  PRESTATAIRE.rc && `RC ${PRESTATAIRE.rc}`,
+].filter(Boolean).join('  ·  ');
 
 // Taux de TVA affiché dans les clauses — même source que la facturation.
 // Les montants d'abonnement saisis dans l'app sont TTC (la facture en déduit le HT).
@@ -56,6 +79,8 @@ const TVA_RATE = Number(process.env.FACTURE_TVA_RATE || 19);
 // production — un acte signé avec une identité fictive est juridiquement vicié.
 // FACTURE_STRICT=0 désactive explicitement le mode strict (déconseillé en prod).
 function checkPrestatairePlaceholders() {
+  // Une variable optionnelle DÉFINIE VIDE (RC, capital d'un auto-entrepreneur) n'est
+  // pas un placeholder : '' n'apparaît pas dans la liste ci-dessous.
   const fictifs = ['1234567/A/M/000', 'B0123452024', 'Avenue Habib Bourguiba, 1000 Tunis, Tunisie', 'La Direction', '+216 71 000 000'];
   const found = Object.entries(PRESTATAIRE).filter(([, v]) => fictifs.includes(v)).map(([k]) => k);
   if (found.length) {
@@ -317,11 +342,11 @@ function partiesBlock(ctx, y, client, opts = {}) {
   ].filter(Boolean) : [
     { t: labelPres, s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
     { t: PRESTATAIRE.raisonSociale, s: 10, b: true, c: C.ink, w: true, gap: 4 },
-    { t: `Matricule fiscal : ${PRESTATAIRE.matricule}`, s: 7.5, c: C.muted, w: true, gap: 2 },
-    { t: `RC : ${PRESTATAIRE.rc}  ·  Capital : ${PRESTATAIRE.capital}`, s: 7.5, c: C.muted, w: true, gap: 2 },
+    { t: `${PRESTATAIRE_MF_LABEL} : ${PRESTATAIRE.matricule}`, s: 7.5, c: C.muted, w: true, gap: 2 },
+    prestataireRcCapital() && { t: prestataireRcCapital(), s: 7.5, c: C.muted, w: true, gap: 2 },
     { t: PRESTATAIRE.adresse, s: 7.5, c: C.muted, w: true, gap: 2 },
     { t: `${PRESTATAIRE.email}  ·  ${PRESTATAIRE.tel}`, s: 7.5, c: C.muted, w: true, gap: 0 },
-  ];
+  ].filter(Boolean);
   const idClient = [client.forme, client.mfrc].filter(Boolean).join('  ·  ');
   const mentionLine = withMention
     ? { t: 'Ci-après dénommé « le Client »', s: 7.5, c: C.faint, gapBefore: 6, lh: 11 }
@@ -591,7 +616,7 @@ function stampFooters(ctx, label, note = 'Document confidentiel — usage strict
     doc.switchToPage(i);
     gradientRule(ML, PAGE.h - 38, CW, 1.5);
     // Mention légale sur UNE ligne (clippée) ; l'adresse complète est dans le bloc Parties.
-    const legal = fitText(legalOverride || `${PRESTATAIRE.raisonSociale}  ·  MF ${PRESTATAIRE.matricule}  ·  RC ${PRESTATAIRE.rc}`, 6.5, CW * 0.62);
+    const legal = fitText(legalOverride || prestataireLegalLine(), 6.5, CW * 0.62);
     txt(legal, ML, PAGE.h - 30, 6.5, false, C.faint, { lineBreak: false });
     txt(`${label}  ·  Page ${i + 1}/${range.count}`, ML, PAGE.h - 30, 6.5, false, C.muted, { align: 'right', width: CW });
     txt(note, ML, PAGE.h - 20, 6.5, false, C.faint, { lineBreak: false });
