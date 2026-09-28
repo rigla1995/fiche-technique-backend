@@ -19,7 +19,8 @@ const pool = require('../config/database');
 // tools dédiés (get_*). Voir aiToolHandlers.js.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SNAPSHOT_VERSION = 2;
+// v3 (lot 1a) : + domaine d'activité du compte { id, slug, nom }
+const SNAPSHOT_VERSION = 3;
 const TTL_MS = 30 * 60 * 1000; // 30 min — filet de fraîcheur (le warm-up à l'activation le préchauffe)
 
 const memCache = new Map();  // clientId -> { snapshot, expiry }
@@ -50,10 +51,12 @@ async function fetchCounts(clientId) {
 async function fetchSnapshot(clientId) {
   // Réutilise les handlers d'outils existants (require tardif = pas de cycle de modules).
   const { toolGetClientInfo, toolGetAbonnement } = require('./aiToolHandlers');
-  const [info, abonnement, counts] = await Promise.all([
+  const { getProfilForClient } = require('./domaineProfilService');
+  const [info, abonnement, counts, profil] = await Promise.all([
     toolGetClientInfo(clientId),
     toolGetAbonnement(clientId).catch(() => null),
     fetchCounts(clientId),
+    getProfilForClient(clientId).catch(() => null),
   ]);
   return {
     v: SNAPSHOT_VERSION,
@@ -63,6 +66,7 @@ async function fetchSnapshot(clientId) {
     activites: info.activites || [],
     labos: info.labos || [],
     abonnement,
+    domaine: profil && profil.id != null ? { id: profil.id, slug: profil.slug, nom: profil.nom } : null,
     ...counts,
     generated_at: new Date().toISOString(),
   };
@@ -119,6 +123,7 @@ function buildLineFromSnapshot(snap) {
   const lines = [
     `Client: ${snap.nom || '—'} | Mode du compte: ${snap.mode_compte || '—'} | Activités: ${acts} | Labos: ${labos}`,
   ];
+  if (snap.domaine?.nom) lines.push(`Domaine d'activité : ${snap.domaine.nom}`);
 
   const ab = snap.abonnement;
   if (ab && !ab.note) {

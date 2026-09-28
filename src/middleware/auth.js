@@ -247,13 +247,16 @@ const requireFormulePremium = async (req, res, next) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
     const r = await pool.query(
-      `SELECT ac.formule_activites, ac.nb_labos
+      `SELECT ac.formule_activites, ac.nb_labos, ac.domaine_id
        FROM abonnements a JOIN abonnement_config ac ON ac.abonnement_id = a.id
        WHERE a.client_id = $1
        ORDER BY a.id DESC LIMIT 1`,
       [clientId]
     );
-    if (r.rows[0]?.formule_activites === 'basique' && (parseInt(r.rows[0].nb_labos) || 0) === 0) {
+    // Règle R1 paramétrée par domaine (défaut = comportement actuel) — fonction unique
+    const { getProfil, espaceProduitVerrouille } = require('../services/domaineProfilService');
+    const profil = r.rows[0]?.domaine_id ? await getProfil(r.rows[0].domaine_id) : null;
+    if (r.rows[0] && espaceProduitVerrouille(r.rows[0], profil?.regles)) {
       return res.status(403).json({
         message: 'L\'Espace Produit est réservé à la formule Activité Premium',
         code: 'FORMULE_BASIQUE',

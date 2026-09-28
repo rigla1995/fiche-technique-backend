@@ -12,6 +12,25 @@ const isStrongPassword = (v) =>
   /[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v) && /[@$!%*?&_\-#]/.test(v);
 const WEAK_PWD_MSG = 'Mot de passe trop faible : minimum 8 caractères, avec majuscule, minuscule, chiffre et caractère spécial.';
 
+// Profil du domaine d'activité du compte (lot 1a) : client → son abonnement,
+// gérant → compte parent (résolu par getProfilForClient), admin/boss → null.
+// Renvoyé par /auth/login ET /auth/me (AuthContext.login stocke le user du login tel
+// quel — sans cela user.domaine restait undefined jusqu'au prochain /auth/me).
+// Jamais bloquant : toute erreur ⇒ null + warn.
+const loadDomaineForUser = async (utilisateur, tag) => {
+  if (utilisateur.role !== 'client' && utilisateur.role !== 'gerant') return null;
+  try {
+    const { getProfilForClient } = require('../services/domaineProfilService');
+    const p = await getProfilForClient(utilisateur.id);
+    return p && p.id != null
+      ? { id: p.id, slug: p.slug, nom: p.nom, lexique: p.lexique, composants: p.composants, regles: p.regles }
+      : null;
+  } catch (e) {
+    console.warn(`[${tag}] profil domaine indisponible:`, e.message);
+    return null;
+  }
+};
+
 const login = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -114,6 +133,9 @@ const login = async (req, res) => {
       }
     }
 
+    // Profil du domaine dès le LOGIN (comme /auth/me).
+    const domaine = await loadDomaineForUser(utilisateur, 'auth/login');
+
     res.json({
       token,
       user: {
@@ -124,6 +146,7 @@ const login = async (req, res) => {
         onboardingStep,
         ...gerantFields,
         ...clientCounts,
+        domaine,
       },
     });
   } catch (err) {
@@ -257,6 +280,9 @@ const me = async (req, res) => {
       }
     }
 
+    // Profil du domaine d'activité du compte (lot 1a) — même objet qu'au login.
+    const domaine = await loadDomaineForUser(u, 'auth/me');
+
     const gerantFields = isGerant ? {
       gerantParentId: u.gerant_parent_id,
       gerantActiviteId: u.gerant_activite_id,
@@ -274,6 +300,7 @@ const me = async (req, res) => {
       modeCompte, prolongationJours,
       activitesCount,
       labosCount,
+      domaine,
       ...gerantFields,
     });
   } catch (err) {
