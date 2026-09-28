@@ -21,26 +21,32 @@ const validateCreate = [
     if (!/[@$!%*?&_\-#]/.test(pwd)) throw new Error('Mot de passe : au moins un caractère spécial (@$!%*?&)');
     return true;
   }),
-  body('phone').optional({ nullable: true, checkFalsy: false }).custom((val) => {
+  // Le front envoie `telephone` (l'ancien validateur ciblait `phone`, jamais rempli)
+  body('telephone').optional({ nullable: true, checkFalsy: false }).custom((val) => {
     if (!val) return true;
-    if (!/^(\+216[\s-]?)?[2579]\d{7}$/.test(val.replace(/\s/g, ''))) {
+    if (!/^(\+216[\s-]?)?[2579]\d{7}$/.test(String(val).replace(/\s/g, ''))) {
       throw new Error('Numéro de téléphone tunisien invalide (ex: +216 XX XXX XXX)');
     }
     return true;
   }),
+  // Lot 1a : domaine du compte + configuration par composant [{ code, nb }]
+  body('domaineId').optional({ nullable: true }).isInt({ min: 1 }).withMessage('domaineId invalide'),
+  body('composants').optional().isArray().withMessage('composants : tableau attendu'),
 ];
 
 const validateUpdate = [
   body('name').optional().trim().notEmpty(),
   body('nom').optional().trim().notEmpty(),
   body('email').optional().isEmail().withMessage('Email invalide'),
-  body('phone').optional({ nullable: true, checkFalsy: false }).custom((val) => {
+  body('telephone').optional({ nullable: true, checkFalsy: false }).custom((val) => {
     if (!val) return true;
-    if (!/^(\+216[\s-]?)?[2579]\d{7}$/.test(val.replace(/\s/g, ''))) {
+    if (!/^(\+216[\s-]?)?[2579]\d{7}$/.test(String(val).replace(/\s/g, ''))) {
       throw new Error('Numéro de téléphone tunisien invalide (ex: +216 XX XXX XXX)');
     }
     return true;
   }),
+  body('domaineId').optional({ nullable: true }).isInt({ min: 1 }).withMessage('domaineId invalide'),
+  body('composants').optional().isArray().withMessage('composants : tableau attendu'),
 ];
 
 /**

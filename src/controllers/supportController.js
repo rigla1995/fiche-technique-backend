@@ -3,7 +3,30 @@ const { sendAvenantEmail } = require('../services/emailService');
 const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
-const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeBaseAcheteursFromConfig, computeAvenantPricing, palierAcheteurs } = require('./abonnementController');
+const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeBaseAcheteursFromConfig, computeMensuelTotalFromConfig, computeAvenantPricing, palierAcheteurs, loadTarifs, tarifsFor, recalcPaiementsEnAttente } = require('./abonnementController');
+// Lot 1a : la capacité s'applique PAR COMPOSANT (applyComposants = seul écrivain des compteurs)
+const { applyComposants, composantsDepuisCompteurs, validerComposition, erreursIntroduites } = require('../services/configComposantsService');
+const { getProfil } = require('../services/domaineProfilService');
+
+// Ajouts d'une demande de capacité → composants du domaine (1er composant actif de
+// chaque type, comme le backfill) en mode 'add' (la cible acheteurs REMPLACE le quota).
+// Renvoie { aboId, result } ou null si le compte n'a pas de config.
+const appliquerSupplement = async (db, clientId, { addActivites = 0, addLabos = 0, addGerants = 0, setAcheteurs = null }) => {
+  const aboRes = await db.query(
+    `SELECT a.id, ac.domaine_id FROM abonnements a
+       JOIN abonnement_config ac ON ac.abonnement_id = a.id
+      WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
+    [clientId]
+  );
+  if (!aboRes.rows.length) return null;
+  const { id: aboId, domaine_id: domaineId } = aboRes.rows[0];
+  const composants = await composantsDepuisCompteurs(domaineId, {
+    nbActivites: addActivites || 0, nbLabos: addLabos || 0, nbGerants: addGerants || 0,
+    nbAcheteurs: setAcheteurs || 0,
+  }, db);
+  const result = await applyComposants(db, aboId, { composants, mode: 'add' });
+  return { aboId, result };
+};
 const {
   createSubmission, createSubmissionFromPdf, getSubmissionDocuments,
   isConfigured: docusealConfigured, isConfiguredPdf: docusealPdfConfigured,
@@ -144,6 +167,33 @@ const create = async (req, res) => {
         }
         if (curLabos + (nbLabosSupp || 0) < 1) {
           return res.status(400).json({ message: "L'option Acheteurs nécessite au moins un labo (ajoutez-en un à la demande)" });
+        }
+      }
+      // Composition RÉSULTANTE validée avec les règles du domaine du compte (lot 1a)
+      {
+        const curRes = await pool.query(
+          `SELECT ac.* FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id
+            WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
+          [clientId]
+        );
+        const cur = curRes.rows[0];
+        if (cur) {
+          const profil = cur.domaine_id ? await getProfil(cur.domaine_id) : null;
+          // Seules les erreurs INTRODUITES par la demande bloquent : un compte existant
+          // déjà « hors règles » (état hérité) peut toujours demander un supplément
+          const erreurs = erreursIntroduites(
+            validerComposition({ compteurs: cur, regles: profil?.regles }),
+            validerComposition({
+              compteurs: {
+                nb_activites: (parseInt(cur.nb_activites, 10) || 0) + (nbActivitesSupp || 0),
+                nb_labos: (parseInt(cur.nb_labos, 10) || 0) + (nbLabosSupp || 0),
+                nb_gerants: (parseInt(cur.nb_gerants, 10) || 0) + (nbGerantsSupp || 0),
+                nb_acheteurs: nbAcheteursCible != null ? nbAcheteursCible : (parseInt(cur.nb_acheteurs, 10) || 0),
+              },
+              regles: profil?.regles,
+            })
+          );
+          if (erreurs.length) return res.status(400).json({ message: erreurs[0].message, code: erreurs[0].code, erreurs });
         }
       }
       sql = `INSERT INTO support_demandes
@@ -317,20 +367,30 @@ const traiter = async (req, res) => {
         );
         acheteursAvant = parseInt(avantRes.rows[0]?.nb_acheteurs) || 0;
       }
-      await pool.query(
-        `UPDATE abonnement_config ac
-         SET nb_activites = nb_activites + $1,
-             nb_labos     = nb_labos     + $2,
-             nb_gerants   = nb_gerants   + $3,
-             -- Option Acheteurs : quota TOTAL cible (palier), pas un incrément
-             nb_acheteurs = COALESCE($5::int, nb_acheteurs),
-             -- un compte dépôt qui gagne sa 1ère activité reçoit une formule (défaut premium)
-             formule_activites = CASE WHEN nb_activites + $1 >= 1 THEN COALESCE(formule_activites, 'premium') ELSE formule_activites END,
-             updated_at   = NOW()
-         FROM abonnements a
-         WHERE a.id = ac.abonnement_id AND a.client_id = $4`,
-        [demande.nb_activites_supp || 0, demande.nb_labos_supp || 0, demande.nb_gerants_supp || 0, demande.client_id, demande.nb_acheteurs_cible || null]
-      );
+      // Capacité appliquée PAR COMPOSANT (1er composant de chaque type ; la cible
+      // acheteurs REMPLACE le quota ; formule premium par défaut si 1ère activité) —
+      // transaction + recalcul des paiements en attente sur la nouvelle mensualité.
+      const db = await pool.connect();
+      let aboIdApplique = null;
+      try {
+        await db.query('BEGIN');
+        const applied = await appliquerSupplement(db, demande.client_id, {
+          addActivites: demande.nb_activites_supp || 0,
+          addLabos: demande.nb_labos_supp || 0,
+          addGerants: demande.nb_gerants_supp || 0,
+          setAcheteurs: demande.nb_acheteurs_cible || null,
+        });
+        aboIdApplique = applied?.aboId ?? null;
+        await db.query('COMMIT');
+      } catch (e) {
+        await db.query('ROLLBACK').catch(() => {});
+        throw e;
+      } finally {
+        db.release();
+      }
+      if (aboIdApplique) {
+        await recalcPaiementsEnAttente(pool, aboIdApplique).catch((e) => console.error('[support.traiter] recalc paiements:', e.message));
+      }
       // Passage/activation de l'option Acheteurs : le module doit être actif côté profil
       if (demande.nb_acheteurs_cible) {
         await pool.query(
@@ -350,10 +410,6 @@ const traiter = async (req, res) => {
       if (clientEmail) {
         (async () => {
           try {
-            const tarifsRes = await pool.query('SELECT cle, valeur_dt FROM tarifs_config');
-            const tarifs = {};
-            tarifsRes.rows.forEach((r) => { tarifs[r.cle] = parseFloat(r.valeur_dt); });
-
             // Fetch config AFTER update
             const configRes = await pool.query(
               `SELECT ac.* FROM abonnement_config ac
@@ -363,6 +419,8 @@ const traiter = async (req, res) => {
             );
             const cfg = configRes.rows[0];
             if (!cfg) return;
+            // Grille du domaine du compte (tarifs_domaine vide ⇒ grille générale)
+            const tarifs = tarifsFor(await loadTarifs(), cfg.domaine_id);
 
             const nbARaw = parseInt(cfg.nb_activites);
             const nbA = Number.isFinite(nbARaw) && nbARaw >= 0 ? nbARaw : 1;
@@ -378,15 +436,12 @@ const traiter = async (req, res) => {
               // La cible acheteurs REMPLACE le quota : l'avant a été capturé avant l'UPDATE
               nb_acheteurs: acheteursAvant != null ? acheteursAvant : (parseInt(cfg.nb_acheteurs) || 0),
             };
-            const ancienActivite = computeBaseMensuelFromConfig(cfgBefore, tarifs) || 0;
-            const ancienLabo     = computeBaseLaboFromConfig(cfgBefore, tarifs)    || 0;
-            const ancienGerant   = computeBaseGerantFromConfig(cfgBefore, tarifs)  || 0;
-            const ancienMensuel  = ancienActivite + ancienLabo + ancienGerant + (computeBaseAcheteursFromConfig(cfgBefore, tarifs) || 0);
+            const ancienMensuel = computeMensuelTotalFromConfig(cfgBefore, tarifs) || 0;
 
             const activiteCost = computeBaseMensuelFromConfig(cfg, tarifs) || 0;
             const laboCost     = computeBaseLaboFromConfig(cfg, tarifs)    || 0;
             const gerantCost   = computeBaseGerantFromConfig(cfg, tarifs)  || 0;
-            const newMensuel   = activiteCost + laboCost + gerantCost + (computeBaseAcheteursFromConfig(cfg, tarifs) || 0);
+            const newMensuel   = computeMensuelTotalFromConfig(cfg, tarifs) || 0;
             const dateAvenant  = new Date().toISOString();
 
             const pdfData = {
@@ -446,10 +501,6 @@ const previewAvenant = async (req, res) => {
     if (demandeRes.rows.length === 0) return res.status(404).json({ message: 'Demande introuvable' });
     const demande = demandeRes.rows[0];
 
-    const tarifsRes = await pool.query('SELECT cle, valeur_dt FROM tarifs_config');
-    const tarifs = {};
-    tarifsRes.rows.forEach((r) => { tarifs[r.cle] = parseFloat(r.valeur_dt); });
-
     const configRes = await pool.query(
       `SELECT ac.* FROM abonnement_config ac
        JOIN abonnements a ON a.id = ac.abonnement_id
@@ -458,6 +509,8 @@ const previewAvenant = async (req, res) => {
     );
     const cfg = configRes.rows[0];
     if (!cfg) return res.status(404).json({ message: 'Configuration abonnement introuvable' });
+    // Grille du domaine du compte (tarifs_domaine vide ⇒ grille générale)
+    const tarifs = tarifsFor(await loadTarifs(), cfg.domaine_id);
 
     // Simulate config after supplement is applied
     const cfgAfter = {
@@ -469,15 +522,12 @@ const previewAvenant = async (req, res) => {
       nb_acheteurs: demande.nb_acheteurs_cible || (parseInt(cfg.nb_acheteurs) || 0),
     };
 
-    const ancienActivite = computeBaseMensuelFromConfig(cfg, tarifs)     || 0;
-    const ancienLabo     = computeBaseLaboFromConfig(cfg, tarifs)         || 0;
-    const ancienGerant   = computeBaseGerantFromConfig(cfg, tarifs)       || 0;
-    const ancienMensuel  = ancienActivite + ancienLabo + ancienGerant + (computeBaseAcheteursFromConfig(cfg, tarifs) || 0);
+    const ancienMensuel = computeMensuelTotalFromConfig(cfg, tarifs) || 0;
 
     const activiteCost = computeBaseMensuelFromConfig(cfgAfter, tarifs) || 0;
     const laboCost     = computeBaseLaboFromConfig(cfgAfter, tarifs)    || 0;
     const gerantCost   = computeBaseGerantFromConfig(cfgAfter, tarifs)  || 0;
-    const newMensuel   = activiteCost + laboCost + gerantCost + (computeBaseAcheteursFromConfig(cfgAfter, tarifs) || 0);
+    const newMensuel   = computeMensuelTotalFromConfig(cfgAfter, tarifs) || 0;
 
     const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
     const pdfData = {

@@ -129,10 +129,10 @@ async function main() {
 
     // ── 3. Profil entreprise ─────────────────────────────────────────────────
     const { rows: [ep] } = await c.query(
-      `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse, meme_activite, domaine_id)
+      `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse, meme_activite)
        VALUES ($1, 'Khelil Restauration & Traiteur', $2, '+216 98 765 432',
-               '12 Rue Farhat Hached, 4000 Sousse', false, $3) RETURNING id`,
-      [clientId, EMAIL, domaineId]
+               '12 Rue Farhat Hached, 4000 Sousse', false) RETURNING id`,
+      [clientId, EMAIL]
     );
     const epId = ep.id;
 
@@ -147,10 +147,16 @@ async function main() {
     const aboId = abo.id;
 
     await c.query(
-      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, montant_onboarding)
-       VALUES ($1, 3, 1, 1, 1500)`,
-      [aboId]
+      `INSERT INTO abonnement_config (abonnement_id, nb_activites, nb_labos, nb_gerants, montant_onboarding, domaine_id)
+       VALUES ($1, 3, 1, 1, 1500, $2)`,
+      [aboId, domaineId]
     );
+    // Détail par composant (lot 1a) : compteurs → 1er composant de chaque type du domaine
+    {
+      const { composantsDepuisCompteurs, applyComposants } = require('../src/services/configComposantsService');
+      const composants = await composantsDepuisCompteurs(domaineId, { nbActivites: 3, nbLabos: 1, nbGerants: 1, nbAcheteurs: 0 }, c);
+      await applyComposants(c, aboId, { domaineId, composants, mode: 'set' });
+    }
 
     // Paiements — Jan–Avr payés (-20% promo), Mai en attente
     const MONTANT_BASE = 400 + 160 + 80; // 640 DT/mois

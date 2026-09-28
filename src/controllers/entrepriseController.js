@@ -15,8 +15,19 @@ const getEntreprise = async (req, res) => {
       ),
     ]);
     if (result.rows.length === 0) return res.json(null);
+    // Profil du domaine d'activité (lot 1a) — même objet que /auth/me.domaine
+    let domaine = null;
+    try {
+      const { getProfilForClient } = require('../services/domaineProfilService');
+      const p = await getProfilForClient(clientId);
+      domaine = p && p.id != null
+        ? { id: p.id, slug: p.slug, nom: p.nom, lexique: p.lexique, composants: p.composants, regles: p.regles }
+        : null;
+    } catch (e) {
+      console.warn('[entreprise] profil domaine indisponible:', e.message);
+    }
     // La formule des activités gate l'Espace Produit côté front (basique = masqué)
-    res.json({ ...mapEntreprise(result.rows[0]), formule_activites: formuleRes.rows[0]?.formule_activites || null });
+    res.json({ ...mapEntreprise(result.rows[0]), formule_activites: formuleRes.rows[0]?.formule_activites || null, domaine });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

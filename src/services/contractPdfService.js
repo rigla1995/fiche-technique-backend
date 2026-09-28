@@ -66,6 +66,31 @@ const generate = async (builder, data, { strict = true } = {}) => {
   return buffer.toString('base64');
 };
 
+// Lignes « composant × quantité » du tableau de configuration (lot 1a) :
+// [{ libelle, libellePluriel, nb, typeTechnique? }] → seules les lignes nb > 0 hors
+// type acheteurs (déjà porté par « Option Acheteurs »). undefined = lignes fixes.
+// Composants IDENTITÉ (code = type technique, domaines existants) → undefined : les 3
+// lignes fixes historiques (« Points de vente (activités) / Laboratoires de production /
+// Comptes gérants ») sont conservées — un contrat régénéré reste identique au signé.
+const composantsContrat = (list) => {
+  if (!Array.isArray(list)) return undefined;
+  const identite = list.every((c) => !c || !c.code || !c.typeTechnique || c.code === c.typeTechnique);
+  if (identite) return undefined;
+  const rows = list
+    .filter((c) => c && (parseInt(c.nb, 10) || 0) > 0 && c.typeTechnique !== 'acheteurs')
+    .map((c) => ({ libelle: c.libelle, libellePluriel: c.libellePluriel || c.libelle, nb: parseInt(c.nb, 10) }));
+  return rows.length ? rows : undefined;
+};
+
+// Ligne « Domaine d'activité » : omise pour un compte du domaine par défaut
+// (restauration) en composants identité — le document reste strictement celui
+// d'avant le lot 1a (contrats existants régénérés à l'identique).
+const domaineContrat = (config = {}, rows = undefined) => {
+  if (!config.domaineNom) return undefined;
+  if (!rows && (!config.domaineSlug || config.domaineSlug === 'restauration')) return undefined;
+  return config.domaineNom;
+};
+
 // « +1 activité   ·   +2 comptes gérants   ·   Option Acheteurs → palier 20 » —
 // partagé entre le PDF rempli et les champs du flux template (avenantExtraFields).
 const ajoutTextOf = (ajouts = {}) => {
@@ -129,6 +154,10 @@ const buildContratDocument = async ({ abonnementId, client, config = {}, pricing
         ? ((config.formuleActivites || pricing.formuleActivites) === 'basique' ? 'Activité Basique' : 'Activité Premium')
         : undefined,
       acheteurs: pricing.palierAcheteurs ? `palier jusqu'à ${pricing.palierAcheteurs} acheteurs` : undefined,
+      // Lot 1a : mots du domaine — une ligne par composant (remplace les 3 lignes fixes
+      // en mode PDF rempli) + ligne « Domaine d'activité » (fond de template inchangé).
+      composants: composantsContrat(config.composants),
+      domaineNom: domaineContrat(config, composantsContrat(config.composants)),
     },
     pricing: {
       onboarding: onboarding != null ? fmtDT(onboarding) : undefined,
@@ -145,7 +174,7 @@ const buildContratDocument = async ({ abonnementId, client, config = {}, pricing
  * (nouvelle config totale + nouvelle mensualité). `ajouts` = { addActivites,
  * addLabos, addGerants } ; le contrat initial est visé via abonnementId/Date.
  */
-const buildAvenantDocument = async ({ demandeId, client, pricing, ajouts = {}, abonnementId = null, abonnementDate = null }) => {
+const buildAvenantDocument = async ({ demandeId, client, pricing, ajouts = {}, abonnementId = null, abonnementDate = null, config = {} }) => {
   if (!pricing) throw new Error("détail tarifaire indisponible pour l'avenant");
   const ref = refFor('AVN', demandeId);
   const base64 = await generate(buildAvenant, {
@@ -163,6 +192,12 @@ const buildAvenantDocument = async ({ demandeId, client, pricing, ajouts = {}, a
         ? (pricing.formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium')
         : undefined,
       acheteurs: pricing.palierAcheteurs ? `palier jusqu'à ${pricing.palierAcheteurs} acheteurs` : undefined,
+      // Lot 1a : nouvelle configuration par composant (computeAvenantPricing.composants)
+      composants: composantsContrat(config.composants || pricing.composants),
+      domaineNom: domaineContrat(
+        { domaineNom: config.domaineNom || pricing.domaineNom, domaineSlug: config.domaineSlug || pricing.domaineSlug },
+        composantsContrat(config.composants || pricing.composants)
+      ),
     },
     pricing: { mensuel: fmtDT(pricing.effMensuel), mensuelBase: fmtDT(pricing.baseMensuel) },
   });

@@ -27,7 +27,7 @@ async function computeOnboardingEtat(clientId) {
 
   const [cfg, counts, selAct, selLabo, saisies] = await Promise.all([
     one(
-      `SELECT ac.nb_activites, ac.nb_labos, ac.formule_activites
+      `SELECT ac.nb_activites, ac.nb_labos, ac.formule_activites, ac.domaine_id
        FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id
        WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
       [clientId]
@@ -73,8 +73,14 @@ async function computeOnboardingEtat(clientId) {
 
   const prevAct = Number(cfg.nb_activites) || 0;
   const prevLabo = Number(cfg.nb_labos) || 0;
-  // Verrou Espace Produit : formule basique sans labo souscrit (même règle que manuelVisibilite)
-  const espaceProduit = !(cfg.formule_activites === 'basique' && prevLabo === 0 && counts.labos === 0);
+  // Verrou Espace Produit : formule basique sans labo souscrit ni créé (même règle que
+  // manuelVisibilite / requireFormulePremium) — R1 paramétrée par domaine, fonction unique.
+  const { getProfil, espaceProduitVerrouille } = require('./domaineProfilService');
+  const profil = cfg.domaine_id ? await getProfil(cfg.domaine_id) : null;
+  const espaceProduit = !espaceProduitVerrouille(
+    { formule_activites: cfg.formule_activites, nb_labos: Math.max(prevLabo, counts.labos) },
+    profil?.regles
+  );
 
   // Les libellés ET les questions suggérées suivent la CONFIG du compte : un
   // compte sans labo ne voit jamais « Comment créer mon labo ? », etc.

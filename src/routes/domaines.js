@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { list, create, update, remove } = require('../controllers/domainesController');
+const { list, getOne, create, update, remove } = require('../controllers/domainesController');
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 
 /**
@@ -71,6 +71,8 @@ const { authenticate, requireSuperAdmin } = require('../middleware/auth');
  *         description: Domaine supprimé
  */
 router.get('/', authenticate, list);
+// Profil complet d'un domaine (composants tous états + lexique/règles résolus + tarifs du domaine)
+router.get('/:id', authenticate, requireSuperAdmin, getOne);
 router.post('/', authenticate, requireSuperAdmin, create);
 router.put('/:id', authenticate, requireSuperAdmin, update);
 router.delete('/:id', authenticate, requireSuperAdmin, remove);

@@ -234,7 +234,10 @@ const approx = (a, b, eps = 0.01) => Math.abs(Number(a) - Number(b)) <= eps;
 
   } finally {
     // ── Restauration + nettoyage (GARANTIS même si un check lève)
-    await pool.query(
+    // Garde : sans config sauvegardée (compte sans abonnement_config, ex. promu boss) on
+    // n'a rien à restaurer — ne pas planter ici, sinon wipe() est sauté et le client +
+    // l'admin de test restent en base.
+    if (cfgBackup) await pool.query(
       `UPDATE abonnement_config SET nb_activites=$1, nb_labos=$2, nb_gerants=$3, nb_acheteurs=$4, formule_activites=$5, montant_onboarding=$6
        WHERE abonnement_id = (SELECT id FROM abonnements WHERE client_id = $7)`,
       [cfgBackup.nb_activites, cfgBackup.nb_labos, cfgBackup.nb_gerants, cfgBackup.nb_acheteurs,

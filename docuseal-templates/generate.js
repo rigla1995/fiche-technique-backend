@@ -414,6 +414,9 @@ function partiesBlock(ctx, y, client, opts = {}) {
 // pour les valeurs textuelles (« Activité Premium », « Palier jusqu'à 100 acheteurs »).
 function configTable(ctx, y, rows, qtyHeader = 'Quantité souscrite') {
   const { fill, hline, txt, slot } = ctx;
+  // Garde de page (mode PDF rempli) : un domaine à N composants peut allonger le tableau
+  // (en-tête 22 pt + 24 pt par ligne). Le fond de template (templateMode) reste figé.
+  if (!ctx.templateMode && y + 22 + rows.length * 24 > BOTTOM_LIMIT) y = newPage(ctx);
   fill(ML, y, CW, 22, C.indigoSoft); hline(y, '#dfe3ff'); hline(y + 22, '#dfe3ff');
   txt('Ressource', ML + 10, y + 7, 7, true, C.indigo, { characterSpacing: 0.5 });
   txt(qtyHeader, ML, y + 7, 7, true, C.indigo, { align: 'right', width: CW - 10, characterSpacing: 0.5 });
@@ -431,6 +434,32 @@ function configTable(ctx, y, rows, qtyHeader = 'Quantité souscrite') {
     y += 24;
   });
   return y + 12;
+}
+
+// Lignes du tableau de configuration en mode PDF REMPLI (contrat et avenant).
+// Lot 1a : si `config.composants` ([{ libelle, libellePluriel, nb }]) est fourni,
+// une ligne par composant (mots du domaine, pluriel si nb > 1) REMPLACE les 3 lignes
+// fixes activités/labos/gérants ; ligne « Domaine d'activité » si `domaineNom`.
+// Formule / Option Acheteurs inchangées. Le fond de template (templateMode) ne bouge pas.
+function configRowsFor(config) {
+  const rows = [];
+  if (config.domaineNom) rows.push(["Domaine d'activité", config.domaineNom]);
+  if (Array.isArray(config.composants) && config.composants.length) {
+    for (const c of config.composants) {
+      const n = Number(c.nb) || 0;
+      rows.push([n > 1 ? (c.libellePluriel || c.libelle) : c.libelle, n]);
+    }
+    if (config.formule) rows.push(["Formule d'activités", config.formule]);
+  } else {
+    rows.push(
+      ['Points de vente (activités)', config.activites],
+      ['Laboratoires de production', config.labos],
+      ['Comptes gérants', config.gerants],
+    );
+    if (config.formule) rows.splice(rows.length - 2, 0, ["Formule d'activités", config.formule]);
+  }
+  if (config.acheteurs) rows.push(['Option Acheteurs', config.acheteurs]);
+  return rows;
 }
 
 // ── Bloc tarification (mode TEMPLATE : cases fixes pour les champs Docuseal) ──
@@ -680,16 +709,7 @@ async function buildContrat(outPath, data) {
       ['Laboratoires de production', ''],
       ['Comptes gérants', ''],
       ['Option Acheteurs', '', 170],
-    ] : (() => {
-      const rows = [
-        ['Points de vente (activités)', data.config.activites],
-        ['Laboratoires de production', data.config.labos],
-        ['Comptes gérants', data.config.gerants],
-      ];
-      if (data.config.formule) rows.splice(1, 0, ["Formule d'activités", data.config.formule]);
-      if (data.config.acheteurs) rows.push(['Option Acheteurs', data.config.acheteurs]);
-      return rows;
-    })();
+    ] : configRowsFor(data.config);
     y = configTable(ctx, y, configRows);
   }
 
@@ -771,16 +791,7 @@ async function buildAvenant(outPath, data) {
       ['Laboratoires de production', ''],
       ['Comptes gérants', ''],
       ['Option Acheteurs', '', 170],
-    ] : (() => {
-      const rows = [
-        ['Points de vente (activités)', data.config.activites],
-        ['Laboratoires de production', data.config.labos],
-        ['Comptes gérants', data.config.gerants],
-      ];
-      if (data.config.formule) rows.splice(1, 0, ["Formule d'activités", data.config.formule]);
-      if (data.config.acheteurs) rows.push(['Option Acheteurs', data.config.acheteurs]);
-      return rows;
-    })();
+    ] : configRowsFor(data.config);
     y = configTable(ctx, y, configRows, 'Nouvelle quantité');
   }
 
