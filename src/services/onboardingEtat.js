@@ -27,7 +27,7 @@ async function computeOnboardingEtat(clientId) {
 
   const [cfg, counts, selAct, selLabo, saisies] = await Promise.all([
     one(
-      `SELECT ac.nb_activites, ac.nb_labos, ac.formule_activites, ac.domaine_id
+      `SELECT a.id AS abonnement_id, ac.nb_activites, ac.nb_labos, ac.formule_activites, ac.domaine_id
        FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id
        WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
       [clientId]
@@ -84,9 +84,11 @@ async function computeOnboardingEtat(clientId) {
 
   // Les libellés ET les questions suggérées suivent la CONFIG du compte : un
   // compte sans labo ne voit jamais « Comment créer mon labo ? », etc.
+  // Lot 1b §3.5 : chaque étape porte sa `route` (lien de la checklist) ; l'étape « capacités »
+  // détaille les composants souscrits (`composants: [{ code, libelle, attendu, crees }]`).
   const etapes = [];
-  const add = (key, titre, fait, detail, questions) =>
-    etapes.push({ key, titre, fait: !!fait, detail: detail || null, questions: questions || [] });
+  const add = (key, titre, fait, detail, questions, extra) =>
+    etapes.push({ key, titre, fait: !!fait, detail: detail || null, questions: questions || [], route: ROUTES[key] || null, ...(extra || {}) });
 
   // 1-2 : un client connecté a forcément signé son contrat et activé son compte
   add('contrat', 'Contrat signé', true);
@@ -95,17 +97,41 @@ async function computeOnboardingEtat(clientId) {
   // 3 : capacités souscrites créées (activités et/ou labos selon la config)
   const actOk = prevAct === 0 || counts.activites >= prevAct;
   const laboOk = prevLabo === 0 || counts.labos >= prevLabo;
-  const capParts = [];
-  if (prevAct > 0) capParts.push(`${Math.min(counts.activites, prevAct)}/${prevAct} activité${prevAct > 1 ? 's' : ''}`);
-  if (prevLabo > 0) capParts.push(`${Math.min(counts.labos, prevLabo)}/${prevLabo} labo${prevLabo > 1 ? 's' : ''}`);
   const capTitre = prevAct > 0 && prevLabo > 0
     ? 'Activités & labos de votre formule'
     : prevLabo > 0 ? `Labo${prevLabo > 1 ? 's' : ''} de votre formule` : `Activité${prevAct > 1 ? 's' : ''} de votre formule`;
+  // Composants souscrits (activités / labos) : créés = unités portant le composant ; les unités
+  // sans composant sont imputées au 1er composant actif de leur type (même règle que la fonction
+  // SQL unites_op_composant_defaut). Repli par type technique si le compte n'a pas de composants.
+  const composants = await capacitesParComposant(cfg.abonnement_id, entrepriseId);
+  const capParts = [];
   const capQuestions = [];
-  if (prevAct > 0 && counts.activites < prevAct) capQuestions.push(prevAct > 1 ? 'Comment créer mes activités ?' : 'Comment créer mon activité ?');
-  if (prevLabo > 0 && counts.labos < prevLabo) capQuestions.push(prevLabo > 1 ? 'Comment créer mes labos ?' : 'Comment créer mon labo ?');
+  let capOk;
+  if (composants.length > 0) {
+    // Comptes « identité » (composants activite / labo uniquement) : libellés historiques conservés.
+    const identite = composants.every((c) => c.code === 'activite' || c.code === 'labo');
+    for (const c of composants) {
+      const lib = identite
+        ? (c.code === 'activite' ? `activité${c.attendu > 1 ? 's' : ''}` : `labo${c.attendu > 1 ? 's' : ''}`)
+        : (c.attendu > 1 ? (c.libellePluriel || c.libelle) : c.libelle);
+      capParts.push(`${Math.min(c.crees, c.attendu)}/${c.attendu} ${lib}`);
+      if (c.crees < c.attendu) {
+        capQuestions.push(identite
+          ? (c.code === 'activite' ? (c.attendu > 1 ? 'Comment créer mes activités ?' : 'Comment créer mon activité ?') : (c.attendu > 1 ? 'Comment créer mes labos ?' : 'Comment créer mon labo ?'))
+          : `Comment créer ${c.attendu > 1 ? 'mes' : 'mon'} ${(c.attendu > 1 ? (c.libellePluriel || c.libelle) : c.libelle).toLowerCase()} ?`);
+      }
+    }
+    capOk = composants.every((c) => c.crees >= c.attendu) && actOk && laboOk;
+  } else {
+    if (prevAct > 0) capParts.push(`${Math.min(counts.activites, prevAct)}/${prevAct} activité${prevAct > 1 ? 's' : ''}`);
+    if (prevLabo > 0) capParts.push(`${Math.min(counts.labos, prevLabo)}/${prevLabo} labo${prevLabo > 1 ? 's' : ''}`);
+    if (prevAct > 0 && counts.activites < prevAct) capQuestions.push(prevAct > 1 ? 'Comment créer mes activités ?' : 'Comment créer mon activité ?');
+    if (prevLabo > 0 && counts.labos < prevLabo) capQuestions.push(prevLabo > 1 ? 'Comment créer mes labos ?' : 'Comment créer mon labo ?');
+    capOk = actOk && laboOk;
+  }
   if (prevAct > 0 && prevLabo > 0) capQuestions.push('Quelle est la différence entre une activité et un labo ?');
-  add('capacites', capTitre, actOk && laboOk, capParts.join(' · ') || null, capQuestions);
+  add('capacites', capTitre, capOk, capParts.join(' · ') || null, capQuestions,
+    { composants: composants.map((c) => ({ code: c.code, libelle: c.libelle, attendu: c.attendu, crees: c.crees })) });
 
   // 4 : référentiel de base
   const refManque = [];
@@ -165,7 +191,9 @@ async function computeOnboardingEtat(clientId) {
   if (counts.activites > 0 || prevAct > 0) saisieQuestions.push('Comment saisir une vente ?');
   saisieQuestions.push('Comment mon stock est-il calculé ?');
   add('saisie', counts.activites > 0 || prevAct > 0 ? 'Première saisie (appro / vente)' : 'Premier approvisionnement du labo', saisieOk,
-    saisieOk ? null : 'aucun approvisionnement ni vente pour l\'instant', saisieQuestions);
+    saisieOk ? null : 'aucun approvisionnement ni vente pour l\'instant', saisieQuestions,
+    // Route : stock des activités s'il y en a, sinon stock labo.
+    { route: counts.activites > 0 || prevAct > 0 ? '/client/stock' : '/client/labo/stock' });
 
   // 9 : base acheteurs (si le module est actif)
   if (moduleAcheteurs) {
@@ -181,6 +209,53 @@ async function computeOnboardingEtat(clientId) {
   const complet = etapes.every((e) => e.fait);
   const aFaire = etapes.find((e) => !e.fait)?.key || null;
   return { complet, etapes, aFaire };
+}
+
+// Routes de la checklist (OnboardingChecklist rend les étapes telles quelles).
+const ROUTES = {
+  capacites: '/client/activites',
+  referentiel: '/client/referentiel/unites',
+  articles: '/client/referentiel/articles',
+  fournisseurs: '/client/fournisseurs',
+  produits: '/client/products',
+  saisie: '/client/stock',
+  acheteurs: '/client/acheteurs/tarifs',
+};
+
+// Composants activités / labos souscrits (abonnement_config_composants) avec le nombre d'unités
+// créées : composant_id = c.id, + unités à composant NULL imputées au 1er composant actif du type.
+async function capacitesParComposant(abonnementId, entrepriseId) {
+  if (!abonnementId) return [];
+  const { rows: comps } = await pool.query(
+    `SELECT dc.id, dc.code, dc.libelle, dc.libelle_pluriel, dc.type_technique, acc.nb
+       FROM abonnement_config_composants acc
+       JOIN domaine_composants dc ON dc.id = acc.composant_id
+      WHERE acc.abonnement_id = $1 AND dc.type_technique IN ('activite', 'labo') AND acc.nb > 0
+      ORDER BY dc.ordre, dc.id`,
+    [abonnementId]
+  );
+  if (!comps.length) return [];
+  const [{ rows: counts }, { rows: defauts }] = await Promise.all([
+    pool.query(
+      `SELECT type_technique, composant_id, COUNT(*)::int AS n
+         FROM unites_operationnelles WHERE entreprise_id = $1 GROUP BY 1, 2`,
+      [entrepriseId]
+    ),
+    pool.query(
+      `SELECT unites_op_composant_defaut($1, 'activite') AS activite, unites_op_composant_defaut($1, 'labo') AS labo`,
+      [entrepriseId]
+    ),
+  ]);
+  const defaut = defauts[0] || {};
+  return comps.map((c) => {
+    let crees = 0;
+    for (const r of counts) {
+      if (r.type_technique !== c.type_technique) continue;
+      if (r.composant_id === c.id) crees += r.n;
+      else if (r.composant_id == null && defaut[c.type_technique] === c.id) crees += r.n;
+    }
+    return { id: c.id, code: c.code, libelle: c.libelle, libellePluriel: c.libelle_pluriel, typeTechnique: c.type_technique, attendu: Number(c.nb) || 0, crees };
+  });
 }
 
 // Bloc de contexte injecté dans le prompt du bot pendant la mise en route.

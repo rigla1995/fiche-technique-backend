@@ -1,4 +1,27 @@
 const pool = require('../config/database');
+const unitesOp = require('../services/unitesOperationnellesService');
+const { checkQuota } = require('../services/quotaService');
+
+// Erreur d'unité opérationnelle (composant, source, cycle…) → 4xx explicite, sinon rethrow.
+function replyUniteError(res, err) {
+  if (unitesOp.isUniteError(err)) {
+    res.status(err.status || 400).json({ code: err.code, message: err.message });
+    return true;
+  }
+  const mapped = unitesOp.mapPgError(err);
+  if (mapped) {
+    res.status(400).json({ code: mapped.code, message: mapped.message });
+    return true;
+  }
+  return false;
+}
+
+// Ligne activités fraîche + colonnes uo_* (pour les réponses de création / mise à jour).
+async function loadActiviteRow(id) {
+  const r = await pool.query('SELECT * FROM activites WHERE id = $1', [id]);
+  await unitesOp.enrichRows(pool, 'activite', r.rows);
+  return r.rows[0] || null;
+}
 
 // ─── Company Profile ───────────────────────────────────────────────────────
 
@@ -83,6 +106,8 @@ const mapActivite = (row) => ({
   laboAdresse: row.labo_adresse || null,
   ingredientCount: parseInt(row.ingredient_count) || 0,
   createdAt: row.created_at,
+  // Lot 1b — unité opérationnelle (colonnes uo_* posées par unitesOp.enrichRows ; défauts sûrs sinon)
+  ...unitesOp.uniteFields(row),
 });
 
 const listActivites = async (req, res) => {
@@ -114,6 +139,7 @@ const listActivites = async (req, res) => {
        WHERE a.entreprise_id = $1${gerantClause} ORDER BY a.created_at ASC`,
       params
     );
+    await unitesOp.enrichRows(pool, 'activite', result.rows);
     res.json(result.rows.map(mapActivite));
   } catch (err) {
     console.error(err);
@@ -122,7 +148,7 @@ const listActivites = async (req, res) => {
 };
 
 const createActivite = async (req, res) => {
-  const { nom, adresse, telephone, email, laboId } = req.body;
+  const { nom, adresse, telephone, email, laboId, composantId } = req.body;
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
@@ -134,6 +160,24 @@ const createActivite = async (req, res) => {
       return res.status(400).json({ message: 'Créez d\'abord votre profil entreprise' });
 
     const entreprise = entrepriseRes.rows[0];
+
+    // Lot 1b §3.4 : quota d'activités du dernier abonnement (409 LIMITE_ATTEINTE).
+    const quota = await checkQuota(pool, clientId, 'activite');
+    if (quota) return res.status(409).json(quota);
+
+    // Lot 1b : le labo doit appartenir à l'entreprise (aligné sur updateActivite) — le trigger
+    // de synchronisation des liens refuserait de toute façon une autre entreprise.
+    if (laboId) {
+      const laboCheck = await pool.query(
+        'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2',
+        [laboId, entreprise.id]
+      );
+      if (laboCheck.rows.length === 0) return res.status(400).json({ message: 'Labo introuvable' });
+    }
+    // Composant validé AVANT l'insertion (∈ domaine du compte, type activité, actif).
+    if (composantId != null) {
+      await unitesOp.validateComposant(pool, entreprise.id, 'activite', composantId);
+    }
 
     const nameCheck = await pool.query(
       'SELECT id FROM activites WHERE entreprise_id = $1 AND LOWER(nom) = LOWER($2)',
@@ -163,8 +207,16 @@ const createActivite = async (req, res) => {
       }
     }
 
-    res.status(201).json(mapActivite(newActivite));
+    // Lot 1b : l'unité est créée par trigger (composant par défaut du domaine) ; composant
+    // explicite → composant + flags du composant.
+    if (composantId != null) {
+      const unite = await unitesOp.getUniteByRef(pool, 'activite', newActivite.id);
+      if (unite) await unitesOp.setComposant(pool, unite.id, composantId);
+    }
+
+    res.status(201).json(mapActivite(await loadActiviteRow(newActivite.id)));
   } catch (err) {
+    if (replyUniteError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -172,7 +224,7 @@ const createActivite = async (req, res) => {
 
 const updateActivite = async (req, res) => {
   const { id } = req.params;
-  const { nom, adresse, telephone, email, laboId } = req.body;
+  const { nom, adresse, telephone, email, laboId, composantId } = req.body;
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
     const entreprise = await pool.query(
@@ -198,6 +250,10 @@ const updateActivite = async (req, res) => {
         [laboId, entrepriseId]
       );
       if (laboCheck.rows.length === 0) return res.status(400).json({ message: 'Labo introuvable' });
+    }
+    // Lot 1b : composant validé avant l'écriture (∈ domaine du compte, type activité, actif).
+    if (composantId != null) {
+      await unitesOp.validateComposant(pool, entrepriseId, 'activite', composantId);
     }
 
     // Build query depending on whether laboId was passed
@@ -227,8 +283,13 @@ const updateActivite = async (req, res) => {
       );
     }
     if (result.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
-    res.json(mapActivite(result.rows[0]));
+    if (composantId != null) {
+      const unite = await unitesOp.getUniteByRef(pool, 'activite', id);
+      if (unite) await unitesOp.setComposant(pool, unite.id, composantId);
+    }
+    res.json(mapActivite(await loadActiviteRow(id)));
   } catch (err) {
+    if (replyUniteError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -285,15 +346,38 @@ const duplicateActivite = async (req, res) => {
       [id, entreprise.rows[0].id]
     );
     if (source.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    // Lot 1b §3.4 : quota d'activités (409 LIMITE_ATTEINTE).
+    const quota = await checkQuota(pool, clientId, 'activite');
+    if (quota) return res.status(409).json(quota);
 
     const src = source.rows[0];
+    // Lot 1b : la copie reprend le rattachement (labo_id — même entreprise par construction,
+    // le labo d'origine ayant déjà passé la garde) et le composant/flags de l'unité source.
     const result = await pool.query(
-      `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [src.entreprise_id, src.nom, src.adresse, src.telephone, src.email]
+      `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, labo_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [src.entreprise_id, src.nom, src.adresse, src.telephone, src.email, src.labo_id || null]
     );
-    res.status(201).json(mapActivite(result.rows[0]));
+    const copie = result.rows[0];
+    if (src.labo_id) {
+      await pool.query(
+        `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
+         SELECT f.id, $2 FROM fournisseurs f WHERE f.labo_id = $1 AND f.is_labo = true
+         ON CONFLICT DO NOTHING`,
+        [src.labo_id, copie.id]
+      );
+    }
+    await pool.query(
+      `UPDATE unites_operationnelles dst
+          SET composant_id = s.composant_id, vente_active = s.vente_active,
+              production_active = s.production_active, updated_at = now()
+         FROM unites_operationnelles s
+        WHERE s.activite_id = $1 AND dst.activite_id = $2`,
+      [src.id, copie.id]
+    );
+    res.status(201).json(mapActivite(await loadActiviteRow(copie.id)));
   } catch (err) {
+    if (replyUniteError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -418,7 +502,7 @@ const getActiviteTypesSummary = async (req, res) => {
     const scoped = (ids) => (isGerant ? [clientId, (ids && ids.length) ? ids : [-1]] : [clientId]);
     const actParams = scoped(req.user.gerantActiviteIds);
     const laboParams = scoped(req.user.gerantLaboIds);
-    const [actResult, approResult, fourn, laboIngResult, artResult] = await Promise.all([
+    const [actResult, approResult, fourn, laboIngResult, artResult, venteResult, prodResult, enfantsResult] = await Promise.all([
       pool.query(
         `SELECT
            COUNT(a.id) > 0 AS has_activites,
@@ -469,6 +553,37 @@ const getActiviteTypesSummary = async (req, res) => {
         `SELECT EXISTS (SELECT 1 FROM articles WHERE client_id = $1) AS has_articles`,
         [clientId]
       ),
+      // Lot 1b §3.3 — flags par unité (même périmètre gérant) : ≥ 1 activité vente_active,
+      // ≥ 1 labo production_active, ≥ 1 labo source d'un lien vers un labo enfant.
+      pool.query(
+        `SELECT EXISTS (
+           SELECT 1 FROM activites a
+           JOIN profil_entreprise pe ON a.entreprise_id = pe.id
+           LEFT JOIN unites_operationnelles uo ON uo.activite_id = a.id
+           WHERE pe.client_id = $1${actClause} AND COALESCE(uo.vente_active, true)
+         ) AS has_activites_vente`,
+        actParams
+      ),
+      pool.query(
+        `SELECT EXISTS (
+           SELECT 1 FROM labos l
+           JOIN profil_entreprise pe ON l.entreprise_id = pe.id
+           LEFT JOIN unites_operationnelles uo ON uo.labo_id = l.id
+           WHERE pe.client_id = $1${laboClause} AND COALESCE(uo.production_active, true)
+         ) AS has_labos_production`,
+        laboParams
+      ),
+      pool.query(
+        `SELECT EXISTS (
+           SELECT 1 FROM labos l
+           JOIN profil_entreprise pe ON l.entreprise_id = pe.id
+           JOIN unites_operationnelles us ON us.labo_id = l.id
+           JOIN unites_operationnelles_liens li ON li.source_unite_id = us.id
+           JOIN unites_operationnelles ud ON ud.id = li.dest_unite_id AND ud.type_technique = 'labo'
+           WHERE pe.client_id = $1${laboClause}
+         ) AS has_labos_enfants`,
+        laboParams
+      ),
     ]);
     const row = actResult.rows[0];
     const appro = approResult.rows[0];
@@ -483,6 +598,9 @@ const getActiviteTypesSummary = async (req, res) => {
       hasFournisseurs: fo.has_fournisseurs ?? false,
       hasLaboIngredients: laboIng.has_labo_ingredients ?? false,
       hasArticles: art.has_articles ?? false,
+      hasActivitesVente: venteResult.rows[0]?.has_activites_vente ?? false,
+      hasLabosProduction: prodResult.rows[0]?.has_labos_production ?? false,
+      hasLabosEnfants: enfantsResult.rows[0]?.has_labos_enfants ?? false,
     });
   } catch (err) {
     console.error(err);

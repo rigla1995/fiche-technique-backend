@@ -19,10 +19,10 @@ const buildManuelContexte = async (user) => {
   );
   if (pe.rows.length === 0) {
     // Compte pas encore configuré : on ne montre que le tronc commun
-    return { role, hasActivites: false, hasLabos: false, moduleAcheteurs: false, espaceProduit: false };
+    return { role, hasActivites: false, hasLabos: false, moduleAcheteurs: false, espaceProduit: false, hasActivitesVente: false, hasLabosProduction: false, hasLabosEnfants: false };
   }
   const entrepriseId = pe.rows[0].id;
-  const [acts, labs, formule] = await Promise.all([
+  const [acts, labs, formule, flags] = await Promise.all([
     pool.query('SELECT COUNT(*)::int AS n FROM activites WHERE entreprise_id = $1', [entrepriseId]),
     pool.query('SELECT COUNT(*)::int AS n FROM labos WHERE entreprise_id = $1', [entrepriseId]),
     pool.query(
@@ -31,9 +31,25 @@ const buildManuelContexte = async (user) => {
        WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
       [clientId]
     ),
+    // Lot 1b §3.3 : flags par unité (unité sans composant = flags true).
+    pool.query(
+      `SELECT
+         EXISTS (SELECT 1 FROM activites a LEFT JOIN unites_operationnelles uo ON uo.activite_id = a.id
+                 WHERE a.entreprise_id = $1 AND COALESCE(uo.vente_active, true)) AS has_activites_vente,
+         EXISTS (SELECT 1 FROM labos l LEFT JOIN unites_operationnelles uo ON uo.labo_id = l.id
+                 WHERE l.entreprise_id = $1 AND COALESCE(uo.production_active, true)) AS has_labos_production,
+         EXISTS (SELECT 1 FROM unites_operationnelles us
+                 JOIN unites_operationnelles_liens li ON li.source_unite_id = us.id
+                 JOIN unites_operationnelles ud ON ud.id = li.dest_unite_id AND ud.type_technique = 'labo'
+                 WHERE us.entreprise_id = $1 AND us.type_technique = 'labo') AS has_labos_enfants`,
+      [entrepriseId]
+    ),
   ]);
   const hasActivites = acts.rows[0].n > 0;
   const hasLabos = labs.rows[0].n > 0;
+  const hasActivitesVente = flags.rows[0]?.has_activites_vente === true;
+  const hasLabosProduction = flags.rows[0]?.has_labos_production === true;
+  const hasLabosEnfants = flags.rows[0]?.has_labos_enfants === true;
   // Verrou Espace Produit : formule basique SANS labo (la base labo l'inclut) —
   // règle R1 paramétrée par domaine (domaineProfilService.espaceProduitVerrouille),
   // évaluée ici sur les labos RÉELS du compte (comme avant).
@@ -43,7 +59,7 @@ const buildManuelContexte = async (user) => {
     { formule_activites: formule.rows[0]?.formule_activites, nb_labos: hasLabos ? 1 : 0 },
     profil?.regles
   );
-  return { role, hasActivites, hasLabos, moduleAcheteurs: pe.rows[0].module_acheteurs_actif === true, espaceProduit };
+  return { role, hasActivites, hasLabos, moduleAcheteurs: pe.rows[0].module_acheteurs_actif === true, espaceProduit, hasActivitesVente, hasLabosProduction, hasLabosEnfants };
 };
 
 const clientSeul = (c) => c.role !== 'gerant';
@@ -76,13 +92,15 @@ const REGLES_VISIBILITE = {
   historique: actOuLabo,
   factures: actOuLabo,
   'stock-labo': (c) => c.hasLabos,
-  transferts: (c) => c.hasLabos,
+  // Lot 1b : transferts = labo → activités OU labos enfants
+  transferts: (c) => c.hasLabos && (c.hasActivites || c.hasLabosEnfants),
   'rapports-labo': (c) => c.hasLabos,
-  // Espace Vente (module vente intégré par défaut → gate = présence d'activités)
-  'configuration-vente': (c) => c.hasActivites,
-  charges: (c) => c.hasActivites,
-  'saisie-ventes': (c) => c.hasActivites,
-  'rapports-vente': (c) => c.hasActivites,
+  // Espace Vente (module vente intégré par défaut → gate = ≥ 1 activité qui VEND, lot 1b §3.3 ;
+  // unité sans composant = vente active ⇒ identique à hasActivites pour l'existant)
+  'configuration-vente': (c) => c.hasActivitesVente,
+  charges: (c) => c.hasActivitesVente,
+  'saisie-ventes': (c) => c.hasActivitesVente,
+  'rapports-vente': (c) => c.hasActivitesVente,
   'ventes-labo': (c) => c.hasLabos,
   // Espace Acheteurs — module OFF : seule la vitrine 'acheteurs-module' reste
   'acheteurs-carnet': (c) => c.moduleAcheteurs,
@@ -90,8 +108,8 @@ const REGLES_VISIBILITE = {
   'acheteurs-ventes': (c) => c.moduleAcheteurs,
   'acheteurs-portail': (c) => c.moduleAcheteurs,
   // Calculs propres au labo
-  'calc-production-pt': (c) => c.hasLabos,
-  'calc-transferts': (c) => c.hasLabos,
+  'calc-production-pt': (c) => c.hasLabosProduction,
+  'calc-transferts': (c) => c.hasLabos && (c.hasActivites || c.hasLabosEnfants),
 };
 
 const manuelSectionVisible = (slug, ctx) => {

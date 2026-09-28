@@ -3,6 +3,9 @@ const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
 const { computeStockCourant, computeStockPTCourant, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
+// Lot 1b §5 — types de perte par domaine (regles.types_perte du compte ; défaut avarie|dechet).
+const { getTypesPerteForClient, perteLabel } = require('../services/domaineProfilService');
+const typesPerteReq = (req) => getTypesPerteForClient(req.user.gerant_parent_id || req.user.id);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,8 +62,9 @@ const createPerte = async (req, res) => {
 
   if (!ingredientId || !quantite || !typePerte || !datePerte)
     return res.status(400).json({ message: 'Champs requis: ingredientId, quantite, typePerte, datePerte' });
-  if (!['avarie', 'dechet'].includes(typePerte))
-    return res.status(400).json({ message: 'typePerte invalide (avarie|dechet)' });
+  const typesPerte = await typesPerteReq(req);
+  if (!typesPerte.includes(typePerte))
+    return res.status(400).json({ message: `typePerte invalide (${typesPerte.join('|')})` });
 
   try {
     const check = await pool.query(
@@ -177,14 +181,14 @@ const listPertes = async (req, res) => {
 
 // Pertes de PT en activité (table pertes, produit_id renseigné) — projetées au schéma article
 // (ingredient_id négatif), pour être fusionnées avec les pertes d'articles dans listes/exports/rapports.
-async function fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte }) {
+async function fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte, typesPerte = [] }) {
   const params = [entrepriseId];
   const wheres = [`a.entreprise_id = $1`, `p.produit_id IS NOT NULL`];
   if (activiteId) { params.push(activiteId); wheres.push(`p.activite_id = $${params.length}`); }
   else if (activiteIds) { params.push(String(activiteIds).split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
   if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
   if (dateFin)   { params.push(dateFin);   wheres.push(`p.date_perte <= $${params.length}`); }
-  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
+  if (typePerte && typesPerte.includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
   const r = await pool.query(
     `SELECT p.id, p.activite_id, a.nom AS activite_nom, -(p.produit_id) AS ingredient_id, p.produit_id,
             pr.nom AS ingredient_nom, 'unité'::text AS unite_nom, ${ptCategorieSql('pr')} AS categorie_nom,
@@ -208,6 +212,7 @@ const listEntreprisePertes = async (req, res) => {
     if (!scopeGerantActivite(req, res)) return;
   }
   const { activiteId, activiteIds, dateDebut, dateFin, typePerte, categorieId, ingredientId, search } = req.query;
+  const typesPerte = await typesPerteReq(req);
 
   // Verify company ownership
   const companyCheck = await pool.query(
@@ -224,7 +229,7 @@ const listEntreprisePertes = async (req, res) => {
   else if (activiteIds) { params.push(activiteIds.split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
   if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
   if (dateFin)   { params.push(dateFin);   wheres.push(`p.date_perte <= $${params.length}`); }
-  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
+  if (typePerte && typesPerte.includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
   if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
   if (ingredientId) { params.push(ingredientId); wheres.push(`p.ingredient_id = $${params.length}`); }
   if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
@@ -250,7 +255,7 @@ const listEntreprisePertes = async (req, res) => {
     // Inclure les pertes PT (produit_id) sauf si un filtre article/catégorie/recherche est actif.
     const includePt = !categorieId && !ingredientId && !search;
     if (includePt) {
-      const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte });
+      const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte, typesPerte });
       rows = [...rows, ...ptRows.map(mapPerte)].sort((a, b) => (b.datePerte || '').localeCompare(a.datePerte || ''));
     }
     res.json(rows);
@@ -266,7 +271,8 @@ const updateEntreprisePerte = async (req, res) => {
   const { id } = req.params;
   const { quantite, typePerte, datePerte } = req.body;
   if (!quantite || !typePerte) return res.status(400).json({ message: 'quantite et typePerte requis' });
-  if (!['avarie', 'dechet'].includes(typePerte)) return res.status(400).json({ message: 'typePerte invalide' });
+  const typesPerte = await typesPerteReq(req);
+  if (!typesPerte.includes(typePerte)) return res.status(400).json({ message: `typePerte invalide (${typesPerte.join('|')})` });
   if (parseFloat(quantite) <= 0) return res.status(400).json({ message: 'quantite doit être > 0' });
   try {
     // Fetch existing row to get ingredient_id, activite_id, date_perte
@@ -409,7 +415,7 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
       r.categorie_nom || '',
       qty,
       r.unite_nom,
-      r.type_perte === 'avarie' ? 'Avarie' : 'Déchet',
+      perteLabel(r.type_perte),
       prix ?? '',
       cout ?? '',
     ]);
@@ -447,6 +453,7 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
 const exportEntreprisePertes = async (req, res) => {
   if (req.user.role === 'gerant') { if (!scopeGerantActivite(req, res)) return; }
   const { activiteId, activiteIds, dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds } = req.query;
+  const typesPerte = await typesPerteReq(req);
 
   const companyCheck = await pool.query(
     `SELECT pe.id FROM profil_entreprise pe WHERE pe.client_id = $1`,
@@ -462,7 +469,7 @@ const exportEntreprisePertes = async (req, res) => {
   else if (activiteIds) { params.push(activiteIds.split(',').map(Number)); wheres.push(`p.activite_id = ANY($${params.length}::int[])`); }
   if (dateDebut) { params.push(dateDebut); wheres.push(`p.date_perte >= $${params.length}`); }
   if (dateFin)   { params.push(dateFin);   wheres.push(`p.date_perte <= $${params.length}`); }
-  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
+  if (typePerte && typesPerte.includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
   if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
   if (ingredientId) { params.push(ingredientId); wheres.push(`p.ingredient_id = $${params.length}`); }
   if (search) { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
@@ -488,7 +495,7 @@ const exportEntreprisePertes = async (req, res) => {
     let exRows = result.rows;
     const includePt = !categorieId && !ingredientId && !search;
     if (includePt) {
-      const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte });
+      const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte, typesPerte });
       exRows = [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
     }
     await buildExcelPertes(res, exRows, true, { dateDebut, dateFin, selectedIds: idList, titre: 'Historique des pertes — Activités' });
@@ -580,12 +587,12 @@ const getDateRangeLaboPerte = async (req, res) => {
 // ── Labo — list pertes historique ────────────────────────────────────────────
 // Pertes de produits transformés du labo (table labo_pertes, produit_id renseigné).
 // Projetées au même schéma de colonnes que les pertes d'articles (ingredient_id négatif).
-async function fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType }) {
+async function fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType, typesPerte = [] }) {
   const params = [laboId];
   const wheres = [`lp.labo_id = $1`, `lp.produit_id IS NOT NULL`];
   if (dateDebut) { params.push(dateDebut); wheres.push(`lp.date_perte >= $${params.length}`); }
   if (dateFin)   { params.push(dateFin);   wheres.push(`lp.date_perte <= $${params.length}`); }
-  if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
+  if (typePerte && typesPerte.includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
   if (ptProduitId) { params.push(ptProduitId); wheres.push(`lp.produit_id = $${params.length}`); }
   if (ptType) wheres.push(ptTypeSql('p', ptType));
   const r = await pool.query(
@@ -604,6 +611,7 @@ const listLaboPertes = async (req, res) => {
   const { laboId } = req.params;
   const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, ptOnly, ptProduitId, ptType } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
+  const typesPerte = await getTypesPerteForClient(clientId);
 
   try {
     // Ownership check
@@ -620,7 +628,7 @@ const listLaboPertes = async (req, res) => {
 
     if (dateDebut)  { params.push(dateDebut); wheres.push(`lp.date_perte >= $${params.length}`); }
     if (dateFin)    { params.push(dateFin);   wheres.push(`lp.date_perte <= $${params.length}`); }
-    if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
+    if (typePerte && typesPerte.includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
     if (categorieId){ params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
     if (ingredientId){ params.push(ingredientId); wheres.push(`lp.ingredient_id = $${params.length}`); }
     if (search)     { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
@@ -662,7 +670,7 @@ const listLaboPertes = async (req, res) => {
     // article/catégorie/recherche, ou seules si ptOnly.
     const includePt = ptOnly === 'true' || (!categorieId && !ingredientId && !search);
     if (includePt) {
-      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType });
+      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType, typesPerte });
       const ptMapped = ptRows.map((r) => ({
         id: r.id,
         laboId: Number(laboId),
@@ -695,6 +703,7 @@ const exportLaboPerteExcel = async (req, res) => {
   const { laboId } = req.params;
   const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds, ptOnly, ptProduitId, ptType } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
+  const typesPerte = await getTypesPerteForClient(clientId);
 
   try {
     const ownerCheck = await pool.query(
@@ -710,7 +719,7 @@ const exportLaboPerteExcel = async (req, res) => {
     const wheres = [`lp.labo_id = $1`, `lp.ingredient_id IS NOT NULL`];
     if (dateDebut)   { params.push(dateDebut);   wheres.push(`lp.date_perte >= $${params.length}`); }
     if (dateFin)     { params.push(dateFin);     wheres.push(`lp.date_perte <= $${params.length}`); }
-    if (typePerte && ['avarie', 'dechet'].includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
+    if (typePerte && typesPerte.includes(typePerte)) { params.push(typePerte); wheres.push(`lp.type_perte = $${params.length}`); }
     if (categorieId) { params.push(categorieId); wheres.push(`i.categorie_id = $${params.length}`); }
     if (ingredientId){ params.push(ingredientId); wheres.push(`lp.ingredient_id = $${params.length}`); }
     if (search)      { params.push(`%${search}%`); wheres.push(`i.nom ILIKE $${params.length}`); }
@@ -732,7 +741,7 @@ const exportLaboPerteExcel = async (req, res) => {
     let exRows = result.rows;
     const includePt = ptOnly === 'true' || (!categorieId && !ingredientId && !search);
     if (includePt) {
-      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType });
+      const ptRows = await fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProduitId, ptType, typesPerte });
       exRows = ptOnly === 'true' ? ptRows
         : [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
     }

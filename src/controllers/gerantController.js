@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { sendInviteEmail, generateInviteToken } = require('../services/emailService');
 const { invalidateAuthCache } = require('../middleware/auth');
+const { checkQuota } = require('../services/quotaService');
 
 const mapGerant = (row) => ({
   id: row.id,
@@ -98,6 +99,10 @@ const create = async (req, res) => {
     if (!(await assertOwnership(parentId, activiteIds, laboIds))) {
       return res.status(403).json({ message: 'Activité ou labo hors de votre périmètre' });
     }
+    // Lot 1b §3.4 : quota de gérants du dernier abonnement (actifs + inactifs) — 409 LIMITE_ATTEINTE.
+    // La règle « 3 gérants gratuits » ci-dessous reste une règle de tarification.
+    const quota = await checkQuota(pool, parentId, 'gerant');
+    if (quota) return res.status(409).json(quota);
     // Accès base acheteurs : opt-in, exige au moins un labo affecté + module actif sur le compte.
     const accesAcheteurs = req.body.accesAcheteurs === true;
     if (accesAcheteurs) {
@@ -148,9 +153,15 @@ const create = async (req, res) => {
     if (laboIds.length > 0) {
       await pool.query('INSERT INTO gerant_affectations (gerant_id, labo_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [gerantId, laboIds]);
     }
-    await sendInviteEmail({ to: email, nom, token: inviteToken, role: 'gerant' });
+    // Le gérant est déjà créé : un échec d'envoi de l'invitation ne doit pas produire un 5xx
+    // (même motif que l'invitation acheteur) ; l'invitation reste renvoyable via /invite/resend.
+    let emailEnvoye = true;
+    await sendInviteEmail({ to: email, nom, token: inviteToken, role: 'gerant' }).catch((e) => {
+      emailEnvoye = false;
+      console.error('Invite gérant:', e.message);
+    });
     // La row RETURNING ne porte pas les agrégats d'affectations : on renvoie celles écrites.
-    res.status(201).json({ ...mapGerant(result.rows[0]), activiteIds, laboIds });
+    res.status(201).json({ ...mapGerant(result.rows[0]), activiteIds, laboIds, emailEnvoye });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

@@ -10,7 +10,8 @@ const {
 } = require('../controllers/entrepriseController');
 const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur, getFournisseursTemplate, importFournisseurs } = require('../controllers/fournisseurController');
 const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, getPrixEntreprisePerte, getDateRangeEntreprisePerte } = require('../controllers/pertesController');
-const { authenticate, requireEntreprise } = require('../middleware/auth');
+const { authenticate, requireEntreprise, requireClientOwner } = require('../middleware/auth');
+const unitesOpCtrl = require('../controllers/unitesOperationnellesController');
 
 /**
  * @openapi
@@ -71,6 +72,28 @@ router.get('/', authenticate, requireEntreprise, getEntreprise);
 router.put('/', authenticate, requireEntreprise, upsertEntreprise);
 
 // Activities
+/**
+ * @openapi
+ * /api/entreprise/unites:
+ *   get:
+ *     tags: [Entreprise]
+ *     summary: Unités opérationnelles (activités + labos) du compte — lot 1b (rien à voir avec /api/unites, unités de mesure)
+ *     responses:
+ *       200:
+ *         description: Liste des unités (composant, flags vente/production, source, nbDestinations)
+ * /api/entreprise/unites/{id}:
+ *   put:
+ *     tags: [Entreprise]
+ *     summary: Modifier une unité (composant, source, flags) — client propriétaire seulement
+ *     responses:
+ *       200: { description: Unité mise à jour }
+ *       400: { description: CYCLE_INTERDIT | SOURCE_NON_LABO | ENTREPRISE_DIFFERENTE | COMPOSANT_INVALIDE }
+ *       403: { description: Gérant }
+ *       404: { description: Unité introuvable }
+ */
+router.get('/unites', authenticate, requireEntreprise, unitesOpCtrl.list);
+router.put('/unites/:id', authenticate, requireEntreprise, requireClientOwner, unitesOpCtrl.update);
+
 router.get('/activites/has', authenticate, requireEntreprise, hasActivites);
 router.get('/activites/types-summary', authenticate, requireEntreprise, getActiviteTypesSummary);
 router.get('/activites/selected-ingredients', authenticate, requireEntreprise, getTypeSelectedIngredients);

@@ -199,7 +199,7 @@ const getDashboard = async (req, res) => {
                  UNION ALL
                  SELECT quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)
                  FROM stock_labo_pt_daily
-                 WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3 AND quantite > 0 AND type_appro = 'manuel'
+                 WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3 AND quantite > 0 AND type_appro IN ('manuel', 'transfert')
                ) t`,
           [gerant_activite_id, dateFrom, dateTo]
         ),

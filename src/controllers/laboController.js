@@ -5,6 +5,40 @@ const { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, p
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
+const { computeStockBulk, computeStock } = require('../services/stockService');
+const unitesOp = require('../services/unitesOperationnellesService');
+const transfertService = require('../services/transfertService');
+const { checkQuota } = require('../services/quotaService');
+const { getTypesPerteForClient } = require('../services/domaineProfilService');
+const { gerantAllowsLabo } = require('../middleware/auth');
+
+// Erreur de transfert / verrou de stock → 4xx explicite, sinon rethrow.
+function replyTransfertError(res, err) {
+  if (transfertService.isTransfertError(err)) {
+    res.status(err.status || 400).json({ code: err.code, message: err.message, ...(err.extra || {}) });
+    return true;
+  }
+  const lock = transfertService.mapLockError(err);
+  if (lock) {
+    res.status(lock.status).json({ code: lock.code, message: lock.message });
+    return true;
+  }
+  return false;
+}
+
+// Erreur d'unité opérationnelle (composant, source, cycle…) → 4xx explicite, sinon rethrow.
+function replyUniteError(res, err) {
+  if (unitesOp.isUniteError(err)) {
+    res.status(err.status || 400).json({ code: err.code, message: err.message });
+    return true;
+  }
+  const mapped = unitesOp.mapPgError(err);
+  if (mapped) {
+    res.status(400).json({ code: mapped.code, message: mapped.message });
+    return true;
+  }
+  return false;
+}
 
 // ─── Fournisseur système « AUTO » ─────────────────────────────────────────────
 // Get-or-create du fournisseur AUTO de l'entreprise du labo, porté par les écritures
@@ -39,7 +73,7 @@ async function checkLaboOwner(laboId, userId) {
 // ─── Labo CRUD ────────────────────────────────────────────────────────────────
 
 const createLabo = async (req, res) => {
-  const { nom, refLabo, referentTel, adresse, activityIds } = req.body;
+  const { nom, refLabo, referentTel, adresse, activityIds, composantId, laboParentId } = req.body;
   if (!nom || !refLabo)
     return res.status(400).json({ message: 'nom et refLabo requis' });
   try {
@@ -50,6 +84,25 @@ const createLabo = async (req, res) => {
     if (peRes.rows.length === 0)
       return res.status(400).json({ message: 'Profil entreprise introuvable' });
     const entrepriseId = peRes.rows[0].id;
+
+    // Lot 1b §3.4 : quota de labos du dernier abonnement (409 LIMITE_ATTEINTE).
+    const quota = await checkQuota(pool, req.user.id, 'labo');
+    if (quota) return res.status(409).json(quota);
+
+    // Lot 1b : composant (∈ domaine du compte, type labo, actif) et labo source (∈ entreprise)
+    // validés AVANT l'insertion pour ne jamais laisser un labo à moitié configuré.
+    if (composantId != null) {
+      await unitesOp.validateComposant(pool, entrepriseId, 'labo', composantId);
+    }
+    const parentIdNum = laboParentId != null ? parseInt(laboParentId, 10) : null;
+    if (laboParentId != null) {
+      if (!Number.isInteger(parentIdNum) || parentIdNum <= 0) return res.status(400).json({ message: 'Labo source introuvable' });
+      const parentCheck = await pool.query(
+        'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2',
+        [parentIdNum, entrepriseId]
+      );
+      if (parentCheck.rows.length === 0) return res.status(400).json({ message: 'Labo source introuvable' });
+    }
 
     // Check nom uniqueness
     const nomCheck = await pool.query(
@@ -68,50 +121,68 @@ const createLabo = async (req, res) => {
       return res.status(409).json({ message: 'Un labo avec cette référence existe déjà' });
 
     const tel = referentTel?.trim() || null;
-    const result = await pool.query(
-      `INSERT INTO labos (entreprise_id, nom, referent_tel, adresse, ref_labo)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [entrepriseId, nom.trim(), tel, adresse?.trim() || null, refLabo.trim()]
-    );
-    const labo = result.rows[0];
-
-    // Auto-create a labo fournisseur
-    const existingFournisseur = await pool.query(
-      'SELECT id FROM fournisseurs WHERE labo_id = $1', [labo.id]
-    );
-    if (existingFournisseur.rows.length === 0) {
-      const fRes = await pool.query(
-        `INSERT INTO fournisseurs (entreprise_id, nom, telephone, adresse, is_labo, labo_id, created_by)
-         VALUES ($1, $2, $3, $4, true, $5, $6) RETURNING id`,
-        [entrepriseId, nom.trim(), tel, adresse?.trim() || null, labo.id, req.user.id]
+    // INSERT → fournisseur interne → affectations → composant → source dans UNE transaction : un
+    // 400 (cycle, composant…) ne laisse jamais un labo créé à moitié configuré.
+    const labo = await withTransaction(async (client) => {
+      const result = await client.query(
+        `INSERT INTO labos (entreprise_id, nom, referent_tel, adresse, ref_labo)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [entrepriseId, nom.trim(), tel, adresse?.trim() || null, refLabo.trim()]
       );
-      const fournisseurId = fRes.rows[0].id;
-      // Assign manually selected activities to this labo (standalone creation)
-      if (activityIds && activityIds.length > 0) {
-        await pool.query(
-          'UPDATE activites SET labo_id = $1 WHERE id = ANY($2::int[]) AND entreprise_id = $3',
-          [labo.id, activityIds, entrepriseId]
-        );
-        await pool.query(
-          `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
-           SELECT $1, id FROM activites WHERE id = ANY($2::int[]) AND entreprise_id = $3
-           ON CONFLICT DO NOTHING`,
-          [fournisseurId, activityIds, entrepriseId]
-        );
-        // Auto-import ingredients from assigned activities into the labo
-        await pool.query(
-          `INSERT INTO labo_ingredient_selections (labo_id, ingredient_id)
-           SELECT DISTINCT $1::integer, ais.ingredient_id
-           FROM activite_ingredient_selections ais
-           WHERE ais.activite_id = ANY($2::int[])
-           ON CONFLICT DO NOTHING`,
-          [labo.id, activityIds]
-        );
-      }
-    }
+      const created = result.rows[0];
 
-    res.status(201).json(mapLabo(labo));
+      // Auto-create a labo fournisseur
+      const existingFournisseur = await client.query(
+        'SELECT id FROM fournisseurs WHERE labo_id = $1', [created.id]
+      );
+      if (existingFournisseur.rows.length === 0) {
+        const fRes = await client.query(
+          `INSERT INTO fournisseurs (entreprise_id, nom, telephone, adresse, is_labo, labo_id, created_by)
+           VALUES ($1, $2, $3, $4, true, $5, $6) RETURNING id`,
+          [entrepriseId, nom.trim(), tel, adresse?.trim() || null, created.id, req.user.id]
+        );
+        const fournisseurId = fRes.rows[0].id;
+        // Assign manually selected activities to this labo (standalone creation)
+        if (activityIds && activityIds.length > 0) {
+          await client.query(
+            'UPDATE activites SET labo_id = $1 WHERE id = ANY($2::int[]) AND entreprise_id = $3',
+            [created.id, activityIds, entrepriseId]
+          );
+          await client.query(
+            `INSERT INTO fournisseur_activites (fournisseur_id, activite_id)
+             SELECT $1, id FROM activites WHERE id = ANY($2::int[]) AND entreprise_id = $3
+             ON CONFLICT DO NOTHING`,
+            [fournisseurId, activityIds, entrepriseId]
+          );
+          // Auto-import ingredients from assigned activities into the labo
+          await client.query(
+            `INSERT INTO labo_ingredient_selections (labo_id, ingredient_id)
+             SELECT DISTINCT $1::integer, ais.ingredient_id
+             FROM activite_ingredient_selections ais
+             WHERE ais.activite_id = ANY($2::int[])
+             ON CONFLICT DO NOTHING`,
+            [created.id, activityIds]
+          );
+        }
+      }
+
+      // Lot 1b : l'unité opérationnelle est créée par trigger (composant par défaut du domaine) ;
+      // composant explicite → flags du composant ; labo source → labo_parent_id (lien synchronisé),
+      // fournisseur interne + import des sélections d'articles de la source.
+      const unite = await unitesOp.getUniteByRef(client, 'labo', created.id);
+      if (unite && composantId != null) await unitesOp.setComposant(client, unite.id, composantId);
+      if (unite && parentIdNum != null) {
+        const srcUnite = await unitesOp.getUniteByRef(client, 'labo', parentIdNum);
+        if (srcUnite) await unitesOp.setSource(client, unite.id, srcUnite.id);
+      }
+      return created;
+    });
+
+    const fresh = await pool.query('SELECT * FROM labos WHERE id = $1', [labo.id]);
+    await unitesOp.enrichRows(pool, 'labo', fresh.rows);
+    res.status(201).json(mapLabo(fresh.rows[0]));
   } catch (err) {
+    if (replyUniteError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -144,6 +215,7 @@ const listLabos = async (req, res) => {
        ORDER BY l.nom`,
       params
     );
+    await unitesOp.enrichRows(pool, 'labo', result.rows);
     res.json(result.rows.map((r) => ({ ...mapLabo(r), fournisseurCount: r.fournisseur_count, ingredientCount: r.ingredient_count })));
   } catch (err) {
     console.error(err);
@@ -157,14 +229,19 @@ const getLaboById = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
     const r = await pool.query('SELECT * FROM labos WHERE id = $1', [laboId]);
+    await unitesOp.enrichRows(pool, 'labo', r.rows);
     // Also return activities linked to this labo
     const acts = await pool.query(
       'SELECT id, nom FROM activites WHERE labo_id = $1 ORDER BY nom',
       [laboId]
     );
+    // Lot 1b : destinations rattachées (activités ET labos enfants) — `activites` conservé
+    // pour TransferHistoriquePage / LaboFacturesApproPage.
+    const destinations = await unitesOp.getDestinations(pool, laboId);
     res.json({
       ...mapLabo(r.rows[0]),
       activites: acts.rows.map((a) => ({ id: a.id, nom: a.nom })),
+      destinations,
     });
   } catch (err) {
     console.error(err);
@@ -180,7 +257,10 @@ function mapLabo(row) {
     refLabo: row.ref_labo || null,
     referentTel: row.referent_tel,
     adresse: row.adresse,
+    laboParentId: row.labo_parent_id ?? null,
     createdAt: row.created_at,
+    // Lot 1b — unité opérationnelle (colonnes uo_* posées par unitesOp.enrichRows ; défauts sûrs sinon)
+    ...unitesOp.uniteFields(row),
   };
 }
 
@@ -290,23 +370,23 @@ const getLaboStock = async (req, res) => {
               sub.cout_total, sub.recent_dates, sub.recent_transfer_dates,
               COALESCE(tr.total_transfere, 0) as total_transfere,
               (SELECT sld2.fournisseur_id FROM stock_labo_daily sld2
-               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
+               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro IN ('manuel','transfert') AND sld2.quantite > 0
                ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_fournisseur_id,
               (SELECT sld2.ref_facture FROM stock_labo_daily sld2
-               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
+               WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro IN ('manuel','transfert') AND sld2.quantite > 0
                ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_ref_facture
        FROM (
          SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie,
                 SUM(sld.quantite) as quantite_totale,
                 (SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro IN ('manuel','transfert') AND sld2.quantite > 0
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as prix_unitaire,
                 (SELECT sld2.taux_tva FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0 AND sld2.taux_tva IS NOT NULL
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro IN ('manuel','transfert') AND sld2.quantite > 0 AND sld2.taux_tva IS NOT NULL
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as taux_tva,
                 (SELECT sld2.date_appro FROM stock_labo_daily sld2
-                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro = 'manuel' AND sld2.quantite > 0
+                 WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id AND sld2.type_appro IN ('manuel','transfert') AND sld2.quantite > 0
                  ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as date_appro,
                 ARRAY(SELECT DISTINCT sld2.date_appro FROM stock_labo_daily sld2
                       WHERE sld2.labo_id = $1 AND sld2.ingredient_id = i.id
@@ -336,232 +416,25 @@ const getLaboStock = async (req, res) => {
        ORDER BY sub.categorie NULLS LAST, sub.nom`,
       [laboId]
     );
-    // ── Ingredient baseline: last current-year inv + post-inv flows + year fallback ──
-    const invBaselineRes = await pool.query(
-      `WITH last_inv AS (
-         SELECT DISTINCT ON (ingredient_id)
-           ingredient_id, quantite_reelle, date_inventaire
-         FROM inventaires
-         WHERE labo_id = $1 AND ingredient_id IS NOT NULL
-         ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
-       ),
-       post_appro AS (
-         SELECT sld.ingredient_id, SUM(sld.quantite) as qty
-         FROM stock_labo_daily sld
-         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
-         WHERE sld.labo_id = $1 AND sld.type_appro != 'transfert'
-           AND NOT (sld.type_appro = 'manuel' AND sld.quantite < 0)
-         GROUP BY sld.ingredient_id
-       ),
-       post_transfer AS (
-         SELECT lt.ingredient_id, SUM(lt.quantite) as qty
-         FROM labo_transfers lt
-         JOIN last_inv li ON li.ingredient_id = lt.ingredient_id AND lt.date_transfert >= li.date_inventaire
-         WHERE lt.labo_id = $1 AND lt.ingredient_id IS NOT NULL
-         GROUP BY lt.ingredient_id
-       ),
-       post_pertes AS (
-         SELECT lp.ingredient_id, SUM(lp.quantite) as qty
-         FROM labo_pertes lp
-         JOIN last_inv li ON li.ingredient_id = lp.ingredient_id AND lp.date_perte >= li.date_inventaire
-         WHERE lp.labo_id = $1 AND lp.ingredient_id IS NOT NULL
-         GROUP BY lp.ingredient_id
-       ),
-       all_appro AS (
-         SELECT ingredient_id, SUM(quantite) as qty
-         FROM stock_labo_daily
-         WHERE labo_id = $1 AND type_appro != 'transfert'
-           AND NOT (type_appro = 'manuel' AND quantite < 0)
-         GROUP BY ingredient_id
-       ),
-       all_transfer AS (
-         SELECT ingredient_id, SUM(quantite) as qty
-         FROM labo_transfers
-         WHERE labo_id = $1 AND ingredient_id IS NOT NULL
-         GROUP BY ingredient_id
-       ),
-       all_pertes AS (
-         SELECT ingredient_id, SUM(quantite) as qty
-         FROM labo_pertes
-         WHERE labo_id = $1 AND ingredient_id IS NOT NULL
-         GROUP BY ingredient_id
-       ),
-       post_pt_usage AS (
-         SELECT sld.ingredient_id, SUM(ABS(sld.quantite)) as qty
-         FROM stock_labo_daily sld
-         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
-         WHERE sld.labo_id = $1 AND sld.quantite < 0 AND sld.type_appro NOT IN ('manuel', 'transfert')
-         GROUP BY sld.ingredient_id
-       ),
-       year_pt_usage AS (
-         SELECT ingredient_id, SUM(ABS(quantite)) as qty
-         FROM stock_labo_daily
-         WHERE labo_id = $1 AND quantite < 0 AND type_appro NOT IN ('manuel', 'transfert')
-         GROUP BY ingredient_id
-       ),
-       post_ventes_ach AS (
-         -- Ventes aux acheteurs (module Acheteurs) : flux des commandes VALIDÉES
-         SELECT cal.article_id AS ingredient_id, SUM(cal.quantite_unites) as qty
-         FROM commande_acheteur_lignes cal
-         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         JOIN last_inv li ON li.ingredient_id = cal.article_id AND COALESCE(ca.date_expedition, ca.date_commande) >= li.date_inventaire
-         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'ingredient'
-         GROUP BY cal.article_id
-       ),
-       all_ventes_ach AS (
-         SELECT cal.article_id AS ingredient_id, SUM(cal.quantite_unites) as qty
-         FROM commande_acheteur_lignes cal
-         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'ingredient'
-         GROUP BY cal.article_id
-       ),
-       prev_inv AS (
-         SELECT ingredient_id, date_inventaire FROM (
-           SELECT ingredient_id, date_inventaire,
-             ROW_NUMBER() OVER (PARTITION BY ingredient_id ORDER BY date_inventaire DESC, created_at DESC) as rn
-           FROM inventaires WHERE labo_id = $1 AND ingredient_id IS NOT NULL
-         ) sub WHERE rn = 2
-       ),
-       first_appro AS (
-         SELECT ingredient_id, MIN(date_appro) as first_date
-         FROM stock_labo_daily WHERE labo_id = $1 AND type_appro = 'manuel' AND quantite > 0
-         GROUP BY ingredient_id
-       ),
-       pmp_hist AS (
-         SELECT sld.ingredient_id,
-           SUM(sld.quantite * sld.prix_unitaire) / NULLIF(SUM(sld.quantite), 0) as pmp_ht,
-           SUM(sld.quantite * COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire)) / NULLIF(SUM(sld.quantite), 0) as pmp_tva
-         FROM stock_labo_daily sld
-         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id
-         LEFT JOIN prev_inv pi ON pi.ingredient_id = sld.ingredient_id
-         LEFT JOIN first_appro fa ON fa.ingredient_id = sld.ingredient_id
-         WHERE sld.labo_id = $1 AND sld.type_appro = 'manuel' AND sld.quantite > 0 AND sld.prix_unitaire IS NOT NULL
-           AND sld.date_appro >= COALESCE(pi.date_inventaire, fa.first_date)
-           AND sld.date_appro < li.date_inventaire
-         GROUP BY sld.ingredient_id
-       ),
-       appro_cost_post AS (
-         SELECT sld.ingredient_id,
-           SUM(sld.quantite) as qty,
-           SUM(sld.quantite * COALESCE(sld.prix_unitaire, 0)) as cost_ht,
-           SUM(sld.quantite * COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire, 0)) as cost_tva
-         FROM stock_labo_daily sld
-         JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
-         WHERE sld.labo_id = $1 AND sld.type_appro = 'manuel' AND sld.quantite > 0
-         GROUP BY sld.ingredient_id
-       ),
-       appro_cost_all AS (
-         SELECT ingredient_id,
-           SUM(quantite) as qty,
-           SUM(quantite * COALESCE(prix_unitaire, 0)) as cost_ht,
-           SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)) as cost_tva
-         FROM stock_labo_daily
-         WHERE labo_id = $1 AND type_appro = 'manuel' AND quantite > 0
-         GROUP BY ingredient_id
-       )
-       SELECT lis.ingredient_id,
-              li.quantite_reelle            as inv_qty,
-              li.date_inventaire            as inv_date,
-              COALESCE(pa.qty, 0)           as post_appro_qty,
-              COALESCE(pt.qty, 0)           as post_transfer_qty,
-              COALESCE(pp.qty, 0)           as post_pertes_qty,
-              COALESCE(ppu.qty, 0)          as post_pt_usage_qty,
-              ph.pmp_ht                     as pmp_hist_ht,
-              ph.pmp_tva                    as pmp_hist_tva,
-              COALESCE(acp.qty, 0)          as appro_cost_post_qty,
-              COALESCE(acp.cost_ht, 0)      as appro_cost_post_ht,
-              COALESCE(acp.cost_tva, 0)     as appro_cost_post_tva,
-              COALESCE(aa.qty, 0)           as all_appro_qty,
-              COALESCE(atr.qty, 0)          as all_transfer_qty,
-              COALESCE(ap.qty, 0)           as all_pertes_qty,
-              COALESCE(apu.qty, 0)          as all_pt_usage_qty,
-              COALESCE(pva.qty, 0)          as post_ventes_ach_qty,
-              COALESCE(ava.qty, 0)          as all_ventes_ach_qty,
-              COALESCE(aca.qty, 0)          as appro_cost_all_qty,
-              COALESCE(aca.cost_ht, 0)      as appro_cost_all_ht,
-              COALESCE(aca.cost_tva, 0)     as appro_cost_all_tva
-       FROM labo_ingredient_selections lis
-       LEFT JOIN last_inv li      ON li.ingredient_id  = lis.ingredient_id
-       LEFT JOIN post_appro pa    ON pa.ingredient_id  = lis.ingredient_id
-       LEFT JOIN post_transfer pt ON pt.ingredient_id  = lis.ingredient_id
-       LEFT JOIN post_pertes pp   ON pp.ingredient_id  = lis.ingredient_id
-       LEFT JOIN post_pt_usage ppu ON ppu.ingredient_id = lis.ingredient_id
-       LEFT JOIN pmp_hist ph       ON ph.ingredient_id  = lis.ingredient_id
-       LEFT JOIN appro_cost_post acp ON acp.ingredient_id = lis.ingredient_id
-       LEFT JOIN all_appro aa    ON aa.ingredient_id  = lis.ingredient_id
-       LEFT JOIN all_transfer atr ON atr.ingredient_id = lis.ingredient_id
-       LEFT JOIN all_pertes ap   ON ap.ingredient_id  = lis.ingredient_id
-       LEFT JOIN year_pt_usage apu ON apu.ingredient_id = lis.ingredient_id
-       LEFT JOIN post_ventes_ach pva ON pva.ingredient_id = lis.ingredient_id
-       LEFT JOIN all_ventes_ach ava ON ava.ingredient_id = lis.ingredient_id
-       LEFT JOIN appro_cost_all aca ON aca.ingredient_id = lis.ingredient_id
-       WHERE lis.labo_id = $1`,
-      [laboId]
-    );
-    const invBaselineMap = {};
-    for (const r of invBaselineRes.rows) {
-      invBaselineMap[r.ingredient_id] = {
-        hasInv: r.inv_qty !== null,
-        invQty: r.inv_qty !== null ? parseFloat(r.inv_qty) : 0,
-        invDate: r.inv_date ? isoDate(r.inv_date) : null,
-        postApproQty: parseFloat(r.post_appro_qty) || 0,
-        postTransferQty: parseFloat(r.post_transfer_qty) || 0,
-        postPertesQty: parseFloat(r.post_pertes_qty) || 0,
-        postPtUsageQty: parseFloat(r.post_pt_usage_qty) || 0,
-        pmpHistHT: r.pmp_hist_ht !== null ? parseFloat(r.pmp_hist_ht) : null,
-        pmpHistTTC: r.pmp_hist_tva !== null ? parseFloat(r.pmp_hist_tva) : null,
-        approCostPostQty: parseFloat(r.appro_cost_post_qty) || 0,
-        approCostPostHT: parseFloat(r.appro_cost_post_ht) || 0,
-        approCostPostTTC: parseFloat(r.appro_cost_post_tva) || 0,
-        allApproQty: parseFloat(r.all_appro_qty) || 0,
-        allTransferQty: parseFloat(r.all_transfer_qty) || 0,
-        allPertesQty: parseFloat(r.all_pertes_qty) || 0,
-        allPtUsageQty: parseFloat(r.all_pt_usage_qty) || 0,
-        postVentesAchQty: parseFloat(r.post_ventes_ach_qty) || 0,
-        allVentesAchQty: parseFloat(r.all_ventes_ach_qty) || 0,
-        approCostAllQty: parseFloat(r.appro_cost_all_qty) || 0,
-        approCostAllHT: parseFloat(r.appro_cost_all_ht) || 0,
-        approCostAllTTC: parseFloat(r.appro_cost_all_tva) || 0,
-      };
-    }
+    // ── Baseline articles (lot 1b) : moteur unique stockService.computeStockBulk (§2.2) ──
+    // { [ingredientId]: { stock, pmpHT, pmpTTC, detail } } — même CTE (règle unique §2.1,
+    // PMP §2.3 : réceptions 'transfert' comptées), même formule PMP que l'ancien bloc.
+    const bulk = await computeStockBulk(pool, 'labo', laboId);
 
     const ingredientRows = result.rows.map((row) => {
       const totalTransfere = parseFloat(row.total_transfere);
-      const b = invBaselineMap[row.ingredient_id] || {};
-      const quantiteRaw = b.hasInv
-        ? b.invQty + b.postApproQty - b.postTransferQty - b.postPertesQty - b.postVentesAchQty
-        : b.allApproQty - b.allTransferQty - b.allPertesQty - b.allVentesAchQty;
-      const quantite = Math.round(quantiteRaw * 1000) / 1000;
+      const e = bulk[row.ingredient_id] || null;
+      const b = e ? e.detail : {};
+      const quantite = e ? e.stock : 0;
       const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
       const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
       const transfertsDepuisInv = b.hasInv ? b.postTransferQty : b.allTransferQty;
-      let coutTotal = 0;
-      let coutTotalTTC = 0;
-      let pmpUnitHT = null;
-      if (b.hasInv) {
-        // La quantité d'inventaire n'entre dans le PMP que si elle a une base de coût
-        // (pmpHist issu des appros antérieurs à l'inventaire). Sans appro avant l'inventaire,
-        // pmpHist est null : la valoriser à 0 tout en la comptant au dénominateur diluerait
-        // le PMP des achats réels (ex. 2 appros à 16,500 → PMP 15,608). On l'exclut alors.
-        const invValued = b.invQty > 0 && b.pmpHistHT !== null;
-        const invQtyForPmp = invValued ? b.invQty : 0;
-        const coutInvHT = invValued ? b.invQty * b.pmpHistHT : 0;
-        const coutInvTTC = invValued ? b.invQty * (b.pmpHistTTC !== null ? b.pmpHistTTC : b.pmpHistHT) : 0;
-        const totalCostInHT = coutInvHT + (b.approCostPostHT || 0);
-        const totalCostInTTC = coutInvTTC + (b.approCostPostTTC || 0);
-        const totalQtyIn = invQtyForPmp + (b.approCostPostQty || 0);
-        const pmpHT = totalQtyIn > 0 ? totalCostInHT / totalQtyIn : null;
-        const pmpTTC = totalQtyIn > 0 ? totalCostInTTC / totalQtyIn : null;
-        pmpUnitHT = pmpHT;
-        coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
-        coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
-      } else {
-        const pmpHT = b.approCostAllQty > 0 ? b.approCostAllHT / b.approCostAllQty : null;
-        const pmpTTC = b.approCostAllQty > 0 ? b.approCostAllTTC / b.approCostAllQty : null;
-        pmpUnitHT = pmpHT;
-        coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
-        coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
-      }
+      // PMP HT/TTC = stockService (inventaire valorisé au pmp_hist seulement s'il a une base
+      // de coût — sinon exclu du dénominateur, cf. stockService.pmpLaboFromDetail).
+      const pmpUnitHT = e ? e.pmpHT : null;
+      const pmpTTC = e ? e.pmpTTC : null;
+      const coutTotal = pmpUnitHT !== null && quantite > 0 ? Math.round(quantite * pmpUnitHT * 1000) / 1000 : 0;
+      const coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
@@ -619,7 +492,7 @@ const getLaboStock = async (req, res) => {
               AND (SELECT SUM(sldp.quantite * sldp.prix_unitaire) / NULLIF(SUM(sldp.quantite), 0)
                    FROM stock_labo_daily sldp
                    WHERE sldp.labo_id = $1 AND sldp.ingredient_id = pip.ingredient_id
-                     AND sldp.type_appro = 'manuel' AND sldp.prix_unitaire IS NOT NULL AND sldp.quantite > 0
+                     AND sldp.type_appro IN ('manuel','transfert') AND sldp.prix_unitaire IS NOT NULL AND sldp.quantite > 0
                      AND sldp.date_appro >= COALESCE(
                        (SELECT date_inventaire FROM inventaires WHERE labo_id = $1 AND ingredient_id = pip.ingredient_id ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
                        (SELECT MIN(date_appro) FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = pip.ingredient_id AND quantite > 0)
@@ -639,7 +512,7 @@ const getLaboStock = async (req, res) => {
           COALESCE((SELECT SUM(pi2.portion * (
              SELECT SUM(sld2.quantite * sld2.prix_unitaire) / NULLIF(SUM(sld2.quantite), 0) FROM stock_labo_daily sld2
              WHERE sld2.labo_id = $1 AND sld2.ingredient_id = pi2.ingredient_id
-               AND sld2.type_appro = 'manuel' AND sld2.prix_unitaire IS NOT NULL AND sld2.prix_unitaire > 0 AND sld2.quantite > 0
+               AND sld2.type_appro IN ('manuel','transfert') AND sld2.prix_unitaire IS NOT NULL AND sld2.prix_unitaire > 0 AND sld2.quantite > 0
                AND sld2.date_appro >= COALESCE(
                  (SELECT date_inventaire FROM inventaires WHERE labo_id = $1 AND ingredient_id = pi2.ingredient_id ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
                  (SELECT MIN(date_appro) FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = pi2.ingredient_id AND quantite > 0)
@@ -650,7 +523,7 @@ const getLaboStock = async (req, res) => {
              SELECT COALESCE(SUM(pi3.portion * (
                 SELECT SUM(sld3.quantite * sld3.prix_unitaire) / NULLIF(SUM(sld3.quantite), 0) FROM stock_labo_daily sld3
                 WHERE sld3.labo_id = $1 AND sld3.ingredient_id = pi3.ingredient_id
-                  AND sld3.type_appro = 'manuel' AND sld3.prix_unitaire IS NOT NULL AND sld3.prix_unitaire > 0 AND sld3.quantite > 0
+                  AND sld3.type_appro IN ('manuel','transfert') AND sld3.prix_unitaire IS NOT NULL AND sld3.prix_unitaire > 0 AND sld3.quantite > 0
                   AND sld3.date_appro >= COALESCE(
                     (SELECT date_inventaire FROM inventaires WHERE labo_id = $1 AND ingredient_id = pi3.ingredient_id ORDER BY date_inventaire DESC, created_at DESC LIMIT 1),
                     (SELECT MIN(date_appro) FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = pi3.ingredient_id AND quantite > 0)
@@ -887,6 +760,11 @@ const updateLaboStock = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     if (ingredientIdRaw < 0) {
+      // Lot 1b §3.3 : un labo dont l'unité est production_active = false ne fabrique pas de PT.
+      const uniteProd = await unitesOp.getUniteByRef(pool, 'labo', laboId);
+      if (uniteProd && uniteProd.productionActive === false) {
+        return res.status(400).json({ code: 'PRODUCTION_INACTIVE', message: 'La production de produits transformés est désactivée pour ce labo.' });
+      }
       // PT product appro — auto-calculate prix from recipe using last labo ingredient prices
       const produitId = -ingredientIdRaw;
       const qty = parseFloat(quantite) || 0;
@@ -901,7 +779,7 @@ const updateLaboStock = async (req, res) => {
               FROM stock_labo_daily sld
               WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id
                 AND sld.quantite > 0 AND sld.prix_unitaire IS NOT NULL
-                AND sld.type_appro = 'manuel'
+                AND sld.type_appro IN ('manuel','transfert')
                 AND sld.date_appro >= COALESCE(
                   (SELECT date_inventaire FROM inventaires
                    WHERE labo_id = $2 AND ingredient_id = pi.ingredient_id
@@ -914,7 +792,7 @@ const updateLaboStock = async (req, res) => {
               FROM stock_labo_daily sld
               WHERE sld.labo_id = $2 AND sld.ingredient_id = pi.ingredient_id
                 AND sld.quantite > 0 AND sld.prix_unitaire IS NOT NULL
-                AND sld.type_appro = 'manuel'
+                AND sld.type_appro IN ('manuel','transfert')
                 AND sld.date_appro >= COALESCE(
                   (SELECT date_inventaire FROM inventaires
                    WHERE labo_id = $2 AND ingredient_id = pi.ingredient_id
@@ -992,52 +870,40 @@ const updateLaboStock = async (req, res) => {
       const finalPrix = prixCalcule > 0 ? prixCalcule : (prixUnitaire ? parseFloat(prixUnitaire) : null);
       const customPortionsJson = (Object.keys(customPortionsMap).length > 0 || Object.keys(customSpMap).length > 0) ? JSON.stringify(customPortions) : null;
 
-      // Vérifier que chaque ingrédient de la recette a assez de stock
-      if (ingRes.rows.length > 0 && qty > 0) {
-        // Stock courant de tous les ingrédients en parallèle (même calcul, exécution concurrente)
-        const stocksCourants = await Promise.all(
-          ingRes.rows.map((ing) => computeStockCourant('labo', laboId, ing.ingredient_id))
-        );
-        for (let idx = 0; idx < ingRes.rows.length; idx++) {
-          const ing = ingRes.rows[idx];
-          const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
-          const needed  = portion * qty;
-          const stockCourant = stocksCourants[idx];
-          if (needed > stockCourant) {
-            return res.status(422).json({
-              message: `Stock insuffisant pour "${ing.ing_nom}" (recette) : disponible ${Math.max(0, stockCourant)}, nécessaire ${Math.round(needed * 1000) / 1000}`,
-              disponible: Math.max(0, stockCourant),
-              demande: needed,
-            });
-          }
-        }
-      }
-
-      // Vérifier que chaque sous-PT de la recette a assez de stock au labo
-      if (spRes.rows.length > 0 && qty > 0) {
-        const stocksSp = await Promise.all(
-          spRes.rows.map((sp) => computeStockPTCourant('labo', laboId, sp.sous_produit_id))
-        );
-        for (let idx = 0; idx < spRes.rows.length; idx++) {
-          const sp = spRes.rows[idx];
-          const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
-          const needed = portion * qty;
-          if (needed > stocksSp[idx]) {
-            return res.status(422).json({
-              message: `Stock insuffisant pour le sous-produit "${sp.sp_nom}" (recette) : disponible ${Math.max(0, stocksSp[idx])}, nécessaire ${Math.round(needed * 1000) / 1000}`,
-              disponible: Math.max(0, stocksSp[idx]),
-              demande: needed,
-            });
-          }
-        }
-      }
-
       // Atomic: producing a PT (insert PT row + deduct each recipe ingredient) must be
       // all-or-nothing, else the PT is recorded while ingredients are only partly deducted.
       // Référence auto du PT FABRIQUÉ (initiales + YY) — portée par la ligne de production
       // ET par toutes les lignes de consommation, pour identifier la production d'origine.
       const ptRef = buildAutoRef(produitNom, da);
       await withTransaction(async (client) => {
+        // Lot 1b §2.4 : verrou stock du labo (même espace que les transferts) PUIS contrôle de
+        // stock DANS la transaction (stockService sur le client) — plus de course avec un transfert.
+        await transfertService.lockStockLabo(client, laboId);
+        if (ingRes.rows.length > 0 && qty > 0) {
+          for (const ing of ingRes.rows) {
+            const portion = customPortionsMap[ing.ingredient_id] ?? parseFloat(ing.portion);
+            const needed  = portion * qty;
+            const stockCourant = await computeStock(client, 'labo', laboId, { articleId: ing.ingredient_id });
+            if (needed > stockCourant) {
+              throw new transfertService.TransfertError(422, 'STOCK_INSUFFISANT',
+                `Stock insuffisant pour "${ing.ing_nom}" (recette) : disponible ${Math.max(0, stockCourant)}, nécessaire ${Math.round(needed * 1000) / 1000}`,
+                { disponible: Math.max(0, stockCourant), demande: needed });
+            }
+          }
+        }
+        if (spRes.rows.length > 0 && qty > 0) {
+          for (const sp of spRes.rows) {
+            const portion = customSpMap[sp.sous_produit_id] ?? parseFloat(sp.portion);
+            const needed = portion * qty;
+            const stockSp = await computeStock(client, 'labo', laboId, { produitId: sp.sous_produit_id });
+            if (needed > stockSp) {
+              throw new transfertService.TransfertError(422, 'STOCK_INSUFFISANT',
+                `Stock insuffisant pour le sous-produit "${sp.sp_nom}" (recette) : disponible ${Math.max(0, stockSp)}, nécessaire ${Math.round(needed * 1000) / 1000}`,
+                { disponible: Math.max(0, stockSp), demande: needed });
+            }
+          }
+        }
+
         // Traçabilité (migr 138) : fournisseur AUTO ; TVA 0 pour un PT → TTC = coût.
         const autoFournisseurId = await getAutoFournisseurIdForLabo(client, laboId, req.user.id);
 
@@ -1129,6 +995,7 @@ const updateLaboStock = async (req, res) => {
     });
     res.json({ success: true });
   } catch (err) {
+    if (replyTransfertError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -1149,25 +1016,31 @@ const getLaboStockHistory = async (req, res) => {
         `SELECT * FROM (
            SELECT slpt.date_appro AS d, slpt.quantite, slpt.prix_unitaire AS prix, COALESCE(slpt.type_appro, 'manuel') AS type,
                   slpt.ref_facture AS ref, COALESCE(slpt.taux_tva, 0) AS tva,
-                  COALESCE(slpt.prix_unitaire_tva, slpt.prix_unitaire) AS ttc, f.nom AS fournisseur
+                  COALESCE(slpt.prix_unitaire_tva, slpt.prix_unitaire) AS ttc,
+                  CASE WHEN slpt.type_appro = 'transfert' THEN COALESCE(lsrc.nom, f.nom) ELSE f.nom END AS fournisseur,
+                  CASE WHEN slpt.type_appro = 'transfert' THEN 'entree' ELSE NULL END AS sens
            FROM stock_labo_pt_daily slpt
            LEFT JOIN fournisseurs f ON f.id = slpt.fournisseur_id
+           LEFT JOIN labo_transfers ltx ON ltx.id = slpt.transfert_id
+           LEFT JOIN labos lsrc ON lsrc.id = ltx.labo_id
            WHERE slpt.labo_id = $1 AND slpt.produit_id = $2
-             AND (slpt.type_appro IN ('manuel','PT') OR (slpt.type_appro IS NULL AND slpt.quantite > 0))
+             AND (slpt.type_appro IN ('manuel','PT','transfert') OR (slpt.type_appro IS NULL AND slpt.quantite > 0))
            UNION ALL
            SELECT lt.date_transfert AS d, -lt.quantite AS quantite, lt.prix_unitaire AS prix, 'transfert' AS type,
-                  lt.ref_facture AS ref, lt.taux_tva AS tva, lt.prix_unitaire_tva AS ttc, a.nom AS fournisseur
+                  lt.ref_facture AS ref, lt.taux_tva AS tva, lt.prix_unitaire_tva AS ttc, COALESCE(a.nom, ld.nom) AS fournisseur,
+                  'sortie' AS sens
            FROM labo_transfers lt
            LEFT JOIN activites a ON a.id = lt.activite_id
+           LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
            WHERE lt.labo_id = $1 AND lt.produit_id = $2
            UNION ALL
            SELECT lp.date_perte AS d, -lp.quantite AS quantite, lp.prix_unitaire AS prix, 'perte' AS type,
-                  NULL::text AS ref, NULL::numeric AS tva, lp.prix_unitaire_tva AS ttc, NULL::text AS fournisseur
+                  NULL::text AS ref, NULL::numeric AS tva, lp.prix_unitaire_tva AS ttc, NULL::text AS fournisseur, NULL::text AS sens
            FROM labo_pertes lp
            WHERE lp.labo_id = $1 AND lp.produit_id = $2
            UNION ALL
            SELECT COALESCE(ca.date_expedition, ca.date_commande) AS d, -cal.quantite_unites AS quantite, cal.cout_unitaire_ttc AS prix, 'vente' AS type,
-                  fa.numero AS ref, cal.taux_tva AS tva, cal.cout_unitaire_ttc AS ttc, COALESCE(ach.nom, ca.acheteur_nom) AS fournisseur
+                  fa.numero AS ref, cal.taux_tva AS tva, cal.cout_unitaire_ttc AS ttc, COALESCE(ach.nom, ca.acheteur_nom) AS fournisseur, NULL::text AS sens
            FROM commande_acheteur_lignes cal
            JOIN commandes_acheteur ca ON ca.id = cal.commande_id
            LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
@@ -1187,21 +1060,37 @@ const getLaboStockHistory = async (req, res) => {
         fournisseurNom: r.fournisseur,
         tauxTva: r.tva !== null ? parseFloat(r.tva) : null,
         prixUnitaireTva: r.ttc !== null ? parseFloat(r.ttc) : null,
+        // Lot 1b : sens d'un transfert ('entree' reçue d'un labo source | 'sortie') + contrepartie
+        sens: r.sens || null,
+        contrepartieNom: r.sens ? (r.fournisseur || null) : null,
       })));
     }
 
+    // Lot 1b : sens / contrepartie des lignes de transfert — entrée 'transfert' (labo source via
+    // transfert_id, sinon fournisseur is_labo) ; miroir de sortie ('manuel' < 0, transfert_id posé) →
+    // activité ou labo destinataire.
     const result = await pool.query(
       `SELECT * FROM (
          SELECT sld.date_appro, sld.quantite, sld.prix_unitaire, sld.ref_facture,
-                sld.type_appro, f.nom as fournisseur_nom, sld.taux_tva, sld.prix_unitaire_tva
+                sld.type_appro, f.nom as fournisseur_nom, sld.taux_tva, sld.prix_unitaire_tva,
+                CASE WHEN sld.type_appro = 'transfert' THEN 'entree'
+                     WHEN sld.transfert_id IS NOT NULL AND sld.quantite < 0 THEN 'sortie' ELSE NULL END AS sens,
+                CASE WHEN sld.type_appro = 'transfert' THEN COALESCE(lsrc.nom, fl.nom)
+                     WHEN sld.transfert_id IS NOT NULL AND sld.quantite < 0 THEN COALESCE(ad.nom, ld.nom) ELSE NULL END AS contrepartie_nom
          FROM stock_labo_daily sld
          LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
+         LEFT JOIN labos fl ON fl.id = f.labo_id
+         LEFT JOIN labo_transfers ltx ON ltx.id = sld.transfert_id
+         LEFT JOIN labos lsrc ON lsrc.id = ltx.labo_id
+         LEFT JOIN activites ad ON ad.id = ltx.activite_id
+         LEFT JOIN labos ld ON ld.id = ltx.labo_dest_id
          WHERE sld.labo_id = $1 AND sld.ingredient_id = $2
          UNION ALL
          SELECT COALESCE(ca.date_expedition, ca.date_commande) AS date_appro, -cal.quantite_unites AS quantite,
                 cal.cout_unitaire_ttc AS prix_unitaire, fa.numero AS ref_facture,
                 'vente' AS type_appro, COALESCE(ach.nom, ca.acheteur_nom) AS fournisseur_nom,
-                cal.taux_tva, cal.cout_unitaire_ttc AS prix_unitaire_tva
+                cal.taux_tva, cal.cout_unitaire_ttc AS prix_unitaire_tva,
+                NULL::text AS sens, NULL::text AS contrepartie_nom
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
          LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
@@ -1221,6 +1110,8 @@ const getLaboStockHistory = async (req, res) => {
       fournisseurNom: r.fournisseur_nom || null,
       tauxTva: r.taux_tva != null ? parseFloat(r.taux_tva) : null,
       prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
+      sens: r.sens || null,
+      contrepartieNom: r.contrepartie_nom || null,
     })));
   } catch (err) {
     console.error(err);
@@ -1235,15 +1126,19 @@ const getLaboFournisseurs = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
+    // Lot 1b : le fournisseur is_labo du labo SOURCE (labo_parent_id) est renvoyé en plus, marqué
+    // isLabo (affiché « Transfert reçu de X », jamais éditable — fournisseurController refuse déjà).
     const result = await pool.query(
-      `SELECT f.id, f.nom, f.telephone
+      `SELECT f.id, f.nom, f.telephone, f.is_labo
        FROM fournisseurs f
        JOIN fournisseur_labos fl ON fl.fournisseur_id = f.id
-       WHERE fl.labo_id = $1 AND f.is_labo = false
-       ORDER BY f.nom`,
+       WHERE fl.labo_id = $1
+         AND (f.is_labo = false
+              OR (f.is_labo = true AND f.labo_id = (SELECT l.labo_parent_id FROM labos l WHERE l.id = $1)))
+       ORDER BY f.is_labo, f.nom`,
       [laboId]
     );
-    res.json(result.rows.map((r) => ({ id: r.id, nom: r.nom, telephone: r.telephone })));
+    res.json(result.rows.map((r) => ({ id: r.id, nom: r.nom, telephone: r.telephone, isLabo: r.is_labo === true })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -1277,7 +1172,11 @@ const syncLaboFournisseurs = async (req, res) => {
 // ─── Transfers ────────────────────────────────────────────────────────────────
 
 // POST /api/labo/:laboId/transfer
-// Body: { dateTransfert, note, refFacture, transfers: [{ activiteId, ingredientId, quantite }] }
+// Body: { dateTransfert, note, refFacture, tauxTva,
+//         transfers: [{ activiteId? | laboDestId?, ingredientId (< 0 = PT), quantite, prixUnitaire? }] }
+// Lot 1b : destination par ligne (activité = comportement historique à l'identique ; labo enfant =
+// cession interne). Gardes, verrou pg_advisory_xact_lock, contrôle de stock en transaction et
+// écritures dans transfertService (§2.4).
 const createTransfer = async (req, res) => {
   const { laboId } = req.params;
   const { dateTransfert, note, refFacture, tauxTva, transfers } = req.body;
@@ -1288,212 +1187,22 @@ const createTransfer = async (req, res) => {
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    // Gérant : la source doit être dans son périmètre.
+    if (!gerantAllowsLabo(req, laboId)) return res.status(403).json({ message: 'Labo hors de votre périmètre' });
 
-    // Verify all activites belong to this labo
-    const activiteIds = [...new Set(transfers.map((t) => t.activiteId))];
-    const actCheck = await pool.query(
-      'SELECT id FROM activites WHERE labo_id = $1 AND id = ANY($2::int[])',
-      [laboId, activiteIds]
-    );
-    if (actCheck.rows.length !== activiteIds.length)
-      return res.status(400).json({ message: 'Une ou plusieurs activités invalides' });
-
-    // Look up the labo fournisseur (is_labo=true for this labo)
-    const laboFournisseurRes = await pool.query(
-      'SELECT id FROM fournisseurs WHERE labo_id = $1 AND is_labo = true LIMIT 1',
-      [laboId]
-    );
-    const laboFournisseurId = laboFournisseurRes.rows.length > 0 ? laboFournisseurRes.rows[0].id : null;
-
-    // Défense en profondeur : un PT ne part que vers une activité AFFECTÉE au produit
-    // (produit_activite_stock) — l'UI ne propose déjà que celles-ci, on re-vérifie côté
-    // serveur pour bloquer un appel forgé.
-    const ptPairs = transfers
-      .filter((t) => parseInt(t.ingredientId) < 0 && (parseFloat(t.quantite) || 0) > 0)
-      .map((t) => ({ produitId: -parseInt(t.ingredientId), activiteId: parseInt(t.activiteId) }));
-    if (ptPairs.length > 0) {
-      const pasRes = await pool.query(
-        `SELECT produit_id, activite_id FROM produit_activite_stock
-          WHERE produit_id = ANY($1::int[]) AND activite_id = ANY($2::int[])`,
-        [[...new Set(ptPairs.map((p) => p.produitId))], [...new Set(ptPairs.map((p) => p.activiteId))]]
-      );
-      const assigned = new Set(pasRes.rows.map((r) => `${r.produit_id}-${r.activite_id}`));
-      const missing = ptPairs.find((p) => !assigned.has(`${p.produitId}-${p.activiteId}`));
-      if (missing) {
-        const nomRes = await pool.query('SELECT nom FROM produits WHERE id = $1', [missing.produitId]);
-        return res.status(400).json({
-          message: `Le produit "${nomRes.rows[0]?.nom ?? `PT #${missing.produitId}`}" n'est pas affecté à cette activité — transfert refusé.`,
-        });
-      }
-    }
-
-    // Fournisseur AUTO du compte : porté par la sortie de transfert PT côté labo
-    // (l'entrée côté activité porte, elle, le fournisseur du labo — comme les articles).
-    const autoFournisseurId = ptPairs.length > 0 ? await getAutoFournisseurIdForLabo(pool, laboId, req.user.id) : null;
-
-    // Vérification stock labo avant transaction (ingrédients + PT)
-    const ingQtyMap = {};
-    const ptQtyMap  = {};
-    for (const t of transfers) {
-      const ingId = parseInt(t.ingredientId);
-      const qty   = parseFloat(t.quantite) || 0;
-      if (qty <= 0) continue;
-      if (ingId < 0) {
-        const produitId = -ingId;
-        ptQtyMap[produitId] = (ptQtyMap[produitId] || 0) + qty;
-      } else {
-        ingQtyMap[ingId] = (ingQtyMap[ingId] || 0) + qty;
-      }
-    }
-    // Ingrédients — stock courant calculé en parallèle (même calcul, concurrent)
-    const ingEntries = Object.entries(ingQtyMap);
-    const ingStocks = await Promise.all(
-      ingEntries.map(([ingId]) => computeStockCourant('labo', laboId, parseInt(ingId)))
-    );
-    for (let idx = 0; idx < ingEntries.length; idx++) {
-      const [ingId, totalQty] = ingEntries[idx];
-      const stockCourant = ingStocks[idx];
-      if (totalQty > stockCourant) {
-        const ingRow = await pool.query('SELECT nom FROM articles WHERE id = $1', [ingId]);
-        const ingNom = ingRow.rows[0]?.nom ?? `ingrédient #${ingId}`;
-        return res.status(422).json({
-          message: `Stock insuffisant pour "${ingNom}"`,
-          disponible: Math.max(0, stockCourant),
-          demande: totalQty,
-        });
-      }
-    }
-    // Produits transformés — stock courant calculé en parallèle
-    const ptEntries = Object.entries(ptQtyMap);
-    const ptStocks = await Promise.all(
-      ptEntries.map(([produitId]) => computeStockPTCourant('labo', laboId, parseInt(produitId)))
-    );
-    for (let idx = 0; idx < ptEntries.length; idx++) {
-      const [produitId, totalQty] = ptEntries[idx];
-      const ptStock = ptStocks[idx];
-      if (totalQty > ptStock) {
-        const ptRow = await pool.query('SELECT nom FROM produits WHERE id = $1', [produitId]);
-        const ptNom = ptRow.rows[0]?.nom ?? `PT #${produitId}`;
-        return res.status(422).json({
-          message: `Stock PT insuffisant pour "${ptNom}"`,
-          disponible: Math.max(0, ptStock),
-          demande: totalQty,
-        });
-      }
-    }
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      for (const t of transfers) {
-        const qty = parseFloat(t.quantite);
-        if (!qty || qty <= 0) continue;
-
-        const ingId = parseInt(t.ingredientId);
-
-        if (ingId < 0) {
-          // PT product transfer: deduct from stock_labo_pt_daily, add to stock_produits_transformes
-          const produitId = -ingId;
-
-          const latestPtRes = await client.query(
-            `SELECT quantite, prix_unitaire FROM stock_labo_pt_daily
-             WHERE labo_id = $1 AND produit_id = $2 AND quantite > 0 AND prix_unitaire IS NOT NULL
-             ORDER BY date_appro DESC, id DESC LIMIT 1`,
-            [laboId, produitId]
-          );
-          const laboCost = latestPtRes.rows.length > 0 ? parseFloat(latestPtRes.rows[0].prix_unitaire || 0) : 0;
-
-          // Prix de cession SAISI au transfert (le front envoie le HT ; TTC = HT*(1+TVA)).
-          // À défaut (pas de prix saisi) on retombe sur le coût de fabrication labo.
-          const ptPrixUnit = t.prixUnitaire != null && parseFloat(t.prixUnitaire) > 0 ? parseFloat(t.prixUnitaire) : null;
-          const ptTva = tauxTva != null ? parseFloat(tauxTva) : 0;
-          const ptPrixTtc = ptPrixUnit != null ? ptPrixUnit * (1 + ptTva / 100) : null;
-          // Le stock activité valorise le PT au prix de cession TTC (sinon coût labo en repli).
-          const receptionPrice = ptPrixTtc != null ? ptPrixTtc : laboCost;
-
-          // Deduct from labo PT stock (negative entry). type_appro reste NULL : la
-          // déduction du stock passe par le CTE labo_transfers de computeStockPTCourant
-          // (cette ligne en est le miroir comptable). Traçabilité migr 138 : prix de
-          // cession HT/TTC (TVA 0 → HT = TTC), fournisseur AUTO, réf saisie au transfert.
-          await client.query(
-            `INSERT INTO stock_labo_pt_daily (labo_id, produit_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, fournisseur_id, ref_facture, updated_at, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10)`,
-            [laboId, produitId, dateTransfert, -qty, ptPrixUnit ?? laboCost, ptTva, receptionPrice, autoFournisseurId, refFacture || null, req.user.id]
-          );
-
-          // Add to activité PT stock (stock_produits_transformes) — fournisseur = LE LABO
-          // (comme le transfert des articles) + réf saisie + paire HT/TTC (TVA 0).
-          await client.query(
-            `INSERT INTO stock_produits_transformes (produit_id, activite_id, date_appro, quantite, prix_calcule, prix_unitaire, taux_tva, fournisseur_id, ref_facture, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [produitId, t.activiteId, dateTransfert, qty, receptionPrice, ptPrixUnit ?? laboCost, ptTva, laboFournisseurId, refFacture || null, req.user.id]
-          );
-
-          // Record PT transfer (avec prix HT/TVA/TTC de cession)
-          await client.query(
-            `INSERT INTO labo_transfers (labo_id, activite_id, produit_id, quantite, date_transfert, note, ref_facture, prix_unitaire, taux_tva, prix_unitaire_tva, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-            [laboId, t.activiteId, produitId, qty, dateTransfert, note || null, refFacture || null, ptPrixUnit, ptTva, ptPrixTtc, req.user.id]
-          );
-          continue;
-        }
-
-        // Regular ingredient transfer
-        const prixUnit = t.prixUnitaire != null ? parseFloat(t.prixUnitaire) : null;
-        const tva = tauxTva != null ? parseFloat(tauxTva) : 0;
-        const prixUnitaireTva = prixUnit != null ? prixUnit * (1 + tva / 100) : null;
-
-        await client.query(
-          `INSERT INTO stock_labo_daily (labo_id, ingredient_id, date_appro, quantite, prix_unitaire, taux_tva, prix_unitaire_tva, type_appro, ref_facture, updated_at, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, 'manuel', $8, NOW(), $9)`,
-          [laboId, ingId, dateTransfert, -qty, prixUnit, tva, prixUnitaireTva, refFacture || null, req.user.id]
-        );
-
-        const sedTransfertIns = await client.query(
-          `INSERT INTO stock_entreprise_daily
-             (activite_id, ingredient_id, date_appro, quantite, prix_unitaire, type_appro, fournisseur_id, ref_facture, taux_tva, prix_unitaire_tva, updated_at, created_by)
-           VALUES ($1, $2, $3, $4, $5, 'transfert', $6, $7, $8, $9, NOW(), $10)
-           RETURNING id`,
-          [t.activiteId, ingId, dateTransfert, qty, prixUnit, laboFournisseurId, refFacture || null, tva, prixUnitaireTva, req.user.id]
-        );
-
-        // Le transfert (côté activité) alimente aussi la facture, comme un appro manuel,
-        // mais SANS timbre fiscal. On lie la ligne stock (facture_id) pour le détail de la facture.
-        if (refFacture) {
-          await upsertFacture(req.user.gerant_parent_id || req.user.id, {
-            refFacture,
-            dateAppro: dateTransfert,
-            fournisseurId: laboFournisseurId,
-            activiteId: parseInt(t.activiteId),
-            laboId: null,
-            typeSource: 'transfert',
-            montantHT: qty * (prixUnit || 0),
-            montantTva: prixUnit != null ? qty * (prixUnit || 0) * (tva / 100) : 0,
-            montantTTC: qty * (prixUnitaireTva != null ? prixUnitaireTva : (prixUnit || 0)),
-            timbreFiscal: false,
-            createdBy: req.user.id,
-            stockTable: 'stock_entreprise_daily',
-            stockRowId: sedTransfertIns.rows[0].id,
-          }, client);
-        }
-
-        await client.query(
-          `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, ref_facture, prix_unitaire, taux_tva, prix_unitaire_tva, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-          [laboId, t.activiteId, ingId, qty, dateTransfert, note || null, refFacture || null, prixUnit, tva, prixUnitaireTva, req.user.id]
-        );
-      }
-
-      await client.query('COMMIT');
-      res.json({ success: true });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    const out = await transfertService.createTransfert(pool, {
+      sourceLaboId: parseInt(laboId, 10),
+      clientId: req.user.gerant_parent_id || req.user.id,
+      userId: req.user.id,
+      dateTransfert,
+      note,
+      refFacture,
+      tauxTva,
+      transfers,
+    });
+    res.json(out);
   } catch (err) {
+    if (replyTransfertError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -1501,7 +1210,7 @@ const createTransfer = async (req, res) => {
 
 const getTransferHistory = async (req, res) => {
   const { laboId } = req.params;
-  const { startDate, endDate, ingredientId, activiteId, limit } = req.query;
+  const { startDate, endDate, ingredientId, activiteId, laboDestId, limit } = req.query;
   const currentYear = new Date().getFullYear();
 
   try {
@@ -1522,9 +1231,32 @@ const getTransferHistory = async (req, res) => {
     } else {
       if (ingredientId) { params.push(ingredientId); extraWhere += ` AND lt.ingredient_id = $${params.length}`; }
     }
-    if (activiteId) { params.push(activiteId); extraWhere += ` AND lt.activite_id = $${params.length}`; }
+    const actIdNum = activiteId ? parseInt(activiteId, 10) : null;
+    const laboDestIdNum = laboDestId ? parseInt(laboDestId, 10) : null;
+    if ((activiteId && !Number.isInteger(actIdNum)) || (laboDestId && !Number.isInteger(laboDestIdNum))) {
+      return res.status(400).json({ code: 'DESTINATION_INVALIDE', message: 'activiteId / laboDestId invalide' });
+    }
+    if (actIdNum != null) { params.push(actIdNum); extraWhere += ` AND lt.activite_id = $${params.length}`; }
+    // Lot 1b : filtre sur un labo destinataire (cession interne labo → labo)
+    if (laboDestIdNum != null) { params.push(laboDestIdNum); extraWhere += ` AND lt.labo_dest_id = $${params.length}`; }
     if (startDate) { params.push(startDate); extraWhere += ` AND lt.date_transfert >= $${params.length}`; }
     if (endDate) { params.push(endDate); extraWhere += ` AND lt.date_transfert <= $${params.length}`; }
+
+    // Lot 1b : destination = activité OU labo enfant (LEFT JOIN — un JOIN strict ferait disparaître
+    // les cessions labo → labo) ; destType/destNom exposés, activiteId/activiteNom conservés.
+    const destCols = `a.id as activite_id, a.nom as activite_nom, lt.labo_dest_id, ld.nom as labo_dest_nom,
+                CASE WHEN lt.labo_dest_id IS NOT NULL THEN 'labo' ELSE 'activite' END as dest_type,
+                COALESCE(a.nom, ld.nom) as dest_nom`;
+    const destJoins = `LEFT JOIN activites a ON a.id = lt.activite_id
+         LEFT JOIN labos ld ON ld.id = lt.labo_dest_id`;
+    const mapDest = (r) => ({
+      activiteId: r.activite_id,
+      activiteNom: r.activite_nom,
+      laboDestId: r.labo_dest_id ?? null,
+      destType: r.dest_type,
+      destNom: r.dest_nom ?? null,
+      destKey: r.labo_dest_id != null ? `l-${r.labo_dest_id}` : (r.activite_id != null ? `a-${r.activite_id}` : null),
+    });
 
     let result;
     if (isPTQuery) {
@@ -1532,10 +1264,10 @@ const getTransferHistory = async (req, res) => {
         `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
                 lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
                 p.id as produit_id, p.nom as produit_nom, p.type, p.origine,
-                a.id as activite_id, a.nom as activite_nom
+                ${destCols}
          FROM labo_transfers lt
          JOIN produits p ON p.id = lt.produit_id
-         JOIN activites a ON a.id = lt.activite_id
+         ${destJoins}
          WHERE lt.labo_id = $1 AND lt.date_transfert >= make_date($2::int, 1, 1) AND lt.date_transfert < make_date($2::int + 1, 1, 1)${extraWhere}
          ORDER BY lt.date_transfert DESC, lt.created_at DESC LIMIT ${limit ? parseInt(limit, 10) : 2000}`,
         params
@@ -1555,8 +1287,7 @@ const getTransferHistory = async (req, res) => {
         ingredientNom: r.produit_nom,
         uniteNom: 'unité',
         categorieNom: ptCategorie(r.type, r.origine),
-        activiteId: r.activite_id,
-        activiteNom: r.activite_nom,
+        ...mapDest(r),
       })));
     }
 
@@ -1569,14 +1300,14 @@ const getTransferHistory = async (req, res) => {
               lt.ingredient_id, lt.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              a.id as activite_id, a.nom as activite_nom,
+              ${destCols},
               COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
        FROM labo_transfers lt
        LEFT JOIN articles i ON i.id = lt.ingredient_id
        LEFT JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories c ON i.categorie_id = c.id
        LEFT JOIN produits p ON p.id = lt.produit_id
-       JOIN activites a ON a.id = lt.activite_id
+       ${destJoins}
        LEFT JOIN utilisateurs ub ON ub.id = lt.created_by
        WHERE lt.labo_id = $1 AND lt.date_transfert >= make_date($2::int, 1, 1) AND lt.date_transfert < make_date($2::int + 1, 1, 1)${extraWhere}
        ORDER BY lt.date_transfert DESC, lt.created_at DESC LIMIT ${limit ? parseInt(limit, 10) : 2000}`,
@@ -1599,8 +1330,7 @@ const getTransferHistory = async (req, res) => {
       ingredientNom: r.ingredient_nom,
       uniteNom: r.unite_nom,
       categorieNom: r.categorie_nom,
-      activiteId: r.activite_id,
-      activiteNom: r.activite_nom,
+      ...mapDest(r),
     })));
   } catch (err) {
     console.error(err);
@@ -1623,8 +1353,14 @@ const getLaboHistorique = async (req, res) => {
     const includeTransfert = !typeFilter || typeFilter === 'transfert';
     // Ventes acheteurs (module Acheteurs) : sorties de stock, sans fournisseur ni activité
     const includeVentes = (!typeFilter || typeFilter === 'vente') && !activiteId && !fournisseurId;
+    // Lot 1b : ENTRÉES reçues d'un labo source (lignes stock_labo_daily type 'transfert', sens 'entree') —
+    // branche indépendante d'includeManuel, incluse quand typeFilter ∈ {vide, 'transfert'} ; jamais
+    // quand un filtre activité est posé (une entrée n'a pas d'activité destinataire).
+    const includeEntrees = (!typeFilter || typeFilter === 'transfert') && !activiteId;
 
-    const manuelConds = [`sld.labo_id = $1`, `sld.type_appro != 'transfert'`, `NOT (sld.type_appro = 'manuel' AND sld.quantite < 0)`];
+    // Règle unique §2.1 (NULL-safe) : le miroir 'manuel' < 0 d'une sortie reste masqué ; les entrées
+    // 'transfert' sont servies par entreesSql (pas par manuelSql) pour porter sens/contrepartie.
+    const manuelConds = [`sld.labo_id = $1`, `COALESCE(sld.type_appro,'manuel') <> 'transfert'`, `NOT (COALESCE(sld.type_appro,'manuel') = 'manuel' AND sld.quantite < 0)`];
     const transferConds = [`lt.labo_id = $1`];
     const venteConds = [`ca.labo_id = $1`, `ca.statut IN ('expediee', 'livree')`];
     const params = [laboId];
@@ -1676,6 +1412,9 @@ const getLaboHistorique = async (req, res) => {
       idx++;
     }
 
+    // Mêmes filtres (dates, article, catégorie, fournisseur, réf) que manuelSql, base différente.
+    const entreesConds = [`sld.labo_id = $1`, `sld.type_appro = 'transfert'`, ...manuelConds.slice(3)];
+
     const manuelSql = `
       SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
              sld.ref_facture, sld.type_appro, sld.updated_at, sld.created_by,
@@ -1683,13 +1422,35 @@ const getLaboHistorique = async (req, res) => {
              i.nom as ingredient_nom, u.nom as unite_nom,
              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
              f.nom as fournisseur_nom, f.id as fournisseur_id,
-             NULL::int as activite_id, NULL::text as activite_nom
+             NULL::int as activite_id, NULL::text as activite_nom,
+             NULL::text as sens, NULL::text as contrepartie_nom, NULL::text as dest_type, NULL::int as labo_dest_id
       FROM stock_labo_daily sld
       JOIN articles i ON i.id = sld.ingredient_id
       JOIN unites u ON u.id = i.unite_id
       LEFT JOIN categories c ON c.id = i.categorie_id
       LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
       WHERE ${manuelConds.join(' AND ')}`;
+
+    // Entrées reçues d'un labo source : contrepartie = labo source (via transfert_id, sinon le
+    // fournisseur is_labo porté par la ligne).
+    const entreesSql = `
+      SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
+             sld.ref_facture, 'transfert'::text as type_appro, sld.updated_at, sld.created_by,
+             sld.taux_tva, sld.prix_unitaire_tva,
+             i.nom as ingredient_nom, u.nom as unite_nom,
+             COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+             f.nom as fournisseur_nom, f.id as fournisseur_id,
+             NULL::int as activite_id, NULL::text as activite_nom,
+             'entree'::text as sens, COALESCE(lsrc.nom, fl.nom) as contrepartie_nom, NULL::text as dest_type, NULL::int as labo_dest_id
+      FROM stock_labo_daily sld
+      JOIN articles i ON i.id = sld.ingredient_id
+      JOIN unites u ON u.id = i.unite_id
+      LEFT JOIN categories c ON c.id = i.categorie_id
+      LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
+      LEFT JOIN labos fl ON fl.id = f.labo_id
+      LEFT JOIN labo_transfers ltx ON ltx.id = sld.transfert_id
+      LEFT JOIN labos lsrc ON lsrc.id = ltx.labo_id
+      WHERE ${entreesConds.join(' AND ')}`;
 
     const transferSql = `
       SELECT lt.id, lt.ingredient_id, lt.date_transfert as date_appro, lt.quantite, lt.prix_unitaire,
@@ -1698,12 +1459,15 @@ const getLaboHistorique = async (req, res) => {
              i.nom as ingredient_nom, u.nom as unite_nom,
              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
              NULL::text as fournisseur_nom, NULL::int as fournisseur_id,
-             lt.activite_id, a.nom as activite_nom
+             lt.activite_id, a.nom as activite_nom,
+             'sortie'::text as sens, COALESCE(a.nom, ld.nom) as contrepartie_nom,
+             CASE WHEN lt.labo_dest_id IS NOT NULL THEN 'labo' ELSE 'activite' END as dest_type, lt.labo_dest_id
       FROM labo_transfers lt
       JOIN articles i ON i.id = lt.ingredient_id
       JOIN unites u ON u.id = i.unite_id
       LEFT JOIN categories c ON c.id = i.categorie_id
-      JOIN activites a ON a.id = lt.activite_id
+      LEFT JOIN activites a ON a.id = lt.activite_id
+      LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
       WHERE ${transferConds.join(' AND ')}`;
 
     // Ventes acheteurs — ligne article OU produit composé (ids négatifs, convention front).
@@ -1717,7 +1481,8 @@ const getLaboHistorique = async (req, res) => {
              CASE WHEN cal.article_type = 'produit' THEN ${ptCategorieSql('p')}
                   ELSE COALESCE(c.nom, 'Sans catégorie') END as categorie_nom,
              COALESCE(ach.nom, ca.acheteur_nom) as fournisseur_nom, NULL::int as fournisseur_id,
-             NULL::int as activite_id, NULL::text as activite_nom
+             NULL::int as activite_id, NULL::text as activite_nom,
+             NULL::text as sens, NULL::text as contrepartie_nom, NULL::text as dest_type, NULL::int as labo_dest_id
       FROM commande_acheteur_lignes cal
       JOIN commandes_acheteur ca ON ca.id = cal.commande_id
       LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
@@ -1730,6 +1495,7 @@ const getLaboHistorique = async (req, res) => {
 
     const parts = [];
     if (includeManuel) parts.push(manuelSql);
+    if (includeEntrees) parts.push(entreesSql);
     if (includeTransfert) parts.push(transferSql);
     if (includeVentes) parts.push(venteSql);
     if (parts.length === 0) return res.json([]);
@@ -1759,6 +1525,12 @@ const getLaboHistorique = async (req, res) => {
       fournisseurNom: r.fournisseur_nom || null,
       activiteId: r.activite_id || null,
       activiteNom: r.activite_nom || null,
+      // Lot 1b : sens du transfert ('entree' reçue d'un labo source | 'sortie' vers une activité ou
+      // un labo destinataire) et contrepartie (labo source | activité ou labo destinataire).
+      sens: r.sens || null,
+      contrepartieNom: r.contrepartie_nom || null,
+      destType: r.dest_type || null,
+      laboDestId: r.labo_dest_id || null,
       updatedAt: r.updated_at,
       createdBy: r.created_by ?? null,
       createdByNom: r.created_by_nom ?? null,
@@ -1778,7 +1550,7 @@ const getLaboHistorique = async (req, res) => {
       if (ptType) ptWhere += ` AND ${ptTypeSql('p', ptType)}`;
       const ptRes = await pool.query(
         `SELECT slpt.id, slpt.produit_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire, slpt.updated_at, p.nom as produit_nom, p.type, p.origine,
-                slpt.taux_tva, slpt.prix_unitaire_tva, slpt.ref_facture, slpt.fournisseur_id, f.nom AS fournisseur_nom
+                slpt.taux_tva, slpt.prix_unitaire_tva, slpt.ref_facture, slpt.fournisseur_id, f.nom AS fournisseur_nom, slpt.type_appro
          FROM stock_labo_pt_daily slpt
          JOIN produits p ON p.id = slpt.produit_id
          LEFT JOIN fournisseurs f ON f.id = slpt.fournisseur_id
@@ -1786,6 +1558,9 @@ const getLaboHistorique = async (req, res) => {
          ORDER BY slpt.date_appro DESC`,
         ptParams
       );
+      // Lot 1b : un PT REÇU d'un labo source (type_appro 'transfert') est servi comme une entrée de
+      // transfert (typeAppro 'transfert', sens 'entree', contrepartie = labo source = fournisseur
+      // is_labo), comme les articles — puce « Reçu » du front ; les productions restent 'produit_transformé'.
       const ptEntries = ptRes.rows.map((spt) => ({
         id: spt.id,
         ingredientId: -(spt.produit_id),
@@ -1798,11 +1573,15 @@ const getLaboHistorique = async (req, res) => {
         tauxTva: spt.taux_tva !== null ? parseFloat(spt.taux_tva) : null,
         prixUnitaireTva: spt.prix_unitaire_tva !== null ? parseFloat(spt.prix_unitaire_tva) : null,
         refFacture: spt.ref_facture || null,
-        typeAppro: 'produit_transformé',
+        typeAppro: spt.type_appro === 'transfert' ? 'transfert' : 'produit_transformé',
         fournisseurId: spt.fournisseur_id || null,
         fournisseurNom: spt.fournisseur_nom || null,
         activiteId: null,
         activiteNom: null,
+        sens: spt.type_appro === 'transfert' ? 'entree' : null,
+        contrepartieNom: spt.type_appro === 'transfert' ? (spt.fournisseur_nom || null) : null,
+        destType: null,
+        laboDestId: null,
         updatedAt: spt.updated_at,
         createdBy: null,
         createdByNom: null,
@@ -1828,21 +1607,28 @@ const updateLaboHistoriqueEntry = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const check = await pool.query(
-      'SELECT id, created_by FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
+      'SELECT id, created_by, type_appro, transfert_id FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
       [entryId, laboId]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
     if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
       return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
+    // Lot 1b §2.4 : une ligne générée par un transfert (entrée 'transfert' ou miroir lié) ne se
+    // modifie que via le transfert lui-même.
+    if (check.rows[0].type_appro === 'transfert' || check.rows[0].transfert_id != null)
+      return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez le transfert' });
 
-    const result = await pool.query(
-      `UPDATE stock_labo_daily
-       SET quantite = $1, prix_unitaire = $2, fournisseur_id = $3, ref_facture = $4, updated_at = NOW()
-       WHERE id = $5 AND labo_id = $6
-       RETURNING id, quantite, prix_unitaire, fournisseur_id, ref_facture`,
-      [quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, entryId, laboId]
-    );
-    const r = result.rows[0];
+    const r = await withTransaction(async (client) => {
+      await transfertService.lockStockLabo(client, laboId);
+      const result = await client.query(
+        `UPDATE stock_labo_daily
+         SET quantite = $1, prix_unitaire = $2, fournisseur_id = $3, ref_facture = $4, updated_at = NOW()
+         WHERE id = $5 AND labo_id = $6
+         RETURNING id, quantite, prix_unitaire, fournisseur_id, ref_facture`,
+        [quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, entryId, laboId]
+      );
+      return result.rows[0];
+    });
     res.json({
       id: r.id,
       quantite: r.quantite !== null ? parseFloat(r.quantite) : null,
@@ -1851,6 +1637,7 @@ const updateLaboHistoriqueEntry = async (req, res) => {
       refFacture: r.ref_facture,
     });
   } catch (err) {
+    if (replyTransfertError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -1864,19 +1651,23 @@ const deleteLaboHistoriqueEntry = async (req, res) => {
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
 
     const checkDel = await pool.query(
-      'SELECT created_by FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
+      'SELECT created_by, type_appro, transfert_id FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
       [entryId, laboId]
     );
     if (checkDel.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
     if (req.user.role === 'gerant' && checkDel.rows[0].created_by !== req.user.id)
       return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
-    const result = await pool.query(
-      'DELETE FROM stock_labo_daily WHERE id = $1 RETURNING id',
-      [entryId]
-    );
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
+    if (checkDel.rows[0].type_appro === 'transfert' || checkDel.rows[0].transfert_id != null)
+      return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez le transfert' });
+    const deleted = await withTransaction(async (client) => {
+      await transfertService.lockStockLabo(client, laboId);
+      const result = await client.query('DELETE FROM stock_labo_daily WHERE id = $1 RETURNING id', [entryId]);
+      return result.rows.length;
+    });
+    if (!deleted) return res.status(404).json({ message: 'Entrée introuvable' });
     res.json({ ok: true });
   } catch (err) {
+    if (replyTransfertError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -1960,8 +1751,28 @@ const getActivityAssignments = async (req, res) => {
     );
     const ptAssigned = new Set(ptAssignRes.rows.map((r) => `${r.activite_id}:${r.produit_id}`));
 
+    // Lot 1b : labos enfants (alimentés par ce labo) — assigned = labo_ingredient_selections /
+    // labo_pt_selections du labo enfant (convention ingredientId négatif pour un PT).
+    const enfants = await unitesOp.getLabosEnfants(pool, laboId);
+    const enfantIds = enfants.map((e) => e.laboId);
+    const [enfantIngRes, enfantPtRes] = enfantIds.length
+      ? await Promise.all([
+          pool.query('SELECT labo_id, ingredient_id FROM labo_ingredient_selections WHERE labo_id = ANY($1::int[])', [enfantIds]),
+          pool.query('SELECT labo_id, produit_id FROM labo_pt_selections WHERE labo_id = ANY($1::int[])', [enfantIds]),
+        ])
+      : [{ rows: [] }, { rows: [] }];
+    const enfantIng = new Set(enfantIngRes.rows.map((r) => `${r.labo_id}:${r.ingredient_id}`));
+    const enfantPt = new Set(enfantPtRes.rows.map((r) => `${r.labo_id}:${r.produit_id}`));
+    const labosOut = enfants.map((e) => ({
+      laboId: e.laboId,
+      nom: e.nom,
+      ingredients: ingRes.rows.map((ing) => ({ ingredientId: ing.id, assigned: enfantIng.has(`${e.laboId}:${ing.id}`) })),
+      produits: ptRes.rows.map((pt) => ({ ingredientId: -(pt.id), assigned: enfantPt.has(`${e.laboId}:${pt.id}`) })),
+    }));
+
     res.json({
       activites: actRes.rows.map((a) => ({ id: a.id, nom: a.nom, type: a.type })),
+      labos: labosOut,
       ingredients: ingRes.rows.map((ing) => ({
         ingredientId: ing.id,
         nom: ing.nom,
@@ -2055,10 +1866,14 @@ const exportLaboHistoriqueExcel = async (req, res) => {
               sld.ref_facture, sld.type_appro, sld.taux_tva, sld.prix_unitaire_tva,
               i.nom as ingredient_nom, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
-              f.nom as fournisseur_nom, ub.nom as created_by_nom
+              CASE WHEN sld.type_appro = 'transfert' THEN COALESCE(lsrc.nom, f.nom) ELSE f.nom END as fournisseur_nom,
+              CASE WHEN sld.type_appro = 'transfert' THEN 'entree' ELSE NULL END AS sens,
+              ub.nom as created_by_nom
        FROM stock_labo_daily sld
        JOIN articles i ON i.id = sld.ingredient_id JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id LEFT JOIN fournisseurs f ON f.id = sld.fournisseur_id
+       LEFT JOIN labo_transfers ltx ON ltx.id = sld.transfert_id
+       LEFT JOIN labos lsrc ON lsrc.id = ltx.labo_id
        LEFT JOIN utilisateurs ub ON ub.id = sld.created_by
        WHERE ${conditions.join(' AND ')}
        ORDER BY sld.date_appro DESC, sld.updated_at DESC`, params
@@ -2119,7 +1934,14 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       totalHT += coutHt; totalTTC += coutTtc;
       const isSelected = selectedSet.has(Number(r.id));
       const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
-      const typeLabel = (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? 'Prod. Transformé' : t === 'transfert' ? 'Transfert' : t === 'PT' ? 'PT' : 'Manuel'; })();
+      // Lot 1b : entrée 'transfert' (reçue d'un labo source) = « Transfert reçu » ; les autres
+      // libellés (Manuel / PT / Prod. Transformé) sont inchangés pour l'existant.
+      const typeLabel = (() => {
+        const t = r.type_appro || 'manuel';
+        if (t === 'produit_transforme') return 'Prod. Transformé';
+        if (t === 'transfert') return 'Transfert reçu';
+        return t === 'PT' ? 'PT' : 'Manuel';
+      })();
       const dataRow = sheet.addRow([
         dateStr, r.ingredient_nom, r.categorie_nom, typeLabel,
         qty, r.unite_nom, prix, tva !== null ? tva : '', prixTtc,
@@ -2166,21 +1988,17 @@ const createLaboPerte = async (req, res) => {
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    // Lot 1b §5 — type ∈ regles.types_perte du compte (absent → avarie, sinon 1er type du domaine).
+    const typesPerte = await getTypesPerteForClient(req.user.gerant_parent_id || req.user.id);
+    const typePerteEff = typePerte || (typesPerte.includes('avarie') ? 'avarie' : typesPerte[0]);
+    if (!typesPerte.includes(typePerteEff)) return res.status(400).json({ message: `typePerte invalide (${typesPerte.join('|')})` });
 
     const ingredientIdRaw = parseInt(ingredientId);
     const effectiveDate = datePerte || new Date().toISOString().split('T')[0];
     if (ingredientIdRaw < 0) {
       // PT product perte
       const produitId = -ingredientIdRaw;
-      const ptStock = await computeStockPTCourant('labo', laboId, produitId);
       const qtyPT = parseFloat(quantite);
-      if (qtyPT > ptStock) {
-        return res.status(422).json({
-          message: `Stock PT insuffisant`,
-          disponible: Math.max(0, ptStock),
-          demande: qtyPT,
-        });
-      }
       // Valoriser la perte au coût recette TTC du PT (buildMpPriceMapLabo = TTC), pour rapports/exports.
       let coutPt = null;
       try {
@@ -2190,11 +2008,19 @@ const createLaboPerte = async (req, res) => {
         const c = await calculerCoutAvecPrixMap(produitId, ownerId, map);
         coutPt = c && c.cout_total != null && parseFloat(c.cout_total) > 0 ? parseFloat(c.cout_total) : null;
       } catch { /* coût indisponible → prix null */ }
-      await pool.query(
-        `INSERT INTO labo_pertes (labo_id, produit_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $6, $7)`,
-        [laboId, produitId, qtyPT, typePerte || 'avarie', effectiveDate, coutPt, req.user.id]
-      );
+      // Lot 1b §2.4 : verrou stock + contrôle DANS la transaction (même espace que les transferts).
+      await withTransaction(async (client) => {
+        await transfertService.lockStockLabo(client, laboId);
+        const ptStock = await computeStock(client, 'labo', laboId, { produitId });
+        if (qtyPT > ptStock) {
+          throw new transfertService.TransfertError(422, 'STOCK_INSUFFISANT', 'Stock PT insuffisant', { disponible: Math.max(0, ptStock), demande: qtyPT });
+        }
+        await client.query(
+          `INSERT INTO labo_pertes (labo_id, produit_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $6, $7)`,
+          [laboId, produitId, qtyPT, typePerteEff, effectiveDate, coutPt, req.user.id]
+        );
+      });
     } else {
       const minRow = await pool.query(
         `SELECT MIN(date_appro) AS min_date FROM stock_labo_daily WHERE labo_id = $1 AND ingredient_id = $2`,
@@ -2215,24 +2041,24 @@ const createLaboPerte = async (req, res) => {
       );
       const prixUnitaire = priceRow.rows.length > 0 ? parseFloat(priceRow.rows[0].prix_unitaire) : null;
       const prixUnitaireTva = priceRow.rows.length > 0 && priceRow.rows[0].prix_ttc != null ? parseFloat(priceRow.rows[0].prix_ttc) : null;
-      const stockCourant = await computeStockCourant('labo', laboId, ingredientIdRaw);
       const qtyDemandee = parseFloat(quantite);
-      if (qtyDemandee > stockCourant) {
-        return res.status(422).json({
-          message: `Stock insuffisant`,
-          disponible: Math.max(0, stockCourant),
-          demande: qtyDemandee,
-        });
-      }
-
-      await pool.query(
-        `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [laboId, ingredientIdRaw, parseFloat(quantite), typePerte || 'avarie', effectiveDate, prixUnitaire, prixUnitaireTva, req.user.id]
-      );
+      // Lot 1b §2.4 : verrou stock + contrôle DANS la transaction (même espace que les transferts).
+      await withTransaction(async (client) => {
+        await transfertService.lockStockLabo(client, laboId);
+        const stockCourant = await computeStock(client, 'labo', laboId, { articleId: ingredientIdRaw });
+        if (qtyDemandee > stockCourant) {
+          throw new transfertService.TransfertError(422, 'STOCK_INSUFFISANT', 'Stock insuffisant', { disponible: Math.max(0, stockCourant), demande: qtyDemandee });
+        }
+        await client.query(
+          `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [laboId, ingredientIdRaw, qtyDemandee, typePerteEff, effectiveDate, prixUnitaire, prixUnitaireTva, req.user.id]
+        );
+      });
     }
     res.json({ success: true });
   } catch (err) {
+    if (replyTransfertError(res, err)) return;
     console.error('[createLaboPerte]', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -2327,12 +2153,33 @@ const deleteLabo = async (req, res) => {
     if (laboRes.rows.length === 0)
       return res.status(404).json({ message: 'Labo introuvable' });
 
-    // Suppression impossible si des articles sont affectés au labo.
+    // Lot 1b §2.4 : un labo source ou destinataire d'un transfert, ou source d'un lien vers un
+    // labo enfant, ne se supprime pas (la cascade labo_dest_id effacerait des transferts en
+    // laissant le miroir source). Évalué AVANT la garde « articles affectés » (contrat 409
+    // LABO_UTILISE quel que soit l'état des sélections d'articles).
+    const utilise = await pool.query(
+      `SELECT
+         EXISTS (SELECT 1 FROM labo_transfers lt WHERE lt.labo_id = $1 OR lt.labo_dest_id = $1) AS transferts,
+         EXISTS (SELECT 1 FROM unites_operationnelles us
+                 JOIN unites_operationnelles_liens li ON li.source_unite_id = us.id
+                 JOIN unites_operationnelles ud ON ud.id = li.dest_unite_id AND ud.type_technique = 'labo'
+                 WHERE us.labo_id = $1) AS enfants`,
+      [laboId]
+    );
+    if (utilise.rows[0].transferts || utilise.rows[0].enfants) {
+      return res.status(409).json({
+        code: 'LABO_UTILISE',
+        message: utilise.rows[0].transferts
+          ? 'Suppression impossible : ce labo a des transferts enregistrés (source ou destinataire).'
+          : 'Suppression impossible : ce labo alimente d\'autres labos — détachez-les d\'abord.',
+      });
+    }
+    // Suppression impossible si des articles sont affectés au labo (garde préexistante).
     const used = await pool.query(
       'SELECT 1 FROM labo_ingredient_selections WHERE labo_id = $1 LIMIT 1', [laboId]
     );
     if (used.rows.length > 0) {
-      return res.status(409).json({ message: "Suppression impossible : des articles sont affectés à ce labo." });
+      return res.status(409).json({ code: 'ARTICLES_AFFECTES', message: "Suppression impossible : des articles sont affectés à ce labo." });
     }
 
     // Unassign labo from activities
@@ -2359,7 +2206,7 @@ const deleteLabo = async (req, res) => {
 
 const updateLabo = async (req, res) => {
   const { laboId } = req.params;
-  const { nom, referentTel, adresse } = req.body;
+  const { nom, referentTel, adresse, composantId, laboParentId } = req.body;
   if (!nom)
     return res.status(400).json({ message: 'nom requis' });
   try {
@@ -2370,6 +2217,23 @@ const updateLabo = async (req, res) => {
       return res.status(400).json({ message: 'Profil entreprise introuvable' });
     const entrepriseId = peRes.rows[0].id;
 
+    // Lot 1b : laboParentId absent = inchangé ; null = détaché ; id = labo source ∈ entreprise, ≠ lui-même.
+    const parentGiven = typeof laboParentId !== 'undefined';
+    const parentIdNum = parentGiven && laboParentId != null ? parseInt(laboParentId, 10) : null;
+    if (parentGiven && laboParentId != null) {
+      if (!Number.isInteger(parentIdNum) || parentIdNum <= 0) return res.status(400).json({ message: 'Labo source introuvable' });
+      if (parentIdNum === parseInt(laboId, 10))
+        return res.status(400).json({ code: 'CYCLE_INTERDIT', message: unitesOp.CODES.CYCLE_INTERDIT });
+      const parentCheck = await pool.query(
+        'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2',
+        [parentIdNum, entrepriseId]
+      );
+      if (parentCheck.rows.length === 0) return res.status(400).json({ message: 'Labo source introuvable' });
+    }
+    if (composantId != null) {
+      await unitesOp.validateComposant(pool, entrepriseId, 'labo', composantId);
+    }
+
     const nomCheck = await pool.query(
       'SELECT id FROM labos WHERE entreprise_id = $1 AND LOWER(nom) = LOWER($2) AND id != $3',
       [entrepriseId, nom.trim(), laboId]
@@ -2378,20 +2242,41 @@ const updateLabo = async (req, res) => {
       return res.status(409).json({ message: 'Un labo avec ce nom existe déjà' });
 
     const tel = referentTel?.trim() || null;
-    const result = await pool.query(
-      `UPDATE labos SET nom = $1, referent_tel = $2, adresse = $3, updated_at = NOW()
-       WHERE id = $4 AND entreprise_id = $5 RETURNING *`,
-      [nom.trim(), tel, adresse?.trim() || null, laboId, entrepriseId]
-    );
-    if (result.rows.length === 0)
-      return res.status(404).json({ message: 'Labo introuvable' });
-    // Sync the auto-created labo fournisseur name/tel
-    await pool.query(
-      `UPDATE fournisseurs SET nom = $1, telephone = $2 WHERE labo_id = $3 AND is_labo = true`,
-      [nom.trim(), tel, laboId]
-    );
-    res.json(mapLabo(result.rows[0]));
+    // UPDATE → fournisseur → composant → source dans UNE transaction (un 400 cycle/composant
+    // n'enregistre ni le nom ni le composant à moitié).
+    const found = await withTransaction(async (client) => {
+      const result = await client.query(
+        `UPDATE labos SET nom = $1, referent_tel = $2, adresse = $3, updated_at = NOW()
+         WHERE id = $4 AND entreprise_id = $5 RETURNING *`,
+        [nom.trim(), tel, adresse?.trim() || null, laboId, entrepriseId]
+      );
+      if (result.rows.length === 0) return false;
+      // Sync the auto-created labo fournisseur name/tel
+      await client.query(
+        `UPDATE fournisseurs SET nom = $1, telephone = $2 WHERE labo_id = $3 AND is_labo = true`,
+        [nom.trim(), tel, laboId]
+      );
+
+      // Lot 1b : composant et labo source (cycle / entreprise / type → 400 avec code).
+      const unite = await unitesOp.getUniteByRef(client, 'labo', laboId);
+      if (unite && composantId != null) await unitesOp.setComposant(client, unite.id, composantId);
+      if (unite && parentGiven) {
+        if (parentIdNum == null) {
+          await unitesOp.setSource(client, unite.id, null);
+        } else {
+          const srcUnite = await unitesOp.getUniteByRef(client, 'labo', parentIdNum);
+          if (srcUnite) await unitesOp.setSource(client, unite.id, srcUnite.id);
+        }
+      }
+      return true;
+    });
+    if (!found) return res.status(404).json({ message: 'Labo introuvable' });
+
+    const fresh = await pool.query('SELECT * FROM labos WHERE id = $1', [laboId]);
+    await unitesOp.enrichRows(pool, 'labo', fresh.rows);
+    res.json(mapLabo(fresh.rows[0]));
   } catch (err) {
+    if (replyUniteError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -2401,7 +2286,7 @@ const updateLabo = async (req, res) => {
 
 const exportLaboTransferExcel = async (req, res) => {
   const { laboId } = req.params;
-  const { startDate, endDate, activiteId, selectedIds: selectedIdsParam } = req.query;
+  const { startDate, endDate, activiteId, laboDestId, selectedIds: selectedIdsParam } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
 
   try {
@@ -2416,13 +2301,20 @@ const exportLaboTransferExcel = async (req, res) => {
     let idx = 2;
     if (startDate)  { conditions.push(`lt.date_transfert >= $${idx++}`); params.push(startDate); }
     if (endDate)    { conditions.push(`lt.date_transfert <= $${idx++}`); params.push(endDate); }
-    if (activiteId) { conditions.push(`lt.activite_id = $${idx++}`); params.push(activiteId); }
+    const actIdNum = activiteId ? parseInt(activiteId, 10) : null;
+    const laboDestIdNum = laboDestId ? parseInt(laboDestId, 10) : null;
+    if ((activiteId && !Number.isInteger(actIdNum)) || (laboDestId && !Number.isInteger(laboDestIdNum))) {
+      return res.status(400).json({ code: 'DESTINATION_INVALIDE', message: 'activiteId / laboDestId invalide' });
+    }
+    if (actIdNum != null) { conditions.push(`lt.activite_id = $${idx++}`); params.push(actIdNum); }
+    if (laboDestIdNum != null) { conditions.push(`lt.labo_dest_id = $${idx++}`); params.push(laboDestIdNum); }
 
     const result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
               lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, COALESCE(u.nom, 'unité') AS unite_nom,
               COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) AS categorie_nom,
               lt.activite_id, a.nom AS activite_nom,
+              CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS dest_nom,
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
               ub.nom AS created_by_nom
        FROM labo_transfers lt
@@ -2430,7 +2322,8 @@ const exportLaboTransferExcel = async (req, res) => {
        LEFT JOIN unites u ON u.id = i.unite_id
        LEFT JOIN categories c ON c.id = i.categorie_id
        LEFT JOIN produits p ON p.id = lt.produit_id
-       JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
        LEFT JOIN utilisateurs ub ON ub.id = lt.created_by
        WHERE ${conditions.join(' AND ')}
        ORDER BY lt.date_transfert DESC, lt.id DESC`,
@@ -2442,8 +2335,8 @@ const exportLaboTransferExcel = async (req, res) => {
     workbook.creator = 'Fiche Technique App';
     const sheet = workbook.addWorksheet(`Hist Transferts ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
-    // Date | Activité | Ingrédient | Catégorie | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Créé par
-    const labels = ['Date', 'Activité', 'Ingrédient', 'Catégorie', 'Quantité', 'Unité', 'Prix U. HT', 'TVA %', 'Prix U. TTC', 'Coût HT', 'Coût TTC', 'Créé par'];
+    // Date | Destination | Ingrédient | Catégorie | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Créé par
+    const labels = ['Date', 'Destination', 'Ingrédient', 'Catégorie', 'Quantité', 'Unité', 'Prix U. HT', 'TVA %', 'Prix U. TTC', 'Coût HT', 'Coût TTC', 'Créé par'];
     const widths = [12, 20, 26, 18, 11, 9, 13, 9, 13, 14, 14, 16];
     const colCount = labels.length;
 
@@ -2470,7 +2363,7 @@ const exportLaboTransferExcel = async (req, res) => {
       const isSelected = selectedSet.has(Number(r.id));
       const dateStr = fmtD(r.date_transfert);
       const dataRow = sheet.addRow([
-        dateStr, r.activite_nom, r.ingredient_nom, r.categorie_nom,
+        dateStr, r.dest_nom, r.ingredient_nom, r.categorie_nom,
         qty, r.unite_nom,
         prix, tva !== null ? tva : '', prixTtc,
         coutHt, coutTtc,
@@ -2508,202 +2401,57 @@ const exportLaboTransferExcel = async (req, res) => {
   }
 };
 
-// PATCH /api/labo/:laboId/transfers/:transferId
+// PATCH /api/labo/:laboId/transfers/:transferId — lignes retrouvées par transfert_id (repli
+// heuristique uniquement pour un transfert antérieur à la migration 188), facture liée recalculée.
 const updateTransfer = async (req, res) => {
   const { laboId, transferId } = req.params;
-  const { quantite } = req.body;
-  const newQty = parseFloat(quantite);
-  if (!newQty || newQty <= 0)
-    return res.status(400).json({ message: 'quantite requise et doit être > 0' });
-
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
-
-    const tRes = await pool.query(
-      `SELECT id, ingredient_id, produit_id, activite_id, quantite, date_transfert, created_by
-       FROM labo_transfers WHERE id = $1 AND labo_id = $2`,
-      [transferId, laboId]
-    );
-    if (tRes.rows.length === 0) return res.status(404).json({ message: 'Transfert introuvable' });
-    const t = tRes.rows[0];
-    if (req.user.role === 'gerant' && t.created_by !== req.user.id)
-      return res.status(403).json({ message: 'Vous ne pouvez modifier que les transferts que vous avez créés' });
-    const oldQty = parseFloat(t.quantite);
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      await client.query(
-        'UPDATE labo_transfers SET quantite = $1 WHERE id = $2',
-        [newQty, transferId]
-      );
-
-      if (t.ingredient_id) {
-        await client.query(
-          `UPDATE stock_labo_daily SET quantite = $1, updated_at = NOW()
-           WHERE id = (
-             SELECT id FROM stock_labo_daily
-             WHERE labo_id = $2 AND ingredient_id = $3 AND type_appro = 'manuel' AND quantite < 0
-               AND date_appro = $4 AND quantite = $5
-             ORDER BY id ASC LIMIT 1
-           )`,
-          [-newQty, laboId, t.ingredient_id, t.date_transfert, -oldQty]
-        );
-        await client.query(
-          `UPDATE stock_entreprise_daily SET quantite = $1, updated_at = NOW()
-           WHERE id = (
-             SELECT id FROM stock_entreprise_daily
-             WHERE activite_id = $2 AND ingredient_id = $3 AND type_appro = 'transfert'
-               AND date_appro = $4 AND quantite = $5
-             ORDER BY id ASC LIMIT 1
-           )`,
-          [newQty, t.activite_id, t.ingredient_id, t.date_transfert, oldQty]
-        );
-      } else if (t.produit_id) {
-        await client.query(
-          `UPDATE stock_labo_pt_daily SET quantite = $1, updated_at = NOW()
-           WHERE id = (
-             SELECT id FROM stock_labo_pt_daily
-             WHERE labo_id = $2 AND produit_id = $3 AND date_appro = $4 AND quantite = $5
-               AND type_appro IS DISTINCT FROM 'PT'
-             ORDER BY id ASC LIMIT 1
-           )`,
-          [-newQty, laboId, t.produit_id, t.date_transfert, -oldQty]
-        );
-        await client.query(
-          `UPDATE stock_produits_transformes SET quantite = $1
-           WHERE id = (
-             SELECT id FROM stock_produits_transformes
-             WHERE activite_id = $2 AND produit_id = $3 AND date_appro = $4 AND quantite = $5
-             ORDER BY id ASC LIMIT 1
-           )`,
-          [newQty, t.activite_id, t.produit_id, t.date_transfert, oldQty]
-        );
-      }
-
-      await client.query('COMMIT');
-      res.json({ success: true, quantite: newQty });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    const out = await transfertService.updateTransfert(pool, {
+      laboId: parseInt(laboId, 10),
+      transferId: parseInt(transferId, 10),
+      quantite: req.body.quantite,
+      requester: { id: req.user.id, role: req.user.role },
+    });
+    res.json(out);
   } catch (err) {
+    if (replyTransfertError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
-// DELETE /api/labo/:laboId/transfers/:transferId
+// DELETE /api/labo/:laboId/transfers/:transferId — ordre obligatoire : lignes (par transfert_id)
+// PUIS labo_transfers ; facture liée recalculée (supprimée si plus aucune ligne).
 const deleteTransfer = async (req, res) => {
   const { laboId, transferId } = req.params;
-
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
-
-    const tRes = await pool.query(
-      `SELECT id, ingredient_id, produit_id, activite_id, quantite, date_transfert, created_by
-       FROM labo_transfers WHERE id = $1 AND labo_id = $2`,
-      [transferId, laboId]
-    );
-    if (tRes.rows.length === 0) return res.status(404).json({ message: 'Transfert introuvable' });
-    const t = tRes.rows[0];
-    if (req.user.role === 'gerant' && t.created_by !== req.user.id)
-      return res.status(403).json({ message: 'Vous ne pouvez supprimer que les transferts que vous avez créés' });
-    const qty = parseFloat(t.quantite);
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      await client.query('DELETE FROM labo_transfers WHERE id = $1', [transferId]);
-
-      if (t.ingredient_id) {
-        await client.query(
-          `DELETE FROM stock_labo_daily
-           WHERE id = (
-             SELECT id FROM stock_labo_daily
-             WHERE labo_id = $1 AND ingredient_id = $2 AND type_appro = 'manuel' AND quantite < 0
-               AND date_appro = $3 AND quantite = $4
-             ORDER BY id ASC LIMIT 1
-           )`,
-          [laboId, t.ingredient_id, t.date_transfert, -qty]
-        );
-        await client.query(
-          `DELETE FROM stock_entreprise_daily
-           WHERE id = (
-             SELECT id FROM stock_entreprise_daily
-             WHERE activite_id = $1 AND ingredient_id = $2 AND type_appro = 'transfert'
-               AND date_appro = $3 AND quantite = $4
-             ORDER BY id ASC LIMIT 1
-           )`,
-          [t.activite_id, t.ingredient_id, t.date_transfert, qty]
-        );
-      } else if (t.produit_id) {
-        await client.query(
-          `DELETE FROM stock_labo_pt_daily
-           WHERE id = (
-             SELECT id FROM stock_labo_pt_daily
-             WHERE labo_id = $1 AND produit_id = $2 AND date_appro = $3 AND quantite = $4
-               AND type_appro IS DISTINCT FROM 'PT'
-             ORDER BY id ASC LIMIT 1
-           )`,
-          [laboId, t.produit_id, t.date_transfert, -qty]
-        );
-        await client.query(
-          `DELETE FROM stock_produits_transformes
-           WHERE id = (
-             SELECT id FROM stock_produits_transformes
-             WHERE activite_id = $1 AND produit_id = $2 AND date_appro = $3 AND quantite = $4
-             ORDER BY id ASC LIMIT 1
-           )`,
-          [t.activite_id, t.produit_id, t.date_transfert, qty]
-        );
-      }
-
-      await client.query('COMMIT');
-      res.json({ success: true });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    const out = await transfertService.deleteTransfert(pool, {
+      laboId: parseInt(laboId, 10),
+      transferId: parseInt(transferId, 10),
+      requester: { id: req.user.id, role: req.user.role },
+    });
+    res.json(out);
   } catch (err) {
+    if (replyTransfertError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
-// GET /api/labo/:laboId/transfers/:transferId/prix
+// GET /api/labo/:laboId/transfers/:transferId/prix — référence d'ÉDITION à la date du transfert :
+// { pmpHT, pmpTTC, dernierAchatHT, prixUnitaire: pmpHT ?? dernierAchatHT } (computePmp à date).
 const getTransferPrix = async (req, res) => {
   const { laboId, transferId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
-
-    const tRes = await pool.query(
-      'SELECT ingredient_id, date_transfert FROM labo_transfers WHERE id = $1 AND labo_id = $2',
-      [transferId, laboId]
-    );
-    if (tRes.rows.length === 0) return res.status(404).json({ message: 'Transfert introuvable' });
-    const { ingredient_id, date_transfert } = tRes.rows[0];
-
-    if (!ingredient_id) return res.json({ prixUnitaire: null });
-
-    const pRes = await pool.query(
-      `SELECT prix_unitaire FROM stock_labo_daily
-       WHERE labo_id = $1 AND ingredient_id = $2 AND date_appro <= $3
-         AND type_appro = 'manuel' AND quantite > 0 AND prix_unitaire IS NOT NULL
-       ORDER BY date_appro DESC LIMIT 1`,
-      [laboId, ingredient_id, date_transfert]
-    );
-    res.json({ prixUnitaire: pRes.rows.length > 0 ? parseFloat(pRes.rows[0].prix_unitaire) : null });
+    res.json(await transfertService.getTransferPrix(pool, parseInt(laboId, 10), parseInt(transferId, 10)));
   } catch (err) {
+    if (replyTransfertError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -2721,10 +2469,12 @@ const getLabosArticlesConsommables = async (req, res) => {
   if (ids.length === 0) return res.json([]);
   try {
     // Garde-fou : tous les labos doivent appartenir au client.
+    // Lot 1b §3.3 : seuls les labos dont l'unité est production_active fabriquent des PT.
     const own = await pool.query(
       `SELECT l.id FROM labos l
        JOIN profil_entreprise pe ON l.entreprise_id = pe.id
-       WHERE pe.client_id = $1 AND l.id = ANY($2::int[])`,
+       LEFT JOIN unites_operationnelles uo ON uo.labo_id = l.id
+       WHERE pe.client_id = $1 AND l.id = ANY($2::int[]) AND COALESCE(uo.production_active, true)`,
       [clientId, ids]
     );
     const ownedIds = own.rows.map((r) => r.id);
