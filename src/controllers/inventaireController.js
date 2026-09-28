@@ -120,8 +120,8 @@ const getLaboInventaireStock = async (req, res) => {
          SELECT sld.ingredient_id, SUM(sld.quantite) as qty
          FROM stock_labo_daily sld
          JOIN last_inv li ON li.ingredient_id = sld.ingredient_id AND sld.date_appro >= li.date_inventaire
-         WHERE sld.labo_id = $1 AND sld.type_appro != 'transfert'
-           AND NOT (sld.type_appro = 'manuel' AND sld.quantite < 0)
+         WHERE sld.labo_id = $1
+           AND NOT (COALESCE(sld.type_appro,'manuel') = 'manuel' AND sld.quantite < 0)
          GROUP BY sld.ingredient_id
        ),
        post_transfer AS (
@@ -139,11 +139,11 @@ const getLaboInventaireStock = async (req, res) => {
          GROUP BY lp.ingredient_id
        ),
        all_appro AS (
-         SELECT ingredient_id, SUM(quantite) as qty
-         FROM stock_labo_daily
-         WHERE labo_id = $1 AND type_appro != 'transfert'
-           AND NOT (type_appro = 'manuel' AND quantite < 0)
-         GROUP BY ingredient_id
+         SELECT sld.ingredient_id, SUM(sld.quantite) as qty
+         FROM stock_labo_daily sld
+         WHERE sld.labo_id = $1
+           AND NOT (COALESCE(sld.type_appro,'manuel') = 'manuel' AND sld.quantite < 0)
+         GROUP BY sld.ingredient_id
        ),
        all_transfer AS (
          SELECT ingredient_id, SUM(quantite) as qty

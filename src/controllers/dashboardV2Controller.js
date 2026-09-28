@@ -1,5 +1,7 @@
 const pool = require('../config/database');
 const { ptCategorie, ptCategorieSql } = require('../utils/stockUtils');
+// Lot 1b §5 — règles du domaine du compte : seuil coût matière (%), types de perte.
+const { getSeuilCoutMatiereForClient, getTypesPerteForClient } = require('../services/domaineProfilService');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard v2 — endpoint unique multi-filtres à onglets.
@@ -75,7 +77,10 @@ const resolveContext = async (req) => {
   if (fActs.length) actIds = actIds.filter((id) => fActs.includes(id));
   const fLabos = parseIntList(req.query.labos);
   if (fLabos.length) laboIds = laboIds.filter((id) => fLabos.includes(id));
-  return { clientId, entrepriseId, actIds, laboIds, moduleVente, moduleAcheteurs };
+  const [seuilCoutMatierePct, typesPerte] = await Promise.all([
+    getSeuilCoutMatiereForClient(clientId), getTypesPerteForClient(clientId),
+  ]);
+  return { clientId, entrepriseId, actIds, laboIds, moduleVente, moduleAcheteurs, seuilCoutMatierePct, typesPerte };
 };
 
 // ── Expressions partagées des requêtes ventes ────────────────────────────────
@@ -289,9 +294,9 @@ const tabOverview = async (req, ctx, from, to) => {
              SELECT vl.article_id
              ${VENTE_FROM} WHERE ${where} AND vl.article_type = 'produit'
              GROUP BY vl.article_id
-             HAVING SUM(${L_CA}) > 0 AND SUM(${L_COUT}) / SUM(${L_CA}) > 0.40
+             HAVING SUM(${L_CA}) > 0 AND SUM(${L_COUT}) / SUM(${L_CA}) > $${params.length + 1}
            ) t`,
-          params
+          [...params, ctx.seuilCoutMatierePct / 100]
         )
       : { rows: [{ cnt: 0 }] },
     ctx.actIds.length
@@ -508,7 +513,7 @@ const tabAchatsStock = async (req, ctx, from, to) => {
 
 const tabPertes = async (req, ctx, from, to) => {
   const grain = resolveGrain(from, to);
-  const typesPerte = parseStrList(req.query.typesPerte).filter((t) => ['avarie', 'dechet'].includes(t));
+  const typesPerte = parseStrList(req.query.typesPerte).filter((t) => ctx.typesPerte.includes(t));
 
   const queries = [];
   if (ctx.actIds.length) {
@@ -609,9 +614,15 @@ const tabLabo = async (req, ctx, from, to) => {
        GROUP BY slpt.labo_id, slpt.produit_id`,
       [laboIds]
     ),
+    // Lot 1b : « Achats » = appros externes ('manuel', inchangé — pas de double comptage au niveau du
+    // compte avec les cessions labo→labo) ; les réceptions internes ('transfert', labo destinataire)
+    // sont un KPI DISTINCT (receptions_labo), rendu seulement s'il est > 0.
     pool.query(
-      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)),0) AS valeur, COUNT(*) AS nb
-       FROM stock_labo_daily WHERE labo_id = ANY($1::int[]) AND date_appro >= $2 AND date_appro <= $3 AND quantite > 0 AND type_appro = 'manuel'`,
+      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)) FILTER (WHERE type_appro = 'manuel'),0) AS valeur,
+              COUNT(*) FILTER (WHERE type_appro = 'manuel') AS nb,
+              COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)) FILTER (WHERE type_appro = 'transfert'),0) AS valeur_recu,
+              COUNT(*) FILTER (WHERE type_appro = 'transfert') AS nb_recu
+       FROM stock_labo_daily WHERE labo_id = ANY($1::int[]) AND date_appro >= $2 AND date_appro <= $3 AND quantite > 0 AND type_appro IN ('manuel', 'transfert')`,
       [laboIds, from, to]
     ),
     pool.query(
@@ -633,9 +644,15 @@ const tabLabo = async (req, ctx, from, to) => {
        GROUP BY type_perte`,
       [laboIds, from, to]
     ),
+    // Lot 1b : « Transferts vers activités » (activite_id, inchangé) et « Cessions internes labo→labo »
+    // (labo_dest_id) comptés SÉPARÉMENT — une chaîne Économat→Cuisine→Restaurant n'est pas doublée.
     pool.query(
-      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)),0) AS valeur, COUNT(*) AS nb
-       FROM labo_transfers WHERE labo_id = ANY($1::int[]) AND date_transfert >= $2 AND date_transfert <= $3`,
+      `SELECT COALESCE(SUM(v) FILTER (WHERE activite_id IS NOT NULL),0) AS valeur,
+              COUNT(*) FILTER (WHERE activite_id IS NOT NULL) AS nb,
+              COALESCE(SUM(v) FILTER (WHERE labo_dest_id IS NOT NULL),0) AS valeur_labo,
+              COUNT(*) FILTER (WHERE labo_dest_id IS NOT NULL) AS nb_labo
+       FROM (SELECT quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0) AS v, activite_id, labo_dest_id
+               FROM labo_transfers WHERE labo_id = ANY($1::int[]) AND date_transfert >= $2 AND date_transfert <= $3) t`,
       [laboIds, from, to]
     ),
     pool.query(
@@ -646,10 +663,13 @@ const tabLabo = async (req, ctx, from, to) => {
       [laboIds, from, to]
     ),
     pool.query(
-      `SELECT a.nom AS activite, COALESCE(SUM(lt.quantite * COALESCE(lt.prix_unitaire_tva, lt.prix_unitaire, 0)),0) AS valeur
-       FROM labo_transfers lt JOIN activites a ON a.id = lt.activite_id
+      `SELECT CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS activite,
+              COALESCE(SUM(lt.quantite * COALESCE(lt.prix_unitaire_tva, lt.prix_unitaire, 0)),0) AS valeur
+       FROM labo_transfers lt
+       LEFT JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
        WHERE lt.labo_id = ANY($1::int[]) AND lt.date_transfert >= $2 AND lt.date_transfert <= $3
-       GROUP BY a.nom ORDER BY valeur DESC`,
+       GROUP BY 1 ORDER BY valeur DESC`,
       [laboIds, from, to]
     ),
     pool.query(
@@ -702,10 +722,14 @@ const tabLabo = async (req, ctx, from, to) => {
       valeur_stock: r3(valeurStock),
       appros: r3(num(approsRes.rows[0].valeur)),
       nb_appros: parseInt(approsRes.rows[0].nb, 10) || 0,
+      receptions_labo: r3(num(approsRes.rows[0].valeur_recu)),
+      nb_receptions_labo: parseInt(approsRes.rows[0].nb_recu, 10) || 0,
       production_pt: r3(num(prodRes.rows[0].valeur)),
       nb_productions: parseInt(prodRes.rows[0].nb, 10) || 0,
       transferts: r3(num(transRes.rows[0].valeur)),
       nb_transferts: parseInt(transRes.rows[0].nb, 10) || 0,
+      cessions_labo: r3(num(transRes.rows[0].valeur_labo)),
+      nb_cessions_labo: parseInt(transRes.rows[0].nb_labo, 10) || 0,
       pertes: r3(pertesTotalLabo),
       ventes_labo: r3(num(ventesRes.rows[0].ca)),
       nb_ventes_labo: parseInt(ventesRes.rows[0].nb, 10) || 0,
@@ -934,7 +958,8 @@ const getDashboardV2 = async (req, res) => {
       case 'filtres': data = await tabFiltres(req, ctx); break;
       default: return res.status(400).json({ message: `Onglet inconnu : ${tab}` });
     }
-    res.json({ periode: { from, to }, tab, ...data });
+    // seuils.coutMatierePct : seuil « food cost élevé » du domaine (badge/alertes côté front).
+    res.json({ periode: { from, to }, tab, seuils: { coutMatierePct: ctx.seuilCoutMatierePct }, ...data });
   } catch (err) {
     console.error('[getDashboardV2]', err);
     res.status(500).json({ message: 'Erreur serveur' });

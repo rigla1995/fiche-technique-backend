@@ -44,7 +44,7 @@ async function upsertFacture(clientId, opts, db = pool) {
   const dateFact = dateAppro ? dateAppro.slice(0, 10) : new Date().toISOString().slice(0, 10);
 
   // Try to find an existing facture matching the natural key
-  const findRes = await pool.query(
+  const findRes = await db.query(
     `SELECT id, montant_ht, montant_tva, montant_ttc, timbre_fiscal, montant_timbre FROM factures
      WHERE client_id = $1
        AND ref_facture IS NOT DISTINCT FROM $2
@@ -88,7 +88,7 @@ async function upsertFacture(clientId, opts, db = pool) {
     // Insert new facture
     const timbreVal = timbreFiscal ? 1 : 0;
     const ttcWithTimbre = (montantTTC || 0) + timbreVal;
-    const insRes = await pool.query(
+    const insRes = await db.query(
       `INSERT INTO factures
          (client_id, ref_facture, date_facture, fournisseur_id, activite_id, labo_id,
           type_source, montant_ht, montant_tva, montant_ttc, timbre_fiscal, montant_timbre, created_by)

@@ -302,18 +302,19 @@ async function main() {
       for (const actId of actIds) {
         for (const [nom, base] of Object.entries(transferDefs)) {
           const qty = jitter(base);
-          await client.query(
+          // Lot 1b : transfert_id posé sur l'entrée activité (lignes retrouvées par transfert_id).
+          const ltRes = await client.query(
             `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note)
-             VALUES ($1, $2, $3, $4, $5, 'Transfert hebdomadaire')`,
+             VALUES ($1, $2, $3, $4, $5, 'Transfert hebdomadaire') RETURNING id`,
             [laboId, actId, ings[nom], qty, dateStr]
           );
           // Enregistrer aussi côté stock activité
           await client.query(
             `INSERT INTO stock_entreprise_daily
-               (activite_id, ingredient_id, date_appro, quantite, type_appro, prix_unitaire)
-             VALUES ($1, $2, $3, $4, 'transfert', $5)`,
+               (activite_id, ingredient_id, date_appro, quantite, type_appro, prix_unitaire, transfert_id)
+             VALUES ($1, $2, $3, $4, 'transfert', $5, $6)`,
             [actId, ings[nom], dateStr, qty,
-              ingDefs.find(d => d[0] === nom)?.[3] ?? 1]
+              ingDefs.find(d => d[0] === nom)?.[3] ?? 1, ltRes.rows[0].id]
           );
           nTransfers++;
         }

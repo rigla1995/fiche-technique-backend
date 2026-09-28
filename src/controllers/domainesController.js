@@ -10,7 +10,7 @@ const profilService = require('../services/domaineProfilService');
 const { buildTarifsPourDomaine } = require('./abonnementController');
 
 const {
-  TYPES_TECHNIQUES, COMPOSANTS_IDENTITE, REGLES_CLES,
+  TYPES_TECHNIQUES, COMPOSANTS_IDENTITE, REGLES_CLES, TYPE_PERTE_RE, normaliserTypesPerte,
   resolveProfil, invalidate, getProfilForClient,
 } = profilService;
 
@@ -140,8 +140,24 @@ const validateRegles = (regles) => {
     if (v == null) continue;
     if (['acheteurs_requiert_labo', 'depot_exige_acheteurs', 'espace_produit_verrou_basique_sans_labo', 'b2b_depuis_activite'].includes(k) && typeof v !== 'boolean') return `regles.${k} : booléen attendu`;
     if (['seuil_cout_matiere_pct', 'supplement_max_composants'].includes(k) && !(Number.isFinite(Number(v)) && Number(v) >= 0)) return `regles.${k} : nombre ≥ 0 attendu`;
-    if (['formules', 'types_perte'].includes(k) && !(Array.isArray(v) && v.every((x) => typeof x === 'string' && x.trim()))) return `regles.${k} : liste de textes attendue`;
+    if (k === 'formules' && !(Array.isArray(v) && v.every((x) => typeof x === 'string' && x.trim()))) return `regles.${k} : liste de textes attendue`;
     if (k === 'formules' && !v.every((x) => ['basique', 'premium'].includes(x))) return 'regles.formules : valeurs autorisées basique, premium';
+    // Lot 1b §5 — types de perte : codes ^[a-z0-9_]{2,20}$ (colonne VARCHAR(20)), liste non vide
+    // après normalisation (minuscules, dédoublonnage). Tableau ou texte « avarie, dechet ».
+    if (k === 'types_perte') {
+      if (!(Array.isArray(v) || typeof v === 'string')) return 'regles.types_perte : liste de codes attendue';
+      const codes = normaliserTypesPerte(v);
+      if (!codes.length) return 'regles.types_perte : au moins un type de perte';
+      const bad = codes.find((c) => !TYPE_PERTE_RE.test(c));
+      if (bad) return `regles.types_perte : code invalide « ${bad} » (minuscules, chiffres, _ ; 2 à 20 caractères)`;
+    }
+    // Lot 1b §5 — seeds à la création du compte : listes de noms (unités de mesure ≤ 50, canaux ≤ 100).
+    if (k === 'unites_seed' || k === 'prestataires_seed') {
+      if (!Array.isArray(v)) return `regles.${k} : liste de textes attendue`;
+      const max = k === 'unites_seed' ? 50 : 100;
+      const bad = v.find((x) => typeof x !== 'string' || !x.trim() || x.trim().length > max);
+      if (bad !== undefined) return `regles.${k} : chaque nom doit être un texte de 1 à ${max} caractères`;
+    }
   }
   return null;
 };
@@ -159,7 +175,14 @@ const nettoyerLexique = (lex) => {
 };
 const nettoyerRegles = (regles) => {
   const out = {};
-  for (const [k, v] of Object.entries(regles || {})) if (v != null) out[k] = v;
+  for (const [k, v] of Object.entries(regles || {})) {
+    if (v == null) continue;
+    if (k === 'types_perte') out[k] = normaliserTypesPerte(v);                 // minuscules, dédoublonnés
+    else if (k === 'unites_seed' || k === 'prestataires_seed') {
+      const seen = new Set();
+      out[k] = v.map((x) => String(x).trim()).filter((x) => x && !seen.has(x.toLowerCase()) && seen.add(x.toLowerCase()));
+    } else out[k] = v;
+  }
   return out;
 };
 

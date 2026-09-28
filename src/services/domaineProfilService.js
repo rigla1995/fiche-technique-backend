@@ -21,8 +21,47 @@ const REGLES_DEFAUT = Object.freeze({
   types_perte: Object.freeze(['avarie', 'dechet']),
   supplement_max_composants: 1,
   b2b_depuis_activite: false,
+  // Lot 1b §5 — seeds à la création du compte : [] = comportement actuel (rien n'est créé).
+  unites_seed: Object.freeze([]),        // unités de MESURE créées pour le nouveau client
+  prestataires_seed: Object.freeze([]),  // canaux (prestataires_livraison existants, liés au compte)
 });
 const REGLES_CLES = Object.freeze(Object.keys(REGLES_DEFAUT));
+
+// ── Types de perte (lot 1b §5) ───────────────────────────────────────────────
+// Codes VARCHAR(20) sur pertes/labo_pertes : minuscules, [a-z0-9_], 2 à 20 caractères.
+const TYPE_PERTE_RE = /^[a-z0-9_]{2,20}$/;
+const LIBELLES_PERTE = Object.freeze({ avarie: 'Avarie', dechet: 'Déchet' });
+
+// Normalise une liste (tableau ou texte « a, b ») : trim, minuscules, dédoublonnée.
+// Ne filtre PAS les codes invalides (la validation les signale) — sauf les vides.
+const normaliserTypesPerte = (v) => {
+  const items = Array.isArray(v) ? v : typeof v === 'string' ? v.split(/[,;\n]/) : [];
+  const out = [];
+  for (const it of items) {
+    const code = String(it ?? '').trim().toLowerCase();
+    if (code && !out.includes(code)) out.push(code);
+  }
+  return out;
+};
+
+// Libellé d'un code de perte : Avarie / Déchet, sinon code capitalisé (« casse » → « Casse »).
+const perteLabel = (code) => {
+  const c = String(code ?? '').trim().toLowerCase();
+  if (!c) return '';
+  return LIBELLES_PERTE[c] || (c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, ' '));
+};
+
+// Types de perte effectifs d'un profil (jamais vide : repli sur le défaut).
+const typesPerteDuProfil = (profil) => {
+  const list = normaliserTypesPerte(profil?.regles?.types_perte).filter((c) => TYPE_PERTE_RE.test(c));
+  return list.length ? list : [...REGLES_DEFAUT.types_perte];
+};
+
+// Seuil coût matière (%) d'un profil — nombre fini ≥ 0, sinon défaut 40.
+const seuilCoutMatiereDuProfil = (profil) => {
+  const n = Number(profil?.regles?.seuil_cout_matiere_pct);
+  return Number.isFinite(n) && n >= 0 ? n : REGLES_DEFAUT.seuil_cout_matiere_pct;
+};
 
 const TYPES_TECHNIQUES = Object.freeze(['activite', 'labo', 'gerant', 'acheteurs']);
 
@@ -136,6 +175,24 @@ const getDomaineIdForClient = async (clientId, db = pool) => {
 // Profil du compte : domaine de son abonnement, sinon profil « restauration » (slug),
 // sinon profil par défaut sans id.
 const getProfilForClient = async (clientId) => {
+  return getProfilForClientImpl(clientId);
+};
+
+// Règles effectives du compte (défauts fusionnés) — ne lève jamais : repli REGLES_DEFAUT.
+const getReglesForClient = async (clientId) => {
+  try {
+    const p = await getProfilForClientImpl(clientId);
+    return p?.regles || { ...REGLES_DEFAUT };
+  } catch (_) {
+    return { ...REGLES_DEFAUT };
+  }
+};
+// Types de perte autorisés pour le compte (gérant → compte parent).
+const getTypesPerteForClient = async (clientId) => typesPerteDuProfil({ regles: await getReglesForClient(clientId) });
+// Seuil coût matière (%) du compte.
+const getSeuilCoutMatiereForClient = async (clientId) => seuilCoutMatiereDuProfil({ regles: await getReglesForClient(clientId) });
+
+const getProfilForClientImpl = async (clientId) => {
   const domaineId = await getDomaineIdForClient(clientId);
   if (domaineId != null) {
     const p = await getProfil(domaineId);
@@ -161,6 +218,8 @@ const espaceProduitVerrouille = (cfg, regles = REGLES_DEFAUT) => {
 
 module.exports = {
   LEXIQUE_DEFAUT, LEXIQUE_CLES, REGLES_DEFAUT, REGLES_CLES,
+  TYPE_PERTE_RE, normaliserTypesPerte, perteLabel, typesPerteDuProfil, seuilCoutMatiereDuProfil,
+  getReglesForClient, getTypesPerteForClient, getSeuilCoutMatiereForClient,
   TYPES_TECHNIQUES, COMPOSANTS_IDENTITE,
   mapComposant, resolveLexique, resolveRegles, resolveProfil, profilDefaut,
   loadDomaineRows, getProfil, invalidate,

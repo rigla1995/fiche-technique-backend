@@ -6,6 +6,7 @@ const { isoDate, todayStr } = require('../utils/dateUtils');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
+const { computeStockBulk } = require('../services/stockService');
 
 
 // ─── Stock Entreprise ──────────────────────────────────────────────────────
@@ -138,222 +139,10 @@ const getStockEntreprise = async (req, res) => {
       ORDER BY p.nom
     `, [activiteId]);
 
-    // ── Ingredient baseline: last current-year inv + post-inv flows + pertes ──
-    const invBaselineRes = await pool.query(
-      `WITH last_inv AS (
-         SELECT DISTINCT ON (ingredient_id)
-           ingredient_id, quantite_reelle, date_inventaire
-         FROM inventaires
-         WHERE activite_id = $1 AND ingredient_id IS NOT NULL
-         ORDER BY ingredient_id, date_inventaire DESC, created_at DESC
-       ),
-       post_appro AS (
-         SELECT sed.ingredient_id, SUM(sed.quantite) as qty
-         FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1
-         GROUP BY sed.ingredient_id
-       ),
-       post_pertes AS (
-         SELECT p.ingredient_id, SUM(p.quantite) as qty
-         FROM pertes p
-         JOIN last_inv li ON li.ingredient_id = p.ingredient_id AND p.date_perte >= li.date_inventaire
-         WHERE p.activite_id = $1 AND p.ingredient_id IS NOT NULL
-         GROUP BY p.ingredient_id
-       ),
-       post_pt_usage AS (
-         SELECT sed.ingredient_id, SUM(ABS(sed.quantite)) as qty
-         FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.quantite < 0 AND sed.type_appro NOT IN ('vente','annulation_vente')
-         GROUP BY sed.ingredient_id
-       ),
-       post_ventes AS (
-         SELECT sed.ingredient_id, GREATEST(-SUM(sed.quantite), 0) as qty
-         FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.type_appro IN ('vente', 'annulation_vente')
-         GROUP BY sed.ingredient_id
-       ),
-       all_appro AS (
-         SELECT ingredient_id, SUM(quantite) as qty
-         FROM stock_entreprise_daily
-         WHERE activite_id = $1
-         GROUP BY ingredient_id
-       ),
-       all_pertes AS (
-         SELECT ingredient_id, SUM(quantite) as qty
-         FROM pertes
-         WHERE activite_id = $1 AND ingredient_id IS NOT NULL
-         GROUP BY ingredient_id
-       ),
-       all_pt_usage AS (
-         SELECT ingredient_id, SUM(ABS(quantite)) as qty
-         FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND quantite < 0 AND type_appro NOT IN ('vente','annulation_vente')
-         GROUP BY ingredient_id
-       ),
-       all_ventes AS (
-         SELECT ingredient_id, GREATEST(-SUM(quantite), 0) as qty
-         FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND type_appro IN ('vente', 'annulation_vente')
-         GROUP BY ingredient_id
-       ),
-       post_transferts_in AS (
-         SELECT sed.ingredient_id, SUM(sed.quantite) as qty
-         FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.quantite > 0 AND sed.type_appro = 'transfert'
-         GROUP BY sed.ingredient_id
-       ),
-       all_transferts_in AS (
-         SELECT ingredient_id, SUM(quantite) as qty
-         FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND quantite > 0 AND type_appro = 'transfert'
-         GROUP BY ingredient_id
-       ),
-       prev_inv AS (
-         SELECT ingredient_id, date_inventaire FROM (
-           SELECT ingredient_id, date_inventaire,
-             ROW_NUMBER() OVER (PARTITION BY ingredient_id ORDER BY date_inventaire DESC, created_at DESC) as rn
-           FROM inventaires WHERE activite_id = $1 AND ingredient_id IS NOT NULL
-         ) sub WHERE rn = 2
-       ),
-       first_appro AS (
-         SELECT ingredient_id, MIN(date_appro) as first_date
-         FROM stock_entreprise_daily WHERE activite_id = $1 AND quantite > 0
-         GROUP BY ingredient_id
-       ),
-       pmp_hist AS (
-         SELECT sed.ingredient_id,
-           SUM(sed.quantite * sed.prix_unitaire) / NULLIF(SUM(sed.quantite), 0) as pmp_ht,
-           SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire)) / NULLIF(SUM(sed.quantite), 0) as pmp_tva
-         FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id
-         LEFT JOIN prev_inv pi ON pi.ingredient_id = sed.ingredient_id
-         LEFT JOIN first_appro fa ON fa.ingredient_id = sed.ingredient_id
-         WHERE sed.activite_id = $1 AND sed.type_appro = 'manuel' AND sed.quantite > 0 AND sed.prix_unitaire IS NOT NULL
-           AND sed.date_appro >= COALESCE(pi.date_inventaire, fa.first_date)
-           AND sed.date_appro < li.date_inventaire
-         GROUP BY sed.ingredient_id
-       ),
-       appro_cost_post AS (
-         SELECT sed.ingredient_id,
-           SUM(sed.quantite) as qty,
-           SUM(sed.quantite * COALESCE(sed.prix_unitaire, 0)) as cost_ht,
-           SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire, 0)) as cost_tva
-         FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.type_appro = 'manuel' AND sed.quantite > 0
-         GROUP BY sed.ingredient_id
-       ),
-       appro_cost_all AS (
-         SELECT ingredient_id,
-           SUM(quantite) as qty,
-           SUM(quantite * COALESCE(prix_unitaire, 0)) as cost_ht,
-           SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)) as cost_tva
-         FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND type_appro = 'manuel' AND quantite > 0
-         GROUP BY ingredient_id
-       ),
-       transfer_cost_post AS (
-         SELECT sed.ingredient_id,
-           SUM(sed.quantite) as qty,
-           SUM(sed.quantite * COALESCE(sed.prix_unitaire, 0)) as cost_ht,
-           SUM(sed.quantite * COALESCE(sed.prix_unitaire_tva, sed.prix_unitaire, 0)) as cost_tva
-         FROM stock_entreprise_daily sed
-         JOIN last_inv li ON li.ingredient_id = sed.ingredient_id AND sed.date_appro >= li.date_inventaire
-         WHERE sed.activite_id = $1 AND sed.type_appro = 'transfert' AND sed.quantite > 0
-         GROUP BY sed.ingredient_id
-       ),
-       transfer_cost_all AS (
-         SELECT ingredient_id,
-           SUM(quantite) as qty,
-           SUM(quantite * COALESCE(prix_unitaire, 0)) as cost_ht,
-           SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)) as cost_tva
-         FROM stock_entreprise_daily
-         WHERE activite_id = $1 AND type_appro = 'transfert' AND quantite > 0
-         GROUP BY ingredient_id
-       )
-       SELECT ais.ingredient_id,
-              li.quantite_reelle        as inv_qty,
-              li.date_inventaire        as inv_date,
-              COALESCE(pa.qty, 0)       as post_appro_qty,
-              COALESCE(pp.qty, 0)       as post_pertes_qty,
-              COALESCE(ppu.qty, 0)      as post_pt_usage_qty,
-              COALESCE(pv.qty, 0)       as post_vente_qty,
-              COALESCE(av.qty, 0)       as all_vente_qty,
-              COALESCE(aa.qty, 0)       as all_appro_qty,
-              COALESCE(ap.qty, 0)       as all_pertes_qty,
-              COALESCE(apu.qty, 0)      as all_pt_usage_qty,
-              COALESCE(pti.qty, 0)      as post_transferts_in_qty,
-              COALESCE(ati.qty, 0)      as all_transferts_in_qty,
-              ph.pmp_ht                 as pmp_hist_ht,
-              ph.pmp_tva                as pmp_hist_tva,
-              COALESCE(acp.qty, 0)      as appro_cost_post_qty,
-              COALESCE(acp.cost_ht, 0)  as appro_cost_post_ht,
-              COALESCE(acp.cost_tva, 0) as appro_cost_post_tva,
-              COALESCE(aca.qty, 0)      as appro_cost_all_qty,
-              COALESCE(aca.cost_ht, 0)  as appro_cost_all_ht,
-              COALESCE(aca.cost_tva, 0) as appro_cost_all_tva,
-              COALESCE(tcp.qty, 0)      as transfer_cost_post_qty,
-              COALESCE(tcp.cost_ht, 0)  as transfer_cost_post_ht,
-              COALESCE(tcp.cost_tva, 0) as transfer_cost_post_tva,
-              COALESCE(tca.qty, 0)      as transfer_cost_all_qty,
-              COALESCE(tca.cost_ht, 0)  as transfer_cost_all_ht,
-              COALESCE(tca.cost_tva, 0) as transfer_cost_all_tva
-       FROM activite_ingredient_selections ais
-       LEFT JOIN last_inv li                ON li.ingredient_id  = ais.ingredient_id
-       LEFT JOIN post_appro pa              ON pa.ingredient_id  = ais.ingredient_id
-       LEFT JOIN post_pertes pp             ON pp.ingredient_id  = ais.ingredient_id
-       LEFT JOIN post_pt_usage ppu          ON ppu.ingredient_id = ais.ingredient_id
-       LEFT JOIN post_ventes pv            ON pv.ingredient_id  = ais.ingredient_id
-       LEFT JOIN all_ventes av             ON av.ingredient_id  = ais.ingredient_id
-       LEFT JOIN all_appro aa              ON aa.ingredient_id  = ais.ingredient_id
-       LEFT JOIN all_pertes ap             ON ap.ingredient_id  = ais.ingredient_id
-       LEFT JOIN all_pt_usage apu          ON apu.ingredient_id = ais.ingredient_id
-       LEFT JOIN post_transferts_in pti    ON pti.ingredient_id = ais.ingredient_id
-       LEFT JOIN all_transferts_in ati     ON ati.ingredient_id = ais.ingredient_id
-       LEFT JOIN pmp_hist ph               ON ph.ingredient_id  = ais.ingredient_id
-       LEFT JOIN appro_cost_post acp       ON acp.ingredient_id = ais.ingredient_id
-       LEFT JOIN appro_cost_all aca        ON aca.ingredient_id = ais.ingredient_id
-       LEFT JOIN transfer_cost_post tcp    ON tcp.ingredient_id = ais.ingredient_id
-       LEFT JOIN transfer_cost_all tca     ON tca.ingredient_id = ais.ingredient_id
-       WHERE ais.activite_id = $1`,
-      [activiteId]
-    );
-    const invBaselineMap = {};
-    for (const r of invBaselineRes.rows) {
-      invBaselineMap[r.ingredient_id] = {
-        hasInv: r.inv_qty !== null,
-        invQty: r.inv_qty !== null ? parseFloat(r.inv_qty) : 0,
-        invDate: r.inv_date ? isoDate(r.inv_date) : null,
-        postApproQty: parseFloat(r.post_appro_qty) || 0,
-        postPertesQty: parseFloat(r.post_pertes_qty) || 0,
-        postPtUsageQty: parseFloat(r.post_pt_usage_qty) || 0,
-        postVenteQty: parseFloat(r.post_vente_qty) || 0,
-        allVenteQty: parseFloat(r.all_vente_qty) || 0,
-        allApproQty: parseFloat(r.all_appro_qty) || 0,
-        allPertesQty: parseFloat(r.all_pertes_qty) || 0,
-        allPtUsageQty: parseFloat(r.all_pt_usage_qty) || 0,
-        postTransfertsInQty: parseFloat(r.post_transferts_in_qty) || 0,
-        allTransfertsInQty: parseFloat(r.all_transferts_in_qty) || 0,
-        pmpHistHT: r.pmp_hist_ht !== null ? parseFloat(r.pmp_hist_ht) : null,
-        pmpHistTTC: r.pmp_hist_tva !== null ? parseFloat(r.pmp_hist_tva) : null,
-        approCostPostQty: parseFloat(r.appro_cost_post_qty) || 0,
-        approCostPostHT: parseFloat(r.appro_cost_post_ht) || 0,
-        approCostPostTTC: parseFloat(r.appro_cost_post_tva) || 0,
-        approCostAllQty: parseFloat(r.appro_cost_all_qty) || 0,
-        approCostAllHT: parseFloat(r.appro_cost_all_ht) || 0,
-        approCostAllTTC: parseFloat(r.appro_cost_all_tva) || 0,
-        transferCostPostQty: parseFloat(r.transfer_cost_post_qty) || 0,
-        transferCostPostHT: parseFloat(r.transfer_cost_post_ht) || 0,
-        transferCostPostTTC: parseFloat(r.transfer_cost_post_tva) || 0,
-        transferCostAllQty: parseFloat(r.transfer_cost_all_qty) || 0,
-        transferCostAllHT: parseFloat(r.transfer_cost_all_ht) || 0,
-        transferCostAllTTC: parseFloat(r.transfer_cost_all_tva) || 0,
-      };
-    }
+    // ── Baseline articles (lot 1b) : moteur unique stockService.computeStockBulk (§2.2) ──
+    // { [ingredientId]: { stock, pmpHT, pmpTTC, detail } } — même CTE et même formule PMP
+    // (appros manuels + transferts reçus) que l'ancien bloc.
+    const bulk = await computeStockBulk(pool, 'activite', activiteId);
 
     // ── PT baseline: last current-year inv + post-inv appros - pertes ─────────
     const ptBaselineRes = await pool.query(
@@ -535,40 +324,19 @@ const getStockEntreprise = async (req, res) => {
     });
 
     res.json([...result.rows.map((row) => {
-      const b = invBaselineMap[row.ingredient_id] || {};
-      const quantite = b.hasInv
-        ? b.invQty + b.postApproQty - b.postPertesQty
-        : b.allApproQty - b.allPertesQty;
+      const e = bulk[row.ingredient_id] || null;
+      const b = e ? e.detail : {};
+      const quantite = e ? e.stock : 0;
       const pertesDepuisInv = b.hasInv ? b.postPertesQty : b.allPertesQty;
       const ptUsageDepuisInv = b.hasInv ? b.postPtUsageQty : b.allPtUsageQty;
       const venteDepuisInv = b.hasInv ? b.postVenteQty : b.allVenteQty;
       const transfertsDepuisAppro = b.hasInv ? b.postTransfertsInQty : b.allTransfertsInQty;
-      let coutTotal = 0;
-      let coutTotalTTC = 0;
-      if (b.hasInv) {
-        // La quantité d'inventaire n'entre dans le PMP que si elle a une base de coût (pmpHist).
-        // Sinon (pas d'appro avant l'inventaire), la valoriser à 0 tout en la comptant au
-        // dénominateur diluerait le PMP des achats/transferts réels — on l'exclut alors.
-        const invValued = b.invQty > 0 && b.pmpHistHT !== null;
-        const invQtyForPmp = invValued ? b.invQty : 0;
-        const coutInvHT = invValued ? b.invQty * b.pmpHistHT : 0;
-        const coutInvTTC = invValued ? b.invQty * (b.pmpHistTTC !== null ? b.pmpHistTTC : b.pmpHistHT) : 0;
-        const totalCostInHT = coutInvHT + (b.approCostPostHT || 0) + (b.transferCostPostHT || 0);
-        const totalCostInTTC = coutInvTTC + (b.approCostPostTTC || 0) + (b.transferCostPostTTC || 0);
-        const totalQtyIn = invQtyForPmp + (b.approCostPostQty || 0) + (b.transferCostPostQty || 0);
-        const pmpHT = totalQtyIn > 0 ? totalCostInHT / totalQtyIn : null;
-        const pmpTTC = totalQtyIn > 0 ? totalCostInTTC / totalQtyIn : null;
-        coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
-        coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
-      } else {
-        const totalQtyIn = (b.approCostAllQty || 0) + (b.transferCostAllQty || 0);
-        const totalCostInHT = (b.approCostAllHT || 0) + (b.transferCostAllHT || 0);
-        const totalCostInTTC = (b.approCostAllTTC || 0) + (b.transferCostAllTTC || 0);
-        const pmpHT = totalQtyIn > 0 ? totalCostInHT / totalQtyIn : null;
-        const pmpTTC = totalQtyIn > 0 ? totalCostInTTC / totalQtyIn : null;
-        coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
-        coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
-      }
+      // PMP HT/TTC = stockService (inventaire valorisé au pmp_hist seulement s'il a une base de
+      // coût — sinon exclu du dénominateur, cf. stockService.pmpActiviteFromDetail).
+      const pmpHT = e ? e.pmpHT : null;
+      const pmpTTC = e ? e.pmpTTC : null;
+      const coutTotal = pmpHT !== null && quantite > 0 ? Math.round(quantite * pmpHT * 1000) / 1000 : 0;
+      const coutTotalTTC = pmpTTC !== null && quantite > 0 ? Math.round(quantite * pmpTTC * 1000) / 1000 : 0;
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
@@ -871,7 +639,7 @@ const updateHistoriqueEntry = async (req, res) => {
     if (isEntreprise) {
       // Verify ownership
       const check = await pool.query(
-        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite as old_quantite, sed.type_appro, sed.date_appro, sed.created_by
+        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite as old_quantite, sed.type_appro, sed.date_appro, sed.created_by, sed.transfert_id
          FROM stock_entreprise_daily sed
          JOIN activites a ON a.id = sed.activite_id
          JOIN profil_entreprise pe ON pe.id = a.entreprise_id
@@ -882,6 +650,10 @@ const updateHistoriqueEntry = async (req, res) => {
       const entry = check.rows[0];
       if (req.user.role === 'gerant' && entry.created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
+      // Lot 1b §2.4 : une ligne générée par un transfert ne se modifie que via le transfert
+      // (fin de l'ajustement heuristique du miroir labo).
+      if (entry.type_appro === 'transfert' || entry.transfert_id != null)
+        return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez le transfert' });
       // Atomic: the stock_entreprise update and the compensating labo-stock adjustment
       // must both succeed or both roll back (else the quantities silently desync).
       await withTransaction(async (client) => {
@@ -921,7 +693,7 @@ const deleteHistoriqueEntry = async (req, res) => {
   try {
     if (isEntreprise === 'true') {
       const check = await pool.query(
-        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite, sed.type_appro, sed.date_appro, sed.created_by
+        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite, sed.type_appro, sed.date_appro, sed.created_by, sed.transfert_id
          FROM stock_entreprise_daily sed
          JOIN activites a ON a.id = sed.activite_id
          JOIN profil_entreprise pe ON pe.id = a.entreprise_id
@@ -931,6 +703,9 @@ const deleteHistoriqueEntry = async (req, res) => {
       if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
       if (check.rows[0].type_appro === 'vente' || check.rows[0].type_appro === 'annulation_vente')
         return res.status(403).json({ message: 'Cette entrée est liée à une vente et ne peut pas être supprimée.' });
+      // Lot 1b §2.4 : ligne de transfert → 409 (à supprimer via le transfert).
+      if (check.rows[0].type_appro === 'transfert' || check.rows[0].transfert_id != null)
+        return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez le transfert' });
       if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
       const entry = check.rows[0];

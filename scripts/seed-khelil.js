@@ -411,16 +411,18 @@ async function main() {
         for (const [nom, base] of Object.entries(transferDefsFiltres)) {
           const qty = jitter(base);
           const prix = ings[nom].prix;
-          await c.query(
+          // Lot 1b : transfert_id posé sur l'entrée activité (lignes retrouvées par transfert_id,
+          // plus d'heuristique ; un transfert seedé sans lien serait 409 TRANSFERT_INCOHERENT post-188).
+          const ltRes = await c.query(
             `INSERT INTO labo_transfers (labo_id, activite_id, ingredient_id, quantite, date_transfert, note, prix_unitaire)
-             VALUES ($1, $2, $3, $4, $5, 'Transfert bi-hebdomadaire', $6)`,
+             VALUES ($1, $2, $3, $4, $5, 'Transfert bi-hebdomadaire', $6) RETURNING id`,
             [laboId, actId, ings[nom].id, qty, dateStr, jitter(prix, 0.03)]
           );
           await c.query(
             `INSERT INTO stock_entreprise_daily
-               (activite_id, ingredient_id, date_appro, quantite, type_appro, prix_unitaire)
-             VALUES ($1, $2, $3, $4, 'transfert', $5)`,
-            [actId, ings[nom].id, dateStr, qty, prix]
+               (activite_id, ingredient_id, date_appro, quantite, type_appro, prix_unitaire, transfert_id)
+             VALUES ($1, $2, $3, $4, 'transfert', $5, $6)`,
+            [actId, ings[nom].id, dateStr, qty, prix, ltRes.rows[0].id]
           );
           nTransfers++;
         }

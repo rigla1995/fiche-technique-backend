@@ -1,8 +1,14 @@
 const pool = require('../config/database');
 
+// ─── Stock courant (lot 1b) : délégué à stockService (moteur unique, spec §2.2) ──
+// Les 4 calculs historiques (labo/activité × article/PT) vivent désormais dans
+// src/services/stockService.js avec une signature (db, scope, id, ref) ; ces wrappers
+// conservent l'API module-level (pool) des ~20 appelants existants. Oracle figé :
+// scripts/legacy/stock-legacy.js ; invariant : scripts/check-invariant-stock.js.
+const { computeStock } = require('../services/stockService');
+
 /**
  * Compute current stock for a single ingredient in one scope (labo or activite).
- * Mirrors the exact CTE logic used in getLaboStock / getStockEntreprise.
  * Returns a rounded float (can be negative if data is inconsistent).
  *
  * @param {'labo'|'activite'} scope
@@ -10,115 +16,7 @@ const pool = require('../config/database');
  * @param {number}            ingredientId
  */
 async function computeStockCourant(scope, scopeId, ingredientId) {
-  if (scope === 'labo') {
-    const r = await pool.query(
-      `WITH last_inv AS (
-         SELECT quantite_reelle, date_inventaire FROM inventaires
-         WHERE labo_id = $1 AND ingredient_id = $2
-         ORDER BY date_inventaire DESC, created_at DESC LIMIT 1
-       ),
-       appro AS (
-         SELECT
-           COALESCE(SUM(quantite) FILTER (
-             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND date_appro >= (SELECT date_inventaire FROM last_inv)
-           ), 0) AS post_qty,
-           COALESCE(SUM(quantite), 0) AS all_qty
-         FROM stock_labo_daily
-         WHERE labo_id = $1 AND ingredient_id = $2 AND type_appro != 'transfert'
-           AND NOT (type_appro = 'manuel' AND quantite < 0)
-       ),
-       transfers AS (
-         SELECT
-           COALESCE(SUM(quantite) FILTER (
-             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND date_transfert >= (SELECT date_inventaire FROM last_inv)
-           ), 0) AS post_qty,
-           COALESCE(SUM(quantite), 0) AS all_qty
-         FROM labo_transfers
-         WHERE labo_id = $1 AND ingredient_id = $2
-       ),
-       pertes AS (
-         SELECT
-           COALESCE(SUM(quantite) FILTER (
-             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND date_perte >= (SELECT date_inventaire FROM last_inv)
-           ), 0) AS post_qty,
-           COALESCE(SUM(quantite), 0) AS all_qty
-         FROM labo_pertes
-         WHERE labo_id = $1 AND ingredient_id = $2
-       ),
-       ventes_ach AS (
-         -- Ventes aux acheteurs (module Acheteurs) : table de FLUX, seules les
-         -- commandes VALIDÉES sortent du stock (annulation = réintégration mécanique).
-         SELECT
-           COALESCE(SUM(cal.quantite_unites) FILTER (
-             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND COALESCE(ca.date_expedition, ca.date_commande) >= (SELECT date_inventaire FROM last_inv)
-           ), 0) AS post_qty,
-           COALESCE(SUM(cal.quantite_unites), 0) AS all_qty
-         FROM commande_acheteur_lignes cal
-         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
-           AND cal.article_type = 'ingredient' AND cal.article_id = $2
-       )
-       SELECT CASE
-         WHEN (SELECT date_inventaire FROM last_inv) IS NOT NULL
-           THEN (SELECT quantite_reelle FROM last_inv)
-                + (SELECT post_qty FROM appro)
-                - (SELECT post_qty FROM transfers)
-                - (SELECT post_qty FROM pertes)
-                - (SELECT post_qty FROM ventes_ach)
-         ELSE
-                (SELECT all_qty FROM appro)
-                - (SELECT all_qty FROM transfers)
-                - (SELECT all_qty FROM pertes)
-                - (SELECT all_qty FROM ventes_ach)
-       END AS stock_courant`,
-      [scopeId, ingredientId]
-    );
-    return Math.round(parseFloat(r.rows[0]?.stock_courant ?? 0) * 1000) / 1000;
-  }
-
-  // scope === 'activite'
-  const r = await pool.query(
-    `WITH last_inv AS (
-       SELECT quantite_reelle, date_inventaire FROM inventaires
-       WHERE activite_id = $1 AND ingredient_id = $2
-       ORDER BY date_inventaire DESC, created_at DESC LIMIT 1
-     ),
-     appro AS (
-       SELECT
-         COALESCE(SUM(quantite) FILTER (
-           WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-             AND date_appro >= (SELECT date_inventaire FROM last_inv)
-         ), 0) AS post_qty,
-         COALESCE(SUM(quantite), 0) AS all_qty
-       FROM stock_entreprise_daily
-       WHERE activite_id = $1 AND ingredient_id = $2
-     ),
-     pertes AS (
-       SELECT
-         COALESCE(SUM(quantite) FILTER (
-           WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-             AND date_perte >= (SELECT date_inventaire FROM last_inv)
-         ), 0) AS post_qty,
-         COALESCE(SUM(quantite), 0) AS all_qty
-       FROM pertes
-       WHERE activite_id = $1 AND ingredient_id = $2
-     )
-     SELECT CASE
-       WHEN (SELECT date_inventaire FROM last_inv) IS NOT NULL
-         THEN (SELECT quantite_reelle FROM last_inv)
-              + (SELECT post_qty FROM appro)
-              - (SELECT post_qty FROM pertes)
-       ELSE
-              (SELECT all_qty FROM appro)
-              - (SELECT all_qty FROM pertes)
-     END AS stock_courant`,
-    [scopeId, ingredientId]
-  );
-  return Math.round(parseFloat(r.rows[0]?.stock_courant ?? 0) * 1000) / 1000;
+  return computeStock(pool, scope, scopeId, { articleId: ingredientId });
 }
 
 /**
@@ -132,116 +30,7 @@ async function computeStockCourant(scope, scopeId, ingredientId) {
  * @param {number}            produitId
  */
 async function computeStockPTCourant(scope, scopeId, produitId) {
-  if (scope === 'labo') {
-    const r = await pool.query(
-      `WITH last_inv AS (
-         SELECT quantite_reelle, date_inventaire FROM inventaires
-         WHERE labo_id = $1 AND produit_id = $2
-         ORDER BY date_inventaire DESC, created_at DESC LIMIT 1
-       ),
-       appro AS (
-         -- Inclut les appros (+) ET les consommations de sous-PT (type_appro='PT', quantite -),
-         -- mais PAS les transferts (quantite -, type_appro NULL) qui sont soustraits via le CTE transfers.
-         SELECT
-           COALESCE(SUM(quantite) FILTER (
-             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND date_appro >= (SELECT date_inventaire FROM last_inv)
-               AND (quantite > 0 OR type_appro = 'PT')
-           ), 0) AS post_qty,
-           COALESCE(SUM(quantite) FILTER (WHERE quantite > 0 OR type_appro = 'PT'), 0) AS all_qty
-         FROM stock_labo_pt_daily
-         WHERE labo_id = $1 AND produit_id = $2
-       ),
-       transfers AS (
-         SELECT
-           COALESCE(SUM(quantite) FILTER (
-             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND date_transfert >= (SELECT date_inventaire FROM last_inv)
-           ), 0) AS post_qty,
-           COALESCE(SUM(quantite), 0) AS all_qty
-         FROM labo_transfers
-         WHERE labo_id = $1 AND produit_id = $2
-       ),
-       pertes AS (
-         SELECT
-           COALESCE(SUM(quantite) FILTER (
-             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND date_perte >= (SELECT date_inventaire FROM last_inv)
-           ), 0) AS post_qty,
-           COALESCE(SUM(quantite), 0) AS all_qty
-         FROM labo_pertes
-         WHERE labo_id = $1 AND produit_id = $2
-       ),
-       ventes_ach AS (
-         -- Ventes aux acheteurs (module Acheteurs) : flux des commandes VALIDÉES.
-         SELECT
-           COALESCE(SUM(cal.quantite_unites) FILTER (
-             WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-               AND COALESCE(ca.date_expedition, ca.date_commande) >= (SELECT date_inventaire FROM last_inv)
-           ), 0) AS post_qty,
-           COALESCE(SUM(cal.quantite_unites), 0) AS all_qty
-         FROM commande_acheteur_lignes cal
-         JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
-           AND cal.article_type = 'produit' AND cal.article_id = $2
-       )
-       SELECT CASE
-         WHEN (SELECT date_inventaire FROM last_inv) IS NOT NULL
-           THEN (SELECT quantite_reelle FROM last_inv)
-                + (SELECT post_qty FROM appro)
-                - (SELECT post_qty FROM transfers)
-                - (SELECT post_qty FROM pertes)
-                - (SELECT post_qty FROM ventes_ach)
-         ELSE
-                (SELECT all_qty FROM appro)
-                - (SELECT all_qty FROM transfers)
-                - (SELECT all_qty FROM pertes)
-                - (SELECT all_qty FROM ventes_ach)
-       END AS stock_courant`,
-      [scopeId, produitId]
-    );
-    return Math.round(parseFloat(r.rows[0]?.stock_courant ?? 0) * 1000) / 1000;
-  }
-
-  // scope === 'activite'
-  const r = await pool.query(
-    `WITH last_inv AS (
-       SELECT quantite_reelle, date_inventaire FROM inventaires
-       WHERE activite_id = $1 AND produit_id = $2
-       ORDER BY date_inventaire DESC, created_at DESC LIMIT 1
-     ),
-     appro AS (
-       SELECT
-         COALESCE(SUM(quantite) FILTER (
-           WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-             AND date_appro >= (SELECT date_inventaire FROM last_inv)
-         ), 0) AS post_qty,
-         COALESCE(SUM(quantite), 0) AS all_qty
-       FROM stock_produits_transformes
-       WHERE activite_id = $1 AND produit_id = $2
-     ),
-     pertes AS (
-       SELECT
-         COALESCE(SUM(quantite) FILTER (
-           WHERE (SELECT date_inventaire FROM last_inv) IS NOT NULL
-             AND date_perte >= (SELECT date_inventaire FROM last_inv)
-         ), 0) AS post_qty,
-         COALESCE(SUM(quantite), 0) AS all_qty
-       FROM pertes
-       WHERE activite_id = $1 AND produit_id = $2
-     )
-     SELECT CASE
-       WHEN (SELECT date_inventaire FROM last_inv) IS NOT NULL
-         THEN (SELECT quantite_reelle FROM last_inv)
-              + (SELECT post_qty FROM appro)
-              - (SELECT post_qty FROM pertes)
-       ELSE
-              (SELECT all_qty FROM appro)
-              - (SELECT all_qty FROM pertes)
-     END AS stock_courant`,
-    [scopeId, produitId]
-  );
-  return Math.round(parseFloat(r.rows[0]?.stock_courant ?? 0) * 1000) / 1000;
+  return computeStock(pool, scope, scopeId, { produitId });
 }
 
 /**

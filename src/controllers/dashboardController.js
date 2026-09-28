@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { ptCategorie, ptCategorieSql } = require('../utils/stockUtils');
+const { getSeuilCoutMatiereForClient } = require('../services/domaineProfilService');
 
 // Bornes du mois en cours par défaut, sinon les valeurs fournies (YYYY-MM-DD).
 const resolvePeriode = (from, to) => {
@@ -188,7 +189,8 @@ const getClientDashboard = async (req, res) => {
       joursInventaire = Math.round((Date.now() - new Date(invRes.rows[0].last).getTime()) / 86400000);
     }
 
-    // ── Produits à food cost élevé (>40%) sur la période ──
+    // ── Produits à food cost élevé (> seuil du domaine, défaut 40 %) sur la période ──
+    const seuilCoutMatierePct = await getSeuilCoutMatiereForClient(req.user.gerant_parent_id || req.user.id);
     const fcEleveRes = await pool.query(
       `SELECT COUNT(*) AS cnt FROM (
          SELECT vl.article_id,
@@ -199,9 +201,9 @@ const getClientDashboard = async (req, res) => {
            AND v.date_vente >= $2 AND v.date_vente <= $3 AND vl.article_type = 'produit'
          GROUP BY vl.article_id
          HAVING SUM(vl.quantite * vl.prix_unitaire) > 0
-            AND SUM(vl.quantite * COALESCE(vl.cout_unitaire,0)) / SUM(vl.quantite * vl.prix_unitaire) > 0.40
+            AND SUM(vl.quantite * COALESCE(vl.cout_unitaire,0)) / SUM(vl.quantite * vl.prix_unitaire) > $4
        ) t`,
-      [actIds, from, to]
+      [actIds, from, to, seuilCoutMatierePct / 100]
     );
 
     res.json({
@@ -294,9 +296,14 @@ const getLaboDashboard = async (req, res) => {
        FROM labo_pertes WHERE labo_id = $1 AND date_perte >= $2 AND date_perte <= $3`,
       [laboId, from, to]
     );
+    // Lot 1b : transferts vers activités (inchangé) et cessions internes labo→labo comptés séparément.
     const transRes = await pool.query(
-      `SELECT COALESCE(SUM(quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0)),0) AS valeur, COUNT(*) AS nb
-       FROM labo_transfers WHERE labo_id = $1 AND date_transfert >= $2 AND date_transfert <= $3`,
+      `SELECT COALESCE(SUM(v) FILTER (WHERE activite_id IS NOT NULL),0) AS valeur,
+              COUNT(*) FILTER (WHERE activite_id IS NOT NULL) AS nb,
+              COALESCE(SUM(v) FILTER (WHERE labo_dest_id IS NOT NULL),0) AS valeur_labo,
+              COUNT(*) FILTER (WHERE labo_dest_id IS NOT NULL) AS nb_labo
+       FROM (SELECT quantite * COALESCE(prix_unitaire_tva, prix_unitaire, 0) AS v, activite_id, labo_dest_id
+               FROM labo_transfers WHERE labo_id = $1 AND date_transfert >= $2 AND date_transfert <= $3) t`,
       [laboId, from, to]
     );
     // Top articles transférés (par valeur)
@@ -309,10 +316,13 @@ const getLaboDashboard = async (req, res) => {
     );
     // Transferts par activité destinataire
     const parActiviteRes = await pool.query(
-      `SELECT a.nom AS activite, COALESCE(SUM(lt.quantite * COALESCE(lt.prix_unitaire_tva, lt.prix_unitaire, 0)),0) AS valeur
-       FROM labo_transfers lt JOIN activites a ON a.id = lt.activite_id
+      `SELECT CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS activite,
+              COALESCE(SUM(lt.quantite * COALESCE(lt.prix_unitaire_tva, lt.prix_unitaire, 0)),0) AS valeur
+       FROM labo_transfers lt
+       LEFT JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
        WHERE lt.labo_id = $1 AND lt.date_transfert >= $2 AND lt.date_transfert <= $3
-       GROUP BY a.nom ORDER BY valeur DESC`,
+       GROUP BY 1 ORDER BY valeur DESC`,
       [laboId, from, to]
     );
 
@@ -325,6 +335,8 @@ const getLaboDashboard = async (req, res) => {
         pertes: num(pertesRes.rows[0].valeur),
         transferts: num(transRes.rows[0].valeur),
         nb_transferts: parseInt(transRes.rows[0].nb, 10) || 0,
+        cessions_labo: num(transRes.rows[0].valeur_labo),
+        nb_cessions_labo: parseInt(transRes.rows[0].nb_labo, 10) || 0,
       },
       top_transferts: topTransRes.rows.map((r) => ({ nom: r.nom, qte: num(r.qte), valeur: num(r.valeur) })),
       transferts_par_activite: parActiviteRes.rows.map((r) => ({ activite: r.activite, valeur: num(r.valeur) })),

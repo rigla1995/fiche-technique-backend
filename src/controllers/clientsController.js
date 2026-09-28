@@ -222,6 +222,45 @@ const getById = async (req, res) => {
   }
 };
 
+// ── Seeds par domaine à la création du compte (lot 1b §5) ────────────────────
+// regles.unites_seed      : unités de MESURE créées pour le client (table unites, UNIQUE(nom, client_id)).
+// regles.prestataires_seed : canaux = prestataires_livraison EXISTANTS (par nom, insensible à la casse),
+//                            liés au compte dans entreprise_prestataires ; un nom inconnu est ignoré (warn).
+// Listes vides (défaut de tous les domaines existants) = comportement actuel : rien n'est créé.
+const appliquerSeedsDomaine = async (clientId, domaineId) => {
+  const profil = domaineId != null ? await getProfil(domaineId) : null;
+  const regles = profil?.regles || {};
+  const unites = Array.isArray(regles.unites_seed) ? regles.unites_seed.map((u) => String(u).trim()).filter(Boolean) : [];
+  const canaux = Array.isArray(regles.prestataires_seed) ? regles.prestataires_seed.map((p) => String(p).trim()).filter(Boolean) : [];
+  let nbUnites = 0;
+  let nbCanaux = 0;
+  for (const nom of unites) {
+    const r = await pool.query(
+      'INSERT INTO unites (nom, client_id) VALUES ($1, $2) ON CONFLICT (nom, client_id) DO NOTHING RETURNING id',
+      [nom.slice(0, 50), clientId]
+    );
+    nbUnites += r.rowCount;
+  }
+  if (canaux.length) {
+    const pe = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [clientId]);
+    const entrepriseId = pe.rows[0]?.id;
+    for (const nom of entrepriseId ? canaux : []) {
+      const p = await pool.query(
+        'SELECT id FROM prestataires_livraison WHERE lower(nom) = lower($1) ORDER BY actif DESC, created_at LIMIT 1',
+        [nom]
+      );
+      if (!p.rows.length) { console.warn(`[clients.create] prestataires_seed : canal « ${nom} » inconnu (à créer dans Admin › Prestataires)`); continue; }
+      const r = await pool.query(
+        'INSERT INTO entreprise_prestataires (entreprise_id, prestataire_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [entrepriseId, p.rows[0].id]
+      );
+      nbCanaux += r.rowCount;
+    }
+  }
+  if (nbUnites || nbCanaux) console.log(`[clients.create] seeds domaine « ${profil?.slug || '?'} » (client ${clientId}) : ${nbUnites} unité(s), ${nbCanaux} canal(aux)`);
+  return { nbUnites, nbCanaux };
+};
+
 const create = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -353,6 +392,13 @@ const create = async (req, res) => {
     const aboId = await createAbonnement(user.id, montantOnboarding, config);
     // Détail réel écrit en base (libellés des composants + nom du domaine) pour le contrat
     const cfgComplete = config ? await loadConfigComplete(aboId).catch(() => null) : null;
+
+    // Seeds par domaine (unités de mesure, canaux) — jamais bloquant pour la création.
+    try {
+      await appliquerSeedsDomaine(user.id, domaineId);
+    } catch (seedErr) {
+      console.warn(`[clients.create] seeds domaine non appliqués (client ${user.id}) : ${seedErr.message}`);
+    }
 
     // Create promotions passed during client creation
     const promotions = Array.isArray(req.body.promotions) ? req.body.promotions : [];
