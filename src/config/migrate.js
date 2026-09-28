@@ -62,6 +62,10 @@ async function runSetup(client) {
 async function migrate() {
   const client = await pool.connect();
   let locked = false;
+  // Les RAISE NOTICE des migrations (pré-contrôles, backfills, données détachées — ex. 188/189)
+  // sont relayés dans le log applicatif : sans ce listener ils ne partent que dans le log PostgreSQL.
+  const onNotice = (n) => console.log(`[migration] ${n && n.message ? n.message : n}`);
+  client.on('notice', onNotice);
   try {
     // Migrations may run heavy DDL/backfills — don't let the pool's statement_timeout kill them.
     await client.query('SET statement_timeout = 0');
@@ -146,6 +150,7 @@ async function migrate() {
     if (locked) {
       try { await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]); } catch (_) { /* ignore */ }
     }
+    client.removeListener('notice', onNotice);
     client.release();
   }
 }

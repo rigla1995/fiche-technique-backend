@@ -2,26 +2,58 @@ const pool = require('../config/database');
 
 /**
  * GET /api/factures
- * Query params: activiteId, laboId, startDate, endDate, fournisseurId, ref, limit, offset
+ * Query params: activiteId, laboId, startDate, endDate, fournisseurId, ref, limit, offset,
+ *   sens ('emise' | 'recue', lot 1b), laboDestId (lot 1b).
+ *
+ * Lot 1b, avec laboId : le labo voit ses factures (labo_id = laboId : achats + cessions REÇUES
+ * d'un labo source) ET les cessions labo→labo qu'il a ÉMISES (facture portée par le labo
+ * destinataire, fournisseur = son fournisseur is_labo, activite_id NULL). Les factures de
+ * transfert vers une ACTIVITÉ (labo_id NULL) restent servies par activiteId — inchangé.
+ *   sens = 'recue' : type transfert, labo_id = laboId, activite_id NULL (origine = labo source)
+ *   sens = 'emise' : type transfert émise par le fournisseur is_labo de laboId
+ *   laboDestId    : cessions émises vers ce labo (f.labo_id = laboDestId)
  */
 const list = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   const {
     activiteId, laboId, startDate, endDate,
-    fournisseurId, ref,
+    fournisseurId, ref, sens, laboDestId,
     limit = 50, offset = 0,
   } = req.query;
 
   const params = [clientId];
   const conds = [];
+  const toInt = (v) => { const n = parseInt(v, 10); return Number.isInteger(n) ? n : null; };
+  if ((activiteId && toInt(activiteId) == null) || (laboId && toInt(laboId) == null)
+      || (fournisseurId && toInt(fournisseurId) == null) || (laboDestId && toInt(laboDestId) == null)
+      || (sens && sens !== 'emise' && sens !== 'recue')) {
+    return res.status(400).json({ message: 'Paramètres de filtre invalides' });
+  }
 
   if (activiteId) {
-    params.push(parseInt(activiteId));
+    params.push(toInt(activiteId));
     conds.push(`f.activite_id = $${params.length}`);
   }
+  // Fournisseur is_labo du labo courant (émetteur des cessions internes) — $n réutilisé.
+  let emisSql = 'FALSE';
+  let recuSql = 'FALSE';
   if (laboId) {
-    params.push(parseInt(laboId));
-    conds.push(`f.labo_id = $${params.length}`);
+    params.push(toInt(laboId));
+    const p = params.length;
+    emisSql = `(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id <> $${p}
+                 AND f.fournisseur_id IN (SELECT fl.id FROM fournisseurs fl WHERE fl.is_labo = true AND fl.labo_id = $${p}))`;
+    recuSql = `(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id = $${p})`;
+    conds.push(`(f.labo_id = $${p} OR ${emisSql})`);
+    if (sens === 'recue') conds.push(recuSql);
+    if (sens === 'emise') conds.push(emisSql);
+  } else if (sens === 'recue') {
+    conds.push(`(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id IS NOT NULL)`);
+  } else if (sens === 'emise') {
+    conds.push(`(f.type_source = 'transfert' AND f.activite_id IS NOT NULL)`);
+  }
+  if (laboDestId) {
+    params.push(toInt(laboDestId));
+    conds.push(`(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id = $${params.length})`);
   }
   if (startDate) {
     params.push(startDate);
@@ -32,7 +64,7 @@ const list = async (req, res) => {
     conds.push(`f.date_facture <= $${params.length}`);
   }
   if (fournisseurId) {
-    params.push(parseInt(fournisseurId));
+    params.push(toInt(fournisseurId));
     conds.push(`f.fournisseur_id = $${params.length}`);
   }
   if (ref) {
@@ -63,7 +95,13 @@ const list = async (req, res) => {
          f.montant_tva,
          f.montant_ttc,
          f.notes,
-         f.created_at
+         f.created_at,
+         CASE WHEN ${recuSql} THEN 'recue'
+              WHEN ${emisSql} THEN 'emise'
+              WHEN f.type_source = 'transfert' AND f.labo_id IS NOT NULL AND f.activite_id IS NULL THEN 'recue'
+              WHEN f.type_source = 'transfert' THEN 'emise' ELSE NULL END AS sens,
+         CASE WHEN ${emisSql} THEN lb.nom
+              WHEN f.type_source = 'transfert' THEN COALESCE(a.nom, fo.nom) ELSE NULL END AS contrepartie_nom
        FROM factures f
        LEFT JOIN fournisseurs fo ON fo.id = f.fournisseur_id
        LEFT JOIN activites a ON a.id = f.activite_id
@@ -90,6 +128,11 @@ const list = async (req, res) => {
       montantTTC: parseFloat(r.montant_ttc),
       notes: r.notes,
       createdAt: r.created_at,
+      // Lot 1b : facture interne de transfert, vue du labo courant (laboId) — 'recue' (labo
+      // destinataire, activite_id NULL) | 'emise' (vers une activité, ou cession vers un labo enfant) ;
+      // contrepartie = activité ou labo destinataire (émise) | labo source (reçue).
+      sens: r.sens || null,
+      contrepartieNom: r.contrepartie_nom || null,
     })));
   } catch (err) {
     console.error(err);

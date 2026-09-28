@@ -1,5 +1,15 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
+// Lot 1b §5 — règle « supplément » paramétrée par domaine (regles.supplement_max_composants, défaut 1).
+const { getReglesForClient } = require('../services/domaineProfilService');
+const getSupplementMaxComposants = async (req) => {
+  const r = await getReglesForClient(req.user.gerant_parent_id || req.user.id);
+  const n = parseInt(r.supplement_max_composants, 10);
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+};
+const messageSupplement = (max) => (max === 1
+  ? 'Un supplément doit contenir exactement 1 élément (un article ou un produit utilisable).'
+  : `Un supplément doit contenir entre 1 et ${max} éléments (articles ou produits utilisables).`);
 
 const mapProduit = (row) => ({
   id: row.id,
@@ -295,11 +305,12 @@ const create = async (req, res) => {
     return res.status(400).json({ message: 'La catégorie de produit est obligatoire pour un produit vendable ou un supplément' });
   }
 
-  // Un supplément vendable se compose d'EXACTEMENT 1 élément (1 article OU 1 produit utilisable).
+  // Un supplément vendable se compose de 1 à supplement_max_composants élément(s) (défaut 1 : article OU produit utilisable).
   if (isSupplement) {
     const nbComposants = (ingredients?.length || 0) + (subProducts?.length || 0);
-    if (nbComposants !== 1) {
-      return res.status(400).json({ message: 'Un supplément doit contenir exactement 1 élément (un article ou un produit utilisable).' });
+    const maxComposants = await getSupplementMaxComposants(req);
+    if (nbComposants < 1 || nbComposants > maxComposants) {
+      return res.status(400).json({ message: messageSupplement(maxComposants) });
     }
   }
 
@@ -476,11 +487,12 @@ const update = async (req, res) => {
     return res.status(400).json({ message: 'La catégorie de produit est obligatoire pour un produit vendable ou un supplément' });
   }
 
-  // Supplément = exactement 1 élément (validé quand la composition est fournie à l'édition).
+  // Supplément = 1 à supplement_max_composants élément(s) (validé quand la composition est fournie à l'édition).
   if (isSupplement === true && ingredients !== undefined && subProducts !== undefined) {
     const nbComposants = (ingredients?.length || 0) + (subProducts?.length || 0);
-    if (nbComposants !== 1) {
-      return res.status(400).json({ message: 'Un supplément doit contenir exactement 1 élément (un article ou un produit utilisable).' });
+    const maxComposants = await getSupplementMaxComposants(req);
+    if (nbComposants < 1 || nbComposants > maxComposants) {
+      return res.status(400).json({ message: messageSupplement(maxComposants) });
     }
   }
 
@@ -1000,8 +1012,10 @@ async function buildDpPriceMapLabo(laboId) {
   return priceMap;
 }
 
-// MP labo : PMP pondéré par les quantités des appros manuels par article depuis le
-// dernier inventaire du labo, sur les prix TTC (COALESCE(prix_unitaire_tva, prix_unitaire)).
+// MP labo : PMP pondéré par les quantités des appros manuels ET des réceptions de transfert
+// ('transfert', lot 1b — cascade de coût d'un labo alimenté par un autre labo) par article
+// depuis le dernier inventaire du labo, sur les prix TTC (COALESCE(prix_unitaire_tva, prix_unitaire)).
+// Pas de remontée de prix au-delà d'une unité (labo_parent_id n'est pas lu — déclaré, hors périmètre).
 // Même base que le coût figé à l'appro (saveLaboStock) et que le prix affiché en
 // stock/transfert (getLaboStock) → cohérence des écrans, valeur déjà taxée (TTC).
 async function buildMpPriceMapLabo(laboId) {
@@ -1020,7 +1034,7 @@ async function buildMpPriceMapLabo(laboId) {
      LEFT JOIN last_inv li ON li.ingredient_id = sld.ingredient_id
      WHERE sld.labo_id = $1
        AND COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire) IS NOT NULL AND COALESCE(sld.prix_unitaire_tva, sld.prix_unitaire) > 0
-       AND sld.quantite > 0 AND sld.type_appro = 'manuel'
+       AND sld.quantite > 0 AND sld.type_appro IN ('manuel', 'transfert')
        AND (li.date_inventaire IS NULL OR sld.date_appro >= li.date_inventaire)
      GROUP BY sld.ingredient_id`,
     [laboId]

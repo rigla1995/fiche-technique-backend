@@ -35,6 +35,15 @@ async function assertLaboOwner(laboId, userId) {
   if (!ownerId || String(ownerId) !== String(userId)) throw Object.assign(new Error('Accès refusé'), { status: 403 });
 }
 
+// Lot 1b §3.3 : une activité dont l'unité opérationnelle est vente_active = false (Housekeeping,
+// Spa…) ne vend pas — POST /api/ventes et articles vendables refusés (400 VENTE_INACTIVE).
+async function assertActiviteVenteActive(activiteId) {
+  const r = await pool.query('SELECT vente_active FROM unites_operationnelles WHERE activite_id = $1', [activiteId]);
+  if (r.rows.length && r.rows[0].vente_active === false) {
+    throw Object.assign(new Error('La vente est désactivée pour cette activité.'), { status: 400, code: 'VENTE_INACTIVE' });
+  }
+}
+
 // ─── Admin — Prestataires ────────────────────────────────────────────────────
 
 const listPrestataires = async (req, res) => {
@@ -128,7 +137,7 @@ const listActivitePrestataires = async (req, res) => {
     );
     res.json(r.rows.map(row => ({ ...row, taux_commission: parseFloat(row.taux_commission) })));
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -151,7 +160,7 @@ const addActivitePrestataire = async (req, res) => {
     );
     res.status(201).json(r.rows[0]);
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -178,7 +187,7 @@ const updateActivitePrestataire = async (req, res) => {
     );
     res.json(r.rows[0]);
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -198,7 +207,7 @@ const removeActivitePrestataire = async (req, res) => {
     await pool.query('DELETE FROM activite_prestataires WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -224,7 +233,7 @@ const listPrestatairesClient = async (req, res) => {
     const r = await pool.query('SELECT * FROM prestataires_livraison WHERE actif = true ORDER BY nom');
     res.json(r.rows);
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -262,7 +271,7 @@ const listArticlesVendables = async (req, res) => {
       portion: row.portion != null ? parseFloat(row.portion) : null,
     })));
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -283,6 +292,7 @@ const upsertArticleVendable = async (req, res) => {
     }
     const cid = clientId(req);
     await assertActiviteOwner(activite_id, cid);
+    await assertActiviteVenteActive(activite_id);
 
     const r = await pool.query(
       `INSERT INTO activite_articles_vendables (activite_id, article_type, article_id, prix_vente, portion, actif, categorie_produit_id, created_by)
@@ -304,7 +314,7 @@ const upsertArticleVendable = async (req, res) => {
     }
     res.status(201).json(r.rows[0]);
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -327,6 +337,11 @@ const updateArticleVendable = async (req, res) => {
         return res.status(400).json({ message: 'Saisissez un prix de vente supérieur à 0 avant d\'activer cet article.' });
       }
     }
+
+    const cur = await pool.query('SELECT activite_id FROM activite_articles_vendables WHERE id = $1', [id]);
+    if (!cur.rows.length) return res.status(404).json({ message: 'Introuvable' });
+    await assertActiviteOwner(cur.rows[0].activite_id, clientId(req));
+    await assertActiviteVenteActive(cur.rows[0].activite_id);
 
     const r = await pool.query(
       `UPDATE activite_articles_vendables SET
@@ -397,7 +412,7 @@ const getPrixHistoriqueConfig = async (req, res) => {
       created_by_nom: row.created_by_nom ?? null,
     })));
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -451,7 +466,7 @@ const listArticlePrixPrestataire = async (req, res) => {
       portion: row.portion != null ? parseFloat(row.portion) : null,
     })));
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -487,7 +502,7 @@ const getChargesFixes = async (req, res) => {
     const r = await pool.query('SELECT * FROM charges_fixes WHERE activite_id = $1', [activiteId]);
     res.json(r.rows[0] || null);
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -516,7 +531,7 @@ const upsertChargesFixes = async (req, res) => {
     );
     res.status(201).json(r.rows[0]);
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -577,7 +592,7 @@ const listVentes = async (req, res) => {
       lignes: row.lignes || [],
     })));
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -627,7 +642,7 @@ const getVente = async (req, res) => {
       })),
     });
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -642,6 +657,7 @@ const createVente = async (req, res) => {
     const cid = clientId(req);
     if (labo_id) await assertLaboOwner(labo_id, cid);
     else await assertActiviteOwner(activite_id, cid);
+    if (activite_id) await assertActiviteVenteActive(activite_id);
 
     // Check module_vente_actif for stock deduction
     let moduleVenteActif = false;
@@ -861,7 +877,7 @@ const createVente = async (req, res) => {
     res.status(201).json({ id: vente.id, ...vente, date_vente: isoDate(vente.date_vente) });
   } catch (e) {
     await client.query('ROLLBACK');
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   } finally {
     client.release();
@@ -982,7 +998,7 @@ const annulerVente = async (req, res) => {
     res.json({ success: true });
   } catch (e) {
     await client.query('ROLLBACK');
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   } finally {
     client.release();
@@ -1056,7 +1072,7 @@ const statsVentes = async (req, res) => {
       })),
     });
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -1079,6 +1095,9 @@ const laboVentes = async (req, res) => {
         lt.prix_unitaire, lt.prix_unitaire_tva, lt.taux_tva,
         lt.note, lt.ref_facture,
         a.nom as activite_nom,
+        lt.labo_dest_id,
+        CASE WHEN lt.labo_dest_id IS NOT NULL THEN 'labo' ELSE 'activite' END as dest_type,
+        COALESCE(a.nom, ld.nom) as dest_nom,
         CASE
           WHEN lt.ingredient_id IS NOT NULL THEN i.nom
           WHEN lt.produit_id IS NOT NULL THEN p.nom
@@ -1111,7 +1130,8 @@ const laboVentes = async (req, res) => {
        LEFT JOIN produits p ON p.id = lt.produit_id
        LEFT JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories cat ON cat.id = i.categorie_id
-       JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
        WHERE lt.labo_id = $1${where}
        ORDER BY lt.date_transfert DESC, lt.created_at DESC`,
       params
@@ -1265,7 +1285,7 @@ const exportVentesExcel = async (req, res) => {
     await wb.xlsx.write(res);
     res.end();
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -1341,7 +1361,7 @@ const exportPrixHistoriqueConfigExcel = async (req, res) => {
     await wb.xlsx.write(res);
     res.end();
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -1361,14 +1381,16 @@ const deleteHistoriqueEntry = async (req, res) => {
     await pool.query('DELETE FROM article_vendable_prix_historique WHERE id = $1', [id]);
     res.status(204).end();
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
 
 const exportLaboVentesExcel = async (req, res) => {
   try {
-    const { laboId, from, to, filterCategorie, filterActivite, filterArticle, selectedIds } = req.query;
+    // filterDestination (lot 1b : dest_nom) ; filterActivite = ancien nom, toujours accepté.
+    const { laboId, from, to, filterCategorie, filterArticle, selectedIds } = req.query;
+    const filterDestination = req.query.filterDestination || req.query.filterActivite || '';
     if (!laboId) return res.status(400).json({ message: 'laboId requis' });
 
     const params = [laboId];
@@ -1380,6 +1402,8 @@ const exportLaboVentesExcel = async (req, res) => {
       `SELECT lt.id, lt.date_transfert, lt.quantite,
         lt.prix_unitaire, lt.note,
         a.nom as activite_nom,
+        CASE WHEN lt.labo_dest_id IS NOT NULL THEN 'labo' ELSE 'activite' END as dest_type,
+        COALESCE(a.nom, ld.nom) as dest_nom,
         CASE WHEN lt.ingredient_id IS NOT NULL THEN i.nom WHEN lt.produit_id IS NOT NULL THEN p.nom END as article_nom,
         CASE WHEN lt.ingredient_id IS NOT NULL THEN u.nom ELSE NULL END as unite_nom,
         CASE WHEN lt.ingredient_id IS NOT NULL THEN COALESCE(cat.nom, 'Sans catégorie') ELSE (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = lt.produit_id) END as categorie_nom,
@@ -1399,7 +1423,8 @@ const exportLaboVentesExcel = async (req, res) => {
        LEFT JOIN produits p ON p.id = lt.produit_id
        LEFT JOIN unites u ON i.unite_id = u.id
        LEFT JOIN categories cat ON cat.id = i.categorie_id
-       JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
        WHERE lt.labo_id = $1${where}
        ORDER BY lt.date_transfert DESC, lt.created_at DESC`,
       params
@@ -1415,7 +1440,8 @@ const exportLaboVentesExcel = async (req, res) => {
     }));
 
     if (filterCategorie) rows = rows.filter(r => r.categorie_nom === filterCategorie);
-    if (filterActivite)  rows = rows.filter(r => r.activite_nom === filterActivite);
+    // Filtre « Destination » (activité ou labo enfant).
+    if (filterDestination) rows = rows.filter(r => r.dest_nom === filterDestination || r.activite_nom === filterDestination);
     if (filterArticle)   rows = rows.filter(r => r.article_nom === filterArticle);
 
     const selSet = selectedIds ? new Set(String(selectedIds).split(',').map(s => s.trim()).filter(Boolean)) : new Set();
@@ -1431,7 +1457,7 @@ const exportLaboVentesExcel = async (req, res) => {
     const meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${rows.length} ligne${rows.length !== 1 ? 's' : ''}`
       + (selSet.size > 0 ? ` · ${selSet.size} ligne(s) sélectionnée(s) (surlignées)` : '');
     const headerIdx = brandHeader(wb, ws, { titre: 'Ventes du labo — Transferts valorisés', meta, colCount: COLS });
-    headerRow(ws, headerIdx, ['Date', 'Article', 'Unité', 'Catégorie', 'Activité', 'Qté', 'Val. transfert', 'Val. appro', 'Écart'],
+    headerRow(ws, headerIdx, ['Date', 'Article', 'Unité', 'Catégorie', 'Destination', 'Qté', 'Val. transfert', 'Val. appro', 'Écart'],
       { widths: [14, 26, 10, 18, 22, 8, 16, 16, 14] });
 
     let totalTransfert = 0, totalAppro = 0;
@@ -1444,7 +1470,7 @@ const exportLaboVentesExcel = async (req, res) => {
 
       const dr = ws.addRow([
         row.date_transfert, row.article_nom, row.unite_nom ?? '', row.categorie_nom,
-        row.activite_nom, row.quantite, valeur, valAppro ?? '', ecart ?? '',
+        row.dest_type === 'labo' ? `${row.dest_nom} (labo)` : row.dest_nom, row.quantite, valeur, valAppro ?? '', ecart ?? '',
       ]);
       dataRowStyle(dr, { index: idx, selected: selSet.has(String(row.id)), colCount: COLS });
       dr.getCell(6).numFmt = FMT_QTE;
@@ -1559,7 +1585,7 @@ const getArticlesValorisés = async (req, res) => {
 
     res.json([...composeRows, ...articleRows]);
   } catch (e) {
-    if (e.status) return res.status(e.status).json({ message: e.message });
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };

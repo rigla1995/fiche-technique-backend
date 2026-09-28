@@ -153,6 +153,7 @@ router.post('/config/:clientId/messenger-invite', authenticate, requireSuperAdmi
 router.get('/agents', authenticate, requireSuperAdmin, ai.getActiveAgents);
 router.get('/status', authenticate, ai.getClientStatus);
 router.get('/onboarding', authenticate, ai.getOnboardingEtat);
+router.post('/onboarding/purge', authenticate, ai.purgeOnboardingConversation);
 router.get('/conversation', authenticate, ai.getClientConversation);
 router.post('/chat', authenticate, ai.clientChat);
 router.delete('/conversation', authenticate, ai.clearClientConversation);

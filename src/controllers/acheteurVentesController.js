@@ -1,5 +1,6 @@
 const pool = require('../config/database');
-const { computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
+const { computeStock } = require('../services/stockService');
+const { lockStockLabo, mapLockError } = require('../services/transfertService');
 const { gerantAllowsLabo } = require('../middleware/auth');
 const { buildFactureAcheteurPdf } = require('../services/factureAcheteurPdf');
 
@@ -263,7 +264,7 @@ const buildCostMaps = async (laboId, artIds, prodIds) => {
       ? pool.query(
           `SELECT ingredient_id, AVG(COALESCE(prix_unitaire_tva, prix_unitaire)) AS cout
            FROM stock_labo_daily
-           WHERE labo_id = $1 AND ingredient_id = ANY($2::int[]) AND quantite > 0 AND type_appro = 'manuel'
+           WHERE labo_id = $1 AND ingredient_id = ANY($2::int[]) AND quantite > 0 AND type_appro IN ('manuel', 'transfert')
            GROUP BY ingredient_id`,
           [laboId, artIds]
         )
@@ -415,20 +416,6 @@ const createVente = async (req, res) => {
       besoins.set(key, b);
     }
 
-    // Contrôle de stock labo (422 détaillé, comme la production PT)
-    const manquants = [];
-    for (const b of besoins.values()) {
-      const dispo = b.type === 'ingredient'
-        ? await computeStockCourant('labo', laboId, b.id)
-        : await computeStockPTCourant('labo', laboId, b.id);
-      if (dispo < b.unites) {
-        manquants.push({ nom: b.nom, unite: b.unite, disponible: dispo, necessaire: b.unites, manquant: round3(b.unites - dispo) });
-      }
-    }
-    if (manquants.length > 0) {
-      return res.status(422).json({ message: 'Stock labo insuffisant', manquants });
-    }
-
     // Coûts matière TTC figés (marge)
     const { artMap, prodMap } = await buildCostMaps(laboId, artIds, prodIds);
 
@@ -437,6 +424,22 @@ const createVente = async (req, res) => {
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
+      // Lot 1b §2.4 : verrou stock du labo (même espace que les transferts / production PT) puis
+      // contrôle de stock DANS la transaction (422 détaillé, comme la production PT).
+      await lockStockLabo(db, laboId);
+      const manquants = [];
+      for (const b of besoins.values()) {
+        const dispo = b.type === 'ingredient'
+          ? await computeStock(db, 'labo', laboId, { articleId: b.id })
+          : await computeStock(db, 'labo', laboId, { produitId: b.id });
+        if (dispo < b.unites) {
+          manquants.push({ nom: b.nom, unite: b.unite, disponible: dispo, necessaire: b.unites, manquant: round3(b.unites - dispo) });
+        }
+      }
+      if (manquants.length > 0) {
+        await db.query('ROLLBACK');
+        return res.status(422).json({ message: 'Stock labo insuffisant', manquants });
+      }
       const cmd = await db.query(
         `INSERT INTO commandes_acheteur
            (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, labo_id, statut, source, remise_pct, date_commande, date_expedition, date_livraison, notes, traite_le, traite_par, created_by)
@@ -482,6 +485,8 @@ const createVente = async (req, res) => {
       db.release();
     }
   } catch (err) {
+    const lock = mapLockError(err);
+    if (lock) return res.status(lock.status).json({ code: lock.code, message: lock.message });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -707,6 +712,8 @@ const expedierCommande = async (req, res) => {
     );
     if (labo.rows.length === 0) { await db.query('ROLLBACK'); return res.status(404).json({ message: 'Labo introuvable' }); }
     if (!gerantAllowsLabo(req, laboId)) { await db.query('ROLLBACK'); return res.status(403).json({ message: 'Labo hors de votre périmètre' }); }
+    // Lot 1b §2.4 : verrou stock du labo source (même espace que les transferts / production PT).
+    await lockStockLabo(db, laboId);
 
     const lignesRes = await db.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id FOR UPDATE`, [cmd.id]);
     const lignes = lignesRes.rows;
@@ -762,8 +769,8 @@ const expedierCommande = async (req, res) => {
     const manquants = [];
     for (const b of besoins.values()) {
       const dispo = b.type === 'ingredient'
-        ? await computeStockCourant('labo', laboId, b.id)
-        : await computeStockPTCourant('labo', laboId, b.id);
+        ? await computeStock(db, 'labo', laboId, { articleId: b.id })
+        : await computeStock(db, 'labo', laboId, { produitId: b.id });
       if (dispo < b.unites) {
         manquants.push({ nom: b.nom, unite: '', disponible: dispo, necessaire: b.unites, manquant: round3(b.unites - dispo) });
       }
@@ -817,6 +824,8 @@ const expedierCommande = async (req, res) => {
     if (err.code === '40P01') {
       return res.status(409).json({ message: 'Opération concurrente sur cette commande — réessayez.' });
     }
+    const lock = mapLockError(err);
+    if (lock) return res.status(lock.status).json({ code: lock.code, message: lock.message });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   } finally {

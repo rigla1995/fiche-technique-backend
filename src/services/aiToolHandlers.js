@@ -1,6 +1,8 @@
 const pool = require('../config/database');
 const { generateAndSendReport } = require('./reportService');
 const { buildManuelContexte, manuelSectionVisible } = require('../utils/manuelVisibilite');
+// Lot 1b §5 — règles du domaine du compte : types de perte, seuil coût matière.
+const { getTypesPerteForClient, getSeuilCoutMatiereForClient, perteLabel } = require('./domaineProfilService');
 
 const CLIENT_SCOPE_CTE = `
   WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1),
@@ -46,6 +48,18 @@ async function toolGetClientInfo(clientId) {
 // Périmètre client résumé pour injection dans le system prompt (évite un appel get_client_info
 // à chaque message → moins de latence). Inclut les IDs pour que l'agent filtre directement.
 async function getClientContextLine(clientId) {
+  const ctx = await getClientContextLineBase(clientId);
+  // Lot 1b §5 — règles du domaine injectées dans le contexte (seuil coût matière, types de perte).
+  try {
+    const [seuil, types] = await Promise.all([getSeuilCoutMatiereForClient(clientId), getTypesPerteForClient(clientId)]);
+    const regles = `Seuil coût matière (food cost) : ${seuil} % (au-delà = élevé) | Types de perte : ${types.map((c) => `${c} (${perteLabel(c)})`).join(', ')}`;
+    return { ...ctx, line: ctx?.line ? `${ctx.line} | ${regles}` : regles, seuil_cout_matiere_pct: seuil, types_perte: types };
+  } catch (_) {
+    return ctx;
+  }
+}
+
+async function getClientContextLineBase(clientId) {
   try {
     // Lit le snapshot de config statique préchargé (cache mémoire/DB) au lieu de relancer 3 SQL.
     const { getContextLine } = require('./clientConfigService');
@@ -78,15 +92,16 @@ async function toolGetStock(clientId, { activite_id, labo_id, ingredient, date_f
   const { rows } = await pool.query(
     `${CLIENT_SCOPE_CTE}
      SELECT i.nom AS ingredient, s.quantite, s.date_appro, s.prix_unitaire,
-            COALESCE(a.nom, l.nom, 'Global') AS source
+            COALESCE(a.nom, l.nom, 'Global') AS source,
+            COALESCE(s.type_appro, 'manuel') AS type_appro
      FROM (
        SELECT sed.ingredient_id, sed.quantite, sed.date_appro, sed.prix_unitaire,
-              sed.activite_id, NULL::int AS labo_id
+              sed.activite_id, NULL::int AS labo_id, sed.type_appro
        FROM stock_entreprise_daily sed
        WHERE sed.activite_id IN (SELECT id FROM client_activites)
        UNION ALL
        SELECT sld.ingredient_id, sld.quantite, sld.date_appro, sld.prix_unitaire,
-              NULL::int AS activite_id, sld.labo_id
+              NULL::int AS activite_id, sld.labo_id, sld.type_appro
        FROM stock_labo_daily sld
        WHERE sld.labo_id IN (SELECT id FROM client_labos)
      ) s
@@ -151,7 +166,9 @@ async function toolGetPertes(clientId, { activite_id, labo_id, ingredient, type_
   if (labo_id && !activite_id) { params.push(labo_id); conditions.push(`p.labo_id = $${params.length}`); }
   if (date_from) { params.push(date_from); conditions.push(`p.date_perte >= $${params.length}`); }
   if (date_to) { params.push(date_to); conditions.push(`p.date_perte <= $${params.length}`); }
-  if (type_perte && ['avarie', 'dechet'].includes(type_perte)) { params.push(type_perte); conditions.push(`p.type_perte = $${params.length}`); }
+  const typesPerte = await getTypesPerteForClient(clientId);
+  const typePerteNorm = type_perte ? String(type_perte).trim().toLowerCase() : null;
+  if (typePerteNorm && typesPerte.includes(typePerteNorm)) { params.push(typePerteNorm); conditions.push(`p.type_perte = $${params.length}`); }
   if (ingredient) { params.push(`%${ingredient}%`); conditions.push(`i.nom ILIKE $${params.length}`); }
 
   const whereExtra = conditions.length ? 'AND ' + conditions.join(' AND ') : '';
@@ -239,13 +256,15 @@ async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, d
   const { rows } = await pool.query(
     `${CLIENT_SCOPE_CTE}
      SELECT COALESCE(i.nom, p.nom) AS ingredient, lt.quantite, lt.date_transfert,
-            a.nom AS activite, l.nom AS labo
+            a.nom AS activite, l.nom AS labo, ld.nom AS labo_destinataire,
+            CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS destination
      FROM labo_transfers lt
      LEFT JOIN articles i ON i.id = lt.ingredient_id
      LEFT JOIN produits p ON p.id = lt.produit_id
      LEFT JOIN activites a ON a.id = lt.activite_id
      LEFT JOIN labos l ON l.id = lt.labo_id
-     WHERE lt.activite_id IN (SELECT id FROM client_activites)
+     LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
+     WHERE lt.labo_id IN (SELECT id FROM client_labos)
        AND (lt.ingredient_id IS NOT NULL OR lt.produit_id IS NOT NULL)
        ${whereExtra}
      ORDER BY lt.date_transfert DESC
@@ -394,11 +413,16 @@ async function toolGetVentes(clientId, { activite_id, labo_id, date_from, date_t
   const ca = parseFloat(t.ca_ttc) || 0;
   const cm = parseFloat(t.cout_matiere) || 0;
   const nb = parseInt(t.nb_ventes) || 0;
+  // Lot 1b §5 — seuil coût matière du domaine (défaut 40 %) joint au résumé.
+  const seuilCoutMatierePct = await getSeuilCoutMatiereForClient(clientId);
+  const foodCostPct = ca > 0 ? Math.round((cm / ca) * 1000) / 10 : null;
   return {
     nb_ventes: nb,
     ca_ttc: Math.round(ca * 1000) / 1000,
     cout_matiere: Math.round(cm * 1000) / 1000,
-    food_cost_pct: ca > 0 ? Math.round((cm / ca) * 1000) / 10 : null,
+    food_cost_pct: foodCostPct,
+    seuil_cout_matiere_pct: seuilCoutMatierePct,
+    food_cost_eleve: foodCostPct != null ? foodCostPct > seuilCoutMatierePct : null,
     marge_brute: Math.round((ca - cm) * 1000) / 1000,
     panier_moyen: nb > 0 ? Math.round((ca / nb) * 1000) / 1000 : null,
     par_canal: canalRes.rows,
@@ -554,14 +578,14 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_pertes',
-    description: 'Récupère l\'historique des pertes d\'ingrédients. Filtrable par type de perte (avarie / déchet).',
+    description: 'Récupère l\'historique des pertes d\'ingrédients. Filtrable par type de perte (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).',
     input_schema: {
       type: 'object',
       properties: {
         activite_id: { type: 'integer' },
         labo_id: { type: 'integer' },
         ingredient: { type: 'string' },
-        type_perte: { type: 'string', enum: ['avarie', 'dechet'], description: 'Filtrer par type de perte' },
+        type_perte: { type: 'string', description: 'Filtrer par type de perte (code du domaine, ex. avarie, dechet)' },
         date_from: { type: 'string' },
         date_to: { type: 'string' },
         limit: { type: 'integer' },
@@ -631,7 +655,7 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_ventes',
-    description: 'Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost %, marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.',
+    description: 'Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.',
     input_schema: {
       type: 'object',
       properties: {

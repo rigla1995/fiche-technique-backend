@@ -64,10 +64,13 @@ async function fetchReportData(clientId) {
 
     pool.query(
       `${SCOPE_CTE}
-       SELECT i.nom AS ingredient, lt.quantite, lt.date_transfert
+       SELECT i.nom AS ingredient, lt.quantite, lt.date_transfert,
+              CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS destination
        FROM labo_transfers lt
        JOIN articles i ON i.id = lt.ingredient_id
-       WHERE lt.activite_id IN (SELECT id FROM client_activites) AND lt.ingredient_id IS NOT NULL
+       LEFT JOIN activites a ON a.id = lt.activite_id
+       LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
+       WHERE lt.labo_id IN (SELECT id FROM client_labos) AND lt.ingredient_id IS NOT NULL
        ORDER BY lt.date_transfert DESC LIMIT 100`,
       [clientId]
     ),
@@ -141,12 +144,12 @@ async function generateExcel(clientId) {
     rows: data.inventaires.map(r => [r.ingredient, Number(r.quantite_reelle), fmtDate(r.date_inventaire)]),
   });
 
-  buildSheet('Transferts Labo→Activité', {
-    titre: 'Rapport LabFlow — Transferts labo → activités',
-    labels: ['Ingrédient', 'Quantité', 'Date transfert'],
-    widths: [30, 14, 18],
-    formats: [null, FMT_QTE, null],
-    rows: data.transferts.map(r => [r.ingredient, Number(r.quantite), fmtDate(r.date_transfert)]),
+  buildSheet('Transferts Labo', {
+    titre: 'Rapport LabFlow — Transferts depuis les labos',
+    labels: ['Ingrédient', 'Quantité', 'Date transfert', 'Destination'],
+    widths: [30, 14, 18, 26],
+    formats: [null, FMT_QTE, null, null],
+    rows: data.transferts.map(r => [r.ingredient, Number(r.quantite), fmtDate(r.date_transfert), r.destination || '']),
   });
 
   const buffer = await workbook.xlsx.writeBuffer();

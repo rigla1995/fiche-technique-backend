@@ -238,22 +238,35 @@ const getClientStatus = async (req, res) => {
   }
 };
 
-// GET /api/ai-assistant/onboarding — état de mise en route pour le widget.
-// Mise en route TERMINÉE ⇒ la conversation web du guide et son historique sont
-// SUPPRIMÉS (décision client 2026-07-24) : un futur avenant repart d'un chat
-// vierge. Les conversations Messenger (PSID) ne sont pas touchées.
+// GET /api/ai-assistant/onboarding — état de mise en route (widget + checklist du guide).
+// Lot 1b §3.5 : lecture PURE (plus d'effet de bord) — chaque étape porte sa route et, pour
+// « capacités », le détail par composant souscrit.
 const getOnboardingEtat = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     if (req.user.role !== 'client') return res.json({ complet: true, etapes: [], aFaire: null });
+    res.json(await computeOnboardingEtat(clientId));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// POST /api/ai-assistant/onboarding/purge — appelé par AssistantWidget seul. Mise en route
+// TERMINÉE ⇒ la conversation web du guide et son historique sont SUPPRIMÉS (décision client
+// 2026-07-24) : un futur avenant repart d'un chat vierge. Les conversations Messenger (PSID)
+// ne sont pas touchées. Mise en route en cours ⇒ rien n'est supprimé.
+const purgeOnboardingConversation = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    if (req.user.role !== 'client') return res.json({ purged: false, complet: true });
     const etat = await computeOnboardingEtat(clientId);
-    if (etat.complet) {
-      await pool.query(
-        `DELETE FROM ai_conversations WHERE client_id = $1 AND whatsapp_number LIKE 'web_%'`,
-        [clientId]
-      );
-    }
-    res.json(etat);
+    if (!etat.complet) return res.json({ purged: false, complet: false });
+    await pool.query(
+      `DELETE FROM ai_conversations WHERE client_id = $1 AND whatsapp_number LIKE 'web_%'`,
+      [clientId]
+    );
+    res.json({ purged: true, complet: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -322,5 +335,5 @@ const clearClientConversation = async (req, res) => {
 
 module.exports = {
   getAiConfig, setAiConfig, generateMessengerInviteLink, getActiveAgents,
-  getClientStatus, getOnboardingEtat, getClientConversation, clientChat, clearClientConversation,
+  getClientStatus, getOnboardingEtat, purgeOnboardingConversation, getClientConversation, clientChat, clearClientConversation,
 };
