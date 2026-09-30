@@ -1,0 +1,641 @@
+[
+  {
+    "fichier": "src/controllers/authController.js",
+    "avant": null,
+    "apres": "acheteur",
+    "type": "discriminant",
+    "justification": "Rôle d'utilisateur comparé dans authController.js (acheteur : domaine du client vendeur ; admin et boss : vocabulaire par défaut, spec §2.4) : identifiant technique.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/authController.js",
+    "avant": null,
+    "apres": "SELECT client_id FROM acheteurs WHERE user_id = $1 LIMIT 1",
+    "type": "discriminant",
+    "justification": "Requête SQL : client vendeur de l'acheteur, pour lui donner le lexique du vendeur au login (spec §2.4). Jamais affichée."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "acheteur",
+    "type": "discriminant",
+    "justification": "Rôle d'utilisateur comparé dans domainesController.js (acheteur : domaine du client vendeur ; admin et boss : vocabulaire par défaut, spec §2.4) : identifiant technique."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "lexique : objet attendu",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Message de l'ancienne validation du lexique, retiré de domainesController : la validation vit désormais dans src/utils/lexiqueValidation.js, réécrite selon la spec §1.4. Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "lexique : clé invalide « ⟦·⟧ »",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Message de l'ancienne validation du lexique, retiré de domainesController : la validation vit désormais dans src/utils/lexiqueValidation.js, réécrite selon la spec §1.4. Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "lexique.⟦·⟧ : objet { sg, pl, g, el, icon } attendu",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Message de l'ancienne validation du lexique, retiré de domainesController : la validation vit désormais dans src/utils/lexiqueValidation.js, réécrite selon la spec §1.4. Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "sg",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique dans l'ancienne validation de domainesController, retirée (elle vit dans src/utils/lexiqueValidation.js) : identifiant technique.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "pl",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique dans l'ancienne validation de domainesController, retirée (elle vit dans src/utils/lexiqueValidation.js) : identifiant technique.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "g",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique dans l'ancienne validation de domainesController, retirée (elle vit dans src/utils/lexiqueValidation.js) : identifiant technique.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "el",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique dans l'ancienne validation de domainesController, retirée (elle vit dans src/utils/lexiqueValidation.js) : identifiant technique.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "icon",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique dans l'ancienne validation de domainesController, retirée (elle vit dans src/utils/lexiqueValidation.js) : identifiant technique.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "lexique.⟦·⟧ : champ inconnu « ⟦·⟧ »",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Message de l'ancienne validation du lexique, retiré de domainesController : la validation vit désormais dans src/utils/lexiqueValidation.js, réécrite selon la spec §1.4. Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "lexique.⟦·⟧.sg : texte attendu",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Message de l'ancienne validation du lexique, retiré de domainesController : la validation vit désormais dans src/utils/lexiqueValidation.js, réécrite selon la spec §1.4. Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "string",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Nom de type JavaScript comparé à typeof dans domainesController.js : identifiant technique, jamais affiché.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "lexique.⟦·⟧.pl : texte attendu",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Message de l'ancienne validation du lexique, retiré de domainesController : la validation vit désormais dans src/utils/lexiqueValidation.js, réécrite selon la spec §1.4. Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "m",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Valeur de genre du lexique ('m' / 'f') comparée ou posée par défaut dans domainesController.js : identifiant technique, jamais affiché tel quel."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "f",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Valeur de genre du lexique ('m' / 'f') comparée ou posée par défaut dans domainesController.js : identifiant technique, jamais affiché tel quel."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "lexique.⟦·⟧.g : 'm' ou 'f'",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Message de l'ancienne validation du lexique, retiré de domainesController : la validation vit désormais dans src/utils/lexiqueValidation.js, réécrite selon la spec §1.4. Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "boolean",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Nom de type JavaScript comparé à typeof dans domainesController.js : identifiant technique, jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "lexique.⟦·⟧.el : booléen attendu",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Message de l'ancienne validation du lexique, retiré de domainesController : la validation vit désormais dans src/utils/lexiqueValidation.js, réécrite selon la spec §1.4. Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "lexique.⟦·⟧.icon : texte attendu",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Message de l'ancienne validation du lexique, retiré de domainesController : la validation vit désormais dans src/utils/lexiqueValidation.js, réécrite selon la spec §1.4. Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": "object",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Nom de type JavaScript comparé à typeof dans domainesController.js : identifiant technique, jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "ROLLBACK",
+    "type": "discriminant",
+    "justification": "Instruction SQL : la transaction du PUT est annulée quand un écart de lexique est refusé sur le domaine par défaut. Jamais affichée."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "LEXIQUE_DOMAINE_DEFAUT",
+    "type": "discriminant",
+    "justification": "Code d'erreur stable de la validation du lexique (champ « code » de la réponse 400, lu par l'onglet Lexique de l'admin) : identifiant, jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "Le lexique du domaine par défaut « ⟦·⟧ » est le vocabulaire de référence de LabFlow : il ne se modifie pas (⟦·⟧). Pour un autre vocabulaire, créez un domaine.",
+    "type": "deplacement",
+    "justification": "Message de la validation du lexique (règle ajoutée : le domaine par défaut « restauration », référence de l'invariant I1, ne reçoit aucun écart). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": ", ",
+    "type": "discriminant",
+    "justification": "Séparateur de liste (join) dans un message de la validation du lexique : ponctuation, sans terme du lexique."
+  },
+  {
+    "fichier": "src/middleware/auth.js",
+    "avant": "SELECT u.id, u.nom, u.email, u.role,\n                u.actif, u.password_changed_at,\n                u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type, u.gerant_acces_acheteurs,\n                ach.id AS acheteur_id, ach.client_id AS acheteur_client_id, ach.actif AS acheteur_actif,\n                a.mode_compte\n         FROM utilisateurs u\n         LEFT JOIN acheteurs ach ON ach.user_id = u.id AND u.role = 'acheteur'\n         LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)\n         WHERE u.id = $1",
+    "apres": "SELECT u.id, u.nom, u.email, u.role,\n                u.actif, u.password_changed_at,\n                u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type, u.gerant_acces_acheteurs,\n                ach.id AS acheteur_id, ach.client_id AS acheteur_client_id, ach.actif AS acheteur_actif,\n                a.mode_compte,\n                (SELECT ac.domaine_id\n                   FROM abonnements a2 JOIN abonnement_config ac ON ac.abonnement_id = a2.id\n                  WHERE a2.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)\n                  ORDER BY a2.id DESC LIMIT 1) AS domaine_id\n         FROM utilisateurs u\n         LEFT JOIN acheteurs ach ON ach.user_id = u.id AND u.role = 'acheteur'\n         LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)\n         WHERE u.id = $1",
+    "type": "discriminant",
+    "justification": "Requête SQL du middleware authenticate : la sous-requête domaine_id (domaine du dernier abonnement du compte) est ajoutée au SELECT existant (spec §2.4). Jamais affichée."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "sg",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 8
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "pl",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 5
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "g",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "el",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "icon",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 4
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "court",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 5
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "appo",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "derive_de",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "mode",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "gabarit",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "retour à la ligne",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4).",
+    "occurrences": 5
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "tabulation",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "[ ] | * \\ ` { } $, le retour à la ligne, la tabulation et les caractères de contrôle",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "court.sg",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "court.pl",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "LEXIQUE_INVALIDE",
+    "type": "discriminant",
+    "justification": "Code d'erreur stable de la validation du lexique (champ « code » de la réponse 400, lu par l'onglet Lexique de l'admin) : identifiant, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "LEXIQUE_ENTREE_INCOMPLETE",
+    "type": "discriminant",
+    "justification": "Code d'erreur stable de la validation du lexique (champ « code » de la réponse 400, lu par l'onglet Lexique de l'admin) : identifiant, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "LEXIQUE_CHAMP_NON_SURCHARGEABLE",
+    "type": "discriminant",
+    "justification": "Code d'erreur stable de la validation du lexique (champ « code » de la réponse 400, lu par l'onglet Lexique de l'admin) : identifiant, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "LEXIQUE_CARACTERE_INTERDIT",
+    "type": "discriminant",
+    "justification": "Code d'erreur stable de la validation du lexique (champ « code » de la réponse 400, lu par l'onglet Lexique de l'admin) : identifiant, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "LEXIQUE_TROP_LONG",
+    "type": "discriminant",
+    "justification": "Code d'erreur stable de la validation du lexique (champ « code » de la réponse 400, lu par l'onglet Lexique de l'admin) : identifiant, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "object",
+    "type": "discriminant",
+    "justification": "Nom de type JavaScript comparé à typeof dans lexiqueValidation.js : identifiant technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "string",
+    "type": "discriminant",
+    "justification": "Nom de type JavaScript comparé à typeof dans lexiqueValidation.js : identifiant technique, jamais affiché.",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "le singulier",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "le pluriel",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "la forme courte (singulier)",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "la forme courte (pluriel)",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "l'icône",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "⟦?caractère de contrôle U+⟦·⟧|« ⟦·⟧ »⟧",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "0",
+    "type": "discriminant",
+    "justification": "Caractère de remplissage du code d'un caractère de contrôle (U+0009) dans un message de validation : technique."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : ⟦·⟧ doit être un texte.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : ⟦·⟧ contient un caractère interdit (⟦·⟧). Caractères refusés : ⟦·⟧.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : ⟦·⟧ dépasse ⟦·⟧ caractères (⟦·⟧ saisis).",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : objet { sg, pl, g, el, icon, court } attendu.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : « ⟦·⟧ » n'est pas modifiable par un domaine (il vient du lexique par défaut).",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : champ inconnu « ⟦·⟧ ».",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "m",
+    "type": "discriminant",
+    "justification": "Valeur de genre du lexique ('m' / 'f') comparée ou posée par défaut dans lexiqueValidation.js : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "f",
+    "type": "discriminant",
+    "justification": "Valeur de genre du lexique ('m' / 'f') comparée ou posée par défaut dans lexiqueValidation.js : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : genre — 'm' ou 'f' attendu.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "boolean",
+    "type": "discriminant",
+    "justification": "Nom de type JavaScript comparé à typeof dans lexiqueValidation.js : identifiant technique, jamais affiché.",
+    "occurrences": 7
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : élision — booléen attendu.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : icône — texte attendu.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : apposition — booléen attendu.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : forme courte — objet { sg, pl } attendu.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : forme courte — champ inconnu « ⟦·⟧ ».",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "court.⟦·⟧",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : forme courte — élision : booléen attendu.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : la forme courte a un pluriel mais pas de singulier.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "le genre",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "l'élision",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : le singulier est modifié, il faut aussi renseigner ⟦·⟧.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": ", ",
+    "type": "discriminant",
+    "justification": "Séparateur de liste (join) dans un message de la validation du lexique : ponctuation, sans terme du lexique."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : cette clé n'existe pas dans le lexique par défaut, il faut renseigner le singulier, le pluriel, le genre et l'élision.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique « ⟦·⟧ » : cette clé suit « ⟦·⟧ » tant que son singulier est vide ; pour la modifier, renseignez le singulier, le pluriel, le genre et l'élision (seule l'icône se change à part).",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique : objet attendu.",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique : clé invalide « ⟦·⟧ » (lettres minuscules, chiffres et _ ; 40 caractères au plus).",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "prototype",
+    "type": "discriminant",
+    "justification": "Nom de champ d'une entrée de lexique (ou clé réservée), employé par lexiqueValidation.js pour valider et nettoyer les écarts : identifiant technique, jamais affiché tel quel.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "Lexique : clé réservée « ⟦·⟧ ».",
+    "type": "deplacement",
+    "justification": "Message (ou fragment de message) de la validation du lexique, spec §1.4 : écrite dans src/utils/lexiqueValidation.js à la place de celle de domainesController, avec ses règles ajoutées (entrée incomplète, caractères et longueurs refusés, clé réservée, clé dérivée). Réponse 400 de l'écran ADMIN des domaines, jamais montrée à un compte client (invariant I4)."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": null,
+    "apres": "⟦?⟦·⟧|m⟧",
+    "type": "discriminant",
+    "justification": "Valeur de genre du lexique ('m' / 'f') comparée ou posée par défaut dans lexiqueValidation.js : identifiant technique, jamais affiché tel quel."
+  },
+  {
+    "fichier": "src/utils/vocabCompte.js",
+    "avant": null,
+    "apres": "object",
+    "type": "discriminant",
+    "justification": "Nom de type JavaScript comparé à typeof dans vocabCompte.js : identifiant technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/vocabCompte.js",
+    "avant": null,
+    "apres": "super_admin",
+    "type": "discriminant",
+    "justification": "Rôle d'utilisateur comparé dans vocabCompte.js (acheteur : domaine du client vendeur ; admin et boss : vocabulaire par défaut, spec §2.4) : identifiant technique."
+  },
+  {
+    "fichier": "src/utils/vocabCompte.js",
+    "avant": null,
+    "apres": "boss",
+    "type": "discriminant",
+    "justification": "Rôle d'utilisateur comparé dans vocabCompte.js (acheteur : domaine du client vendeur ; admin et boss : vocabulaire par défaut, spec §2.4) : identifiant technique."
+  }
+]

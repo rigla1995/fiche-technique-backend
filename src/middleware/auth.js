@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
+const { vocabPourRole } = require('../utils/vocabCompte');
 
 // ── Cache TTL du contexte utilisateur ─────────────────────────────────────────
 // authenticate() tourne sur CHAQUE requête /api : sans cache, c'est 1 requête SQL
@@ -8,8 +9,15 @@ const pool = require('../config/database');
 // par password_changed_at restent vérifiées à CHAQUE requête (sur les données en
 // cache). Compromis assumé : désactivation / blocage / changement d'affectation
 // peuvent mettre jusqu'à TTL secondes à se propager.
+//
+// Vocabulaire du compte (lot 2, spec §2.4) : la MÊME requête ramène `domaine_id` (domaine
+// du dernier abonnement du compte : client → le sien, gérant → compte parent, acheteur →
+// client vendeur) ; il entre dans le cache. `req.voc` en découle sans requête de plus en
+// régime permanent : profil du domaine en cache 60 s (domaineProfilService.getProfil),
+// vocabulaire mémoïsé par objet lexique (utils/vocabCompte.js). Un changement de domaine
+// du compte se propage en TTL secondes, un changement de lexique en 60 s au plus.
 const AUTH_CACHE_TTL_MS = parseInt(process.env.AUTH_CACHE_TTL_MS) || 15000;
-const authCache = new Map(); // userId -> { at, row, gerantActiviteIds, gerantLaboIds }
+const authCache = new Map(); // userId -> { at, row (dont domaine_id), gerantActiviteIds, gerantLaboIds }
 
 const getCachedAuth = (userId) => {
   const e = authCache.get(userId);
@@ -55,7 +63,11 @@ const authenticate = async (req, res, next) => {
                 u.actif, u.password_changed_at,
                 u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type, u.gerant_acces_acheteurs,
                 ach.id AS acheteur_id, ach.client_id AS acheteur_client_id, ach.actif AS acheteur_actif,
-                a.mode_compte
+                a.mode_compte,
+                (SELECT ac.domaine_id
+                   FROM abonnements a2 JOIN abonnement_config ac ON ac.abonnement_id = a2.id
+                  WHERE a2.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)
+                  ORDER BY a2.id DESC LIMIT 1) AS domaine_id
          FROM utilisateurs u
          LEFT JOIN acheteurs ach ON ach.user_id = u.id AND u.role = 'acheteur'
          LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)
@@ -115,6 +127,10 @@ const authenticate = async (req, res, next) => {
       acheteurId: row.acheteur_id || null,
       acheteurClientId: row.acheteur_client_id || null,
     };
+    // Vocabulaire du compte : admin / boss (d'après le rôle) et compte sans domaine → défaut,
+    // sans requête ; sinon celui du domaine (acheteur : domaine de son client vendeur).
+    // Ne lève jamais (repli sur le défaut). Les 401 ci-dessus sont émis avant : vocabulaire par défaut.
+    req.voc = await vocabPourRole(row.role, row.domaine_id);
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Token invalide ou expiré' });
