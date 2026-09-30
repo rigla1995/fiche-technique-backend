@@ -1,5 +1,8 @@
 /* Test E2E local du lot 3 (compte dépôt : labo + acheteurs, 0 activité).
  * Crée un super_admin temporaire + un client dépôt de test, puis nettoie. */
+// ⚠️ Ce script crée des comptes par POST /admin/clients (email de bienvenue). Démarrer le backend de test par
+//    « node scripts/start-test-backend.js » (clés externes vidées, resend bouchonné, réseau sortant bloqué) —
+//    jamais par « npm start » avec le .env d'un poste de développement, qui contient de vraies clés.
 require('dotenv').config();
 const pool = require('../src/config/database');
 const bcrypt = require('bcryptjs');

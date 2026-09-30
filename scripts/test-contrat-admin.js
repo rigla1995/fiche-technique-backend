@@ -2,6 +2,9 @@
  * POST /api/abonnements/contrat-preview (wizard, avant création)
  * GET  /api/abonnements/client/:id/contrat-pdf (signé DocuSeal sinon régénéré)
  * Crée un super_admin + un client de test temporaires, puis nettoie. */
+// ⚠️ Ce script crée des comptes par POST /admin/clients (email de bienvenue). Démarrer le backend de test par
+//    « node scripts/start-test-backend.js » (clés externes vidées, resend bouchonné, réseau sortant bloqué) —
+//    jamais par « npm start » avec le .env d'un poste de développement, qui contient de vraies clés.
 require('dotenv').config();
 const pool = require('../src/config/database');
 const bcrypt = require('bcryptjs');

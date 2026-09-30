@@ -2,6 +2,9 @@
  * Backend démarré sur :3000 (migrations au boot). Crée un super_admin, un domaine et des
  * clients de test temporaires, puis nettoie TOUT (clients → DELETE /admin/clients/:id,
  * domaine → DELETE /api/domaines/:id, admin → SQL). */
+// ⚠️ Ce script crée des comptes par POST /admin/clients (email de bienvenue). Démarrer le backend de test par
+//    « node scripts/start-test-backend.js » (clés externes vidées, resend bouchonné, réseau sortant bloqué) —
+//    jamais par « npm start » avec le .env d'un poste de développement, qui contient de vraies clés.
 require('dotenv').config();
 const pool = require('../src/config/database');
 const bcrypt = require('bcryptjs');
@@ -56,7 +59,7 @@ const PWD = 'TestCompo2026!';
       !!restau && restau.composants.some((c) => c.code === 'activite' && c.typeTechnique === 'activite')
       && restau.lexique?.activite?.sg === 'Activité' && restau.regles?.acheteurs_requiert_labo === true && typeof restau.nbClients === 'number',
       JSON.stringify({ comps: restau?.composants?.map((c) => c.code), nb: restau?.nbClients }));
-    check('hasIngredients disparu / lexique = 32 clés', restau && Object.keys(restau.lexique).length >= 30, String(restau && Object.keys(restau.lexique).length));
+    check('hasIngredients disparu / lexique résolu v2 (≥ 32 clés)', restau && Object.keys(restau.lexique).length >= 32, String(restau && Object.keys(restau.lexique).length));
 
     // ── 2. POST /api/domaines → 4 composants identité ───────────────────────────
     ({ status, body } = await J('/api/domaines', { method: 'POST', body: JSON.stringify({ nom: 'TEST-Domaine Composants', slug: DOM_SLUG, description: 'Domaine de test' }) }));
@@ -71,7 +74,8 @@ const PWD = 'TestCompo2026!';
       method: 'PUT',
       body: JSON.stringify({
         description: 'Boutiques + atelier',
-        lexique: { activite: { sg: 'Boutique', pl: 'Boutiques' }, labo: { sg: 'Atelier' } },
+        // lot 2 (spec §1.4) : un singulier surchargé exige pluriel, genre et élision
+        lexique: { activite: { sg: 'Boutique', pl: 'Boutiques', g: 'f', el: false }, labo: { sg: 'Atelier', pl: 'Ateliers', g: 'm', el: true } },
         regles: { seuil_cout_matiere_pct: 35 },
         composants: [
           { code: 'activite', libelle: 'Boutique', libellePluriel: 'Boutiques', icone: '🏪', typeTechnique: 'activite', ordre: 1 },
@@ -85,10 +89,13 @@ const PWD = 'TestCompo2026!';
       status === 200 && body?.composants?.length === 4 && body.composants.some((c) => c.code === 'atelier' && c.typeTechnique === 'labo' && c.nbMax === 3)
       && !body.composants.some((c) => c.code === 'labo'),
       `${status} ${JSON.stringify(body?.composants?.map((c) => c.code))}`);
-    check('lexique fusionné (écart + défaut conservé) et règle surchargée',
-      body?.lexique?.activite?.sg === 'Boutique' && body.lexique.activite.g === 'f' && body.lexique.labo.sg === 'Atelier' && body.lexique.labo.pl === 'Labos'
+    check('lexique résolu (écarts + défaut conservé + clés dérivées) et règle surchargée',
+      body?.lexique?.activite?.sg === 'Boutique' && body.lexique.activite.g === 'f' && body.lexique.labo.sg === 'Atelier' && body.lexique.labo.pl === 'Ateliers'
+      && body.lexique.article.sg === 'Article' && body.lexique.espace_labo.sg === 'Espace Atelier' && body.lexique.espace_activites.sg === 'Espace Boutiques'
       && body.regles?.seuil_cout_matiere_pct === 35 && body.regles.acheteurs_requiert_labo === true,
-      JSON.stringify({ act: body?.lexique?.activite, labo: body?.lexique?.labo, seuil: body?.regles?.seuil_cout_matiere_pct }));
+      JSON.stringify({ act: body?.lexique?.activite, labo: body?.lexique?.labo, espace: body?.lexique?.espace_labo?.sg, seuil: body?.regles?.seuil_cout_matiere_pct }));
+    ({ status, body } = await J(`/api/domaines/${domId}`, { method: 'PUT', body: JSON.stringify({ lexique: { labo: { sg: 'Atelier' } } }) }));
+    check('PUT lexique incomplet (sg sans pl, g, el) → 400 LEXIQUE_ENTREE_INCOMPLETE', status === 400 && body?.code === 'LEXIQUE_ENTREE_INCOMPLETE', `${status} ${body?.code}`);
     ({ status, body } = await J(`/api/domaines/${domId}`, { method: 'PUT', body: JSON.stringify({ regles: { inconnue: 1 } }) }));
     check('PUT règle inconnue → 400', status === 400, String(status));
     ({ status } = await J(`/api/domaines/${domId}`, { method: 'PUT', body: JSON.stringify({ composants: [{ code: 'Bad Code', libelle: 'x', typeTechnique: 'labo' }] }) }));

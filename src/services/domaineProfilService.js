@@ -10,6 +10,7 @@
 //                                          manuelVisibilite, onboardingEtat)
 const pool = require('../config/database');
 const { LEXIQUE_DEFAUT, LEXIQUE_CLES } = require('../config/lexiqueDefaut');
+const { resoudreLexique } = require('../utils/vocab');
 
 // Règles métier par défaut = comportement ACTUEL (aucun changement pour l'existant).
 const REGLES_DEFAUT = Object.freeze({
@@ -96,15 +97,18 @@ const asObject = (v) => {
   return typeof v === 'object' && !Array.isArray(v) ? v : {};
 };
 
-// Lexique = défauts + écarts clé par clé (une entrée partielle ne perd pas ses autres champs).
-const resolveLexique = (ecarts) => {
-  const ov = asObject(ecarts);
-  const out = {};
-  for (const k of LEXIQUE_CLES) out[k] = { ...LEXIQUE_DEFAUT[k], ...asObject(ov[k]) };
-  // Clés inconnues (ajoutées par l'admin) : conservées telles quelles.
-  for (const k of Object.keys(ov)) if (!out[k]) out[k] = asObject(ov[k]);
-  return out;
-};
+// Lexique v2 (lot 2, spec §1.3) = défauts + écarts du domaine, résolu par le moteur
+// généré (src/utils/vocab.js, même code que le front) :
+//   • clé simple : le domaine surcharge `sg` → l'entrée est la sienne (ni `court` ni `appo`
+//     hérités du défaut) ; sinon fusion champ par champ avec le défaut ;
+//   • clé dérivée K de parent P : surchargée par le domaine → son entrée ; sinon, si le
+//     domaine surcharge P : copie / pluriel_titre / gabarit rendu avec le lexique du
+//     domaine ; sinon défaut de K ;
+//   • clés inconnues du défaut (ajoutées par l'admin) : conservées telles quelles.
+// Le résultat est ENTIÈREMENT résolu (toutes les clés du défaut, dans son ordre) : c'est
+// lui que portent getProfil, /auth/me, /auth/login, /api/domaines et /api/entreprise.
+// Sans écart, il est égal au lexique par défaut.
+const resolveLexique = (ecarts) => resoudreLexique(LEXIQUE_DEFAUT, asObject(ecarts));
 
 const resolveRegles = (ecarts) => ({ ...REGLES_DEFAUT, ...asObject(ecarts) });
 
@@ -136,22 +140,38 @@ const loadDomaineRows = async (domaineId, db = pool) => {
 // ── Cache mémoire (TTL 60 s) ─────────────────────────────────────────────────
 const TTL_MS = 60 * 1000;
 const cache = new Map(); // domaineId -> { profil, expiry }
+// Depuis le lot 2, getProfil est appelé par `authenticate` à CHAQUE requête d'un compte (req.voc) :
+//   • chargements en cours partagés : à l'expiration du cache, N requêtes simultanées du même
+//     domaine ne font qu'UN chargement (2 requêtes SQL), pas N ;
+//   • `generation` : un chargement commencé avant un invalidate() (PUT du domaine) ne remet pas
+//     en cache le profil périmé qu'il a lu.
+const enCours = new Map(); // domaineId -> Promise<profil | null>
+let generation = 0;
 
 const getProfil = async (domaineId) => {
   const id = parseInt(domaineId, 10);
   if (!Number.isFinite(id) || id <= 0) return null;
   const hit = cache.get(id);
   if (hit && hit.expiry > Date.now()) return hit.profil;
-  const rows = await loadDomaineRows(id);
-  if (!rows) { cache.delete(id); return null; }
-  const profil = resolveProfil(rows.row, rows.composants);
-  cache.set(id, { profil, expiry: Date.now() + TTL_MS });
-  return profil;
+  let chargement = enCours.get(id);
+  if (!chargement) {
+    const g = generation;
+    chargement = (async () => {
+      const rows = await loadDomaineRows(id);
+      if (!rows) { if (g === generation) cache.delete(id); return null; }
+      const profil = resolveProfil(rows.row, rows.composants);
+      if (g === generation) cache.set(id, { profil, expiry: Date.now() + TTL_MS });
+      return profil;
+    })().finally(() => { if (enCours.get(id) === chargement) enCours.delete(id); });
+    enCours.set(id, chargement);
+  }
+  return chargement;
 };
 
 const invalidate = (domaineId = null) => {
-  if (domaineId == null) cache.clear();
-  else cache.delete(parseInt(domaineId, 10));
+  generation += 1;
+  if (domaineId == null) { cache.clear(); enCours.clear(); }
+  else { cache.delete(parseInt(domaineId, 10)); enCours.delete(parseInt(domaineId, 10)); }
 };
 
 const getDomaineDefautId = async (db = pool) => {
@@ -160,6 +180,8 @@ const getDomaineDefautId = async (db = pool) => {
 };
 
 // Domaine du DERNIER abonnement du compte (gérant → compte parent). null si aucun.
+// Un ACHETEUR n'est pas un compte : l'appelant passe l'id de son client vendeur
+// (acheteurs.client_id / req.user.acheteurClientId).
 const getDomaineIdForClient = async (clientId, db = pool) => {
   const r = await db.query(
     `SELECT ac.domaine_id

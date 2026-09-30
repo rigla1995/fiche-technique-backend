@@ -1,13 +1,24 @@
 // Domaines d'activité = PROFILS administrables (lot 1a) : composants (menu de
 // configuration), lexique, règles, grille tarifaire (surcharges tarifs_domaine).
-//   GET    /api/domaines        admin/boss → tous (profil résolu + nbClients) ; client/gérant → le sien
+//   GET    /api/domaines        admin/boss → tous (profil résolu + nbClients) ; client/gérant → le sien ;
+//                               acheteur → celui de son client VENDEUR, réduit à { id, slug, nom, lexique }
 //   GET    /api/domaines/:id    profil résolu + composants (tous) + tarifs (= GET tarifs?domaineId)
 //   POST   /api/domaines        { nom, slug?, description? } → domaine + 4 composants identité
 //   PUT    /api/domaines/:id    { nom?, slug?, description?, lexique?, regles?, composants? }
 //   DELETE /api/domaines/:id    409 DOMAINE_UTILISE si référencé
+// Lexique (lot 2) : les réponses portent `lexique` = lexique RÉSOLU v2 (défaut + écarts, clés
+// dérivées comprises). Pour l'admin s'y ajoute `lexiqueEcarts` = les écarts STOCKÉS tels quels
+// (ce que l'onglet Lexique édite et renvoie au PUT). Le PUT valide les écarts (spec §1.4) :
+// 400 + code LEXIQUE_* (src/utils/lexiqueValidation.js).
+// Le domaine par défaut (« restauration ») est la RÉFÉRENCE de l'invariant I1 : son lexique est le
+// lexique par défaut en code, il ne reçoit aucun écart (400 LEXIQUE_DOMAINE_DEFAUT). Un compte sans
+// domaine reçoit ce profil par /auth/me alors que req.voc prend le défaut en code, sans requête :
+// les deux ne coïncident que si ce lexique reste vide.
+const { isDeepStrictEqual } = require('node:util');
 const pool = require('../config/database');
 const profilService = require('../services/domaineProfilService');
 const { buildTarifsPourDomaine } = require('./abonnementController');
+const { validerLexique, nettoyerLexique } = require('../utils/lexiqueValidation');
 
 const {
   TYPES_TECHNIQUES, COMPOSANTS_IDENTITE, REGLES_CLES, TYPE_PERTE_RE, normaliserTypesPerte,
@@ -36,6 +47,13 @@ const mapDomaine = (profil, extra = {}) => ({
   regles: profil.regles,
 });
 
+// Écarts de lexique STOCKÉS d'une ligne domaines_activite (JSONB ; texte toléré).
+const ecartsLexique = (row) => {
+  let v = row?.lexique;
+  if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) { v = null; } }
+  return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+};
+
 // Tous les domaines + composants + nbClients (COUNT DISTINCT clients via abonnement_config.domaine_id)
 const loadAll = async () => {
   const [doms, comps, counts] = await Promise.all([
@@ -53,12 +71,20 @@ const loadAll = async () => {
     compsBy.get(c.domaine_id).push(c);
   }
   const nbBy = new Map(counts.rows.map((r) => [r.domaine_id, r.n]));
-  return doms.rows.map((d) => mapDomaine(resolveProfil(d, compsBy.get(d.id) || []), { nbClients: nbBy.get(d.id) || 0 }));
+  return doms.rows.map((d) => mapDomaine(resolveProfil(d, compsBy.get(d.id) || []), { nbClients: nbBy.get(d.id) || 0, lexiqueEcarts: ecartsLexique(d) }));
 };
 
 const list = async (req, res) => {
   try {
     if (isSuperAdmin(req.user)) return res.json(await loadAll());
+    // Acheteur : ce n'est pas un compte. Il lit les MOTS de son client vendeur, comme dans /auth/me
+    // (spec §2.4) — jamais ses composants ni ses règles (configuration commerciale du vendeur), et
+    // jamais le repli « restauration » qu'aurait donné son propre identifiant, sans abonnement.
+    if (req.user.role === 'acheteur') {
+      if (!req.user.acheteurClientId) return res.json([]);
+      const p = await getProfilForClient(req.user.acheteurClientId);
+      return res.json(p && p.id != null ? [{ id: p.id, slug: p.slug, nom: p.nom, lexique: p.lexique }] : []);
+    }
     // Client / gérant : le domaine de leur compte (profil résolu)
     const profil = await getProfilForClient(req.user.id);
     res.json(profil && profil.id != null ? [mapDomaine(profil)] : []);
@@ -84,7 +110,7 @@ const getOne = async (req, res) => {
       ),
       buildTarifsPourDomaine(id),
     ]);
-    res.json(mapDomaine(profil, { nbClients: nb.rows[0]?.n || 0, tarifs }));
+    res.json(mapDomaine(profil, { nbClients: nb.rows[0]?.n || 0, tarifs, lexiqueEcarts: ecartsLexique(rows.row) }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -113,24 +139,8 @@ const validateComposant = (c, i) => {
   return null;
 };
 
-const validateLexique = (lex) => {
-  if (lex == null) return null;
-  if (typeof lex !== 'object' || Array.isArray(lex)) return 'lexique : objet attendu';
-  for (const [k, v] of Object.entries(lex)) {
-    if (!/^[a-z0-9_]{1,40}$/.test(k)) return `lexique : clé invalide « ${k} »`;
-    if (v == null) continue;
-    if (typeof v !== 'object' || Array.isArray(v)) return `lexique.${k} : objet { sg, pl, g, el, icon } attendu`;
-    for (const f of Object.keys(v)) {
-      if (!['sg', 'pl', 'g', 'el', 'icon'].includes(f)) return `lexique.${k} : champ inconnu « ${f} »`;
-    }
-    if (v.sg != null && typeof v.sg !== 'string') return `lexique.${k}.sg : texte attendu`;
-    if (v.pl != null && typeof v.pl !== 'string') return `lexique.${k}.pl : texte attendu`;
-    if (v.g != null && !['m', 'f'].includes(v.g)) return `lexique.${k}.g : 'm' ou 'f'`;
-    if (v.el != null && typeof v.el !== 'boolean') return `lexique.${k}.el : booléen attendu`;
-    if (v.icon != null && typeof v.icon !== 'string') return `lexique.${k}.icon : texte attendu`;
-  }
-  return null;
-};
+// Lexique : validation §1.4 et nettoyage dans src/utils/lexiqueValidation.js (module pur, testé
+// par test/vocab.test.js).
 
 const validateRegles = (regles) => {
   if (regles == null) return null;
@@ -162,17 +172,6 @@ const validateRegles = (regles) => {
   return null;
 };
 
-// Ne garde que les écarts non nuls (une ligne « vidée » côté admin revient au défaut).
-const nettoyerLexique = (lex) => {
-  const out = {};
-  for (const [k, v] of Object.entries(lex || {})) {
-    if (!v) continue;
-    const e = {};
-    for (const f of ['sg', 'pl', 'g', 'el', 'icon']) if (v[f] != null && v[f] !== '') e[f] = v[f];
-    if (Object.keys(e).length) out[k] = e;
-  }
-  return out;
-};
 const nettoyerRegles = (regles) => {
   const out = {};
   for (const [k, v] of Object.entries(regles || {})) {
@@ -213,7 +212,7 @@ const create = async (req, res) => {
     }
     await db.query('COMMIT');
     const rows = await profilService.loadDomaineRows(dom.id);
-    res.status(201).json(mapDomaine(resolveProfil(rows.row, rows.composants), { nbClients: 0 }));
+    res.status(201).json(mapDomaine(resolveProfil(rows.row, rows.composants), { nbClients: 0, lexiqueEcarts: ecartsLexique(rows.row) }));
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
     if (err.code === '23505') return res.status(409).json({ message: 'Ce domaine (nom ou slug) existe déjà' });
@@ -232,8 +231,10 @@ const update = async (req, res) => {
   if (b.nom !== undefined && (typeof b.nom !== 'string' || !b.nom.trim())) return res.status(400).json({ message: 'Nom requis' });
   if (b.nom !== undefined && b.nom.trim().length > 100) return res.status(400).json({ message: 'Nom trop long (100 max)' });
   if (b.slug !== undefined && (typeof b.slug !== 'string' || !slugify(b.slug))) return res.status(400).json({ message: 'Slug invalide' });
-  const lexErr = validateLexique(b.lexique);
-  if (lexErr) return res.status(400).json({ message: lexErr });
+  // Lexique (spec §1.4) : sg surchargé ⇒ pl, g, el obligatoires ; derive_de / mode / gabarit
+  // non surchargeables ; caractères interdits dans sg, pl, forme courte.
+  const lexErr = validerLexique(b.lexique);
+  if (lexErr) return res.status(400).json(lexErr);
   const regErr = validateRegles(b.regles);
   if (regErr) return res.status(400).json({ message: regErr });
   let composants = null;
@@ -259,6 +260,21 @@ const update = async (req, res) => {
     if (cur.rows[0].slug === SLUG_DEFAUT && b.slug !== undefined && slugify(b.slug) !== SLUG_DEFAUT) {
       await db.query('ROLLBACK');
       return res.status(400).json({ message: `Le slug du domaine par défaut « ${SLUG_DEFAUT} » ne peut pas être modifié` });
+    }
+    // Invariant I1 : le lexique du domaine par défaut EST le lexique par défaut. Aucun écart n'y est
+    // ajouté ni modifié (des écarts déjà stockés peuvent être renvoyés tels quels, ou retirés).
+    if (cur.rows[0].slug === SLUG_DEFAUT && b.lexique !== undefined) {
+      const demande = nettoyerLexique(b.lexique);
+      const stocke = ecartsLexique(cur.rows[0]);
+      const nouveaux = Object.keys(demande).filter((k) => !isDeepStrictEqual(demande[k], stocke[k]));
+      if (nouveaux.length) {
+        await db.query('ROLLBACK');
+        return res.status(400).json({
+          code: 'LEXIQUE_DOMAINE_DEFAUT',
+          message: `Le lexique du domaine par défaut « ${SLUG_DEFAUT} » est le vocabulaire de référence de LabFlow : il ne se modifie pas (${nouveaux.join(', ')}). Pour un autre vocabulaire, créez un domaine.`,
+          cles: nouveaux,
+        });
+      }
     }
 
     await db.query(
@@ -361,7 +377,7 @@ const update = async (req, res) => {
       `SELECT COUNT(DISTINCT a.client_id)::int AS n FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id WHERE ac.domaine_id = $1`,
       [id]
     );
-    res.json(mapDomaine(resolveProfil(rows.row, rows.composants), { nbClients: nb.rows[0]?.n || 0 }));
+    res.json(mapDomaine(resolveProfil(rows.row, rows.composants), { nbClients: nb.rows[0]?.n || 0, lexiqueEcarts: ecartsLexique(rows.row) }));
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
     if (err.code === '23505') return res.status(409).json({ message: 'Ce domaine (nom ou slug) existe déjà' });
