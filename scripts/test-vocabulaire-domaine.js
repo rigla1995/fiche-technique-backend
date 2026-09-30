@@ -11,7 +11,7 @@
  *      brouillons RÉ-ENREGISTRÉS par l'interface d'avant le lot 2 (sans g ni el) : complétés par
  *      l'étape 0, les 8 corrections s'appliquent, aucun genre ni aucune élision ne bascule ;
  *   3. comptes de test Hôtellerie et Céramique : /auth/login et /auth/me portent le lexique
- *      RÉSOLU v2 (40 clés, clés dérivées, formes courtes), avec composants et règles ; gérant :
+ *      RÉSOLU v2 (41 clés, clés dérivées, formes courtes), avec composants et règles ; gérant :
  *      domaine du compte parent ;
  *   4. acheteur d'un compte Hôtellerie : domaine = { id, slug, nom, lexique } du client vendeur,
  *      SANS composants ni règles — dans /auth/login, /auth/me ET GET /api/domaines ;
@@ -141,7 +141,7 @@ const CIBLES_191 = [
     const cer = parSlug('ceramique');
     check('domaines restauration, hôtellerie et céramique présents', !!restau && !!hot && !!cer, domaines.map((d) => d.slug).join(', '));
     if (!restau || !hot || !cer) throw new Error('domaines de base absents');
-    check('chaque domaine : lexique résolu = 40 clés du défaut (dans l\'ordre) + lexiqueEcarts (admin)',
+    check('chaque domaine : lexique résolu = toutes les clés du défaut (dans l\'ordre) + lexiqueEcarts (admin)',
       domaines.every((d) => egal(Object.keys(d.lexique).slice(0, LEXIQUE_CLES.length), [...LEXIQUE_CLES]) && d.lexiqueEcarts && typeof d.lexiqueEcarts === 'object'),
       `${LEXIQUE_CLES.length} clés`);
     check('chaque domaine : lexique exposé = résolution de ses écarts stockés',
@@ -314,7 +314,7 @@ const CIBLES_191 = [
       const attendu = resoudreLexique(LEXIQUE_DEFAUT, dom.lexiqueEcarts);
       check(`${libelle} : domaine { id, slug, nom } = ${dom.slug}`, domaine?.id === dom.id && domaine.slug === dom.slug && domaine.nom === dom.nom, JSON.stringify({ id: domaine?.id, slug: domaine?.slug }));
       check(`${libelle} : composants et règles présents (profil complet)`, Array.isArray(domaine?.composants) && domaine.composants.length > 0 && domaine.regles && typeof domaine.regles === 'object');
-      check(`${libelle} : lexique entièrement résolu (40 clés du défaut, dans l'ordre)`, egal(Object.keys(domaine?.lexique || {}).slice(0, LEXIQUE_CLES.length), [...LEXIQUE_CLES]), String(Object.keys(domaine?.lexique || {}).length));
+      check(`${libelle} : lexique entièrement résolu (toutes les clés du défaut, dans l'ordre)`, egal(Object.keys(domaine?.lexique || {}).slice(0, LEXIQUE_CLES.length), [...LEXIQUE_CLES]), String(Object.keys(domaine?.lexique || {}).length));
       check(`${libelle} : lexique = résolution v2 des écarts du domaine (clés dérivées, formes courtes)`, egal(domaine?.lexique, attendu));
       const derivees = LEXIQUE_CLES.filter((k) => LEXIQUE_DEFAUT[k].derive_de);
       check(`${libelle} : ${derivees.length} clés dérivées avec leur parent et leur mode`,

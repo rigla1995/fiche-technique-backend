@@ -187,7 +187,7 @@ test('resolveLexique : sans écart, le lexique résolu EST le lexique par défau
   // aucune entrée partagée avec le défaut gelé
   const r = resolveLexique({});
   for (const k of LEXIQUE_CLES) assert.ok(r[k] !== LEXIQUE_DEFAUT[k] && !Object.isFrozen(r[k]), `${k} : copie`);
-  assert.equal(LEXIQUE_CLES.length, 40);
+  assert.equal(LEXIQUE_CLES.length, 41);
   assert.deepEqual(LEXIQUE_CLES.slice(0, 32), Object.keys(ORIGINE_32), 'les 32 clés d\'origine en tête, dans leur ordre');
 });
 
@@ -257,6 +257,10 @@ test('resolveLexique : clés dérivées selon leur mode (gabarit, copie, pluriel
   assert.deepEqual(h.labo_long.court, { sg: 'Cuisine', pl: 'Cuisines' });
   assert.equal(h.labo_desc.sg, 'Cuisine centrale');
   assert.deepEqual([h.activite_desc.sg, h.activite_desc.g], ['Service', 'm']);
+  // étape S5 : article_ingredient (« Ingrédient » par défaut) suit « article » dès que le domaine le renomme
+  assert.deepEqual([h.article_ingredient.sg, h.article_ingredient.pl, h.article_ingredient.g, h.article_ingredient.el], ['Fourniture', 'Fournitures', 'f', false]);
+  assert.equal(c.article_ingredient.sg, 'Matière première');
+  assert.deepEqual([resolveLexique({}).article_ingredient.sg, resolveLexique({}).article_ingredient.derive_de], ['Ingrédient', 'article']);
   // pluriel_titre : sg = pl = Titre(P.pl), genre et élision du parent
   assert.deepEqual([h.cat_pt_vendable.sg, h.cat_pt_vendable.pl, h.cat_pt_vendable.g], ['Prestations Vendues', 'Prestations Vendues', 'f']);
   assert.equal(h.cat_pt_utilisable.sg, 'Consommables');

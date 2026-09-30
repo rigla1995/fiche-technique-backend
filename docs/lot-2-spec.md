@@ -4,6 +4,8 @@ Référence : `docs/plan-identite-legale-tarifs-domaine-2026-09-28.md` (addendum
 
 **Mise à jour du 30/09/2026 (socle 2a corrigé après trois relectures contradictoires, avant la vague 1)** : les §1.3, §1.4, §1.5, §2.1, §2.2, §2.3, §2.4, §2.5, §3 et §8 décrivent le socle tel qu'il est livré (ajouts des étapes S1 à S4 et corrections des relectures). Les passages modifiés sont marqués « (socle corrigé) ».
 
+**Mise à jour du 30/09/2026 (étape S5, consolidation du balayage)** : extension unique du moteur et du lexique, puis nouveau gel — `voc.accN` (accord avec plusieurs termes coordonnés), casse `'court'` pour `voc.MAJ`, `voc.nomS` et `voc.NomS`, clé dérivée `article_ingredient`. Les passages modifiés sont marqués « (étape S5) ». Décisions besoin par besoin : frontend `scripts/vocab-besoins/S5-decisions.json` ; écarts visibles pour un compte restauration : `labflow-reprise/lot-2/ecarts-visibles-2a.md`.
+
 Dépôts : backend `C:\Users\CHAHDONj\fiche-technique-backend` (Node/Express/PG, JS CommonJS, `npm test` = `node --test "test/**/*.test.js"`), frontend `C:\Users\CHAHDONj\fiche-technique-frontend` (React 19, Vite, TypeScript 6 strict, `npm run build` = `tsc -b && vite build`, TS6133 = build cassé ; Node 25 en local exécute le TypeScript ; CI et Docker en Node 20). Branche `feat/lot-2-jargon` dans les deux dépôts.
 
 ## 0. Découpage et invariants
@@ -53,6 +55,7 @@ Les 32 clés actuelles restent. S'ajoutent :
 | `labo_long` | `labo` | copie | Laboratoire / Laboratoires |
 | `labo_desc` | `labo` | copie | Laboratoire de production / Laboratoires de production |
 | `activite_desc` | `activite` | copie | Point de vente / Points de vente |
+| `article_ingredient` (étape S5) | `article` | copie | Ingrédient / Ingrédients — l'article que l'existant nomme « ingrédient » quand il est une ligne de stock (saisie d'inventaire, historique des transferts, cumul d'appro) ; la clé `ingredient` reste le composant d'une recette |
 | `cat_pt_utilisable` | `produit_utilisable` | pluriel_titre | Produits Transformés Utilisables |
 | `cat_pt_valorise` | `produit_valorise` | pluriel_titre | Produits Composés Valorisés |
 | `cat_pt_vendable` | `produit_vendable` | pluriel_titre | Produits Transformés Vendables |
@@ -63,7 +66,7 @@ Résolution (serveur, `resolveLexique`), pour une clé dérivée K de parent P d
 3. sinon défaut de K.
 « D surcharge P » (socle corrigé) = les formes RÉSOLUES de P diffèrent de celles du défaut : formes longues (`sg`, `pl`) pour `copie` et `pluriel_titre`, formes longues ou courtes pour `gabarit`. Une entrée redéclarée à l'identique du défaut ne détache donc pas ses clés dérivées ; un écart de genre, d'élision, d'icône ou de forme courte seul ne déclenche pas la copie.
 `court` et `appo` ne sont hérités du défaut que si D ne surcharge pas `sg` de l'entrée. Le front reçoit un lexique entièrement résolu et le garde TEL QUEL (`completerLexique` ne complète avec le défaut local qu'un lexique incomplet, reçu d'un serveur d'avant le lot 2 pendant un déploiement) : l'écran rend exactement ce que rend `req.voc`.
-La liste est complétée une seule fois, à l'étape S4 ; ensuite elle est gelée (empreinte `scripts/vocab-gel.json`, regelée après la correction du socle).
+La liste est complétée une seule fois, à l'étape S4 ; ensuite elle est gelée (empreinte `scripts/vocab-gel.json`, regelée après la correction du socle). L'étape S5 lui ajoute `article_ingredient` (41 clés) et regèle (étape S5).
 
 ### 1.4 Validation à l'enregistrement (admin, `PUT /api/domaines/:id`)
 Si `sg` est surchargé : `pl`, `g` et `el` obligatoires. `derive_de`, `mode`, `gabarit` non surchargeables. Onglet Lexique : colonnes « forme courte » ; les clés dérivées apparaissent sous leur parent avec la mention « suit “parent” si vide ».
@@ -92,10 +95,10 @@ Arguments : `k` = clé littérale (ou condition entre deux littéraux) ; `n` = n
 | `voc.nom(k, n?)` | labo · produit vendable | toutes les initiales en minuscule, sauf mots-sigles (2 majuscules ou majuscule + chiffre en tête) |
 | `voc.Nom(k, n?)` | Labo · Produit vendable | forme stockée telle quelle |
 | `voc.Titre(k, n?)` | Produits Vendables | majuscule à chaque mot, sauf de, du, des, la, le, les, et, à, au, aux, en, par, pour, sur, sans, avec, ou, un, une, d', l' |
-| `voc.MAJ(k, n?)` | LABO | capitales |
+| `voc.MAJ(k, n?, c?)` | LABO | capitales ; `c` = `'court'` → capitales de la forme courte (« CUISINE ») (étape S5) |
 | `voc.pl(k)` / `voc.Pl(k)` | labos / Labos | alias de `nom(k, true)` / `Nom(k, true)` |
 | `voc.court(k, n?)` / `voc.Court(k, n?)` | pt→PT · labo→labo / Labo | forme courte |
-| `voc.nomS(k)` / `voc.NomS(k)` | labo(s) · produit(s) vendable(s) | pluriel typographique mot à mot ; si pluriel irrégulier : « sg/pl » |
+| `voc.nomS(k, c?)` / `voc.NomS(k, c?)` | labo(s) · produit(s) vendable(s) | pluriel typographique mot à mot ; si pluriel irrégulier : « sg/pl » ; `c` = `'court'` / `'Court'` → sur la forme courte (« Cuisine(s) ») (étape S5) |
 | `voc.n(k, n)` | 3 labos | `String(n) + ' ' + nom(k, n)` — pour un compteur ENTIER ; quantité fractionnaire ou nombre formaté : `${fmt(x)} ${voc.nom(k, x > 1)}` (le test de l'existant) |
 | `voc.compl(k, n?)` | stock **labo** | `appo` → nom nu ; sinon `du(k, n)` (« de la cuisine centrale ») |
 | `voc.avecCourt(k, n?)` | produits transformés (PT) | « nom (court) » ; sans parenthèse si les deux formes sont égales |
@@ -113,6 +116,7 @@ Arguments : `k` = clé littérale (ou condition entre deux littéraux) ; `n` = n
 | `voc.tous(k, det?, c?)` | tous les labos · toutes vos activités · tous prestataires | `det` : 'les' (défaut), 'vos', 'ces', 'mes', '' (nom nu) |
 | `voc.det(k, d, n?, c?)` / `voc.Det` | `"du "` · `"l'"` · `"des "` | déterminant SEUL suivi de son séparateur, pour un terme séparé de son déterminant par une balise : `{voc.det('stock', 'du')}<strong>{voc.nom('stock')}</strong>` ; `d` : le, un, du, de, au, ce, aucun, votre, mon, son, nouveau (ajout S4) |
 | `voc.acc(k, masc, fem, n?)` | — | forme accordée en genre ; avec `n` au pluriel ajoute « s » sauf finale s, x, z — donc seulement pour un mot à pluriel en « s » (sinon écrire les deux pluriels : `voc.acc(k, 'principaux', 'principales')`) |
+| `voc.accN(cles, masc, fem, n?)` (étape S5) | assignés | accord avec PLUSIEURS termes coordonnés (`cles` : tableau d'au moins deux clés littérales) : féminin seulement si tous les termes sont féminins — « activités & labos assignés », « aucune activité ni labo configuré » ; même règle de pluriel que `acc` ; pas de balise |
 | `voc.g(k)`, `voc.icon(k)` | 'm' · 🏭 | |
 | `voc.avec(entree)` | — | mini-vocabulaire à une entrée (libellé d'un composant : `voc.avec({ sg, pl, g, el }).mon('_')`) |
 
@@ -149,7 +153,7 @@ Règles de canonisation (liste fermée) :
 - R6 conditions `⟦?A|B⟧` imbricables ; `voc.m(c ? 'a' : 'b')` distribué ; factorisation du préfixe et du suffixe communs par mots entiers.
 - R7 élément JSX enfant = marqueur `⟦<nom>⟧` + unité propre.
 - R8 balises `[[…]]` rendues là où quelque chose les rend à l'exécution : valeurs de `fr.json` et littéraux des fichiers `.js` du serveur (rendu au bord, 2b). Dans un `.ts` / `.tsx` du front (littéral, attribut, texte JSX, 2ᵉ argument de `t`), une balise est une ERREUR, qu'aucun `allow` n'éteint (socle corrigé).
-- R9 appels `voc.…` rendus par le VRAI moteur (`src/vocab/vocab.ts`) ; clé non littérale = erreur ; méthode ou propriété appliquée à un appel `voc` (`voc.Nom(k).toUpperCase()`) = erreur.
+- R9 appels `voc.…` rendus par le VRAI moteur (`src/vocab/vocab.ts`) ; clé non littérale = erreur ; pour `voc.accN`, le 1ᵉʳ argument est une liste d'au moins deux clés littérales, sinon erreur (étape S5) ; méthode ou propriété appliquée à un appel `voc` (`voc.Nom(k).toUpperCase()`) = erreur.
 - R10 variable intermédiaire recevant un appel `voc.…` = erreur dès que le texte qui l'emploie a changé ; une variable qui existait déjà n'est pas une erreur d'identité, mais le mode `accords` la lit dans la phrase qui l'emploie.
 - R11 comparaison des multi-ensembles par fichier ; option `--ensemble f1 f2 …` pour les chaînes déplacées.
 - R12 exclus : imports, types littéraux, `console.*`, commentaires.

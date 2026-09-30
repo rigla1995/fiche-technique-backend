@@ -289,6 +289,11 @@ const determinantSeul = (d, e, pluriel, c) => {
     const f = formeDeterminant(d, e, pluriel, c);
     return f.endsWith("'") ? f : `${f} `;
 };
+// Forme accordée (masculin ou féminin) ; au pluriel ajoute « s » sauf finale s, x, z.
+const accorder = (feminin, masc, fem, n) => {
+    const accorde = String((feminin ? fem : masc) ?? '');
+    return estPluriel(n) && !/[sxz]$/i.test(accorde) ? `${accorde}s` : accorde;
+};
 // Pluriel typographique mot à mot (« produit(s) vendable(s) ») ; irrégulier → « sg/pl ».
 const plurielTypographique = (sg, pl) => {
     if (sg === pl)
@@ -352,22 +357,24 @@ function construire(lexique) {
         nom: (k, n) => forme(entree(k), estPluriel(n), 'nom'),
         Nom: (k, n) => forme(entree(k), estPluriel(n), 'Nom'),
         Titre: (k, n) => forme(entree(k), estPluriel(n), 'Titre'),
-        MAJ: (k, n) => {
+        MAJ: (k, n, c) => {
             const e = entree(k);
-            const stockee = forme(e, estPluriel(n), 'Nom');
+            const stockee = forme(e, estPluriel(n), estCourte(c) ? 'Court' : 'Nom');
             return e.inconnue ? stockee : stockee.toUpperCase();
         },
         pl: (k) => forme(entree(k), true, 'nom'),
         Pl: (k) => forme(entree(k), true, 'Nom'),
         court: (k, n) => forme(entree(k), estPluriel(n), 'court'),
         Court: (k, n) => forme(entree(k), estPluriel(n), 'Court'),
-        nomS: (k) => {
+        nomS: (k, c) => {
             const e = entree(k);
-            return e.inconnue ? e.sg : minuscules(plurielTypographique(e.sg, e.pl));
+            if (e.inconnue)
+                return e.sg;
+            return minuscules(estCourte(c) ? plurielTypographique(e.courtSg, e.courtPl) : plurielTypographique(e.sg, e.pl));
         },
-        NomS: (k) => {
+        NomS: (k, c) => {
             const e = entree(k);
-            return plurielTypographique(e.sg, e.pl);
+            return estCourte(c) ? plurielTypographique(e.courtSg, e.courtPl) : plurielTypographique(e.sg, e.pl);
         },
         n: (k, n) => `${String(n)} ${forme(entree(k), estPluriel(n), 'nom')}`,
         compl: (k, n) => {
@@ -408,9 +415,10 @@ function construire(lexique) {
         Tous: (k, d, c) => majuscule(tous(k, d, c)),
         det: seul,
         Det: (k, d, n, c) => majuscule(seul(k, d, n, c)),
-        acc: (k, masc, fem, n) => {
-            const accorde = String((entree(k).g === 'f' ? fem : masc) ?? '');
-            return estPluriel(n) && !/[sxz]$/i.test(accorde) ? `${accorde}s` : accorde;
+        acc: (k, masc, fem, n) => accorder(entree(k).g === 'f', masc, fem, n),
+        accN: (cles, masc, fem, n) => {
+            const liste = Array.isArray(cles) ? cles : [cles];
+            return accorder(liste.length > 0 && liste.every((k) => entree(k).g === 'f'), masc, fem, n);
         },
         g: (k) => entree(k).g,
         icon: (k) => entree(k).icon,
