@@ -441,13 +441,11 @@ function construire(lexique, estDefaut = false) {
     };
     return Object.freeze(voc);
 }
-// Deux lexiques donnent-ils les mêmes rendus ? (formes, genre, élision, icône, forme courte, apposition)
-const memesRendus = (a, b) => {
-    const ka = Object.keys(a);
-    if (ka.length !== Object.keys(b).length)
-        return false;
-    return ka.every((k) => JSON.stringify(normaliser(a[k])) === JSON.stringify(normaliser(b[k])));
-};
+// Le lexique `a` donne-t-il, pour CHAQUE clé du lexique `b` (le défaut), le même rendu ? (formes, genre,
+// élision, icône, forme courte, apposition). Une clé en plus dans `a` ne compte pas : aucun texte de cette
+// version ne la rend (clé ajoutée par un serveur plus récent pendant qu'un écran reste ouvert, clé propre à un
+// domaine). Une clé en moins, ou une entrée illisible, est un écart.
+const memesRendus = (a, b) => Object.keys(b).every((k) => JSON.stringify(normaliser(a[k])) === JSON.stringify(normaliser(b[k])));
 /**
  * Vocabulaire d'un lexique RÉSOLU (toutes les clés présentes ; entrées incomplètes tolérées).
  * `voc.estDefaut` est vrai si ce lexique donne les mêmes rendus que le lexique par défaut.
@@ -640,12 +638,15 @@ function completerLexique(defaut, recu) {
 /**
  * Vocabulaire du lexique reçu du serveur (`user.domaine.lexique`), complété par le défaut.
  * Absent, ou équivalent au défaut → `vocabDefaut` lui-même (même objet : rien ne se re-rend).
+ * Équivalent au défaut AVEC une clé en plus : un vocabulaire à part (la clé en plus y reste lisible, comme
+ * côté serveur), dont `estDefaut` est vrai.
  */
 function vocabDuLexique(recu) {
     if (!recu || typeof recu !== 'object')
         return exports.vocabDefaut;
     const complet = completerLexique(lexiqueDefaut_ts_1.LEXIQUE_DEFAUT, recu);
-    return memesRendus(complet, lexiqueDefaut_ts_1.LEXIQUE_DEFAUT) ? exports.vocabDefaut : creerVocab(complet);
+    const sansCleEnPlus = Object.keys(complet).length === Object.keys(lexiqueDefaut_ts_1.LEXIQUE_DEFAUT).length;
+    return sansCleEnPlus && memesRendus(complet, lexiqueDefaut_ts_1.LEXIQUE_DEFAUT) ? exports.vocabDefaut : creerVocab(complet);
 }
   },
 };

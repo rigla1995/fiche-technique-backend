@@ -11,7 +11,7 @@
  *      brouillons RÉ-ENREGISTRÉS par l'interface d'avant le lot 2 (sans g ni el) : complétés par
  *      l'étape 0, les 8 corrections s'appliquent, aucun genre ni aucune élision ne bascule ;
  *   3. comptes de test Hôtellerie et Céramique : /auth/login et /auth/me portent le lexique
- *      RÉSOLU v2 (41 clés, clés dérivées, formes courtes), avec composants et règles ; gérant :
+ *      RÉSOLU v2 (43 clés, clés dérivées, formes courtes), avec composants et règles ; gérant :
  *      domaine du compte parent ;
  *   4. acheteur d'un compte Hôtellerie : domaine = { id, slug, nom, lexique } du client vendeur,
  *      SANS composants ni règles — dans /auth/login, /auth/me ET GET /api/domaines ;

@@ -188,7 +188,7 @@ test('resolveLexique : sans écart, le lexique résolu EST le lexique par défau
   // aucune entrée partagée avec le défaut gelé
   const r = resolveLexique({});
   for (const k of LEXIQUE_CLES) assert.ok(r[k] !== LEXIQUE_DEFAUT[k] && !Object.isFrozen(r[k]), `${k} : copie`);
-  assert.equal(LEXIQUE_CLES.length, 41);
+  assert.equal(LEXIQUE_CLES.length, 43); // 41 + transfert_abr, supplement_abr (corrections après revues)
   assert.deepEqual(LEXIQUE_CLES.slice(0, 32), Object.keys(ORIGINE_32), 'les 32 clés d\'origine en tête, dans leur ordre');
 });
 
@@ -365,6 +365,14 @@ test('exemples de saisie : un domaine sans écart (Restauration, Boulangerie, Ca
   const hotel = vocabDuProfil(resolveProfil({ id: 2, slug: 'hotellerie', nom: 'Hôtellerie', lexique: ESSAIS.hotellerie, regles: {} }, []));
   assert.equal(hotel.estDefaut, false);
   assert.equal(hotel.ex('Ex: Poulet entier', `Ex: ${hotel.Nom('article')} A`), 'Ex: Fourniture A');
+  // Corrections après revues : une clé EN PLUS du lexique par défaut (clé ajoutée par une version plus récente,
+  // clé propre à un domaine) ne change aucun rendu — un domaine sans écart reste « par défaut », côté serveur
+  // comme à l'écran (le front a le même moteur : voir frontend scripts/vocab.test.mjs).
+  const plus = vocabDuProfil(resolveProfil({ id: 1, slug: 'cafe', nom: 'Café', lexique: { cle_du_lot_2b: { sg: 'Chantier', pl: 'Chantiers', g: 'm', el: false } }, regles: {} }, []));
+  assert.equal(plus.estDefaut, true);
+  assert.equal(plus.ex('Ex: Poulet entier', 'Ex: Article A'), 'Ex: Poulet entier');
+  assert.equal(plus.le('cle_du_lot_2b', 2), 'les chantiers');
+  assert.equal(creerVocab({ ...resolveLexique(ESSAIS.hotellerie), cle_du_lot_2b: { sg: 'Chantier' } }).estDefaut, false);
   assert.equal(rendre(hotel, gabarit), 'Nom du service (ex: Service A)');
   assert.deepEqual(balisesInvalides('[[ex:activite:Restaurant A]] [[ex:activite]] [[ex:activite:a:b]]').map((b) => b.balise), ['[[ex:activite]]', '[[ex:activite:a:b]]']);
 });

@@ -196,6 +196,33 @@ test('req.voc : jamais bloquant — domaine introuvable ou base en panne → voc
     assert.equal(panne.res.code, 200);
     assert.equal(panne.req.voc, vocabDefaut);
     assert.equal(avertis.length, 1);
+    // Corrections après revues : l'échec est gardé quelques secondes — l'appel suivant du même domaine ne relit
+    // pas le profil et n'avertit pas de nouveau (vocabulaire par défaut, pas de 401) ; un autre domaine, si.
+    const suite = await appeler(auth.authenticate, 12);
+    assert.equal(suite.suivant, true);
+    assert.equal(suite.req.voc, vocabDefaut);
+    assert.equal(suite.sql.filter((s) => s.includes('FROM domaines_activite')).length, 0, 'pas de nouvelle lecture du profil');
+    assert.equal(avertis.length, 1, 'un seul avertissement');
+    UTILISATEURS.set(13, ligne(13, 'client', { domaine_id: 501 }));
+    panneDomaine = 501;
+    const autre = await appeler(auth.authenticate, 13);
+    assert.equal(autre.req.voc, vocabDefaut);
+    assert.equal(avertis.length, 2, 'un avertissement par domaine');
+    // le domaine 500 redevient lisible : après le délai, il est relu
+    const { vocabDuDomaine } = require('../src/utils/vocabCompte');
+    const vraiNow = Date.now;
+    Date.now = () => vraiNow() + 11 * 1000;
+    try {
+      panneDomaine = null;
+      DOMAINES.set(500, { id: 500, slug: 'hotellerie-bis', nom: 'Hôtellerie bis', description: null, lexique: ESSAIS.hotellerie, regles: {} });
+      const revenu = await vocabDuDomaine(500);
+      assert.equal(revenu.le('labo'), 'la cuisine centrale', 'profil relu après le délai');
+      assert.equal(avertis.length, 2);
+    } finally {
+      Date.now = vraiNow;
+      DOMAINES.delete(500);
+      profilService.invalidate(500);
+    }
   } finally {
     console.warn = warn;
     panneDomaine = null;

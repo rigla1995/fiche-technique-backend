@@ -34,14 +34,24 @@ const vocabDuProfil = (profil) => {
 };
 
 // Jamais bloquant : domaine absent, inconnu ou erreur de lecture → vocabulaire par défaut.
+// Un ÉCHEC de lecture (base indisponible) est gardé ECHEC_TTL_MS par domaine : pendant ce délai, aucune
+// nouvelle requête ni nouvel avertissement à chaque appel authentifié (getProfil ne met rien en cache sur
+// erreur) ; le vocabulaire par défaut est rendu, puis le chargement est retenté.
+const ECHEC_TTL_MS = 10 * 1000;
+const echecs = new Map(); // domaineId -> Date.now() du dernier échec
 const vocabDuDomaine = async (domaineId) => {
   if (domaineId == null) return vocabDefaut;
+  const dernierEchec = echecs.get(domaineId);
+  if (dernierEchec != null && Date.now() - dernierEchec < ECHEC_TTL_MS) return vocabDefaut;
   try {
     // require tardif : domaineProfilService charge la base (ce module reste utilisable sans elle)
     const { getProfil } = require('../services/domaineProfilService');
-    return vocabDuProfil(await getProfil(domaineId));
+    const voc = vocabDuProfil(await getProfil(domaineId));
+    echecs.delete(domaineId);
+    return voc;
   } catch (e) {
-    console.warn('[vocab] profil de domaine indisponible, vocabulaire par défaut :', e.message);
+    echecs.set(domaineId, Date.now());
+    console.warn(`[vocab] profil de domaine ${domaineId} indisponible, vocabulaire par défaut (nouvel essai dans ${ECHEC_TTL_MS / 1000} s) :`, e.message);
     return vocabDefaut;
   }
 };
