@@ -21,7 +21,10 @@ const __modules = {
 //   - `acc` : [[acc:clé:masc:fem]] ou [[acc:clé:masc:fem:pl]] (masc et fem peuvent être vides) ;
 //   - `n` : [[n:clé:3]] ;
 //   - `det` / `Det` : [[det:clé:du]], [[det:clé:le:pl]], [[det:clé:le:court]] — le déterminant seul, suivi de
-//     son séparateur (« du␣ », « de l' ») : « [[det:stock:du]]**[[nom:stock]]** ».
+//     son séparateur (« du␣ », « de l' ») : « [[det:stock:du]]**[[nom:stock]]** » ;
+//   - `ex` : [[ex:clé:texte par défaut]] — exemple de saisie : le texte par défaut (l'exemple d'origine) si le
+//     lexique du compte est le lexique par défaut, sinon « Nom(clé) A » ; c'est l'appel
+//     voc.ex('texte par défaut', `${voc.Nom('clé')} A`). Un seul argument, non vide (sans « : », « | » ni crochet).
 // Balise invalide (méthode inconnue, argument non reconnu, en double ou en trop, texte entre
 // [[ ]] hors grammaire) → laissée telle quelle et signalée.
 //
@@ -68,6 +71,12 @@ const rendreBalise = (voc, contenu) => {
             return appel(args[0], args[1]);
         const n = nombre(args[2]);
         return n === undefined ? { raison: `nombre non reconnu « ${args[2]} »` } : appel(args[0], args[1], n);
+    }
+    if (methode === 'ex') {
+        if (args.length !== 1 || !args[0].trim())
+            return { raison: '« ex » attend le texte par défaut (un seul argument, non vide)' };
+        const v = voc;
+        return { texte: String(v.ex(args[0], `${String(v.Nom(cle))} A`)) };
     }
     if (methode === 'n') {
         return args.length === 1 && ENTIER.test(args[0]) ? appel(Number(args[0])) : { raison: '« n » attend un nombre entier' };
@@ -176,6 +185,8 @@ function balisesInvalides(texte) {
 //   n : nombre (pluriel si n >= 2) ou booléen (true = pluriel) ou absent (singulier) ;
 //   c : casse du nom — 'nom' (défaut, minuscules) | 'Nom' (forme stockée) | 'Titre' ;
 //       'court' | 'Court' : même chose sur la forme courte (« d'appro », « l'Appro »).
+// Exemples de saisie : `voc.ex(parDefaut, sinon)` rend l'exemple d'origine tant que le lexique du compte est
+// le lexique par défaut (`voc.estDefaut`), et l'exemple neutre construit pour les autres domaines.
 // Apostrophe droite. Clé inconnue → « ‹clé› » + console.warn, jamais d'exception.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.vocabDefaut = void 0;
@@ -314,7 +325,9 @@ const plurielTypographique = (sg, pl) => {
     return mots.join(' ');
 };
 // ── Le moteur ────────────────────────────────────────────────────────────────
-function construire(lexique) {
+// `estDefaut` : le lexique est-il celui par défaut ? Décidé par l'appelant (creerVocab) ; un mini-vocabulaire
+// (voc.avec) hérite de celui du vocabulaire qui le crée.
+function construire(lexique, estDefaut = false) {
     const source = objet(lexique);
     const table = new Map();
     for (const k of Object.keys(source)) {
@@ -422,13 +435,25 @@ function construire(lexique) {
         },
         g: (k) => entree(k).g,
         icon: (k) => entree(k).icon,
-        avec: (e) => construire({ _: e }),
+        estDefaut,
+        ex: (parDefaut, sinon) => String((estDefaut ? parDefaut : sinon) ?? ''),
+        avec: (e) => construire({ _: e }, estDefaut),
     };
     return Object.freeze(voc);
 }
-/** Vocabulaire d'un lexique RÉSOLU (toutes les clés présentes ; entrées incomplètes tolérées). */
+// Deux lexiques donnent-ils les mêmes rendus ? (formes, genre, élision, icône, forme courte, apposition)
+const memesRendus = (a, b) => {
+    const ka = Object.keys(a);
+    if (ka.length !== Object.keys(b).length)
+        return false;
+    return ka.every((k) => JSON.stringify(normaliser(a[k])) === JSON.stringify(normaliser(b[k])));
+};
+/**
+ * Vocabulaire d'un lexique RÉSOLU (toutes les clés présentes ; entrées incomplètes tolérées).
+ * `voc.estDefaut` est vrai si ce lexique donne les mêmes rendus que le lexique par défaut.
+ */
 function creerVocab(lexique) {
-    return construire(lexique);
+    return construire(lexique, memesRendus(objet(lexique), lexiqueDefaut_ts_1.LEXIQUE_DEFAUT));
 }
 /** Vocabulaire du lexique par défaut (restauration) : admin, boss, non connecté. */
 exports.vocabDefaut = creerVocab(lexiqueDefaut_ts_1.LEXIQUE_DEFAUT);
@@ -612,13 +637,6 @@ function completerLexique(defaut, recu) {
     }
     return out;
 }
-// Deux lexiques donnent-ils les mêmes rendus ? (formes, genre, élision, icône, forme courte, apposition)
-const memesRendus = (a, b) => {
-    const ka = Object.keys(a);
-    if (ka.length !== Object.keys(b).length)
-        return false;
-    return ka.every((k) => JSON.stringify(normaliser(a[k])) === JSON.stringify(normaliser(b[k])));
-};
 /**
  * Vocabulaire du lexique reçu du serveur (`user.domaine.lexique`), complété par le défaut.
  * Absent, ou équivalent au défaut → `vocabDefaut` lui-même (même objet : rien ne se re-rend).

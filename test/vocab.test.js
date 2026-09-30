@@ -121,6 +121,7 @@ const executer = ([lexique, methode, cle, args]) => {
   assert.ok(voc, `lexique inconnu « ${lexique} »`);
   if (methode === 'rendre') return rendre(voc, args[0]);
   if (methode === 'avec') return voc.avec(args[0])[args[1]](cle, ...args.slice(2));
+  if (methode === 'estDefaut') return voc.estDefaut; // une propriété, pas une méthode
   assert.equal(typeof voc[methode], 'function', `méthode inconnue « ${methode} »`);
   return voc[methode](cle, ...args);
 };
@@ -348,6 +349,24 @@ test('resolveProfil / vocabDuProfil : profil exposé = lexique résolu ; vocabul
   assert.equal(vocabDuProfil(hotel2).le('labo'), 'la cuisine centrale');
   // même fonction que le front : vocabDuLexique(lexique reçu)
   assert.equal(vocabDuLexique(hotel.lexique).Nom('espace_labo'), 'Espace Cuisine');
+});
+
+test('exemples de saisie : un domaine sans écart (Restauration, Boulangerie, Café) garde l\'exemple d\'origine ; un autre domaine lit l\'exemple neutre', () => {
+  const gabarit = 'Nom [[du:activite]] (ex: [[ex:activite:Restaurant A]])';
+  for (const slug of ['restauration', 'boulangerie', 'cafe']) {
+    const voc = vocabDuProfil(resolveProfil({ id: 1, slug, nom: slug, lexique: {}, regles: {} }, []));
+    assert.equal(voc.estDefaut, true, slug);
+    assert.equal(voc.ex('Ex: Poulet entier', `Ex: ${voc.Nom('article')} A`), 'Ex: Poulet entier', slug);
+    assert.equal(rendre(voc, gabarit), "Nom de l'activité (ex: Restaurant A)", slug);
+  }
+  // req.voc d'un compte au lexique résolu par défaut, même construit par creerVocab (sans passer par vocabDuLexique)
+  assert.equal(creerVocab(resolveLexique({})).estDefaut, true);
+  assert.equal(vocabDuProfil(null).estDefaut, true, 'admin, boss, domaine absent');
+  const hotel = vocabDuProfil(resolveProfil({ id: 2, slug: 'hotellerie', nom: 'Hôtellerie', lexique: ESSAIS.hotellerie, regles: {} }, []));
+  assert.equal(hotel.estDefaut, false);
+  assert.equal(hotel.ex('Ex: Poulet entier', `Ex: ${hotel.Nom('article')} A`), 'Ex: Fourniture A');
+  assert.equal(rendre(hotel, gabarit), 'Nom du service (ex: Service A)');
+  assert.deepEqual(balisesInvalides('[[ex:activite:Restaurant A]] [[ex:activite]] [[ex:activite:a:b]]').map((b) => b.balise), ['[[ex:activite]]', '[[ex:activite:a:b]]']);
 });
 
 // ── 3. Validation à l'enregistrement (spec §1.4) ─────────────────────────────
