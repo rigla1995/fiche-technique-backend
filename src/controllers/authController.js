@@ -16,11 +16,27 @@ const WEAK_PWD_MSG = 'Mot de passe trop faible : minimum 8 caractères, avec maj
 // gérant → compte parent (résolu par getProfilForClient), admin/boss → null.
 // Renvoyé par /auth/login ET /auth/me (AuthContext.login stocke le user du login tel
 // quel — sans cela user.domaine restait undefined jusqu'au prochain /auth/me).
+// Le lexique est le lexique RÉSOLU v2 (lot 2 : clés dérivées, formes courtes).
+// Rôle ACHETEUR (lot 2, spec §2.4) : domaine du client VENDEUR (acheteurs.client_id),
+// réduit à { id, slug, nom, lexique } — ni composants ni règles (configuration
+// commerciale du vendeur, qui ne regarde pas son acheteur).
+// `acheteurClientId` : fourni par /auth/me (req.user) ; au login il est lu en base.
 // Jamais bloquant : toute erreur ⇒ null + warn.
-const loadDomaineForUser = async (utilisateur, tag) => {
-  if (utilisateur.role !== 'client' && utilisateur.role !== 'gerant') return null;
+const loadDomaineForUser = async (utilisateur, tag, acheteurClientId = null) => {
+  const role = utilisateur.role;
+  if (role !== 'client' && role !== 'gerant' && role !== 'acheteur') return null;
   try {
     const { getProfilForClient } = require('../services/domaineProfilService');
+    if (role === 'acheteur') {
+      let vendeurId = acheteurClientId;
+      if (vendeurId == null) {
+        const r = await pool.query('SELECT client_id FROM acheteurs WHERE user_id = $1 LIMIT 1', [utilisateur.id]);
+        vendeurId = r.rows[0]?.client_id ?? null;
+      }
+      if (vendeurId == null) return null;
+      const p = await getProfilForClient(vendeurId);
+      return p && p.id != null ? { id: p.id, slug: p.slug, nom: p.nom, lexique: p.lexique } : null;
+    }
     const p = await getProfilForClient(utilisateur.id);
     return p && p.id != null
       ? { id: p.id, slug: p.slug, nom: p.nom, lexique: p.lexique, composants: p.composants, regles: p.regles }
@@ -281,7 +297,8 @@ const me = async (req, res) => {
     }
 
     // Profil du domaine d'activité du compte (lot 1a) — même objet qu'au login.
-    const domaine = await loadDomaineForUser(u, 'auth/me');
+    // Acheteur : domaine de son client vendeur (déjà connu du middleware).
+    const domaine = await loadDomaineForUser(u, 'auth/me', req.user.acheteurClientId || null);
 
     const gerantFields = isGerant ? {
       gerantParentId: u.gerant_parent_id,

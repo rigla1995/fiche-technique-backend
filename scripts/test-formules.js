@@ -1,6 +1,9 @@
 /* Test E2E local de la tarification en formules (backend démarré sur :3000).
  * Basique/Premium + paliers acheteurs + gating Espace Produit + demande d'upgrade.
  * Restaure la config du compte client 38 à la fin. */
+// ⚠️ Ce script crée des comptes par POST /admin/clients (email de bienvenue). Démarrer le backend de test par
+//    « node scripts/start-test-backend.js » (clés externes vidées, resend bouchonné, réseau sortant bloqué) —
+//    jamais par « npm start » avec le .env d'un poste de développement, qui contient de vraies clés.
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const pool = require('../src/config/database');
