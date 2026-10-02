@@ -556,22 +556,5 @@
    "miroir"
   ],
   "justification": "« prix de vente » : locution figée de gestion (spec lot 2b §6.8, _global.json), pas l'objet « une vente » ; titre de l'export Configuration des prix."
- },
- {
-  "cle": "tableauxDeBord",
-  "chemin": "^/rapports\\.filters/body/categories/\\d+/nom$",
-  "texte": "restauration",
-  "type": "donnee",
-  "justification": "Noms de catégories du référentiel en base (« Boissons restauration », « Emballages restauration » : données semées par les migrations 058 / 078), renvoyés tels quels par GET /api/rapports/filters : donnée, pas un texte du serveur (spec lot 2b §0 « données saisies », §2.5 point 2). NB : la requête lit les catégories de TOUS les comptes (défaut ancien hors lot, signalé par B4)."
- },
- {
-  "cle": "tableauxDeBord",
-  "chemin": "^/rapports\\.filters/body/categories/\\d+/nom$",
-  "texte": "Produits",
-  "type": "donnee",
-  "domaines": [
-   "miroir"
-  ],
-  "justification": "Noms de catégories du référentiel en base (« Produits laitiers & Œufs… »), renvoyés tels quels par GET /api/rapports/filters : donnée, pas un texte du serveur (spec lot 2b §0 « données saisies », §2.5 point 2)."
  }
 ]

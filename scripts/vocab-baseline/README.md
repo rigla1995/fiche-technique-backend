@@ -85,6 +85,12 @@ Options : `--capture <fichier>` (analyser une capture déjà faite), `--referenc
   substitution du nom (24 éléments), et les 2 autres sont des permutations entre ex aequo admises (`ordre-libre.json`).
   Écarts inscrits ensuite : `06.inventaireActivite.A2/disposition` (`§11.1.4`, « " » → « - ») et `genre` / `elision`
   des 3 composants de `config.composants` (`§11.2.2`).
+- Référence recapturée une 3ᵉ fois après la fusion de `develop` = `589cfb1` (correctif de sécurité : `GET
+  /api/rapports/filters` ne renvoie plus que les catégories du compte). Arbre `git archive 589cfb1` + les 2 exports
+  neutres de l'oracle (§2.7, fichiers de `d03cc68`) + scripts de l'oracle de la branche ; base locale à la migration 192.
+  Deux passages : identiques pour le contrôle (une permutation entre ex aequo admise, feuille Stock de `rapportIA`).
+  Contre l'ancienne référence, seul `tableauxDeBord/rapports.filters` change (catégories du compte B seulement). Les 2
+  exceptions hors restauration qui couvraient les catégories des autres comptes sont retirées (sans emploi).
 
 ## Scan hors restauration (§2.5)
 
