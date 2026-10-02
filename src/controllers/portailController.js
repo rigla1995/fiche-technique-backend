@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
+const { vocabDefaut } = require('../utils/vocab');
 
 // Portail acheteur (rôle 'acheteur') : catalogue de commande + suivi.
 // Périmètre = le compte client parent (req.user.acheteurClientId), fiche = req.user.acheteurId.
@@ -78,8 +79,9 @@ const getCatalogue = async (req, res) => {
     ]);
     const histoMap = new Map(histo.rows.map((h) => [`${h.article_type}:${h.article_id}`, h]));
 
+    const voc = req.voc ?? vocabDefaut;
     res.json({
-      vendeur: vendeur.rows[0]?.nom || 'Votre fournisseur',
+      vendeur: vendeur.rows[0]?.nom || voc.Votre('fournisseur'),
       offres: offres.rows.map((o) => {
         const promoPct = promoDe(o);
         const h = histoMap.get(`${o.article_type}:${o.article_id}`);
@@ -201,10 +203,12 @@ const createCommande = async (req, res) => {
 
     // Notification temps réel + persistée au compte client (best-effort)
     const total = lignes.reduce((s, l) => s + l.prixTtc * l.quantite, 0);
+    // Repli écrit en base (notification) : rendu à l'écriture, vocabulaire du vendeur (spec lot 2b §6.7).
+    const voc = req.voc ?? vocabDefaut;
     const payload = {
       eventType: 'nouvelle_commande_acheteur',
       type: 'commande_acheteur',
-      clientNom: fiche.rows[0]?.nom || 'Acheteur',
+      clientNom: fiche.rows[0]?.nom || voc.Nom('acheteur'),
       statut: 'en_attente',
       notesAdmin: `${lignes.length} ligne${lignes.length > 1 ? 's' : ''} · ${Math.round(total * 1000) / 1000} DT`,
     };

@@ -453,5 +453,125 @@
   "texte": "Articles",
   "type": "homonyme",
   "justification": "« articles vendables » de la description de get_config_vente (aiToolHandlers.js:685) : « article » au sens d'élément quelconque, liste fermée du §6.5, motif « élément générique ». Les autres formes de cette description restent cherchées."
+ },
+ {
+  "cle": "messages",
+  "chemin": "^/ingredientSansId/body/errors/\\d+/msg$",
+  "texte": "Ingrédient invalide",
+  "type": "non-repliable",
+  "justification": "errors[].msg d'express-validator (body().custom de src/routes/produits.js) : champ non rendu au bord, aucune balise permise dans src/routes/*.js (I7, E2) ; atteint seulement par l'écran orphelin ProductForm (spec lot 2b §6.5 « routes/produits.js:414 reste un littéral », §6.8)."
+ },
+ {
+  "cle": "messages",
+  "chemin": "^/ingredientPortion0/body/errors/\\d+/msg$",
+  "texte": "Portion invalide",
+  "type": "non-repliable",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ],
+  "justification": "errors[].msg d'express-validator (withMessage de body('portion') dans src/routes/produits.js) : champ non rendu au bord, aucune balise permise dans src/routes/*.js (I7, E2 ; spec lot 2b §6.8)."
+ },
+ {
+  "cle": "donneesLibelles",
+  "chemin": "^/historique\\.approsActivites/body/\\d+/categorieNom$",
+  "texte": "Produits Transformés Utilisables",
+  "type": "code-api",
+  "justification": "Catégorie PT renvoyée par l'API dans sa valeur par défaut (ptCategorie / ptCategorieSql de stockUtils.js) : code stable de l'API, traduit à l'écran par libelleCategoriePt (spec lot 2b §5.3, §9 « catégories PT : valeur par défaut (traduite à l'écran) », I9)."
+ },
+ {
+  "cle": "donneesLibelles",
+  "chemin": "^/historique\\.approsLabo/body/\\d+/categorieNom$",
+  "texte": "Produits Transformés Utilisables",
+  "type": "code-api",
+  "justification": "Catégorie PT renvoyée par l'API dans sa valeur par défaut (ptCategorie / ptCategorieSql de stockUtils.js) : code stable de l'API, traduit à l'écran par libelleCategoriePt (spec lot 2b §5.3, §9 « catégories PT : valeur par défaut (traduite à l'écran) », I9)."
+ },
+ {
+  "cle": "donneesLibelles",
+  "chemin": "^/historique\\.approsLabo/body/\\d+/categorieNom$",
+  "texte": "Produits Composés Valorisés",
+  "type": "code-api",
+  "justification": "Catégorie PT renvoyée par l'API dans sa valeur par défaut (ptCategorie / ptCategorieSql de stockUtils.js) : code stable de l'API, traduit à l'écran par libelleCategoriePt (spec lot 2b §5.3, §9 « catégories PT : valeur par défaut (traduite à l'écran) », I9)."
+ },
+ {
+  "cle": "tableauxDeBord",
+  "chemin": "^/v1\\.activites/body/stock_par_categorie/\\d+/categorie$",
+  "texte": "Produits Transformés Utilisables",
+  "type": "code-api",
+  "justification": "Catégorie PT renvoyée par l'API dans sa valeur par défaut (ptCategorie / ptCategorieSql de stockUtils.js) : code stable de l'API, traduit à l'écran par libelleCategoriePt (spec lot 2b §5.3, §9 « catégories PT : valeur par défaut (traduite à l'écran) », I9)."
+ },
+ {
+  "cle": "tableauxDeBord",
+  "chemin": "^/v2\\.achats\\.[^/]+/stock_par_categorie/\\d+/categorie$",
+  "texte": "Produits Transformés Utilisables",
+  "type": "code-api",
+  "justification": "Catégorie PT renvoyée par l'API dans sa valeur par défaut (ptCategorie / ptCategorieSql de stockUtils.js) : code stable de l'API, traduit à l'écran par libelleCategoriePt (spec lot 2b §5.3, §9 « catégories PT : valeur par défaut (traduite à l'écran) », I9)."
+ },
+ {
+  "cle": "donneesLibelles",
+  "chemin": "^/C\\.portail\\.catalogue/offres/\\d+/categorie$",
+  "texte": "Produits Composés",
+  "type": "code-api",
+  "domaines": [
+   "miroir"
+  ],
+  "justification": "Valeur de l'API du catalogue du portail (portailController.js, constante SQL qui sert à ORDER BY categorie) et de GET /api/acheteurs/offres (produitSection) : libellé par défaut, traduit à l'écran par libelleCategoriePt (PortailAcheteurPage) ; I8, I9, spec lot 2b §6.1."
+ },
+ {
+  "cle": "donneesLibelles",
+  "chemin": "^/historique\\.approsActivites/body/\\d+/refFacture$",
+  "texte": "vente-⟨date⟩",
+  "type": "code-api",
+  "domaines": [
+   "miroir"
+  ],
+  "justification": "Référence automatique `vente-<date>` écrite dans stock_entreprise_daily.ref_facture par la saisie d'une vente (ventesController.js) : référence stockée et relue telle quelle (historique, rapport, export), comme la référence « PT-26 » de buildAutoRef ; pas un texte de vocabulaire (I2, spec lot 2b §6.1 « les codes ne bougent pas »). Seul le miroir renomme « vente »."
+ },
+ {
+  "cle": "tableauxDeBord",
+  "chemin": "^/rapports\\.appros/body/rows/\\d+/ref_facture$",
+  "texte": "vente-⟨date⟩",
+  "type": "code-api",
+  "domaines": [
+   "miroir"
+  ],
+  "justification": "Référence automatique `vente-<date>` écrite dans stock_entreprise_daily.ref_facture par la saisie d'une vente (ventesController.js) : référence stockée et relue telle quelle (historique, rapport, export), comme la référence « PT-26 » de buildAutoRef ; pas un texte de vocabulaire (I2, spec lot 2b §6.1 « les codes ne bougent pas »). Seul le miroir renomme « vente »."
+ },
+ {
+  "cle": "exports",
+  "chemin": "^/12\\.historiqueAppro/onglets/\\d+/lignes/\\d+/\\d+$",
+  "texte": "vente-⟨date⟩",
+  "type": "code-api",
+  "domaines": [
+   "miroir"
+  ],
+  "justification": "Référence automatique `vente-<date>` écrite dans stock_entreprise_daily.ref_facture par la saisie d'une vente (ventesController.js) : référence stockée et relue telle quelle (historique, rapport, export), comme la référence « PT-26 » de buildAutoRef ; pas un texte de vocabulaire (I2, spec lot 2b §6.1 « les codes ne bougent pas »). Seul le miroir renomme « vente »."
+ },
+ {
+  "cle": "exports",
+  "chemin": "^/14\\.configPrix/onglets/\\d+/lignes/\\d+/\\d+$",
+  "texte": "Historique de configuration des prix de vente",
+  "type": "locution",
+  "domaines": [
+   "miroir"
+  ],
+  "justification": "« prix de vente » : locution figée de gestion (spec lot 2b §6.8, _global.json), pas l'objet « une vente » ; titre de l'export Configuration des prix."
+ },
+ {
+  "cle": "tableauxDeBord",
+  "chemin": "^/rapports\\.filters/body/categories/\\d+/nom$",
+  "texte": "restauration",
+  "type": "donnee",
+  "justification": "Noms de catégories du référentiel en base (« Boissons restauration », « Emballages restauration » : données semées par les migrations 058 / 078), renvoyés tels quels par GET /api/rapports/filters : donnée, pas un texte du serveur (spec lot 2b §0 « données saisies », §2.5 point 2). NB : la requête lit les catégories de TOUS les comptes (défaut ancien hors lot, signalé par B4)."
+ },
+ {
+  "cle": "tableauxDeBord",
+  "chemin": "^/rapports\\.filters/body/categories/\\d+/nom$",
+  "texte": "Produits",
+  "type": "donnee",
+  "domaines": [
+   "miroir"
+  ],
+  "justification": "Noms de catégories du référentiel en base (« Produits laitiers & Œufs… »), renvoyés tels quels par GET /api/rapports/filters : donnée, pas un texte du serveur (spec lot 2b §0 « données saisies », §2.5 point 2)."
  }
 ]

@@ -66,7 +66,7 @@ const getById = async (req, res) => {
        WHERE a.id = $1 AND a.client_id = $2`,
       [req.params.id, clientId]
     );
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Article introuvable' });
+    if (result.rows.length === 0) return res.status(404).json({ message: '[[Nom:article]] introuvable' });
     res.json(mapArticle(result.rows[0]));
   } catch (err) {
     console.error(err);
@@ -156,7 +156,7 @@ const update = async (req, res) => {
     );
     if (updated.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ message: 'Article introuvable' });
+      return res.status(404).json({ message: '[[Nom:article]] introuvable' });
     }
     // Article retiré du catalogue acheteurs → son offre éventuelle est désactivée
     // (sinon elle resterait vendue au portail sans être visible dans les Tarifs).
@@ -195,16 +195,16 @@ const remove = async (req, res) => {
       [req.params.id]
     );
     if (appro.rows.length > 0) {
-      return res.status(409).json({ message: "Cet article a des approvisionnements et ne peut pas être supprimé" });
+      return res.status(409).json({ message: '[[Ce:article]] a [[un:appro:pl]] et ne peut pas être [[acc:article:supprimé:supprimée]]' });
     }
     const result = await pool.query(
       'DELETE FROM articles WHERE id = $1 AND client_id = $2 RETURNING id',
       [req.params.id, clientId]
     );
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Article introuvable' });
+    if (result.rows.length === 0) return res.status(404).json({ message: '[[Nom:article]] introuvable' });
     res.status(204).send();
   } catch (err) {
-    if (err.code === '23503') return res.status(409).json({ message: "Cet article est utilisé dans une fiche technique et ne peut pas être supprimé" });
+    if (err.code === '23503') return res.status(409).json({ message: '[[Ce:article]] est [[acc:article:utilisé:utilisée]] dans [[un:fiche_technique]] et ne peut pas être [[acc:article:supprimé:supprimée]]' });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }

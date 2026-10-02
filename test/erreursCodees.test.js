@@ -29,7 +29,7 @@ require.cache[cheminPool] = { id: cheminPool, filename: cheminPool, loaded: true
 const produits = require('../src/controllers/produitsController');
 const { exportExcel } = require('../src/controllers/exportController');
 
-const INTROUVABLE = { code: 'PRODUIT_INTROUVABLE', message: 'Produit introuvable' };
+const INTROUVABLE = { code: 'PRODUIT_INTROUVABLE', message: '[[Nom:produit]] introuvable' };
 const CIRCULAIRE = { code: 'REFERENCE_CIRCULAIRE', message: 'Référence circulaire détectée dans les sous-produits' };
 
 test('calculerCout lève avec un code (introuvable, circulaire direct et indirect, sous-produit absent)', async () => {
@@ -68,7 +68,7 @@ async function appeler(handler, id, query = {}) {
   return { statut: res.statusCode, corps: res.corps, journal };
 }
 
-const ATTENDU_404 = { statut: 404, corps: { message: 'Produit introuvable' }, journal: [] };
+const ATTENDU_404 = { statut: 404, corps: { message: '[[Nom:produit]] introuvable' }, journal: [] };
 const ATTENDU_400 = { statut: 400, corps: { message: 'Référence circulaire détectée dans les sous-produits' }, journal: [] };
 
 test('getCout : 404 et 400 inchangés, quel que soit le mode', async () => {

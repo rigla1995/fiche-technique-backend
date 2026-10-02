@@ -501,9 +501,9 @@ const ADMIN_PWD = require('crypto').randomBytes(18).toString('base64url');
     const ia = await executeToolCall(clientId, 'get_transferts', {});
     check('IA get_transferts voit les deux étages (Cuisine (labo) + Restaurant)', ia.some((r) => r.destination === 'Cuisine (labo)') && ia.some((r) => r.destination === 'Restaurant'), JSON.stringify(ia.map((r) => r.destination)));
     ({ status, body } = await C(`/api/dashboard/v2?tab=labo&from=${today}&to=${today}`));
-    check('dashboard V2 onglet Labo : transferts (activités) et cessions_labo séparés, répartition « Cuisine (labo) »',
+    check('dashboard V2 onglet Labo : transferts (activités) et cessions_labo séparés, répartition « Cuisine (cuisine) »',
       status === 200 && body?.kpis && approx(body.kpis.transferts, 4 * 11.9 + 2 * 23.8) && body.kpis.nb_transferts === 2 && approx(body.kpis.cessions_labo, 30 * 11.9) && body.kpis.nb_cessions_labo === 1
-      && body.transferts_par_activite.some((r) => r.activite === 'Cuisine (labo)') && body.transferts_par_activite.some((r) => r.activite === 'Restaurant'),
+      && body.transferts_par_activite.some((r) => r.activite === 'Cuisine (cuisine)') && body.transferts_par_activite.some((r) => r.activite === 'Restaurant'),
       JSON.stringify({ k: body?.kpis, rep: body?.transferts_par_activite }));
     check('dashboard V2 onglet Labo : achats externes (appros) = 100×11,9 + 10×5, réceptions internes = 30×11,9 (KPI distinct)', approx(body?.kpis?.appros, 100 * 11.9 + 50) && body?.kpis?.nb_appros === 2 && approx(body?.kpis?.receptions_labo, 357) && body?.kpis?.nb_receptions_labo === 1, JSON.stringify({ a: body?.kpis?.appros, r: body?.kpis?.receptions_labo }));
     ({ status, body } = await C(`/api/dashboard/labo?laboId=${eco.id}&from=${today}&to=${today}`));
@@ -513,11 +513,11 @@ const ADMIN_PWD = require('crypto').randomBytes(18).toString('base64url');
     ({ status, body } = await C(`/api/labo/ventes?laboId=${eco.id}`));
     check('GET /api/labo/ventes Économat : ligne dest_type labo / dest_nom Cuisine', status === 200 && body?.length === 1 && body[0].dest_type === 'labo' && body[0].dest_nom === 'Cuisine', JSON.stringify(body?.[0] && { t: body[0].dest_type, n: body[0].dest_nom }));
     let x = await xlsx(cliTok, `/api/labo/${eco.id}/transfers/export-excel`);
-    check('export Excel transferts Économat : en-tête « Destination », ligne « Cuisine (labo) »', x.status === 200 && x.rows.some((r) => r.includes('Destination')) && x.rows.some((r) => r.includes('Cuisine (labo)')), JSON.stringify(x.rows.slice(-3)));
+    check('export Excel transferts Économat : en-tête « Destination », ligne « Cuisine (cuisine) »', x.status === 200 && x.rows.some((r) => r.includes('Destination')) && x.rows.some((r) => r.includes('Cuisine (cuisine)')), JSON.stringify(x.rows.slice(-3)));
     x = await xlsx(cliTok, `/api/labo-ventes/export-excel?laboId=${eco.id}`);
     check('export Excel ventes labo : en-tête « Destination »', x.status === 200 && x.rows.some((r) => r.includes('Destination')), String(x.status));
     x = await xlsx(cliTok, `/api/labo/${cui.id}/historique/export-excel`);
-    check('export Excel historique Cuisine : ligne « Transfert reçu » avec fournisseur Économat', x.status === 200 && x.rows.some((r) => r.includes('Transfert reçu') && r.includes('Économat')), JSON.stringify(x.rows.find((r) => r.includes('Transfert reçu'))));
+    check('export Excel historique Cuisine : ligne « Livraison interne reçue » avec fournisseur Économat', x.status === 200 && x.rows.some((r) => r.includes('Livraison interne reçue') && r.includes('Économat')), JSON.stringify(x.rows.find((r) => r.includes('Livraison interne reçue'))));
 
     // ── 15. deleteLabo 409 LABO_UTILISE ───────────────────────────────────────
     ({ status, body } = await del(C, `/api/labo/${cui.id}`));

@@ -1,24 +1,45 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const multer = require('multer');
+const { vocabDefaut } = require('../utils/vocab');
+const { ongletSur } = require('../utils/excelNoms');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-const HEADERS = ['Article', 'Unité', 'Catégorie', 'Famille'];
+// En-têtes du modèle : la colonne 1 porte le terme du compte, les colonnes 2 à 4 n'en ont pas.
+const enTetes = (voc) => [voc.Nom('article'), 'Unité', 'Catégorie', 'Famille'];
+// En-têtes par défaut : un modèle fait avec le vocabulaire LabFlow reste reconnu dans tout domaine.
+const HEADERS = enTetes(vocabDefaut);
+
+// Ligne (1-based), dans les 15 premières, dont les colonnes 2 à 4 sont les en-têtes « Unité / Catégorie /
+// Famille » (sans casse) et la colonne 1 non vide : modèle fait avec un ancien terme du domaine, ou colonne 1
+// renommée à la main. null si aucune.
+const ligneEnTetesLibre = (ws) => {
+  const suite = HEADERS.slice(1).map((h) => h.toLowerCase());
+  const max = Math.min(ws.rowCount, 15);
+  for (let r = 1; r <= max; r++) {
+    const row = ws.getRow(r);
+    const texte = (i) => String(row.getCell(i).text || '').trim();
+    if (texte(1) && suite.every((h, i) => texte(i + 2).toLowerCase() === h)) return r;
+  }
+  return null;
+};
 const MAX_ROWS = 1000;
 
 const getTemplate = async (req, res) => {
   try {
     const { brandTemplate } = require('../services/excelBrandService');
+    const voc = req.voc ?? vocabDefaut;
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Référentiel');
+    const ws = wb.addWorksheet(ongletSur(wb, voc.Court('referentiel')));
     brandTemplate(wb, ws, {
-      titre: "Modèle d'import — Référentiel",
-      sousTitre: 'Ajout dynamique des articles : une ligne = un article',
+      titre: `Modèle d'import — ${voc.Court('referentiel')}`,
+      sousTitre: `Ajout dynamique ${voc.du('article', true)} : une ligne = ${voc.un('article')}`,
       meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import.",
-      headers: HEADERS,
+      headers: enTetes(voc),
       widths: [28, 16, 22, 22],
-      exemple: ['Exemple : Poulet rôti', 'kg', 'Viandes', 'Food'],
+      // Le préfixe « Exemple : » reste hors de voc.ex : isExampleRow reconnaît la ligne à son premier mot.
+      exemple: ['Exemple : ' + voc.ex('Poulet rôti', `${voc.Nom('article')} A`), 'kg', voc.ex('Viandes', 'Catégorie A'), voc.ex('Food', 'Famille A')],
     });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="modele_referentiel.xlsx"');
@@ -81,8 +102,10 @@ const importReferentiel = [
       // Les données commencent APRÈS la ligne d'en-têtes, où qu'elle soit
       // (modèle de marque : bandeau au-dessus ; anciens modèles : ligne 1),
       // et la ligne d'exemple grisée du modèle est ignorée.
+      // En-têtes du domaine, puis ceux par défaut, puis une colonne 1 renommée ; sinon ligne 1 (ancien modèle).
       const { findHeaderRow, isExampleRow } = require('../services/excelBrandService');
-      const headerRowNum = findHeaderRow(ws, HEADERS) ?? 1;
+      const voc = req.voc ?? vocabDefaut;
+      const headerRowNum = findHeaderRow(ws, enTetes(voc)) ?? findHeaderRow(ws, HEADERS) ?? ligneEnTetesLibre(ws) ?? 1;
       const rows = [];
       ws.eachRow((row, rowNumber) => {
         if (rowNumber <= headerRowNum || isExampleRow(row)) return;

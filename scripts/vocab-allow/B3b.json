@@ -5,5 +5,76 @@
     "apres": "\n  ROUND(\n    COALESCE((\n      SELECT SUM(pi.portion * ⟦·⟧)\n      FROM produit_ingredients pi\n      JOIN articles i ON pi.ingredient_id = i.id\n      WHERE pi.produit_id = ⟦·⟧.id\n    ), 0) +\n    COALESCE((\n      SELECT SUM(psp.portion * (\n        SELECT COALESCE(SUM(pi2.portion * ⟦·⟧), 0)\n        FROM produit_ingredients pi2\n        JOIN articles i2 ON pi2.ingredient_id = i2.id\n        WHERE pi2.produit_id = psp.sous_produit_id\n      ))\n      FROM produit_sous_produits psp\n      WHERE psp.produit_id = ⟦·⟧.id\n    ), 0)\n  , 3) AS total_cost",
     "type": "discriminant",
     "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/exportController.js",
+    "avant": null,
+    "apres": "FT",
+    "type": "deplacement",
+    "occurrences": 2,
+    "justification": "Préfixe « FT » des onglets de la fiche technique (exportExcel, onglet unique et onglets « — DP » / « — PMP ») : il était lu dans le littéral du NOM DE FICHIER (`FT-…xlsx`, inchangé, I2) ; il est désormais rendu à part par `.replace(/^FT/, () => voc.Court('fiche_technique'))` (sigle de la fiche technique, « FCR » en Céramique, « ET » dans le miroir ; liste de travail hors restauration : onglet « FT-… », forme FT). Rendu par défaut identique (« FT »), nom d'onglet inchangé en restauration (ongletSur sans effet sur un nom déjà assaini)."
+  },
+  {
+    "fichier": "src/controllers/produitsController.js",
+    "avant": "⟦?labo|activite⟧",
+    "apres": "⟦?labo|activite⟧",
+    "type": "discriminant",
+    "justification": "Valeurs de la colonne produits.origine ('labo' | 'activite') lues dans req.body / req.query (create, getUtilisablesPerimetre) : codes comparés et écrits en base, jamais affichés (spec lot 2b §6.1, I2)."
+  },
+  {
+    "fichier": "src/controllers/produitsController.js",
+    "avant": "⟦?labo|⟦?activite|⟦·⟧⟧⟧",
+    "apres": "⟦?labo|⟦?activite|⟦·⟧⟧⟧",
+    "type": "discriminant",
+    "justification": "Valeurs de la colonne produits.origine ('labo' | 'activite' | undefined) lues dans req.body (update) : codes, jamais affichés (spec lot 2b §6.1, I2)."
+  },
+  {
+    "fichier": "src/controllers/produitTransformeController.js",
+    "avant": "⟦?⟦·⟧|PT⟧",
+    "apres": "⟦?⟦·⟧|PT⟧",
+    "type": "discriminant",
+    "justification": "Repli `produitNom ?? 'PT'` (production d'un PT en activité) : seul emploi, buildAutoRef(produitNom, dateAppro), qui en tire la base de la RÉFÉRENCE automatique de lot (« PT-26 », comme le repli 'PT' de stockUtils.buildAutoRef) écrite en base ; code de référence, pas un texte (I2), et repli mort (le produit est vérifié juste avant)."
+  },
+  {
+    "fichier": "src/controllers/exportController.js",
+    "avant": "FT-⟦·⟧⟦?-⟦·⟧|⟧.xlsx",
+    "apres": "FT-⟦·⟧⟦?-⟦·⟧|⟧.xlsx",
+    "type": "discriminant",
+    "justification": "Nom du fichier téléchargé de la fiche technique (Content-Disposition) : les noms de fichiers ne changent pas (spec lot 2b §0 « Hors lot 2b », §6.3, I2). L'onglet, lui, rend le sigle par voc (entrée deplacement « FT »)."
+  },
+  {
+    "fichier": "src/controllers/exportController.js",
+    "avant": "Fiche Technique App",
+    "apres": "Fiche Technique App",
+    "type": "formule",
+    "justification": "Propriété `creator` du classeur (métadonnée, nom de l'application) : inchangée (spec lot 2b §6.3 « Propriété creator « Fiche Technique App » : inchangée (entrée formule) »)."
+  },
+  {
+    "fichier": "src/services/transfertService.js",
+    "avant": "labo",
+    "apres": "labo",
+    "type": "discriminant",
+    "justification": "Code de portée 'labo' passé à stockService.computeStock / computePmp (type d'unité de stock) : argument technique, jamais affiché (spec lot 2b §6.1 : les codes ne bougent pas, I2)."
+  },
+  {
+    "fichier": "src/services/transfertService.js",
+    "avant": "transfert",
+    "apres": "transfert",
+    "type": "discriminant",
+    "justification": "Code typeSource: 'transfert' passé à upsertFacture (factures_appro.type_source) : valeur d'état écrite en base, jamais affichée telle quelle (spec lot 2b §6.1, I2)."
+  },
+  {
+    "fichier": "src/routes/produits.js",
+    "avant": "Ingrédient invalide",
+    "apres": "Ingrédient invalide",
+    "type": "non-repliable",
+    "justification": "Message d'un body().custom(…) d'express-validator : il part dans errors[].msg, que le rendu au bord ne rend pas, et aucune balise n'est permise dans src/routes/*.js (I7, E2) ; champ non rendu, atteint seulement par l'écran orphelin ProductForm (spec lot 2b §6.5, §6.8)."
+  },
+  {
+    "fichier": "src/routes/produits.js",
+    "avant": "Portion invalide",
+    "apres": "Portion invalide",
+    "type": "non-repliable",
+    "justification": "withMessage(…) d'express-validator (POST /:id/ingredients et /:id/sous-produits) : il part dans errors[].msg, champ non rendu, et aucune balise n'est permise dans src/routes/*.js (I7, E2 ; spec lot 2b §6.8)."
   }
 ]

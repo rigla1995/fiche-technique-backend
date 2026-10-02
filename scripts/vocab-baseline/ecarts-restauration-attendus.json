@@ -4232,5 +4232,552 @@
   "avant": "⟨absent⟩",
   "apres": null,
   "raison": "§11.2.2"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/05.inventaireLabo.L1/status",
+  "avant": 500,
+  "apres": 200,
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/05.inventaireLabo.L1/disposition",
+  "avant": null,
+  "apres": "attachment; filename=\"Inventaire-Réserve Nord / Est.xlsx\"",
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/05.inventaireLabo.L1/corps",
+  "avant": {
+   "message": "Erreur serveur"
+  },
+  "apres": "⟨absent⟩",
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/05.inventaireLabo.L1/onglets",
+  "avant": "⟨absent⟩",
+  "apres": [
+   {
+    "nom": "Inventaire Réserve Nord Est",
+    "lignes": [
+     [
+      "Historique des inventaires — Labo"
+     ],
+     [
+      "Réserve Nord / Est"
+     ],
+     [
+      "Exporté le ⟨date⟩ · Période ⟨date⟩ → ⟨date⟩ · 1 ligne(s)"
+     ],
+     [
+      "Date",
+      "Ingrédient",
+      "Catégorie",
+      "Qté réelle",
+      "Unité",
+      "Labo",
+      "Note"
+     ],
+     [
+      "⟨date⟩",
+      "Riz basmati",
+      "Épicerie fine",
+      "69.5",
+      "kg",
+      "Réserve Nord / Est"
+     ],
+     [
+      "TOTAL",
+      "",
+      "",
+      "69.5"
+     ],
+     [
+      "Généré par LabFlow · labflow-tn.com"
+     ]
+    ]
+   }
+  ],
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/07.historiqueAproLabo.L1/status",
+  "avant": 500,
+  "apres": 200,
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/07.historiqueAproLabo.L1/disposition",
+  "avant": null,
+  "apres": "attachment; filename=\"Historique-Labo-Réserve Nord / Est.xlsx\"",
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/07.historiqueAproLabo.L1/corps",
+  "avant": {
+   "message": "Erreur génération Excel"
+  },
+  "apres": "⟨absent⟩",
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/07.historiqueAproLabo.L1/onglets",
+  "avant": "⟨absent⟩",
+  "apres": [
+   {
+    "nom": "Hist Appro Réserve Nord Est",
+    "lignes": [
+     [
+      "Historique des approvisionnements — Labo"
+     ],
+     [
+      "Réserve Nord / Est"
+     ],
+     [
+      "Exporté le ⟨date⟩ · Période ⟨date⟩ → ⟨date⟩ · 3 ligne(s)"
+     ],
+     [
+      "Date",
+      "Ingrédient",
+      "Catégorie",
+      "Type",
+      "Quantité",
+      "Unité",
+      "Prix U. HT",
+      "TVA %",
+      "Prix U. TTC",
+      "Coût HT",
+      "Coût TTC",
+      "Fournisseur",
+      "Réf. Facture",
+      "Créé par"
+     ],
+     [
+      "⟨date⟩",
+      "Riz basmati",
+      "Épicerie fine",
+      "Manuel",
+      "-30",
+      "kg",
+      "2.55",
+      "7",
+      "2.729",
+      "-76.5",
+      "-81.87",
+      "",
+      "⟨ref⟩",
+      "Riad Zitouna Essai"
+     ],
+     [
+      "⟨date⟩",
+      "Huile de tournesol",
+      "Épicerie fine",
+      "Manuel",
+      "20",
+      "L",
+      "6",
+      "19",
+      "7.14",
+      "120",
+      "142.79999999999998",
+      "Comptoir Bejaoui",
+      "⟨ref⟩",
+      "Riad Zitouna Essai"
+     ],
+     [
+      "⟨date⟩",
+      "Riz basmati",
+      "Épicerie fine",
+      "Manuel",
+      "100",
+      "kg",
+      "2.5",
+      "7",
+      "2.675",
+      "250",
+      "267.5",
+      "Comptoir Bejaoui",
+      "⟨ref⟩",
+      "Riad Zitouna Essai"
+     ],
+     [
+      "TOTAL",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "293.5",
+      "328.42999999999995"
+     ],
+     [
+      "Généré par LabFlow · labflow-tn.com"
+     ]
+    ]
+   }
+  ],
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/08.transfertsLabo.L1/status",
+  "avant": 500,
+  "apres": 200,
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/08.transfertsLabo.L1/disposition",
+  "avant": null,
+  "apres": "attachment; filename=\"Historique-Transferts-Réserve Nord / Est.xlsx\"",
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/08.transfertsLabo.L1/corps",
+  "avant": {
+   "message": "Erreur génération Excel"
+  },
+  "apres": "⟨absent⟩",
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/08.transfertsLabo.L1/onglets",
+  "avant": "⟨absent⟩",
+  "apres": [
+   {
+    "nom": "Hist Transferts Réserve Nord Es",
+    "lignes": [
+     [
+      "Historique des transferts — Labo"
+     ],
+     [
+      "Réserve Nord / Est"
+     ],
+     [
+      "Exporté le ⟨date⟩ · Période ⟨date⟩ → ⟨date⟩ · 1 ligne(s)"
+     ],
+     [
+      "Date",
+      "Destination",
+      "Ingrédient",
+      "Catégorie",
+      "Quantité",
+      "Unité",
+      "Prix U. HT",
+      "TVA %",
+      "Prix U. TTC",
+      "Coût HT",
+      "Coût TTC",
+      "Créé par"
+     ],
+     [
+      "⟨date⟩",
+      "Bloc chaud (labo)",
+      "Riz basmati",
+      "Épicerie fine",
+      "30",
+      "kg",
+      "2.55",
+      "7",
+      "2.729",
+      "76.5",
+      "81.87",
+      "Riad Zitouna Essai"
+     ],
+     [
+      "TOTAL",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "76.5",
+      "81.87"
+     ],
+     [
+      "Généré par LabFlow · labflow-tn.com"
+     ]
+    ]
+   }
+  ],
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/05.inventaireLabo.LC/status",
+  "avant": 500,
+  "apres": 200,
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/05.inventaireLabo.LC/disposition",
+  "avant": null,
+  "apres": "attachment; filename=\"Inventaire-Four d-Ali'.xlsx\"",
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/05.inventaireLabo.LC/corps",
+  "avant": {
+   "message": "Erreur serveur"
+  },
+  "apres": "⟨absent⟩",
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/05.inventaireLabo.LC/onglets",
+  "avant": "⟨absent⟩",
+  "apres": [
+   {
+    "nom": "Inventaire Four d’Ali",
+    "lignes": [
+     [
+      "Historique des inventaires — Labo"
+     ],
+     [
+      "Four d’Ali'"
+     ],
+     [
+      "Exporté le ⟨date⟩ · Période ⟨date⟩ → ⟨date⟩ · 0 ligne(s)"
+     ],
+     [
+      "Date",
+      "Ingrédient",
+      "Catégorie",
+      "Qté réelle",
+      "Unité",
+      "Labo",
+      "Note"
+     ],
+     [
+      "TOTAL",
+      "",
+      "",
+      "0"
+     ],
+     [
+      "Généré par LabFlow · labflow-tn.com"
+     ]
+    ]
+   }
+  ],
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/07.historiqueAproLabo.LC/status",
+  "avant": 500,
+  "apres": 200,
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/07.historiqueAproLabo.LC/disposition",
+  "avant": null,
+  "apres": "attachment; filename=\"Historique-Labo-Four d-Ali'.xlsx\"",
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/07.historiqueAproLabo.LC/corps",
+  "avant": {
+   "message": "Erreur génération Excel"
+  },
+  "apres": "⟨absent⟩",
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/07.historiqueAproLabo.LC/onglets",
+  "avant": "⟨absent⟩",
+  "apres": [
+   {
+    "nom": "Hist Appro Four d’Ali",
+    "lignes": [
+     [
+      "Historique des approvisionnements — Labo"
+     ],
+     [
+      "Four d’Ali'"
+     ],
+     [
+      "Exporté le ⟨date⟩ · Période ⟨date⟩ → ⟨date⟩ · 3 ligne(s)"
+     ],
+     [
+      "Date",
+      "Ingrédient",
+      "Catégorie",
+      "Type",
+      "Quantité",
+      "Unité",
+      "Prix U. HT",
+      "TVA %",
+      "Prix U. TTC",
+      "Coût HT",
+      "Coût TTC",
+      "Fournisseur",
+      "Réf. Facture",
+      "Créé par"
+     ],
+     [
+      "⟨date⟩",
+      "Semoule fine",
+      "Semoules",
+      "PT",
+      "-4.8",
+      "kg",
+      "1.8",
+      "7",
+      "1.926",
+      "-8.64",
+      "-9.2448",
+      "AUTO",
+      "CR-26",
+      "Fournil Carthage Essai"
+     ],
+     [
+      "⟨date⟩",
+      "Couscous royal",
+      "Produits Composés Valorisés",
+      "Prod. Transformé",
+      "12",
+      "unité",
+      "0.77",
+      "0",
+      "0.77",
+      "9.24",
+      "9.24",
+      "AUTO",
+      "CR-26"
+     ],
+     [
+      "⟨date⟩",
+      "Semoule fine",
+      "Semoules",
+      "Manuel",
+      "50",
+      "kg",
+      "1.8",
+      "7",
+      "1.926",
+      "90",
+      "96.3",
+      "Minoterie du Kef",
+      "⟨ref⟩",
+      "Fournil Carthage Essai"
+     ],
+     [
+      "TOTAL",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "90.6",
+      "96.2952"
+     ],
+     [
+      "Généré par LabFlow · labflow-tn.com"
+     ]
+    ]
+   }
+  ],
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/08.transfertsLabo.LC/status",
+  "avant": 500,
+  "apres": 200,
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/08.transfertsLabo.LC/disposition",
+  "avant": null,
+  "apres": "attachment; filename=\"Historique-Transferts-Four d-Ali'.xlsx\"",
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/08.transfertsLabo.LC/corps",
+  "avant": {
+   "message": "Erreur génération Excel"
+  },
+  "apres": "⟨absent⟩",
+  "raison": "§11.1.7"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/08.transfertsLabo.LC/onglets",
+  "avant": "⟨absent⟩",
+  "apres": [
+   {
+    "nom": "Hist Transferts Four d’Ali",
+    "lignes": [
+     [
+      "Historique des transferts — Labo"
+     ],
+     [
+      "Four d’Ali'"
+     ],
+     [
+      "Exporté le ⟨date⟩ · Période ⟨date⟩ → ⟨date⟩ · 0 ligne(s)"
+     ],
+     [
+      "Date",
+      "Destination",
+      "Ingrédient",
+      "Catégorie",
+      "Quantité",
+      "Unité",
+      "Prix U. HT",
+      "TVA %",
+      "Prix U. TTC",
+      "Coût HT",
+      "Coût TTC",
+      "Créé par"
+     ],
+     [
+      "TOTAL",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "0",
+      "0"
+     ],
+     [
+      "Généré par LabFlow · labflow-tn.com"
+     ]
+    ]
+   }
+  ],
+  "raison": "§11.1.7"
  }
 ]

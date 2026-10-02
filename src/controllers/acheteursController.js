@@ -2,6 +2,8 @@ const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const multer = require('multer');
 const { sendInviteEmail, generateInviteToken } = require('../services/emailService');
+const { vocabDefaut } = require('../utils/vocab');
+const { ongletSur } = require('../utils/excelNoms');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -92,7 +94,7 @@ const list = async (req, res) => {
 const create = async (req, res) => {
   const clientId = clientIdOf(req);
   const items = Array.isArray(req.body.acheteurs) ? req.body.acheteurs : [req.body];
-  if (items.length === 0) return res.status(400).json({ message: 'Aucun acheteur à créer' });
+  if (items.length === 0) return res.status(400).json({ message: '[[Aucun:acheteur]] à créer' });
 
   // Validation à plat avant transaction
   const prepared = [];
@@ -132,8 +134,8 @@ const create = async (req, res) => {
       await db.query('ROLLBACK');
       return res.status(403).json({
         message: quota === 0
-          ? "Quota d'acheteurs non configuré — demandez à l'administrateur d'augmenter votre capacité"
-          : `Quota d'acheteurs atteint (${existants}/${quota}) — demandez une augmentation de capacité`,
+          ? "Quota [[de:acheteur:pl]] non configuré — demandez à l'administrateur d'augmenter votre capacité"
+          : `Quota [[de:acheteur:pl]] atteint (${existants}/${quota}) — demandez une augmentation de capacité`,
         code: 'QUOTA_ACHETEURS', quota, utilises: existants,
       });
     }
@@ -186,7 +188,7 @@ const update = async (req, res) => {
   const { id } = req.params;
   try {
     const cur = await pool.query('SELECT * FROM acheteurs WHERE id = $1 AND client_id = $2', [id, clientId]);
-    if (cur.rows.length === 0) return res.status(404).json({ message: 'Acheteur introuvable' });
+    if (cur.rows.length === 0) return res.status(404).json({ message: '[[Nom:acheteur]] introuvable' });
     const a = cur.rows[0];
 
     const nom = req.body.nom !== undefined ? String(req.body.nom || '').trim() : a.nom;
@@ -195,7 +197,7 @@ const update = async (req, res) => {
     if (email && !emailValide(email)) return res.status(400).json({ message: 'Email invalide' });
     // L'email d'un acheteur AVEC compte est l'identifiant de connexion — modification bloquée en v1.
     if (a.user_id && (email || '') !== (a.email || '')) {
-      return res.status(409).json({ message: "Cet acheteur a un compte : l'email de connexion ne peut pas être modifié ici" });
+      return res.status(409).json({ message: "[[Ce:acheteur]] a un compte : l'email de connexion ne peut pas être modifié ici" });
     }
     const actif = req.body.actif !== undefined ? req.body.actif === true : a.actif;
 
@@ -237,9 +239,11 @@ const remove = async (req, res) => {
     const cur = await db.query('SELECT user_id FROM acheteurs WHERE id = $1 AND client_id = $2 FOR NO KEY UPDATE', [id, clientId]);
     if (cur.rows.length === 0) {
       await db.query('ROLLBACK');
-      return res.status(404).json({ message: 'Acheteur introuvable' });
+      return res.status(404).json({ message: '[[Nom:acheteur]] introuvable' });
     }
-    const motif = 'Acheteur supprimé du carnet';
+    // Motif écrit en base : rendu à l'écriture, vocabulaire du compte (spec lot 2b §6.7).
+    const voc = req.voc ?? vocabDefaut;
+    const motif = `${voc.Nom('acheteur')} ${voc.acc('acheteur', 'supprimé', 'supprimée')} du carnet`;
     const attente = await db.query(
       `UPDATE commandes_acheteur
        SET statut = 'annulee', motif_annulation = $3, traite_le = NOW(), traite_par = $4
@@ -275,7 +279,7 @@ const remove = async (req, res) => {
     }
     await db.query('COMMIT');
     res.json({
-      message: 'Acheteur supprimé — ses commandes et factures restent dans l\'historique',
+      message: "[[Nom:acheteur]] [[acc:acheteur:supprimé:supprimée]] — ses commandes et factures restent dans l'historique",
       commandesAnnulees: attente.rows.length,
     });
   } catch (err) {
@@ -283,12 +287,12 @@ const remove = async (req, res) => {
     // Filet de sécurité si une nouvelle référence apparaît (futur module)
     if (err.code === '23503') {
       return res.status(409).json({
-        message: 'Impossible de supprimer : cet acheteur est référencé par des données existantes. Désactivez-le plutôt.',
+        message: 'Impossible de supprimer : [[ce:acheteur]] est [[acc:acheteur:référencé:référencée]] par des données existantes. Désactivez-[[acc:acheteur:le:la]] plutôt.',
         code: 'ACHETEUR_REFERENCE',
       });
     }
     if (err.code === '40P01') {
-      return res.status(409).json({ message: 'Opération concurrente sur cet acheteur — réessayez.' });
+      return res.status(409).json({ message: 'Opération concurrente sur [[ce:acheteur]] — réessayez.' });
     }
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -313,16 +317,16 @@ const inviter = async (req, res) => {
     );
     if (cur.rows.length === 0) {
       await db.query('ROLLBACK');
-      return res.status(404).json({ message: 'Acheteur introuvable' });
+      return res.status(404).json({ message: '[[Nom:acheteur]] introuvable' });
     }
     const a = cur.rows[0];
     if (!a.email) {
       await db.query('ROLLBACK');
-      return res.status(400).json({ message: 'Renseignez un email sur la fiche avant d’inviter cet acheteur' });
+      return res.status(400).json({ message: 'Renseignez un email sur la fiche avant d’inviter [[ce:acheteur]]' });
     }
     if (a.user_id && a.user_activated_at) {
       await db.query('ROLLBACK');
-      return res.status(409).json({ message: 'Le compte de cet acheteur est déjà activé' });
+      return res.status(409).json({ message: 'Le compte de [[ce:acheteur]] est déjà activé' });
     }
 
     let invite;
@@ -359,11 +363,12 @@ const inviter = async (req, res) => {
 const getTemplate = async (req, res) => {
   try {
     const { brandTemplate } = require('../services/excelBrandService');
+    const voc = req.voc ?? vocabDefaut;
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Acheteurs');
+    const ws = wb.addWorksheet(ongletSur(wb, voc.Court('acheteur', true)));
     brandTemplate(wb, ws, {
-      titre: "Modèle d'import — Carnet d'acheteurs",
-      sousTitre: 'Ajout dynamique des acheteurs B2B : une ligne = un acheteur',
+      titre: `Modèle d'import — Carnet ${voc.de('acheteur', true)}`,
+      sousTitre: `Ajout dynamique ${voc.du('acheteur', true)} B2B : une ligne = ${voc.un('acheteur')}`,
       meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Seul le nom est obligatoire.",
       headers: HEADERS,
       widths: HEADERS.map((h) => (h === 'Adresse' ? 34 : 22)),
@@ -441,8 +446,8 @@ const importAcheteurs = [
           await db.query('ROLLBACK');
           return res.status(403).json({
             message: quota === 0
-              ? "Quota d'acheteurs non configuré — demandez à l'administrateur d'augmenter votre capacité"
-              : `Ce fichier dépasse votre quota d'acheteurs : ${existants} existants + ${valides.length} à importer > ${quota} autorisés`,
+              ? "Quota [[de:acheteur:pl]] non configuré — demandez à l'administrateur d'augmenter votre capacité"
+              : `Ce fichier dépasse votre quota [[de:acheteur:pl]] : ${existants} [[acc:acheteur:existants:existantes]] + ${valides.length} à importer > ${quota} [[acc:acheteur:autorisés:autorisées]]`,
             code: 'QUOTA_ACHETEURS', quota, utilises: existants,
           });
         }

@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { ptCategorie, ptCategorieSql } = require('../utils/stockUtils');
 const { getSeuilCoutMatiereForClient } = require('../services/domaineProfilService');
+const { vocabDefaut } = require('../utils/vocab');
 
 // Bornes du mois en cours par défaut, sinon les valeurs fournies (YYYY-MM-DD).
 const resolvePeriode = (from, to) => {
@@ -45,6 +46,7 @@ const num = (v) => (v == null ? 0 : parseFloat(v));
 
 const getClientDashboard = async (req, res) => {
   try {
+    const voc = req.voc ?? vocabDefaut;
     const { from, to } = resolvePeriode(req.query.from, req.query.to);
     const prev = previousPeriode(from, to);
     const actIds = await resolveScopeActivites(req);
@@ -156,14 +158,14 @@ const getClientDashboard = async (req, res) => {
 
     // ── CA par canal (direct vs prestataires) ──
     const canalRes = await pool.query(
-      `SELECT CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, 'Prestataire') END AS canal,
+      `SELECT CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, $4) END AS canal,
               COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) AS total
        FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
        LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
        WHERE v.activite_id = ANY($1::int[]) AND v.statut = 'confirmee'
          AND v.date_vente >= $2 AND v.date_vente <= $3
        GROUP BY 1 ORDER BY total DESC`,
-      [actIds, from, to]
+      [actIds, from, to, voc.Nom('prestataire')]
     );
 
     // ── CA par catégorie de produit ──
@@ -239,6 +241,7 @@ const getClientDashboard = async (req, res) => {
 
 const getLaboDashboard = async (req, res) => {
   try {
+    const voc = req.voc ?? vocabDefaut;
     const laboId = req.query.laboId ? Number(req.query.laboId) : null;
     if (!laboId) return res.status(400).json({ message: 'laboId requis' });
     // Vérifier la propriété / le périmètre.
@@ -247,9 +250,9 @@ const getLaboDashboard = async (req, res) => {
       `SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE l.id = $1 AND pe.client_id = $2`,
       [laboId, clientId]
     );
-    if (own.rows.length === 0) return res.status(404).json({ message: 'Labo introuvable' });
+    if (own.rows.length === 0) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
     if (req.user.role === 'gerant' && !(req.user.gerantLaboIds || []).includes(laboId)) {
-      return res.status(403).json({ message: 'Accès non autorisé à ce labo' });
+      return res.status(403).json({ message: 'Accès non autorisé à [[ce:labo]]' });
     }
     const { from, to } = resolvePeriode(req.query.from, req.query.to);
 
@@ -316,14 +319,14 @@ const getLaboDashboard = async (req, res) => {
     );
     // Transferts par activité destinataire
     const parActiviteRes = await pool.query(
-      `SELECT CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS activite,
+      `SELECT CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || $4 ELSE a.nom END AS activite,
               COALESCE(SUM(lt.quantite * COALESCE(lt.prix_unitaire_tva, lt.prix_unitaire, 0)),0) AS valeur
        FROM labo_transfers lt
        LEFT JOIN activites a ON a.id = lt.activite_id
        LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
        WHERE lt.labo_id = $1 AND lt.date_transfert >= $2 AND lt.date_transfert <= $3
        GROUP BY 1 ORDER BY valeur DESC`,
-      [laboId, from, to]
+      [laboId, from, to, ` (${voc.court('labo')})`]
     );
 
     res.json({
@@ -349,6 +352,7 @@ const getLaboDashboard = async (req, res) => {
 
 const getRapportVentes = async (req, res) => {
   try {
+    const voc = req.voc ?? vocabDefaut;
     const { from, to } = resolvePeriode(req.query.from, req.query.to);
     const actIds = await resolveScopeActivites(req);
     if (actIds.length === 0) return res.json({ periode: { from, to }, vide: true });
@@ -390,13 +394,14 @@ const getRapportVentes = async (req, res) => {
        GROUP BY 1,2,3,4 ORDER BY ca DESC`,
       params
     );
+    const pCanal = [...params, voc.Nom('prestataire')];
     const canalRes = await pool.query(
-      `SELECT CASE WHEN v.type_vente='directe' THEN 'Direct' ELSE COALESCE(pl.nom,'Prestataire') END AS canal,
+      `SELECT CASE WHEN v.type_vente='directe' THEN 'Direct' ELSE COALESCE(pl.nom,$${pCanal.length}) END AS canal,
               COALESCE(SUM(vl.quantite * vl.prix_unitaire),0) AS total
        FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
        LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
        WHERE ${where} GROUP BY 1 ORDER BY total DESC`,
-      params
+      pCanal
     );
 
     res.json({

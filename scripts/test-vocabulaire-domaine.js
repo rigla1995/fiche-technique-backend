@@ -19,6 +19,8 @@
  *      SANS composants ni règles — dans /auth/login, /auth/me ET GET /api/domaines ;
  *   5. compte restauration créé dans le même test : lexique null (vocabulaire par défaut, lot 2b
  *      §5.7), login = me, GET /api/domaines et GET /api/entreprise aussi ; admin : domaine null ;
+ *      messages rendus au bord (lot 2b §5.1, §9, §12.4) : texte exact pour le compte restauration,
+ *      rendu par le lexique du compte (sans la forme par défaut du terme) pour le compte Hôtellerie ;
  *   6. validation du lexique (PUT /api/domaines/:id sur un domaine de test) : 400 + code sur
  *      entrée incomplète, caractère interdit (dont { } $, tabulation, séparateurs de ligne), texte
  *      trop long, clé réservée, clé dérivée partielle, champ non surchargeable ; rien n'est écrit ;
@@ -40,7 +42,7 @@ const { execFileSync } = require('child_process');
 const pool = require('../src/config/database');
 const bcrypt = require('bcryptjs');
 const { LEXIQUE_DEFAUT, LEXIQUE_CLES } = require('../src/config/lexiqueDefaut');
-const { resoudreLexique, vocabDefaut, vocabDuLexique } = require('../src/utils/vocab');
+const { resoudreLexique, vocabDefaut, vocabDuLexique, rendre } = require('../src/utils/vocab');
 
 const BASE = 'http://localhost:3000';
 const RACINE = path.resolve(__dirname, '..');
@@ -496,6 +498,33 @@ const CIBLES_191 = [
       status === 200 && !!body?.domaine && body.domaine.lexique === null && egal(body.domaine, meResto?.domaine), `${status} ${JSON.stringify(body?.domaine?.lexique)?.slice(0, 40)}`);
     ({ status, body } = await A('/auth/me'));
     check('/auth/me admin : domaine null', status === 200 && body?.domaine === null, JSON.stringify(body?.domaine));
+
+    // ── 5 bis. Messages rendus au bord (lot 2b §5.1, §9, §12.4) ────────────────────────────────
+    // Restauration : texte exact d'avant le lot. Hôtellerie : la balise du serveur rendue par le lexique que le
+    // compte reçoit (/auth/me), et la forme par défaut du terme absente quand le domaine la renomme.
+    const vH = vocabDuLexique(meHotel?.domaine?.lexique);
+    const MESSAGES = [
+      // [route, appel, statut, balise écrite par le serveur, texte restauration, clé du terme]
+      ['GET /api/labo/999999', (J) => J('/api/labo/999999'), 404, '[[Nom:labo]] introuvable', 'Labo introuvable', 'labo'],
+      ['PUT /api/entreprise/activites/999999', (J) => put(J, '/api/entreprise/activites/999999', { nom: 'X' }), 404, '[[Nom:activite]] introuvable', 'Activité introuvable', 'activite'],
+      ['GET /api/articles/999999', (J) => J('/api/articles/999999'), 404, '[[Nom:article]] introuvable', 'Article introuvable', 'article'],
+    ];
+    for (const [route, appel, statut, balise, texteResto, k] of MESSAGES) {
+      const r = await appel(R);
+      check(`message restauration ${route} → ${statut} « ${texteResto} » (au caractère près)`, r.status === statut && r.body?.message === texteResto, `${r.status} ${r.body?.message}`);
+      const h = await appel(H);
+      const attendu = rendre(vH, balise);
+      const sansDefaut = vH.Nom(k) === vocabDefaut.Nom(k) || !String(h.body?.message).includes(vocabDefaut.Nom(k));
+      check(`message Hôtellerie ${route} → ${statut} « ${attendu} », sans la forme par défaut « ${vocabDefaut.Nom(k)} »`,
+        h.status === statut && h.body?.message === attendu && sansDefaut, `${h.status} ${h.body?.message}`);
+    }
+    {
+      // Module acheteurs actif sur le compte Hôtellerie seulement.
+      const h = await del(H, '/api/acheteurs/999999');
+      const attendu = rendre(vH, '[[Nom:acheteur]] introuvable');
+      check(`message Hôtellerie DELETE /api/acheteurs/999999 → 404 « ${attendu} » (≠ « Acheteur introuvable » quand le domaine renomme acheteur)`,
+        h.status === 404 && h.body?.message === attendu && (vH.Nom('acheteur') === 'Acheteur' || attendu !== 'Acheteur introuvable'), `${h.status} ${h.body?.message}`);
+    }
 
     // ── 6. Validation du lexique (PUT /api/domaines/:id) sur un domaine de test ─────────────────
     ({ status, body } = await post(A, '/api/domaines', { nom: DOM_NOM, slug: DOM_SLUG, description: 'Domaine de test du vocabulaire' }));

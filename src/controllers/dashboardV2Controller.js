@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const { ptCategorie, ptCategorieSql } = require('../utils/stockUtils');
 // Lot 1b §5 — règles du domaine du compte : seuil coût matière (%), types de perte.
 const { getSeuilCoutMatiereForClient, getTypesPerteForClient } = require('../services/domaineProfilService');
+const { vocabDefaut } = require('../utils/vocab');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard v2 — endpoint unique multi-filtres à onglets.
@@ -97,7 +98,7 @@ const L_COUT = 'vl.quantite * COALESCE(vl.cout_unitaire, 0)';
 const L_COMMISSION = `CASE WHEN v.type_vente = 'prestataire' THEN vl.quantite * vl.prix_unitaire * COALESCE(ap.taux_commission, 0) / 100 ELSE 0 END`;
 const L_TYPE = `CASE WHEN vl.article_type = 'ingredient' OR p.origine = 'labo' THEN 'valorise' WHEN COALESCE(p.is_supplement, FALSE) THEN 'supplement' ELSE 'produit' END`;
 const L_NOM = `COALESCE(p.nom, art.nom, '—')`;
-const L_CANAL = `CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, 'Prestataire') END`;
+const lCanal = (n) => `CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, $${n}) END`;
 // Catégorie de produit : celle du produit, sinon celle du catalogue vendable
 // (couvre les valorisés vendus en direct). Sous-requête scalaire = pas de fanout.
 const L_CAT_ID = `COALESCE(p.categorie_produit_id, (
@@ -343,6 +344,8 @@ const tabVentes = async (req, ctx, from, to) => {
   if (ctx.actIds.length === 0) return { vide: true };
   const kpis = await margesKpis(req, ctx, from, to);
   const { where, params } = buildVenteFilters(req, ctx.actIds, from, to);
+  const voc = req.voc ?? vocabDefaut;
+  const pCanal = [...params, voc.Nom('prestataire')];
   const sums = `SUM(${L_CA}) AS ca, SUM(${L_COUT}) AS cout, SUM(${L_COMMISSION}) AS commission, SUM(vl.quantite) AS qte`;
   const mapRow = (r) => {
     const ca = num(r.ca); const cout = num(r.cout); const com = num(r.commission);
@@ -353,21 +356,19 @@ const tabVentes = async (req, ctx, from, to) => {
     };
   };
   const [canalRes, catRes, typeRes, prodRes] = await Promise.all([
-    pool.query(`SELECT ${L_CANAL} AS canal, ${sums} ${VENTE_FROM} WHERE ${where} GROUP BY 1 ORDER BY 2 DESC`, params),
+    pool.query(`SELECT ${lCanal(pCanal.length)} AS canal, ${sums} ${VENTE_FROM} WHERE ${where} GROUP BY 1 ORDER BY 2 DESC`, pCanal),
     pool.query(
       // Groupé par ID de catégorie (pas par nom) : deux catégories homonymes de
       // types différents (« Burger » vendable vs valorisé) restent distinctes,
       // et le libellé porte le type pour les différencier à l'écran.
-      `SELECT COALESCE(
-                CASE cpn.type_produit WHEN 'vendable' THEN 'P. Vendable / ' WHEN 'supplement' THEN 'Supplément / ' WHEN 'valorise' THEN 'P. Valorisé / ' ELSE '' END || cpn.nom,
-                'Sans catégorie') AS categorie,
+      `SELECT cpn.nom AS categorie_nom, cpn.type_produit AS categorie_type,
               SUM(t.ca) AS ca, SUM(t.cout) AS cout, SUM(t.commission) AS commission, SUM(t.qte) AS qte
        FROM (
          SELECT ${L_CAT_ID} AS cat_id, ${L_CA} AS ca, ${L_COUT} AS cout, ${L_COMMISSION} AS commission, vl.quantite AS qte
          ${VENTE_FROM} WHERE ${where}
        ) t
        LEFT JOIN categories_produit cpn ON cpn.id = t.cat_id
-       GROUP BY t.cat_id, cpn.nom, cpn.type_produit ORDER BY 2 DESC`,
+       GROUP BY t.cat_id, cpn.nom, cpn.type_produit ORDER BY SUM(t.ca) DESC`,
       params
     ),
     pool.query(`SELECT ${L_TYPE} AS type, ${sums} ${VENTE_FROM} WHERE ${where} GROUP BY 1 ORDER BY 2 DESC`, params),
@@ -376,6 +377,16 @@ const tabVentes = async (req, ctx, from, to) => {
       params
     ),
   ]);
+  const PREFIXE_TYPE = {
+    vendable: `${voc.Nom('produit_vendable_abr')} / `,
+    supplement: `${voc.Nom('supplement')} / `,
+    valorise: `${voc.Nom('produit_valorise_abr')} / `,
+  };
+  const libelleCategorie = (r) => {
+    if (r.categorie_nom == null) return 'Sans catégorie';
+    const prefixe = Object.prototype.hasOwnProperty.call(PREFIXE_TYPE, r.categorie_type) ? PREFIXE_TYPE[r.categorie_type] : '';
+    return prefixe + r.categorie_nom;
+  };
   const totalCa = num(kpis.ca) || 1;
   const produits = prodRes.rows.map((r) => ({
     nom: r.nom, type: r.type, ...mapRow(r),
@@ -389,7 +400,7 @@ const tabVentes = async (req, ctx, from, to) => {
       charges: kpis.charges, marge_nette: kpis.marge_nette,
     },
     par_canal: canalRes.rows.map((r) => ({ canal: r.canal, ...mapRow(r) })),
-    par_categorie: catRes.rows.map((r) => ({ categorie: r.categorie, ...mapRow(r) })),
+    par_categorie: catRes.rows.map((r) => ({ categorie: libelleCategorie(r), ...mapRow(r) })),
     par_type: typeRes.rows.map((r) => ({ type: r.type, ...mapRow(r) })),
     top_marge: parMarge.slice(0, 8),
     flop_marge: parMarge.filter((p) => p.ca > 0).slice(-8).reverse(),
@@ -513,6 +524,8 @@ const tabAchatsStock = async (req, ctx, from, to) => {
 
 const tabPertes = async (req, ctx, from, to) => {
   const grain = resolveGrain(from, to);
+  const voc = req.voc ?? vocabDefaut;
+  const TYPE_SITE = { activite: voc.Court('activite'), labo: voc.Court('labo') };
   const typesPerte = parseStrList(req.query.typesPerte).filter((t) => ctx.typesPerte.includes(t));
 
   const queries = [];
@@ -522,7 +535,7 @@ const tabPertes = async (req, ctx, from, to) => {
     buildArticleFilters(req, params, cond);
     if (typesPerte.length === 1) { params.push(typesPerte[0]); cond.push(`p.type_perte = $${params.length}`); }
     queries.push(pool.query(
-      `SELECT a.nom AS site, 'Activité' AS site_type, p.type_perte,
+      `SELECT a.nom AS site, 'activite' AS site_type, p.type_perte,
               CASE WHEN p.produit_id IS NOT NULL THEN ${ptCategorieSql('pr')} ELSE COALESCE(c.nom, 'Sans catégorie') END AS categorie,
               COALESCE(i.nom, pr.nom, '—') AS article,
               to_char(date_trunc('${grain}', p.date_perte), 'YYYY-MM-DD') AS bucket,
@@ -543,7 +556,7 @@ const tabPertes = async (req, ctx, from, to) => {
     buildArticleFilters(req, params, cond);
     if (typesPerte.length === 1) { params.push(typesPerte[0]); cond.push(`p.type_perte = $${params.length}`); }
     queries.push(pool.query(
-      `SELECT l.nom AS site, 'Labo' AS site_type, p.type_perte,
+      `SELECT l.nom AS site, 'labo' AS site_type, p.type_perte,
               CASE WHEN p.produit_id IS NOT NULL THEN ${ptCategorieSql('pr')} ELSE COALESCE(c.nom, 'Sans catégorie') END AS categorie,
               COALESCE(i.nom, pr.nom, '—') AS article,
               to_char(date_trunc('${grain}', p.date_perte), 'YYYY-MM-DD') AS bucket,
@@ -568,7 +581,7 @@ const tabPertes = async (req, ctx, from, to) => {
     total += v;
     parType[r.type_perte] = (parType[r.type_perte] || 0) + v;
     parCat[r.categorie] = (parCat[r.categorie] || 0) + v;
-    parSite[`${r.site_type} · ${r.site}`] = (parSite[`${r.site_type} · ${r.site}`] || 0) + v;
+    parSite[`${r.site_type}|${r.site}`] = (parSite[`${r.site_type}|${r.site}`] || 0) + v;
     parArticle[r.article] = (parArticle[r.article] || 0) + v;
     parBucket[r.bucket] = (parBucket[r.bucket] || 0) + v;
   }
@@ -584,7 +597,10 @@ const tabPertes = async (req, ctx, from, to) => {
     grain,
     par_type: toArr(parType, 'type'),
     par_categorie: toArr(parCat, 'categorie'),
-    par_site: toArr(parSite, 'site'),
+    par_site: toArr(parSite, 'site').map((e) => {
+      const sep = e.site.indexOf('|');
+      return { ...e, site: `${TYPE_SITE[e.site.slice(0, sep)]} · ${e.site.slice(sep + 1)}` };
+    }),
     top_articles: toArr(parArticle, 'article').slice(0, 10),
     evolution: Object.entries(parBucket).map(([bucket, v]) => ({ bucket, valeur: r3(v) })).sort((a, b) => (a.bucket < b.bucket ? -1 : 1)),
   };
@@ -593,6 +609,7 @@ const tabPertes = async (req, ctx, from, to) => {
 const tabLabo = async (req, ctx, from, to) => {
   if (ctx.laboIds.length === 0) return { vide: true };
   const laboIds = ctx.laboIds;
+  const voc = req.voc ?? vocabDefaut;
 
   const [stockArt, stockPt, approsRes, prodRes, prodTopRes, pertesRes, transRes, topTransRes, parActRes, ventesRes] = await Promise.all([
     pool.query(
@@ -663,14 +680,14 @@ const tabLabo = async (req, ctx, from, to) => {
       [laboIds, from, to]
     ),
     pool.query(
-      `SELECT CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS activite,
+      `SELECT CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || $4 ELSE a.nom END AS activite,
               COALESCE(SUM(lt.quantite * COALESCE(lt.prix_unitaire_tva, lt.prix_unitaire, 0)),0) AS valeur
        FROM labo_transfers lt
        LEFT JOIN activites a ON a.id = lt.activite_id
        LEFT JOIN labos ld ON ld.id = lt.labo_dest_id
        WHERE lt.labo_id = ANY($1::int[]) AND lt.date_transfert >= $2 AND lt.date_transfert <= $3
        GROUP BY 1 ORDER BY valeur DESC`,
-      [laboIds, from, to]
+      [laboIds, from, to, ` (${voc.court('labo')})`]
     ),
     pool.query(
       `SELECT COALESCE(SUM(vl.quantite * vl.prix_unitaire),0) AS ca, COUNT(DISTINCT v.id) AS nb

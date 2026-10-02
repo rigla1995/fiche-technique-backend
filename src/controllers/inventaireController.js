@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { ptCategorie, ptCategorieSql } = require('../utils/stockUtils');
-const { nomFichierSur } = require('../utils/excelNoms');
+const { nomFichierSur, ongletSur } = require('../utils/excelNoms');
+const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const ExcelJS = require('exceljs');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
@@ -33,7 +34,7 @@ const getLaboInventaireStock = async (req, res) => {
   const { laboId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const ingRes = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
@@ -268,7 +269,7 @@ const saveLaboInventaire = async (req, res) => {
     return res.status(400).json({ message: 'dateInventaire et entries[] requis' });
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const ingEntries = entries.filter((e) => e.ingredientId >= 0);
     const ptEntries  = entries.filter((e) => e.ingredientId < 0);
@@ -336,7 +337,8 @@ const saveLaboInventaire = async (req, res) => {
       );
       if (clientRes.rows.length > 0) {
         const { client_id, labo_nom } = clientRes.rows[0];
-        const payload = { eventType: 'new_inventaire', type: 'labo', notesAdmin: `Labo : ${labo_nom} — ${dateInventaire}` };
+        const voc = req.voc ?? vocabDefaut;
+        const payload = { eventType: 'new_inventaire', type: 'labo', notesAdmin: `${voc.Court('labo')} : ${labo_nom} — ${dateInventaire}` };
         pushTo(client_id, 'new_inventaire', payload);
         saveNotification(client_id, payload).catch(console.error);
       }
@@ -368,7 +370,7 @@ const getActiviteInventaireStock = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Activité introuvable' });
+      return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const ingRes = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
@@ -592,7 +594,7 @@ const saveActiviteInventaire = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Activité introuvable' });
+      return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const ingEntries = entries.filter((e) => e.ingredientId >= 0);
     const ptEntries  = entries.filter((e) => e.ingredientId < 0);
@@ -660,7 +662,8 @@ const saveActiviteInventaire = async (req, res) => {
       );
       if (clientRes.rows.length > 0) {
         const { client_id, activite_nom } = clientRes.rows[0];
-        const payload = { eventType: 'new_inventaire', type: 'activite', notesAdmin: `Activité : ${activite_nom} — ${dateInventaire}` };
+        const voc = req.voc ?? vocabDefaut;
+        const payload = { eventType: 'new_inventaire', type: 'activite', notesAdmin: `${voc.Court('activite')} : ${activite_nom} — ${dateInventaire}` };
         pushTo(client_id, 'new_inventaire', payload);
         saveNotification(client_id, payload).catch(console.error);
       }
@@ -687,7 +690,7 @@ const getLaboInventaireHistorique = async (req, res) => {
   const { startDate, endDate, ingredientId } = req.query;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const ingIdNumL = ingredientId ? Number(ingredientId) : null;
     const conditions = ['inv.labo_id = $1'];
@@ -752,7 +755,7 @@ const getActiviteInventaireHistorique = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Activité introuvable' });
+      return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const ingIdNum = ingredientId ? Number(ingredientId) : null;
     const conditions = ['inv.activite_id = $1'];
@@ -828,7 +831,7 @@ const updateInventaireEntry = async (req, res) => {
       [inventaireId, clientId]
     );
     if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Inventaire introuvable' });
+      return res.status(404).json({ message: '[[Nom:inventaire]] introuvable' });
     if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
       return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
 
@@ -859,10 +862,11 @@ const exportLaboInventaireExcel = async (req, res) => {
   const { laboId } = req.params;
   const { startDate, endDate, ingredientId, selectedIds: selectedIdsParam } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').filter(Boolean) : []);
+  const voc = req.voc ?? vocabDefaut;
 
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const ingIdNumLE = ingredientId ? Number(ingredientId) : null;
     const conditions = ['inv.labo_id = $1'];
@@ -874,7 +878,7 @@ const exportLaboInventaireExcel = async (req, res) => {
     else if (ingIdNumLE && ingIdNumLE < 0) { conditions.push(`inv.produit_id = $${idx++}`); params.push(-ingIdNumLE); }
 
     const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
-    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+    const laboNom = laboRes.rows[0]?.nom || voc.Nom('labo');
 
     const result = await pool.query(
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
@@ -894,17 +898,17 @@ const exportLaboInventaireExcel = async (req, res) => {
     const rows = result.rows;
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
-    const sheet = workbook.addWorksheet(`Inventaire ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+    const sheet = workbook.addWorksheet(ongletSur(workbook, `${voc.Court('inventaire')} ${laboNom}`), { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
     const fmtD = (d) => (d ? d.split('-').reverse().join('/') : '—');
     const COL_COUNT = 7;
     const headerIdx = brandHeader(workbook, sheet, {
-      titre: 'Historique des inventaires — Labo',
+      titre: `Historique ${voc.du('inventaire', true)} — ${voc.Court('labo')}`,
       sousTitre: laboNom,
       meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · Période ${fmtD(startDate)} → ${fmtD(endDate)} · ${rows.length} ligne(s)`,
       colCount: COL_COUNT,
     });
-    headerRow(sheet, headerIdx, ['Date', 'Ingrédient', 'Catégorie', 'Qté réelle', 'Unité', 'Labo', 'Note'], {
+    headerRow(sheet, headerIdx, ['Date', voc.Nom('article_ingredient'), 'Catégorie', 'Qté réelle', 'Unité', voc.Court('labo'), 'Note'], {
       widths: [12, 26, 18, 13, 9, 18, 24],
     });
 
@@ -912,7 +916,7 @@ const exportLaboInventaireExcel = async (req, res) => {
       const isSelected = selectedSet.has(String(r.id));
       const dateStr = r.date_inventaire ? isoDate(r.date_inventaire).split('-').reverse().join('/') : '';
       const dataRow = sheet.getRow(headerIdx + 1 + i);
-      dataRow.values = [dateStr, r.ingredient_nom, r.categorie_nom, parseFloat(r.quantite_reelle), r.unite_nom, laboNom, r.note || ''];
+      dataRow.values = [dateStr, r.ingredient_nom, libelleCategoriePt(voc, r.categorie_nom), parseFloat(r.quantite_reelle), r.unite_nom, laboNom, r.note || ''];
       dataRowStyle(dataRow, { index: i, selected: isSelected, colCount: COL_COUNT });
       dataRow.getCell(4).numFmt = FMT_QTE;
       dataRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };
@@ -945,6 +949,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
   const { activiteId } = req.params;
   const { startDate, endDate, ingredientId, selectedIds: selectedIdsParam } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').filter(Boolean) : []);
+  const voc = req.voc ?? vocabDefaut;
 
   try {
     const check = await pool.query(
@@ -954,7 +959,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Activité introuvable' });
+      return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
     const activiteNom = check.rows[0].nom;
 
     const ingIdNum2 = ingredientId ? Number(ingredientId) : null;
@@ -984,17 +989,17 @@ const exportActiviteInventaireExcel = async (req, res) => {
     const rows = result.rows;
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
-    const sheet = workbook.addWorksheet(`Inventaire ${activiteNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+    const sheet = workbook.addWorksheet(ongletSur(workbook, `${voc.Court('inventaire')} ${activiteNom}`), { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
     const fmtD = (d) => (d ? d.split('-').reverse().join('/') : '—');
     const COL_COUNT = 7;
     const headerIdx = brandHeader(workbook, sheet, {
-      titre: 'Historique des inventaires — Activités',
+      titre: `Historique ${voc.du('inventaire', true)} — ${voc.Court('activite', true)}`,
       sousTitre: activiteNom,
       meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · Période ${fmtD(startDate)} → ${fmtD(endDate)} · ${rows.length} ligne(s)`,
       colCount: COL_COUNT,
     });
-    headerRow(sheet, headerIdx, ['Date', 'Ingrédient', 'Catégorie', 'Qté réelle', 'Unité', 'Activité', 'Note'], {
+    headerRow(sheet, headerIdx, ['Date', voc.Nom('article_ingredient'), 'Catégorie', 'Qté réelle', 'Unité', voc.Court('activite'), 'Note'], {
       widths: [12, 26, 18, 13, 9, 20, 24],
     });
 
@@ -1002,7 +1007,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
       const isSelected = selectedSet.has(String(r.id));
       const dateStr = r.date_inventaire ? isoDate(r.date_inventaire).split('-').reverse().join('/') : '';
       const dataRow = sheet.getRow(headerIdx + 1 + i);
-      dataRow.values = [dateStr, r.ingredient_nom, r.categorie_nom, parseFloat(r.quantite_reelle), r.unite_nom, activiteNom, r.note || ''];
+      dataRow.values = [dateStr, r.ingredient_nom, libelleCategoriePt(voc, r.categorie_nom), parseFloat(r.quantite_reelle), r.unite_nom, activiteNom, r.note || ''];
       dataRowStyle(dataRow, { index: i, selected: isSelected, colCount: COL_COUNT });
       dataRow.getCell(4).numFmt = FMT_QTE;
       dataRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };

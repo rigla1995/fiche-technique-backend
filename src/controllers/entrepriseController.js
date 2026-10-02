@@ -174,7 +174,7 @@ const createActivite = async (req, res) => {
         'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2',
         [laboId, entreprise.id]
       );
-      if (laboCheck.rows.length === 0) return res.status(400).json({ message: 'Labo introuvable' });
+      if (laboCheck.rows.length === 0) return res.status(400).json({ message: '[[Nom:labo]] introuvable' });
     }
     // Composant validé AVANT l'insertion (∈ domaine du compte, type activité, actif).
     if (composantId != null) {
@@ -186,7 +186,7 @@ const createActivite = async (req, res) => {
       [entreprise.id, nom.trim()]
     );
     if (nameCheck.rows.length > 0)
-      return res.status(409).json({ message: 'Une activité avec ce nom existe déjà' });
+      return res.status(409).json({ message: '[[Un:activite]] avec ce nom existe déjà' });
 
     const result = await pool.query(
       `INSERT INTO activites (entreprise_id, nom, adresse, telephone, email, labo_id)
@@ -242,7 +242,7 @@ const updateActivite = async (req, res) => {
         [entrepriseId, nom.trim(), id]
       );
       if (nameCheck.rows.length > 0)
-        return res.status(409).json({ message: 'Une activité avec ce nom existe déjà' });
+        return res.status(409).json({ message: '[[Un:activite]] avec ce nom existe déjà' });
     }
 
     // Validate laboId belongs to this entreprise if provided
@@ -251,7 +251,7 @@ const updateActivite = async (req, res) => {
         'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2',
         [laboId, entrepriseId]
       );
-      if (laboCheck.rows.length === 0) return res.status(400).json({ message: 'Labo introuvable' });
+      if (laboCheck.rows.length === 0) return res.status(400).json({ message: '[[Nom:labo]] introuvable' });
     }
     // Lot 1b : composant validé avant l'écriture (∈ domaine du compte, type activité, actif).
     if (composantId != null) {
@@ -284,7 +284,7 @@ const updateActivite = async (req, res) => {
         [nom, adresse || null, telephone || null, email || null, id, entrepriseId]
       );
     }
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (result.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
     if (composantId != null) {
       const unite = await unitesOp.getUniteByRef(pool, 'activite', id);
       if (unite) await unitesOp.setComposant(pool, unite.id, composantId);
@@ -316,16 +316,16 @@ const deleteActivite = async (req, res) => {
          FROM activites a WHERE a.id = $1 AND a.entreprise_id = $2`,
       [id, entreprise.rows[0].id]
     );
-    if (used.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (used.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
     if (parseInt(used.rows[0].cnt, 10) > 0) {
-      return res.status(409).json({ message: "Suppression impossible : des articles sont affectés à cette activité." });
+      return res.status(409).json({ message: 'Suppression impossible : [[un:article:pl]] sont [[acc:article:affectés:affectées]] à [[ce:activite]].' });
     }
 
     const result = await pool.query(
       'DELETE FROM activites WHERE id = $1 AND entreprise_id = $2 RETURNING id',
       [id, entreprise.rows[0].id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (result.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
     res.status(204).send();
   } catch (err) {
     console.error(err);
@@ -347,7 +347,7 @@ const duplicateActivite = async (req, res) => {
       'SELECT * FROM activites WHERE id = $1 AND entreprise_id = $2',
       [id, entreprise.rows[0].id]
     );
-    if (source.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (source.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
     // Lot 1b §3.4 : quota d'activités (409 LIMITE_ATTEINTE).
     const quota = await checkQuota(pool, clientId, 'activite');
     if (quota) return res.status(409).json(quota);
@@ -417,7 +417,7 @@ const getActiviteIngredients = async (req, res) => {
        WHERE a.id = $1 AND pe.client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const result = await pool.query(
           `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
@@ -462,7 +462,7 @@ const toggleActiviteIngredient = async (req, res) => {
        WHERE a.id = $1 AND pe.client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const existing = await pool.query(
       'SELECT 1 FROM activite_ingredient_selections WHERE activite_id = $1 AND ingredient_id = $2',
@@ -620,7 +620,7 @@ const updateIngredientPrice = async (req, res) => {
        WHERE a.id = $1 AND pe.client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     await pool.query(
       `INSERT INTO activite_ingredient_selections (activite_id, ingredient_id, prix_unitaire)
@@ -647,7 +647,7 @@ const getActiviteSelectedIngredients = async (req, res) => {
        WHERE a.id = $1 AND pe.client_id = $2`,
       [id, clientId]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const result = await pool.query(
       `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,

@@ -3,6 +3,8 @@ const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
 const { computeStockCourant, computeStockPTCourant, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
+const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
+const { ongletSur } = require('../utils/excelNoms');
 // Lot 1b §5 — types de perte par domaine (regles.types_perte du compte ; défaut avarie|dechet).
 const { getTypesPerteForClient, perteLabel } = require('../services/domaineProfilService');
 const typesPerteReq = (req) => getTypesPerteForClient(req.user.gerant_parent_id || req.user.id);
@@ -73,7 +75,7 @@ const createPerte = async (req, res) => {
        WHERE a.id = $1 AND pe.client_id = $2`,
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     // PT (produit transformé) : pas d'appro article — on vérifie le stock PT et on enregistre la perte
     // par produit_id (pas de prix : valorisé 0 comme au labo). computeStockPTCourant intègre déjà les
@@ -83,7 +85,7 @@ const createPerte = async (req, res) => {
       const qtyPt = parseFloat(quantite);
       const ptStock = await computeStockPTCourant('activite', activiteId, produitId);
       if (qtyPt > ptStock) {
-        return res.status(422).json({ message: 'Stock insuffisant', disponible: Math.max(0, ptStock), demande: qtyPt });
+        return res.status(422).json({ message: '[[Nom:stock]] [[acc:stock:insuffisant:insuffisante]]', disponible: Math.max(0, ptStock), demande: qtyPt });
       }
       // Valoriser la perte au coût recette TTC du PT (comme le stock/FT), pour les rapports/exports.
       let coutPt = null;
@@ -107,9 +109,9 @@ const createPerte = async (req, res) => {
       [activiteId, ingredientId]
     );
     const minAppro = minRow.rows[0]?.min_date;
-    if (!minAppro) return res.status(400).json({ message: 'Aucun approvisionnement enregistré pour cet ingrédient.' });
+    if (!minAppro) return res.status(400).json({ message: '[[Aucun:appro]] [[acc:appro:enregistré:enregistrée]] pour [[ce:article_ingredient]].' });
     const minApproStr = minAppro instanceof Date ? minAppro.toISOString().slice(0, 10) : String(minAppro).slice(0, 10);
-    if (datePerte < minApproStr) return res.status(400).json({ message: `La date de perte doit être >= au premier appro (${minApproStr.split('-').reverse().join('/')}).` });
+    if (datePerte < minApproStr) return res.status(400).json({ message: `La date [[de:perte]] doit être >= [[acc:appro:au premier:à la première]] [[court:appro]] (${minApproStr.split('-').reverse().join('/')}).` });
 
     const prixPerte = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, datePerte);
 
@@ -117,7 +119,7 @@ const createPerte = async (req, res) => {
     const qty = parseFloat(quantite);
     if (qty > stockCourant) {
       return res.status(422).json({
-        message: `Stock insuffisant`,
+        message: `[[Nom:stock]] [[acc:stock:insuffisant:insuffisante]]`,
         disponible: Math.max(0, stockCourant),
         demande: qty,
       });
@@ -147,7 +149,7 @@ const listPertes = async (req, res) => {
        WHERE a.id = $1 AND pe.client_id = $2`,
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const params = [activiteId];
     let extra = '';
@@ -284,7 +286,7 @@ const updateEntreprisePerte = async (req, res) => {
        WHERE p.id = $1 AND pe.client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
     );
-    if (existing.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+    if (existing.rows.length === 0) return res.status(404).json({ message: '[[Nom:perte]] introuvable' });
     if (req.user.role === 'gerant' && existing.rows[0].created_by !== req.user.id)
       return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
     const { ingredient_id: ingredientId, produit_id: produitId, activite_id: activiteId, date_perte } = existing.rows[0];
@@ -311,7 +313,7 @@ const updateEntreprisePerte = async (req, res) => {
          RETURNING p.id`,
         [quantite, typePerte, coutPt, id, req.user.gerant_parent_id || req.user.id]
       );
-      if (rpt.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+      if (rpt.rows.length === 0) return res.status(404).json({ message: '[[Nom:perte]] introuvable' });
       return res.json({ message: 'Mise à jour effectuée' });
     }
 
@@ -325,7 +327,7 @@ const updateEntreprisePerte = async (req, res) => {
        RETURNING p.id`,
       [quantite, typePerte, prixPerte.ht, id, req.user.gerant_parent_id || req.user.id, prixPerte.ttc]
     );
-    if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+    if (r.rows.length === 0) return res.status(404).json({ message: '[[Nom:perte]] introuvable' });
     res.json({ message: 'Mise à jour effectuée' });
   } catch (err) {
     console.error(err);
@@ -345,15 +347,15 @@ const deleteEntreprisePerte = async (req, res) => {
        WHERE p.id = $1 AND pe.client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
     );
-    if (checkEntDel.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
+    if (checkEntDel.rows.length === 0) return res.status(404).json({ message: '[[Nom:perte]] introuvable' });
     if (req.user.role === 'gerant' && checkEntDel.rows[0].created_by !== req.user.id)
       return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
     const r = await pool.query(
       `DELETE FROM pertes WHERE id = $1 RETURNING id`,
       [id]
     );
-    if (r.rows.length === 0) return res.status(404).json({ message: 'Perte introuvable' });
-    res.json({ message: 'Perte supprimée' });
+    if (r.rows.length === 0) return res.status(404).json({ message: '[[Nom:perte]] introuvable' });
+    res.json({ message: '[[Nom:perte]] [[acc:perte:supprimé:supprimée]]' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -364,15 +366,15 @@ const deleteEntreprisePerte = async (req, res) => {
 // Rendu 100 % charte LabFlow (excelBrandService). Le titre est fourni par
 // l'appelant ; selectedIds = surbrillance (ambre) uniquement, jamais un filtre.
 
-const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
+const buildExcelPertes = async (res, rows, isEntreprise, voc, filters = {}) => {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Fiche Technique App';
-  const sheet = workbook.addWorksheet('Historique Pertes', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+  const sheet = workbook.addWorksheet(ongletSur(workbook, `Historique ${voc.Court('perte', true)}`), { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
   const cols = [
     { header: 'Date', width: 12 },
-    ...(isEntreprise ? [{ header: 'Activité', width: 20 }] : []),
-    { header: 'Ingrédient', width: 26 },
+    ...(isEntreprise ? [{ header: voc.Court('activite'), width: 20 }] : []),
+    { header: voc.Nom('article_ingredient'), width: 26 },
     { header: 'Catégorie', width: 18 },
     { header: 'Quantité', width: 11 },
     { header: 'Unité', width: 9 },
@@ -386,7 +388,7 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
     ? `Période du ${fmtDate(filters.dateDebut)} au ${fmtDate(filters.dateFin)}`
     : `Année ${new Date().getFullYear()}`;
   const headerIdx = brandHeader(workbook, sheet, {
-    titre: filters.titre || 'Historique des pertes',
+    titre: filters.titre || `Historique ${voc.du('perte', true)}`,
     sousTitre: filters.sousTitre || '',
     meta: `Exporté le ${fmtDate(new Date())} · ${periodeLabel} · ${rows.length} ligne(s)`,
     colCount,
@@ -412,7 +414,7 @@ const buildExcelPertes = async (res, rows, isEntreprise, filters = {}) => {
       fmtDate(r.date_perte),
       ...(isEntreprise ? [r.activite_nom || ''] : []),
       r.ingredient_nom,
-      r.categorie_nom || '',
+      libelleCategoriePt(voc, r.categorie_nom || ''),
       qty,
       r.unite_nom,
       perteLabel(r.type_perte),
@@ -454,6 +456,7 @@ const exportEntreprisePertes = async (req, res) => {
   if (req.user.role === 'gerant') { if (!scopeGerantActivite(req, res)) return; }
   const { activiteId, activiteIds, dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds } = req.query;
   const typesPerte = await typesPerteReq(req);
+  const voc = req.voc ?? vocabDefaut;
 
   const companyCheck = await pool.query(
     `SELECT pe.id FROM profil_entreprise pe WHERE pe.client_id = $1`,
@@ -498,7 +501,7 @@ const exportEntreprisePertes = async (req, res) => {
       const ptRows = await fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, dateDebut, dateFin, typePerte, typesPerte });
       exRows = [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
     }
-    await buildExcelPertes(res, exRows, true, { dateDebut, dateFin, selectedIds: idList, titre: 'Historique des pertes — Activités' });
+    await buildExcelPertes(res, exRows, true, voc, { dateDebut, dateFin, selectedIds: idList, titre: `Historique ${voc.du('perte', true)} — ${voc.Court('activite', true)}` });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur génération Excel' });
@@ -518,7 +521,7 @@ const getPrixEntreprisePerte = async (req, res) => {
        WHERE a.id = $1 AND pe.client_id = $2`,
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
     const prixPerte = await getPrixPourPerte('stock_entreprise_daily', 'activite_id', activiteId, ingredientId, date);
     res.json({ prixUnitaire: prixPerte.ht });
   } catch (err) {
@@ -550,7 +553,7 @@ const getDateRangeEntreprisePerte = async (req, res) => {
       `SELECT a.id FROM activites a JOIN profil_entreprise pe ON a.entreprise_id = pe.id WHERE a.id = $1 AND pe.client_id = $2`,
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
     const r = await pool.query(
       `SELECT MIN(date_appro) AS min_date, MAX(date_appro) AS max_date
        FROM stock_entreprise_daily
@@ -621,7 +624,7 @@ const listLaboPertes = async (req, res) => {
        WHERE l.id = $1 AND pe.client_id = $2`,
       [laboId, clientId]
     );
-    if (ownerCheck.rows.length === 0) return res.status(404).json({ message: 'Labo introuvable' });
+    if (ownerCheck.rows.length === 0) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const params = [laboId];
     const wheres = [`lp.labo_id = $1`, `lp.ingredient_id IS NOT NULL`];
@@ -704,16 +707,17 @@ const exportLaboPerteExcel = async (req, res) => {
   const { dateDebut, dateFin, typePerte, categorieId, ingredientId, search, selectedIds, ptOnly, ptProduitId, ptType } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
   const typesPerte = await getTypesPerteForClient(clientId);
+  const voc = req.voc ?? vocabDefaut;
 
   try {
     const ownerCheck = await pool.query(
       `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id WHERE l.id = $1 AND pe.client_id = $2`,
       [laboId, clientId]
     );
-    if (ownerCheck.rows.length === 0) return res.status(404).json({ message: 'Labo introuvable' });
+    if (ownerCheck.rows.length === 0) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
-    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+    const laboNom = laboRes.rows[0]?.nom || voc.Nom('labo');
 
     const params = [laboId];
     const wheres = [`lp.labo_id = $1`, `lp.ingredient_id IS NOT NULL`];
@@ -745,7 +749,7 @@ const exportLaboPerteExcel = async (req, res) => {
       exRows = ptOnly === 'true' ? ptRows
         : [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
     }
-    await buildExcelPertes(res, exRows, false, { dateDebut, dateFin, selectedIds: idList, titre: 'Historique des pertes — Labo', sousTitre: laboNom });
+    await buildExcelPertes(res, exRows, false, voc, { dateDebut, dateFin, selectedIds: idList, titre: `Historique ${voc.du('perte', true)} — ${voc.Court('labo')}`, sousTitre: laboNom });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur génération Excel' });

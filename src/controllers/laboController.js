@@ -2,13 +2,15 @@ const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
-const { nomFichierSur } = require('../utils/excelNoms');
+const { nomFichierSur, ongletSur } = require('../utils/excelNoms');
+const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
 const { computeStockBulk, computeStock } = require('../services/stockService');
 const unitesOp = require('../services/unitesOperationnellesService');
 const transfertService = require('../services/transfertService');
+const { TransfertError } = transfertService;
 const { checkQuota } = require('../services/quotaService');
 const { getTypesPerteForClient } = require('../services/domaineProfilService');
 const { gerantAllowsLabo } = require('../middleware/auth');
@@ -97,12 +99,12 @@ const createLabo = async (req, res) => {
     }
     const parentIdNum = laboParentId != null ? parseInt(laboParentId, 10) : null;
     if (laboParentId != null) {
-      if (!Number.isInteger(parentIdNum) || parentIdNum <= 0) return res.status(400).json({ message: 'Labo source introuvable' });
+      if (!Number.isInteger(parentIdNum) || parentIdNum <= 0) return res.status(400).json({ message: '[[Nom:labo]] source introuvable' });
       const parentCheck = await pool.query(
         'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2',
         [parentIdNum, entrepriseId]
       );
-      if (parentCheck.rows.length === 0) return res.status(400).json({ message: 'Labo source introuvable' });
+      if (parentCheck.rows.length === 0) return res.status(400).json({ message: '[[Nom:labo]] source introuvable' });
     }
 
     // Check nom uniqueness
@@ -111,7 +113,7 @@ const createLabo = async (req, res) => {
       [entrepriseId, nom.trim()]
     );
     if (nomCheck.rows.length > 0)
-      return res.status(409).json({ message: 'Un labo avec ce nom existe déjà' });
+      return res.status(409).json({ message: '[[Un:labo]] avec ce nom existe déjà' });
 
     // Check refLabo uniqueness
     const refCheck = await pool.query(
@@ -119,7 +121,7 @@ const createLabo = async (req, res) => {
       [entrepriseId, refLabo.trim()]
     );
     if (refCheck.rows.length > 0)
-      return res.status(409).json({ message: 'Un labo avec cette référence existe déjà' });
+      return res.status(409).json({ message: '[[Un:labo]] avec cette référence existe déjà' });
 
     const tel = referentTel?.trim() || null;
     // INSERT → fournisseur interne → affectations → composant → source dans UNE transaction : un
@@ -228,7 +230,7 @@ const getLaboById = async (req, res) => {
   const { laboId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
     const r = await pool.query('SELECT * FROM labos WHERE id = $1', [laboId]);
     await unitesOp.enrichRows(pool, 'labo', r.rows);
     // Also return activities linked to this labo
@@ -271,7 +273,7 @@ const getLaboIngredients = async (req, res) => {
   const { laboId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const result = await pool.query(
       `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
@@ -303,7 +305,7 @@ const getLaboPT = async (req, res) => {
   const { laboId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
     const result = await pool.query(
       `SELECT p.id as produit_id, p.nom
        FROM labo_pt_selections lps
@@ -323,7 +325,7 @@ const toggleLaboIngredient = async (req, res) => {
   const { laboId, ingredientId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const existing = await pool.query(
       'SELECT 1 FROM labo_ingredient_selections WHERE labo_id = $1 AND ingredient_id = $2',
@@ -355,7 +357,7 @@ const getLaboStock = async (req, res) => {
   const assignedOnly = req.query.assignedOnly === 'true';
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const assignedFilter = assignedOnly
       ? `AND EXISTS (
@@ -758,13 +760,13 @@ const updateLaboStock = async (req, res) => {
 
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     if (ingredientIdRaw < 0) {
       // Lot 1b §3.3 : un labo dont l'unité est production_active = false ne fabrique pas de PT.
       const uniteProd = await unitesOp.getUniteByRef(pool, 'labo', laboId);
       if (uniteProd && uniteProd.productionActive === false) {
-        return res.status(400).json({ code: 'PRODUCTION_INACTIVE', message: 'La production de produits transformés est désactivée pour ce labo.' });
+        return res.status(400).json({ code: 'PRODUCTION_INACTIVE', message: 'La production [[de:pt:pl]] est désactivée pour [[ce:labo]].' });
       }
       // PT product appro — auto-calculate prix from recipe using last labo ingredient prices
       const produitId = -ingredientIdRaw;
@@ -886,8 +888,8 @@ const updateLaboStock = async (req, res) => {
             const needed  = portion * qty;
             const stockCourant = await computeStock(client, 'labo', laboId, { articleId: ing.ingredient_id });
             if (needed > stockCourant) {
-              throw new transfertService.TransfertError(422, 'STOCK_INSUFFISANT',
-                `Stock insuffisant pour "${ing.ing_nom}" (recette) : disponible ${Math.max(0, stockCourant)}, nécessaire ${Math.round(needed * 1000) / 1000}`,
+              throw new TransfertError(422, 'STOCK_INSUFFISANT',
+                `[[Nom:stock]] [[acc:stock:insuffisant:insuffisante]] pour "${ing.ing_nom}" ([[court:recette]]) : disponible ${Math.max(0, stockCourant)}, nécessaire ${Math.round(needed * 1000) / 1000}`,
                 { disponible: Math.max(0, stockCourant), demande: needed });
             }
           }
@@ -898,8 +900,8 @@ const updateLaboStock = async (req, res) => {
             const needed = portion * qty;
             const stockSp = await computeStock(client, 'labo', laboId, { produitId: sp.sous_produit_id });
             if (needed > stockSp) {
-              throw new transfertService.TransfertError(422, 'STOCK_INSUFFISANT',
-                `Stock insuffisant pour le sous-produit "${sp.sp_nom}" (recette) : disponible ${Math.max(0, stockSp)}, nécessaire ${Math.round(needed * 1000) / 1000}`,
+              throw new TransfertError(422, 'STOCK_INSUFFISANT',
+                `[[Nom:stock]] [[acc:stock:insuffisant:insuffisante]] pour le sous-produit "${sp.sp_nom}" ([[court:recette]]) : disponible ${Math.max(0, stockSp)}, nécessaire ${Math.round(needed * 1000) / 1000}`,
                 { disponible: Math.max(0, stockSp), demande: needed });
             }
           }
@@ -1007,7 +1009,7 @@ const getLaboStockHistory = async (req, res) => {
   const ingredientIdRaw = parseInt(req.params.ingredientId);
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     if (ingredientIdRaw < 0) {
       const produitId = -ingredientIdRaw;
@@ -1125,7 +1127,7 @@ const getLaboFournisseurs = async (req, res) => {
   const { laboId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     // Lot 1b : le fournisseur is_labo du labo SOURCE (labo_parent_id) est renvoyé en plus, marqué
     // isLabo (affiché « Transfert reçu de X », jamais éditable — fournisseurController refuse déjà).
@@ -1154,7 +1156,7 @@ const syncLaboFournisseurs = async (req, res) => {
   if (!Array.isArray(fournisseurIds)) return res.status(400).json({ message: 'fournisseurIds requis' });
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     await pool.query('DELETE FROM fournisseur_labos WHERE labo_id = $1', [laboId]);
     if (fournisseurIds.length > 0) {
@@ -1187,9 +1189,9 @@ const createTransfer = async (req, res) => {
 
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
     // Gérant : la source doit être dans son périmètre.
-    if (!gerantAllowsLabo(req, laboId)) return res.status(403).json({ message: 'Labo hors de votre périmètre' });
+    if (!gerantAllowsLabo(req, laboId)) return res.status(403).json({ message: '[[Nom:labo]] hors de votre périmètre' });
 
     const out = await transfertService.createTransfert(pool, {
       sourceLaboId: parseInt(laboId, 10),
@@ -1216,7 +1218,7 @@ const getTransferHistory = async (req, res) => {
 
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const ingIdNum = ingredientId ? parseInt(ingredientId, 10) : null;
     const isPTQuery = ingIdNum !== null && ingIdNum < 0;
@@ -1347,7 +1349,7 @@ const getLaboHistorique = async (req, res) => {
   const parsedOffset = parseInt(offset, 10) || 0;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     // activiteId implies we only care about transfers
     const includeManuel = (!typeFilter || typeFilter === 'manuel') && !activiteId;
@@ -1605,7 +1607,7 @@ const updateLaboHistoriqueEntry = async (req, res) => {
   const { quantite, prixUnitaire, fournisseurId, refFacture } = req.body;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const check = await pool.query(
       'SELECT id, created_by, type_appro, transfert_id FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
@@ -1617,7 +1619,7 @@ const updateLaboHistoriqueEntry = async (req, res) => {
     // Lot 1b §2.4 : une ligne générée par un transfert (entrée 'transfert' ou miroir lié) ne se
     // modifie que via le transfert lui-même.
     if (check.rows[0].type_appro === 'transfert' || check.rows[0].transfert_id != null)
-      return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez le transfert' });
+      return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez [[le:transfert]]' });
 
     const r = await withTransaction(async (client) => {
       await transfertService.lockStockLabo(client, laboId);
@@ -1649,7 +1651,7 @@ const deleteLaboHistoriqueEntry = async (req, res) => {
   const { laboId, entryId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const checkDel = await pool.query(
       'SELECT created_by, type_appro, transfert_id FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
@@ -1659,7 +1661,7 @@ const deleteLaboHistoriqueEntry = async (req, res) => {
     if (req.user.role === 'gerant' && checkDel.rows[0].created_by !== req.user.id)
       return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
     if (checkDel.rows[0].type_appro === 'transfert' || checkDel.rows[0].transfert_id != null)
-      return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez le transfert' });
+      return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez [[le:transfert]]' });
     const deleted = await withTransaction(async (client) => {
       await transfertService.lockStockLabo(client, laboId);
       const result = await client.query('DELETE FROM stock_labo_daily WHERE id = $1 RETURNING id', [entryId]);
@@ -1682,7 +1684,7 @@ const updateLaboSeuilMin = async (req, res) => {
   const { seuilMin } = req.body;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     if (ingredientIdRaw < 0) {
       const produitId = -ingredientIdRaw;
@@ -1711,7 +1713,7 @@ const getActivityAssignments = async (req, res) => {
   const { laboId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const ingRes = await pool.query(
       `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie
@@ -1807,14 +1809,14 @@ const toggleActivityAssignment = async (req, res) => {
   if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const actCheck = await pool.query(
       'SELECT id FROM activites WHERE id = $1 AND labo_id = $2',
       [activiteId, laboId]
     );
     if (actCheck.rows.length === 0)
-      return res.status(400).json({ message: 'Activité invalide' });
+      return res.status(400).json({ message: '[[Nom:activite]] invalide' });
 
     const existing = await pool.query(
       'SELECT 1 FROM activite_ingredient_selections WHERE activite_id = $1 AND ingredient_id = $2',
@@ -1841,13 +1843,14 @@ const toggleActivityAssignment = async (req, res) => {
 
 // ─── Export Excel Historique Labo ────────────────────────────────────────────
 const exportLaboHistoriqueExcel = async (req, res) => {
+  const voc = req.voc ?? vocabDefaut;
   const { laboId } = req.params;
   const { startDate, endDate, ingredientId, categorieId, fournisseurId, refFacture, selectedIds: selectedIdsParam, ptOnly, ptProduitId, ptType } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
 
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const conditions = ['sld.labo_id = $1'];
     const params = [laboId];
@@ -1860,7 +1863,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     if (refFacture)   { conditions.push(`sld.ref_facture ILIKE $${idx++}`); params.push(`%${refFacture}%`); }
 
     const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
-    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+    const laboNom = laboRes.rows[0]?.nom || voc.Nom('labo');
 
     const result = await pool.query(
       `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
@@ -1906,16 +1909,16 @@ const exportLaboHistoriqueExcel = async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
-    const sheet = workbook.addWorksheet(`Hist Appro ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+    const sheet = workbook.addWorksheet(ongletSur(workbook, `Hist ${voc.Court('appro')} ${laboNom}`), { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
     // cols: Date | Ingrédient | Catégorie | Type | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Fournisseur | Réf. Facture | Créé par
-    const labels = ['Date', 'Ingrédient', 'Catégorie', 'Type', 'Quantité', 'Unité', 'Prix U. HT', 'TVA %', 'Prix U. TTC', 'Coût HT', 'Coût TTC', 'Fournisseur', 'Réf. Facture', 'Créé par'];
+    const labels = ['Date', voc.Nom('article_ingredient'), 'Catégorie', 'Type', 'Quantité', 'Unité', 'Prix U. HT', 'TVA %', 'Prix U. TTC', 'Coût HT', 'Coût TTC', voc.Court('fournisseur'), 'Réf. Facture', 'Créé par'];
     const widths = [12, 26, 18, 10, 11, 9, 13, 9, 13, 14, 14, 18, 16, 16];
     const colCount = labels.length;
 
     const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
     const headerIdx = brandHeader(workbook, sheet, {
-      titre: 'Historique des approvisionnements — Labo',
+      titre: `Historique ${voc.du('appro', true)} — ${voc.Court('labo')}`,
       sousTitre: laboNom,
       meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · Période ${fmtD(startDate)} → ${fmtD(endDate)} · ${rows.length} ligne(s)`,
       colCount,
@@ -1939,12 +1942,12 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       // libellés (Manuel / PT / Prod. Transformé) sont inchangés pour l'existant.
       const typeLabel = (() => {
         const t = r.type_appro || 'manuel';
-        if (t === 'produit_transforme') return 'Prod. Transformé';
-        if (t === 'transfert') return 'Transfert reçu';
-        return t === 'PT' ? 'PT' : 'Manuel';
+        if (t === 'produit_transforme') return voc.Nom('pt_abr');
+        if (t === 'transfert') return `${voc.Nom('transfert')} ${voc.acc('transfert', 'reçu', 'reçue')}`;
+        return t === 'PT' ? voc.Court('pt') : 'Manuel';
       })();
       const dataRow = sheet.addRow([
-        dateStr, r.ingredient_nom, r.categorie_nom, typeLabel,
+        dateStr, r.ingredient_nom, libelleCategoriePt(voc, r.categorie_nom), typeLabel,
         qty, r.unite_nom, prix, tva !== null ? tva : '', prixTtc,
         coutHt, coutTtc,
         r.fournisseur_nom || '', r.ref_facture || '', r.created_by_nom || '',
@@ -1988,7 +1991,7 @@ const createLaboPerte = async (req, res) => {
   if (!quantite || parseFloat(quantite) <= 0) return res.status(400).json({ message: 'Quantité invalide' });
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
     // Lot 1b §5 — type ∈ regles.types_perte du compte (absent → avarie, sinon 1er type du domaine).
     const typesPerte = await getTypesPerteForClient(req.user.gerant_parent_id || req.user.id);
     const typePerteEff = typePerte || (typesPerte.includes('avarie') ? 'avarie' : typesPerte[0]);
@@ -2014,7 +2017,7 @@ const createLaboPerte = async (req, res) => {
         await transfertService.lockStockLabo(client, laboId);
         const ptStock = await computeStock(client, 'labo', laboId, { produitId });
         if (qtyPT > ptStock) {
-          throw new transfertService.TransfertError(422, 'STOCK_INSUFFISANT', 'Stock PT insuffisant', { disponible: Math.max(0, ptStock), demande: qtyPT });
+          throw new TransfertError(422, 'STOCK_INSUFFISANT', '[[Nom:stock]] [[court:pt]] [[acc:stock:insuffisant:insuffisante]]', { disponible: Math.max(0, ptStock), demande: qtyPT });
         }
         await client.query(
           `INSERT INTO labo_pertes (labo_id, produit_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
@@ -2028,9 +2031,9 @@ const createLaboPerte = async (req, res) => {
         [laboId, ingredientIdRaw]
       );
       const minAppro = minRow.rows[0]?.min_date;
-      if (!minAppro) return res.status(400).json({ message: 'Aucun approvisionnement enregistré pour cet ingrédient.' });
+      if (!minAppro) return res.status(400).json({ message: '[[Aucun:appro]] [[acc:appro:enregistré:enregistrée]] pour [[ce:article_ingredient]].' });
       const minApproStr = minAppro instanceof Date ? minAppro.toISOString().slice(0, 10) : String(minAppro).slice(0, 10);
-      if (effectiveDate < minApproStr) return res.status(400).json({ message: `La date de perte doit être >= au premier appro (${minApproStr.split('-').reverse().join('/')}).` });
+      if (effectiveDate < minApproStr) return res.status(400).json({ message: `La date [[de:perte]] doit être >= [[acc:appro:au premier:à la première]] [[court:appro]] (${minApproStr.split('-').reverse().join('/')}).` });
 
       const priceRow = await pool.query(
         `SELECT prix_unitaire, COALESCE(prix_unitaire_tva, prix_unitaire) AS prix_ttc FROM stock_labo_daily
@@ -2048,7 +2051,7 @@ const createLaboPerte = async (req, res) => {
         await transfertService.lockStockLabo(client, laboId);
         const stockCourant = await computeStock(client, 'labo', laboId, { articleId: ingredientIdRaw });
         if (qtyDemandee > stockCourant) {
-          throw new transfertService.TransfertError(422, 'STOCK_INSUFFISANT', 'Stock insuffisant', { disponible: Math.max(0, stockCourant), demande: qtyDemandee });
+          throw new TransfertError(422, 'STOCK_INSUFFISANT', '[[Nom:stock]] [[acc:stock:insuffisant:insuffisante]]', { disponible: Math.max(0, stockCourant), demande: qtyDemandee });
         }
         await client.query(
           `INSERT INTO labo_pertes (labo_id, ingredient_id, quantite, type_perte, date_perte, prix_unitaire, prix_unitaire_tva, created_by)
@@ -2070,7 +2073,7 @@ const getLaboPTRecipe = async (req, res) => {
   const { laboId, produitId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const [r, spR] = await Promise.all([
       pool.query(
@@ -2152,7 +2155,7 @@ const deleteLabo = async (req, res) => {
       'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2', [laboId, entrepriseId]
     );
     if (laboRes.rows.length === 0)
-      return res.status(404).json({ message: 'Labo introuvable' });
+      return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     // Lot 1b §2.4 : un labo source ou destinataire d'un transfert, ou source d'un lien vers un
     // labo enfant, ne se supprime pas (la cascade labo_dest_id effacerait des transferts en
@@ -2171,8 +2174,8 @@ const deleteLabo = async (req, res) => {
       return res.status(409).json({
         code: 'LABO_UTILISE',
         message: utilise.rows[0].transferts
-          ? 'Suppression impossible : ce labo a des transferts enregistrés (source ou destinataire).'
-          : 'Suppression impossible : ce labo alimente d\'autres labos — détachez-les d\'abord.',
+          ? 'Suppression impossible : [[ce:labo]] a [[un:transfert:pl]] [[acc:transfert:enregistré:enregistrée:pl]] (source ou destinataire).'
+          : 'Suppression impossible : [[ce:labo]] alimente d\'autres [[nom:labo:pl]] — détachez-les d\'abord.',
       });
     }
     // Suppression impossible si des articles sont affectés au labo (garde préexistante).
@@ -2180,7 +2183,7 @@ const deleteLabo = async (req, res) => {
       'SELECT 1 FROM labo_ingredient_selections WHERE labo_id = $1 LIMIT 1', [laboId]
     );
     if (used.rows.length > 0) {
-      return res.status(409).json({ code: 'ARTICLES_AFFECTES', message: "Suppression impossible : des articles sont affectés à ce labo." });
+      return res.status(409).json({ code: 'ARTICLES_AFFECTES', message: "Suppression impossible : [[un:article:pl]] sont [[acc:article:affecté:affectée:pl]] à [[ce:labo]]." });
     }
 
     // Unassign labo from activities
@@ -2198,7 +2201,7 @@ const deleteLabo = async (req, res) => {
     }
     await pool.query('DELETE FROM labos WHERE id = $1', [laboId]);
 
-    res.json({ message: 'Labo supprimé' });
+    res.json({ message: '[[Nom:labo]] [[acc:labo:supprimé:supprimée]]' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -2222,14 +2225,14 @@ const updateLabo = async (req, res) => {
     const parentGiven = typeof laboParentId !== 'undefined';
     const parentIdNum = parentGiven && laboParentId != null ? parseInt(laboParentId, 10) : null;
     if (parentGiven && laboParentId != null) {
-      if (!Number.isInteger(parentIdNum) || parentIdNum <= 0) return res.status(400).json({ message: 'Labo source introuvable' });
+      if (!Number.isInteger(parentIdNum) || parentIdNum <= 0) return res.status(400).json({ message: '[[Nom:labo]] source introuvable' });
       if (parentIdNum === parseInt(laboId, 10))
         return res.status(400).json({ code: 'CYCLE_INTERDIT', message: unitesOp.CODES.CYCLE_INTERDIT });
       const parentCheck = await pool.query(
         'SELECT id FROM labos WHERE id = $1 AND entreprise_id = $2',
         [parentIdNum, entrepriseId]
       );
-      if (parentCheck.rows.length === 0) return res.status(400).json({ message: 'Labo source introuvable' });
+      if (parentCheck.rows.length === 0) return res.status(400).json({ message: '[[Nom:labo]] source introuvable' });
     }
     if (composantId != null) {
       await unitesOp.validateComposant(pool, entrepriseId, 'labo', composantId);
@@ -2240,7 +2243,7 @@ const updateLabo = async (req, res) => {
       [entrepriseId, nom.trim(), laboId]
     );
     if (nomCheck.rows.length > 0)
-      return res.status(409).json({ message: 'Un labo avec ce nom existe déjà' });
+      return res.status(409).json({ message: '[[Un:labo]] avec ce nom existe déjà' });
 
     const tel = referentTel?.trim() || null;
     // UPDATE → fournisseur → composant → source dans UNE transaction (un 400 cycle/composant
@@ -2271,7 +2274,7 @@ const updateLabo = async (req, res) => {
       }
       return true;
     });
-    if (!found) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!found) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const fresh = await pool.query('SELECT * FROM labos WHERE id = $1', [laboId]);
     await unitesOp.enrichRows(pool, 'labo', fresh.rows);
@@ -2286,16 +2289,17 @@ const updateLabo = async (req, res) => {
 // ── Transfer history — export Excel ──────────────────────────────────────────
 
 const exportLaboTransferExcel = async (req, res) => {
+  const voc = req.voc ?? vocabDefaut;
   const { laboId } = req.params;
   const { startDate, endDate, activiteId, laboDestId, selectedIds: selectedIdsParam } = req.query;
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
 
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const laboRes = await pool.query('SELECT nom FROM labos WHERE id = $1', [laboId]);
-    const laboNom = laboRes.rows[0]?.nom || 'Labo';
+    const laboNom = laboRes.rows[0]?.nom || voc.Nom('labo');
 
     const conditions = ['lt.labo_id = $1'];
     const params = [laboId];
@@ -2315,7 +2319,8 @@ const exportLaboTransferExcel = async (req, res) => {
               lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, COALESCE(u.nom, 'unité') AS unite_nom,
               COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) AS categorie_nom,
               lt.activite_id, a.nom AS activite_nom,
-              CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS dest_nom,
+              CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom ELSE a.nom END AS dest_nom,
+              (lt.labo_dest_id IS NOT NULL) AS dest_labo,
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
               ub.nom AS created_by_nom
        FROM labo_transfers lt
@@ -2334,16 +2339,16 @@ const exportLaboTransferExcel = async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
-    const sheet = workbook.addWorksheet(`Hist Transferts ${laboNom}`, { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+    const sheet = workbook.addWorksheet(ongletSur(workbook, `Hist ${voc.Court('transfert', true)} ${laboNom}`), { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
     // Date | Destination | Ingrédient | Catégorie | Quantité | Unité | Prix U. HT | TVA % | Prix U. TTC | Coût HT | Coût TTC | Créé par
-    const labels = ['Date', 'Destination', 'Ingrédient', 'Catégorie', 'Quantité', 'Unité', 'Prix U. HT', 'TVA %', 'Prix U. TTC', 'Coût HT', 'Coût TTC', 'Créé par'];
+    const labels = ['Date', 'Destination', voc.Nom('article_ingredient'), 'Catégorie', 'Quantité', 'Unité', 'Prix U. HT', 'TVA %', 'Prix U. TTC', 'Coût HT', 'Coût TTC', 'Créé par'];
     const widths = [12, 20, 26, 18, 11, 9, 13, 9, 13, 14, 14, 16];
     const colCount = labels.length;
 
     const fmtD = (d) => d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—';
     const headerIdx = brandHeader(workbook, sheet, {
-      titre: 'Historique des transferts — Labo',
+      titre: `Historique ${voc.du('transfert', true)} — ${voc.Court('labo')}`,
       sousTitre: laboNom,
       meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · Période ${fmtD(startDate)} → ${fmtD(endDate)} · ${rows.length} ligne(s)`,
       colCount,
@@ -2363,8 +2368,10 @@ const exportLaboTransferExcel = async (req, res) => {
       totalHT += coutHt; totalTTC += coutTtc;
       const isSelected = selectedSet.has(Number(r.id));
       const dateStr = fmtD(r.date_transfert);
+      // Marqueur « (labo) » (spec lot 2b §6.2) : drapeau SQL, assemblage ici.
+      const destNom = r.dest_labo && r.dest_nom != null ? `${r.dest_nom} (${voc.court('labo')})` : r.dest_nom;
       const dataRow = sheet.addRow([
-        dateStr, r.dest_nom, r.ingredient_nom, r.categorie_nom,
+        dateStr, destNom, r.ingredient_nom, libelleCategoriePt(voc, r.categorie_nom),
         qty, r.unite_nom,
         prix, tva !== null ? tva : '', prixTtc,
         coutHt, coutTtc,
@@ -2408,7 +2415,7 @@ const updateTransfer = async (req, res) => {
   const { laboId, transferId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
     const out = await transfertService.updateTransfert(pool, {
       laboId: parseInt(laboId, 10),
       transferId: parseInt(transferId, 10),
@@ -2429,7 +2436,7 @@ const deleteTransfer = async (req, res) => {
   const { laboId, transferId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
     const out = await transfertService.deleteTransfert(pool, {
       laboId: parseInt(laboId, 10),
       transferId: parseInt(transferId, 10),
@@ -2449,7 +2456,7 @@ const getTransferPrix = async (req, res) => {
   const { laboId, transferId } = req.params;
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
-    if (!ok) return res.status(404).json({ message: 'Labo introuvable' });
+    if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
     res.json(await transfertService.getTransferPrix(pool, parseInt(laboId, 10), parseInt(transferId, 10)));
   } catch (err) {
     if (replyTransfertError(res, err)) return;

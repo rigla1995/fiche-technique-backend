@@ -78,17 +78,17 @@ const validerComposition = ({ compteurs, regles = REGLES_DEFAUT, composants = []
     push('COMPOSITION_INVALIDE', 'Les quantités doivent être positives ou nulles');
   }
   if (k.nb_acheteurs < 0 || k.nb_acheteurs > 100) {
-    push('ACHETEURS_QUOTA', 'Quota acheteurs invalide (paliers de 1 à 100)');
+    push('ACHETEURS_QUOTA', 'Quota [[court:acheteur:pl]] invalide (paliers de 1 à 100)');
   }
   if (r.depot_exige_acheteurs !== false && k.nb_activites === 0) {
     if (k.nb_labos < 1) {
-      push('DEPOT_SANS_LABO', 'Un compte sans activité doit avoir au moins un labo (compte dépôt)');
+      push('DEPOT_SANS_LABO', 'Un compte sans [[nom:activite]] doit avoir au moins [[un:labo]] (compte [[nom:depot]])');
     } else if (k.nb_acheteurs === 0) {
-      push('DEPOT_SANS_ACHETEURS', "Un labo sans activité nécessite l'option Acheteurs (compte dépôt = labo + acheteurs)");
+      push('DEPOT_SANS_ACHETEURS', "[[Un:labo]] sans [[nom:activite]] nécessite l'option [[Court:acheteur:pl]] (compte [[nom:depot]] = [[nom:labo]] + [[nom:acheteur:pl]])");
     }
   }
   if (r.acheteurs_requiert_labo !== false && k.nb_acheteurs > 0 && k.nb_labos < 1) {
-    push('ACHETEURS_SANS_LABO', "L'option Acheteurs nécessite au moins un labo");
+    push('ACHETEURS_SANS_LABO', "L'option [[Court:acheteur:pl]] nécessite au moins [[un:labo]]");
   }
   return erreurs;
 };

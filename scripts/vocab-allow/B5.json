@@ -5,5 +5,165 @@
     "apres": "(\n  ⟦·⟧.origine = 'labo'\n  OR (⟦·⟧.type = 'utilisable' AND EXISTS (\n    SELECT 1 FROM labo_pt_selections lps\n    JOIN labos lx ON lx.id = lps.labo_id\n    JOIN profil_entreprise pex ON pex.id = lx.entreprise_id\n    WHERE lps.produit_id = ⟦·⟧.id AND pex.client_id = $⟦·⟧\n  ))\n)",
     "type": "discriminant",
     "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": "⟦?activite|labo⟧",
+    "apres": "⟦?activite|labo⟧",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Code de la colonne utilisateurs.gerant_activite_type ('activite' / 'labo'), écrit en base par l'INSERT du gérant (compatibilité mono-affectation) : valeur technique, jamais affichée (I2)."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": "⟦?⟦?activite|labo⟧|⟦·⟧⟧",
+    "apres": "⟦?⟦?activite|labo⟧|⟦·⟧⟧",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Même code gerant_activite_type ('activite' / 'labo') écrit par l'UPDATE du gérant (COALESCE) : valeur technique, jamais affichée (I2)."
+  },
+  {
+    "fichier": "src/controllers/acheteursController.js",
+    "avant": "acheteur",
+    "apres": "acheteur",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Code de rôle utilisateurs.role = 'acheteur' (invitation { role: 'acheteur' } lue par emailService pour choisir le gabarit) : valeur technique, jamais affichée (I2)."
+  },
+  {
+    "fichier": "src/controllers/acheteurVentesController.js",
+    "avant": "Produits ⟦?Utilisables|Composés⟧",
+    "apres": "Produits ⟦?Utilisables|Composés⟧",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "produitSection : valeur du champ categorie de l'API (GET /api/acheteurs/offres), identique à la constante SQL du portail ; libellé par défaut traduit à l'écran, forme de l'API inchangée (spec lot 2b §I9, mission B5 « valeurs de l'API, inchangées »)."
+  },
+  {
+    "fichier": "src/controllers/acheteurVentesController.js",
+    "avant": "produit",
+    "apres": "produit",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Code articleType 'produit' (acheteur_offres.article_type, isEligible) : valeur technique comparée, jamais affichée (I2)."
+  },
+  {
+    "fichier": "src/controllers/acheteurVentesController.js",
+    "avant": "Article invalide",
+    "apres": "Article invalide",
+    "type": "homonyme",
+    "mode": "residuels",
+    "justification": "« article » au sens d'élément quelconque (articleType ∈ {ingredient, produit}) : liste fermée de la spec lot 2b §6.5 (acheteurVentesController.js:131), non traduit."
+  },
+  {
+    "fichier": "src/controllers/acheteurVentesController.js",
+    "avant": "Article non proposable (article non commandable ou produit hors labo)",
+    "apres": "Article non proposable (article non commandable ou produit hors labo)",
+    "type": "homonyme",
+    "mode": "residuels",
+    "justification": "Premier mot « Article » = élément quelconque (ingrédient ou produit), liste fermée de la spec lot 2b §6.5 (:166, premier mot) ; le reste est balisé ([[nom:article]], [[nom:produit]], [[nom:labo]]) et rendu au bord."
+  },
+  {
+    "fichier": "src/controllers/acheteurVentesController.js",
+    "avant": "produit:⟦·⟧",
+    "apres": "produit:⟦·⟧",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Clé interne de Map `produit:<id>` (offreMap / nomMap) : jamais affichée."
+  },
+  {
+    "fichier": "src/controllers/acheteurVentesController.js",
+    "avant": "Ligne ⟦·⟧ : article sans offre active — configurez d'abord vos Tarifs Acheteurs",
+    "apres": "Ligne ⟦·⟧ : article sans offre active — configurez d'abord vos Tarifs Acheteurs",
+    "type": "homonyme",
+    "mode": "residuels",
+    "justification": "« article » = élément quelconque d'une ligne de commande (ingrédient ou produit), liste fermée de la spec lot 2b §6.5 (:396) ; « Tarifs [[Court:acheteur:pl]] » est balisé et rendu au bord."
+  },
+  {
+    "fichier": "src/controllers/acheteurVentesController.js",
+    "avant": "labo",
+    "apres": "labo",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Argument de type de lieu de computeStock(db, 'labo', laboId, …) : code technique, jamais affiché (4 emplois)."
+  },
+  {
+    "fichier": "src/controllers/portailController.js",
+    "avant": "Produits Utilisables",
+    "apres": "Produits Utilisables",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Constante SQL du catalogue du portail (colonne categorie) : valeur de l'API conservée telle quelle et sert au tri ORDER BY categorie (spec lot 2b §6.1, I8, I9 ; mission B5 « SQL :30 = valeurs de l'API inchangées »)."
+  },
+  {
+    "fichier": "src/controllers/portailController.js",
+    "avant": "Produits Composés",
+    "apres": "Produits Composés",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Constante SQL du catalogue du portail (colonne categorie) : valeur de l'API conservée telle quelle et sert au tri ORDER BY categorie (spec lot 2b §6.1, I8, I9)."
+  },
+  {
+    "fichier": "src/controllers/portailController.js",
+    "avant": "produit:⟦·⟧",
+    "apres": "produit:⟦·⟧",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Clé interne de Map `produit:<id>` (offreMap / nomMap) : jamais affichée."
+  },
+  {
+    "fichier": "src/controllers/portailController.js",
+    "avant": "Ligne ⟦·⟧ : article non proposé",
+    "apres": "Ligne ⟦·⟧ : article non proposé",
+    "type": "homonyme",
+    "mode": "residuels",
+    "justification": "« article » = élément quelconque d'une ligne du panier (ingrédient ou produit), liste fermée de la spec lot 2b §6.5 (portailController.js:148), non traduit."
+  },
+  {
+    "fichier": "src/controllers/referentielController.js",
+    "avant": "article",
+    "apres": "article",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Jetons 'article' de details[].created / details[].existing de l'import du référentiel : codes de l'API (I2), traduits par l'écran (spec lot 2b §6.3)."
+  },
+  {
+    "fichier": "src/services/quotaService.js",
+    "avant": "⟦?activites|labos⟧",
+    "apres": "⟦?activites|labos⟧",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Nom de table SQL interpolé (FROM activites / FROM labos) dans le comptage du quota : identifiant technique, jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": "La base acheteurs n'est pas activée sur votre compte",
+    "apres": "La base acheteurs n'est pas activée sur votre compte",
+    "type": "non-repliable",
+    "mode": "accords",
+    "justification": "Signalement d'accord à tort : « activée » s'accorde avec « base » (féminin fixe), pas avec le terme rendu par [[court:acheteur:pl]] (guide serveur §4, gerantController.js:113 et :235). Rendu miroir juste : « La base abr-clientes n'est pas activée sur votre compte »."
+  },
+  {
+    "fichier": "src/controllers/acheteursController.js",
+    "avant": "Quota d'acheteurs ⟦?non configuré — demandez à l'administrateur d'augmenter votre|atteint (⟦·⟧/⟦·⟧) — demandez une augmentation de⟧ capacité",
+    "apres": "Quota d'acheteurs ⟦?non configuré — demandez à l'administrateur d'augmenter votre|atteint (⟦·⟧/⟦·⟧) — demandez une augmentation de⟧ capacité",
+    "type": "non-repliable",
+    "mode": "accords",
+    "justification": "Signalement d'accord à tort : « configuré » / « atteint » s'accordent avec « Quota » (masculin fixe), pas avec le terme rendu par [[de:acheteur:pl]]. Rendu miroir juste : « Quota de clientes non configuré — … »."
+  },
+  {
+    "fichier": "src/controllers/acheteursController.js",
+    "avant": "⟦?Quota d'acheteurs non configuré — demandez à l'administrateur d'augmenter votre capacité|Ce fichier dépasse votre quota d'acheteurs : ⟦·⟧ existants + ⟦·⟧ à importer > ⟦·⟧ autorisés⟧",
+    "apres": "⟦?Quota d'acheteurs non configuré — demandez à l'administrateur d'augmenter votre capacité|Ce fichier dépasse votre quota d'acheteurs : ⟦·⟧ existants + ⟦·⟧ à importer > ⟦·⟧ autorisés⟧",
+    "type": "non-repliable",
+    "mode": "accords",
+    "justification": "Signalement d'accord à tort : « configuré » s'accorde avec « Quota » (masculin fixe), pas avec le terme rendu par [[de:acheteur:pl]] ; « existants » / « autorisés » sont, eux, accordés par [[acc:acheteur:…]]. Rendu miroir juste : « … quota de clientes : 3 existantes + 2 à importer > 4 autorisées »."
+  },
+  {
+    "fichier": "src/controllers/acheteursController.js",
+    "avant": "Le compte de cet acheteur est déjà activé",
+    "apres": "Le compte de cet acheteur est déjà activé",
+    "type": "non-repliable",
+    "mode": "accords",
+    "justification": "Signalement d'accord à tort : « activé » s'accorde avec « Le compte » (masculin fixe), pas avec le terme rendu par [[ce:acheteur]]. Rendu miroir juste : « Le compte de cette cliente est déjà activé »."
   }
 ]

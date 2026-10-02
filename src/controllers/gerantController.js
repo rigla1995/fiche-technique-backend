@@ -90,14 +90,14 @@ const create = async (req, res) => {
   activiteIds = [...new Set(activiteIds)];
   laboIds = [...new Set(laboIds)];
   if (activiteIds.length === 0 && laboIds.length === 0) {
-    return res.status(400).json({ message: 'Au moins une activité ou un labo doit être affecté' });
+    return res.status(400).json({ message: 'Au moins [[un:activite]] ou [[un:labo]] doit être [[acc:labo:affecté:affectée]]' });
   }
 
   const parentId = req.user.id;
 
   try {
     if (!(await assertOwnership(parentId, activiteIds, laboIds))) {
-      return res.status(403).json({ message: 'Activité ou labo hors de votre périmètre' });
+      return res.status(403).json({ message: '[[Nom:activite]] ou [[nom:labo]] hors de votre périmètre' });
     }
     // Lot 1b §3.4 : quota de gérants du dernier abonnement (actifs + inactifs) — 409 LIMITE_ATTEINTE.
     // La règle « 3 gérants gratuits » ci-dessous reste une règle de tarification.
@@ -107,10 +107,10 @@ const create = async (req, res) => {
     const accesAcheteurs = req.body.accesAcheteurs === true;
     if (accesAcheteurs) {
       if (laboIds.length === 0) {
-        return res.status(400).json({ message: 'L\'accès à la base acheteurs exige au moins un labo affecté' });
+        return res.status(400).json({ message: "L'accès à la base [[court:acheteur:pl]] exige au moins [[un:labo]] [[acc:labo:affecté:affectée]]" });
       }
       if (!(await moduleAcheteursActif(parentId))) {
-        return res.status(400).json({ message: 'La base acheteurs n\'est pas activée sur votre compte' });
+        return res.status(400).json({ message: "La base [[court:acheteur:pl]] n'est pas activée sur votre compte" });
       }
     }
     const firstActiviteId = activiteIds[0] ?? null;
@@ -208,14 +208,14 @@ const update = async (req, res) => {
       `SELECT id, gerant_acces_acheteurs FROM utilisateurs WHERE id = $1 AND role = 'gerant' AND gerant_parent_id = $2`,
       [id, req.user.id]
     );
-    if (own.rows.length === 0) return res.status(404).json({ message: 'Gérant introuvable' });
+    if (own.rows.length === 0) return res.status(404).json({ message: '[[Nom:gerant]] introuvable' });
 
     if (hasAffectations) {
       if (activiteIds.length === 0 && laboIds.length === 0) {
-        return res.status(400).json({ message: 'Au moins une activité ou un labo doit être affecté' });
+        return res.status(400).json({ message: 'Au moins [[un:activite]] ou [[un:labo]] doit être [[acc:labo:affecté:affectée]]' });
       }
       if (!(await assertOwnership(req.user.id, activiteIds, laboIds))) {
-        return res.status(403).json({ message: 'Activité ou labo hors de votre périmètre' });
+        return res.status(403).json({ message: '[[Nom:activite]] ou [[nom:labo]] hors de votre périmètre' });
       }
     }
 
@@ -225,14 +225,14 @@ const update = async (req, res) => {
     const hasLaboFinal = hasAffectations ? laboIds.length > 0 : await gerantHasLabo(id);
     if (accesAcheteurs === true) {
       if (!hasLaboFinal) {
-        return res.status(400).json({ message: 'L\'accès à la base acheteurs exige au moins un labo affecté' });
+        return res.status(400).json({ message: "L'accès à la base [[court:acheteur:pl]] exige au moins [[un:labo]] [[acc:labo:affecté:affectée]]" });
       }
       // Le module n'est validé que sur la transition faux → vrai : un flag déjà
       // accordé reste ré-envoyable tel quel même si l'admin a coupé le module
       // depuis (sinon toute édition du gérant serait bloquée en 400). L'accès
       // effectif reste de toute façon gaté par requireModuleAcheteurs.
       if (own.rows[0].gerant_acces_acheteurs !== true && !(await moduleAcheteursActif(req.user.id))) {
-        return res.status(400).json({ message: 'La base acheteurs n\'est pas activée sur votre compte' });
+        return res.status(400).json({ message: "La base [[court:acheteur:pl]] n'est pas activée sur votre compte" });
       }
     } else if (accesAcheteurs === null && !hasLaboFinal) {
       accesAcheteurs = false;
@@ -258,7 +258,7 @@ const update = async (req, res) => {
       [nom || null, telephone || null, compatActiviteId, compatActiviteType,
        actif !== undefined ? actif : null, accesAcheteurs, id, req.user.id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Gérant introuvable' });
+    if (result.rows.length === 0) return res.status(404).json({ message: '[[Nom:gerant]] introuvable' });
 
     if (hasAffectations) {
       await pool.query('DELETE FROM gerant_affectations WHERE gerant_id = $1', [id]);
@@ -289,7 +289,7 @@ const remove = async (req, res) => {
       `DELETE FROM utilisateurs WHERE id = $1 AND role = 'gerant' AND gerant_parent_id = $2 RETURNING id`,
       [id, req.user.id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ message: 'Gérant introuvable' });
+    if (result.rows.length === 0) return res.status(404).json({ message: '[[Nom:gerant]] introuvable' });
     // Gérant supprimé → purge immédiate du cache auth (TTL 15 s), comme update().
     invalidateAuthCache(id);
     res.status(204).send();

@@ -4,6 +4,8 @@ const { ptCategorieSql } = require('../utils/stockUtils');
 const ExcelJS = require('exceljs');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 const { gerantAllowsLabo } = require('../middleware/auth');
+const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
+const { ongletSur } = require('../utils/excelNoms');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -42,7 +44,7 @@ async function assertLaboOwner(laboId, userId) {
 async function assertLaboVentesAccess(req, laboId) {
   if (!/^\d+$/.test(String(laboId))) throw Object.assign(new Error('laboId invalide'), { status: 400 });
   await assertLaboOwner(laboId, clientId(req));
-  if (!gerantAllowsLabo(req, laboId)) throw Object.assign(new Error('Labo hors de votre périmètre'), { status: 403 });
+  if (!gerantAllowsLabo(req, laboId)) throw Object.assign(new Error('[[Nom:labo]] hors de votre périmètre'), { status: 403 });
 }
 
 // Lot 1b §3.3 : une activité dont l'unité opérationnelle est vente_active = false (Housekeeping,
@@ -50,7 +52,7 @@ async function assertLaboVentesAccess(req, laboId) {
 async function assertActiviteVenteActive(activiteId) {
   const r = await pool.query('SELECT vente_active FROM unites_operationnelles WHERE activite_id = $1', [activiteId]);
   if (r.rows.length && r.rows[0].vente_active === false) {
-    throw Object.assign(new Error('La vente est désactivée pour cette activité.'), { status: 400, code: 'VENTE_INACTIVE' });
+    throw Object.assign(new Error('[[Le:vente]] est [[acc:vente:désactivé:désactivée]] pour [[ce:activite]].'), { status: 400, code: 'VENTE_INACTIVE' });
   }
 }
 
@@ -906,7 +908,7 @@ const annulerVente = async (req, res) => {
     else await assertActiviteOwner(vente.activite_id, cid);
     // Un gérant ne peut annuler que les ventes qu'il a saisies.
     if (req.user.role === 'gerant' && vente.created_by !== req.user.id)
-      return res.status(403).json({ message: 'Vous ne pouvez supprimer que les ventes que vous avez saisies' });
+      return res.status(403).json({ message: 'Vous ne pouvez supprimer que [[le:vente:pl]] que vous avez [[acc:vente:saisis:saisies]]' });
 
     // Fetch lignes before deleting
     const lignesRes = await client.query('SELECT * FROM vente_lignes WHERE vente_id = $1', [id]);
@@ -1212,6 +1214,7 @@ const laboVentesStats = async (req, res) => {
 const exportVentesExcel = async (req, res) => {
   try {
     const { activiteId, from, to, type, prestataireId, typeProduit, selectedIds: selParam } = req.query;
+    const voc = req.voc ?? vocabDefaut;
     if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
     const cid = clientId(req);
     await assertActiviteOwner(activiteId, cid);
@@ -1253,13 +1256,13 @@ const exportVentesExcel = async (req, res) => {
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'LabFlow';
-    const ws = wb.addWorksheet('Historique Ventes', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+    const ws = wb.addWorksheet(ongletSur(wb, `Historique ${voc.Court('vente', true)}`), { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
     const periode = (from || to) ? `Période ${fmtD(from)} → ${fmtD(to)}` : 'Toutes dates';
-    const meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${r.rows.length} vente(s)`
-      + (selectedSet.size > 0 ? ` · ${selectedSet.size} sélectionnée(s) (surlignées)` : '');
-    const headerIdx = brandHeader(wb, ws, { titre: 'Historique des ventes — Activités', meta, colCount: COLS });
-    headerRow(ws, headerIdx, ['Date', 'Type', 'Prestataire', 'CA (DT)', 'Marge (DT)', 'Statut'],
+    const meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${r.rows.length} ${voc.nomS('vente')}`
+      + (selectedSet.size > 0 ? ` · ${selectedSet.size} ${voc.acc('vente', 'sélectionné(s)', 'sélectionnée(s)')} (${voc.acc('vente', 'surlignés', 'surlignées')})` : '');
+    const headerIdx = brandHeader(wb, ws, { titre: `Historique ${voc.du('vente', true)} — ${voc.Court('activite', true)}`, meta, colCount: COLS });
+    headerRow(ws, headerIdx, ['Date', 'Type', voc.Court('prestataire'), 'CA (DT)', `${voc.Court('marge')} (DT)`, 'Statut'],
       { widths: [13, 14, 22, 15, 15, 14] });
 
     // Data rows
@@ -1269,8 +1272,8 @@ const exportVentesExcel = async (req, res) => {
       const marge = parseFloat(row.total_marge);
       totalCA += ca; totalMarge += marge;
       const dateStr = isoDate(row.date_vente)?.split('-').reverse().join('/') ?? '';
-      const typeLabel = row.type_vente === 'directe' ? 'Directe' : 'Prestataire';
-      const statutLabel = row.statut === 'confirmee' ? 'Confirmée' : row.statut;
+      const typeLabel = row.type_vente === 'directe' ? voc.acc('vente', 'Direct', 'Directe') : voc.Court('prestataire');
+      const statutLabel = row.statut === 'confirmee' ? voc.acc('vente', 'Confirmé', 'Confirmée') : row.statut;
       const dataRow = ws.addRow([dateStr, typeLabel, row.prestataire_nom || '', ca, marge, statutLabel]);
       dataRowStyle(dataRow, { index: i, selected: selectedSet.has(String(row.id)), colCount: COLS });
       for (let c = 1; c <= COLS; c++) {
@@ -1307,6 +1310,7 @@ const exportVentesExcel = async (req, res) => {
 const exportPrixHistoriqueConfigExcel = async (req, res) => {
   try {
     const { activiteId, from, to, filterType, filterNom, selectedIds: selParam } = req.query;
+    const voc = req.voc ?? vocabDefaut;
     if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
     const cid = clientId(req);
     await assertActiviteOwner(activiteId, cid);
@@ -1347,7 +1351,7 @@ const exportPrixHistoriqueConfigExcel = async (req, res) => {
     const meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${r.rows.length} entrée(s)`
       + (selectedSet.size > 0 ? ` · ${selectedSet.size} sélectionnée(s) (surlignées)` : '');
     const headerIdx = brandHeader(wb, ws, { titre: 'Historique de configuration des prix de vente', meta, colCount: COLS });
-    headerRow(ws, headerIdx, ['Produit / Supplément', 'Type', 'Prix enregistré', 'Date'],
+    headerRow(ws, headerIdx, [`${voc.Court('produit')} / ${voc.Court('supplement')}`, 'Type', 'Prix enregistré', 'Date'],
       { widths: [30, 14, 18, 14] });
 
     // Data rows
@@ -1355,7 +1359,7 @@ const exportPrixHistoriqueConfigExcel = async (req, res) => {
       const dateStr = new Date(row.saved_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
       const dataRow = ws.addRow([
         row.produit_nom || '—',
-        row.article_type === 'ingredient' ? 'Produit Valorisé' : (row.is_supplement ? 'Supplément' : 'Produit'),
+        row.article_type === 'ingredient' ? voc.Titre('produit_valorise') : (row.is_supplement ? voc.Court('supplement') : voc.Court('produit')),
         parseFloat(row.prix_vente),
         dateStr,
       ]);
@@ -1404,6 +1408,7 @@ const exportLaboVentesExcel = async (req, res) => {
   try {
     // filterDestination (lot 1b : dest_nom) ; filterActivite = ancien nom, toujours accepté.
     const { laboId, from, to, filterCategorie, filterArticle, selectedIds } = req.query;
+    const voc = req.voc ?? vocabDefaut;
     const filterDestination = req.query.filterDestination || req.query.filterActivite || '';
     if (!laboId) return res.status(400).json({ message: 'laboId requis' });
     await assertLaboVentesAccess(req, laboId);
@@ -1466,13 +1471,13 @@ const exportLaboVentesExcel = async (req, res) => {
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'LabFlow';
-    const ws = wb.addWorksheet('Ventes Labo');
+    const ws = wb.addWorksheet(ongletSur(wb, `${voc.Pl('vente')} ${voc.Court('labo')}`));
 
     const periode = (from || to) ? `Période ${fmtD(from)} → ${fmtD(to)}` : 'Toutes dates';
     const meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${rows.length} ligne${rows.length !== 1 ? 's' : ''}`
       + (selSet.size > 0 ? ` · ${selSet.size} ligne(s) sélectionnée(s) (surlignées)` : '');
-    const headerIdx = brandHeader(wb, ws, { titre: 'Ventes du labo — Transferts valorisés', meta, colCount: COLS });
-    headerRow(ws, headerIdx, ['Date', 'Article', 'Unité', 'Catégorie', 'Destination', 'Qté', 'Val. transfert', 'Val. appro', 'Écart'],
+    const headerIdx = brandHeader(wb, ws, { titre: `${voc.Pl('vente')} ${voc.du('labo')} — ${voc.Pl('transfert')} ${voc.acc('transfert', 'valorisés', 'valorisées')}`, meta, colCount: COLS });
+    headerRow(ws, headerIdx, ['Date', 'Article', 'Unité', 'Catégorie', 'Destination', 'Qté', `Val. ${voc.court('transfert')}`, `Val. ${voc.court('appro')}`, 'Écart'],
       { widths: [14, 26, 10, 18, 22, 8, 16, 16, 14] });
 
     let totalTransfert = 0, totalAppro = 0;
@@ -1484,8 +1489,8 @@ const exportLaboVentesExcel = async (req, res) => {
       const ecart = valAppro != null ? valeur - valAppro : null;
 
       const dr = ws.addRow([
-        row.date_transfert, row.article_nom, row.unite_nom ?? '', row.categorie_nom,
-        row.dest_type === 'labo' ? `${row.dest_nom} (labo)` : row.dest_nom, row.quantite, valeur, valAppro ?? '', ecart ?? '',
+        row.date_transfert, row.article_nom, row.unite_nom ?? '', libelleCategoriePt(voc, row.categorie_nom),
+        row.dest_type === 'labo' ? `${row.dest_nom} (${voc.court('labo')})` : row.dest_nom, row.quantite, valeur, valAppro ?? '', ecart ?? '',
       ]);
       dataRowStyle(dr, { index: idx, selected: selSet.has(String(row.id)), colCount: COLS });
       dr.getCell(6).numFmt = FMT_QTE;
@@ -1516,6 +1521,7 @@ const exportLaboVentesExcel = async (req, res) => {
 
 const getArticlesValorisés = async (req, res) => {
   try {
+    const voc = req.voc ?? vocabDefaut;
     const { activiteId } = req.query;
     if (!activiteId) return res.status(400).json({ message: 'activiteId requis' });
     const cid = clientId(req);
@@ -1582,7 +1588,7 @@ const getArticlesValorisés = async (req, res) => {
       id: row.id,
       nom: row.nom,
       unite_nom: null,
-      categorie_nom: 'Produits composés (labo)',
+      categorie_nom: `${voc.Nom('produit_compose', true)} (${voc.court('labo')})`,
       famille_nom: null,
       categorie_produit_id: row.categorie_produit_id ?? null,
       categorie_produit_nom: row.categorie_produit_nom ?? null,
@@ -1651,7 +1657,7 @@ const setArticleCategorieProduit = async (req, res) => {
       `UPDATE articles SET categorie_produit_id = $1 WHERE id = $2 AND client_id = $3 RETURNING id`,
       [categorieProduitId || null, articleId, cid]
     );
-    if (!r.rows.length) return res.status(404).json({ message: 'Article introuvable' });
+    if (!r.rows.length) return res.status(404).json({ message: '[[Nom:article]] introuvable' });
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ message: e.message });

@@ -1,5 +1,7 @@
 const ExcelJS = require('exceljs');
 const pool = require('../config/database');
+const { vocabDefaut } = require('../utils/vocab');
+const { ongletSur } = require('../utils/excelNoms');
 const { calculerCout, calculerCoutAvecPrixMap, buildDpPriceMap, buildMpPriceMap, buildDpPriceMapLabo, buildMpPriceMapLabo, laboOwnedByClient } = require('./produitsController');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE, BRAND, BORDER, fill } = require('../services/excelBrandService');
 
@@ -14,8 +16,8 @@ function countFtLines(coutData) {
     + coutData.sous_produits.reduce((acc, sp) => acc + countSp(sp), 0);
 }
 
-function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInfo, pricingLabel, ctxLabel) {
-  const sousTitre = ctxLabel || ((activityInfo && actId) ? `Activité : ${activityInfo.nom}` : '');
+function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInfo, pricingLabel, ctxLabel, voc) {
+  const sousTitre = ctxLabel || ((activityInfo && actId) ? `${voc.Court('activite')} : ${activityInfo.nom}` : '');
 
   const metaParts = [`Exporté le ${new Date().toLocaleDateString('fr-FR')}`];
   if (ftMode) {
@@ -25,12 +27,12 @@ function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInf
   metaParts.push(`${countFtLines(coutData)} ligne(s)`);
 
   const headerIdx = brandHeader(wb, sheet, {
-    titre: `Fiche technique — ${coutData.produit}`,
+    titre: `${voc.Nom('fiche_technique')} — ${coutData.produit}`,
     sousTitre,
     meta: metaParts.join(' · '),
     colCount: FT_COLS,
   });
-  headerRow(sheet, headerIdx, ['Désignation', 'Portion', 'Unité', 'Prix Unit. (DT)', 'Coût (DT)'], {
+  headerRow(sheet, headerIdx, ['Désignation', voc.Court('portion'), 'Unité', 'Prix Unit. (DT)', 'Coût (DT)'], {
     widths: [35, 12, 12, 14, 14],
   });
 
@@ -99,7 +101,7 @@ function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInf
   };
 
   if (coutData.ingredients.length > 0) {
-    addSectionHeader('INGRÉDIENTS');
+    addSectionHeader(voc.MAJ('ingredient', true));
     const ingByCategory = {};
     coutData.ingredients.forEach((ing) => {
       const cat = ing.categorie || 'Sans catégorie';
@@ -122,7 +124,7 @@ function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInf
   const renderSousProduit = (sp, depth = 0) => {
     sheet.mergeCells(rowIndex, 1, rowIndex, FT_COLS - 1);
     const labelCell = sheet.getCell(rowIndex, 1);
-    labelCell.value = `↳ ${sp.nom} (portion : ${sp.portion})`;
+    labelCell.value = `↳ ${sp.nom} (${voc.court('portion')} : ${sp.portion})`;
     labelCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: BRAND.indigoInk } };
     labelCell.fill = fill(BRAND.indigoSoft);
     labelCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 + depth * 2 };
@@ -141,7 +143,7 @@ function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInf
   };
 
   if (coutData.sous_produits.length > 0) {
-    addSectionHeader('PRODUITS UTILISABLES');
+    addSectionHeader(voc.MAJ('produit_utilisable', true));
     coutData.sous_produits.forEach((sp) => renderSousProduit(sp));
   }
 
@@ -170,8 +172,8 @@ function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInf
     rowIndex++;
   };
 
-  if (coutData.ingredients.length > 0) addSummaryRow('Coût ingrédients :', coutData.cout_ingredients);
-  if (coutData.sous_produits.length > 0) addSummaryRow('Coût produits utilisables :', coutData.cout_sous_produits);
+  if (coutData.ingredients.length > 0) addSummaryRow(`Coût ${voc.pl('ingredient')} :`, coutData.cout_ingredients);
+  if (coutData.sous_produits.length > 0) addSummaryRow(`Coût ${voc.pl('produit_utilisable')} :`, coutData.cout_sous_produits);
 
   sheet.mergeCells(rowIndex, 1, rowIndex, FT_COLS - 1);
   const totalRow = sheet.getRow(rowIndex);
@@ -195,6 +197,7 @@ const exportExcel = async (req, res) => {
   const { mode, activiteId, date, fg, pricingMethod, laboId } = req.query;
   const ownerId = req.user.gerant_parent_id || req.user.id;
   const actId = parseInt(activiteId) || 0;
+  const voc = req.voc ?? vocabDefaut;
 
   try {
     // Contexte labo (produit valorisé composé) : prix d'appro du labo, sans activité.
@@ -207,7 +210,7 @@ const exportExcel = async (req, res) => {
     if (useLabo) {
       const lr = await pool.query('SELECT nom FROM labos WHERE id = $1', [labId]);
       ctxName = lr.rows[0]?.nom ?? null;
-      if (ctxName) ctxLabel = `Labo : ${ctxName}`;
+      if (ctxName) ctxLabel = `${voc.Court('labo')} : ${ctxName}`;
     } else if (actId) {
       const ar = await pool.query('SELECT nom FROM activites WHERE id = $1', [actId]);
       ctxName = ar.rows[0]?.nom ?? null;
@@ -219,7 +222,7 @@ const exportExcel = async (req, res) => {
     let ftDate = null;
 
     if (mode === 'stock') {
-      ftMode = 'Stock';
+      ftMode = voc.Nom('stock');
       ftDate = new Date().toISOString().slice(0, 10);
 
       if (pricingMethod === 'both') {
@@ -239,13 +242,13 @@ const exportExcel = async (req, res) => {
         workbook2.created = new Date();
 
         // Suffixe d'onglet préservé même si le nom est long (limite Excel : 31 chars)
-        const tabBase2 = filename2.replace('.xlsx', '').replace(/[\\/?*[\]:]/g, '-').slice(0, 23);
-        const dpSheet = workbook2.addWorksheet(tabBase2 + ' — DP', { pageSetup: { paperSize: 9, orientation: 'portrait' } });
-        const mpSheet = workbook2.addWorksheet(tabBase2 + ' — PMP', { pageSetup: { paperSize: 9, orientation: 'portrait' } });
+        const tabBase2 = filename2.replace('.xlsx', '').replace(/^FT/, () => voc.Court('fiche_technique')).replace(/[\\/?*[\]:]/g, '-').slice(0, 23);
+        const dpSheet = workbook2.addWorksheet(ongletSur(workbook2, tabBase2 + ' — DP'), { pageSetup: { paperSize: 9, orientation: 'portrait' } });
+        const mpSheet = workbook2.addWorksheet(ongletSur(workbook2, tabBase2 + ' — PMP'), { pageSetup: { paperSize: 9, orientation: 'portrait' } });
 
         const ctxInfo2 = ctxName ? { nom: ctxName } : null;
-        fillFtWorksheet(workbook2, dpSheet, dpData, ftMode, ftDate, actId, ctxInfo2, 'DP — Dernier Prix', ctxLabel);
-        fillFtWorksheet(workbook2, mpSheet, mpData, ftMode, ftDate, actId, ctxInfo2, 'PMP — Prix Moyen Pondéré', ctxLabel);
+        fillFtWorksheet(workbook2, dpSheet, dpData, ftMode, ftDate, actId, ctxInfo2, 'DP — Dernier Prix', ctxLabel, voc);
+        fillFtWorksheet(workbook2, mpSheet, mpData, ftMode, ftDate, actId, ctxInfo2, 'PMP — Prix Moyen Pondéré', ctxLabel, voc);
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="${filename2}"`);
@@ -282,15 +285,15 @@ const exportExcel = async (req, res) => {
 
     const safeProduit = coutData.produit.replace(/[^a-zA-Z0-9À-ÿ]/g, '-');
     const filename = safeCtx ? `FT-${safeCtx}-${safeProduit}.xlsx` : `FT-${safeProduit}.xlsx`;
-    const sheetTabName = filename.replace('.xlsx', '').replace(/[\\/?*[\]:]/g, '-').slice(0, 31);
+    const sheetTabName = filename.replace('.xlsx', '').replace(/^FT/, () => voc.Court('fiche_technique')).replace(/[\\/?*[\]:]/g, '-').slice(0, 31);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
     workbook.created = new Date();
 
-    const sheet = workbook.addWorksheet(sheetTabName, { pageSetup: { paperSize: 9, orientation: 'portrait' } });
+    const sheet = workbook.addWorksheet(ongletSur(workbook, sheetTabName), { pageSetup: { paperSize: 9, orientation: 'portrait' } });
     const pricingLabel = mode === 'stock' ? (pricingMethod === 'mp' ? 'PMP — Prix Moyen Pondéré' : 'DP — Dernier Prix') : null;
-    fillFtWorksheet(workbook, sheet, coutData, ftMode, ftDate, actId, activityInfo, pricingLabel, ctxLabel);
+    fillFtWorksheet(workbook, sheet, coutData, ftMode, ftDate, actId, activityInfo, pricingLabel, ctxLabel, voc);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
