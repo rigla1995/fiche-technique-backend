@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const { isoDate } = require('../utils/dateUtils');
 const ExcelJS = require('exceljs');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
+const { gerantAllowsLabo } = require('../middleware/auth');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,14 @@ async function assertLaboOwner(laboId, userId) {
   );
   const ownerId = r.rows[0]?.client_id;
   if (!ownerId || String(ownerId) !== String(userId)) throw Object.assign(new Error('Accès refusé'), { status: 403 });
+}
+
+// Ventes Labo (laboId reçu dans l'URL) : le labo doit appartenir au compte (403 sinon) et, pour un
+// gérant, être dans son périmètre — comme les autres accès labo.
+async function assertLaboVentesAccess(req, laboId) {
+  if (!/^\d+$/.test(String(laboId))) throw Object.assign(new Error('laboId invalide'), { status: 400 });
+  await assertLaboOwner(laboId, clientId(req));
+  if (!gerantAllowsLabo(req, laboId)) throw Object.assign(new Error('Labo hors de votre périmètre'), { status: 403 });
 }
 
 // Lot 1b §3.3 : une activité dont l'unité opérationnelle est vente_active = false (Housekeeping,
@@ -1083,6 +1092,7 @@ const laboVentes = async (req, res) => {
   try {
     const { laboId, from, to } = req.query;
     if (!laboId) return res.status(400).json({ message: 'laboId requis' });
+    await assertLaboVentesAccess(req, laboId);
 
     const params = [laboId];
     let where = '';
@@ -1147,6 +1157,7 @@ const laboVentes = async (req, res) => {
       categorie_nom: row.categorie_nom ?? 'Sans catégorie',
     })));
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -1155,6 +1166,7 @@ const laboVentesStats = async (req, res) => {
   try {
     const { laboId } = req.query;
     if (!laboId) return res.status(400).json({ message: 'laboId requis' });
+    await assertLaboVentesAccess(req, laboId);
 
     const r = await pool.query(
       `SELECT
@@ -1191,6 +1203,7 @@ const laboVentesStats = async (req, res) => {
       })),
     });
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
@@ -1392,6 +1405,7 @@ const exportLaboVentesExcel = async (req, res) => {
     const { laboId, from, to, filterCategorie, filterArticle, selectedIds } = req.query;
     const filterDestination = req.query.filterDestination || req.query.filterActivite || '';
     if (!laboId) return res.status(400).json({ message: 'laboId requis' });
+    await assertLaboVentesAccess(req, laboId);
 
     const params = [laboId];
     let where = '';
@@ -1494,6 +1508,7 @@ const exportLaboVentesExcel = async (req, res) => {
     await wb.xlsx.write(res);
     res.end();
   } catch (e) {
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
