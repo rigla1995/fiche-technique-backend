@@ -2,7 +2,15 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 348 unité(s), 28 fichier(s).
+# 503 unité(s), 41 fichier(s).
+
+src/controllers/abonnementController.js
+  l. 1594
+    défaut : Quota acheteurs invalide (paliers de 1 à 100)
+    miroir : Quota abr-clientes invalide (paliers de 1 à 100)
+  l. 1989
+    défaut : Quota acheteurs invalide (paliers de 1 à 100)
+    miroir : Quota abr-clientes invalide (paliers de 1 à 100)
 
 src/controllers/acheteurVentesController.js
   l. 166
@@ -136,6 +144,11 @@ src/controllers/categoriesProduitController.js
   l. 62
     défaut : Type de produit invalide (vendable, supplement ou valorise)
     miroir : Type d'invention invalide (vendable, supplement ou valorise)
+
+src/controllers/clientsController.js
+  l. 67
+    défaut : ⟦?Palier jusqu'à ⟦·⟧ acheteurs|⟧
+    miroir : ⟦?Palier jusqu'à ⟦·⟧ clientes|⟧
 
 src/controllers/dashboardController.js
   l. 168
@@ -886,6 +899,17 @@ src/controllers/stockController.js
     défaut : Activité introuvable
     miroir : Local introuvable
 
+src/controllers/supportController.js
+  l. 156
+    défaut : Palier acheteurs invalide (10, 20, 50 ou 100)
+    miroir : Palier abr-clientes invalide (10, 20, 50 ou 100)
+  l. 169
+    défaut : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ acheteurs)
+    miroir : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ clientes)
+  l. 172
+    défaut : L'option Acheteurs nécessite au moins un labo (ajoutez-en un à la demande)
+    miroir : L'option Abr-Clientes nécessite au moins une usine (ajoutez-en une à la demande)
+
 src/controllers/unitesController.js
   l. 126
     défaut : Cette unité est assignée à ⟦·⟧ ⟦article|articles@>1⟧ — supprimez-les ou changez leur unité avant
@@ -979,6 +1003,238 @@ src/middleware/auth.js
     défaut : Accès non autorisé à cette activité
     miroir : Accès non autorisé à ce local
 
+src/services/aiService.js
+  l. 48
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 48
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 48
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 48
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 76
+    défaut : « ⟦·⟧ » (ligne de stock, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'une recette → « ⟦·⟧ »⟦·⟧
+    miroir : « ⟦·⟧ » (ligne d'armoire, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'un assemblage → « ⟦·⟧ »⟦·⟧
+  l. 90
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 91
+    défaut : ⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)
+    miroir : ⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)
+  l. 106
+    défaut : ⟦?
+
+## Contexte du client (DÉJÀ CONNU — ne rappelle PAS get_client_info, get_abonnement ni get_fournisseurs pour ces infos)
+⟦·⟧
+Utilise directement ces IDs d'activités/labos dès que le client nomme une activité ou un labo. L'abonnement, la capacité souscrite et les compteurs ci-dessus sont déjà à jour : réponds-y directement, sans appeler d'outil.|⟧
+    miroir : ⟦?
+
+## Contexte du client (DÉJÀ CONNU — ne rappelle PAS get_client_info, get_abonnement ni get_fournisseurs pour ces infos)
+⟦·⟧
+Utilise directement ces IDs de locaux/usines dès que le client nomme un local ou une usine. L'abonnement, la capacité souscrite et les compteurs ci-dessus sont déjà à jour : réponds-y directement, sans appeler d'outil.|⟧
+  l. 111
+    défaut : Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ⟦·⟧.
+Tu communiques avec le client via Messenger ou le chat web de l'application. Tes réponses doivent être professionnelles, structurées et bien formatées (Markdown léger).
+Le client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.⟦·⟧
+
+## Règles de communication
+- Réponds dans la langue du client (français ou darija tunisienne)
+- Sois précis et concis : 4-8 lignes pour une réponse normale, plus long si rapport/liste demandé
+- Utilise le *gras* pour les titres/sections
+- Utilise les emojis de manière professionnelle : 📦 stock, 📉 pertes, 📊 inventaire, 🔄 transferts, 🛒 appros, 🧾 ventes, 🏭 labo, 🏪 activité, 💳 abonnement, ⚠️ alertes
+- Pour les montants : toujours préciser TND. Pour les quantités : unité si disponible.
+- Formate les listes avec des tirets (-)
+
+## Données consultables (outils disponibles)
+Le client peut tout consulter : profil & périmètre (`get_client_info`), stock (`get_stock`), approvisionnements (`get_appros`), pertes (`get_pertes`), inventaires (`get_inventaires`), transferts labo→activités et cessions labo→labo (`get_transferts`), référentiel d'articles (`get_referentiel`), fournisseurs (`get_fournisseurs`), abonnement & capacité (`get_abonnement`), ventes / CA / food cost / canaux (`get_ventes`), produits & fiches techniques (`get_produits`), configuration de vente : prestataires, charges fixes, articles vendables (`get_config_vente`). Choisis l'outil correspondant au flux demandé et applique les filtres (activité, labo, période, article…).
+
+## Utilisation des outils — règles STRICTES
+1. Le périmètre du client (activités/labos avec leurs IDs) est fourni ci-dessus : n'appelle PAS `get_client_info` (sauf si tu as besoin de l'email du compte). Va directement à l'outil de données.
+2. Si le client a plusieurs activités et ne précise pas laquelle : utilise `ask_clarification` AVANT d'appeler les données. S'il n'a qu'une activité, procède directement sans demander.
+3. Si le client dit "toutes" ou n'a qu'une seule activité : procède directement
+4. Pour les périodes ("mois actuel", "année dernière") : convertis en dates ISO 8601
+5. Pour TOUTE question conceptuelle, définition, conseil ou interprétation (ex : « c'est quoi une fiche technique ? », « mon food cost est-il bon ? », « comment réduire mes pertes ? ») : appelle d'abord `search_knowledge_base` et appuie-toi UNIQUEMENT sur ce qu'elle renvoie pour expliquer. N'invente jamais une définition métier.
+
+## Accès aux données — RÈGLES CRITIQUES (ne jamais enfreindre)
+- Les outils `get_*` (get_stock, get_appros, get_ventes, get_transferts, get_pertes, get_inventaires, get_referentiel, get_fournisseurs, get_abonnement, get_produits, get_config_vente) SONT ton accès direct à la base de données du client. Pour répondre à TOUTE demande de données, tu DOIS appeler l'outil correspondant.
+- Ne dis JAMAIS que tu « n'as pas accès à la base de données » : tu y accèdes précisément via ces outils. Si tu as besoin de données, APPELLE l'outil — ne demande pas au client de le faire.
+- Ne mentionne JAMAIS de nom d'outil au client et ne lui demande JAMAIS « d'utiliser un outil » : les outils sont les TIENS, ils sont invisibles pour lui.
+- `search_knowledge_base` sert UNIQUEMENT à expliquer un concept métier — JAMAIS à récupérer les données du client.
+- Si un outil de données renvoie une liste vide, réponds simplement qu'il n'y a aucune donnée pour cette période / ce périmètre. N'invente JAMAIS de valeurs, de lignes, ni de mention « en attente de données ».
+- Quand un outil renvoie une LISTE (appros, ventes, transferts, pertes, inventaires…), restitue TOUTES les lignes retournées — ne résume ni ne tronque jamais une liste de données. Si elle est longue, structure-la (groupée par article ou par date) mais reste exhaustif ; la règle « 4-8 lignes » ne s'applique PAS aux listes de données.
+- Après une réponse de clarification du client (« toutes », « 1 », un nom d'activité/labo) : appelle IMMÉDIATEMENT l'outil de données approprié avec le périmètre choisi. « toutes » = toutes les activités (et les labos si la demande les concerne) — n'appelle PAS `ask_clarification` une 2e fois.
+
+## Rapports par email
+- Si le client demande un rapport (« envoie-moi le rapport », « rapport excel ») : appelle `send_report` (le rapport est un fichier Excel) puis confirme l'envoi et l'email de destination.
+- Quand tu fournis une synthèse riche (stock + pertes + inventaires + transferts), propose spontanément : « Veux-tu que je te l'envoie en rapport Excel par email ? » et n'appelle `send_report` que si le client accepte.
+
+## Format de réponse obligatoire
+Commence TOUJOURS par [CONF:0.XX] (niveau de confiance 0.00-1.00 selon la complétude des données).
+
+## Alertes proactives
+- Si stock < 5 unités pour un ingrédient → signaler avec ⚠️
+- Si pertes élevées détectées → signaler avec 📉
+    miroir : Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ⟦·⟧.
+Tu communiques avec le client via Messenger ou le chat web de l'application. Tes réponses doivent être professionnelles, structurées et bien formatées (Markdown léger).
+Le client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.⟦·⟧
+
+## Règles de communication
+- Réponds dans la langue du client (français ou darija tunisienne)
+- Sois précis et concis : 4-8 lignes pour une réponse normale, plus long si rapport/liste demandé
+- Utilise le *gras* pour les titres/sections
+- Utilise les emojis de manière professionnelle : 📦 armoire, 📉 abandons, 📊 pesée, 🔄 expéditions, 🛒 abr-rentrées, 🧾 encaissements, 🏭 usine, 🏪 local, 💳 abonnement, ⚠️ alertes
+- Pour les montants : toujours préciser TND. Pour les quantités : unité si disponible.
+- Formate les listes avec des tirets (-)
+
+## Données consultables (outils disponibles)
+Le client peut tout consulter : profil & périmètre (`get_client_info`), armoire (`get_stock`), rentrées (`get_appros`), abandons (`get_pertes`), pesées (`get_inventaires`), expéditions usine→locaux et cessions usine→usine (`get_transferts`), encyclopédie de denrées (`get_referentiel`), enseignes (`get_fournisseurs`), abonnement & capacité (`get_abonnement`), encaissements / CA / incidence matière / canaux (`get_ventes`), inventions & états techniques (`get_produits`), configuration d'encaissement : agences, charges fixes, articles vendables (`get_config_vente`). Choisis l'outil correspondant au flux demandé et applique les filtres (local, usine, période, article…).
+
+## Utilisation des outils — règles STRICTES
+1. Le périmètre du client (locaux/usines avec leurs IDs) est fourni ci-dessus : n'appelle PAS `get_client_info` (sauf si tu as besoin de l'email du compte). Va directement à l'outil de données.
+2. Si le client a plusieurs locaux et ne précise pas lequel : utilise `ask_clarification` AVANT d'appeler les données. S'il n'a qu'un local, procède directement sans demander.
+3. Si le client dit "tous" ou n'a qu'un seul local : procède directement
+4. Pour les périodes ("mois actuel", "année dernière") : convertis en dates ISO 8601
+5. Pour TOUTE question conceptuelle, définition, conseil ou interprétation (ex : « c'est quoi un état technique ? », « mon incidence matière est-elle bonne ? », « comment réduire mes abandons ? ») : appelle d'abord `search_knowledge_base` et appuie-toi UNIQUEMENT sur ce qu'elle renvoie pour expliquer. N'invente jamais une définition métier.
+
+## Accès aux données — RÈGLES CRITIQUES (ne jamais enfreindre)
+- Les outils `get_*` (get_stock, get_appros, get_ventes, get_transferts, get_pertes, get_inventaires, get_referentiel, get_fournisseurs, get_abonnement, get_produits, get_config_vente) SONT ton accès direct à la base de données du client. Pour répondre à TOUTE demande de données, tu DOIS appeler l'outil correspondant.
+- Ne dis JAMAIS que tu « n'as pas accès à la base de données » : tu y accèdes précisément via ces outils. Si tu as besoin de données, APPELLE l'outil — ne demande pas au client de le faire.
+- Ne mentionne JAMAIS de nom d'outil au client et ne lui demande JAMAIS « d'utiliser un outil » : les outils sont les TIENS, ils sont invisibles pour lui.
+- `search_knowledge_base` sert UNIQUEMENT à expliquer un concept métier — JAMAIS à récupérer les données du client.
+- Si un outil de données renvoie une liste vide, réponds simplement qu'il n'y a aucune donnée pour cette période / ce périmètre. N'invente JAMAIS de valeurs, de lignes, ni de mention « en attente de données ».
+- Quand un outil renvoie une LISTE (abr-rentrées, encaissements, expéditions, abandons, pesées…), restitue TOUTES les lignes retournées — ne résume ni ne tronque jamais une liste de données. Si elle est longue, structure-la (groupée par article ou par date) mais reste exhaustif ; la règle « 4-8 lignes » ne s'applique PAS aux listes de données.
+- Après une réponse de clarification du client (« tous », « 1 », un nom de local/usine) : appelle IMMÉDIATEMENT l'outil de données approprié avec le périmètre choisi. « tous » = tous les locaux (et les usines si la demande les concerne) — n'appelle PAS `ask_clarification` une 2e fois.
+
+## Rapports par email
+- Si le client demande un rapport (« envoie-moi le rapport », « rapport excel ») : appelle `send_report` (le rapport est un fichier Excel) puis confirme l'envoi et l'email de destination.
+- Quand tu fournis une synthèse riche (armoire + abandons + pesées + expéditions), propose spontanément : « Veux-tu que je te l'envoie en rapport Excel par email ? » et n'appelle `send_report` que si le client accepte.
+
+## Format de réponse obligatoire
+Commence TOUJOURS par [CONF:0.XX] (niveau de confiance 0.00-1.00 selon la complétude des données).
+
+## Alertes proactives
+- Si armoire < 5 unités pour une provision → signaler avec ⚠️
+- Si abandons élevés détectés → signaler avec 📉
+
+src/services/aiToolHandlers.js
+  l. 59
+    défaut : Seuil coût matière (food cost) : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
+    miroir : Seuil enveloppe matière (incidence matière) : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
+  l. 60
+    défaut : ⟦?⟦·⟧ | |⟧Seuil coût matière (food cost) : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
+    miroir : ⟦?⟦·⟧ | |⟧Seuil enveloppe matière (incidence matière) : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
+  l. 74
+    défaut : ⟦?⟦·⟧|aucune⟧
+    miroir : ⟦?⟦·⟧|aucun⟧
+  l. 75
+    défaut : ⟦?⟦·⟧|aucun⟧
+    miroir : ⟦?⟦·⟧|aucune⟧
+  l. 78
+    défaut : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Activités: ⟦?⟦·⟧|aucune⟧ | Labos: ⟦?⟦·⟧|aucun⟧
+    miroir : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Locaux: ⟦?⟦·⟧|aucun⟧ | Usines: ⟦?⟦·⟧|aucune⟧
+  l. 279
+    défaut : ⟦·⟧⟦? (labo)|⟧
+    miroir : ⟦·⟧⟦? (abr-usine)|⟧
+  l. 409
+    défaut : Prestataire
+    miroir : Agence
+  l. 563
+    défaut : Récupère le profil du client : nom, email, liste des activités (id + nom), liste des labos (id + nom). Appeler en premier pour connaître le périmètre disponible.
+    miroir : Récupère le profil du client : nom, email, liste des locaux (id + nom), liste des usines (id + nom). Appeler en premier pour connaître le périmètre disponible.
+  l. 568
+    défaut : Récupère le stock d'ingrédients. Sans filtre = toutes activités et labos. Supporte filtrage par activité, labo, ingrédient, et période.
+    miroir : Récupère l'armoire de provisions. Sans filtre = tous locaux et usines. Supporte filtrage par local, usine, provision, et période.
+  l. 572
+    défaut : ID de l'activité
+    miroir : ID du local
+  l. 573
+    défaut : ID du labo
+    miroir : ID de l'usine
+  l. 574
+    défaut : Nom partiel de l'ingrédient (recherche ILIKE)
+    miroir : Nom partiel de la provision (recherche ILIKE)
+  l. 584
+    défaut : Récupère l'historique des approvisionnements manuels (achats) avec quantités et prix unitaires en TND. Les réassorts par transfert labo→activité relèvent de get_transferts.
+    miroir : Récupère l'historique des rentrées manuelles (achats) avec quantités et prix unitaires en TND. Les réassorts par expédition usine→local relèvent de get_transferts.
+  l. 600
+    défaut : Récupère l'historique des pertes d'ingrédients. Filtrable par type de perte (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).
+    miroir : Récupère l'historique des abandons de provisions. Filtrable par type d'abandon (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).
+  l. 607
+    défaut : Filtrer par type de perte (code du domaine, ex. avarie, dechet)
+    miroir : Filtrer par type d'abandon (code du domaine, ex. avarie, dechet)
+  l. 617
+    défaut : Récupère l'historique des inventaires.
+    miroir : Récupère l'historique des pesées.
+  l. 633
+    défaut : Récupère l'historique des transferts labo → activité.
+    miroir : Récupère l'historique des expéditions usine → local.
+  l. 649
+    défaut : Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approvisionnements : get_stock, get_appros).
+    miroir : Récupère l'encyclopédie des denrées/matières du client : nom et unité. Pour répondre aux questions sur le catalogue de denrées (les prix viennent des rentrées : get_stock, get_appros).
+  l. 653
+    défaut : Nom partiel d'article (recherche ILIKE)
+    miroir : Nom partiel de denrée (recherche ILIKE)
+  l. 661
+    défaut : Récupère la liste des fournisseurs de l'entreprise (nom, adresse, téléphone).
+    miroir : Récupère la liste des enseignes de l'entreprise (nom, adresse, téléphone).
+  l. 665
+    défaut : Nom partiel de fournisseur (recherche ILIKE)
+    miroir : Nom partiel d'enseigne (recherche ILIKE)
+  l. 672
+    défaut : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre d'activités/labos/gérants, montant d'onboarding, date d'acceptation du contrat.
+    miroir : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre de locaux/usines/animatrices, montant d'onboarding, date d'acceptation du contrat.
+  l. 677
+    défaut : Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.
+    miroir : Récupère un résumé des encaissements : nombre d'encaissements, CA TTC (TND), enveloppe matière, incidence matière % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), écart brut, panier moyen, et répartition par canal (direct / prestataire). Filtrable par local, période et canal.
+  l. 681
+    défaut : ID de l'activité
+    miroir : ID du local
+  l. 682
+    défaut : ID du labo (pour les ventes saisies au niveau labo)
+    miroir : ID de l'usine (pour les encaissements saisis au niveau usine)
+  l. 692
+    défaut : Récupère la liste des produits / fiches techniques du client (nom, description).
+    miroir : Récupère la liste des inventions / états techniques du client (nom, description).
+  l. 696
+    défaut : Nom partiel de produit (recherche ILIKE)
+    miroir : Nom partiel d'invention (recherche ILIKE)
+  l. 704
+    défaut : Récupère la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.
+    miroir : Récupère la configuration d'encaissement : agences de livraison actives par local, charges fixes par local, et articles vendables par local (avec prix de vente). Filtrable par local.
+  l. 708
+    défaut : ID de l'activité
+    miroir : ID du local
+  l. 715
+    défaut : Génère et envoie par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).
+    miroir : Génère et envoie par email un rapport Excel récapitulant armoire, abandons, pesées et expéditions du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).
+  l. 735
+    défaut : Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs activités et n'a pas précisé laquelle.
+    miroir : Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs locaux et n'a pas précisé lequel.
+
+src/services/clientConfigService.js
+  l. 123
+    défaut : ⟦?⟦·⟧|aucune⟧
+    miroir : ⟦?⟦·⟧|aucun⟧
+  l. 124
+    défaut : ⟦?⟦·⟧|aucun⟧
+    miroir : ⟦?⟦·⟧|aucune⟧
+  l. 126
+    défaut : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Activités: ⟦?⟦·⟧|aucune⟧ | Labos: ⟦?⟦·⟧|aucun⟧
+    miroir : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Locaux: ⟦?⟦·⟧|aucun⟧ | Usines: ⟦?⟦·⟧|aucune⟧
+  l. 132
+    défaut : Capacité souscrite: ⟦?⟦·⟧|—⟧ activité(s), ⟦?⟦·⟧|—⟧ labo(s), ⟦?⟦·⟧|—⟧ gérant(s)
+    miroir : Capacité souscrite: ⟦?⟦·⟧|—⟧ local/locaux, ⟦?⟦·⟧|—⟧ usine(s), ⟦?⟦·⟧|—⟧ animatrice(s)
+  l. 136
+    défaut : ⟦·⟧ | Capacité souscrite: ⟦?⟦·⟧|—⟧ activité(s), ⟦?⟦·⟧|—⟧ labo(s), ⟦?⟦·⟧|—⟧ gérant(s)
+    miroir : ⟦·⟧ | Capacité souscrite: ⟦?⟦·⟧|—⟧ local/locaux, ⟦?⟦·⟧|—⟧ usine(s), ⟦?⟦·⟧|—⟧ animatrice(s)
+  l. 140
+    défaut : Référentiel client: ⟦·⟧ fournisseur(s), ⟦·⟧ gérant(s), ⟦·⟧ produit(s) | Module vente: ⟦?actif|inactif⟧
+    miroir : Encyclopédie client: ⟦·⟧ enseigne(s), ⟦·⟧ animatrice(s), ⟦·⟧ invention(s) | Module abr-encaissement: ⟦?actif|inactif⟧
+
 src/services/configComposantsService.js
   l. 81
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
@@ -1035,6 +1291,655 @@ src/services/configComposantsService.js
     défaut : Base acheteurs
     miroir : Base abr-clientes
 
+src/services/contractPdfService.js
+  l. 109
+    défaut : activité
+    miroir : local
+  l. 109
+    défaut : activités
+    miroir : locaux
+  l. 110
+    défaut : laboratoire
+    miroir : usine centrale
+  l. 110
+    défaut : laboratoires
+    miroir : usines centrales
+  l. 111
+    défaut : compte gérant
+    miroir : compte animatrice
+  l. 111
+    défaut : comptes gérants
+    miroir : comptes animatrices
+  l. 112
+    défaut : Option Acheteurs → palier jusqu'à ⟦·⟧
+    miroir : Option Abr-Clientes → palier jusqu'à ⟦·⟧
+  l. 138
+    défaut : Palier jusqu'à ⟦·⟧ acheteurs
+    miroir : Palier jusqu'à ⟦·⟧ clientes
+  l. 169
+    défaut : ⟦?palier jusqu'à ⟦·⟧ acheteurs|⟦·⟧⟧
+    miroir : ⟦?palier jusqu'à ⟦·⟧ clientes|⟦·⟧⟧
+  l. 208
+    défaut : ⟦?palier jusqu'à ⟦·⟧ acheteurs|⟦·⟧⟧
+    miroir : ⟦?palier jusqu'à ⟦·⟧ clientes|⟦·⟧⟧
+
+src/services/emailService.js
+  l. 32
+    défaut : ⟦?gérant|⟦?acheteur|client⟧⟧
+    miroir : ⟦?animatrice|⟦?cliente|client⟧⟧
+  l. 34
+    défaut : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:32px 40px;border-bottom:4px solid #d97706">
+      ⟦·⟧
+    </div>
+    <div style="padding:36px 40px;">
+      <h2 style="margin:0 0 12px;color:#111827;font-size:1.15rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.6;">
+        Vous avez été invité(e) à rejoindre <strong>⟦·⟧</strong> en tant que <strong>⟦?gérant|⟦?acheteur|client⟧⟧</strong>.
+        Cliquez sur le bouton ci-dessous pour activer votre compte et choisir votre mot de passe.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="⟦·⟧" style="display:inline-block;background:#4338ca;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:0.95rem;font-weight:700;letter-spacing:0.01em;">
+          Activer mon compte
+        </a>
+      </div>
+      <p style="margin:0 0 8px;color:#6b7280;font-size:0.8rem;">
+        Ce lien est valable <strong>48 heures</strong>. S'il a expiré, contactez votre administrateur.
+      </p>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">
+        Ou copiez ce lien : ⟦·⟧
+      </p>
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Si vous n'attendiez pas cette invitation, ignorez cet email.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    miroir : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:32px 40px;border-bottom:4px solid #d97706">
+      ⟦·⟧
+    </div>
+    <div style="padding:36px 40px;">
+      <h2 style="margin:0 0 12px;color:#111827;font-size:1.15rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.6;">
+        Vous avez été invité(e) à rejoindre <strong>⟦·⟧</strong> en tant que <strong>⟦?animatrice|⟦?cliente|client⟧⟧</strong>.
+        Cliquez sur le bouton ci-dessous pour activer votre compte et choisir votre mot de passe.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="⟦·⟧" style="display:inline-block;background:#4338ca;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:0.95rem;font-weight:700;letter-spacing:0.01em;">
+          Activer mon compte
+        </a>
+      </div>
+      <p style="margin:0 0 8px;color:#6b7280;font-size:0.8rem;">
+        Ce lien est valable <strong>48 heures</strong>. S'il a expiré, contactez votre administrateur.
+      </p>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">
+        Ou copiez ce lien : ⟦·⟧
+      </p>
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Si vous n'attendiez pas cette invitation, ignorez cet email.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+  l. 225
+    défaut : ⟦·⟧ ⟦activité|activités@>1⟧
+    miroir : ⟦·⟧ ⟦local|locaux@>1⟧
+  l. 226
+    défaut : ⟦·⟧ ⟦labo|labos@>1⟧
+    miroir : ⟦·⟧ ⟦usine|usines@>1⟧
+  l. 227
+    défaut : ⟦·⟧ ⟦gérant|gérants@>1⟧
+    miroir : ⟦·⟧ ⟦animatrice|animatrices@>1⟧
+  l. 228
+    défaut : l'option Acheteurs (palier jusqu'à ⟦·⟧ acheteurs)
+    miroir : l'option Abr-Clientes (palier jusqu'à ⟦·⟧ clientes)
+  l. 344
+    défaut : ⟦?+⟦·⟧ ⟦activité|activités@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦local|locaux@>1⟧|⟧
+  l. 345
+    défaut : ⟦?+⟦·⟧ ⟦labo|labos@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦usine|usines@>1⟧|⟧
+  l. 346
+    défaut : ⟦?+⟦·⟧ ⟦gérant|gérants@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦animatrice|animatrices@>1⟧|⟧
+  l. 349
+    défaut : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ⟦·⟧
+      <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Contrat Avenant — Ajout de capacité</p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;">
+        Votre demande d'ajout de capacité a été <strong style="color:#16a34a;">validée</strong>.
+        Cet email constitue votre avenant de contrat daté du <strong>⟦·⟧</strong>.
+      </p>
+
+      <!-- Capacité ajoutée -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">✅ Capacité ajoutée</div>
+        <div style="font-size:1rem;font-weight:700;color:#14532d;">⟦·⟧</div>
+      </div>
+
+      <!-- Nouvelle configuration -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre configuration après avenant</div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Activités</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>
+          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Labos</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>|⟧
+          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Gérants</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>|⟧
+          <tr>
+            <td style="padding:12px 0 4px;font-weight:800;color:#1e40af;" colspan="2">Nouveau mensuel de base</td>
+            <td style="padding:12px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;">⟦·⟧/mois</td>
+          </tr>
+          ⟦?<tr>
+            <td style="padding:4px 0;font-size:0.78rem;color:#7c3aed;" colspan="2">🎉 Promotion appliquée</td>
+            <td style="padding:4px 0;text-align:right;font-weight:900;color:#7c3aed;font-size:1.05rem;">⟦·⟧/mois</td>
+          </tr>|⟧
+        </table>
+      </div>
+
+      ⟦?<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Note de l'administration</div>
+        <div style="font-size:0.88rem;color:#1e3a5f;line-height:1.6;">⟦·⟧</div>
+      </div>|⟧
+
+      <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">
+        Votre espace est déjà mis à jour. Connectez-vous pour consulter votre nouvelle configuration.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;">
+      <p style="margin:0;color:#94a3b8;font-size:0.75rem;">⟦·⟧ · Avenant du ⟦·⟧</p>
+    </div>
+  </div>
+</body>
+</html>
+    miroir : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ⟦·⟧
+      <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Contrat Avenant — Ajout de capacité</p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;">
+        Votre demande d'ajout de capacité a été <strong style="color:#16a34a;">validée</strong>.
+        Cet email constitue votre avenant de contrat daté du <strong>⟦·⟧</strong>.
+      </p>
+
+      <!-- Capacité ajoutée -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">✅ Capacité ajoutée</div>
+        <div style="font-size:1rem;font-weight:700;color:#14532d;">⟦·⟧</div>
+      </div>
+
+      <!-- Nouvelle configuration -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre configuration après avenant</div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Locaux</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>
+          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Usines</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>|⟧
+          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Animatrices</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>|⟧
+          <tr>
+            <td style="padding:12px 0 4px;font-weight:800;color:#1e40af;" colspan="2">Nouveau mensuel de base</td>
+            <td style="padding:12px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;">⟦·⟧/mois</td>
+          </tr>
+          ⟦?<tr>
+            <td style="padding:4px 0;font-size:0.78rem;color:#7c3aed;" colspan="2">🎉 Promotion appliquée</td>
+            <td style="padding:4px 0;text-align:right;font-weight:900;color:#7c3aed;font-size:1.05rem;">⟦·⟧/mois</td>
+          </tr>|⟧
+        </table>
+      </div>
+
+      ⟦?<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Note de l'administration</div>
+        <div style="font-size:0.88rem;color:#1e3a5f;line-height:1.6;">⟦·⟧</div>
+      </div>|⟧
+
+      <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">
+        Votre espace est déjà mis à jour. Connectez-vous pour consulter votre nouvelle configuration.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;">
+      <p style="margin:0;color:#94a3b8;font-size:0.75rem;">⟦·⟧ · Avenant du ⟦·⟧</p>
+    </div>
+  </div>
+</body>
+</html>
+  l. 550
+    défaut : <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+      <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+        <div style="font-size:36px;margin-bottom:8px">⟦?📊|📄⟧</div>
+        <h1 style="color:#fff;margin:0;font-size:20px">Rapport ⟦·⟧ — ⟦·⟧</h1>
+      </div>
+      <p style="color:#374151;font-size:14px;line-height:1.6">
+        Votre rapport <strong>⟦·⟧</strong> est disponible en pièce jointe.<br>
+        Il contient votre stock actuel, vos pertes récentes et vos inventaires.
+      </p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+      <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ⟦·⟧</p>
+    </div>
+    miroir : <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+      <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+        <div style="font-size:36px;margin-bottom:8px">⟦?📊|📄⟧</div>
+        <h1 style="color:#fff;margin:0;font-size:20px">Rapport ⟦·⟧ — ⟦·⟧</h1>
+      </div>
+      <p style="color:#374151;font-size:14px;line-height:1.6">
+        Votre rapport <strong>⟦·⟧</strong> est disponible en pièce jointe.<br>
+        Il contient votre armoire actuelle, vos abandons récents et vos pesées.
+      </p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+      <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ⟦·⟧</p>
+    </div>
+  l. 575
+    défaut : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <!-- Header marque : logo en valeur -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:40px 48px 34px;border-bottom:4px solid #d97706;text-align:center;">
+      ⟦·⟧
+      <p style="margin:14px 0 0;color:#c7d2fe;font-size:0.9rem;font-weight:600;">🤖 Votre assistant IA est prêt sur Messenger</p>
+    </div>
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 22px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Votre assistant IA <strong>⟦·⟧</strong> vient d'être activé sur <strong>Facebook Messenger</strong>.
+        Vous pouvez l'utiliser comme l'application — en consultation — pour interroger toutes vos données :
+      </p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:26px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:0.9rem;color:#1e293b;line-height:1.9;">
+          <tr><td style="width:50%;">🏪 Activités &amp; labos</td><td>🧾 Ventes &amp; CA</td></tr>
+          <tr><td>📦 Stock &amp; seuils</td><td>🛒 Approvisionnements</td></tr>
+          <tr><td>🔄 Transferts</td><td>📉 Pertes &amp; inventaires</td></tr>
+          <tr><td>📚 Référentiel &amp; fournisseurs</td><td>💳 Abonnement &amp; produits</td></tr>
+        </table>
+        <p style="margin:12px 0 0;font-size:0.82rem;color:#64748b;">Filtrez par activité, labo ou période — et demandez un <strong>rapport Excel par email</strong> quand vous voulez.</p>
+      </div>
+      <div style="text-align:center;margin:0 0 26px;">
+        <a href="⟦·⟧" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
+          💬 Ouvrir mon assistant sur Messenger
+        </a>
+      </div>
+      <ol style="margin:0 0 8px;color:#374151;font-size:0.85rem;line-height:1.9;padding-left:20px;">
+        <li>Cliquez sur le bouton ci-dessus</li>
+        <li>Messenger s'ouvre — envoyez votre premier message</li>
+        <li>L'agent vous répond et vous accueille instantanément ✅</li>
+      </ol>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ⟦·⟧</p>
+    </div>
+    <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Si vous n'attendiez pas cette activation, ignorez cet email. &mdash; ⟦·⟧
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    miroir : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <!-- Header marque : logo en valeur -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:40px 48px 34px;border-bottom:4px solid #d97706;text-align:center;">
+      ⟦·⟧
+      <p style="margin:14px 0 0;color:#c7d2fe;font-size:0.9rem;font-weight:600;">🤖 Votre assistant IA est prêt sur Messenger</p>
+    </div>
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 22px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Votre assistant IA <strong>⟦·⟧</strong> vient d'être activé sur <strong>Facebook Messenger</strong>.
+        Vous pouvez l'utiliser comme l'application — en consultation — pour interroger toutes vos données :
+      </p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:26px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:0.9rem;color:#1e293b;line-height:1.9;">
+          <tr><td style="width:50%;">🏪 Locaux &amp; usines</td><td>🧾 Encaissements &amp; CA</td></tr>
+          <tr><td>📦 Armoire &amp; seuils</td><td>🛒 Rentrées</td></tr>
+          <tr><td>🔄 Expéditions</td><td>📉 Abandons &amp; pesées</td></tr>
+          <tr><td>📚 Encyclopédie &amp; enseignes</td><td>💳 Abonnement &amp; inventions</td></tr>
+        </table>
+        <p style="margin:12px 0 0;font-size:0.82rem;color:#64748b;">Filtrez par local, usine ou période — et demandez un <strong>rapport Excel par email</strong> quand vous voulez.</p>
+      </div>
+      <div style="text-align:center;margin:0 0 26px;">
+        <a href="⟦·⟧" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
+          💬 Ouvrir mon assistant sur Messenger
+        </a>
+      </div>
+      <ol style="margin:0 0 8px;color:#374151;font-size:0.85rem;line-height:1.9;padding-left:20px;">
+        <li>Cliquez sur le bouton ci-dessus</li>
+        <li>Messenger s'ouvre — envoyez votre premier message</li>
+        <li>L'agent vous répond et vous accueille instantanément ✅</li>
+      </ol>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ⟦·⟧</p>
+    </div>
+    <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Si vous n'attendiez pas cette activation, ignorez cet email. &mdash; ⟦·⟧
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+
+src/services/factureApproPdf.js
+  l. 18
+    défaut : Facture d'approvisionnement
+    miroir : Facture de rentrée
+  l. 19
+    défaut : FACTURE ⟦?D'|DE ⟧APPROVISIONNEMENT
+    miroir : FACTURE ⟦?D'|DE ⟧RENTRÉE
+  l. 19
+    défaut : d'approvisionnement
+    miroir : de rentrée
+  l. 20
+    défaut : Facture d'approvisionnement
+    miroir : Facture de rentrée
+  l. 21
+    défaut : Transfert labo → ⟦?activité|labo⟧
+    miroir : Expédition abr-usine → abr-⟦?local|usine⟧
+  l. 22
+    défaut : Approvisionnement fournisseur
+    miroir : Rentrée enseigne
+  l. 23
+    défaut : fournisseur
+    miroir : enseigne
+  l. 24
+    défaut : FOURNISSEUR ET CLIENT
+    miroir : ENSEIGNE ET CLIENT
+  l. 25
+    défaut : FOURNISSEUR
+    miroir : ENSEIGNE
+  l. 26
+    défaut : Montants exprimés en dinars tunisiens (DT), prix saisis hors taxes. Récapitulatif d'approvisionnement généré électroniquement via la plateforme LabFlow à partir des lignes de stock saisies — il ne remplace pas la facture originale du fournisseur.
+    miroir : Montants exprimés en dinars tunisiens (DT), prix saisis hors taxes. Récapitulatif de rentrée généré électroniquement via la plateforme LabFlow à partir des lignes d'armoire saisies — il ne remplace pas la facture originale de l'enseigne.
+  l. 27
+    défaut : Facture d'approvisionnement — générée via la plateforme LabFlow
+    miroir : Facture de rentrée — générée via la plateforme LabFlow
+  l. 36
+    défaut : ⟦?Activité : ⟦·⟧|⟦?Labo : ⟦·⟧|⟧⟧
+    miroir : ⟦?Abr-Local : ⟦·⟧|⟦?Abr-Usine : ⟦·⟧|⟧⟧
+  l. 40
+    défaut : ⟦?⟦·⟧|Fournisseur⟧
+    miroir : ⟦?⟦·⟧|Enseigne⟧
+
+src/services/messengerService.js
+  l. 91
+    défaut : 👋 Bonjour ⟦·⟧ !
+
+Je suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :
+
+🏪 Activités & 🏭 labos
+📦 Stock, seuils & 🛒 approvisionnements
+🔄 Transferts labo → activités
+📉 Pertes & 📊 inventaires
+🧾 Ventes, CA & food cost
+📚 Référentiel, fournisseurs & produits
+💳 Abonnement & configuration de vente
+📄 Rapports Excel par email
+
+Exemple : « les transferts du mois actuel » ou « mon food cost de septembre ». Posez votre question !
+    miroir : 👋 Bonjour ⟦·⟧ !
+
+Je suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :
+
+🏪 Locaux & 🏭 usines
+📦 Armoire, seuils & 🛒 rentrées
+🔄 Expéditions usine → locaux
+📉 Abandons & 📊 pesées
+🧾 Encaissements, CA & incidence matière
+📚 Encyclopédie, enseignes & inventions
+💳 Abonnement & configuration d'encaissement
+📄 Rapports Excel par email
+
+Exemple : « les expéditions du mois actuel » ou « mon incidence matière de septembre ». Posez votre question !
+
+src/services/onboardingEtat.js
+  l. 106
+    défaut : ⟦?Activités & labos|⟦?⟦Labo|Labos@>1⟧|⟦Activité|Activités@>1⟧⟧⟧ de votre formule
+    miroir : ⟦?Locaux & usines|⟦?⟦Usine|Usines@>1⟧|⟦Local|Locaux@>1⟧⟧⟧ de votre formule
+  l. 122
+    défaut : ⟦?⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧
+    miroir : ⟦?⟦?⟦local|locaux@>1⟧|⟦usine|usines@>1⟧⟧|⟦·⟧⟧
+  l. 125
+    défaut : ⟦·⟧/⟦·⟧ ⟦?⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦?⟦?⟦local|locaux@>1⟧|⟦usine|usines@>1⟧⟧|⟦·⟧⟧
+  l. 127
+    défaut : Comment créer ⟦?⟦mon|mes@>1⟧ ⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧ ?
+    miroir : Comment créer ⟦?⟦mon|mes@>1⟧ ⟦?⟦local|locaux@>1⟧|⟦usine|usines@>1⟧⟧|⟦·⟧⟧ ?
+  l. 134
+    défaut : ⟦·⟧/⟦·⟧ ⟦activité|activités@>1⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦local|locaux@>1⟧
+  l. 135
+    défaut : ⟦·⟧/⟦·⟧ ⟦labo|labos@>1⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦usine|usines@>1⟧
+  l. 136
+    défaut : Comment créer ⟦mon|mes@>1⟧ ⟦activité|activités@>1⟧ ?
+    miroir : Comment créer ⟦mon|mes@>1⟧ ⟦local|locaux@>1⟧ ?
+  l. 137
+    défaut : Comment créer ⟦mon|mes@>1⟧ ⟦labo|labos@>1⟧ ?
+    miroir : Comment créer ⟦mon|mes@>1⟧ ⟦usine|usines@>1⟧ ?
+  l. 140
+    défaut : Quelle est la différence entre une activité et un labo ?
+    miroir : Quelle est la différence entre un local et une usine ?
+  l. 150
+    défaut : Référentiel de base (unités, familles, catégories)
+    miroir : Encyclopédie de base (unités, familles, catégories)
+  l. 153
+    défaut : Par quoi commencer pour mon référentiel ?
+    miroir : Par quoi commencer pour mon encyclopédie ?
+  l. 160
+    défaut : ⟦·⟧ ⟦article|articles@>1⟧
+    miroir : ⟦·⟧ ⟦denrée|denrées@>1⟧
+  l. 161
+    défaut : ⟦·⟧/⟦·⟧ ⟦activité|activités@>1⟧ ⟦affectée|affectées@>1⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦local|locaux@>1⟧ ⟦affecté|affectés@>1⟧
+  l. 162
+    défaut : ⟦·⟧/⟦·⟧ ⟦labo|labos@>1⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦usine|usines@>1⟧
+  l. 166
+    défaut : ⟦?mes activités|mon activité⟧
+    miroir : ⟦?mes locaux|mon local⟧
+  l. 167
+    défaut : ⟦?mes labos|mon labo⟧
+    miroir : ⟦?mes usines|mon usine⟧
+  l. 169
+    défaut : ⟦?aux activités/labos|⟦?au labo|aux activités⟧⟧
+    miroir : ⟦?aux locaux/usines|⟦?à l'usine|aux locaux⟧⟧
+  l. 170
+    défaut : Articles + affectation ⟦?aux activités/labos|⟦?au labo|aux activités⟧⟧
+    miroir : Denrées + affectation ⟦?aux locaux/usines|⟦?à l'usine|aux locaux⟧⟧
+  l. 172
+    défaut : Comment ajouter mes articles ?
+    miroir : Comment ajouter mes denrées ?
+  l. 173
+    défaut : Comment importer mes articles en masse ?
+    miroir : Comment importer mes denrées en masse ?
+  l. 174
+    défaut : Comment affecter les articles à ⟦·⟧ ?
+    miroir : Comment affecter les denrées à ⟦·⟧ ?
+  l. 178
+    défaut : Fournisseurs
+    miroir : Enseignes
+  l. 179
+    défaut : ⟦·⟧⟦? ⟦fournisseur|fournisseurs@>1⟧|⟧
+    miroir : ⟦·⟧⟦? ⟦enseigne|enseignes@>1⟧|⟧
+  l. 181
+    défaut : Comment ajouter mes fournisseurs ?
+    miroir : Comment ajouter mes enseignes ?
+  l. 182
+    défaut : Comment importer mes fournisseurs depuis Excel ?
+    miroir : Comment importer mes enseignes depuis Excel ?
+  l. 183
+    défaut : À quoi servent les affectations d'un fournisseur ?
+    miroir : À quoi servent les affectations d'une enseigne ?
+  l. 188
+    défaut : Produits & fiches techniques
+    miroir : Inventions & états techniques
+  l. 189
+    défaut : ⟦·⟧⟦? ⟦produit|produits@>1⟧|⟧
+    miroir : ⟦·⟧⟦? ⟦invention|inventions@>1⟧|⟧
+  l. 191
+    défaut : Comment créer un produit et sa fiche technique ?
+    miroir : Comment créer une invention et son état technique ?
+  l. 192
+    défaut : C'est quoi un produit valorisé ?
+    miroir : C'est quoi une invention valorisée ?
+  l. 193
+    défaut : Comment est calculé le coût de revient d'une recette ?
+    miroir : Comment est calculé le coût de revient d'un assemblage ?
+  l. 199
+    défaut : Comment saisir mon premier approvisionnement ?
+    miroir : Comment saisir ma première rentrée ?
+  l. 200
+    défaut : Comment saisir une vente ?
+    miroir : Comment saisir un encaissement ?
+  l. 201
+    défaut : Comment mon stock est-il calculé ?
+    miroir : Comment mon armoire est-elle calculée ?
+  l. 202
+    défaut : ⟦?Première saisie (appro / vente)|Premier approvisionnement du labo⟧
+    miroir : Première ⟦?saisie (abr-rentrée / encaissement)|rentrée de l'usine⟧
+  l. 203
+    défaut : ⟦?⟦·⟧|aucun approvisionnement ni vente pour l'instant⟧
+    miroir : ⟦?⟦·⟧|aucune rentrée ni encaissement pour l'instant⟧
+  l. 209
+    défaut : Carnet d'acheteurs
+    miroir : Carnet de clientes
+  l. 210
+    défaut : ⟦·⟧⟦? ⟦acheteur|acheteurs@>1⟧|⟧
+    miroir : ⟦·⟧⟦? ⟦cliente|clientes@>1⟧|⟧
+  l. 212
+    défaut : Comment remplir mon carnet d'acheteurs ?
+    miroir : Comment remplir mon carnet de clientes ?
+  l. 213
+    défaut : Comment importer mes acheteurs depuis Excel ?
+    miroir : Comment importer mes clientes depuis Excel ?
+  l. 214
+    défaut : Comment configurer mes tarifs acheteurs ?
+    miroir : Comment configurer mes tarifs abr-clientes ?
+  l. 275
+    défaut : 
+
+## MISSION PRIORITAIRE : guide de mise en route
+Ce client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :
+⟦·⟧
+Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.
+
+## FORMAT DES RÉPONSES DU GUIDE (obligatoire)
+- Commence par un court titre en **gras** avec un emoji (ex. **🧂 Créer vos unités**)
+- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte
+- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Référentiel → Unités**)
+- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte
+- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)
+    miroir : 
+
+## MISSION PRIORITAIRE : guide de mise en route
+Ce client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :
+⟦·⟧
+Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas d'usine si aucune usine ci-dessus, pas de clientes si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.
+
+## FORMAT DES RÉPONSES DU GUIDE (obligatoire)
+- Commence par un court titre en **gras** avec un emoji (ex. **📏 Créer vos unités**)
+- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte
+- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Encyclopédie → Unités**)
+- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte
+- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)
+
+src/services/pdfService.js
+  l. 102
+    défaut : ⟦?+⟦·⟧ ⟦activité|activités@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦local|locaux@>1⟧|⟧
+  l. 103
+    défaut : ⟦?+⟦·⟧ ⟦labo|labos@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦usine|usines@>1⟧|⟧
+  l. 104
+    défaut : ⟦?+⟦·⟧ ⟦gérant|gérants@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦animatrice|animatrices@>1⟧|⟧
+  l. 105
+    défaut : ⟦?Option Acheteurs → palier jusqu'à ⟦·⟧|⟧
+    miroir : ⟦?Option Abr-Clientes → palier jusqu'à ⟦·⟧|⟧
+  l. 139
+    défaut : Activités⟦?⟦·⟧|⟧
+    miroir : Locaux⟦?⟦·⟧|⟧
+  l. 140
+    défaut : Labos
+    miroir : Usines
+  l. 141
+    défaut : Gérants
+    miroir : Animatrices
+  l. 143
+    défaut : Option Acheteurs
+    miroir : Option Abr-Clientes
+  l. 309
+    défaut : palier jusqu'à ⟦·⟧ acheteurs
+    miroir : palier jusqu'à ⟦·⟧ clientes
+
 src/services/quotaService.js
   l. 11
     défaut : activité
@@ -1054,6 +1959,56 @@ src/services/quotaService.js
   l. 13
     défaut : gérants
     miroir : animatrices
+
+src/services/reportService.js
+  l. 97
+    défaut : ⟦·⟧⟦?⟦? (labo)|⟧|⟧
+    miroir : ⟦·⟧⟦?⟦? (abr-usine)|⟧|⟧
+  l. 134
+    défaut : Stock
+    miroir : Abr-Armoire
+  l. 135
+    défaut : Rapport LabFlow — Stock actuel
+    miroir : Rapport LabFlow — Armoire actuelle
+  l. 136
+    défaut : Ingrédient
+    miroir : Provision
+  l. 136
+    défaut : Date appro
+    miroir : Date abr-rentrée
+  l. 142
+    défaut : Pertes
+    miroir : Abr-Abandons
+  l. 143
+    défaut : Rapport LabFlow — Pertes récentes
+    miroir : Rapport LabFlow — Abandons récents
+  l. 144
+    défaut : Ingrédient
+    miroir : Provision
+  l. 150
+    défaut : Inventaires
+    miroir : Abr-Pesées
+  l. 151
+    défaut : Rapport LabFlow — Inventaires récents
+    miroir : Rapport LabFlow — Pesées récentes
+  l. 152
+    défaut : Ingrédient
+    miroir : Provision
+  l. 152
+    défaut : Date inventaire
+    miroir : Date pesée
+  l. 158
+    défaut : Transferts Labo
+    miroir : Abr-Expéditions Abr-Usine
+  l. 159
+    défaut : Rapport LabFlow — Transferts depuis les labos
+    miroir : Rapport LabFlow — Expéditions depuis les usines
+  l. 160
+    défaut : Ingrédient
+    miroir : Provision
+  l. 160
+    défaut : Date transfert
+    miroir : Date expédition
 
 src/services/transfertService.js
   l. 43

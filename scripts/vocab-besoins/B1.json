@@ -1,0 +1,62 @@
+[
+  {
+    "fichier": "scripts/test-transferts-chaine.js",
+    "lot": "intégrateur",
+    "lignes": [
+      502
+    ],
+    "raison": "get_transferts assemble désormais le marqueur en JS avec le vocabulaire du compte (spec lot 2b §6.2) : sur le compte de test Hôtellerie de ce script, la destination labo→labo se lit « Cuisine (cuisine) » (forme courte de labo = « Cuisine »). executeToolCall est appelé sans voc : repli vocabForClient(clientId), donc le vocabulaire Hôtellerie du compte. Limite connue et acceptée (§6.2, §11.3) : « Cuisine (cuisine) ».",
+    "avant": "    check('IA get_transferts voit les deux étages (Cuisine (labo) + Restaurant)', ia.some((r) => r.destination === 'Cuisine (labo)') && ia.some((r) => r.destination === 'Restaurant'), JSON.stringify(ia.map((r) => r.destination)));",
+    "apres": "    check('IA get_transferts voit les deux étages (Cuisine (cuisine) + Restaurant)', ia.some((r) => r.destination === 'Cuisine (cuisine)') && ia.some((r) => r.destination === 'Restaurant'), JSON.stringify(ia.map((r) => r.destination)));",
+    "etat": "APPLIQUÉ par l'intégrateur de la vague 2 (02/10/2026) : scripts/test-transferts-chaine.js:502 attend « Cuisine (cuisine) » ; E2E 130/130."
+  },
+  {
+    "fichier": "scripts/capture-vocab-baseline.js",
+    "lot": "intégrateur",
+    "lignes": [
+      698,
+      699
+    ],
+    "raison": "Signature finale de buildSystemPrompt : buildSystemPrompt(contextLine, voc, profil = null) — 3e argument FACULTATIF en plus de la table du §2.7 : le glossaire « Vocabulaire du compte » (§7.3) lit le lexique résolu et les composants du domaine dans le profil (l'outil de preuve refuse une clé non littérale : les formes sont rendues par voc.avec(entrée du lexique)). Sans profil, pas de glossaire : les captures C.prompt.avecContexte / sansContexte actuelles restent valides (aucun changement obligatoire) et identiques à la référence en restauration (prouvé par test/B1-assistant.test.js). Le glossaire est capté par promptReel (chatWithAI passe le profil). Si l'intégrateur veut aussi le voir dans C.prompt : passer le profil du domaine capturé en 3e argument.",
+    "avant": "    C.prompt.avecContexte = ai.buildSystemPrompt(LIGNE_FIXE, voc);\n    C.prompt.sansContexte = ai.buildSystemPrompt(null, voc);",
+    "apres": "(facultatif) ajouter une clé, par exemple : C.prompt.avecGlossaire = ai.buildSystemPrompt(LIGNE_FIXE, voc, await domaineProfil.getProfilForClient(cB.id)); — les clés existantes restent inchangées.",
+    "autresSignatures": "Toutes les autres signatures du §2.7 sont celles de la table : toolsFor(voc), onboardingPromptBlock(etat, voc), getClientContextLine(id, voc), texteAccueilMessenger(nom, voc) ; executeToolCall(clientId, nom, input, voc?) avec repli vocabForClient (appel de la capture SANS voc : inchangé). TOOLS_OPENAI et TOOLS_ANTHROPIC ne sont plus exportés (la capture détecte toolsFor). Nouvel export : aiService.glossaireVocabulaire(voc, profil).",
+    "etat": "NON appliqué (facultatif) par l'intégrateur de la vague 2 (02/10/2026) : le glossaire est capté par promptReel (non vide hors restauration, colonne de droite scannée) ; ajouter une clé C.prompt changerait la référence restauration."
+  },
+  {
+    "fichier": "scripts/vocab-baseline/exceptions-hors-restauration.json (et, au besoin, scripts/check-invariant-vocab.js)",
+    "lot": "intégrateur",
+    "raison": "Formes par défaut qui RESTENT, par construction, dans les textes de l'assistant hors restauration (scan §2.5, familles prompt / promptReel). Le prompt est UN texte (README de vocab-baseline : une exception par forme l'éteindrait en entier) : il faut soit une exception limitée à un extrait, soit retirer ces extraits avant le scan.",
+    "entrees": [
+      {
+        "cle": "prompt et promptReel (/corps/n/systeme)",
+        "extrait": "applique les filtres (…, période, article…)",
+        "forme": "Article",
+        "type": "homonyme",
+        "justification": "« article » générique (produit ou article) du prompt, liste fermée spec §6.5 (aiService.js:34)."
+      },
+      {
+        "cle": "prompt et promptReel (/corps/n/systeme)",
+        "extrait": "charges fixes, articles vendables (`get_config_vente`)",
+        "forme": "Articles",
+        "type": "homonyme",
+        "justification": "« articles vendables » du prompt, spec §6.5 (aiService.js:34)."
+      },
+      {
+        "cle": "prompt et promptReel (/corps/n/systeme)",
+        "extrait": "structure-la (groupée par article ou par date)",
+        "forme": "Article",
+        "type": "homonyme",
+        "justification": "« groupée par article » du prompt, spec §6.5 (aiService.js:49)."
+      },
+      {
+        "cle": "promptReel (/corps/n/systeme)",
+        "extrait": "bloc « ## Vocabulaire du compte » (de « \\n\\n## Vocabulaire du compte » au « \\n\\n## » suivant)",
+        "forme": "toutes les formes par défaut citées à GAUCHE des flèches (« activité », « labo », « article », « ingrédient », « recette », « food cost », « transfert », « acheteur », « gérant », « produit … », « espace … », « (activités dans LabFlow) »…) et le code `PT`",
+        "type": "glossaire (nouveau type à poser) ou exception par extrait",
+        "justification": "Le glossaire du §7.3 donne au modèle la correspondance mot de LabFlow → mot du compte : la colonne de gauche EST la forme par défaut, par définition (la base de connaissances et le manuel restent en mots de LabFlow jusqu'au 2c). Absent pour un compte restauration. Suggestion : retirer le bloc avant le scan (check-invariant-vocab.js), et vérifier à part qu'aucune forme par défaut n'apparaît à DROITE d'une flèche."
+      }
+    ],
+    "etat": "APPLIQUÉ par l'intégrateur de la vague 2 (02/10/2026) : exceptions « extrait » (homonyme §6.5) dans exceptions-hors-restauration.json ; le bloc du glossaire est retiré du texte lu par check-invariant-vocab.js, sa colonne de droite seule est cherchée (…/glossaire/droite). Scan hors restauration : 0."
+  }
+]

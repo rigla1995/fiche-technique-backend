@@ -8,16 +8,36 @@
 // DÉTERMINISTE (CreationDate = date de facture) → un re-téléchargement est
 // identique au byte près.
 const { buildFactureAppro } = require('../../docuseal-templates/generate');
+const { vocabDefaut } = require('../utils/vocab');
+
+// Libellés de la facture dans le vocabulaire du compte (lot 2b, spec §8.3), passés à buildFactureAppro
+// (data.libelles) ; generate.js garde les textes d'avant le lot comme valeurs par défaut. Par défaut, mêmes
+// textes, sauf le sous-titre d'un transfert labo→labo (facture portée par le labo destinataire,
+// activite_id NULL), qui disait « Transfert labo → activité » (spec §11.1.1).
+const libellesFactureAppro = (f, voc = vocabDefaut) => ({
+  sujet: `Facture ${voc.de('appro')}`,
+  surtitre: `FACTURE ${/^d'/.test(voc.de('appro')) ? "D'" : 'DE '}${voc.MAJ('appro')}`,
+  titre: `Facture ${voc.de('appro')}`,
+  sousTitreTransfert: `${voc.Nom('transfert')} ${voc.court('labo')} → ${f.activite_id != null ? voc.court('activite') : voc.court('labo')}`,
+  approFournisseur: `${voc.Nom('appro')} ${voc.nom('fournisseur')}`,
+  fournisseur: voc.nom('fournisseur'),
+  partiesTitre: `${voc.MAJ('fournisseur')} ET CLIENT`,
+  partiesEmetteur: voc.MAJ('fournisseur'),
+  mentions: `Montants exprimés en dinars tunisiens (DT), prix saisis hors taxes. Récapitulatif ${voc.de('appro')} généré électroniquement via la plateforme LabFlow à partir des lignes ${voc.de('stock')} saisies — il ne remplace pas la facture originale ${voc.du('fournisseur')}.`,
+  notePied: `Facture ${voc.de('appro')} — générée via la plateforme LabFlow`,
+});
 
 // f = ligne SQL (factures + jointures fournisseur/profil_entreprise/contexte),
-// lignes = lignes de stock (stock_entreprise_daily ou stock_labo_daily).
-const buildFactureApproPdf = (f, lignes) => buildFactureAppro(null, {
+// lignes = lignes de stock (stock_entreprise_daily ou stock_labo_daily),
+// voc = vocabulaire du compte (req.voc de facturesController.downloadPdf).
+const buildFactureApproPdf = (f, lignes, voc = vocabDefaut) => buildFactureAppro(null, {
   refFacture: f.ref_facture,
   dateFacture: f.date_facture,
-  contexte: f.activite_nom ? `Activité : ${f.activite_nom}` : (f.labo_nom ? `Labo : ${f.labo_nom}` : ''),
+  contexte: f.activite_nom ? `${voc.Court('activite')} : ${f.activite_nom}` : (f.labo_nom ? `${voc.Court('labo')} : ${f.labo_nom}` : ''),
   typeSource: f.type_source,
+  libelles: libellesFactureAppro(f, voc),
   fournisseur: {
-    nom: f.fournisseur_nom || 'Fournisseur',
+    nom: f.fournisseur_nom || voc.Nom('fournisseur'),
     adresse: f.fournisseur_adresse || null,
     tel: f.fournisseur_tel || null,
   },
@@ -40,4 +60,4 @@ const buildFactureApproPdf = (f, lignes) => buildFactureAppro(null, {
   notes: f.notes || null,
 });
 
-module.exports = { buildFactureApproPdf };
+module.exports = { buildFactureApproPdf, libellesFactureAppro };

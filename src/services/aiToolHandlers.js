@@ -3,6 +3,9 @@ const { generateAndSendReport } = require('./reportService');
 const { buildManuelContexte, manuelSectionVisible } = require('../utils/manuelVisibilite');
 // Lot 1b §5 — règles du domaine du compte : types de perte, seuil coût matière.
 const { getTypesPerteForClient, getSeuilCoutMatiereForClient, perteLabel } = require('./domaineProfilService');
+// Lot 2b §7 — vocabulaire du compte : outils, ligne de contexte et résultats (jamais req.voc ici).
+const { rendre } = require('../utils/vocab');
+const { vocabForClient } = require('../utils/vocabCompte');
 
 const CLIENT_SCOPE_CTE = `
   WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1),
@@ -47,31 +50,32 @@ async function toolGetClientInfo(clientId) {
 
 // Périmètre client résumé pour injection dans le system prompt (évite un appel get_client_info
 // à chaque message → moins de latence). Inclut les IDs pour que l'agent filtre directement.
-async function getClientContextLine(clientId) {
-  const ctx = await getClientContextLineBase(clientId);
+// voc : vocabulaire du compte (lot 2b §7.1), obligatoire.
+async function getClientContextLine(clientId, voc) {
+  const ctx = await getClientContextLineBase(clientId, voc);
   // Lot 1b §5 — règles du domaine injectées dans le contexte (seuil coût matière, types de perte).
   try {
     const [seuil, types] = await Promise.all([getSeuilCoutMatiereForClient(clientId), getTypesPerteForClient(clientId)]);
-    const regles = `Seuil coût matière (food cost) : ${seuil} % (au-delà = élevé) | Types de perte : ${types.map((c) => `${c} (${perteLabel(c)})`).join(', ')}`;
+    const regles = `Seuil ${voc.nom('cout_matiere')} (${voc.nom('food_cost')}) : ${seuil} % (au-delà = ${voc.acc('food_cost', 'élevé', 'élevée')}) | Types ${voc.de('perte')} : ${types.map((c) => `${c} (${perteLabel(c)})`).join(', ')}`;
     return { ...ctx, line: ctx?.line ? `${ctx.line} | ${regles}` : regles, seuil_cout_matiere_pct: seuil, types_perte: types };
   } catch (_) {
     return ctx;
   }
 }
 
-async function getClientContextLineBase(clientId) {
+async function getClientContextLineBase(clientId, voc) {
   try {
     // Lit le snapshot de config statique préchargé (cache mémoire/DB) au lieu de relancer 3 SQL.
     const { getContextLine } = require('./clientConfigService');
-    return await getContextLine(clientId);
+    return await getContextLine(clientId, voc);
   } catch (_) {
     // Repli direct si le cache de config est indisponible
     const info = await toolGetClientInfo(clientId);
-    const acts = (info.activites || []).map((a) => `${a.id}=${a.nom}`).join(', ') || 'aucune';
-    const labos = (info.labos || []).map((l) => `${l.id}=${l.nom}`).join(', ') || 'aucun';
+    const acts = (info.activites || []).map((a) => `${a.id}=${a.nom}`).join(', ') || voc.acc('activite', 'aucun', 'aucune');
+    const labos = (info.labos || []).map((l) => `${l.id}=${l.nom}`).join(', ') || voc.acc('labo', 'aucun', 'aucune');
     return {
       nom: info.nom,
-      line: `Client: ${info.nom || '—'} | Mode du compte: ${info.mode_compte || '—'} | Activités: ${acts} | Labos: ${labos}`,
+      line: `Client: ${info.nom || '—'} | Mode du compte: ${info.mode_compte || '—'} | ${voc.Pl('activite')}: ${acts} | ${voc.Pl('labo')}: ${labos}`,
     };
   }
 }
@@ -240,7 +244,7 @@ async function toolGetInventaires(clientId, { activite_id, labo_id, ingredient, 
   return rows;
 }
 
-async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, date_from, date_to, limit = 50 }) {
+async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, date_from, date_to, limit = 50 }, voc) {
   const safeLimit = Math.min(parseInt(limit) || 50, 500);
   const params = [clientId];
   const conditions = [];
@@ -256,8 +260,7 @@ async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, d
   const { rows } = await pool.query(
     `${CLIENT_SCOPE_CTE}
      SELECT COALESCE(i.nom, p.nom) AS ingredient, lt.quantite, lt.date_transfert,
-            a.nom AS activite, l.nom AS labo, ld.nom AS labo_destinataire,
-            CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS destination
+            a.nom AS activite, l.nom AS labo, ld.nom AS labo_destinataire
      FROM labo_transfers lt
      LEFT JOIN articles i ON i.id = lt.ingredient_id
      LEFT JOIN produits p ON p.id = lt.produit_id
@@ -271,7 +274,9 @@ async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, d
      LIMIT ${safeLimit}`,
     params
   );
-  return rows;
+  // Destination (spec lot 2b §6.2) : le marqueur « (labo) » est assemblé en JS, à partir de
+  // labo_destinataire (même clé, même place qu'avant : dernière colonne).
+  return rows.map((r) => ({ ...r, destination: r.labo_destinataire != null ? `${r.labo_destinataire} (${voc.court('labo')})` : r.activite }));
 }
 
 // ── Base de connaissances LabFlow (RAG simple, recherche par mots-clés) ────────
@@ -380,7 +385,7 @@ async function toolGetAbonnement(clientId) {
 }
 
 // ── Ventes : CA, coût matière, food cost, panier moyen, canaux ────────────────
-async function toolGetVentes(clientId, { activite_id, labo_id, date_from, date_to, canal } = {}) {
+async function toolGetVentes(clientId, { activite_id, labo_id, date_from, date_to, canal } = {}, voc) {
   const params = [clientId];
   const cond = [`(v.activite_id IN (SELECT id FROM client_activites) OR v.labo_id IN (SELECT id FROM client_labos))`, `v.statut = 'confirmee'`];
   if (activite_id) { params.push(activite_id); cond.push(`v.activite_id = $${params.length}`); }
@@ -399,16 +404,19 @@ async function toolGetVentes(clientId, { activite_id, labo_id, date_from, date_t
      WHERE ${where}`,
     params
   );
+  // Repli du canal (spec lot 2b §6.1) : paramètre PROPRE à cette requête, jamais dans `params`
+  // (partagé avec totRes, où un paramètre en trop ferait échouer la requête).
+  const pCanal = [...params, voc.Nom('prestataire')];
   const canalRes = await pool.query(
     `${CLIENT_SCOPE_CTE}
-     SELECT CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, 'Prestataire') END AS canal,
+     SELECT CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, $${pCanal.length}) END AS canal,
             COUNT(DISTINCT v.id) AS nb_ventes,
             COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) AS ca_ttc
      FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
      LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
      WHERE ${where}
      GROUP BY 1 ORDER BY ca_ttc DESC`,
-    params
+    pCanal
   );
   const t = totRes.rows[0] || {};
   const ca = parseFloat(t.ca_ttc) || 0;
@@ -517,7 +525,10 @@ async function toolSendReport(clientId) {
   return { sent: true, email: dest.email, filename };
 }
 
-async function executeToolCall(clientId, toolName, toolInput) {
+// voc : vocabulaire du compte (lot 2b §7.1), passé par chatWithAI ; absent (oracle, scripts),
+// il est calculé ici par vocabForClient, seulement quand un outil ou une erreur l'emploie.
+async function executeToolCall(clientId, toolName, toolInput, voc) {
+  const vocDuCompte = async () => voc || (voc = await vocabForClient(clientId));
   try {
     switch (toolName) {
       case 'get_client_info':      return await toolGetClientInfo(clientId);
@@ -525,11 +536,11 @@ async function executeToolCall(clientId, toolName, toolInput) {
       case 'get_appros':           return await toolGetAppros(clientId, toolInput);
       case 'get_pertes':           return await toolGetPertes(clientId, toolInput);
       case 'get_inventaires':      return await toolGetInventaires(clientId, toolInput);
-      case 'get_transferts':       return await toolGetTransferts(clientId, toolInput);
+      case 'get_transferts':       return await toolGetTransferts(clientId, toolInput, await vocDuCompte());
       case 'get_referentiel':      return await toolGetReferentiel(clientId, toolInput);
       case 'get_fournisseurs':     return await toolGetFournisseurs(clientId, toolInput);
       case 'get_abonnement':       return await toolGetAbonnement(clientId);
-      case 'get_ventes':           return await toolGetVentes(clientId, toolInput);
+      case 'get_ventes':           return await toolGetVentes(clientId, toolInput, await vocDuCompte());
       case 'get_produits':         return await toolGetProduits(clientId, toolInput);
       case 'get_config_vente':     return await toolGetConfigVente(clientId, toolInput);
       case 'send_report':          return await toolSendReport(clientId);
@@ -538,27 +549,29 @@ async function executeToolCall(clientId, toolName, toolInput) {
       default:                     return { error: `Outil inconnu: ${toolName}` };
     }
   } catch (err) {
-    return { error: err.message };
+    // Message d'erreur rendu (balises éventuelles) avec le vocabulaire du compte, avant le modèle (E2)
+    return { error: rendre(await vocDuCompte(), err.message) };
   }
 }
 
 // Définitions source des outils (format Anthropic historique — conservé comme
-// pivot, converti au format OpenAI ci-dessous pour Gemini)
-const TOOLS_ANTHROPIC = [
+// pivot, converti au format OpenAI ci-dessous pour Gemini). Lot 2b §7.2 : descriptions
+// dans le vocabulaire du compte ; noms d'outils, de paramètres et codes cités inchangés.
+const outilsAnthropic = (voc) => [
   {
     name: 'get_client_info',
-    description: 'Récupère le profil du client : nom, email, liste des activités (id + nom), liste des labos (id + nom). Appeler en premier pour connaître le périmètre disponible.',
+    description: `Récupère le profil du client : nom, email, liste ${voc.du('activite', true)} (id + nom), liste ${voc.du('labo', true)} (id + nom). Appeler en premier pour connaître le périmètre disponible.`,
     input_schema: { type: 'object', properties: {}, required: [] },
   },
   {
     name: 'get_stock',
-    description: 'Récupère le stock d\'ingrédients. Sans filtre = toutes activités et labos. Supporte filtrage par activité, labo, ingrédient, et période.',
+    description: `Récupère ${voc.le('stock')} ${voc.de('article_ingredient', true)}. Sans filtre = ${voc.tous('activite', '')} et ${voc.nom('labo', true)}. Supporte filtrage par ${voc.nom('activite')}, ${voc.nom('labo')}, ${voc.nom('article_ingredient')}, et période.`,
     input_schema: {
       type: 'object',
       properties: {
-        activite_id: { type: 'integer', description: 'ID de l\'activité' },
-        labo_id: { type: 'integer', description: 'ID du labo' },
-        ingredient: { type: 'string', description: 'Nom partiel de l\'ingrédient (recherche ILIKE)' },
+        activite_id: { type: 'integer', description: `ID ${voc.du('activite')}` },
+        labo_id: { type: 'integer', description: `ID ${voc.du('labo')}` },
+        ingredient: { type: 'string', description: `Nom partiel ${voc.du('article_ingredient')} (recherche ILIKE)` },
         date_from: { type: 'string', description: 'Date de début ISO 8601 (ex: 2025-01-01)' },
         date_to: { type: 'string', description: 'Date de fin ISO 8601 (ex: 2025-12-31)' },
         limit: { type: 'integer', description: 'Max résultats (défaut 50, max 500)' },
@@ -568,7 +581,7 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_appros',
-    description: 'Récupère l\'historique des approvisionnements manuels (achats) avec quantités et prix unitaires en TND. Les réassorts par transfert labo→activité relèvent de get_transferts.',
+    description: `Récupère l'historique ${voc.du('appro', true)} ${voc.acc('appro', 'manuel', 'manuelle', true)} (achats) avec quantités et prix unitaires en TND. Les réassorts par ${voc.nom('transfert')} ${voc.nom('labo')}→${voc.nom('activite')} relèvent de get_transferts.`,
     input_schema: {
       type: 'object',
       properties: {
@@ -584,14 +597,14 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_pertes',
-    description: 'Récupère l\'historique des pertes d\'ingrédients. Filtrable par type de perte (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).',
+    description: `Récupère l'historique ${voc.du('perte', true)} ${voc.de('article_ingredient', true)}. Filtrable par type ${voc.de('perte')} (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).`,
     input_schema: {
       type: 'object',
       properties: {
         activite_id: { type: 'integer' },
         labo_id: { type: 'integer' },
         ingredient: { type: 'string' },
-        type_perte: { type: 'string', description: 'Filtrer par type de perte (code du domaine, ex. avarie, dechet)' },
+        type_perte: { type: 'string', description: `Filtrer par type ${voc.de('perte')} (code du domaine, ex. avarie, dechet)` },
         date_from: { type: 'string' },
         date_to: { type: 'string' },
         limit: { type: 'integer' },
@@ -601,7 +614,7 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_inventaires',
-    description: 'Récupère l\'historique des inventaires.',
+    description: `Récupère l'historique ${voc.du('inventaire', true)}.`,
     input_schema: {
       type: 'object',
       properties: {
@@ -617,7 +630,7 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_transferts',
-    description: 'Récupère l\'historique des transferts labo → activité.',
+    description: `Récupère l'historique ${voc.du('transfert', true)} ${voc.nom('labo')} → ${voc.nom('activite')}.`,
     input_schema: {
       type: 'object',
       properties: {
@@ -633,11 +646,11 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_referentiel',
-    description: 'Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d\'articles (les prix viennent des approvisionnements : get_stock, get_appros).',
+    description: `Récupère ${voc.le('referentiel')} ${voc.du('article', true)}/${voc.pl('ingredient')} du client : nom et unité. Pour répondre aux questions sur le catalogue ${voc.de('article', true)} (les prix viennent ${voc.du('appro', true)} : get_stock, get_appros).`,
     input_schema: {
       type: 'object',
       properties: {
-        search: { type: 'string', description: 'Nom partiel d\'article (recherche ILIKE)' },
+        search: { type: 'string', description: `Nom partiel ${voc.de('article')} (recherche ILIKE)` },
         limit: { type: 'integer', description: 'Max résultats (défaut 100, max 300)' },
       },
       required: [],
@@ -645,28 +658,28 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_fournisseurs',
-    description: 'Récupère la liste des fournisseurs de l\'entreprise (nom, adresse, téléphone).',
+    description: `Récupère la liste ${voc.du('fournisseur', true)} de l'entreprise (nom, adresse, téléphone).`,
     input_schema: {
       type: 'object',
       properties: {
-        search: { type: 'string', description: 'Nom partiel de fournisseur (recherche ILIKE)' },
+        search: { type: 'string', description: `Nom partiel ${voc.de('fournisseur')} (recherche ILIKE)` },
       },
       required: [],
     },
   },
   {
     name: 'get_abonnement',
-    description: 'Récupère l\'abonnement et la capacité souscrite du client : mode du compte, nombre d\'activités/labos/gérants, montant d\'onboarding, date d\'acceptation du contrat.',
+    description: `Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre ${voc.de('activite', true)}/${voc.pl('labo')}/${voc.pl('gerant')}, montant d'onboarding, date d'acceptation du contrat.`,
     input_schema: { type: 'object', properties: {}, required: [] },
   },
   {
     name: 'get_ventes',
-    description: 'Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.',
+    description: `Récupère un résumé ${voc.du('vente', true)} : nombre ${voc.de('vente', true)}, CA TTC (TND), ${voc.nom('cout_matiere')}, ${voc.nom('food_cost')} % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), ${voc.nom('marge')} ${voc.acc('marge', 'brut', 'brute')}, panier moyen, et répartition par canal (direct / prestataire). Filtrable par ${voc.nom('activite')}, période et canal.`,
     input_schema: {
       type: 'object',
       properties: {
-        activite_id: { type: 'integer', description: 'ID de l\'activité' },
-        labo_id: { type: 'integer', description: 'ID du labo (pour les ventes saisies au niveau labo)' },
+        activite_id: { type: 'integer', description: `ID ${voc.du('activite')}` },
+        labo_id: { type: 'integer', description: `ID ${voc.du('labo')} (pour ${voc.le('vente', true)} ${voc.acc('vente', 'saisi', 'saisie', true)} au niveau ${voc.nom('labo')})` },
         date_from: { type: 'string', description: 'Date de début ISO 8601' },
         date_to: { type: 'string', description: 'Date de fin ISO 8601' },
         canal: { type: 'string', enum: ['directe', 'prestataire'], description: 'Filtrer par canal de vente' },
@@ -676,11 +689,11 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_produits',
-    description: 'Récupère la liste des produits / fiches techniques du client (nom, description).',
+    description: `Récupère la liste ${voc.du('produit', true)} / ${voc.pl('fiche_technique')} du client (nom, description).`,
     input_schema: {
       type: 'object',
       properties: {
-        search: { type: 'string', description: 'Nom partiel de produit (recherche ILIKE)' },
+        search: { type: 'string', description: `Nom partiel ${voc.de('produit')} (recherche ILIKE)` },
         limit: { type: 'integer', description: 'Max résultats (défaut 100, max 300)' },
       },
       required: [],
@@ -688,18 +701,18 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_config_vente',
-    description: 'Récupère la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.',
+    description: `Récupère la configuration ${voc.de('vente')} : ${voc.pl('prestataire')} de livraison ${voc.acc('prestataire', 'actif', 'active', true)} par ${voc.nom('activite')}, charges fixes par ${voc.nom('activite')}, et articles vendables par ${voc.nom('activite')} (avec prix de vente). Filtrable par ${voc.nom('activite')}.`,
     input_schema: {
       type: 'object',
       properties: {
-        activite_id: { type: 'integer', description: 'ID de l\'activité' },
+        activite_id: { type: 'integer', description: `ID ${voc.du('activite')}` },
       },
       required: [],
     },
   },
   {
     name: 'send_report',
-    description: "Génère et envoie par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).",
+    description: `Génère et envoie par email un rapport Excel récapitulant ${voc.nom('stock')}, ${voc.nom('perte', true)}, ${voc.nom('inventaire', true)} et ${voc.nom('transfert', true)} du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).`,
     input_schema: {
       type: 'object',
       properties: {},
@@ -719,7 +732,7 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'ask_clarification',
-    description: 'Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs activités et n\'a pas précisé laquelle.',
+    description: `Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs ${voc.nom('activite', true)} et n'a pas précisé ${voc.acc('activite', 'lequel', 'laquelle')}.`,
     input_schema: {
       type: 'object',
       properties: {
@@ -731,14 +744,24 @@ const TOOLS_ANTHROPIC = [
   },
 ];
 
-// Définitions au format OpenAI — consommées par aiService (Gemini, endpoint compatible OpenAI)
-const TOOLS_OPENAI = TOOLS_ANTHROPIC.map(t => ({
-  type: 'function',
-  function: {
-    name: t.name,
-    description: t.description,
-    parameters: t.input_schema,
-  },
-}));
+// Définitions au format OpenAI — consommées par aiService (Gemini, endpoint compatible OpenAI).
+// toolsFor(voc) : mémoïsé par objet vocabulaire (le cache des profils rend le même objet) ;
+// toolsFor(vocabDefaut) donne au caractère près l'ancien TOOLS_OPENAI.
+const outilsParVoc = new WeakMap();
+function toolsFor(voc) {
+  let outils = outilsParVoc.get(voc);
+  if (!outils) {
+    outils = outilsAnthropic(voc).map(t => ({
+      type: 'function',
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.input_schema,
+      },
+    }));
+    outilsParVoc.set(voc, outils);
+  }
+  return outils;
+}
 
-module.exports = { executeToolCall, TOOLS_ANTHROPIC, TOOLS_OPENAI, getClientContextLine, toolGetClientInfo, toolGetAbonnement };
+module.exports = { executeToolCall, toolsFor, getClientContextLine, toolGetClientInfo, toolGetAbonnement };

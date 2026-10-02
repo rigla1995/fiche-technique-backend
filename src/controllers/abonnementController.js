@@ -3,7 +3,7 @@ const { sendInviteEmail, sendFactureEmail } = require('../services/emailService'
 const { getSubmissionDocuments } = require('../services/docusealService');
 const { generateFacturePdf } = require('../services/pdfService');
 const { buildContratDocument } = require('../services/contractPdfService');
-const { vocabForClient } = require('../utils/vocabCompte');
+const { vocabForClient, vocabDuDomaine } = require('../utils/vocabCompte');
 const { oublierConversationsIA } = require('../services/clientConfigService');
 // Moteur de tarification PUR (lot 1a) : les calculs vivent dans pricingEngine et
 // sont RÉ-EXPORTÉS en bas de ce fichier (les autres contrôleurs importent d'ici).
@@ -1591,7 +1591,7 @@ const updateAbonnementConfig = async (req, res) => {
   // Option Acheteurs (ancien payload) : quota ≤ 100 (le reste des règles = validerComposition)
   const nAch = legacy && nbAcheteurs != null ? parseInt(nbAcheteurs, 10) : null;
   if (nAch !== null && (!Number.isFinite(nAch) || nAch < 0 || nAch > 100)) {
-    return res.status(400).json({ message: 'Quota acheteurs invalide (paliers de 1 à 100)' });
+    return res.status(400).json({ message: 'Quota [[court:acheteur:pl]] invalide (paliers de 1 à 100)' });
   }
   if (montantOnboarding !== undefined && montantOnboarding !== null && !Number.isFinite(Number(montantOnboarding))) {
     return res.status(400).json({ message: 'montantOnboarding invalide' });
@@ -1986,7 +1986,7 @@ const toggleModuleAcheteurs = async (req, res) => {
     // Désactivation du module ⇒ quota remis à 0 (fin de la facturation par palier)
     const nb = actif ? parseInt(nbAcheteurs, 10) : 0;
     if (Number.isFinite(nb) && nb > 100) {
-      return res.status(400).json({ message: 'Quota acheteurs invalide (paliers de 1 à 100)' });
+      return res.status(400).json({ message: 'Quota [[court:acheteur:pl]] invalide (paliers de 1 à 100)' });
     }
     if (Number.isFinite(nb) && nb >= 0) {
       const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1', [clientId]);
@@ -2278,6 +2278,10 @@ const regenerateContratPdf = async (clientId) => {
     dateContrat: info.contrat_accepte_le || info.abo_created_at || null,
     // Téléchargement admin : ne jamais échouer sur le garde placeholders (warn suffit)
     strict: false,
+    // Lot 2b (spec §8.2-8.3) : vocabulaire COURANT du compte (règle « régénéré / signé »,
+    // contractPdfService) et texte sûr pour la police (document hors signature).
+    voc: await vocabForClient(clientId),
+    pdfTexte: true,
   });
 };
 
@@ -2425,6 +2429,10 @@ const previewContratPdf = async (req, res) => {
       pricing,
       // Aperçu wizard : ne jamais bloquer la création de client sur le garde placeholders
       strict: false,
+      // Lot 2b (spec §8.2-8.3) : vocabulaire du domaine choisi dans le wizard (corps de la requête),
+      // texte sûr pour la police (document hors signature).
+      voc: await vocabDuDomaine(domaineId),
+      pdfTexte: true,
     });
     res.json({ pdfBase64: docu.base64 });
   } catch (err) {

@@ -27,7 +27,9 @@ const fmtDateC = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-di
 // Retourne { montantOnboarding, montantMensuel, extraFields } pour la soumission Docuseal.
 // `domaineNom` (lot 1a) : champ « Domaine » du flux template (filtré par le retry 422
 // tant que le template DocuSeal ne le porte pas — cf docuseal-templates/CHAMPS.md).
-const buildContractPricingFields = (pricing, domaineNom = null) => {
+// `voc` (lot 2b, spec §8.2) : vocabulaire du compte, pour la VALEUR « Option Acheteurs » ; les noms de
+// champs DocuSeal ne changent pas (un nom traduit serait retiré en silence par le retry 422).
+const buildContractPricingFields = (pricing, domaineNom = null, voc = vocabDefaut) => {
   if (!pricing) return { montantOnboarding: null, montantMensuel: null, extraFields: [] };
   const { baseOnboarding, effOnboarding, baseMensuel, effMensuel, promoMens, promoOb, promoMonths, baseResumeDate, hasPromo } = pricing;
 
@@ -63,7 +65,7 @@ const buildContractPricingFields = (pricing, domaineNom = null) => {
     ? (pricing.formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium')
     : (aDesActivites ? 'Activité Premium' : '');
   const acheteursLabel = pricing.palierAcheteurs
-    ? `Palier jusqu'à ${pricing.palierAcheteurs} acheteurs`
+    ? `Palier jusqu'à ${pricing.palierAcheteurs} ${voc.nom('acheteur', true)}`
     : '';
 
   return {
@@ -84,7 +86,8 @@ const buildContractPricingFields = (pricing, domaineNom = null) => {
 // par client, prestataire pré-signé — createSubmissionFromPdf), avec REPLI sur le
 // flux template historique si la génération ou l'API échoue, ou si seul le template
 // est configuré. Retourne { submissionId, signingUrl } dans les deux cas.
-const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone, adresse, config, montantOnboarding }) => {
+// voc : vocabulaire du compte créé (vocabDuDomaine, lot 2b spec §8.2) — valeurs du document et des champs.
+const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone, adresse, config, montantOnboarding, voc = vocabDefaut }) => {
   if (docusealPdfConfigured() && pricing) {
     try {
       const docu = await buildContratDocument({
@@ -93,6 +96,7 @@ const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone
         config,
         pricing,
         montantOnboarding,
+        voc,
       });
       return await createSubmissionFromPdf({
         pdfBase64: docu.base64,
@@ -104,7 +108,7 @@ const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone
       console.error('[docuseal] flux PDF rempli échoué, repli sur le template:', e.message);
     }
   }
-  const pf = buildContractPricingFields(pricing, config?.domaineNom || null);
+  const pf = buildContractPricingFields(pricing, config?.domaineNom || null, voc);
   return createContractSubmission({
     clientName: nom,
     clientEmail: email,
@@ -432,6 +436,8 @@ const create = async (req, res) => {
 
     // Auto-generate contract PDF, send via Docuseal (e-signature) + welcome email
     try {
+      // Vocabulaire du compte créé (domaine du profil, en cache : aucune requête de plus)
+      const voc = await vocabDuDomaine(domaineId);
       const aboConfig = config || {};
       const pdfBase64 = contractPdfBase64 || await generateContratPdf({
         nom,
@@ -445,7 +451,7 @@ const create = async (req, res) => {
         formuleActivites: (aboConfig.nbActivites ?? 1) >= 1 ? formuleActivites : null,
         nbAcheteurs: nbAcheteursEff,
         dateContrat: new Date(),
-      });
+      }, voc);
 
       // Contrat e-signature : PDF rempli par client (prioritaire) ou template Docuseal.
       if (docusealPdfConfigured() || docusealConfigured()) {
@@ -457,8 +463,6 @@ const create = async (req, res) => {
           domaineSlug: cfgComplete?.domaine_slug || null,
         };
         const pricing = await computeEffectivePricing(user.id).catch(() => null);
-        // Vocabulaire du compte créé (domaine du profil, en cache : aucune requête de plus)
-        const voc = await vocabDuDomaine(domaineId);
         submitContratForSignature({
           aboId,
           pricing,
@@ -468,6 +472,7 @@ const create = async (req, res) => {
           adresse: adresse || null,
           config: aboConfigForDocuseal,
           montantOnboarding,
+          voc,
         })
           .then(({ submissionId, signingUrl }) => {
             console.log(`[docuseal] Contrat soumis: ${submissionId} pour ${email}`);

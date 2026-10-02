@@ -499,7 +499,7 @@ const ADMIN_PWD = require('crypto').randomBytes(18).toString('base64url');
 
     // ── 13. IA get_transferts (deux étages), dashboards (KPI séparés) ─────────
     const ia = await executeToolCall(clientId, 'get_transferts', {});
-    check('IA get_transferts voit les deux étages (Cuisine (labo) + Restaurant)', ia.some((r) => r.destination === 'Cuisine (labo)') && ia.some((r) => r.destination === 'Restaurant'), JSON.stringify(ia.map((r) => r.destination)));
+    check('IA get_transferts voit les deux étages (Cuisine (cuisine) + Restaurant)', ia.some((r) => r.destination === 'Cuisine (cuisine)') && ia.some((r) => r.destination === 'Restaurant'), JSON.stringify(ia.map((r) => r.destination)));
     ({ status, body } = await C(`/api/dashboard/v2?tab=labo&from=${today}&to=${today}`));
     check('dashboard V2 onglet Labo : transferts (activités) et cessions_labo séparés, répartition « Cuisine (cuisine) »',
       status === 200 && body?.kpis && approx(body.kpis.transferts, 4 * 11.9 + 2 * 23.8) && body.kpis.nb_transferts === 2 && approx(body.kpis.cessions_labo, 30 * 11.9) && body.kpis.nb_cessions_labo === 1

@@ -8,13 +8,6 @@
   },
   {
     "fichier": "*",
-    "avant": "type de vente",
-    "apres": "type de vente",
-    "type": "locution",
-    "justification": "Locution figée (spec lot 2b §6.8, reprise du _global.json du front) : le filtre « directe / via prestataire / manuelle / portail », pas l'objet « une vente »."
-  },
-  {
-    "fichier": "*",
     "avant": "canal de vente",
     "apres": "canal de vente",
     "type": "locution",
@@ -33,13 +26,6 @@
     "apres": "Sous-produit",
     "type": "locution",
     "justification": "Mot composé figé en tête de libellé (« Sous-produit » des recettes, laboController.js:2127, produitTransformeController.js:519 ; spec lot 2b §6.8) : même décision que « sous-produit »."
-  },
-  {
-    "fichier": "*",
-    "avant": "Activité Basique",
-    "apres": "Activité Basique",
-    "type": "formule",
-    "justification": "Nom commercial de formule (tarification Basique / Premium / Labo), pas le terme « activité » du domaine : il reste le même pour tous les secteurs (spec lot 2b §6.8, §8.2)."
   },
   {
     "fichier": "*",

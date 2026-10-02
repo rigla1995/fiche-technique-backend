@@ -15,6 +15,7 @@ const {
   buildResiliation,
   checkPrestatairePlaceholders,
 } = require('../../docuseal-templates/generate');
+const { vocabDefaut } = require('../utils/vocab');
 
 const fmtDT = (n) => `${Math.round(Number(n) || 0)} DT`;
 const fmtDateFr = (d) =>
@@ -55,14 +56,16 @@ const promoDetailOf = (p) => {
 // strict=true (défaut, flux SIGNATURE) : le garde placeholders peut throw en prod.
 // strict=false (aperçu wizard / téléchargement admin) : on dégrade en warn — un
 // aperçu avec identité placeholder vaut mieux qu'un échec de génération.
-const generate = async (builder, data, { strict = true } = {}) => {
+// pdfTexte=true (lot 2b, spec §8.3) : texte sûr pour la police (generate.js, pdfTexte), passé au builder ;
+// posé SEULEMENT pour le contrat régénéré et l'aperçu du wizard, jamais pour un document à signer.
+const generate = async (builder, data, { strict = true, pdfTexte = false } = {}) => {
   try {
     checkPrestatairePlaceholders(); // warn — ou throw si FACTURE_STRICT=1 / prod
   } catch (e) {
     if (strict) throw e;
     console.warn('[contrat] identité prestataire placeholder (mode non strict):', e.message);
   }
-  const buffer = await builder(null, { ...data, previewMode: false }); // outPath null → Buffer
+  const buffer = await builder(null, { ...data, previewMode: false }, { pdfTexte }); // outPath null → Buffer
   return buffer.toString('base64');
 };
 
@@ -71,7 +74,13 @@ const generate = async (builder, data, { strict = true } = {}) => {
 // type acheteurs (déjà porté par « Option Acheteurs »). undefined = lignes fixes.
 // Composants IDENTITÉ (code = type technique, domaines existants) → undefined : les 3
 // lignes fixes historiques (« Points de vente (activités) / Laboratoires de production /
-// Comptes gérants ») sont conservées — un contrat régénéré reste identique au signé.
+// Comptes gérants ») sont conservées.
+// Règle « régénéré / signé » (lot 2b, spec §8.2) : un document contractuel produit par le serveur hors
+// signature (aperçu du wizard, contrat régénéré, avenant legacy) est rendu avec la configuration, les
+// tarifs et le vocabulaire COURANTS du compte destinataire. Il reproduit au caractère près le document de
+// la signature tant que ces trois éléments n'ont pas changé, hors les corrections typographiques du
+// §11.1.2. La pièce qui fait foi est le PDF signé conservé par DocuSeal, toujours servi en priorité ; le
+// régénéré n'est qu'un repli.
 const composantsContrat = (list) => {
   if (!Array.isArray(list)) return undefined;
   const identite = list.every((c) => !c || !c.code || !c.typeTechnique || c.code === c.typeTechnique);
@@ -83,8 +92,8 @@ const composantsContrat = (list) => {
 };
 
 // Ligne « Domaine d'activité » : omise pour un compte du domaine par défaut
-// (restauration) en composants identité — le document reste strictement celui
-// d'avant le lot 1a (contrats existants régénérés à l'identique).
+// (restauration) en composants identité — le document reste celui d'avant le lot 1a.
+// Régénération : règle « régénéré / signé » (composantsContrat ci-dessus, spec lot 2b §8.2).
 const domaineContrat = (config = {}, rows = undefined) => {
   if (!config.domaineNom) return undefined;
   if (!rows && (!config.domaineSlug || config.domaineSlug === 'restauration')) return undefined;
@@ -93,22 +102,24 @@ const domaineContrat = (config = {}, rows = undefined) => {
 
 // « +1 activité   ·   +2 comptes gérants   ·   Option Acheteurs → palier 20 » —
 // partagé entre le PDF rempli et les champs du flux template (avenantExtraFields).
-const ajoutTextOf = (ajouts = {}) => {
+// voc : vocabulaire du compte destinataire (lot 2b, spec §8.2).
+const ajoutTextOf = (ajouts = {}, voc = vocabDefaut) => {
   const plur = (n, sing, plu) => `+${n} ${n > 1 ? plu : sing}`;
   const parts = [];
-  if (ajouts.addActivites) parts.push(plur(ajouts.addActivites, 'activité', 'activités'));
-  if (ajouts.addLabos) parts.push(plur(ajouts.addLabos, 'laboratoire', 'laboratoires'));
-  if (ajouts.addGerants) parts.push(plur(ajouts.addGerants, 'compte gérant', 'comptes gérants'));
-  if (ajouts.setAcheteurs) parts.push(`Option Acheteurs → palier jusqu'à ${ajouts.setAcheteurs}`);
+  if (ajouts.addActivites) parts.push(plur(ajouts.addActivites, voc.nom('activite'), voc.nom('activite', true)));
+  if (ajouts.addLabos) parts.push(plur(ajouts.addLabos, voc.nom('labo_long'), voc.nom('labo_long', true)));
+  if (ajouts.addGerants) parts.push(plur(ajouts.addGerants, `compte ${voc.nom('gerant')}`, `comptes ${voc.nom('gerant', true)}`));
+  if (ajouts.setAcheteurs) parts.push(`Option ${voc.Court('acheteur', true)} → palier jusqu'à ${ajouts.setAcheteurs}`);
   return parts.join('   ·   ');
 };
 
 // Champs additionnels de l'avenant pour le flux TEMPLATE Docuseal (« Capacité
 // ajoutée », « Contrat initial », « Formule », « Option Acheteurs »). Sans risque :
 // createSubmission retire de lui-même les champs absents du template (retry 422).
-const avenantExtraFields = ({ ajouts = {}, abonnementId = null, abonnementDate = null, pricing = null } = {}) => {
+// Noms de champs inchangés (DocuSeal) ; seules les VALEURS suivent le vocabulaire du compte (voc).
+const avenantExtraFields = ({ ajouts = {}, abonnementId = null, abonnementDate = null, pricing = null, voc = vocabDefaut } = {}) => {
   const fields = [];
-  const ajout = ajoutTextOf(ajouts);
+  const ajout = ajoutTextOf(ajouts, voc);
   if (ajout) fields.push({ name: 'Capacité ajoutée', default_value: ajout });
   if (abonnementId) {
     fields.push({
@@ -124,7 +135,7 @@ const avenantExtraFields = ({ ajouts = {}, abonnementId = null, abonnementDate =
       });
     }
     if (pricing.palierAcheteurs) {
-      fields.push({ name: 'Option Acheteurs', default_value: `Palier jusqu'à ${pricing.palierAcheteurs} acheteurs` });
+      fields.push({ name: 'Option Acheteurs', default_value: `Palier jusqu'à ${pricing.palierAcheteurs} ${voc.nom('acheteur', true)}` });
     }
   }
   return fields;
@@ -138,7 +149,9 @@ const avenantExtraFields = ({ ajouts = {}, abonnementId = null, abonnementDate =
 // abonnementDate / dateContrat : pour RÉGÉNÉRER un contrat existant à l'identique
 // (réf avec l'année d'ORIGINE — celle que visent les avenants — et date d'origine),
 // pas la date/année du jour de régénération. Absents = comportement création (now).
-const buildContratDocument = async ({ abonnementId, client, config = {}, pricing, montantOnboarding = null, strict = true, abonnementDate = null, dateContrat = null }) => {
+// voc : vocabulaire du compte (création : vocabDuDomaine ; aperçu : domaine du corps ; régénéré : vocabForClient).
+// pdfTexte : contrat régénéré et aperçu du wizard SEULEMENT (spec lot 2b §8.3), jamais le document à signer.
+const buildContratDocument = async ({ abonnementId, client, config = {}, pricing, montantOnboarding = null, strict = true, abonnementDate = null, dateContrat = null, voc = vocabDefaut, pdfTexte = false }) => {
   if (!pricing) throw new Error('détail tarifaire indisponible pour le contrat');
   const ref = refFor('CTR', abonnementId, abonnementDate || undefined);
   const onboarding = pricing.effOnboarding ?? montantOnboarding;
@@ -153,7 +166,7 @@ const buildContratDocument = async ({ abonnementId, client, config = {}, pricing
       formule: (config.nbActivites ?? 1) >= 1
         ? ((config.formuleActivites || pricing.formuleActivites) === 'basique' ? 'Activité Basique' : 'Activité Premium')
         : undefined,
-      acheteurs: pricing.palierAcheteurs ? `palier jusqu'à ${pricing.palierAcheteurs} acheteurs` : undefined,
+      acheteurs: pricing.palierAcheteurs ? `palier jusqu'à ${pricing.palierAcheteurs} ${voc.nom('acheteur', true)}` : undefined,
       // Lot 1a : mots du domaine — une ligne par composant (remplace les 3 lignes fixes
       // en mode PDF rempli) + ligne « Domaine d'activité » (fond de template inchangé).
       composants: composantsContrat(config.composants),
@@ -165,7 +178,7 @@ const buildContratDocument = async ({ abonnementId, client, config = {}, pricing
       mensuelBase: fmtDT(pricing.baseMensuel),
       promoDetail: promoDetailOf(pricing) || undefined,
     },
-  }, { strict });
+  }, { strict, pdfTexte });
   return { base64, ref, documentName: `Contrat d'abonnement LabFlow — ${ref}` };
 };
 
@@ -174,7 +187,8 @@ const buildContratDocument = async ({ abonnementId, client, config = {}, pricing
  * (nouvelle config totale + nouvelle mensualité). `ajouts` = { addActivites,
  * addLabos, addGerants } ; le contrat initial est visé via abonnementId/Date.
  */
-const buildAvenantDocument = async ({ demandeId, client, pricing, ajouts = {}, abonnementId = null, abonnementDate = null, config = {} }) => {
+// voc : vocabulaire du compte (avenant demandé par le client : req.voc).
+const buildAvenantDocument = async ({ demandeId, client, pricing, ajouts = {}, abonnementId = null, abonnementDate = null, config = {}, voc = vocabDefaut }) => {
   if (!pricing) throw new Error("détail tarifaire indisponible pour l'avenant");
   const ref = refFor('AVN', demandeId);
   const base64 = await generate(buildAvenant, {
@@ -183,7 +197,7 @@ const buildAvenantDocument = async ({ demandeId, client, pricing, ajouts = {}, a
     contratRef: abonnementId ? refFor('CTR', abonnementId, abonnementDate) : undefined,
     contratDate: abonnementDate ? fmtDateFr(abonnementDate) : undefined,
     client: clientBlock(client),
-    ajout: ajoutTextOf(ajouts) || undefined,
+    ajout: ajoutTextOf(ajouts, voc) || undefined,
     config: {
       activites: pricing.nbActivites,
       labos: pricing.nbLabos,
@@ -191,7 +205,7 @@ const buildAvenantDocument = async ({ demandeId, client, pricing, ajouts = {}, a
       formule: pricing.nbActivites >= 1
         ? (pricing.formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium')
         : undefined,
-      acheteurs: pricing.palierAcheteurs ? `palier jusqu'à ${pricing.palierAcheteurs} acheteurs` : undefined,
+      acheteurs: pricing.palierAcheteurs ? `palier jusqu'à ${pricing.palierAcheteurs} ${voc.nom('acheteur', true)}` : undefined,
       // Lot 1a : nouvelle configuration par composant (computeAvenantPricing.composants)
       composants: composantsContrat(config.composants || pricing.composants),
       domaineNom: domaineContrat(

@@ -556,5 +556,350 @@
    "miroir"
   ],
   "justification": "« prix de vente » : locution figée de gestion (spec lot 2b §6.8, _global.json), pas l'objet « une vente » ; titre de l'export Configuration des prix."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/contrat\\.hotellerie\\.palier/\\d+/textes/\\d+|/contrat\\.hotellerie\\.sansPalier/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+)$",
+  "texte": "4.2 Obligations du prestataire",
+  "type": "homonyme",
+  "justification": "« PRESTATAIRE » = LabFlow, partie au contrat (generate.js, pdfService.js : texte fixe), pas le prestataire de livraison du lexique : homonyme listé au §6.8 (« PRESTATAIRE »).",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/creation\\.passe1\\.contratLegacy/\\d+/textes/\\d+|/creation\\.passe2\\.contratLegacy/\\d+/textes/\\d+|/legacy\\.contrat/\\d+/textes/\\d+)$",
+  "texte": "Activités",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/resiliation/\\d+/textes/\\d+)$",
+  "texte": "Au terme du préavis, l'accès du Client et de ses gérants à la plateforme est désactivé. Les sommes échues avant la date d'effet restent dues.",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/avenant\\.flux/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+)$",
+  "texte": "Comptes gérants",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/avenant\\.flux/\\d+/textes/\\d+|/contrat\\.hotellerie\\.palier/\\d+/textes/\\d+|/contrat\\.hotellerie\\.sansPalier/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+|/creation\\.passe1\\.contratLegacy/\\d+/textes/\\d+|/creation\\.passe2\\.contratLegacy/\\d+/textes/\\d+|/legacy\\.contrat/\\d+/textes/\\d+)$",
+  "texte": "Formule d'activités",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/creation\\.passe1\\.contratLegacy/\\d+/textes/\\d+|/creation\\.passe2\\.contratLegacy/\\d+/textes/\\d+|/legacy\\.contrat/\\d+/textes/\\d+)$",
+  "texte": "Gérants",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/creation\\.passe1\\.contratLegacy/\\d+/textes/\\d+|/creation\\.passe2\\.contratLegacy/\\d+/textes/\\d+|/legacy\\.contrat/\\d+/textes/\\d+)$",
+  "texte": "LabFlow met à disposition du Client une plateforme SaaS de gestion de stocks, approvisionnements, pertes, inventaires et ventes pour la restauration. L'accès est fourni via l'interface web sur abonnement mensuel.",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/contrat\\.hotellerie\\.palier/\\d+/textes/\\d+|/contrat\\.hotellerie\\.sansPalier/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+)$",
+  "texte": "LabFlow Oracle met à la disposition du Client, sur abonnement, une plateforme logicielle en mode SaaS (Software as a Service) accessible par navigateur web, dédiée à la gestion des stocks, approvisionnements, pertes, inventaires, fiches techniques et ventes pour les métiers de la restauration. Le présent contrat définit les conditions de cette mise à disposition.",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/avenant\\.flux/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+)$",
+  "texte": "Laboratoires de production",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/creation\\.passe1\\.contratLegacy/\\d+/textes/\\d+|/creation\\.passe2\\.contratLegacy/\\d+/textes/\\d+|/legacy\\.contrat/\\d+/textes/\\d+)$",
+  "texte": "Labos",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/avenant\\.flux/\\d+/textes/\\d+|/contrat\\.hotellerie\\.palier/\\d+/textes/\\d+|/contrat\\.hotellerie\\.sansPalier/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+|/resiliation/\\d+/textes/\\d+)$",
+  "texte": "LE PRESTATAIRE",
+  "type": "homonyme",
+  "justification": "« PRESTATAIRE » = LabFlow, partie au contrat (generate.js, pdfService.js : texte fixe), pas le prestataire de livraison du lexique : homonyme listé au §6.8 (« PRESTATAIRE »).",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/avenant\\.flux/\\d+/textes/\\d+|/contrat\\.hotellerie\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/creation\\.passe1\\.contratLegacy/\\d+/textes/\\d+|/legacy\\.contrat/\\d+/textes/\\d+)$",
+  "texte": "Option Acheteurs",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/contrat\\.hotellerie\\.palier/\\d+/textes/\\d+|/contrat\\.hotellerie\\.sansPalier/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+)$",
+  "texte": "Plateforme LabFlow — gestion pour la restauration et les métiers de bouche",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/avenant\\.flux/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+)$",
+  "texte": "Points de vente (activités)",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/avenant\\.flux/\\d+/textes/\\d+|/contrat\\.hotellerie\\.palier/\\d+/textes/\\d+|/contrat\\.hotellerie\\.sansPalier/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+|/resiliation/\\d+/textes/\\d+)$",
+  "texte": "Pour LabFlow Oracle — Le Gérant Oracle",
+  "type": "homonyme",
+  "justification": "Mention du signataire prestataire `Pour ${PRESTATAIRE.nom} — ${PRESTATAIRE.signataire}` (generate.js, bloc des signatures) : « Le Gérant Oracle » est la valeur PRESTATAIRE_SIGNATAIRE posée par l'environnement de l'oracle (scripts/lib/bouchons-test.js), le gérant de LabFlow, pas le gérant du lexique (besoin B2[1], spec §6.8)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/contrat\\.hotellerie\\.palier/\\d+/textes/\\d+|/contrat\\.hotellerie\\.sansPalier/\\d+/textes/\\d+|/contrat\\.identite\\.palier/\\d+/textes/\\d+|/contrat\\.identite\\.sansPalier/\\d+/textes/\\d+)$",
+  "texte": "Pour les données à caractère personnel hébergées (personnel, clients, fournisseurs du Client), le Client agit en qualité de responsable du traitement et LabFlow Oracle en qualité de sous-traitant, agissant sur instruction du Client et conformément à la loi n° ⟨mois⟩ du ⟨date⟩ relative à la protection des données personnelles. LabFlow Oracle met en œuvre les mesures de sécurité appropriées, astreint son personnel à la confidentialité, ne conserve les données que pour la durée du contrat et accomplit, le cas échéant, les formalités auprès de l'INPDP.",
+  "type": "lot-3",
+  "justification": "Texte fixe d'un document contractuel (libellé de ligne du tableau de configuration, objet, sous-titre ou clause ; generate.js buildContrat / buildAvenant / buildResiliation, pdfService.generateContratPdf) : reporté au lot 3 avec le modèle DocuSeal (spec lot 2b §8.2, §8.3 ; besoin B2[1]). Seules les VALEURS de ces documents suivent le domaine depuis B2.",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/creation\\.passe1\\.contratLegacy/\\d+/textes/\\d+|/creation\\.passe2\\.contratLegacy/\\d+/textes/\\d+|/legacy\\.avenant/\\d+/textes/\\d+|/legacy\\.contrat/\\d+/textes/\\d+|/site\\.traitementDemande\\.avenantLegacy/\\d+/textes/\\d+)$",
+  "texte": "PRESTATAIRE",
+  "type": "homonyme",
+  "justification": "« PRESTATAIRE » = LabFlow, partie au contrat (generate.js, pdfService.js : texte fixe), pas le prestataire de livraison du lexique : homonyme listé au §6.8 (« PRESTATAIRE »).",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/factureAppro\\.01\\.transfert/documents/\\d+/textes/\\d+|/factureAppro\\.02\\.transfert/documents/\\d+/textes/\\d+|/factureAppro\\.03\\.manuel/documents/\\d+/textes/\\d+|/factureAppro\\.04\\.manuel/documents/\\d+/textes/\\d+|/factureAppro\\.05\\.manuel/documents/\\d+/textes/\\d+|/factureAppro\\.06\\.manuel/documents/\\d+/textes/\\d+|/factureAppro\\.07\\.manuel/documents/\\d+/textes/\\d+|/factureAppro\\.08\\.manuel/documents/\\d+/textes/\\d+)$",
+  "texte": "PU HT",
+  "type": "homonyme",
+  "justification": "« PU HT » = prix unitaire hors taxes (en-tête de colonne de la facture d'appro, generate.js buildFactureAppro), pas le « PU » (produit utilisable) du lexique : homonyme listé au §6.8 (« PU HT »)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^(?:/contrat\\.hotellerie\\.palier/\\d+/textes/\\d+|/contrat\\.hotellerie\\.sansPalier/\\d+/textes/\\d+)$",
+  "texte": "Restaurant",
+  "type": "donnee",
+  "justification": "Libellé du composant « Restaurant » du domaine Hôtellerie (domaine_composants, saisi par l'admin), écrit par le contrat du flux PDF en une ligne par composant (lot 1a, contractPdfService.composantsContrat) : une donnée du domaine, pas un texte du serveur."
+ },
+ {
+  "cle": "contexte",
+  "chemin": "^/[^/]+/line$",
+  "texte": "Domaine d'activité",
+  "type": "homonyme",
+  "extrait": true,
+  "justification": "Ligne « Domaine d'activité : X » de la ligne de contexte (clientConfigService.buildLineFromSnapshot) : le domaine, pas l'unité « activité » du lexique — homonyme listé au §6.8 et au §7.3 (_global.json « Domaine d'activité »)."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/systeme$",
+  "texte": "Domaine d'activité",
+  "type": "homonyme",
+  "extrait": true,
+  "justification": "Ligne « Domaine d'activité : X » de la ligne de contexte, reprise dans le prompt envoyé au modèle : homonyme listé au §6.8 et au §7.3."
+ },
+ {
+  "cle": "prompt",
+  "chemin": "^/avecContexte$",
+  "texte": "Client: Oracle | Mode du compte: actif | Activités: ⟨id⟩=Alpha, ⟨id⟩=Beta | Labos: ⟨id⟩=Gamma",
+  "type": "donnee",
+  "extrait": true,
+  "justification": "Ligne de contexte FIXE passée par la capture à buildSystemPrompt (LIGNE_FIXE de scripts/capture-vocab-baseline.js, écrite en mots par défaut pour comparer le prompt à l'identique en restauration) : donnée de l'oracle, pas un texte du serveur. La vraie ligne de contexte du compte est captée par `contexte` et par `promptReel`."
+ },
+ {
+  "cle": "prompt",
+  "chemin": "^/(avecContexte|sansContexte)$",
+  "texte": "période, article…",
+  "type": "homonyme",
+  "extrait": true,
+  "justification": "« article… » des filtres du prompt (aiService.js, « applique les filtres (…, période, article…) ») : « article » au sens d'élément quelconque (produit ou article), liste fermée du §6.5 (aiService.js:34, :49), motif « élément générique » ; besoin B1[2]."
+ },
+ {
+  "cle": "prompt",
+  "chemin": "^/(avecContexte|sansContexte)$",
+  "texte": "articles vendables (`get_config_vente`)",
+  "type": "homonyme",
+  "extrait": true,
+  "justification": "« articles vendables » du prompt (aiService.js, configuration de vente) : « article » au sens d'élément quelconque (produit ou article), liste fermée du §6.5 (aiService.js:34, :49), motif « élément générique » ; besoin B1[2]."
+ },
+ {
+  "cle": "prompt",
+  "chemin": "^/(avecContexte|sansContexte)$",
+  "texte": "groupée par article",
+  "type": "homonyme",
+  "extrait": true,
+  "justification": "« groupée par article » du prompt (aiService.js, restitution des listes) : « article » au sens d'élément quelconque (produit ou article), liste fermée du §6.5 (aiService.js:34, :49), motif « élément générique » ; besoin B1[2]."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/systeme$",
+  "texte": "période, article…",
+  "type": "homonyme",
+  "extrait": true,
+  "justification": "« article… » des filtres du prompt (aiService.js, « applique les filtres (…, période, article…) ») : « article » au sens d'élément quelconque (produit ou article), liste fermée du §6.5 (aiService.js:34, :49), motif « élément générique » ; besoin B1[2]."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/systeme$",
+  "texte": "articles vendables (`get_config_vente`)",
+  "type": "homonyme",
+  "extrait": true,
+  "justification": "« articles vendables » du prompt (aiService.js, configuration de vente) : « article » au sens d'élément quelconque (produit ou article), liste fermée du §6.5 (aiService.js:34, :49), motif « élément générique » ; besoin B1[2]."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/systeme$",
+  "texte": "groupée par article",
+  "type": "homonyme",
+  "extrait": true,
+  "justification": "« groupée par article » du prompt (aiService.js, restitution des listes) : « article » au sens d'élément quelconque (produit ou article), liste fermée du §6.5 (aiService.js:34, :49), motif « élément générique » ; besoin B1[2]."
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/\\d+/function/description$",
+  "texte": "répartition par canal (direct / prestataire)",
+  "type": "code-api",
+  "extrait": true,
+  "justification": "Valeurs du filtre `canal` de get_ventes citées dans sa description (enum directe / prestataire, comparée à v.type_vente) : codes littéraux, spec §7.2 (« (direct / prestataire) » du canal) — sinon le modèle passerait « intermédiaire » au filtre et le total serait faux sans bruit.",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/\\d+/description$",
+  "texte": "répartition par canal (direct / prestataire)",
+  "type": "code-api",
+  "extrait": true,
+  "justification": "Valeurs du filtre `canal` de get_ventes citées dans sa description (enum directe / prestataire, comparée à v.type_vente) : codes littéraux, spec §7.2 (« (direct / prestataire) » du canal) — sinon le modèle passerait « intermédiaire » au filtre et le total serait faux sans bruit.",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/\\d+/function/description$",
+  "texte": "(avec prix de vente)",
+  "type": "locution",
+  "extrait": true,
+  "justification": "« prix de vente » de la description de get_config_vente : locution figée de gestion (spec §6.8, _global.json), pas l'objet « une vente ».",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/\\d+/description$",
+  "texte": "(avec prix de vente)",
+  "type": "locution",
+  "extrait": true,
+  "justification": "« prix de vente » de la description de get_config_vente : locution figée de gestion (spec §6.8, _global.json), pas l'objet « une vente ».",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "guide",
+  "chemin": "^/[^/]+\\.blocPrompt$",
+  "texte": "📍 **Menu → Page**",
+  "type": "homonyme",
+  "extrait": true,
+  "justification": "« Menu → Page » : gabarit du chemin de navigation dans l'application (menu latéral de LabFlow), consigne de format du bloc du guide (onboardingEtat.onboardingPromptBlock) — pas le menu (carte) de la restauration ; mot hors lexique relu (§2.5 point 6)."
+ },
+ {
+  "cle": "guide",
+  "chemin": "^/A\\.blocPrompt$",
+  "texte": "0/1 Restaurant",
+  "type": "donnee",
+  "extrait": true,
+  "justification": "Détail « 0/1 Restaurant » de l'étape Capacités : libellé du composant « Restaurant » du domaine Hôtellerie (domaine_composants, saisi par l'admin), guide §7.4 règle 2 — une donnée du domaine.",
+  "domaines": [
+   "hotellerie"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/\\d+/function/parameters/properties/canal/description$",
+  "texte": "Filtrer par canal de vente",
+  "type": "locution",
+  "domaines": [
+   "miroir"
+  ],
+  "justification": "« canal de vente » : locution figée de gestion (spec §6.8, _global.json), pas l'objet « une vente » ; description du paramètre `canal` de get_ventes."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/\\d+/parametres/properties/canal/description$",
+  "texte": "Filtrer par canal de vente",
+  "type": "locution",
+  "domaines": [
+   "miroir"
+  ],
+  "justification": "« canal de vente » : locution figée de gestion (spec §6.8, _global.json), pas l'objet « une vente » ; description du paramètre `canal` de get_ventes."
+ },
+ {
+  "cle": "guide",
+  "chemin": "^/[^/]+\\.(etat|http)/etapes/\\d+/(composants/\\d+/libelle|detail|questions/\\d+)$",
+  "texte": "restaurant",
+  "type": "donnee",
+  "domaines": [
+   "hotellerie"
+  ],
+  "justification": "Libellé du composant « Restaurant » du domaine Hôtellerie (domaine_composants, saisi par l'admin) dans le guide : pastille, détail « n/m Restaurant » et question « Comment créer mon restaurant ? » (guide §7.4 règle 2, libelleComposant) — une donnée du domaine."
+ },
+ {
+  "cle": "auth",
+  "chemin": "^/[^/]+/(?:.*/)?composants/\\d+/(libelle|libellePluriel|aide)$|^/[^/]+\\.domaines/\\d+/description$",
+  "texte": "restaurant",
+  "type": "donnee",
+  "domaines": [
+   "hotellerie"
+  ],
+  "justification": "Libellés, pluriels et aides des composants du domaine Hôtellerie et sa description (domaine_composants, domaines_activite, saisis par l'admin), renvoyés tels quels par /auth/login, /auth/me, GET /api/domaines, GET /api/entreprise et mon-abonnement : données du domaine, pas des textes du serveur (§2.5 point 6, mot hors lexique relu)."
+ },
+ {
+  "cle": "auth",
+  "chemin": "^/[^/]+/(?:.*/)?composants/\\d+/(libelle|libellePluriel|aide)$|^/[^/]+\\.domaines/\\d+/description$",
+  "texte": "restaurants",
+  "type": "donnee",
+  "domaines": [
+   "hotellerie"
+  ],
+  "justification": "Libellés, pluriels et aides des composants du domaine Hôtellerie et sa description (domaine_composants, domaines_activite, saisis par l'admin), renvoyés tels quels par /auth/login, /auth/me, GET /api/domaines, GET /api/entreprise et mon-abonnement : données du domaine, pas des textes du serveur (§2.5 point 6, mot hors lexique relu)."
+ },
+ {
+  "cle": "auth",
+  "chemin": "^/[^/]+/(?:.*/)?composants/\\d+/(libelle|libellePluriel|aide)$|^/[^/]+\\.domaines/\\d+/description$",
+  "texte": "restauration",
+  "type": "donnee",
+  "domaines": [
+   "hotellerie"
+  ],
+  "justification": "Libellés, pluriels et aides des composants du domaine Hôtellerie et sa description (domaine_composants, domaines_activite, saisis par l'admin), renvoyés tels quels par /auth/login, /auth/me, GET /api/domaines, GET /api/entreprise et mon-abonnement : données du domaine, pas des textes du serveur (§2.5 point 6, mot hors lexique relu)."
  }
 ]

@@ -4,6 +4,7 @@ const { generateAndSendReport } = require('./reportService');
 const { verifyMetaSignature } = require('../utils/webhookSignature');
 const { withTransaction } = require('../utils/db');
 const logger = require('../utils/logger');
+const { vocabForClient } = require('../utils/vocabCompte');
 
 const GRAPH_API_URL = 'https://graph.facebook.com/v19.0/me/messages';
 
@@ -85,19 +86,19 @@ const findClientByPsid = async (psid) => {
 };
 
 // Texte d'accueil envoyé à l'ouverture du lien d'invitation Messenger (fonction pure,
-// exportée pour l'oracle du lot 2b).
-function texteAccueilMessenger(nom) {
+// exportée pour l'oracle du lot 2b). voc : vocabulaire du compte (lot 2b §7.5), obligatoire.
+function texteAccueilMessenger(nom, voc) {
   return (
     `👋 Bonjour ${nom} !\n\nJe suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :\n\n` +
-    `🏪 Activités & 🏭 labos\n` +
-    `📦 Stock, seuils & 🛒 approvisionnements\n` +
-    `🔄 Transferts labo → activités\n` +
-    `📉 Pertes & 📊 inventaires\n` +
-    `🧾 Ventes, CA & food cost\n` +
-    `📚 Référentiel, fournisseurs & produits\n` +
-    `💳 Abonnement & configuration de vente\n` +
+    `${voc.icon('activite')} ${voc.Nom('activite', true)} & ${voc.icon('labo')} ${voc.nom('labo', true)}\n` +
+    `${voc.icon('stock')} ${voc.Nom('stock')}, seuils & 🛒 ${voc.nom('appro', true)}\n` +
+    `🔄 ${voc.Nom('transfert', true)} ${voc.nom('labo')} → ${voc.nom('activite', true)}\n` +
+    `📉 ${voc.Nom('perte', true)} & 📊 ${voc.nom('inventaire', true)}\n` +
+    `🧾 ${voc.Nom('vente', true)}, CA & ${voc.nom('food_cost')}\n` +
+    `${voc.icon('referentiel')} ${voc.Nom('referentiel')}, ${voc.nom('fournisseur', true)} & ${voc.nom('produit', true)}\n` +
+    `💳 Abonnement & configuration ${voc.de('vente')}\n` +
     `📄 Rapports Excel par email\n\n` +
-    `Exemple : « les transferts du mois actuel » ou « mon food cost de septembre ». Posez votre question !`
+    `Exemple : « ${voc.le('transfert', true)} du mois actuel » ou « ${voc.mon('food_cost')} de septembre ». Posez votre question !`
   );
 }
 
@@ -142,7 +143,7 @@ async function handleMessengerEvent(event) {
     // Réchauffe le snapshot de config statique du client (début de session Messenger)
     require('./clientConfigService').buildClientConfigSnapshot(client.client_id)
       .catch((e) => logger.warn('messenger_warmup_failed', { error: e.message }));
-    return sendMessage(psid, texteAccueilMessenger(client.nom));
+    return sendMessage(psid, texteAccueilMessenger(client.nom, await vocabForClient(client.client_id)));
   }
 
   // If this was purely a referral event (no user-typed message), stop here

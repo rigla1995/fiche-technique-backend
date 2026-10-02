@@ -4779,5 +4779,26 @@
    }
   ],
   "raison": "§11.1.7"
+ },
+ {
+  "cle": "pdf",
+  "chemin": "/legacy.avenant/0/textes/10",
+  "avant": "+1 activité   ·   +1 labo   ·   +1 gérant   ·   Option Acheteurs → palier jusqu'à 20",
+  "apres": "+1 activité   ·   +1 labo   ·   +1 gérant   ·   Option Acheteurs › palier jusqu'à 20",
+  "raison": "§11.1.2"
+ },
+ {
+  "cle": "pdf",
+  "chemin": "/factureAppro.01.transfert/documents/0/textes/6",
+  "avant": "Transfert labo → activité  ·  Labo : Bloc chaud",
+  "apres": "Transfert labo › labo  ·  Labo : Bloc chaud",
+  "raison": "§11.1.1"
+ },
+ {
+  "cle": "pdf",
+  "chemin": "/factureAppro.02.transfert/documents/0/textes/6",
+  "avant": "Transfert labo → activité  ·  Activité : Terrasse du Lac — Salon",
+  "apres": "Transfert labo › activité  ·  Activité : Terrasse du Lac — Salon",
+  "raison": "§11.1.2"
  }
 ]

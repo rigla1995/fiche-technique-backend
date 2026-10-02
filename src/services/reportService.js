@@ -2,6 +2,7 @@ const ExcelJS = require('exceljs');
 const pool = require('../config/database');
 const { brandHeader, headerRow, dataRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('./excelBrandService');
 const { vocabForClient } = require('../utils/vocabCompte');
+const { ongletSur } = require('../utils/excelNoms');
 
 const todayFr = () => new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
@@ -12,7 +13,7 @@ const SCOPE_CTE = `
   client_labos AS (SELECT id FROM labos WHERE entreprise_id IN (SELECT id FROM pe))
 `;
 
-async function fetchReportData(clientId) {
+async function fetchReportData(clientId, voc) {
   const [stockRows, pertesRows, inventaireRows, transferRows, clientRow] = await Promise.all([
 
     pool.query(
@@ -66,7 +67,7 @@ async function fetchReportData(clientId) {
     pool.query(
       `${SCOPE_CTE}
        SELECT i.nom AS ingredient, lt.quantite, lt.date_transfert,
-              CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS destination
+              a.nom AS activite, ld.nom AS labo_destinataire, lt.labo_dest_id IS NOT NULL AS destination_labo
        FROM labo_transfers lt
        JOIN articles i ON i.id = lt.ingredient_id
        LEFT JOIN activites a ON a.id = lt.activite_id
@@ -87,12 +88,21 @@ async function fetchReportData(clientId) {
     stock: stockRows.rows,
     pertes: pertesRows.rows,
     inventaires: inventaireRows.rows,
-    transferts: transferRows.rows,
+    // Destination (spec lot 2b §6.2) : le SQL renvoie les noms et le drapeau « destination labo »,
+    // le marqueur « (labo) » est assemblé ici (même règle que l'ancien CASE).
+    transferts: transferRows.rows.map((r) => ({
+      ingredient: r.ingredient,
+      quantite: r.quantite,
+      date_transfert: r.date_transfert,
+      destination: r.destination_labo
+        ? (r.labo_destinataire != null ? `${r.labo_destinataire} (${voc.court('labo')})` : null)
+        : r.activite,
+    })),
   };
 }
 
-async function generateExcel(clientId) {
-  const data = await fetchReportData(clientId);
+async function generateExcel(clientId, voc) {
+  const data = await fetchReportData(clientId, voc);
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'LabFlow AI Agent';
   workbook.created = new Date();
@@ -102,7 +112,7 @@ async function generateExcel(clientId) {
   // Feuille chartée : bandeau + filet + méta, en-têtes indigo, zébrage, footer.
   // formats = numFmt par colonne (null = pas de format numérique).
   const buildSheet = (name, { titre, labels, widths, formats, rows }) => {
-    const ws = workbook.addWorksheet(name);
+    const ws = workbook.addWorksheet(ongletSur(workbook, name));
     const colCount = labels.length;
     const headerIdx = brandHeader(workbook, ws, {
       titre,
@@ -121,33 +131,33 @@ async function generateExcel(clientId) {
     finalize(ws, { headerRowIdx: headerIdx, colCount, lastDataRow });
   };
 
-  buildSheet('Stock', {
-    titre: 'Rapport LabFlow — Stock actuel',
-    labels: ['Ingrédient', 'Quantité', 'Date appro', 'Prix unitaire (TND)'],
+  buildSheet(voc.Court('stock'), {
+    titre: `Rapport LabFlow — ${voc.Nom('stock')} ${voc.acc('stock', 'actuel', 'actuelle')}`,
+    labels: [voc.Nom('article_ingredient'), 'Quantité', `Date ${voc.court('appro')}`, 'Prix unitaire (TND)'],
     widths: [30, 14, 16, 20],
     formats: [null, FMT_QTE, null, FMT_DT],
     rows: data.stock.map(r => [r.ingredient, Number(r.quantite), fmtDate(r.date_appro), r.prix_unitaire ? Number(r.prix_unitaire) : '']),
   });
 
-  buildSheet('Pertes', {
-    titre: 'Rapport LabFlow — Pertes récentes',
-    labels: ['Ingrédient', 'Quantité', 'Type', 'Date'],
+  buildSheet(voc.Court('perte', true), {
+    titre: `Rapport LabFlow — ${voc.Pl('perte')} ${voc.acc('perte', 'récent', 'récente', true)}`,
+    labels: [voc.Nom('article_ingredient'), 'Quantité', 'Type', 'Date'],
     widths: [30, 14, 14, 16],
     formats: [null, FMT_QTE, null, null],
     rows: data.pertes.map(r => [r.ingredient, Number(r.quantite), r.type_perte, fmtDate(r.date_perte)]),
   });
 
-  buildSheet('Inventaires', {
-    titre: 'Rapport LabFlow — Inventaires récents',
-    labels: ['Ingrédient', 'Quantité réelle', 'Date inventaire'],
+  buildSheet(voc.Court('inventaire', true), {
+    titre: `Rapport LabFlow — ${voc.Pl('inventaire')} ${voc.acc('inventaire', 'récent', 'récente', true)}`,
+    labels: [voc.Nom('article_ingredient'), 'Quantité réelle', `Date ${voc.nom('inventaire')}`],
     widths: [30, 18, 18],
     formats: [null, FMT_QTE, null],
     rows: data.inventaires.map(r => [r.ingredient, Number(r.quantite_reelle), fmtDate(r.date_inventaire)]),
   });
 
-  buildSheet('Transferts Labo', {
-    titre: 'Rapport LabFlow — Transferts depuis les labos',
-    labels: ['Ingrédient', 'Quantité', 'Date transfert', 'Destination'],
+  buildSheet(`${voc.Court('transfert', true)} ${voc.Court('labo')}`, {
+    titre: `Rapport LabFlow — ${voc.Pl('transfert')} depuis ${voc.le('labo', true)}`,
+    labels: [voc.Nom('article_ingredient'), 'Quantité', `Date ${voc.nom('transfert')}`, 'Destination'],
     widths: [30, 14, 18, 26],
     formats: [null, FMT_QTE, null, null],
     rows: data.transferts.map(r => [r.ingredient, Number(r.quantite), fmtDate(r.date_transfert), r.destination || '']),
@@ -164,7 +174,7 @@ async function generateAndSendReport(clientId, email, clientNom) {
   // Vocabulaire du compte destinataire (agents IA web et Messenger : aucune requête du compte)
   const voc = await vocabForClient(clientId);
 
-  const reportData = await generateExcel(clientId);
+  const reportData = await generateExcel(clientId, voc);
 
   await sendRapportWithAttachment({
     to: email,

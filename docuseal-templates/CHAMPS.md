@@ -108,7 +108,7 @@ Le flux template envoie désormais un champ texte supplémentaire **`Domaine`** 
 domaine d'activité du compte, ex. « Hôtellerie ») sur le contrat — optionnel, non
 requis. Le fond `contrat-template.pdf` n'a PAS été modifié dans ce lot (les lignes
 par composant et l'identité légale arrivent avec le re-upload générique unique du
-lot 2, cf. plan V3.3). Tant que le champ `Domaine` n'existe pas dans le template
+lot 3, cf. plan V3.3). Tant que le champ `Domaine` n'existe pas dans le template
 Docuseal, il est filtré par le retry 422 : les contrats partent sans cette mention
 (comportement existant, silencieux). Le flux « PDF rempli » (`DOCUSEAL_PDF_FLOW`)
 imprime, lui, la ligne « Domaine d'activité » et une ligne par composant du domaine.

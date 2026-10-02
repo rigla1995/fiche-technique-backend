@@ -10,7 +10,7 @@
     "avant": "res.status(400).json({ message: 'Quota acheteurs invalide (paliers de 1 à 100)' })",
     "note": "Fragment identique aux deux lignes (indentation 4 à :1594, 6 à :1989) ; seul le littéral change.",
     "apres": "res.status(400).json({ message: 'Quota [[court:acheteur:pl]] invalide (paliers de 1 à 100)' })",
-    "etat": "NON appliqué par l'intégrateur de la vague 1 : abonnementController.js est un fichier du lot B2 (vague 2), à reprendre par B2 ou à la consolidation."
+    "etat": "APPLIQUÉ par B2 (vague 2), vérifié par l'intégrateur de la vague 2 (02/10/2026) : abonnementController.js:1594 et :1989 portent 'Quota [[court:acheteur:pl]] invalide (paliers de 1 à 100)'."
   },
   {
     "fichier": "scripts/vocab-baseline/exceptions-hors-restauration.json",

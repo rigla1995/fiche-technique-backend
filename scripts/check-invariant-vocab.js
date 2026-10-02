@@ -23,8 +23,12 @@
  *     Refait la capture du domaine X et y cherche les formes par défaut (§2.5) : formes F(X) calculées
  *     par le moteur courant, données de l'oracle masquées « ⟦d⟧ », recherche par sortie, exceptions
  *     typées de scripts/vocab-baseline/exceptions-hors-restauration.json ({ cle, chemin (motif), texte (forme
- *     trouvée ou texte entier), type, justification, domaines? }), puis recherche des mots de la
- *     restauration hors lexique. Code 1 s'il reste une forme hors exceptions (attendu : 0 à la fin du lot).
+ *     trouvée ou texte entier), type, justification, domaines?, extrait? }), puis recherche des mots de la
+ *     restauration hors lexique. Une exception `extrait: true` retire son `texte` (un passage exact) du
+ *     texte lu avant la recherche : elle ne vise que ce passage, pas toute forme du texte (un prompt est UN
+ *     texte). Glossaire « ## Vocabulaire du compte » du prompt (spec §7.3) : sa colonne de gauche EST la
+ *     forme par défaut, par définition ; il est retiré du texte, et seule sa colonne de DROITE (mots du
+ *     compte) est cherchée, sous le chemin « …/glossaire/droite ». Code 1 s'il reste une forme hors exceptions (attendu : 0 à la fin du lot).
  *     Textes lus : ceux du §2.5 point 3. Les étiquettes de capture de l'oracle (clés de premier niveau,
  *     ex. « v2.labo.sansFiltre ») ne sont jamais lues comme du texte. Les NOMS DE FICHIERS
  *     (Content-Disposition des exports et des PDF, pièces jointes des emails, rapportIA.nomFichier) ne
@@ -334,6 +338,32 @@ const texteVisible = (html) => String(html || '')
   .replace(/\s+/g, ' ')
   .trim();
 
+// Glossaire « Vocabulaire du compte » du prompt (lot 2b §7.3, aiService.glossaireVocabulaire) : bloc retiré du
+// texte lu ; on ne cherche que sa colonne de DROITE (à droite de « → », ou entre « = » et la parenthèse finale
+// d'une ligne d'unités), la gauche étant la forme de LabFlow par définition, et les noms d'unités des données.
+const TITRE_GLOSSAIRE = '\n\n## Vocabulaire du compte\n';
+function separerGlossaire(texte) {
+  const debut = texte.indexOf(TITRE_GLOSSAIRE);
+  if (debut < 0) return { reste: texte, droites: [] };
+  const suite = texte.indexOf('\n\n## ', debut + TITRE_GLOSSAIRE.length);
+  const fin = suite < 0 ? texte.length : suite;
+  const bloc = texte.slice(debut + TITRE_GLOSSAIRE.length, fin);
+  const droites = [];
+  for (const ligne of bloc.split('\n')) {
+    if (/^Ce compte n'emploie pas|^Unités du compte|^Règles :|^\d+\. /.test(ligne)) continue;
+    if (ligne.includes(' → ')) {
+      for (const morceau of ligne.split(' ; ')) {
+        const droite = morceau.split(' → ').slice(1).join(' → ').replace(/ — dans les données : .*$/, '');
+        if (droite) droites.push(droite);
+      }
+    } else if (ligne.includes(' = ')) {
+      const droite = ligne.slice(ligne.indexOf(' = ') + 3).replace(/ \([^()]*\)$/, '');
+      if (droite) droites.push(droite);
+    }
+  }
+  return { reste: texte.slice(0, debut) + texte.slice(fin), droites };
+}
+
 const CODE = [/^[a-z0-9_\-./:#?=&]+$/, /^[A-Z0-9_]{2,}$/];
 const estCode = (s) => CODE.some((re) => re.test(s));
 
@@ -448,7 +478,7 @@ async function verifierHorsRestauration(capture) {
   const applicable = (e) => !Array.isArray(e.domaines) || e.domaines.includes(capture.meta.domaine);
   const employees = new Set();
   const exception = (f) => {
-    const i = exceptions.findIndex((e) => applicable(e) && e.cle === f.cle && new RegExp(e.chemin).test(f.chemin) && (e.texte === f.forme || e.texte === f.texte));
+    const i = exceptions.findIndex((e) => applicable(e) && !e.extrait && e.cle === f.cle && new RegExp(e.chemin).test(f.chemin) && (e.texte === f.forme || e.texte === f.texte));
     if (i >= 0) employees.add(i);
     return i;
   };
@@ -456,9 +486,23 @@ async function verifierHorsRestauration(capture) {
   const trouvees = [];
   const horsLexique = [];
   let nTextes = 0;
+  // Glossaire du prompt : retiré du texte, sa colonne de droite lue à part (voir separerGlossaire).
+  const lus = [];
   for (const t of textes(capture.captures)) {
+    if (t.cle !== 'prompt' && t.cle !== 'promptReel') { lus.push(t); continue; }
+    const { reste, droites } = separerGlossaire(t.texte);
+    lus.push({ ...t, texte: reste });
+    droites.forEach((d) => lus.push({ cle: t.cle, chemin: `${t.chemin}/glossaire/droite`, texte: d }));
+  }
+  for (const t of lus) {
     nTextes += 1;
-    const texte = masquerDonnees(t.texte);
+    let texte = masquerDonnees(t.texte);
+    // Exceptions « extrait » : passage exact retiré avant la recherche (il ne couvre que ce passage).
+    exceptions.forEach((e, i) => {
+      if (!e || !e.extrait || !applicable(e) || e.cle !== t.cle || !new RegExp(e.chemin).test(t.chemin) || !texte.includes(e.texte)) return;
+      texte = texte.split(e.texte).join('⟦x⟧');
+      employees.add(i);
+    });
     for (const forme of formesDans(texte, listeF)) {
       const f = { famille: FAMILLE[t.cle], cle: t.cle, chemin: t.chemin, forme, cles: F.get(forme), texte };
       if (exception(f) < 0) trouvees.push(f);
