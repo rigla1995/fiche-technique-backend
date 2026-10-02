@@ -1,0 +1,125 @@
+[
+  {
+    "fichier": "scripts/vocab-baseline/ecarts-restauration-attendus.json",
+    "lot": "intégrateur",
+    "raison": "Changements VISIBLES pour un compte restauration, prévus au §11.1.1 et au §11.1.2, que l'oracle captera après B2 (capture-vocab-baseline.js relève les chaînes passées à text(), donc après pdfTexte). Les chemins exacts (index de texte) ne se lisent qu'au diff de l'oracle ; les textes, eux, sont certains.",
+    "entrees": [
+      {
+        "cle": "pdf",
+        "chemin": "/legacy.avenant/0/textes/<n>",
+        "avant": "+1 activité   ·   +1 labo   ·   +1 gérant   ·   Option Acheteurs → palier jusqu'à 20",
+        "apres": "+1 activité   ·   +1 labo   ·   +1 gérant   ·   Option Acheteurs › palier jusqu'à 20",
+        "raison": "§11.1.2"
+      },
+      {
+        "cle": "pdf",
+        "chemin": "/factureAppro.<NN>.transfert/documents/0/textes/<n> (cession labo→labo : contexte « Labo : … », activite_id NULL)",
+        "avant": "Transfert labo → activité  ·  Labo : ⟦nom du labo⟧",
+        "apres": "Transfert labo › labo  ·  Labo : ⟦nom du labo⟧",
+        "raison": "§11.1.1 (sens corrigé) et §11.1.2 (« → » écrit « › »)"
+      },
+      {
+        "cle": "pdf",
+        "chemin": "/factureAppro.<NN>.transfert/documents/0/textes/<n> (transfert labo→activité : contexte « Activité : … »)",
+        "avant": "Transfert labo → activité  ·  Activité : ⟦nom de l'activité⟧",
+        "apres": "Transfert labo › activité  ·  Activité : ⟦nom de l'activité⟧",
+        "raison": "§11.1.2"
+      },
+      {
+        "cle": "pdf",
+        "chemin": "/factureAppro.*, /legacy.*, /creation.*.contratLegacy, /site.traitementDemande.avenantLegacy",
+        "avant": "toute donnée saisie hors Windows-1252 (arabe, emoji, « → », « − ») des comptes de l'oracle",
+        "apres": "« ? » par caractère hors police, équivalent de la table pdfTexte sinon",
+        "raison": "§11.1.2 — sans objet si les données de l'oracle restent dans Windows-1252 (cas attendu : aucun écart de ce type)"
+      }
+    ],
+    "etat": "APPLIQUÉ par l'intégrateur de la vague 2 (02/10/2026) : 3 écarts inscrits (legacy.avenant textes/10 §11.1.2, factureAppro.01.transfert textes/6 §11.1.1, factureAppro.02.transfert textes/6 §11.1.2) ; aucune donnée hors Windows-1252 dans l'oracle restauration."
+  },
+  {
+    "fichier": "scripts/vocab-baseline/exceptions-hors-restauration.json",
+    "lot": "intégrateur",
+    "raison": "Formes par défaut qui RESTENT dans les documents d'un compte hors restauration après B2, par décision de la spec (texte fixe des contrats : lot 3, §8.2 et §8.3 ; homonymes §6.8 ; donnée de l'environnement de l'oracle). Aucune n'est encore dans le fichier (types présents : 2c, fiscal, code-api, formule, homonyme, non-repliable, locution).",
+    "entrees": [
+      {
+        "cle": "pdf",
+        "chemin": "^/(contrat\\.[^/]+|avenant\\.flux)/\\d+/textes/\\d+$",
+        "textes": [
+          "Formule d'activités",
+          "Option Acheteurs",
+          "Points de vente (activités)",
+          "Laboratoires de production",
+          "Comptes gérants"
+        ],
+        "type": "reporte",
+        "lot": "3",
+        "justification": "Libellés de ligne du tableau de configuration (generate.js configRowsFor, texte fixe) : lot 3 (spec §8.2). Les VALEURS de ces lignes suivent le domaine depuis B2."
+      },
+      {
+        "cle": "pdf",
+        "chemin": "^/(contrat\\.[^/]+|creation\\.[^/]+)/\\d+/textes/\\d+$",
+        "textes": [
+          "⟦·⟧ met à la disposition du Client, sur abonnement, une plateforme logicielle en mode SaaS … pour les métiers de la restauration. …",
+          "Plateforme LabFlow — gestion pour la restauration et les métiers de bouche",
+          "Pour les données à caractère personnel hébergées (personnel, clients, fournisseurs du Client), … (clause 4.5)"
+        ],
+        "type": "reporte",
+        "lot": "3",
+        "justification": "Objet, sous-titre et clauses du contrat (texte fixe) : lot 3 (spec §8.2). « fournisseurs » n'est relevé que dans le miroir."
+      },
+      {
+        "cle": "pdf",
+        "chemin": "^/(legacy\\.contrat|creation\\.[^/]+\\.contratLegacy)/\\d+/textes/\\d+$",
+        "textes": [
+          "Activités",
+          "Formule d'activités",
+          "Labos",
+          "Gérants",
+          "Option Acheteurs",
+          "⟦·⟧ met à disposition du Client une plateforme SaaS de gestion de stocks, approvisionnements, pertes, inventaires et ventes pour la restauration. …"
+        ],
+        "type": "reporte",
+        "lot": "3",
+        "justification": "Libellés et objet du contrat legacy (pdfService.generateContratPdf) : lot 3 (spec §8.3 « la valeur :299 seulement »). La valeur « palier jusqu'à N … » suit le domaine depuis B2."
+      },
+      {
+        "cle": "pdf",
+        "chemin": "^/resiliation/\\d+/textes/\\d+$",
+        "textes": [
+          "Au terme du préavis, l'accès du Client et de ses gérants à la plateforme est désactivé. Les sommes échues avant la date d'effet restent dues."
+        ],
+        "type": "reporte",
+        "lot": "3",
+        "justification": "Clause 3.1 de la résiliation (texte fixe) : lot 3 (spec §8.2)."
+      },
+      {
+        "cle": "pdf",
+        "chemin": "^/factureAppro\\.[^/]+/documents/\\d+/textes/\\d+$",
+        "textes": [
+          "PU HT"
+        ],
+        "type": "homonyme",
+        "justification": "« PU HT » = prix unitaire hors taxes (en-tête de colonne de la facture d'appro), pas le « PU » (produit utilisable) du lexique (spec §6.8). La facture acheteur a déjà son entrée « PU » de type fiscal."
+      },
+      {
+        "cle": "pdf",
+        "chemin": "^/(contrat\\.[^/]+|avenant\\.flux|resiliation)/\\d+/textes/\\d+$",
+        "textes": [
+          "Pour LabFlow Oracle — Le Gérant Oracle"
+        ],
+        "type": "homonyme",
+        "justification": "Mention du signataire prestataire `Pour ${PRESTATAIRE.nom} — ${PRESTATAIRE.signataire}` (generate.js, signatures) : « Le Gérant Oracle » est la valeur PRESTATAIRE_SIGNATAIRE posée par l'environnement de l'oracle (donnée de configuration, gérant de LabFlow), pas le gérant du lexique. Variante : donner une autre valeur à PRESTATAIRE_SIGNATAIRE dans scripts/lib/bouchons-test.js."
+      }
+    ],
+    "etat": "APPLIQUÉ par l'intégrateur de la vague 2 (02/10/2026) : types lot-3 / homonyme / donnee (le type « reporte » n'existe pas dans l'oracle, lot-3 à la place)."
+  },
+  {
+    "fichier": "fiche-technique-frontend/scripts/vocab-check.mjs",
+    "lot": "intégrateur (socle de l'outil)",
+    "raison": "docuseal-templates/CHAMPS.md est un fichier du lot B2 (scripts/vocab-lots.mjs) et le mode residuels le lit, mais le mode identite le compile comme du TypeScript quand on le nomme : 736 « ERREUR analyse impossible » et « nouveau fichier (absent de la référence) » (E1 ne met que generate.js dans le périmètre git). Sans liste de fichiers, identite ne le lit pas. Le seul changement de B2 dans ce fichier est « lot 2 » → « lot 3 » (CHAMPS.md:111, spec §8.2), vérifiable par git diff.",
+    "propositions": [
+      "exclure les .md du mode identite (comme hors périmètre E1)",
+      "ou ne pas lister CHAMPS.md dans les fichiers identite du lot B2"
+    ],
+    "etat": "APPLIQUÉ par l'intégrateur de la vague 2 (02/10/2026) : vocab-check.mjs identite ignore et signale un fichier nommé qui n'est pas du code (test ajouté à vocab-check.test.mjs)."
+  }
+]

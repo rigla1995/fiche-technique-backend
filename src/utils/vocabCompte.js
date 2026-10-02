@@ -4,6 +4,7 @@
 //   vocabDuDomaine(domaineId)    → vocabulaire d'un domaine (profil en cache 60 s)
 //   vocabForClient(clientId)     → vocabulaire du compte CLIENT (gérant → compte parent)
 //   vocabPourRole(role, domaineId) → celui de req.voc (middleware authenticate)
+//   vocabPourUtilisateur(userId) → vocabulaire du compte d'un utilisateur désigné par son id
 //
 // Règle I6 : le vocabulaire est celui du compte DESTINATAIRE du texte, jamais celui de
 // l'utilisateur authentifié. Dans un contrôleur client / gérant / acheteur : `req.voc`.
@@ -76,4 +77,32 @@ const vocabPourRole = async (role, domaineId) => {
   return vocabDuDomaine(domaineId);
 };
 
-module.exports = { vocabDefaut, vocabDuProfil, vocabDuDomaine, vocabForClient, vocabPourRole };
+// Vocabulaire du compte d'un UTILISATEUR désigné par son id, hors requête de ce compte
+// (lot 2b, spec §5.6 : renvoi d'une invitation par un super_admin) :
+//   client ou gérant → vocabForClient(id) (un gérant est ramené à son compte parent) ;
+//   acheteur → vocabForClient(acheteurs.client_id) : vocabulaire de son vendeur ;
+//   tout autre rôle, utilisateur inconnu ou erreur de lecture → vocabulaire par défaut.
+// Jamais bloquant.
+const vocabPourUtilisateur = async (userId) => {
+  if (userId == null) return vocabDefaut;
+  try {
+    // require tardifs : la base n'est chargée qu'à l'appel (comme vocabDuDomaine)
+    const pool = require('../config/database');
+    const { getDomaineIdForClient } = require('../services/domaineProfilService');
+    // compte_id : client vendeur pour un acheteur (acheteurs.user_id), l'utilisateur sinon ;
+    // getDomaineIdForClient ramène un gérant à son compte parent.
+    const u = (await pool.query(
+      `SELECT u.role, COALESCE((SELECT a.client_id FROM acheteurs a WHERE a.user_id = u.id LIMIT 1), u.id) AS compte_id
+         FROM utilisateurs u WHERE u.id = $1`,
+      [userId]
+    )).rows[0];
+    if (!u) return vocabDefaut;
+    // super_admin et boss : défaut par le rôle ; compte sans domaine : défaut
+    return vocabPourRole(u.role, await getDomaineIdForClient(u.compte_id));
+  } catch (e) {
+    console.warn('[vocab] utilisateur indisponible, vocabulaire par défaut :', e.message);
+    return vocabDefaut;
+  }
+};
+
+module.exports = { vocabDefaut, vocabDuProfil, vocabDuDomaine, vocabForClient, vocabPourRole, vocabPourUtilisateur };

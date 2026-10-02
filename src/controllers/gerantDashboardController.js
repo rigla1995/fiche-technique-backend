@@ -40,7 +40,7 @@ const getDashboard = async (req, res) => {
          WHERE a.id = $1 AND pe.client_id = $2`,
         [gerant_activite_id, clientId]
       );
-      if (!check.rows.length) return res.status(403).json({ message: 'Activité non autorisée' });
+      if (!check.rows.length) return res.status(403).json({ message: '[[Nom:activite]] non [[acc:activite:autorisé:autorisée]]' });
       const { nom: activiteNom, module_vente_actif: hasVente } = check.rows[0];
 
       // Filtre type_appro : la valeur vient de l'URL, toujours en paramètre lié ($4), jamais dans le SQL.
@@ -181,7 +181,7 @@ const getDashboard = async (req, res) => {
          WHERE l.id = $1 AND pe.client_id = $2`,
         [gerant_activite_id, clientId]
       );
-      if (!check.rows.length) return res.status(403).json({ message: 'Labo non autorisé' });
+      if (!check.rows.length) return res.status(403).json({ message: '[[Nom:labo]] non [[acc:labo:autorisé:autorisée]]' });
       const activiteNom = check.rows[0].nom;
 
       // Filtre type_appro : la valeur vient de l'URL, toujours en paramètre lié ($4), jamais dans le SQL.

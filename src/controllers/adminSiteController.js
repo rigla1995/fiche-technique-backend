@@ -150,6 +150,8 @@ const updateDemandeAcces = async (req, res) => {
        WHERE da.id = $1`,
       [id]
     );
+    // `message` = texte saisi par un visiteur du site public : une donnée, jamais rendue (lot 2b, spec §5.1)
+    res.locals.vocabBrut = true;
     res.json(mapDemande(updated.rows[0]));
   } catch (err) {
     console.error(err);

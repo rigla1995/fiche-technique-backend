@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { vocabDefaut } = require('../utils/vocab');
 
 /**
  * GET /api/factures
@@ -282,7 +283,9 @@ const downloadPdf = async (req, res) => {
     }
 
     const { buildFactureApproPdf } = require('../services/factureApproPdf');
-    const buffer = await buildFactureApproPdf(facture, lignes);
+    // Libellés du document dans le vocabulaire du compte (lot 2b, spec §8.3)
+    const voc = req.voc ?? vocabDefaut;
+    const buffer = await buildFactureApproPdf(facture, lignes, voc);
     const safeRef = String(facture.ref_facture || facture.id).replace(/[^a-zA-Z0-9À-ÿ_-]/g, '-');
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="Facture-${safeRef}.pdf"`);

@@ -1,5 +1,7 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
+const { vocabDefaut } = require('../utils/vocab');
+const { ongletSur } = require('../utils/excelNoms');
 // Lot 1b §5 — règle « supplément » paramétrée par domaine (regles.supplement_max_composants, défaut 1).
 const { getReglesForClient } = require('../services/domaineProfilService');
 const getSupplementMaxComposants = async (req) => {
@@ -8,8 +10,8 @@ const getSupplementMaxComposants = async (req) => {
   return Number.isFinite(n) && n >= 1 ? n : 1;
 };
 const messageSupplement = (max) => (max === 1
-  ? 'Un supplément doit contenir exactement 1 élément (un article ou un produit utilisable).'
-  : `Un supplément doit contenir entre 1 et ${max} éléments (articles ou produits utilisables).`);
+  ? '[[Un:supplement]] doit contenir exactement 1 élément ([[un:article]] ou [[un:produit_utilisable]]).'
+  : `[[Un:supplement]] doit contenir entre 1 et ${max} éléments ([[nom:article:pl]] ou [[nom:produit_utilisable:pl]]).`);
 
 const mapProduit = (row) => ({
   id: row.id,
@@ -96,10 +98,10 @@ const list = async (req, res) => {
   // Périmètre gérant : valider l'activité / le labo demandé
   if (isGerant) {
     if (activiteId && !(req.user.gerantActiviteIds || []).includes(Number(activiteId))) {
-      return res.status(403).json({ message: 'Accès non autorisé à cette activité' });
+      return res.status(403).json({ message: 'Accès non autorisé à [[ce:activite]]' });
     }
     if (laboId && !(req.user.gerantLaboIds || []).includes(Number(laboId))) {
-      return res.status(403).json({ message: 'Accès non autorisé à ce labo' });
+      return res.status(403).json({ message: 'Accès non autorisé à [[ce:labo]]' });
     }
   }
 
@@ -193,7 +195,7 @@ const getById = async (req, res) => {
       [id, req.user.gerant_parent_id || req.user.id]
     );
     if (produit.rows.length === 0) {
-      return res.status(404).json({ message: 'Produit introuvable' });
+      return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     }
 
     const ingredients = await pool.query(
@@ -302,7 +304,7 @@ const create = async (req, res) => {
 
   // Catégorie obligatoire pour les produits vendables/suppléments (pas pour les utilisables).
   if (type === 'vendable' && !categorieProduitId) {
-    return res.status(400).json({ message: 'La catégorie de produit est obligatoire pour un produit vendable ou un supplément' });
+    return res.status(400).json({ message: 'La catégorie [[de:produit]] est obligatoire pour [[un:produit_vendable]] ou [[un:supplement]]' });
   }
 
   // Un supplément vendable se compose de 1 à supplement_max_composants élément(s) (défaut 1 : article OU produit utilisable).
@@ -484,7 +486,7 @@ const update = async (req, res) => {
 
   // Si on bascule (ou reste) en vendable et qu'une catégorie est explicitement fournie mais vide → refus.
   if (categorieProvided && type !== 'utilisable' && !categorieProduitId) {
-    return res.status(400).json({ message: 'La catégorie de produit est obligatoire pour un produit vendable ou un supplément' });
+    return res.status(400).json({ message: 'La catégorie [[de:produit]] est obligatoire pour [[un:produit_vendable]] ou [[un:supplement]]' });
   }
 
   // Supplément = 1 à supplement_max_composants élément(s) (validé quand la composition est fournie à l'édition).
@@ -512,7 +514,7 @@ const update = async (req, res) => {
     );
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ message: 'Produit introuvable' });
+      return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     }
 
     if (ingredients !== undefined) {
@@ -668,12 +670,12 @@ const remove = async (req, res) => {
       [id, req.user.gerant_parent_id || req.user.id]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Produit introuvable' });
+      return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     }
     res.status(204).send();
   } catch (err) {
     if (err.code === '23503') {
-      return res.status(409).json({ message: 'Ce produit est utilisé comme sous-produit et ne peut pas être supprimé' });
+      return res.status(409).json({ message: '[[Ce:produit]] est [[acc:produit:utilisé:utilisée]] comme sous-produit et ne peut pas être [[acc:produit:supprimé:supprimée]]' });
     }
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -698,7 +700,7 @@ const addIngredient = async (req, res) => {
       [id, req.user.gerant_parent_id || req.user.id]
     );
     if (produit.rows.length === 0) {
-      return res.status(404).json({ message: 'Produit introuvable' });
+      return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     }
 
     const ingredient = await pool.query(
@@ -706,7 +708,7 @@ const addIngredient = async (req, res) => {
       [ingredient_id]
     );
     if (ingredient.rows.length === 0) {
-      return res.status(400).json({ message: 'Ingrédient invalide' });
+      return res.status(400).json({ message: '[[Nom:ingredient]] invalide' });
     }
 
     const result = await pool.query(
@@ -733,7 +735,7 @@ const removeIngredient = async (req, res) => {
       [id, req.user.gerant_parent_id || req.user.id]
     );
     if (produit.rows.length === 0) {
-      return res.status(404).json({ message: 'Produit introuvable' });
+      return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     }
 
     const result = await pool.query(
@@ -741,7 +743,7 @@ const removeIngredient = async (req, res) => {
       [id, ingredientId]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Ingrédient non trouvé dans ce produit' });
+      return res.status(404).json({ message: '[[Nom:ingredient]] non [[acc:ingredient:trouvé:trouvée]] dans [[ce:produit]]' });
     }
     res.status(204).send();
   } catch (err) {
@@ -761,7 +763,7 @@ const addSousProduit = async (req, res) => {
   const { portion } = req.body;
 
   if (parseInt(id) === parseInt(sousProduitId)) {
-    return res.status(400).json({ message: 'Un produit ne peut pas être son propre sous-produit' });
+    return res.status(400).json({ message: '[[Un:produit]] ne peut pas être son propre sous-produit' });
   }
 
   try {
@@ -772,7 +774,7 @@ const addSousProduit = async (req, res) => {
     ]);
 
     if (produit.rows.length === 0) {
-      return res.status(404).json({ message: 'Produit introuvable' });
+      return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     }
     if (sousProduit.rows.length === 0) {
       return res.status(400).json({ message: 'Sous-produit invalide' });
@@ -801,7 +803,7 @@ const removeSousProduit = async (req, res) => {
       [id, req.user.gerant_parent_id || req.user.id]
     );
     if (produit.rows.length === 0) {
-      return res.status(404).json({ message: 'Produit introuvable' });
+      return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     }
 
     const result = await pool.query(
@@ -809,7 +811,7 @@ const removeSousProduit = async (req, res) => {
       [id, sousProduitId]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Sous-produit non trouvé dans ce produit' });
+      return res.status(404).json({ message: 'Sous-produit non trouvé dans [[ce:produit]]' });
     }
     res.status(204).send();
   } catch (err) {
@@ -821,7 +823,7 @@ const removeSousProduit = async (req, res) => {
 // Calcul récursif du coût d'un produit
 async function calculerCout(produitId, clientId, visited = new Set()) {
   if (visited.has(produitId)) {
-    throw new Error('Référence circulaire détectée dans les sous-produits');
+    throw Object.assign(new Error('Référence circulaire détectée dans les sous-produits'), { code: 'REFERENCE_CIRCULAIRE' });
   }
   visited.add(produitId);
 
@@ -830,7 +832,7 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
     [produitId, clientId]
   );
   if (produit.rows.length === 0) {
-    throw new Error('Produit introuvable');
+    throw Object.assign(new Error('[[Nom:produit]] introuvable'), { code: 'PRODUIT_INTROUVABLE' });
   }
 
   // Coût des ingrédients directs — prix stock le plus récent en priorité
@@ -1083,10 +1085,10 @@ const getCout = async (req, res) => {
     const result = await calculerCout(parseInt(id), ownerId);
     res.json(mapCout(result));
   } catch (err) {
-    if (err.message === 'Produit introuvable') {
+    if (err.code === 'PRODUIT_INTROUVABLE') {
       return res.status(404).json({ message: err.message });
     }
-    if (err.message.includes('circulaire')) {
+    if (err.code === 'REFERENCE_CIRCULAIRE') {
       return res.status(400).json({ message: err.message });
     }
     console.error(err);
@@ -1096,11 +1098,11 @@ const getCout = async (req, res) => {
 
 // Calcul du coût avec une map de prix explicites { ingredientId → prixUnitaire }
 async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = new Set()) {
-  if (visited.has(produitId)) throw new Error('Référence circulaire détectée dans les sous-produits');
+  if (visited.has(produitId)) throw Object.assign(new Error('Référence circulaire détectée dans les sous-produits'), { code: 'REFERENCE_CIRCULAIRE' });
   visited.add(produitId);
 
   const produit = await pool.query('SELECT * FROM produits WHERE id = $1 AND client_id = $2', [produitId, clientId]);
-  if (produit.rows.length === 0) throw new Error('Produit introuvable');
+  if (produit.rows.length === 0) throw Object.assign(new Error('[[Nom:produit]] introuvable'), { code: 'PRODUIT_INTROUVABLE' });
 
   const ingredients = await pool.query(
     `SELECT pi.portion, i.id as ingredient_id, i.nom as ingredient_nom,
@@ -1176,7 +1178,7 @@ const getFtContextes = async (req, res) => {
   const ownerId = req.user.gerant_parent_id || req.user.id;
   try {
     const prod = await pool.query(`SELECT id, nom, origine FROM produits WHERE id = $1 AND client_id = $2`, [id, ownerId]);
-    if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
+    if (prod.rows.length === 0) return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     const origine = prod.rows[0].origine || 'activite';
 
     const [acts, labs, recette] = await Promise.all([
@@ -1219,7 +1221,7 @@ const getFtContextes = async (req, res) => {
       },
     });
   } catch (err) {
-    if (err.message && err.message.includes('circulaire')) return res.status(400).json({ message: err.message });
+    if (err.code === 'REFERENCE_CIRCULAIRE') return res.status(400).json({ message: err.message });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -1329,7 +1331,7 @@ const getStockCheck = async (req, res) => {
     const ownerId = req.user.gerant_parent_id || req.user.id;
     const useLabo = labId > 0 && await laboOwnedByClient(labId, ownerId);
     const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, ownerId]);
-    if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
+    if (prod.rows.length === 0) return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
 
     const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), ownerId);
     const allIngredients = groups.flatMap((g) => g.ingredients);
@@ -1447,7 +1449,7 @@ const getManualPrices = async (req, res) => {
     const actId = useLabo ? 0 : (parseInt(req.query.activiteId) || 0);
     const labId = useLabo ? labIdRaw : 0;
     const prod = await pool.query('SELECT id, nom FROM produits WHERE id = $1 AND client_id = $2', [id, ownerId]);
-    if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
+    if (prod.rows.length === 0) return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
 
     // Collect ingredients grouped by source (product → sub-products → …), deduplicated across levels
     const groups = await collectIngredientsStructured(parseInt(id), prod.rows[0].nom, 0, new Set(), new Set(), ownerId);
@@ -1520,7 +1522,7 @@ const saveManualPrices = async (req, res) => {
   try {
     const ownerId = req.user.gerant_parent_id || req.user.id;
     const prod = await pool.query('SELECT id FROM produits WHERE id = $1 AND client_id = $2', [id, ownerId]);
-    if (prod.rows.length === 0) return res.status(404).json({ message: 'Produit introuvable' });
+    if (prod.rows.length === 0) return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
 
     const labIdRaw = parseInt(laboId) || 0;
     const useLabo = labIdRaw > 0 && await laboOwnedByClient(labIdRaw, ownerId);
@@ -1554,6 +1556,7 @@ const exportListExcel = async (req, res) => {
   const { activiteId, type, search, isSupplement, withOtherSubTab } = req.query;
   const clientId = req.user.gerant_parent_id || req.user.id;
   const isVendable = type === 'vendable';
+  const voc = req.voc ?? vocabDefaut;
 
   try {
     const fetchRows = async (isSupplFilter) => {
@@ -1592,14 +1595,14 @@ const exportListExcel = async (req, res) => {
     };
 
     const buildSheet = (ws, rows, sheetLabel) => {
-      const labels = ['Produit', 'Type', 'Activités', 'Référence', 'Coût estimé (DT)', 'Articles', ...(isVendable ? ['Produits util.'] : [])];
+      const labels = [voc.Court('produit'), 'Type', voc.Court('activite', true), 'Référence', 'Coût estimé (DT)', voc.Court('article', true), ...(isVendable ? [voc.Pl('produit_utilisable_abr')] : [])];
       const widths = [36, 22, 32, 18, 18, 12, ...(isVendable ? [14] : [])];
       const colCount = labels.length;
 
       const headerIdx = brandHeader(wb, ws, {
-        titre: 'Liste des produits',
+        titre: `Liste ${voc.du('produit', true)}`,
         sousTitre: sheetLabel,
-        meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${rows.length} produit${rows.length !== 1 ? 's' : ''}`,
+        meta: `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${rows.length} ${voc.nom('produit', rows.length !== 1)}`,
         colCount,
       });
       headerRow(ws, headerIdx, labels, { widths });
@@ -1610,7 +1613,7 @@ const exportListExcel = async (req, res) => {
       const addDataRow = (product, overrideActivite = null) => {
         const acts = product.activites_json || [];
         const activitesStr = overrideActivite !== null ? overrideActivite : acts.map(a => a.nom).join(', ');
-        const typeLabel = product.is_supplement ? 'Supplément vendable' : product.type === 'vendable' ? 'Produit vendable' : 'Produit utilisable';
+        const typeLabel = product.is_supplement ? `${voc.Nom('supplement')} vendable` : product.type === 'vendable' ? voc.Nom('produit_vendable') : voc.Nom('produit_utilisable');
         const dataRow = ws.getRow(r);
         dataRow.values = [
           product.nom, typeLabel, activitesStr, product.ref_produit || '',
@@ -1656,7 +1659,7 @@ const exportListExcel = async (req, res) => {
           sorted.forEach(([actId, actNom]) => {
             const actProducts = rows.filter(p => (p.activites_json || []).some(a => a.id === actId));
             if (actProducts.length === 0) return;
-            sectionBand(`${actNom}  —  ${actProducts.length} produit${actProducts.length !== 1 ? 's' : ''}`);
+            sectionBand(`${actNom}  —  ${actProducts.length} ${voc.nom('produit', actProducts.length !== 1)}`);
             altIdx = 0;
             actProducts.forEach(p => addDataRow(p, actNom));
             // No empty gap rows — they break Excel's auto-filter detection
@@ -1672,7 +1675,7 @@ const exportListExcel = async (req, res) => {
       const lastDataRow = r - 1;
       ws.mergeCells(r, 1, r, colCount);
       const totRow = ws.getRow(r);
-      totRow.getCell(1).value = `Total : ${totalRowsWritten} produit${totalRowsWritten !== 1 ? 's' : ''}`;
+      totRow.getCell(1).value = `Total : ${totalRowsWritten} ${voc.nom('produit', totalRowsWritten !== 1)}`;
       totalRowStyle(totRow, { colCount });
       totRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -1685,14 +1688,14 @@ const exportListExcel = async (req, res) => {
     wb.created = new Date();
 
     const isCurrentSupp = isSupplement === 'true';
-    const mainSheetName = isCurrentSupp ? 'Suppléments vendables' : (isVendable ? 'Produits vendables' : 'Produits utilisables');
+    const mainSheetName = isCurrentSupp ? `${voc.Pl('supplement')} vendables` : (isVendable ? voc.Pl('produit_vendable') : voc.Pl('produit_utilisable'));
 
-    buildSheet(wb.addWorksheet(mainSheetName), await fetchRows(isSupplement), mainSheetName);
+    buildSheet(wb.addWorksheet(ongletSur(wb, mainSheetName)), await fetchRows(isSupplement), mainSheetName);
 
     if (withOtherSubTab === 'true' && isVendable) {
       const otherSupp = isCurrentSupp ? 'false' : 'true';
-      const otherSheet = otherSupp === 'true' ? 'Suppléments vendables' : 'Produits vendables';
-      buildSheet(wb.addWorksheet(otherSheet), await fetchRows(otherSupp), otherSheet);
+      const otherSheet = otherSupp === 'true' ? `${voc.Pl('supplement')} vendables` : voc.Pl('produit_vendable');
+      buildSheet(wb.addWorksheet(ongletSur(wb, otherSheet)), await fetchRows(otherSupp), otherSheet);
     }
 
     const filename = `labflow-${isCurrentSupp ? 'supplements' : isVendable ? 'produits-vendables' : 'produits-utilisables'}.xlsx`;

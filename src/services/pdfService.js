@@ -1,4 +1,11 @@
 const PDFDocument = require('pdfkit');
+const { vocabDefaut } = require('../utils/vocab');
+
+// pdfTexte (lot 2b, spec §8.3) : texte sûr pour les polices standard de pdfkit, qui n'écrivent que
+// Windows-1252 (« → » devient « › », une donnée hors police devient « ? »). Aide locale de l'avenant et du
+// contrat legacy ; la table est celle de docuseal-templates/generate.js (pdfTexte). Jamais pour un document
+// à signer, ni pour les factures.
+const pdfTexteSur = (doc) => require('../../docuseal-templates/generate').pdfTexteSur(doc);
 
 const APP_NAME = process.env.APP_NAME || 'Fiche Technique';
 
@@ -8,7 +15,8 @@ const fmtDate = (d) => d
   ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
   : todayFr();
 
-const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
+// voc : vocabulaire du compte destinataire (lot 2b, spec §8.2-8.3 : vocabForClient(demande.client_id)).
+const generateAvenantPdf = (params, voc = vocabDefaut) => new Promise((resolve, reject) => {
   const {
     nom, notesAdmin,
     nbActivitesAdded, nbLabosAdded, nbGerantsAdded, acheteursCible,
@@ -21,7 +29,7 @@ const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
   } = params;
 
   try {
-    const doc = new PDFDocument({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 }, autoFirstPage: true });
+    const doc = pdfTexteSur(new PDFDocument({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 }, autoFirstPage: true }));
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
@@ -91,10 +99,10 @@ const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
     // ── MODIFICATION APPORTÉE ─────────────────────────────────────────────────
     y = sectionHdr('MODIFICATION APPORTÉE', y);
     const addedParts = [
-      nbActivitesAdded > 0 && `+${nbActivitesAdded} activité${nbActivitesAdded > 1 ? 's' : ''}`,
-      nbLabosAdded > 0     && `+${nbLabosAdded} labo${nbLabosAdded > 1 ? 's' : ''}`,
-      nbGerantsAdded > 0   && `+${nbGerantsAdded} gérant${nbGerantsAdded > 1 ? 's' : ''}`,
-      acheteursCible > 0   && `Option Acheteurs → palier jusqu'à ${acheteursCible}`,
+      nbActivitesAdded > 0 && `+${nbActivitesAdded} ${voc.nom('activite', nbActivitesAdded > 1)}`,
+      nbLabosAdded > 0     && `+${nbLabosAdded} ${voc.nom('labo', nbLabosAdded > 1)}`,
+      nbGerantsAdded > 0   && `+${nbGerantsAdded} ${voc.nom('gerant', nbGerantsAdded > 1)}`,
+      acheteursCible > 0   && `Option ${voc.Court('acheteur', true)} → palier jusqu'à ${acheteursCible}`,
     ].filter(Boolean).join('   ·   ');
     fill(ML, y, CW, 44, '#f0fdf4');
     hline(y, '#bbf7d0'); hline(y + 44, '#bbf7d0');
@@ -128,11 +136,11 @@ const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
     const formuleLabel = formuleActivites
       ? ` (${formuleActivites === 'basique' ? 'Basique' : 'Premium'})`
       : '';
-    drawRow(`Activités${nbActivites >= 1 ? formuleLabel : ''}`, nbActivites, fmtDt(activiteCost));
-    if (nbLabos > 0)   drawRow('Labos', nbLabos, fmtDt(laboCost));
-    if (nbGerants > 0) drawRow('Gérants', nbGerants, fmtDt(gerantCost));
+    drawRow(`${voc.Pl('activite')}${nbActivites >= 1 ? formuleLabel : ''}`, nbActivites, fmtDt(activiteCost));
+    if (nbLabos > 0)   drawRow(voc.Pl('labo'), nbLabos, fmtDt(laboCost));
+    if (nbGerants > 0) drawRow(voc.Pl('gerant'), nbGerants, fmtDt(gerantCost));
     // Option Acheteurs : sans elle, les postes ne sommeraient plus au total
-    if (acheteursCost > 0) drawRow('Option Acheteurs', nbAcheteurs ?? null, fmtDt(acheteursCost));
+    if (acheteursCost > 0) drawRow(`Option ${voc.Court('acheteur', true)}`, nbAcheteurs ?? null, fmtDt(acheteursCost));
     drawRow('Total mensuel', null, fmtDt(newMensuel), true);
     y += 10;
 
@@ -214,11 +222,13 @@ const generateAvenantPdf = (params) => new Promise((resolve, reject) => {
   }
 });
 
-const generateContratPdf = (params) => new Promise((resolve, reject) => {
+// voc : vocabulaire du compte créé (lot 2b, spec §8.3 : seule la valeur de l'option Acheteurs ; libellés
+// et objet du contrat : lot 3).
+const generateContratPdf = (params, voc = vocabDefaut) => new Promise((resolve, reject) => {
   const { nom, email, telephone, adresse, montantMensuel, nbActivites, nbLabos, nbGerants,
           formuleActivites, nbAcheteurs, dateContrat } = params;
   try {
-    const doc = new PDFDocument({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 }, autoFirstPage: true });
+    const doc = pdfTexteSur(new PDFDocument({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 }, autoFirstPage: true }));
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
@@ -296,7 +306,7 @@ const generateContratPdf = (params) => new Promise((resolve, reject) => {
     }
     rows.push(['Labos', nbLabos ?? 0], ['Gérants', nbGerants ?? 0]);
     if ((nbAcheteurs || 0) > 0) {
-      rows.push(['Option Acheteurs', `palier jusqu'à ${palier(nbAcheteurs)} acheteurs`]);
+      rows.push(['Option Acheteurs', `palier jusqu'à ${palier(nbAcheteurs)} ${voc.nom('acheteur', true)}`]);
     }
     rows.forEach(([label, qty], i) => {
       fill(ML, y, CW, 22, i % 2 === 0 ? '#fafbff' : '#ffffff');

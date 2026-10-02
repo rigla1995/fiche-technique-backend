@@ -1,0 +1,263 @@
+[
+  {
+    "fichier": "src/controllers/dashboardController.js",
+    "avant": "v.type_vente = 'prestataire'",
+    "apres": "v.type_vente = 'prestataire'",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/inventaireController.js",
+    "avant": "⟦?(inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)|inv.⟦?ingredient|produit⟧_id IS NOT NULL⟧",
+    "apres": "⟦?(inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)|inv.⟦?ingredient|produit⟧_id IS NOT NULL⟧",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/utils/stockUtils.js",
+    "avant": "(⟦·⟧.type = 'vendable' AND ⟦·⟧.origine = 'labo')",
+    "apres": "(⟦·⟧.type = 'vendable' AND ⟦·⟧.origine = 'labo')",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/utils/stockUtils.js",
+    "avant": "(⟦·⟧.type = 'vendable' AND ⟦·⟧.origine <> 'labo')",
+    "apres": "(⟦·⟧.type = 'vendable' AND ⟦·⟧.origine <> 'labo')",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/stockController.js",
+    "avant": "Fiche Technique App",
+    "apres": "Fiche Technique App",
+    "type": "formule",
+    "mode": "residuels",
+    "justification": "Propriété creator du classeur « Fiche Technique App » : nom d'application inchangé, entrée formule prévue par la spec lot 2b §6.3 ; jamais affichée dans une cellule."
+  },
+  {
+    "fichier": "src/controllers/stockController.js",
+    "avant": "PT",
+    "apres": "PT",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Comparaison t === 'PT' sur le code stock_entreprise_daily.type_appro (code stable de la base, spec lot 2b §6.1 « les codes ne bougent pas ») ; le libellé affiché est voc.Court('pt')."
+  },
+  {
+    "fichier": "src/controllers/stockController.js",
+    "avant": "attachment; filename=\"Historique-Appro-⟦·⟧.xlsx\"",
+    "apres": "attachment; filename=\"Historique-Appro-⟦·⟧.xlsx\"",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Nom du fichier téléchargé (en-tête Content-Disposition) : inchangé pour tous les domaines (spec lot 2b §0 « hors lot » et §6.3 « noms de fichiers inchangés », I2)."
+  },
+  {
+    "fichier": "src/controllers/inventaireController.js",
+    "avant": "Fiche Technique App",
+    "apres": "Fiche Technique App",
+    "type": "formule",
+    "mode": "residuels",
+    "justification": "Propriété creator du classeur « Fiche Technique App » : nom d'application inchangé, entrée formule prévue par la spec lot 2b §6.3 ; jamais affichée dans une cellule."
+  },
+  {
+    "fichier": "src/controllers/inventaireController.js",
+    "avant": "attachment; filename=\"Inventaire-⟦·⟧.xlsx\"",
+    "apres": "attachment; filename=\"Inventaire-⟦·⟧.xlsx\"",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Nom du fichier téléchargé (en-tête Content-Disposition) : inchangé pour tous les domaines (spec lot 2b §0 « hors lot » et §6.3 « noms de fichiers inchangés », I2). Deux exports (labo et activité), même nom ; seul le nom saisi passe par nomFichierSur (socle, §5.5)."
+  },
+  {
+    "fichier": "src/controllers/pertesController.js",
+    "avant": "Fiche Technique App",
+    "apres": "Fiche Technique App",
+    "type": "formule",
+    "mode": "residuels",
+    "justification": "Propriété creator du classeur « Fiche Technique App » : nom d'application inchangé, entrée formule prévue par la spec lot 2b §6.3 ; jamais affichée dans une cellule."
+  },
+  {
+    "fichier": "src/controllers/pertesController.js",
+    "avant": "attachment; filename=\"Historique-Pertes-⟦·⟧.xlsx\"",
+    "apres": "attachment; filename=\"Historique-Pertes-⟦·⟧.xlsx\"",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Nom du fichier téléchargé (en-tête Content-Disposition) : inchangé pour tous les domaines (spec lot 2b §0 « hors lot » et §6.3 « noms de fichiers inchangés », I2)."
+  },
+  {
+    "fichier": "src/controllers/ventesController.js",
+    "avant": "produit",
+    "apres": "produit",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Code article_type ('produit' | 'ingredient') de activite_articles_vendables : liste de validation (upsertArticleVendable) et valeur des objets renvoyés par getArticlesValorisés (article_type: 'produit') ; valeur technique de l'API, jamais affichée (I2, I9)."
+  },
+  {
+    "fichier": "src/controllers/ventesController.js",
+    "avant": "article_type doit être 'produit' ou 'ingredient'",
+    "apres": "article_type doit être 'produit' ou 'ingredient'",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Message technique (spec lot 2b §6.8) : il cite le champ snake_case article_type et ses valeurs entre apostrophes ; aucun terme du lexique à traduire."
+  },
+  {
+    "fichier": "src/controllers/ventesController.js",
+    "avant": "Saisissez un prix de vente supérieur à 0 avant d'activer cet article.",
+    "apres": "Saisissez un prix de vente supérieur à 0 avant d'activer cet article.",
+    "type": "homonyme",
+    "mode": "residuels",
+    "justification": "« article » au sens d'élément quelconque (produit OU article : article_type ∈ {produit, ingredient}), liste fermée de la spec lot 2b §6.5 (ventesController.js:300, :346) ; « prix de vente » est la locution du _global.json."
+  },
+  {
+    "fichier": "src/controllers/ventesController.js",
+    "avant": "Article",
+    "apres": "Article",
+    "type": "homonyme",
+    "mode": "residuels",
+    "justification": "En-tête « Article » de l'export Ventes du labo : la ligne peut être un article OU un produit transféré (élément générique), liste fermée de la spec lot 2b §6.5 (ventesController.js:1474)."
+  },
+  {
+    "fichier": "src/controllers/ventesController.js",
+    "avant": "attachment; filename=\"Historique-Ventes-⟦·⟧.xlsx\"",
+    "apres": "attachment; filename=\"Historique-Ventes-⟦·⟧.xlsx\"",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Nom du fichier téléchargé (en-tête Content-Disposition) : inchangé pour tous les domaines (spec lot 2b §0 « hors lot » et §6.3 « noms de fichiers inchangés », I2)."
+  },
+  {
+    "fichier": "src/controllers/ventesController.js",
+    "avant": "attachment; filename=\"historique-ventes-labo.xlsx\"",
+    "apres": "attachment; filename=\"historique-ventes-labo.xlsx\"",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Nom du fichier téléchargé (en-tête Content-Disposition) : inchangé pour tous les domaines (spec lot 2b §0 « hors lot » et §6.3 « noms de fichiers inchangés », I2)."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": "prestataire",
+    "apres": "prestataire",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Code de filtre canaux (directe | prestataire) = valeur de ventes.type_vente, comparée en JS avant d'entrer en paramètre lié : valeur technique, jamais affichée (spec lot 2b §6.1)."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": "produit",
+    "apres": "produit",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Code de filtre typesProduit (produit | supplement | valorise) = valeur de l'expression L_TYPE : valeur technique de l'API, jamais affichée (I2)."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": "article",
+    "apres": "article",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Nom de clé JSON de top_articles (toArr(parArticle, 'article')) : clé de l'API, inchangée (I2, I9)."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": "",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "ELSE '' du CASE des préfixes de catégorie (onglet Ventes) : le préfixe est désormais écrit en JS après la requête (spec lot 2b §9, :357-371), le '' devient la branche « type hors des trois » de libelleCategorie ; rendu par défaut identique, prouvé par test/B4-dashboardsSql.test.js et par la comparaison AVANT/APRÈS sur la base locale."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": "⟦sql⟧'supplement'",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Code SQL retiré (spec lot 2b §3.2 E4) : le CASE cpn.type_produit WHEN 'vendable' / 'supplement' / 'valorise' sort du SQL ; le SQL renvoie cpn.type_produit et le JS choisit le préfixe dans une table à clés littérales (spec §9)."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": "⟦sql⟧'valorise'",
+    "apres": "⟦sql⟧'activite'",
+    "type": "discriminant",
+    "justification": "Codes SQL retiré et ajouté (spec lot 2b §3.2 E4, §9) : 'valorise' sort du CASE des préfixes (écrit en JS) ; 'activite' remplace le libellé 'Activité' AS site_type (code stable traduit en JS par TYPE_SITE). L'outil apparie ces deux codes, sans lien entre eux."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": "⟦sql⟧'vendable'",
+    "apres": "⟦sql⟧'labo'",
+    "type": "discriminant",
+    "justification": "Codes SQL retiré et ajouté (spec lot 2b §3.2 E4, §9) : 'vendable' sort du CASE des préfixes (écrit en JS) ; 'labo' remplace le libellé 'Labo' AS site_type (code stable traduit en JS par TYPE_SITE). L'outil apparie ces deux codes, sans lien entre eux."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": "⟦·⟧ · ⟦·⟧",
+    "apres": "⟦·⟧|⟦·⟧",
+    "type": "discriminant",
+    "justification": "Clé de regroupement des pertes par site : code|nom au lieu du libellé « Type · nom » (spec lot 2b §9, :571), pour ne jamais fusionner deux sites dans un domaine où les formes courtes d'activité et de labo seraient égales ; clé interne jamais affichée, le libellé « Type · nom » est calculé après le regroupement."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": null,
+    "apres": "⟦·⟧|⟦·⟧",
+    "type": "discriminant",
+    "justification": "Second emploi de la même clé de regroupement code|nom (lecture du cumul, même ligne :571) : clé interne jamais affichée (spec lot 2b §9)."
+  },
+  {
+    "fichier": "src/controllers/dashboardV2Controller.js",
+    "avant": null,
+    "apres": "|",
+    "type": "discriminant",
+    "justification": "Séparateur de la clé code|nom (indexOf('|')) qui retrouve le code et le nom après le regroupement pour écrire le libellé `${TYPE_SITE[code]} · ${nom}` (spec lot 2b §9) : valeur technique, jamais affichée."
+  },
+  {
+    "fichier": "src/controllers/dashboardController.js",
+    "avant": "article",
+    "apres": "article",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Nom de clé JSON de top_pertes (toArr(pertesArt, 'article')) : clé de l'API, inchangée (I2, I9)."
+  },
+  {
+    "fichier": "src/utils/stockUtils.js",
+    "avant": "⟦?⟦·⟧|PT⟧",
+    "apres": "⟦?⟦·⟧|PT⟧",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "buildAutoRef : base de la référence de lot automatique (« PT-26 ») quand le nom est vide ; code de référence écrit en base, pas un texte de vocabulaire (I2, spec lot 2b §9)."
+  },
+  {
+    "fichier": "src/utils/stockUtils.js",
+    "avant": "Produits Transformés Utilisables",
+    "apres": "Produits Transformés Utilisables",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Libellé par défaut de catégorie PT renvoyé par l'API (ptCategorie / ptCategorieSql) : code stable de l'API, traduit à l'écran ou à l'écriture d'une cellule Excel par libelleCategoriePt (spec lot 2b §5.3, §9 « stockUtils.js : … restent la source des libellés par défaut »), I9."
+  },
+  {
+    "fichier": "src/utils/stockUtils.js",
+    "avant": "Produits ⟦?Composés Valorisés|Transformés Vendables⟧",
+    "apres": "Produits ⟦?Composés Valorisés|Transformés Vendables⟧",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Libellé par défaut de catégorie PT renvoyé par l'API (ptCategorie / ptCategorieSql) : code stable de l'API, traduit à l'écran ou à l'écriture d'une cellule Excel par libelleCategoriePt (spec lot 2b §5.3, §9 « stockUtils.js : … restent la source des libellés par défaut »), I9."
+  },
+  {
+    "fichier": "src/utils/stockUtils.js",
+    "avant": "Produits Composés Valorisés",
+    "apres": "Produits Composés Valorisés",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Libellé par défaut de catégorie PT renvoyé par l'API (ptCategorie / ptCategorieSql) : code stable de l'API, traduit à l'écran ou à l'écriture d'une cellule Excel par libelleCategoriePt (spec lot 2b §5.3, §9 « stockUtils.js : … restent la source des libellés par défaut »), I9. (constante de ptCategorieSql)"
+  },
+  {
+    "fichier": "src/utils/stockUtils.js",
+    "avant": "Produits Transformés Vendables",
+    "apres": "Produits Transformés Vendables",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Libellé par défaut de catégorie PT renvoyé par l'API (ptCategorie / ptCategorieSql) : code stable de l'API, traduit à l'écran ou à l'écriture d'une cellule Excel par libelleCategoriePt (spec lot 2b §5.3, §9 « stockUtils.js : … restent la source des libellés par défaut »), I9. (constante de ptCategorieSql)"
+  },
+  {
+    "fichier": "src/services/stockService.js",
+    "avant": "inventaires",
+    "apres": "inventaires",
+    "type": "discriminant",
+    "mode": "residuels",
+    "justification": "Nom de table SQL passé à ing('inventaires') comme préfixe de colonne du filtre article (` AND inventaires.ingredient_id = $2`) : identifiant technique, jamais affiché (I2)."
+  }
+]

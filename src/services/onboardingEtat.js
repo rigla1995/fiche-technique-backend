@@ -1,4 +1,8 @@
 const pool = require('../config/database');
+// Lot 2b §7.4 — guide de mise en route dans le vocabulaire du compte : terme du lexique pour une
+// catégorie, libellé du composant pour le type d'une unité (table identité du moteur).
+const { libelleComposant, entreeComposantVoc } = require('../utils/vocab');
+const { vocabDuProfil } = require('../utils/vocabCompte');
 
 // ── État de mise en route d'un compte, calculé EN DIRECT contre sa config ────
 // Le bot d'onboarding (bulle 🤖) n'existe que tant que la configuration
@@ -77,6 +81,8 @@ async function computeOnboardingEtat(clientId) {
   // manuelVisibilite / requireFormulePremium) — R1 paramétrée par domaine, fonction unique.
   const { getProfil, espaceProduitVerrouille } = require('./domaineProfilService');
   const profil = cfg.domaine_id ? await getProfil(cfg.domaine_id) : null;
+  // Vocabulaire du compte (lot 2b §7.1) : tiré du profil déjà chargé, sans requête de plus.
+  const voc = vocabDuProfil(profil);
   const espaceProduit = !espaceProduitVerrouille(
     { formule_activites: cfg.formule_activites, nb_labos: Math.max(prevLabo, counts.labos) },
     profil?.regles
@@ -98,8 +104,8 @@ async function computeOnboardingEtat(clientId) {
   const actOk = prevAct === 0 || counts.activites >= prevAct;
   const laboOk = prevLabo === 0 || counts.labos >= prevLabo;
   const capTitre = prevAct > 0 && prevLabo > 0
-    ? 'Activités & labos de votre formule'
-    : prevLabo > 0 ? `Labo${prevLabo > 1 ? 's' : ''} de votre formule` : `Activité${prevAct > 1 ? 's' : ''} de votre formule`;
+    ? `${voc.Nom('activite', true)} & ${voc.nom('labo', true)} de votre formule`
+    : prevLabo > 0 ? `${voc.Nom('labo', prevLabo > 1)} de votre formule` : `${voc.Nom('activite', prevAct > 1)} de votre formule`;
   // Composants souscrits (activités / labos) : créés = unités portant le composant ; les unités
   // sans composant sont imputées au 1er composant actif de leur type (même règle que la fonction
   // SQL unites_op_composant_defaut). Repli par type technique si le compte n'a pas de composants.
@@ -111,98 +117,101 @@ async function computeOnboardingEtat(clientId) {
     // Comptes « identité » (composants activite / labo uniquement) : libellés historiques conservés.
     const identite = composants.every((c) => c.code === 'activite' || c.code === 'labo');
     for (const c of composants) {
+      // Liste toute en identité : terme du lexique ; liste mixte : libellé du composant (lexique
+      // pour un composant identité au libellé du brouillon), accordé par entreeComposantVoc.
       const lib = identite
-        ? (c.code === 'activite' ? `activité${c.attendu > 1 ? 's' : ''}` : `labo${c.attendu > 1 ? 's' : ''}`)
-        : (c.attendu > 1 ? (c.libellePluriel || c.libelle) : c.libelle);
+        ? (c.code === 'activite' ? voc.nom('activite', c.attendu > 1) : voc.nom('labo', c.attendu > 1))
+        : libelleComposant(voc, c, c.attendu > 1);
       capParts.push(`${Math.min(c.crees, c.attendu)}/${c.attendu} ${lib}`);
       if (c.crees < c.attendu) {
         capQuestions.push(identite
-          ? (c.code === 'activite' ? (c.attendu > 1 ? 'Comment créer mes activités ?' : 'Comment créer mon activité ?') : (c.attendu > 1 ? 'Comment créer mes labos ?' : 'Comment créer mon labo ?'))
-          : `Comment créer ${c.attendu > 1 ? 'mes' : 'mon'} ${(c.attendu > 1 ? (c.libellePluriel || c.libelle) : c.libelle).toLowerCase()} ?`);
+          ? (c.code === 'activite' ? `Comment créer ${voc.mon('activite', c.attendu > 1)} ?` : `Comment créer ${voc.mon('labo', c.attendu > 1)} ?`)
+          : `Comment créer ${voc.avec(entreeComposantVoc(voc, c)).mon('_', c.attendu > 1)} ?`);
       }
     }
     capOk = composants.every((c) => c.crees >= c.attendu) && actOk && laboOk;
   } else {
-    if (prevAct > 0) capParts.push(`${Math.min(counts.activites, prevAct)}/${prevAct} activité${prevAct > 1 ? 's' : ''}`);
-    if (prevLabo > 0) capParts.push(`${Math.min(counts.labos, prevLabo)}/${prevLabo} labo${prevLabo > 1 ? 's' : ''}`);
-    if (prevAct > 0 && counts.activites < prevAct) capQuestions.push(prevAct > 1 ? 'Comment créer mes activités ?' : 'Comment créer mon activité ?');
-    if (prevLabo > 0 && counts.labos < prevLabo) capQuestions.push(prevLabo > 1 ? 'Comment créer mes labos ?' : 'Comment créer mon labo ?');
+    if (prevAct > 0) capParts.push(`${Math.min(counts.activites, prevAct)}/${prevAct} ${voc.nom('activite', prevAct > 1)}`);
+    if (prevLabo > 0) capParts.push(`${Math.min(counts.labos, prevLabo)}/${prevLabo} ${voc.nom('labo', prevLabo > 1)}`);
+    if (prevAct > 0 && counts.activites < prevAct) capQuestions.push(`Comment créer ${voc.mon('activite', prevAct > 1)} ?`);
+    if (prevLabo > 0 && counts.labos < prevLabo) capQuestions.push(`Comment créer ${voc.mon('labo', prevLabo > 1)} ?`);
     capOk = actOk && laboOk;
   }
-  if (prevAct > 0 && prevLabo > 0) capQuestions.push('Quelle est la différence entre une activité et un labo ?');
+  if (prevAct > 0 && prevLabo > 0) capQuestions.push(`Quelle est la différence entre ${voc.un('activite')} et ${voc.un('labo')} ?`);
+  // Pastilles : même mot que le détail (libellé du composant, terme du lexique pour un composant identité)
   add('capacites', capTitre, capOk, capParts.join(' · ') || null, capQuestions,
-    { composants: composants.map((c) => ({ code: c.code, libelle: c.libelle, attendu: c.attendu, crees: c.crees })) });
+    { composants: composants.map((c) => ({ code: c.code, libelle: libelleComposant(voc, c), attendu: c.attendu, crees: c.crees })) });
 
   // 4 : référentiel de base
   const refManque = [];
   if (!counts.unites) refManque.push('unités');
   if (!counts.familles) refManque.push('familles');
   if (!counts.categories) refManque.push('catégories');
-  add('referentiel', 'Référentiel de base (unités, familles, catégories)', refManque.length === 0,
+  add('referentiel', `${voc.Nom('referentiel')} de base (unités, familles, catégories)`, refManque.length === 0,
     refManque.length ? `à créer : ${refManque.join(', ')}` : `${counts.unites} unités · ${counts.familles} familles · ${counts.categories} catégories`,
     [
-      'Par quoi commencer pour mon référentiel ?',
+      `Par quoi commencer pour ${voc.mon('referentiel')} ?`,
       'À quoi servent les familles et les catégories ?',
       'Comment créer mes unités ?',
     ]);
 
   // 5 : articles + affectation à chaque activité / labo créé
   const affOk = counts.articles > 0 && selAct.n >= counts.activites && selLabo.n >= counts.labos;
-  const affParts = [`${counts.articles} article${counts.articles > 1 ? 's' : ''}`];
-  if (counts.activites > 0) affParts.push(`${selAct.n}/${counts.activites} activité${counts.activites > 1 ? 's' : ''} affectée${counts.activites > 1 ? 's' : ''}`);
-  if (counts.labos > 0) affParts.push(`${selLabo.n}/${counts.labos} labo${counts.labos > 1 ? 's' : ''}`);
+  const affParts = [`${counts.articles} ${voc.nom('article', counts.articles > 1)}`];
+  if (counts.activites > 0) affParts.push(`${selAct.n}/${counts.activites} ${voc.nom('activite', counts.activites > 1)} ${voc.acc('activite', 'affecté', 'affectée', counts.activites > 1)}`);
+  if (counts.labos > 0) affParts.push(`${selLabo.n}/${counts.labos} ${voc.nom('labo', counts.labos > 1)}`);
   const aAct = prevAct > 0 || counts.activites > 0;
   const aLabo = prevLabo > 0 || counts.labos > 0;
   const ciblesQuestions = [
-    ...(aAct ? [counts.activites > 1 || prevAct > 1 ? 'mes activités' : 'mon activité'] : []),
-    ...(aLabo ? [counts.labos > 1 || prevLabo > 1 ? 'mes labos' : 'mon labo'] : []),
+    ...(aAct ? [voc.mon('activite', counts.activites > 1 || prevAct > 1)] : []),
+    ...(aLabo ? [voc.mon('labo', counts.labos > 1 || prevLabo > 1)] : []),
   ].join(' et ') || 'mes espaces';
-  const ciblesTitre = aAct && aLabo ? 'aux activités/labos' : aLabo ? 'au labo' : 'aux activités';
-  add('articles', `Articles + affectation ${ciblesTitre}`, affOk, affParts.join(' · '),
+  const ciblesTitre = aAct && aLabo ? `${voc.au('activite', true)}/${voc.nom('labo', true)}` : aLabo ? voc.au('labo') : voc.au('activite', true);
+  add('articles', `${voc.Nom('article', true)} + affectation ${ciblesTitre}`, affOk, affParts.join(' · '),
     [
-      'Comment ajouter mes articles ?',
-      'Comment importer mes articles en masse ?',
-      `Comment affecter les articles à ${ciblesQuestions} ?`,
+      `Comment ajouter ${voc.mon('article', true)} ?`,
+      `Comment importer ${voc.mon('article', true)} en masse ?`,
+      `Comment affecter ${voc.le('article', true)} à ${ciblesQuestions} ?`,
     ]);
 
   // 6 : fournisseurs
-  add('fournisseurs', 'Fournisseurs', counts.fournisseurs > 0,
-    counts.fournisseurs ? `${counts.fournisseurs} fournisseur${counts.fournisseurs > 1 ? 's' : ''}` : null,
+  add('fournisseurs', voc.Pl('fournisseur'), counts.fournisseurs > 0,
+    counts.fournisseurs ? `${counts.fournisseurs} ${voc.nom('fournisseur', counts.fournisseurs > 1)}` : null,
     [
-      'Comment ajouter mes fournisseurs ?',
-      'Comment importer mes fournisseurs depuis Excel ?',
-      'À quoi servent les affectations d\'un fournisseur ?',
+      `Comment ajouter ${voc.mon('fournisseur', true)} ?`,
+      `Comment importer ${voc.mon('fournisseur', true)} depuis Excel ?`,
+      `À quoi servent les affectations d'${voc.un('fournisseur')} ?`,
     ]);
 
   // 7 : produits & fiches techniques (sauf Espace Produit verrouillé)
   if (espaceProduit) {
-    add('produits', 'Produits & fiches techniques', counts.produits > 0,
-      counts.produits ? `${counts.produits} produit${counts.produits > 1 ? 's' : ''}` : null,
+    add('produits', `${voc.Nom('produit', true)} & ${voc.nom('fiche_technique', true)}`, counts.produits > 0,
+      counts.produits ? `${counts.produits} ${voc.nom('produit', counts.produits > 1)}` : null,
       [
-        'Comment créer un produit et sa fiche technique ?',
-        'C\'est quoi un produit valorisé ?',
-        'Comment est calculé le coût de revient d\'une recette ?',
+        `Comment créer ${voc.un('produit')} et ${voc.son('fiche_technique')} ?`,
+        `C'est quoi ${voc.un('produit_valorise')} ?`,
+        `Comment est calculé le coût de revient d'${voc.un('recette')} ?`,
       ]);
   }
 
   // 8 : première saisie (appro, et vente si des activités existent)
   const saisieOk = saisies.appro_activite || saisies.appro_labo || saisies.vente;
-  const saisieQuestions = ['Comment saisir mon premier approvisionnement ?'];
-  if (counts.activites > 0 || prevAct > 0) saisieQuestions.push('Comment saisir une vente ?');
-  saisieQuestions.push('Comment mon stock est-il calculé ?');
-  add('saisie', counts.activites > 0 || prevAct > 0 ? 'Première saisie (appro / vente)' : 'Premier approvisionnement du labo', saisieOk,
-    saisieOk ? null : 'aucun approvisionnement ni vente pour l\'instant', saisieQuestions,
+  const saisieQuestions = [`Comment saisir ${voc.acc('appro', 'mon premier', 'ma première')} ${voc.nom('appro')} ?`];
+  if (counts.activites > 0 || prevAct > 0) saisieQuestions.push(`Comment saisir ${voc.un('vente')} ?`);
+  saisieQuestions.push(`Comment ${voc.mon('stock')} est-${voc.acc('stock', 'il', 'elle')} ${voc.acc('stock', 'calculé', 'calculée')} ?`);
+  add('saisie', counts.activites > 0 || prevAct > 0 ? `Première saisie (${voc.court('appro')} / ${voc.nom('vente')})` : `${voc.acc('appro', 'Premier', 'Première')} ${voc.nom('appro')} ${voc.du('labo')}`, saisieOk,
+    saisieOk ? null : `${voc.aucun('appro')} ni ${voc.nom('vente')} pour l'instant`, saisieQuestions,
     // Route : stock des activités s'il y en a, sinon stock labo.
     { route: counts.activites > 0 || prevAct > 0 ? '/client/stock' : '/client/labo/stock' });
 
   // 9 : base acheteurs (si le module est actif)
   if (moduleAcheteurs) {
-    add('acheteurs', 'Carnet d\'acheteurs', counts.acheteurs > 0,
-      counts.acheteurs ? `${counts.acheteurs} acheteur${counts.acheteurs > 1 ? 's' : ''}` : null,
+    add('acheteurs', `Carnet ${voc.de('acheteur', true)}`, counts.acheteurs > 0,
+      counts.acheteurs ? `${counts.acheteurs} ${voc.nom('acheteur', counts.acheteurs > 1)}` : null,
       [
-        'Comment remplir mon carnet d\'acheteurs ?',
-        'Comment importer mes acheteurs depuis Excel ?',
-        'Comment configurer mes tarifs acheteurs ?',
+        `Comment remplir mon carnet ${voc.de('acheteur', true)} ?`,
+        `Comment importer ${voc.mon('acheteur', true)} depuis Excel ?`,
+        `Comment configurer mes tarifs ${voc.court('acheteur', true)} ?`,
       ]);
   }
 
@@ -227,7 +236,7 @@ const ROUTES = {
 async function capacitesParComposant(abonnementId, entrepriseId) {
   if (!abonnementId) return [];
   const { rows: comps } = await pool.query(
-    `SELECT dc.id, dc.code, dc.libelle, dc.libelle_pluriel, dc.type_technique, acc.nb
+    `SELECT dc.id, dc.code, dc.libelle, dc.libelle_pluriel, dc.genre, dc.elision, dc.type_technique, acc.nb
        FROM abonnement_config_composants acc
        JOIN domaine_composants dc ON dc.id = acc.composant_id
       WHERE acc.abonnement_id = $1 AND dc.type_technique IN ('activite', 'labo') AND acc.nb > 0
@@ -254,23 +263,24 @@ async function capacitesParComposant(abonnementId, entrepriseId) {
       if (r.composant_id === c.id) crees += r.n;
       else if (r.composant_id == null && defaut[c.type_technique] === c.id) crees += r.n;
     }
-    return { id: c.id, code: c.code, libelle: c.libelle, libellePluriel: c.libelle_pluriel, typeTechnique: c.type_technique, attendu: Number(c.nb) || 0, crees };
+    return { id: c.id, code: c.code, libelle: c.libelle, libellePluriel: c.libelle_pluriel, genre: c.genre === 'f' ? 'f' : 'm', elision: typeof c.elision === 'boolean' ? c.elision : null, typeTechnique: c.type_technique, attendu: Number(c.nb) || 0, crees };
   });
 }
 
 // Bloc de contexte injecté dans le prompt du bot pendant la mise en route.
-function onboardingPromptBlock(etat) {
+// voc : vocabulaire du compte (lot 2b §7.1), obligatoire.
+function onboardingPromptBlock(etat, voc) {
   if (!etat || etat.complet) return '';
   const lignes = etat.etapes.map((e) => `- [${e.fait ? 'FAIT' : 'À FAIRE'}] ${e.titre}${e.detail ? ` (${e.detail})` : ''}`).join('\n');
   return `\n\n## MISSION PRIORITAIRE : guide de mise en route
 Ce client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :
 ${lignes}
-Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.
+Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas ${voc.de('labo')} si ${voc.aucun('labo')} ci-dessus, pas ${voc.de('acheteur', true)} si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.
 
 ## FORMAT DES RÉPONSES DU GUIDE (obligatoire)
-- Commence par un court titre en **gras** avec un emoji (ex. **🧂 Créer vos unités**)
+- Commence par un court titre en **gras** avec un emoji (ex. **${voc.ex('🧂', '📏')} Créer vos unités**)
 - Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte
-- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Référentiel → Unités**)
+- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **${voc.Nom('referentiel')} → Unités**)
 - Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte
 - Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)`;
 }

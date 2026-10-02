@@ -1,0 +1,14 @@
+[
+ {
+  "cle": "resultatsOutils",
+  "chemin": "/get_stock",
+  "cleTri": "/date_appro",
+  "raison": "aiToolHandlers.js:112 (toolGetStock) : ORDER BY s.date_appro DESC seul, sur l'union activités + labos. Un transfert écrit sa sortie (labo) et son entrée (activité ou labo) à la MÊME date : ces deux lignes sont ex aequo et la requête ne fixe pas leur ordre (mesuré : interverties d'un passage à l'autre). Admis : permutations ENTRE EX AEQUO de date_appro seulement (rangs capturés avant masquage, meta.rangsTri) ; toute autre permutation reste un écart. Écart déclaré à la lettre du §2.4 (« requête sans ORDER BY ») : pour ces lignes ex aequo, l'ORDER BY ne fixe aucun ordre — à acter par l'intégrateur."
+ },
+ {
+  "cle": "rapportIA",
+  "chemin": "/classeur/0/lignes",
+  "cleTri": "/2",
+  "raison": "reportService.js:30 (feuille Stock du rapport de l'assistant) : même requête que toolGetStock, ORDER BY s.date_appro DESC seul ; mêmes ex aequo sortie / entrée d'un transfert (mesuré). Clé de tri : colonne 3 « Date appro » (indice 2) ; titre, en-tête et pied ont chacun leur rang. Admis : permutations entre ex aequo seulement (même règle et même écart déclaré au §2.4 que l'entrée précédente)."
+ }
+]

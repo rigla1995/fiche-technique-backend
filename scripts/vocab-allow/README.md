@@ -13,6 +13,16 @@ Attendu : `identite` 0 écart hors des entrées de ce dossier. Le format des ent
 (une entrée « avant: null » ou « apres: null » n'absorbe que `occurrences` unités, 1 par défaut ; un extrait
 admis porte le terme avec un mot plein) sont décrits dans `fiche-technique-frontend/scripts/vocab-allow/README.md`.
 
-Un fichier par lot : `S3.json` (socle 2a du backend : `req.voc`, validation du lexique, domaine de l'acheteur),
-puis `B1.json` … `B5.json` au sous-lot 2b. Un agent n'écrit que dans le fichier de son lot ; chaque entrée est
-typée, justifiée et relue.
+Un fichier par lot du sous-lot 2b (spec `docs/lot-2b-spec.md` §3.1, §10) : `socle.json`, `B1.json`, `B2.json`,
+`B3a.json`, `B3b.json`, `B4.json`, `B5.json` (B6, les écrans, est au frontend). Un agent n'écrit que dans le
+fichier de son lot ; chaque entrée est typée, justifiée et relue. `_global.json` (entrées `"fichier": "*"`,
+mode residuels) n'est écrit QUE par l'intégrateur : un agent qui a besoin d'une entrée globale l'écrit dans ses
+`besoins`. La répartition des fichiers entre lots est celle de `scripts/vocab-lots.mjs`.
+
+`archives-2a/S3.json` : les 88 écarts du socle 2a (`req.voc`, validation du lexique, domaine de l'acheteur),
+tous sans objet depuis le réépinglage de `scripts/vocab-check.base` sur la tête du 2a. Archivés, NON lus par
+l'outil : une entrée `avant: null` sans objet absorberait en silence un nouveau littéral identique.
+
+Autres fichiers lus par l'outil dans ce dépôt : `scripts/vocab-rendu.json` (points de rendu déclarés des
+balises, E2 : liste fermée tenue par le socle) ; il écrit `scripts/vocab-accords.txt` (mode `accords`, passage
+complet, régénéré par l'intégrateur seulement).

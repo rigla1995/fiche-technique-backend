@@ -40,7 +40,7 @@ const isTransfertError = (e) => e instanceof TransfertError;
 // Erreur PG de verrou / timeout (statement_timeout 30 s, lock_not_available, deadlock) → 409.
 const mapLockError = (err) => {
   if (err && (err.code === '57014' || err.code === '55P03' || err.code === '40P01')) {
-    return new TransfertError(409, 'STOCK_VERROUILLE', 'Une autre opération de stock est en cours sur ce labo — réessayez dans un instant.');
+    return new TransfertError(409, 'STOCK_VERROUILLE', 'Une autre opération [[de:stock]] est en cours sur [[ce:labo]] — réessayez dans un instant.');
   }
   return null;
 };
@@ -106,7 +106,7 @@ function normalizeLines(sourceLaboId, transfers) {
       throw new TransfertError(400, 'DESTINATION_INVALIDE', 'Chaque ligne doit indiquer exactement une destination (activiteId ou laboDestId)');
     }
     if (laboDestId != null && laboDestId === Number(sourceLaboId)) {
-      throw new TransfertError(400, 'DESTINATION_INVALIDE', 'Un labo ne peut pas se transférer à lui-même');
+      throw new TransfertError(400, 'DESTINATION_INVALIDE', '[[Un:labo]] ne peut pas se transférer à [[acc:labo:lui-même:elle-même]]');
     }
     const quantite = parseFloat(t.quantite) || 0;
     const prixUnitaire = t.prixUnitaire != null && t.prixUnitaire !== '' ? parseFloat(t.prixUnitaire) : null;
@@ -136,7 +136,7 @@ async function createTransfert(db, { sourceLaboId, clientId, userId, dateTransfe
   if (actIds.length) {
     const actCheck = await d.query('SELECT id FROM activites WHERE labo_id = $1 AND id = ANY($2::int[])', [laboId, actIds]);
     if (actCheck.rows.length !== actIds.length) {
-      throw new TransfertError(400, 'DESTINATION_NON_RATTACHEE', 'Une ou plusieurs activités invalides');
+      throw new TransfertError(400, 'DESTINATION_NON_RATTACHEE', '[[acc:activite:Un:Une]] ou plusieurs [[nom:activite:pl]] invalides');
     }
   }
   const laboDestIds = [...new Set(lines.filter((l) => l.laboDestId != null).map((l) => l.laboDestId))];
@@ -150,7 +150,7 @@ async function createTransfert(db, { sourceLaboId, clientId, userId, dateTransfe
       [laboId, laboDestIds]
     );
     if (lienCheck.rows.length !== laboDestIds.length) {
-      throw new TransfertError(400, 'DESTINATION_NON_RATTACHEE', 'Un ou plusieurs labos destinataires ne sont pas alimentés par ce labo');
+      throw new TransfertError(400, 'DESTINATION_NON_RATTACHEE', '[[acc:labo:Un:Une]] ou plusieurs [[nom:labo:pl]] destinataires ne sont pas [[acc:labo:alimentés:alimentées]] par [[ce:labo]]');
     }
   }
 
@@ -171,8 +171,8 @@ async function createTransfert(db, { sourceLaboId, clientId, userId, dateTransfe
     const missing = ptLines.find((l) => (l.activiteId != null ? !okAct.has(`${l.produitId}-a${l.activiteId}`) : !okLabo.has(`${l.produitId}-l${l.laboDestId}`)));
     if (missing) {
       const nomRes = await d.query('SELECT nom FROM produits WHERE id = $1', [missing.produitId]);
-      const cible = missing.activiteId != null ? 'cette activité' : 'ce labo';
-      throw new TransfertError(400, 'PT_NON_AFFECTE', `Le produit "${nomRes.rows[0]?.nom ?? `PT #${missing.produitId}`}" n'est pas affecté à ${cible} — transfert refusé.`);
+      const cible = missing.activiteId != null ? '[[ce:activite]]' : '[[ce:labo]]';
+      throw new TransfertError(400, 'PT_NON_AFFECTE', `[[Le:produit]] "${nomRes.rows[0]?.nom ?? `[[court:pt]] #${missing.produitId}`}" n'est pas [[acc:produit:affecté:affectée]] à ${cible} — [[nom:transfert]] [[acc:transfert:refusé:refusée]].`);
     }
   }
 
@@ -218,14 +218,14 @@ async function createTransfert(db, { sourceLaboId, clientId, userId, dateTransfe
       const dispo = await stockService.computeStock(client, 'labo', laboId, { articleId: parseInt(ingId, 10) });
       if (total > dispo) {
         const n = await client.query('SELECT nom FROM articles WHERE id = $1', [ingId]);
-        throw new TransfertError(422, 'STOCK_INSUFFISANT', `Stock insuffisant pour "${n.rows[0]?.nom ?? `ingrédient #${ingId}`}"`, { disponible: Math.max(0, dispo), demande: total });
+        throw new TransfertError(422, 'STOCK_INSUFFISANT', `[[Nom:stock]] [[acc:stock:insuffisant:insuffisante]] pour "${n.rows[0]?.nom ?? `[[nom:article_ingredient]] #${ingId}`}"`, { disponible: Math.max(0, dispo), demande: total });
       }
     }
     for (const [produitId, total] of Object.entries(ptQty)) {
       const dispo = await stockService.computeStock(client, 'labo', laboId, { produitId: parseInt(produitId, 10) });
       if (total > dispo) {
         const n = await client.query('SELECT nom FROM produits WHERE id = $1', [produitId]);
-        throw new TransfertError(422, 'STOCK_INSUFFISANT', `Stock PT insuffisant pour "${n.rows[0]?.nom ?? `PT #${produitId}`}"`, { disponible: Math.max(0, dispo), demande: total });
+        throw new TransfertError(422, 'STOCK_INSUFFISANT', `[[Nom:stock]] [[court:pt]] [[acc:stock:insuffisant:insuffisante]] pour "${n.rows[0]?.nom ?? `[[court:pt]] #${produitId}`}"`, { disponible: Math.max(0, dispo), demande: total });
       }
     }
 
@@ -509,7 +509,7 @@ async function loadTransfert(db, laboId, transferId) {
 
 function assertRequester(t, requester) {
   if (requester && requester.role === 'gerant' && t.created_by !== requester.id) {
-    throw new TransfertError(403, 'TRANSFERT_NON_PROPRIETAIRE', 'Vous ne pouvez modifier que les transferts que vous avez créés');
+    throw new TransfertError(403, 'TRANSFERT_NON_PROPRIETAIRE', 'Vous ne pouvez modifier que [[le:transfert:pl]] que vous avez [[acc:transfert:créés:créées]]');
   }
 }
 
@@ -526,7 +526,7 @@ async function resolveRows(client, t) {
   const historique = await isTransfertHistorique(client, t.id);
   if (!historique) {
     if (total === 0) {
-      throw new TransfertError(409, 'TRANSFERT_INCOHERENT', 'Les lignes de stock de ce transfert sont introuvables — contactez le support.');
+      throw new TransfertError(409, 'TRANSFERT_INCOHERENT', 'Les lignes [[de:stock]] de [[ce:transfert]] sont introuvables — contactez le support.');
     }
     return { rows, mode: 'transfert_id' };
   }
@@ -552,7 +552,7 @@ async function updateTransfert(db, { laboId, transferId, quantite, requester }) 
   const newQty = parseFloat(quantite);
   if (!newQty || newQty <= 0) throw new TransfertError(400, 'QUANTITE_INVALIDE', 'quantite requise et doit être > 0');
   const t = await loadTransfert(d, laboId, transferId);
-  if (!t) throw new TransfertError(404, 'TRANSFERT_INTROUVABLE', 'Transfert introuvable');
+  if (!t) throw new TransfertError(404, 'TRANSFERT_INTROUVABLE', '[[Nom:transfert]] introuvable');
   assertRequester(t, requester);
 
   const client = await d.connect();
@@ -565,7 +565,7 @@ async function updateTransfert(db, { laboId, transferId, quantite, requester }) 
     if (delta > 0) {
       const dispo = await stockSource(client, t);
       if (delta > dispo) {
-        throw new TransfertError(422, 'STOCK_INSUFFISANT', 'Stock insuffisant à la source pour augmenter ce transfert', { disponible: Math.max(0, dispo), demande: delta });
+        throw new TransfertError(422, 'STOCK_INSUFFISANT', '[[Nom:stock]] [[acc:stock:insuffisant:insuffisante]] à la source pour augmenter [[ce:transfert]]', { disponible: Math.max(0, dispo), demande: delta });
       }
     }
     const { rows } = await resolveRows(client, t);
@@ -599,7 +599,7 @@ async function deleteTransfert(db, { laboId, transferId, requester }) {
   const d = db || pool;
   assertPool(d, 'deleteTransfert');
   const t = await loadTransfert(d, laboId, transferId);
-  if (!t) throw new TransfertError(404, 'TRANSFERT_INTROUVABLE', 'Transfert introuvable');
+  if (!t) throw new TransfertError(404, 'TRANSFERT_INTROUVABLE', '[[Nom:transfert]] introuvable');
   assertRequester(t, requester);
 
   const client = await d.connect();
@@ -631,7 +631,7 @@ async function deleteTransfert(db, { laboId, transferId, requester }) {
 async function getTransferPrix(db, laboId, transferId) {
   const d = db || pool;
   const t = await loadTransfert(d, laboId, transferId);
-  if (!t) throw new TransfertError(404, 'TRANSFERT_INTROUVABLE', 'Transfert introuvable');
+  if (!t) throw new TransfertError(404, 'TRANSFERT_INTROUVABLE', '[[Nom:transfert]] introuvable');
   if (!t.ingredient_id) return { prixUnitaire: null, pmpHT: null, pmpTTC: null, dernierAchatHT: null };
   const [pmp, dernier] = await Promise.all([
     stockService.computePmp(d, 'labo', laboId, t.ingredient_id, { atDate: t.date_transfert }),

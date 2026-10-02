@@ -117,17 +117,19 @@ async function getSnapshot(clientId) {
 }
 
 // Ligne(s) de contexte compactes injectées dans le system prompt.
-function buildLineFromSnapshot(snap) {
-  const acts = (snap.activites || []).map((a) => `${a.id}=${a.nom}`).join(', ') || 'aucune';
-  const labos = (snap.labos || []).map((l) => `${l.id}=${l.nom}`).join(', ') || 'aucun';
+// voc : vocabulaire du compte (lot 2b §7.3), obligatoire ; le snapshot ne porte que des données
+// (SNAPSHOT_VERSION inchangée) : les mots sont posés ici, à chaque message.
+function buildLineFromSnapshot(snap, voc) {
+  const acts = (snap.activites || []).map((a) => `${a.id}=${a.nom}`).join(', ') || voc.acc('activite', 'aucun', 'aucune');
+  const labos = (snap.labos || []).map((l) => `${l.id}=${l.nom}`).join(', ') || voc.acc('labo', 'aucun', 'aucune');
   const lines = [
-    `Client: ${snap.nom || '—'} | Mode du compte: ${snap.mode_compte || '—'} | Activités: ${acts} | Labos: ${labos}`,
+    `Client: ${snap.nom || '—'} | Mode du compte: ${snap.mode_compte || '—'} | ${voc.Pl('activite')}: ${acts} | ${voc.Pl('labo')}: ${labos}`,
   ];
   if (snap.domaine?.nom) lines.push(`Domaine d'activité : ${snap.domaine.nom}`);
 
   const ab = snap.abonnement;
   if (ab && !ab.note) {
-    const cap = `Capacité souscrite: ${ab.nb_activites ?? '—'} activité(s), ${ab.nb_labos ?? '—'} labo(s), ${ab.nb_gerants ?? '—'} gérant(s)`;
+    const cap = `Capacité souscrite: ${ab.nb_activites ?? '—'} ${voc.nomS('activite')}, ${ab.nb_labos ?? '—'} ${voc.nomS('labo')}, ${ab.nb_gerants ?? '—'} ${voc.nomS('gerant')}`;
     const prix = ab.mensuel_effectif_tnd != null
       ? `Abonnement: mensualité ~${ab.mensuel_effectif_tnd} TND, onboarding ${ab.onboarding_effectif_tnd ?? '—'} TND${ab.promotion_active ? ' (promo active)' : ''}`
       : `Abonnement: ${ab.mode_compte || snap.mode_compte || '—'}`;
@@ -135,14 +137,14 @@ function buildLineFromSnapshot(snap) {
   }
 
   lines.push(
-    `Référentiel client: ${snap.nb_fournisseurs ?? 0} fournisseur(s), ${snap.nb_gerants ?? 0} gérant(s), ${snap.nb_produits ?? 0} produit(s) | Module vente: ${snap.module_vente_actif ? 'actif' : 'inactif'}`
+    `${voc.Nom('referentiel')} client: ${snap.nb_fournisseurs ?? 0} ${voc.nomS('fournisseur')}, ${snap.nb_gerants ?? 0} ${voc.nomS('gerant')}, ${snap.nb_produits ?? 0} ${voc.nomS('produit')} | Module ${voc.court('vente')}: ${snap.module_vente_actif ? 'actif' : 'inactif'}`
   );
   return lines.join('\n');
 }
 
-async function getContextLine(clientId) {
+async function getContextLine(clientId, voc) {
   const snap = await getSnapshot(clientId);
-  return { nom: snap.nom, line: buildLineFromSnapshot(snap) };
+  return { nom: snap.nom, line: buildLineFromSnapshot(snap, voc) };
 }
 
 // Invalide le cache (mémoire + force la péremption DB) après une mutation de config statique.
@@ -153,4 +155,17 @@ function invalidate(clientId) {
     .catch(() => {});
 }
 
-module.exports = { buildClientConfigSnapshot, getSnapshot, getContextLine, invalidate };
+// Changement de DOMAINE d'un compte (lot 2b, spec §5.6) : l'historique de l'assistant, web
+// et Messenger, est rejoué à chaque message dans l'ancien vocabulaire, et le snapshot garde
+// l'ancien domaine → tout est oublié. Appelée après le COMMIT, au mieux (l'appelant avale le
+// rejet : jamais un 500), et SEULEMENT quand le domaine change : rien n'est purgé sur une
+// modification du lexique (le glossaire, recalculé à chaque message, domine).
+// Renvoie le nombre de conversations supprimées.
+async function oublierConversationsIA(clientId) {
+  const id = Number(clientId); // clé numérique du cache mémoire (clientId des routes : chaîne)
+  const r = await pool.query('DELETE FROM ai_conversations WHERE client_id = $1', [id]);
+  invalidate(id);
+  return r.rowCount || 0;
+}
+
+module.exports = { buildClientConfigSnapshot, getSnapshot, getContextLine, invalidate, oublierConversationsIA };

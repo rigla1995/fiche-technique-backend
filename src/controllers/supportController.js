@@ -1,11 +1,12 @@
 const pool = require('../config/database');
 const { sendAvenantEmail } = require('../services/emailService');
+const { vocabDefaut, vocabForClient } = require('../utils/vocabCompte');
 const { generateAvenantPdf } = require('../services/pdfService');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
 const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeBaseAcheteursFromConfig, computeMensuelTotalFromConfig, computeAvenantPricing, palierAcheteurs, loadTarifs, tarifsFor, recalcPaiementsEnAttente } = require('./abonnementController');
 // Lot 1a : la capacité s'applique PAR COMPOSANT (applyComposants = seul écrivain des compteurs)
-const { applyComposants, composantsDepuisCompteurs, validerComposition, erreursIntroduites } = require('../services/configComposantsService');
+const { applyComposants, invaliderProfilApresCommit, composantsDepuisCompteurs, validerComposition, erreursIntroduites } = require('../services/configComposantsService');
 const { getProfil } = require('../services/domaineProfilService');
 
 // Ajouts d'une demande de capacité → composants du domaine (1er composant actif de
@@ -39,7 +40,8 @@ const fmtDtS = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
 // Soumission Docuseal de l'avenant : flux « PDF rempli » (document généré pour le
 // client, prestataire pré-signé) avec REPLI sur le flux template historique si la
 // génération ou l'API échoue. Retourne { submissionId, signingUrl }.
-const submitAvenantForSignature = async ({ demandeId, info, pricing, ajouts }) => {
+// voc : vocabulaire du compte qui demande l'avenant (req.voc, lot 2b spec §8.2).
+const submitAvenantForSignature = async ({ demandeId, info, pricing, ajouts, voc = vocabDefaut }) => {
   const clientName = info.nom || 'Client';
   if (docusealPdfConfigured() && pricing) {
     try {
@@ -50,6 +52,7 @@ const submitAvenantForSignature = async ({ demandeId, info, pricing, ajouts }) =
         ajouts,
         abonnementId: info.abo_id,
         abonnementDate: info.abo_created_at,
+        voc,
       });
       return await createSubmissionFromPdf({
         pdfBase64: docu.base64,
@@ -69,7 +72,7 @@ const submitAvenantForSignature = async ({ demandeId, info, pricing, ajouts }) =
     nbLabos: pricing?.nbLabos,
     nbGerants: pricing?.nbGerants,
     montantMensuel: pricing?.effMensuel,
-    extraFields: avenantExtraFields({ ajouts, abonnementId: info.abo_id, abonnementDate: info.abo_created_at, pricing }),
+    extraFields: avenantExtraFields({ ajouts, abonnementId: info.abo_id, abonnementDate: info.abo_created_at, pricing, voc }),
   });
 };
 
@@ -150,7 +153,7 @@ const create = async (req, res) => {
       if (total === 0) return res.status(400).json({ message: 'Indiquez au moins un supplément' });
       if (nbAcheteursCible != null) {
         if (![10, 20, 50, 100].includes(nbAcheteursCible)) {
-          return res.status(400).json({ message: 'Palier acheteurs invalide (10, 20, 50 ou 100)' });
+          return res.status(400).json({ message: 'Palier [[court:acheteur:pl]] invalide (10, 20, 50 ou 100)' });
         }
         const cfgRes = await pool.query(
           `SELECT ac.nb_acheteurs, ac.nb_labos FROM abonnement_config ac
@@ -163,10 +166,10 @@ const create = async (req, res) => {
         // déjà couvert par le palier 10 — redemander « jusqu'à 10 » serait un no-op.
         const palierActuel = palierAcheteurs(curAcheteurs) ?? 0;
         if (nbAcheteursCible <= palierActuel) {
-          return res.status(400).json({ message: `Le palier demandé doit être supérieur au palier actuel (jusqu'à ${palierActuel} acheteurs)` });
+          return res.status(400).json({ message: `Le palier demandé doit être supérieur au palier actuel (jusqu'à ${palierActuel} [[nom:acheteur:pl]])` });
         }
         if (curLabos + (nbLabosSupp || 0) < 1) {
-          return res.status(400).json({ message: "L'option Acheteurs nécessite au moins un labo (ajoutez-en un à la demande)" });
+          return res.status(400).json({ message: "L'option [[Court:acheteur:pl]] nécessite au moins [[un:labo]] (ajoutez-en [[acc:labo:un:une]] à la demande)" });
         }
       }
       // Composition RÉSULTANTE validée avec les règles du domaine du compte (lot 1a)
@@ -239,7 +242,7 @@ const create = async (req, res) => {
             setAcheteurs: demande.nbAcheteursCible || null,
           };
           const pricing = await computeAvenantPricing(clientId, ajouts);
-          const sub = await submitAvenantForSignature({ demandeId: demande.id, info, pricing, ajouts });
+          const sub = await submitAvenantForSignature({ demandeId: demande.id, info, pricing, ajouts, voc: req.voc ?? vocabDefaut });
           if (sub?.submissionId) {
             await pool.query('UPDATE support_demandes SET docuseal_submission_id = $1 WHERE id = $2',
               [String(sub.submissionId), demande.id]);
@@ -256,6 +259,7 @@ const create = async (req, res) => {
                 addGerants: req.body.nbGerantsSupp || 0,
                 setAcheteurs: demande.nbAcheteursCible || null,
               },
+              voc: req.voc,
             })
               .catch((e) => console.error('[avenant] envoi email signature:', e.message));
           }
@@ -372,6 +376,7 @@ const traiter = async (req, res) => {
       // transaction + recalcul des paiements en attente sur la nouvelle mensualité.
       const db = await pool.connect();
       let aboIdApplique = null;
+      let resultatComposants = null;
       try {
         await db.query('BEGIN');
         const applied = await appliquerSupplement(db, demande.client_id, {
@@ -381,7 +386,9 @@ const traiter = async (req, res) => {
           setAcheteurs: demande.nb_acheteurs_cible || null,
         });
         aboIdApplique = applied?.aboId ?? null;
+        resultatComposants = applied?.result ?? null;
         await db.query('COMMIT');
+        invaliderProfilApresCommit(resultatComposants); // composant identité créé à la volée (spec §5.4)
       } catch (e) {
         await db.query('ROLLBACK').catch(() => {});
         throw e;
@@ -467,12 +474,14 @@ const traiter = async (req, res) => {
               dateAvenant,
             };
 
-            const pdfBase64 = await generateAvenantPdf(pdfData).catch((e) => {
+            // Traitée par un admin : vocabulaire du compte DESTINATAIRE (I6), pour le PDF et l'email
+            const voc = await vocabForClient(demande.client_id);
+            const pdfBase64 = await generateAvenantPdf(pdfData, voc).catch((e) => {
               console.error('PDF generation error:', e);
               return null;
             });
 
-            await sendAvenantEmail({ to: clientEmail, ...pdfData, pdfBase64 });
+            await sendAvenantEmail({ to: clientEmail, ...pdfData, pdfBase64, voc });
           } catch (e) {
             console.error('Avenant email error:', e);
           }
@@ -553,7 +562,8 @@ const previewAvenant = async (req, res) => {
       dateAvenant: new Date().toISOString(),
     };
 
-    const pdfBase64 = await generateAvenantPdf(pdfData);
+    // Aperçu admin : vocabulaire du compte DESTINATAIRE (I6, lot 2b spec §8.2)
+    const pdfBase64 = await generateAvenantPdf(pdfData, await vocabForClient(demande.client_id));
     res.json({ pdfBase64 });
   } catch (err) {
     console.error(err);

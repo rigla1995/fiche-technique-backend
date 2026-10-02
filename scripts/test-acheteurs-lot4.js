@@ -21,10 +21,16 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   const clientId = user.id;
   check('login client', !!token);
 
+  // Prérequis lus AVANT toute écriture : sans compte client ni labo, on s'arrête sans rien modifier.
+  const laboRes = await pool.query(`SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE pe.client_id = $1 LIMIT 1`, [clientId]);
+  if (user.role !== 'client' || !laboRes.rows[0]) {
+    console.error(`Prérequis absents : le compte de test doit être un client avec au moins un labo (rôle « ${user.role} », ${laboRes.rows.length} labo). Aucune écriture faite.`);
+    await pool.end();
+    process.exit(1);
+  }
+  const laboId = laboRes.rows[0].id;
   await pool.query(`UPDATE profil_entreprise SET module_acheteurs_actif = true WHERE client_id = $1`, [clientId]);
   await pool.query(`UPDATE abonnement_config SET nb_acheteurs = 10 WHERE abonnement_id = (SELECT id FROM abonnements WHERE client_id = $1)`, [clientId]);
-  const laboRes = await pool.query(`SELECT l.id FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE pe.client_id = $1 LIMIT 1`, [clientId]);
-  const laboId = laboRes.rows[0].id;
 
   const wipe = async () => {
     await pool.query(`DELETE FROM notifications WHERE event_type = 'nouvelle_commande_acheteur' AND user_id = $1`, [clientId]);

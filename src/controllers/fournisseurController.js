@@ -1,6 +1,8 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const multer = require('multer');
+const { vocabDefaut } = require('../utils/vocab');
+const { ongletSur } = require('../utils/excelNoms');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 // Ajout dynamique (import Excel) — même gabarit que le carnet d'acheteurs
@@ -81,7 +83,7 @@ const getFournisseursForActivite = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   // Périmètre gérant : interdire l'accès à une activité non affectée
   if (req.user.role === 'gerant' && !(req.user.gerantActiviteIds || []).includes(Number(activiteId))) {
-    return res.status(403).json({ message: 'Accès non autorisé à cette activité' });
+    return res.status(403).json({ message: 'Accès non autorisé à [[ce:activite]]' });
   }
   try {
     const check = await pool.query(
@@ -174,8 +176,8 @@ const updateFournisseur = async (req, res) => {
       'SELECT id, is_labo FROM fournisseurs WHERE id = $1 AND entreprise_id = $2',
       [id, entrepriseId]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Fournisseur introuvable' });
-    if (check.rows[0].is_labo) return res.status(403).json({ message: 'Ce fournisseur est géré automatiquement par le labo.' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
+    if (check.rows[0].is_labo) return res.status(403).json({ message: '[[Ce:fournisseur]] est [[acc:fournisseur:géré:gérée]] automatiquement par [[le:labo]].' });
 
     // Gérant: verify this fournisseur belongs to their activité/labo
     if (isGerant) {
@@ -232,8 +234,8 @@ const deleteFournisseur = async (req, res) => {
       'SELECT id, is_labo FROM fournisseurs WHERE id = $1 AND entreprise_id = $2',
       [id, entrepriseId]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Fournisseur introuvable' });
-    if (check.rows[0].is_labo) return res.status(403).json({ message: 'Ce fournisseur est géré automatiquement par le labo.' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
+    if (check.rows[0].is_labo) return res.status(403).json({ message: '[[Ce:fournisseur]] est [[acc:fournisseur:géré:gérée]] automatiquement par [[le:labo]].' });
 
     // Gérant: verify this fournisseur belongs to their activité/labo
     if (isGerant) {
@@ -259,11 +261,12 @@ const deleteFournisseur = async (req, res) => {
 const getFournisseursTemplate = async (req, res) => {
   try {
     const { brandTemplate } = require('../services/excelBrandService');
+    const voc = req.voc ?? vocabDefaut;
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Fournisseurs');
+    const ws = wb.addWorksheet(ongletSur(wb, voc.Court('fournisseur', true)));
     brandTemplate(wb, ws, {
-      titre: "Modèle d'import — Fournisseurs",
-      sousTitre: 'Ajout dynamique des fournisseurs : une ligne = un fournisseur',
+      titre: `Modèle d'import — ${voc.Court('fournisseur', true)}`,
+      sousTitre: `Ajout dynamique ${voc.du('fournisseur', true)} : une ligne = ${voc.un('fournisseur')}`,
       meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Seul le nom est obligatoire.",
       headers: IMPORT_HEADERS,
       widths: [30, 20, 38],

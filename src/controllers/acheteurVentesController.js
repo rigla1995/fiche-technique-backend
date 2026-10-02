@@ -163,7 +163,7 @@ const upsertOffre = async (req, res) => {
     // Une offre EXISTANTE reste modifiable même si l'article n'est plus éligible
     // (il faut pouvoir la désactiver) ; l'éligibilité ne gate que les nouvelles offres.
     if (prev.rows.length === 0 && !(await isEligible(clientId, articleType, articleId))) {
-      return res.status(400).json({ message: 'Article non proposable (article non commandable ou produit hors labo)' });
+      return res.status(400).json({ message: 'Article non proposable ([[nom:article]] non commandable ou [[nom:produit]] hors [[nom:labo]])' });
     }
     const r = await pool.query(
       `INSERT INTO acheteur_offres (client_id, article_type, article_id, prix_unitaire_ht, taux_tva, actif, promo_pct, promo_active, created_by)
@@ -319,8 +319,8 @@ const createVente = async (req, res) => {
   const { acheteurId, laboId, notes } = req.body;
   const dateCommande = req.body.dateCommande || new Date().toISOString().slice(0, 10);
   const lignesIn = Array.isArray(req.body.lignes) ? req.body.lignes : [];
-  if (!Number.isFinite(Number(acheteurId))) return res.status(400).json({ message: 'Acheteur requis' });
-  if (!Number.isFinite(Number(laboId))) return res.status(400).json({ message: 'Labo requis' });
+  if (!Number.isFinite(Number(acheteurId))) return res.status(400).json({ message: '[[Nom:acheteur]] [[acc:acheteur:requis:requise]]' });
+  if (!Number.isFinite(Number(laboId))) return res.status(400).json({ message: '[[Nom:labo]] [[acc:labo:requis:requise]]' });
   if (lignesIn.length === 0) return res.status(400).json({ message: 'Au moins une ligne est requise' });
 
   const statut = req.body.statut === 'livree' ? 'livree' : 'expediee';
@@ -350,10 +350,10 @@ const createVente = async (req, res) => {
         [laboId, clientId]
       ),
     ]);
-    if (ach.rows.length === 0) return res.status(404).json({ message: 'Acheteur introuvable' });
-    if (ach.rows[0].actif === false) return res.status(400).json({ message: 'Cet acheteur est désactivé' });
-    if (labo.rows.length === 0) return res.status(404).json({ message: 'Labo introuvable' });
-    if (!gerantAllowsLabo(req, laboId)) return res.status(403).json({ message: 'Labo hors de votre périmètre' });
+    if (ach.rows.length === 0) return res.status(404).json({ message: '[[Nom:acheteur]] introuvable' });
+    if (ach.rows[0].actif === false) return res.status(400).json({ message: '[[Ce:acheteur]] est [[acc:acheteur:désactivé:désactivée]]' });
+    if (labo.rows.length === 0) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
+    if (!gerantAllowsLabo(req, laboId)) return res.status(403).json({ message: '[[Nom:labo]] hors de votre périmètre' });
 
     const remisePct = req.body.remisePct !== undefined && req.body.remisePct !== ''
       ? Number(req.body.remisePct)
@@ -393,7 +393,7 @@ const createVente = async (req, res) => {
       const offre = offreMap.get(key);
       const meta = nomMap.get(key);
       if (!offre || !meta) {
-        return res.status(400).json({ message: `Ligne ${i + 1} : article sans offre active — configurez d'abord vos Tarifs Acheteurs` });
+        return res.status(400).json({ message: `Ligne ${i + 1} : article sans offre active — configurez d'abord vos Tarifs [[Court:acheteur:pl]]` });
       }
       const quantite = Number(l.quantite);
       if (!Number.isFinite(quantite) || quantite <= 0 || quantite > MAX_QTE) return res.status(400).json({ message: `Ligne ${i + 1} : quantité invalide` });
@@ -438,7 +438,7 @@ const createVente = async (req, res) => {
       }
       if (manquants.length > 0) {
         await db.query('ROLLBACK');
-        return res.status(422).json({ message: 'Stock labo insuffisant', manquants });
+        return res.status(422).json({ message: '[[Nom:stock]] [[compl:labo]] [[acc:stock:insuffisant:insuffisante]]', manquants });
       }
       const cmd = await db.query(
         `INSERT INTO commandes_acheteur
@@ -646,7 +646,7 @@ const getCommande = async (req, res) => {
 const expedierCommande = async (req, res) => {
   const clientId = clientIdOf(req);
   const laboId = Number(req.body.laboId);
-  if (!Number.isFinite(laboId)) return res.status(400).json({ message: 'Labo requis pour expédier la commande' });
+  if (!Number.isFinite(laboId)) return res.status(400).json({ message: '[[Nom:labo]] [[acc:labo:requis:requise]] pour expédier la commande' });
   const timbreFiscal = req.body.timbreFiscal !== false;
   const montantTimbre = timbreFiscal ? (Number.isFinite(Number(req.body.montantTimbre)) ? Number(req.body.montantTimbre) : 1.0) : 0;
   if (montantTimbre < 0) return res.status(400).json({ message: 'Timbre invalide' });
@@ -710,8 +710,8 @@ const expedierCommande = async (req, res) => {
        WHERE l.id = $1 AND pe.client_id = $2`,
       [laboId, clientId]
     );
-    if (labo.rows.length === 0) { await db.query('ROLLBACK'); return res.status(404).json({ message: 'Labo introuvable' }); }
-    if (!gerantAllowsLabo(req, laboId)) { await db.query('ROLLBACK'); return res.status(403).json({ message: 'Labo hors de votre périmètre' }); }
+    if (labo.rows.length === 0) { await db.query('ROLLBACK'); return res.status(404).json({ message: '[[Nom:labo]] introuvable' }); }
+    if (!gerantAllowsLabo(req, laboId)) { await db.query('ROLLBACK'); return res.status(403).json({ message: '[[Nom:labo]] hors de votre périmètre' }); }
     // Lot 1b §2.4 : verrou stock du labo source (même espace que les transferts / production PT).
     await lockStockLabo(db, laboId);
 
@@ -777,7 +777,7 @@ const expedierCommande = async (req, res) => {
     }
     if (manquants.length > 0) {
       await db.query('ROLLBACK');
-      return res.status(422).json({ message: 'Stock labo insuffisant', manquants });
+      return res.status(422).json({ message: '[[Nom:stock]] [[compl:labo]] [[acc:stock:insuffisant:insuffisante]]', manquants });
     }
 
     // Coûts matière figés + facture
@@ -852,7 +852,7 @@ const livrerCommande = async (req, res) => {
       await db.query('ROLLBACK');
       return res.status(409).json({ message: `Seule une commande expédiée peut être livrée (statut : ${cmd.statut})` });
     }
-    if (!gerantAllowsLabo(req, cmd.labo_id)) { await db.query('ROLLBACK'); return res.status(403).json({ message: 'Labo hors de votre périmètre' }); }
+    if (!gerantAllowsLabo(req, cmd.labo_id)) { await db.query('ROLLBACK'); return res.status(403).json({ message: '[[Nom:labo]] hors de votre périmètre' }); }
     // Chronologie : la livraison ne peut pas précéder l'expédition
     const dateExpIso = cmd.date_expedition instanceof Date ? cmd.date_expedition.toISOString().slice(0, 10) : cmd.date_expedition;
     if (dateExpIso && dateLivraison < dateExpIso) {
@@ -903,13 +903,13 @@ const annulerCommande = async (req, res) => {
     // du portail (les traiter fait partie de son périmètre).
     if (req.user.role === 'gerant' && cmd.source !== 'portail' && cmd.created_by !== req.user.id) {
       await db.query('ROLLBACK');
-      return res.status(403).json({ message: 'Vous ne pouvez annuler que vos propres ventes' });
+      return res.status(403).json({ message: 'Vous ne pouvez annuler que vos propres [[nom:vente:pl]]' });
     }
     // Périmètre labo (même règle que expedier/livrer) : une commande déjà expédiée
     // depuis un labo hors périmètre ne peut pas être annulée par ce gérant.
     if (cmd.labo_id && !gerantAllowsLabo(req, cmd.labo_id)) {
       await db.query('ROLLBACK');
-      return res.status(403).json({ message: 'Labo hors de votre périmètre' });
+      return res.status(403).json({ message: '[[Nom:labo]] hors de votre périmètre' });
     }
     await db.query(`DELETE FROM factures_acheteur WHERE commande_id = $1`, [cmd.id]);
     await db.query(
@@ -923,7 +923,7 @@ const annulerCommande = async (req, res) => {
     // Pas d'email à l'acheteur (cf. note dans emailService) : l'annulation et son
     // motif s'affichent dans « Mes commandes » sur le portail.
     const stockConcerne = cmd.statut === 'expediee' || cmd.statut === 'livree';
-    res.json({ message: stockConcerne ? 'Commande annulée — le stock a été réintégré' : 'Commande annulée' });
+    res.json({ message: stockConcerne ? 'Commande annulée — [[le:stock]] a été [[acc:stock:réintégré:réintégrée]]' : 'Commande annulée' });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
     console.error(err);

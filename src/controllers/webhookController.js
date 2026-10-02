@@ -66,10 +66,11 @@ const docusealWebhook = async (req, res) => {
         // chaque type, la cible acheteurs remplace le quota) via applyComposants — seul
         // écrivain des compteurs — puis recalcul des paiements en attente.
         {
-          const { applyComposants, composantsDepuisCompteurs } = require('../services/configComposantsService');
+          const { applyComposants, invaliderProfilApresCommit, composantsDepuisCompteurs } = require('../services/configComposantsService');
           const { recalcPaiementsEnAttente } = require('./abonnementController');
           const db = await pool.connect();
           let aboId = null;
+          let resultatComposants = null;
           try {
             await db.query('BEGIN');
             const aboRes = await db.query(
@@ -84,9 +85,10 @@ const docusealWebhook = async (req, res) => {
                 nbActivites: d.nb_activites_supp || 0, nbLabos: d.nb_labos_supp || 0,
                 nbGerants: d.nb_gerants_supp || 0, nbAcheteurs: d.nb_acheteurs_cible || 0,
               }, db);
-              await applyComposants(db, aboId, { composants, mode: 'add' });
+              resultatComposants = await applyComposants(db, aboId, { composants, mode: 'add' });
             }
             await db.query('COMMIT');
+            invaliderProfilApresCommit(resultatComposants); // composant identité créé à la volée (spec §5.4)
           } catch (e) {
             await db.query('ROLLBACK').catch(() => {});
             throw e;

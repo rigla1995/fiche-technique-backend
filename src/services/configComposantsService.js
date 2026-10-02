@@ -11,12 +11,14 @@
 //   deriveCompteurs(composants)                     → { nb_activites, nb_labos, nb_gerants, nb_acheteurs }
 //   validerComposition({ compteurs, regles, composants }) → [{ code, message }] (vide = OK)
 //   composantsDepuisCompteurs(domaineId, compteurs) → [{ code, nb }] (compat anciens payloads)
-//   applyComposants(db, aboId, { domaineId, composants, mode })
-//   listComposantsConfig(aboId)                     → [{ composantId, code, libelle, … , nb }]
+//   applyComposants(db, aboId, { domaineId, composants, mode }) → { domaineId, compteurs, composants, identitesCreees }
+//   invaliderProfilApresCommit(resultat)            APRÈS le COMMIT : oublie le profil en cache si un composant identité a été créé
+//   listComposantsConfig(aboId)                     → [{ composantId, code, libelle, libellePluriel, genre, elision, … , nb }]
 const pool = require('../config/database');
 const {
-  TYPES_TECHNIQUES, COMPOSANTS_IDENTITE, REGLES_DEFAUT, mapComposant, getDomaineDefautId,
+  TYPES_TECHNIQUES, COMPOSANTS_IDENTITE, REGLES_DEFAUT, mapComposant, getDomaineDefautId, getProfil, invalidate,
 } = require('./domaineProfilService');
+const { vocabDuProfil } = require('../utils/vocabCompte');
 
 // Erreur de composition → 400 { message, code, erreurs } côté contrôleur.
 class CompositionError extends Error {
@@ -76,17 +78,17 @@ const validerComposition = ({ compteurs, regles = REGLES_DEFAUT, composants = []
     push('COMPOSITION_INVALIDE', 'Les quantités doivent être positives ou nulles');
   }
   if (k.nb_acheteurs < 0 || k.nb_acheteurs > 100) {
-    push('ACHETEURS_QUOTA', 'Quota acheteurs invalide (paliers de 1 à 100)');
+    push('ACHETEURS_QUOTA', 'Quota [[court:acheteur:pl]] invalide (paliers de 1 à 100)');
   }
   if (r.depot_exige_acheteurs !== false && k.nb_activites === 0) {
     if (k.nb_labos < 1) {
-      push('DEPOT_SANS_LABO', 'Un compte sans activité doit avoir au moins un labo (compte dépôt)');
+      push('DEPOT_SANS_LABO', 'Un compte sans [[nom:activite]] doit avoir au moins [[un:labo]] (compte [[nom:depot]])');
     } else if (k.nb_acheteurs === 0) {
-      push('DEPOT_SANS_ACHETEURS', "Un labo sans activité nécessite l'option Acheteurs (compte dépôt = labo + acheteurs)");
+      push('DEPOT_SANS_ACHETEURS', "[[Un:labo]] sans [[nom:activite]] nécessite l'option [[Court:acheteur:pl]] (compte [[nom:depot]] = [[nom:labo]] + [[nom:acheteur:pl]])");
     }
   }
   if (r.acheteurs_requiert_labo !== false && k.nb_acheteurs > 0 && k.nb_labos < 1) {
-    push('ACHETEURS_SANS_LABO', "L'option Acheteurs nécessite au moins un labo");
+    push('ACHETEURS_SANS_LABO', "L'option [[Court:acheteur:pl]] nécessite au moins [[un:labo]]");
   }
   return erreurs;
 };
@@ -117,21 +119,60 @@ const loadComposantsDomaine = async (db, domaineId) => {
   return r.rows.map(mapComposant);
 };
 
+// Composant identité d'un type dans les MOTS d'un domaine (lot 2b §5.4, §6.7) : libellés, genre et
+// élision viennent du TERME du lexique du domaine ; icône et ordre, de COMPOSANTS_IDENTITE.
+// Table à clés littérales : une par type technique.
+const IDENTITE_DU_VOC = Object.freeze({
+  activite: (voc) => ({
+    libelle: voc.Nom('activite'), libellePluriel: voc.Pl('activite'),
+    genre: voc.acc('activite', 'm', 'f'), elision: /^l'/.test(voc.le('activite')),
+  }),
+  labo: (voc) => ({
+    libelle: voc.Nom('labo'), libellePluriel: voc.Pl('labo'),
+    genre: voc.acc('labo', 'm', 'f'), elision: /^l'/.test(voc.le('labo')),
+  }),
+  gerant: (voc) => ({
+    libelle: voc.Nom('gerant'), libellePluriel: voc.Pl('gerant'),
+    genre: voc.acc('gerant', 'm', 'f'), elision: /^l'/.test(voc.le('gerant')),
+  }),
+  // Module « Base acheteurs » : invariable (même texte que l'écran Mon abonnement), féminin, élision déduite.
+  acheteurs: (voc) => ({
+    libelle: `Base ${voc.court('acheteur', true)}`, libellePluriel: `Base ${voc.court('acheteur', true)}`,
+    genre: 'f', elision: null,
+  }),
+});
+
+// Libellés, genre et élision du composant identité `type` du domaine. Le profil est lu ICI
+// (getProfil) : la fonction est atteinte par le webhook DocuSeal et par des requêtes admin, qui
+// n'ont pas le vocabulaire du compte. Domaine illisible → LÈVE : on n'écrit jamais en base un
+// libellé de repli (la transaction de l'appelant est annulée).
+const identiteDuDomaine = async (domaineId, type) => {
+  const idt = COMPOSANTS_IDENTITE[type];
+  if (!idt) throw new Error(`composant identité : type technique inconnu « ${type} »`);
+  const profil = await getProfil(domaineId);
+  if (!profil || profil.id == null) throw new Error(`composant identité : domaine ${domaineId} illisible, aucun libellé écrit`);
+  return { ...idt, ...IDENTITE_DU_VOC[type](vocabDuProfil(profil)) };
+};
+
 // Crée (ou réactive) le composant identité d'un type dans un domaine — comme le
-// backfill de la migration 187. Renvoie le composant mappé.
-// Un composant INACTIF portant déjà ce code est réactivé s'il est du même type ;
-// s'il est d'un AUTRE type (créé par l'admin), il n'est jamais retypé (ses
+// backfill de la migration 187, mais dans les mots du domaine (identiteDuDomaine).
+// Renvoie le composant mappé. Le profil du domaine en cache (domaineProfilService, TTL 60 s) n'a pas ce
+// composant, et identiteDuDomaine vient de l'y mettre : applyComposants le signale (identitesCreees) et
+// l'appelant appelle invaliderProfilApresCommit(resultat) APRÈS son COMMIT (spec §5.4).
+// Un composant INACTIF portant déjà ce code est réactivé s'il est du même type (il garde
+// son libellé) ; s'il est d'un AUTRE type (créé par l'admin), il n'est jamais retypé (ses
 // références garderaient des compteurs faux) : l'identité prend un code suffixé.
 const creerComposantIdentite = async (db, domaineId, type) => {
-  const idt = COMPOSANTS_IDENTITE[type];
+  const idt = await identiteDuDomaine(domaineId, type);
   const insert = (code) => db.query(
-    `INSERT INTO domaine_composants (domaine_id, code, libelle, libelle_pluriel, icone, type_technique, ordre)
+    `INSERT INTO domaine_composants (domaine_id, code, libelle, libelle_pluriel, icone, type_technique, ordre, genre, elision)
      VALUES ($1, $2, $3, $4, $5, $6,
-             (SELECT COALESCE(MAX(ordre), 0) + 1 FROM domaine_composants WHERE domaine_id = $1))
+             (SELECT COALESCE(MAX(ordre), 0) + 1 FROM domaine_composants WHERE domaine_id = $1),
+             $7, $8::boolean)
      ON CONFLICT (domaine_id, code) DO UPDATE SET actif = true
        WHERE domaine_composants.type_technique = EXCLUDED.type_technique
      RETURNING *`,
-    [domaineId, code, idt.libelle, idt.libellePluriel, idt.icone, type]
+    [domaineId, code, idt.libelle, idt.libellePluriel, idt.icone, type, idt.genre, idt.elision]
   );
   let r = await insert(idt.code);
   for (let n = 2; !r.rows.length && n <= 20; n++) r = await insert(`${idt.code}_${n}`);
@@ -146,12 +187,14 @@ const premierDuType = (composants, type) =>
 // items: [{ code | composantId, nb }] → composants du domaine (mappés) + nb.
 // Un code inconnu ÉGAL à un type technique, sans composant actif de ce type dans le
 // domaine, désigne le composant identité : créé à la volée (creer=true, dans la
-// transaction) ou renvoyé virtuel (creer=false, validation avant écriture).
+// transaction) ou renvoyé virtuel (creer=false, validation avant écriture) — avec les
+// MÊMES libellé, genre et élision (identiteDuDomaine) : l'aperçu dit ce que la création écrira.
 // Codes inconnus / composants inactifs → CompositionError (400) — sauf, avec
 // `actuels` (détail souscrit, listComposantsConfig), un composant inactif DÉJÀ
 // souscrit dont la quantité ne monte pas (un composant désactivé par l'admin reste
 // valide pour les comptes qui l'utilisent ; il ne peut plus être ajouté).
-const resolveComposants = async (db, domaineId, items, { creer = true, actuels = null } = {}) => {
+// `crees` (tableau, optionnel) : reçoit chaque composant identité créé à la volée (creer=true).
+const resolveComposants = async (db, domaineId, items, { creer = true, actuels = null, crees = null } = {}) => {
   const dispo = await loadComposantsDomaine(db, domaineId);
   const nbActuel = new Map((actuels || []).map((a) => [a.composantId ?? a.id, nbOf(a)]));
   const erreurs = [];
@@ -171,8 +214,9 @@ const resolveComposants = async (db, domaineId, items, { creer = true, actuels =
       if (creer) {
         comp = await creerComposantIdentite(db, domaineId, code);
         dispo.push(comp);
+        if (Array.isArray(crees)) crees.push(comp);
       } else {
-        const idt = COMPOSANTS_IDENTITE[code];
+        const idt = await identiteDuDomaine(domaineId, code);
         comp = { id: null, ...idt, aide: null, typeTechnique: code, venteActive: true, productionActive: true, nbMin: 0, nbMax: null, actif: true, virtuel: true };
       }
     }
@@ -262,6 +306,8 @@ const listComposantsConfig = async (aboId, db = pool) => {
     code: row.code,
     libelle: row.libelle,
     libellePluriel: row.libelle_pluriel ?? null,
+    genre: row.genre === 'f' ? 'f' : 'm',
+    elision: typeof row.elision === 'boolean' ? row.elision : null,
     icone: row.icone ?? null,
     typeTechnique: row.type_technique,
     nb: parseInt(row.nb, 10) || 0,
@@ -273,7 +319,9 @@ const listComposantsConfig = async (aboId, db = pool) => {
 //   mode 'add' : incrémente les composants activite/labo/gerant ; un composant
 //                acheteurs REMPLACE le quota (cible de palier, jamais un cumul)
 // `domaineId` (optionnel) : écrit aussi abonnement_config.domaine_id.
-// Renvoie { compteurs, composants } après recalcul.
+// Renvoie { domaineId, compteurs, composants, identitesCreees } après recalcul. identitesCreees : un
+// composant identité a été créé dans le domaine → l'appelant appelle invaliderProfilApresCommit(resultat)
+// APRÈS son COMMIT (jamais avant : un chargement concurrent remettrait en cache le profil sans la ligne).
 const applyComposants = async (db, aboId, { domaineId = null, composants = [], mode = 'set' } = {}) => {
   if (!['set', 'add'].includes(mode)) throw new Error(`applyComposants : mode inconnu « ${mode} »`);
   const cfgRes = await db.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1 FOR UPDATE', [aboId]);
@@ -287,7 +335,8 @@ const applyComposants = async (db, aboId, { domaineId = null, composants = [], m
 
   // Détail souscrit : un composant inactif déjà présent reste accepté (nb non croissant)
   const actuels = await listComposantsConfig(aboId, db);
-  const resolved = await resolveComposants(db, domId, composants, { creer: true, actuels });
+  const crees = [];
+  const resolved = await resolveComposants(db, domId, composants, { creer: true, actuels, crees });
 
   if (mode === 'set') {
     await db.query('DELETE FROM abonnement_config_composants WHERE abonnement_id = $1', [aboId]);
@@ -340,12 +389,24 @@ const applyComposants = async (db, aboId, { domaineId = null, composants = [], m
       WHERE abonnement_id = $1`,
     [aboId, compteurs.nb_activites, compteurs.nb_labos, compteurs.nb_gerants, compteurs.nb_acheteurs, domId]
   );
-  return { domaineId: domId, compteurs, composants: rows };
+  return { domaineId: domId, compteurs, composants: rows, identitesCreees: crees.length > 0 };
+};
+
+// Après le COMMIT de la transaction d'un applyComposants (spec §5.4) : si un composant identité a été créé à
+// la volée, le profil du domaine en cache ne l'a pas (pastilles, glossaire, /auth/me, GET /api/domaines) ; on
+// l'oublie. Au mieux : ne lève jamais, la configuration est déjà écrite. `resultat` absent (aucun
+// applyComposants dans la transaction) : rien.
+const invaliderProfilApresCommit = (resultat) => {
+  try {
+    if (resultat && resultat.identitesCreees && resultat.domaineId != null) invalidate(resultat.domaineId);
+  } catch (e) {
+    console.error('[composants] invalidation du profil du domaine :', e.message);
+  }
 };
 
 module.exports = {
   CompositionError,
   deriveCompteurs, normCompteurs, validerComposition, assertComposition, erreursIntroduites,
-  loadComposantsDomaine, resolveComposants, creerComposantIdentite, premierDuType,
-  composantsDepuisCompteurs, composantsDelta, applyComposants, listComposantsConfig,
+  loadComposantsDomaine, resolveComposants, creerComposantIdentite, identiteDuDomaine, premierDuType,
+  composantsDepuisCompteurs, composantsDelta, applyComposants, invaliderProfilApresCommit, listComposantsConfig,
 };
