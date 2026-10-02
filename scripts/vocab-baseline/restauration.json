@@ -650,7 +650,7 @@
       },
       {
        "nom": "get_referentiel",
-       "description": "Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d'articles.",
+       "description": "Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approvisionnements : get_stock, get_appros).",
        "parametres": {
         "type": "object",
         "properties": {
@@ -743,7 +743,7 @@
       },
       {
        "nom": "get_config_vente",
-       "description": "Récupère la configuration de vente : prestataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.",
+       "description": "Récupère la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.",
        "parametres": {
         "type": "object",
         "properties": {
@@ -992,7 +992,7 @@
      "type": "function",
      "function": {
       "name": "get_referentiel",
-      "description": "Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d'articles.",
+      "description": "Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approvisionnements : get_stock, get_appros).",
       "parameters": {
        "type": "object",
        "properties": {
@@ -1100,7 +1100,7 @@
      "type": "function",
      "function": {
       "name": "get_config_vente",
-      "description": "Récupère la configuration de vente : prestataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.",
+      "description": "Récupère la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.",
       "parameters": {
        "type": "object",
        "properties": {
@@ -1241,19 +1241,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "10.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.650",
-     "source": "Terrasse du Lac — Salon",
-     "type_appro": "transfert"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "-10.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.650",
      "source": "Bloc chaud",
      "type_appro": "manuel"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "10.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.650",
+     "source": "Terrasse du Lac — Salon",
+     "type_appro": "transfert"
     },
     {
      "ingredient": "Riz basmati",
@@ -1538,9 +1538,28 @@
      "destination": "Bloc chaud (labo)"
     }
    ],
-   "get_referentiel": {
-    "error": "la colonne i.prix n'existe pas"
-   },
+   "get_referentiel": [
+    {
+     "nom": "Café moulu",
+     "unite": "kg"
+    },
+    {
+     "nom": "Drap 240x300",
+     "unite": "pièce"
+    },
+    {
+     "nom": "Huile de tournesol",
+     "unite": "L"
+    },
+    {
+     "nom": "Riz basmati",
+     "unite": "kg"
+    },
+    {
+     "nom": "Savon 30 g",
+     "unite": "pièce"
+    }
+   ],
    "get_fournisseurs": [
     {
      "nom": "AUTO",
@@ -1806,10 +1825,64 @@
     }
    ],
    "get_config_vente": {
-    "error": "la colonne pl.commission_pct n'existe pas"
+    "prestataires_livraison": [],
+    "charges_fixes": [
+     {
+      "activite": "Terrasse du Lac — Salon",
+      "mode": "detail",
+      "montant_global": null,
+      "loyer": "1000.00",
+      "charges_personnel": "2000.00",
+      "electricite_gaz": "300.00",
+      "eau": "50.00"
+     }
+    ],
+    "articles_vendables": [
+     {
+      "activite": "Terrasse du Lac — Salon",
+      "article_type": "produit",
+      "article": "Assiette du jour",
+      "prix_vente": "25.00",
+      "actif": true
+     },
+     {
+      "activite": "Terrasse du Lac — Salon",
+      "article_type": "ingredient",
+      "article": "Café moulu",
+      "prix_vente": "4.50",
+      "actif": true
+     }
+    ]
    },
    "get_config_vente activite_id=id": {
-    "error": "la colonne pl.commission_pct n'existe pas"
+    "prestataires_livraison": [],
+    "charges_fixes": [
+     {
+      "activite": "Terrasse du Lac — Salon",
+      "mode": "detail",
+      "montant_global": null,
+      "loyer": "1000.00",
+      "charges_personnel": "2000.00",
+      "electricite_gaz": "300.00",
+      "eau": "50.00"
+     }
+    ],
+    "articles_vendables": [
+     {
+      "activite": "Terrasse du Lac — Salon",
+      "article_type": "produit",
+      "article": "Assiette du jour",
+      "prix_vente": "25.00",
+      "actif": true
+     },
+     {
+      "activite": "Terrasse du Lac — Salon",
+      "article_type": "ingredient",
+      "article": "Café moulu",
+      "prix_vente": "4.50",
+      "actif": true
+     }
+    ]
    }
   },
   "recherches": {
@@ -6699,13 +6772,13 @@
       ],
       [
        "Riz basmati",
-       "10",
+       "-10",
        "⟨date⟩",
        "2.65"
       ],
       [
        "Riz basmati",
-       "-10",
+       "10",
        "⟨date⟩",
        "2.65"
       ],

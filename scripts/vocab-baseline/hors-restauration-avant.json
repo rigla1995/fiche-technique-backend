@@ -12,7 +12,7 @@
     "produit_vendable_abr",
     "produit_valorise_abr"
    ],
-   "textesLus": 7052,
+   "textesLus": 7067,
    "formesCherchees": {
     "Acheteur": [
      "acheteur:Nom",
@@ -248,19 +248,19 @@
    "formesRetirees": {},
    "exceptionsEmployees": 43,
    "formes": {
-    "occurrences": 817,
+    "occurrences": 819,
     "textes": 535,
     "parFamille": {
      "assistant": {
-      "occurrences": 327,
+      "occurrences": 329,
       "textes": 176,
       "parCle": {
        "accueilMessenger": 6,
        "contexte": 18,
        "guide": 166,
-       "outils": 36,
+       "outils": 37,
        "prompt": 28,
-       "promptReel": 51,
+       "promptReel": 52,
        "rapportIA": 11,
        "resultatsOutils": 11
       },
@@ -271,7 +271,7 @@
        "Appro": 9,
        "Appros": 3,
        "Approvisionnement": 16,
-       "Approvisionnements": 6,
+       "Approvisionnements": 8,
        "Article": 13,
        "Articles": 41,
        "Fiche technique": 11,
@@ -1852,18 +1852,6 @@
       "famille": "assistant",
       "cle": "outils",
       "chemin": "/json/n/function/description",
-      "exemple": "/json/11/function/description",
-      "formes": [
-       "Activité",
-       "Prestataires"
-      ],
-      "occurrences": 2,
-      "texte": "…estataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité."
-     },
-     {
-      "famille": "assistant",
-      "cle": "outils",
-      "chemin": "/json/n/function/description",
       "exemple": "/json/9/function/description",
       "formes": [
        "Activité",
@@ -1896,6 +1884,18 @@
       ],
       "occurrences": 1,
       "texte": "…par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou prop…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "outils",
+      "chemin": "/json/n/function/description",
+      "exemple": "/json/11/function/description",
+      "formes": [
+       "Activité",
+       "Prestataires"
+      ],
+      "occurrences": 2,
+      "texte": "…père la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de ven…"
      },
      {
       "famille": "assistant",
@@ -1962,10 +1962,11 @@
       "exemple": "/json/6/function/description",
       "formes": [
        "Articles",
-       "Ingrédients"
+       "Ingrédients",
+       "Approvisionnements"
       ],
-      "occurrences": 2,
-      "texte": "Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d'articles."
+      "occurrences": 3,
+      "texte": "Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approv…"
      },
      {
       "famille": "assistant",
@@ -2104,18 +2105,6 @@
       "famille": "assistant",
       "cle": "promptReel",
       "chemin": "/corps/n/outils/n/description",
-      "exemple": "/corps/0/outils/11/description",
-      "formes": [
-       "Activité",
-       "Prestataires"
-      ],
-      "occurrences": 2,
-      "texte": "…estataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité."
-     },
-     {
-      "famille": "assistant",
-      "cle": "promptReel",
-      "chemin": "/corps/n/outils/n/description",
       "exemple": "/corps/0/outils/9/description",
       "formes": [
        "Activité",
@@ -2148,6 +2137,18 @@
       ],
       "occurrences": 1,
       "texte": "…par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou prop…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "promptReel",
+      "chemin": "/corps/n/outils/n/description",
+      "exemple": "/corps/0/outils/11/description",
+      "formes": [
+       "Activité",
+       "Prestataires"
+      ],
+      "occurrences": 2,
+      "texte": "…père la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de ven…"
      },
      {
       "famille": "assistant",
@@ -2214,10 +2215,11 @@
       "exemple": "/corps/0/outils/6/description",
       "formes": [
        "Articles",
-       "Ingrédients"
+       "Ingrédients",
+       "Approvisionnements"
       ],
-      "occurrences": 2,
-      "texte": "Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d'articles."
+      "occurrences": 3,
+      "texte": "Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approv…"
      },
      {
       "famille": "assistant",
@@ -6926,7 +6928,7 @@
     "produit_vendable_abr",
     "produit_valorise_abr"
    ],
-   "textesLus": 7305,
+   "textesLus": 7320,
    "formesCherchees": {
     "Acheteur": [
      "acheteur:Nom",
@@ -8316,17 +8318,6 @@
       "famille": "assistant",
       "cle": "outils",
       "chemin": "/json/n/function/description",
-      "exemple": "/json/11/function/description",
-      "formes": [
-       "Activité"
-      ],
-      "occurrences": 1,
-      "texte": "…estataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité."
-     },
-     {
-      "famille": "assistant",
-      "cle": "outils",
-      "chemin": "/json/n/function/description",
       "exemple": "/json/9/function/description",
       "formes": [
        "Activité",
@@ -8358,6 +8349,17 @@
       ],
       "occurrences": 1,
       "texte": "…par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou prop…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "outils",
+      "chemin": "/json/n/function/description",
+      "exemple": "/json/11/function/description",
+      "formes": [
+       "Activité"
+      ],
+      "occurrences": 1,
+      "texte": "…père la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de ven…"
      },
      {
       "famille": "assistant",
@@ -8416,7 +8418,7 @@
        "Ingrédients"
       ],
       "occurrences": 2,
-      "texte": "Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d'articles."
+      "texte": "Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approv…"
      },
      {
       "famille": "assistant",
@@ -8544,17 +8546,6 @@
       "famille": "assistant",
       "cle": "promptReel",
       "chemin": "/corps/n/outils/n/description",
-      "exemple": "/corps/0/outils/11/description",
-      "formes": [
-       "Activité"
-      ],
-      "occurrences": 1,
-      "texte": "…estataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité."
-     },
-     {
-      "famille": "assistant",
-      "cle": "promptReel",
-      "chemin": "/corps/n/outils/n/description",
       "exemple": "/corps/0/outils/9/description",
       "formes": [
        "Activité",
@@ -8586,6 +8577,17 @@
       ],
       "occurrences": 1,
       "texte": "…par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou prop…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "promptReel",
+      "chemin": "/corps/n/outils/n/description",
+      "exemple": "/corps/0/outils/11/description",
+      "formes": [
+       "Activité"
+      ],
+      "occurrences": 1,
+      "texte": "…père la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de ven…"
      },
      {
       "famille": "assistant",
@@ -8644,7 +8646,7 @@
        "Ingrédients"
       ],
       "occurrences": 2,
-      "texte": "Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d'articles."
+      "texte": "Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approv…"
      },
      {
       "famille": "assistant",
@@ -12506,7 +12508,7 @@
     "produit_vendable_abr",
     "produit_valorise_abr"
    ],
-   "textesLus": 6752,
+   "textesLus": 6767,
    "formesCherchees": {
     "Acheteur": [
      "acheteur:Nom",
@@ -12854,19 +12856,19 @@
    "formesRetirees": {},
    "exceptionsEmployees": 56,
    "formes": {
-    "occurrences": 1274,
+    "occurrences": 1276,
     "textes": 720,
     "parFamille": {
      "assistant": {
-      "occurrences": 554,
+      "occurrences": 556,
       "textes": 274,
       "parCle": {
        "accueilMessenger": 14,
        "contexte": 36,
        "guide": 288,
-       "outils": 55,
+       "outils": 56,
        "prompt": 46,
-       "promptReel": 83,
+       "promptReel": 84,
        "rapportIA": 21,
        "resultatsOutils": 11
       },
@@ -12877,7 +12879,7 @@
        "Appro": 9,
        "Appros": 3,
        "Approvisionnement": 16,
-       "Approvisionnements": 6,
+       "Approvisionnements": 8,
        "Article": 13,
        "Articles": 41,
        "Coût matière": 6,
@@ -15436,19 +15438,6 @@
       "famille": "assistant",
       "cle": "outils",
       "chemin": "/json/n/function/description",
-      "exemple": "/json/11/function/description",
-      "formes": [
-       "Activité",
-       "Vente",
-       "Prestataires"
-      ],
-      "occurrences": 3,
-      "texte": "…estataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité."
-     },
-     {
-      "famille": "assistant",
-      "cle": "outils",
-      "chemin": "/json/n/function/description",
       "exemple": "/json/9/function/description",
       "formes": [
        "Activité",
@@ -15487,6 +15476,19 @@
       ],
       "occurrences": 4,
       "texte": "…par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou prop…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "outils",
+      "chemin": "/json/n/function/description",
+      "exemple": "/json/11/function/description",
+      "formes": [
+       "Activité",
+       "Vente",
+       "Prestataires"
+      ],
+      "occurrences": 3,
+      "texte": "…père la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de ven…"
      },
      {
       "famille": "assistant",
@@ -15579,10 +15581,11 @@
       "formes": [
        "Articles",
        "Ingrédients",
+       "Approvisionnements",
        "Référentiel"
       ],
-      "occurrences": 3,
-      "texte": "Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d'articles."
+      "occurrences": 4,
+      "texte": "Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approv…"
      },
      {
       "famille": "assistant",
@@ -15785,19 +15788,6 @@
       "famille": "assistant",
       "cle": "promptReel",
       "chemin": "/corps/n/outils/n/description",
-      "exemple": "/corps/0/outils/11/description",
-      "formes": [
-       "Activité",
-       "Vente",
-       "Prestataires"
-      ],
-      "occurrences": 3,
-      "texte": "…estataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité."
-     },
-     {
-      "famille": "assistant",
-      "cle": "promptReel",
-      "chemin": "/corps/n/outils/n/description",
       "exemple": "/corps/0/outils/9/description",
       "formes": [
        "Activité",
@@ -15836,6 +15826,19 @@
       ],
       "occurrences": 4,
       "texte": "…par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou prop…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "promptReel",
+      "chemin": "/corps/n/outils/n/description",
+      "exemple": "/corps/0/outils/11/description",
+      "formes": [
+       "Activité",
+       "Vente",
+       "Prestataires"
+      ],
+      "occurrences": 3,
+      "texte": "…père la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de ven…"
      },
      {
       "famille": "assistant",
@@ -15928,10 +15931,11 @@
       "formes": [
        "Articles",
        "Ingrédients",
+       "Approvisionnements",
        "Référentiel"
       ],
-      "occurrences": 3,
-      "texte": "Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d'articles."
+      "occurrences": 4,
+      "texte": "Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approv…"
      },
      {
       "famille": "assistant",
