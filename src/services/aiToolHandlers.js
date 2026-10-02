@@ -293,8 +293,8 @@ async function toolSearchKnowledge(clientId, toolInput) {
   // pas documenter des écrans que ce client ne voit pas. Sans clientId (ex. prospect
   // Messenger non lié), le manuel complet reste consultable (vitrines comprises).
   const [kb, manuel, ctx] = await Promise.all([
-    pool.query('SELECT titre, contenu, mots_cles FROM ai_knowledge_base WHERE actif = true'),
-    pool.query('SELECT slug, titre, partie, contenu, mots_cles FROM manuel_sections WHERE actif = true'),
+    pool.query('SELECT titre, contenu, mots_cles FROM ai_knowledge_base WHERE actif = true ORDER BY id'),
+    pool.query('SELECT slug, titre, partie, contenu, mots_cles FROM manuel_sections WHERE actif = true ORDER BY ordre, id'),
     clientId ? buildManuelContexte({ role: 'client', id: clientId }) : Promise.resolve(null),
   ]);
   const TRUNC = 6000;
