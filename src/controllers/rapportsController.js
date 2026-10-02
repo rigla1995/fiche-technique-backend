@@ -488,7 +488,9 @@ const getRapportFilters = async (req, res) => {
 
   try {
     const [catRes, fourn, acts] = await Promise.all([
-      pool.query('SELECT id, nom FROM categories ORDER BY nom'),
+      // Catégories du compte seulement (comme categoriesController.list) : sans ce filtre, la route
+      // renvoyait les catégories de tous les comptes.
+      pool.query('SELECT id, nom FROM categories WHERE client_id = $1 ORDER BY nom', [clientId]),
       pool.query(
         `SELECT f.id, f.nom FROM fournisseurs f
          JOIN profil_entreprise pe ON pe.id = f.entreprise_id
