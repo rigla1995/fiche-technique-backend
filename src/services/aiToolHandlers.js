@@ -315,14 +315,15 @@ async function toolSearchKnowledge(clientId, toolInput) {
   return { results: scored.map(({ titre, contenu }) => ({ titre, contenu })) };
 }
 
-// ── Référentiel articles (ingrédients : nom, prix de référence, unité) ─────────
+// ── Référentiel articles (ingrédients : nom, unité) ──────────────────────────────
+// Les articles n'ont pas de prix : les prix sont ceux des approvisionnements (get_stock, get_appros).
 async function toolGetReferentiel(clientId, { search, limit = 100 } = {}) {
   const safeLimit = Math.min(parseInt(limit) || 100, 300);
   const params = [clientId];
   let extra = '';
   if (search) { params.push(`%${search}%`); extra = `AND i.nom ILIKE $${params.length}`; }
   const { rows } = await pool.query(
-    `SELECT i.nom, i.prix, u.nom AS unite
+    `SELECT i.nom, u.nom AS unite
      FROM articles i
      LEFT JOIN unites u ON u.id = i.unite_id
      WHERE i.client_id = $1 ${extra}
@@ -448,14 +449,19 @@ async function toolGetProduits(clientId, { search, limit = 100 } = {}) {
 
 // ── Configuration de vente : prestataires, charges fixes, articles vendables ──
 async function toolGetConfigVente(clientId, { activite_id } = {}) {
+  // Prestataires configurés par activité (activite_prestataires, migr 082) ; plus de commission (migr 107).
+  const pParams = [clientId];
+  let pExtra = '';
+  if (activite_id) { pParams.push(activite_id); pExtra = `AND ap.activite_id = $${pParams.length}`; }
   const presta = await pool.query(
-    `WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1)
-     SELECT pl.nom, pl.commission_pct
-     FROM entreprise_prestataires ep
-     JOIN prestataires_livraison pl ON pl.id = ep.prestataire_id
-     WHERE ep.entreprise_id IN (SELECT id FROM pe) AND pl.actif = true
-     ORDER BY pl.nom`,
-    [clientId]
+    `${CLIENT_SCOPE_CTE}
+     SELECT a.nom AS activite, pl.nom
+     FROM activite_prestataires ap
+     JOIN prestataires_livraison pl ON pl.id = ap.prestataire_id
+     JOIN activites a ON a.id = ap.activite_id
+     WHERE ap.activite_id IN (SELECT id FROM client_activites) AND ap.actif = true AND pl.actif = true ${pExtra}
+     ORDER BY a.nom, pl.nom`,
+    pParams
   );
 
   const chParams = [clientId];
@@ -627,7 +633,7 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_referentiel',
-    description: 'Récupère le référentiel des articles/ingrédients du client : nom, prix de référence (TND), unité. Pour répondre aux questions sur le catalogue d\'articles.',
+    description: 'Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d\'articles (les prix viennent des approvisionnements : get_stock, get_appros).',
     input_schema: {
       type: 'object',
       properties: {
@@ -682,7 +688,7 @@ const TOOLS_ANTHROPIC = [
   },
   {
     name: 'get_config_vente',
-    description: 'Récupère la configuration de vente : prestataires de livraison actifs (avec commission %), charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.',
+    description: 'Récupère la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.',
     input_schema: {
       type: 'object',
       properties: {
