@@ -43,8 +43,9 @@ const getDashboard = async (req, res) => {
       if (!check.rows.length) return res.status(403).json({ message: 'Activité non autorisée' });
       const { nom: activiteNom, module_vente_actif: hasVente } = check.rows[0];
 
-      // Build type_appro WHERE clause
-      const typeWhere = typeApproFilter ? `AND type_appro = '${typeApproFilter}'` : '';
+      // Filtre type_appro : la valeur vient de l'URL, toujours en paramètre lié ($4), jamais dans le SQL.
+      const typeWhere = typeApproFilter ? 'AND type_appro = $4' : '';
+      const typeParam = typeApproFilter ? [typeApproFilter] : [];
 
       const [approsKpi, pertesKpi, invKpi, stockCount, approsParType,
              approsMonthly, pertesMonthly, venteKpi, venteMonthly] = await Promise.all([
@@ -64,7 +65,7 @@ const getDashboard = async (req, res) => {
                  FROM stock_produits_transformes
                  WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3 AND quantite > 0
                ) t`,
-          [gerant_activite_id, dateFrom, dateTo]
+          [gerant_activite_id, dateFrom, dateTo, ...typeParam]
         ),
         // Pertes
         pool.query(
@@ -100,7 +101,7 @@ const getDashboard = async (req, res) => {
            FROM stock_entreprise_daily
            WHERE activite_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}
            GROUP BY mois ORDER BY mois`,
-          [gerant_activite_id, `${year}-01-01`, `${year}-12-31`]
+          [gerant_activite_id, `${year}-01-01`, `${year}-12-31`, ...typeParam]
         ),
         // Monthly pertes (12 months)
         pool.query(
@@ -183,7 +184,9 @@ const getDashboard = async (req, res) => {
       if (!check.rows.length) return res.status(403).json({ message: 'Labo non autorisé' });
       const activiteNom = check.rows[0].nom;
 
-      const typeWhere = typeApproFilter ? `AND type_appro = '${typeApproFilter}'` : '';
+      // Filtre type_appro : la valeur vient de l'URL, toujours en paramètre lié ($4), jamais dans le SQL.
+      const typeWhere = typeApproFilter ? 'AND type_appro = $4' : '';
+      const typeParam = typeApproFilter ? [typeApproFilter] : [];
 
       const [approsKpi, pertesKpi, invKpi, stockCount, approsParType, approsMonthly, pertesMonthly] = await Promise.all([
         // Appros labo — fabrications PT incluses (positives, 'manuel') hors filtre de type.
@@ -201,7 +204,7 @@ const getDashboard = async (req, res) => {
                  FROM stock_labo_pt_daily
                  WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3 AND quantite > 0 AND type_appro IN ('manuel', 'transfert')
                ) t`,
-          [gerant_activite_id, dateFrom, dateTo]
+          [gerant_activite_id, dateFrom, dateTo, ...typeParam]
         ),
         pool.query(
           `SELECT COUNT(*) AS count
@@ -232,7 +235,7 @@ const getDashboard = async (req, res) => {
            FROM stock_labo_daily
            WHERE labo_id = $1 AND date_appro BETWEEN $2 AND $3 ${typeWhere}
            GROUP BY mois ORDER BY mois`,
-          [gerant_activite_id, `${year}-01-01`, `${year}-12-31`]
+          [gerant_activite_id, `${year}-01-01`, `${year}-12-31`, ...typeParam]
         ),
         pool.query(
           `SELECT EXTRACT(MONTH FROM date_perte) AS mois, COUNT(*) AS count
