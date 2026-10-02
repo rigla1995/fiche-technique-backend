@@ -259,8 +259,9 @@ test('vocabForClient / vocabDuDomaine (hors requête du compte)', async () => {
 // Comparaison avec le middleware d'AVANT le lot 2 (commit de référence) : même nombre de requêtes
 // d'authentification par appel, et aucune requête en régime permanent. Sautée sans historique git.
 test('régime permanent : pas plus de requêtes SQL par appel authentifié qu\'avant le lot 2', async (t) => {
+  // Référence d'avant le lot 2 : scripts/vocab-reference-lot2 (et non vocab-check.base, référence de l'outil).
   const BASE_DEFAUT = '13d99d054b96eba7192d48d58b276fff756c4418';
-  const fichierBase = path.join(RACINE, 'scripts', 'vocab-check.base');
+  const fichierBase = path.join(RACINE, 'scripts', 'vocab-reference-lot2');
   const BASE = fs.existsSync(fichierBase) ? fs.readFileSync(fichierBase, 'utf8').trim() || BASE_DEFAUT : BASE_DEFAUT;
   let source;
   try {

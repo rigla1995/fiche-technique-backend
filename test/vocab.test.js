@@ -33,9 +33,11 @@ const warnOrigine = console.warn;
 test.before(() => { console.warn = (...a) => { avertissements.push(a.join(' ')); }; });
 test.after(() => { console.warn = warnOrigine; });
 
-// Commit de référence (avant le lot 2). scripts/vocab-check.base, s'il existe, fait foi.
+// Commit de référence (avant le lot 2) : scripts/vocab-reference-lot2, s'il existe, fait foi.
+// Ce n'est PAS scripts/vocab-check.base : celle-ci est la référence de l'outil de preuve, réépinglée à chaque
+// sous-lot (spec lot 2b §3.1) ; la preuve « rien ne change depuis avant le lot 2 » garde sa propre référence.
 const BASE_DEFAUT = '13d99d054b96eba7192d48d58b276fff756c4418';
-const fichierBase = path.join(RACINE, 'scripts', 'vocab-check.base');
+const fichierBase = path.join(RACINE, 'scripts', 'vocab-reference-lot2');
 const BASE = fs.existsSync(fichierBase) ? fs.readFileSync(fichierBase, 'utf8').trim() || BASE_DEFAUT : BASE_DEFAUT;
 // null si git ou le commit de référence est indisponible (clone superficiel de la CI, image Docker).
 const gitShow = (fichier) => {

@@ -1,0 +1,457 @@
+[
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Approvisionnements",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6).",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Articles",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6)."
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Coût matière",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Fiche technique",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6).",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "food",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6)."
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Food cost",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6)."
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Inventaire",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Marge",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Pertes",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Produits",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Produits vendables",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6)."
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Stock",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/description$",
+  "texte": "Transferts",
+  "type": "2c",
+  "justification": "Description de l'outil search_knowledge_base (aiToolHandlers.js) : reportée au lot 2c avec le manuel (spec §0 et §7.2, preuve §12.6)."
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/parameters/properties/query/description$",
+  "texte": "Fiche technique",
+  "type": "2c",
+  "justification": "Description du paramètre query de search_knowledge_base : reportée au lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/parameters/properties/query/description$",
+  "texte": "food",
+  "type": "2c",
+  "justification": "Description du paramètre query de search_knowledge_base : reportée au lot 2c (spec §0, §7.2, §12.6)."
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/13/function/parameters/properties/query/description$",
+  "texte": "Food cost",
+  "type": "2c",
+  "justification": "Description du paramètre query de search_knowledge_base : reportée au lot 2c (spec §0, §7.2, §12.6)."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Approvisionnements",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Articles",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6)."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Coût matière",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Fiche technique",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "food",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6)."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Food cost",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6)."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Inventaire",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Marge",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Pertes",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Produits",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Produits vendables",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6)."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Stock",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/description$",
+  "texte": "Transferts",
+  "type": "2c",
+  "justification": "Description de search_knowledge_base telle qu'envoyée au modèle (corps capté par le bouchon Gemini) : lot 2c (spec §0, §7.2, §12.6)."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/parametres/properties/query/description$",
+  "texte": "Fiche technique",
+  "type": "2c",
+  "justification": "Description du paramètre query de search_knowledge_base envoyée au modèle : lot 2c (spec §0, §7.2, §12.6).",
+  "domaines": [
+   "ceramique",
+   "miroir"
+  ]
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/parametres/properties/query/description$",
+  "texte": "food",
+  "type": "2c",
+  "justification": "Description du paramètre query de search_knowledge_base envoyée au modèle : lot 2c (spec §0, §7.2, §12.6)."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/13/parametres/properties/query/description$",
+  "texte": "Food cost",
+  "type": "2c",
+  "justification": "Description du paramètre query de search_knowledge_base envoyée au modèle : lot 2c (spec §0, §7.2, §12.6)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/factureAcheteur/documents/\\d+/(textes/\\d+|info/\\w+)$",
+  "texte": "Acheteurs",
+  "type": "fiscal",
+  "justification": "Facture acheteur (PDF) : inchangée à l'octet près pendant le lot 2b (spec §0 « Hors lot 2b », §8.3)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/factureAcheteur/documents/\\d+/(textes/\\d+|info/\\w+)$",
+  "texte": "PU",
+  "type": "fiscal",
+  "justification": "Facture acheteur (PDF) : inchangée à l'octet près pendant le lot 2b (spec §0 « Hors lot 2b », §8.3)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/factureAcheteur/documents/\\d+/(textes/\\d+|info/\\w+)$",
+  "texte": "Vente",
+  "type": "fiscal",
+  "justification": "Facture acheteur (PDF) : inchangée à l'octet près pendant le lot 2b (spec §0 « Hors lot 2b », §8.3).",
+  "domaines": [
+   "miroir"
+  ]
+ },
+ {
+  "cle": "valeursContrat",
+  "chemin": "/name$",
+  "texte": "Option Acheteurs",
+  "type": "code-api",
+  "justification": "Nom de champ DocuSeal (clientsController.js:68-72, contractPdfService.js:122-127, avenantExtraFields) : un nom traduit serait retiré EN SILENCE par le nouvel essai après un 422 de DocuSeal (spec §6.8) ; inchangé (§8.2 « les noms de champs »)."
+ },
+ {
+  "cle": "valeursContrat",
+  "chemin": "/name$",
+  "texte": "Nb activités",
+  "type": "code-api",
+  "justification": "Nom de champ DocuSeal (clientsController.js:68-72, contractPdfService.js:122-127, avenantExtraFields) : un nom traduit serait retiré EN SILENCE par le nouvel essai après un 422 de DocuSeal (spec §6.8) ; inchangé (§8.2 « les noms de champs »)."
+ },
+ {
+  "cle": "valeursContrat",
+  "chemin": "/name$",
+  "texte": "Nb labos",
+  "type": "code-api",
+  "justification": "Nom de champ DocuSeal (clientsController.js:68-72, contractPdfService.js:122-127, avenantExtraFields) : un nom traduit serait retiré EN SILENCE par le nouvel essai après un 422 de DocuSeal (spec §6.8) ; inchangé (§8.2 « les noms de champs »)."
+ },
+ {
+  "cle": "valeursContrat",
+  "chemin": "/name$",
+  "texte": "Nb gérants",
+  "type": "code-api",
+  "justification": "Nom de champ DocuSeal (clientsController.js:68-72, contractPdfService.js:122-127, avenantExtraFields) : un nom traduit serait retiré EN SILENCE par le nouvel essai après un 422 de DocuSeal (spec §6.8) ; inchangé (§8.2 « les noms de champs »)."
+ },
+ {
+  "cle": "valeursContrat",
+  "chemin": "/default_value$",
+  "texte": "Activité Premium",
+  "type": "formule",
+  "justification": "Valeur du champ « Formule » (clientsController.js:60-62, contractPdfService.js:123, :154, :192) : nom commercial de la formule, inchangé (spec §8.2 « Formule », §6.8 « noms de formule »)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "/textes/\\d+$",
+  "texte": "Activité Premium",
+  "type": "formule",
+  "justification": "Valeur « Formule » des contrats (flux PDF, contrat legacy pdfService.js:295) : nom commercial de la formule, inchangé (spec §8.2, §6.8 « noms de formule »)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/contrat\\.[^/]+/\\d+/textes/\\d+$",
+  "texte": "Domaine d'activité",
+  "type": "homonyme",
+  "justification": "Ligne « Domaine d'activité » du contrat (contractPdfService.js:85-88, :158) : homonyme listé au §6.8 (le domaine, pas une activité du compte)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/(contrat\\.[^/]+|creation\\.[^/]+)/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 1 — OBJET DU CONTRAT",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/(contrat\\.[^/]+|creation\\.[^/]+)/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 2 — CONFIGURATION SOUSCRITE",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/(contrat\\.[^/]+|creation\\.[^/]+)/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 3 — PRIX ET MODALITÉS DE PAIEMENT",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/(contrat\\.[^/]+|creation\\.[^/]+)/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 4 — CONDITIONS GÉNÉRALES",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/avenant\\.flux/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 1 — OBJET DE L'AVENANT",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/avenant\\.flux/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 2 — NOUVELLE CONFIGURATION",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/avenant\\.flux/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 3 — NOUVELLE TARIFICATION",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/avenant\\.flux/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 4 — DISPOSITIONS FINALES",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/resiliation/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 1 — OBJET",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/resiliation/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 2 — DATE D'EFFET ET PRÉAVIS",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "pdf",
+  "chemin": "^/resiliation/\\d+/textes/\\d+$",
+  "texte": "ARTICLE 3 — EFFETS ET DISPOSITIONS FINALES",
+  "type": "homonyme",
+  "justification": "Titre « ARTICLE n » d'un document contractuel (docuseal-templates/generate.js, texte fixe) : homonyme listé au §6.8 (article de contrat, pas un article du référentiel)."
+ },
+ {
+  "cle": "exports",
+  "chemin": "^/15\\.ventesLabo(\\.categorie)?/onglets/\\d+/lignes/\\d+/\\d+$",
+  "texte": "Article",
+  "type": "homonyme",
+  "justification": "En-tête « Article » de l'export « Ventes du labo » (ventesController.js:1474) : « article » au sens d'élément quelconque (produit ou article), liste fermée du §6.5, motif « élément générique »."
+ },
+ {
+  "cle": "outils",
+  "chemin": "^/json/11/function/description$",
+  "texte": "Articles",
+  "type": "homonyme",
+  "justification": "« articles vendables » de la description de get_config_vente (aiToolHandlers.js:685) : « article » au sens d'élément quelconque, liste fermée du §6.5, motif « élément générique ». Les autres formes de cette description restent cherchées."
+ },
+ {
+  "cle": "promptReel",
+  "chemin": "^/corps/\\d+/outils/11/description$",
+  "texte": "Articles",
+  "type": "homonyme",
+  "justification": "« articles vendables » de la description de get_config_vente (aiToolHandlers.js:685) : « article » au sens d'élément quelconque, liste fermée du §6.5, motif « élément générique ». Les autres formes de cette description restent cherchées."
+ }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "fichier": "src/controllers/dashboardController.js",
+    "avant": "v.type_vente = 'prestataire'",
+    "apres": "v.type_vente = 'prestataire'",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/inventaireController.js",
+    "avant": "⟦?(inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)|inv.⟦?ingredient|produit⟧_id IS NOT NULL⟧",
+    "apres": "⟦?(inv.ingredient_id IS NOT NULL OR inv.produit_id IS NOT NULL)|inv.⟦?ingredient|produit⟧_id IS NOT NULL⟧",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/utils/stockUtils.js",
+    "avant": "(⟦·⟧.type = 'vendable' AND ⟦·⟧.origine = 'labo')",
+    "apres": "(⟦·⟧.type = 'vendable' AND ⟦·⟧.origine = 'labo')",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/utils/stockUtils.js",
+    "avant": "(⟦·⟧.type = 'vendable' AND ⟦·⟧.origine <> 'labo')",
+    "apres": "(⟦·⟧.type = 'vendable' AND ⟦·⟧.origine <> 'labo')",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  }
+]

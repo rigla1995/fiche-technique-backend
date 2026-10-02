@@ -188,7 +188,9 @@ On capture les sorties du serveur sur des comptes éphémères, AVANT toute modi
   - `POST /api/produits/:id/ingredients` avec portion 0, puis sans `ingredientId` (`errors[].msg`) ; import de fournisseurs en double (`details[].error`) ; connexion erronée.
 - `auth` : corps de `/auth/login` et `/auth/me` pour client, gérant et acheteur ; `GET /api/domaines` et `GET /api/entreprise`.
 
-**Comparaison et ordre.** Pour un tableau issu d'une requête sans `ORDER BY`, et pour les lignes d'un export, on compare la liste ordonnée. Un écart d'ordre SEUL (même multi-ensemble) est signalé à part, « ordre seul ». Il n'est admis que si la requête n'a pas d'`ORDER BY` à la référence et figure dans `ordre-libre.json`.
+**Comparaison et ordre.** Pour un tableau issu d'une requête sans `ORDER BY`, et pour les lignes d'un export, on compare la liste ordonnée. Un écart d'ordre SEUL (même multi-ensemble) est signalé à part, « ordre seul ». Il n'est admis que si la requête figure dans `ordre-libre.json` ET :
+- soit elle n'a pas d'`ORDER BY` à la référence ;
+- soit l'entrée porte une `cleTri` : le contrôle ne réordonne alors que les groupes contigus d'ex aequo sur cette clé, et seulement si la suite des rangs de tri (`meta.rangsTri`, relevée avant masquage) est identique à la référence. Toute autre permutation reste « ordre seul, non admis ».
 
 **Masquage** :
 - dates, heures et durées (motifs de `parcours-2a/lib.cjs:47-59`), mois en lettres (`\b(?:janvier|…|décembre)\s+\d{4}\b`), `\b\d{4}-\d{2}\b` ;
@@ -290,7 +292,7 @@ Un lot qui change une autre signature appelée par l'oracle l'écrit dans ses `b
   - une constante de la forme `[a-z0-9_]+` ;
   - OU une constante de la liste fermée des codes en capitales : `'PT'` au départ. Tout ajout passe par la spec.
 
-  Les autres constantes sont jugées comme des textes. Mesure attendue à `bfb590a` : 44 constantes dans 22 requêtes ; un test fige ce compte sur la copie de référence. Les 11 fragments SQL qui ne commencent pas par un mot-clé (`facturesController.js:43-56`, `stockUtils.js:75-76`…) sont des résidus admis (`discriminant`).
+  Les autres constantes sont jugées comme des textes. Mesure attendue à `bfb590a` : 44 constantes-libellés PORTANT UN TERME du lexique, dans 22 requêtes (et 18 `'PT'` codes dans 15 requêtes) ; un test fige ce compte sur la copie de référence. Les 13 fragments SQL qui ne commencent pas par un mot-clé (`facturesController.js:43-56`, `stockUtils.js:75-76`…) sont des résidus admis (`discriminant`).
 - **E4 — Identité et SQL.** Une unité SQL est comparée par TROIS multi-ensembles, chacun avec la référence du même fichier :
   1. ses constantes-libellés (rendues), versées dans le multi-ensemble du fichier avec les autres textes ;
   2. ses constantes-codes, comparées à part : un code ajouté, retiré ou changé est un écart, admis seulement par une entrée `discriminant` ;
@@ -304,9 +306,10 @@ Un lot qui change une autre signature appelée par l'oracle l'écrit dans ses `b
   - correction de l'ambiguïté `router.delete` / `Set.delete`.
 - **E6 — Modules générés.** `categoriesPt.ts`, `excel.ts` et `composants.ts` entrent dans `src/utils/vocab.js`, déjà exclu et déjà contrôlé par le mode `lexique`.
 - **E7 — `vocab-accords.txt` du serveur** : écrit dans `fiche-technique-backend/scripts/` et commité. Seul l'intégrateur le régénère : un agent passe toujours ses fichiers, et le fichier n'est réécrit que sans liste. La règle « `git checkout -- scripts/vocab-accords.txt` avant de changer de branche » vaut aussi au serveur.
-- **E8 — Types d'écarts admis**, deux de plus :
+- **E8 — Types d'écarts admis**, trois de plus (`fiscal` s'ajoute pour la facture acheteur de `generate.js`, E1) :
   - `reporte` : texte laissé pour un lot ultérieur, avec le champ `lot` obligatoire (`3` ou `2c`). Il remplace `provisoire`, qui doit finir à 0, pour le texte fixe du contrat et l'outil de recherche ;
-  - `admin` : texte lu seulement par un super_admin ou le boss (I4), dans un fichier mixte. Justification obligatoire : la route et son garde (`requireSuperAdmin`, `requireBoss`).
+  - `admin` : texte lu seulement par un super_admin ou le boss (I4), dans un fichier mixte. Justification obligatoire : la route et son garde (`requireSuperAdmin`, `requireBoss`) ;
+  - `fiscal` : texte d'un document fiscal promis identique à l'octet près (facture acheteur, facture d'abonnement).
 - **E9 — Accords.** `ACCORDS_APRES` reçoit 8 formes : élevé, détecté, bon, récent, confirmé, autorisé, référencé, réintégré. Les 6 autres formes relevées y sont déjà.
 - **E11 — `formesDans(texte, formes)`**, exportée, sur le motif de `motEntier` (`vocab-check.mjs:196-197`) : elle cherche une liste de formes donnée, là où `termesDans` cherche toujours toutes les formes du lexique par défaut. Elle sert au mode hors restauration de l'oracle (§2.5).
 - **E10 — Tests de l'outil** (`scripts/vocab-check.test.mjs`) : cas serveur positifs et négatifs pour E1 à E9 et E11. Les idiomes non reconnus sont interdits au guide : `(req.voc ?? vocabDefaut).Nom(…)` et `req['voc']`. On écrit `const voc = req.voc ?? vocabDefaut;`.

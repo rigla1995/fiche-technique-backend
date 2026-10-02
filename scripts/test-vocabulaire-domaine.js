@@ -64,9 +64,10 @@ const PWD = 'TestVocab2026!';
 // avant le nettoyage laissait la ligne en base).
 const ADMIN_PWD = require('crypto').randomBytes(18).toString('base64url');
 
-// Commit de référence d'avant le lot 2 (scripts/vocab-check.base, s'il existe, fait foi).
+// Commit de référence d'avant le lot 2 (scripts/vocab-reference-lot2, s'il existe, fait foi ; pas
+// vocab-check.base, qui est la référence de l'outil de preuve, réépinglée à chaque sous-lot).
 const BASE_DEFAUT = '13d99d054b96eba7192d48d58b276fff756c4418';
-const fichierBase = path.join(__dirname, 'vocab-check.base');
+const fichierBase = path.join(__dirname, 'vocab-reference-lot2');
 const REF = fs.existsSync(fichierBase) ? fs.readFileSync(fichierBase, 'utf8').trim() || BASE_DEFAUT : BASE_DEFAUT;
 const lexiqueOrigine = () => {
   try {

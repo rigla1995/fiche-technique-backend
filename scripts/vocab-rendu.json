@@ -1,0 +1,35 @@
+[
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "genre": "argument",
+    "nom": "push",
+    "argument": 2,
+    "justification": "push(code, message) pousse { code, message } dans `erreurs` : CompositionError recopie erreurs[0].message dans `message`, les deux sont rendus au bord (spec lot 2b §3.2 E2, §9)."
+  },
+  {
+    "fichier": "src/services/unitesOperationnellesService.js",
+    "genre": "valeurs-objet",
+    "nom": "CODES",
+    "justification": "Valeurs de la table CODES : message par défaut d'une UniteError (`super(message || CODES[code] || code)`), relayé dans `message` par replyUniteError (spec lot 2b §3.2 E2, §9)."
+  },
+  {
+    "fichier": "src/services/quotaService.js",
+    "genre": "valeurs-objet",
+    "nom": "LIBELLES",
+    "cles": ["sg", "pl"],
+    "justification": "Libellés sg / pl de LIBELLES : assemblés dans le `message` du quota, renvoyé tel quel en 409 (spec lot 2b §3.2 E2, §6.6 : une balise littérale par entrée)."
+  },
+  {
+    "fichier": "src/controllers/produitsController.js",
+    "genre": "retours-fonction",
+    "nom": "messageSupplement",
+    "justification": "Littéraux de retour de messageSupplement, employé seulement comme `message` d'une réponse 400 (spec lot 2b §3.2 E2, §9 : balises dans les deux branches)."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "genre": "argument",
+    "nom": "rendre",
+    "argument": 2,
+    "justification": "Relais vers l'assistant : executeToolCall rend err.message avec son voc avant de le renvoyer au modèle ({ error: rendre(voc, err.message) }), spec lot 2b §3.2 E2 et §7.1. Point déjà reconnu par l'outil (2e argument de rendre) : l'entrée le déclare."
+  }
+]

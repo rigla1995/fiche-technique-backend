@@ -1,0 +1,30 @@
+[
+  {
+    "fichier": "src/controllers/facturesController.js",
+    "avant": "(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id <> $⟦·⟧\n                 AND f.fournisseur_id IN (SELECT fl.id FROM fournisseurs fl WHERE fl.is_labo = true AND fl.labo_id = $⟦·⟧))",
+    "apres": "(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id <> $⟦·⟧\n                 AND f.fournisseur_id IN (SELECT fl.id FROM fournisseurs fl WHERE fl.is_labo = true AND fl.labo_id = $⟦·⟧))",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/facturesController.js",
+    "avant": "(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id = $⟦·⟧)",
+    "apres": "(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id = $⟦·⟧)",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/facturesController.js",
+    "avant": "(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id IS NOT NULL)",
+    "apres": "(f.type_source = 'transfert' AND f.activite_id IS NULL AND f.labo_id IS NOT NULL)",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/facturesController.js",
+    "avant": "(f.type_source = 'transfert' AND f.activite_id IS NOT NULL)",
+    "apres": "(f.type_source = 'transfert' AND f.activite_id IS NOT NULL)",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  }
+]

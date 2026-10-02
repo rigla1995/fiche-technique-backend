@@ -1,0 +1,16 @@
+[
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "a.id as activite_id, a.nom as activite_nom, lt.labo_dest_id, ld.nom as labo_dest_nom,\n                CASE WHEN lt.labo_dest_id IS NOT NULL THEN 'labo' ELSE 'activite' END as dest_type,\n                COALESCE(a.nom, ld.nom) as dest_nom",
+    "apres": "a.id as activite_id, a.nom as activite_nom, lt.labo_dest_id, ld.nom as labo_dest_nom,\n                CASE WHEN lt.labo_dest_id IS NOT NULL THEN 'labo' ELSE 'activite' END as dest_type,\n                COALESCE(a.nom, ld.nom) as dest_nom",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "sld.type_appro = 'transfert'",
+    "apres": "sld.type_appro = 'transfert'",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  }
+]

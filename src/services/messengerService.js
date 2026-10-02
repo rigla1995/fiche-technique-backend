@@ -84,6 +84,23 @@ const findClientByPsid = async (psid) => {
   return rows[0] || null;
 };
 
+// Texte d'accueil envoyé à l'ouverture du lien d'invitation Messenger (fonction pure,
+// exportée pour l'oracle du lot 2b).
+function texteAccueilMessenger(nom) {
+  return (
+    `👋 Bonjour ${nom} !\n\nJe suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :\n\n` +
+    `🏪 Activités & 🏭 labos\n` +
+    `📦 Stock, seuils & 🛒 approvisionnements\n` +
+    `🔄 Transferts labo → activités\n` +
+    `📉 Pertes & 📊 inventaires\n` +
+    `🧾 Ventes, CA & food cost\n` +
+    `📚 Référentiel, fournisseurs & produits\n` +
+    `💳 Abonnement & configuration de vente\n` +
+    `📄 Rapports Excel par email\n\n` +
+    `Exemple : « les transferts du mois actuel » ou « mon food cost de septembre ». Posez votre question !`
+  );
+}
+
 async function handleMessengerEvent(event) {
   const psid = event.sender?.id;
   if (!psid) return;
@@ -125,19 +142,7 @@ async function handleMessengerEvent(event) {
     // Réchauffe le snapshot de config statique du client (début de session Messenger)
     require('./clientConfigService').buildClientConfigSnapshot(client.client_id)
       .catch((e) => logger.warn('messenger_warmup_failed', { error: e.message }));
-    return sendMessage(
-      psid,
-      `👋 Bonjour ${client.nom} !\n\nJe suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :\n\n` +
-      `🏪 Activités & 🏭 labos\n` +
-      `📦 Stock, seuils & 🛒 approvisionnements\n` +
-      `🔄 Transferts labo → activités\n` +
-      `📉 Pertes & 📊 inventaires\n` +
-      `🧾 Ventes, CA & food cost\n` +
-      `📚 Référentiel, fournisseurs & produits\n` +
-      `💳 Abonnement & configuration de vente\n` +
-      `📄 Rapports Excel par email\n\n` +
-      `Exemple : « les transferts du mois actuel » ou « mon food cost de septembre ». Posez votre question !`
-    );
+    return sendMessage(psid, texteAccueilMessenger(client.nom));
   }
 
   // If this was purely a referral event (no user-typed message), stop here
@@ -235,4 +240,4 @@ async function receiveWebhook(req, res) {
   }
 }
 
-module.exports = { verifyWebhook, receiveWebhook };
+module.exports = { verifyWebhook, receiveWebhook, texteAccueilMessenger };

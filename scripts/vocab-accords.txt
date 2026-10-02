@@ -1,0 +1,5 @@
+# vocab-accords.txt — GÉNÉRÉ par `node scripts/vocab-check.mjs accords` (ne pas éditer).
+# Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
+# lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
+# À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
+# 0 unité(s), 0 fichier(s).

@@ -1,0 +1,9 @@
+[
+  {
+    "fichier": "src/controllers/produitsController.js",
+    "avant": "\n  ROUND(\n    COALESCE((\n      SELECT SUM(pi.portion * ⟦·⟧)\n      FROM produit_ingredients pi\n      JOIN articles i ON pi.ingredient_id = i.id\n      WHERE pi.produit_id = ⟦·⟧.id\n    ), 0) +\n    COALESCE((\n      SELECT SUM(psp.portion * (\n        SELECT COALESCE(SUM(pi2.portion * ⟦·⟧), 0)\n        FROM produit_ingredients pi2\n        JOIN articles i2 ON pi2.ingredient_id = i2.id\n        WHERE pi2.produit_id = psp.sous_produit_id\n      ))\n      FROM produit_sous_produits psp\n      WHERE psp.produit_id = ⟦·⟧.id\n    ), 0)\n  , 3) AS total_cost",
+    "apres": "\n  ROUND(\n    COALESCE((\n      SELECT SUM(pi.portion * ⟦·⟧)\n      FROM produit_ingredients pi\n      JOIN articles i ON pi.ingredient_id = i.id\n      WHERE pi.produit_id = ⟦·⟧.id\n    ), 0) +\n    COALESCE((\n      SELECT SUM(psp.portion * (\n        SELECT COALESCE(SUM(pi2.portion * ⟦·⟧), 0)\n        FROM produit_ingredients pi2\n        JOIN articles i2 ON pi2.ingredient_id = i2.id\n        WHERE pi2.produit_id = psp.sous_produit_id\n      ))\n      FROM produit_sous_produits psp\n      WHERE psp.produit_id = ⟦·⟧.id\n    ), 0)\n  , 3) AS total_cost",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  }
+]

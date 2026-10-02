@@ -1,0 +1,9 @@
+[
+  {
+    "fichier": "src/controllers/acheteurVentesController.js",
+    "avant": "(\n  ⟦·⟧.origine = 'labo'\n  OR (⟦·⟧.type = 'utilisable' AND EXISTS (\n    SELECT 1 FROM labo_pt_selections lps\n    JOIN labos lx ON lx.id = lps.labo_id\n    JOIN profil_entreprise pex ON pex.id = lx.entreprise_id\n    WHERE lps.produit_id = ⟦·⟧.id AND pex.client_id = $⟦·⟧\n  ))\n)",
+    "apres": "(\n  ⟦·⟧.origine = 'labo'\n  OR (⟦·⟧.type = 'utilisable' AND EXISTS (\n    SELECT 1 FROM labo_pt_selections lps\n    JOIN labos lx ON lx.id = lps.labo_id\n    JOIN profil_entreprise pex ON pex.id = lx.entreprise_id\n    WHERE lps.produit_id = ⟦·⟧.id AND pex.client_id = $⟦·⟧\n  ))\n)",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  }
+]
