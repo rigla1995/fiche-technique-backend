@@ -1885,6 +1885,10 @@ backend de test par `node scripts/start-test-backend.js` (avec `DB_NAME` après 
 | 12 | Le retour arrière se fait par une commande à lancer dans le terminal du conteneur du serveur (Coolify), et non plus par un long texte SQL à coller (§4.5, §12.4) : d'accord ? | **Oui** : rien à coller, essai à blanc possible (`--essai`) |
 | 13 | Refuser dans le lexique un terme qui commence par « # », « - », « > » ou « 1. » (il changerait une ligne du manuel qui commence par une balise, §7.6) ? | **Non** : aucun lexique réel ne le fait, l'aperçu admin le montrerait (le client veut moins) |
 
+**Réponses du client (03/10/2026)** : les 13 recommandations sont acceptées telles quelles (Q1 ordre fixé ; Q6
+défaut de l'admin de la base corrigé dans ce lot ; Q11 trois poussées ; Q12 retour arrière par commande dans le
+conteneur ; Q2 à Q5, Q7 à Q10 et Q13 selon la colonne « Recommandation »).
+
 Rappels déjà posés ailleurs, sans effet sur le code du 2c : lexiques H et C à corriger
 (`lot-2/brouillons-lexique-a-corriger.md`, `lot-2b/ecarts-visibles-2b.md` §4) ; décision 6 du 2b (faire le lot 3
 avant de signer un client hors restauration).
