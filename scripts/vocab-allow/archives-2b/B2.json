@@ -1,0 +1,151 @@
+[
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "Facture d'approvisionnement",
+    "type": "deplacement",
+    "occurrences": 2,
+    "justification": "Libellé de la facture d'appro rendu dans le vocabulaire du compte (libellesFactureAppro, spec lot 2b §8.3) ; il était écrit en dur dans docuseal-templates/generate.js (buildFactureAppro), qui le garde comme valeur par défaut. Rendu par défaut identique, prouvé à l'octet par test/B2-pdfTexte.test.js et test/B2-documents.test.js."
+  },
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "FACTURE ⟦?D'|DE ⟧APPROVISIONNEMENT",
+    "type": "deplacement",
+    "justification": "Libellé de la facture d'appro rendu dans le vocabulaire du compte (libellesFactureAppro, spec lot 2b §8.3) ; il était écrit en dur dans docuseal-templates/generate.js (buildFactureAppro), qui le garde comme valeur par défaut. Rendu par défaut identique, prouvé à l'octet par test/B2-pdfTexte.test.js et test/B2-documents.test.js."
+  },
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "d'approvisionnement",
+    "type": "discriminant",
+    "justification": "Opérande du test d'élision /^d'/.test(voc.de('appro')) du surtitre (idiome du guide §2) : jamais affiché tel quel."
+  },
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "Transfert labo → ⟦?activité|labo⟧",
+    "type": "faute-corrigee",
+    "justification": "Sous-titre d'un transfert : il disait « Transfert labo → activité » pour une cession labo→labo (facture du labo destinataire, activite_id NULL) ; il dit maintenant « Transfert labo → labo » (spec lot 2b §8.3, §11.1.1). Labo→activité : identique par défaut."
+  },
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "Approvisionnement fournisseur",
+    "type": "deplacement",
+    "justification": "Libellé de la facture d'appro rendu dans le vocabulaire du compte (libellesFactureAppro, spec lot 2b §8.3) ; il était écrit en dur dans docuseal-templates/generate.js (buildFactureAppro), qui le garde comme valeur par défaut. Rendu par défaut identique, prouvé à l'octet par test/B2-pdfTexte.test.js et test/B2-documents.test.js."
+  },
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "fournisseur",
+    "type": "deplacement",
+    "justification": "Libellé de la facture d'appro rendu dans le vocabulaire du compte (libellesFactureAppro, spec lot 2b §8.3) ; il était écrit en dur dans docuseal-templates/generate.js (buildFactureAppro), qui le garde comme valeur par défaut. Rendu par défaut identique, prouvé à l'octet par test/B2-pdfTexte.test.js et test/B2-documents.test.js."
+  },
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "FOURNISSEUR ET CLIENT",
+    "type": "deplacement",
+    "justification": "Libellé de la facture d'appro rendu dans le vocabulaire du compte (libellesFactureAppro, spec lot 2b §8.3) ; il était écrit en dur dans docuseal-templates/generate.js (buildFactureAppro), qui le garde comme valeur par défaut. Rendu par défaut identique, prouvé à l'octet par test/B2-pdfTexte.test.js et test/B2-documents.test.js."
+  },
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "FOURNISSEUR",
+    "type": "deplacement",
+    "justification": "Libellé de la facture d'appro rendu dans le vocabulaire du compte (libellesFactureAppro, spec lot 2b §8.3) ; il était écrit en dur dans docuseal-templates/generate.js (buildFactureAppro), qui le garde comme valeur par défaut. Rendu par défaut identique, prouvé à l'octet par test/B2-pdfTexte.test.js et test/B2-documents.test.js."
+  },
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "Montants exprimés en dinars tunisiens (DT), prix saisis hors taxes. Récapitulatif d'approvisionnement généré électroniquement via la plateforme LabFlow à partir des lignes de stock saisies — il ne remplace pas la facture originale du fournisseur.",
+    "type": "deplacement",
+    "justification": "Libellé de la facture d'appro rendu dans le vocabulaire du compte (libellesFactureAppro, spec lot 2b §8.3) ; il était écrit en dur dans docuseal-templates/generate.js (buildFactureAppro), qui le garde comme valeur par défaut. Rendu par défaut identique, prouvé à l'octet par test/B2-pdfTexte.test.js et test/B2-documents.test.js."
+  },
+  {
+    "fichier": "src/services/factureApproPdf.js",
+    "avant": null,
+    "apres": "Facture d'approvisionnement — générée via la plateforme LabFlow",
+    "type": "deplacement",
+    "justification": "Libellé de la facture d'appro rendu dans le vocabulaire du compte (libellesFactureAppro, spec lot 2b §8.3) ; il était écrit en dur dans docuseal-templates/generate.js (buildFactureAppro), qui le garde comme valeur par défaut. Rendu par défaut identique, prouvé à l'octet par test/B2-pdfTexte.test.js et test/B2-documents.test.js."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "<=",
+    "type": "deplacement",
+    "justification": "Table de pdfTexte portée du front (src/utils/pdfTexte.ts, mêmes équivalents, spec lot 2b §8.3) : équivalent lisible d'un signe hors police (≤ ≥ ≠ Σ ∑ ∞), jamais un terme du lexique ; écrite en points de code sauf ces équivalents textuels."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": ">=",
+    "type": "deplacement",
+    "justification": "Table de pdfTexte portée du front (src/utils/pdfTexte.ts, mêmes équivalents, spec lot 2b §8.3) : équivalent lisible d'un signe hors police (≤ ≥ ≠ Σ ∑ ∞), jamais un terme du lexique ; écrite en points de code sauf ces équivalents textuels."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "<>",
+    "type": "deplacement",
+    "justification": "Table de pdfTexte portée du front (src/utils/pdfTexte.ts, mêmes équivalents, spec lot 2b §8.3) : équivalent lisible d'un signe hors police (≤ ≥ ≠ Σ ∑ ∞), jamais un terme du lexique ; écrite en points de code sauf ces équivalents textuels."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "Somme",
+    "type": "deplacement",
+    "occurrences": 2,
+    "justification": "Table de pdfTexte portée du front (src/utils/pdfTexte.ts, mêmes équivalents, spec lot 2b §8.3) : équivalent lisible d'un signe hors police (≤ ≥ ≠ Σ ∑ ∞), jamais un terme du lexique ; écrite en points de code sauf ces équivalents textuels."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "infini",
+    "type": "deplacement",
+    "justification": "Table de pdfTexte portée du front (src/utils/pdfTexte.ts, mêmes équivalents, spec lot 2b §8.3) : équivalent lisible d'un signe hors police (≤ ≥ ≠ Σ ∑ ∞), jamais un terme du lexique ; écrite en points de code sauf ces équivalents textuels."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "⟦?⟦·⟧|?⟧",
+    "type": "deplacement",
+    "justification": "Table de pdfTexte portée du front (src/utils/pdfTexte.ts, mêmes équivalents, spec lot 2b §8.3) : équivalent lisible d'un signe hors police (≤ ≥ ≠ Σ ∑ ∞), jamais un terme du lexique ; écrite en points de code sauf ces équivalents textuels."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "string",
+    "type": "discriminant",
+    "justification": "Opérande de typeof (pdfTexteSur : seul un texte passe par pdfTexte) : chaîne technique jamais affichée."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "Transfert labo → activité",
+    "type": "deplacement",
+    "justification": "Valeur par défaut de buildFactureAppro (LIBELLES_FACTURE_APPRO : ligne de commande, appel sans libellés), texte d'avant le lot à l'identique. Le serveur passe toujours data.libelles, rendus dans le vocabulaire du compte par src/services/factureApproPdf.js (libellesFactureAppro), son seul appelant (spec lot 2b §8.3 : « generate.js garde ses littéraux comme valeurs par défaut : CLI et identité »)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": "⟦?Transfert labo → activité|Approvisionnement fournisseur — ⟦?⟦·⟧|fournisseur⟧⟧",
+    "apres": "Approvisionnement fournisseur",
+    "type": "deplacement",
+    "justification": "Sous-titre de la facture d'appro décomposé en valeurs par défaut (sousTitreTransfert, approFournisseur, fournisseur) de LIBELLES_FACTURE_APPRO. Valeur par défaut de buildFactureAppro (LIBELLES_FACTURE_APPRO : ligne de commande, appel sans libellés), texte d'avant le lot à l'identique. Le serveur passe toujours data.libelles, rendus dans le vocabulaire du compte par src/services/factureApproPdf.js (libellesFactureAppro), son seul appelant (spec lot 2b §8.3 : « generate.js garde ses littéraux comme valeurs par défaut : CLI et identité »)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "fournisseur",
+    "type": "deplacement",
+    "justification": "Valeur par défaut de buildFactureAppro (LIBELLES_FACTURE_APPRO : ligne de commande, appel sans libellés), texte d'avant le lot à l'identique. Le serveur passe toujours data.libelles, rendus dans le vocabulaire du compte par src/services/factureApproPdf.js (libellesFactureAppro), son seul appelant (spec lot 2b §8.3 : « generate.js garde ses littéraux comme valeurs par défaut : CLI et identité »)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦?| — ⟦·⟧⟧",
+    "type": "deplacement",
+    "justification": "Reste du sous-titre de la facture d'appro (`${L.approFournisseur} — ${fo.nom || L.fournisseur}`) : ses mots sont les valeurs par défaut de LIBELLES_FACTURE_APPRO (spec lot 2b §8.3), rendu par défaut identique."
+  }
+]

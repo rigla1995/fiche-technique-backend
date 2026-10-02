@@ -28,7 +28,23 @@
  * exercice) et entre 00:45 et 01:15 (job quotidien de 01:00).
  *
  * Sortie : { meta, comptes: { cle: n }, captures: { cle: { element: valeur } } }, valeurs
- * masquées (§2.4). `comptes` = éléments non vides par clé (règle de non-vacuité). */
+ * masquées (§2.4). `comptes` = éléments non vides par clé (règle de non-vacuité).
+ *
+ * Lot 2c (docs/lot-2c-spec.md §2.3, §2.8) :
+ *   - clé `manuel` : GET /api/manuel pour 6 lecteurs (client.A, client.B, gerant.B, client.C, acheteur.C, admin) ;
+ *     `manuel.lecteurs.<lecteur>` = slugs reçus, dans l'ordre ; `manuel.sections.<slug>` = la section telle que l'API
+ *     la renvoie, écrite une fois par slug (restauration : union des 6 lecteurs ; ailleurs : des 5 lecteurs hors
+ *     admin) ; `meta.empreintesManuel.<lecteur>.<slug>` = md5 du JSON BRUT (non masqué) de la section, `id` retiré,
+ *     `updatedAt` gardé ; `meta.sectionsParLecteur`. Arrêt (aucune sortie) si un lecteur reçoit 0 section, ou si deux
+ *     lecteurs d'une même union reçoivent le même slug différemment (champ `id` ignoré) ;
+ *   - clé `recherchesDomaine` : les 5 recherches fixes écrites en gabarits balisés, rendues avec le vocabulaire du
+ *     domaine (compte B) ; les questions du guide de mise en route des comptes A, B, C, chacune cherchée avec SON
+ *     compte ; « Comment créer <mon composant> ? » pour chaque composant activite / labo actif du domaine (compte A) ;
+ *   - clé `recherches` : une 6ᵉ question sans résultat (« zzz qwerty ») capte la liste `disponibles` (R2.2) ;
+ *   - `--brut <dossier>` (hors dépôt) : écrit aussi la réponse brute, non masquée, de GET /api/manuel du client B
+ *     (`manuel-client-B.json`), pour scripts/controle-manuel-pdf.mjs du frontend (§2.6) ;
+ *   - garde R2.8.3 : `--reference` refuse d'écrire si `_migrations` contient 194, 195 ou 196 (une référence se
+ *     capture toujours sur un manuel non balisé). */
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -59,6 +75,16 @@ const SORTIE = REFERENCE
   ? path.join(RACINE, 'scripts', 'vocab-baseline', 'restauration.json')
   : path.resolve(arg('sortie', path.join(os.tmpdir(), `capture-vocab-${DOMAINE}.json`)));
 const PORT = arg('port', '3197');
+// Lot 2c (R2.3.1) : réponse brute du manuel du client B, écrite HORS des dépôts (jamais versionnée).
+const BRUT = arg('brut') ? path.resolve(arg('brut')) : null;
+if (BRUT) {
+  const dedans = (d) => (BRUT.toLowerCase() + path.sep).startsWith(path.resolve(d).toLowerCase() + path.sep);
+  if (dedans(RACINE) || dedans(path.join(RACINE, '..', 'fiche-technique-frontend'))) {
+    console.error('[capture] --brut : dossier hors des dépôts seulement (la réponse brute n\'est jamais versionnée)');
+    process.exit(2);
+  }
+}
+let brutManuelB = null;
 
 // ── Fenêtres interdites ──────────────────────────────────────────────────────────────────────
 {
@@ -124,6 +150,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const ExcelJS = require('exceljs');
 const { vocabDuDomaine, vocabDefaut } = require(path.join(RACINE, 'src', 'utils', 'vocabCompte'));
+const { rendre, entreeComposantVoc } = require(path.join(RACINE, 'src', 'utils', 'vocab'));
 const BASE = `http://127.0.0.1:${PORT}`;
 
 // ── Utilitaires ──────────────────────────────────────────────────────────────────────────────
@@ -346,6 +373,12 @@ const COMPOSANTS_MIROIR = {
   labo: { libelle: 'Pôle Bêta', libellePluriel: 'Pôles Bêta' },
   acheteurs: { libelle: 'Cercle Gamma', libellePluriel: 'Cercle Gamma' },
 };
+// Recherches fixes de l'assistant (clé `recherches`, mots de la restauration, dans tous les domaines) et leurs
+// gabarits balisés (clé `recherchesDomaine`, lot 2c R2.3.2) : en restauration, le rendu du gabarit EST la recherche
+// fixe (vérifié à chaque passage).
+const RECHERCHES_FIXES = ['créer un labo', 'transfert vers une activité', 'calcul du food cost', 'inventaire de fin de mois', 'inviter un acheteur'];
+const GABARITS_RECHERCHE = ['créer [[un:labo]]', '[[nom:transfert]] vers [[un:activite]]', 'calcul [[du:food_cost]]', '[[nom:inventaire]] de fin de mois', 'inviter [[un:acheteur]]'];
+const QUESTION_SANS_RESULTAT = 'zzz qwerty';
 
 // ── État de la base (contrôle avant / après) ────────────────────────────────────────────────
 const etatBase = async () => {
@@ -388,9 +421,9 @@ const purgerOracle = async () => {
 
 // ── Captures ─────────────────────────────────────────────────────────────────────────────────
 const C = {
-  prompt: {}, promptReel: {}, outils: {}, resultatsOutils: {}, recherches: {}, contexte: {}, guide: {},
+  prompt: {}, promptReel: {}, outils: {}, resultatsOutils: {}, recherches: {}, recherchesDomaine: {}, contexte: {}, guide: {},
   accueilMessenger: {}, emails: {}, pdf: {}, valeursContrat: {}, exports: {}, rapportIA: {},
-  tableauxDeBord: {}, donneesLibelles: {}, persistes: {}, messages: {}, auth: {},
+  tableauxDeBord: {}, donneesLibelles: {}, persistes: {}, messages: {}, auth: {}, manuel: {},
 };
 const CLES_CAPTURE = Object.keys(C);
 const pdfsDe = (f) => f.pdfs.map((p) => ({ info: p.info, textes: p.textes }));
@@ -429,6 +462,13 @@ async function principal() {
   JWT_SECRET = process.env.JWT_SECRET;
   const mig = await pool.query('SELECT filename FROM _migrations ORDER BY filename DESC LIMIT 1');
   meta.derniereMigration = mig.rows[0]?.filename || null;
+  // Garde R2.8.3 (lot 2c) : une référence se capture sur un manuel NON balisé, jamais après 194, 195 ou 196.
+  if (REFERENCE) {
+    const m2c = await pool.query("SELECT filename FROM _migrations WHERE filename ~ '^(194|195|196)_' ORDER BY filename");
+    if (m2c.rows.length) {
+      throw new Error(`--reference refusé : la base a reçu ${m2c.rows.map((r) => r.filename).join(', ')} (manuel balisé, spec lot 2c R2.8.3) ; capturer sur une copie neuve de la photo (node scripts/manuel/base-locale.js copie, puis DB_NAME=fiche_technique_2c)`);
+    }
+  }
 
   // Super_admin temporaire (mot de passe aléatoire, jeton signé en interne)
   await pool.query('DELETE FROM utilisateurs WHERE email = $1', [ADMIN_EMAIL]);
@@ -727,7 +767,7 @@ async function principal() {
     if (etiquette in C.resultatsOutils) throw new Error(`étiquette d'outil en double : ${etiquette}`);
     C.resultatsOutils[etiquette] = await outil(nom, args);
   }
-  for (const q of ['créer un labo', 'transfert vers une activité', 'calcul du food cost', 'inventaire de fin de mois', 'inviter un acheteur']) {
+  for (const q of [...RECHERCHES_FIXES, QUESTION_SANS_RESULTAT]) {
     C.recherches[q] = await outil('search_knowledge_base', { query: q });
   }
   // Guide de mise en route : A, B, C, puis A' (branche « repli » sans détail des composants)
@@ -738,6 +778,61 @@ async function principal() {
     C.guide[`${l}.etat`] = etat;
     C.guide[`${l}.blocPrompt`] = onboarding.onboardingPromptBlock(etat, voc);
     C.guide[`${l}.http`] = (await api(tok).get('/api/ai-assistant/onboarding')).body;
+  }
+
+  // ── Recherches dans les mots du compte (lot 2c, R2.3.2), appels SANS voc (repli, R2.3.3) ──
+  // Valeur d'une question : titres des résultats, et titre + contenu des résultats de la BASE (le contenu d'un
+  // résultat du manuel est la fiche servie, captée par la clé `manuel`).
+  const estManuel = (t) => typeof t === 'string' && t.startsWith('Manuel — ');
+  const resumeRecherche = (r) => {
+    const res = r && Array.isArray(r.results) ? r.results : [];
+    return { titres: res.map((x) => x.titre), base: res.filter((x) => !estManuel(x.titre)).map((x) => ({ titre: x.titre, contenu: x.contenu })) };
+  };
+  for (const [i, g] of GABARITS_RECHERCHE.entries()) {
+    const query = rendre(voc, g);
+    if (DOMAINE === 'restauration' && query !== RECHERCHES_FIXES[i]) throw new Error(`gabarit « ${g} » rendu « ${query} » en restauration (attendu « ${RECHERCHES_FIXES[i]} »)`);
+    C.recherchesDomaine[`fixe|${g}`] = { query, resultat: await outil('search_knowledge_base', { query }) };
+  }
+  // Questions suggérées du guide (textes envoyés à l'assistant par l'écran) : chacune avec SON compte.
+  for (const [l, c] of [['A', cA], ['B', cB], ['C', cC]]) {
+    const questions = [...new Set((C.guide[`${l}.etat`].etapes || []).flatMap((e) => e.questions || []))];
+    for (const q of questions) {
+      C.recherchesDomaine[`${l}|${q}`] = resumeRecherche(await outilsIA.executeToolCall(c.id, 'search_knowledge_base', { query: q }));
+    }
+  }
+  // Une question par composant actif activite / labo du domaine, écrite comme onboardingEtat (compte A).
+  for (const comp of (dom.composants || []).filter((c) => c.actif !== false && (c.typeTechnique === 'activite' || c.typeTechnique === 'labo'))) {
+    const q = `Comment créer ${voc.avec(entreeComposantVoc(voc, comp)).mon('_')} ?`;
+    if (`composant|${q}` in C.recherchesDomaine) continue;
+    C.recherchesDomaine[`composant|${q}`] = resumeRecherche(await outilsIA.executeToolCall(cA.id, 'search_knowledge_base', { query: q }));
+  }
+
+  // ── Manuel servi (lot 2c, R2.3.1) : 6 lecteurs ; l'acheteur est lu AVANT sa suppression ─────
+  const lecteursManuel = [['client.A', tokA], ['client.B', tokB], ['gerant.B', tokG], ['client.C', tokC], ['acheteur.C', tokAch], ['admin', ctx.adminTok]];
+  const sansId = (s) => Object.fromEntries(Object.entries(s).filter(([k]) => k !== 'id'));
+  const sourceSection = {};
+  C.manuel = { lecteurs: {}, sections: {} };
+  meta.empreintesManuel = {};
+  meta.sectionsParLecteur = {};
+  for (const [l, tok] of lecteursManuel) {
+    const liste = exiger(await api(tok).get('/api/manuel'), 200, `GET /api/manuel (${l})`);
+    if (!Array.isArray(liste) || liste.length === 0) throw new Error(`GET /api/manuel (${l}) : aucune section (la capture s'arrête, R2.3.1)`);
+    if (l === 'client.B') brutManuelB = liste;
+    C.manuel.lecteurs[l] = liste.map((s) => s.slug);
+    meta.sectionsParLecteur[l] = liste.length;
+    meta.empreintesManuel[l] = {};
+    for (const s of liste) {
+      const json = JSON.stringify(sansId(s));
+      meta.empreintesManuel[l][s.slug] = crypto.createHash('md5').update(json, 'utf8').digest('hex');
+      // Hors restauration, l'admin lit le manuel en mots de LabFlow (I4) : hors de l'union, comparé par empreinte.
+      if (l === 'admin' && DOMAINE !== 'restauration') continue;
+      if (s.slug in C.manuel.sections) {
+        if (JSON.stringify(sansId(C.manuel.sections[s.slug])) !== json) throw new Error(`manuel : la fiche « ${s.slug} » diffère entre ${sourceSection[s.slug]} et ${l} (R2.3.1)`);
+      } else {
+        C.manuel.sections[s.slug] = s;
+        sourceSection[s.slug] = l;
+      }
+    }
   }
   // Prompt réel : chatWithAI(B) → corps capté par le bouchon Gemini
   const fChat = await fenetre(async () => ai.chatWithAI(cB.id, 'oracle-session', 'Bonjour, quel est mon stock ?'));
@@ -1143,6 +1238,11 @@ async function nettoyer() {
         const sortie = { meta, comptes, captures };
         fs.mkdirSync(path.dirname(SORTIE), { recursive: true });
         fs.writeFileSync(SORTIE, JSON.stringify(sortie, null, 1) + '\n', 'utf8');
+        if (BRUT) {
+          fs.mkdirSync(BRUT, { recursive: true });
+          fs.writeFileSync(path.join(BRUT, 'manuel-client-B.json'), JSON.stringify(brutManuelB, null, 1) + '\n', 'utf8');
+          console.log(`[capture] réponse brute du manuel (client B, ${brutManuelB.length} sections) : ${path.join(BRUT, 'manuel-client-B.json')}`);
+        }
         console.log(`[capture] comptes par clé : ${JSON.stringify(comptes)}`);
         console.log(`[capture] écrit : ${SORTIE} (${Math.round(fs.statSync(SORTIE).size / 1024)} Ko) — dernière migration ${meta.derniereMigration} — ${duree} s`);
         code = 0;

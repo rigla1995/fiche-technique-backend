@@ -156,55 +156,6 @@
     "justification": "Nom de clé JSON de top_articles (toArr(parArticle, 'article')) : clé de l'API, inchangée (I2, I9)."
   },
   {
-    "fichier": "src/controllers/dashboardV2Controller.js",
-    "avant": "",
-    "apres": null,
-    "type": "deplacement",
-    "justification": "ELSE '' du CASE des préfixes de catégorie (onglet Ventes) : le préfixe est désormais écrit en JS après la requête (spec lot 2b §9, :357-371), le '' devient la branche « type hors des trois » de libelleCategorie ; rendu par défaut identique, prouvé par test/B4-dashboardsSql.test.js et par la comparaison AVANT/APRÈS sur la base locale."
-  },
-  {
-    "fichier": "src/controllers/dashboardV2Controller.js",
-    "avant": "⟦sql⟧'supplement'",
-    "apres": null,
-    "type": "discriminant",
-    "justification": "Code SQL retiré (spec lot 2b §3.2 E4) : le CASE cpn.type_produit WHEN 'vendable' / 'supplement' / 'valorise' sort du SQL ; le SQL renvoie cpn.type_produit et le JS choisit le préfixe dans une table à clés littérales (spec §9)."
-  },
-  {
-    "fichier": "src/controllers/dashboardV2Controller.js",
-    "avant": "⟦sql⟧'valorise'",
-    "apres": "⟦sql⟧'activite'",
-    "type": "discriminant",
-    "justification": "Codes SQL retiré et ajouté (spec lot 2b §3.2 E4, §9) : 'valorise' sort du CASE des préfixes (écrit en JS) ; 'activite' remplace le libellé 'Activité' AS site_type (code stable traduit en JS par TYPE_SITE). L'outil apparie ces deux codes, sans lien entre eux."
-  },
-  {
-    "fichier": "src/controllers/dashboardV2Controller.js",
-    "avant": "⟦sql⟧'vendable'",
-    "apres": "⟦sql⟧'labo'",
-    "type": "discriminant",
-    "justification": "Codes SQL retiré et ajouté (spec lot 2b §3.2 E4, §9) : 'vendable' sort du CASE des préfixes (écrit en JS) ; 'labo' remplace le libellé 'Labo' AS site_type (code stable traduit en JS par TYPE_SITE). L'outil apparie ces deux codes, sans lien entre eux."
-  },
-  {
-    "fichier": "src/controllers/dashboardV2Controller.js",
-    "avant": "⟦·⟧ · ⟦·⟧",
-    "apres": "⟦·⟧|⟦·⟧",
-    "type": "discriminant",
-    "justification": "Clé de regroupement des pertes par site : code|nom au lieu du libellé « Type · nom » (spec lot 2b §9, :571), pour ne jamais fusionner deux sites dans un domaine où les formes courtes d'activité et de labo seraient égales ; clé interne jamais affichée, le libellé « Type · nom » est calculé après le regroupement."
-  },
-  {
-    "fichier": "src/controllers/dashboardV2Controller.js",
-    "avant": null,
-    "apres": "⟦·⟧|⟦·⟧",
-    "type": "discriminant",
-    "justification": "Second emploi de la même clé de regroupement code|nom (lecture du cumul, même ligne :571) : clé interne jamais affichée (spec lot 2b §9)."
-  },
-  {
-    "fichier": "src/controllers/dashboardV2Controller.js",
-    "avant": null,
-    "apres": "|",
-    "type": "discriminant",
-    "justification": "Séparateur de la clé code|nom (indexOf('|')) qui retrouve le code et le nom après le regroupement pour écrire le libellé `${TYPE_SITE[code]} · ${nom}` (spec lot 2b §9) : valeur technique, jamais affichée."
-  },
-  {
     "fichier": "src/controllers/dashboardController.js",
     "avant": "article",
     "apres": "article",

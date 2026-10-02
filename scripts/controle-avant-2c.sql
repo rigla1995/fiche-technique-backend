@@ -57,4 +57,26 @@ SELECT id, slug, nom,
   FROM domaines_activite
  ORDER BY id;
 
+-- (6) et (7) : ajoutées à l'étape O du lot 2c (docs/lot-2c-spec.md §12.1). Si le client a déjà collé la version
+-- précédente de ce fichier, coller seulement de BEGIN à la lecture (5) exclue, puis (6), (7) et ROLLBACK.
+
+\echo '=== (6) Retours chariot dans les textes (0 et 0 attendus) ==='
+-- Les empreintes (1), (3), (4) sont calculées sans \r : une production à \r aurait les mêmes empreintes.
+SELECT
+  (SELECT count(*) FROM manuel_sections
+    WHERE position(E'\r' in contenu || COALESCE(contenu_defaut, '') || titre || COALESCE(partie, '')) > 0) AS fiches_avec_cr,
+  (SELECT count(*) FROM ai_knowledge_base
+    WHERE position(E'\r' in titre || contenu) > 0) AS entrees_avec_cr;
+
+\echo '=== (7) Domaine Hôtellerie : slug, lexique (empreinte et texte), composants ==='
+SELECT id, slug, nom, md5(lexique::text) AS md5_lexique, lexique::text AS lexique
+  FROM domaines_activite
+ WHERE slug = 'hotellerie' OR nom ILIKE '%tellerie%'
+ ORDER BY id;
+SELECT d.slug AS domaine, c.ordre, c.code, c.libelle, c.libelle_pluriel, c.type_technique, c.genre, c.elision, c.actif
+  FROM domaine_composants c
+  JOIN domaines_activite d ON d.id = c.domaine_id
+ WHERE d.slug = 'hotellerie' OR d.nom ILIKE '%tellerie%'
+ ORDER BY d.id, c.ordre, c.id;
+
 ROLLBACK;
