@@ -298,10 +298,10 @@ const exportExcel = async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
-    if (err.message === 'Produit introuvable') {
+    if (err.code === 'PRODUIT_INTROUVABLE') {
       return res.status(404).json({ message: err.message });
     }
-    if (err.message.includes('circulaire')) {
+    if (err.code === 'REFERENCE_CIRCULAIRE') {
       return res.status(400).json({ message: err.message });
     }
     console.error(err);

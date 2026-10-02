@@ -8,10 +8,10 @@ l'application dans son processus, ce qui APPLIQUE les migrations en attente à l
 | Fichier | Rôle |
 |---|---|
 | `restauration.json` | Référence commitée : captures du domaine restauration (`meta`, `comptes` par clé, `captures` masquées). `meta.rangsTri` : rangs de la clé de tri des listes d'`ordre-libre.json` à `cleTri`, calculés avant masquage. |
-| `ecarts-restauration-attendus.json` | Écarts admis, un par entrée `{ cle, chemin, avant, apres, raison: '§11.1.n' \| '§11.2.n' }`. Vide à l'étape O. Tenu par l'intégrateur. |
+| `ecarts-restauration-attendus.json` | Écarts admis, un par entrée `{ cle, chemin, avant, apres, raison: '§11.1.n' \| '§11.2.n' }`, plus `type: 'ordre-cles'` pour une permutation de clés. Vide à l'étape O. Tenu par l'intégrateur. |
 | `ordre-libre.json` | Listes dont l'ordre peut changer `{ cle, chemin, raison, cleTri? }` (voir « Ordre » ci-dessous). |
 | `exceptions-hors-restauration.json` | Exceptions typées du scan hors restauration `{ cle, chemin (motif), texte, type, justification, domaines? }`. |
-| `hors-restauration-avant.json` | Liste de travail de l'étape O : formes par défaut trouvées par domaine, chiffrées par famille. Incomplète pour les clés `*_abr` (relancer après S1). |
+| `hors-restauration-avant.json` | Liste de travail de l'étape O : formes par défaut trouvées par domaine, chiffrées par famille. Complète depuis S1 (clés `*_abr` comprises) pour hotellerie, ceramique et miroir ; son `_lisezmoi` ne la dit « incomplète » que si un domaine a encore des clés absentes du moteur de son passage. |
 
 ## Commandes (depuis la racine du dépôt backend)
 
@@ -30,6 +30,9 @@ Options : `--capture <fichier>` (analyser une capture déjà faite), `--referenc
 - La référence et chaque contrôle sont du même mois civil ; sinon, recapturer la référence sur la tête de `develop`.
 - Déterminisme : la capture est lancée deux fois avant d'être commitée ; les deux doivent être identiques.
 - Échec du contrôle : clé vide, compte d'éléments différent, écart non listé, entrée sans emploi, ordre seul non admis.
+- Ordre des clés (I9, spec §2.4 v2.2) : deux objets comparés gardent la même suite de clés COMMUNES. Une permutation
+  est un écart de type `ordre-cles` (`avant` / `apres` = les deux suites), admis seulement par une entrée qui porte ce
+  type. Une clé ajoutée ou retirée reste un écart de valeur (« ⟨absent⟩ »).
 - Aucun email ne part : `resend` est remplacé par un bouchon, DocuSeal et Gemini sont factices, tout autre hôte est refusé
   (`scripts/lib/bouchons-test.js`, mode « capture ») : `fetch`, `http`/`https` `.request` et `.get`, et toute connexion
   TCP/TLS directe (garde sur `net.Socket.prototype.connect`). Le journal du bouchon est imprimé à la fin de chaque capture.
@@ -65,12 +68,23 @@ Options : `--capture <fichier>` (analyser une capture déjà faite), `--referenc
     `laboController.js:1974`, `:2395`) ;
   - `10.pertesLabo.LC` : en-tête mort `pertesController.js:748` (« ’ », §11.1.4).
 
-  La référence n'a donc AUCUN contenu de classeur pour ces 8 points d'entrée. Après le socle (S2), ils passent à 200 :
-  l'intégrateur écrit alors leurs écarts attendus (raisons `§11.1.4` / `§11.1.7`) et relit leur contenu, qui n'a pas
-  de comparaison possible. Un point qui resterait à 500 trahit un assainisseur oublié.
-- **3 résultats d'outils en erreur SQL** (bug antérieur au lot, hors lot 2b) : `get_referentiel` (« la colonne i.prix
-  n'existe pas ») et `get_config_vente` ×2 (« la colonne pl.commission_pct n'existe pas »). Ils sont comparés tels
-  quels ; leur correction changera la référence (à recapturer).
+  La référence n'a donc AUCUN contenu de classeur pour ces 8 points d'entrée. Quand l'un passe à 200, l'intégrateur
+  écrit ses écarts attendus (raisons `§11.1.4` / `§11.1.7`) et relit son contenu, qui n'a pas de comparaison possible.
+  État après le socle (S1 + S2) : `06.inventaireActivite.A1` et `10.pertesLabo.LC` passent à 200 (`nomFichierSur`,
+  en-tête mort supprimé) et leurs 9 écarts `§11.1.4` sont inscrits. Les 6 autres (`05`, `07`, `08` × `L1` / `LC`)
+  restent à 500 tant que `ongletSur` n'est pas employé sur leur onglet à nom saisi (spec §6.3, lots B3a et B4).
+  Un point qui resterait à 500 après la vague 1 trahit un assainisseur oublié.
+- Les 3 résultats d'outils en erreur SQL (`get_referentiel`, `get_config_vente` ×2) de la première capture ont été
+  corrigés avant le lot (fusion `afb298c`) ; la référence a été recapturée ensuite (`d03cc68`).
+- Référence recapturée une 2ᵉ fois sur le code de `d03cc68` (corrections des relectures du socle, spec v2.2), avec le
+  script de capture de la branche : clé `auth` + `client.abonnement` (`GET /api/abonnements/mon-abonnement` du client B,
+  `config.composants`, §11.2.2), et 2ᵉ activité du compte B nommée « Étages "Nord" » (guillemet droit, §11.1.4).
+  Arbre `git archive d03cc68`, base locale à la migration 192 (colonnes `genre` / `elision` présentes mais non lues
+  par ce code : `meta.derniereMigration` le dit). Deux passages identiques. Preuves : contre l'ancienne référence, la
+  seule différence est l'élément ajouté ; puis toutes les différences dues au nouveau nom s'expliquent par la seule
+  substitution du nom (24 éléments), et les 2 autres sont des permutations entre ex aequo admises (`ordre-libre.json`).
+  Écarts inscrits ensuite : `06.inventaireActivite.A2/disposition` (`§11.1.4`, « " » → « - ») et `genre` / `elision`
+  des 3 composants de `config.composants` (`§11.2.2`).
 
 ## Scan hors restauration (§2.5)
 

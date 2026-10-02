@@ -2,9 +2,12 @@
 // configuration), lexique, règles, grille tarifaire (surcharges tarifs_domaine).
 //   GET    /api/domaines        admin/boss → tous (profil résolu + nbClients) ; client/gérant → le sien ;
 //                               acheteur → celui de son client VENDEUR, réduit à { id, slug, nom, lexique }
+//                               (non admin : lexique allégé, null pour le vocabulaire par défaut — lot 2b §5.7)
 //   GET    /api/domaines/:id    profil résolu + composants (tous) + tarifs (= GET tarifs?domaineId)
 //   POST   /api/domaines        { nom, slug?, description? } → domaine + 4 composants identité
 //   PUT    /api/domaines/:id    { nom?, slug?, description?, lexique?, regles?, composants? }
+//                               composants[] : genre ('m' | 'f') et elision (true | false | null | 'auto'),
+//                               facultatifs : absents = valeurs stockées gardées (lot 2b §5.4)
 //   DELETE /api/domaines/:id    409 DOMAINE_UTILISE si référencé
 // Lexique (lot 2) : les réponses portent `lexique` = lexique RÉSOLU v2 (défaut + écarts, clés
 // dérivées comprises). Pour l'admin s'y ajoute `lexiqueEcarts` = les écarts STOCKÉS tels quels
@@ -77,17 +80,21 @@ const loadAll = async () => {
 const list = async (req, res) => {
   try {
     if (isSuperAdmin(req.user)) return res.json(await loadAll());
+    // Client, gérant, acheteur : lexique allégé (lot 2b §5.7), le même que /auth/me ; chaque branche garde
+    // sa forme. Import tardif : authController charge l'email et le chiffrement des mots de passe.
+    const { lexiquePourCompte } = require('./authController');
     // Acheteur : ce n'est pas un compte. Il lit les MOTS de son client vendeur, comme dans /auth/me
     // (spec §2.4) — jamais ses composants ni ses règles (configuration commerciale du vendeur), et
     // jamais le repli « restauration » qu'aurait donné son propre identifiant, sans abonnement.
     if (req.user.role === 'acheteur') {
       if (!req.user.acheteurClientId) return res.json([]);
       const p = await getProfilForClient(req.user.acheteurClientId);
-      return res.json(p && p.id != null ? [{ id: p.id, slug: p.slug, nom: p.nom, lexique: p.lexique }] : []);
+      return res.json(p && p.id != null ? [{ id: p.id, slug: p.slug, nom: p.nom, lexique: lexiquePourCompte(p) }] : []);
     }
-    // Client / gérant : le domaine de leur compte (profil résolu)
+    // Client / gérant : le domaine de leur compte (profil résolu, forme mapDomaine avec description ;
+    // seul le lexique change, à sa place dans l'objet)
     const profil = await getProfilForClient(req.user.id);
-    res.json(profil && profil.id != null ? [mapDomaine(profil)] : []);
+    res.json(profil && profil.id != null ? [{ ...mapDomaine(profil), lexique: lexiquePourCompte(profil) }] : []);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -127,7 +134,16 @@ const validateComposant = (c, i) => {
   if (!c.libelle || !String(c.libelle).trim()) return `composants[${i}] (${code}) : libellé requis`;
   if (String(c.libelle).trim().length > 80) return `composants[${i}] (${code}) : libellé trop long (80 max)`;
   if (c.libellePluriel != null && String(c.libellePluriel).length > 80) return `composants[${i}] (${code}) : pluriel trop long (80 max)`;
+  // Lot 2b §5.4 : `[`, `]` et `|` sont réservés aux balises du vocabulaire ; un libellé de composant est
+  // interpolé dans des textes rendus (guide de mise en route, contrat).
+  if (/[[\]|]/.test(String(c.libelle)) || (c.libellePluriel != null && /[[\]|]/.test(String(c.libellePluriel)))) {
+    return `composants[${i}] (${code}) : caractères [ ] | interdits dans le libellé et le pluriel`;
+  }
   if (c.icone != null && String(c.icone).length > 8) return `composants[${i}] (${code}) : icône trop longue (8 max)`;
+  // Genre : 'm' ou 'f' ; absent ou null = inchangé (défaut 'm' à la création).
+  if (c.genre != null && c.genre !== 'm' && c.genre !== 'f') return `composants[${i}] (${code}) : genre invalide (m ou f)`;
+  // Élision : true, false, null ou 'auto' (null et 'auto' = déduite du libellé) ; absente = inchangée.
+  if ('elision' in c && ![true, false, null, 'auto'].includes(c.elision)) return `composants[${i}] (${code}) : élision invalide (true, false, null ou auto)`;
   if (!TYPES_TECHNIQUES.includes(c.typeTechnique)) return `composants[${i}] (${code}) : type technique invalide (${TYPES_TECHNIQUES.join(', ')})`;
   const min = c.nbMin == null ? 0 : parseInt(c.nbMin, 10);
   if (!Number.isFinite(min) || min < 0) return `composants[${i}] (${code}) : minimum invalide`;
@@ -202,12 +218,13 @@ const create = async (req, res) => {
       [nom, slug, description]
     );
     const dom = ins.rows[0];
+    // 4 composants identité, genre compris (lot 2b §5.4) ; élision NULL = déduite du libellé.
     for (const type of TYPES_TECHNIQUES) {
       const c = COMPOSANTS_IDENTITE[type];
       await db.query(
-        `INSERT INTO domaine_composants (domaine_id, code, libelle, libelle_pluriel, icone, type_technique, ordre)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [dom.id, c.code, c.libelle, c.libellePluriel, c.icone, type, c.ordre]
+        `INSERT INTO domaine_composants (domaine_id, code, libelle, libelle_pluriel, icone, type_technique, ordre, genre)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [dom.id, c.code, c.libelle, c.libellePluriel, c.icone, type, c.ordre, c.genre]
       );
     }
     await db.query('COMMIT');
@@ -344,17 +361,22 @@ const update = async (req, res) => {
           });
         }
       }
+      // Genre et élision (lot 2b §5.4) : un payload sans ces champs (ancien onglet admin, script de
+      // test) ne remet rien à zéro. Genre : COALESCE sur la valeur stockée ('m' à l'insertion).
+      // Élision : $16 = le champ est-il envoyé ? ; $15 = true / false / null (null et 'auto' = déduite).
       for (let i = 0; i < composants.length; i++) {
         const c = composants[i];
         await db.query(
           `INSERT INTO domaine_composants
-             (domaine_id, code, libelle, libelle_pluriel, icone, aide, type_technique, vente_active, production_active, nb_min, nb_max, ordre, actif)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+             (domaine_id, code, libelle, libelle_pluriel, icone, aide, type_technique, vente_active, production_active, nb_min, nb_max, ordre, actif, genre, elision)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, COALESCE($14, 'm'), $15::boolean)
            ON CONFLICT (domaine_id, code) DO UPDATE SET
              libelle = EXCLUDED.libelle, libelle_pluriel = EXCLUDED.libelle_pluriel, icone = EXCLUDED.icone,
              aide = EXCLUDED.aide, type_technique = EXCLUDED.type_technique,
              vente_active = EXCLUDED.vente_active, production_active = EXCLUDED.production_active,
-             nb_min = EXCLUDED.nb_min, nb_max = EXCLUDED.nb_max, ordre = EXCLUDED.ordre, actif = EXCLUDED.actif`,
+             nb_min = EXCLUDED.nb_min, nb_max = EXCLUDED.nb_max, ordre = EXCLUDED.ordre, actif = EXCLUDED.actif,
+             genre = COALESCE($14, domaine_composants.genre),
+             elision = CASE WHEN $16::boolean THEN $15::boolean ELSE domaine_composants.elision END`,
           [
             id, c.code.trim(), String(c.libelle).trim(),
             c.libellePluriel != null && String(c.libellePluriel).trim() ? String(c.libellePluriel).trim() : null,
@@ -366,6 +388,9 @@ const update = async (req, res) => {
             c.nbMax == null || c.nbMax === '' ? null : parseInt(c.nbMax, 10),
             c.ordre == null ? i + 1 : parseInt(c.ordre, 10),
             c.actif !== false,
+            c.genre === 'm' || c.genre === 'f' ? c.genre : null,
+            c.elision === true || c.elision === false ? c.elision : null,
+            'elision' in c,
           ]
         );
       }
@@ -428,4 +453,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { list, getOne, create, update, remove, mapDomaine, slugify };
+module.exports = { list, getOne, create, update, remove, mapDomaine, slugify, validateComposant };

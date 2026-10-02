@@ -318,7 +318,9 @@ const MIROIR = { nom: 'Oracle Miroir', slug: 'oracle-miroir' };
 const MOTIF_EMAILS = 'oracle-vocab-%@example.com';
 
 // Noms saisis par l'oracle : sans mot du lexique par défaut, sans double espace ni espace en
-// 31ᵉ position ; un labo avec « / » et une activité avec « — » (assainisseurs, §5.5) ; le labo du
+// 31ᵉ position ; un labo avec « / » et une activité avec « — » (assainisseurs, §5.5) ; la 2ᵉ activité
+// porte un guillemet droit « " » (Latin-1, admis par Node, mais il fermerait filename="…" : nomFichierSur le
+// remplace par « - », §11.1.4) ; le labo du
 // compte C porte « ’ » (hors Latin-1) et finit par une apostrophe : ses exports exercent, côté labo,
 // les en-têtes Content-Disposition et l'en-tête mort des pertes labo (§11.1.4) et la règle des
 // onglets (§11.1.7).
@@ -329,7 +331,7 @@ const N = {
   acheteur2: 'Maison Kamel', acheteur2Ent: 'Kamel Frères',
   acheteur3: 'Comptoir Hédi', acheteur3Ent: 'Hédi et Fils',
   labo1: 'Réserve Nord / Est', labo2: 'Bloc chaud', laboC: 'Four d’Ali\'',
-  act1: 'Terrasse du Lac — Salon', act2: 'Étages Nord',
+  act1: 'Terrasse du Lac — Salon', act2: 'Étages "Nord"',
   famille: 'Denrées sèches', cat1: 'Épicerie fine', cat2: 'Lingerie', catC: 'Semoules',
   riz: 'Riz basmati', huile: 'Huile de tournesol', cafe: 'Café moulu', drap: 'Drap 240x300', savon: 'Savon 30 g', semoule: 'Semoule fine',
   fournisseur: 'Comptoir Bejaoui', fournisseurC: 'Minoterie du Kef',
@@ -967,6 +969,8 @@ async function principal() {
     void tokRole;
   }
   C.auth['client.entreprise'] = (await BA.get('/api/entreprise')).body;
+  // config.composants de l'abonnement (§11.2.2 : genre et elision, comparés explicitement)
+  C.auth['client.abonnement'] = (await BA.get('/api/abonnements/mon-abonnement')).body;
 
   // ── Suppression de l'acheteur avec une commande en attente : motif persisté ─────────────
   const fSupp = await fenetre(async () => CA.del(`/api/acheteurs/${ach1.id}`));

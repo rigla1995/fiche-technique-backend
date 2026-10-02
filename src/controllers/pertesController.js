@@ -745,7 +745,6 @@ const exportLaboPerteExcel = async (req, res) => {
       exRows = ptOnly === 'true' ? ptRows
         : [...exRows, ...ptRows].sort((a, b) => new Date(b.date_perte) - new Date(a.date_perte));
     }
-    res.setHeader('Content-Disposition', `attachment; filename="Historique-Pertes-Labo-${laboNom}.xlsx"`);
     await buildExcelPertes(res, exRows, false, { dateDebut, dateFin, selectedIds: idList, titre: 'Historique des pertes — Labo', sousTitre: laboNom });
   } catch (err) {
     console.error(err);

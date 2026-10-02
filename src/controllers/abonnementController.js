@@ -3,6 +3,8 @@ const { sendInviteEmail, sendFactureEmail } = require('../services/emailService'
 const { getSubmissionDocuments } = require('../services/docusealService');
 const { generateFacturePdf } = require('../services/pdfService');
 const { buildContratDocument } = require('../services/contractPdfService');
+const { vocabForClient } = require('../utils/vocabCompte');
+const { oublierConversationsIA } = require('../services/clientConfigService');
 // Moteur de tarification PUR (lot 1a) : les calculs vivent dans pricingEngine et
 // sont RÉ-EXPORTÉS en bas de ce fichier (les autres contrôleurs importent d'ici).
 const {
@@ -18,7 +20,7 @@ const {
 // Config par composant (lot 1a) : applyComposants = SEUL écrivain des compteurs nb_*.
 const {
   CompositionError, deriveCompteurs, validerComposition, normCompteurs, erreursIntroduites,
-  resolveComposants, composantsDepuisCompteurs, composantsDelta, applyComposants, listComposantsConfig,
+  resolveComposants, composantsDepuisCompteurs, composantsDelta, applyComposants, invaliderProfilApresCommit, listComposantsConfig,
 } = require('../services/configComposantsService');
 // getDomaineDefautId (slug 'restauration') = source unique dans domaineProfilService (ré-exporté ici)
 const { getProfil, REGLES_DEFAUT, getDomaineDefautId } = require('../services/domaineProfilService');
@@ -463,6 +465,7 @@ const createAbonnement = async (clientId, montantOnboarding, config = null) => {
     const aboId = result.rows[0].id;
 
     let cfgRow = null;
+    let resultatComposants = null;
     if (config) {
       const nbActivites = config.nbActivites ?? 1;
       // La formule n'a de sens qu'avec des activités (compte dépôt = NULL)
@@ -492,7 +495,7 @@ const createAbonnement = async (clientId, montantOnboarding, config = null) => {
         : await composantsDepuisCompteurs(domaineIdEffectif, {
             nbActivites, nbLabos: config.nbLabos || 0, nbGerants: config.nbGerants || 0, nbAcheteurs: config.nbAcheteurs || 0,
           }, db);
-      await applyComposants(db, aboId, { domaineId: domaineIdEffectif, composants, mode: 'set' });
+      resultatComposants = await applyComposants(db, aboId, { domaineId: domaineIdEffectif, composants, mode: 'set' });
       // Formule explicite (applyComposants ne pose que le défaut premium / NULL)
       if (formule) {
         await db.query('UPDATE abonnement_config SET formule_activites = $2 WHERE abonnement_id = $1 AND nb_activites >= 1', [aboId, formule]);
@@ -519,6 +522,8 @@ const createAbonnement = async (clientId, montantOnboarding, config = null) => {
       [aboId, moisStr, montant, statut]
     );
     await db.query('COMMIT');
+    // Composant identité créé à la volée : le profil du domaine en cache ne l'a pas (spec §5.4)
+    invaliderProfilApresCommit(resultatComposants);
     return aboId;
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
@@ -1423,7 +1428,7 @@ const confirmInvite = async (req, res) => {
       [newExpires, clientId]
     );
 
-    const emailResult = await sendInviteEmail({ to: u.email, nom: u.nom, token: u.invite_token, role: 'client' });
+    const emailResult = await sendInviteEmail({ to: u.email, nom: u.nom, token: u.invite_token, role: 'client', voc: await vocabForClient(clientId) });
 
     await pool.query(
       'UPDATE abonnements SET invite_sent = TRUE, updated_at = NOW() WHERE client_id = $1',
@@ -1680,12 +1685,20 @@ const updateAbonnementConfig = async (req, res) => {
         WHERE abonnement_id = $1`,
       [aboId, formuleIn, montantOnboarding != null ? Number(montantOnboarding) : null, domaineFinal]
     );
-    if (composants) await applyComposants(db, aboId, { domaineId: domaineFinal, composants, mode: 'set' });
+    let resultatComposants = null;
+    if (composants) resultatComposants = await applyComposants(db, aboId, { domaineId: domaineFinal, composants, mode: 'set' });
     else if (formuleIn) {
       // Formule seule : NULL sans activité (même règle que les écrivains)
       await db.query('UPDATE abonnement_config SET formule_activites = NULL WHERE abonnement_id = $1 AND nb_activites = 0', [aboId]);
     }
     await db.query('COMMIT');
+    // Composant identité créé à la volée : le profil du domaine en cache ne l'a pas (spec §5.4)
+    invaliderProfilApresCommit(resultatComposants);
+    // Domaine changé : l'assistant oublie les conversations dites dans l'ancien vocabulaire
+    // (lot 2b, spec §5.6) — au mieux, jamais un 500 ; rien sans changement de domaine.
+    if (domaineChange) {
+      await oublierConversationsIA(clientId).catch((e) => console.error('[config] purge assistant:', e.message));
+    }
     // Les paiements non réglés (mois courant et suivants, hors saisies admin) suivent la
     // nouvelle config / grille — best-effort : la config est déjà écrite, jamais un 500 ici
     await recalcPaiementsEnAttente(pool, aboId).catch((e) => console.error('[config] recalc paiements:', e.message));
@@ -1997,6 +2010,7 @@ const toggleModuleAcheteurs = async (req, res) => {
               : (await composantsDepuisCompteurs(cfgRes.rows[0].domaine_id, { nbAcheteurs: nb > 0 ? nb : 1 }, db)).map((c) => ({ code: c.code, nb }));
             const r2 = await applyComposants(db, aboId, { composants, mode: 'add' });
             await db.query('COMMIT');
+            invaliderProfilApresCommit(r2); // composant identité créé à la volée (spec §5.4)
             quota = r2.compteurs.nb_acheteurs;
           } catch (e) {
             await db.query('ROLLBACK').catch(() => {});

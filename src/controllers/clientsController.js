@@ -6,9 +6,11 @@ const {
 } = require('./abonnementController');
 const {
   CompositionError, deriveCompteurs, validerComposition, erreursIntroduites, resolveComposants, composantsDepuisCompteurs,
-  applyComposants, listComposantsConfig,
+  applyComposants, invaliderProfilApresCommit, listComposantsConfig,
 } = require('../services/configComposantsService');
 const { getProfil, getDomaineDefautId } = require('../services/domaineProfilService');
+const { vocabDefaut, vocabDuDomaine } = require('../utils/vocabCompte');
+const { oublierConversationsIA } = require('../services/clientConfigService');
 const { generateInviteToken, sendWelcomeWithContractEmail, sendDocusealSigningEmail } = require('../services/emailService');
 const { generateContratPdf } = require('../services/pdfService');
 const {
@@ -455,6 +457,8 @@ const create = async (req, res) => {
           domaineSlug: cfgComplete?.domaine_slug || null,
         };
         const pricing = await computeEffectivePricing(user.id).catch(() => null);
+        // Vocabulaire du compte créé (domaine du profil, en cache : aucune requête de plus)
+        const voc = await vocabDuDomaine(domaineId);
         submitContratForSignature({
           aboId,
           pricing,
@@ -472,7 +476,7 @@ const create = async (req, res) => {
                 .catch((e) => console.error('[docuseal] Stockage contrat_submission_id échoué:', e.message));
             }
             if (signingUrl) {
-              sendDocusealSigningEmail({ to: email, nom, signingUrl })
+              sendDocusealSigningEmail({ to: email, nom, signingUrl, voc })
                 .then(() => console.log(`[docuseal] Email de signature envoyé à ${email}`))
                 .catch((err) => console.error('[docuseal] Erreur envoi email signature:', err.message));
             }
@@ -571,6 +575,7 @@ const update = async (req, res) => {
     // composants re-mappés sur le nouveau domaine (même code sinon 1er composant du type,
     // compteurs et mensualité conservés), paiements en attente recalculés sur sa grille.
     let aboIdDomaine = null;
+    let resultatComposants = null;
     if (domaineId != null) {
       const aboRes = await dbClient.query(
         `SELECT a.id, ac.domaine_id FROM abonnements a
@@ -594,13 +599,18 @@ const update = async (req, res) => {
           validerComposition({ compteurs: deriveCompteurs(resolus), regles: profilCible?.regles, composants: resolus })
         );
         if (erreurs.length) throw new CompositionError(erreurs);
-        await applyComposants(dbClient, aboIdDomaine, { domaineId, composants, mode: 'set' });
+        resultatComposants = await applyComposants(dbClient, aboIdDomaine, { domaineId, composants, mode: 'set' });
       }
     }
 
     await dbClient.query('COMMIT');
+    // Composant identité créé à la volée : le profil du domaine en cache ne l'a pas (spec §5.4)
+    invaliderProfilApresCommit(resultatComposants);
     if (aboIdDomaine) {
       await recalcPaiementsEnAttente(pool, aboIdDomaine).catch((e) => console.error('[clients.update] recalc paiements:', e.message));
+      // Domaine changé : l'assistant oublie les conversations dites dans l'ancien vocabulaire
+      // (lot 2b, spec §5.6) — au mieux, jamais un 500.
+      await oublierConversationsIA(id).catch((e) => console.error('[clients.update] purge assistant:', e.message));
     }
 
     // Return with fresh domaineIds + domaine du compte
@@ -744,7 +754,9 @@ const remove = async (req, res) => {
     if (deletedClient.email && (docusealPdfConfigured() || docusealConfigured('resiliation'))) {
       submitResiliationForSignature(deletedClient)
         .then(({ signingUrl }) => signingUrl
-          ? sendDocusealSigningEmail({ to: deletedClient.email, nom: deletedClient.nom || 'Client', signingUrl, type: 'resiliation' })
+          // Vocabulaire par défaut, voulu (spec §5.6) : le compte est supprimé AVANT l'envoi,
+          // et la variante résiliation n'écrit aucun terme.
+          ? sendDocusealSigningEmail({ to: deletedClient.email, nom: deletedClient.nom || 'Client', signingUrl, type: 'resiliation', voc: vocabDefaut })
           : null)
         .then(() => console.log(`[resiliation] acte envoyé à ${deletedClient.email}`))
         .catch((e) => console.error('[resiliation] envoi échoué:', e.message));

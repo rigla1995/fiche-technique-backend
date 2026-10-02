@@ -14,9 +14,11 @@
 //     `sg`, elle ne peut porter qu'une icône (un pluriel ou un genre seuls seraient perdus en
 //     silence dès que le parent est surchargé) ;
 //   • `derive_de`, `mode`, `gabarit` viennent du lexique par défaut, jamais d'un domaine ;
-//   • `sg`, `pl`, la forme courte et l'icône ne contiennent ni [ ] | * \ ` { } $ ni retour à la
-//     ligne, tabulation ou autre caractère de contrôle (caractères des balises [[…]], du Markdown
-//     du manuel, des noms d'onglets Excel et de l'interpolation i18next {{…}} / $t(…)) ;
+//   • `sg`, `pl`, la forme courte et l'icône ne contiennent ni [ ] | * \ ` { } $ < > ni retour à
+//     la ligne, tabulation ou autre caractère de contrôle (caractères des balises [[…]], du Markdown
+//     du manuel, des noms d'onglets Excel, de l'interpolation i18next {{…}} / $t(…) et, lot 2b
+//     §4.4, du HTML des emails : un terme y est écrit sans échappement — il ne va jamais dans un
+//     attribut HTML ; « & » et « " » restent admis) ;
 //   • longueurs : 60 caractères pour sg / pl, 20 pour la forme courte, 8 pour l'icône ;
 //   • les noms d'Object.prototype (constructor, __proto__) et « prototype » ne sont pas des clés.
 const { LEXIQUE_DEFAUT } = require('../config/lexiqueDefaut');
@@ -25,15 +27,15 @@ const CLE_RE = /^[a-z0-9_]{1,40}$/;
 const CHAMPS = Object.freeze(['sg', 'pl', 'g', 'el', 'icon', 'court', 'appo']);
 const CHAMPS_COURT = Object.freeze(['sg', 'pl', 'el']);
 const CHAMPS_NON_SURCHARGEABLES = Object.freeze(['derive_de', 'mode', 'gabarit']);
-// [ ] | * \ ` { } $, caractères de contrôle (U+0000 à U+001F, U+007F, U+0085) et séparateurs de
-// ligne Unicode (U+2028, U+2029)
-const INTERDITS_RE = /[[\]|*\\`{}$\u0000-\u001F\u007F\u0085\u{2028}\u{2029}]/u;
+// [ ] | * \ ` { } $ < >, caractères de contrôle (U+0000 à U+001F, U+007F, U+0085) et séparateurs de
+// ligne Unicode (U+2028, U+2029). « < » et « > » : lot 2b, spec §4.4 (code LEXIQUE_CARACTERE_INTERDIT).
+const INTERDITS_RE = /[[\]|*\\`{}$<>\u0000-\u001F\u007F\u0085\u{2028}\u{2029}]/u;
 // Nom lisible d'un caractère refusé, par point de code (les autres sont cités tels quels, ou par « U+XXXX »).
 const NOM_CARACTERE = new Map([
   [0x0a, 'retour à la ligne'], [0x0d, 'retour à la ligne'], [0x85, 'retour à la ligne'],
   [0x2028, 'retour à la ligne'], [0x2029, 'retour à la ligne'], [0x09, 'tabulation'],
 ]);
-const REFUSES = '[ ] | * \\ ` { } $, le retour à la ligne, la tabulation et les caractères de contrôle';
+const REFUSES = '[ ] | * \\ ` { } $ < >, le retour à la ligne, la tabulation et les caractères de contrôle';
 const LONGUEUR_MAX = Object.freeze({ sg: 60, pl: 60, 'court.sg': 20, 'court.pl': 20, icon: 8 });
 
 const CODES = Object.freeze({

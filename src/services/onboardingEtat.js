@@ -227,7 +227,7 @@ const ROUTES = {
 async function capacitesParComposant(abonnementId, entrepriseId) {
   if (!abonnementId) return [];
   const { rows: comps } = await pool.query(
-    `SELECT dc.id, dc.code, dc.libelle, dc.libelle_pluriel, dc.type_technique, acc.nb
+    `SELECT dc.id, dc.code, dc.libelle, dc.libelle_pluriel, dc.genre, dc.elision, dc.type_technique, acc.nb
        FROM abonnement_config_composants acc
        JOIN domaine_composants dc ON dc.id = acc.composant_id
       WHERE acc.abonnement_id = $1 AND dc.type_technique IN ('activite', 'labo') AND acc.nb > 0
@@ -254,7 +254,7 @@ async function capacitesParComposant(abonnementId, entrepriseId) {
       if (r.composant_id === c.id) crees += r.n;
       else if (r.composant_id == null && defaut[c.type_technique] === c.id) crees += r.n;
     }
-    return { id: c.id, code: c.code, libelle: c.libelle, libellePluriel: c.libelle_pluriel, typeTechnique: c.type_technique, attendu: Number(c.nb) || 0, crees };
+    return { id: c.id, code: c.code, libelle: c.libelle, libellePluriel: c.libelle_pluriel, genre: c.genre === 'f' ? 'f' : 'm', elision: typeof c.elision === 'boolean' ? c.elision : null, typeTechnique: c.type_technique, attendu: Number(c.nb) || 0, crees };
   });
 }
 

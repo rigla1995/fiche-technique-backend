@@ -511,7 +511,7 @@ const getActivitesDashboard = async (req, res) => {
     // Pertes sur la période : total + par type + par catégorie + top articles
     const pertesRes = await pool.query(
       `SELECT p.type_perte,
-              COALESCE(c.nom, CASE WHEN p.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = p.produit_id) ELSE 'Sans catégorie' END) AS categorie,
+              COALESCE(c.nom, CASE WHEN p.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = p.produit_id) ELSE 'Sans catégorie' END) AS categorie,
               COALESCE(i.nom, pr.nom) AS article,
               COALESCE(SUM(p.quantite * COALESCE(p.prix_unitaire_tva, p.prix_unitaire,0)),0) AS valeur
        FROM pertes p

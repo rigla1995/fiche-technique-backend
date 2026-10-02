@@ -1,18 +1,13 @@
 {
- "_lisezmoi": "Liste de travail hors restauration capturée à l'étape O (spec lot 2b §2.5) : formes par défaut trouvées dans les sorties du serveur pour un compte de chaque domaine, hors exceptions typées, regroupées par famille puis par texte distinct. Incomplète pour les clés *_abr (absentes du lexique avant S1) : relancer le scan après S1. Régénérer : node scripts/check-invariant-vocab.js --domaine <X> --liste-avant.",
+ "_lisezmoi": "Liste de travail hors restauration capturée à l'étape O (spec lot 2b §2.5) : formes par défaut trouvées dans les sorties du serveur pour un compte de chaque domaine, hors exceptions typées, regroupées par famille puis par texte distinct. Complète depuis S1 pour tous les domaines (clés *_abr comprises). Régénérer : node scripts/check-invariant-vocab.js --domaine <X> --liste-avant.",
  "domaines": {
   "ceramique": {
    "domaine": "ceramique",
    "domaineNom": "Industrie — Céramique",
-   "migration": "191_lexique_v2_brouillons.sql",
+   "migration": "192_composants_genre_elision.sql",
    "rechercheFormes": "vocab-check.mjs (E11)",
-   "incompletePour": [
-    "pt_abr",
-    "produit_utilisable_abr",
-    "produit_vendable_abr",
-    "produit_valorise_abr"
-   ],
-   "textesLus": 7067,
+   "incompletePour": [],
+   "textesLus": 7307,
    "formesCherchees": {
     "Acheteur": [
      "acheteur:Nom",
@@ -136,6 +131,22 @@
      "labo:Pl",
      "labo:Court(pl)"
     ],
+    "P. Valorisé": [
+     "produit_valorise_abr:Nom",
+     "produit_valorise_abr:Court"
+    ],
+    "P. Valorisés": [
+     "produit_valorise_abr:Pl",
+     "produit_valorise_abr:Court(pl)"
+    ],
+    "P. Vendable": [
+     "produit_vendable_abr:Nom",
+     "produit_vendable_abr:Court"
+    ],
+    "P. Vendables": [
+     "produit_vendable_abr:Pl",
+     "produit_vendable_abr:Court(pl)"
+    ],
     "Portion": [
      "portion:Nom",
      "portion:Court"
@@ -152,8 +163,20 @@
      "prestataire:Pl",
      "prestataire:Court(pl)"
     ],
+    "Prod. Transformé": [
+     "pt_abr:Nom",
+     "pt_abr:Court"
+    ],
+    "Prod. Transformés": [
+     "pt_abr:Pl",
+     "pt_abr:Court(pl)"
+    ],
     "Produit transformé": [
      "pt:Nom"
+    ],
+    "Produit util.": [
+     "produit_utilisable_abr:Nom",
+     "produit_utilisable_abr:Court"
     ],
     "Produit utilisable": [
      "produit_utilisable:Nom"
@@ -186,6 +209,10 @@
      "cat_pt_vendable:Pl",
      "cat_pt_vendable:Court",
      "cat_pt_vendable:Court(pl)"
+    ],
+    "Produits util.": [
+     "produit_utilisable_abr:Pl",
+     "produit_utilisable_abr:Court(pl)"
     ],
     "Produits utilisables": [
      "produit_utilisable:Pl"
@@ -249,7 +276,7 @@
    "exceptionsEmployees": 43,
    "formes": {
     "occurrences": 819,
-    "textes": 535,
+    "textes": 532,
     "parFamille": {
      "assistant": {
       "occurrences": 329,
@@ -318,17 +345,16 @@
       }
      },
      "donnees": {
-      "occurrences": 96,
-      "textes": 80,
+      "occurrences": 87,
+      "textes": 71,
       "parCle": {
-       "auth": 20,
        "donneesLibelles": 8,
-       "tableauxDeBord": 68
+       "tableauxDeBord": 79
       },
       "parForme": {
-       "Acheteur": 10,
        "Activité": 11,
-       "Labo": 31,
+       "Labo": 21,
+       "P. Vendable": 11,
        "Prestataire": 13,
        "Produits Composés Valorisés": 1,
        "Produits transformés": 15,
@@ -355,33 +381,35 @@
       }
      },
      "excel": {
-      "occurrences": 109,
-      "textes": 93,
+      "occurrences": 120,
+      "textes": 101,
       "parCle": {
-       "exports": 109
+       "exports": 120
       },
       "parForme": {
        "Acheteur": 1,
        "Acheteurs": 3,
-       "Activité": 7,
-       "Activités": 9,
+       "Activité": 8,
+       "Activités": 10,
        "Appro": 4,
        "Approvisionnements": 2,
        "Article": 2,
        "Articles": 4,
        "Fiche technique": 4,
        "FT": 4,
-       "Ingrédient": 8,
+       "Ingrédient": 10,
        "Ingrédients": 8,
-       "Labo": 10,
+       "Labo": 11,
        "Portion": 7,
        "Prestataire": 2,
+       "Prod. Transformé": 4,
        "Produit utilisable": 1,
        "Produit valorisé": 1,
        "Produit vendable": 2,
        "Produits Composés Valorisés": 1,
        "Produits transformés": 3,
        "Produits Transformés Utilisables": 3,
+       "Produits util.": 2,
        "Produits utilisables": 8,
        "Produits vendables": 2,
        "PT": 2,
@@ -392,18 +420,16 @@
       }
      },
      "messages": {
-      "occurrences": 15,
-      "textes": 14,
+      "occurrences": 13,
+      "textes": 12,
       "parCle": {
-       "messages": 15
+       "messages": 13
       },
       "parForme": {
        "Acheteur": 2,
-       "Acheteurs": 1,
        "Activité": 2,
        "Article": 1,
        "Articles": 1,
-       "Gérants": 1,
        "Ingrédient": 1,
        "Labo": 4,
        "Labos": 1,
@@ -4054,226 +4080,6 @@
      },
      {
       "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.domaines/n/lexique/espace_acheteurs/gabarit",
-      "exemple": "/acheteur.domaines/0/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.domaines/n/lexique/espace_labo/gabarit",
-      "exemple": "/acheteur.domaines/0/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/acheteur.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/acheteur.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.me/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/acheteur.me/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.me/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/acheteur.me/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.domaines/n/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.domaines/0/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.domaines/n/lexique/espace_labo/gabarit",
-      "exemple": "/client.domaines/0/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.entreprise/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.entreprise/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.entreprise/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/client.entreprise/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/client.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.me/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.me/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.me/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/client.me/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.domaines/n/lexique/espace_acheteurs/gabarit",
-      "exemple": "/gerant.domaines/0/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.domaines/n/lexique/espace_labo/gabarit",
-      "exemple": "/gerant.domaines/0/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/gerant.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/gerant.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.me/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/gerant.me/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.me/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/gerant.me/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
       "cle": "donneesLibelles",
       "chemin": "/articlesValorises/body/n/categorie_nom",
       "exemple": "/articlesValorises/body/0/categorie_nom",
@@ -4839,6 +4645,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.activite/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.activite/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.canal/par_canal/n/canal",
       "exemple": "/v2.ventes.canal/par_canal/0/canal",
       "formes": [
@@ -4846,6 +4663,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.canal/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.canal/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "donnees",
@@ -4861,6 +4689,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.categorie/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.categorie/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.catProduit/par_canal/n/canal",
       "exemple": "/v2.ventes.catProduit/par_canal/1/canal",
       "formes": [
@@ -4868,6 +4707,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.catProduit/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.catProduit/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "donnees",
@@ -4883,6 +4733,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.famille/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.famille/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.fournisseur/par_canal/n/canal",
       "exemple": "/v2.ventes.fournisseur/par_canal/1/canal",
       "formes": [
@@ -4890,6 +4751,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.fournisseur/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.fournisseur/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "donnees",
@@ -4905,6 +4777,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.labo/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.labo/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.prestataire/par_canal/n/canal",
       "exemple": "/v2.ventes.prestataire/par_canal/1/canal",
       "formes": [
@@ -4912,6 +4795,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.prestataire/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.prestataire/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "donnees",
@@ -4927,6 +4821,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.sansFiltre/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.sansFiltre/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.typePerte/par_canal/n/canal",
       "exemple": "/v2.ventes.typePerte/par_canal/1/canal",
       "formes": [
@@ -4938,6 +4843,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.typePerte/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.typePerte/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.typeProduit/par_canal/n/canal",
       "exemple": "/v2.ventes.typeProduit/par_canal/1/canal",
       "formes": [
@@ -4945,6 +4861,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.typeProduit/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.typeProduit/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "emails",
@@ -5736,6 +5663,39 @@
      {
       "famille": "excel",
       "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/lignes/n/n",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/lignes/3/5",
+      "formes": [
+       "Activité"
+      ],
+      "occurrences": 1,
+      "texte": "Activité"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/lignes/n/n",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/lignes/0/0",
+      "formes": [
+       "Activités"
+      ],
+      "occurrences": 1,
+      "texte": "Historique des inventaires — Activités"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/lignes/n/n",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/lignes/3/1",
+      "formes": [
+       "Ingrédient"
+      ],
+      "occurrences": 1,
+      "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
       "chemin": "/06.inventaireActivite.A2/onglets/n/lignes/n/n",
       "exemple": "/06.inventaireActivite.A2/onglets/0/lignes/3/5",
       "formes": [
@@ -5788,6 +5748,17 @@
       ],
       "occurrences": 1,
       "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/07.historiqueAproLabo.L2/onglets/n/lignes/n/n",
+      "exemple": "/07.historiqueAproLabo.L2/onglets/0/lignes/5/3",
+      "formes": [
+       "Prod. Transformé"
+      ],
+      "occurrences": 2,
+      "texte": "Prod. Transformé"
      },
      {
       "famille": "excel",
@@ -5970,6 +5941,28 @@
      {
       "famille": "excel",
       "cle": "exports",
+      "chemin": "/10.pertesLabo.LC/onglets/n/lignes/n/n",
+      "exemple": "/10.pertesLabo.LC/onglets/0/lignes/0/0",
+      "formes": [
+       "Labo"
+      ],
+      "occurrences": 1,
+      "texte": "Historique des pertes — Labo"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/10.pertesLabo.LC/onglets/n/lignes/n/n",
+      "exemple": "/10.pertesLabo.LC/onglets/0/lignes/3/1",
+      "formes": [
+       "Ingrédient"
+      ],
+      "occurrences": 1,
+      "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
       "chemin": "/11.listeProduits.utilisable/onglets/n/lignes/n/n",
       "exemple": "/11.listeProduits.utilisable/onglets/0/lignes/3/2",
       "formes": [
@@ -6059,6 +6052,17 @@
       "famille": "excel",
       "cle": "exports",
       "chemin": "/11.listeProduits.vendable/onglets/n/lignes/n/n",
+      "exemple": "/11.listeProduits.vendable/onglets/0/lignes/3/6",
+      "formes": [
+       "Produits util."
+      ],
+      "occurrences": 2,
+      "texte": "Produits util."
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/11.listeProduits.vendable/onglets/n/lignes/n/n",
       "exemple": "/11.listeProduits.vendable/onglets/0/lignes/1/0",
       "formes": [
        "Produits vendables"
@@ -6143,6 +6147,17 @@
       ],
       "occurrences": 1,
       "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/12.historiqueAppro/onglets/n/lignes/n/n",
+      "exemple": "/12.historiqueAppro/onglets/0/lignes/10/13",
+      "formes": [
+       "Prod. Transformé"
+      ],
+      "occurrences": 2,
+      "texte": "Prod. Transformé"
      },
      {
       "famille": "excel",
@@ -6359,17 +6374,6 @@
      {
       "famille": "messages",
       "cle": "messages",
-      "chemin": "/ecritureGerant/body/message",
-      "exemple": "/ecritureGerant/body/message",
-      "formes": [
-       "Gérants"
-      ],
-      "occurrences": 1,
-      "texte": "Action réservée au compte client (lecture seule pour les gérants)"
-     },
-     {
-      "famille": "messages",
-      "cle": "messages",
       "chemin": "/gerantSansAffectation/body/message",
       "exemple": "/gerantSansAffectation/body/message",
       "formes": [
@@ -6433,17 +6437,6 @@
       ],
       "occurrences": 1,
       "texte": "Limite atteinte : votre formule comprend 2 labos — quota entièrement utilisé (2/2). Demandez un avenant pour en ajouter."
-     },
-     {
-      "famille": "messages",
-      "cle": "messages",
-      "chemin": "/moduleAcheteursAbsent/body/message",
-      "exemple": "/moduleAcheteursAbsent/body/message",
-      "formes": [
-       "Acheteurs"
-      ],
-      "occurrences": 1,
-      "texte": "Module Acheteurs non activé"
      },
      {
       "famille": "messages",
@@ -6920,15 +6913,10 @@
   "hotellerie": {
    "domaine": "hotellerie",
    "domaineNom": "Hôtellerie",
-   "migration": "191_lexique_v2_brouillons.sql",
+   "migration": "192_composants_genre_elision.sql",
    "rechercheFormes": "vocab-check.mjs (E11)",
-   "incompletePour": [
-    "pt_abr",
-    "produit_utilisable_abr",
-    "produit_vendable_abr",
-    "produit_valorise_abr"
-   ],
-   "textesLus": 7320,
+   "incompletePour": [],
+   "textesLus": 7587,
    "formesCherchees": {
     "Acheteur": [
      "acheteur:Nom",
@@ -7030,6 +7018,22 @@
      "labo:Pl",
      "labo:Court(pl)"
     ],
+    "P. Valorisé": [
+     "produit_valorise_abr:Nom",
+     "produit_valorise_abr:Court"
+    ],
+    "P. Valorisés": [
+     "produit_valorise_abr:Pl",
+     "produit_valorise_abr:Court(pl)"
+    ],
+    "P. Vendable": [
+     "produit_vendable_abr:Nom",
+     "produit_vendable_abr:Court"
+    ],
+    "P. Vendables": [
+     "produit_vendable_abr:Pl",
+     "produit_vendable_abr:Court(pl)"
+    ],
     "Point de vente": [
      "activite_desc:Nom",
      "activite_desc:Court"
@@ -7038,8 +7042,20 @@
      "activite_desc:Pl",
      "activite_desc:Court(pl)"
     ],
+    "Prod. Transformé": [
+     "pt_abr:Nom",
+     "pt_abr:Court"
+    ],
+    "Prod. Transformés": [
+     "pt_abr:Pl",
+     "pt_abr:Court(pl)"
+    ],
     "Produit transformé": [
      "pt:Nom"
+    ],
+    "Produit util.": [
+     "produit_utilisable_abr:Nom",
+     "produit_utilisable_abr:Court"
     ],
     "Produit utilisable": [
      "produit_utilisable:Nom"
@@ -7072,6 +7088,10 @@
      "cat_pt_vendable:Pl",
      "cat_pt_vendable:Court",
      "cat_pt_vendable:Court(pl)"
+    ],
+    "Produits util.": [
+     "produit_utilisable_abr:Pl",
+     "produit_utilisable_abr:Court(pl)"
     ],
     "Produits utilisables": [
      "produit_utilisable:Pl"
@@ -7121,7 +7141,7 @@
    "exceptionsEmployees": 37,
    "formes": {
     "occurrences": 615,
-    "textes": 390,
+    "textes": 387,
     "parFamille": {
      "assistant": {
       "occurrences": 251,
@@ -7179,17 +7199,16 @@
       }
      },
      "donnees": {
-      "occurrences": 83,
-      "textes": 67,
+      "occurrences": 74,
+      "textes": 58,
       "parCle": {
-       "auth": 20,
        "donneesLibelles": 8,
-       "tableauxDeBord": 55
+       "tableauxDeBord": 66
       },
       "parForme": {
-       "Acheteur": 10,
        "Activité": 11,
-       "Labo": 31,
+       "Labo": 21,
+       "P. Vendable": 11,
        "Produits Composés Valorisés": 1,
        "Produits transformés": 15,
        "Produits Transformés Utilisables": 15
@@ -7214,27 +7233,29 @@
       }
      },
      "excel": {
-      "occurrences": 83,
-      "textes": 70,
+      "occurrences": 94,
+      "textes": 78,
       "parCle": {
-       "exports": 83
+       "exports": 94
       },
       "parForme": {
        "Acheteur": 1,
        "Acheteurs": 3,
-       "Activité": 7,
-       "Activités": 9,
+       "Activité": 8,
+       "Activités": 10,
        "Article": 2,
        "Articles": 4,
-       "Ingrédient": 8,
+       "Ingrédient": 10,
        "Ingrédients": 8,
-       "Labo": 10,
+       "Labo": 11,
+       "Prod. Transformé": 4,
        "Produit utilisable": 1,
        "Produit valorisé": 1,
        "Produit vendable": 2,
        "Produits Composés Valorisés": 1,
        "Produits transformés": 3,
        "Produits Transformés Utilisables": 3,
+       "Produits util.": 2,
        "Produits utilisables": 8,
        "Produits vendables": 2,
        "PT": 2,
@@ -7243,18 +7264,16 @@
       }
      },
      "messages": {
-      "occurrences": 14,
-      "textes": 13,
+      "occurrences": 12,
+      "textes": 11,
       "parCle": {
-       "messages": 14
+       "messages": 12
       },
       "parForme": {
        "Acheteur": 2,
-       "Acheteurs": 1,
        "Activité": 2,
        "Article": 1,
        "Articles": 1,
-       "Gérants": 1,
        "Ingrédient": 1,
        "Labo": 4,
        "Labos": 1
@@ -9677,226 +9696,6 @@
      },
      {
       "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.domaines/n/lexique/espace_acheteurs/gabarit",
-      "exemple": "/acheteur.domaines/0/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.domaines/n/lexique/espace_labo/gabarit",
-      "exemple": "/acheteur.domaines/0/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/acheteur.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/acheteur.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.me/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/acheteur.me/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.me/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/acheteur.me/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.domaines/n/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.domaines/0/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.domaines/n/lexique/espace_labo/gabarit",
-      "exemple": "/client.domaines/0/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.entreprise/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.entreprise/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.entreprise/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/client.entreprise/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/client.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.me/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.me/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.me/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/client.me/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.domaines/n/lexique/espace_acheteurs/gabarit",
-      "exemple": "/gerant.domaines/0/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.domaines/n/lexique/espace_labo/gabarit",
-      "exemple": "/gerant.domaines/0/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/gerant.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/gerant.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.me/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/gerant.me/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.me/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/gerant.me/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
       "cle": "donneesLibelles",
       "chemin": "/articlesValorises/body/n/categorie_nom",
       "exemple": "/articlesValorises/body/0/categorie_nom",
@@ -10425,6 +10224,127 @@
       ],
       "occurrences": 1,
       "texte": "Labo · ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.activite/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.activite/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.canal/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.canal/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.categorie/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.categorie/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.catProduit/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.catProduit/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.famille/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.famille/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.fournisseur/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.fournisseur/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.labo/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.labo/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.prestataire/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.prestataire/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.sansFiltre/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.sansFiltre/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.typePerte/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.typePerte/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.typeProduit/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.typeProduit/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "emails",
@@ -11049,6 +10969,39 @@
      {
       "famille": "excel",
       "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/lignes/n/n",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/lignes/3/5",
+      "formes": [
+       "Activité"
+      ],
+      "occurrences": 1,
+      "texte": "Activité"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/lignes/n/n",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/lignes/0/0",
+      "formes": [
+       "Activités"
+      ],
+      "occurrences": 1,
+      "texte": "Historique des inventaires — Activités"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/lignes/n/n",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/lignes/3/1",
+      "formes": [
+       "Ingrédient"
+      ],
+      "occurrences": 1,
+      "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
       "chemin": "/06.inventaireActivite.A2/onglets/n/lignes/n/n",
       "exemple": "/06.inventaireActivite.A2/onglets/0/lignes/3/5",
       "formes": [
@@ -11100,6 +11053,17 @@
       ],
       "occurrences": 1,
       "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/07.historiqueAproLabo.L2/onglets/n/lignes/n/n",
+      "exemple": "/07.historiqueAproLabo.L2/onglets/0/lignes/5/3",
+      "formes": [
+       "Prod. Transformé"
+      ],
+      "occurrences": 2,
+      "texte": "Prod. Transformé"
      },
      {
       "famille": "excel",
@@ -11271,6 +11235,28 @@
      {
       "famille": "excel",
       "cle": "exports",
+      "chemin": "/10.pertesLabo.LC/onglets/n/lignes/n/n",
+      "exemple": "/10.pertesLabo.LC/onglets/0/lignes/0/0",
+      "formes": [
+       "Labo"
+      ],
+      "occurrences": 1,
+      "texte": "Historique des pertes — Labo"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/10.pertesLabo.LC/onglets/n/lignes/n/n",
+      "exemple": "/10.pertesLabo.LC/onglets/0/lignes/3/1",
+      "formes": [
+       "Ingrédient"
+      ],
+      "occurrences": 1,
+      "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
       "chemin": "/11.listeProduits.utilisable/onglets/n/lignes/n/n",
       "exemple": "/11.listeProduits.utilisable/onglets/0/lignes/3/2",
       "formes": [
@@ -11360,6 +11346,17 @@
       "famille": "excel",
       "cle": "exports",
       "chemin": "/11.listeProduits.vendable/onglets/n/lignes/n/n",
+      "exemple": "/11.listeProduits.vendable/onglets/0/lignes/3/6",
+      "formes": [
+       "Produits util."
+      ],
+      "occurrences": 2,
+      "texte": "Produits util."
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/11.listeProduits.vendable/onglets/n/lignes/n/n",
       "exemple": "/11.listeProduits.vendable/onglets/0/lignes/1/0",
       "formes": [
        "Produits vendables"
@@ -11421,6 +11418,17 @@
       ],
       "occurrences": 1,
       "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/12.historiqueAppro/onglets/n/lignes/n/n",
+      "exemple": "/12.historiqueAppro/onglets/0/lignes/10/13",
+      "formes": [
+       "Prod. Transformé"
+      ],
+      "occurrences": 2,
+      "texte": "Prod. Transformé"
      },
      {
       "famille": "excel",
@@ -11582,17 +11590,6 @@
      {
       "famille": "messages",
       "cle": "messages",
-      "chemin": "/ecritureGerant/body/message",
-      "exemple": "/ecritureGerant/body/message",
-      "formes": [
-       "Gérants"
-      ],
-      "occurrences": 1,
-      "texte": "Action réservée au compte client (lecture seule pour les gérants)"
-     },
-     {
-      "famille": "messages",
-      "cle": "messages",
       "chemin": "/gerantSansAffectation/body/message",
       "exemple": "/gerantSansAffectation/body/message",
       "formes": [
@@ -11645,17 +11642,6 @@
       ],
       "occurrences": 1,
       "texte": "Limite atteinte : votre formule comprend 2 labos — quota entièrement utilisé (2/2). Demandez un avenant pour en ajouter."
-     },
-     {
-      "famille": "messages",
-      "cle": "messages",
-      "chemin": "/moduleAcheteursAbsent/body/message",
-      "exemple": "/moduleAcheteursAbsent/body/message",
-      "formes": [
-       "Acheteurs"
-      ],
-      "occurrences": 1,
-      "texte": "Module Acheteurs non activé"
      },
      {
       "famille": "messages",
@@ -11770,8 +11756,8 @@
     ]
    },
    "horsLexique": {
-    "occurrences": 67,
-    "textes": 60,
+    "occurrences": 69,
+    "textes": 62,
     "parFamille": {
      "assistant": {
       "occurrences": 22,
@@ -11803,15 +11789,15 @@
       }
      },
      "donnees": {
-      "occurrences": 25,
-      "textes": 25,
+      "occurrences": 27,
+      "textes": 27,
       "parCle": {
-       "auth": 23,
+       "auth": 25,
        "tableauxDeBord": 2
       },
       "parForme": {
-       "restaurant": 9,
-       "restaurants": 7,
+       "restaurant": 10,
+       "restaurants": 8,
        "restauration": 9
       }
      },
@@ -12209,6 +12195,28 @@
      {
       "famille": "donnees",
       "cle": "auth",
+      "chemin": "/client.abonnement/config/composants/n/libelle",
+      "exemple": "/client.abonnement/config/composants/0/libelle",
+      "formes": [
+       "restaurant"
+      ],
+      "occurrences": 1,
+      "texte": "Restaurant"
+     },
+     {
+      "famille": "donnees",
+      "cle": "auth",
+      "chemin": "/client.abonnement/config/composants/n/libellePluriel",
+      "exemple": "/client.abonnement/config/composants/0/libellePluriel",
+      "formes": [
+       "restaurants"
+      ],
+      "occurrences": 1,
+      "texte": "Restaurants"
+     },
+     {
+      "famille": "donnees",
+      "cle": "auth",
       "chemin": "/client.domaines/n/composants/n/aide",
       "exemple": "/client.domaines/0/composants/0/aide",
       "formes": [
@@ -12500,15 +12508,10 @@
   "miroir": {
    "domaine": "miroir",
    "domaineNom": "Oracle Miroir",
-   "migration": "191_lexique_v2_brouillons.sql",
+   "migration": "192_composants_genre_elision.sql",
    "rechercheFormes": "vocab-check.mjs (E11)",
-   "incompletePour": [
-    "pt_abr",
-    "produit_utilisable_abr",
-    "produit_vendable_abr",
-    "produit_valorise_abr"
-   ],
-   "textesLus": 6767,
+   "incompletePour": [],
+   "textesLus": 7070,
    "formesCherchees": {
     "Acheteur": [
      "acheteur:Nom",
@@ -12688,6 +12691,22 @@
      "marge:Pl",
      "marge:Court(pl)"
     ],
+    "P. Valorisé": [
+     "produit_valorise_abr:Nom",
+     "produit_valorise_abr:Court"
+    ],
+    "P. Valorisés": [
+     "produit_valorise_abr:Pl",
+     "produit_valorise_abr:Court(pl)"
+    ],
+    "P. Vendable": [
+     "produit_vendable_abr:Nom",
+     "produit_vendable_abr:Court"
+    ],
+    "P. Vendables": [
+     "produit_vendable_abr:Pl",
+     "produit_vendable_abr:Court(pl)"
+    ],
     "Perte": [
      "perte:Nom",
      "perte:Court"
@@ -12720,6 +12739,14 @@
      "prestataire:Pl",
      "prestataire:Court(pl)"
     ],
+    "Prod. Transformé": [
+     "pt_abr:Nom",
+     "pt_abr:Court"
+    ],
+    "Prod. Transformés": [
+     "pt_abr:Pl",
+     "pt_abr:Court(pl)"
+    ],
     "Produit": [
      "produit:Nom",
      "produit:Court"
@@ -12730,6 +12757,10 @@
     ],
     "Produit transformé": [
      "pt:Nom"
+    ],
+    "Produit util.": [
+     "produit_utilisable_abr:Nom",
+     "produit_utilisable_abr:Court"
     ],
     "Produit utilisable": [
      "produit_utilisable:Nom"
@@ -12770,6 +12801,10 @@
      "cat_pt_vendable:Pl",
      "cat_pt_vendable:Court",
      "cat_pt_vendable:Court(pl)"
+    ],
+    "Produits util.": [
+     "produit_utilisable_abr:Pl",
+     "produit_utilisable_abr:Court(pl)"
     ],
     "Produits utilisables": [
      "produit_utilisable:Pl"
@@ -12856,8 +12891,8 @@
    "formesRetirees": {},
    "exceptionsEmployees": 56,
    "formes": {
-    "occurrences": 1276,
-    "textes": 720,
+    "occurrences": 1256,
+    "textes": 694,
     "parFamille": {
      "assistant": {
       "occurrences": 556,
@@ -12949,25 +12984,23 @@
       }
      },
      "donnees": {
-      "occurrences": 146,
-      "textes": 106,
+      "occurrences": 117,
+      "textes": 77,
       "parCle": {
-       "auth": 40,
        "donneesLibelles": 20,
-       "tableauxDeBord": 86
+       "tableauxDeBord": 97
       },
       "parForme": {
-       "Acheteur": 10,
        "Activité": 11,
-       "Labo": 31,
+       "Labo": 21,
+       "P. Vendable": 11,
        "Prestataire": 13,
-       "Produit": 10,
        "Produits": 21,
        "Produits composés": 3,
        "Produits Composés Valorisés": 1,
        "Produits transformés": 15,
        "Produits Transformés Utilisables": 15,
-       "Vente": 16
+       "Vente": 6
       }
      },
      "emails": {
@@ -12997,16 +13030,16 @@
       }
      },
      "excel": {
-      "occurrences": 177,
-      "textes": 125,
+      "occurrences": 192,
+      "textes": 134,
       "parCle": {
-       "exports": 177
+       "exports": 192
       },
       "parForme": {
        "Acheteur": 1,
        "Acheteurs": 3,
-       "Activité": 7,
-       "Activités": 9,
+       "Activité": 8,
+       "Activités": 10,
        "Appro": 4,
        "Approvisionnements": 2,
        "Article": 2,
@@ -13015,15 +13048,16 @@
        "Fournisseur": 3,
        "Fournisseurs": 3,
        "FT": 4,
-       "Ingrédient": 8,
+       "Ingrédient": 10,
        "Ingrédients": 8,
-       "Inventaire": 2,
-       "Inventaires": 2,
-       "Labo": 10,
+       "Inventaire": 3,
+       "Inventaires": 3,
+       "Labo": 11,
        "Marge": 1,
-       "Pertes": 6,
+       "Pertes": 8,
        "Portion": 7,
        "Prestataire": 2,
+       "Prod. Transformé": 4,
        "Produit": 12,
        "Produit utilisable": 1,
        "Produit valorisé": 1,
@@ -13033,6 +13067,7 @@
        "Produits Composés Valorisés": 1,
        "Produits transformés": 3,
        "Produits Transformés Utilisables": 3,
+       "Produits util.": 2,
        "Produits utilisables": 8,
        "Produits vendables": 2,
        "PT": 2,
@@ -13047,18 +13082,16 @@
       }
      },
      "messages": {
-      "occurrences": 16,
-      "textes": 15,
+      "occurrences": 14,
+      "textes": 13,
       "parCle": {
-       "messages": 16
+       "messages": 14
       },
       "parForme": {
        "Acheteur": 2,
-       "Acheteurs": 1,
        "Activité": 2,
        "Article": 1,
        "Articles": 1,
-       "Gérants": 1,
        "Ingrédient": 1,
        "Labo": 4,
        "Labos": 1,
@@ -13067,16 +13100,14 @@
       }
      },
      "persistes": {
-      "occurrences": 12,
-      "textes": 12,
+      "occurrences": 8,
+      "textes": 8,
       "parCle": {
-       "persistes": 12
+       "persistes": 8
       },
       "parForme": {
        "Acheteur": 2,
        "Activité": 3,
-       "Gérant": 2,
-       "Gérants": 2,
        "Labo": 3
       }
      }
@@ -18217,446 +18248,6 @@
      },
      {
       "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.domaines/n/lexique/espace_acheteurs/gabarit",
-      "exemple": "/acheteur.domaines/0/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.domaines/n/lexique/espace_labo/gabarit",
-      "exemple": "/acheteur.domaines/0/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.domaines/n/lexique/espace_produits/gabarit",
-      "exemple": "/acheteur.domaines/0/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.domaines/n/lexique/espace_vente/gabarit",
-      "exemple": "/acheteur.domaines/0/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/acheteur.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/acheteur.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.login/body/user/domaine/lexique/espace_produits/gabarit",
-      "exemple": "/acheteur.login/body/user/domaine/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.login/body/user/domaine/lexique/espace_vente/gabarit",
-      "exemple": "/acheteur.login/body/user/domaine/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.me/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/acheteur.me/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.me/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/acheteur.me/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.me/domaine/lexique/espace_produits/gabarit",
-      "exemple": "/acheteur.me/domaine/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/acheteur.me/domaine/lexique/espace_vente/gabarit",
-      "exemple": "/acheteur.me/domaine/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.domaines/n/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.domaines/0/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.domaines/n/lexique/espace_labo/gabarit",
-      "exemple": "/client.domaines/0/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.domaines/n/lexique/espace_produits/gabarit",
-      "exemple": "/client.domaines/0/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.domaines/n/lexique/espace_vente/gabarit",
-      "exemple": "/client.domaines/0/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.entreprise/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.entreprise/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.entreprise/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/client.entreprise/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.entreprise/domaine/lexique/espace_produits/gabarit",
-      "exemple": "/client.entreprise/domaine/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.entreprise/domaine/lexique/espace_vente/gabarit",
-      "exemple": "/client.entreprise/domaine/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/client.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.login/body/user/domaine/lexique/espace_produits/gabarit",
-      "exemple": "/client.login/body/user/domaine/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.login/body/user/domaine/lexique/espace_vente/gabarit",
-      "exemple": "/client.login/body/user/domaine/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.me/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/client.me/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.me/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/client.me/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.me/domaine/lexique/espace_produits/gabarit",
-      "exemple": "/client.me/domaine/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/client.me/domaine/lexique/espace_vente/gabarit",
-      "exemple": "/client.me/domaine/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.domaines/n/lexique/espace_acheteurs/gabarit",
-      "exemple": "/gerant.domaines/0/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.domaines/n/lexique/espace_labo/gabarit",
-      "exemple": "/gerant.domaines/0/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.domaines/n/lexique/espace_produits/gabarit",
-      "exemple": "/gerant.domaines/0/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.domaines/n/lexique/espace_vente/gabarit",
-      "exemple": "/gerant.domaines/0/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/gerant.login/body/user/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/gerant.login/body/user/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.login/body/user/domaine/lexique/espace_produits/gabarit",
-      "exemple": "/gerant.login/body/user/domaine/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.login/body/user/domaine/lexique/espace_vente/gabarit",
-      "exemple": "/gerant.login/body/user/domaine/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.me/domaine/lexique/espace_acheteurs/gabarit",
-      "exemple": "/gerant.me/domaine/lexique/espace_acheteurs/gabarit",
-      "formes": [
-       "Acheteur"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Pl:acheteur]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.me/domaine/lexique/espace_labo/gabarit",
-      "exemple": "/gerant.me/domaine/lexique/espace_labo/gabarit",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Court:labo]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.me/domaine/lexique/espace_produits/gabarit",
-      "exemple": "/gerant.me/domaine/lexique/espace_produits/gabarit",
-      "formes": [
-       "Produit"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:produit]]"
-     },
-     {
-      "famille": "donnees",
-      "cle": "auth",
-      "chemin": "/gerant.me/domaine/lexique/espace_vente/gabarit",
-      "exemple": "/gerant.me/domaine/lexique/espace_vente/gabarit",
-      "formes": [
-       "Vente"
-      ],
-      "occurrences": 1,
-      "texte": "Espace [[Nom:vente]]"
-     },
-     {
-      "famille": "donnees",
       "cle": "donneesLibelles",
       "chemin": "/articlesValorises/body/n/categorie_nom",
       "exemple": "/articlesValorises/body/0/categorie_nom",
@@ -19307,6 +18898,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.activite/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.activite/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.canal/par_canal/n/canal",
       "exemple": "/v2.ventes.canal/par_canal/0/canal",
       "formes": [
@@ -19314,6 +18916,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.canal/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.canal/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "donnees",
@@ -19329,6 +18942,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.categorie/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.categorie/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.catProduit/par_canal/n/canal",
       "exemple": "/v2.ventes.catProduit/par_canal/1/canal",
       "formes": [
@@ -19336,6 +18960,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.catProduit/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.catProduit/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "donnees",
@@ -19351,6 +18986,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.famille/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.famille/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.fournisseur/par_canal/n/canal",
       "exemple": "/v2.ventes.fournisseur/par_canal/1/canal",
       "formes": [
@@ -19358,6 +19004,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.fournisseur/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.fournisseur/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "donnees",
@@ -19373,6 +19030,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.labo/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.labo/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.prestataire/par_canal/n/canal",
       "exemple": "/v2.ventes.prestataire/par_canal/1/canal",
       "formes": [
@@ -19380,6 +19048,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.prestataire/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.prestataire/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "donnees",
@@ -19395,6 +19074,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.sansFiltre/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.sansFiltre/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.typePerte/par_canal/n/canal",
       "exemple": "/v2.ventes.typePerte/par_canal/1/canal",
       "formes": [
@@ -19406,6 +19096,17 @@
      {
       "famille": "donnees",
       "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.typePerte/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.typePerte/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
       "chemin": "/v2.ventes.typeProduit/par_canal/n/canal",
       "exemple": "/v2.ventes.typeProduit/par_canal/1/canal",
       "formes": [
@@ -19413,6 +19114,17 @@
       ],
       "occurrences": 1,
       "texte": "Prestataire"
+     },
+     {
+      "famille": "donnees",
+      "cle": "tableauxDeBord",
+      "chemin": "/v2.ventes.typeProduit/par_categorie/n/categorie",
+      "exemple": "/v2.ventes.typeProduit/par_categorie/0/categorie",
+      "formes": [
+       "P. Vendable"
+      ],
+      "occurrences": 1,
+      "texte": "P. Vendable / ⟦d⟧"
      },
      {
       "famille": "emails",
@@ -20329,6 +20041,51 @@
      {
       "famille": "excel",
       "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/lignes/n/n",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/lignes/3/5",
+      "formes": [
+       "Activité"
+      ],
+      "occurrences": 1,
+      "texte": "Activité"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/lignes/n/n",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/lignes/0/0",
+      "formes": [
+       "Activités",
+       "Inventaires"
+      ],
+      "occurrences": 2,
+      "texte": "Historique des inventaires — Activités"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/lignes/n/n",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/lignes/3/1",
+      "formes": [
+       "Ingrédient"
+      ],
+      "occurrences": 1,
+      "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/06.inventaireActivite.A1/onglets/n/nom",
+      "exemple": "/06.inventaireActivite.A1/onglets/0/nom",
+      "formes": [
+       "Inventaire"
+      ],
+      "occurrences": 1,
+      "texte": "Inventaire Terrasse du Lac — Sa"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
       "chemin": "/06.inventaireActivite.A2/onglets/n/lignes/n/n",
       "exemple": "/06.inventaireActivite.A2/onglets/0/lignes/3/5",
       "formes": [
@@ -20404,6 +20161,17 @@
       ],
       "occurrences": 1,
       "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/07.historiqueAproLabo.L2/onglets/n/lignes/n/n",
+      "exemple": "/07.historiqueAproLabo.L2/onglets/0/lignes/5/3",
+      "formes": [
+       "Prod. Transformé"
+      ],
+      "occurrences": 2,
+      "texte": "Prod. Transformé"
      },
      {
       "famille": "excel",
@@ -20625,6 +20393,40 @@
      {
       "famille": "excel",
       "cle": "exports",
+      "chemin": "/10.pertesLabo.LC/onglets/n/lignes/n/n",
+      "exemple": "/10.pertesLabo.LC/onglets/0/lignes/0/0",
+      "formes": [
+       "Labo",
+       "Pertes"
+      ],
+      "occurrences": 2,
+      "texte": "Historique des pertes — Labo"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/10.pertesLabo.LC/onglets/n/lignes/n/n",
+      "exemple": "/10.pertesLabo.LC/onglets/0/lignes/3/1",
+      "formes": [
+       "Ingrédient"
+      ],
+      "occurrences": 1,
+      "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/10.pertesLabo.LC/onglets/n/nom",
+      "exemple": "/10.pertesLabo.LC/onglets/0/nom",
+      "formes": [
+       "Pertes"
+      ],
+      "occurrences": 1,
+      "texte": "Historique Pertes"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
       "chemin": "/11.listeProduits.utilisable/onglets/n/lignes/n/n",
       "exemple": "/11.listeProduits.utilisable/onglets/0/lignes/4/0",
       "formes": [
@@ -20830,9 +20632,10 @@
       "chemin": "/11.listeProduits.vendable/onglets/n/lignes/n/n",
       "exemple": "/11.listeProduits.vendable/onglets/0/lignes/3/6",
       "formes": [
-       "Produits"
+       "Produits",
+       "Produits util."
       ],
-      "occurrences": 2,
+      "occurrences": 4,
       "texte": "Produits util."
      },
      {
@@ -20958,6 +20761,17 @@
       ],
       "occurrences": 1,
       "texte": "Ingrédient"
+     },
+     {
+      "famille": "excel",
+      "cle": "exports",
+      "chemin": "/12.historiqueAppro/onglets/n/lignes/n/n",
+      "exemple": "/12.historiqueAppro/onglets/0/lignes/10/13",
+      "formes": [
+       "Prod. Transformé"
+      ],
+      "occurrences": 2,
+      "texte": "Prod. Transformé"
      },
      {
       "famille": "excel",
@@ -21259,17 +21073,6 @@
      {
       "famille": "messages",
       "cle": "messages",
-      "chemin": "/ecritureGerant/body/message",
-      "exemple": "/ecritureGerant/body/message",
-      "formes": [
-       "Gérants"
-      ],
-      "occurrences": 1,
-      "texte": "Action réservée au compte client (lecture seule pour les gérants)"
-     },
-     {
-      "famille": "messages",
-      "cle": "messages",
       "chemin": "/gerantSansAffectation/body/message",
       "exemple": "/gerantSansAffectation/body/message",
       "formes": [
@@ -21333,17 +21136,6 @@
       ],
       "occurrences": 1,
       "texte": "Limite atteinte : votre formule comprend 2 labos — quota entièrement utilisé (2/2). Demandez un avenant pour en ajouter."
-     },
-     {
-      "famille": "messages",
-      "cle": "messages",
-      "chemin": "/moduleAcheteursAbsent/body/message",
-      "exemple": "/moduleAcheteursAbsent/body/message",
-      "formes": [
-       "Acheteurs"
-      ],
-      "occurrences": 1,
-      "texte": "Module Acheteurs non activé"
      },
      {
       "famille": "messages",
@@ -21414,28 +21206,6 @@
      {
       "famille": "persistes",
       "cle": "persistes",
-      "chemin": "/creation.composantsAlaVolee/n/libelle_pluriel",
-      "exemple": "/creation.composantsAlaVolee/0/libelle_pluriel",
-      "formes": [
-       "Gérants"
-      ],
-      "occurrences": 1,
-      "texte": "Gérants"
-     },
-     {
-      "famille": "persistes",
-      "cle": "persistes",
-      "chemin": "/creation.composantsAlaVolee/n/libelle",
-      "exemple": "/creation.composantsAlaVolee/0/libelle",
-      "formes": [
-       "Gérant"
-      ],
-      "occurrences": 1,
-      "texte": "Gérant"
-     },
-     {
-      "famille": "persistes",
-      "cle": "persistes",
       "chemin": "/sse.inventairesGerant/n/data/notesAdmin",
       "exemple": "/sse.inventairesGerant/0/data/notesAdmin",
       "formes": [
@@ -21476,28 +21246,6 @@
       ],
       "occurrences": 1,
       "texte": "Labo : ⟦d⟧ — ⟨date⟩"
-     },
-     {
-      "famille": "persistes",
-      "cle": "persistes",
-      "chemin": "/webhook.avenant.composants/n/libelle_pluriel",
-      "exemple": "/webhook.avenant.composants/1/libelle_pluriel",
-      "formes": [
-       "Gérants"
-      ],
-      "occurrences": 1,
-      "texte": "Gérants"
-     },
-     {
-      "famille": "persistes",
-      "cle": "persistes",
-      "chemin": "/webhook.avenant.composants/n/libelle",
-      "exemple": "/webhook.avenant.composants/1/libelle",
-      "formes": [
-       "Gérant"
-      ],
-      "occurrences": 1,
-      "texte": "Gérant"
      }
     ]
    },
@@ -21862,26 +21610,26 @@
     {
      "chemin": "/creation.composantsAlaVolee/0",
      "obtenu": {
-      "libelle": "Gérant",
-      "libelle_pluriel": "Gérants"
+      "libelle": "Animatrice",
+      "libelle_pluriel": "Animatrices"
      },
      "attendu": {
       "libelle": "Animatrice",
       "libelle_pluriel": "Animatrices"
      },
-     "ok": false
+     "ok": true
     },
     {
      "chemin": "/webhook.avenant.composants/gerant/0",
      "obtenu": {
-      "libelle": "Gérant",
-      "libelle_pluriel": "Gérants"
+      "libelle": "Animatrice",
+      "libelle_pluriel": "Animatrices"
      },
      "attendu": {
       "libelle": "Animatrice",
       "libelle_pluriel": "Animatrices"
      },
-     "ok": false
+     "ok": true
     }
    ],
    "exceptionsSansEmploi": 0

@@ -38,13 +38,15 @@ const getEntreprise = async (req, res) => {
       ),
     ]);
     if (result.rows.length === 0) return res.json(null);
-    // Profil du domaine d'activité (lot 1a) — même objet que /auth/me.domaine
+    // Profil du domaine d'activité (lot 1a) — même objet que /auth/me.domaine, lexique allégé
+    // compris (lot 2b §5.7 : null pour le vocabulaire par défaut)
     let domaine = null;
     try {
       const { getProfilForClient } = require('../services/domaineProfilService');
+      const { lexiquePourCompte } = require('./authController');
       const p = await getProfilForClient(clientId);
       domaine = p && p.id != null
-        ? { id: p.id, slug: p.slug, nom: p.nom, lexique: p.lexique, composants: p.composants, regles: p.regles }
+        ? { id: p.id, slug: p.slug, nom: p.nom, lexique: lexiquePourCompte(p), composants: p.composants, regles: p.regles }
         : null;
     } catch (e) {
       console.warn('[entreprise] profil domaine indisponible:', e.message);

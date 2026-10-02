@@ -8,6 +8,8 @@
 //    pour les 32 clés d'origine, sg / pl / g / el / icon avant (git show BASE) = après.
 // 3. Validation à l'enregistrement (src/utils/lexiqueValidation.js, spec §1.4).
 // 4. vocabDuProfil (src/utils/vocabCompte.js) : mémoïsation par objet lexique.
+// 5. Lot 2b, étape S1 (spec §4) : modules générés (catégories PT, onglets Excel, composants), 4 clés *_abr,
+//    « < » et « > » refusés dans le lexique.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -22,6 +24,7 @@ const lf = (s) => s.replace(/\r\n/g, '\n');
 const { LEXIQUE_DEFAUT, LEXIQUE_CLES } = require('../src/config/lexiqueDefaut');
 const moteur = require('../src/utils/vocab');
 const { creerVocab, vocabDefaut, resoudreLexique, vocabDuLexique, rendre, rendreTout, balisesInvalides } = moteur;
+const { entreeComposant, entreeComposantVoc, libelleComposant, nomOnglet, libelleCategoriePt, CATEGORIES_PT_CONNUES } = moteur;
 const service = require('../src/services/domaineProfilService');
 const { resolveLexique, resolveProfil, profilDefaut } = service;
 const { validerLexique, nettoyerLexique, CODES_LEXIQUE, LEXIQUE_LONGUEUR_MAX } = require('../src/utils/lexiqueValidation');
@@ -124,9 +127,20 @@ const executer = ([lexique, methode, cle, args]) => {
   if (methode === 'rendre') return rendre(voc, args[0]);
   if (methode === 'avec') return voc.avec(args[0])[args[1]](cle, ...args.slice(2));
   if (methode === 'estDefaut') return voc.estDefaut; // une propriété, pas une méthode
+  // Lot 2b (spec §4.1, §4.2) : fonctions des modules générés.
+  if (methode === 'entreeComposant') return entreeComposant(args[0]);
+  if (methode === 'composant') return voc.avec(entreeComposant(args[0]))[args[1]]('_', ...args.slice(2));
+  if (methode === 'libelleComposant') return libelleComposant(voc, args[0], ...args.slice(1));
+  if (methode === 'composantVoc') return voc.avec(entreeComposantVoc(voc, args[0]))[args[1]]('_', ...args.slice(2));
+  if (methode === 'nomOnglet') return nomOnglet(args[0]);
+  if (methode === 'libelleCategoriePt') return libelleCategoriePt(voc, args[0]);
   assert.equal(typeof voc[methode], 'function', `méthode inconnue « ${methode} »`);
   return voc[methode](cle, ...args);
 };
+// Un attendu objet (entrée de lexique d'un composant) se compare en JSON, clés dans l'ordre.
+const conforme = (obtenu, attendu) => (attendu !== null && typeof attendu === 'object'
+  ? JSON.stringify(obtenu) === JSON.stringify(attendu)
+  : obtenu === attendu);
 
 test(`moteur généré : ${VECTEURS.length} vecteurs du front (≥ 200), tous conformes`, () => {
   assert.ok(VECTEURS.length >= 200, `seulement ${VECTEURS.length} cas`);
@@ -135,7 +149,7 @@ test(`moteur généré : ${VECTEURS.length} vecteurs du front (≥ 200), tous co
     const attendu = cas[4];
     let obtenu;
     try { obtenu = executer(cas); } catch (e) { obtenu = `EXCEPTION ${e.message}`; }
-    if (obtenu !== attendu) echecs.push(`${JSON.stringify(cas.slice(0, 4))}\n      attendu : ${JSON.stringify(attendu)}\n      obtenu  : ${JSON.stringify(obtenu)}`);
+    if (!conforme(obtenu, attendu)) echecs.push(`${JSON.stringify(cas.slice(0, 4))}\n      attendu : ${JSON.stringify(attendu)}\n      obtenu  : ${JSON.stringify(obtenu)}`);
   }
   assert.equal(echecs.length, 0, `${echecs.length} vecteur(s) en échec :\n  - ${echecs.join('\n  - ')}`);
 });
@@ -147,6 +161,8 @@ test('moteur généré : couverture des vecteurs (4 lexiques, toutes les méthod
   const absentes = Object.keys(vocabDefaut).filter((m) => !methodes.has(m));
   assert.deepEqual(absentes, [], `méthodes sans vecteur : ${absentes.join(', ')}`);
   assert.ok(methodes.has('rendre'));
+  // Lot 2b : chaque fonction des modules générés a ses vecteurs.
+  for (const m of ['entreeComposant', 'composant', 'composantVoc', 'libelleComposant', 'nomOnglet', 'libelleCategoriePt']) assert.ok(methodes.has(m), m);
 });
 
 test('moteur généré : en-tête « fichier généré », exports attendus, défaut gelé', () => {
@@ -154,7 +170,9 @@ test('moteur généré : en-tête « fichier généré », exports attendus, dé
     const tete = lf(fs.readFileSync(path.join(RACINE, f), 'utf8')).split('\n')[0];
     assert.match(tete, /^\/\/ FICHIER GÉNÉRÉ — ne pas éditer/, f);
   }
-  for (const n of ['vocabDefaut', 'creerVocab', 'resoudreLexique', 'completerLexique', 'vocabDuLexique', 'rendre', 'rendreTout', 'balisesInvalides']) {
+  for (const n of ['vocabDefaut', 'creerVocab', 'resoudreLexique', 'completerLexique', 'vocabDuLexique', 'rendre', 'rendreTout', 'balisesInvalides',
+    // lot 2b (spec §4.1, §4.2) : modules catégories PT, Excel et composants
+    'libelleCategoriePt', 'CATEGORIES_PT_CONNUES', 'nomOnglet', 'entreeComposant', 'entreeComposantVoc', 'libelleComposant']) {
     assert.ok(n in moteur, `export « ${n} »`);
   }
   assert.ok(Object.isFrozen(LEXIQUE_DEFAUT) && Object.isFrozen(LEXIQUE_CLES));
@@ -190,7 +208,7 @@ test('resolveLexique : sans écart, le lexique résolu EST le lexique par défau
   // aucune entrée partagée avec le défaut gelé
   const r = resolveLexique({});
   for (const k of LEXIQUE_CLES) assert.ok(r[k] !== LEXIQUE_DEFAUT[k] && !Object.isFrozen(r[k]), `${k} : copie`);
-  assert.equal(LEXIQUE_CLES.length, 43); // 41 + transfert_abr, supplement_abr (corrections après revues)
+  assert.equal(LEXIQUE_CLES.length, 47); // 41 + transfert_abr, supplement_abr (corrections après revues) + 4 *_abr (lot 2b, §4.3)
   assert.deepEqual(LEXIQUE_CLES.slice(0, 32), Object.keys(ORIGINE_32), 'les 32 clés d\'origine en tête, dans leur ordre');
 });
 
@@ -379,6 +397,81 @@ test('exemples de saisie : un domaine sans écart (Restauration, Boulangerie, Ca
   assert.deepEqual(balisesInvalides('[[ex:activite:Restaurant A]] [[ex:activite]] [[ex:activite:a:b]]').map((b) => b.balise), ['[[ex:activite]]', '[[ex:activite:a:b]]']);
 });
 
+// ── 2 bis. Lot 2b, étape S1 (spec §4.1 à §4.3) : modules générés et clés *_abr ──────────────
+test('lot 2b §4.1 — modules générés : nomOnglet et libelleCategoriePt, identité par défaut', () => {
+  assert.equal(nomOnglet('History'), 'Feuille');
+  assert.equal(nomOnglet("Vue d'ensemble"), "Vue d'ensemble");
+  assert.equal(nomOnglet(`Inventaire ${vocabDefaut.Court('labo')} Bloc chaud`), 'Inventaire Labo Bloc chaud');
+  assert.equal(nomOnglet(`${VOCS.hotellerie.Pl('vente')} ${VOCS.hotellerie.Court('acheteur', true)}`), 'Ventes Clients professionnels');
+  assert.deepEqual([...CATEGORIES_PT_CONNUES], [
+    'Produits Transformés Utilisables', 'Produits Composés Valorisés', 'Produits Transformés Vendables',
+    'Produits Utilisables', 'Produits Composés',
+  ]);
+  for (const v of CATEGORIES_PT_CONNUES) assert.equal(libelleCategoriePt(vocabDefaut, v), v, v);
+  // les 3 libellés que renvoie l'API (stockUtils.ptCategorie, et ptCategorieSql) sont des valeurs connues, rendues à l'identique
+  const { ptCategorie, ptCategorieSql } = require('../src/utils/stockUtils');
+  for (const [type, origine] of [['utilisable', null], ['vendable', 'labo'], ['vendable', 'activite'], ['supplement', null]]) {
+    const l = ptCategorie(type, origine);
+    assert.ok(CATEGORIES_PT_CONNUES.includes(l), l);
+    assert.ok(ptCategorieSql('p').includes("'" + l + "'"), l);
+    assert.equal(libelleCategoriePt(vocabDefaut, l), l);
+  }
+  assert.equal(libelleCategoriePt(VOCS.hotellerie, 'Produits Transformés Utilisables'), 'Consommables');
+  assert.equal(libelleCategoriePt(VOCS.hotellerie, 'Épicerie'), 'Épicerie');
+});
+
+test('lot 2b §4.2 — composants : les 4 composants identité du serveur (COMPOSANTS_IDENTITE) rendent EXACTEMENT leur libellé par défaut', () => {
+  const { COMPOSANTS_IDENTITE } = service;
+  assert.deepEqual(Object.keys(COMPOSANTS_IDENTITE).sort(), ['acheteurs', 'activite', 'gerant', 'labo']);
+  for (const [type, idt] of Object.entries(COMPOSANTS_IDENTITE)) {
+    const c = { ...idt, typeTechnique: type };
+    assert.equal(libelleComposant(vocabDefaut, c, 1), idt.libelle, type);
+    assert.equal(libelleComposant(vocabDefaut, c, 2), idt.libellePluriel, type);
+    // tel que le lit une requête (colonnes snake_case)
+    assert.equal(libelleComposant(vocabDefaut, { code: idt.code, type_technique: type, libelle: idt.libelle, libelle_pluriel: idt.libellePluriel }, 2), idt.libellePluriel, type);
+  }
+  // Hôtellerie : le terme du lexique ; « Base » + forme courte plurielle de « acheteur »
+  const h = VOCS.hotellerie;
+  assert.equal(libelleComposant(h, { ...COMPOSANTS_IDENTITE.labo, typeTechnique: 'labo' }, 2), 'Cuisines centrales');
+  assert.equal(libelleComposant(h, { ...COMPOSANTS_IDENTITE.acheteurs, typeTechnique: 'acheteurs' }, 1), 'Base clients professionnels');
+  // identité renommée par l'admin : son libellé
+  assert.equal(libelleComposant(h, { code: 'labo', typeTechnique: 'labo', libelle: 'Cuisine', libellePluriel: 'Cuisines', genre: 'f' }, 1), 'Cuisine');
+  // accord par voc.avec(entreeComposant(c)) : « ma cuisine » (le guide disait « mon cuisine »)
+  assert.equal(h.avec(entreeComposant({ libelle: 'Cuisine', libelle_pluriel: 'Cuisines', genre: 'f', elision: null })).mon('_'), 'ma cuisine');
+  assert.equal(h.avec(entreeComposant({ libelle: 'Huilerie', libellePluriel: 'Huileries', genre: 'f', elision: true })).mon('_'), 'mon huilerie');
+  // élision 'auto' (synonyme de null admis par l'admin) : déduite, « l'atelier », jamais « le atelier »
+  assert.equal(vocabDefaut.avec(entreeComposant({ libelle: 'Atelier', genre: 'm', elision: 'auto' })).le('_'), "l'atelier");
+  // entreeComposantVoc : par défaut, le rendu de entreeComposant pour les 4 composants identité (genre de COMPOSANTS_IDENTITE) ;
+  // en Hôtellerie, le TERME du lexique pour un composant identité au libellé du brouillon
+  for (const [type, idt] of Object.entries(COMPOSANTS_IDENTITE)) {
+    const c = { ...idt, typeTechnique: type };
+    for (const n of [1, 2]) assert.equal(vocabDefaut.avec(entreeComposantVoc(vocabDefaut, c)).mon('_', n > 1), vocabDefaut.avec(entreeComposant(c)).mon('_', n > 1), `${type} ${n}`);
+  }
+  assert.equal(h.avec(entreeComposantVoc(h, { ...COMPOSANTS_IDENTITE.activite, typeTechnique: 'activite' })).mon('_'), 'mon service');
+  assert.equal(h.avec(entreeComposantVoc(h, { ...COMPOSANTS_IDENTITE.labo, typeTechnique: 'labo' })).mon('_'), 'ma cuisine centrale');
+  assert.equal(h.avec(entreeComposantVoc(h, { code: 'labo', typeTechnique: 'labo', libelle: 'Cuisine', libellePluriel: 'Cuisines', genre: 'f' })).mon('_'), 'ma cuisine');
+});
+
+test('lot 2b §4.3 — clés *_abr : identité par défaut, copie du parent ailleurs ; un domaine sans écart reste « par défaut »', () => {
+  assert.deepEqual(LEXIQUE_CLES.slice(-4), ['pt_abr', 'produit_utilisable_abr', 'produit_vendable_abr', 'produit_valorise_abr']);
+  assert.deepEqual(
+    ['pt_abr', 'produit_utilisable_abr', 'produit_vendable_abr', 'produit_valorise_abr'].map((k) => [LEXIQUE_DEFAUT[k].derive_de, LEXIQUE_DEFAUT[k].mode]),
+    [['pt', 'copie'], ['produit_utilisable', 'copie'], ['produit_vendable', 'copie'], ['produit_valorise', 'copie']],
+  );
+  assert.equal(vocabDefaut.Nom('pt_abr'), 'Prod. Transformé');
+  assert.equal(vocabDefaut.Pl('produit_utilisable_abr'), 'Produits util.');
+  assert.equal(`${vocabDefaut.Nom('produit_vendable_abr')} / `, 'P. Vendable / ');
+  assert.equal(`${vocabDefaut.Nom('produit_valorise_abr')} / `, 'P. Valorisé / ');
+  const h = resolveLexique(ESSAIS.hotellerie);
+  const c = resolveLexique(ESSAIS.ceramique);
+  assert.deepEqual([h.pt_abr.sg, h.produit_utilisable_abr.sg, h.produit_vendable_abr.sg, h.produit_valorise_abr.sg], ['Préparation', 'Consommable', 'Prestation vendue', 'Prestation catalogue']);
+  assert.deepEqual([c.pt_abr.sg, c.produit_utilisable_abr.sg, c.produit_vendable_abr.sg, c.produit_valorise_abr.sg], ['Produit fabriqué', 'Semi-fini', 'Produit fini', 'Produit fini catalogue']);
+  // un domaine sans écart (restauration) : le lexique résolu gagne les 4 clés, et reste « par défaut »
+  const restauration = resolveProfil({ id: 1, slug: 'restauration', nom: 'Restauration', lexique: {}, regles: {} }, []);
+  assert.equal(Object.keys(restauration.lexique).length, 47);
+  assert.equal(vocabDuProfil(restauration), vocabDefaut);
+});
+
 // ── 3. Validation à l'enregistrement (spec §1.4) ─────────────────────────────
 const code = (lex) => validerLexique(lex)?.code ?? null;
 
@@ -441,7 +534,7 @@ test('validation : derive_de, mode, gabarit non surchargeables (400 LEXIQUE_CHAM
 });
 
 test('validation : caractères interdits [ ] | * \\ ` et retour à la ligne dans sg, pl, forme courte (400 LEXIQUE_CARACTERE_INTERDIT)', () => {
-  assert.match(validerLexique({ labo: { sg: 'S[i', pl: 'S', g: 'm', el: false } }).message, /Caractères refusés : \[ \] \| \* \\ ` \{ \} \$, le retour à la ligne, la tabulation et les caractères de contrôle\.$/);
+  assert.match(validerLexique({ labo: { sg: 'S[i', pl: 'S', g: 'm', el: false } }).message, /Caractères refusés : \[ \] \| \* \\ ` \{ \} \$ < >, le retour à la ligne, la tabulation et les caractères de contrôle\.$/);
   const complet = (patch) => ({ labo: { sg: 'Site', pl: 'Sites', g: 'm', el: false, ...patch } });
   for (const c of ['[', ']', '|', '*', '\\', '`', '\n', '\r']) {
     assert.equal(code(complet({ sg: `Si${c}te` })), 'LEXIQUE_CARACTERE_INTERDIT', `sg ${JSON.stringify(c)}`);
@@ -482,8 +575,43 @@ test('validation : { } $ (interpolation i18next), caractères de contrôle et s�
   assert.deepEqual([e.code, e.cle, e.champ], ['LEXIQUE_CARACTERE_INTERDIT', 'labo', 'icon']);
   assert.match(e.message, /Lexique « labo » : l'icône contient un caractère interdit/);
   assert.equal(code({ labo: { icon: '`x`' } }), 'LEXIQUE_CARACTERE_INTERDIT', 'icône seule (sg non surchargé)');
-  // admis : espace insécable, tiret, barre oblique, parenthèses, apostrophes, point, esperluette, < et >
-  assert.equal(validerLexique(complet({ sg: `Hors${String.fromCodePoint(0xa0)}taxe`, pl: "L’atelier (n° 2) / Site & Co. <b>", icon: '🧑🏽‍🍳' })), null);
+  // admis : espace insécable, tiret, barre oblique, parenthèses, apostrophes, point, esperluette, guillemet droit
+  assert.equal(validerLexique(complet({ sg: `Hors${String.fromCodePoint(0xa0)}taxe`, pl: 'L’atelier (n° 2) / Site & Co. "B"', icon: '🧑🏽‍🍳' })), null);
+});
+
+test('validation (lot 2b, §4.4) : « < » et « > » refusés dans sg, pl, forme courte et icône (400 LEXIQUE_CARACTERE_INTERDIT) — « & » et « " » admis', () => {
+  const complet = (patch) => ({ labo: { sg: 'Site', pl: 'Sites', g: 'm', el: false, ...patch } });
+  for (const c of ['<', '>']) {
+    for (const [patch, champ] of [
+      [{ sg: `Si${c}te` }, 'sg'], [{ pl: `Sites${c}` }, 'pl'],
+      [{ court: { sg: `${c}S`, pl: 'S' } }, 'court'], [{ court: { sg: 'S', pl: `S${c}` } }, 'court'],
+      [{ icon: `🏭${c}` }, 'icon'],
+    ]) {
+      const e = validerLexique(complet(patch));
+      assert.deepEqual([e?.code, e?.cle], ['LEXIQUE_CARACTERE_INTERDIT', 'labo'], JSON.stringify(patch));
+      assert.equal(e.champ === 'court.sg' || e.champ === 'court.pl' ? 'court' : e.champ, champ, JSON.stringify(patch));
+      assert.match(e.message, new RegExp(`contient un caractère interdit \\(« ${c} »\\)`));
+    }
+    // sans sg surchargé (pl seul, icône seule, forme courte seule) : contrôlé aussi
+    assert.equal(code({ labo: { pl: `Labos${c}` } }), 'LEXIQUE_CARACTERE_INTERDIT');
+    assert.equal(code({ labo: { icon: `${c}` } }), 'LEXIQUE_CARACTERE_INTERDIT');
+    assert.equal(code({ labo: { court: { sg: `L${c}` } } }), 'LEXIQUE_CARACTERE_INTERDIT');
+    // une clé ajoutée par l'admin, et une clé dérivée, de même
+    assert.equal(code({ chantier: { sg: `Chan${c}tier`, pl: 'Chantiers', g: 'm', el: false } }), 'LEXIQUE_CARACTERE_INTERDIT');
+    assert.equal(code({ pt_abr: { sg: `Prép${c}`, pl: 'Prép.', g: 'f', el: false } }), 'LEXIQUE_CARACTERE_INTERDIT');
+  }
+  // le cas qui motive la règle : un terme écrit tel quel dans le HTML d'un email
+  assert.equal(code(complet({ sg: '<b>Site</b>' })), 'LEXIQUE_CARACTERE_INTERDIT');
+  assert.equal(code(complet({ sg: '<img src=x onerror=alert(1)>' })), 'LEXIQUE_CARACTERE_INTERDIT');
+  // admis : esperluette et guillemet droit (règle : un terme ne va jamais dans un attribut HTML)
+  assert.equal(validerLexique(complet({ sg: 'Site & Co', pl: 'Sites "B"', court: { sg: 'S&C', pl: '"S"' } })), null);
+  // le lexique par défaut et les lexiques d'essai n'en contiennent pas
+  for (const lex of [LEXIQUE_DEFAUT, ESSAIS.hotellerie, ESSAIS.ceramique, ESSAIS.miroir]) {
+    for (const [k, en] of Object.entries(lex)) {
+      const textes = [en.sg, en.pl, en.icon, en.court?.sg, en.court?.pl].filter((t) => t != null);
+      assert.ok(textes.every((t) => !/[<>]/.test(t)), k);
+    }
+  }
 });
 
 test('validation : longueurs — 60 (sg, pl), 20 (forme courte), 8 (icône) (400 LEXIQUE_TROP_LONG)', () => {

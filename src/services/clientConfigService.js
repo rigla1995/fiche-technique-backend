@@ -153,4 +153,17 @@ function invalidate(clientId) {
     .catch(() => {});
 }
 
-module.exports = { buildClientConfigSnapshot, getSnapshot, getContextLine, invalidate };
+// Changement de DOMAINE d'un compte (lot 2b, spec §5.6) : l'historique de l'assistant, web
+// et Messenger, est rejoué à chaque message dans l'ancien vocabulaire, et le snapshot garde
+// l'ancien domaine → tout est oublié. Appelée après le COMMIT, au mieux (l'appelant avale le
+// rejet : jamais un 500), et SEULEMENT quand le domaine change : rien n'est purgé sur une
+// modification du lexique (le glossaire, recalculé à chaque message, domine).
+// Renvoie le nombre de conversations supprimées.
+async function oublierConversationsIA(clientId) {
+  const id = Number(clientId); // clé numérique du cache mémoire (clientId des routes : chaîne)
+  const r = await pool.query('DELETE FROM ai_conversations WHERE client_id = $1', [id]);
+  invalidate(id);
+  return r.rowCount || 0;
+}
+
+module.exports = { buildClientConfigSnapshot, getSnapshot, getContextLine, invalidate, oublierConversationsIA };

@@ -156,7 +156,7 @@ const create = async (req, res) => {
     // Le gérant est déjà créé : un échec d'envoi de l'invitation ne doit pas produire un 5xx
     // (même motif que l'invitation acheteur) ; l'invitation reste renvoyable via /invite/resend.
     let emailEnvoye = true;
-    await sendInviteEmail({ to: email, nom, token: inviteToken, role: 'gerant' }).catch((e) => {
+    await sendInviteEmail({ to: email, nom, token: inviteToken, role: 'gerant', voc: req.voc }).catch((e) => {
       emailEnvoye = false;
       console.error('Invite gérant:', e.message);
     });

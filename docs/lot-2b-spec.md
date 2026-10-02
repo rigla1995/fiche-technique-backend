@@ -15,6 +15,14 @@ Historique :
   - E3 et E4 réécrites ;
   - vagues définies et fichiers partagés confiés à l'intégrateur ;
   - liste de déploiement complétée.
+- **v2.2 (02/10/2026)**, après les relectures du socle (S1 + S2) : 3 importants et 10 mineurs corrigés. Les amendements, marqués « (v2.2) » dans le texte :
+  - §5.4 : l'invalidation du profil après une création à la volée passe par `invaliderProfilApresCommit(resultat)`, appelée par les 6 sites après leur COMMIT ;
+  - §4.2 : `entreeComposant` lit `elision: 'auto'` comme « déduite » ; nouvelle aide `entreeComposantVoc(voc, c)` (table identité) pour les déterminants ;
+  - §5.1 : sortie explicite `res.locals.vocabBrut` ; une clé inconnue est rendue « ‹clé› » ;
+  - §5.5 et §11.1.4 : le guillemet droit « " » d'un nom saisi devient « - » dans le nom de fichier ; l'oracle le prouve (§2.3) ;
+  - §2.4, §2.6 et §11.2.2 : l'oracle capte `config.composants` de l'abonnement et compare l'ordre des clés (I9) ;
+  - §6.5 : forme en phrase de « base acheteurs » ;
+  - §3.2 E3 (46 constantes depuis S1), §5.4 (`/^l'/.test(voc.le(k))`), §7.4 (écart `deplacement`), §12.4 (`test-bot-onboarding`), §13.4 et §13.6 (contrôle du genre après bascule).
 
 **Les numéros de ligne sont ceux de `bfb590a`.** Les rapports de cartographie citent `339e5c4` : seul `ventesController.js` diffère, d'une à quinze lignes.
 
@@ -136,7 +144,7 @@ On capture les sorties du serveur sur des comptes éphémères, AVANT toute modi
     - puis suppression de l'acheteur avec une commande en attente : motif persisté.
 - **Branche « repli » du guide** (`onboardingEtat.js:125-131`) : compte A' créé par l'API, puis `DELETE FROM abonnement_config_composants WHERE abonnement_id = …` (validé), capture, puis `DELETE /admin/clients/:id`. `check-invariant-config.js` reste à 0 écart après le passage.
 - **Données sans égalité.** Quantités, prix et dates sont tous distincts, d'après une table de valeurs fixes du script : aucune égalité entre deux lignes triées ou regroupées.
-- Noms saisis sans mot du lexique par défaut, sans double espace, sans espace en 31ᵉ position. S'y ajoutent un labo nommé avec « / » et une activité nommée avec « — », pour prouver les assainisseurs (§5.5).
+- Noms saisis sans mot du lexique par défaut, sans double espace, sans espace en 31ᵉ position. S'y ajoutent un labo nommé avec « / » et une activité nommée avec « — », pour prouver les assainisseurs (§5.5). (v2.2) La 2ᵉ activité du compte B porte un guillemet droit (« Étages "Nord" ») : Latin-1, admis par Node dans un en-tête, mais il fermerait `filename="…"` ; `nomFichierSur` le remplace (§11.1.4).
 - **Domaines** :
   - `restauration` : identité ;
   - `hotellerie` ;
@@ -186,7 +194,7 @@ On capture les sorties du serveur sur des comptes éphémères, AVANT toute modi
   - gérant sans affectation (400) ; écriture par un gérant (403) ; module acheteurs absent sur A (403) ;
   - suppression d'une catégorie qui a des articles (409, pluriel dynamique) ; transfert d'un labo vers lui-même (400) ; annulation d'une commande acheteur (200) ;
   - `POST /api/produits/:id/ingredients` avec portion 0, puis sans `ingredientId` (`errors[].msg`) ; import de fournisseurs en double (`details[].error`) ; connexion erronée.
-- `auth` : corps de `/auth/login` et `/auth/me` pour client, gérant et acheteur ; `GET /api/domaines` et `GET /api/entreprise`.
+- `auth` : corps de `/auth/login` et `/auth/me` pour client, gérant et acheteur ; `GET /api/domaines` et `GET /api/entreprise` ; (v2.2) `GET /api/abonnements/mon-abonnement` du client B, qui porte `config.composants` (§11.2.2).
 
 **Comparaison et ordre.** Pour un tableau issu d'une requête sans `ORDER BY`, et pour les lignes d'un export, on compare la liste ordonnée. Un écart d'ordre SEUL (même multi-ensemble) est signalé à part, « ordre seul ». Il n'est admis que si la requête figure dans `ordre-libre.json` ET :
 - soit elle n'a pas d'`ORDER BY` à la référence ;
@@ -198,6 +206,8 @@ On capture les sorties du serveur sur des comptes éphémères, AVANT toute modi
 - jetons d'invitation ;
 - références `\b(?:CTR|AVN?|RES|FA|BL|BC)-[\w-]+` ;
 - contenus base64 retirés, empreinte gardée.
+
+**Ordre des clés (v2.2).** Deux objets comparés doivent garder la même suite de clés COMMUNES (I9 : « mêmes champs »). Une permutation est un écart de type `ordre-cles` (`avant` et `apres` = les deux suites), admis seulement par une entrée explicite qui porte ce type (§2.6). Une clé ajoutée ou retirée reste un écart de valeur (« ⟨absent⟩ »).
 
 Ne jamais comparer d'octets de PDF ou de classeur. La référence et chaque passage de contrôle sont lancés le même mois civil ; sinon, la référence est recapturée sur la tête de `develop`.
 
@@ -224,7 +234,7 @@ Attendu à la fin du lot : 0 hors exceptions.
 **Le scan est lancé AUSSI à l'étape O.** Son résultat est la liste de travail des vagues, chiffrée par famille : `hors-restauration-avant.json`. À l'étape O, le lexique n'a pas encore les 4 clés `*_abr` ; cette liste est donc déclarée incomplète pour les abréviations. Le scan est relancé après S1 pour la compléter.
 
 ### 2.6 Écarts restauration attendus
-`scripts/vocab-baseline/ecarts-restauration-attendus.json` : une entrée par écart admis, `{ cle, chemin, avant, apres, raison: '§11.1.n' | '§11.2.n' }`. `check-invariant-vocab.js` échoue sur un écart non listé, ET sur une entrée sans emploi. On n'y met jamais de masquage en bloc. Il est tenu par l'intégrateur (§10.4).
+`scripts/vocab-baseline/ecarts-restauration-attendus.json` : une entrée par écart admis, `{ cle, chemin, avant, apres, raison: '§11.1.n' | '§11.2.n' }`, plus `type: 'ordre-cles'` pour une permutation de clés (§2.4, v2.2). `check-invariant-vocab.js` échoue sur un écart non listé, ET sur une entrée sans emploi. On n'y met jamais de masquage en bloc. Il est tenu par l'intégrateur (§10.4).
 
 ### 2.7 Deux exports neutres, et signatures cibles
 Dans le commit de l'oracle :
@@ -292,7 +302,7 @@ Un lot qui change une autre signature appelée par l'oracle l'écrit dans ses `b
   - une constante de la forme `[a-z0-9_]+` ;
   - OU une constante de la liste fermée des codes en capitales : `'PT'` au départ. Tout ajout passe par la spec.
 
-  Les autres constantes sont jugées comme des textes. Mesure attendue à `bfb590a` : 44 constantes-libellés PORTANT UN TERME du lexique, dans 22 requêtes (et 18 `'PT'` codes dans 15 requêtes) ; un test fige ce compte sur la copie de référence. Les 13 fragments SQL qui ne commencent pas par un mot-clé (`facturesController.js:43-56`, `stockUtils.js:75-76`…) sont des résidus admis (`discriminant`).
+  Les autres constantes sont jugées comme des textes. Mesure attendue à `bfb590a` : 44 constantes-libellés PORTANT UN TERME du lexique (lexique à 43 clés), dans 22 requêtes (et 18 `'PT'` codes dans 15 requêtes) ; un test fige ce compte sur la copie de référence. (v2.2) 46 depuis S1 : les clés `produit_vendable_abr` et `produit_valorise_abr` reconnaissent « P. Vendable / » et « P. Valorisé / » de `dashboardV2Controller.js` ; requêtes et `'PT'` inchangés. Les 13 fragments SQL qui ne commencent pas par un mot-clé (`facturesController.js:43-56`, `stockUtils.js:75-76`…) sont des résidus admis (`discriminant`).
 - **E4 — Identité et SQL.** Une unité SQL est comparée par TROIS multi-ensembles, chacun avec la référence du même fichier :
   1. ses constantes-libellés (rendues), versées dans le multi-ensemble du fichier avec les autres textes ;
   2. ses constantes-codes, comparées à part : un code ajouté, retiré ou changé est un écart, admis seulement par une entrée `discriminant` ;
@@ -328,11 +338,12 @@ Tout se fait dans la source frontend `src/vocab/`. Le backend est régénéré p
        sg: c.libelle,
        pl: c.libellePluriel || c.libelle,
        g: c.genre === 'f' ? 'f' : 'm',
-       el: c.elision ?? /^[aeiouàâäæéèêëîïôöœùûü]/i.test(c.libelle),
+       el: typeof c.elision === 'boolean' ? c.elision : /^[aeiouàâäæéèêëîïôöœùûü]/i.test(c.libelle),
      }
      ```
 
-     Elle accepte aussi les noms de colonnes `libelle_pluriel`. Un `elision` nul vaut « déduite » : `y` et `h` donnent non. L'admin la force pour un h muet (« Huilerie » : `elision` = vrai donne « mon huilerie ») ou pour un cas que la règle rate.
+     Elle accepte aussi les noms de colonnes `libelle_pluriel`. Un `elision` qui n'est pas un booléen (nul, absent, ou `'auto'`, le synonyme admis par l'admin et qu'un aperçu d'écran peut porter avant l'enregistrement, v2.2) vaut « déduite » : `y` et `h` donnent non. L'admin la force pour un h muet (« Huilerie » : `elision` = vrai donne « mon huilerie ») ou pour un cas que la règle rate.
+   - (v2.2) `entreeComposantVoc(voc, c)` : l'entrée d'un composant DANS LE VOCABULAIRE DU COMPTE, pour un déterminant (`voc.avec(entreeComposantVoc(voc, c)).mon('_', n)`). Même table fermée que `libelleComposant` : un composant identité au libellé du brouillon prend le TERME (`Nom`, `Pl`, genre `voc.acc(k, 'm', 'f')`, élision `/^l'/.test(voc.le(k))` ; « Base acheteurs » : `Base ${voc.court('acheteur', true)}`, féminin) ; tout autre composant, `entreeComposant(c)`. Par défaut, même rendu que `entreeComposant(c)` pour les 4 composants identité tels que la 192 les laisse. Sans elle, « mon activité » resterait écrit hors restauration pour un domaine créé par l'admin (composants identité « Activité / Labo »).
    - `libelleComposant(voc, c, n, casse)` : si `c.code === c.typeTechnique` ET si le libellé stocké est celui du brouillon identité, on prend le rendu identité, table fermée :
 
      | Type | Rendu |
@@ -381,8 +392,9 @@ Tout se fait dans la source frontend `src/vocab/`. Le backend est régénéré p
   Rien d'autre : ni `errors` (deux sens : tableau express-validator et compteur d'import), ni `details`, `warnings`, `detail`, `reply`, ni les tableaux.
 - **Copie, jamais modification.** `{ ...body, message }`. Des corps sont partagés entre requêtes (`REPONSE_INVALIDE`, `publicSiteController.js:9`). Sans balise, le MÊME objet est renvoyé : mêmes octets.
 - Tous les statuts, 2xx compris (« Commande annulée — le stock a été réintégré » est un 200 affiché).
-- Une balise invalide n'est signalée qu'une fois par processus (ensemble borné à 500 entrées).
-- **Données interpolées** (nom de produit, libellé) : le message est rendu après l'interpolation. Une donnée de la forme exacte d'une balise valide serait donc rendue. Accepté par écrit : 0 cas en base, conséquence cosmétique.
+- Une balise de syntaxe invalide reste telle quelle et n'est signalée qu'une fois par processus (ensemble borné à 500 entrées). (v2.2) Une balise bien formée dont la CLÉ est inconnue (`[[nom:xyz]]`) n'est pas laissée telle quelle : le moteur la rend « ‹xyz› » et la signale par son propre ensemble, borné lui aussi à 500.
+- **Sortie explicite (v2.2).** Une route dont le `message` est une DONNÉE saisie pose `res.locals.vocabBrut = true` avant de répondre : le corps part tel quel. Seul cas : `PUT /admin/site/demandes-acces/:id` (`adminSiteController.updateDemandeAcces`), qui renvoie le message d'un visiteur du site public (seule colonne `message` en base, migration 173).
+- **Données interpolées** (nom de produit, libellé) : le message est rendu après l'interpolation. Une donnée de la forme exacte d'une balise valide serait donc rendue (« ‹clé› » si la clé est inconnue). Accepté par écrit : 0 cas en base, conséquence cosmétique. Un `message` qui EST une donnée prend la sortie explicite.
 - **Vocabulaire.** Le lecteur d'une réponse HTTP est celui qui a fait la requête : `req.voc` respecte I6 sans requête de plus.
   - Admin et boss : défaut, par le rôle.
   - Gérant : domaine du compte parent. Acheteur : domaine du vendeur.
@@ -431,8 +443,8 @@ Code :
 - `configComposantsService.js` :
   - `creerComposantIdentite` lit le profil du domaine par `getProfil(domaineId)`, dans la fonction, et LÈVE si le domaine est illisible : la transaction est annulée, et on n'écrit jamais en base un libellé de repli. Elle est atteinte par le webhook DocuSeal et par des requêtes admin, donc pas de `voc` de l'appelant ;
   - libellés : `voc.Nom(k)` / `voc.Pl(k)` ; « Base » + `voc.court('acheteur', true)` pour les acheteurs ;
-  - genre et élision viennent du TERME du domaine : `genre = voc.acc(k, 'm', 'f')`, `elision = voc.le(k).startsWith("l'")` pour `activite`, `labo` et `gerant` ; `'f'` et `null` pour `acheteurs`. `COMPOSANTS_IDENTITE` ne sert qu'aux libellés par défaut (création d'un domaine, migration 192). Vecteur : en Hôtellerie, « mon service », « ma cuisine centrale » ;
-  - après le COMMIT, l'appelant fait `invalidate(domaineId)` ;
+  - genre et élision viennent du TERME du domaine : `genre = voc.acc(k, 'm', 'f')`, `elision = /^l'/.test(voc.le(k))` pour `activite`, `labo` et `gerant` (v2.2 : jamais une méthode de chaîne sur un appel `voc`, idiome que l'outil ne suit pas) ; `'f'` et `null` pour `acheteurs`. `COMPOSANTS_IDENTITE` ne sert qu'aux libellés par défaut (création d'un domaine, migration 192). Vecteur : en Hôtellerie, « mon service », « ma cuisine centrale » ;
+  - après le COMMIT, l'appelant oublie le profil du domaine en cache (v2.2) : `applyComposants` renvoie `identitesCreees` (un composant identité a été créé) et `domaineId` ; chacun des 6 sites appelle `invaliderProfilApresCommit(resultat)` juste après SON COMMIT, jamais avant (un chargement concurrent remettrait en cache le profil sans la ligne) : `abonnementController` (`createAbonnement`, mise à jour de la configuration, module acheteurs), `clientsController.update`, `supportController.traiter`, webhook DocuSeal. Au mieux, jamais d'exception. Sans cela, pendant 60 s, `/auth/me`, `GET /api/domaines`, `GET /api/entreprise` et le guide omettent le composant créé (domaines sans composant identité seulement). Tests : faux pool (`test/socle-composants.test.js`) et lecture des sources (chaque appelant invalide après un COMMIT) ;
   - le chemin virtuel `creer: false` (`:174-176`) calcule le MÊME libellé, genre et élision, pour que l'aperçu dise ce que la création écrira ;
   - `listComposantsConfig` lit `genre` et `elision`.
 - `onboardingEtat.js:230` et `:257` : `genre` et `elision` dans le SELECT explicite et le mapping.
@@ -444,8 +456,8 @@ Nouveau module `src/utils/excelNoms.js` :
   - Employé par les 17 `addWorksheet` qui portent un terme ou un nom saisi (§6.3).
   - `nomOnglet` REMPLACE les caractères interdits par une espace (la spec lot 2 §4 disait « retire »).
   - Écart accepté : un onglet qui contient un nom saisi peut perdre une espace finale ou un double blanc (donnée, pas texte, §11.1).
-- `nomFichierSur(nom)` remplace par `-` les SEULS caractères que Node refuse dans un en-tête (hors `\t\x20-\x7E\x80-\xFF`), et le `"`. Tout autre caractère reste tel quel. Ce n'est PAS la règle de `facturesController.js:286`, qui reste inchangée (I2).
-  - Test : « Labo Central », « Café & Co », « Resto N°1 » ressortent à l'identique ; « Dar Yasmine — Salon » donne « Dar Yasmine - Salon ».
+- `nomFichierSur(nom)` remplace par `-` les SEULS caractères que Node refuse dans un en-tête (hors `\t\x20-\x7E\x80-\xFF`), et le `"`, que Node admet mais qui fermerait `filename="…"` (changement visible en restauration, listé au §11.1.4, v2.2). Tout autre caractère reste tel quel. Ce n'est PAS la règle de `facturesController.js:286`, qui reste inchangée (I2).
+  - Test : « Labo Central », « Café & Co », « Resto N°1 » ressortent à l'identique ; « Dar Yasmine — Salon » donne « Dar Yasmine - Salon » ; « Le "Gourmet" » donne « Le -Gourmet- ».
   - Employé par les 4 `Content-Disposition` à nom saisi : `inventaireController.js:932`, `:1022` ; `laboController.js:1974`, `:2395`. Le 5ᵉ, `pertesController.js:748`, est un en-tête mort, écrasé par `:446`, et c'est lui qui lève l'erreur : il est supprimé.
 
 ### 5.6 Plomberie `voc` entre lots
@@ -556,7 +568,7 @@ Limite connue, à ne pas « corriger » : un labo dont le nom contient déjà le
 - Pronoms de reprise (« Désactivez-le », « ajoutez-en un », « il s'approvisionne ») : `[[acc:…]]` ou `voc.acc`.
 - « au premier appro », « mon premier approvisionnement » : `voc.acc(k, 'mon premier', 'ma première')`, jamais `det` + adjectif fixe.
 - Verbes issus d'un terme (« se transférer », « s'approvisionne ») : texte inchangé, entrée `verbe`.
-- Avec un libellé de composant : seuls `nom`, `Nom`, `mon` et `mes`, par `voc.avec(entreeComposant(c))`.
+- Avec un libellé de composant : seuls `nom`, `Nom`, `mon` et `mes`, par `voc.avec(entreeComposantVoc(voc, c))` (v2.2 : la table identité du §4.2 ; `voc.avec(entreeComposant(c))` seulement pour un composant qui ne peut pas être un composant identité).
 - La relecture des lignes « miroir » de `scripts/vocab-accords.txt` est obligatoire pour chaque lot.
 
 ### 6.5 Choix de la forme et de la clé
@@ -568,7 +580,8 @@ Limite connue, à ne pas « corriger » : un labo dont le nom contient déjà le
 | Étiquette : en-tête de colonne, onglet, préfixe « X : nom », « X · nom » | `Court` | Labo : Bloc chaud | Cuisine : Bloc chaud |
 | Marqueur entre parenthèses | `court` | (labo) | (cuisine) |
 | Nom d'un écran, module ou option, cité tel qu'à l'écran | la forme de l'écran du 2a (`Court`) ; `court` si l'existant l'écrit en minuscules dans une phrase | Tarifs Acheteurs · mes tarifs acheteurs | Tarifs Clients professionnels · mes tarifs clients professionnels |
-| « Base acheteurs » (module) | `Base ${voc.court('acheteur', true)}` partout : messages, guide, composant identité, écrans | base acheteurs | base clients professionnels |
+| « Base acheteurs » (module), en tête ou en étiquette : composant identité, nom de module à l'écran | `` `Base ${voc.court('acheteur', true)}` `` | Base acheteurs | Base clients professionnels |
+| (v2.2) « base acheteurs » dans une phrase (message, guide) | `` `base ${voc.court('acheteur', true)}` `` ; en balise `base [[court:acheteur:pl]]`. Exemples : `gerantController.js:110`, `:113`, `:228`, `:235` | la base acheteurs | la base clients professionnels |
 
 Exemples de balises :
 - « Stock PT insuffisant » : `Stock [[court:pt]] insuffisant`.
@@ -663,7 +676,8 @@ Jamais `req.voc` dans la chaîne de l'assistant : Messenger n'a pas de `req`, et
 ### 7.4 Guide de mise en route : lexique contre composants
 Trois règles :
 1. **Le texte parle d'une catégorie** (type technique, quota, compteur par type, comparaison entre types, consigne) → terme du lexique. Exemples : titres d'étape, « différence entre une activité et un labo », « affectée(s) », règle du bloc du prompt.
-2. **Le texte désigne le type d'une unité, ou une ligne par composant souscrit** → `libelleComposant(voc, c, n, casse)` (§4.2), accordé par `voc.avec(entreeComposant(c))` quand il faut un déterminant. Exemples : détail « 1/2 Restaurants », question « Comment créer ma cuisine ? ».
+2. **Le texte désigne le type d'une unité, ou une ligne par composant souscrit** → `libelleComposant(voc, c, n, casse)` (§4.2), accordé par `voc.avec(entreeComposantVoc(voc, c))` quand il faut un déterminant (v2.2 : la même table identité). Exemples : détail « 1/2 Restaurants », question « Comment créer ma cuisine ? ».
+   - (v2.2) Écart d'identité attendu : la question par composant (`onboardingEtat.js:119`, « Comment créer mon / mes … ? ») passe le déterminant dans `voc.avec(…).mon(…)`. L'outil `identite` rend 1 écart (« ⟦mon|mes@>1⟧ … » devient « ⟦?⟦mon|mes@>1⟧ …|⟦·⟧⟧ »), admis par une entrée `deplacement` : « déterminant déplacé dans voc.avec(entreeComposantVoc(voc, c)).mon ; rendu par défaut identique, prouvé par l'oracle (`guide`) ».
 3. **Un composant identité au libellé du brouillon** → terme du lexique, par la même fonction.
    - Liste toute en identité : voie actuelle, en minuscules (`voc.mon('activite', n > 1)`).
    - Liste mixte : forme `Nom`, alignée sur les libellés stockés.
@@ -819,7 +833,7 @@ Ces textes changent pour un compte restauration. Ils sont à faire valider par l
    - « → » s'écrivait « !’ », il s'écrit « › » ;
    - une donnée saisie hors Windows-1252 (arabe, emoji) s'écrivait en caractères illisibles, elle s'écrit « ? ».
 3. Export Excel du tableau de bord (écran) : « Cout matiere » → « Coût matière », « Activite » → « Activité », « Production pt » → « Production PT ».
-4. Exports Inventaire (activité et labo), Historique d'appro labo, Historique des transferts labo et Historique des pertes labo, pour un nom contenant un caractère hors Latin-1 (« — », « ’ ») : ils renvoyaient une erreur, ils se téléchargent. Pour les 4 premiers, le nom de fichier est assaini ; pour les pertes labo, l'en-tête mort qui levait l'erreur est supprimé. Les autres noms de fichiers ne changent pas.
+4. Exports Inventaire (activité et labo), Historique d'appro labo, Historique des transferts labo et Historique des pertes labo, pour un nom contenant un caractère hors Latin-1 (« — », « ’ ») : ils renvoyaient une erreur, ils se téléchargent. Pour les 4 premiers, le nom de fichier est assaini ; pour les pertes labo, l'en-tête mort qui levait l'erreur est supprimé. (v2.2) Pour les 4 premiers aussi, un nom qui contient un guillemet droit « " » : l'export se téléchargeait déjà, mais avec un nom de fichier coupé par le navigateur (`filename="Inventaire-Le "Chef".xlsx"`) ; le guillemet devient « - » (`Inventaire-Le -Chef-.xlsx`). Les autres noms de fichiers ne changent pas.
 5. Noms d'onglets qui contiennent un nom saisi : une espace finale ou un double blanc peut disparaître.
 6. Import du référentiel : un fichier dont la colonne 1 a été renommée n'importe plus son bandeau comme des articles.
 7. Exports Inventaire (activité et labo), Historique d'appro labo et Historique des transferts labo, pour un nom qui contient `* ? : \ / [ ]` ou finit par une apostrophe : ils renvoyaient une erreur, ils se téléchargent. Le caractère devient une espace dans le nom de l'onglet.
@@ -862,6 +876,7 @@ Aucun autre écart. Le reste est prouvé à l'identique par l'outil et par l'ora
      - purge de l'assistant seulement au changement de domaine ;
    - `test-transferts-chaine.js`, avec les attentes du §6.2 ;
    - non-régression : `check-invariant-config`, `check-invariant-stock` (il compte des sous-chaînes SQL exactes : ne pas reformater les requêtes voisines), `test-composants`, `test-onboarding-etapes`, `test-bot-onboarding` (questions restauration inchangées), `test-contrat-admin`, `test-manuel-filtre`.
+   - (v2.2) Référence connue de `test-bot-onboarding` sur le backend de test, mesurée AVANT le socle (`d03cc68`) et après : 14/17. Les 3 échecs sont anciens : « chat 200 pendant la mise en route » et « le bot cite l'étape manquante » demandent un vrai appel Gemini (bouchonné) ; « questions capacités : création d'activités proposée » monte `nb_activites` alors que les questions se calculent par composant. Toute autre baisse est une régression. B1 compare la liste des contrôles verts, pas seulement leur nombre.
 5. **Parcours navigateur** (complément, scripts de `labflow-reprise/lot-2/parcours-2a/`) :
    - compte Hôtellerie : tableau de bord, guide et assistant, exports, messages d'erreur visibles, onglet Composants de l'admin ;
    - compte restauration : mêmes écrans identiques à la référence.
@@ -895,11 +910,22 @@ Aucun autre écart. Le reste est prouvé à l'identique par l'outil et par l'ora
    - un message d'erreur visible ;
    - un export ;
    - l'onglet Composants de l'admin : genre et élision ;
-   - le guide et l'assistant d'un compte de test Hôtellerie.
+   - le guide et l'assistant d'un compte de test Hôtellerie ;
+   - (v2.2) aucun composant identité féminin resté masculin. Un composant identité créé à la volée par l'ANCIEN serveur après la 192 (fenêtre où l'ancien conteneur sert encore) prend le défaut `'m'`, et la 192 ne repasse jamais. Requête de contrôle (lecture (5) de `node scripts/controle-avant-192.js`, en lecture seule), à relancer après chaque bascule et chaque redéploiement :
+
+     ```sql
+     SELECT d.slug, dc.id, dc.code, dc.libelle, dc.genre
+       FROM domaine_composants dc
+       JOIN domaines_activite d ON d.id = dc.domaine_id
+      WHERE dc.code = dc.type_technique AND dc.genre = 'm'
+        AND (dc.code, dc.libelle) IN (('activite', 'Activité'), ('acheteurs', 'Base acheteurs'));
+     ```
+
+     Une ligne trouvée se corrige dans l'onglet Composants de l'admin (genre Féminin).
 5. **Effets d'un décalage** :
    - nouveau serveur + ancien écran : lexique `null` pour la restauration (sans effet) ; un ancien onglet admin enregistre des composants sans genre ni élision, et l'upsert les garde ;
    - ancien serveur + nouvel écran (ordre interdit) : vocabulaire mêlé pour un compte de test ; les 4 clés `*_abr` d'un compte Hôtellerie prendraient le défaut.
-6. **Retour arrière** : l'écran d'abord, puis le serveur. Jamais l'ancien serveur derrière le nouvel écran. La colonne `genre` reste, inoffensive.
+6. **Retour arrière** : l'écran d'abord, puis le serveur. Jamais l'ancien serveur derrière le nouvel écran. La colonne `genre` reste, inoffensive. (v2.2) Mais l'ancien serveur crée ses composants identité sans genre (défaut `'m'`) : au redéploiement du nouveau, relancer la requête de contrôle du point 4 et corriger dans l'admin.
 7. **Fusion** `--no-ff` dans `develop` puis `main` dans chaque dépôt ; `npm test` avant tout push du serveur, `npm run build` avant tout push de l'écran.
 
 ## 14. À transmettre au client avec la livraison

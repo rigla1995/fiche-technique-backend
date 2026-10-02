@@ -821,7 +821,7 @@ const removeSousProduit = async (req, res) => {
 // Calcul récursif du coût d'un produit
 async function calculerCout(produitId, clientId, visited = new Set()) {
   if (visited.has(produitId)) {
-    throw new Error('Référence circulaire détectée dans les sous-produits');
+    throw Object.assign(new Error('Référence circulaire détectée dans les sous-produits'), { code: 'REFERENCE_CIRCULAIRE' });
   }
   visited.add(produitId);
 
@@ -830,7 +830,7 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
     [produitId, clientId]
   );
   if (produit.rows.length === 0) {
-    throw new Error('Produit introuvable');
+    throw Object.assign(new Error('Produit introuvable'), { code: 'PRODUIT_INTROUVABLE' });
   }
 
   // Coût des ingrédients directs — prix stock le plus récent en priorité
@@ -1083,10 +1083,10 @@ const getCout = async (req, res) => {
     const result = await calculerCout(parseInt(id), ownerId);
     res.json(mapCout(result));
   } catch (err) {
-    if (err.message === 'Produit introuvable') {
+    if (err.code === 'PRODUIT_INTROUVABLE') {
       return res.status(404).json({ message: err.message });
     }
-    if (err.message.includes('circulaire')) {
+    if (err.code === 'REFERENCE_CIRCULAIRE') {
       return res.status(400).json({ message: err.message });
     }
     console.error(err);
@@ -1096,11 +1096,11 @@ const getCout = async (req, res) => {
 
 // Calcul du coût avec une map de prix explicites { ingredientId → prixUnitaire }
 async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = new Set()) {
-  if (visited.has(produitId)) throw new Error('Référence circulaire détectée dans les sous-produits');
+  if (visited.has(produitId)) throw Object.assign(new Error('Référence circulaire détectée dans les sous-produits'), { code: 'REFERENCE_CIRCULAIRE' });
   visited.add(produitId);
 
   const produit = await pool.query('SELECT * FROM produits WHERE id = $1 AND client_id = $2', [produitId, clientId]);
-  if (produit.rows.length === 0) throw new Error('Produit introuvable');
+  if (produit.rows.length === 0) throw Object.assign(new Error('Produit introuvable'), { code: 'PRODUIT_INTROUVABLE' });
 
   const ingredients = await pool.query(
     `SELECT pi.portion, i.id as ingredient_id, i.nom as ingredient_nom,
@@ -1219,7 +1219,7 @@ const getFtContextes = async (req, res) => {
       },
     });
   } catch (err) {
-    if (err.message && err.message.includes('circulaire')) return res.status(400).json({ message: err.message });
+    if (err.code === 'REFERENCE_CIRCULAIRE') return res.status(400).json({ message: err.message });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }

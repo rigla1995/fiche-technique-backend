@@ -1,1 +1,4236 @@
-[]
+[
+ {
+  "cle": "exports",
+  "chemin": "/06.inventaireActivite.A1/status",
+  "avant": 500,
+  "apres": 200,
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/06.inventaireActivite.A1/disposition",
+  "avant": null,
+  "apres": "attachment; filename=\"Inventaire-Terrasse du Lac - Salon.xlsx\"",
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/06.inventaireActivite.A1/classeurIllisible",
+  "avant": true,
+  "apres": "⟨absent⟩",
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/06.inventaireActivite.A1/corps",
+  "avant": {
+   "message": "Erreur serveur"
+  },
+  "apres": "⟨absent⟩",
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/06.inventaireActivite.A1/onglets",
+  "avant": "⟨absent⟩",
+  "apres": [
+   {
+    "nom": "Inventaire Terrasse du Lac — Sa",
+    "lignes": [
+     [
+      "Historique des inventaires — Activités"
+     ],
+     [
+      "Terrasse du Lac — Salon"
+     ],
+     [
+      "Exporté le ⟨date⟩ · Période ⟨date⟩ → ⟨date⟩ · 1 ligne(s)"
+     ],
+     [
+      "Date",
+      "Ingrédient",
+      "Catégorie",
+      "Qté réelle",
+      "Unité",
+      "Activité",
+      "Note"
+     ],
+     [
+      "⟨date⟩",
+      "Café moulu",
+      "Épicerie fine",
+      "11.2",
+      "kg",
+      "Terrasse du Lac — Salon",
+      "Comptage du soir"
+     ],
+     [
+      "TOTAL",
+      "",
+      "",
+      "11.2"
+     ],
+     [
+      "Généré par LabFlow · labflow-tn.com"
+     ]
+    ]
+   }
+  ],
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/10.pertesLabo.LC/status",
+  "avant": 500,
+  "apres": 200,
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/10.pertesLabo.LC/disposition",
+  "avant": null,
+  "apres": "attachment; filename=\"Historique-Pertes-⟨date⟩.xlsx\"",
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/10.pertesLabo.LC/corps",
+  "avant": {
+   "message": "Erreur génération Excel"
+  },
+  "apres": "⟨absent⟩",
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/10.pertesLabo.LC/onglets",
+  "avant": "⟨absent⟩",
+  "apres": [
+   {
+    "nom": "Historique Pertes",
+    "lignes": [
+     [
+      "Historique des pertes — Labo"
+     ],
+     [
+      "Four d’Ali'"
+     ],
+     [
+      "Exporté le ⟨date⟩ · Période du ⟨date⟩ au ⟨date⟩ · 0 ligne(s)"
+     ],
+     [
+      "Date",
+      "Ingrédient",
+      "Catégorie",
+      "Quantité",
+      "Unité",
+      "Type",
+      "Prix Unit.",
+      "Coût Total"
+     ],
+     [
+      "TOTAL",
+      "",
+      "",
+      "0"
+     ],
+     [
+      "Généré par LabFlow · labflow-tn.com"
+     ]
+    ]
+   }
+  ],
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "exports",
+  "chemin": "/06.inventaireActivite.A2/disposition",
+  "avant": "attachment; filename=\"Inventaire-Étages \"Nord\".xlsx\"",
+  "apres": "attachment; filename=\"Inventaire-Étages -Nord-.xlsx\"",
+  "raison": "§11.1.4"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.login/body/user/domaine/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.login/body/user/domaine/composants/0/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.login/body/user/domaine/composants/0/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.login/body/user/domaine/composants/1/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.login/body/user/domaine/composants/1/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.login/body/user/domaine/composants/2/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.login/body/user/domaine/composants/2/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.login/body/user/domaine/composants/3/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.login/body/user/domaine/composants/3/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.me/domaine/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.me/domaine/composants/0/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.me/domaine/composants/0/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.me/domaine/composants/1/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.me/domaine/composants/1/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.me/domaine/composants/2/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.me/domaine/composants/2/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.me/domaine/composants/3/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.me/domaine/composants/3/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.domaines/0/composants/0/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.domaines/0/composants/0/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.domaines/0/composants/1/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.domaines/0/composants/1/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.domaines/0/composants/2/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.domaines/0/composants/2/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.domaines/0/composants/3/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.domaines/0/composants/3/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.domaines/0/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.login/body/user/domaine/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.login/body/user/domaine/composants/0/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.login/body/user/domaine/composants/0/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.login/body/user/domaine/composants/1/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.login/body/user/domaine/composants/1/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.login/body/user/domaine/composants/2/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.login/body/user/domaine/composants/2/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.login/body/user/domaine/composants/3/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.login/body/user/domaine/composants/3/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.me/domaine/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.me/domaine/composants/0/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.me/domaine/composants/0/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.me/domaine/composants/1/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.me/domaine/composants/1/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.me/domaine/composants/2/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.me/domaine/composants/2/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.me/domaine/composants/3/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.me/domaine/composants/3/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.domaines/0/composants/0/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.domaines/0/composants/0/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.domaines/0/composants/1/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.domaines/0/composants/1/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.domaines/0/composants/2/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.domaines/0/composants/2/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.domaines/0/composants/3/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.domaines/0/composants/3/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/gerant.domaines/0/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/acheteur.login/body/user/domaine/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/acheteur.me/domaine/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/acheteur.domaines/0/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.entreprise/domaine/lexique",
+  "avant": {
+   "activite": {
+    "sg": "Activité",
+    "pl": "Activités",
+    "g": "f",
+    "el": true,
+    "icon": "🏪",
+    "appo": true
+   },
+   "labo": {
+    "sg": "Labo",
+    "pl": "Labos",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "appo": true
+   },
+   "produit_vendable": {
+    "sg": "Produit vendable",
+    "pl": "Produits vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒"
+   },
+   "produit_utilisable": {
+    "sg": "Produit utilisable",
+    "pl": "Produits utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "court": {
+     "sg": "PU",
+     "pl": "PU"
+    }
+   },
+   "produit_valorise": {
+    "sg": "Produit valorisé",
+    "pl": "Produits valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎"
+   },
+   "article": {
+    "sg": "Article",
+    "pl": "Articles",
+    "g": "m",
+    "el": true,
+    "icon": "📦"
+   },
+   "ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "🥕"
+   },
+   "recette": {
+    "sg": "Recette",
+    "pl": "Recettes",
+    "g": "f",
+    "el": false,
+    "icon": "📖"
+   },
+   "fiche_technique": {
+    "sg": "Fiche technique",
+    "pl": "Fiches techniques",
+    "g": "f",
+    "el": false,
+    "icon": "📋",
+    "court": {
+     "sg": "FT",
+     "pl": "FT"
+    }
+   },
+   "portion": {
+    "sg": "Portion",
+    "pl": "Portions",
+    "g": "f",
+    "el": false,
+    "icon": "🍽️"
+   },
+   "food_cost": {
+    "sg": "Food cost",
+    "pl": "Food costs",
+    "g": "m",
+    "el": false,
+    "icon": "📊"
+   },
+   "cout_matiere": {
+    "sg": "Coût matière",
+    "pl": "Coûts matière",
+    "g": "m",
+    "el": false,
+    "icon": "💰"
+   },
+   "marge": {
+    "sg": "Marge",
+    "pl": "Marges",
+    "g": "f",
+    "el": false,
+    "icon": "📈"
+   },
+   "transfert": {
+    "sg": "Transfert",
+    "pl": "Transferts",
+    "g": "m",
+    "el": false,
+    "icon": "🚚"
+   },
+   "appro": {
+    "sg": "Approvisionnement",
+    "pl": "Approvisionnements",
+    "g": "m",
+    "el": true,
+    "icon": "📥",
+    "court": {
+     "sg": "Appro",
+     "pl": "Appros"
+    }
+   },
+   "perte": {
+    "sg": "Perte",
+    "pl": "Pertes",
+    "g": "f",
+    "el": false,
+    "icon": "🗑️"
+   },
+   "inventaire": {
+    "sg": "Inventaire",
+    "pl": "Inventaires",
+    "g": "m",
+    "el": true,
+    "icon": "📝"
+   },
+   "vente": {
+    "sg": "Vente",
+    "pl": "Ventes",
+    "g": "f",
+    "el": false,
+    "icon": "💵"
+   },
+   "acheteur": {
+    "sg": "Acheteur",
+    "pl": "Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "appo": true
+   },
+   "gerant": {
+    "sg": "Gérant",
+    "pl": "Gérants",
+    "g": "m",
+    "el": false,
+    "icon": "👤",
+    "appo": true
+   },
+   "fournisseur": {
+    "sg": "Fournisseur",
+    "pl": "Fournisseurs",
+    "g": "m",
+    "el": false,
+    "icon": "🏬"
+   },
+   "depot": {
+    "sg": "Dépôt",
+    "pl": "Dépôts",
+    "g": "m",
+    "el": false,
+    "icon": "🏗️"
+   },
+   "pt": {
+    "sg": "Produit transformé",
+    "pl": "Produits transformés",
+    "g": "m",
+    "el": false,
+    "icon": "🍲",
+    "court": {
+     "sg": "PT",
+     "pl": "PT"
+    }
+   },
+   "stock": {
+    "sg": "Stock",
+    "pl": "Stocks",
+    "g": "m",
+    "el": false,
+    "icon": "📦"
+   },
+   "prestataire": {
+    "sg": "Prestataire",
+    "pl": "Prestataires",
+    "g": "m",
+    "el": false,
+    "icon": "🛵"
+   },
+   "supplement": {
+    "sg": "Supplément",
+    "pl": "Suppléments",
+    "g": "m",
+    "el": false,
+    "icon": "➕"
+   },
+   "espace_activites": {
+    "sg": "Espace Activités",
+    "pl": "Espaces Activités",
+    "g": "m",
+    "el": true,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:activite]]"
+   },
+   "espace_labo": {
+    "sg": "Espace Labo",
+    "pl": "Espaces Labo",
+    "g": "m",
+    "el": true,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Court:labo]]"
+   },
+   "espace_vente": {
+    "sg": "Espace Vente",
+    "pl": "Espaces Vente",
+    "g": "m",
+    "el": true,
+    "icon": "💵",
+    "derive_de": "vente",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:vente]]"
+   },
+   "espace_acheteurs": {
+    "sg": "Espace Acheteurs",
+    "pl": "Espaces Acheteurs",
+    "g": "m",
+    "el": true,
+    "icon": "🤝",
+    "derive_de": "acheteur",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Pl:acheteur]]"
+   },
+   "espace_produits": {
+    "sg": "Espace Produit",
+    "pl": "Espaces Produit",
+    "g": "m",
+    "el": true,
+    "icon": "💎",
+    "derive_de": "produit",
+    "mode": "gabarit",
+    "gabarit": "Espace [[Nom:produit]]"
+   },
+   "referentiel": {
+    "sg": "Référentiel",
+    "pl": "Référentiels",
+    "g": "m",
+    "el": false,
+    "icon": "📚"
+   },
+   "produit": {
+    "sg": "Produit",
+    "pl": "Produits",
+    "g": "m",
+    "el": false,
+    "icon": "🍔"
+   },
+   "produit_compose": {
+    "sg": "Produit composé",
+    "pl": "Produits composés",
+    "g": "m",
+    "el": false
+   },
+   "labo_long": {
+    "sg": "Laboratoire",
+    "pl": "Laboratoires",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "labo_desc": {
+    "sg": "Laboratoire de production",
+    "pl": "Laboratoires de production",
+    "g": "m",
+    "el": false,
+    "icon": "🏭",
+    "derive_de": "labo",
+    "mode": "copie"
+   },
+   "activite_desc": {
+    "sg": "Point de vente",
+    "pl": "Points de vente",
+    "g": "m",
+    "el": false,
+    "icon": "🏪",
+    "derive_de": "activite",
+    "mode": "copie"
+   },
+   "article_ingredient": {
+    "sg": "Ingrédient",
+    "pl": "Ingrédients",
+    "g": "m",
+    "el": true,
+    "icon": "📦",
+    "derive_de": "article",
+    "mode": "copie"
+   },
+   "cat_pt_utilisable": {
+    "sg": "Produits Transformés Utilisables",
+    "pl": "Produits Transformés Utilisables",
+    "g": "m",
+    "el": false,
+    "icon": "🧂",
+    "derive_de": "produit_utilisable",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_valorise": {
+    "sg": "Produits Composés Valorisés",
+    "pl": "Produits Composés Valorisés",
+    "g": "m",
+    "el": false,
+    "icon": "💎",
+    "derive_de": "produit_valorise",
+    "mode": "pluriel_titre"
+   },
+   "cat_pt_vendable": {
+    "sg": "Produits Transformés Vendables",
+    "pl": "Produits Transformés Vendables",
+    "g": "m",
+    "el": false,
+    "icon": "🛒",
+    "derive_de": "produit_vendable",
+    "mode": "pluriel_titre"
+   },
+   "transfert_abr": {
+    "sg": "Transf.",
+    "pl": "Transf.",
+    "g": "m",
+    "el": false,
+    "icon": "🚚",
+    "court": {
+     "sg": "Trf",
+     "pl": "Trf"
+    },
+    "derive_de": "transfert",
+    "mode": "copie"
+   },
+   "supplement_abr": {
+    "sg": "Suppl.",
+    "pl": "Suppl.",
+    "g": "m",
+    "el": false,
+    "icon": "➕",
+    "derive_de": "supplement",
+    "mode": "copie"
+   }
+  },
+  "apres": null,
+  "raison": "§11.2.1"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.entreprise/domaine/composants/0/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.entreprise/domaine/composants/0/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.entreprise/domaine/composants/1/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.entreprise/domaine/composants/1/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.entreprise/domaine/composants/2/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.entreprise/domaine/composants/2/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.entreprise/domaine/composants/3/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.entreprise/domaine/composants/3/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.abonnement/config/composants/0/genre",
+  "avant": "⟨absent⟩",
+  "apres": "f",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.abonnement/config/composants/0/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.abonnement/config/composants/1/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.abonnement/config/composants/1/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.abonnement/config/composants/2/genre",
+  "avant": "⟨absent⟩",
+  "apres": "m",
+  "raison": "§11.2.2"
+ },
+ {
+  "cle": "auth",
+  "chemin": "/client.abonnement/config/composants/2/elision",
+  "avant": "⟨absent⟩",
+  "apres": null,
+  "raison": "§11.2.2"
+ }
+]

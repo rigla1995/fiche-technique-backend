@@ -11,15 +11,19 @@
  *      brouillons RÉ-ENREGISTRÉS par l'interface d'avant le lot 2 (sans g ni el) : complétés par
  *      l'étape 0, les 8 corrections s'appliquent, aucun genre ni aucune élision ne bascule ;
  *   3. comptes de test Hôtellerie et Céramique : /auth/login et /auth/me portent le lexique
- *      RÉSOLU v2 (43 clés, clés dérivées, formes courtes), avec composants et règles ; gérant :
- *      domaine du compte parent ;
+ *      ALLÉGÉ (lot 2b §5.7) : le lexique RÉSOLU v2 (toutes les clés, clés dérivées, formes courtes)
+ *      sans la déclaration des clés dérivées (derive_de, mode, gabarit), mêmes rendus ; avec
+ *      composants et règles ; login = me ; gérant : domaine du compte parent ; GET /api/domaines :
+ *      forme mapDomaine (description comprise), même lexique ;
  *   4. acheteur d'un compte Hôtellerie : domaine = { id, slug, nom, lexique } du client vendeur,
  *      SANS composants ni règles — dans /auth/login, /auth/me ET GET /api/domaines ;
- *   5. compte restauration créé dans le même test : lexique par défaut ; admin : domaine null ;
+ *   5. compte restauration créé dans le même test : lexique null (vocabulaire par défaut, lot 2b
+ *      §5.7), login = me, GET /api/domaines et GET /api/entreprise aussi ; admin : domaine null ;
  *   6. validation du lexique (PUT /api/domaines/:id sur un domaine de test) : 400 + code sur
  *      entrée incomplète, caractère interdit (dont { } $, tabulation, séparateurs de ligne), texte
  *      trop long, clé réservée, clé dérivée partielle, champ non surchargeable ; rien n'est écrit ;
- *      lexique valide → clés dérivées résolues, propagé à /auth/me du compte rattaché ;
+ *      lexique valide → clés dérivées résolues, propagé à /auth/me du compte rattaché (allégé) ;
+ *      clé en plus (rendus du défaut) ou icône seule → lexique envoyé ; retour au défaut → null ;
  *      domaine par défaut « restauration » : aucun écart de lexique accepté (invariant I1).
  * Nettoie tout ce qu'il crée (clients, acheteur, gérant, domaine de test, admin temporaire).
  *
@@ -36,7 +40,7 @@ const { execFileSync } = require('child_process');
 const pool = require('../src/config/database');
 const bcrypt = require('bcryptjs');
 const { LEXIQUE_DEFAUT, LEXIQUE_CLES } = require('../src/config/lexiqueDefaut');
-const { resoudreLexique } = require('../src/utils/vocab');
+const { resoudreLexique, vocabDefaut, vocabDuLexique } = require('../src/utils/vocab');
 
 const BASE = 'http://localhost:3000';
 const RACINE = path.resolve(__dirname, '..');
@@ -49,6 +53,22 @@ const egal = (a, b) => {
   try { require('assert').deepStrictEqual(a, b); return true; } catch (_) { return false; }
 };
 const J5 = (e) => JSON.stringify(e == null ? e : { sg: e.sg, pl: e.pl, g: e.g, el: e.el, icon: e.icon });
+// Lexique ENVOYÉ à un compte (lot 2b, spec §5.7, authController.lexiquePourCompte), recalculé ici à
+// partir du lexique résolu : null quand son vocabulaire est le vocabulaire par défaut (mêmes rendus ET
+// aucune clé en plus) ; sinon une copie sans derive_de, mode ni gabarit.
+const DECLARATION_DERIVEE = ['derive_de', 'mode', 'gabarit'];
+const allege = (lexique) => Object.fromEntries(Object.entries(lexique).map(([k, e]) => [k,
+  Object.fromEntries(Object.entries(e).filter(([champ]) => !DECLARATION_DERIVEE.includes(champ)))]));
+const lexiqueEnvoye = (resolu) => (vocabDuLexique(resolu) === vocabDefaut ? null : allege(resolu));
+// Rendus d'un vocabulaire sur toutes les clés du défaut (formes, déterminants, accords) : un lexique
+// allégé doit rendre exactement ce que rend le lexique complet.
+const METHODES = ['nom', 'Nom', 'Titre', 'MAJ', 'pl', 'Pl', 'court', 'Court', 'nomS', 'NomS', 'compl', 'avecCourt',
+  'le', 'Le', 'un', 'Un', 'du', 'Du', 'de', 'De', 'au', 'Au', 'ce', 'Ce', 'aucun', 'Aucun', 'votre', 'Votre',
+  'mon', 'Mon', 'son', 'Son', 'nouveau', 'Nouveau', 'tous', 'Tous', 'g', 'icon'];
+const rendre1 = (f) => { try { return String(f()); } catch (e) { return `!${e.message}`; } };
+const rendus = (voc) => LEXIQUE_CLES.flatMap((k) => METHODES.flatMap((m) => [
+  rendre1(() => voc[m](k)), rendre1(() => voc[m](k, true)),
+])).concat(LEXIQUE_CLES.map((k) => rendre1(() => voc.acc(k, 'm', 'f'))), String(voc.estDefaut));
 
 const ADMIN_EMAIL = 'test-admin-vocabulaire@example.com';
 const HOTEL_EMAIL = 'test-vocabulaire-hotel@example.com';
@@ -310,27 +330,38 @@ const CIBLES_191 = [
       nom: 'TEST-Voc Resto', email: RESTO_EMAIL, telephone: '20999103', nbActivites: 1, nbLabos: 0, nbGerants: 0, nbAcheteurs: 0, montantOnboarding: 500,
     }, 'Restauration (payload historique, sans domaineId)');
 
-    // Contrôles communs d'un domaine de compte (client / gérant) : profil complet, lexique résolu v2.
-    const controlerDomaine = (libelle, domaine, dom) => {
-      const attendu = resoudreLexique(LEXIQUE_DEFAUT, dom.lexiqueEcarts);
+    // Contrôles communs d'un domaine de compte (client / gérant) : profil complet, lexique ALLÉGÉ (lot 2b §5.7).
+    // `envoye` : true = un lexique est attendu (domaine à écarts), false = null attendu (vocabulaire par défaut).
+    const controlerDomaine = (libelle, domaine, dom, envoye) => {
+      const resolu = resoudreLexique(LEXIQUE_DEFAUT, dom.lexiqueEcarts);
       check(`${libelle} : domaine { id, slug, nom } = ${dom.slug}`, domaine?.id === dom.id && domaine.slug === dom.slug && domaine.nom === dom.nom, JSON.stringify({ id: domaine?.id, slug: domaine?.slug }));
       check(`${libelle} : composants et règles présents (profil complet)`, Array.isArray(domaine?.composants) && domaine.composants.length > 0 && domaine.regles && typeof domaine.regles === 'object');
-      check(`${libelle} : lexique entièrement résolu (toutes les clés du défaut, dans l'ordre)`, egal(Object.keys(domaine?.lexique || {}).slice(0, LEXIQUE_CLES.length), [...LEXIQUE_CLES]), String(Object.keys(domaine?.lexique || {}).length));
-      check(`${libelle} : lexique = résolution v2 des écarts du domaine (clés dérivées, formes courtes)`, egal(domaine?.lexique, attendu));
+      check(`${libelle} : clés du domaine { id, slug, nom, lexique, composants, regles }, dans cet ordre`,
+        !!domaine && egal(Object.keys(domaine), ['id', 'slug', 'nom', 'lexique', 'composants', 'regles']), JSON.stringify(domaine ? Object.keys(domaine) : domaine));
+      if (!envoye) {
+        check(`${libelle} : lexique null (vocabulaire par défaut : l'écran rend vocabDefaut)`,
+          !!domaine && domaine.lexique === null && lexiqueEnvoye(resolu) === null, JSON.stringify(domaine?.lexique)?.slice(0, 80));
+        return;
+      }
+      const l = domaine?.lexique;
+      check(`${libelle} : lexique envoyé, toutes les clés du défaut dans l'ordre`, !!l && egal(Object.keys(l).slice(0, LEXIQUE_CLES.length), [...LEXIQUE_CLES]), String(Object.keys(l || {}).length));
+      check(`${libelle} : lexique = résolution v2 des écarts du domaine sans derive_de, mode ni gabarit`, egal(l, allege(resolu)) && egal(l, lexiqueEnvoye(resolu)));
       const derivees = LEXIQUE_CLES.filter((k) => LEXIQUE_DEFAUT[k].derive_de);
-      check(`${libelle} : ${derivees.length} clés dérivées avec leur parent et leur mode`,
-        derivees.every((k) => domaine?.lexique?.[k]?.derive_de === LEXIQUE_DEFAUT[k].derive_de && domaine.lexique[k].mode === LEXIQUE_DEFAUT[k].mode && !!domaine.lexique[k].sg));
+      check(`${libelle} : ${derivees.length} clés dérivées résolues (sg), sans leur déclaration (derive_de, mode, gabarit)`,
+        !!l && derivees.every((k) => !!l[k]?.sg && DECLARATION_DERIVEE.every((champ) => !(champ in l[k]))));
+      check(`${libelle} : mêmes rendus que le lexique complet (vocabDuLexique), 0 écart`,
+        !!l && egal(rendus(vocabDuLexique(l)), rendus(vocabDuLexique(resolu))));
     };
 
     // Hôtellerie
     const hotel = await login(HOTEL_EMAIL);
     check('login client Hôtellerie', !!hotel.token);
     const H = mk(hotel.token);
-    controlerDomaine('/auth/login client Hôtellerie', hotel.user?.domaine, hot);
+    controlerDomaine('/auth/login client Hôtellerie', hotel.user?.domaine, hot, true);
     ({ status, body } = await H('/auth/me'));
     check('/auth/me client Hôtellerie → 200', status === 200 && body?.role === 'client', String(status));
     const meHotel = body;
-    controlerDomaine('/auth/me client Hôtellerie', meHotel?.domaine, hot);
+    controlerDomaine('/auth/me client Hôtellerie', meHotel?.domaine, hot, true);
     check('/auth/me = /auth/login (même domaine)', egal(meHotel?.domaine, hotel.user?.domaine));
     const lh = meHotel?.domaine?.lexique || {};
     const brouillonH = CIBLES_191.filter((x) => x[0] === 'hotellerie').every(([, cle, , attendu]) => egal(hot.lexiqueEcarts[cle], attendu))
@@ -361,9 +392,10 @@ const CIBLES_191 = [
       check('Hôtellerie : brouillon modifié depuis la migration 191 — contrôles littéraux sautés (contrôles génériques faits)', true);
     }
     ({ status, body } = await H('/api/domaines'));
-    check('GET /api/domaines (client) → son seul domaine, lexique résolu, sans lexiqueEcarts',
-      status === 200 && Array.isArray(body) && body.length === 1 && body[0].id === hot.id && egal(body[0].lexique, meHotel?.domaine?.lexique) && body[0].lexiqueEcarts === undefined,
-      `${status}`);
+    check('GET /api/domaines (client) → son seul domaine, forme mapDomaine (description comprise), lexique = celui de /auth/me (allégé), sans lexiqueEcarts',
+      status === 200 && Array.isArray(body) && body.length === 1 && body[0].id === hot.id && egal(body[0].lexique, meHotel?.domaine?.lexique) && body[0].lexiqueEcarts === undefined
+      && egal(Object.keys(body[0]), ['id', 'slug', 'nom', 'description', 'composants', 'lexique', 'regles']),
+      `${status} ${Array.isArray(body) && body[0] ? Object.keys(body[0]).join(',') : ''}`);
 
     // Gérant du compte Hôtellerie (compte créé en SQL : aucun email) → domaine du compte parent.
     await pool.query(
@@ -380,9 +412,10 @@ const CIBLES_191 = [
     // Céramique
     const ceram = await login(CERAM_EMAIL);
     check('login client Céramique', !!ceram.token);
-    controlerDomaine('/auth/login client Céramique', ceram.user?.domaine, cer);
+    controlerDomaine('/auth/login client Céramique', ceram.user?.domaine, cer, true);
     ({ status, body } = await mk(ceram.token)('/auth/me'));
-    controlerDomaine('/auth/me client Céramique', body?.domaine, cer);
+    controlerDomaine('/auth/me client Céramique', body?.domaine, cer, true);
+    check('/auth/me = /auth/login (Céramique, même domaine)', egal(body?.domaine, ceram.user?.domaine));
     const lc = body?.domaine?.lexique || {};
     const brouillonC = CIBLES_191.filter((x) => x[0] === 'ceramique').every(([, cle, , attendu]) => (attendu === null ? cer.lexiqueEcarts[cle] === undefined : egal(cer.lexiqueEcarts[cle], attendu)))
       && egal(cer.lexiqueEcarts.activite, e4('Point de vente', 'Points de vente', 'm')) && egal(cer.lexiqueEcarts.produit_valorise, e4('Produit fini catalogue', 'Produits finis catalogue', 'm'));
@@ -420,7 +453,7 @@ const CIBLES_191 = [
           !!domaine && egal(Object.keys(domaine).sort(), ['id', 'lexique', 'nom', 'slug']) && domaine.id === hot.id && domaine.slug === 'hotellerie' && domaine.nom === hot.nom,
           JSON.stringify(domaine ? Object.keys(domaine) : domaine));
         check(`${libelle} : ni composants ni règles du vendeur`, !!domaine && !('composants' in domaine) && !('regles' in domaine));
-        check(`${libelle} : lexique = lexique résolu du vendeur`, egal(domaine?.lexique, meHotel?.domaine?.lexique));
+        check(`${libelle} : lexique = lexique du vendeur, allégé comme le sien`, !!domaine?.lexique && egal(domaine.lexique, meHotel?.domaine?.lexique));
       };
       controlerAcheteur('/auth/login acheteur', ach.user?.domaine);
       ({ status, body } = await mk(ach.token)('/auth/me'));
@@ -440,17 +473,27 @@ const CIBLES_191 = [
     const resto = await login(RESTO_EMAIL);
     check('login client Restauration', !!resto.token);
     const R = mk(resto.token);
-    controlerDomaine('/auth/login client Restauration', resto.user?.domaine, restau);
+    controlerDomaine('/auth/login client Restauration', resto.user?.domaine, restau, false);
     ({ status, body } = await R('/auth/me'));
-    controlerDomaine('/auth/me client Restauration', body?.domaine, restau);
-    const lr = body?.domaine?.lexique || {};
-    check('Restauration : lexique = lexique par défaut v2, au caractère près', JSON.stringify(lr) === JSON.stringify(LEXIQUE_DEFAUT));
+    controlerDomaine('/auth/me client Restauration', body?.domaine, restau, false);
+    const meResto = body;
+    check('Restauration : /auth/me = /auth/login (même domaine, lexique null des deux côtés)', !!meResto?.domaine && egal(meResto.domaine, resto.user?.domaine));
+    // lexique null : l'écran prend vocabDefaut, celui du lexique par défaut v2.
+    const vr = vocabDuLexique(meResto?.domaine?.lexique);
+    check('Restauration : vocabDuLexique(lexique reçu) === vocabDefaut (l\'objet lui-même)', vr === vocabDefaut);
     if (origine) {
-      const diffs = Object.keys(origine).filter((k) => J5(origine[k]) !== J5(lr[k]));
-      check('Restauration : les 32 clés d\'origine inchangées dans /auth/me (sg, pl, g, el, icon)', diffs.length === 0, diffs.join(', '));
+      const diffs = Object.keys(origine).filter((k) => J5(origine[k]) !== J5(LEXIQUE_DEFAUT[k]));
+      check('Restauration : les 32 clés d\'origine inchangées dans le lexique par défaut que rend null (sg, pl, g, el, icon)', diffs.length === 0, diffs.join(', '));
     }
-    check('Restauration : formes du défaut — Espace Labo, PT, Appro, FT, Laboratoire de production',
-      lr.espace_labo?.sg === 'Espace Labo' && lr.pt?.court?.sg === 'PT' && lr.appro?.court?.sg === 'Appro' && lr.fiche_technique?.court?.sg === 'FT' && lr.labo_desc?.sg === 'Laboratoire de production');
+    check('Restauration : formes rendues du défaut — Espace Labo, PT, Appro, FT, Laboratoire de production',
+      vr.Nom('espace_labo') === 'Espace Labo' && vr.Court('pt') === 'PT' && vr.Court('appro') === 'Appro' && vr.Court('fiche_technique') === 'FT' && vr.Nom('labo_desc') === 'Laboratoire de production');
+    ({ status, body } = await R('/api/domaines'));
+    check('GET /api/domaines (client restauration) : forme mapDomaine, lexique null',
+      status === 200 && Array.isArray(body) && body.length === 1 && body[0].id === restau.id && body[0].lexique === null
+      && egal(Object.keys(body[0]), ['id', 'slug', 'nom', 'description', 'composants', 'lexique', 'regles']), String(status));
+    ({ status, body } = await R('/api/entreprise'));
+    check('GET /api/entreprise (client restauration) : domaine = /auth/me.domaine (lexique null)',
+      status === 200 && !!body?.domaine && body.domaine.lexique === null && egal(body.domaine, meResto?.domaine), `${status} ${JSON.stringify(body?.domaine?.lexique)?.slice(0, 40)}`);
     ({ status, body } = await A('/auth/me'));
     check('/auth/me admin : domaine null', status === 200 && body?.domaine === null, JSON.stringify(body?.domaine));
 
@@ -543,8 +586,13 @@ const CIBLES_191 = [
     ({ status, body } = await put(A, `/admin/clients/${restoId}`, { domaineId: domId }));
     check('PUT /admin/clients/:id { domaineId } (compte de test → domaine de test) → 200', status === 200 && body?.domaineId === domId, `${status} ${body?.message || ''}`);
     ({ status, body } = await R('/auth/me'));
-    check('/auth/me du compte rattaché : lexique du domaine de test (Espace Atel., l\'atelier)',
-      status === 200 && body?.domaine?.slug === DOM_SLUG && egal(body.domaine.lexique, lt), `${status} ${body?.domaine?.slug}`);
+    check('/auth/me du compte rattaché : lexique du domaine de test, allégé (Espace Atel., l\'atelier)',
+      status === 200 && body?.domaine?.slug === DOM_SLUG && egal(body.domaine.lexique, allege(lt)) && body.domaine.lexique.espace_labo?.sg === 'Espace Atel.',
+      `${status} ${body?.domaine?.slug}`);
+    const meRattache = body;
+    ({ status, body } = await R('/api/entreprise'));
+    check('GET /api/entreprise du compte rattaché : domaine = /auth/me.domaine (lexique allégé)',
+      status === 200 && !!body?.domaine?.lexique && egal(body.domaine, meRattache?.domaine), String(status));
     ({ status, body } = await put(A, `/api/domaines/${domId}`, { lexique: { labo: { sg: 'Usine', pl: 'Usines', g: 'f', el: true } } }));
     check('PUT lexique (remplacement complet des écarts) → 200', status === 200 && egal(Object.keys(body?.lexiqueEcarts || {}), ['labo']) && body.lexique.activite.sg === 'Activité', String(status));
     ({ status, body } = await R('/auth/me'));
@@ -553,8 +601,19 @@ const CIBLES_191 = [
       JSON.stringify([body?.domaine?.lexique?.labo?.sg, body?.domaine?.lexique?.espace_labo?.sg]));
     ({ status, body } = await put(A, `/api/domaines/${domId}`, { lexique: {} }));
     check('PUT lexique {} → retour au lexique par défaut', status === 200 && JSON.stringify(body?.lexique) === JSON.stringify(LEXIQUE_DEFAUT) && egal(body.lexiqueEcarts, {}), String(status));
+    ({ status, body } = await R('/auth/me'));
+    check('/auth/me du compte rattaché, domaine de test sans écart : lexique null (critère = vocabulaire, ni le slug ni estDefaut)',
+      status === 200 && body?.domaine?.slug === DOM_SLUG && body.domaine.lexique === null, `${status} ${JSON.stringify(body?.domaine?.lexique)?.slice(0, 40)}`);
     ({ status, body } = await put(A, `/api/domaines/${domId}`, { description: 'sans toucher au lexique' }));
     check('PUT sans lexique : écarts inchangés', status === 200 && egal(body?.lexiqueEcarts, {}), String(status));
+    // Clé en plus, aux rendus du défaut : voc.estDefaut serait vrai, mais le vocabulaire n'est pas vocabDefaut → envoyé.
+    ({ status, body } = await put(A, `/api/domaines/${domId}`, { lexique: { chantier: { sg: 'Chantier', pl: 'Chantiers', g: 'm', el: false } } }));
+    check('PUT lexique avec une clé en plus (chantier) → 200', status === 200 && egal(Object.keys(body?.lexiqueEcarts || {}), ['chantier']), `${status} ${body?.code || ''}`);
+    ({ status, body } = await R('/auth/me'));
+    check('/auth/me : clé en plus → lexique envoyé (clé comprise), rendus du défaut (estDefaut vrai)',
+      status === 200 && body?.domaine?.lexique?.chantier?.sg === 'Chantier' && vocabDuLexique(body.domaine.lexique).estDefaut === true
+      && egal(body.domaine.lexique, allege(resoudreLexique(LEXIQUE_DEFAUT, { chantier: { sg: 'Chantier', pl: 'Chantiers', g: 'm', el: false } }))),
+      JSON.stringify(body?.domaine?.lexique?.chantier));
     // Entrée redéclarée À L'IDENTIQUE du défaut : retirée au nettoyage (stockée, elle ferait perdre « PT » et l'apposition).
     ({ status, body } = await put(A, `/api/domaines/${domId}`, { lexique: {
       pt: { sg: 'Produit transformé', pl: 'Produits transformés', g: 'm', el: false },
@@ -565,8 +624,13 @@ const CIBLES_191 = [
       status === 200 && egal(body?.lexiqueEcarts, { labo_long: { icon: '🔬' } }) && egal(body.lexique.pt.court, { sg: 'PT', pl: 'PT' })
       && body.lexique.labo.appo === true && body.lexique.labo_long.sg === 'Laboratoire' && body.lexique.labo_long.icon === '🔬',
       `${status} ${JSON.stringify(body?.lexiqueEcarts || body?.message)}`);
+    ({ status, body } = await R('/auth/me'));
+    check('/auth/me : icône seule surchargée (labo_long 🔬) → lexique envoyé',
+      status === 200 && body?.domaine?.lexique?.labo_long?.icon === '🔬' && !('derive_de' in body.domaine.lexique.labo_long), JSON.stringify(body?.domaine?.lexique?.labo_long));
     ({ status, body } = await put(A, `/api/domaines/${domId}`, { lexique: {} }));
     check('PUT lexique {} (remise à zéro du domaine de test) → 200', status === 200 && egal(body?.lexiqueEcarts, {}), String(status));
+    ({ status, body } = await R('/auth/me'));
+    check('/auth/me après remise à zéro : lexique null', status === 200 && body?.domaine?.lexique === null, JSON.stringify(body?.domaine?.lexique)?.slice(0, 40));
 
     // Domaine par défaut « restauration » : référence de l'invariant I1, son lexique ne reçoit aucun écart.
     ({ status, body } = await put(A, `/api/domaines/${restau.id}`, { lexique: { labo: { sg: 'Atelier', pl: 'Ateliers', g: 'm', el: true } } }));

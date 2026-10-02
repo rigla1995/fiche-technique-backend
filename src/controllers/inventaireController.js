@@ -1,5 +1,6 @@
 const pool = require('../config/database');
-const { ptCategorie } = require('../utils/stockUtils');
+const { ptCategorie, ptCategorieSql } = require('../utils/stockUtils');
+const { nomFichierSur } = require('../utils/excelNoms');
 const ExcelJS = require('exceljs');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
@@ -702,7 +703,7 @@ const getLaboInventaireHistorique = async (req, res) => {
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom,
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom,
               l.nom as labo_nom, ub.nom as created_by_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id
@@ -772,7 +773,7 @@ const getActiviteInventaireHistorique = async (req, res) => {
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom,
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom,
               a.nom as activite_nom, ub.nom as created_by_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id
@@ -879,7 +880,7 @@ const exportLaboInventaireExcel = async (req, res) => {
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
@@ -929,7 +930,7 @@ const exportLaboInventaireExcel = async (req, res) => {
     finalize(sheet, { headerRowIdx: headerIdx, colCount: COL_COUNT, lastDataRow });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Inventaire-${laboNom}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Inventaire-${nomFichierSur(laboNom)}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -969,7 +970,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
-              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
+              COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id
        LEFT JOIN unites u ON u.id = i.unite_id
@@ -1019,7 +1020,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
     finalize(sheet, { headerRowIdx: headerIdx, colCount: COL_COUNT, lastDataRow });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Inventaire-${activiteNom}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Inventaire-${nomFichierSur(activiteNom)}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {

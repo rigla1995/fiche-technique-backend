@@ -2,4 +2,77 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 0 unité(s), 0 fichier(s).
+# 23 unité(s), 2 fichier(s).
+
+src/middleware/auth.js
+  l. 111
+    défaut : Compte acheteur désactivé
+    miroir : Compte cliente désactivé
+  l. 190
+    défaut : Action réservée au compte client (lecture seule pour les gérants)
+    miroir : Action réservée au compte client (lecture seule pour les animatrices)
+  l. 197
+    défaut : Accès réservé aux gérants
+    miroir : Accès réservé aux animatrices
+  l. 217
+    défaut : Module Vente non activé
+    miroir : Module Abr-Encaissement non activé
+  l. 237
+    défaut : Module Acheteurs non activé
+    miroir : Module Abr-Clientes non activé
+  l. 252
+    défaut : Espace Acheteurs non autorisé pour ce gérant
+    miroir : Zone Clientes non autorisée pour cette animatrice
+  l. 279
+    défaut : L'Espace Produit est réservé à la formule Activité Premium
+    miroir : La Zone Invention est réservée à la formule Activité Premium
+  l. 291
+    défaut : Accès réservé aux acheteurs
+    miroir : Accès réservé aux clientes
+  l. 316
+    défaut : Accès non autorisé à cette activité
+    miroir : Accès non autorisé à ce local
+
+src/services/configComposantsService.js
+  l. 127
+    défaut : Activité
+    miroir : Local
+  l. 127
+    défaut : Activités
+    miroir : Locaux
+  l. 128
+    défaut : f
+    miroir : m
+  l. 128
+    défaut : l'activité
+    miroir : le local
+  l. 131
+    défaut : Labo
+    miroir : Usine
+  l. 131
+    défaut : Labos
+    miroir : Usines
+  l. 132
+    défaut : m
+    miroir : f
+  l. 132
+    défaut : le labo
+    miroir : l'usine
+  l. 135
+    défaut : Gérant
+    miroir : Animatrice
+  l. 135
+    défaut : Gérants
+    miroir : Animatrices
+  l. 136
+    défaut : m
+    miroir : f
+  l. 136
+    défaut : le gérant
+    miroir : l'animatrice
+  l. 140
+    défaut : Base acheteurs
+    miroir : Base abr-clientes
+  l. 140
+    défaut : Base acheteurs
+    miroir : Base abr-clientes

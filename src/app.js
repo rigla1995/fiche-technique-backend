@@ -50,12 +50,18 @@ const { verifyWebhook, receiveWebhook } = require('./services/messengerService')
 const { docusealWebhook } = require('./controllers/webhookController');
 
 const { authenticate, requireWriteAccess } = require('./middleware/auth');
+const { rendreMessages } = require('./middleware/rendreMessages');
 
 const app = express();
 
 // Derrière le reverse proxy (Coolify/nginx) : faire confiance au 1er hop
 // pour que req.ip / X-Forwarded-For soient corrects (requis par express-rate-limit).
 app.set('trust proxy', 1);
+
+// Rendu au bord des balises de vocabulaire de `message` et `erreurs[].message` (lot 2b, spec §5.1).
+// EN PREMIER : il enveloppe tout ce qui suit (cors, analyseurs, routes publiques, garde d'écriture,
+// /auth, webhooks, limiteurs, 404, gestionnaire d'erreurs).
+app.use(rendreMessages);
 
 app.use(cors());
 // Les logos partenaires (data-URI ≤ 300 000 caractères) dépassent la limite JSON

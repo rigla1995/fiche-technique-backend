@@ -7,6 +7,9 @@
  *       - même mois civil que la référence (sinon : recapturer la référence, code 2) ;
  *       - tout écart doit figurer dans scripts/vocab-baseline/ecarts-restauration-attendus.json
  *         ({ cle, chemin, avant, apres, raison: '§11.1.n' | '§11.2.n' }) ; une entrée sans emploi = échec ;
+ *       - ordre des clés (I9) : deux objets comparés gardent la même suite de clés COMMUNES ; une
+ *         permutation est un écart de type « ordre-cles » (avant / apres = les deux suites), admis seulement
+ *         par une entrée qui porte type: 'ordre-cles' ;
  *       - un écart d'ordre SEUL (même multi-ensemble) est signalé à part, « ordre seul ». Il n'est admis
  *         que par scripts/vocab-baseline/ordre-libre.json ({ cle, chemin, raison, cleTri? }) :
  *           · entrée SANS cleTri : requête sans ORDER BY, toute permutation de la liste est admise (§2.4) ;
@@ -158,6 +161,12 @@ function comparer(avant, apres, chemin, sortie) {
   }
   const objet = (v) => v && typeof v === 'object' && !Array.isArray(v);
   if (objet(avant) && objet(apres)) {
+    // Ordre des clés (I9) : la suite des clés COMMUNES doit être la même. Une clé ajoutée ou retirée est
+    // un écart de valeur (⟨absent⟩) ; une permutation, un écart de type « ordre-cles », admis seulement par
+    // une entrée explicite qui porte ce type.
+    const ca = Object.keys(avant).filter((k) => k in apres);
+    const cb = Object.keys(apres).filter((k) => k in avant);
+    if (!egal(ca, cb)) sortie.ecarts.push({ chemin, avant: ca, apres: cb, type: 'ordre-cles' });
     for (const k of new Set([...Object.keys(avant), ...Object.keys(apres)])) {
       comparer(k in avant ? avant[k] : ABSENT, k in apres ? apres[k] : ABSENT, `${chemin}/${seg(k)}`, sortie);
     }
@@ -215,11 +224,13 @@ function verifierRestauration(courante) {
     const manque = ['cle', 'chemin', 'avant', 'apres', 'raison'].filter((c) => !(c in e));
     if (manque.length) problemes.push(`ecarts-restauration-attendus.json[${i}] : champ(s) manquant(s) ${manque.join(', ')}`);
     else if (!/^§11\.[12]\.\d+$/.test(e.raison)) problemes.push(`ecarts-restauration-attendus.json[${i}] : raison « ${e.raison} » (attendu §11.1.n ou §11.2.n)`);
+    else if ('type' in e && e.type !== 'ordre-cles') problemes.push(`ecarts-restauration-attendus.json[${i}] : type « ${e.type} » (seul type admis : ordre-cles)`);
   });
   const employees = new Set();
   const nonListes = [];
   for (const e of brut.ecarts) {
-    const i = attendus.findIndex((a) => a.cle === e.cle && a.chemin === e.chemin && egal(a.avant, e.avant) && egal(a.apres, e.apres));
+    const i = attendus.findIndex((a) => a.cle === e.cle && a.chemin === e.chemin && (a.type || null) === (e.type || null)
+      && egal(a.avant, e.avant) && egal(a.apres, e.apres));
     if (i >= 0) employees.add(i); else nonListes.push(e);
   }
   const sansEmploi = attendus.map((a, i) => ({ ...a, i })).filter((a) => !employees.has(a.i));
@@ -238,7 +249,7 @@ function verifierRestauration(courante) {
   console.log(`[check-vocab] restauration — référence ${path.relative(RACINE, refFichier)} (migration ${ref.meta.derniereMigration}) ; capture (migration ${courante.meta.derniereMigration})`);
   console.log(`[check-vocab] comptes par clé : ${JSON.stringify(courante.comptes)}`);
   for (const p of problemes) console.log(`  ✗ ${p}`);
-  for (const e of nonListes.slice(0, 40)) console.log(`  ✗ écart non listé ${e.cle}${e.chemin}\n      avant : ${court(e.avant)}\n      après : ${court(e.apres)}`);
+  for (const e of nonListes.slice(0, 40)) console.log(`  ✗ écart non listé ${e.cle}${e.chemin}${e.type ? ` (${e.type})` : ''}\n      avant : ${court(e.avant)}\n      après : ${court(e.apres)}`);
   if (nonListes.length > 40) console.log(`  … ${nonListes.length - 40} autre(s) écart(s) : voir ${RAPPORT}`);
   for (const a of sansEmploi) console.log(`  ✗ entrée sans emploi : ${a.cle}${a.chemin} (${a.raison})`);
   for (const o of ordreNonAdmis.slice(0, 20)) console.log(`  ✗ ordre seul, non admis : ${o.cle}${o.chemin}`);
@@ -527,10 +538,18 @@ async function verifierHorsRestauration(capture) {
   if (argv.includes('--liste-avant')) {
     if (problemes.length) { console.error('[check-vocab] liste non écrite (problèmes ci-dessus)'); return 1; }
     const avant = fs.existsSync(FICHIERS.avant) ? lireJson(FICHIERS.avant) : {};
-    avant._lisezmoi = 'Liste de travail hors restauration capturée à l\'étape O (spec lot 2b §2.5) : formes par défaut trouvées dans les sorties du serveur pour un compte de chaque domaine, hors exceptions typées, regroupées par famille puis par texte distinct. Incomplète pour les clés *_abr (absentes du lexique avant S1) : relancer le scan après S1. Régénérer : node scripts/check-invariant-vocab.js --domaine <X> --liste-avant.';
+    if (!('_lisezmoi' in avant)) avant._lisezmoi = ''; // première clé du fichier
     avant.domaines = avant.domaines || {};
     avant.domaines[res.domaine] = { ...res, exceptionsSansEmploi: sansEmploi.length };
     avant.domaines = Object.fromEntries(Object.entries(avant.domaines).sort(([a], [b]) => a.localeCompare(b)));
+    // « Incomplète » seulement si un domaine a encore des clés *_abr absentes du moteur de son passage.
+    const incompletes = Object.entries(avant.domaines).filter(([, d]) => (d.incompletePour || []).length).map(([nom]) => nom);
+    avant._lisezmoi = 'Liste de travail hors restauration capturée à l\'étape O (spec lot 2b §2.5) : formes par défaut trouvées dans les sorties du serveur pour un compte de chaque domaine, hors exceptions typées, regroupées par famille puis par texte distinct. '
+      + (incompletes.length
+        ? `Incomplète pour les clés *_abr (absentes du moteur du passage) dans : ${incompletes.join(', ')} ; relancer le scan de ces domaines. `
+        : 'Complète depuis S1 pour tous les domaines (clés *_abr comprises). ')
+      + 'Régénérer : node scripts/check-invariant-vocab.js --domaine <X> --liste-avant.';
+
     ecrireJson(FICHIERS.avant, avant);
     console.log(`[check-vocab] liste de travail écrite : ${path.relative(RACINE, FICHIERS.avant)} (section ${res.domaine})`);
     return 0;

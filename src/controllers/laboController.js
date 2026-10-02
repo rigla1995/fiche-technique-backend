@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
+const { nomFichierSur } = require('../utils/excelNoms');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
@@ -1301,7 +1302,7 @@ const getTransferHistory = async (req, res) => {
               COALESCE(i.nom, p.nom) as ingredient_nom,
               COALESCE(u.nom, 'unité') as unite_nom,
               ${destCols},
-              COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
+              COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
        FROM labo_transfers lt
        LEFT JOIN articles i ON i.id = lt.ingredient_id
        LEFT JOIN unites u ON i.unite_id = u.id
@@ -1971,7 +1972,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     finalize(sheet, { headerRowIdx: headerIdx, colCount, lastDataRow });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Historique-Labo-${laboNom}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Historique-Labo-${nomFichierSur(laboNom)}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -2312,7 +2313,7 @@ const exportLaboTransferExcel = async (req, res) => {
     const result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
               lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, COALESCE(u.nom, 'unité') AS unite_nom,
-              COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT CASE WHEN pp.type = 'utilisable' THEN 'Produits Transformés Utilisables' WHEN pp.origine = 'labo' THEN 'Produits Composés Valorisés' ELSE 'Produits Transformés Vendables' END FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) AS categorie_nom,
+              COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) AS categorie_nom,
               lt.activite_id, a.nom AS activite_nom,
               CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom || ' (labo)' ELSE a.nom END AS dest_nom,
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
@@ -2392,7 +2393,7 @@ const exportLaboTransferExcel = async (req, res) => {
     finalize(sheet, { headerRowIdx: headerIdx, colCount, lastDataRow });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Historique-Transferts-${laboNom}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Historique-Transferts-${nomFichierSur(laboNom)}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {

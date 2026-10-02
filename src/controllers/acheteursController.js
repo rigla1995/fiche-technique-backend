@@ -169,7 +169,7 @@ const create = async (req, res) => {
 
     await db.query('COMMIT');
     // Envoi des invitations APRÈS commit (best-effort, échec loggé)
-    for (const inv of invites) sendInviteEmail(inv).catch((e) => console.error('Invite acheteur:', e));
+    for (const inv of invites) sendInviteEmail({ ...inv, voc: req.voc }).catch((e) => console.error('Invite acheteur:', e));
     res.status(201).json({ acheteurs: created.map(mapAcheteur), invitations: invites.length, warnings });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
@@ -344,7 +344,7 @@ const inviter = async (req, res) => {
       invite = { to: a.email, nom: a.nom, token, role: 'acheteur' };
     }
     await db.query('COMMIT');
-    await sendInviteEmail(invite).catch((e) => console.error('Invite acheteur:', e));
+    await sendInviteEmail({ ...invite, voc: req.voc }).catch((e) => console.error('Invite acheteur:', e));
     res.json({ message: `Invitation envoyée à ${a.email}` });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
@@ -506,7 +506,7 @@ const importAcheteurs = [
         db.release();
       }
 
-      for (const inv of invites) sendInviteEmail(inv).catch((e) => console.error('Invite acheteur:', e));
+      for (const inv of invites) sendInviteEmail({ ...inv, voc: req.voc }).catch((e) => console.error('Invite acheteur:', e));
       details.sort((a, b) => a.row - b.row);
       res.json({
         processed: crees,

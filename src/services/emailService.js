@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { Resend } = require('resend');
+const { vocabDefaut } = require('../utils/vocab');
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_test_key');
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
@@ -12,7 +13,20 @@ const APP_NAME = process.env.APP_NAME || 'LabFlow';
 // le texte alt « LabFlow » stylé en blanc. Source : public/logo-email.png du frontend.
 const BRAND_LOGO = `<img src="${APP_URL}/logo-email.png" alt="LabFlow" width="138" height="34" style="display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;" />`;
 
-const sendInviteEmail = async ({ to, nom, token, role }) => {
+// Vocabulaire du DESTINATAIRE (lot 2b, spec §5.6). Les 5 fonctions à terme
+// (sendInviteEmail, sendDocusealSigningEmail, sendAvenantEmail, sendRapportWithAttachment,
+// sendMessengerInviteEmail) reçoivent `voc` en CLÉ de leur objet d'arguments, et chaque appel
+// dans src/ la porte (contrôle statique : test/emailVoc.test.js). Sans elle, l'oubli est
+// journalisé et l'email part quand même, avec le vocabulaire par défaut : un email n'est
+// jamais perdu (plusieurs appelants avalent le rejet).
+const vocDuDestinataire = (voc, fonction) => {
+  if (voc) return voc;
+  console.error('[email] voc manquant', fonction.name);
+  return vocabDefaut;
+};
+
+const sendInviteEmail = async ({ to, nom, token, role, voc: vocRecu }) => {
+  const voc = vocDuDestinataire(vocRecu, sendInviteEmail);
   const inviteUrl = `${APP_URL}/invite/${token}`;
 
   const roleLabel = role === 'gerant' ? 'gérant' : role === 'acheteur' ? 'acheteur' : 'client';
@@ -198,7 +212,8 @@ const sendPasswordResetEmail = async ({ to, nom, token }) => {
   return { success: true, id: data?.id };
 };
 
-const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, type = null }) => {
+const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, type = null, voc: vocRecu }) => {
+  const voc = vocDuDestinataire(vocRecu, sendDocusealSigningEmail);
   // kind ∈ 'contrat' | 'avenant' | 'resiliation' (avenant prioritaire pour rétro-compat)
   const kind = avenant ? 'avenant' : (type || 'contrat');
   const isAvenant = kind === 'avenant';
@@ -318,7 +333,10 @@ const sendAvenantEmail = async ({
   dateAvenant,
   // PDF contract attachment (base64)
   pdfBase64,
+  // Vocabulaire du destinataire (vocDuDestinataire)
+  voc: vocRecu,
 }) => {
+  const voc = vocDuDestinataire(vocRecu, sendAvenantEmail);
   const fmtDt = (n) => (n != null ? `${Number(n).toFixed(2)} DT` : '—');
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
@@ -522,7 +540,8 @@ const sendRapportEmail = async ({ to, clientNom, rapportText }) => {
   return { success: true, id: data?.id };
 };
 
-const sendRapportWithAttachment = async ({ to, clientNom, buffer, filename, mimeType, format }) => {
+const sendRapportWithAttachment = async ({ to, clientNom, buffer, filename, mimeType, format, voc: vocRecu }) => {
+  const voc = vocDuDestinataire(vocRecu, sendRapportWithAttachment);
   const formatLabel = format === 'excel' ? 'Excel' : 'PDF';
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
@@ -550,7 +569,8 @@ const sendRapportWithAttachment = async ({ to, clientNom, buffer, filename, mime
   return { success: true, id: data?.id };
 };
 
-const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) => {
+const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName, voc: vocRecu }) => {
+  const voc = vocDuDestinataire(vocRecu, sendMessengerInviteEmail);
   const name = appName || APP_NAME;
   const html = `
 <!DOCTYPE html>

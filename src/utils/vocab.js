@@ -1,7 +1,8 @@
 // FICHIER GÉNÉRÉ — ne pas éditer, source : frontend src/vocab
-// (src/vocab/vocab.ts + src/vocab/rendre.ts). Pour modifier le moteur : éditer la source dans le
+// (src/vocab/rendre.ts + src/vocab/vocab.ts + src/vocab/categoriesPt.ts + src/vocab/excel.ts + src/vocab/composants.ts).
+// Pour modifier le moteur : éditer la source dans le
 // dépôt frontend, puis lancer `node scripts/sync-vocab-back.mjs` depuis ce dépôt frontend.
-// Exports : vocabDefaut, creerVocab, resoudreLexique, completerLexique, vocabDuLexique, rendre, rendreTout, balisesInvalides.
+// Exports : vocabDefaut, creerVocab, resoudreLexique, completerLexique, vocabDuLexique, rendre, rendreTout, balisesInvalides, CATEGORIES_PT_CONNUES, libelleCategoriePt, nomOnglet, entreeComposant, libelleComposant, entreeComposantVoc.
 'use strict';
 
 const __modules = {
@@ -335,6 +336,8 @@ function construire(lexique, estDefaut = false) {
         if (e)
             table.set(k, e);
     }
+    // Signalements déjà faits : une fois par clé. Borné (vidé au-delà de 500) : au serveur, un texte rendu peut
+    // interpoler une donnée saisie de la forme d'une balise (« [[nom:xyz]] »), et l'ensemble vit tout le processus.
     const signalees = new Set();
     const entree = (k) => {
         const cle = String(k);
@@ -342,6 +345,8 @@ function construire(lexique, estDefaut = false) {
         if (e)
             return e;
         if (!signalees.has(cle)) {
+            if (signalees.size >= 500)
+                signalees.clear();
             signalees.add(cle);
             console.warn(`[vocab] clé de lexique inconnue : « ${cle} »`);
         }
@@ -649,6 +654,135 @@ function vocabDuLexique(recu) {
     return sansCleEnPlus && memesRendus(complet, lexiqueDefaut_ts_1.LEXIQUE_DEFAUT) ? exports.vocabDefaut : creerVocab(complet);
 }
   },
+  './categoriesPt.ts': function (exports, require) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CATEGORIES_PT_CONNUES = void 0;
+exports.libelleCategoriePt = libelleCategoriePt;
+const LIBELLES = {
+    // Les 3 libellés de stockUtils (backend `ptCategorie`).
+    'Produits Transformés Utilisables': (voc) => voc.Nom('cat_pt_utilisable'),
+    'Produits Composés Valorisés': (voc) => voc.Nom('cat_pt_valorise'),
+    'Produits Transformés Vendables': (voc) => voc.Nom('cat_pt_vendable'),
+    // Les 2 sections de l'Espace Acheteurs (ventes aux acheteurs, portail).
+    'Produits Utilisables': (voc) => voc.Titre('produit_utilisable', true),
+    'Produits Composés': (voc) => voc.Titre('produit_compose', true),
+};
+/** Libellé d'affichage d'une catégorie PT renvoyée par l'API, dans le vocabulaire du compte. */
+function libelleCategoriePt(voc, valeur) {
+    const rendu = Object.prototype.hasOwnProperty.call(LIBELLES, valeur) ? LIBELLES[valeur] : undefined;
+    return rendu ? rendu(voc) : valeur;
+}
+/** Les libellés par défaut que `libelleCategoriePt` sait traduire (valeurs de l'API). */
+exports.CATEGORIES_PT_CONNUES = Object.freeze(Object.keys(LIBELLES));
+  },
+  './excel.ts': function (exports, require) {
+"use strict";
+// Nom d'onglet Excel construit avec le vocabulaire du compte (lot 2, exports Excel du front).
+// Un terme saisi par l'admin peut contenir « / » ou être long (« Clients professionnels ») : Excel
+// (et ExcelJS, qui lève une exception) refuse * ? : \ / [ ], l'apostrophe en tête ou en fin, le nom
+// vide, le nom réservé « History » et tout nom de plus de 31 caractères.
+// Avec le lexique par défaut, les noms d'onglets actuels sortent inchangés.
+//   wb.addWorksheet(nomOnglet(`Ventes ${voc.Court('acheteur', true)}`))
+// Module PUR : aucun import.
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.nomOnglet = nomOnglet;
+const INTERDITS = /[*?:\\/[\]]/g;
+const LONGUEUR_MAX = 31;
+/** Nom d'onglet Excel sûr : caractères interdits remplacés par une espace, 31 caractères au plus, jamais vide. */
+function nomOnglet(texte) {
+    const propre = String(texte ?? '').replace(INTERDITS, ' ').replace(/\s+/g, ' ').trim();
+    const nom = propre.slice(0, LONGUEUR_MAX).replace(/^'+|'+$/g, '').trim();
+    return !nom || nom.toLowerCase() === 'history' ? 'Feuille' : nom;
+}
+  },
+  './composants.ts': function (exports, require) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.entreeComposant = entreeComposant;
+exports.libelleComposant = libelleComposant;
+exports.entreeComposantVoc = entreeComposantVoc;
+/**
+ * Entrée de lexique d'un composant : son libellé, son pluriel (le libellé s'il est absent), son genre et son élision.
+ * Une élision qui n'est pas un booléen (null, 'auto', absente) est « déduite » : « h » et « y » donnent non ; l'admin
+ * la force pour un h muet (« Huilerie » : élision vraie → « mon huilerie ») ou pour un cas que la règle rate.
+ */
+function entreeComposant(c) {
+    return {
+        sg: c.libelle,
+        pl: c.libellePluriel || c.libelle_pluriel || c.libelle,
+        g: c.genre === 'f' ? 'f' : 'm',
+        el: typeof c.elision === 'boolean' ? c.elision : /^[aeiouàâäæéèêëîïôöœùûü]/i.test(c.libelle),
+    };
+}
+// Le libellé stocké est-il celui du brouillon identité (singulier ET pluriel, comme le contrôle avant déploiement) ?
+const brouillon = (c, sg, pl) => c.libelle === sg && (c.libellePluriel ?? c.libelle_pluriel ?? null) === pl;
+// Table fermée des composants identité (code = type technique) au libellé du brouillon ; null pour tout autre
+// composant, composant identité renommé par l'admin compris.
+const identiteAuBrouillon = (c) => {
+    const type = c.typeTechnique ?? c.type_technique ?? null;
+    if (type === null || c.code !== type)
+        return null;
+    if (type === 'activite' && brouillon(c, 'Activité', 'Activités'))
+        return 'activite';
+    if (type === 'labo' && brouillon(c, 'Labo', 'Labos'))
+        return 'labo';
+    if (type === 'gerant' && brouillon(c, 'Gérant', 'Gérants'))
+        return 'gerant';
+    if (type === 'acheteurs' && brouillon(c, 'Base acheteurs', 'Base acheteurs'))
+        return 'acheteurs';
+    return null;
+};
+/**
+ * Libellé d'un composant dans le vocabulaire du compte (`n` : nombre ou booléen, comme le moteur ; `casse` : 'Nom' par
+ * défaut, la forme stockée).
+ * - Composant identité (code = type technique) au libellé du brouillon → terme du lexique, table fermée :
+ *   activite « Activité » / « Activités », labo « Labo » / « Labos », gerant « Gérant » / « Gérants » → voc[casse](clé, n) ;
+ *   acheteurs « Base acheteurs » → `Base ${voc.court('acheteur', true)}`, invariable (même texte que l'écran Mon abonnement).
+ * - Tout autre cas, composant identité renommé par l'admin compris → libellé du composant, dans la casse et le nombre
+ *   demandés (avec le vocabulaire par défaut et la casse 'Nom' : `libelle` au singulier, `libellePluriel` au pluriel).
+ */
+function libelleComposant(voc, c, n, casse = 'Nom') {
+    const identite = identiteAuBrouillon(c);
+    if (identite === 'activite')
+        return voc[casse]('activite', n);
+    if (identite === 'labo')
+        return voc[casse]('labo', n);
+    if (identite === 'gerant')
+        return voc[casse]('gerant', n);
+    if (identite === 'acheteurs')
+        return `Base ${voc.court('acheteur', true)}`;
+    return voc.avec(entreeComposant(c))[casse]('_', n);
+}
+/**
+ * Entrée de lexique d'un composant DANS LE VOCABULAIRE DU COMPTE, pour l'accorder avec un déterminant :
+ * `voc.avec(entreeComposantVoc(voc, c)).mon('_', n)` (seulement nom, Nom, mon et mes, spec §6.4). Même table fermée
+ * que libelleComposant :
+ * - composant identité au libellé du brouillon → le TERME du lexique : formes Nom / Pl, genre et élision du terme
+ *   (Hôtellerie : « mon service », « ma cuisine centrale », « mon responsable de service ») ; « Base acheteurs » →
+ *   `Base ${voc.court('acheteur', true)}`, invariable, féminin (« ma base clients professionnels ») ;
+ * - tout autre composant, composant identité renommé compris → entreeComposant(c), son libellé.
+ * Avec le vocabulaire par défaut, le rendu est celui de entreeComposant(c) pour les 4 composants identité tels que la
+ * migration 192 les laisse (Activité et Base acheteurs au féminin).
+ */
+function entreeComposantVoc(voc, c) {
+    const identite = identiteAuBrouillon(c);
+    if (identite === 'activite') {
+        return { sg: voc.Nom('activite'), pl: voc.Pl('activite'), g: voc.acc('activite', 'm', 'f') === 'f' ? 'f' : 'm', el: /^l'/.test(voc.le('activite')) };
+    }
+    if (identite === 'labo') {
+        return { sg: voc.Nom('labo'), pl: voc.Pl('labo'), g: voc.acc('labo', 'm', 'f') === 'f' ? 'f' : 'm', el: /^l'/.test(voc.le('labo')) };
+    }
+    if (identite === 'gerant') {
+        return { sg: voc.Nom('gerant'), pl: voc.Pl('gerant'), g: voc.acc('gerant', 'm', 'f') === 'f' ? 'f' : 'm', el: /^l'/.test(voc.le('gerant')) };
+    }
+    if (identite === 'acheteurs') {
+        const base = `Base ${voc.court('acheteur', true)}`;
+        return { sg: base, pl: base, g: 'f', el: false };
+    }
+    return entreeComposant(c);
+}
+  },
 };
 
 const __cache = {};
@@ -662,4 +796,4 @@ function __require(id) {
   return exports;
 }
 
-module.exports = { ...__require('./vocab.ts'), ...__require('./rendre.ts') };
+module.exports = { ...__require('./vocab.ts'), ...__require('./rendre.ts'), ...__require('./categoriesPt.ts'), ...__require('./excel.ts'), ...__require('./composants.ts') };

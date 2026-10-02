@@ -1,6 +1,7 @@
 const ExcelJS = require('exceljs');
 const pool = require('../config/database');
 const { brandHeader, headerRow, dataRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('./excelBrandService');
+const { vocabForClient } = require('../utils/vocabCompte');
 
 const todayFr = () => new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
@@ -160,6 +161,8 @@ async function generateExcel(clientId) {
 // Le rapport est toujours un classeur Excel charté.
 async function generateAndSendReport(clientId, email, clientNom) {
   const { sendRapportWithAttachment } = require('./emailService');
+  // Vocabulaire du compte destinataire (agents IA web et Messenger : aucune requête du compte)
+  const voc = await vocabForClient(clientId);
 
   const reportData = await generateExcel(clientId);
 
@@ -170,6 +173,7 @@ async function generateAndSendReport(clientId, email, clientNom) {
     filename: reportData.filename,
     mimeType: reportData.mimeType,
     format: 'excel',
+    voc,
   });
 
   return reportData.filename;
