@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const pool = require('../config/database');
 const { sendMessengerInviteEmail } = require('../services/emailService');
 const { buildClientConfigSnapshot } = require('../services/clientConfigService');
+const { vocabForClient } = require('../utils/vocabCompte');
 
 // ── Admin: get AI config for a client ────────────────────────────────────────
 
@@ -120,6 +121,7 @@ const generateMessengerInviteLink = async (req, res) => {
       clientNom: nom || 'Client',
       inviteLink,
       appName: process.env.APP_NAME,
+      voc: await vocabForClient(clientId),
     }).catch(e => console.warn('[AI] Messenger invite email error:', e.message));
 
     res.json({ messengerInviteLink: inviteLink, reportEmail });

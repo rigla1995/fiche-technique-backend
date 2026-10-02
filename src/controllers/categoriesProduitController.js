@@ -59,7 +59,7 @@ const create = async (req, res) => {
   const nom = (req.body.name || req.body.nom || '').trim();
   const typeProduit = req.body.typeProduit || req.body.type_produit;
   if (!TYPES.includes(typeProduit)) {
-    return res.status(400).json({ message: "Type de produit invalide (vendable, supplement ou valorise)" });
+    return res.status(400).json({ message: "Type [[de:produit]] invalide (vendable, supplement ou valorise)" });
   }
 
   try {

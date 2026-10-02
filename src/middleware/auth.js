@@ -105,8 +105,10 @@ const authenticate = async (req, res, next) => {
 
     // Un compte acheteur n'est valide que si sa fiche carnet existe et est active
     // (le client peut désactiver un acheteur sans supprimer son compte).
+    // Émis AVANT req.voc : rendu au bord avec le vocabulaire par défaut (spec lot 2b §5.1 ;
+    // l'intercepteur de l'écran masque toujours ce 401, req.voc n'est pas déplacé).
     if (row.role === 'acheteur' && (!row.acheteur_id || row.acheteur_actif === false)) {
-      return res.status(401).json({ message: 'Compte acheteur désactivé' });
+      return res.status(401).json({ message: 'Compte [[nom:acheteur]] désactivé' });
     }
 
     // Un JWT émis avant le dernier changement de mot de passe est révoqué
@@ -185,14 +187,14 @@ const requireWriteAccess = (req, res, next) => {
 // Réservé au client propriétaire (exclut les gérants) — ex. mutations de l'Espace Produit.
 const requireClientOwner = (req, res, next) => {
   if (req.user.role !== 'client') {
-    return res.status(403).json({ message: 'Action réservée au compte client (lecture seule pour les gérants)' });
+    return res.status(403).json({ message: 'Action réservée au compte client (lecture seule pour [[le:gerant:pl]])' });
   }
   next();
 };
 
 const requireGerant = (req, res, next) => {
   if (req.user.role !== 'gerant') {
-    return res.status(403).json({ message: 'Accès réservé aux gérants' });
+    return res.status(403).json({ message: 'Accès réservé [[au:gerant:pl]]' });
   }
   next();
 };
@@ -212,7 +214,7 @@ const requireModuleVente = async (req, res, next) => {
       [userId]
     );
     if (!r.rows[0]?.module_vente_actif) {
-      return res.status(403).json({ message: 'Module Vente non activé', code: 'MODULE_VENTE_INACTIVE' });
+      return res.status(403).json({ message: 'Module [[Court:vente]] non activé', code: 'MODULE_VENTE_INACTIVE' });
     }
     next();
   } catch (err) {
@@ -232,7 +234,7 @@ const requireModuleAcheteurs = async (req, res, next) => {
       [clientId]
     );
     if (!r.rows[0]?.module_acheteurs_actif) {
-      return res.status(403).json({ message: 'Module Acheteurs non activé', code: 'MODULE_ACHETEURS_INACTIVE' });
+      return res.status(403).json({ message: 'Module [[Court:acheteur:pl]] non activé', code: 'MODULE_ACHETEURS_INACTIVE' });
     }
     next();
   } catch (err) {
@@ -247,7 +249,7 @@ const requireGerantAcheteursAccess = (req, res, next) => {
   if (req.user.role !== 'gerant') return next();
   if (!req.user.gerant_acces_acheteurs || (req.user.gerantLaboIds || []).length === 0) {
     return res.status(403).json({
-      message: 'Espace Acheteurs non autorisé pour ce gérant',
+      message: '[[Nom:espace_acheteurs]] non [[acc:espace_acheteurs:autorisé:autorisée]] pour [[ce:gerant]]',
       code: 'ACHETEURS_GERANT_NON_AUTORISE',
     });
   }
@@ -274,7 +276,7 @@ const requireFormulePremium = async (req, res, next) => {
     const profil = r.rows[0]?.domaine_id ? await getProfil(r.rows[0].domaine_id) : null;
     if (r.rows[0] && espaceProduitVerrouille(r.rows[0], profil?.regles)) {
       return res.status(403).json({
-        message: 'L\'Espace Produit est réservé à la formule Activité Premium',
+        message: '[[Le:espace_produits:Nom]] est [[acc:espace_produits:réservé:réservée]] à la formule Activité Premium',
         code: 'FORMULE_BASIQUE',
       });
     }
@@ -286,7 +288,7 @@ const requireFormulePremium = async (req, res, next) => {
 
 const requireAcheteur = (req, res, next) => {
   if (req.user.role !== 'acheteur') {
-    return res.status(403).json({ message: 'Accès réservé aux acheteurs' });
+    return res.status(403).json({ message: 'Accès réservé [[au:acheteur:pl]]' });
   }
   next();
 };
@@ -311,7 +313,7 @@ const scopeGerantActivite = (req, res) => {
   const ids = req.user.gerantActiviteIds || [];
   if (req.query.activiteId) {
     if (!ids.includes(Number(req.query.activiteId))) {
-      res.status(403).json({ message: 'Accès non autorisé à cette activité' });
+      res.status(403).json({ message: 'Accès non autorisé à [[ce:activite]]' });
       return false;
     }
     delete req.query.activiteIds;

@@ -123,7 +123,7 @@ const remove = async (req, res) => {
       );
       if (lies.rows[0].n > 0) {
         return res.status(409).json({
-          message: `Cette unité est assignée à ${lies.rows[0].n} article${lies.rows[0].n > 1 ? 's' : ''} — supprimez-les ou changez leur unité avant`,
+          message: `Cette unité est assignée à ${lies.rows[0].n} ${lies.rows[0].n > 1 ? '[[nom:article:pl]]' : '[[nom:article]]'} — supprimez-les ou changez leur unité avant`,
         });
       }
     }

@@ -5,6 +5,7 @@ const pool = require('../config/database');
 const { sendInviteEmail, generateInviteToken, sendPasswordResetEmail } = require('../services/emailService');
 const { encryptPassword } = require('../services/passwordCryptoService');
 const { invalidateAuthCache } = require('../middleware/auth');
+const { vocabDefaut, vocabDuProfil, vocabPourUtilisateur } = require('../utils/vocabCompte');
 
 // Mot de passe robuste : ≥8 car., 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial.
 const isStrongPassword = (v) =>
@@ -12,11 +13,34 @@ const isStrongPassword = (v) =>
   /[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v) && /[@$!%*?&_\-#]/.test(v);
 const WEAK_PWD_MSG = 'Mot de passe trop faible : minimum 8 caractères, avec majuscule, minuscule, chiffre et caractère spécial.';
 
+// Lexique ENVOYÉ à un compte (lot 2b, spec §5.7) — /auth/login, /auth/me, GET /api/domaines (client,
+// gérant, acheteur) et GET /api/entreprise ; jamais à l'admin, qui garde le profil complet :
+//   • null quand le vocabulaire du profil EST le vocabulaire par défaut (vocabDuProfil(profil) ===
+//     vocabDefaut : mêmes rendus ET aucune clé en plus). Ni `voc.estDefaut` (vrai aussi avec une clé
+//     en plus), ni le slug : un domaine sans écart reçoit null, un domaine « restauration » aussi ;
+//   • sinon une COPIE du lexique résolu sans `derive_de`, `mode` ni `gabarit` (déclaration des clés
+//     dérivées, que l'écran ignore : vocabDuLexique les retire). Jamais de `delete` sur l'objet du
+//     cache : il sert de clé à la WeakMap de vocabDuProfil.
+// L'écran rend vocabDuLexique(null) === vocabDefaut : mêmes textes qu'avec le lexique complet.
+const lexiquePourCompte = (profil) => {
+  if (vocabDuProfil(profil) === vocabDefaut) return null;
+  const copie = {};
+  for (const [cle, entree] of Object.entries(profil.lexique)) {
+    // Décomposition : les 3 champs de déclaration sont écartés, le reste de l'entrée est copié tel quel.
+    const { derive_de: _deriveDe, mode: _mode, gabarit: _gabarit, ...rendu } = entree || {};
+    copie[cle] = rendu;
+  }
+  return copie;
+};
+
 // Profil du domaine d'activité du compte (lot 1a) : client → son abonnement,
 // gérant → compte parent (résolu par getProfilForClient), admin/boss → null.
 // Renvoyé par /auth/login ET /auth/me (AuthContext.login stocke le user du login tel
-// quel — sans cela user.domaine restait undefined jusqu'au prochain /auth/me).
-// Le lexique est le lexique RÉSOLU v2 (lot 2 : clés dérivées, formes courtes).
+// quel — sans cela user.domaine restait undefined jusqu'au prochain /auth/me). Les deux
+// passent par CETTE fonction et restent égaux : sinon memeUserEnPlace (AuthContext) verrait
+// un domaine différent et reposerait le user à chaque retour sur l'onglet.
+// Le lexique est celui de lexiquePourCompte (lot 2b §5.7) : null pour le vocabulaire par défaut,
+// sinon le lexique RÉSOLU v2 (clés dérivées, formes courtes) sans la déclaration des clés dérivées.
 // Rôle ACHETEUR (lot 2, spec §2.4) : domaine du client VENDEUR (acheteurs.client_id),
 // réduit à { id, slug, nom, lexique } — ni composants ni règles (configuration
 // commerciale du vendeur, qui ne regarde pas son acheteur).
@@ -35,11 +59,11 @@ const loadDomaineForUser = async (utilisateur, tag, acheteurClientId = null) => 
       }
       if (vendeurId == null) return null;
       const p = await getProfilForClient(vendeurId);
-      return p && p.id != null ? { id: p.id, slug: p.slug, nom: p.nom, lexique: p.lexique } : null;
+      return p && p.id != null ? { id: p.id, slug: p.slug, nom: p.nom, lexique: lexiquePourCompte(p) } : null;
     }
     const p = await getProfilForClient(utilisateur.id);
     return p && p.id != null
-      ? { id: p.id, slug: p.slug, nom: p.nom, lexique: p.lexique, composants: p.composants, regles: p.regles }
+      ? { id: p.id, slug: p.slug, nom: p.nom, lexique: lexiquePourCompte(p), composants: p.composants, regles: p.regles }
       : null;
   } catch (e) {
     console.warn(`[${tag}] profil domaine indisponible:`, e.message);
@@ -484,7 +508,7 @@ const resendInvite = async (req, res) => {
       'UPDATE utilisateurs SET invite_token = $1, invite_token_expires_at = $2, updated_at = NOW() WHERE id = $3',
       [token, expires, u.id]
     );
-    await sendInviteEmail({ to: u.email, nom: u.nom, token, role: u.role });
+    await sendInviteEmail({ to: u.email, nom: u.nom, token, role: u.role, voc: await vocabPourUtilisateur(u.id) });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -574,4 +598,5 @@ module.exports = {
   login, register, me, updateProfile, advanceOnboarding,
   verifyInviteToken, acceptInvite, resendInvite,
   forgotPassword, verifyResetToken, resetPassword,
+  lexiquePourCompte,
 };

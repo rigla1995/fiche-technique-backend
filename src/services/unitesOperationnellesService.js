@@ -23,7 +23,7 @@ const pool = require('../config/database');
 
 const CODES = Object.freeze({
   CYCLE_INTERDIT: 'Rattachement impossible : cette unité alimente déjà (directement ou non) la source choisie.',
-  SOURCE_NON_LABO: 'Seul un labo peut alimenter une unité.',
+  SOURCE_NON_LABO: '[[acc:labo:Seul:Seule]] [[un:labo]] peut alimenter une unité.',
   ENTREPRISE_DIFFERENTE: 'Unité introuvable dans votre entreprise.',
   COMPOSANT_INVALIDE: 'Composant invalide pour ce type d’unité (hors domaine, inactif ou de type incompatible).',
   UNITE_INTROUVABLE: 'Unité introuvable.',

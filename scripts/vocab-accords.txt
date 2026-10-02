@@ -1,0 +1,2102 @@
+# vocab-accords.txt — GÉNÉRÉ par `node scripts/vocab-check.mjs accords` (ne pas éditer).
+# Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
+# lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
+# À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
+# 509 unité(s), 41 fichier(s).
+
+src/controllers/abonnementController.js
+  l. 1594
+    défaut : Quota acheteurs invalide (paliers de 1 à 100)
+    miroir : Quota abr-clientes invalide (paliers de 1 à 100)
+  l. 1992
+    défaut : Quota acheteurs invalide (paliers de 1 à 100)
+    miroir : Quota abr-clientes invalide (paliers de 1 à 100)
+
+src/controllers/acheteurVentesController.js
+  l. 166
+    défaut : Article non proposable (article non commandable ou produit hors labo)
+    miroir : Article non proposable (denrée non commandable ou invention hors usine)
+  l. 322
+    défaut : Acheteur requis
+    miroir : Cliente requise
+  l. 323
+    défaut : Labo requis
+    miroir : Usine requise
+  l. 353
+    défaut : Acheteur introuvable
+    miroir : Cliente introuvable
+  l. 354
+    défaut : Cet acheteur est désactivé
+    miroir : Cette cliente est désactivée
+  l. 355
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 356
+    défaut : Labo hors de votre périmètre
+    miroir : Usine hors de votre périmètre
+  l. 396
+    défaut : Ligne ⟦·⟧ : article sans offre active — configurez d'abord vos Tarifs Acheteurs
+    miroir : Ligne ⟦·⟧ : article sans offre active — configurez d'abord vos Tarifs Abr-Clientes
+  l. 441
+    défaut : Stock labo insuffisant
+    miroir : Armoire de l'usine insuffisante
+  l. 649
+    défaut : Labo requis pour expédier la commande
+    miroir : Usine requise pour expédier la commande
+  l. 713
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 714
+    défaut : Labo hors de votre périmètre
+    miroir : Usine hors de votre périmètre
+  l. 780
+    défaut : Stock labo insuffisant
+    miroir : Armoire de l'usine insuffisante
+  l. 855
+    défaut : Labo hors de votre périmètre
+    miroir : Usine hors de votre périmètre
+  l. 906
+    défaut : Vous ne pouvez annuler que vos propres ventes
+    miroir : Vous ne pouvez annuler que vos propres encaissements
+  l. 912
+    défaut : Labo hors de votre périmètre
+    miroir : Usine hors de votre périmètre
+  l. 926
+    défaut : Commande annulée⟦? — le stock a été réintégré|⟧
+    miroir : Commande annulée⟦? — l'armoire a été réintégrée|⟧
+
+src/controllers/acheteursController.js
+  l. 97
+    défaut : Aucun acheteur à créer
+    miroir : Aucune cliente à créer
+  l. 136
+    défaut : Quota d'acheteurs ⟦?non configuré — demandez à l'administrateur d'augmenter votre|atteint (⟦·⟧/⟦·⟧) — demandez une augmentation de⟧ capacité
+    miroir : Quota de clientes ⟦?non configuré — demandez à l'administrateur d'augmenter votre|atteint (⟦·⟧/⟦·⟧) — demandez une augmentation de⟧ capacité
+  l. 191
+    défaut : Acheteur introuvable
+    miroir : Cliente introuvable
+  l. 200
+    défaut : Cet acheteur a un compte : l'email de connexion ne peut pas être modifié ici
+    miroir : Cette cliente a un compte : l'email de connexion ne peut pas être modifié ici
+  l. 242
+    défaut : Acheteur introuvable
+    miroir : Cliente introuvable
+  l. 246
+    défaut : Acheteur supprimé du carnet
+    miroir : Cliente supprimée du carnet
+  l. 282
+    défaut : Acheteur supprimé — ses commandes et factures restent dans l'historique
+    miroir : Cliente supprimée — ses commandes et factures restent dans l'historique
+  l. 290
+    défaut : Impossible de supprimer : cet acheteur est référencé par des données existantes. Désactivez-le plutôt.
+    miroir : Impossible de supprimer : cette cliente est référencée par des données existantes. Désactivez-la plutôt.
+  l. 295
+    défaut : Opération concurrente sur cet acheteur — réessayez.
+    miroir : Opération concurrente sur cette cliente — réessayez.
+  l. 320
+    défaut : Acheteur introuvable
+    miroir : Cliente introuvable
+  l. 325
+    défaut : Renseignez un email sur la fiche avant d'inviter cet acheteur
+    miroir : Renseignez un email sur la fiche avant d'inviter cette cliente
+  l. 329
+    défaut : Le compte de cet acheteur est déjà activé
+    miroir : Le compte de cette cliente est déjà activé
+  l. 368
+    défaut : Acheteurs
+    miroir : Abr-Clientes
+  l. 370
+    défaut : Modèle d'import — Carnet d'acheteurs
+    miroir : Modèle d'import — Carnet de clientes
+  l. 371
+    défaut : Ajout dynamique des acheteurs B2B : une ligne = un acheteur
+    miroir : Ajout dynamique des clientes B2B : une ligne = une cliente
+  l. 448
+    défaut : ⟦?Quota d'acheteurs non configuré — demandez à l'administrateur d'augmenter votre capacité|Ce fichier dépasse votre quota d'acheteurs : ⟦·⟧ existants + ⟦·⟧ à importer > ⟦·⟧ autorisés⟧
+    miroir : ⟦?Quota de clientes non configuré — demandez à l'administrateur d'augmenter votre capacité|Ce fichier dépasse votre quota de clientes : ⟦·⟧ existantes + ⟦·⟧ à importer > ⟦·⟧ autorisées⟧
+
+src/controllers/articlesController.js
+  l. 69
+    défaut : Article introuvable
+    miroir : Denrée introuvable
+  l. 159
+    défaut : Article introuvable
+    miroir : Denrée introuvable
+  l. 198
+    défaut : Cet article a des approvisionnements et ne peut pas être supprimé
+    miroir : Cette denrée a des rentrées et ne peut pas être supprimée
+  l. 204
+    défaut : Article introuvable
+    miroir : Denrée introuvable
+  l. 207
+    défaut : Cet article est utilisé dans une fiche technique et ne peut pas être supprimé
+    miroir : Cette denrée est utilisée dans un état technique et ne peut pas être supprimée
+
+src/controllers/categoriesController.js
+  l. 137
+    défaut : Cette catégorie est assignée à ⟦·⟧ ⟦article|articles@>1⟧ — supprimez-les ou changez leur catégorie avant
+    miroir : Cette catégorie est assignée à ⟦·⟧ ⟦denrée|denrées@>1⟧ — supprimez-les ou changez leur catégorie avant
+  l. 147
+    défaut : Cette catégorie est utilisée par des articles et ne peut pas être supprimée
+    miroir : Cette catégorie est utilisée par des denrées et ne peut pas être supprimée
+
+src/controllers/categoriesProduitController.js
+  l. 62
+    défaut : Type de produit invalide (vendable, supplement ou valorise)
+    miroir : Type d'invention invalide (vendable, supplement ou valorise)
+
+src/controllers/clientsController.js
+  l. 67
+    défaut : ⟦?Palier jusqu'à ⟦·⟧ acheteurs|⟧
+    miroir : ⟦?Palier jusqu'à ⟦·⟧ clientes|⟧
+
+src/controllers/dashboardController.js
+  l. 168
+    défaut : Prestataire
+    miroir : Agence
+  l. 253
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 255
+    défaut : Accès non autorisé à ce labo
+    miroir : Accès non autorisé à cette usine
+  l. 329
+    défaut :  (labo)
+    miroir :  (abr-usine)
+  l. 397
+    défaut : Prestataire
+    miroir : Agence
+
+src/controllers/dashboardV2Controller.js
+  l. 348
+    défaut : Prestataire
+    miroir : Agence
+  l. 381
+    défaut : P. Vendable / 
+    miroir : Inv. vendue / 
+  l. 382
+    défaut : Supplément / 
+    miroir : Option / 
+  l. 383
+    défaut : P. Valorisé / 
+    miroir : Inv. valorisée / 
+  l. 528
+    défaut : Activité
+    miroir : Abr-Local
+  l. 528
+    défaut : Labo
+    miroir : Abr-Usine
+  l. 690
+    défaut :  (labo)
+    miroir :  (abr-usine)
+
+src/controllers/entrepriseController.js
+  l. 177
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 189
+    défaut : Une activité avec ce nom existe déjà
+    miroir : Un local avec ce nom existe déjà
+  l. 245
+    défaut : Une activité avec ce nom existe déjà
+    miroir : Un local avec ce nom existe déjà
+  l. 254
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 287
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 319
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 321
+    défaut : Suppression impossible : des articles sont affectés à cette activité.
+    miroir : Suppression impossible : des denrées sont affectées à ce local.
+  l. 328
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 350
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 420
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 465
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 623
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 650
+    défaut : Activité introuvable
+    miroir : Local introuvable
+
+src/controllers/exportController.js
+  l. 20
+    défaut : ⟦?⟦·⟧|⟦?Activité : ⟦·⟧|⟧⟧
+    miroir : ⟦?⟦·⟧|⟦?Abr-Local : ⟦·⟧|⟧⟧
+  l. 30
+    défaut : Fiche technique — ⟦·⟧
+    miroir : État technique — ⟦·⟧
+  l. 35
+    défaut : Portion
+    miroir : Abr-Échantillon
+  l. 104
+    défaut : INGRÉDIENTS
+    miroir : MATIÈRES
+  l. 127
+    défaut : ↳ ⟦·⟧ (portion : ⟦·⟧)
+    miroir : ↳ ⟦·⟧ (abr-échantillon : ⟦·⟧)
+  l. 146
+    défaut : PRODUITS UTILISABLES
+    miroir : INVENTIONS UTILES
+  l. 175
+    défaut : Coût ingrédients :
+    miroir : Coût matières :
+  l. 176
+    défaut : Coût produits utilisables :
+    miroir : Coût inventions utiles :
+  l. 213
+    défaut : Labo : ⟦·⟧
+    miroir : Abr-Usine : ⟦·⟧
+  l. 225
+    défaut : Stock
+    miroir : Armoire
+  l. 245
+    défaut : FT
+    miroir : ET
+  l. 288
+    défaut : FT
+    miroir : ET
+
+src/controllers/fournisseurController.js
+  l. 86
+    défaut : Accès non autorisé à cette activité
+    miroir : Accès non autorisé à ce local
+  l. 179
+    défaut : Fournisseur introuvable
+    miroir : Enseigne introuvable
+  l. 180
+    défaut : Ce fournisseur est géré automatiquement par le labo.
+    miroir : Cette enseigne est gérée automatiquement par l'usine.
+  l. 237
+    défaut : Fournisseur introuvable
+    miroir : Enseigne introuvable
+  l. 238
+    défaut : Ce fournisseur est géré automatiquement par le labo.
+    miroir : Cette enseigne est gérée automatiquement par l'usine.
+  l. 266
+    défaut : Fournisseurs
+    miroir : Abr-Enseignes
+  l. 268
+    défaut : Modèle d'import — Fournisseurs
+    miroir : Modèle d'import — Abr-Enseignes
+  l. 269
+    défaut : Ajout dynamique des fournisseurs : une ligne = un fournisseur
+    miroir : Ajout dynamique des enseignes : une ligne = une enseigne
+
+src/controllers/gerantController.js
+  l. 95
+    défaut : Au moins une activité ou un labo doit être ⟦?affectée|affecté⟧
+    miroir : Au moins un local ou une usine doit être ⟦?affecté|affectée⟧
+  l. 95
+    défaut : m
+    miroir : f
+  l. 104
+    défaut : Activité ou labo hors de votre périmètre
+    miroir : Local ou usine hors de votre périmètre
+  l. 114
+    défaut : L'accès à la base acheteurs exige au moins un labo affecté
+    miroir : L'accès à la base abr-clientes exige au moins une usine affectée
+  l. 117
+    défaut : La base acheteurs n'est pas activée sur votre compte
+    miroir : La base abr-clientes n'est pas activée sur votre compte
+  l. 215
+    défaut : Gérant introuvable
+    miroir : Animatrice introuvable
+  l. 221
+    défaut : Au moins une activité ou un labo doit être ⟦?affectée|affecté⟧
+    miroir : Au moins un local ou une usine doit être ⟦?affecté|affectée⟧
+  l. 221
+    défaut : m
+    miroir : f
+  l. 226
+    défaut : Activité ou labo hors de votre périmètre
+    miroir : Local ou usine hors de votre périmètre
+  l. 236
+    défaut : L'accès à la base acheteurs exige au moins un labo affecté
+    miroir : L'accès à la base abr-clientes exige au moins une usine affectée
+  l. 243
+    défaut : La base acheteurs n'est pas activée sur votre compte
+    miroir : La base abr-clientes n'est pas activée sur votre compte
+  l. 269
+    défaut : Gérant introuvable
+    miroir : Animatrice introuvable
+  l. 300
+    défaut : Gérant introuvable
+    miroir : Animatrice introuvable
+
+src/controllers/gerantDashboardController.js
+  l. 43
+    défaut : Activité non autorisée
+    miroir : Local non autorisé
+  l. 184
+    défaut : Labo non autorisé
+    miroir : Usine non autorisée
+
+src/controllers/inventaireController.js
+  l. 37
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 272
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 341
+    défaut : Labo : ⟦·⟧ — ⟦·⟧
+    miroir : Abr-Usine : ⟦·⟧ — ⟦·⟧
+  l. 373
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 597
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 666
+    défaut : Activité : ⟦·⟧ — ⟦·⟧
+    miroir : Abr-Local : ⟦·⟧ — ⟦·⟧
+  l. 693
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 758
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 834
+    défaut : Inventaire introuvable
+    miroir : Pesée introuvable
+  l. 869
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 881
+    défaut : ⟦?⟦·⟧|Labo⟧
+    miroir : ⟦?⟦·⟧|Usine⟧
+  l. 901
+    défaut : Inventaire ⟦?⟦·⟧|Labo⟧
+    miroir : Abr-Pesée ⟦?⟦·⟧|Usine⟧
+  l. 906
+    défaut : Historique des inventaires — Labo
+    miroir : Historique des pesées — Abr-Usine
+  l. 911
+    défaut : Ingrédient
+    miroir : Provision
+  l. 911
+    défaut : Labo
+    miroir : Abr-Usine
+  l. 962
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 992
+    défaut : Inventaire ⟦·⟧
+    miroir : Abr-Pesée ⟦·⟧
+  l. 997
+    défaut : Historique des inventaires — Activités
+    miroir : Historique des pesées — Abr-Locaux
+  l. 1002
+    défaut : Ingrédient
+    miroir : Provision
+  l. 1002
+    défaut : Activité
+    miroir : Abr-Local
+
+src/controllers/laboController.js
+  l. 102
+    défaut : Labo source introuvable
+    miroir : Usine source introuvable
+  l. 107
+    défaut : Labo source introuvable
+    miroir : Usine source introuvable
+  l. 116
+    défaut : Un labo avec ce nom existe déjà
+    miroir : Une usine avec ce nom existe déjà
+  l. 124
+    défaut : Un labo avec cette référence existe déjà
+    miroir : Une usine avec cette référence existe déjà
+  l. 233
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 276
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 308
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 328
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 360
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 763
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 769
+    défaut : La production de produits transformés est désactivée pour ce labo.
+    miroir : La production d'élaborations internes est désactivée pour cette usine.
+  l. 892
+    défaut : Stock insuffisant pour "⟦·⟧" (recette) : disponible ⟦·⟧, nécessaire ⟦·⟧
+    miroir : Armoire insuffisante pour "⟦·⟧" (abr-assemblage) : disponible ⟦·⟧, nécessaire ⟦·⟧
+  l. 904
+    défaut : Stock insuffisant pour le sous-produit "⟦·⟧" (recette) : disponible ⟦·⟧, nécessaire ⟦·⟧
+    miroir : Armoire insuffisante pour le sous-produit "⟦·⟧" (abr-assemblage) : disponible ⟦·⟧, nécessaire ⟦·⟧
+  l. 1012
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1130
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1159
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1192
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1194
+    défaut : Labo hors de votre périmètre
+    miroir : Usine hors de votre périmètre
+  l. 1221
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1352
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1610
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1622
+    défaut : Modifiez ou supprimez le transfert
+    miroir : Modifiez ou supprimez l'expédition
+  l. 1654
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1664
+    défaut : Modifiez ou supprimez le transfert
+    miroir : Modifiez ou supprimez l'expédition
+  l. 1687
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1716
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1812
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1819
+    défaut : Activité invalide
+    miroir : Local invalide
+  l. 1853
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1866
+    défaut : ⟦?⟦·⟧|Labo⟧
+    miroir : ⟦?⟦·⟧|Usine⟧
+  l. 1912
+    défaut : Hist Appro ⟦·⟧
+    miroir : Hist Abr-Rentrée ⟦·⟧
+  l. 1915
+    défaut : Ingrédient
+    miroir : Provision
+  l. 1915
+    défaut : Fournisseur
+    miroir : Abr-Enseigne
+  l. 1921
+    défaut : Historique des approvisionnements — Labo
+    miroir : Historique des rentrées — Abr-Usine
+  l. 1945
+    défaut : Prod. Transformé
+    miroir : Élab. interne
+  l. 1946
+    défaut : Transfert reçu
+    miroir : Expédition reçue
+  l. 1947
+    défaut : ⟦?PT|Manuel⟧
+    miroir : ⟦?EI|Manuel⟧
+  l. 1994
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 2020
+    défaut : Stock PT insuffisant
+    miroir : Armoire EI insuffisante
+  l. 2034
+    défaut : Aucun approvisionnement enregistré pour cet ingrédient.
+    miroir : Aucune rentrée enregistrée pour cette provision.
+  l. 2036
+    défaut : La date de perte doit être >= au premier appro (⟦·⟧).
+    miroir : La date d'abandon doit être >= à la première abr-rentrée (⟦·⟧).
+  l. 2054
+    défaut : Stock insuffisant
+    miroir : Armoire insuffisante
+  l. 2076
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 2158
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 2176
+    défaut : Suppression impossible : ce labo ⟦?a des transferts enregistrés (source ou destinataire)|alimente d'autres labos — détachez-les d'abord⟧.
+    miroir : Suppression impossible : cette usine ⟦?a des expéditions enregistrées (source ou destinataire)|alimente d'autres usines — détachez-les d'abord⟧.
+  l. 2186
+    défaut : Suppression impossible : des articles sont affectés à ce labo.
+    miroir : Suppression impossible : des denrées sont affectées à cette usine.
+  l. 2204
+    défaut : Labo supprimé
+    miroir : Usine supprimée
+  l. 2228
+    défaut : Labo source introuvable
+    miroir : Usine source introuvable
+  l. 2235
+    défaut : Labo source introuvable
+    miroir : Usine source introuvable
+  l. 2246
+    défaut : Un labo avec ce nom existe déjà
+    miroir : Une usine avec ce nom existe déjà
+  l. 2277
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 2299
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 2302
+    défaut : ⟦?⟦·⟧|Labo⟧
+    miroir : ⟦?⟦·⟧|Usine⟧
+  l. 2342
+    défaut : Hist Transferts ⟦·⟧
+    miroir : Hist Abr-Expéditions ⟦·⟧
+  l. 2345
+    défaut : Ingrédient
+    miroir : Provision
+  l. 2351
+    défaut : Historique des transferts — Labo
+    miroir : Historique des expéditions — Abr-Usine
+  l. 2372
+    défaut : ⟦·⟧⟦? (labo)|⟧
+    miroir : ⟦·⟧⟦? (abr-usine)|⟧
+  l. 2418
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 2439
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 2459
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+
+src/controllers/pertesController.js
+  l. 78
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 88
+    défaut : Stock insuffisant
+    miroir : Armoire insuffisante
+  l. 112
+    défaut : Aucun approvisionnement enregistré pour cet ingrédient.
+    miroir : Aucune rentrée enregistrée pour cette provision.
+  l. 114
+    défaut : La date de perte doit être >= au premier appro (⟦·⟧).
+    miroir : La date d'abandon doit être >= à la première abr-rentrée (⟦·⟧).
+  l. 122
+    défaut : Stock insuffisant
+    miroir : Armoire insuffisante
+  l. 152
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 289
+    défaut : Perte introuvable
+    miroir : Abandon introuvable
+  l. 316
+    défaut : Perte introuvable
+    miroir : Abandon introuvable
+  l. 330
+    défaut : Perte introuvable
+    miroir : Abandon introuvable
+  l. 350
+    défaut : Perte introuvable
+    miroir : Abandon introuvable
+  l. 357
+    défaut : Perte introuvable
+    miroir : Abandon introuvable
+  l. 358
+    défaut : Perte supprimée
+    miroir : Abandon supprimé
+  l. 372
+    défaut : Historique Pertes
+    miroir : Historique Abr-Abandons
+  l. 376
+    défaut : Activité
+    miroir : Abr-Local
+  l. 377
+    défaut : Ingrédient
+    miroir : Provision
+  l. 391
+    défaut : ⟦?⟦·⟧|Historique des pertes⟧
+    miroir : ⟦?⟦·⟧|Historique des abandons⟧
+  l. 504
+    défaut : Historique des pertes — Activités
+    miroir : Historique des abandons — Abr-Locaux
+  l. 524
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 556
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 627
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 717
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 720
+    défaut : ⟦?⟦·⟧|Labo⟧
+    miroir : ⟦?⟦·⟧|Usine⟧
+  l. 752
+    défaut : Historique des pertes — Labo
+    miroir : Historique des abandons — Abr-Usine
+
+src/controllers/portailController.js
+  l. 84
+    défaut : ⟦?⟦·⟧|Votre fournisseur⟧
+    miroir : ⟦?⟦·⟧|Votre enseigne⟧
+  l. 211
+    défaut : ⟦?⟦·⟧|Acheteur⟧
+    miroir : ⟦?⟦·⟧|Cliente⟧
+
+src/controllers/produitTransformeController.js
+  l. 21
+    défaut : Produit introuvable ou accès refusé
+    miroir : Invention introuvable ou accès refusé
+  l. 142
+    défaut : Produit introuvable ou accès refusé
+    miroir : Invention introuvable ou accès refusé
+  l. 238
+    défaut : Produit introuvable ou accès refusé
+    miroir : Invention introuvable ou accès refusé
+  l. 276
+    défaut : Activité introuvable ou accès refusé
+    miroir : Local introuvable ou accès refusé
+  l. 569
+    défaut : Produit introuvable ou accès refusé
+    miroir : Invention introuvable ou accès refusé
+  l. 579
+    défaut : Ce produit est fabriqué au labo : côté activité il s'approvisionne uniquement par transfert, pas par appro manuel.
+    miroir : Cette invention est fabriquée à l'usine : côté local elle s'approvisionne uniquement par expédition, pas par abr-rentrée manuelle.
+  l. 669
+    défaut : Stock insuffisant pour "⟦·⟧" (recette) : disponible ⟦·⟧, nécessaire ⟦·⟧
+    miroir : Armoire insuffisante pour "⟦·⟧" (abr-assemblage) : disponible ⟦·⟧, nécessaire ⟦·⟧
+  l. 686
+    défaut : Stock insuffisant pour le sous-produit "⟦·⟧" (recette) : disponible ⟦·⟧, nécessaire ⟦·⟧
+    miroir : Armoire insuffisante pour le sous-produit "⟦·⟧" (abr-assemblage) : disponible ⟦·⟧, nécessaire ⟦·⟧
+  l. 904
+    défaut : Activité introuvable ou accès refusé
+    miroir : Local introuvable ou accès refusé
+  l. 912
+    défaut : Produit non affecté à cette activité
+    miroir : Invention non affectée à ce local
+  l. 923
+    défaut : Produit introuvable ou accès refusé
+    miroir : Invention introuvable ou accès refusé
+  l. 948
+    défaut : Produit introuvable ou accès refusé
+    miroir : Invention introuvable ou accès refusé
+  l. 1001
+    défaut : Produit introuvable ou accès refusé
+    miroir : Invention introuvable ou accès refusé
+  l. 1046
+    défaut : Produit introuvable ou accès refusé
+    miroir : Invention introuvable ou accès refusé
+  l. 1052
+    défaut : Labo introuvable ou accès refusé
+    miroir : Usine introuvable ou accès refusé
+
+src/controllers/produitsController.js
+  l. 12
+    défaut : Un supplément doit contenir ⟦exactement 1 élément (un article ou un produit utilisable|entre 1 et ⟦·⟧ éléments (articles ou produits utilisables@≠1⟧).
+    miroir : Une option doit contenir ⟦exactement 1 élément (une denrée ou une invention utile|entre 1 et ⟦·⟧ éléments (denrées ou inventions utiles@≠1⟧).
+  l. 101
+    défaut : Accès non autorisé à cette activité
+    miroir : Accès non autorisé à ce local
+  l. 104
+    défaut : Accès non autorisé à ce labo
+    miroir : Accès non autorisé à cette usine
+  l. 198
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 307
+    défaut : La catégorie de produit est obligatoire pour un produit vendable ou un supplément
+    miroir : La catégorie d'invention est obligatoire pour une invention vendue ou une option
+  l. 489
+    défaut : La catégorie de produit est obligatoire pour un produit vendable ou un supplément
+    miroir : La catégorie d'invention est obligatoire pour une invention vendue ou une option
+  l. 517
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 673
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 678
+    défaut : Ce produit est utilisé comme sous-produit et ne peut pas être supprimé
+    miroir : Cette invention est utilisée comme sous-produit et ne peut pas être supprimée
+  l. 703
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 711
+    défaut : Ingrédient invalide
+    miroir : Matière invalide
+  l. 738
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 746
+    défaut : Ingrédient non trouvé dans ce produit
+    miroir : Matière non trouvée dans cette invention
+  l. 766
+    défaut : Un produit ne peut pas être son propre sous-produit
+    miroir : Une invention ne peut pas être son propre sous-produit
+  l. 777
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 806
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 814
+    défaut : Sous-produit non trouvé dans ce produit
+    miroir : Sous-produit non trouvé dans cette invention
+  l. 835
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 1105
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 1181
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 1334
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 1452
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 1525
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 1598
+    défaut : Produit
+    miroir : Abr-Invention
+  l. 1598
+    défaut : Activités
+    miroir : Abr-Locaux
+  l. 1598
+    défaut : Articles
+    miroir : Abr-Denrées
+  l. 1598
+    défaut : Produits util.
+    miroir : Inv. utiles
+  l. 1603
+    défaut : Liste des produits
+    miroir : Liste des inventions
+  l. 1605
+    défaut : Exporté le ⟦·⟧ · ⟦·⟧ ⟦produit|produits@≠1⟧
+    miroir : Exporté le ⟦·⟧ · ⟦·⟧ ⟦invention|inventions@≠1⟧
+  l. 1616
+    défaut : ⟦?Supplément vendable|Produit ⟦?vendable|utilisable⟧⟧
+    miroir : ⟦?Option vendable|Invention ⟦?vendue|utile⟧⟧
+  l. 1662
+    défaut : ⟦·⟧  —  ⟦·⟧ ⟦produit|produits@≠1⟧
+    miroir : ⟦·⟧  —  ⟦·⟧ ⟦invention|inventions@≠1⟧
+  l. 1678
+    défaut : Total : ⟦·⟧ ⟦produit|produits@≠1⟧
+    miroir : Total : ⟦·⟧ ⟦invention|inventions@≠1⟧
+  l. 1691
+    défaut : ⟦?Suppléments vendables|Produits ⟦?vendables|utilisables⟧⟧
+    miroir : ⟦?Options vendables|Inventions ⟦?vendues|utiles⟧⟧
+  l. 1697
+    défaut : ⟦?Suppléments|Produits⟧ vendables
+    miroir : ⟦?Options vendables|Inventions vendues⟧
+
+src/controllers/rapportsController.js
+  l. 302
+    défaut : ⟦?⟦·⟧|Sans fournisseur⟧
+    miroir : ⟦?⟦·⟧|Sans enseigne⟧
+
+src/controllers/referentielController.js
+  l. 10
+    défaut : Article
+    miroir : Denrée
+  l. 34
+    défaut : Référentiel
+    miroir : Abr-Encyclopédie
+  l. 36
+    défaut : Modèle d'import — Référentiel
+    miroir : Modèle d'import — Abr-Encyclopédie
+  l. 37
+    défaut : Ajout dynamique des articles : une ligne = un article
+    miroir : Ajout dynamique des denrées : une ligne = une denrée
+  l. 42
+    défaut : Exemple : Poulet rôti
+    miroir : Exemple : Denrée A
+  l. 42
+    défaut : Viandes
+    miroir : Catégorie A
+  l. 42
+    défaut : Food
+    miroir : Famille A
+
+src/controllers/stockController.js
+  l. 26
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 391
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 446
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 473
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 517
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 658
+    défaut : Modifiez ou supprimez le transfert
+    miroir : Modifiez ou supprimez l'expédition
+  l. 707
+    défaut : Cette entrée est liée à une vente et ne peut pas être supprimée.
+    miroir : Cette entrée est liée à un encaissement et ne peut pas être supprimée.
+  l. 710
+    défaut : Modifiez ou supprimez le transfert
+    miroir : Modifiez ou supprimez l'expédition
+  l. 807
+    défaut : Aucune activité
+    miroir : Aucun local
+  l. 864
+    défaut : Historique Appro
+    miroir : Historique Abr-Rentrée
+  l. 868
+    défaut : Ingrédient
+    miroir : Provision
+  l. 878
+    défaut : Activité
+    miroir : Abr-Local
+  l. 879
+    défaut : Fournisseur
+    miroir : Abr-Enseigne
+  l. 883
+    défaut : Fournisseur
+    miroir : Abr-Enseigne
+  l. 896
+    défaut : ⟦Activité : ⟦·⟧|⟦|Activités : ⟦·⟧@>1⟧@≠1⟧
+    miroir : ⟦Abr-Local : ⟦·⟧|⟦|Abr-Locaux : ⟦·⟧@>1⟧@≠1⟧
+  l. 899
+    défaut : Historique des approvisionnements — Activités
+    miroir : Historique des rentrées — Abr-Locaux
+  l. 918
+    défaut : ⟦?Prod. Transformé|⟦?Transfert|⟦?PT|Manuel⟧⟧⟧
+    miroir : ⟦?Élab. interne|⟦?Expédition|⟦?EI|Manuel⟧⟧⟧
+  l. 978
+    défaut : Activité introuvable
+    miroir : Local introuvable
+  l. 998
+    défaut : Activité introuvable
+    miroir : Local introuvable
+
+src/controllers/supportController.js
+  l. 156
+    défaut : Palier acheteurs invalide (10, 20, 50 ou 100)
+    miroir : Palier abr-clientes invalide (10, 20, 50 ou 100)
+  l. 169
+    défaut : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ acheteurs)
+    miroir : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ clientes)
+  l. 172
+    défaut : L'option Acheteurs nécessite au moins un labo (ajoutez-en un à la demande)
+    miroir : L'option Abr-Clientes nécessite au moins une usine (ajoutez-en une à la demande)
+
+src/controllers/unitesController.js
+  l. 126
+    défaut : Cette unité est assignée à ⟦·⟧ ⟦article|articles@>1⟧ — supprimez-les ou changez leur unité avant
+    miroir : Cette unité est assignée à ⟦·⟧ ⟦denrée|denrées@>1⟧ — supprimez-les ou changez leur unité avant
+
+src/controllers/ventesController.js
+  l. 47
+    défaut : Labo hors de votre périmètre
+    miroir : Usine hors de votre périmètre
+  l. 55
+    défaut : La vente est désactivée pour cette activité.
+    miroir : L'encaissement est désactivé pour ce local.
+  l. 911
+    défaut : Vous ne pouvez supprimer que les ventes que vous avez saisies
+    miroir : Vous ne pouvez supprimer que les encaissements que vous avez saisis
+  l. 1259
+    défaut : Historique Ventes
+    miroir : Historique Abr-Encaissements
+  l. 1262
+    défaut : Exporté le ⟦·⟧ · ⟦·⟧ · ⟦·⟧ vente(s)⟦? · ⟦·⟧ sélectionnée(s) (surlignées)|⟧
+    miroir : Exporté le ⟦·⟧ · ⟦·⟧ · ⟦·⟧ encaissement(s)⟦? · ⟦·⟧ sélectionné(s) (surlignés)|⟧
+  l. 1264
+    défaut : Historique des ventes — Activités
+    miroir : Historique des encaissements — Abr-Locaux
+  l. 1265
+    défaut : Prestataire
+    miroir : Abr-Agence
+  l. 1265
+    défaut : Marge (DT)
+    miroir : Abr-Écart (DT)
+  l. 1275
+    défaut : ⟦?Directe|Prestataire⟧
+    miroir : ⟦?Direct|Abr-Agence⟧
+  l. 1276
+    défaut : ⟦?Confirmée|⟦·⟧⟧
+    miroir : ⟦?Confirmé|⟦·⟧⟧
+  l. 1354
+    défaut : Produit / Supplément
+    miroir : Abr-Invention / Abr-Option
+  l. 1362
+    défaut : ⟦?Produit Valorisé|⟦?Supplément|Produit⟧⟧
+    miroir : ⟦?Invention Valorisée|Abr-⟦?Option|Invention⟧⟧
+  l. 1474
+    défaut : Ventes Labo
+    miroir : Encaissements Abr-Usine
+  l. 1479
+    défaut : Ventes du labo — Transferts valorisés
+    miroir : Encaissements de l'usine — Expéditions valorisées
+  l. 1480
+    défaut : Val. transfert
+    miroir : Val. abr-expédition
+  l. 1480
+    défaut : Val. appro
+    miroir : Val. abr-rentrée
+  l. 1493
+    défaut : ⟦·⟧⟦? (labo)|⟧
+    miroir : ⟦·⟧⟦? (abr-usine)|⟧
+  l. 1591
+    défaut : Produits composés (labo)
+    miroir : Inventions composées (abr-usine)
+  l. 1660
+    défaut : Article introuvable
+    miroir : Denrée introuvable
+
+src/middleware/auth.js
+  l. 111
+    défaut : Compte acheteur désactivé
+    miroir : Compte cliente désactivé
+  l. 190
+    défaut : Action réservée au compte client (lecture seule pour les gérants)
+    miroir : Action réservée au compte client (lecture seule pour les animatrices)
+  l. 197
+    défaut : Accès réservé aux gérants
+    miroir : Accès réservé aux animatrices
+  l. 217
+    défaut : Module Vente non activé
+    miroir : Module Abr-Encaissement non activé
+  l. 237
+    défaut : Module Acheteurs non activé
+    miroir : Module Abr-Clientes non activé
+  l. 252
+    défaut : Espace Acheteurs non autorisé pour ce gérant
+    miroir : Zone Clientes non autorisée pour cette animatrice
+  l. 279
+    défaut : L'Espace Produit est réservé à la formule Activité Premium
+    miroir : La Zone Invention est réservée à la formule Activité Premium
+  l. 291
+    défaut : Accès réservé aux acheteurs
+    miroir : Accès réservé aux clientes
+  l. 316
+    défaut : Accès non autorisé à cette activité
+    miroir : Accès non autorisé à ce local
+
+src/services/aiService.js
+  l. 48
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 48
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 48
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 48
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 88
+    défaut : « ⟦·⟧ » (ligne de stock, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'une recette → « ⟦·⟧ »⟦·⟧
+    miroir : « ⟦·⟧ » (ligne d'armoire, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'un assemblage → « ⟦·⟧ »⟦·⟧
+  l. 102
+    défaut : ⟦?|
+4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
+    miroir : ⟦?|
+4. « articles vendables » (configuration d'encaissement, `get_config_vente`) = tout ce que le compte vend (inventions et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
+  l. 111
+    défaut : ⟦·⟧
+    miroir : ⟦·⟧
+  l. 112
+    défaut : ⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)
+    miroir : ⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)
+  l. 114
+    défaut : 
+
+## Vocabulaire du compte
+Ce compte n'emploie pas tous les mots de LabFlow. Correspondances (mot de LabFlow → mot du compte) :
+⟦·⟧⟦?
+Unités du compte (composants de son domaine) :
+⟦·⟧|⟧
+Règles :
+1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.
+2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.
+3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (`search_knowledge_base`), puis rends la réponse avec les mots du compte.⟦?|
+4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
+    miroir : 
+
+## Vocabulaire du compte
+Ce compte n'emploie pas tous les mots de LabFlow. Correspondances (mot de LabFlow → mot du compte) :
+⟦·⟧⟦?
+Unités du compte (composants de son domaine) :
+⟦·⟧|⟧
+Règles :
+1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.
+2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.
+3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (`search_knowledge_base`), puis rends la réponse avec les mots du compte.⟦?|
+4. « articles vendables » (configuration d'encaissement, `get_config_vente`) = tout ce que le compte vend (inventions et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
+  l. 127
+    défaut : ⟦?
+
+## Contexte du client (DÉJÀ CONNU — ne rappelle PAS get_client_info, get_abonnement ni get_fournisseurs pour ces infos)
+⟦·⟧
+Utilise directement ces IDs d'activités/labos dès que le client nomme une activité ou un labo. L'abonnement, la capacité souscrite et les compteurs ci-dessus sont déjà à jour : réponds-y directement, sans appeler d'outil.|⟧
+    miroir : ⟦?
+
+## Contexte du client (DÉJÀ CONNU — ne rappelle PAS get_client_info, get_abonnement ni get_fournisseurs pour ces infos)
+⟦·⟧
+Utilise directement ces IDs de locaux/usines dès que le client nomme un local ou une usine. L'abonnement, la capacité souscrite et les compteurs ci-dessus sont déjà à jour : réponds-y directement, sans appeler d'outil.|⟧
+  l. 132
+    défaut : Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ⟦·⟧.
+Tu communiques avec le client via Messenger ou le chat web de l'application. Tes réponses doivent être professionnelles, structurées et bien formatées (Markdown léger).
+Le client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.⟦·⟧
+
+## Règles de communication
+- Réponds dans la langue du client (français ou darija tunisienne)
+- Sois précis et concis : 4-8 lignes pour une réponse normale, plus long si rapport/liste demandé
+- Utilise le *gras* pour les titres/sections
+- Utilise les emojis de manière professionnelle : 📦 stock, 📉 pertes, 📊 inventaire, 🔄 transferts, 🛒 appros, 🧾 ventes, 🏭 labo, 🏪 activité, 💳 abonnement, ⚠️ alertes
+- Pour les montants : toujours préciser TND. Pour les quantités : unité si disponible.
+- Formate les listes avec des tirets (-)
+
+## Données consultables (outils disponibles)
+Le client peut tout consulter : profil & périmètre (`get_client_info`), stock (`get_stock`), approvisionnements (`get_appros`), pertes (`get_pertes`), inventaires (`get_inventaires`), transferts labo→activités et cessions labo→labo (`get_transferts`), référentiel d'articles (`get_referentiel`), fournisseurs (`get_fournisseurs`), abonnement & capacité (`get_abonnement`), ventes / CA / food cost / canaux (`get_ventes`), produits & fiches techniques (`get_produits`), configuration de vente : prestataires, charges fixes, articles vendables (`get_config_vente`). Choisis l'outil correspondant au flux demandé et applique les filtres (activité, labo, période, article…).
+
+## Utilisation des outils — règles STRICTES
+1. Le périmètre du client (activités/labos avec leurs IDs) est fourni ci-dessus : n'appelle PAS `get_client_info` (sauf si tu as besoin de l'email du compte). Va directement à l'outil de données.
+2. Si le client a plusieurs activités et ne précise pas laquelle : utilise `ask_clarification` AVANT d'appeler les données. S'il n'a qu'une activité, procède directement sans demander.
+3. Si le client dit "toutes" ou n'a qu'une seule activité : procède directement
+4. Pour les périodes ("mois actuel", "année dernière") : convertis en dates ISO 8601
+5. Pour TOUTE question conceptuelle, définition, conseil ou interprétation (ex : « c'est quoi une fiche technique ? », « mon food cost est-il bon ? », « comment réduire mes pertes ? ») : appelle d'abord `search_knowledge_base` et appuie-toi UNIQUEMENT sur ce qu'elle renvoie pour expliquer. N'invente jamais une définition métier.
+
+## Accès aux données — RÈGLES CRITIQUES (ne jamais enfreindre)
+- Les outils `get_*` (get_stock, get_appros, get_ventes, get_transferts, get_pertes, get_inventaires, get_referentiel, get_fournisseurs, get_abonnement, get_produits, get_config_vente) SONT ton accès direct à la base de données du client. Pour répondre à TOUTE demande de données, tu DOIS appeler l'outil correspondant.
+- Ne dis JAMAIS que tu « n'as pas accès à la base de données » : tu y accèdes précisément via ces outils. Si tu as besoin de données, APPELLE l'outil — ne demande pas au client de le faire.
+- Ne mentionne JAMAIS de nom d'outil au client et ne lui demande JAMAIS « d'utiliser un outil » : les outils sont les TIENS, ils sont invisibles pour lui.
+- `search_knowledge_base` sert UNIQUEMENT à expliquer un concept métier — JAMAIS à récupérer les données du client.
+- Si un outil de données renvoie une liste vide, réponds simplement qu'il n'y a aucune donnée pour cette période / ce périmètre. N'invente JAMAIS de valeurs, de lignes, ni de mention « en attente de données ».
+- Quand un outil renvoie une LISTE (appros, ventes, transferts, pertes, inventaires…), restitue TOUTES les lignes retournées — ne résume ni ne tronque jamais une liste de données. Si elle est longue, structure-la (groupée par article ou par date) mais reste exhaustif ; la règle « 4-8 lignes » ne s'applique PAS aux listes de données.
+- Après une réponse de clarification du client (« toutes », « 1 », un nom d'activité/labo) : appelle IMMÉDIATEMENT l'outil de données approprié avec le périmètre choisi. « toutes » = toutes les activités (et les labos si la demande les concerne) — n'appelle PAS `ask_clarification` une 2e fois.
+
+## Rapports par email
+- Si le client demande un rapport (« envoie-moi le rapport », « rapport excel ») : appelle `send_report` (le rapport est un fichier Excel) puis confirme l'envoi et l'email de destination.
+- Quand tu fournis une synthèse riche (stock + pertes + inventaires + transferts), propose spontanément : « Veux-tu que je te l'envoie en rapport Excel par email ? » et n'appelle `send_report` que si le client accepte.
+
+## Format de réponse obligatoire
+Commence TOUJOURS par [CONF:0.XX] (niveau de confiance 0.00-1.00 selon la complétude des données).
+
+## Alertes proactives
+- Si stock < 5 unités pour un ingrédient → signaler avec ⚠️
+- Si pertes élevées détectées → signaler avec 📉
+    miroir : Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ⟦·⟧.
+Tu communiques avec le client via Messenger ou le chat web de l'application. Tes réponses doivent être professionnelles, structurées et bien formatées (Markdown léger).
+Le client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.⟦·⟧
+
+## Règles de communication
+- Réponds dans la langue du client (français ou darija tunisienne)
+- Sois précis et concis : 4-8 lignes pour une réponse normale, plus long si rapport/liste demandé
+- Utilise le *gras* pour les titres/sections
+- Utilise les emojis de manière professionnelle : 📦 armoire, 📉 abandons, 📊 pesée, 🔄 expéditions, 🛒 abr-rentrées, 🧾 encaissements, 🏭 usine, 🏪 local, 💳 abonnement, ⚠️ alertes
+- Pour les montants : toujours préciser TND. Pour les quantités : unité si disponible.
+- Formate les listes avec des tirets (-)
+
+## Données consultables (outils disponibles)
+Le client peut tout consulter : profil & périmètre (`get_client_info`), armoire (`get_stock`), rentrées (`get_appros`), abandons (`get_pertes`), pesées (`get_inventaires`), expéditions usine→locaux et cessions usine→usine (`get_transferts`), encyclopédie de denrées (`get_referentiel`), enseignes (`get_fournisseurs`), abonnement & capacité (`get_abonnement`), encaissements / CA / incidence matière / canaux (`get_ventes`), inventions & états techniques (`get_produits`), configuration d'encaissement : agences, charges fixes, articles vendables (`get_config_vente`). Choisis l'outil correspondant au flux demandé et applique les filtres (local, usine, période, article…).
+
+## Utilisation des outils — règles STRICTES
+1. Le périmètre du client (locaux/usines avec leurs IDs) est fourni ci-dessus : n'appelle PAS `get_client_info` (sauf si tu as besoin de l'email du compte). Va directement à l'outil de données.
+2. Si le client a plusieurs locaux et ne précise pas lequel : utilise `ask_clarification` AVANT d'appeler les données. S'il n'a qu'un local, procède directement sans demander.
+3. Si le client dit "tous" ou n'a qu'un seul local : procède directement
+4. Pour les périodes ("mois actuel", "année dernière") : convertis en dates ISO 8601
+5. Pour TOUTE question conceptuelle, définition, conseil ou interprétation (ex : « c'est quoi un état technique ? », « mon incidence matière est-elle bonne ? », « comment réduire mes abandons ? ») : appelle d'abord `search_knowledge_base` et appuie-toi UNIQUEMENT sur ce qu'elle renvoie pour expliquer. N'invente jamais une définition métier.
+
+## Accès aux données — RÈGLES CRITIQUES (ne jamais enfreindre)
+- Les outils `get_*` (get_stock, get_appros, get_ventes, get_transferts, get_pertes, get_inventaires, get_referentiel, get_fournisseurs, get_abonnement, get_produits, get_config_vente) SONT ton accès direct à la base de données du client. Pour répondre à TOUTE demande de données, tu DOIS appeler l'outil correspondant.
+- Ne dis JAMAIS que tu « n'as pas accès à la base de données » : tu y accèdes précisément via ces outils. Si tu as besoin de données, APPELLE l'outil — ne demande pas au client de le faire.
+- Ne mentionne JAMAIS de nom d'outil au client et ne lui demande JAMAIS « d'utiliser un outil » : les outils sont les TIENS, ils sont invisibles pour lui.
+- `search_knowledge_base` sert UNIQUEMENT à expliquer un concept métier — JAMAIS à récupérer les données du client.
+- Si un outil de données renvoie une liste vide, réponds simplement qu'il n'y a aucune donnée pour cette période / ce périmètre. N'invente JAMAIS de valeurs, de lignes, ni de mention « en attente de données ».
+- Quand un outil renvoie une LISTE (abr-rentrées, encaissements, expéditions, abandons, pesées…), restitue TOUTES les lignes retournées — ne résume ni ne tronque jamais une liste de données. Si elle est longue, structure-la (groupée par article ou par date) mais reste exhaustif ; la règle « 4-8 lignes » ne s'applique PAS aux listes de données.
+- Après une réponse de clarification du client (« tous », « 1 », un nom de local/usine) : appelle IMMÉDIATEMENT l'outil de données approprié avec le périmètre choisi. « tous » = tous les locaux (et les usines si la demande les concerne) — n'appelle PAS `ask_clarification` une 2e fois.
+
+## Rapports par email
+- Si le client demande un rapport (« envoie-moi le rapport », « rapport excel ») : appelle `send_report` (le rapport est un fichier Excel) puis confirme l'envoi et l'email de destination.
+- Quand tu fournis une synthèse riche (armoire + abandons + pesées + expéditions), propose spontanément : « Veux-tu que je te l'envoie en rapport Excel par email ? » et n'appelle `send_report` que si le client accepte.
+
+## Format de réponse obligatoire
+Commence TOUJOURS par [CONF:0.XX] (niveau de confiance 0.00-1.00 selon la complétude des données).
+
+## Alertes proactives
+- Si armoire < 5 unités pour une provision → signaler avec ⚠️
+- Si abandons élevés détectés → signaler avec 📉
+
+src/services/aiToolHandlers.js
+  l. 61
+    défaut : coût matière
+    miroir : enveloppe matière
+  l. 61
+    défaut : food cost
+    miroir : incidence matière
+  l. 63
+    défaut : Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
+    miroir : Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
+  l. 64
+    défaut : ⟦?⟦·⟧ | |⟧Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
+    miroir : ⟦?⟦·⟧ | |⟧Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
+  l. 78
+    défaut : ⟦?⟦·⟧|aucune⟧
+    miroir : ⟦?⟦·⟧|aucun⟧
+  l. 79
+    défaut : ⟦?⟦·⟧|aucun⟧
+    miroir : ⟦?⟦·⟧|aucune⟧
+  l. 82
+    défaut : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Activités: ⟦?⟦·⟧|aucune⟧ | Labos: ⟦?⟦·⟧|aucun⟧
+    miroir : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Locaux: ⟦?⟦·⟧|aucun⟧ | Usines: ⟦?⟦·⟧|aucune⟧
+  l. 283
+    défaut : ⟦·⟧⟦? (labo)|⟧
+    miroir : ⟦·⟧⟦? (abr-usine)|⟧
+  l. 413
+    défaut : Prestataire
+    miroir : Agence
+  l. 567
+    défaut : Récupère le profil du client : nom, email, liste des activités (id + nom), liste des labos (id + nom). Appeler en premier pour connaître le périmètre disponible.
+    miroir : Récupère le profil du client : nom, email, liste des locaux (id + nom), liste des usines (id + nom). Appeler en premier pour connaître le périmètre disponible.
+  l. 572
+    défaut : Récupère le stock d'ingrédients. Sans filtre = toutes activités et labos. Supporte filtrage par activité, labo, ingrédient, et période.
+    miroir : Récupère l'armoire de provisions. Sans filtre = tous locaux et usines. Supporte filtrage par local, usine, provision, et période.
+  l. 576
+    défaut : ID de l'activité
+    miroir : ID du local
+  l. 577
+    défaut : ID du labo
+    miroir : ID de l'usine
+  l. 578
+    défaut : Nom partiel de l'ingrédient (recherche ILIKE)
+    miroir : Nom partiel de la provision (recherche ILIKE)
+  l. 588
+    défaut : Récupère l'historique des approvisionnements manuels (achats) avec quantités et prix unitaires en TND. Les réassorts par transfert labo→activité relèvent de get_transferts.
+    miroir : Récupère l'historique des rentrées manuelles (achats) avec quantités et prix unitaires en TND. Les réassorts par expédition usine→local relèvent de get_transferts.
+  l. 604
+    défaut : Récupère l'historique des pertes d'ingrédients. Filtrable par type de perte (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).
+    miroir : Récupère l'historique des abandons de provisions. Filtrable par type d'abandon (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).
+  l. 611
+    défaut : Filtrer par type de perte (code du domaine, ex. avarie, dechet)
+    miroir : Filtrer par type d'abandon (code du domaine, ex. avarie, dechet)
+  l. 621
+    défaut : Récupère l'historique des inventaires.
+    miroir : Récupère l'historique des pesées.
+  l. 637
+    défaut : Récupère l'historique des transferts labo → activité.
+    miroir : Récupère l'historique des expéditions usine → local.
+  l. 653
+    défaut : Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approvisionnements : get_stock, get_appros).
+    miroir : Récupère l'encyclopédie des denrées/matières du client : nom et unité. Pour répondre aux questions sur le catalogue de denrées (les prix viennent des rentrées : get_stock, get_appros).
+  l. 657
+    défaut : Nom partiel d'article (recherche ILIKE)
+    miroir : Nom partiel de denrée (recherche ILIKE)
+  l. 665
+    défaut : Récupère la liste des fournisseurs de l'entreprise (nom, adresse, téléphone).
+    miroir : Récupère la liste des enseignes de l'entreprise (nom, adresse, téléphone).
+  l. 669
+    défaut : Nom partiel de fournisseur (recherche ILIKE)
+    miroir : Nom partiel d'enseigne (recherche ILIKE)
+  l. 676
+    défaut : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre d'activités/labos/gérants, montant d'onboarding, date d'acceptation du contrat.
+    miroir : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre de locaux/usines/animatrices, montant d'onboarding, date d'acceptation du contrat.
+  l. 681
+    défaut : Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.
+    miroir : Récupère un résumé des encaissements : nombre d'encaissements, CA TTC (TND), enveloppe matière, incidence matière % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), écart brut, panier moyen, et répartition par canal (direct / prestataire). Filtrable par local, période et canal.
+  l. 685
+    défaut : ID de l'activité
+    miroir : ID du local
+  l. 686
+    défaut : ID du labo (pour les ventes saisies au niveau labo)
+    miroir : ID de l'usine (pour les encaissements saisis au niveau usine)
+  l. 696
+    défaut : Récupère la liste des produits / fiches techniques du client (nom, description).
+    miroir : Récupère la liste des inventions / états techniques du client (nom, description).
+  l. 700
+    défaut : Nom partiel de produit (recherche ILIKE)
+    miroir : Nom partiel d'invention (recherche ILIKE)
+  l. 708
+    défaut : Récupère la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.
+    miroir : Récupère la configuration d'encaissement : agences de livraison actives par local, charges fixes par local, et articles vendables par local (avec prix de vente). Filtrable par local.
+  l. 712
+    défaut : ID de l'activité
+    miroir : ID du local
+  l. 719
+    défaut : Génère et envoie par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).
+    miroir : Génère et envoie par email un rapport Excel récapitulant armoire, abandons, pesées et expéditions du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).
+  l. 739
+    défaut : Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs activités et n'a pas précisé laquelle.
+    miroir : Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs locaux et n'a pas précisé lequel.
+
+src/services/clientConfigService.js
+  l. 123
+    défaut : ⟦?⟦·⟧|aucune⟧
+    miroir : ⟦?⟦·⟧|aucun⟧
+  l. 124
+    défaut : ⟦?⟦·⟧|aucun⟧
+    miroir : ⟦?⟦·⟧|aucune⟧
+  l. 126
+    défaut : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Activités: ⟦?⟦·⟧|aucune⟧ | Labos: ⟦?⟦·⟧|aucun⟧
+    miroir : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Locaux: ⟦?⟦·⟧|aucun⟧ | Usines: ⟦?⟦·⟧|aucune⟧
+  l. 132
+    défaut : Capacité souscrite: ⟦?⟦·⟧|—⟧ activité(s), ⟦?⟦·⟧|—⟧ labo(s), ⟦?⟦·⟧|—⟧ gérant(s)
+    miroir : Capacité souscrite: ⟦?⟦·⟧|—⟧ local/locaux, ⟦?⟦·⟧|—⟧ usine(s), ⟦?⟦·⟧|—⟧ animatrice(s)
+  l. 136
+    défaut : ⟦·⟧ | Capacité souscrite: ⟦?⟦·⟧|—⟧ activité(s), ⟦?⟦·⟧|—⟧ labo(s), ⟦?⟦·⟧|—⟧ gérant(s)
+    miroir : ⟦·⟧ | Capacité souscrite: ⟦?⟦·⟧|—⟧ local/locaux, ⟦?⟦·⟧|—⟧ usine(s), ⟦?⟦·⟧|—⟧ animatrice(s)
+  l. 140
+    défaut : Référentiel client: ⟦·⟧ fournisseur(s), ⟦·⟧ gérant(s), ⟦·⟧ produit(s) | Module vente: ⟦?actif|inactif⟧
+    miroir : Encyclopédie client: ⟦·⟧ enseigne(s), ⟦·⟧ animatrice(s), ⟦·⟧ invention(s) | Module abr-encaissement: ⟦?actif|inactif⟧
+
+src/services/configComposantsService.js
+  l. 81
+    défaut : Quota acheteurs invalide (paliers de 1 à 100)
+    miroir : Quota abr-clientes invalide (paliers de 1 à 100)
+  l. 85
+    défaut : Un compte sans activité doit avoir au moins un labo (compte dépôt)
+    miroir : Un compte sans local doit avoir au moins une usine (compte annexe)
+  l. 87
+    défaut : Un labo sans activité nécessite l'option Acheteurs (compte dépôt = labo + acheteurs)
+    miroir : Une usine sans local nécessite l'option Abr-Clientes (compte annexe = usine + clientes)
+  l. 91
+    défaut : L'option Acheteurs nécessite au moins un labo
+    miroir : L'option Abr-Clientes nécessite au moins une usine
+  l. 127
+    défaut : Activité
+    miroir : Local
+  l. 127
+    défaut : Activités
+    miroir : Locaux
+  l. 128
+    défaut : f
+    miroir : m
+  l. 128
+    défaut : l'activité
+    miroir : le local
+  l. 131
+    défaut : Labo
+    miroir : Usine
+  l. 131
+    défaut : Labos
+    miroir : Usines
+  l. 132
+    défaut : m
+    miroir : f
+  l. 132
+    défaut : le labo
+    miroir : l'usine
+  l. 135
+    défaut : Gérant
+    miroir : Animatrice
+  l. 135
+    défaut : Gérants
+    miroir : Animatrices
+  l. 136
+    défaut : m
+    miroir : f
+  l. 136
+    défaut : le gérant
+    miroir : l'animatrice
+  l. 140
+    défaut : Base acheteurs
+    miroir : Base abr-clientes
+  l. 140
+    défaut : Base acheteurs
+    miroir : Base abr-clientes
+
+src/services/contractPdfService.js
+  l. 109
+    défaut : activité
+    miroir : local
+  l. 109
+    défaut : activités
+    miroir : locaux
+  l. 110
+    défaut : laboratoire
+    miroir : usine centrale
+  l. 110
+    défaut : laboratoires
+    miroir : usines centrales
+  l. 111
+    défaut : compte gérant
+    miroir : compte animatrice
+  l. 111
+    défaut : comptes gérants
+    miroir : comptes animatrices
+  l. 112
+    défaut : Option Acheteurs → palier jusqu'à ⟦·⟧
+    miroir : Option Abr-Clientes → palier jusqu'à ⟦·⟧
+  l. 138
+    défaut : Palier jusqu'à ⟦·⟧ acheteurs
+    miroir : Palier jusqu'à ⟦·⟧ clientes
+  l. 169
+    défaut : ⟦?palier jusqu'à ⟦·⟧ acheteurs|⟦·⟧⟧
+    miroir : ⟦?palier jusqu'à ⟦·⟧ clientes|⟦·⟧⟧
+  l. 208
+    défaut : ⟦?palier jusqu'à ⟦·⟧ acheteurs|⟦·⟧⟧
+    miroir : ⟦?palier jusqu'à ⟦·⟧ clientes|⟦·⟧⟧
+
+src/services/emailService.js
+  l. 32
+    défaut : ⟦?gérant|⟦?acheteur|client⟧⟧
+    miroir : ⟦?animatrice|⟦?cliente|client⟧⟧
+  l. 34
+    défaut : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:32px 40px;border-bottom:4px solid #d97706">
+      ⟦·⟧
+    </div>
+    <div style="padding:36px 40px;">
+      <h2 style="margin:0 0 12px;color:#111827;font-size:1.15rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.6;">
+        Vous avez été invité(e) à rejoindre <strong>⟦·⟧</strong> en tant que <strong>⟦?gérant|⟦?acheteur|client⟧⟧</strong>.
+        Cliquez sur le bouton ci-dessous pour activer votre compte et choisir votre mot de passe.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="⟦·⟧" style="display:inline-block;background:#4338ca;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:0.95rem;font-weight:700;letter-spacing:0.01em;">
+          Activer mon compte
+        </a>
+      </div>
+      <p style="margin:0 0 8px;color:#6b7280;font-size:0.8rem;">
+        Ce lien est valable <strong>48 heures</strong>. S'il a expiré, contactez votre administrateur.
+      </p>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">
+        Ou copiez ce lien : ⟦·⟧
+      </p>
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Si vous n'attendiez pas cette invitation, ignorez cet email.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    miroir : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:32px 40px;border-bottom:4px solid #d97706">
+      ⟦·⟧
+    </div>
+    <div style="padding:36px 40px;">
+      <h2 style="margin:0 0 12px;color:#111827;font-size:1.15rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.6;">
+        Vous avez été invité(e) à rejoindre <strong>⟦·⟧</strong> en tant que <strong>⟦?animatrice|⟦?cliente|client⟧⟧</strong>.
+        Cliquez sur le bouton ci-dessous pour activer votre compte et choisir votre mot de passe.
+      </p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="⟦·⟧" style="display:inline-block;background:#4338ca;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:0.95rem;font-weight:700;letter-spacing:0.01em;">
+          Activer mon compte
+        </a>
+      </div>
+      <p style="margin:0 0 8px;color:#6b7280;font-size:0.8rem;">
+        Ce lien est valable <strong>48 heures</strong>. S'il a expiré, contactez votre administrateur.
+      </p>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">
+        Ou copiez ce lien : ⟦·⟧
+      </p>
+    </div>
+    <div style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Si vous n'attendiez pas cette invitation, ignorez cet email.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+  l. 225
+    défaut : ⟦·⟧ ⟦activité|activités@>1⟧
+    miroir : ⟦·⟧ ⟦local|locaux@>1⟧
+  l. 226
+    défaut : ⟦·⟧ ⟦labo|labos@>1⟧
+    miroir : ⟦·⟧ ⟦usine|usines@>1⟧
+  l. 227
+    défaut : ⟦·⟧ ⟦gérant|gérants@>1⟧
+    miroir : ⟦·⟧ ⟦animatrice|animatrices@>1⟧
+  l. 228
+    défaut : l'option Acheteurs (palier jusqu'à ⟦·⟧ acheteurs)
+    miroir : l'option Abr-Clientes (palier jusqu'à ⟦·⟧ clientes)
+  l. 344
+    défaut : ⟦?+⟦·⟧ ⟦activité|activités@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦local|locaux@>1⟧|⟧
+  l. 345
+    défaut : ⟦?+⟦·⟧ ⟦labo|labos@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦usine|usines@>1⟧|⟧
+  l. 346
+    défaut : ⟦?+⟦·⟧ ⟦gérant|gérants@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦animatrice|animatrices@>1⟧|⟧
+  l. 349
+    défaut : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ⟦·⟧
+      <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Contrat Avenant — Ajout de capacité</p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;">
+        Votre demande d'ajout de capacité a été <strong style="color:#16a34a;">validée</strong>.
+        Cet email constitue votre avenant de contrat daté du <strong>⟦·⟧</strong>.
+      </p>
+
+      <!-- Capacité ajoutée -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">✅ Capacité ajoutée</div>
+        <div style="font-size:1rem;font-weight:700;color:#14532d;">⟦·⟧</div>
+      </div>
+
+      <!-- Nouvelle configuration -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre configuration après avenant</div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Activités</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>
+          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Labos</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>|⟧
+          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Gérants</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>|⟧
+          <tr>
+            <td style="padding:12px 0 4px;font-weight:800;color:#1e40af;" colspan="2">Nouveau mensuel de base</td>
+            <td style="padding:12px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;">⟦·⟧/mois</td>
+          </tr>
+          ⟦?<tr>
+            <td style="padding:4px 0;font-size:0.78rem;color:#7c3aed;" colspan="2">🎉 Promotion appliquée</td>
+            <td style="padding:4px 0;text-align:right;font-weight:900;color:#7c3aed;font-size:1.05rem;">⟦·⟧/mois</td>
+          </tr>|⟧
+        </table>
+      </div>
+
+      ⟦?<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Note de l'administration</div>
+        <div style="font-size:0.88rem;color:#1e3a5f;line-height:1.6;">⟦·⟧</div>
+      </div>|⟧
+
+      <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">
+        Votre espace est déjà mis à jour. Connectez-vous pour consulter votre nouvelle configuration.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;">
+      <p style="margin:0;color:#94a3b8;font-size:0.75rem;">⟦·⟧ · Avenant du ⟦·⟧</p>
+    </div>
+  </div>
+</body>
+</html>
+    miroir : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
+      ⟦·⟧
+      <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Contrat Avenant — Ajout de capacité</p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;">
+        Votre demande d'ajout de capacité a été <strong style="color:#16a34a;">validée</strong>.
+        Cet email constitue votre avenant de contrat daté du <strong>⟦·⟧</strong>.
+      </p>
+
+      <!-- Capacité ajoutée -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">✅ Capacité ajoutée</div>
+        <div style="font-size:1rem;font-weight:700;color:#14532d;">⟦·⟧</div>
+      </div>
+
+      <!-- Nouvelle configuration -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre configuration après avenant</div>
+        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+          <tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Locaux</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>
+          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Usines</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>|⟧
+          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">Animatrices</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
+          </tr>|⟧
+          <tr>
+            <td style="padding:12px 0 4px;font-weight:800;color:#1e40af;" colspan="2">Nouveau mensuel de base</td>
+            <td style="padding:12px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;">⟦·⟧/mois</td>
+          </tr>
+          ⟦?<tr>
+            <td style="padding:4px 0;font-size:0.78rem;color:#7c3aed;" colspan="2">🎉 Promotion appliquée</td>
+            <td style="padding:4px 0;text-align:right;font-weight:900;color:#7c3aed;font-size:1.05rem;">⟦·⟧/mois</td>
+          </tr>|⟧
+        </table>
+      </div>
+
+      ⟦?<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+        <div style="font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Note de l'administration</div>
+        <div style="font-size:0.88rem;color:#1e3a5f;line-height:1.6;">⟦·⟧</div>
+      </div>|⟧
+
+      <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">
+        Votre espace est déjà mis à jour. Connectez-vous pour consulter votre nouvelle configuration.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;">
+      <p style="margin:0;color:#94a3b8;font-size:0.75rem;">⟦·⟧ · Avenant du ⟦·⟧</p>
+    </div>
+  </div>
+</body>
+</html>
+  l. 550
+    défaut : <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+      <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+        <div style="font-size:36px;margin-bottom:8px">⟦?📊|📄⟧</div>
+        <h1 style="color:#fff;margin:0;font-size:20px">Rapport ⟦·⟧ — ⟦·⟧</h1>
+      </div>
+      <p style="color:#374151;font-size:14px;line-height:1.6">
+        Votre rapport <strong>⟦·⟧</strong> est disponible en pièce jointe.<br>
+        Il contient votre stock actuel, vos pertes récentes et vos inventaires.
+      </p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+      <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ⟦·⟧</p>
+    </div>
+    miroir : <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+      <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
+        <div style="font-size:36px;margin-bottom:8px">⟦?📊|📄⟧</div>
+        <h1 style="color:#fff;margin:0;font-size:20px">Rapport ⟦·⟧ — ⟦·⟧</h1>
+      </div>
+      <p style="color:#374151;font-size:14px;line-height:1.6">
+        Votre rapport <strong>⟦·⟧</strong> est disponible en pièce jointe.<br>
+        Il contient votre armoire actuelle, vos abandons récents et vos pesées.
+      </p>
+      <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
+      <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ⟦·⟧</p>
+    </div>
+  l. 575
+    défaut : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <!-- Header marque : logo en valeur -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:40px 48px 34px;border-bottom:4px solid #d97706;text-align:center;">
+      ⟦·⟧
+      <p style="margin:14px 0 0;color:#c7d2fe;font-size:0.9rem;font-weight:600;">🤖 Votre assistant IA est prêt sur Messenger</p>
+    </div>
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 22px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Votre assistant IA <strong>⟦·⟧</strong> vient d'être activé sur <strong>Facebook Messenger</strong>.
+        Vous pouvez l'utiliser comme l'application — en consultation — pour interroger toutes vos données :
+      </p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:26px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:0.9rem;color:#1e293b;line-height:1.9;">
+          <tr><td style="width:50%;">🏪 Activités &amp; labos</td><td>🧾 Ventes &amp; CA</td></tr>
+          <tr><td>📦 Stock &amp; seuils</td><td>🛒 Approvisionnements</td></tr>
+          <tr><td>🔄 Transferts</td><td>📉 Pertes &amp; inventaires</td></tr>
+          <tr><td>📚 Référentiel &amp; fournisseurs</td><td>💳 Abonnement &amp; produits</td></tr>
+        </table>
+        <p style="margin:12px 0 0;font-size:0.82rem;color:#64748b;">Filtrez par activité, labo ou période — et demandez un <strong>rapport Excel par email</strong> quand vous voulez.</p>
+      </div>
+      <div style="text-align:center;margin:0 0 26px;">
+        <a href="⟦·⟧" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
+          💬 Ouvrir mon assistant sur Messenger
+        </a>
+      </div>
+      <ol style="margin:0 0 8px;color:#374151;font-size:0.85rem;line-height:1.9;padding-left:20px;">
+        <li>Cliquez sur le bouton ci-dessus</li>
+        <li>Messenger s'ouvre — envoyez votre premier message</li>
+        <li>L'agent vous répond et vous accueille instantanément ✅</li>
+      </ol>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ⟦·⟧</p>
+    </div>
+    <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Si vous n'attendiez pas cette activation, ignorez cet email. &mdash; ⟦·⟧
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    miroir : 
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
+    <!-- Header marque : logo en valeur -->
+    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:40px 48px 34px;border-bottom:4px solid #d97706;text-align:center;">
+      ⟦·⟧
+      <p style="margin:14px 0 0;color:#c7d2fe;font-size:0.9rem;font-weight:600;">🤖 Votre assistant IA est prêt sur Messenger</p>
+    </div>
+    <div style="padding:40px 48px;">
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
+      <p style="margin:0 0 22px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Votre assistant IA <strong>⟦·⟧</strong> vient d'être activé sur <strong>Facebook Messenger</strong>.
+        Vous pouvez l'utiliser comme l'application — en consultation — pour interroger toutes vos données :
+      </p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:26px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:0.9rem;color:#1e293b;line-height:1.9;">
+          <tr><td style="width:50%;">🏪 Locaux &amp; usines</td><td>🧾 Encaissements &amp; CA</td></tr>
+          <tr><td>📦 Armoire &amp; seuils</td><td>🛒 Rentrées</td></tr>
+          <tr><td>🔄 Expéditions</td><td>📉 Abandons &amp; pesées</td></tr>
+          <tr><td>📚 Encyclopédie &amp; enseignes</td><td>💳 Abonnement &amp; inventions</td></tr>
+        </table>
+        <p style="margin:12px 0 0;font-size:0.82rem;color:#64748b;">Filtrez par local, usine ou période — et demandez un <strong>rapport Excel par email</strong> quand vous voulez.</p>
+      </div>
+      <div style="text-align:center;margin:0 0 26px;">
+        <a href="⟦·⟧" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
+          💬 Ouvrir mon assistant sur Messenger
+        </a>
+      </div>
+      <ol style="margin:0 0 8px;color:#374151;font-size:0.85rem;line-height:1.9;padding-left:20px;">
+        <li>Cliquez sur le bouton ci-dessus</li>
+        <li>Messenger s'ouvre — envoyez votre premier message</li>
+        <li>L'agent vous répond et vous accueille instantanément ✅</li>
+      </ol>
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ⟦·⟧</p>
+    </div>
+    <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
+        Si vous n'attendiez pas cette activation, ignorez cet email. &mdash; ⟦·⟧
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+
+src/services/factureApproPdf.js
+  l. 18
+    défaut : Facture d'approvisionnement
+    miroir : Facture de rentrée
+  l. 19
+    défaut : FACTURE ⟦?D'|DE ⟧APPROVISIONNEMENT
+    miroir : FACTURE ⟦?D'|DE ⟧RENTRÉE
+  l. 19
+    défaut : d'approvisionnement
+    miroir : de rentrée
+  l. 20
+    défaut : Facture d'approvisionnement
+    miroir : Facture de rentrée
+  l. 21
+    défaut : Transfert labo → ⟦?activité|labo⟧
+    miroir : Expédition abr-usine → abr-⟦?local|usine⟧
+  l. 22
+    défaut : Approvisionnement fournisseur
+    miroir : Rentrée enseigne
+  l. 23
+    défaut : fournisseur
+    miroir : enseigne
+  l. 24
+    défaut : FOURNISSEUR ET CLIENT
+    miroir : ENSEIGNE ET CLIENT
+  l. 25
+    défaut : FOURNISSEUR
+    miroir : ENSEIGNE
+  l. 26
+    défaut : Montants exprimés en dinars tunisiens (DT), prix saisis hors taxes. Récapitulatif d'approvisionnement généré électroniquement via la plateforme LabFlow à partir des lignes de stock saisies — il ne remplace pas la facture originale du fournisseur.
+    miroir : Montants exprimés en dinars tunisiens (DT), prix saisis hors taxes. Récapitulatif de rentrée généré électroniquement via la plateforme LabFlow à partir des lignes d'armoire saisies — il ne remplace pas la facture originale de l'enseigne.
+  l. 27
+    défaut : Facture d'approvisionnement — générée via la plateforme LabFlow
+    miroir : Facture de rentrée — générée via la plateforme LabFlow
+  l. 36
+    défaut : ⟦?Activité : ⟦·⟧|⟦?Labo : ⟦·⟧|⟧⟧
+    miroir : ⟦?Abr-Local : ⟦·⟧|⟦?Abr-Usine : ⟦·⟧|⟧⟧
+  l. 40
+    défaut : ⟦?⟦·⟧|Fournisseur⟧
+    miroir : ⟦?⟦·⟧|Enseigne⟧
+
+src/services/messengerService.js
+  l. 91
+    défaut : 👋 Bonjour ⟦·⟧ !
+
+Je suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :
+
+🏪 Activités & 🏭 labos
+📦 Stock, seuils & 🛒 approvisionnements
+🔄 Transferts labo → activités
+📉 Pertes & 📊 inventaires
+🧾 Ventes, CA & food cost
+📚 Référentiel, fournisseurs & produits
+💳 Abonnement & configuration de vente
+📄 Rapports Excel par email
+
+Exemple : « les transferts du mois actuel » ou « mon food cost de septembre ». Posez votre question !
+    miroir : 👋 Bonjour ⟦·⟧ !
+
+Je suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :
+
+🏪 Locaux & 🏭 usines
+📦 Armoire, seuils & 🛒 rentrées
+🔄 Expéditions usine → locaux
+📉 Abandons & 📊 pesées
+🧾 Encaissements, CA & incidence matière
+📚 Encyclopédie, enseignes & inventions
+💳 Abonnement & configuration d'encaissement
+📄 Rapports Excel par email
+
+Exemple : « les expéditions du mois actuel » ou « mon incidence matière de septembre ». Posez votre question !
+
+src/services/onboardingEtat.js
+  l. 106
+    défaut : ⟦?Activités & labos|⟦?⟦Labo|Labos@>1⟧|⟦Activité|Activités@>1⟧⟧⟧ de votre formule
+    miroir : ⟦?Locaux & usines|⟦?⟦Usine|Usines@>1⟧|⟦Local|Locaux@>1⟧⟧⟧ de votre formule
+  l. 122
+    défaut : ⟦?⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧
+    miroir : ⟦?⟦?⟦local|locaux@>1⟧|⟦usine|usines@>1⟧⟧|⟦·⟧⟧
+  l. 125
+    défaut : ⟦·⟧/⟦·⟧ ⟦?⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦?⟦?⟦local|locaux@>1⟧|⟦usine|usines@>1⟧⟧|⟦·⟧⟧
+  l. 127
+    défaut : Comment créer ⟦?⟦mon|mes@>1⟧ ⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧ ?
+    miroir : Comment créer ⟦?⟦mon|mes@>1⟧ ⟦?⟦local|locaux@>1⟧|⟦usine|usines@>1⟧⟧|⟦·⟧⟧ ?
+  l. 134
+    défaut : ⟦·⟧/⟦·⟧ ⟦activité|activités@>1⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦local|locaux@>1⟧
+  l. 135
+    défaut : ⟦·⟧/⟦·⟧ ⟦labo|labos@>1⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦usine|usines@>1⟧
+  l. 136
+    défaut : Comment créer ⟦mon|mes@>1⟧ ⟦activité|activités@>1⟧ ?
+    miroir : Comment créer ⟦mon|mes@>1⟧ ⟦local|locaux@>1⟧ ?
+  l. 137
+    défaut : Comment créer ⟦mon|mes@>1⟧ ⟦labo|labos@>1⟧ ?
+    miroir : Comment créer ⟦mon|mes@>1⟧ ⟦usine|usines@>1⟧ ?
+  l. 140
+    défaut : Quelle est la différence entre une activité et un labo ?
+    miroir : Quelle est la différence entre un local et une usine ?
+  l. 150
+    défaut : Référentiel de base (unités, familles, catégories)
+    miroir : Encyclopédie de base (unités, familles, catégories)
+  l. 153
+    défaut : Par quoi commencer pour mon référentiel ?
+    miroir : Par quoi commencer pour mon encyclopédie ?
+  l. 160
+    défaut : ⟦·⟧ ⟦article|articles@>1⟧
+    miroir : ⟦·⟧ ⟦denrée|denrées@>1⟧
+  l. 161
+    défaut : ⟦·⟧/⟦·⟧ ⟦activité|activités@>1⟧ ⟦affectée|affectées@>1⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦local|locaux@>1⟧ ⟦affecté|affectés@>1⟧
+  l. 162
+    défaut : ⟦·⟧/⟦·⟧ ⟦labo|labos@>1⟧
+    miroir : ⟦·⟧/⟦·⟧ ⟦usine|usines@>1⟧
+  l. 166
+    défaut : ⟦?mes activités|mon activité⟧
+    miroir : ⟦?mes locaux|mon local⟧
+  l. 167
+    défaut : ⟦?mes labos|mon labo⟧
+    miroir : ⟦?mes usines|mon usine⟧
+  l. 169
+    défaut : ⟦?aux activités/labos|⟦?au labo|aux activités⟧⟧
+    miroir : ⟦?aux locaux/usines|⟦?à l'usine|aux locaux⟧⟧
+  l. 170
+    défaut : Articles + affectation ⟦?aux activités/labos|⟦?au labo|aux activités⟧⟧
+    miroir : Denrées + affectation ⟦?aux locaux/usines|⟦?à l'usine|aux locaux⟧⟧
+  l. 172
+    défaut : Comment ajouter mes articles ?
+    miroir : Comment ajouter mes denrées ?
+  l. 173
+    défaut : Comment importer mes articles en masse ?
+    miroir : Comment importer mes denrées en masse ?
+  l. 174
+    défaut : Comment affecter les articles à ⟦·⟧ ?
+    miroir : Comment affecter les denrées à ⟦·⟧ ?
+  l. 178
+    défaut : Fournisseurs
+    miroir : Enseignes
+  l. 179
+    défaut : ⟦·⟧⟦? ⟦fournisseur|fournisseurs@>1⟧|⟧
+    miroir : ⟦·⟧⟦? ⟦enseigne|enseignes@>1⟧|⟧
+  l. 181
+    défaut : Comment ajouter mes fournisseurs ?
+    miroir : Comment ajouter mes enseignes ?
+  l. 182
+    défaut : Comment importer mes fournisseurs depuis Excel ?
+    miroir : Comment importer mes enseignes depuis Excel ?
+  l. 183
+    défaut : À quoi servent les affectations d'un fournisseur ?
+    miroir : À quoi servent les affectations d'une enseigne ?
+  l. 188
+    défaut : Produits & fiches techniques
+    miroir : Inventions & états techniques
+  l. 189
+    défaut : ⟦·⟧⟦? ⟦produit|produits@>1⟧|⟧
+    miroir : ⟦·⟧⟦? ⟦invention|inventions@>1⟧|⟧
+  l. 191
+    défaut : Comment créer un produit et sa fiche technique ?
+    miroir : Comment créer une invention et son état technique ?
+  l. 192
+    défaut : C'est quoi un produit valorisé ?
+    miroir : C'est quoi une invention valorisée ?
+  l. 193
+    défaut : Comment est calculé le coût de revient d'une recette ?
+    miroir : Comment est calculé le coût de revient d'un assemblage ?
+  l. 199
+    défaut : Comment saisir mon premier approvisionnement ?
+    miroir : Comment saisir ma première rentrée ?
+  l. 200
+    défaut : Comment saisir une vente ?
+    miroir : Comment saisir un encaissement ?
+  l. 201
+    défaut : Comment mon stock est-il calculé ?
+    miroir : Comment mon armoire est-elle calculée ?
+  l. 202
+    défaut : ⟦?Première saisie (appro / vente)|Premier approvisionnement du labo⟧
+    miroir : Première ⟦?saisie (abr-rentrée / encaissement)|rentrée de l'usine⟧
+  l. 203
+    défaut : ⟦?⟦·⟧|aucun approvisionnement ni vente pour l'instant⟧
+    miroir : ⟦?⟦·⟧|aucune rentrée ni encaissement pour l'instant⟧
+  l. 209
+    défaut : Carnet d'acheteurs
+    miroir : Carnet de clientes
+  l. 210
+    défaut : ⟦·⟧⟦? ⟦acheteur|acheteurs@>1⟧|⟧
+    miroir : ⟦·⟧⟦? ⟦cliente|clientes@>1⟧|⟧
+  l. 212
+    défaut : Comment remplir mon carnet d'acheteurs ?
+    miroir : Comment remplir mon carnet de clientes ?
+  l. 213
+    défaut : Comment importer mes acheteurs depuis Excel ?
+    miroir : Comment importer mes clientes depuis Excel ?
+  l. 214
+    défaut : Comment configurer mes tarifs acheteurs ?
+    miroir : Comment configurer mes tarifs abr-clientes ?
+  l. 275
+    défaut : 
+
+## MISSION PRIORITAIRE : guide de mise en route
+Ce client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :
+⟦·⟧
+Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.
+
+## FORMAT DES RÉPONSES DU GUIDE (obligatoire)
+- Commence par un court titre en **gras** avec un emoji (ex. **🧂 Créer vos unités**)
+- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte
+- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Référentiel → Unités**)
+- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte
+- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)
+    miroir : 
+
+## MISSION PRIORITAIRE : guide de mise en route
+Ce client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :
+⟦·⟧
+Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas d'usine si aucune usine ci-dessus, pas de clientes si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.
+
+## FORMAT DES RÉPONSES DU GUIDE (obligatoire)
+- Commence par un court titre en **gras** avec un emoji (ex. **📏 Créer vos unités**)
+- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte
+- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Encyclopédie → Unités**)
+- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte
+- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)
+
+src/services/pdfService.js
+  l. 102
+    défaut : ⟦?+⟦·⟧ ⟦activité|activités@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦local|locaux@>1⟧|⟧
+  l. 103
+    défaut : ⟦?+⟦·⟧ ⟦labo|labos@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦usine|usines@>1⟧|⟧
+  l. 104
+    défaut : ⟦?+⟦·⟧ ⟦gérant|gérants@>1⟧|⟧
+    miroir : ⟦?+⟦·⟧ ⟦animatrice|animatrices@>1⟧|⟧
+  l. 105
+    défaut : ⟦?Option Acheteurs → palier jusqu'à ⟦·⟧|⟧
+    miroir : ⟦?Option Abr-Clientes → palier jusqu'à ⟦·⟧|⟧
+  l. 139
+    défaut : Activités⟦?⟦·⟧|⟧
+    miroir : Locaux⟦?⟦·⟧|⟧
+  l. 140
+    défaut : Labos
+    miroir : Usines
+  l. 141
+    défaut : Gérants
+    miroir : Animatrices
+  l. 143
+    défaut : Option Acheteurs
+    miroir : Option Abr-Clientes
+  l. 309
+    défaut : palier jusqu'à ⟦·⟧ acheteurs
+    miroir : palier jusqu'à ⟦·⟧ clientes
+
+src/services/quotaService.js
+  l. 11
+    défaut : activité
+    miroir : local
+  l. 11
+    défaut : activités
+    miroir : locaux
+  l. 12
+    défaut : labo
+    miroir : usine
+  l. 12
+    défaut : labos
+    miroir : usines
+  l. 13
+    défaut : gérant
+    miroir : animatrice
+  l. 13
+    défaut : gérants
+    miroir : animatrices
+
+src/services/reportService.js
+  l. 97
+    défaut : ⟦·⟧⟦?⟦? (labo)|⟧|⟧
+    miroir : ⟦·⟧⟦?⟦? (abr-usine)|⟧|⟧
+  l. 134
+    défaut : Stock
+    miroir : Abr-Armoire
+  l. 135
+    défaut : Rapport LabFlow — Stock actuel
+    miroir : Rapport LabFlow — Armoire actuelle
+  l. 136
+    défaut : Ingrédient
+    miroir : Provision
+  l. 136
+    défaut : Date appro
+    miroir : Date abr-rentrée
+  l. 142
+    défaut : Pertes
+    miroir : Abr-Abandons
+  l. 143
+    défaut : Rapport LabFlow — Pertes récentes
+    miroir : Rapport LabFlow — Abandons récents
+  l. 144
+    défaut : Ingrédient
+    miroir : Provision
+  l. 150
+    défaut : Inventaires
+    miroir : Abr-Pesées
+  l. 151
+    défaut : Rapport LabFlow — Inventaires récents
+    miroir : Rapport LabFlow — Pesées récentes
+  l. 152
+    défaut : Ingrédient
+    miroir : Provision
+  l. 152
+    défaut : Date inventaire
+    miroir : Date pesée
+  l. 158
+    défaut : Transferts Labo
+    miroir : Abr-Expéditions Abr-Usine
+  l. 159
+    défaut : Rapport LabFlow — Transferts depuis les labos
+    miroir : Rapport LabFlow — Expéditions depuis les usines
+  l. 160
+    défaut : Ingrédient
+    miroir : Provision
+  l. 160
+    défaut : Date transfert
+    miroir : Date expédition
+
+src/services/transfertService.js
+  l. 43
+    défaut : Une autre opération de stock est en cours sur ce labo — réessayez dans un instant.
+    miroir : Une autre opération d'armoire est en cours sur cette usine — réessayez dans un instant.
+  l. 109
+    défaut : Un labo ne peut pas se transférer à lui-même
+    miroir : Une usine ne peut pas se transférer à elle-même
+  l. 139
+    défaut : Une ou plusieurs activités invalides
+    miroir : Un ou plusieurs locaux invalides
+  l. 153
+    défaut : Un ou plusieurs labos destinataires ne sont pas alimentés par ce labo
+    miroir : Une ou plusieurs usines destinataires ne sont pas alimentées par cette usine
+  l. 174
+    défaut : ⟦?cette activité|ce labo⟧
+    miroir : ⟦?ce local|cette usine⟧
+  l. 175
+    défaut : Le produit "⟦?|PT #⟧⟦·⟧" n'est pas affecté à ⟦·⟧ — transfert refusé.
+    miroir : L'invention "⟦?|EI #⟧⟦·⟧" n'est pas affectée à ⟦·⟧ — expédition refusée.
+  l. 221
+    défaut : Stock insuffisant pour "⟦?|ingrédient #⟧⟦·⟧"
+    miroir : Armoire insuffisante pour "⟦?|provision #⟧⟦·⟧"
+  l. 228
+    défaut : Stock PT insuffisant pour "⟦?|PT #⟧⟦·⟧"
+    miroir : Armoire EI insuffisante pour "⟦?|EI #⟧⟦·⟧"
+  l. 512
+    défaut : Vous ne pouvez modifier que les transferts que vous avez créés
+    miroir : Vous ne pouvez modifier que les expéditions que vous avez créées
+  l. 529
+    défaut : Les lignes de stock de ce transfert sont introuvables — contactez le support.
+    miroir : Les lignes d'armoire de cette expédition sont introuvables — contactez le support.
+  l. 555
+    défaut : Transfert introuvable
+    miroir : Expédition introuvable
+  l. 568
+    défaut : Stock insuffisant à la source pour augmenter ce transfert
+    miroir : Armoire insuffisante à la source pour augmenter cette expédition
+  l. 602
+    défaut : Transfert introuvable
+    miroir : Expédition introuvable
+  l. 634
+    défaut : Transfert introuvable
+    miroir : Expédition introuvable
+
+src/services/unitesOperationnellesService.js
+  l. 26
+    défaut : Seul un labo peut alimenter une unité.
+    miroir : Seule une usine peut alimenter une unité.

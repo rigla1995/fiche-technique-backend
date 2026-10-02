@@ -1,0 +1,88 @@
+[
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "a.id as activite_id, a.nom as activite_nom, lt.labo_dest_id, ld.nom as labo_dest_nom,\n                CASE WHEN lt.labo_dest_id IS NOT NULL THEN 'labo' ELSE 'activite' END as dest_type,\n                COALESCE(a.nom, ld.nom) as dest_nom",
+    "apres": "a.id as activite_id, a.nom as activite_nom, lt.labo_dest_id, ld.nom as labo_dest_nom,\n                CASE WHEN lt.labo_dest_id IS NOT NULL THEN 'labo' ELSE 'activite' END as dest_type,\n                COALESCE(a.nom, ld.nom) as dest_nom",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "sld.type_appro = 'transfert'",
+    "apres": "sld.type_appro = 'transfert'",
+    "type": "discriminant",
+    "justification": "Fragment SQL qui ne commence pas par un mot-clé (spec lot 2b §3.2 E3 : résidu admis « discriminant ») : les mots du lexique y sont des codes de colonne (type_source, type_appro, origine, type_vente) ou des noms de colonnes, jamais un texte affiché."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "labo",
+    "apres": "labo",
+    "type": "discriminant",
+    "justification": "Code de type d'unité passé aux services (checkQuota, validateComposant, getUniteByRef, enrichRows, computeStock, computeStockBulk, computeStockCourant, computeStockPTCourant : 19 appels) : valeur technique 'labo', jamais affichée (I2)."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "⟦?⟦·⟧|PT⟧",
+    "apres": "⟦?⟦·⟧|PT⟧",
+    "type": "discriminant",
+    "justification": "Repli du nom de produit passé seulement à buildAutoRef (production d'un PT) : il sert à fabriquer le code de référence automatique « PT-26 » écrit dans ref_facture, jamais un libellé ; même repli 'PT' que buildAutoRef (stockUtils.js)."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "⟦?transfert|produit_transformé⟧",
+    "apres": "⟦?transfert|produit_transformé⟧",
+    "type": "discriminant",
+    "justification": "Code typeAppro du JSON de l'historique des appros du labo (valeurs 'transfert' / 'produit_transformé', comparées et traduites par l'écran) : clé de donnée, inchangée (I2, I9)."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "PT",
+    "apres": "PT",
+    "type": "discriminant",
+    "justification": "Opérande de comparaison t === 'PT' (code type_appro de stock_labo_daily) dans l'export Historique des appros du labo ; le libellé affiché, lui, est voc.Court('pt') (spec §6.3)."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "Fiche Technique App",
+    "apres": "Fiche Technique App",
+    "type": "formule",
+    "justification": "Propriété creator des classeurs Excel (exports Historique des appros et des transferts du labo) : nom de l'application, inchangé (spec lot 2b §6.3, entrée formule)."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "attachment; filename=\"Historique-Labo-⟦·⟧.xlsx\"",
+    "apres": "attachment; filename=\"Historique-Labo-⟦·⟧.xlsx\"",
+    "type": "discriminant",
+    "justification": "Nom du fichier téléchargé (Content-Disposition) de l'export Historique des appros du labo : inchangé (I2, spec §6.3 « noms de fichiers inchangés »), nomFichierSur posé au socle."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "attachment; filename=\"Historique-Transferts-⟦·⟧.xlsx\"",
+    "apres": "attachment; filename=\"Historique-Transferts-⟦·⟧.xlsx\"",
+    "type": "discriminant",
+    "justification": "Nom du fichier téléchargé (Content-Disposition) de l'export Historique des transferts du labo : inchangé (I2, spec §6.3 « noms de fichiers inchangés »), nomFichierSur posé au socle."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": " (labo)",
+    "apres": "⟦·⟧⟦? (labo)|⟧",
+    "type": "deplacement",
+    "justification": "Marqueur « (labo) » de la destination déplacé du SQL (ld.nom || ' (labo)') vers le JS (spec §6.2) : le SQL renvoie le nom et le drapeau dest_labo, le JS assemble `${r.dest_nom} (${voc.court('labo')})` quand le drapeau est vrai et le nom != null ; rendu par défaut identique (NULL reste NULL), vérifié par test/B3a-exportsLabo.test.js."
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "La production de produits transformés est désactivée pour ce labo.",
+    "apres": "La production de produits transformés est désactivée pour ce labo.",
+    "type": "non-repliable",
+    "mode": "accords",
+    "justification": "Signalement à tort : « désactivée » s'accorde avec « La production » (féminin fixe), pas avec le terme rendu par [[de:pt:pl]] ; rendu miroir juste : « La production d'élaborations internes est désactivée pour cette usine. »"
+  },
+  {
+    "fichier": "src/controllers/laboController.js",
+    "avant": "Suppression impossible : ce labo ⟦?a des transferts enregistrés (source ou destinataire)|alimente d'autres labos — détachez-les d'abord⟧.",
+    "apres": "Suppression impossible : ce labo ⟦?a des transferts enregistrés (source ou destinataire)|alimente d'autres labos — détachez-les d'abord⟧.",
+    "type": "non-repliable",
+    "mode": "accords",
+    "justification": "Signalement à tort : « d' » est l'élision de « de » devant « autres » (« d'autres labos »), pas devant le terme ; juste dans tous les lexiques : « alimente d'autres usines », « d'autres cuisines centrales », « d'autres sites de production »."
+  }
+]

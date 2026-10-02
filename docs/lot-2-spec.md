@@ -218,6 +218,8 @@ Vagues de 4 lots ; entre deux vagues, un intégrateur unique lance le build et l
 
 ## 4. Sous-lot 2b — productions du serveur (spec détaillée à finaliser à son ouverture, à partir de `crit2-back-ia-docs.md`)
 
+**La spec détaillée du sous-lot 2b est `docs/lot-2b-spec.md` (02/10/2026). Elle fait foi et corrige plusieurs points ci-dessous** (nombre de messages, valeurs du contrat, échappement HTML remplacé par un refus de `<` et `>` dans le lexique, découpage par fichier en 7 lots et 2 vagues).
+
 Décisions déjà prises :
 - **Oracle d'abord** (`scripts/capture-vocab-baseline.js` puis `scripts/check-invariant-vocab.js`) : envoi d'email bouchonné avant tout `require` (le `.env` local a une vraie clé), horloge figée, 3 comptes éphémères ; capture du prompt système, des outils IA, du guide de mise en route, de la ligne de contexte, du HTML des 5 emails à termes, des chaînes écrites dans les PDF, des 8 premières lignes + noms d'onglets de chaque export, de 5 recherches fixes de l'assistant.
 - **Messages : rendu au bord.** Les messages 4xx (257 dans 27 fichiers) et ceux des erreurs métier restent des littéraux, avec balises quand ils portent un terme. Un middleware global enrobe `res.json` : un champ `message` (chaîne) est rendu par `rendre(req.voc ?? vocabDefaut, message)`. Les services ne reçoivent pas `voc` pour leurs erreurs. Les messages qui nomment un paramètre technique ne sont pas touchés.

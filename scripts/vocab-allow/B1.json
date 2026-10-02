@@ -1,0 +1,477 @@
+[
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`activite_id`, `activites`, `activite`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`labo_id`, `labos`, `labo`, `labo_destinataire`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`ingredient`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`date_appro`, `type_appro`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`type_perte`, `date_perte`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`date_inventaire`, `quantite_reelle`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`date_transfert`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`nb_ventes`, `prix_vente`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`food_cost_pct`, `food_cost_eleve`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`cout_matiere`, `seuil_cout_matiere_pct`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`marge_brute`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`prestataires_livraison`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`nb_gerants`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "activite",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "labo",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "gerant",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "article_ingredient",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "ingredient",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧",
+    "occurrences": 5,
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Ces unités sont les appels voc.avec(entrée).nom/court/Nom('_') sur une entrée de lexique parcourue : l'outil ne peut pas les replier."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "« ⟦·⟧ »⟦?| / « ⟦·⟧ »⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦? (forme courte « ⟦·⟧ »)|⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦? — dans les données : ⟦·⟧|⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "copie",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "« ⟦·⟧ » (ligne de stock, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'une recette → « ⟦·⟧ »⟦·⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦·⟧ → ⟦·⟧⟦·⟧⟦·⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": ", ",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "\n\n## Vocabulaire du compte\nCe compte n'emploie pas tous les mots de LabFlow. Correspondances (mot de LabFlow → mot du compte) :\n⟦·⟧⟦?\nUnités du compte (composants de son domaine) :\n⟦·⟧|⟧\nRègles :\n1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.\n2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.\n3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (`search_knowledge_base`), puis rends la réponse avec les mots du compte.⟦·⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : règle 4, « articles vendables » de get_config_vente = tout ce que le compte vend, émise seulement si « article » diffère du compte."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": " (labo)",
+    "apres": "⟦·⟧⟦? (labo)|⟧",
+    "type": "deplacement",
+    "justification": "Marqueur « (labo) » déplacé du SQL (ld.nom || ' (labo)') vers le JS (` (${voc.court('labo')})`), spec lot 2b §6.2 : le SQL renvoie le nom et la destination ; rendu par défaut identique (« Pâtisserie (labo) »), prouvé par test/B1-*.test.js."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": "Comment créer ⟦mon|mes@>1⟧ ⟦?⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧ ?",
+    "apres": "Comment créer ⟦?⟦mon|mes@>1⟧ ⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧ ?",
+    "type": "deplacement",
+    "justification": "déterminant déplacé dans voc.avec(entreeComposantVoc(voc, c)).mon ; rendu par défaut identique, prouvé par l'oracle (guide) — spec lot 2b §7.4 ; restauration : 252 configurations du guide identiques à la tête (comparaison B1), « mon cuisine » devient « ma cuisine » hors restauration."
+  },
+  {
+    "fichier": "src/services/reportService.js",
+    "avant": " (labo)",
+    "apres": "⟦·⟧⟦?⟦? (labo)|⟧|⟧",
+    "type": "deplacement",
+    "justification": "Marqueur « (labo) » déplacé du SQL (ld.nom || ' (labo)') vers le JS (` (${voc.court('labo')})`), spec lot 2b §6.2 : le SQL renvoie le nom et la destination ; rendu par défaut identique (« Pâtisserie (labo) »), prouvé par test/B1-*.test.js."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "`labo_id`, `labos`, `labo`, `labo_destinataire`",
+    "apres": "`labo_id`, `labos`, `labo`, `labo_destinataire`",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Noms de champs de données (clés JSON labo_id, labos, labo, labo_destinataire, I2) cités par le glossaire du §7.3 : le mot « labo » y est un identifiant technique, jamais traduit."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "labo",
+    "apres": "labo",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Clé du lexique / type technique de composant (TYPES_COMPOSANTS du glossaire, §7.3) : un code, jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`)",
+    "apres": "les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`)",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Règle 2 du glossaire (spec §7.3) : `PT` y est le CODE type_appro des données, cité comme code de LabFlow que le modèle ne montre pas au client — jamais traduit."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "période, article…",
+    "apres": "période, article…",
+    "mode": "residuels",
+    "type": "homonyme",
+    "justification": "« article » au sens d'élément quelconque (produit ou article, article_type ∈ {produit, ingredient}) : liste fermée de la spec lot 2b §6.5 (aiService.js:34 filtres et « articles vendables », :49 « groupée par article »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "articles vendables",
+    "apres": "articles vendables",
+    "mode": "residuels",
+    "type": "homonyme",
+    "justification": "« article » au sens d'élément quelconque (produit ou article, article_type ∈ {produit, ingredient}) : liste fermée de la spec lot 2b §6.5 (aiService.js:34 filtres et « articles vendables », :49 « groupée par article »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "groupée par article",
+    "apres": "groupée par article",
+    "mode": "residuels",
+    "type": "homonyme",
+    "justification": "« article » au sens d'élément quelconque (produit ou article, article_type ∈ {produit, ingredient}) : liste fermée de la spec lot 2b §6.5 (aiService.js:34 filtres et « articles vendables », :49 « groupée par article »)."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": "répartition par canal (direct / prestataire)",
+    "apres": "répartition par canal (direct / prestataire)",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Codes du canal cités dans la description de get_ventes (valeurs du filtre canal, enum directe / prestataire) : littéraux, spec lot 2b §7.2 — sinon le modèle passerait « intermédiaire » au filtre et le total serait faux sans bruit."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": "prestataire",
+    "apres": "prestataire",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Valeur d'enum du paramètre canal de get_ventes (['directe', 'prestataire'], comparée à v.type_vente) : un code, spec lot 2b §7.2."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": "articles vendables",
+    "apres": "articles vendables",
+    "mode": "residuels",
+    "type": "homonyme",
+    "justification": "« article » au sens d'élément quelconque (produit ou article vendable, article_type ∈ {produit, ingredient}) : liste fermée de la spec lot 2b §6.5 (aiToolHandlers.js:685 « articles vendables »)."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": "Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (fiche technique, food cost, coût matière, stock, approvisionnements, pertes, inventaire, transferts, articles valorisés, produits vendables/utilisables, seuil minimum, TVA, marge, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.",
+    "apres": "Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (fiche technique, food cost, coût matière, stock, approvisionnements, pertes, inventaire, transferts, articles valorisés, produits vendables/utilisables, seuil minimum, TVA, marge, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.",
+    "mode": "residuels",
+    "type": "reporte",
+    "lot": "2c",
+    "justification": "Description de l'outil search_knowledge_base et de son paramètre query : restent en mots de LabFlow jusqu'au lot 2c (la base et le manuel ne connaissent que ces mots, l'exemple de requête doit les employer), spec lot 2b §0 et §7.2."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": "Mots-clés ou question du concept à rechercher (ex: \"fiche technique\", \"comment est calculé le food cost\")",
+    "apres": "Mots-clés ou question du concept à rechercher (ex: \"fiche technique\", \"comment est calculé le food cost\")",
+    "mode": "residuels",
+    "type": "reporte",
+    "lot": "2c",
+    "justification": "Description de l'outil search_knowledge_base et de son paramètre query : restent en mots de LabFlow jusqu'au lot 2c (la base et le manuel ne connaissent que ces mots, l'exemple de requête doit les employer), spec lot 2b §0 et §7.2."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": "articles",
+    "apres": "articles",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Clé d'étape du guide de mise en route (etapes[].key, index de ROUTES, lue par l'écran OnboardingChecklist) : un code de l'API (I2, I9), jamais affiché."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": "fournisseurs",
+    "apres": "fournisseurs",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Clé d'étape du guide de mise en route (etapes[].key, index de ROUTES, lue par l'écran OnboardingChecklist) : un code de l'API (I2, I9), jamais affiché."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": "produits",
+    "apres": "produits",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Clé d'étape du guide de mise en route (etapes[].key, index de ROUTES, lue par l'écran OnboardingChecklist) : un code de l'API (I2, I9), jamais affiché."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": "acheteurs",
+    "apres": "acheteurs",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Clé d'étape du guide de mise en route (etapes[].key, index de ROUTES, lue par l'écran OnboardingChecklist) : un code de l'API (I2, I9), jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/aiKnowledgeController.js",
+    "avant": "Un article avec ce titre existe déjà",
+    "apres": "Un article avec ce titre existe déjà",
+    "mode": "residuels",
+    "type": "admin",
+    "justification": "Base de connaissances de l'assistant, lue et écrite seulement par l'admin : routes /admin/knowledge-base (POST, PUT /admin/knowledge-base/:id), garde requireSuperAdmin (src/routes/admin.js:180-183) ; « article » y désigne une fiche de la base, et le texte reste en vocabulaire LabFlow (I4)."
+  },
+  {
+    "fichier": "src/controllers/aiKnowledgeController.js",
+    "avant": "Article introuvable",
+    "apres": "Article introuvable",
+    "mode": "residuels",
+    "type": "admin",
+    "justification": "Base de connaissances de l'assistant, lue et écrite seulement par l'admin : routes /admin/knowledge-base (POST, PUT /admin/knowledge-base/:id), garde requireSuperAdmin (src/routes/admin.js:180-183) ; « article » y désigne une fiche de la base, et le texte reste en vocabulaire LabFlow (I4)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ⟦·⟧.\nTu communiques avec le client via Messenger ou le chat web de l'application. Tes réponses doivent être professionnelles, structurées et bien formatées (Markdown léger).\nLe client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.⟦·⟧\n\n## Règles de communication\n- Réponds dans la langue du client (français ou darija tunisienne)\n- Sois précis et concis : 4-8 lignes pour une réponse normale, plus long si rapport/liste demandé\n- Utilise le *gras* pour les titres/sections\n- Utilise les emojis de manière professionnelle : 📦 stock, 📉 pertes, 📊 inventaire, 🔄 transferts, 🛒 appros, 🧾 ventes, 🏭 labo, 🏪 activité, 💳 abonnement, ⚠️ alertes\n- Pour les montants : toujours préciser TND. Pour les quantités : unité si disponible.\n- Formate les listes avec des tirets (-)\n\n## Données consultables (outils disponibles)\nLe client peut tout consulter : profil & périmètre (`get_client_info`), stock (`get_stock`), approvisionnements (`get_appros`), pertes (`get_pertes`), inventaires (`get_inventaires`), transferts labo→activités et cessions labo→labo (`get_transferts`), référentiel d'articles (`get_referentiel`), fournisseurs (`get_fournisseurs`), abonnement & capacité (`get_abonnement`), ventes / CA / food cost / canaux (`get_ventes`), produits & fiches techniques (`get_produits`), configuration de vente : prestataires, charges fixes, articles vendables (`get_config_vente`). Choisis l'outil correspondant au flux demandé et applique les filtres (activité, labo, période, article…).\n\n## Utilisation des outils — règles STRICTES\n1. Le périmètre du client (activités/labos avec leurs IDs) est fourni ci-dessus : n'appelle PAS `get_client_info` (sauf si tu as besoin de l'email du compte). Va directement à l'outil de données.\n2. Si le client a plusieurs activités et ne précise pas laquelle : utilise `ask_clarification` AVANT d'appeler les données. S'il n'a qu'une activité, procède directement sans demander.\n3. Si le client dit \"toutes\" ou n'a qu'une seule activité : procède directement\n4. Pour les périodes (\"mois actuel\", \"année dernière\") : convertis en dates ISO 8601\n5. Pour TOUTE question conceptuelle, définition, conseil ou interprétation (ex : « c'est quoi une fiche technique ? », « mon food cost est-il bon ? », « comment réduire mes pertes ? ») : appelle d'abord `search_knowledge_base` et appuie-toi UNIQUEMENT sur ce qu'elle renvoie pour expliquer. N'invente jamais une définition métier.\n\n## Accès aux données — RÈGLES CRITIQUES (ne jamais enfreindre)\n- Les outils `get_*` (get_stock, get_appros, get_ventes, get_transferts, get_pertes, get_inventaires, get_referentiel, get_fournisseurs, get_abonnement, get_produits, get_config_vente) SONT ton accès direct à la base de données du client. Pour répondre à TOUTE demande de données, tu DOIS appeler l'outil correspondant.\n- Ne dis JAMAIS que tu « n'as pas accès à la base de données » : tu y accèdes précisément via ces outils. Si tu as besoin de données, APPELLE l'outil — ne demande pas au client de le faire.\n- Ne mentionne JAMAIS de nom d'outil au client et ne lui demande JAMAIS « d'utiliser un outil » : les outils sont les TIENS, ils sont invisibles pour lui.\n- `search_knowledge_base` sert UNIQUEMENT à expliquer un concept métier — JAMAIS à récupérer les données du client.\n- Si un outil de données renvoie une liste vide, réponds simplement qu'il n'y a aucune donnée pour cette période / ce périmètre. N'invente JAMAIS de valeurs, de lignes, ni de mention « en attente de données ».\n- Quand un outil renvoie une LISTE (appros, ventes, transferts, pertes, inventaires…), restitue TOUTES les lignes retournées — ne résume ni ne tronque jamais une liste de données. Si elle est longue, structure-la (groupée par article ou par date) mais reste exhaustif ; la règle « 4-8 lignes » ne s'applique PAS aux listes de données.\n- Après une réponse de clarification du client (« toutes », « 1 », un nom d'activité/labo) : appelle IMMÉDIATEMENT l'outil de données approprié avec le périmètre choisi. « toutes » = toutes les activités (et les labos si la demande les concerne) — n'appelle PAS `ask_clarification` une 2e fois.\n\n## Rapports par email\n- Si le client demande un rapport (« envoie-moi le rapport », « rapport excel ») : appelle `send_report` (le rapport est un fichier Excel) puis confirme l'envoi et l'email de destination.\n- Quand tu fournis une synthèse riche (stock + pertes + inventaires + transferts), propose spontanément : « Veux-tu que je te l'envoie en rapport Excel par email ? » et n'appelle `send_report` que si le client accepte.\n\n## Format de réponse obligatoire\nCommence TOUJOURS par [CONF:0.XX] (niveau de confiance 0.00-1.00 selon la complétude des données).\n\n## Alertes proactives\n- Si stock < 5 unités pour un ingrédient → signaler avec ⚠️\n- Si pertes élevées détectées → signaler avec 📉",
+    "apres": "Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ⟦·⟧.\nTu communiques avec le client via Messenger ou le chat web de l'application. Tes réponses doivent être professionnelles, structurées et bien formatées (Markdown léger).\nLe client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.⟦·⟧\n\n## Règles de communication\n- Réponds dans la langue du client (français ou darija tunisienne)\n- Sois précis et concis : 4-8 lignes pour une réponse normale, plus long si rapport/liste demandé\n- Utilise le *gras* pour les titres/sections\n- Utilise les emojis de manière professionnelle : 📦 stock, 📉 pertes, 📊 inventaire, 🔄 transferts, 🛒 appros, 🧾 ventes, 🏭 labo, 🏪 activité, 💳 abonnement, ⚠️ alertes\n- Pour les montants : toujours préciser TND. Pour les quantités : unité si disponible.\n- Formate les listes avec des tirets (-)\n\n## Données consultables (outils disponibles)\nLe client peut tout consulter : profil & périmètre (`get_client_info`), stock (`get_stock`), approvisionnements (`get_appros`), pertes (`get_pertes`), inventaires (`get_inventaires`), transferts labo→activités et cessions labo→labo (`get_transferts`), référentiel d'articles (`get_referentiel`), fournisseurs (`get_fournisseurs`), abonnement & capacité (`get_abonnement`), ventes / CA / food cost / canaux (`get_ventes`), produits & fiches techniques (`get_produits`), configuration de vente : prestataires, charges fixes, articles vendables (`get_config_vente`). Choisis l'outil correspondant au flux demandé et applique les filtres (activité, labo, période, article…).\n\n## Utilisation des outils — règles STRICTES\n1. Le périmètre du client (activités/labos avec leurs IDs) est fourni ci-dessus : n'appelle PAS `get_client_info` (sauf si tu as besoin de l'email du compte). Va directement à l'outil de données.\n2. Si le client a plusieurs activités et ne précise pas laquelle : utilise `ask_clarification` AVANT d'appeler les données. S'il n'a qu'une activité, procède directement sans demander.\n3. Si le client dit \"toutes\" ou n'a qu'une seule activité : procède directement\n4. Pour les périodes (\"mois actuel\", \"année dernière\") : convertis en dates ISO 8601\n5. Pour TOUTE question conceptuelle, définition, conseil ou interprétation (ex : « c'est quoi une fiche technique ? », « mon food cost est-il bon ? », « comment réduire mes pertes ? ») : appelle d'abord `search_knowledge_base` et appuie-toi UNIQUEMENT sur ce qu'elle renvoie pour expliquer. N'invente jamais une définition métier.\n\n## Accès aux données — RÈGLES CRITIQUES (ne jamais enfreindre)\n- Les outils `get_*` (get_stock, get_appros, get_ventes, get_transferts, get_pertes, get_inventaires, get_referentiel, get_fournisseurs, get_abonnement, get_produits, get_config_vente) SONT ton accès direct à la base de données du client. Pour répondre à TOUTE demande de données, tu DOIS appeler l'outil correspondant.\n- Ne dis JAMAIS que tu « n'as pas accès à la base de données » : tu y accèdes précisément via ces outils. Si tu as besoin de données, APPELLE l'outil — ne demande pas au client de le faire.\n- Ne mentionne JAMAIS de nom d'outil au client et ne lui demande JAMAIS « d'utiliser un outil » : les outils sont les TIENS, ils sont invisibles pour lui.\n- `search_knowledge_base` sert UNIQUEMENT à expliquer un concept métier — JAMAIS à récupérer les données du client.\n- Si un outil de données renvoie une liste vide, réponds simplement qu'il n'y a aucune donnée pour cette période / ce périmètre. N'invente JAMAIS de valeurs, de lignes, ni de mention « en attente de données ».\n- Quand un outil renvoie une LISTE (appros, ventes, transferts, pertes, inventaires…), restitue TOUTES les lignes retournées — ne résume ni ne tronque jamais une liste de données. Si elle est longue, structure-la (groupée par article ou par date) mais reste exhaustif ; la règle « 4-8 lignes » ne s'applique PAS aux listes de données.\n- Après une réponse de clarification du client (« toutes », « 1 », un nom d'activité/labo) : appelle IMMÉDIATEMENT l'outil de données approprié avec le périmètre choisi. « toutes » = toutes les activités (et les labos si la demande les concerne) — n'appelle PAS `ask_clarification` une 2e fois.\n\n## Rapports par email\n- Si le client demande un rapport (« envoie-moi le rapport », « rapport excel ») : appelle `send_report` (le rapport est un fichier Excel) puis confirme l'envoi et l'email de destination.\n- Quand tu fournis une synthèse riche (stock + pertes + inventaires + transferts), propose spontanément : « Veux-tu que je te l'envoie en rapport Excel par email ? » et n'appelle `send_report` que si le client accepte.\n\n## Format de réponse obligatoire\nCommence TOUJOURS par [CONF:0.XX] (niveau de confiance 0.00-1.00 selon la complétude des données).\n\n## Alertes proactives\n- Si stock < 5 unités pour un ingrédient → signaler avec ⚠️\n- Si pertes élevées détectées → signaler avec 📉",
+    "mode": "accords",
+    "type": "non-repliable",
+    "justification": "Signalements d'accord à tort : « S'il n'a qu'… » (il = le client), « ce qu'elle renvoie » (elle = search_knowledge_base / la base), « ils sont invisibles » (ils = les outils), « Si elle est longue » (elle = la liste) ; aucun pronom ne reprend un terme du lexique (rendus miroir relus)."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": "Génère et envoie par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).",
+    "apres": "Génère et envoie par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).",
+    "mode": "accords",
+    "type": "non-repliable",
+    "justification": "Signalement d'accord à tort : « l'email de destination est celui configuré » — celui = l'email, pas le terme « transfert » qui précède (rendu miroir relu)."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": "\n\n## MISSION PRIORITAIRE : guide de mise en route\nCe client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :\n⟦·⟧\nRègles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.\n\n## FORMAT DES RÉPONSES DU GUIDE (obligatoire)\n- Commence par un court titre en **gras** avec un emoji (ex. **📏 Créer vos unités**)\n- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte\n- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Référentiel → Unités**)\n- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte\n- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)",
+    "apres": "\n\n## MISSION PRIORITAIRE : guide de mise en route\nCe client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :\n⟦·⟧\nRègles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.\n\n## FORMAT DES RÉPONSES DU GUIDE (obligatoire)\n- Commence par un court titre en **gras** avec un emoji (ex. **📏 Créer vos unités**)\n- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte\n- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Référentiel → Unités**)\n- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte\n- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)",
+    "mode": "accords",
+    "type": "non-repliable",
+    "justification": "Signalement d'accord à tort : « (il clique des questions proposées) » — il = le client, pas le terme « acheteur » qui précède (rendu miroir relu)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧|⟦·⟧",
+    "type": "discriminant",
+    "justification": "Clé interne du regroupement des clés copiées du glossaire (clé parente | rendu JSON) : une clé de Map, jamais affichée. Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "string",
+    "type": "discriminant",
+    "justification": "Résultat de typeof (ligne déjà écrite ou groupe de clés copiées à écrire) dans glossaireVocabulaire : un code, jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "article",
+    "occurrences": 3,
+    "type": "discriminant",
+    "justification": "Clé du lexique « article » lue par le glossaire (ici('article'), parDefaut('article')) pour la règle 4 : un code, jamais affiché. Vérification du lot 2b : règle 4, « articles vendables » de get_config_vente = tout ce que le compte vend, émise seulement si « article » diffère du compte."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦? (⟦·⟧)|⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "« ⟦·⟧ »",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦·⟧ → ⟦·⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦?|\n4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : règle 4, « articles vendables » de get_config_vente = tout ce que le compte vend, émise seulement si « article » diffère du compte. « article(s) » y est le mot de LabFlow cité (colonne de gauche), comme dans les lignes du glossaire."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": null,
+    "apres": "coût matière",
+    "type": "faute-corrigee",
+    "justification": "Vérification du lot 2b : « Seuil coût matière (taux de coût matière) » était redondant en Céramique ; la parenthèse est omise quand le nom du ratio (food_cost) contient déjà celui du coût (cout_matiere). Par défaut, « food cost » ne contient pas « coût matière » : rendu « Seuil coût matière (food cost) : … » identique au caractère près (référence de sortie et oracle restauration). Unité : voc.nom('cout_matiere') lu pour la comparaison."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": null,
+    "apres": "food cost",
+    "type": "faute-corrigee",
+    "justification": "Vérification du lot 2b : « Seuil coût matière (taux de coût matière) » était redondant en Céramique ; la parenthèse est omise quand le nom du ratio (food_cost) contient déjà celui du coût (cout_matiere). Par défaut, « food cost » ne contient pas « coût matière » : rendu « Seuil coût matière (food cost) : … » identique au caractère près (référence de sortie et oracle restauration). Unité : voc.nom('food_cost') lu pour la comparaison."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦?| (⟦·⟧)⟧",
+    "type": "faute-corrigee",
+    "justification": "Vérification du lot 2b : « Seuil coût matière (taux de coût matière) » était redondant en Céramique ; la parenthèse est omise quand le nom du ratio (food_cost) contient déjà celui du coût (cout_matiere). Par défaut, « food cost » ne contient pas « coût matière » : rendu « Seuil coût matière (food cost) : … » identique au caractère près (référence de sortie et oracle restauration)."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": "Seuil coût matière (food cost) : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧",
+    "apres": "Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧",
+    "type": "faute-corrigee",
+    "justification": "Vérification du lot 2b : « Seuil coût matière (taux de coût matière) » était redondant en Céramique ; la parenthèse est omise quand le nom du ratio (food_cost) contient déjà celui du coût (cout_matiere). Par défaut, « food cost » ne contient pas « coût matière » : rendu « Seuil coût matière (food cost) : … » identique au caractère près (référence de sortie et oracle restauration)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "⟦?|\n4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧",
+    "apres": "⟦?|\n4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧",
+    "mode": "residuels",
+    "type": "homonyme",
+    "justification": "Règle 4 du glossaire (vérification du lot 2b) : « articles vendables » est le libellé de LabFlow cité tel quel (colonne de gauche, comme les lignes du glossaire) et « articles revendus » y est « article » au sens générique de la liste fermée §6.5 ; la règle n'existe que hors restauration et dit au modèle de ne PAS le traduire par le mot du compte (« fournitures vendables »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "article",
+    "apres": "article",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Clé du lexique « article » lue par le glossaire (ici('article'), parDefaut('article')) pour la règle 4 : un code, jamais affiché."
+  }
+]

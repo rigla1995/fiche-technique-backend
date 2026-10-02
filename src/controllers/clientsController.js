@@ -6,9 +6,11 @@ const {
 } = require('./abonnementController');
 const {
   CompositionError, deriveCompteurs, validerComposition, erreursIntroduites, resolveComposants, composantsDepuisCompteurs,
-  applyComposants, listComposantsConfig,
+  applyComposants, invaliderProfilApresCommit, listComposantsConfig,
 } = require('../services/configComposantsService');
 const { getProfil, getDomaineDefautId } = require('../services/domaineProfilService');
+const { vocabDefaut, vocabDuDomaine } = require('../utils/vocabCompte');
+const { oublierConversationsIA } = require('../services/clientConfigService');
 const { generateInviteToken, sendWelcomeWithContractEmail, sendDocusealSigningEmail } = require('../services/emailService');
 const { generateContratPdf } = require('../services/pdfService');
 const {
@@ -25,7 +27,9 @@ const fmtDateC = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-di
 // Retourne { montantOnboarding, montantMensuel, extraFields } pour la soumission Docuseal.
 // `domaineNom` (lot 1a) : champ « Domaine » du flux template (filtré par le retry 422
 // tant que le template DocuSeal ne le porte pas — cf docuseal-templates/CHAMPS.md).
-const buildContractPricingFields = (pricing, domaineNom = null) => {
+// `voc` (lot 2b, spec §8.2) : vocabulaire du compte, pour la VALEUR « Option Acheteurs » ; les noms de
+// champs DocuSeal ne changent pas (un nom traduit serait retiré en silence par le retry 422).
+const buildContractPricingFields = (pricing, domaineNom = null, voc = vocabDefaut) => {
   if (!pricing) return { montantOnboarding: null, montantMensuel: null, extraFields: [] };
   const { baseOnboarding, effOnboarding, baseMensuel, effMensuel, promoMens, promoOb, promoMonths, baseResumeDate, hasPromo } = pricing;
 
@@ -61,7 +65,7 @@ const buildContractPricingFields = (pricing, domaineNom = null) => {
     ? (pricing.formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium')
     : (aDesActivites ? 'Activité Premium' : '');
   const acheteursLabel = pricing.palierAcheteurs
-    ? `Palier jusqu'à ${pricing.palierAcheteurs} acheteurs`
+    ? `Palier jusqu'à ${pricing.palierAcheteurs} ${voc.nom('acheteur', true)}`
     : '';
 
   return {
@@ -82,7 +86,8 @@ const buildContractPricingFields = (pricing, domaineNom = null) => {
 // par client, prestataire pré-signé — createSubmissionFromPdf), avec REPLI sur le
 // flux template historique si la génération ou l'API échoue, ou si seul le template
 // est configuré. Retourne { submissionId, signingUrl } dans les deux cas.
-const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone, adresse, config, montantOnboarding }) => {
+// voc : vocabulaire du compte créé (vocabDuDomaine, lot 2b spec §8.2) — valeurs du document et des champs.
+const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone, adresse, config, montantOnboarding, voc = vocabDefaut }) => {
   if (docusealPdfConfigured() && pricing) {
     try {
       const docu = await buildContratDocument({
@@ -91,6 +96,7 @@ const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone
         config,
         pricing,
         montantOnboarding,
+        voc,
       });
       return await createSubmissionFromPdf({
         pdfBase64: docu.base64,
@@ -102,7 +108,7 @@ const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone
       console.error('[docuseal] flux PDF rempli échoué, repli sur le template:', e.message);
     }
   }
-  const pf = buildContractPricingFields(pricing, config?.domaineNom || null);
+  const pf = buildContractPricingFields(pricing, config?.domaineNom || null, voc);
   return createContractSubmission({
     clientName: nom,
     clientEmail: email,
@@ -430,6 +436,8 @@ const create = async (req, res) => {
 
     // Auto-generate contract PDF, send via Docuseal (e-signature) + welcome email
     try {
+      // Vocabulaire du compte créé (domaine du profil, en cache : aucune requête de plus)
+      const voc = await vocabDuDomaine(domaineId);
       const aboConfig = config || {};
       const pdfBase64 = contractPdfBase64 || await generateContratPdf({
         nom,
@@ -443,7 +451,7 @@ const create = async (req, res) => {
         formuleActivites: (aboConfig.nbActivites ?? 1) >= 1 ? formuleActivites : null,
         nbAcheteurs: nbAcheteursEff,
         dateContrat: new Date(),
-      });
+      }, voc);
 
       // Contrat e-signature : PDF rempli par client (prioritaire) ou template Docuseal.
       if (docusealPdfConfigured() || docusealConfigured()) {
@@ -464,6 +472,7 @@ const create = async (req, res) => {
           adresse: adresse || null,
           config: aboConfigForDocuseal,
           montantOnboarding,
+          voc,
         })
           .then(({ submissionId, signingUrl }) => {
             console.log(`[docuseal] Contrat soumis: ${submissionId} pour ${email}`);
@@ -472,7 +481,7 @@ const create = async (req, res) => {
                 .catch((e) => console.error('[docuseal] Stockage contrat_submission_id échoué:', e.message));
             }
             if (signingUrl) {
-              sendDocusealSigningEmail({ to: email, nom, signingUrl })
+              sendDocusealSigningEmail({ to: email, nom, signingUrl, voc })
                 .then(() => console.log(`[docuseal] Email de signature envoyé à ${email}`))
                 .catch((err) => console.error('[docuseal] Erreur envoi email signature:', err.message));
             }
@@ -571,6 +580,8 @@ const update = async (req, res) => {
     // composants re-mappés sur le nouveau domaine (même code sinon 1er composant du type,
     // compteurs et mensualité conservés), paiements en attente recalculés sur sa grille.
     let aboIdDomaine = null;
+    let vocabChange = false; // purge de l'assistant : seulement si le vocabulaire change
+    let resultatComposants = null;
     if (domaineId != null) {
       const aboRes = await dbClient.query(
         `SELECT a.id, ac.domaine_id FROM abonnements a
@@ -580,6 +591,8 @@ const update = async (req, res) => {
       );
       if (aboRes.rows.length && aboRes.rows[0].domaine_id !== domaineId) {
         aboIdDomaine = aboRes.rows[0].id;
+        // Domaine NULL (config antérieure au backfill de la 187) = restauration : l'y rattacher ne purge rien
+        vocabChange = (aboRes.rows[0].domaine_id ?? (await getDomaineDefautId(dbClient))) !== domaineId;
         const composants = await remapperComposants(dbClient, aboIdDomaine, domaineId);
         // Composition re-mappée validée contre les règles / bornes (nb_min, nb_max) du
         // domaine CIBLE : seules les erreurs introduites par le changement bloquent (400).
@@ -594,13 +607,18 @@ const update = async (req, res) => {
           validerComposition({ compteurs: deriveCompteurs(resolus), regles: profilCible?.regles, composants: resolus })
         );
         if (erreurs.length) throw new CompositionError(erreurs);
-        await applyComposants(dbClient, aboIdDomaine, { domaineId, composants, mode: 'set' });
+        resultatComposants = await applyComposants(dbClient, aboIdDomaine, { domaineId, composants, mode: 'set' });
       }
     }
 
     await dbClient.query('COMMIT');
+    // Composant identité créé à la volée : le profil du domaine en cache ne l'a pas (spec §5.4)
+    invaliderProfilApresCommit(resultatComposants);
     if (aboIdDomaine) {
       await recalcPaiementsEnAttente(pool, aboIdDomaine).catch((e) => console.error('[clients.update] recalc paiements:', e.message));
+      // Domaine changé : l'assistant oublie les conversations dites dans l'ancien vocabulaire
+      // (lot 2b, spec §5.6) — au mieux, jamais un 500.
+      if (vocabChange) await oublierConversationsIA(id).catch((e) => console.error('[clients.update] purge assistant:', e.message));
     }
 
     // Return with fresh domaineIds + domaine du compte
@@ -744,7 +762,9 @@ const remove = async (req, res) => {
     if (deletedClient.email && (docusealPdfConfigured() || docusealConfigured('resiliation'))) {
       submitResiliationForSignature(deletedClient)
         .then(({ signingUrl }) => signingUrl
-          ? sendDocusealSigningEmail({ to: deletedClient.email, nom: deletedClient.nom || 'Client', signingUrl, type: 'resiliation' })
+          // Vocabulaire par défaut, voulu (spec §5.6) : le compte est supprimé AVANT l'envoi,
+          // et la variante résiliation n'écrit aucun terme.
+          ? sendDocusealSigningEmail({ to: deletedClient.email, nom: deletedClient.nom || 'Client', signingUrl, type: 'resiliation', voc: vocabDefaut })
           : null)
         .then(() => console.log(`[resiliation] acte envoyé à ${deletedClient.email}`))
         .catch((e) => console.error('[resiliation] envoi échoué:', e.message));
@@ -760,4 +780,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { list, getById, create, update, remove };
+module.exports = { list, getById, create, update, remove, buildContractPricingFields };

@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { Resend } = require('resend');
+const { vocabDefaut } = require('../utils/vocab');
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_test_key');
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
@@ -12,10 +13,23 @@ const APP_NAME = process.env.APP_NAME || 'LabFlow';
 // le texte alt « LabFlow » stylé en blanc. Source : public/logo-email.png du frontend.
 const BRAND_LOGO = `<img src="${APP_URL}/logo-email.png" alt="LabFlow" width="138" height="34" style="display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;" />`;
 
-const sendInviteEmail = async ({ to, nom, token, role }) => {
+// Vocabulaire du DESTINATAIRE (lot 2b, spec §5.6). Les 5 fonctions à terme
+// (sendInviteEmail, sendDocusealSigningEmail, sendAvenantEmail, sendRapportWithAttachment,
+// sendMessengerInviteEmail) reçoivent `voc` en CLÉ de leur objet d'arguments, et chaque appel
+// dans src/ la porte (contrôle statique : test/emailVoc.test.js). Sans elle, l'oubli est
+// journalisé et l'email part quand même, avec le vocabulaire par défaut : un email n'est
+// jamais perdu (plusieurs appelants avalent le rejet).
+const vocDuDestinataire = (voc, fonction) => {
+  if (voc) return voc;
+  console.error('[email] voc manquant', fonction.name);
+  return vocabDefaut;
+};
+
+const sendInviteEmail = async ({ to, nom, token, role, voc: vocRecu }) => {
+  const voc = vocDuDestinataire(vocRecu, sendInviteEmail);
   const inviteUrl = `${APP_URL}/invite/${token}`;
 
-  const roleLabel = role === 'gerant' ? 'gérant' : role === 'acheteur' ? 'acheteur' : 'client';
+  const roleLabel = role === 'gerant' ? voc.nom('gerant') : role === 'acheteur' ? voc.nom('acheteur') : 'client';
 
   const html = `
 <!DOCTYPE html>
@@ -198,7 +212,8 @@ const sendPasswordResetEmail = async ({ to, nom, token }) => {
   return { success: true, id: data?.id };
 };
 
-const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, type = null }) => {
+const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, type = null, voc: vocRecu }) => {
+  const voc = vocDuDestinataire(vocRecu, sendDocusealSigningEmail);
   // kind ∈ 'contrat' | 'avenant' | 'resiliation' (avenant prioritaire pour rétro-compat)
   const kind = avenant ? 'avenant' : (type || 'contrat');
   const isAvenant = kind === 'avenant';
@@ -207,10 +222,10 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, t
   const supParts = [];
   if (isAvenant) {
     const n = (v) => parseInt(v, 10) || 0;
-    if (n(avenant.addActivites) > 0) supParts.push(`${n(avenant.addActivites)} activité${n(avenant.addActivites) > 1 ? 's' : ''}`);
-    if (n(avenant.addLabos) > 0) supParts.push(`${n(avenant.addLabos)} labo${n(avenant.addLabos) > 1 ? 's' : ''}`);
-    if (n(avenant.addGerants) > 0) supParts.push(`${n(avenant.addGerants)} gérant${n(avenant.addGerants) > 1 ? 's' : ''}`);
-    if (n(avenant.setAcheteurs) > 0) supParts.push(`l'option Acheteurs (palier jusqu'à ${n(avenant.setAcheteurs)} acheteurs)`);
+    if (n(avenant.addActivites) > 0) supParts.push(`${n(avenant.addActivites)} ${voc.nom('activite', n(avenant.addActivites) > 1)}`);
+    if (n(avenant.addLabos) > 0) supParts.push(`${n(avenant.addLabos)} ${voc.nom('labo', n(avenant.addLabos) > 1)}`);
+    if (n(avenant.addGerants) > 0) supParts.push(`${n(avenant.addGerants)} ${voc.nom('gerant', n(avenant.addGerants) > 1)}`);
+    if (n(avenant.setAcheteurs) > 0) supParts.push(`l'option ${voc.Court('acheteur', true)} (palier jusqu'à ${n(avenant.setAcheteurs)} ${voc.nom('acheteur', true)})`);
   }
   const supText = supParts.join(', ') || 'capacité supplémentaire';
 
@@ -318,14 +333,17 @@ const sendAvenantEmail = async ({
   dateAvenant,
   // PDF contract attachment (base64)
   pdfBase64,
+  // Vocabulaire du destinataire (vocDuDestinataire)
+  voc: vocRecu,
 }) => {
+  const voc = vocDuDestinataire(vocRecu, sendAvenantEmail);
   const fmtDt = (n) => (n != null ? `${Number(n).toFixed(2)} DT` : '—');
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const addedParts = [
-    nbActivitesAdded > 0 && `+${nbActivitesAdded} activité${nbActivitesAdded > 1 ? 's' : ''}`,
-    nbLabosAdded > 0     && `+${nbLabosAdded} labo${nbLabosAdded > 1 ? 's' : ''}`,
-    nbGerantsAdded > 0   && `+${nbGerantsAdded} gérant${nbGerantsAdded > 1 ? 's' : ''}`,
+    nbActivitesAdded > 0 && `+${nbActivitesAdded} ${voc.nom('activite', nbActivitesAdded > 1)}`,
+    nbLabosAdded > 0     && `+${nbLabosAdded} ${voc.nom('labo', nbLabosAdded > 1)}`,
+    nbGerantsAdded > 0   && `+${nbGerantsAdded} ${voc.nom('gerant', nbGerantsAdded > 1)}`,
   ].filter(Boolean).join(' · ');
 
   const html = `
@@ -360,17 +378,17 @@ const sendAvenantEmail = async ({
         <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre configuration après avenant</div>
         <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
           <tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">Activités</td>
+            <td style="padding:8px 0;color:#6b7280;">${voc.Pl('activite')}</td>
             <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nbActivites}</td>
             <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(activiteCost)}</td>
           </tr>
           ${nbLabos > 0 ? `<tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">Labos</td>
+            <td style="padding:8px 0;color:#6b7280;">${voc.Pl('labo')}</td>
             <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nbLabos}</td>
             <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(laboCost)}</td>
           </tr>` : ''}
           ${nbGerants > 0 ? `<tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">Gérants</td>
+            <td style="padding:8px 0;color:#6b7280;">${voc.Pl('gerant')}</td>
             <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nbGerants}</td>
             <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(gerantCost)}</td>
           </tr>` : ''}
@@ -522,7 +540,8 @@ const sendRapportEmail = async ({ to, clientNom, rapportText }) => {
   return { success: true, id: data?.id };
 };
 
-const sendRapportWithAttachment = async ({ to, clientNom, buffer, filename, mimeType, format }) => {
+const sendRapportWithAttachment = async ({ to, clientNom, buffer, filename, mimeType, format, voc: vocRecu }) => {
+  const voc = vocDuDestinataire(vocRecu, sendRapportWithAttachment);
   const formatLabel = format === 'excel' ? 'Excel' : 'PDF';
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
@@ -535,7 +554,7 @@ const sendRapportWithAttachment = async ({ to, clientNom, buffer, filename, mime
       </div>
       <p style="color:#374151;font-size:14px;line-height:1.6">
         Votre rapport <strong>${formatLabel}</strong> est disponible en pièce jointe.<br>
-        Il contient votre stock actuel, vos pertes récentes et vos inventaires.
+        Il contient ${voc.votre('stock')} ${voc.acc('stock', 'actuel', 'actuelle')}, ${voc.votre('perte', true)} ${voc.acc('perte', 'récent', 'récente', true)} et ${voc.votre('inventaire', true)}.
       </p>
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
       <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ${APP_NAME}</p>
@@ -550,7 +569,8 @@ const sendRapportWithAttachment = async ({ to, clientNom, buffer, filename, mime
   return { success: true, id: data?.id };
 };
 
-const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) => {
+const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName, voc: vocRecu }) => {
+  const voc = vocDuDestinataire(vocRecu, sendMessengerInviteEmail);
   const name = appName || APP_NAME;
   const html = `
 <!DOCTYPE html>
@@ -571,12 +591,12 @@ const sendMessengerInviteEmail = async ({ to, clientNom, inviteLink, appName }) 
       </p>
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:26px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:0.9rem;color:#1e293b;line-height:1.9;">
-          <tr><td style="width:50%;">🏪 Activités &amp; labos</td><td>🧾 Ventes &amp; CA</td></tr>
-          <tr><td>📦 Stock &amp; seuils</td><td>🛒 Approvisionnements</td></tr>
-          <tr><td>🔄 Transferts</td><td>📉 Pertes &amp; inventaires</td></tr>
-          <tr><td>📚 Référentiel &amp; fournisseurs</td><td>💳 Abonnement &amp; produits</td></tr>
+          <tr><td style="width:50%;">${voc.icon('activite')} ${voc.Pl('activite')} &amp; ${voc.pl('labo')}</td><td>🧾 ${voc.Pl('vente')} &amp; CA</td></tr>
+          <tr><td>${voc.icon('stock')} ${voc.Nom('stock')} &amp; seuils</td><td>🛒 ${voc.Pl('appro')}</td></tr>
+          <tr><td>🔄 ${voc.Pl('transfert')}</td><td>📉 ${voc.Pl('perte')} &amp; ${voc.pl('inventaire')}</td></tr>
+          <tr><td>${voc.icon('referentiel')} ${voc.Nom('referentiel')} &amp; ${voc.pl('fournisseur')}</td><td>💳 Abonnement &amp; ${voc.pl('produit')}</td></tr>
         </table>
-        <p style="margin:12px 0 0;font-size:0.82rem;color:#64748b;">Filtrez par activité, labo ou période — et demandez un <strong>rapport Excel par email</strong> quand vous voulez.</p>
+        <p style="margin:12px 0 0;font-size:0.82rem;color:#64748b;">Filtrez par ${voc.nom('activite')}, ${voc.nom('labo')} ou période — et demandez un <strong>rapport Excel par email</strong> quand vous voulez.</p>
       </div>
       <div style="text-align:center;margin:0 0 26px;">
         <a href="${inviteLink}" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">

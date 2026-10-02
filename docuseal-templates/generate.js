@@ -128,10 +128,60 @@ const RX = ML + CW;            // bord droit contenu
 const TOPY = 150;              // début du contenu sous l'en-tête
 const BOTTOM_LIMIT = PAGE.h - 64; // limite avant footer
 
+// ── Texte sûr pour les polices standard (lot 2b, spec §8.3) ───────────────────
+// Portage de src/utils/pdfTexte.ts (frontend). Les polices standard de pdfkit (Helvetica) n'écrivent
+// que Windows-1252 : « → » sortait « !’ », une donnée hors police (arabe, emoji) en octets illisibles.
+// pdfTexte donne un équivalent lisible aux signes porteurs de sens, retire les signes décoratifs et
+// écrit « ? » pour tout le reste. Les parenthèses et guillemets vides ne sont retirés que si un signe
+// décoratif a été retiré de la chaîne (« Sauce () » reste tel quel).
+// En OPTION seulement : makeCtx(info, { pdfTexte: true }) — facture d'appro, contrat régénéré ou en
+// aperçu (option de contractPdfService.generate). Jamais pour un document à signer, ni pour la facture
+// acheteur, la facture d'abonnement ou la résiliation ; jamais sur une valeur envoyée à DocuSeal.
+const HORS_POLICE = /[^\t\n\r\x20-\xFF\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178]/gu;
+// Table du front, écrite en points de code (U+…) : caractère → équivalent.
+const cp = (...points) => String.fromCodePoint(...points);
+const EQUIVALENTS_PDF = new Map([
+  // Flèches de parcours et de sens : « Référentiel › Unités », « Reçu ‹ X » (→ ➜ ➔ ⇒ ▸ › ; ← ⇐ ‹ ; ↔ ‹›)
+  [0x2192, cp(0x203A)], [0x279C, cp(0x203A)], [0x2794, cp(0x203A)], [0x21D2, cp(0x203A)], [0x25B8, cp(0x203A)],
+  [0x2190, cp(0x2039)], [0x21D0, cp(0x2039)], [0x2194, cp(0x2039, 0x203A)],
+  // Mathématiques (− –, ≤ <=, ≥ >=, ≠ <>, ≈ ~, Σ et ∑ Somme, ∞ infini)
+  [0x2212, cp(0x2013)], [0x2264, '<='], [0x2265, '>='], [0x2260, '<>'], [0x2248, cp(0x7E)],
+  [0x03A3, 'Somme'], [0x2211, 'Somme'], [0x221E, 'infini'],
+  // Évolution d'un indicateur (▲ +, ▼ –)
+  [0x25B2, cp(0x2B)], [0x25BC, cp(0x2013)],
+  // Espaces que la police ne connaît pas (fine insécable, fine, de chiffre, ultra-fine ; largeur nulle, BOM retirés)
+  [0x202F, cp(0x20)], [0x2009, cp(0x20)], [0x2007, cp(0x20)], [0x200A, cp(0x20)], [0x200B, cp()], [0xFEFF, cp()],
+]);
+// Décoratifs, retirés (icônes de boutons, de badges, coches, puces) : ✓ ✔ ✕ ✖ ✗ ◆ ◇ ● ○ ■ □ ▪ ⇄ ⇆ ↑ ↓ ↳ ↺ ↻
+const DECORATIFS_PDF = new Set([
+  0x2713, 0x2714, 0x2715, 0x2716, 0x2717, 0x25C6, 0x25C7, 0x25CF, 0x25CB, 0x25A0, 0x25A1, 0x25AA,
+  0x21C4, 0x21C6, 0x2191, 0x2193, 0x21B3, 0x21BA, 0x21BB,
+]);
+const pdfTexte = (texte) => {
+  let decoratifRetire = false;
+  const s = String(texte).replace(HORS_POLICE, (c) => {
+    const point = c.codePointAt(0);
+    if (DECORATIFS_PDF.has(point)) { decoratifRetire = true; return cp(); }
+    return EQUIVALENTS_PDF.has(point) ? EQUIVALENTS_PDF.get(point) : '?';
+  });
+  return decoratifRetire ? s.replace(/\(\s*\)/g, cp()).replace(/«\s*»/g, cp()) : s;
+};
+// Applique pdfTexte à tout texte écrit OU mesuré par ce document (text, heightOfString, widthOfString) :
+// les largeurs et hauteurs mesurées sont celles du texte écrit. pdfTexte est idempotent.
+const pdfTexteSur = (doc) => {
+  const sur = (s) => (typeof s === 'string' ? pdfTexte(s) : s);
+  const { text, heightOfString, widthOfString } = doc;
+  doc.text = function texteSur(s, ...reste) { return text.call(this, sur(s), ...reste); };
+  doc.heightOfString = function hauteurSur(s, ...reste) { return heightOfString.call(this, sur(s), ...reste); };
+  doc.widthOfString = function largeurSur(s, ...reste) { return widthOfString.call(this, sur(s), ...reste); };
+  return doc;
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 // Contexte de rendu + helpers
 // ══════════════════════════════════════════════════════════════════════════════
-function makeCtx(info) {
+// options.pdfTexte : texte sûr pour la police (pdfTexteSur ci-dessus), en OPTION seulement.
+function makeCtx(info, { pdfTexte: avecPdfTexte = false } = {}) {
   const doc = new PDFDocument({
     size: 'A4',
     margins: { top: 0, bottom: 0, left: 0, right: 0 },
@@ -139,6 +189,7 @@ function makeCtx(info) {
     bufferPages: true,
     info,
   });
+  if (avecPdfTexte) pdfTexteSur(doc);
 
   const fill = (x, y, w, h, hex) => doc.rect(x, y, w, h).fill(hex);
   const roundFill = (x, y, w, h, r, hex, stroke) => {
@@ -675,12 +726,14 @@ function finish(ctx, outPath) {
 // ══════════════════════════════════════════════════════════════════════════════
 // 1) CONTRAT D'ABONNEMENT
 // ══════════════════════════════════════════════════════════════════════════════
-async function buildContrat(outPath, data) {
+// options.pdfTexte : posée SEULEMENT pour le contrat régénéré et l'aperçu du wizard (contractPdfService.generate) ;
+// jamais pour le document envoyé en signature.
+async function buildContrat(outPath, data, options = {}) {
   const previewMode = data.previewMode !== false;
   const ctx = makeCtx({
     Title: data.templateMode ? "Contrat d'abonnement LabFlow" : `Contrat d'abonnement — ${data.client.nom}`,
     Author: PRESTATAIRE.raisonSociale,
-  });
+  }, { pdfTexte: options.pdfTexte === true });
   ctx.templateMode = data.templateMode === true;
   header(ctx, {
     eyebrow: "CONTRAT D'ABONNEMENT",
@@ -1130,8 +1183,23 @@ async function buildFactureAcheteur(outPath, data) {
 // data : { refFacture, dateFacture, contexte, typeSource,
 //          fournisseur:{nom,adresse,tel}, entreprise:{nom,adresse,tel,email},
 //          lignes:[{designation,unite,quantite,prixHt,tauxTva}],
-//          montantHt, montantTva, montantTtc, notes }
+//          montantHt, montantTva, montantTtc, notes, libelles? }
 // ══════════════════════════════════════════════════════════════════════════════
+// Libellés (lot 2b, spec §8.3) : le serveur les passe dans data.libelles, rendus dans le vocabulaire du
+// compte par src/services/factureApproPdf.js (libellesFactureAppro) ; ces valeurs par défaut (ligne de
+// commande, appel sans libellés) sont les textes d'avant le lot. Texte toujours sûr pour la police (pdfTexte).
+const LIBELLES_FACTURE_APPRO = {
+  sujet: "Facture d'approvisionnement",
+  surtitre: 'FACTURE D\'APPROVISIONNEMENT',
+  titre: 'Facture d\'approvisionnement',
+  sousTitreTransfert: 'Transfert labo → activité',
+  approFournisseur: 'Approvisionnement fournisseur',
+  fournisseur: 'fournisseur',
+  partiesTitre: 'FOURNISSEUR ET CLIENT',
+  partiesEmetteur: 'FOURNISSEUR',
+  mentions: 'Montants exprimés en dinars tunisiens (DT), prix saisis hors taxes. Récapitulatif d\'approvisionnement généré électroniquement via la plateforme LabFlow à partir des lignes de stock saisies — il ne remplace pas la facture originale du fournisseur.',
+  notePied: 'Facture d\'approvisionnement — générée via la plateforme LabFlow',
+};
 async function buildFactureAppro(outPath, data) {
   const dateStr = data.dateFacture
     ? new Date(data.dateFacture).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -1143,33 +1211,34 @@ async function buildFactureAppro(outPath, data) {
   };
   const fo = data.fournisseur || {};
   const ent = data.entreprise || {};
+  const L = { ...LIBELLES_FACTURE_APPRO, ...(data.libelles || {}) };
   const ctx = makeCtx({
     Title: `Facture ${data.refFacture}`,
     Author: fo.nom || 'Fournisseur',
-    Subject: "Facture d'approvisionnement",
+    Subject: L.sujet,
     CreationDate: data.dateFacture ? new Date(data.dateFacture) : new Date(0),
-  });
+  }, { pdfTexte: true });
   const { fill, hline, txt, doc, fitText } = ctx;
   const sousTitre = [
-    data.typeSource === 'transfert' ? 'Transfert labo → activité' : `Approvisionnement fournisseur — ${fo.nom || 'fournisseur'}`,
+    data.typeSource === 'transfert' ? L.sousTitreTransfert : `${L.approFournisseur} — ${fo.nom || L.fournisseur}`,
     data.contexte,
   ].filter(Boolean).join('  ·  ');
   header(ctx, {
-    eyebrow: 'FACTURE D\'APPROVISIONNEMENT',
-    title: 'Facture d\'approvisionnement',
+    eyebrow: L.surtitre,
+    title: L.titre,
     subtitle: sousTitre,
     ref: data.refFacture, date: dateStr, dateLabel: 'Datée du',
   });
   let y = TOPY;
 
-  y = section(ctx, y, 'FOURNISSEUR ET CLIENT');
+  y = section(ctx, y, L.partiesTitre);
   y = partiesBlock(ctx, y, {
     nom: ent.nom || 'Entreprise',
     email: ent.email || undefined,
     tel: ent.tel || undefined,
     adresse: ent.adresse || undefined,
   }, {
-    labels: ['FOURNISSEUR', 'FACTURÉ À'], mention: false,
+    labels: [L.partiesEmetteur, 'FACTURÉ À'], mention: false,
     emetteur: { nom: fo.nom || 'Fournisseur', adresse: fo.adresse, tel: fo.tel },
   });
 
@@ -1229,11 +1298,11 @@ async function buildFactureAppro(outPath, data) {
   // Mentions
   if (y + 30 > BOTTOM_LIMIT) y = newPage(ctx);
   doc.fontSize(7).font('Helvetica').fillColor(C.faint)
-     .text('Montants exprimés en dinars tunisiens (DT), prix saisis hors taxes. Récapitulatif d\'approvisionnement généré électroniquement via la plateforme LabFlow à partir des lignes de stock saisies — il ne remplace pas la facture originale du fournisseur.',
+     .text(L.mentions,
        ML, y, { width: CW, lineGap: 2 });
 
   stampFooters(ctx, `Facture ${data.refFacture}`,
-    'Facture d\'approvisionnement — générée via la plateforme LabFlow',
+    L.notePied,
     [fo.nom || 'Fournisseur', fo.adresse].filter(Boolean).join('  ·  '));
   return finish(ctx, outPath);
 }
@@ -1329,4 +1398,4 @@ if (require.main === module) {
   })();
 }
 
-module.exports = { buildContrat, buildAvenant, buildResiliation, buildFacture, buildFactureAcheteur, buildFactureAppro, checkPrestatairePlaceholders, PRESTATAIRE };
+module.exports = { buildContrat, buildAvenant, buildResiliation, buildFacture, buildFactureAcheteur, buildFactureAppro, checkPrestatairePlaceholders, PRESTATAIRE, LIBELLES_FACTURE_APPRO, pdfTexte, pdfTexteSur };

@@ -134,7 +134,7 @@ const remove = async (req, res) => {
     );
     if (lies.rows[0].n > 0) {
       return res.status(409).json({
-        message: `Cette catégorie est assignée à ${lies.rows[0].n} article${lies.rows[0].n > 1 ? 's' : ''} — supprimez-les ou changez leur catégorie avant`,
+        message: `Cette catégorie est assignée à ${lies.rows[0].n} ${lies.rows[0].n > 1 ? '[[nom:article:pl]]' : '[[nom:article]]'} — supprimez-les ou changez leur catégorie avant`,
       });
     }
     const result = await pool.query(
@@ -144,7 +144,7 @@ const remove = async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ message: 'Catégorie introuvable' });
     res.status(204).send();
   } catch (err) {
-    if (err.code === '23503') return res.status(409).json({ message: "Cette catégorie est utilisée par des articles et ne peut pas être supprimée" });
+    if (err.code === '23503') return res.status(409).json({ message: 'Cette catégorie est utilisée par [[un:article:pl]] et ne peut pas être supprimée' });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }

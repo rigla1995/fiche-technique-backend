@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { ptCategorieSql } = require('../utils/stockUtils');
+const { vocabDefaut } = require('../utils/vocab');
 
 // ── Ownership guard helpers ──────────────────────────────────────────────────
 
@@ -222,6 +223,7 @@ const getRapportCoutMatiere = async (req, res) => {
 const getRapportAppros = async (req, res) => {
   const { dateFrom, dateTo, fournisseurId, activiteId, typeAppro } = req.query;
   const clientId = req.user.id;
+  const voc = req.voc ?? vocabDefaut;
 
   try {
     let rows = [];
@@ -297,7 +299,7 @@ const getRapportAppros = async (req, res) => {
 
     const byFournisseur = Object.values(
       rows.reduce((acc, r) => {
-        const k = r.fournisseur_nom || 'Sans fournisseur';
+        const k = r.fournisseur_nom || `Sans ${voc.nom('fournisseur')}`;
         if (!acc[k]) acc[k] = { fournisseur: k, total: 0, count: 0 };
         acc[k].total += parseFloat(r.total || 0);
         acc[k].count += 1;

@@ -7,6 +7,8 @@ const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finali
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
 const { computeStockBulk } = require('../services/stockService');
+const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
+const { ongletSur } = require('../utils/excelNoms');
 
 
 // ─── Stock Entreprise ──────────────────────────────────────────────────────
@@ -21,7 +23,7 @@ const getStockEntreprise = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Activité introuvable' });
+      return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const result = await pool.query(
       `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
@@ -386,7 +388,7 @@ const updateStockEntreprise = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Activité introuvable' });
+      return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const clientId = req.user.gerant_parent_id || req.user.id;
     // Atomic: the stock row and its linked facture are written together (or not at all).
@@ -441,7 +443,7 @@ const updateSeuilMin = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Activité introuvable' });
+      return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     await pool.query(
       `UPDATE activite_ingredient_selections
@@ -468,7 +470,7 @@ const getHistoryEntreprise = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0)
-      return res.status(404).json({ message: 'Activité introuvable' });
+      return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const result = await pool.query(
       `SELECT sed.date_appro, sed.quantite, sed.prix_unitaire, sed.type_appro,
@@ -512,7 +514,7 @@ const getHistoriqueAppro = async (req, res) => {
            WHERE a.id = $1 AND pe.client_id = $2`,
           [activiteId, req.user.gerant_parent_id || req.user.id]
         );
-        if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+        if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
         activiteIds = [activiteId];
       } else if (activiteIdsParam) {
         // Comma-separated list of activiteIds
@@ -653,7 +655,7 @@ const updateHistoriqueEntry = async (req, res) => {
       // Lot 1b §2.4 : une ligne générée par un transfert ne se modifie que via le transfert
       // (fin de l'ajustement heuristique du miroir labo).
       if (entry.type_appro === 'transfert' || entry.transfert_id != null)
-        return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez le transfert' });
+        return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez [[le:transfert]]' });
       // Atomic: the stock_entreprise update and the compensating labo-stock adjustment
       // must both succeed or both roll back (else the quantities silently desync).
       await withTransaction(async (client) => {
@@ -702,10 +704,10 @@ const deleteHistoriqueEntry = async (req, res) => {
       );
       if (check.rows.length === 0) return res.status(404).json({ message: 'Entrée introuvable' });
       if (check.rows[0].type_appro === 'vente' || check.rows[0].type_appro === 'annulation_vente')
-        return res.status(403).json({ message: 'Cette entrée est liée à une vente et ne peut pas être supprimée.' });
+        return res.status(403).json({ message: 'Cette entrée est liée à [[un:vente]] et ne peut pas être supprimée.' });
       // Lot 1b §2.4 : ligne de transfert → 409 (à supprimer via le transfert).
       if (check.rows[0].type_appro === 'transfert' || check.rows[0].transfert_id != null)
-        return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez le transfert' });
+        return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez [[le:transfert]]' });
       if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
       const entry = check.rows[0];
@@ -783,6 +785,7 @@ const exportHistoriqueExcel = async (req, res) => {
   const selectedSet = new Set(selectedIdsParam ? selectedIdsParam.split(',').map(Number).filter(Boolean) : []);
   const currentYear = new Date().getFullYear();
   const isEntreprise = !!(activiteId || activiteIdsParam || entType);
+  const voc = req.voc ?? vocabDefaut;
 
   try {
     let rows = [];
@@ -801,7 +804,7 @@ const exportHistoriqueExcel = async (req, res) => {
         );
         activiteIds = allRes.rows.map((r) => r.id);
       }
-      if (activiteIds.length === 0) return res.status(404).json({ message: 'Aucune activité' });
+      if (activiteIds.length === 0) return res.status(404).json({ message: '[[Aucun:activite]]' });
 
       // Load activite names
       const actRes = await pool.query('SELECT id, nom FROM activites WHERE id = ANY($1)', [activiteIds]);
@@ -858,11 +861,11 @@ const exportHistoriqueExcel = async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Fiche Technique App';
-    const sheet = workbook.addWorksheet('Historique Appro', { pageSetup: { paperSize: 9, orientation: 'landscape' } });
+    const sheet = workbook.addWorksheet(ongletSur(workbook, `Historique ${voc.Court('appro')}`), { pageSetup: { paperSize: 9, orientation: 'landscape' } });
 
     const cols = [
       { header: 'Date', key: 'date', width: 12 },
-      { header: 'Ingrédient', key: 'ing', width: 26 },
+      { header: voc.Nom('article_ingredient'), key: 'ing', width: 26 },
       { header: 'Catégorie', key: 'cat', width: 18 },
       { header: 'Quantité', key: 'qty', width: 11 },
       { header: 'Unité', key: 'unit', width: 9 },
@@ -872,12 +875,12 @@ const exportHistoriqueExcel = async (req, res) => {
       { header: 'Coût HT', key: 'coutHt', width: 14 },
       { header: 'Coût TTC', key: 'coutTtc', width: 14 },
       ...(isEntreprise ? [
-        { header: 'Activité', key: 'act', width: 18 },
-        { header: 'Fournisseur', key: 'fourn', width: 18 },
+        { header: voc.Court('activite'), key: 'act', width: 18 },
+        { header: voc.Court('fournisseur'), key: 'fourn', width: 18 },
         { header: 'Réf. Facture', key: 'ref', width: 16 },
         { header: 'Type', key: 'type', width: 12 },
       ] : [
-        { header: 'Fournisseur', key: 'fourn', width: 18 },
+        { header: voc.Court('fournisseur'), key: 'fourn', width: 18 },
         { header: 'Réf. Facture', key: 'ref', width: 16 },
       ]),
       { header: 'Créé par', key: 'createdBy', width: 16 },
@@ -890,10 +893,10 @@ const exportHistoriqueExcel = async (req, res) => {
     let meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${rows.length} ligne(s)`;
     if (selectedSet.size > 0) meta += ` · ${selectedSet.size} sélectionnée(s) en surbrillance`;
     const actNoms = Object.values(activiteNames);
-    const sousTitre = actNoms.length === 1 ? `Activité : ${actNoms[0]}`
-      : actNoms.length > 1 ? `Activités : ${actNoms.join(', ')}` : '';
+    const sousTitre = actNoms.length === 1 ? `${voc.Court('activite')} : ${actNoms[0]}`
+      : actNoms.length > 1 ? `${voc.Court('activite', true)} : ${actNoms.join(', ')}` : '';
     const headerIdx = brandHeader(workbook, sheet, {
-      titre: 'Historique des approvisionnements — Activités',
+      titre: `Historique ${voc.du('appro', true)} — ${voc.Court('activite', true)}`,
       sousTitre, meta, colCount,
     });
     headerRow(sheet, headerIdx, cols.map((c) => c.header), { widths: cols.map((c) => c.width) });
@@ -912,11 +915,11 @@ const exportHistoriqueExcel = async (req, res) => {
       totalHT += coutHt; totalTTC += coutTtc;
       const isSelected = selectedSet.has(Number(r.id));
       const dateStr = r.date_appro ? new Date(r.date_appro).toISOString().slice(0, 10).split('-').reverse().join('/') : '';
-      const typeLabel = (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? 'Prod. Transformé' : t === 'transfert' ? 'Transfert' : t === 'PT' ? 'PT' : 'Manuel'; })();
+      const typeLabel = (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? voc.Nom('pt_abr') : t === 'transfert' ? voc.Nom('transfert') : t === 'PT' ? voc.Court('pt') : 'Manuel'; })();
       const rowData = [
         dateStr,
         r.ingredient_nom,
-        r.categorie_nom,
+        libelleCategoriePt(voc, r.categorie_nom),
         qty,
         r.unite_nom,
         prix,
@@ -972,7 +975,7 @@ const getCascadeInfoEntreprise = async (req, res) => {
        WHERE a.id = $1 AND pe.client_id = $2`,
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
     const [appros, inv] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]),
       pool.query('SELECT COUNT(*) FROM inventaires WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]),
@@ -992,7 +995,7 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
        WHERE a.id = $1 AND pe.client_id = $2`,
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
-    if (check.rows.length === 0) return res.status(404).json({ message: 'Activité introuvable' });
+    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
     await pool.query('DELETE FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
     await pool.query('DELETE FROM inventaires WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
     res.json({ success: true });

@@ -1,0 +1,58 @@
+[
+  {
+    "fichier": "*",
+    "avant": "prix de vente",
+    "apres": "prix de vente",
+    "type": "locution",
+    "justification": "Locution figée de gestion (spec lot 2b §6.8, reprise du _global.json du front) : « vente » n'y désigne pas l'objet « une vente » que le domaine peut renommer."
+  },
+  {
+    "fichier": "*",
+    "avant": "canal de vente",
+    "apres": "canal de vente",
+    "type": "locution",
+    "justification": "Locution figée de gestion, de la famille de « prix de vente » (spec lot 2b §6.8) : le canal (direct, prestataire) n'est pas l'objet « une vente »."
+  },
+  {
+    "fichier": "*",
+    "avant": "sous-produit",
+    "apres": "sous-produit",
+    "type": "locution",
+    "justification": "Mot composé figé (décision S4 du lot 2a, spec lot 2b §6.8) : il reste en dur ; « sous-${voc.nom('produit')} » ne se replie pas et l'accord « du sous-… » serait faux pour un terme féminin."
+  },
+  {
+    "fichier": "*",
+    "avant": "Sous-produit",
+    "apres": "Sous-produit",
+    "type": "locution",
+    "justification": "Mot composé figé en tête de libellé (« Sous-produit » des recettes, laboController.js:2127, produitTransformeController.js:519 ; spec lot 2b §6.8) : même décision que « sous-produit »."
+  },
+  {
+    "fichier": "*",
+    "avant": "Activité Premium",
+    "apres": "Activité Premium",
+    "type": "formule",
+    "justification": "Nom commercial de formule (tarification Basique / Premium / Labo), pas le terme « activité » du domaine : il reste le même pour tous les secteurs (spec lot 2b §6.8, §8.2)."
+  },
+  {
+    "fichier": "*",
+    "avant": "Domaine d'activité",
+    "apres": "Domaine d'activité",
+    "type": "homonyme",
+    "justification": "« Activité » au sens de métier ou de secteur (le domaine d'activité du compte), pas l'unité « activité » du lexique (spec lot 2b §6.8, §7.3)."
+  },
+  {
+    "fichier": "*",
+    "avant": "domaine d'activité",
+    "apres": "domaine d'activité",
+    "type": "homonyme",
+    "justification": "« Activité » au sens de métier ou de secteur (le domaine d'activité du compte), pas l'unité « activité » du lexique (spec lot 2b §6.8, §7.3)."
+  },
+  {
+    "fichier": "*",
+    "avant": "Indiquez au moins un supplément",
+    "apres": "Indiquez au moins un supplément",
+    "type": "formule",
+    "justification": "Demande « Ajout de capacité » envoyée sans aucun ajout : « supplément » y désigne le supplément TARIFAIRE de l'abonnement (type de demande 'supplement'), pas la clé « supplement » du lexique (spec lot 2b §3.1, reprise du F12.json du front)."
+  }
+]

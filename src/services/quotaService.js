@@ -8,9 +8,9 @@
 const pool = require('../config/database');
 
 const LIBELLES = {
-  activite: { col: 'nb_activites', sg: 'activité', pl: 'activités' },
-  labo: { col: 'nb_labos', sg: 'labo', pl: 'labos' },
-  gerant: { col: 'nb_gerants', sg: 'gérant', pl: 'gérants' },
+  activite: { col: 'nb_activites', sg: '[[nom:activite]]', pl: '[[nom:activite:pl]]' },
+  labo: { col: 'nb_labos', sg: '[[nom:labo]]', pl: '[[nom:labo:pl]]' },
+  gerant: { col: 'nb_gerants', sg: '[[nom:gerant]]', pl: '[[nom:gerant:pl]]' },
 };
 
 async function checkQuota(db, clientId, type) {

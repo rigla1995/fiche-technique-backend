@@ -18,7 +18,7 @@ const toggleStockIngredient = async (req, res) => {
       [produitId, clientId]
     );
     if (ownerRes.rows.length === 0) {
-      return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+      return res.status(403).json({ message: '[[Nom:produit]] introuvable ou accès refusé' });
     }
 
     if (actId) {
@@ -139,7 +139,7 @@ const deleteStockPTHistory = async (req, res) => {
       [produitId, clientId]
     );
     if (ownerRes.rows.length === 0) {
-      return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+      return res.status(403).json({ message: '[[Nom:produit]] introuvable ou accès refusé' });
     }
 
     // Get product name (used as type_appro for consumption entries)
@@ -235,7 +235,7 @@ const getStockActivites = async (req, res) => {
       [produitId, userId]
     );
     if (ownerRes.rows.length === 0) {
-      return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+      return res.status(403).json({ message: '[[Nom:produit]] introuvable ou accès refusé' });
     }
     const result = await pool.query(
       `SELECT activite_id FROM produit_activite_stock WHERE produit_id = $1 AND activite_id IS NOT NULL`,
@@ -273,7 +273,7 @@ const getStockPT = async (req, res) => {
         [actId, userId]
       );
       if (actOwner.rows.length === 0) {
-        return res.status(403).json({ message: 'Activité introuvable ou accès refusé' });
+        return res.status(403).json({ message: '[[Nom:activite]] introuvable ou accès refusé' });
       }
 
       const result = await pool.query(
@@ -566,7 +566,7 @@ const saveStockPT = async (req, res) => {
       );
     }
     if (ownerCheck.rows.length === 0) {
-      return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+      return res.status(403).json({ message: '[[Nom:produit]] introuvable ou accès refusé' });
     }
 
     // Garde-fou (refonte Espace Produits) : un produit d'ORIGINE LABO s'approvisionne en activité
@@ -576,7 +576,7 @@ const saveStockPT = async (req, res) => {
       const origineRes = await pool.query('SELECT origine FROM produits WHERE id = $1', [produitId]);
       if (origineRes.rows[0]?.origine === 'labo') {
         return res.status(400).json({
-          message: "Ce produit est fabriqué au labo : côté activité il s'approvisionne uniquement par transfert, pas par appro manuel.",
+          message: "[[Ce:produit]] est [[acc:produit:fabriqué:fabriquée]] [[au:labo]] : côté [[nom:activite]] [[acc:produit:il:elle]] s'approvisionne uniquement par [[nom:transfert]], pas par [[court:appro]] [[acc:appro:manuel:manuelle]].",
         });
       }
     }
@@ -666,7 +666,7 @@ const saveStockPT = async (req, res) => {
         const needed = Math.round(portion * qty * 1000) / 1000;
         if (needed > stocks[idx]) {
           return res.status(422).json({
-            message: `Stock insuffisant pour "${ing.nom}" (recette) : disponible ${Math.max(0, stocks[idx])}, nécessaire ${needed}`,
+            message: `[[Nom:stock]] [[acc:stock:insuffisant:insuffisante]] pour "${ing.nom}" ([[court:recette]]) : disponible ${Math.max(0, stocks[idx])}, nécessaire ${needed}`,
             disponible: Math.max(0, stocks[idx]),
             demande: needed,
           });
@@ -683,7 +683,7 @@ const saveStockPT = async (req, res) => {
         const needed = Math.round(portion * qty * 1000) / 1000;
         if (needed > stocksSp[idx]) {
           return res.status(422).json({
-            message: `Stock insuffisant pour le sous-produit "${sp.sp_nom}" (recette) : disponible ${Math.max(0, stocksSp[idx])}, nécessaire ${needed}`,
+            message: `[[Nom:stock]] [[acc:stock:insuffisant:insuffisante]] pour le sous-produit "${sp.sp_nom}" ([[court:recette]]) : disponible ${Math.max(0, stocksSp[idx])}, nécessaire ${needed}`,
             disponible: Math.max(0, stocksSp[idx]),
             demande: needed,
           });
@@ -901,7 +901,7 @@ const updateSeuilMinPT = async (req, res) => {
         [actId, clientId]
       );
       if (own.rows.length === 0) {
-        return res.status(403).json({ message: 'Activité introuvable ou accès refusé' });
+        return res.status(403).json({ message: '[[Nom:activite]] introuvable ou accès refusé' });
       }
       const upd = await pool.query(
         `UPDATE produit_activite_stock SET seuil_min = $1
@@ -909,7 +909,7 @@ const updateSeuilMinPT = async (req, res) => {
         [seuilMin !== undefined ? seuilMin : null, produitId, actId]
       );
       if (upd.rows.length === 0) {
-        return res.status(404).json({ message: 'Produit non affecté à cette activité' });
+        return res.status(404).json({ message: '[[Nom:produit]] non [[acc:produit:affecté:affectée]] à [[ce:activite]]' });
       }
       return res.json({ produitId, activiteId: actId, seuilMin: upd.rows[0].seuil_min });
     }
@@ -920,7 +920,7 @@ const updateSeuilMinPT = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+      return res.status(403).json({ message: '[[Nom:produit]] introuvable ou accès refusé' });
     }
 
     res.json({ produitId, seuilMin: result.rows[0].seuil_min_pt });
@@ -945,7 +945,7 @@ const affecterActivites = async (req, res) => {
       `SELECT id FROM produits WHERE id = $1 AND client_id = $2`,
       [produitId, clientId]
     );
-    if (ownerRes.rows.length === 0) return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+    if (ownerRes.rows.length === 0) return res.status(403).json({ message: '[[Nom:produit]] introuvable ou accès refusé' });
 
     // Replace full set: delete existing then insert new ones
     await pool.query(`DELETE FROM produit_activite_affectation WHERE produit_id = $1`, [produitId]);
@@ -998,7 +998,7 @@ const toggleAffectation = async (req, res) => {
       `SELECT id FROM produits WHERE id = $1 AND client_id = $2`,
       [produitId, clientId]
     );
-    if (ownerRes.rows.length === 0) return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+    if (ownerRes.rows.length === 0) return res.status(403).json({ message: '[[Nom:produit]] introuvable ou accès refusé' });
 
     const existing = await pool.query(
       `SELECT 1 FROM produit_activite_affectation WHERE produit_id = $1 AND activite_id = $2`,
@@ -1043,13 +1043,13 @@ const toggleLabo = async (req, res) => {
       `SELECT id FROM produits WHERE id = $1 AND client_id = $2`,
       [produitId, clientId]
     );
-    if (ownerRes.rows.length === 0) return res.status(403).json({ message: 'Produit introuvable ou accès refusé' });
+    if (ownerRes.rows.length === 0) return res.status(403).json({ message: '[[Nom:produit]] introuvable ou accès refusé' });
 
     const laboRes = await pool.query(
       `SELECT l.id FROM labos l JOIN profil_entreprise pe ON l.entreprise_id = pe.id WHERE l.id = $1 AND pe.client_id = $2`,
       [laboId, clientId]
     );
-    if (laboRes.rows.length === 0) return res.status(403).json({ message: 'Labo introuvable ou accès refusé' });
+    if (laboRes.rows.length === 0) return res.status(403).json({ message: '[[Nom:labo]] introuvable ou accès refusé' });
 
     const existing = await pool.query(
       `SELECT 1 FROM labo_pt_selections WHERE produit_id = $1 AND labo_id = $2`,

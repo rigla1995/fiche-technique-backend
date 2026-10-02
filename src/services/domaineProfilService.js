@@ -67,19 +67,27 @@ const seuilCoutMatiereDuProfil = (profil) => {
 const TYPES_TECHNIQUES = Object.freeze(['activite', 'labo', 'gerant', 'acheteurs']);
 
 // Composants IDENTITÉ (mapping 1:1 avec les types techniques) — mêmes libellés que
-// le seed/backfill de la migration 187.
+// le seed/backfill de la migration 187, genre posé par la migration 192 (lot 2b §5.4).
+// Ces libellés ne servent qu'aux défauts : création d'un domaine (POST /api/domaines, admin) et
+// migration 192. Un composant identité créé à la volée dans un domaine existant prend les mots
+// du lexique de CE domaine (configComposantsService.creerComposantIdentite).
 const COMPOSANTS_IDENTITE = Object.freeze({
-  activite:  { code: 'activite',  libelle: 'Activité',       libellePluriel: 'Activités',      icone: '🏪', ordre: 1 },
-  labo:      { code: 'labo',      libelle: 'Labo',           libellePluriel: 'Labos',          icone: '🏭', ordre: 2 },
-  gerant:    { code: 'gerant',    libelle: 'Gérant',         libellePluriel: 'Gérants',        icone: '👤', ordre: 3 },
-  acheteurs: { code: 'acheteurs', libelle: 'Base acheteurs', libellePluriel: 'Base acheteurs', icone: '🤝', ordre: 4 },
+  activite:  { code: 'activite',  libelle: 'Activité',       libellePluriel: 'Activités',      genre: 'f', icone: '🏪', ordre: 1 },
+  labo:      { code: 'labo',      libelle: 'Labo',           libellePluriel: 'Labos',          genre: 'm', icone: '🏭', ordre: 2 },
+  gerant:    { code: 'gerant',    libelle: 'Gérant',         libellePluriel: 'Gérants',        genre: 'm', icone: '👤', ordre: 3 },
+  acheteurs: { code: 'acheteurs', libelle: 'Base acheteurs', libellePluriel: 'Base acheteurs', genre: 'f', icone: '🤝', ordre: 4 },
 });
 
+// Genre ('m' | 'f', défaut 'm') et élision (true | false | null = déduite du libellé) d'un composant
+// (migration 192) : lus par entreeComposant (src/utils/vocab.js) pour accorder un déterminant au
+// libellé (« mon service », « ma cuisine », « mon huilerie » avec élision forcée).
 const mapComposant = (r) => ({
   id: r.id,
   code: r.code,
   libelle: r.libelle,
   libellePluriel: r.libelle_pluriel ?? null,
+  genre: r.genre === 'f' ? 'f' : 'm',
+  elision: typeof r.elision === 'boolean' ? r.elision : null,
   icone: r.icone ?? null,
   aide: r.aide ?? null,
   typeTechnique: r.type_technique,
