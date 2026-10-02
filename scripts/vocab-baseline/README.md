@@ -1,6 +1,7 @@
-# Oracle du vocabulaire (lot 2b, étape O)
+# Oracle du vocabulaire (lot 2b, étape O ; étendu à l'étape O du lot 2c)
 
-Spécification : `docs/lot-2b-spec.md` §2. Seul l'intégrateur lance ces commandes : une capture charge
+Spécification : `docs/lot-2b-spec.md` §2 ; extension du lot 2c (manuel, recherches, base protégée) : `docs/lot-2c-spec.md`
+§2 (section « Lot 2c » plus bas). Seul l'intégrateur lance ces commandes : une capture charge
 l'application dans son processus, ce qui APPLIQUE les migrations en attente à la base locale.
 
 ## Fichiers
@@ -8,10 +9,12 @@ l'application dans son processus, ce qui APPLIQUE les migrations en attente à l
 | Fichier | Rôle |
 |---|---|
 | `restauration.json` | Référence commitée : captures du domaine restauration (`meta`, `comptes` par clé, `captures` masquées). `meta.rangsTri` : rangs de la clé de tri des listes d'`ordre-libre.json` à `cleTri`, calculés avant masquage. |
-| `ecarts-restauration-attendus.json` | Écarts admis, un par entrée `{ cle, chemin, avant, apres, raison: '§11.1.n' \| '§11.2.n' }`, plus `type: 'ordre-cles'` pour une permutation de clés. Vide à l'étape O. Tenu par l'intégrateur. |
+| `ecarts-restauration-attendus.json` | Écarts admis, un par entrée `{ cle, chemin, avant, apres, raison: '§11.1.n' \| '§11.2.n' }`, plus `type: 'ordre-cles'` pour une permutation de clés. Vide à l'étape O. Tenu par l'intégrateur. **Lot 2c : `[]`** depuis l'étape O (les 109 entrées du 2b sont dans `archives-2b/`) ; le 2c n'attend aucun écart en restauration (spec lot 2c §2.7). |
+| `archives-2b/` | Lot 2c, étape O : `ecarts-restauration-attendus.json` du 2b (109 entrées, raisons §11.x du 2b), sans objet après la recapture sur le code du 2b. Non lu par l'oracle. |
+| `recherches-avant-ordre.json` | Lot 2c, étape O : clés `recherches` et `recherchesDomaine` de la capture restauration de `develop` (`863f8f0`, AVANT R2.2), et la liste des recherches changées (`resume`). Les valeurs après R2.2 sont celles de `restauration.json` (voir « Recapture du 2c »). |
 | `ordre-libre.json` | Listes dont l'ordre peut changer `{ cle, chemin, raison, cleTri? }` (voir « Ordre » ci-dessous). |
 | `exceptions-hors-restauration.json` | Exceptions typées du scan hors restauration `{ cle, chemin (motif), texte, type, justification, domaines?, extrait? }`. `texte` vaut la forme trouvée ou le texte entier ; avec `extrait: true`, c'est un PASSAGE exact retiré du texte avant la recherche (un prompt est UN texte : une exception par forme l'éteindrait en entier). Le glossaire « ## Vocabulaire du compte » du prompt (spec §7.3) est retiré du texte lu ; seule sa colonne de droite (mots du compte) est cherchée, sous `…/glossaire/droite`. |
-| `hors-restauration-avant.json` | Liste de travail de l'étape O : formes par défaut trouvées par domaine, chiffrées par famille. Complète depuis S1 (clés `*_abr` comprises) pour hotellerie, ceramique et miroir ; son `_lisezmoi` ne la dit « incomplète » que si un domaine a encore des clés absentes du moteur de son passage. |
+| `hors-restauration-avant.json` | Liste de travail de l'étape O : formes par défaut trouvées par domaine, chiffrées par famille. Complète depuis S1 (clés `*_abr` comprises) pour hotellerie, ceramique et miroir ; son `_lisezmoi` ne la dit « incomplète » que si un domaine a encore des clés absentes du moteur de son passage. **Réécrite à l'étape O du lot 2c** (`scan2c: true`) : famille `manuel` (manuel servi) et famille `assistant` étendue aux résultats de la recherche ; ses comptes `manuel` et `assistant` ne doivent jamais monter (R2.4.7). |
 
 ## Commandes (depuis la racine du dépôt backend)
 
@@ -23,6 +26,10 @@ node scripts/check-invariant-vocab.js --domaine miroir --liste-avant   # réécr
 ```
 
 Options : `--capture <fichier>` (analyser une capture déjà faite), `--reference <fichier>`, `--rapport <fichier>`, `--port <n>`.
+Lot 2c : `--hors-manuel` (porte de S à C : formes du manuel et des recherches comptées à part, R2.4.7) ; `--brut <dossier>`
+(dossier HORS des dépôts : la capture y écrit la réponse brute de `GET /api/manuel` du client B, `manuel-client-B.json`,
+pour `scripts/controle-manuel-pdf.mjs` du frontend). Après l'étape C du lot 2c, toute commande ci-dessus tourne sur une copie
+neuve de la base : `node scripts/manuel/base-locale.js copie` puis `DB_NAME=fiche_technique_2c node scripts/…` (R2.8.2).
 
 ## Règles
 
@@ -91,6 +98,75 @@ Options : `--capture <fichier>` (analyser une capture déjà faite), `--referenc
   Deux passages : identiques pour le contrôle (une permutation entre ex aequo admise, feuille Stock de `rapportIA`).
   Contre l'ancienne référence, seul `tableauxDeBord/rapports.filters` change (catégories du compte B seulement). Les 2
   exceptions hors restauration qui couvraient les catégories des autres comptes sont retirées (sans emploi).
+
+## Lot 2c (étape O, spec `docs/lot-2c-spec.md` §2)
+
+### Captures ajoutées (§2.3)
+
+- `manuel` : `GET /api/manuel` pour 6 lecteurs (`client.A`, `client.B`, `gerant.B`, `client.C`, `acheteur.C` lu avant sa
+  suppression, `admin`). `manuel.lecteurs.<lecteur>` = slugs reçus dans l'ordre ; `manuel.sections.<slug>` = la section telle
+  que l'API la renvoie, une fois par slug (restauration : union des 6 lecteurs ; ailleurs : des 5 lecteurs hors admin ; deux
+  lecteurs d'une union qui reçoivent le même slug différemment arrêtent la capture). `meta.empreintesManuel.<lecteur>.<slug>` =
+  md5 du JSON BRUT (non masqué, `id` retiré, `updatedAt` gardé) ; `meta.sectionsParLecteur` ; un lecteur à 0 section arrête
+  la capture. Le compte par clé de `manuel` vaut 2 (lecteurs, sections) : la non-vacuité par lecteur est tenue par la capture.
+- `recherchesDomaine` : les 5 recherches fixes en gabarits balisés (`fixe|<gabarit>`, rendues avec le vocabulaire du domaine,
+  compte B ; en restauration, rendu = recherche fixe, vérifié) ; les questions du guide de mise en route des comptes A, B, C
+  (`<compte>|<question>`, chacune avec SON compte) ; « Comment créer <mon composant> ? » par composant actif `activite` /
+  `labo` du domaine (`composant|<question>`, compte A). Appels sans `voc` (repli de `executeToolCall`).
+- `recherches` : 6ᵉ question sans résultat, « zzz qwerty » (liste `disponibles`).
+- Garde R2.8.3 : `--reference` refuse d'écrire si `_migrations` contient 194, 195 ou 196 (retirée dans `develop` après D2).
+
+### Contrôles ajoutés (§2.4)
+
+- Restauration : `meta.empreintesManuel` égales à celles de la référence, lecteur par lecteur, slug par slug, ordre compris ; un
+  écart est un échec qu'aucune entrée de `ecarts-restauration-attendus.json` ne peut admettre (I1, PDF compris, R2.6.1).
+- Hors restauration : famille `manuel` (`manuel/sections/<slug>/titre|partie|contenu`, jamais `motsCles` ni l'admin) et
+  famille `assistant` étendue (`recherches`, `recherchesDomaine` : titres et contenus des résultats de la BASE, titres de
+  `disponibles`). Passages exclus au balisage retirés avant la recherche (`extrait` des fichiers
+  `scripts/manuel/balise/manuel/<slug>.json`, `scripts/manuel/variantes/<domaine>/<slug>.json`, et
+  `scripts/manuel/balise/base/*.json` pour une entrée retrouvée par son titre rendu avec `meta.lexique`) ; aucune exception par
+  forme dans `exceptions-hors-restauration.json` pour ces textes. `MOTS_HORS_LEXIQUE` ne s'y applique pas (R2.4.3).
+  Limite : un extrait qui contient un passage masqué par la capture (date, référence « BL-… ») n'est pas retrouvé ; sa forme
+  reste signalée.
+- Échecs : « [[ », « ]] » ou « ‹clé› » dans les familles `manuel` et `assistant` ; résultat du manuel dont la citation n'est
+  celle d'aucune fiche servie, ou dont le contenu n'est pas le début de la fiche (suivi de « … » s'il est coupé) ; empreintes du
+  lecteur `admin` ≠ référence restauration (I4) ; clé de `recherchesDomaine` sans résultat ; mots-clés servis sans la forme
+  `nom` du domaine d'une clé que le domaine change et que les mots-clés d'origine portent comme entrée (R2.4.4) ; comptes des
+  familles `manuel` et `assistant` au-dessus de la liste avant (une fois celle-ci écrite par ce scan, `scan2c`).
+- Rapports (non bloquants, R2.4.6) : terme du domaine dans les 4 résultats, par clé ; première fiche du manuel de la référence
+  parmi les 4 résultats d'une recherche fixe ; fiche `activites` parmi les 4 résultats d'une question de composant.
+- `--hors-manuel` : les formes du manuel et des recherches ne font pas échouer ; le contrôle des mots-clés (famille manuel) est
+  un rapport ; tout le reste échoue comme sans l'option. Porte de S, de A et des vagues : 0 dans les trois domaines.
+
+### Base locale protégée (§2.8)
+
+`node scripts/manuel/base-locale.js photo | copie | etat | supprimer` (intégrateur seul, connecté à la base `postgres`, hôte local
+seulement). Photo `fiche_technique_avant2c` prise le 03/10/2026 vers 01:10, base à la migration 192, empreintes du manuel
+`67737956d92ba0e1d836c17747d66f5c` et de la base `8779fd652a4a4dd50531e9e3323aaad6` (celles de `DECISIONS-2c.md`).
+
+### Recapture du 2c (étape O, 03/10/2026)
+
+- Archives d'abord : `ecarts-restauration-attendus.json` (109 entrées du 2b) → `archives-2b/`, remplacé par `[]`.
+- Mesure de R2.2, une fois : capture restauration COMPLÈTE de `develop` (`863f8f0`) dans un arbre à part (`git archive`, scripts
+  de l'oracle de la branche, `.env` copié puis supprimé, jonction `node_modules` retirée par `cmd /c rmdir`), base locale à la
+  migration 192. Puis commit R2.2 seul (`aiToolHandlers.js` : base `ORDER BY id`, manuel `ORDER BY ordre, id`).
+- Référence : capture restauration sur la branche (R2.2 compris), deux passages identiques à l'octet (même md5 du fichier).
+  Comparée à la capture de `develop` (fichier d'écarts vide) : 94 écarts et 27 « ordre seul », TOUS sous `recherches/` et
+  `recherchesDomaine/` ; empreintes du manuel égales pour les 6 lecteurs ; aucune autre clé ne bouge.
+- Recherches fixes (`recherches`) changées par R2.2, comme mesuré par la spec (§2.2) :
+  - ordre seulement : « créer un labo » (« Stock Labo » et « Le modèle : compte, activités, labos » permutés), « transfert vers
+    une activité » (« Stock Activités » passe 2ᵉ) ;
+  - ensemble : « calcul du food cost » (« Coût de revient d'une recette » et « Valeur du stock » remplacés par « Lexique de A à
+    Z » et « Charges »), « inventaire de fin de mois » (« Comptes gérants » remplacé par « Tableau de bord »), « inviter un
+    acheteur » (« Assistant IA » remplacé par « Parcours de démarrage ») ;
+  - « zzz qwerty » (`disponibles`, 25 titres de la base par `id`) : sortent « Unité de mesure », « Timbre fiscal », « Rapport
+    (Excel / PDF) », « Référentiel articles », « Charges fixes » ; entrent « Gérant », « Fournisseur », « Abonnement et
+    capacité », « Article vendable », « Prestataire de livraison ».
+- `recherchesDomaine` : 51 clés sur 56 changées (28 d'ensemble, 23 d'ordre seul) ; liste dans
+  `recherches-avant-ordre.json` (`resume`). Différence listée au §10.2, point 1 de la spec ; jamais affichée à un client.
+- Listes de travail (`--liste-avant`, captures du 03/10 sur la branche) : hotellerie 647 formes (manuel 552, assistant 95),
+  ceramique 835 (manuel 678, assistant 157), miroir 1 323 (manuel 1 070, assistant 253) ; 0 hors manuel et recherches dans les
+  trois domaines (`--hors-manuel`). Une « forme » = une forme par défaut distincte dans un texte lu (même compte qu'au 2b).
 
 ## Scan hors restauration (§2.5)
 
