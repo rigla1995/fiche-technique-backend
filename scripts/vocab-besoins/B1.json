@@ -21,7 +21,7 @@
     "avant": "    C.prompt.avecContexte = ai.buildSystemPrompt(LIGNE_FIXE, voc);\n    C.prompt.sansContexte = ai.buildSystemPrompt(null, voc);",
     "apres": "(facultatif) ajouter une clé, par exemple : C.prompt.avecGlossaire = ai.buildSystemPrompt(LIGNE_FIXE, voc, await domaineProfil.getProfilForClient(cB.id)); — les clés existantes restent inchangées.",
     "autresSignatures": "Toutes les autres signatures du §2.7 sont celles de la table : toolsFor(voc), onboardingPromptBlock(etat, voc), getClientContextLine(id, voc), texteAccueilMessenger(nom, voc) ; executeToolCall(clientId, nom, input, voc?) avec repli vocabForClient (appel de la capture SANS voc : inchangé). TOOLS_OPENAI et TOOLS_ANTHROPIC ne sont plus exportés (la capture détecte toolsFor). Nouvel export : aiService.glossaireVocabulaire(voc, profil).",
-    "etat": "NON appliqué (facultatif) par l'intégrateur de la vague 2 (02/10/2026) : le glossaire est capté par promptReel (non vide hors restauration, colonne de droite scannée) ; ajouter une clé C.prompt changerait la référence restauration."
+    "etat": "REFUSÉ (consolidation du lot 2b (02/10/2026)) : besoin facultatif, non appliqué. Le glossaire est déjà capté par promptReel (chatWithAI passe le profil ; non vide hors restauration, colonne de droite scannée), et test/B1-assistant.test.js prouve son absence en restauration. Une clé C.prompt.avecGlossaire ajouterait une clé à la référence restauration (recapture) sans rien prouver de plus. Signature finale inscrite dans la spec (§2.7, §7.1 : buildSystemPrompt(contextLine, voc, profil = null))."
   },
   {
     "fichier": "scripts/vocab-baseline/exceptions-hors-restauration.json (et, au besoin, scripts/check-invariant-vocab.js)",

@@ -16,7 +16,7 @@
     "fichier": "scripts/vocab-baseline/exceptions-hors-restauration.json",
     "lot": "intégrateur",
     "raison": "Messages à « article » générique (spec lot 2b §6.5, liste fermée) laissés non traduits par B5 : acheteurVentesController.js:131 « Article invalide », :166 premier mot de « Article non proposable (… ) », :396 « Ligne N : article sans offre active — … » ; portailController.js:148 « Ligne N : article non proposé ». Ils ne figurent pas dans la capture `messages` actuelle ; si l'oracle les capte, exception `homonyme` (motif « élément générique »), forme « Article » / « Articles » seulement (le reste du texte est balisé).",
-    "etat": "Sans objet à la vague 1 : la capture `messages` de l'oracle ne contient pas ces messages (aucune forme « Article » relevée dans hotellerie, ceramique, miroir). À réexaminer si l'oracle les capte un jour."
+    "etat": "SANS OBJET (consolidation du lot 2b (02/10/2026)) : revérifié sur les captures de la vague 2 (hotellerie, miroir) : la capture `messages` de l'oracle ne contient aucun de ces 4 messages (« Article invalide », « Article non proposable … », « Ligne N : article sans offre active … », « Ligne N : article non proposé »). Le premier mot reste « article » au sens générique (spec §6.5, liste fermée), admis côté outil par les entrées homonyme de scripts/vocab-allow/B5.json. Aucune exception d'oracle n'est à poser : une exception sans emploi ferait échouer check-invariant-vocab.js. Clos."
   },
   {
     "fichier": "scripts/test-vocabulaire-domaine.js",
@@ -38,6 +38,6 @@
       "motif persisté": "Cliente supprimée du carnet",
       "suppression d'un acheteur (200)": "Cliente supprimée — ses commandes et factures restent dans l'historique"
     },
-    "etat": "APPLIQUÉ en partie (vague 1) : scripts/test-vocabulaire-domaine.js §5 bis contrôle, en restauration (texte exact) et en Hôtellerie (rendu du lexique du compte, sans la forme par défaut), GET /api/labo/999999, PUT /api/entreprise/activites/999999, GET /api/articles/999999 et DELETE /api/acheteurs/999999 (Hôtellerie). Les autres attendus (gérant sans affectation, catégorie avec articles, annulation, suppression d'acheteur, quota labos, motif persisté) demandent un jeu de données ; ils sont couverts par l'oracle (captures `messages` et `persistes` : restauration identique, 0 forme par défaut hors exceptions en hotellerie / ceramique / miroir)."
+    "etat": "APPLIQUÉ (vague 1, clos par la consolidation du lot 2b (02/10/2026)) : scripts/test-vocabulaire-domaine.js §5 bis contrôle, en restauration (texte exact) et en Hôtellerie (rendu du lexique, sans la forme par défaut), GET /api/labo/999999, PUT /api/entreprise/activites/999999, GET /api/articles/999999 et DELETE /api/acheteurs/999999. Les 6 autres attendus demandent un jeu de données et sont couverts par l'oracle, vérifié sur la capture hotellerie de la vague 2 : messages/gerantSansAffectation « Au moins un service ou une cuisine centrale doit être affectée », categorieAvecArticles « … assignée à 3 fournitures … », annulationCommandeExpediee « Commande annulée — le stock a été réintégré », suppressionAcheteur « Client professionnel supprimé — … », laboQuota « … 2 cuisines centrales … », et le motif dans persistes ; restauration identique à la référence."
   }
 ]

@@ -23,8 +23,15 @@ Historique :
   - §2.4, §2.6 et §11.2.2 : l'oracle capte `config.composants` de l'abonnement et compare l'ordre des clés (I9) ;
   - §6.5 : forme en phrase de « base acheteurs » ;
   - §3.2 E3 (46 constantes depuis S1), §5.4 (`/^l'/.test(voc.le(k))`), §7.4 (écart `deplacement`), §12.4 (`test-bot-onboarding`), §13.4 et §13.6 (contrôle du genre après bascule).
+- **v2.3 (02/10) : état final après balayage.** Écrite à la consolidation (étape C), d'après le code de `feat/lot-2b-serveur` (backend `ca4a01b`, frontend `9d37e07`), les besoins des lots (`scripts/vocab-besoins/`) et les écarts admis. Elle décrit ce qui a été fait là où le travail s'est écarté de la lettre de la v2.2, avec sa raison ; aucune décision n'est changée. Les amendements sont marqués « (v2.3) » :
+  - §2.4, §2.7, §7.1, §7.3 : glossaire rendu par `voc.avec(entrée résolue)` (aucune clé non littérale), 3ᵉ argument `profil` de `buildSystemPrompt`, mesure en Hôtellerie et en Céramique ;
+  - §2.5, §2.6 : exceptions « extrait », glossaire retiré du scan, comptes finaux des exceptions et des écarts ;
+  - §3.1 : `_global.json` à 8 entrées ; §3.2 : `CHAMPS.md` lu en résiduels (E1), mesure E3 figée à 46, `TYPES_ALLOW` à 14 types (E8) ;
+  - §1 et §12 : besoins clos par leur champ `etat` (0 besoin ouvert) ;
+  - §5.1, §5.4, §5.5 : sites finals de `res.locals.vocabBrut`, `invaliderProfilApresCommit`, `ongletSur` ; §4.2 : `entreeComposantVoc` ;
+  - §8.1, §10.2 : décisions laissées au client (`perteLabel`, deux libellés sans accent, une élision, l'email d'avenant), code inchangé.
 
-**Les numéros de ligne sont ceux de `bfb590a`.** Les rapports de cartographie citent `339e5c4` : seul `ventesController.js` diffère, d'une à quinze lignes.
+**Les numéros de ligne sont ceux de `bfb590a`** (sauf ceux des amendements (v2.3), qui sont ceux de la branche après la vague 2). Les rapports de cartographie citent `339e5c4` : seul `ventesController.js` diffère, d'une à quinze lignes.
 
 Têtes de départ : backend `develop` = `bfb590a`, frontend `develop` = `71d3430`. Branche `feat/lot-2b-serveur` dans les deux dépôts. Prochaine migration libre : **192**. Pré-requis de l'étape D : les deux correctifs de sécurité du 02/10 (`develop` = `bfb590a`, `main` = `6f6b15b`) sont poussés. À vérifier par `git rev-parse origin/main`.
 
@@ -74,7 +81,7 @@ Ce qui n'existe pas, vérifié : aucune page HTML servie en production, aucune r
 | **S2** | Socle serveur (§5) | rendu au bord et messages de `auth.js`, plomberie `voc`, migration 192, assainisseurs, factorisation SQL, codes d'erreur, `/auth/me` allégé, guide des agents |
 | **Vague 1** | B3a, B3b, B4, B5 en parallèle (§10), puis intégrateur | messages, Excel, tableaux de bord, textes persistés |
 | **Vague 2** | B1, B2, B6 en parallèle, puis intégrateur | assistant, documents et emails, écrans |
-| **C** | Consolidation : besoins, écarts provisoires ramenés à 0 | |
+| **C** | Consolidation : besoins, écarts provisoires ramenés à 0 | (v2.3) chaque besoin porte son état final dans son champ `etat` (`APPLIQUÉ`, `REFUSÉ`, `REPORTÉ`, `SANS OBJET`, `DÉCISION CLIENT`) ; l'outil ne compte que les besoins sans état final (`compterBesoins`, `ETAT_BESOIN_CLOS`) : 0 ouvert ; 0 `provisoire` ; spec à jour |
 | **V** | Vérification, trois revues contradictoires, corrections, contrôle final (§12) | |
 | **D** | Fusion `--no-ff` dans `develop` puis `main`, serveur d'abord (§13) | |
 
@@ -107,7 +114,8 @@ On capture les sorties du serveur sur des comptes éphémères, AVANT toute modi
   - `abonnementController.enforcerStatuts` remplacé par une fonction vide ;
   - base locale exigée ;
   - contrôle final : aucun `node_modules/resend` dans `require.cache`, sinon arrêt.
-- `scripts/capture-vocab-baseline.js` charge l'application DANS son processus (port dédié, attente de `/health`). Il refuse de démarrer entre 00:45 et 01:15. Il se termine par `process.exit` dans un `finally`, après nettoyage, car les minuteries de `app.js` et le pool garderaient le processus ouvert. Il écrit dans son compte rendu la dernière migration appliquée.
+  - (v2.3) état final du bouchon : `http` / `https` (`.request`, `.get`) et toute connexion TCP/TLS directe (`net.Socket.prototype.connect`) sont refusés comme `fetch` ; les variables « retirées » (`DOCUSEAL_PDF_FLOW`, `FACTURE_STRICT`, `GROQ_API_KEY`, `TELEGRAM_BOT_TOKEN`, `MESSENGER_*`) sont posées VIDES, car une variable supprimée serait rechargée du `.env` par `dotenv` ; la capture s'arrête si l'une d'elles est non vide.
+- `scripts/capture-vocab-baseline.js` charge l'application DANS son processus (port dédié, attente de `/health`). Il refuse de démarrer entre 00:45 et 01:15 (job quotidien de 01:00) et, (v2.3), en janvier : les données de l'oracle s'écrivent sur le mois précédent, qui serait d'un autre exercice. Il se termine par `process.exit` dans un `finally`, après nettoyage, car les minuteries de `app.js` et le pool garderaient le processus ouvert. Il écrit dans son compte rendu la dernière migration appliquée.
   - HTTP pour les exports, les tableaux de bord, le guide, les messages, les emails des sites d'appel et le webhook DocuSeal : ce sont les mêmes middlewares que la production, rendu au bord compris.
   - Appel direct pour les fonctions pures : prompt, outils, ligne de contexte, emails à jeux fixes, PDF, valeurs du contrat, rapport de l'assistant.
 - `scripts/check-invariant-vocab.js` compare la capture courante à la référence (`--domaine restauration` par défaut). Avec `--domaine hotellerie|ceramique|miroir`, il cherche les formes par défaut (§2.5).
@@ -154,7 +162,7 @@ On capture les sorties du serveur sur des comptes éphémères, AVANT toute modi
 - **Webhook DocuSeal** : `POST` signé avec le secret de test, dans `miroir`. Il couvre `applyComposants` en mode `add`, la notification et l'email de bienvenue.
 
 ### 2.4 Captures (clés du JSON)
-- `prompt` : `buildSystemPrompt` sur une ligne fixe, horloge figée autour de l'appel.
+- `prompt` : `buildSystemPrompt` sur une ligne fixe, horloge figée autour de l'appel. (v2.3) Appelé sans profil (`buildSystemPrompt(ligne, voc)`) : jamais de glossaire dans cette clé, qui reste celle de la référence. Le glossaire est capté par `promptReel` seulement (besoin B1[1] refusé : une clé `C.prompt.avecGlossaire` ajouterait une clé à la référence sans rien prouver de plus).
 - `promptReel` : `chatWithAI(clientId de B, …)`, corps capté par le bouchon Gemini. Il prouve que `chatWithAI` passe `vocabForClient`, glossaire compris.
 - `outils` : JSON des 15 outils.
 - `resultatsOutils` : les 12 outils de données sur B, appelés par `executeToolCall` SANS `voc`, pour prouver son repli. Dont `get_transferts` vers un labo et `get_ventes` avec un prestataire nul, avec chacun des filtres `canaux`, `prestataires`, `catProduits`, `typesProduit`.
@@ -227,6 +235,10 @@ Ne jamais comparer d'octets de PDF ou de classeur. La référence et chaque pass
    - captures `emails` des sites d'appel et `promptReel`.
 4. **Recherche** : motif `(?<![\p{L}\p{N}_])forme(?![\p{L}\p{N}_])`, par la fonction `formesDans(texte, formes)` de l'outil (E11).
 5. **Exceptions** : une entrée de `exceptions-hors-restauration.json` vise `{ cle, chemin (motif), texte exact, type, justification }`. Types : `lot-3`, `2c`, `fiscal`, `formule`, `non-repliable`, `nom-de-fichier`, `code-api`, `donnee`, `locution`, `homonyme`, `admin`. Une entrée sans emploi est signalée.
+   - (v2.3) **Extrait.** Un prompt est UN texte : une exception par forme l'éteindrait en entier. Une entrée `extrait: true` retire seulement son `texte`, un passage exact, avant la recherche. Emploi : l'« article » générique du prompt (§6.5, `aiService.js`), type `homonyme`.
+   - (v2.3) **Glossaire.** Le bloc « ## Vocabulaire du compte » (§7.3) est retiré du texte lu de `prompt` et `promptReel` : sa colonne de gauche est la forme de LabFlow par définition. Seule sa colonne de droite (à droite de « → », ou entre « = » et la parenthèse finale d'une ligne d'unités) est cherchée, sous le chemin `…/glossaire/droite`.
+   - (v2.3) Le texte fixe des contrats prend le type `lot-3` (le type `reporte` n'existe qu'aux écarts admis de l'outil). La mention du signataire prestataire « Pour LabFlow Oracle — Le Gérant Oracle » est une `donnee` de l'environnement de l'oracle (`PRESTATAIRE_SIGNATAIRE`), pas le gérant du lexique.
+   - (v2.3) État final : 108 exceptions (`2c` 32, `homonyme` 29, `code-api` 15, `lot-3` 13, `donnee` 7, `locution` 5, `fiscal` 3, `formule` 2, `non-repliable` 2). Les messages à « article » générique de `acheteurVentesController.js` et `portailController.js` (§6.5) n'en reçoivent pas : l'oracle ne les capte pas (une exception sans emploi ferait échouer le contrôle).
 6. **Recherche des mots hors lexique** : `restaurant|restauration|plat|menu|chef|couverts|carte|métiers de bouche|food`, sans casse, dans les mêmes textes. Les résultats sont relus et classés en exception typée ou corrigés.
 
 Attendu à la fin du lot : 0 hors exceptions.
@@ -234,7 +246,7 @@ Attendu à la fin du lot : 0 hors exceptions.
 **Le scan est lancé AUSSI à l'étape O.** Son résultat est la liste de travail des vagues, chiffrée par famille : `hors-restauration-avant.json`. À l'étape O, le lexique n'a pas encore les 4 clés `*_abr` ; cette liste est donc déclarée incomplète pour les abréviations. Le scan est relancé après S1 pour la compléter.
 
 ### 2.6 Écarts restauration attendus
-`scripts/vocab-baseline/ecarts-restauration-attendus.json` : une entrée par écart admis, `{ cle, chemin, avant, apres, raison: '§11.1.n' | '§11.2.n' }`, plus `type: 'ordre-cles'` pour une permutation de clés (§2.4, v2.2). `check-invariant-vocab.js` échoue sur un écart non listé, ET sur une entrée sans emploi. On n'y met jamais de masquage en bloc. Il est tenu par l'intégrateur (§10.4).
+`scripts/vocab-baseline/ecarts-restauration-attendus.json` : une entrée par écart admis, `{ cle, chemin, avant, apres, raison: '§11.1.n' | '§11.2.n' }`, plus `type: 'ordre-cles'` pour une permutation de clés (§2.4, v2.2). `check-invariant-vocab.js` échoue sur un écart non listé, ET sur une entrée sans emploi. On n'y met jamais de masquage en bloc. Il est tenu par l'intégrateur (§10.4). (v2.3) État final : 109 entrées. `§11.2.2` 62 (`auth`, `genre` / `elision` des composants), `§11.2.1` 10 (`auth`, `lexique: null`), `§11.1.7` 21 et `§11.1.4` 13 (`exports`), `§11.1.2` 2 et `§11.1.1` 1 (`pdf` : avenant legacy, factures d'appro de transfert). Aucune donnée de l'oracle restauration n'est hors Windows-1252 dans un document où `pdfTexte` s'applique : le cas « ? » du §11.1.2 n'y a pas d'écart.
 
 ### 2.7 Deux exports neutres, et signatures cibles
 Dans le commit de l'oracle :
@@ -248,7 +260,7 @@ Preuve de neutralité : `vocab-check identite` donne 0 écart sur ces deux fichi
 | Fonction | Forme finale | Repli avant le lot |
 |---|---|---|
 | outils | `toolsFor(voc)` | `TOOLS_OPENAI` |
-| prompt | `buildSystemPrompt(ligne, voc)` | `buildSystemPrompt(ligne)` (2ᵉ argument ignoré) |
+| prompt | `buildSystemPrompt(ligne, voc)` ; (v2.3) forme finale `buildSystemPrompt(ligne, voc, profil = null)`, 3ᵉ argument facultatif réservé au glossaire (§7.3), que la capture `prompt` n'emploie pas | `buildSystemPrompt(ligne)` (2ᵉ argument ignoré) |
 | guide | `onboardingPromptBlock(etat, voc)` | idem |
 | contexte | `getClientContextLine(id, voc)` | idem |
 | Messenger | `texteAccueilMessenger(nom, voc)` | idem |
@@ -260,6 +272,8 @@ Preuve de neutralité : `vocab-check identite` donne 0 écart sur ces deux fichi
 | contrat legacy | `generateContratPdf(données, voc)` | idem |
 
 Un lot qui change une autre signature appelée par l'oracle l'écrit dans ses `besoins`. L'intégrateur met le script à jour.
+
+(v2.3) Autres signatures finales : `executeToolCall(clientId, nom, input, voc?)`, qui retombe sur `vocabForClient(clientId)` sans `voc` (la capture l'appelle sans) ; nouvel export `aiService.glossaireVocabulaire(voc, profil)` ; `TOOLS_OPENAI` et `TOOLS_ANTHROPIC` ne sont plus exportés (la capture détecte `toolsFor`).
 
 ## 3. Outil de preuve et références (étape S0)
 
@@ -278,11 +292,14 @@ Un lot qui change une autre signature appelée par l'oracle l'écrit dans ses `b
   - Raison : une entrée `avant: null` sans objet absorbe en silence un nouveau littéral identique (mesuré, code de sortie 0).
 - **Nouveaux fichiers d'écarts admis** : backend `scripts/vocab-allow/{socle,B1,B2,B3a,B3b,B4,B5}.json` et `_global.json` ; frontend `B6.json`.
   - Le `_global.json` du backend reprend celles des entrées globales du front qui valent pour le serveur : prix de vente, type de vente, canal de vente, sous-produit, Activité Basique / Premium (`formule`), domaine d'activité, « Indiquez au moins un supplément » (supplément tarifaire, `formule`).
+  - (v2.3) État final : **8 entrées**, celles qui servent au serveur : « prix de vente », « canal de vente », « sous-produit », « Sous-produit » (`locution`) ; « Activité Premium », « Indiquez au moins un supplément » (`formule`) ; « Domaine d'activité », « domaine d'activité » (`homonyme`). « type de vente » et « Activité Basique » n'ont aucune unité au serveur : une entrée sans objet n'est pas gardée.
   - Un agent qui a besoin d'une entrée globale l'écrit dans ses `besoins` : seul l'intégrateur écrit `_global.json`.
 - **Répartition** : `fiche-technique-backend/scripts/vocab-lots.mjs`, sur le modèle du front, est la source de la répartition du §10. Il donne les fichiers d'un lot et leur charge, mesurée par le mode `residuels` plus les unités hors outil déclarées. Il sort en erreur si un fichier à résidus est dans 0 ou 2 lots.
 
 ### 3.2 Extensions de `scripts/vocab-check.mjs` (frontend)
 - **E1 — Périmètre serveur.** Avec `--root` sur le backend, `docuseal-templates/generate.js` est lu en plus de `src/` : parcours, `git ls-tree`, `git diff`, `ls-files`. Ses unités attendues : texte fixe du contrat (entrées `reporte` lot 3), données d'exemple de la ligne de commande (`generate.js:1246-1289`, entrées `homonyme`), facture d'appro (à traduire), facture acheteur (entrées `fiscal`).
+
+  (v2.3) `docuseal-templates/CHAMPS.md` (lot B2) n'est pas du code : le mode `identite` ignore un fichier nommé qui n'est pas du code et le signale (« pas du code, ignoré par identite ») ; le mode `residuels` le lit, avec ou sans liste de fichiers (`RESIDUELS_EN_PLUS`). Ses unités sont admises par des entrées `reporte` (lot 3) et `discriminant` de `B2.json`. Le seul changement de B2 dans ce fichier (« lot 2 » → « lot 3 », §8.2) se lit au `git diff`.
 - **E2 — R8 restreint au serveur (I7).** Dans un `.js` du backend, une balise n'est rendue que si elle se trouve à un **point de rendu** ; partout ailleurs, c'est l'erreur « balise sans rendu », qu'aucun écart admis n'éteint. Points de rendu :
   - la propriété `message` d'un objet littéral passé DIRECTEMENT à `res.json(…)` ou `res.status(…).json(…)`, ou poussé dans un tableau nommé `erreurs` ;
   - l'argument de message d'une construction d'erreur : `new Error(m)` (argument 1), `new TransfertError(status, code, m)` (argument 3), `new UniteError(code, m)` (argument 2). Ce n'est **jamais** un point de rendu dans `src/routes/*.js`, ni dans un `body().custom(…)` d'express-validator : leur texte part dans `errors[].msg`, qui n'est pas rendu ;
@@ -302,7 +319,7 @@ Un lot qui change une autre signature appelée par l'oracle l'écrit dans ses `b
   - une constante de la forme `[a-z0-9_]+` ;
   - OU une constante de la liste fermée des codes en capitales : `'PT'` au départ. Tout ajout passe par la spec.
 
-  Les autres constantes sont jugées comme des textes. Mesure attendue à `bfb590a` : 44 constantes-libellés PORTANT UN TERME du lexique (lexique à 43 clés), dans 22 requêtes (et 18 `'PT'` codes dans 15 requêtes) ; un test fige ce compte sur la copie de référence. (v2.2) 46 depuis S1 : les clés `produit_vendable_abr` et `produit_valorise_abr` reconnaissent « P. Vendable / » et « P. Valorisé / » de `dashboardV2Controller.js` ; requêtes et `'PT'` inchangés. Les 13 fragments SQL qui ne commencent pas par un mot-clé (`facturesController.js:43-56`, `stockUtils.js:75-76`…) sont des résidus admis (`discriminant`).
+  Les autres constantes sont jugées comme des textes. Mesure attendue à `bfb590a` : 44 constantes-libellés PORTANT UN TERME du lexique (lexique à 43 clés), dans 22 requêtes (et 18 `'PT'` codes dans 15 requêtes) ; un test fige ce compte sur la copie de référence. (v2.2) 46 depuis S1 : les clés `produit_vendable_abr` et `produit_valorise_abr` reconnaissent « P. Vendable / » et « P. Valorisé / » de `dashboardV2Controller.js` ; requêtes et `'PT'` inchangés. (v2.3) État final : le test « E3 — mesure figée sur la copie de référence du serveur » de `vocab-check.test.mjs` vaut 22 requêtes, 46 constantes-libellés et 18 `'PT'`. Les 13 fragments SQL qui ne commencent pas par un mot-clé (`facturesController.js:43-56`, `stockUtils.js:75-76`…) sont des résidus admis (`discriminant`).
 - **E4 — Identité et SQL.** Une unité SQL est comparée par TROIS multi-ensembles, chacun avec la référence du même fichier :
   1. ses constantes-libellés (rendues), versées dans le multi-ensemble du fichier avec les autres textes ;
   2. ses constantes-codes, comparées à part : un code ajouté, retiré ou changé est un écart, admis seulement par une entrée `discriminant` ;
@@ -320,6 +337,8 @@ Un lot qui change une autre signature appelée par l'oracle l'écrit dans ses `b
   - `reporte` : texte laissé pour un lot ultérieur, avec le champ `lot` obligatoire (`3` ou `2c`). Il remplace `provisoire`, qui doit finir à 0, pour le texte fixe du contrat et l'outil de recherche ;
   - `admin` : texte lu seulement par un super_admin ou le boss (I4), dans un fichier mixte. Justification obligatoire : la route et son garde (`requireSuperAdmin`, `requireBoss`) ;
   - `fiscal` : texte d'un document fiscal promis identique à l'octet près (facture acheteur, facture d'abonnement).
+
+  (v2.3) État final de `TYPES_ALLOW` : **14 types**, les 11 du lot 2 (`homonyme`, `formule`, `locution`, `verbe`, `exemple`, `discriminant`, `deplacement`, `non-repliable`, `apostrophe`, `faute-corrigee`, `provisoire`) et les 3 ci-dessus. `provisoire` reste accepté, à 0 entrée.
 - **E9 — Accords.** `ACCORDS_APRES` reçoit 8 formes : élevé, détecté, bon, récent, confirmé, autorisé, référencé, réintégré. Les 6 autres formes relevées y sont déjà.
 - **E11 — `formesDans(texte, formes)`**, exportée, sur le motif de `motEntier` (`vocab-check.mjs:196-197`) : elle cherche une liste de formes donnée, là où `termesDans` cherche toujours toutes les formes du lexique par défaut. Elle sert au mode hors restauration de l'oracle (§2.5).
 - **E10 — Tests de l'outil** (`scripts/vocab-check.test.mjs`) : cas serveur positifs et négatifs pour E1 à E9 et E11. Les idiomes non reconnus sont interdits au guide : `(req.voc ?? vocabDefaut).Nom(…)` et `req['voc']`. On écrit `const voc = req.voc ?? vocabDefaut;`.
@@ -343,7 +362,7 @@ Tout se fait dans la source frontend `src/vocab/`. Le backend est régénéré p
      ```
 
      Elle accepte aussi les noms de colonnes `libelle_pluriel`. Un `elision` qui n'est pas un booléen (nul, absent, ou `'auto'`, le synonyme admis par l'admin et qu'un aperçu d'écran peut porter avant l'enregistrement, v2.2) vaut « déduite » : `y` et `h` donnent non. L'admin la force pour un h muet (« Huilerie » : `elision` = vrai donne « mon huilerie ») ou pour un cas que la règle rate.
-   - (v2.2) `entreeComposantVoc(voc, c)` : l'entrée d'un composant DANS LE VOCABULAIRE DU COMPTE, pour un déterminant (`voc.avec(entreeComposantVoc(voc, c)).mon('_', n)`). Même table fermée que `libelleComposant` : un composant identité au libellé du brouillon prend le TERME (`Nom`, `Pl`, genre `voc.acc(k, 'm', 'f')`, élision `/^l'/.test(voc.le(k))` ; « Base acheteurs » : `Base ${voc.court('acheteur', true)}`, féminin) ; tout autre composant, `entreeComposant(c)`. Par défaut, même rendu que `entreeComposant(c)` pour les 4 composants identité tels que la 192 les laisse. Sans elle, « mon activité » resterait écrit hors restauration pour un domaine créé par l'admin (composants identité « Activité / Labo »).
+   - (v2.2) `entreeComposantVoc(voc, c)` : l'entrée d'un composant DANS LE VOCABULAIRE DU COMPTE, pour un déterminant (`voc.avec(entreeComposantVoc(voc, c)).mon('_', n)`). Même table fermée que `libelleComposant` : un composant identité au libellé du brouillon prend le TERME (`Nom`, `Pl`, genre `voc.acc(k, 'm', 'f')`, élision `/^l'/.test(voc.le(k))` ; « Base acheteurs » : `Base ${voc.court('acheteur', true)}`, féminin) ; tout autre composant, `entreeComposant(c)`. Par défaut, même rendu que `entreeComposant(c)` pour les 4 composants identité tels que la 192 les laisse. Sans elle, « mon activité » resterait écrit hors restauration pour un domaine créé par l'admin (composants identité « Activité / Labo »). (v2.3) Écrite telle quelle dans `src/vocab/composants.ts` et générée au serveur ; employée par le guide de mise en route (`onboardingEtat.js`, §7.4).
    - `libelleComposant(voc, c, n, casse)` : si `c.code === c.typeTechnique` ET si le libellé stocké est celui du brouillon identité, on prend le rendu identité, table fermée :
 
      | Type | Rendu |
@@ -393,7 +412,7 @@ Tout se fait dans la source frontend `src/vocab/`. Le backend est régénéré p
 - **Copie, jamais modification.** `{ ...body, message }`. Des corps sont partagés entre requêtes (`REPONSE_INVALIDE`, `publicSiteController.js:9`). Sans balise, le MÊME objet est renvoyé : mêmes octets.
 - Tous les statuts, 2xx compris (« Commande annulée — le stock a été réintégré » est un 200 affiché).
 - Une balise de syntaxe invalide reste telle quelle et n'est signalée qu'une fois par processus (ensemble borné à 500 entrées). (v2.2) Une balise bien formée dont la CLÉ est inconnue (`[[nom:xyz]]`) n'est pas laissée telle quelle : le moteur la rend « ‹xyz› » et la signale par son propre ensemble, borné lui aussi à 500.
-- **Sortie explicite (v2.2).** Une route dont le `message` est une DONNÉE saisie pose `res.locals.vocabBrut = true` avant de répondre : le corps part tel quel. Seul cas : `PUT /admin/site/demandes-acces/:id` (`adminSiteController.updateDemandeAcces`), qui renvoie le message d'un visiteur du site public (seule colonne `message` en base, migration 173).
+- **Sortie explicite (v2.2).** Une route dont le `message` est une DONNÉE saisie pose `res.locals.vocabBrut = true` avant de répondre : le corps part tel quel. Seul cas : `PUT /admin/site/demandes-acces/:id` (`adminSiteController.updateDemandeAcces`), qui renvoie le message d'un visiteur du site public (seule colonne `message` en base, migration 173). (v2.3) État final : ce seul site pose `res.locals.vocabBrut = true` (`adminSiteController.js:154`), lu par `rendreMessages.js`.
 - **Données interpolées** (nom de produit, libellé) : le message est rendu après l'interpolation. Une donnée de la forme exacte d'une balise valide serait donc rendue (« ‹clé› » si la clé est inconnue). Accepté par écrit : 0 cas en base, conséquence cosmétique. Un `message` qui EST une donnée prend la sortie explicite.
 - **Vocabulaire.** Le lecteur d'une réponse HTTP est celui qui a fait la requête : `req.voc` respecte I6 sans requête de plus.
   - Admin et boss : défaut, par le rôle.
@@ -444,7 +463,7 @@ Code :
   - `creerComposantIdentite` lit le profil du domaine par `getProfil(domaineId)`, dans la fonction, et LÈVE si le domaine est illisible : la transaction est annulée, et on n'écrit jamais en base un libellé de repli. Elle est atteinte par le webhook DocuSeal et par des requêtes admin, donc pas de `voc` de l'appelant ;
   - libellés : `voc.Nom(k)` / `voc.Pl(k)` ; « Base » + `voc.court('acheteur', true)` pour les acheteurs ;
   - genre et élision viennent du TERME du domaine : `genre = voc.acc(k, 'm', 'f')`, `elision = /^l'/.test(voc.le(k))` pour `activite`, `labo` et `gerant` (v2.2 : jamais une méthode de chaîne sur un appel `voc`, idiome que l'outil ne suit pas) ; `'f'` et `null` pour `acheteurs`. `COMPOSANTS_IDENTITE` ne sert qu'aux libellés par défaut (création d'un domaine, migration 192). Vecteur : en Hôtellerie, « mon service », « ma cuisine centrale » ;
-  - après le COMMIT, l'appelant oublie le profil du domaine en cache (v2.2) : `applyComposants` renvoie `identitesCreees` (un composant identité a été créé) et `domaineId` ; chacun des 6 sites appelle `invaliderProfilApresCommit(resultat)` juste après SON COMMIT, jamais avant (un chargement concurrent remettrait en cache le profil sans la ligne) : `abonnementController` (`createAbonnement`, mise à jour de la configuration, module acheteurs), `clientsController.update`, `supportController.traiter`, webhook DocuSeal. Au mieux, jamais d'exception. Sans cela, pendant 60 s, `/auth/me`, `GET /api/domaines`, `GET /api/entreprise` et le guide omettent le composant créé (domaines sans composant identité seulement). Tests : faux pool (`test/socle-composants.test.js`) et lecture des sources (chaque appelant invalide après un COMMIT) ;
+  - après le COMMIT, l'appelant oublie le profil du domaine en cache (v2.2) : `applyComposants` renvoie `identitesCreees` (un composant identité a été créé) et `domaineId` ; chacun des 6 sites appelle `invaliderProfilApresCommit(resultat)` juste après SON COMMIT, jamais avant (un chargement concurrent remettrait en cache le profil sans la ligne) : `abonnementController` (`createAbonnement`, mise à jour de la configuration, module acheteurs), `clientsController.update`, `supportController.traiter`, webhook DocuSeal. Au mieux, jamais d'exception. Sans cela, pendant 60 s, `/auth/me`, `GET /api/domaines`, `GET /api/entreprise` et le guide omettent le composant créé (domaines sans composant identité seulement). Tests : faux pool (`test/socle-composants.test.js`) et lecture des sources (chaque appelant invalide après un COMMIT). (v2.3) Sites finals : `abonnementController.js:526`, `:1696`, `:2013`, `clientsController.js:613`, `supportController.js:391`, `webhookController.js:91` ;
   - le chemin virtuel `creer: false` (`:174-176`) calcule le MÊME libellé, genre et élision, pour que l'aperçu dise ce que la création écrira ;
   - `listComposantsConfig` lit `genre` et `elision`.
 - `onboardingEtat.js:230` et `:257` : `genre` et `elision` dans le SELECT explicite et le mapping.
@@ -453,7 +472,7 @@ Code :
 ### 5.5 Assainisseurs de noms
 Nouveau module `src/utils/excelNoms.js` :
 - `ongletSur(wb, texte)` = `nomOnglet(texte)`, puis un suffixe « 2 », « 3 »… tenu dans 31 caractères si le nom existe déjà dans le classeur, sans tenir compte de la casse (ExcelJS lève sinon).
-  - Employé par les 17 `addWorksheet` qui portent un terme ou un nom saisi (§6.3).
+  - Employé par les 17 `addWorksheet` qui portent un terme ou un nom saisi (§6.3). (v2.3) État final : 17 appels `addWorksheet(ongletSur(wb, …))` dans 11 fichiers (dont la fonction des 4 feuilles du rapport de l'assistant, `reportService.js`) ; `nomOnglet` n'est plus appelé que par `ongletSur`. Le 18ᵉ `addWorksheet`, « Historique Config Prix » (`ventesController.js`), sans terme ni nom saisi, reste direct.
   - `nomOnglet` REMPLACE les caractères interdits par une espace (la spec lot 2 §4 disait « retire »).
   - Écart accepté : un onglet qui contient un nom saisi peut perdre une espace finale ou un double blanc (donnée, pas texte, §11.1).
 - `nomFichierSur(nom)` remplace par `-` les SEULS caractères que Node refuse dans un en-tête (hors `\t\x20-\x7E\x80-\xFF`), et le `"`, que Node admet mais qui fermerait `filename="…"` (changement visible en restauration, listé au §11.1.4, v2.2). Tout autre caractère reste tel quel. Ce n'est PAS la règle de `facturesController.js:286`, qui reste inchangée (I2).
@@ -529,7 +548,7 @@ Seuls les appels qui traversent deux lots sont faits au socle. Le texte, lui, es
 
 Limite connue, à ne pas « corriger » : un labo dont le nom contient déjà le mot donne « Cuisine (cuisine) ». C'est déjà le cas par défaut avec « Labo (labo) ».
 
-`scripts/test-transferts-chaine.js:502`, `:506`, `:516` et `:520` (compte Hôtellerie) calculent leur attente avec le vocabulaire du compte : « Cuisine (cuisine) », et `:520` « Livraison interne reçue ». Ce fichier est tenu par l'intégrateur (§10.4).
+`scripts/test-transferts-chaine.js:502`, `:506`, `:516` et `:520` (compte Hôtellerie) calculent leur attente avec le vocabulaire du compte : « Cuisine (cuisine) », et `:520` « Livraison interne reçue ». Ce fichier est tenu par l'intégrateur (§10.4). (v2.3) Appliqué : `:502` attend « Cuisine (cuisine) » (besoin B1[0]).
 
 ### 6.3 Excel
 - **Vocabulaire** : `const voc = req.voc ?? vocabDefaut` dans les 10 contrôleurs d'export (15 sites, avec `reportService`) ; paramètre `voc` obligatoire de `fillFtWorksheet` (`exportController.js`) et de `buildExcelPertes` (`pertesController.js`) ; `vocabForClient` dans `reportService`.
@@ -641,7 +660,7 @@ Jamais `req.voc` dans la chaîne de l'assistant : Messenger n'a pas de `req`, et
 - `generateAndSendReport` et l'accueil Messenger : `vocabForClient`.
 - `computeOnboardingEtat(clientId)` : `vocabDuProfil(profil)`, profil déjà chargé (`:79`). Signature inchangée : ni les 5 appelants ni le test ne bougent.
 - Fonctions pures, `voc` obligatoire :
-  - `buildSystemPrompt(contextLine, voc)` ;
+  - `buildSystemPrompt(contextLine, voc)` ; (v2.3) forme finale `buildSystemPrompt(contextLine, voc, profil = null)` : `profil` (lexique résolu et composants du domaine) ne sert qu'au glossaire du §7.3 ; sans lui, pas de glossaire. `chatWithAI` ne charge ce profil (`getProfilForClient`) que si `voc.estDefaut` est faux ; en cas d'erreur, le prompt part sans glossaire ;
   - `onboardingPromptBlock(etat, voc)` ;
   - `getClientContextLine(clientId, voc)` ;
   - `getContextLine(clientId, voc)` → `buildLineFromSnapshot(snap, voc)` (`SNAPSHOT_VERSION` reste 3) ;
@@ -670,7 +689,8 @@ Jamais `req.voc` dans la chaîne de l'assistant : Messenger n'a pas de `req`, et
     2. outils, champs et codes (`type_appro`, `canal`, types de perte, `PT`) restent ceux de LabFlow et ne se montrent pas au client ;
     3. la base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots, puis rends la réponse avec les mots du compte. Cette règle est à retirer au 2c.
   - La fonction parcourt une clé non littérale : écart `non-repliable` sur cette seule fonction.
-  - Mesure à refaire et à écrire au rapport : nombre de lignes et de caractères en Hôtellerie et en Céramique.
+  - (v2.3) **Écriture finale** (`aiService.glossaireVocabulaire(voc, profil)`). L'outil de preuve refuse une clé non littérale dans un appel `voc` : la fonction parcourt bien `LEXIQUE_CLES`, mais n'appelle jamais `voc.nom(k)`. Chaque forme est rendue par le moteur sur une ENTRÉE : `voc.avec(e).nom('_')`, `.nom('_', true)`, `.court('_')`, `.court('_', true)`, avec `e` = l'entrée résolue du domaine (`profil.lexique[k]`, à défaut `LEXIQUE_DEFAUT[k]`) à droite, et `LEXIQUE_DEFAUT[k]` rendue par `vocabDefaut` à gauche. Les lignes des unités font de même avec `voc.avec(entrée).det('_', 'un', true)` et `libelleComposant(voc, c)`. Le lexique résolu vient donc du 3ᵉ argument `profil` (§7.1), jamais d'une relecture du `voc`. Une clé dérivée par copie, seule de sa forme, qui rend la même chose que sa clé parente (`labo_long`, `labo_desc`) n'a pas de ligne. Les unités nouvelles de cette seule fonction sont admises en `non-repliable` (`scripts/vocab-allow/B1.json`). Absent par défaut : prouvé par `test/B1-assistant.test.js` (prompt identique à la référence) et par l'oracle.
+  - Mesure à refaire et à écrire au rapport : nombre de lignes et de caractères en Hôtellerie et en Céramique. (v2.3) Mesure sur la base locale (02/10, lexiques des brouillons) : Hôtellerie 2 698 caractères, 28 lignes ; Céramique 3 174 caractères, 33 lignes (titre et 3 règles compris) ; restauration, café, boulangerie : 0. Pour comparaison, le prompt par défaut sur une ligne fixe fait 5 374 caractères.
 - Ligne de contexte (`clientConfigService.js:121-138`, repli `aiToolHandlers.js:70-74`) : « aucune » / « aucun » → `voc.acc` ; « activité(s) » → `voc.nomS`. « Domaine d'activité » est un homonyme.
 
 ### 7.4 Guide de mise en route : lexique contre composants
@@ -700,7 +720,7 @@ Les 5 fonctions écrivent leurs termes par appels `voc`. Le sujet est en texte b
 - `sendAvenantEmail` ignore l'option Acheteurs ;
 - noms saisis non échappés.
 
-Ce sont des défauts anciens, hors lot.
+Ce sont des défauts anciens, hors lot. (v2.3) Laissés tels quels ; « `sendAvenantEmail` ignore l'option Acheteurs » est posé au client comme décision (`labflow-reprise/lot-2b/ecarts-visibles-2b.md`), recommandation : garder tel quel au 2b. Même chose pour « en tant que acheteur » de l'email d'invitation (`sendInviteEmail`, `roleLabel` gardé, §8.1) : l'élision « en tant qu'acheteur » changerait le texte d'un compte restauration, hors §11.
 
 ### 8.2 Contrat
 Seules changent les VALEURS que le serveur remplit, et leurs jumeaux du flux PDF :
@@ -797,6 +817,8 @@ La répartition qui fait foi est celle de `scripts/vocab-lots.mjs` (§3.1). Elle
   - `libelleCategoriePt` et `perteLabel` sur les valeurs ;
   - préfixes « P. Vendable / P. Valorisé » de `:249` par les clés `*_abr` ;
   - « Cout matiere », « Activite », « Production pt » : écart `faute-corrigee` (§11.1).
+  - (v2.3) État final. `libelleCleExport`, `libelleCategoriePt` et les préfixes `*_abr` : faits. **`perteLabel` sur les valeurs : NON appliqué.** Il changerait l'export d'un compte restauration (« avarie » → « Avarie(s) », « dechet » → « Déchet(s) »), changement absent du §11.1 (I1) ; décision posée au client (besoin B6[1]), code laissé tel quel. Deux libellés de la table gardent la forme de l'existant pour l'identité restauration : « Transferts par activite » (`voc.ex('Transferts par activite', …)`, accent rendu seulement hors restauration) et « Acheteurs factures » (`${voc.Pl('acheteur')} factures`) ; leur correction est aussi une décision du client.
+  - (v2.3) `src/types/index.ts` : `Composant` porte `genre?` et `elision?` (§11.2.2, besoin B6[0]) ; la page admin n'a plus de type local.
 - `MonAbonnementPage`, `ActivitesPage` : `libelleComposant` (§4.2) pour les lignes de composants.
 
 ### 10.3 Règles d'une vague
@@ -858,7 +880,7 @@ Aucun autre écart. Le reste est prouvé à l'identique par l'outil et par l'ora
    - `residuels` : 0 hors écarts admis, SQL compris (E3) ;
    - `accords` : 0, et `vocab-accords.txt` relu ;
    - `lexique` : à jour et regelé ;
-   - aucun écart `provisoire` ;
+   - aucun écart `provisoire` ; (v2.3) aucun besoin ouvert (`compterBesoins`) ;
    - `scripts/vocab-lots.mjs` : chaque fichier à résidus dans un seul lot.
 2. **Oracle** :
    - `check-invariant-vocab.js` : restauration identique à la référence hors `ecarts-restauration-attendus.json`, aucune entrée sans emploi, aucune clé vide ;
