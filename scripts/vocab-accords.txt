@@ -2,13 +2,13 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 503 unité(s), 41 fichier(s).
+# 509 unité(s), 41 fichier(s).
 
 src/controllers/abonnementController.js
   l. 1594
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
-  l. 1989
+  l. 1992
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
 
@@ -296,37 +296,43 @@ src/controllers/fournisseurController.js
     miroir : Ajout dynamique des enseignes : une ligne = une enseigne
 
 src/controllers/gerantController.js
-  l. 93
-    défaut : Au moins une activité ou un labo doit être affecté
-    miroir : Au moins un local ou une usine doit être affectée
-  l. 100
+  l. 95
+    défaut : Au moins une activité ou un labo doit être ⟦?affectée|affecté⟧
+    miroir : Au moins un local ou une usine doit être ⟦?affecté|affectée⟧
+  l. 95
+    défaut : m
+    miroir : f
+  l. 104
     défaut : Activité ou labo hors de votre périmètre
     miroir : Local ou usine hors de votre périmètre
-  l. 110
+  l. 114
     défaut : L'accès à la base acheteurs exige au moins un labo affecté
     miroir : L'accès à la base abr-clientes exige au moins une usine affectée
-  l. 113
+  l. 117
     défaut : La base acheteurs n'est pas activée sur votre compte
     miroir : La base abr-clientes n'est pas activée sur votre compte
-  l. 211
-    défaut : Gérant introuvable
-    miroir : Animatrice introuvable
   l. 215
-    défaut : Au moins une activité ou un labo doit être affecté
-    miroir : Au moins un local ou une usine doit être affectée
-  l. 218
-    défaut : Activité ou labo hors de votre périmètre
-    miroir : Local ou usine hors de votre périmètre
-  l. 228
-    défaut : L'accès à la base acheteurs exige au moins un labo affecté
-    miroir : L'accès à la base abr-clientes exige au moins une usine affectée
-  l. 235
-    défaut : La base acheteurs n'est pas activée sur votre compte
-    miroir : La base abr-clientes n'est pas activée sur votre compte
-  l. 261
     défaut : Gérant introuvable
     miroir : Animatrice introuvable
-  l. 292
+  l. 221
+    défaut : Au moins une activité ou un labo doit être ⟦?affectée|affecté⟧
+    miroir : Au moins un local ou une usine doit être ⟦?affecté|affectée⟧
+  l. 221
+    défaut : m
+    miroir : f
+  l. 226
+    défaut : Activité ou labo hors de votre périmètre
+    miroir : Local ou usine hors de votre périmètre
+  l. 236
+    défaut : L'accès à la base acheteurs exige au moins un labo affecté
+    miroir : L'accès à la base abr-clientes exige au moins une usine affectée
+  l. 243
+    défaut : La base acheteurs n'est pas activée sur votre compte
+    miroir : La base abr-clientes n'est pas activée sur votre compte
+  l. 269
+    défaut : Gérant introuvable
+    miroir : Animatrice introuvable
+  l. 300
     défaut : Gérant introuvable
     miroir : Animatrice introuvable
 
@@ -1016,16 +1022,46 @@ src/services/aiService.js
   l. 48
     défaut : ⟦·⟧
     miroir : ⟦·⟧
-  l. 76
+  l. 88
     défaut : « ⟦·⟧ » (ligne de stock, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'une recette → « ⟦·⟧ »⟦·⟧
     miroir : « ⟦·⟧ » (ligne d'armoire, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'un assemblage → « ⟦·⟧ »⟦·⟧
-  l. 90
+  l. 102
+    défaut : ⟦?|
+4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
+    miroir : ⟦?|
+4. « articles vendables » (configuration d'encaissement, `get_config_vente`) = tout ce que le compte vend (inventions et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
+  l. 111
     défaut : ⟦·⟧
     miroir : ⟦·⟧
-  l. 91
+  l. 112
     défaut : ⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)
     miroir : ⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)
-  l. 106
+  l. 114
+    défaut : 
+
+## Vocabulaire du compte
+Ce compte n'emploie pas tous les mots de LabFlow. Correspondances (mot de LabFlow → mot du compte) :
+⟦·⟧⟦?
+Unités du compte (composants de son domaine) :
+⟦·⟧|⟧
+Règles :
+1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.
+2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.
+3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (`search_knowledge_base`), puis rends la réponse avec les mots du compte.⟦?|
+4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
+    miroir : 
+
+## Vocabulaire du compte
+Ce compte n'emploie pas tous les mots de LabFlow. Correspondances (mot de LabFlow → mot du compte) :
+⟦·⟧⟦?
+Unités du compte (composants de son domaine) :
+⟦·⟧|⟧
+Règles :
+1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.
+2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.
+3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (`search_knowledge_base`), puis rends la réponse avec les mots du compte.⟦?|
+4. « articles vendables » (configuration d'encaissement, `get_config_vente`) = tout ce que le compte vend (inventions et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
+  l. 127
     défaut : ⟦?
 
 ## Contexte du client (DÉJÀ CONNU — ne rappelle PAS get_client_info, get_abonnement ni get_fournisseurs pour ces infos)
@@ -1036,7 +1072,7 @@ Utilise directement ces IDs d'activités/labos dès que le client nomme une acti
 ## Contexte du client (DÉJÀ CONNU — ne rappelle PAS get_client_info, get_abonnement ni get_fournisseurs pour ces infos)
 ⟦·⟧
 Utilise directement ces IDs de locaux/usines dès que le client nomme un local ou une usine. L'abonnement, la capacité souscrite et les compteurs ci-dessus sont déjà à jour : réponds-y directement, sans appeler d'outil.|⟧
-  l. 111
+  l. 132
     défaut : Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ⟦·⟧.
 Tu communiques avec le client via Messenger ou le chat web de l'application. Tes réponses doivent être professionnelles, structurées et bien formatées (Markdown léger).
 Le client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.⟦·⟧
@@ -1121,97 +1157,103 @@ Commence TOUJOURS par [CONF:0.XX] (niveau de confiance 0.00-1.00 selon la compl�
 - Si abandons élevés détectés → signaler avec 📉
 
 src/services/aiToolHandlers.js
-  l. 59
-    défaut : Seuil coût matière (food cost) : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
-    miroir : Seuil enveloppe matière (incidence matière) : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
-  l. 60
-    défaut : ⟦?⟦·⟧ | |⟧Seuil coût matière (food cost) : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
-    miroir : ⟦?⟦·⟧ | |⟧Seuil enveloppe matière (incidence matière) : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
-  l. 74
+  l. 61
+    défaut : coût matière
+    miroir : enveloppe matière
+  l. 61
+    défaut : food cost
+    miroir : incidence matière
+  l. 63
+    défaut : Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
+    miroir : Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
+  l. 64
+    défaut : ⟦?⟦·⟧ | |⟧Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
+    miroir : ⟦?⟦·⟧ | |⟧Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
+  l. 78
     défaut : ⟦?⟦·⟧|aucune⟧
     miroir : ⟦?⟦·⟧|aucun⟧
-  l. 75
+  l. 79
     défaut : ⟦?⟦·⟧|aucun⟧
     miroir : ⟦?⟦·⟧|aucune⟧
-  l. 78
+  l. 82
     défaut : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Activités: ⟦?⟦·⟧|aucune⟧ | Labos: ⟦?⟦·⟧|aucun⟧
     miroir : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Locaux: ⟦?⟦·⟧|aucun⟧ | Usines: ⟦?⟦·⟧|aucune⟧
-  l. 279
+  l. 283
     défaut : ⟦·⟧⟦? (labo)|⟧
     miroir : ⟦·⟧⟦? (abr-usine)|⟧
-  l. 409
+  l. 413
     défaut : Prestataire
     miroir : Agence
-  l. 563
+  l. 567
     défaut : Récupère le profil du client : nom, email, liste des activités (id + nom), liste des labos (id + nom). Appeler en premier pour connaître le périmètre disponible.
     miroir : Récupère le profil du client : nom, email, liste des locaux (id + nom), liste des usines (id + nom). Appeler en premier pour connaître le périmètre disponible.
-  l. 568
+  l. 572
     défaut : Récupère le stock d'ingrédients. Sans filtre = toutes activités et labos. Supporte filtrage par activité, labo, ingrédient, et période.
     miroir : Récupère l'armoire de provisions. Sans filtre = tous locaux et usines. Supporte filtrage par local, usine, provision, et période.
-  l. 572
+  l. 576
     défaut : ID de l'activité
     miroir : ID du local
-  l. 573
+  l. 577
     défaut : ID du labo
     miroir : ID de l'usine
-  l. 574
+  l. 578
     défaut : Nom partiel de l'ingrédient (recherche ILIKE)
     miroir : Nom partiel de la provision (recherche ILIKE)
-  l. 584
+  l. 588
     défaut : Récupère l'historique des approvisionnements manuels (achats) avec quantités et prix unitaires en TND. Les réassorts par transfert labo→activité relèvent de get_transferts.
     miroir : Récupère l'historique des rentrées manuelles (achats) avec quantités et prix unitaires en TND. Les réassorts par expédition usine→local relèvent de get_transferts.
-  l. 600
+  l. 604
     défaut : Récupère l'historique des pertes d'ingrédients. Filtrable par type de perte (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).
     miroir : Récupère l'historique des abandons de provisions. Filtrable par type d'abandon (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).
-  l. 607
+  l. 611
     défaut : Filtrer par type de perte (code du domaine, ex. avarie, dechet)
     miroir : Filtrer par type d'abandon (code du domaine, ex. avarie, dechet)
-  l. 617
+  l. 621
     défaut : Récupère l'historique des inventaires.
     miroir : Récupère l'historique des pesées.
-  l. 633
+  l. 637
     défaut : Récupère l'historique des transferts labo → activité.
     miroir : Récupère l'historique des expéditions usine → local.
-  l. 649
+  l. 653
     défaut : Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approvisionnements : get_stock, get_appros).
     miroir : Récupère l'encyclopédie des denrées/matières du client : nom et unité. Pour répondre aux questions sur le catalogue de denrées (les prix viennent des rentrées : get_stock, get_appros).
-  l. 653
+  l. 657
     défaut : Nom partiel d'article (recherche ILIKE)
     miroir : Nom partiel de denrée (recherche ILIKE)
-  l. 661
+  l. 665
     défaut : Récupère la liste des fournisseurs de l'entreprise (nom, adresse, téléphone).
     miroir : Récupère la liste des enseignes de l'entreprise (nom, adresse, téléphone).
-  l. 665
+  l. 669
     défaut : Nom partiel de fournisseur (recherche ILIKE)
     miroir : Nom partiel d'enseigne (recherche ILIKE)
-  l. 672
+  l. 676
     défaut : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre d'activités/labos/gérants, montant d'onboarding, date d'acceptation du contrat.
     miroir : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre de locaux/usines/animatrices, montant d'onboarding, date d'acceptation du contrat.
-  l. 677
+  l. 681
     défaut : Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.
     miroir : Récupère un résumé des encaissements : nombre d'encaissements, CA TTC (TND), enveloppe matière, incidence matière % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), écart brut, panier moyen, et répartition par canal (direct / prestataire). Filtrable par local, période et canal.
-  l. 681
+  l. 685
     défaut : ID de l'activité
     miroir : ID du local
-  l. 682
+  l. 686
     défaut : ID du labo (pour les ventes saisies au niveau labo)
     miroir : ID de l'usine (pour les encaissements saisis au niveau usine)
-  l. 692
+  l. 696
     défaut : Récupère la liste des produits / fiches techniques du client (nom, description).
     miroir : Récupère la liste des inventions / états techniques du client (nom, description).
-  l. 696
+  l. 700
     défaut : Nom partiel de produit (recherche ILIKE)
     miroir : Nom partiel d'invention (recherche ILIKE)
-  l. 704
+  l. 708
     défaut : Récupère la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.
     miroir : Récupère la configuration d'encaissement : agences de livraison actives par local, charges fixes par local, et articles vendables par local (avec prix de vente). Filtrable par local.
-  l. 708
+  l. 712
     défaut : ID de l'activité
     miroir : ID du local
-  l. 715
+  l. 719
     défaut : Génère et envoie par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).
     miroir : Génère et envoie par email un rapport Excel récapitulant armoire, abandons, pesées et expéditions du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).
-  l. 735
+  l. 739
     défaut : Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs activités et n'a pas précisé laquelle.
     miroir : Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs locaux et n'a pas précisé lequel.
 

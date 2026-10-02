@@ -580,6 +580,7 @@ const update = async (req, res) => {
     // composants re-mappés sur le nouveau domaine (même code sinon 1er composant du type,
     // compteurs et mensualité conservés), paiements en attente recalculés sur sa grille.
     let aboIdDomaine = null;
+    let vocabChange = false; // purge de l'assistant : seulement si le vocabulaire change
     let resultatComposants = null;
     if (domaineId != null) {
       const aboRes = await dbClient.query(
@@ -590,6 +591,8 @@ const update = async (req, res) => {
       );
       if (aboRes.rows.length && aboRes.rows[0].domaine_id !== domaineId) {
         aboIdDomaine = aboRes.rows[0].id;
+        // Domaine NULL (config antérieure au backfill de la 187) = restauration : l'y rattacher ne purge rien
+        vocabChange = (aboRes.rows[0].domaine_id ?? (await getDomaineDefautId(dbClient))) !== domaineId;
         const composants = await remapperComposants(dbClient, aboIdDomaine, domaineId);
         // Composition re-mappée validée contre les règles / bornes (nb_min, nb_max) du
         // domaine CIBLE : seules les erreurs introduites par le changement bloquent (400).
@@ -615,7 +618,7 @@ const update = async (req, res) => {
       await recalcPaiementsEnAttente(pool, aboIdDomaine).catch((e) => console.error('[clients.update] recalc paiements:', e.message));
       // Domaine changé : l'assistant oublie les conversations dites dans l'ancien vocabulaire
       // (lot 2b, spec §5.6) — au mieux, jamais un 500.
-      await oublierConversationsIA(id).catch((e) => console.error('[clients.update] purge assistant:', e.message));
+      if (vocabChange) await oublierConversationsIA(id).catch((e) => console.error('[clients.update] purge assistant:', e.message));
     }
 
     // Return with fresh domaineIds + domaine du compte

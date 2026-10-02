@@ -56,7 +56,11 @@ async function getClientContextLine(clientId, voc) {
   // Lot 1b §5 — règles du domaine injectées dans le contexte (seuil coût matière, types de perte).
   try {
     const [seuil, types] = await Promise.all([getSeuilCoutMatiereForClient(clientId), getTypesPerteForClient(clientId)]);
-    const regles = `Seuil ${voc.nom('cout_matiere')} (${voc.nom('food_cost')}) : ${seuil} % (au-delà = ${voc.acc('food_cost', 'élevé', 'élevée')}) | Types ${voc.de('perte')} : ${types.map((c) => `${c} (${perteLabel(c)})`).join(', ')}`;
+    // « Seuil coût matière (food cost) » ; sans la parenthèse quand le nom du ratio contient déjà celui du
+    // coût (Céramique : « Seuil taux de coût matière », et non « Seuil coût matière (taux de coût matière) »).
+    const [coutMatiere, foodCost] = [voc.nom('cout_matiere'), voc.nom('food_cost')];
+    const nomSeuil = foodCost.toLowerCase().includes(coutMatiere.toLowerCase()) ? foodCost : `${coutMatiere} (${foodCost})`;
+    const regles = `Seuil ${nomSeuil} : ${seuil} % (au-delà = ${voc.acc('food_cost', 'élevé', 'élevée')}) | Types ${voc.de('perte')} : ${types.map((c) => `${c} (${perteLabel(c)})`).join(', ')}`;
     return { ...ctx, line: ctx?.line ? `${ctx.line} | ${regles}` : regles, seuil_cout_matiere_pct: seuil, types_perte: types };
   } catch (_) {
     return ctx;

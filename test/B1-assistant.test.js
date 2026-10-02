@@ -129,9 +129,15 @@ test('glossaire Hôtellerie : une ligne « ingrédient » (deux sens), unités d
   assert.ok(g.includes('Restaurant, Bar, Room service, Housekeeping, Spa = des « services » (activités dans LabFlow)'));
   assert.ok(g.includes('Cuisine, Économat / Logistique = des « cuisines centrales » (labos dans LabFlow)'));
   assert.ok(!g.includes('Responsable de service ='), 'composant au libellé du lexique : pas de ligne');
-  assert.ok(!/laboratoire/.test(g), 'labo_long / labo_desc : la ligne de labo suffit');
+  // clés copiées (labo_long, labo_desc, activite_desc) : le manuel emploie leurs formes par défaut ; les copies
+  // d'une même clé au même rendu partagent une ligne (vérification du lot 2b)
+  assert.ok(g.includes('« laboratoire » / « laboratoires » (« laboratoire de production ») → « cuisine centrale » / « cuisines centrales »'));
+  assert.equal(lignes.filter((l) => l.includes('« laboratoire')).length, 1);
+  assert.ok(g.includes('« point de vente » / « points de vente » → « service » / « services »'));
   assert.ok(!/abr|P\. Vendable|Prod\. Transformé/.test(g), 'abréviations *_abr exclues');
-  assert.ok(!/point de vente/.test(g), 'activite_desc exclue');
+  // « articles vendables » de get_config_vente : pas des fournitures
+  assert.ok(g.includes('4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend'));
+  assert.ok(g.includes('ne le traduis pas par « fournitures vendables »'));
   assert.ok(g.includes('1. Réponds au client avec les mots du compte'));
   assert.ok(g.includes('3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow'));
   // placé juste après le bloc de contexte, dans le prompt
@@ -144,6 +150,9 @@ test('glossaire Hôtellerie : une ligne « ingrédient » (deux sens), unités d
   const c = glossaireVocabulaire(V.ceramique, { lexique: lexiques.ceramique, composants: [composant('showroom', 'activite', 'Showroom / Boutique', 'Showrooms / Boutiques'), composant('atelier', 'labo', 'Atelier', 'Ateliers')] });
   console.log(`  mesure du glossaire : Hôtellerie ${g.trim().split('\n').length} lignes, ${g.trim().length} caractères ; Céramique ${c.trim().split('\n').length} lignes, ${c.trim().length} caractères`);
   assert.ok(c.includes('« fiche technique » / « fiches techniques » (forme courte « FT ») → « fiche de coût de revient » / « fiches de coût de revient » (forme courte « FCR »)'));
+  assert.ok(c.includes('« laboratoire » / « laboratoires » (« laboratoire de production ») → « site de production » / « sites de production »'));
+  assert.ok(!c.includes('« point de vente » / « points de vente » →'), 'activite_desc rendue comme par défaut : pas de ligne');
+  assert.ok(c.includes('ne le traduis pas par « matières premières vendables »'));
 });
 
 test('prompt Hôtellerie : aucun mot « activité » ni « labo » hors glossaire et noms d\'outils', () => {

@@ -7,6 +7,8 @@
 // 3. Motif « Acheteur supprimé du carnet » (acheteursController.remove) : rendu À L'ÉCRITURE avec req.voc,
 //    jamais de balise en base (I7), accord du participe.
 // 4. Repli clientNom « Acheteur » de la notification de commande du portail : rendu à l'écriture (I7).
+// 5. (vérification du lot) « Au moins un X ou un Y doit être affecté » : participe au féminin seulement si les
+//    deux noms le sont ; restauration identique.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -172,4 +174,34 @@ test('portail : repli clientNom rendu à l\'écriture (même charge en base et e
   }
   await commanderAuPortail(VOC.hotellerie, 'Épicerie Nour');
   assert.equal(notifications[0].charge.clientNom, 'Épicerie Nour');
+});
+
+// ── 5. Vérification du lot 2b : « Au moins un X ou un Y doit être affecté » (gerantController create / update) ──
+// Deux noms : participe au féminin seulement si les deux le sont. Restauration : identique à l'existant.
+test('gérant sans affectation : accord du participe avec deux noms (masculin dès que l\'un l\'est)', async () => {
+  const gerants = require('../src/controllers/gerantController');
+  const attendus = {
+    defaut: 'Au moins une activité ou un labo doit être affecté',
+    hotellerie: 'Au moins un service ou une cuisine centrale doit être affecté',
+    ceramique: 'Au moins un point de vente ou un site de production doit être affecté',
+    miroir: 'Au moins un local ou une usine doit être affecté',
+  };
+  // deux noms féminins : « affectée »
+  const deuxFeminins = vocabDuLexique({ ...ESSAIS.miroir, activite: { ...(ESSAIS.miroir.activite || {}), sg: 'Boutique', pl: 'Boutiques', g: 'f', el: false } });
+  for (const [nom, voc, attendu] of [...Object.entries(attendus).map(([d, a]) => [d, VOC[d], a]),
+    ['deux féminins', deuxFeminins, 'Au moins une boutique ou une usine doit être affectée']]) {
+    const res = fauxRes();
+    await gerants.create({ body: { nom: 'G', telephone: '1', email: 'g@test.invalid', activiteIds: [], laboIds: [] }, user: { id: 1 }, voc }, res);
+    assert.equal(res.statusCode, 400, nom);
+    assert.equal(rendre(voc, res.corps.message), attendu, `create, ${nom}`);
+    const res2 = fauxRes();
+    repondreA = () => ({ rows: [{ id: 5, gerant_acces_acheteurs: false }] });
+    await gerants.update({ params: { id: '5' }, body: { activiteIds: [], laboIds: [] }, user: { id: 1 }, voc }, res2);
+    assert.equal(res2.statusCode, 400, `update, ${nom}`);
+    assert.equal(rendre(voc, res2.corps.message), attendu, `update, ${nom}`);
+  }
+  // sans req.voc : branche du labo (texte de l'existant, rendu par défaut au bord)
+  const res = fauxRes();
+  await gerants.create({ body: { nom: 'G', telephone: '1', email: 'g@test.invalid' }, user: { id: 1 } }, res);
+  assert.equal(rendre(vocabDefaut, res.corps.message), attendus.defaut);
 });

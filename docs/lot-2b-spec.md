@@ -411,9 +411,9 @@ Tout se fait dans la source frontend `src/vocab/`. Le backend est régénéré p
   Rien d'autre : ni `errors` (deux sens : tableau express-validator et compteur d'import), ni `details`, `warnings`, `detail`, `reply`, ni les tableaux.
 - **Copie, jamais modification.** `{ ...body, message }`. Des corps sont partagés entre requêtes (`REPONSE_INVALIDE`, `publicSiteController.js:9`). Sans balise, le MÊME objet est renvoyé : mêmes octets.
 - Tous les statuts, 2xx compris (« Commande annulée — le stock a été réintégré » est un 200 affiché).
-- Une balise de syntaxe invalide reste telle quelle et n'est signalée qu'une fois par processus (ensemble borné à 500 entrées). (v2.2) Une balise bien formée dont la CLÉ est inconnue (`[[nom:xyz]]`) n'est pas laissée telle quelle : le moteur la rend « ‹xyz› » et la signale par son propre ensemble, borné lui aussi à 500.
+- Une balise de syntaxe invalide reste telle quelle et n'est signalée qu'une fois par processus (ensemble borné à 500 entrées). (v2.4) Au-delà de 500 balises distinctes, l'ensemble est vidé et les signalements reprennent : la mémoire est bornée, pas le volume du journal. Accepté : un message n'interpole qu'une vingtaine de noms saisis au plus, et les seuls messages qui portent un code venu de la requête (`configComposantsService.js`, erreurs de composition) sont sur des routes admin. (v2.2) Une balise bien formée dont la CLÉ est inconnue (`[[nom:xyz]]`) n'est pas laissée telle quelle : le moteur la rend « ‹xyz› » et la signale par son propre ensemble, borné lui aussi à 500.
 - **Sortie explicite (v2.2).** Une route dont le `message` est une DONNÉE saisie pose `res.locals.vocabBrut = true` avant de répondre : le corps part tel quel. Seul cas : `PUT /admin/site/demandes-acces/:id` (`adminSiteController.updateDemandeAcces`), qui renvoie le message d'un visiteur du site public (seule colonne `message` en base, migration 173). (v2.3) État final : ce seul site pose `res.locals.vocabBrut = true` (`adminSiteController.js:154`), lu par `rendreMessages.js`.
-- **Données interpolées** (nom de produit, libellé) : le message est rendu après l'interpolation. Une donnée de la forme exacte d'une balise valide serait donc rendue (« ‹clé› » si la clé est inconnue). Accepté par écrit : 0 cas en base, conséquence cosmétique. Un `message` qui EST une donnée prend la sortie explicite.
+- **Données interpolées** (nom de produit, libellé) : le message est rendu après l'interpolation. Une donnée de la forme exacte d'une balise valide serait donc rendue (« ‹clé› » si la clé est inconnue). Accepté par écrit : 0 cas en base, conséquence cosmétique. (v2.4) Ce « 0 cas » n'est mesuré qu'en local : la lecture (6) de `controle-avant-192` (§13.2) le confirme en production avant la bascule. Un `message` qui EST une donnée prend la sortie explicite.
 - **Vocabulaire.** Le lecteur d'une réponse HTTP est celui qui a fait la requête : `req.voc` respecte I6 sans requête de plus.
   - Admin et boss : défaut, par le rôle.
   - Gérant : domaine du compte parent. Acheteur : domaine du vendeur.
@@ -690,6 +690,7 @@ Jamais `req.voc` dans la chaîne de l'assistant : Messenger n'a pas de `req`, et
     3. la base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots, puis rends la réponse avec les mots du compte. Cette règle est à retirer au 2c.
   - La fonction parcourt une clé non littérale : écart `non-repliable` sur cette seule fonction.
   - (v2.3) **Écriture finale** (`aiService.glossaireVocabulaire(voc, profil)`). L'outil de preuve refuse une clé non littérale dans un appel `voc` : la fonction parcourt bien `LEXIQUE_CLES`, mais n'appelle jamais `voc.nom(k)`. Chaque forme est rendue par le moteur sur une ENTRÉE : `voc.avec(e).nom('_')`, `.nom('_', true)`, `.court('_')`, `.court('_', true)`, avec `e` = l'entrée résolue du domaine (`profil.lexique[k]`, à défaut `LEXIQUE_DEFAUT[k]`) à droite, et `LEXIQUE_DEFAUT[k]` rendue par `vocabDefaut` à gauche. Les lignes des unités font de même avec `voc.avec(entrée).det('_', 'un', true)` et `libelleComposant(voc, c)`. Le lexique résolu vient donc du 3ᵉ argument `profil` (§7.1), jamais d'une relecture du `voc`. Une clé dérivée par copie, seule de sa forme, qui rend la même chose que sa clé parente (`labo_long`, `labo_desc`) n'a pas de ligne. Les unités nouvelles de cette seule fonction sont admises en `non-repliable` (`scripts/vocab-allow/B1.json`). Absent par défaut : prouvé par `test/B1-assistant.test.js` (prompt identique à la référence) et par l'oracle.
+  - (v2.4, vérification du lot) **Clés copiées et règle 4.** Le manuel et la base de connaissances emploient « laboratoire », « laboratoire de production » et « point de vente » : chaque clé dérivée par copie (`labo_long`, `labo_desc`, `activite_desc`) a désormais sa ligne dès que sa forme diffère dans le compte, et `activite_desc` n'est plus retirée. Les copies d'une même clé qui rendent la même chose partagent une ligne : « « laboratoire » / « laboratoires » (« laboratoire de production ») → « cuisine centrale » / « cuisines centrales » » ; en Hôtellerie, « « point de vente » / « points de vente » → « service » / « services » » ; en Céramique, `activite_desc` rend « point de vente » comme par défaut : pas de ligne. Quand « article » diffère, une règle 4 suit les trois autres : « « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « fournitures vendables » ». Restauration : glossaire toujours absent. Mesure (lexiques d'essai de `test/vocab-lexiques-test.json`, sans composants) : Hôtellerie 28 lignes, 2 843 caractères ; Céramique 32 lignes, 3 293 caractères.
   - Mesure à refaire et à écrire au rapport : nombre de lignes et de caractères en Hôtellerie et en Céramique. (v2.3) Mesure sur la base locale (02/10, lexiques des brouillons) : Hôtellerie 2 698 caractères, 28 lignes ; Céramique 3 174 caractères, 33 lignes (titre et 3 règles compris) ; restauration, café, boulangerie : 0. Pour comparaison, le prompt par défaut sur une ligne fixe fait 5 374 caractères.
 - Ligne de contexte (`clientConfigService.js:121-138`, repli `aiToolHandlers.js:70-74`) : « aucune » / « aucun » → `voc.acc` ; « activité(s) » → `voc.nomS`. « Domaine d'activité » est un homonyme.
 
@@ -856,9 +857,10 @@ Ces textes changent pour un compte restauration. Ils sont à faire valider par l
    - une donnée saisie hors Windows-1252 (arabe, emoji) s'écrivait en caractères illisibles, elle s'écrit « ? ».
 3. Export Excel du tableau de bord (écran) : « Cout matiere » → « Coût matière », « Activite » → « Activité », « Production pt » → « Production PT ».
 4. Exports Inventaire (activité et labo), Historique d'appro labo, Historique des transferts labo et Historique des pertes labo, pour un nom contenant un caractère hors Latin-1 (« — », « ’ ») : ils renvoyaient une erreur, ils se téléchargent. Pour les 4 premiers, le nom de fichier est assaini ; pour les pertes labo, l'en-tête mort qui levait l'erreur est supprimé. (v2.2) Pour les 4 premiers aussi, un nom qui contient un guillemet droit « " » : l'export se téléchargeait déjà, mais avec un nom de fichier coupé par le navigateur (`filename="Inventaire-Le "Chef".xlsx"`) ; le guillemet devient « - » (`Inventaire-Le -Chef-.xlsx`). Les autres noms de fichiers ne changent pas.
-5. Noms d'onglets qui contiennent un nom saisi : une espace finale ou un double blanc peut disparaître.
+5. Noms d'onglets qui contiennent un nom saisi : une espace finale ou un double blanc peut disparaître, et une espace insécable (U+00A0) devient une espace simple (invisible à l'écran ; `nomFichierSur` garde l'insécable dans le nom de fichier).
 6. Import du référentiel : un fichier dont la colonne 1 a été renommée n'importe plus son bandeau comme des articles.
 7. Exports Inventaire (activité et labo), Historique d'appro labo et Historique des transferts labo, pour un nom qui contient `* ? : \ / [ ]` ou finit par une apostrophe : ils renvoyaient une erreur, ils se téléchargent. Le caractère devient une espace dans le nom de l'onglet.
+8. (v2.4, conditionnel) Guide de mise en route, question d'un composant qui n'est pas un composant identité (code ni `activite` ni `labo`) : avant `Comment créer mon ${libellé.toLowerCase()} ?`, après `voc.avec(entreeComposantVoc(voc, c)).mon('_', n)`. Les majuscules internes et les sigles sont gardés (« Comment créer mon ECO labo ? » au lieu de « … mon eco labo ? ») et le déterminant suit le genre posé dans l'admin (« ma » pour un composant féminin). Ne concerne la restauration que si son domaine de production a un composant hors identité : à vérifier sur la lecture (4) de `controle-avant-192` (§13.2). En base locale, la restauration n'a que ses 4 composants identité : la référence ne passe pas par cette branche.
 
 ### 11.2 Changements de forme, non affichés
 1. `/auth/login`, `/auth/me`, `GET /api/domaines` (client, gérant, acheteur), `GET /api/entreprise` : `domaine.lexique` vaut `null` pour un compte restauration (§5.7).
@@ -892,10 +894,10 @@ Aucun autre écart. Le reste est prouvé à l'identique par l'outil et par l'ora
 4. **E2E** (backend de test `node scripts/start-test-backend.js`) :
    - `test-vocabulaire-domaine.js`, étendu :
      - les messages de l'oracle sur un compte restauration (texte exact) et un compte Hôtellerie (aucune forme par défaut) ;
-     - `GET /api/ai-assistant/onboarding` en Hôtellerie : « Comment créer ma cuisine ? », aucune forme « activité » ni « labo » ;
+     - `GET /api/ai-assistant/onboarding` en Hôtellerie : « Comment créer ma cuisine ? », aucune forme « activité » ni « labo » (titres, détails, questions) ; aussi en test unitaire à faux pool, `test/B1-guide-rapport.test.js` ;
      - `/auth/me` allégé ;
-     - migration 192 rejouée en transaction annulée ;
-     - purge de l'assistant seulement au changement de domaine ;
+     - migration 192 rejouée en transaction annulée, sur les vraies tables : composants visés remis au masculin, 1er passage (NOTICE = nombre remis par libellé), 2e passage « 0 / 0 / 0 », genres et élisions inchangés après le ROLLBACK ; la forme du SQL est aussi testée à faux pool (`test/socle-composants.test.js`) ;
+     - purge de l'assistant seulement au changement de domaine : test unitaire à faux pool `test/purgeConversationsIA.test.js` (pas dans l'E2E), dont (v2.4) le cas d'une configuration sans domaine (`domaine_id` NULL, antérieure au backfill de la 187) : la rattacher au domaine par défaut ne purge rien ;
    - `test-transferts-chaine.js`, avec les attentes du §6.2 ;
    - non-régression : `check-invariant-config`, `check-invariant-stock` (il compte des sous-chaînes SQL exactes : ne pas reformater les requêtes voisines), `test-composants`, `test-onboarding-etapes`, `test-bot-onboarding` (questions restauration inchangées), `test-contrat-admin`, `test-manuel-filtre`.
    - (v2.2) Référence connue de `test-bot-onboarding` sur le backend de test, mesurée AVANT le socle (`d03cc68`) et après : 14/17. Les 3 échecs sont anciens : « chat 200 pendant la mise en route » et « le bot cite l'étape manquante » demandent un vrai appel Gemini (bouchonné) ; « questions capacités : création d'activités proposée » monte `nb_activites` alors que les questions se calculent par composant. Toute autre baisse est une régression. B1 compare la liste des contrôles verts, pas seulement leur nombre.
@@ -908,6 +910,9 @@ Aucun autre écart. Le reste est prouvé à l'identique par l'outil et par l'ora
 
 1. **Pré-requis** : `origin/main` contient les deux correctifs de sécurité du 02/10 (`6f6b15b`).
 2. **Lecture de la production**, avant de déployer : `node scripts/controle-avant-192.js`, en lecture seule, avec les variables `DB_*` de la production. C'est une commande à lancer par le client. Garder la sortie avec le compte rendu.
+   - (v2.4) Le script n'existe pas dans le conteneur de production avant la bascule (main = `0865172`). Si la base n'est joignable que dans le réseau Coolify, coller à la place **`scripts/controle-avant-192.sql`** dans le terminal psql du service Postgres : mêmes six lectures, dans `BEGIN TRANSACTION READ ONLY` … `ROLLBACK`.
+   - (v2.4) Vérifier d'abord la ligne « Base lue » : `hote_serveur`, `port_serveur`, `DB_HOST` et son origine. Une variable `DB_*` absente de l'environnement est complétée par le `.env` LOCAL : le script l'annonce (« DB_HOST ne vient pas de l'environnement »). `derniere_migration` doit valoir `191_…` avant la bascule ; le script avertit si elle vaut déjà 192.
+   - (v2.4) Codes de sortie : 0 = rien à corriger ; 1 = une ligne en (2), (3), (5) ou (6) ; 2 = base injoignable ou lecture impossible (rien n'a été lu).
    - (1) Composants identité renommés :
 
      ```sql
@@ -924,8 +929,16 @@ Aucun autre écart. Le reste est prouvé à l'identique par l'outil et par l'ora
    - (3) Libellés de composant qui contiennent `[`, `]` ou `|`.
    - (4) Composants de TOUS les domaines, avec leur libellé : liste des genres et élisions à poser dans l'admin après le déploiement de l'écran, pour ceux que la garde de la 192 n'a pas touchés (composant renommé, nouveau domaine).
 
-   Si (2) ou (3) trouve une ligne : la corriger dans l'admin AVANT le déploiement, et noter la valeur avant et après dans le compte rendu. Sinon l'admin ne pourra plus enregistrer ce domaine (400).
-3. **Backend d'abord** : attendre `/health` et la ligne « Migration appliquee: 192_composants_genre_elision.sql ». Puis le frontend. Jamais les deux builds en même temps.
+   - (6) (v2.4) Noms saisis qui contiennent « [[ » ou « ]] » (articles, produits, labos, activités, fournisseurs, catégories, familles, prestataires, acheteurs, utilisateurs) : le « 0 cas en base » accepté au §5.1 n'était mesuré qu'en local.
+
+   Si (2) ou (3) trouve une ligne : la corriger dans l'admin AVANT le déploiement, et noter la valeur avant et après dans le compte rendu. Sinon l'admin ne pourra plus enregistrer ce domaine (400). Si (6) trouve une ligne : renommer la donnée avant le déploiement (sinon elle serait rendue comme une balise dans un message, §5.1).
+   Garder aussi la lecture (4) : le nombre de lignes marquées « f (posé par la 192) », par libellé (« Activité », « Base acheteurs », « Cuisine »), est la valeur attendue des trois NOTICE de la 192 (point 4).
+3. **Backend d'abord.** (v2.4) La fusion dans `main` EST le déclenchement : Coolify déploie `main` à chaque poussée. Ordre :
+   1. `npm test` vert, puis fusion `--no-ff` du serveur dans `develop` et `main`, et poussée de `main` du **backend** ;
+   2. attendre `/health` et, dans les journaux Coolify, la ligne « Migration appliquee: 192_composants_genre_elision.sql » et ses trois NOTICE ;
+   3. seulement alors : `npm run build` vert, fusion de l'écran dans `develop` et `main`, poussée de `main` du **frontend**.
+
+   Jamais les deux builds en même temps.
 4. **Contrôles après bascule** :
    - `/health` ;
    - connexion d'un compte restauration : `lexique: null`, écrans inchangés ;
@@ -944,11 +957,15 @@ Aucun autre écart. Le reste est prouvé à l'identique par l'outil et par l'ora
      ```
 
      Une ligne trouvée se corrige dans l'onglet Composants de l'admin (genre Féminin).
+   - (v2.4) les trois NOTICE de la 192 (« 192 : genre f posé sur N composant(s) « Activité » », « … « Base acheteurs » », « … « Cuisine » ») : N doit égaler, par libellé, le nombre de lignes « f (posé par la 192) » de la lecture (4) faite avant la bascule. Calcul d'après les migrations 187, 191 et 192, non mesuré : 3 / 3 / 1 si le domaine Hôtellerie a reçu le brouillon de la 187, sinon 4 / 4 / 0. La lecture (4) fait foi ;
+   - (v2.4) une heure après la bascule, chercher dans les journaux Coolify du serveur : « [vocab] » (balise invalide, clé de lexique inconnue, déterminant inconnu, profil de domaine / domaine du compte / utilisateur indisponible) et « [email] voc manquant ». Attendu : 0 ligne. Ce sont les seuls signaux d'une régression silencieuse du rendu ;
+   - (v2.4) connecter un **gérant** et un **acheteur** d'un compte restauration (ou demander un essai au client) : messages d'erreur et portail identiques à avant la bascule (le gérant lit le domaine du compte parent, l'acheteur celui du vendeur).
 5. **Effets d'un décalage** :
    - nouveau serveur + ancien écran : lexique `null` pour la restauration (sans effet) ; un ancien onglet admin enregistre des composants sans genre ni élision, et l'upsert les garde ;
    - ancien serveur + nouvel écran (ordre interdit) : vocabulaire mêlé pour un compte de test ; les 4 clés `*_abr` d'un compte Hôtellerie prendraient le défaut.
 6. **Retour arrière** : l'écran d'abord, puis le serveur. Jamais l'ancien serveur derrière le nouvel écran. La colonne `genre` reste, inoffensive. (v2.2) Mais l'ancien serveur crée ses composants identité sans genre (défaut `'m'`) : au redéploiement du nouveau, relancer la requête de contrôle du point 4 et corriger dans l'admin.
-7. **Fusion** `--no-ff` dans `develop` puis `main` dans chaque dépôt ; `npm test` avant tout push du serveur, `npm run build` avant tout push de l'écran.
+   (v2.4) Cibles : frontend `main` revenu au contenu de `62979aa`, poussé et déployé ; puis backend `main` revenu au contenu de `0865172`. Par `git revert -m 1 <commit de fusion>` sur `main`, poussé normalement : jamais de `push --force`. La migration 192 n'est pas défaite (colonnes `genre` et `elision` laissées en place).
+7. **Fusion** `--no-ff` dans `develop` puis `main` dans chaque dépôt ; `npm test` avant tout push du serveur, `npm run build` avant tout push de l'écran. (v2.4) La fusion dans `main` et sa poussée SONT le déploiement du point 3 : les faire dans l'ordre du point 3, pas après.
 
 ## 14. À transmettre au client avec la livraison
 
@@ -963,3 +980,6 @@ Aucun autre écart. Le reste est prouvé à l'identique par l'outil et par l'ora
   - catégorie PT « Consommables » et une éventuelle catégorie d'articles du même nom, en Hôtellerie ;
   - Céramique, et tout domaine sans `regles.types_perte`, hérite des types de perte « Avarie / Déchet » de la restauration : à fixer dans l'admin.
 - Après le déploiement, poser dans l'admin le genre et l'élision des composants que la migration n'a pas touchés (§13.2, lecture 4).
+- (v2.4) Espace admin : le texte de TOUTE erreur `LEXIQUE_CARACTERE_INTERDIT` change (liste des caractères refusés « [ ] | * \ ` { } $ < >, le retour à la ligne… »), et l'onglet Composants refuse désormais (400) un libellé ou un pluriel qui contient `[ ] |`, un genre ou une élision invalides. Un domaine qui en porte déjà ne s'enregistre plus : c'est l'objet des lectures (2) et (3) du §13.2.
+- (v2.4) Contrats et avenants d'un compte hors restauration (texte fixe = lot 3) : une même ligne mêle les deux vocabulaires (« Option Acheteurs » | « palier jusqu'à 20 clients professionnels ») et l'objet du contrat reste « gestion pour la restauration et les métiers de bouche », y compris pour un compte Céramique. Recommandation : faire le lot 3 avant de signer le premier client hors restauration.
+- (v2.4) Manuel d'utilisation (`/client/guide`) d'un compte hors restauration : entièrement en vocabulaire restauration jusqu'au lot 2c.

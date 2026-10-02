@@ -18,6 +18,8 @@ const DOMAINE_AUTRE = 7;
 
 const requetes = [];
 let purgeEnPanne = false;
+// domaine lu dans abonnement_config (null : config antérieure au backfill de la migration 187)
+let domaineLu = DOMAINE_ACTUEL;
 const repondre = (texte, params) => {
   if (texte.startsWith('DELETE FROM ai_conversations')) {
     if (purgeEnPanne) throw new Error('purge en panne (test)');
@@ -26,9 +28,9 @@ const repondre = (texte, params) => {
   if (texte.startsWith('SELECT id FROM abonnements WHERE client_id')) return { rows: [{ id: ABO }] };
   if (texte.startsWith('SELECT id FROM domaines_activite WHERE id')) return { rows: [{ id: Number(params[0]) }] };
   if (texte.includes('FROM abonnement_config WHERE abonnement_id = $1')) {
-    return { rows: [{ abonnement_id: ABO, domaine_id: DOMAINE_ACTUEL, nb_activites: 1, nb_labos: 0, nb_gerants: 0, nb_acheteurs: 0 }] };
+    return { rows: [{ abonnement_id: ABO, domaine_id: domaineLu, nb_activites: 1, nb_labos: 0, nb_gerants: 0, nb_acheteurs: 0 }] };
   }
-  if (texte.startsWith('SELECT a.id, ac.domaine_id FROM abonnements a')) return { rows: [{ id: ABO, domaine_id: DOMAINE_ACTUEL }] };
+  if (texte.startsWith('SELECT a.id, ac.domaine_id FROM abonnements a')) return { rows: [{ id: ABO, domaine_id: domaineLu }] };
   if (texte.startsWith('UPDATE utilisateurs') && texte.includes('RETURNING')) {
     return { rows: [{ id: CLIENT, nom: 'Compte', email: 'compte@test.invalid', telephone: null, role: 'client', onboarding_step: 0, actif: true, created_at: null }] };
   }
@@ -163,5 +165,30 @@ test('fiche client : purge en panne → jamais un 500', async (t) => {
     assert.equal(purges().length, 1);
   } finally {
     purgeEnPanne = false;
+  }
+});
+
+// Vérification du lot 2b : une config sans domaine (NULL, avant le backfill de la 187) parle restauration (le
+// domaine par défaut, ici DOMAINE_ACTUEL) ; l'y rattacher n'est pas un changement de vocabulaire.
+test('config sans domaine (NULL) : rattachée au domaine par défaut → aucune purge ; autre domaine → purge', async () => {
+  domaineLu = null;
+  try {
+    for (const [body, attendu] of [[{ formuleActivites: 'premium' }, 0], [{ domaineId: DOMAINE_ACTUEL }, 0], [{ domaineId: DOMAINE_AUTRE }, 1]]) {
+      requetes.length = 0;
+      const res = fauxRes();
+      await updateAbonnementConfig({ params: { clientId: String(CLIENT) }, body }, res);
+      assert.equal(res.statusCode, 200, JSON.stringify(body));
+      assert.ok(indexDe('COMMIT') >= 0);
+      assert.equal(purges().length, attendu, `config abonnement ${JSON.stringify(body)}`);
+    }
+    for (const [body, attendu] of [[{ domaineId: DOMAINE_ACTUEL }, 0], [{ domaineId: DOMAINE_AUTRE }, 1]]) {
+      requetes.length = 0;
+      const res = fauxRes();
+      await clientsController.update({ params: { id: String(CLIENT) }, body }, res);
+      assert.equal(res.statusCode, 200, JSON.stringify(body));
+      assert.equal(purges().length, attendu, `fiche client ${JSON.stringify(body)}`);
+    }
+  } finally {
+    domaineLu = DOMAINE_ACTUEL;
   }
 });

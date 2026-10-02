@@ -165,5 +165,28 @@
     "type": "non-repliable",
     "mode": "accords",
     "justification": "Signalement d'accord à tort : « activé » s'accorde avec « Le compte » (masculin fixe), pas avec le terme rendu par [[ce:acheteur]]. Rendu miroir juste : « Le compte de cette cliente est déjà activé »."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": "Au moins une activité ou un labo doit être affecté",
+    "apres": "Au moins une activité ou un labo doit être ⟦?affectée|affecté⟧",
+    "type": "faute-corrigee",
+    "justification": "Vérification du lot 2b : avec deux noms (« un service ou une cuisine centrale »), le participe est au féminin seulement si les deux le sont. Le labo masculin décide seul (branche labo, celle de la restauration : « affecté », rendu identique) ; un labo féminin laisse décider l'activité (Hôtellerie et miroir : « affecté », au lieu de « affectée »)."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": null,
+    "apres": "m",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Genre grammatical passé à voc.acc('labo', 'm', 'f') pour choisir la branche de l'accord : un code, jamais affiché. Vérification du lot 2b : avec deux noms (« un service ou une cuisine centrale »), le participe est au féminin seulement si les deux le sont. Le labo masculin décide seul (branche labo, celle de la restauration : « affecté », rendu identique) ; un labo féminin laisse décider l'activité (Hôtellerie et miroir : « affecté », au lieu de « affectée »)."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": null,
+    "apres": "f",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Genre grammatical passé à voc.acc('labo', 'm', 'f') et comparé : un code, jamais affiché. Vérification du lot 2b : avec deux noms (« un service ou une cuisine centrale »), le participe est au féminin seulement si les deux le sont. Le labo masculin décide seul (branche labo, celle de la restauration : « affecté », rendu identique) ; un labo féminin laisse décider l'activité (Hôtellerie et miroir : « affecté », au lieu de « affectée »)."
   }
 ]

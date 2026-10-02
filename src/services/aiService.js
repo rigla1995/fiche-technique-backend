@@ -57,20 +57,32 @@ function glossaireVocabulaire(voc, profil) {
   const paire = ([sg, pl]) => (sg === pl ? `« ${sg} »` : `« ${sg} » / « ${pl} »`);
   const court = ([sg, , c]) => (c !== sg ? ` (forme courte « ${c} »)` : '');
   const champs = (k) => (CHAMPS_GLOSSAIRE[k] ? ` — dans les données : ${CHAMPS_GLOSSAIRE[k]}` : '');
-  // Une ligne par forme par défaut distincte, pas par clé (hors abréviations *_abr et activite_desc)
+  // Une ligne par forme par défaut distincte, pas par clé (hors abréviations *_abr)
   const groupes = new Map();
   for (const k of LEXIQUE_CLES) {
-    if (/_abr$/.test(k) || k === 'activite_desc') continue;
+    if (/_abr$/.test(k)) continue;
     const sg = LEXIQUE_DEFAUT[k].sg;
     groupes.set(sg, [...(groupes.get(sg) || []), k]);
   }
   const lignes = [];
+  // Clés dérivées par copie (labo_long, labo_desc, activite_desc) : le manuel et la base de connaissances
+  // emploient leurs formes par défaut (« laboratoire », « point de vente ») → une ligne dès que la forme
+  // diffère ici ; les copies d'une même clé qui rendent ici la même chose partagent la ligne
+  // (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »).
+  const copies = new Map();
   for (const cles of groupes.values()) {
-    // Clé dérivée par copie, seule de sa forme, qui rend ici la même chose que sa clé parente
-    // (labo_long, labo_desc) : la ligne de la clé parente suffit.
-    const e = LEXIQUE_DEFAUT[cles[0]];
-    if (cles.length === 1 && e.mode === 'copie' && egal(ici(cles[0]), ici(e.derive_de))) continue;
     if (cles.every((k) => egal(ici(k), parDefaut(k)))) continue;
+    const e = LEXIQUE_DEFAUT[cles[0]];
+    if (cles.length === 1 && e.mode === 'copie') {
+      const cle = `${e.derive_de}|${JSON.stringify(ici(cles[0]))}`;
+      if (copies.has(cle)) copies.get(cle).push(cles[0]);
+      else {
+        const groupe = [cles[0]];
+        copies.set(cle, groupe);
+        lignes.push(groupe);
+      }
+      continue;
+    }
     if (cles.includes(CLE_STOCK) && cles.includes(CLE_RECETTE) && !egal(ici(CLE_STOCK), ici(CLE_RECETTE))) {
       // « ingrédient » : une seule ligne, ses deux sens (ligne de stock, puis recette)
       lignes.push(`« ${parDefaut(CLE_STOCK)[0]} » (ligne ${voc.de('stock')}, champ \`ingredient\` des données) → « ${ici(CLE_STOCK)[0]} »${court(ici(CLE_STOCK))} ; « ${parDefaut(CLE_RECETTE)[0]} » d'${voc.un('recette')} → « ${ici(CLE_RECETTE)[0]} »${court(ici(CLE_RECETTE))}`);
@@ -80,6 +92,15 @@ function glossaireVocabulaire(voc, profil) {
     lignes.push(`${paire(parDefaut(k))}${court(parDefaut(k))} → ${paire(ici(k))}${court(ici(k))}${champs(k)}`);
   }
   if (lignes.length === 0) return '';
+  for (let i = 0; i < lignes.length; i++) {
+    if (typeof lignes[i] === 'string') continue;
+    const [k, ...autres] = lignes[i];
+    const variantes = autres.length ? ` (${autres.map((a) => `« ${parDefaut(a)[0]} »`).join(', ')})` : '';
+    lignes[i] = `${paire(parDefaut(k))}${variantes} → ${paire(ici(k))}`;
+  }
+  // « articles vendables » (outil get_config_vente) : tout ce que le compte vend, pas ses articles de stock.
+  const regleVendables = egal(ici('article'), parDefaut('article')) ? ''
+    : `\n4. « articles vendables » (configuration ${voc.de('vente')}, \`get_config_vente\`) = tout ce que le compte vend (${voc.nom('produit', true)} et articles revendus) : ne le traduis pas par « ${ici('article')[1]} vendables ».`;
   // Composants actifs du domaine dont le libellé n'est pas celui du lexique, une ligne par type technique
   const unites = [];
   for (const k of TYPES_COMPOSANTS) {
@@ -96,7 +117,7 @@ ${lignes.join('\n')}${unites.length ? `\nUnités du compte (composants de son do
 Règles :
 1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.
 2. Les noms d'outils, les champs et les codes (\`type_appro\`, \`canal\`, \`type_perte\`, \`PT\`) restent ceux de LabFlow : ne les montre pas au client.
-3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (\`search_knowledge_base\`), puis rends la réponse avec les mots du compte.`;
+3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (\`search_knowledge_base\`), puis rends la réponse avec les mots du compte.${regleVendables}`;
 }
 
 // voc : vocabulaire du compte (lot 2b §7.1), obligatoire ; profil : profil du domaine du compte

@@ -1696,7 +1696,10 @@ const updateAbonnementConfig = async (req, res) => {
     invaliderProfilApresCommit(resultatComposants);
     // Domaine changé : l'assistant oublie les conversations dites dans l'ancien vocabulaire
     // (lot 2b, spec §5.6) — au mieux, jamais un 500 ; rien sans changement de domaine.
-    if (domaineChange) {
+    // Une config sans domaine (antérieure au backfill de la 187) parle déjà restauration : l'y rattacher n'est
+    // pas un changement de vocabulaire, rien n'est purgé.
+    const domaineAvant = cur.domaine_id ?? (await getDomaineDefautId().catch(() => null));
+    if (domaineChange && domaineFinal !== domaineAvant) {
       await oublierConversationsIA(clientId).catch((e) => console.error('[config] purge assistant:', e.message));
     }
     // Les paiements non réglés (mois courant et suivants, hors saisies admin) suivent la

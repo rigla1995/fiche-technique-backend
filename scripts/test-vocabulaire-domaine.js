@@ -14,7 +14,10 @@
  *      ALLÉGÉ (lot 2b §5.7) : le lexique RÉSOLU v2 (toutes les clés, clés dérivées, formes courtes)
  *      sans la déclaration des clés dérivées (derive_de, mode, gabarit), mêmes rendus ; avec
  *      composants et règles ; login = me ; gérant : domaine du compte parent ; GET /api/domaines :
- *      forme mapDomaine (description comprise), même lexique ;
+ *      forme mapDomaine (description comprise), même lexique ; guide de mise en route du compte
+ *      Hôtellerie (GET /api/ai-assistant/onboarding) : « Comment créer ma cuisine ? », aucune forme
+ *      « activité » ni « labo » ; migration 192 rejouée dans une transaction ANNULÉE (composants visés
+ *      remis au masculin, NOTICE exactes, idempotence, base inchangée) ;
  *   4. acheteur d'un compte Hôtellerie : domaine = { id, slug, nom, lexique } du client vendeur,
  *      SANS composants ni règles — dans /auth/login, /auth/me ET GET /api/domaines ;
  *   5. compte restauration créé dans le même test : lexique null (vocabulaire par défaut, lot 2b
@@ -410,6 +413,54 @@ const CIBLES_191 = [
     check('/auth/login gérant : même domaine que le compte parent (profil complet)', egal(gerant.user?.domaine, meHotel?.domaine));
     ({ status, body } = await mk(gerant.token)('/auth/me'));
     check('/auth/me gérant : même domaine que le compte parent', status === 200 && egal(body?.domaine, meHotel?.domaine), String(status));
+
+    // Guide de mise en route du compte Hôtellerie (spec §12.4) : questions par composant, accordées à leur genre
+    // (« Cuisine » féminin depuis la 192), aucune forme « activité » ni « labo » dans les textes affichés.
+    ({ status, body } = await H('/api/ai-assistant/onboarding'));
+    const etapesGuide = Array.isArray(body?.etapes) ? body.etapes : [];
+    const textesGuide = etapesGuide.flatMap((e) => [e.titre, e.detail, ...(Array.isArray(e.questions) ? e.questions : [])]).filter((t) => typeof t === 'string');
+    const questionsGuide = etapesGuide.flatMap((e) => (Array.isArray(e.questions) ? e.questions : []));
+    check('GET /api/ai-assistant/onboarding (client Hôtellerie) → 200, étapes présentes', status === 200 && etapesGuide.length > 0, String(status));
+    check('guide Hôtellerie : « Comment créer ma cuisine ? » (composant féminin)', questionsGuide.includes('Comment créer ma cuisine ?'), questionsGuide.join(' | '));
+    const formesDefautGuide = textesGuide.filter((t) => /(^|[^\p{L}])(activités?|labos?|laboratoires?)(?![\p{L}])/iu.test(t));
+    check('guide Hôtellerie : aucune forme « activité » ni « labo » (titres, détails, questions)', formesDefautGuide.length === 0, formesDefautGuide.join(' | '));
+
+    // Migration 192 rejouée dans une transaction ANNULÉE (spec §12.4) : les composants qu'elle vise sont remis au
+    // masculin (état d'avant), un 1er passage les repasse au féminin (NOTICE = nombre remis), un 2e ne change rien.
+    {
+      const sql192 = fs.readFileSync(path.join(RACINE, 'migrations', '192_composants_genre_elision.sql'), 'utf8');
+      const CIBLES_192 = `(code = 'activite' AND type_technique = 'activite' AND libelle = 'Activité')
+         OR (code = 'acheteurs' AND type_technique = 'acheteurs' AND libelle = 'Base acheteurs')
+         OR (code = 'cuisine' AND type_technique = 'labo' AND libelle = 'Cuisine'
+             AND domaine_id IN (SELECT id FROM domaines_activite WHERE slug = 'hotellerie'))`;
+      const etatGenres = async (q) => (await q.query('SELECT id, genre, elision FROM domaine_composants ORDER BY id')).rows;
+      const avant = await etatGenres(pool);
+      const c = await pool.connect();
+      const notices = [];
+      const onNotice = (n) => notices.push(n.message);
+      c.on('notice', onNotice);
+      const compte = (re) => notices.filter((n) => re.test(n)).map((n) => Number(/sur (\d+) composant/.exec(n)?.[1] ?? NaN));
+      try {
+        await c.query('BEGIN');
+        const remis = (await c.query(`UPDATE domaine_composants SET genre = 'm' WHERE ${CIBLES_192} RETURNING code`)).rows;
+        const attendus = ['activite', 'acheteurs', 'cuisine'].map((code) => remis.filter((r) => r.code === code).length);
+        await c.query(sql192);
+        const passe1 = [/« Activité »/, /« Base acheteurs »/, /« Cuisine »/].map((re) => compte(re)[0]);
+        check(`192 (transaction annulée) : 1er passage, NOTICE « Activité » / « Base acheteurs » / « Cuisine » = ${attendus.join(' / ')}`,
+          egal(passe1, attendus) && attendus[0] > 0, `obtenu ${passe1.join(' / ')}`);
+        const restesM = (await c.query(`SELECT count(*)::int AS n FROM domaine_composants WHERE genre <> 'f' AND (${CIBLES_192})`)).rows[0].n;
+        check('192 : tous les composants visés sont féminins après le 1er passage', restesM === 0, String(restesM));
+        notices.length = 0;
+        await c.query(sql192);
+        const passe2 = [/« Activité »/, /« Base acheteurs »/, /« Cuisine »/].map((re) => compte(re)[0]);
+        check('192 : idempotente (2e passage : 0 / 0 / 0)', egal(passe2, [0, 0, 0]), passe2.join(' / '));
+      } finally {
+        await c.query('ROLLBACK').catch(() => {});
+        c.removeListener('notice', onNotice);
+        c.release();
+      }
+      check('192 : transaction d\'essai annulée (genres et élisions inchangés en base)', egal(await etatGenres(pool), avant));
+    }
 
     // Céramique
     const ceram = await login(CERAM_EMAIL);

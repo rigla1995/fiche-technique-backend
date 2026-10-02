@@ -90,7 +90,11 @@ const create = async (req, res) => {
   activiteIds = [...new Set(activiteIds)];
   laboIds = [...new Set(laboIds)];
   if (activiteIds.length === 0 && laboIds.length === 0) {
-    return res.status(400).json({ message: 'Au moins [[un:activite]] ou [[un:labo]] doit être [[acc:labo:affecté:affectée]]' });
+    // Deux noms : participe au féminin seulement si les deux le sont, sinon masculin. Un labo masculin
+    // décide seul (restauration : « affecté ») ; un labo féminin laisse décider l'activité (Hôtellerie).
+    return res.status(400).json({ message: req.voc?.acc('labo', 'm', 'f') === 'f'
+      ? 'Au moins [[un:activite]] ou [[un:labo]] doit être [[acc:activite:affecté:affectée]]'
+      : 'Au moins [[un:activite]] ou [[un:labo]] doit être [[acc:labo:affecté:affectée]]' });
   }
 
   const parentId = req.user.id;
@@ -212,7 +216,11 @@ const update = async (req, res) => {
 
     if (hasAffectations) {
       if (activiteIds.length === 0 && laboIds.length === 0) {
-        return res.status(400).json({ message: 'Au moins [[un:activite]] ou [[un:labo]] doit être [[acc:labo:affecté:affectée]]' });
+        // Deux noms : participe au féminin seulement si les deux le sont, sinon masculin. Un labo masculin
+        // décide seul (restauration : « affecté ») ; un labo féminin laisse décider l'activité (Hôtellerie).
+        return res.status(400).json({ message: req.voc?.acc('labo', 'm', 'f') === 'f'
+          ? 'Au moins [[un:activite]] ou [[un:labo]] doit être [[acc:activite:affecté:affectée]]'
+          : 'Au moins [[un:activite]] ou [[un:labo]] doit être [[acc:labo:affecté:affectée]]' });
       }
       if (!(await assertOwnership(req.user.id, activiteIds, laboIds))) {
         return res.status(403).json({ message: '[[Nom:activite]] ou [[nom:labo]] hors de votre périmètre' });
