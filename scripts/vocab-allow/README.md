@@ -23,6 +23,11 @@ mode residuels) n'est écrit QUE par l'intégrateur : un agent qui a besoin d'un
 tous sans objet depuis le réépinglage de `scripts/vocab-check.base` sur la tête du 2a. Archivés, NON lus par
 l'outil : une entrée `avant: null` sans objet absorberait en silence un nouveau littéral identique.
 
+Lot 2c : `2c.json` (spec `docs/lot-2c-spec.md`, §5.6 pour la règle 3 du glossaire). Depuis l'étape S0 : les littéraux du nouveau
+`src/utils/manuelRendu.js` (expressions régulières, noms de colonnes et de tables, codes `BALISE_*`, colonnes de la requête du
+§5.2 : `discriminant` ; raisons et messages des refus 400 des routes admin du manuel et de la base : `admin`, I4). Écrit par
+l'intégrateur du 2c (ou sur sa demande) ; chaque entrée relue avec le code qu'elle couvre.
+
 Autres fichiers lus par l'outil dans ce dépôt : `scripts/vocab-rendu.json` (points de rendu déclarés des
 balises, E2 : liste fermée tenue par le socle) ; il écrit `scripts/vocab-accords.txt` (mode `accords`, passage
 complet, régénéré par l'intégrateur seulement).

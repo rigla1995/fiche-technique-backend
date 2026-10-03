@@ -89,22 +89,48 @@ const cleDeBalise = (balise) => {
   return cle;
 };
 
+// « [[ » ou « ]] » laissé hors de tout candidat : balise non fermée (« [[nom:labo] », « [[nom:labo »), coupée par
+// un saut de ligne, ou fin sans début. `rendre` la laisserait brute, pour tous les comptes (restauration comprise).
+const RESTE_DE_BALISE = /\[\[|\]\]/g;
+const A_CROCHETS = /\[\[|\]\]/;
+const EXTRAIT_MAX = 40;
+const extraitAutour = (texte, index, ouvrante) => {
+  if (ouvrante) {
+    const fin = texte.indexOf('\n', index);
+    return texte.slice(index, fin < 0 ? texte.length : fin).slice(0, EXTRAIT_MAX);
+  }
+  const debut = texte.lastIndexOf('\n', index) + 1;
+  return texte.slice(debut, index + 2).slice(-EXTRAIT_MAX);
+};
+
 /**
  * Balises fautives d'un texte : `balisesInvalides` (grammaire, src/utils/vocab.js), plus « clé inconnue » pour une
  * balise de grammaire valide dont la clé n'est pas dans LEXIQUE_CLES (`[[nom:labbo]]`, que `balisesInvalides` ne
- * voit pas et que `rendre` afficherait « ‹labbo› »). → `[{ balise, raison }]`, dans l'ordre du texte.
+ * voit pas et que `rendre` afficherait « ‹labbo› »), plus « balise non fermée » / « fin de balise sans début » pour
+ * un « [[ » ou un « ]] » resté hors de toute balise (I11 ; les candidats sont ceux de `rendre`, sur une ligne).
+ * → `[{ balise, raison }]`, dans l'ordre du texte.
  */
 function verifierBalises(texte) {
-  if (typeof texte !== 'string' || !A_BALISE.test(texte)) return [];
+  if (typeof texte !== 'string' || !A_CROCHETS.test(texte)) return [];
   const fautives = [];
   for (const m of texte.matchAll(CANDIDATE)) {
     const balise = m[0];
     const grammaire = balisesInvalides(balise);
-    if (grammaire.length) { fautives.push(...grammaire); continue; }
+    if (grammaire.length) { fautives.push(...grammaire.map((g) => ({ ...g, index: m.index }))); continue; }
     const cle = cleDeBalise(balise);
-    if (!CLES_CONNUES.has(cle)) fautives.push({ balise, raison: `clé inconnue « ${cle} »` });
+    if (!CLES_CONNUES.has(cle)) fautives.push({ balise, raison: `clé inconnue « ${cle} »`, index: m.index });
   }
-  return fautives;
+  // Les candidats sont remplacés par des espaces de même longueur : les positions restent celles du texte, et deux
+  // crochets séparés par une balise ne se rejoignent pas (« [[[Pl:activite]]](#a) » ne laisse que « [ » et « ] »).
+  for (const m of masquerBalises(texte).matchAll(RESTE_DE_BALISE)) {
+    const ouvrante = m[0] === '[[';
+    fautives.push({
+      balise: extraitAutour(texte, m.index, ouvrante),
+      raison: ouvrante ? 'balise non fermée' : 'fin de balise sans début',
+      index: m.index,
+    });
+  }
+  return fautives.sort((a, b) => a.index - b.index).map(({ index, ...f }) => f);
 }
 
 /**

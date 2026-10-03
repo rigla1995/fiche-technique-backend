@@ -1,0 +1,212 @@
+[
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "\\$&",
+    "type": "discriminant",
+    "justification": "Remplacement de echapper() (échappement des formes du lexique avant un RegExp, motif de termesDans) : technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "(?<![\\p{L}\\p{N}_])(?:⟦·⟧)(?![\\p{L}\\p{N}_])",
+    "type": "discriminant",
+    "justification": "Motif « mot entier » de motEntier() (même motif que termesDans de l'outil de preuve, spec 2c §5.1) : technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "|",
+    "type": "discriminant",
+    "justification": "Séparateur d'alternative du motif de motEntier() : technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "giu",
+    "type": "discriminant",
+    "justification": "Drapeaux d'expression régulière (formes du lexique sans casse) : technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "gu",
+    "type": "discriminant",
+    "justification": "Drapeaux d'expression régulière (sigles avec leur casse) : technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "string",
+    "occurrences": 6,
+    "type": "discriminant",
+    "justification": "Opérande de typeof : technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "iu",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Drapeaux d'expression régulière (recherche sans casse, mots-clés et formes) : technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "clé inconnue « ⟦·⟧ »",
+    "type": "admin",
+    "justification": "Raison d'une balise refusée (I11, R5.7.1), citée dans la réponse 400 des routes POST /admin/manuel, PUT /admin/manuel/:id, POST /admin/knowledge-base, PUT /admin/knowledge-base/:id et PUT /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin ; vocabulaire LabFlow (I4)."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "[[",
+    "type": "discriminant",
+    "justification": "Comparaison du reste trouvé (« [[ » ouvrant ou « ]] » fermant) dans verifierBalises : technique, jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "⟦?balise non fermée|fin de balise sans début⟧",
+    "type": "admin",
+    "justification": "Raison d'une balise refusée (« [[ » ou « ]] » hors de toute balise, I11, R5.7.1, relecture S0), citée dans la réponse 400 des routes POST /admin/manuel, PUT /admin/manuel/:id, POST /admin/knowledge-base, PUT /admin/knowledge-base/:id et PUT /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin ; vocabulaire LabFlow (I4)."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": ", ",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Séparateur des mots-clés et des champs cités : technique, aucun terme."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "BALISE_INTERDITE",
+    "type": "discriminant",
+    "justification": "Code de refus de R5.7.1 (comparé par code, jamais affiché tel quel) : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "Aucune balise « [[ » n'est permise dans ce champ : ⟦·⟧",
+    "type": "admin",
+    "justification": "Message 400 BALISE_INTERDITE (R5.7.1) des routes POST /admin/manuel, PUT /admin/manuel/:id, POST /admin/knowledge-base, PUT /admin/knowledge-base/:id et PUT /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin ; vocabBrut posé."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "Balise invalide⟦? dans le champ « ⟦·⟧ » : ⟦·⟧ (⟦·⟧)⟦| — ⟦·⟧ balise(s) fautive(s)@>1⟧|⟧",
+    "type": "admin",
+    "justification": "Message 400 BALISE_INVALIDE (R5.7.1) des routes POST /admin/manuel, PUT /admin/manuel/:id, POST /admin/knowledge-base, PUT /admin/knowledge-base/:id et PUT /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin ; vocabBrut posé."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "BALISE_INVALIDE",
+    "type": "discriminant",
+    "justification": "Code de refus de R5.7.1 (comparé par code, jamais affiché tel quel) : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "s.id, s.slug, COALESCE(d.titre, s.titre) AS titre, s.icone, s.partie, s.ordre,\n       COALESCE(d.contenu, s.contenu) AS contenu, COALESCE(d.mots_cles, s.mots_cles) AS mots_cles,\n       s.ecran, s.visible_gerant, s.actif, s.updated_at",
+    "type": "discriminant",
+    "justification": "Liste de colonnes de la requête commune (spec 2c §5.2), aucun terme : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "s.slug, COALESCE(d.titre, s.titre) AS titre, s.partie,\n       COALESCE(d.contenu, s.contenu) AS contenu, COALESCE(d.mots_cles, s.mots_cles) AS mots_cles",
+    "type": "discriminant",
+    "justification": "Liste de colonnes de la requête commune (spec 2c §5.2), aucun terme : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "⟦sql⟧'valide'",
+    "type": "discriminant",
+    "justification": "Valeur d'état de manuel_sections_domaine.statut dans la requête commune (spec 2c §5.2) : code SQL."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": ",",
+    "type": "discriminant",
+    "justification": "Séparateur des entrées de mots_cles (split) : technique, aucun terme."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦?, ⟦·⟧|⟧",
+    "type": "discriminant",
+    "justification": "Mots-clés enrichis « motsCles, ajouts » (R5.4) : assemblage de données, aucun terme écrit en dur."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "mots_cles",
+    "type": "discriminant",
+    "justification": "Nom de colonne (manuel_sections, ai_knowledge_base) : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "titre",
+    "occurrences": 4,
+    "type": "discriminant",
+    "justification": "Nom de colonne (champs balisés, I7 révisée) : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "partie",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Nom de colonne (champs balisés, I7 révisée) : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "contenu",
+    "occurrences": 4,
+    "type": "discriminant",
+    "justification": "Nom de colonne (champs balisés, I7 révisée) : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "md5",
+    "type": "discriminant",
+    "justification": "Algorithme de crypto.createHash (champs admis sans balise, R3.6.5) : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "hex",
+    "type": "discriminant",
+    "justification": "Encodage du condensé md5 : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "manuel_sections",
+    "occurrences": 3,
+    "type": "discriminant",
+    "justification": "Nom de table (clé de CHAMPS_BALISES et de manuelSansBaliseAdmis.json) : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "contenu_defaut",
+    "type": "discriminant",
+    "justification": "Nom de colonne de manuel_sections : technique."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "ai_knowledge_base",
+    "type": "discriminant",
+    "justification": "Nom de table (clé de CHAMPS_BALISES et de manuelSansBaliseAdmis.json) : technique."
+  }
+]

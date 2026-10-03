@@ -34,6 +34,12 @@ neuve de la base : `node scripts/manuel/base-locale.js copie` puis `DB_NAME=fich
 ## Règles
 
 - Un processus par domaine (le limiteur de connexion est en mémoire). Refus entre 00:45 et 01:15 et en janvier.
+- Refus aussi quand la date locale n'est pas la date UTC (`getDate() !== getUTCDate()`) : heure de Paris, de 00:00 à 02:00 en
+  été et de 00:00 à 01:00 en hiver. Le serveur calcule le mois de la mensualité en UTC (`abonnementController.js:506-508` :
+  `setDate(1)` puis `toISOString()`) alors que la promotion « 1er mois offert » porte sur le mois UTC
+  (`clientsController.js:424`) : dans cette fenêtre, la mensualité du compte B passe de « 0.00 / gratuit » à « 760.00 /
+  en_attente » (`auth/client.abonnement/paiements/0`), un faux écart sans aucune modification (relecture de l'étape O du 2c).
+  Défaut réel de l'application sur un serveur qui ne tourne pas en UTC, hors lot (signalé à l'orchestrateur).
 - La référence et chaque contrôle sont du même mois civil ; sinon, recapturer la référence sur la tête de `develop`.
 - Déterminisme : la capture est lancée deux fois avant d'être commitée ; les deux doivent être identiques.
 - Échec du contrôle : clé vide, compte d'éléments différent, écart non listé, entrée sans emploi, ordre seul non admis.
@@ -115,9 +121,16 @@ neuve de la base : `node scripts/manuel/base-locale.js copie` puis `DB_NAME=fich
   `labo` du domaine (`composant|<question>`, compte A). Appels sans `voc` (repli de `executeToolCall`).
 - `recherches` : 6ᵉ question sans résultat, « zzz qwerty » (liste `disponibles`).
 - Garde R2.8.3 : `--reference` refuse d'écrire si `_migrations` contient 194, 195 ou 196 (retirée dans `develop` après D2).
+- `meta.empreintesBase.<titre rendu>` (relecture de l'étape O : 21 des 32 entrées de la base n'étaient captées par aucune
+  recherche, et 4 n'apparaissaient nulle part, pas même dans `disponibles`) : chaque entrée active de `ai_knowledge_base`, dans
+  l'ordre des `id`, est cherchée par son titre (titre en base rendu avec le vocabulaire du passage ; en restauration, le titre
+  d'origine), compte B, sans voc ; md5 NON masqué du JSON `{ titre, contenu }` du résultat de même titre. La capture s'arrête
+  si l'entrée n'est pas parmi les 4 résultats ou si deux entrées ont le même titre rendu ; `meta.entreesBase` = nombre d'entrées.
 
 ### Contrôles ajoutés (§2.4)
 
+- Restauration : `meta.empreintesBase` égales à celles de la référence, entrée par entrée, ordre compris (même règle que le
+  manuel : aucun écart admissible ; c'est ce qui prouve I10 en base, par le vrai outil, pour les 32 entrées après la 195).
 - Restauration : `meta.empreintesManuel` égales à celles de la référence, lecteur par lecteur, slug par slug, ordre compris ; un
   écart est un échec qu'aucune entrée de `ecarts-restauration-attendus.json` ne peut admettre (I1, PDF compris, R2.6.1).
 - Hors restauration : famille `manuel` (`manuel/sections/<slug>/titre|partie|contenu`, jamais `motsCles` ni l'admin) et
@@ -167,6 +180,33 @@ seulement). Photo `fiche_technique_avant2c` prise le 03/10/2026 vers 01:10, base
 - Listes de travail (`--liste-avant`, captures du 03/10 sur la branche) : hotellerie 647 formes (manuel 552, assistant 95),
   ceramique 835 (manuel 678, assistant 157), miroir 1 323 (manuel 1 070, assistant 253) ; 0 hors manuel et recherches dans les
   trois domaines (`--hors-manuel`). Une « forme » = une forme par défaut distincte dans un texte lu (même compte qu'au 2b).
+
+### Migration 193 et base principale
+
+La 193 (table des variantes, étape S0) est dans `migrations/` depuis le commit de S0 : tout passage de l'oracle ou du backend de
+test l'applique à `fiche_technique`. C'est admis par la spec : la règle des copies (R2.8.2) ne vise que 194, 195 et 196, « la
+base fiche_technique ne reçoit 194 à 196 qu'après leur mise en production » ; la 193 part avec le code de S0 (§4) et est
+inoffensive (§4.1, §4.5 : table ignorée par l'ancien serveur). `fiche_technique` est à la 193 depuis la recapture du 03/10
+(02:26) ; la photo reste à la 192, et une copie neuve (`base-locale.js copie`) reçoit la 193 au premier passage, comme la base
+principale. La 193 ne touche ni le manuel ni la base : les empreintes globales (requête (1) de `controle-avant-2c.sql`) restent
+`67737956…` et `8779fd65…`. `meta.derniereMigration` n'est qu'affiché, jamais comparé.
+
+### Recapture après les relectures des étapes O et S0 (03/10/2026, 02:26)
+
+- Cause : la référence de l'étape O (`651a09a`) avait été capturée vers 01:30, dans la fenêtre « date locale ≠ date UTC » (voir
+  Règles) : elle portait « 760.00 / en_attente » pour la mensualité du compte B, et tout contrôle lancé après 02:00 échouait sur
+  ces 2 valeurs sans aucune modification. Garde ajoutée ; `meta.empreintesBase` ajouté en même temps.
+- Deux passages, 02:26 et 02:27, identiques pour le contrôle (`--reference` passage 1 `--capture` passage 2 : IDENTIQUE, une
+  permutation entre ex aequo admise, `get_stock`, `ordre-libre.json`) ; le passage 1, le plus proche de l'ancienne référence, est
+  gardé. Base locale à la 193 (voir plus haut).
+- Contre la référence `651a09a` : seules changent `meta` (`derniereMigration` 192 → 193, `empreintesBase` et `entreesBase`
+  ajoutés) et les 2 valeurs de `auth/client.abonnement/paiements/0` (« 760.00 / en_attente » → « 0.00 / gratuit ») ; une
+  permutation entre ex aequo admise (`rapportIA`). Empreintes du manuel égales pour les 6 lecteurs.
+- Contre la capture de `develop` (`863f8f0`, 01:28, même fenêtre que l'ancienne référence) : les mêmes 94 écarts et 27 « ordre
+  seul » sous `recherches/` et `recherchesDomaine/` qu'à l'étape O (égaux un par un), plus ces 2 mêmes valeurs de mensualité.
+  La mesure de R2.2 et `recherches-avant-ordre.json` restent valables.
+- Les 32 empreintes de la base sont égales au md5 de `{ titre, contenu }` recalculé en base (lecture seule, même ordre) : toute
+  mutation du titre ou du contenu d'une entrée est vue (une empreinte changée ou une entrée retirée font échouer le contrôle).
 
 ## Scan hors restauration (§2.5)
 

@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "192_composants_genre_elision.sql",
+  "derniereMigration": "193_manuel_sections_domaine.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -444,6 +444,41 @@
    "Comptage du soir",
    "Validé après échange téléphonique."
   ],
+  "empreintesBase": {
+   "Fiche technique": "94d2d59d7e53d2a66d048b3d2adc8b1c",
+   "Food cost": "fa6331074c99639e4de587012032195c",
+   "Coût matière": "00ad2a163ea2eb8b6cbe419d993a4b68",
+   "Valeur du stock": "b55ecb21145262f3c39ae529853aa359",
+   "Approvisionnement (appro)": "e985a29538d4183c7e14bc454ea204ad",
+   "Pertes": "5079a082faa9a15850780d2c7371c302",
+   "Inventaire": "3768ab52d5a250b3d711baaaa4747900",
+   "Transferts": "4cea35c634a7d5922c0c9c8820a38f6d",
+   "Article valorisé": "6067cf30ecd06edca0c1b653e8b2f166",
+   "Produits vendables et utilisables": "481dbc8231c0ae767c80ef93481803c4",
+   "Seuil minimum": "799642ec462d4d608679c9f21c2d31e0",
+   "TVA (HT / TTC)": "34b034712df5ec4cbc15eaf472938843",
+   "Marge brute": "1167e11ac8a71a5b2f302af434490bc4",
+   "Panier moyen": "2a76bd8b69b967afef67babf033de14b",
+   "Activité (point de vente)": "4ffd62136ad0df7c7ff3077c3ad6c051",
+   "Labo central": "2a585be0d4225dd74d7c0cd2aaa9cb4e",
+   "Gérant": "9abc01a98a9a5916e2fde0751bc071f3",
+   "Fournisseur": "d2db476270554b9fbdc5e42d09000460",
+   "Abonnement et capacité": "4052308778fc979f2d29048004917bed",
+   "Vente": "6d1038319bd195d3eb56e38af6f0ba82",
+   "Article vendable": "887eb0954a1cd9026d185ff9e7ddd8b6",
+   "Prestataire de livraison": "b9a2c59cc0a69c2250d312c959ae91a2",
+   "Supplément": "cedce9a8e1b3e2c58f8d256abf976c4d",
+   "Catégorie de produit": "04213d7cc13e7b2a35fd1bfa482c6eb8",
+   "Famille et catégorie d'article": "11269c770c73245fa779c43c3c93a05c",
+   "Unité de mesure": "76273500dc1c6f3f53e95f3c97e05691",
+   "Produit transformé (PT)": "20eae1f332f59e6cb96d5a26b8454b35",
+   "Mode de prix d'une fiche technique": "3eaf1884ab9ab11ab63b4c07d2ea5726",
+   "Timbre fiscal": "2cd22f7afdd279966c4a76388bd4b725",
+   "Rapport (Excel / PDF)": "cc22217a8b4f2ad1ecf1761bdde00fb4",
+   "Référentiel articles": "81976a045148b7e1247421f5afd5dbf3",
+   "Charges fixes": "e38f93bf25f7375f8315e1fea2fd34bb"
+  },
+  "entreesBase": 32,
   "empreintesManuel": {
    "client.A": {
     "decouvrir-labflow": "b4824c0799bc6b0dbcc9b97c02c41eff",
@@ -8308,13 +8343,13 @@
       ],
       [
        "Riz basmati",
-       "-30",
+       "30",
        "⟨date⟩",
        "2.55"
       ],
       [
        "Riz basmati",
-       "30",
+       "-30",
        "⟨date⟩",
        "2.55"
       ],
@@ -16320,8 +16355,8 @@
       "id": "⟨id⟩",
       "abonnementId": "⟨id⟩",
       "mois": "⟨date⟩",
-      "montantDt": "760.00",
-      "statut": "en_attente",
+      "montantDt": "0.00",
+      "statut": "gratuit",
       "saisiePar": null,
       "dateSaisie": null,
       "datePaiement": null,

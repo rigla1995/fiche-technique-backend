@@ -25,7 +25,10 @@
  *
  * Données datées dans le MOIS PRÉCÉDENT (jours 2 à 22) : deux captures du même mois civil sont
  * comparables (spec §2.4). Refus de démarrer en janvier (le mois précédent serait d'un autre
- * exercice) et entre 00:45 et 01:15 (job quotidien de 01:00).
+ * exercice), entre 00:45 et 01:15 (job quotidien de 01:00), et quand la date locale n'est pas la date UTC
+ * (relecture de l'étape O du lot 2c : abonnementController.js:506-508 calcule le mois de la mensualité en UTC ;
+ * en heure d'été, entre 00:00 et 02:00, le mois courant devient le mois précédent, la promotion « 1er mois
+ * offert » ne s'applique pas et auth/client.abonnement change : faux écart sans aucune modification).
  *
  * Sortie : { meta, comptes: { cle: n }, captures: { cle: { element: valeur } } }, valeurs
  * masquées (§2.4). `comptes` = éléments non vides par clé (règle de non-vacuité).
@@ -44,7 +47,12 @@
  *   - `--brut <dossier>` (hors dépôt) : écrit aussi la réponse brute, non masquée, de GET /api/manuel du client B
  *     (`manuel-client-B.json`), pour scripts/controle-manuel-pdf.mjs du frontend (§2.6) ;
  *   - garde R2.8.3 : `--reference` refuse d'écrire si `_migrations` contient 194, 195 ou 196 (une référence se
- *     capture toujours sur un manuel non balisé). */
+ *     capture toujours sur un manuel non balisé) ;
+ *   - `meta.empreintesBase.<titre rendu>` (relecture de l'étape O : 21 des 32 entrées de la base n'étaient captées
+ *     par aucune recherche) : chaque entrée active de ai_knowledge_base, dans l'ordre des id, est cherchée par son
+ *     titre (titre en base rendu avec le vocabulaire du passage), compte B, sans voc ; md5 NON masqué du JSON
+ *     { titre, contenu } du résultat de même titre. Arrêt (aucune sortie) si l'entrée n'est pas parmi les résultats,
+ *     ou si deux entrées ont le même titre rendu. `meta.entreesBase` = nombre d'entrées actives. */
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -96,6 +104,13 @@ let brutManuelB = null;
   }
   if (n.getMonth() === 0) {
     console.error('[capture] refus : en janvier, le mois précédent est d\'un autre exercice (données de l\'oracle).');
+    process.exit(2);
+  }
+  // Le serveur calcule le mois de la mensualité en UTC (abonnementController.js:506-508) : quand la date locale n'est
+  // pas la date UTC (en heure d'été, de 00:00 à 02:00 ; en heure d'hiver, de 00:00 à 01:00), le « mois courant »
+  // est le mois précédent et la capture diffère de la référence sans aucune modification (relecture de l'étape O).
+  if (n.getDate() !== n.getUTCDate()) {
+    console.error(`[capture] refus : date locale (${n.getDate()}) ≠ date UTC (${n.getUTCDate()}) ; le serveur prendrait le mois précédent pour la mensualité (abonnementController.js:506-508). Relancer quand les deux dates sont de nouveau égales (heure de Paris : après 02:00 en été, après 01:00 en hiver ; heure de Tunis : après 01:00).`);
     process.exit(2);
   }
 }
@@ -806,6 +821,21 @@ async function principal() {
     if (`composant|${q}` in C.recherchesDomaine) continue;
     C.recherchesDomaine[`composant|${q}`] = resumeRecherche(await outilsIA.executeToolCall(cA.id, 'search_knowledge_base', { query: q }));
   }
+  // Entrées de la base, une par une (relecture de l'étape O : 21 des 32 entrées n'étaient captées par aucune
+  // recherche, une mutation de leur contenu passait inaperçue). Recherche par titre (titre en base rendu avec le
+  // vocabulaire du passage), compte B, sans voc ; empreinte NON masquée de { titre, contenu } du résultat.
+  const entreesBase = (await pool.query('SELECT titre FROM ai_knowledge_base WHERE actif = true ORDER BY id')).rows;
+  if (!entreesBase.length) throw new Error('base de connaissances : aucune entrée active (la capture s\'arrête)');
+  meta.empreintesBase = {};
+  for (const { titre } of entreesBase) {
+    const query = rendre(voc, titre);
+    if (query in meta.empreintesBase) throw new Error(`base de connaissances : deux entrées de même titre rendu « ${query} » (la capture s'arrête)`);
+    const r = await outil('search_knowledge_base', { query });
+    const trouve = (r && Array.isArray(r.results) ? r.results : []).find((x) => x.titre === query && !estManuel(x.titre));
+    if (!trouve) throw new Error(`base de connaissances : l'entrée « ${query} » n'est pas parmi les résultats de sa recherche par titre (la capture s'arrête)`);
+    meta.empreintesBase[query] = crypto.createHash('md5').update(JSON.stringify({ titre: trouve.titre, contenu: trouve.contenu }), 'utf8').digest('hex');
+  }
+  meta.entreesBase = entreesBase.length;
 
   // ── Manuel servi (lot 2c, R2.3.1) : 6 lecteurs ; l'acheteur est lu AVANT sa suppression ─────
   const lecteursManuel = [['client.A', tokA], ['client.B', tokB], ['gerant.B', tokG], ['client.C', tokC], ['acheteur.C', tokAch], ['admin', ctx.adminTok]];

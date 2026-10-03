@@ -41,7 +41,9 @@
  *   Lot 2c (docs/lot-2c-spec.md §2.3, §2.4) :
  *     - restauration : `meta.empreintesManuel` (md5 NON masqués du manuel servi, lecteur par lecteur et slug par slug)
  *       doivent être ÉGALES à celles de la référence ; un écart est un échec qu'aucune entrée de
- *       ecarts-restauration-attendus.json ne peut admettre (I1 : manuel et PDF au caractère près) ;
+ *       ecarts-restauration-attendus.json ne peut admettre (I1 : manuel et PDF au caractère près) ; de même
+ *       `meta.empreintesBase` (md5 NON masqués de { titre, contenu } de chaque entrée active de la base, cherchée par
+ *       son titre, dans l'ordre des id ; relecture de l'étape O) ;
  *     - hors restauration (R2.4.1 à R2.4.7) : sont lus aussi les résultats de la recherche (`recherches`,
  *       `recherchesDomaine`, famille assistant : titres et contenus des résultats de la BASE, titres de `disponibles`)
  *       et le manuel servi (famille manuel : titre, partie, contenu de `manuel.sections`, jamais `motsCles` ni le
@@ -217,6 +219,16 @@ function ecartsEmpreintes(ref, cour, lecteurs = null) {
   return out;
 }
 
+// Empreintes de la base (meta.empreintesBase) : mêmes titres, dans le même ordre, mêmes md5 ; aucun écart admissible.
+function ecartsEmpreintesBase(ref, cour) {
+  const out = [];
+  if (!egal(Object.keys(ref), Object.keys(cour))) out.push(`base de connaissances : entrées différentes ou dans un autre ordre (${Object.keys(ref).length} → ${Object.keys(cour).length})`);
+  for (const t of new Set([...Object.keys(ref), ...Object.keys(cour)])) {
+    if (ref[t] !== cour[t]) out.push(`base de connaissances › ${t} : empreinte ${ref[t] || ABSENT} → ${cour[t] || ABSENT}`);
+  }
+  return out;
+}
+
 function verifierRestauration(courante) {
   const refFichier = path.resolve(arg('reference', FICHIERS.reference));
   if (!fs.existsSync(refFichier)) { console.error(`[check-vocab] référence absente : ${refFichier}`); process.exit(2); }
@@ -249,6 +261,11 @@ function verifierRestauration(courante) {
   if (!ref.meta.empreintesManuel) problemes.push('meta.empreintesManuel absent de la référence : recapturer la référence avec la capture du lot 2c');
   else if (!courante.meta.empreintesManuel) problemes.push('meta.empreintesManuel absent de la capture');
   else problemes.push(...ecartsEmpreintes(ref.meta.empreintesManuel, courante.meta.empreintesManuel));
+  // Relecture de l'étape O : chaque entrée active de la base, par son titre (empreintes NON masquées de { titre,
+  // contenu }) ; un écart est un échec qu'aucune entrée de ecarts-restauration-attendus.json ne peut admettre.
+  if (!ref.meta.empreintesBase) problemes.push('meta.empreintesBase absent de la référence : recapturer la référence avec la capture du lot 2c');
+  else if (!courante.meta.empreintesBase) problemes.push('meta.empreintesBase absent de la capture');
+  else problemes.push(...ecartsEmpreintesBase(ref.meta.empreintesBase, courante.meta.empreintesBase));
 
   // Ex aequo des listes triées sur une clé non unique (ordre-libre.json avec cleTri) : normalisés
   // sur des copies, AVANT la comparaison.

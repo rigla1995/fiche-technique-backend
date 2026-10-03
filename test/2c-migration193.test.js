@@ -13,10 +13,28 @@ const path = require('node:path');
 
 const DOSSIER = path.join(__dirname, '..', 'migrations');
 const NOM = '193_manuel_sections_domaine.sql';
-const SQL = fs.readFileSync(path.join(DOSSIER, NOM), 'utf8');
+// Fins de ligne normalisées à la lecture : la copie de travail peut être en CRLF (core.autocrlf = true, et
+// .gitattributes n'arrive qu'à l'étape M0, spec §3.8) ; « . » ne prend pas « \r », le retrait des commentaires
+// laisserait sinon leurs « ; » dans le texte.
+const SQL = fs.readFileSync(path.join(DOSSIER, NOM), 'utf8').replace(/\r/g, '');
 // Le SQL sans les commentaires de ligne (« -- … ») : les vérifications portent sur ce qui s'exécute.
 const CODE = SQL.split('\n').map((l) => l.replace(/--.*$/, '')).join('\n');
 const PLAT = CODE.replace(/\s+/g, ' ');
+
+// domainesController sans base ni contrôleur d'abonnement (même méthode que test/socle-composants.test.js) : le pool
+// est remplacé par un faux qui refuse toute requête (slugify n'en fait aucune), buildTarifsPourDomaine par un bouchon.
+function chargerDomainesController() {
+  const remplacer = (module, exports) => {
+    const chemin = require.resolve(module);
+    if (!require.cache[chemin]) {
+      require.cache[chemin] = { id: chemin, filename: chemin, loaded: true, exports, children: [], paths: [] };
+    }
+  };
+  const refus = async () => { throw new Error('aucune requête attendue'); };
+  remplacer('../src/config/database', { query: refus, connect: refus });
+  remplacer('../src/controllers/abonnementController', { buildTarifsPourDomaine: async () => ({}) });
+  return require('../src/controllers/domainesController');
+}
 
 test('193 : seul fichier de son numéro, juste après la 192, appliqué après elle (ordre des noms)', () => {
   const fichiers = fs.readdirSync(DOSSIER).filter((f) => f.endsWith('.sql')).sort();
@@ -65,9 +83,15 @@ test('193 : contraintes nommées (statut, slug hors restauration, unicité fiche
 test('193 : le motif du slug admet ce que produit slugify et refuse le reste', () => {
   const motif = new RegExp(/domaine_slug ~ '([^']+)'/.exec(PLAT)[1]);
   const admis = (s) => motif.test(s) && s !== 'restauration';
-  // slugify (domainesController.js:37-40) : minuscules, accents translittérés, [^a-z0-9]+ → '-', 45 caractères.
-  const slugify = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 45);
+  // slugify du contrôleur lui-même (domainesController.js:37-40, exporté) : si sa longueur ou son motif changent,
+  // ce test voit tout de suite que le motif de la 193 ne couvre plus les slugs produits (R5.9).
+  const { slugify } = chargerDomainesController();
+  for (const nom of ['Hôtellerie', 'Industrie — Céramique', 'Café', 'Boulangerie & Pâtisserie', 'A', 'x'.repeat(80),
+    'é', '—', 'Ünïté — Spéciale']) {
+    const s = slugify(nom);
+    if (s) assert.ok(admis(s), s); // slugify('—') = '' : le contrôleur refuse un slug vide (400) avant la base
+  }
+  assert.equal(slugify('x'.repeat(80)).length <= 50, true, 'slugify ne dépasse jamais les 50 caractères du motif');
   for (const nom of ['Hôtellerie', 'Industrie — Céramique', 'Café', 'Boulangerie & Pâtisserie', 'A', 'x'.repeat(80)]) {
     assert.ok(admis(slugify(nom)), slugify(nom));
   }

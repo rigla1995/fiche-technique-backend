@@ -218,6 +218,28 @@ test('verifierBalises : clé inconnue et argument refusés, balises valides admi
   assert.deepEqual(M.verifierBalises('[[nom:zz]] [[Nom:labo]] [[nom:labo:xx]]').map((x) => x.balise), ['[[nom:zz]]', '[[nom:labo:xx]]']);
 });
 
+test('verifierBalises : balise non fermée, coupée par une ligne, ou fin sans début (relecture S0, I11)', () => {
+  const raisons = (t) => M.verifierBalises(t).map((x) => x.raison);
+  // Ce que `rendre` laisserait brut pour tous les comptes, restauration comprise.
+  assert.deepEqual(M.verifierBalises('Le [[Nom:labo] central'), [{ balise: '[[Nom:labo] central', raison: 'balise non fermée' }]);
+  assert.deepEqual(raisons('[[nom:labo'), ['balise non fermée']);
+  assert.deepEqual(M.verifierBalises('Voir le [[nom:la\nbo]] ici'), [
+    { balise: '[[nom:la', raison: 'balise non fermée' },
+    { balise: 'bo]]', raison: 'fin de balise sans début' },
+  ]);
+  assert.deepEqual(raisons('nom:labo]] seul'), ['fin de balise sans début']);
+  // Rendu inchangé par le contrôle : la balise cassée reste brute (c'est ce que le refus 400 empêche d'écrire).
+  assert.equal(rendre(vocabDefaut, 'Le [[Nom:labo] central'), 'Le [[Nom:labo] central');
+  // Ordre du texte, mêlé aux autres fautives ; une balise valide voisine n'est pas signalée.
+  assert.deepEqual(raisons('[[nom:zz]] puis [[Nom:labo]] puis [[nom:labo'), ['clé inconnue « zz »', 'balise non fermée']);
+  // Liens et crochets du Markdown autour d'une balise : rien (spec §7.6).
+  assert.deepEqual(M.verifierBalises('- [[[Pl:activite]] & [[pl:labo]]](#activites)'), []);
+  assert.deepEqual(M.verifierBalises('[[[Nom:labo]]](#labos) et [voir [[un:labo]]](#x) [x]'), []);
+  assert.deepEqual(M.verifierBalises('[[Nom:stock]] [[Court:labo]][[MAJ:labo]]'), []);
+  // Un seul crochet n'est pas une balise.
+  assert.deepEqual(M.verifierBalises('[note] et a[1] ou b]'), []);
+});
+
 const fauxRes = () => {
   const r = { locals: {}, statut: null, corps: null };
   r.status = (s) => { r.statut = s; return r; };
