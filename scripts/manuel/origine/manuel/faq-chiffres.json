@@ -1,0 +1,15 @@
+{
+  "slug": "faq-chiffres",
+  "titre": "Pourquoi mes chiffres ont changé ?",
+  "icone": "📊",
+  "partie": "FAQ",
+  "ordre": 98,
+  "mots_cles": "chiffres, montants, changement, pmp, inventaire, valorisation, transfert, ttc, ht, prix figé, coût, recalcul",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "084886a5f10d38ade9b45278dafba54f",
+  "md5Contenu": "084886a5f10d38ade9b45278dafba54f"
+}

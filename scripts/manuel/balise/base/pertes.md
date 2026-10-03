@@ -1,0 +1,1 @@
+[[Un:perte]] est une sortie [[de:stock]] non vendue : avarie ([[nom:produit]] [[acc:produit:abîmé:abîmée]] ou [[acc:produit:périmé:périmée]]) ou déchet (épluchures, casse). [[Le:perte:pl]] réduisent [[le:stock]] et la rentabilité. On les suit par type et par catégorie.

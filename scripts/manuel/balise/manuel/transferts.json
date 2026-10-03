@@ -1,0 +1,15 @@
+{
+  "slug": "transferts",
+  "titre": "[[Nom:transfert:pl]]",
+  "exclusions": [
+    {
+      "extrait": "↗ Transfert",
+      "forme": "Transfert",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "bouton que l'écran écrit « ↗ Transférer », sans le terme (StockLaboPage.tsx:706, fr.json:125 client.labo.btn_transfer) ; R7.1.3, cas cité par la spec"
+    }
+  ],
+  "baliseur": "L6",
+  "relecteur": "L5"
+}

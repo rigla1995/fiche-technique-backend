@@ -1,0 +1,22 @@
+{
+  "slug": "dashboard",
+  "titre": "Tableau de bord",
+  "exclusions": [
+    {
+      "extrait": "canal de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "types de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L7",
+  "relecteur": "L6"
+}

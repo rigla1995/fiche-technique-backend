@@ -1,0 +1,1 @@
+Un prestataire de livraison (ex : Uber Eats, Talabat, Glovo) est une plateforme tierce via laquelle des ventes sont réalisées, avec une commission en pourcentage. Les prestataires sont activés au niveau du compte et le canal de vente "prestataire" s'oppose à la vente "directe".

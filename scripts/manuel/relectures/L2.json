@@ -1,0 +1,47 @@
+[
+  {
+    "slug": "roles",
+    "domaine": "miroir",
+    "phrase": "- il accède uniquement au **portail [[court:acheteur]]** : catalogue à ses tarifs, … / - il ne voit **rien de votre gestion** : ni vos quantités en [[nom:stock]], … (lignes 30 et 31 du balisé)",
+    "probleme": "Pronom de reprise oublié (R7.3.3, R7.3.5) : « il » reprend l'acheteur de la ligne 28 (« chaque [[nom:acheteur]] de votre carnet peut être invité »), mais il est resté en clair. Rendu miroir : « il accède uniquement au portail cliente », « il ne voit rien de votre gestion ». Juste en H et C (termes masculins) par hasard seulement ; le même fichier accorde pourtant « il/elle » pour le gérant (lignes 16 à 21) et « invité/invitée » pour l'acheteur (ligne 28).",
+    "correction": "Ligne 30 : « - [[acc:acheteur:il:elle]] accède uniquement au **portail [[court:acheteur]]** : … » ; ligne 31 : « - [[acc:acheteur:il:elle]] ne voit **rien de votre gestion** : … ». Rendus vérifiés avec le moteur : défaut identique (« il »), H et C « il », miroir « elle accède… », « elle ne voit… ».",
+    "etat": "clos",
+    "cloture": "Tour 4 : corrigé. balise/manuel/roles.md lignes 30-31 portent [[acc:acheteur:il:elle]] ; rendus frais : H et C « il accède… », « il ne voit… », miroir « elle accède uniquement au portail cliente », « elle ne voit rien… » ; origine inchangée, point 1 vert (controler --lot L2, 5/5)."
+  },
+  {
+    "slug": "decouvrir-labflow",
+    "domaine": "ceramique",
+    "phrase": "un compte regroupe [[acc:activite:un:une]] ou plusieurs **[[nom:activite:pl]]** (points de vente, cuisines) et, si besoin, [[acc:labo:un:une]] ou plusieurs **[[nom:labo:pl]]** de production. → C : « …un ou plusieurs **sites de production** de production. »",
+    "probleme": "Pléonasme « sites de production de production » en C (même cas que « labos de production », spec §7.5, §10.3), mais il n'est NI signalé par controler.mjs NI accepté dans L2.auto.json : le gras « ** » placé entre les deux groupes empêche le point 7 de voir la répétition (rendus/L2/controle.json : aucun signalement « de production de production » pour cette fiche ; il n'existe que pour « 1 labo de production » de compte-activites-labos). Défaut d'un outil, pour l'intégrateur.",
+    "correction": "Balisage inchangé (aucune balise ne l'évite : C et défaut sont masculins, l'astuce de « central » ne marche pas). Baliseur : écrire l'acceptation à la main dans L2.auto.json n'est pas possible tant que le point 7 ne le signale pas (acceptation « sans objet ») ; donc ouvrir un besoin L2-2 « point 7 : ignorer les marques Markdown (**, *, _) entre deux mots répétés » ; lever le pléonasme dans la variante V-C2.",
+    "etat": "clos",
+    "cloture": "Tour 4 : traité comme demandé. Besoin L2-2 ouvert dans besoins/L2.json (point 7 aveugle aux marques Markdown) ; balisage inchangé (juste, I10) ; rendu C toujours « sites de production** de production », à lever dans V-C2. Reste pour l'intégrateur : corriger le point 7, puis le baliseur ajoute l'acceptation."
+  },
+  {
+    "slug": "decouvrir-labflow",
+    "domaine": "ceramique",
+    "phrase": "la production en [[nom:labo_long]] (ligne 3) ; - **La production en [[nom:labo_long]]** : [[le:labo]] fabrique [[votre:pt:pl]] (ligne 9) → C : « la production en site de production » ; « **La production en site de production** : le site de production fabrique vos produits fabriqués »",
+    "probleme": "Lourd en C : « production … de production » dans le même groupe, et « fabrique vos produits fabriqués » (collision du verbe « fabriquer » avec pt = Produit fabriqué, spec §10.3). L'acceptation du point 7 (« site de production rend à la fois laboratoire et labo ») ne couvre que la répétition du terme, pas « production en site de production » ni « fabrique … fabriqués », qu'aucun point ne signale (verbe hors lexique).",
+    "correction": "Aucune balise ne l'évite sans reformuler (I10) : balisage inchangé. À lever dans la variante V-C2 (fiche à variante) ; compléter la raison de l'acceptation du point 7 (ceramique, « site de production ») dans L2.auto.json pour citer ces deux tournures.",
+    "etat": "clos",
+    "cloture": "Tour 4 : corrigé. Raison de l'acceptation n°3 de L2.auto.json (céramique, « site de production ») complétée : cite « la production en site de production » et « le site de production fabrique vos produits fabriqués » (§10.3), renvoi implicite à la reformulation ; balisage inchangé (I10). Lever en V-C2."
+  },
+  {
+    "slug": "decouvrir-labflow",
+    "domaine": "ceramique",
+    "phrase": "chaque [[nom:recette]] est [[acc:recette:décrit:décrite]] dans [[un:fiche_technique]] dont le coût de revient se calcule automatiquement → C : « chaque nomenclature est décrite dans une fiche de coût de revient dont le coût de revient se calcule automatiquement »",
+    "probleme": "Redondance ridicule en C : « une fiche de coût de revient dont le coût de revient se calcule » (le terme C de fiche_technique contient déjà « coût de revient », écrit en clair juste après). Non signalée (le point 7 ne voit que les rendus de balises répétés, ici la 2e occurrence est du texte commun).",
+    "correction": "Aucune balise ne l'évite (« coût de revient » est du texte commun hors lexique, I10) : balisage inchangé, à lever dans la variante V-C2. Pour mémoire au client : le brouillon de lexique C (« Fiche de coût de revient ») produira cette tournure dans d'autres fiches sans variante (calc-*, fiches-techniques).",
+    "etat": "clos",
+    "cloture": "Tour 4 : traité comme demandé. Balisage inchangé (I10) ; besoin L2-3 ouvert (décision client/intégrateur sur le terme C « Fiche de coût de revient », risque dans calc-*, fiches-techniques) ; rendu C ligne 14 inchangé, à lever dans V-C2."
+  },
+  {
+    "slug": "compte-activites-labos",
+    "domaine": "ceramique",
+    "phrase": "- **[[Le:labo:pl]] (0 à N)** : vos sites de production. [[Un:labo]] fabrique [[un:pt:pl]], approvisionne … → C : « **Les sites de production (0 à N)** : vos sites de production. Un site de production fabrique des produits fabriqués, … »",
+    "probleme": "En C, la phrase cumule la glose redite (acceptée au point 7) et « fabrique des produits fabriqués » (collision verbe / pt, spec §10.3, exemple cité tel quel dans le tableau des collisions), qui n'est pas mentionné dans l'acceptation.",
+    "correction": "Balisage inchangé (I10). Compléter la raison de l'acceptation du point 7 (ceramique, « sites de production ») dans L2.auto.json pour citer « fabrique des produits fabriqués » ; à lever dans la variante V-C2.",
+    "etat": "clos",
+    "cloture": "Tour 4 : corrigé. Raison de l'acceptation n°17 de L2.auto.json (céramique, « sites de production ») complétée : cite « Un site de production fabrique des produits fabriqués » (§10.3) ; balisage inchangé (I10). Lever en V-C2."
+  }
+]

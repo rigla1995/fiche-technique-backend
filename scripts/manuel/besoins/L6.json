@@ -1,0 +1,34 @@
+[
+  {
+    "id": "L6-1",
+    "fiche": "stock-labo, activites",
+    "besoin": "Collision connue, irréductible sans variante : « labos de production » s'écrit [[nom:labo:pl]] de production (aucune autre forme ne reproduit l'origine) et C rend « sites de production de production » : stock-labo « Produire un PF (sites de production de production uniquement — … » ; activites « vos **sites de production** de production ». Signalements 7 acceptés (relectures/L6.auto.json). Le §10.3 ne cite que stock-labo ; activites s'y ajoute. Ni l'une ni l'autre n'a de variante.",
+    "proposition": "À l'étape C : inscrire activites à côté de stock-labo au §10.3 (« sites de production de production » en C) et dans ecarts-visibles-2c.md.",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : acceptée pour le 2c (la grammaire ne peut pas l'éviter, §7.5). À l'étape C : activites ajoutée à côté de stock-labo à la ligne « sites de production de production » du §10.3 et dans ecarts-visibles-2c.md (récapitulatif L9-4)."
+  },
+  {
+    "id": "L6-2",
+    "fiche": "activites",
+    "besoin": "Glose « (points de vente) » après « vos **activités** » : exclue en glose (comme compte-activites-labos, L2) pour garder un sens en H (« vos **services** (points de vente) ») ; en C le terme activite est la glose elle-même : « vos **points de vente** (points de vente) ». Balisée en activite_desc, elle serait redite en H ET en C. Signalements 7 et 12 acceptés (relectures/L6.auto.json). Fiche sans variante.",
+    "proposition": "À l'étape C : inscrire au §10.3 (fiches sans variante) et dans ecarts-visibles-2c.md ; activites candidate à une variante Céramique (question 9).",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : acceptée pour le 2c (exclusion glose gardée : elle garde un sens en H). Depuis la correction de L4-3, le point 8 signale aussi C « points de vente (points de vente) » : accepté dans relectures/L6.auto.json. À l'étape C : inscription au §10.3 (gloses redites, fiches sans variante) et dans ecarts-visibles-2c.md ; activites ajoutée aux fiches candidates à une variante Céramique (question 9) (récapitulatif L9-4)."
+  },
+  {
+    "id": "L6-3",
+    "fiche": "calc-transferts",
+    "besoin": "« au nom du **fournisseur-labo** » : nom composé à trait d'union qui porte deux formes (« fournisseur », « labo ») ; aucune balise contre un tiret (A16.2), il reste en clair dans tous les domaines (H « fournisseur-labo … avec la cuisine centrale », C « … avec le site de production »). Exclu en nom-fige faute de type plus juste : la liste fermée des locutions (§7.2) ne le contient pas, et A16.2 renvoie à une « exclusion justifiée ». Écart signalé par le relecteur (tour 2) : nom-fige vise un nom que l'écran écrit SANS le terme, or l'écran voisin « Fournisseurs Labo (auto-gérés) » écrit les deux termes par voc (FournisseursPage.tsx:220) ; la justification le dit désormais, aucun type de la liste fermée ne convient exactement. Fiche sans variante.",
+    "proposition": "Intégrateur : confirmer le type nom-fige (ou en choisir un autre de la liste fermée) ; à l'étape C, inscrire « fournisseur-labo » au §10.3 (forme collée à un trait d'union gardée hors restauration).",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : type nom-fige confirmé : aucune balise contre un tiret (A16.2), « fournisseur-labo » n'est pas dans la liste fermée des locutions (§7.2) et nom-fige est le type le plus proche (nom composé que le manuel garde tel quel ; l'écran voisin écrit « Fournisseurs Labo (auto-gérés) » avec voc, FournisseursPage.tsx:220, ce que la justification dit) ; A16.2 admet une « exclusion justifiée ». Inscription au §10.3 (forme collée à un trait d'union gardée hors restauration, à côté de « sous-produit ») reportée à l'étape C (récapitulatif L9-4)."
+  },
+  {
+    "id": "L6-4",
+    "fiche": "stock-labo, transferts, calc-transferts, fournisseurs",
+    "besoin": "Collisions lues dans les rendus, déjà comptées dans le tableau du §10.3, qu'aucune balise ne lève (I10), fiches sans variante : C « réception(s) » en clair à côté du terme appro (stock-labo « ↑ réception (achats et réceptions d'un site de production source) », transferts « la réception apparaît dans le stock comme une réception de type « Livraison interne » », calc-transferts « dernière réception » ; signalements 12 acceptés) ; C « fabriquer » à côté de pt (stock-labo « les produits fabriqués (PF) que vous y fabriquez », calc-transferts « un site de production … fabrique donc ses produits fabriqués », non signalé : verbe) ; H et C « livraison(s) » à côté de transfert (fournisseurs « les livraisons de la cuisine centrale / du site de production apparaissent dans les appros / réceptions », transferts et calc-transferts « bon de livraison ») ; verbe « transférer » et bouton « ↗ Transfert » (nom-fige, R7.1.3) dans des fiches titrées « Livraisons internes ».",
+    "proposition": "À l'étape C : ajouter ces fiches aux exemples du tableau des collisions du §10.3 (réception(s), fabriqué(e)(s), livraison(s), verbes du métier) ; rien à changer dans le texte commun.",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : acceptées pour le 2c (I10, fiches sans variante). À l'étape C : ces fiches ajoutées aux exemples du tableau des collisions du §10.3 (réception(s), fabriqué(e)(s), livraison(s), verbes du métier) et dans ecarts-visibles-2c.md (récapitulatif L9-4)."
+  }
+]

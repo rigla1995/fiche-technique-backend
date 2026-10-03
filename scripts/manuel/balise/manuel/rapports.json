@@ -1,0 +1,15 @@
+{
+  "slug": "rapports",
+  "titre": "Rapports (intégrés au tableau de bord)",
+  "exclusions": [
+    {
+      "extrait": "rapport d'activités",
+      "forme": "activités",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "ancien nom d'une page supprimée, intégrée au tableau de bord (la fiche le dit : « Les anciennes pages « Rapports » ont été intégrées au Tableau de bord ») : aucun écran ne le porte plus (R7.1.3, §7.2 ancien nom)"
+    }
+  ],
+  "baliseur": "L3",
+  "relecteur": "L8"
+}

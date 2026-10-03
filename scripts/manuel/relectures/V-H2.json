@@ -1,0 +1,58 @@
+[
+  {
+    "slug": "decouvrir-labflow",
+    "domaine": "hotellerie",
+    "phrase": "La production centralisée : la cuisine centrale réalise vos préparations (buffets du petit-déjeuner, mignardises, plateaux des séminaires…), les composants sont déduits automatiquement, et vos services sont approvisionnés par livraison interne.",
+    "probleme": "Métier peu crédible pour la notion : une préparation (pt) est un produit fabriqué, stocké puis livré au service par livraison interne. Un « buffet du petit-déjeuner » est une mise en place, pas un produit qu'on stocke et qu'on livre. Les « plateaux des séminaires » ne vont à aucun des services cités.",
+    "correction": "Garder la phrase, changer seulement la parenthèse : « [[votre:pt:pl]] (viennoiseries du petit-déjeuner, mignardises, sirops maison du bar…) ». Rendu H : « vos préparations (viennoiseries du petit-déjeuner, mignardises, sirops maison du bar…) ». Mêmes exemples que dans compte-activites-labos (ligne suivante).",
+    "etat": "clos"
+  },
+  {
+    "slug": "compte-activites-labos",
+    "domaine": "hotellerie",
+    "phrase": "Hôtel avec production centralisée : 1 cuisine centrale + 3 services (restaurant, bar, spa). La cuisine centrale prépare les buffets du petit-déjeuner, les mignardises et les plateaux des séminaires ; le restaurant et le bar reçoivent leur production par livraison interne et saisissent leurs propres ventes.",
+    "probleme": "Même problème que dans decouvrir-labflow. Le buffet n'est pas une préparation livrée en stock. Les plateaux des séminaires n'ont pas de destinataire parmi les 3 services de l'exemple, et seuls le restaurant et le bar reçoivent la production.",
+    "correction": "« [[Le:labo]] prépare les viennoiseries du petit-déjeuner, les mignardises et les sirops maison du bar ; le restaurant et le bar reçoivent… » : chaque produit va à un service de l'exemple. Le reste de la phrase est inchangé.",
+    "etat": "clos"
+  },
+  {
+    "slug": "compte-activites-labos",
+    "domaine": "hotellerie",
+    "phrase": "Unité de production en dépôt : 0 service, 1 cuisine centrale + base clients professionnels. La cuisine centrale vend exclusivement à des établissements extérieurs (résidences, cliniques, cantines…), via l'Espace Clients professionnels et le portail de commande.",
+    "probleme": "Les « résidences » sont, dans la puce juste au-dessus (« Groupe de résidences »), les lieux du compte lui-même, qui ont chacun leur restaurant. Ici, elles sont des acheteurs extérieurs. Ces deux puces voisines brouillent la différence entre service et acheteur. decouvrir-labflow présente aussi le compte comme « hôtels, résidences, clubs ».",
+    "correction": "Dans cette puce, ne pas citer les résidences : « … à des établissements extérieurs (cliniques, cantines d'entreprise, hôtels partenaires…) ». Ailleurs, « résidences seniors » reste juste, car le mot « seniors » distingue l'acheteur.",
+    "etat": "clos"
+  },
+  {
+    "slug": "compte-activites-labos",
+    "domaine": "hotellerie",
+    "phrase": "Avec cuisine centrale : le service est rattaché à une cuisine centrale qui l'approvisionne par livraison interne — sa production arrive dans le stock du restaurant ou du bar à chaque livraison interne.",
+    "probleme": "« sa production » est ambigu : on peut lire la production du service, qui est le sujet de la phrase. La fiche commune disait « la production du labo ». La reformulation, faite pour éviter une répétition, perd en clarté.",
+    "correction": "« … — [[son:pt:pl]] arrivent dans [[le:stock]] du restaurant ou du bar à chaque [[nom:transfert]]. » Rendu H : « ses préparations arrivent dans le stock du restaurant ou du bar à chaque livraison interne ». Le possessif suit « préparations » et ne dépend pas du genre de la cuisine centrale.",
+    "etat": "clos"
+  },
+  {
+    "slug": "demarrage",
+    "domaine": "hotellerie",
+    "phrase": "Créez vos sites — Dans Mes Services, créez votre cuisine centrale puis vos services (restaurant, bar, spa, housekeeping…) avec le bouton « Créer mon business », en deux étapes ; ce bouton est proposé si votre abonnement inclut une cuisine centrale, sinon utilisez « + Ajouter mon service » — …",
+    "probleme": "Avec cet ordre, la consigne « créez votre cuisine centrale » est donnée sans condition, et la condition ne vient qu'après. Un hôtel dont l'abonnement n'inclut pas de cuisine centrale lit d'abord une étape qu'il ne peut pas faire. La fiche commune donnait la condition tout de suite après le nom du bouton. Ce changement d'ordre n'apporte rien au métier.",
+    "correction": "Reprendre l'ordre de la fiche commune et garder les exemples : « Dans **[[Mon:activite:pl:Nom]]**, utilisez le bouton « Créer mon business » (proposé si votre abonnement inclut [[un:labo]]) pour créer [[votre:labo]] puis [[votre:activite:pl]] (restaurant, bar, spa, housekeeping…) en deux étapes, ou « + Ajouter [[mon:activite]] » sinon — … ».",
+    "etat": "clos"
+  },
+  {
+    "slug": "onboarding-configuration",
+    "domaine": "hotellerie",
+    "phrase": "Dès votre premier service ou votre cuisine centrale créée, le Référentiel se déverrouille dans le menu : créez vos unités, familles et catégories, puis vos fournitures (nom, unité, catégorie) : denrées, vins et spiritueux, savons et gels douche…",
+    "probleme": "Il y a deux deux-points dans la même phrase : le second, qui introduit les exemples, alourdit la phrase et la rend ambiguë (on peut croire que « denrées… » détaille « nom, unité, catégorie »). Ce n'est pas le cas dans la fiche commune.",
+    "correction": "Remplacer le second deux-points par un tiret : « … puis [[votre:article:pl]] (nom, unité, catégorie) — denrées, vins et spiritueux, savons et gels douche… ».",
+    "etat": "clos"
+  },
+  {
+    "slug": "onboarding-configuration",
+    "domaine": "hotellerie",
+    "phrase": "Ajoutez autant de services que votre abonnement le permet (restaurant, bar, spa, housekeeping…), puis validez avec Enregistrer tout.",
+    "probleme": "La parenthèse d'exemples est placée après « le permet » : elle se rattache à l'abonnement et non aux services.",
+    "correction": "« Ajoutez autant [[de:activite:pl]] (restaurant, bar, spa, housekeeping…) que votre abonnement le permet, puis validez avec **Enregistrer tout**. »",
+    "etat": "clos"
+  }
+]

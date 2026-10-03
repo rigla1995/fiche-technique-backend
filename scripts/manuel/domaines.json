@@ -1,0 +1,1198 @@
+{
+  "_lisezmoi": [
+    "Lot 2c (docs/lot-2c-spec.md §3.1, R3.1.1) : domaines hotellerie et ceramique de la base locale, lus une fois en",
+    "lecture seule par scripts/manuel/extraire-origine.js. Ne pas éditer à la main.",
+    "« ecarts » = domaines_activite.lexique tel qu'en base (liste d'ÉCARTS au défaut) ; « lexique » = son lexique RÉSOLU",
+    "par resoudreLexique(LEXIQUE_DEFAUT, ecarts), gardé pour la lecture humaine et comme contrôle (lib/vocabulaires.js",
+    "verifierLexiques). Tout outil construit son vocabulaire sur les ÉCARTS résolus : vocabDuDomaine(slug).",
+    "« composants » = composants ACTIFS du domaine (forme de mapComposant, domaineProfilService.js:84-100), ordre, id.",
+    "« md5Lexique » = md5(lexique::text), comparable à la lecture (7) de scripts/controle-avant-2c.sql."
+  ],
+  "extraction": {
+    "base": "fiche_technique",
+    "derniereMigration": "193_manuel_sections_domaine.sql",
+    "le": "2026-10-03T01:08:06.910Z"
+  },
+  "domaines": {
+    "hotellerie": {
+      "slug": "hotellerie",
+      "nom": "Hôtellerie",
+      "description": "Hôtels, résidences, clubs : services (restaurant, bar, room service, housekeeping, spa) alimentés par une cuisine centrale et un économat",
+      "md5Lexique": "ec83e7e8452932c874ebb66f66b8d980",
+      "ecarts": {
+        "pt": {
+          "g": "f",
+          "el": false,
+          "pl": "Préparations",
+          "sg": "Préparation",
+          "court": {
+            "pl": "Prépas",
+            "sg": "Prépa"
+          }
+        },
+        "labo": {
+          "g": "f",
+          "el": false,
+          "pl": "Cuisines centrales",
+          "sg": "Cuisine centrale",
+          "court": {
+            "pl": "Cuisines",
+            "sg": "Cuisine"
+          }
+        },
+        "gerant": {
+          "g": "m",
+          "el": false,
+          "pl": "Responsables de service",
+          "sg": "Responsable de service"
+        },
+        "article": {
+          "g": "f",
+          "el": false,
+          "pl": "Fournitures",
+          "sg": "Fourniture"
+        },
+        "recette": {
+          "g": "f",
+          "el": false,
+          "pl": "Fiches de préparation",
+          "sg": "Fiche de préparation"
+        },
+        "acheteur": {
+          "g": "m",
+          "el": false,
+          "pl": "Clients professionnels",
+          "sg": "Client professionnel"
+        },
+        "activite": {
+          "g": "m",
+          "el": false,
+          "pl": "Services",
+          "sg": "Service"
+        },
+        "food_cost": {
+          "g": "m",
+          "el": false,
+          "pl": "Ratios matière",
+          "sg": "Ratio matière"
+        },
+        "transfert": {
+          "g": "f",
+          "el": false,
+          "pl": "Livraisons internes",
+          "sg": "Livraison interne"
+        },
+        "ingredient": {
+          "g": "m",
+          "el": false,
+          "pl": "Composants",
+          "sg": "Composant"
+        },
+        "produit_valorise": {
+          "g": "f",
+          "el": false,
+          "pl": "Prestations catalogue",
+          "sg": "Prestation catalogue"
+        },
+        "produit_vendable": {
+          "g": "f",
+          "el": false,
+          "pl": "Prestations vendues",
+          "sg": "Prestation vendue"
+        },
+        "produit_utilisable": {
+          "g": "m",
+          "el": false,
+          "pl": "Consommables",
+          "sg": "Consommable"
+        }
+      },
+      "lexique": {
+        "activite": {
+          "sg": "Service",
+          "pl": "Services",
+          "g": "m",
+          "el": false,
+          "icon": "🏪"
+        },
+        "labo": {
+          "sg": "Cuisine centrale",
+          "pl": "Cuisines centrales",
+          "g": "f",
+          "el": false,
+          "icon": "🏭",
+          "court": {
+            "sg": "Cuisine",
+            "pl": "Cuisines"
+          }
+        },
+        "produit_vendable": {
+          "sg": "Prestation vendue",
+          "pl": "Prestations vendues",
+          "g": "f",
+          "el": false,
+          "icon": "🛒"
+        },
+        "produit_utilisable": {
+          "sg": "Consommable",
+          "pl": "Consommables",
+          "g": "m",
+          "el": false,
+          "icon": "🧂"
+        },
+        "produit_valorise": {
+          "sg": "Prestation catalogue",
+          "pl": "Prestations catalogue",
+          "g": "f",
+          "el": false,
+          "icon": "💎"
+        },
+        "article": {
+          "sg": "Fourniture",
+          "pl": "Fournitures",
+          "g": "f",
+          "el": false,
+          "icon": "📦"
+        },
+        "ingredient": {
+          "sg": "Composant",
+          "pl": "Composants",
+          "g": "m",
+          "el": false,
+          "icon": "🥕"
+        },
+        "recette": {
+          "sg": "Fiche de préparation",
+          "pl": "Fiches de préparation",
+          "g": "f",
+          "el": false,
+          "icon": "📖"
+        },
+        "fiche_technique": {
+          "sg": "Fiche technique",
+          "pl": "Fiches techniques",
+          "g": "f",
+          "el": false,
+          "icon": "📋",
+          "court": {
+            "sg": "FT",
+            "pl": "FT"
+          }
+        },
+        "portion": {
+          "sg": "Portion",
+          "pl": "Portions",
+          "g": "f",
+          "el": false,
+          "icon": "🍽️"
+        },
+        "food_cost": {
+          "sg": "Ratio matière",
+          "pl": "Ratios matière",
+          "g": "m",
+          "el": false,
+          "icon": "📊"
+        },
+        "cout_matiere": {
+          "sg": "Coût matière",
+          "pl": "Coûts matière",
+          "g": "m",
+          "el": false,
+          "icon": "💰"
+        },
+        "marge": {
+          "sg": "Marge",
+          "pl": "Marges",
+          "g": "f",
+          "el": false,
+          "icon": "📈"
+        },
+        "transfert": {
+          "sg": "Livraison interne",
+          "pl": "Livraisons internes",
+          "g": "f",
+          "el": false,
+          "icon": "🚚"
+        },
+        "appro": {
+          "sg": "Approvisionnement",
+          "pl": "Approvisionnements",
+          "g": "m",
+          "el": true,
+          "icon": "📥",
+          "court": {
+            "sg": "Appro",
+            "pl": "Appros"
+          }
+        },
+        "perte": {
+          "sg": "Perte",
+          "pl": "Pertes",
+          "g": "f",
+          "el": false,
+          "icon": "🗑️"
+        },
+        "inventaire": {
+          "sg": "Inventaire",
+          "pl": "Inventaires",
+          "g": "m",
+          "el": true,
+          "icon": "📝"
+        },
+        "vente": {
+          "sg": "Vente",
+          "pl": "Ventes",
+          "g": "f",
+          "el": false,
+          "icon": "💵"
+        },
+        "acheteur": {
+          "sg": "Client professionnel",
+          "pl": "Clients professionnels",
+          "g": "m",
+          "el": false,
+          "icon": "🤝"
+        },
+        "gerant": {
+          "sg": "Responsable de service",
+          "pl": "Responsables de service",
+          "g": "m",
+          "el": false,
+          "icon": "👤"
+        },
+        "fournisseur": {
+          "sg": "Fournisseur",
+          "pl": "Fournisseurs",
+          "g": "m",
+          "el": false,
+          "icon": "🏬"
+        },
+        "depot": {
+          "sg": "Dépôt",
+          "pl": "Dépôts",
+          "g": "m",
+          "el": false,
+          "icon": "🏗️"
+        },
+        "pt": {
+          "sg": "Préparation",
+          "pl": "Préparations",
+          "g": "f",
+          "el": false,
+          "icon": "🍲",
+          "court": {
+            "sg": "Prépa",
+            "pl": "Prépas"
+          }
+        },
+        "stock": {
+          "sg": "Stock",
+          "pl": "Stocks",
+          "g": "m",
+          "el": false,
+          "icon": "📦"
+        },
+        "prestataire": {
+          "sg": "Prestataire",
+          "pl": "Prestataires",
+          "g": "m",
+          "el": false,
+          "icon": "🛵"
+        },
+        "supplement": {
+          "sg": "Supplément",
+          "pl": "Suppléments",
+          "g": "m",
+          "el": false,
+          "icon": "➕"
+        },
+        "espace_activites": {
+          "sg": "Espace Services",
+          "pl": "Espaces Services",
+          "g": "m",
+          "el": true,
+          "icon": "🏪",
+          "derive_de": "activite",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Pl:activite]]"
+        },
+        "espace_labo": {
+          "sg": "Espace Cuisine",
+          "pl": "Espaces Cuisine",
+          "g": "m",
+          "el": true,
+          "icon": "🏭",
+          "derive_de": "labo",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Court:labo]]"
+        },
+        "espace_vente": {
+          "sg": "Espace Vente",
+          "pl": "Espaces Vente",
+          "g": "m",
+          "el": true,
+          "icon": "💵",
+          "derive_de": "vente",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Nom:vente]]"
+        },
+        "espace_acheteurs": {
+          "sg": "Espace Clients professionnels",
+          "pl": "Espaces Clients professionnels",
+          "g": "m",
+          "el": true,
+          "icon": "🤝",
+          "derive_de": "acheteur",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Pl:acheteur]]"
+        },
+        "espace_produits": {
+          "sg": "Espace Produit",
+          "pl": "Espaces Produit",
+          "g": "m",
+          "el": true,
+          "icon": "💎",
+          "derive_de": "produit",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Nom:produit]]"
+        },
+        "referentiel": {
+          "sg": "Référentiel",
+          "pl": "Référentiels",
+          "g": "m",
+          "el": false,
+          "icon": "📚"
+        },
+        "produit": {
+          "sg": "Produit",
+          "pl": "Produits",
+          "g": "m",
+          "el": false,
+          "icon": "🍔"
+        },
+        "produit_compose": {
+          "sg": "Produit composé",
+          "pl": "Produits composés",
+          "g": "m",
+          "el": false
+        },
+        "labo_long": {
+          "sg": "Cuisine centrale",
+          "pl": "Cuisines centrales",
+          "g": "f",
+          "el": false,
+          "icon": "🏭",
+          "court": {
+            "sg": "Cuisine",
+            "pl": "Cuisines"
+          },
+          "derive_de": "labo",
+          "mode": "copie"
+        },
+        "labo_desc": {
+          "sg": "Cuisine centrale",
+          "pl": "Cuisines centrales",
+          "g": "f",
+          "el": false,
+          "icon": "🏭",
+          "court": {
+            "sg": "Cuisine",
+            "pl": "Cuisines"
+          },
+          "derive_de": "labo",
+          "mode": "copie"
+        },
+        "activite_desc": {
+          "sg": "Service",
+          "pl": "Services",
+          "g": "m",
+          "el": false,
+          "icon": "🏪",
+          "derive_de": "activite",
+          "mode": "copie"
+        },
+        "article_ingredient": {
+          "sg": "Fourniture",
+          "pl": "Fournitures",
+          "g": "f",
+          "el": false,
+          "icon": "📦",
+          "derive_de": "article",
+          "mode": "copie"
+        },
+        "cat_pt_utilisable": {
+          "sg": "Consommables",
+          "pl": "Consommables",
+          "g": "m",
+          "el": false,
+          "icon": "🧂",
+          "derive_de": "produit_utilisable",
+          "mode": "pluriel_titre"
+        },
+        "cat_pt_valorise": {
+          "sg": "Prestations Catalogue",
+          "pl": "Prestations Catalogue",
+          "g": "f",
+          "el": false,
+          "icon": "💎",
+          "derive_de": "produit_valorise",
+          "mode": "pluriel_titre"
+        },
+        "cat_pt_vendable": {
+          "sg": "Prestations Vendues",
+          "pl": "Prestations Vendues",
+          "g": "f",
+          "el": false,
+          "icon": "🛒",
+          "derive_de": "produit_vendable",
+          "mode": "pluriel_titre"
+        },
+        "transfert_abr": {
+          "sg": "Livraison interne",
+          "pl": "Livraisons internes",
+          "g": "f",
+          "el": false,
+          "icon": "🚚",
+          "derive_de": "transfert",
+          "mode": "copie"
+        },
+        "supplement_abr": {
+          "sg": "Suppl.",
+          "pl": "Suppl.",
+          "g": "m",
+          "el": false,
+          "icon": "➕",
+          "derive_de": "supplement",
+          "mode": "copie"
+        },
+        "pt_abr": {
+          "sg": "Préparation",
+          "pl": "Préparations",
+          "g": "f",
+          "el": false,
+          "icon": "🍲",
+          "court": {
+            "sg": "Prépa",
+            "pl": "Prépas"
+          },
+          "derive_de": "pt",
+          "mode": "copie"
+        },
+        "produit_utilisable_abr": {
+          "sg": "Consommable",
+          "pl": "Consommables",
+          "g": "m",
+          "el": false,
+          "icon": "🧂",
+          "derive_de": "produit_utilisable",
+          "mode": "copie"
+        },
+        "produit_vendable_abr": {
+          "sg": "Prestation vendue",
+          "pl": "Prestations vendues",
+          "g": "f",
+          "el": false,
+          "icon": "🛒",
+          "derive_de": "produit_vendable",
+          "mode": "copie"
+        },
+        "produit_valorise_abr": {
+          "sg": "Prestation catalogue",
+          "pl": "Prestations catalogue",
+          "g": "f",
+          "el": false,
+          "icon": "💎",
+          "derive_de": "produit_valorise",
+          "mode": "copie"
+        }
+      },
+      "composants": [
+        {
+          "code": "restaurant",
+          "libelle": "Restaurant",
+          "libellePluriel": "Restaurants",
+          "typeTechnique": "activite",
+          "genre": "m",
+          "elision": null,
+          "ordre": 1,
+          "actif": true
+        },
+        {
+          "code": "bar",
+          "libelle": "Bar",
+          "libellePluriel": "Bars",
+          "typeTechnique": "activite",
+          "genre": "m",
+          "elision": null,
+          "ordre": 2,
+          "actif": true
+        },
+        {
+          "code": "room_service",
+          "libelle": "Room service",
+          "libellePluriel": "Room services",
+          "typeTechnique": "activite",
+          "genre": "m",
+          "elision": null,
+          "ordre": 3,
+          "actif": true
+        },
+        {
+          "code": "housekeeping",
+          "libelle": "Housekeeping",
+          "libellePluriel": "Housekeeping",
+          "typeTechnique": "activite",
+          "genre": "m",
+          "elision": null,
+          "ordre": 4,
+          "actif": true
+        },
+        {
+          "code": "spa",
+          "libelle": "Spa",
+          "libellePluriel": "Spas",
+          "typeTechnique": "activite",
+          "genre": "m",
+          "elision": null,
+          "ordre": 5,
+          "actif": true
+        },
+        {
+          "code": "cuisine",
+          "libelle": "Cuisine",
+          "libellePluriel": "Cuisines",
+          "typeTechnique": "labo",
+          "genre": "f",
+          "elision": null,
+          "ordre": 6,
+          "actif": true
+        },
+        {
+          "code": "economat",
+          "libelle": "Économat / Logistique",
+          "libellePluriel": "Économats / Logistique",
+          "typeTechnique": "labo",
+          "genre": "m",
+          "elision": null,
+          "ordre": 7,
+          "actif": true
+        },
+        {
+          "code": "responsable",
+          "libelle": "Responsable de service",
+          "libellePluriel": "Responsables de service",
+          "typeTechnique": "gerant",
+          "genre": "m",
+          "elision": null,
+          "ordre": 8,
+          "actif": true
+        },
+        {
+          "code": "client_pro",
+          "libelle": "Client professionnel",
+          "libellePluriel": "Clients professionnels",
+          "typeTechnique": "acheteurs",
+          "genre": "m",
+          "elision": null,
+          "ordre": 9,
+          "actif": true
+        }
+      ],
+      "composantsInactifs": 0
+    },
+    "ceramique": {
+      "slug": "ceramique",
+      "nom": "Industrie — Céramique",
+      "description": "Usines et ateliers de céramique : sites de production, entrepôts, showrooms, revendeurs",
+      "md5Lexique": "efc2e7bc434dfea02609c2cc745f9bf9",
+      "ecarts": {
+        "pt": {
+          "g": "m",
+          "el": false,
+          "pl": "Produits fabriqués",
+          "sg": "Produit fabriqué",
+          "court": {
+            "pl": "PF",
+            "sg": "PF"
+          }
+        },
+        "labo": {
+          "g": "m",
+          "el": false,
+          "pl": "Sites de production",
+          "sg": "Site de production",
+          "court": {
+            "pl": "Sites",
+            "sg": "Site"
+          }
+        },
+        "appro": {
+          "g": "f",
+          "el": false,
+          "pl": "Réceptions",
+          "sg": "Réception",
+          "court": {
+            "pl": "Réceptions",
+            "sg": "Réception"
+          }
+        },
+        "gerant": {
+          "g": "m",
+          "el": false,
+          "pl": "Responsables de site",
+          "sg": "Responsable de site"
+        },
+        "article": {
+          "g": "f",
+          "el": false,
+          "pl": "Matières premières",
+          "sg": "Matière première"
+        },
+        "portion": {
+          "g": "f",
+          "el": false,
+          "pl": "Quantités par unité",
+          "sg": "Quantité par unité"
+        },
+        "recette": {
+          "g": "f",
+          "el": false,
+          "pl": "Nomenclatures",
+          "sg": "Nomenclature"
+        },
+        "acheteur": {
+          "g": "m",
+          "el": false,
+          "pl": "Revendeurs",
+          "sg": "Revendeur"
+        },
+        "activite": {
+          "g": "m",
+          "el": false,
+          "pl": "Points de vente",
+          "sg": "Point de vente"
+        },
+        "food_cost": {
+          "g": "m",
+          "el": false,
+          "pl": "Taux de coût matière",
+          "sg": "Taux de coût matière"
+        },
+        "transfert": {
+          "g": "f",
+          "el": false,
+          "pl": "Livraisons internes",
+          "sg": "Livraison interne"
+        },
+        "ingredient": {
+          "g": "m",
+          "el": false,
+          "pl": "Composants",
+          "sg": "Composant"
+        },
+        "supplement": {
+          "g": "f",
+          "el": true,
+          "pl": "Options",
+          "sg": "Option"
+        },
+        "prestataire": {
+          "g": "m",
+          "el": true,
+          "pl": "Intermédiaires",
+          "sg": "Intermédiaire"
+        },
+        "fiche_technique": {
+          "g": "f",
+          "el": false,
+          "pl": "Fiches de coût de revient",
+          "sg": "Fiche de coût de revient",
+          "court": {
+            "pl": "FCR",
+            "sg": "FCR"
+          }
+        },
+        "produit_valorise": {
+          "g": "m",
+          "el": false,
+          "pl": "Produits finis catalogue",
+          "sg": "Produit fini catalogue"
+        },
+        "produit_vendable": {
+          "g": "m",
+          "el": false,
+          "pl": "Produits finis",
+          "sg": "Produit fini"
+        },
+        "produit_utilisable": {
+          "g": "m",
+          "el": false,
+          "pl": "Semi-finis",
+          "sg": "Semi-fini"
+        }
+      },
+      "lexique": {
+        "activite": {
+          "sg": "Point de vente",
+          "pl": "Points de vente",
+          "g": "m",
+          "el": false,
+          "icon": "🏪"
+        },
+        "labo": {
+          "sg": "Site de production",
+          "pl": "Sites de production",
+          "g": "m",
+          "el": false,
+          "icon": "🏭",
+          "court": {
+            "sg": "Site",
+            "pl": "Sites"
+          }
+        },
+        "produit_vendable": {
+          "sg": "Produit fini",
+          "pl": "Produits finis",
+          "g": "m",
+          "el": false,
+          "icon": "🛒"
+        },
+        "produit_utilisable": {
+          "sg": "Semi-fini",
+          "pl": "Semi-finis",
+          "g": "m",
+          "el": false,
+          "icon": "🧂"
+        },
+        "produit_valorise": {
+          "sg": "Produit fini catalogue",
+          "pl": "Produits finis catalogue",
+          "g": "m",
+          "el": false,
+          "icon": "💎"
+        },
+        "article": {
+          "sg": "Matière première",
+          "pl": "Matières premières",
+          "g": "f",
+          "el": false,
+          "icon": "📦"
+        },
+        "ingredient": {
+          "sg": "Composant",
+          "pl": "Composants",
+          "g": "m",
+          "el": false,
+          "icon": "🥕"
+        },
+        "recette": {
+          "sg": "Nomenclature",
+          "pl": "Nomenclatures",
+          "g": "f",
+          "el": false,
+          "icon": "📖"
+        },
+        "fiche_technique": {
+          "sg": "Fiche de coût de revient",
+          "pl": "Fiches de coût de revient",
+          "g": "f",
+          "el": false,
+          "icon": "📋",
+          "court": {
+            "sg": "FCR",
+            "pl": "FCR"
+          }
+        },
+        "portion": {
+          "sg": "Quantité par unité",
+          "pl": "Quantités par unité",
+          "g": "f",
+          "el": false,
+          "icon": "🍽️"
+        },
+        "food_cost": {
+          "sg": "Taux de coût matière",
+          "pl": "Taux de coût matière",
+          "g": "m",
+          "el": false,
+          "icon": "📊"
+        },
+        "cout_matiere": {
+          "sg": "Coût matière",
+          "pl": "Coûts matière",
+          "g": "m",
+          "el": false,
+          "icon": "💰"
+        },
+        "marge": {
+          "sg": "Marge",
+          "pl": "Marges",
+          "g": "f",
+          "el": false,
+          "icon": "📈"
+        },
+        "transfert": {
+          "sg": "Livraison interne",
+          "pl": "Livraisons internes",
+          "g": "f",
+          "el": false,
+          "icon": "🚚"
+        },
+        "appro": {
+          "sg": "Réception",
+          "pl": "Réceptions",
+          "g": "f",
+          "el": false,
+          "icon": "📥",
+          "court": {
+            "sg": "Réception",
+            "pl": "Réceptions"
+          }
+        },
+        "perte": {
+          "sg": "Perte",
+          "pl": "Pertes",
+          "g": "f",
+          "el": false,
+          "icon": "🗑️"
+        },
+        "inventaire": {
+          "sg": "Inventaire",
+          "pl": "Inventaires",
+          "g": "m",
+          "el": true,
+          "icon": "📝"
+        },
+        "vente": {
+          "sg": "Vente",
+          "pl": "Ventes",
+          "g": "f",
+          "el": false,
+          "icon": "💵"
+        },
+        "acheteur": {
+          "sg": "Revendeur",
+          "pl": "Revendeurs",
+          "g": "m",
+          "el": false,
+          "icon": "🤝"
+        },
+        "gerant": {
+          "sg": "Responsable de site",
+          "pl": "Responsables de site",
+          "g": "m",
+          "el": false,
+          "icon": "👤"
+        },
+        "fournisseur": {
+          "sg": "Fournisseur",
+          "pl": "Fournisseurs",
+          "g": "m",
+          "el": false,
+          "icon": "🏬"
+        },
+        "depot": {
+          "sg": "Dépôt",
+          "pl": "Dépôts",
+          "g": "m",
+          "el": false,
+          "icon": "🏗️"
+        },
+        "pt": {
+          "sg": "Produit fabriqué",
+          "pl": "Produits fabriqués",
+          "g": "m",
+          "el": false,
+          "icon": "🍲",
+          "court": {
+            "sg": "PF",
+            "pl": "PF"
+          }
+        },
+        "stock": {
+          "sg": "Stock",
+          "pl": "Stocks",
+          "g": "m",
+          "el": false,
+          "icon": "📦"
+        },
+        "prestataire": {
+          "sg": "Intermédiaire",
+          "pl": "Intermédiaires",
+          "g": "m",
+          "el": true,
+          "icon": "🛵"
+        },
+        "supplement": {
+          "sg": "Option",
+          "pl": "Options",
+          "g": "f",
+          "el": true,
+          "icon": "➕"
+        },
+        "espace_activites": {
+          "sg": "Espace Points de vente",
+          "pl": "Espaces Points de vente",
+          "g": "m",
+          "el": true,
+          "icon": "🏪",
+          "derive_de": "activite",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Pl:activite]]"
+        },
+        "espace_labo": {
+          "sg": "Espace Site",
+          "pl": "Espaces Site",
+          "g": "m",
+          "el": true,
+          "icon": "🏭",
+          "derive_de": "labo",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Court:labo]]"
+        },
+        "espace_vente": {
+          "sg": "Espace Vente",
+          "pl": "Espaces Vente",
+          "g": "m",
+          "el": true,
+          "icon": "💵",
+          "derive_de": "vente",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Nom:vente]]"
+        },
+        "espace_acheteurs": {
+          "sg": "Espace Revendeurs",
+          "pl": "Espaces Revendeurs",
+          "g": "m",
+          "el": true,
+          "icon": "🤝",
+          "derive_de": "acheteur",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Pl:acheteur]]"
+        },
+        "espace_produits": {
+          "sg": "Espace Produit",
+          "pl": "Espaces Produit",
+          "g": "m",
+          "el": true,
+          "icon": "💎",
+          "derive_de": "produit",
+          "mode": "gabarit",
+          "gabarit": "Espace [[Nom:produit]]"
+        },
+        "referentiel": {
+          "sg": "Référentiel",
+          "pl": "Référentiels",
+          "g": "m",
+          "el": false,
+          "icon": "📚"
+        },
+        "produit": {
+          "sg": "Produit",
+          "pl": "Produits",
+          "g": "m",
+          "el": false,
+          "icon": "🍔"
+        },
+        "produit_compose": {
+          "sg": "Produit composé",
+          "pl": "Produits composés",
+          "g": "m",
+          "el": false
+        },
+        "labo_long": {
+          "sg": "Site de production",
+          "pl": "Sites de production",
+          "g": "m",
+          "el": false,
+          "icon": "🏭",
+          "court": {
+            "sg": "Site",
+            "pl": "Sites"
+          },
+          "derive_de": "labo",
+          "mode": "copie"
+        },
+        "labo_desc": {
+          "sg": "Site de production",
+          "pl": "Sites de production",
+          "g": "m",
+          "el": false,
+          "icon": "🏭",
+          "court": {
+            "sg": "Site",
+            "pl": "Sites"
+          },
+          "derive_de": "labo",
+          "mode": "copie"
+        },
+        "activite_desc": {
+          "sg": "Point de vente",
+          "pl": "Points de vente",
+          "g": "m",
+          "el": false,
+          "icon": "🏪",
+          "derive_de": "activite",
+          "mode": "copie"
+        },
+        "article_ingredient": {
+          "sg": "Matière première",
+          "pl": "Matières premières",
+          "g": "f",
+          "el": false,
+          "icon": "📦",
+          "derive_de": "article",
+          "mode": "copie"
+        },
+        "cat_pt_utilisable": {
+          "sg": "Semi-finis",
+          "pl": "Semi-finis",
+          "g": "m",
+          "el": false,
+          "icon": "🧂",
+          "derive_de": "produit_utilisable",
+          "mode": "pluriel_titre"
+        },
+        "cat_pt_valorise": {
+          "sg": "Produits Finis Catalogue",
+          "pl": "Produits Finis Catalogue",
+          "g": "m",
+          "el": false,
+          "icon": "💎",
+          "derive_de": "produit_valorise",
+          "mode": "pluriel_titre"
+        },
+        "cat_pt_vendable": {
+          "sg": "Produits Finis",
+          "pl": "Produits Finis",
+          "g": "m",
+          "el": false,
+          "icon": "🛒",
+          "derive_de": "produit_vendable",
+          "mode": "pluriel_titre"
+        },
+        "transfert_abr": {
+          "sg": "Livraison interne",
+          "pl": "Livraisons internes",
+          "g": "f",
+          "el": false,
+          "icon": "🚚",
+          "derive_de": "transfert",
+          "mode": "copie"
+        },
+        "supplement_abr": {
+          "sg": "Option",
+          "pl": "Options",
+          "g": "f",
+          "el": true,
+          "icon": "➕",
+          "derive_de": "supplement",
+          "mode": "copie"
+        },
+        "pt_abr": {
+          "sg": "Produit fabriqué",
+          "pl": "Produits fabriqués",
+          "g": "m",
+          "el": false,
+          "icon": "🍲",
+          "court": {
+            "sg": "PF",
+            "pl": "PF"
+          },
+          "derive_de": "pt",
+          "mode": "copie"
+        },
+        "produit_utilisable_abr": {
+          "sg": "Semi-fini",
+          "pl": "Semi-finis",
+          "g": "m",
+          "el": false,
+          "icon": "🧂",
+          "derive_de": "produit_utilisable",
+          "mode": "copie"
+        },
+        "produit_vendable_abr": {
+          "sg": "Produit fini",
+          "pl": "Produits finis",
+          "g": "m",
+          "el": false,
+          "icon": "🛒",
+          "derive_de": "produit_vendable",
+          "mode": "copie"
+        },
+        "produit_valorise_abr": {
+          "sg": "Produit fini catalogue",
+          "pl": "Produits finis catalogue",
+          "g": "m",
+          "el": false,
+          "icon": "💎",
+          "derive_de": "produit_valorise",
+          "mode": "copie"
+        }
+      },
+      "composants": [
+        {
+          "code": "usine",
+          "libelle": "Site de production",
+          "libellePluriel": "Sites de production",
+          "typeTechnique": "labo",
+          "genre": "m",
+          "elision": null,
+          "ordre": 1,
+          "actif": true
+        },
+        {
+          "code": "entrepot",
+          "libelle": "Entrepôt",
+          "libellePluriel": "Entrepôts",
+          "typeTechnique": "labo",
+          "genre": "m",
+          "elision": null,
+          "ordre": 2,
+          "actif": true
+        },
+        {
+          "code": "showroom",
+          "libelle": "Showroom / Boutique",
+          "libellePluriel": "Showrooms / Boutiques",
+          "typeTechnique": "activite",
+          "genre": "m",
+          "elision": null,
+          "ordre": 3,
+          "actif": true
+        },
+        {
+          "code": "atelier",
+          "libelle": "Atelier",
+          "libellePluriel": "Ateliers",
+          "typeTechnique": "labo",
+          "genre": "m",
+          "elision": null,
+          "ordre": 4,
+          "actif": true
+        },
+        {
+          "code": "revendeur",
+          "libelle": "Revendeur",
+          "libellePluriel": "Revendeurs",
+          "typeTechnique": "acheteurs",
+          "genre": "m",
+          "elision": null,
+          "ordre": 5,
+          "actif": true
+        },
+        {
+          "code": "responsable",
+          "libelle": "Responsable de site",
+          "libellePluriel": "Responsables de site",
+          "typeTechnique": "gerant",
+          "genre": "m",
+          "elision": null,
+          "ordre": 6,
+          "actif": true
+        }
+      ],
+      "composantsInactifs": 0
+    }
+  }
+}

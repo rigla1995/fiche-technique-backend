@@ -1,0 +1,1 @@
+Une perte est une sortie de stock non vendue : avarie (produit abîmé ou périmé) ou déchet (épluchures, casse). Les pertes réduisent le stock et la rentabilité. On les suit par type et par catégorie.

@@ -1,0 +1,15 @@
+{
+  "slug": "dashboard",
+  "titre": "Tableau de bord",
+  "icone": "📊",
+  "partie": "Gestion",
+  "ordre": 70,
+  "mots_cles": "tableau de bord, dashboard, kpi, filtres, marge, marge nette, commissions, charges, food cost, export excel, comparaison, cascade, onglets",
+  "ecran": "/client/dashboard",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "b1e48a94da90522e7f1b4600f274f11a",
+  "md5Contenu": "b1e48a94da90522e7f1b4600f274f11a"
+}

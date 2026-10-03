@@ -18,10 +18,12 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 const MAX_TOOL_ITERATIONS = 8;
 
 // ── Glossaire « Vocabulaire du compte » (lot 2b §7.3) ─────────────────────────────
-// Le prompt, les outils et les résultats sont écrits avec les mots du compte ; la base de
-// connaissances et le manuel, eux, emploient les mots de LabFlow (jusqu'au lot 2c). Le glossaire
-// donne au modèle la correspondance. Absent quand aucune forme ne diffère du lexique par défaut
-// (restauration, café, boulangerie) : le prompt y reste identique au caractère près.
+// Le prompt, les outils et les résultats sont écrits avec les mots du compte ; depuis le lot 2c, la
+// base de connaissances et le manuel aussi (rendus par search_knowledge_base), à quelques noms de
+// LabFlow près (noms d'offres, « sous-produit » : règle 3). Le glossaire donne au modèle la
+// correspondance (les mots de LabFlow restent ceux des noms d'outils, des champs et des codes).
+// Absent quand aucune forme ne diffère du lexique par défaut (restauration, café, boulangerie) :
+// le prompt y reste identique au caractère près.
 // Le glossaire parcourt les clés du lexique : chaque forme est rendue par le moteur sur l'entrée
 // résolue du domaine (profil.lexique) et sur celle du lexique par défaut, par voc.avec(entrée).
 // Champs de données (paramètres et résultats des outils) qui portent chaque terme.
@@ -65,8 +67,9 @@ function glossaireVocabulaire(voc, profil) {
     groupes.set(sg, [...(groupes.get(sg) || []), k]);
   }
   const lignes = [];
-  // Clés dérivées par copie (labo_long, labo_desc, activite_desc) : le manuel et la base de connaissances
-  // emploient leurs formes par défaut (« laboratoire », « point de vente ») → une ligne dès que la forme
+  // Clés dérivées par copie (labo_long, labo_desc, activite_desc) : formes par défaut (« laboratoire »,
+  // « point de vente ») que le manuel et la base de connaissances employaient avant le lot 2c, et que les
+  // données des outils peuvent encore porter → une ligne dès que la forme
   // diffère ici ; les copies d'une même clé qui rendent ici la même chose partagent la ligne
   // (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »).
   const copies = new Map();
@@ -117,7 +120,7 @@ ${lignes.join('\n')}${unites.length ? `\nUnités du compte (composants de son do
 Règles :
 1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.
 2. Les noms d'outils, les champs et les codes (\`type_appro\`, \`canal\`, \`type_perte\`, \`PT\`) restent ceux de LabFlow : ne les montre pas au client.
-3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (\`search_knowledge_base\`), puis rends la réponse avec les mots du compte.${regleVendables}`;
+3. Le manuel et la base de connaissances sont écrits avec les mots du compte. Quelques noms de LabFlow y restent tels quels (noms d'offres comme « Activité Basique », « sous-produit ») : cite-les sans les traduire.${regleVendables}`;
 }
 
 // voc : vocabulaire du compte (lot 2b §7.1), obligatoire ; profil : profil du domaine du compte
@@ -256,7 +259,8 @@ async function chatWithAI(clientId, chatSessionId, userMessage, confidenceThresh
   // Vocabulaire du compte (lot 2b §7.1) : une requête par message, jamais req.voc (Messenger n'a
   // pas de requête, et un appelant admin passerait le défaut).
   const voc = await vocabForClient(clientId);
-  // Profil du domaine (lexique résolu et composants, pour le glossaire) : seulement hors vocabulaire par défaut.
+  // Profil du domaine (lexique résolu et composants, pour le glossaire et la recherche du lot 2c) : seulement hors
+  // vocabulaire par défaut.
   let profil = null;
   if (!voc.estDefaut) {
     try {
@@ -311,7 +315,8 @@ async function chatWithAI(clientId, chatSessionId, userMessage, confidenceThresh
     for (const tc of toolCalls) {
       let args = {};
       try { args = JSON.parse(tc.function?.arguments || '{}'); } catch (_) { args = {}; }
-      const result = await executeToolCall(clientId, tc.function?.name, args, voc);
+      // Lot 2c (R5.3.3) : le profil du domaine sert à la recherche (variantes, composants), sans requête de plus.
+      const result = await executeToolCall(clientId, tc.function?.name, args, voc, profil);
 
       if (result?.__clarification) {
         let clarificationText = result.question;

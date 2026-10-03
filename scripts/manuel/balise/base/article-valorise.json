@@ -1,0 +1,22 @@
+{
+  "cle": "article valorisé",
+  "titre": "[[Nom:article]] [[acc:article:valorisé:valorisée]]",
+  "exclusions": [
+    {
+      "extrait": "anciennement « article valorisé »",
+      "forme": "article",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "ancien nom du produit valorisé, cité entre guillemets (spec 2c §7.2 et GUIDE §4 : exemple du type nom-fige)"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L9",
+  "relecteur": "L7"
+}

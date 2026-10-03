@@ -1,0 +1,34 @@
+[
+  {
+    "id": "L7-1",
+    "fiche": "saisie-ventes",
+    "besoin": "L'écran Ventes Activités écrit en dur, sans voc, les en-têtes « Article » et « Prix vente » (VentesPage.tsx:280, 281 ; « Article » aussi à :716, historique). Le manuel les cite tels qu'à l'écran (« *Article* (et son unité), *Prix vente* », « détaille l'article ») : exclus en nom-fige (R7.1.3). Dans ces fiches de vente, « article » au sens générique d'article vendable (produit, supplément ou valorisé) reste aussi en clair (homonyme, relecture L7 tour 2) ; seuls les « article » du référentiel sont balisés.",
+    "proposition": "Pour le 2c : nom-fige (I10, le manuel suit l'écran). Hors 2c : passer ces en-têtes par voc.Nom('article') dans le front (reste du lot 2b), puis baliser les deux extraits en maintenance (§12.5).",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : nom-fige gardé pour le 2c (I10 : le manuel suit l'écran, qui écrit « Article » et « Prix vente » en dur, VentesPage.tsx:280-281, :716 ; vérifié). Hors 2c : passer ces en-têtes par voc dans le front (reste du lot 2b), puis baliser les deux extraits en maintenance (§12.5) ; à noter dans ecarts-visibles-2c.md à l'étape C (récapitulatif L9-4)."
+  },
+  {
+    "id": "L7-2",
+    "fiche": "configuration-vente, saisie-ventes, ventes-labo, dashboard",
+    "besoin": "Lexique Céramique (brouillon) : prestataire = « Intermédiaire ». Placé après un nom (« prix prestataire », « canaux prestataires », « colonnes prestataires », « commissions prestataires »), il se lit comme un adjectif en C : « Un prix intermédiaire non renseigné », « Gérer les canaux intermédiaires », « Prix direct ou prix intermédiaire », « commissions intermédiaires ». Aucun point ne le signale (le mot est balisé) et aucune balise ne l'évite : prestataire n'a pas d'apposition, [[compl:prestataire]] écrirait « du prestataire » et casserait I10.",
+    "proposition": "Accepter pour le 2c et l'inscrire au §10.3 à l'étape C ; proposer au client, avec les corrections du lexique C (§15), un terme qui ne soit pas un adjectif (par exemple « Plateforme de vente »).",
+    "etat": "DÉCISION CLIENT",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : accepté pour le 2c (aucune balise ne l'évite : prestataire n'a pas d'apposition, [[compl:prestataire]] casserait I10) ; inscription au §10.3 à l'étape C (récapitulatif L9-4). Le terme C de prestataire (« Intermédiaire », brouillon) est au client : proposer, avec les corrections du lexique C (§15), un terme qui ne soit pas un adjectif (ex. « Plateforme de vente »), sans retouche du manuel."
+  },
+  {
+    "id": "L7-3",
+    "fiche": "configuration-vente, charges, acheteurs-carnet, acheteurs-module, dashboard",
+    "besoin": "Collisions acceptées (point 12, relectures/L7.auto.json), irréductibles sans variante (ces fiches n'en ont pas) : C « option » ×3 (module de l'abonnement, configuration-vente ; choix d'un mode de saisie, charges ; case « Créer les comptes portail », acheteurs-carnet) ; C « point de vente » (« transforme votre labo en point de vente B2B », exclu en homonyme, acheteurs-module) ; C « réception » (« les réceptions en provenance du labo », dashboard) ; C « site » (« pertes … par site », dashboard).",
+    "proposition": "Les inscrire à l'étape C au §10.3 (tableau des collisions : option(s), site(s), réception(s) ; « point de vente » à ajouter) et dans ecarts-visibles-2c.md.",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : acceptées pour le 2c (I10, fiches sans variante). À l'étape C : tableau des collisions du §10.3 (exemples de option(s), site(s), réception(s) ; ligne nouvelle « point de vente » / C activite, acheteurs-module) et ecarts-visibles-2c.md (récapitulatif L9-4)."
+  },
+  {
+    "id": "L7-4",
+    "fiche": "acheteurs-tarifs",
+    "besoin": "Écart de contenu hors balisage : la fiche dit « sections repliées par défaut », alors que l'écran ouvre les sections par défaut (TarifsAcheteursPage.tsx:294, « Sections OUVERTES par défaut »). I10 interdit de corriger le texte commun dans le 2c.",
+    "proposition": "Pour le 2c : texte laissé tel quel. Après le 2c (maintenance, §12.5) : corriger en « sections ouvertes par défaut, repliables », ce qui change aussi le texte restauration (décision client).",
+    "etat": "DÉCISION CLIENT",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : texte laissé tel quel pour le 2c (I10 ; écart vérifié : TarifsAcheteursPage.tsx:294, « Sections OUVERTES par défaut »). Corriger le texte commun (« sections ouvertes par défaut, repliables ») changerait aussi le manuel servi en restauration : décision du client après le 2c (maintenance, §12.5), à transmettre avec la livraison (§15)."
+  }
+]

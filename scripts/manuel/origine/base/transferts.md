@@ -1,0 +1,1 @@
+Un transfert déplace du stock du LABO (production centrale) vers une ACTIVITÉ (point de vente). Le labo s'approvisionne en gros puis alimente les activités. C'est la seule voie d'approvisionnement des activités en produits transformés d'origine labo.

@@ -1,0 +1,56 @@
+[
+  {
+    "slug": "faq",
+    "domaine": "hotellerie, ceramique",
+    "phrase": "### Un ingrédient n'existe pas dans votre référentiel, que faire ? / Vérifiez d'abord dans vos [Articles](#referentiel-articles) qu'il n'existe pas […] S'il manque réellement, […] créez l'article vous-même",
+    "probleme": "Mauvaise clé. Ici « ingrédient » désigne un article du référentiel (on le crée dans Articles), pas le composant d'une recette. Or `ingredient` est réservé au composant d'une recette ; l'article appelé « ingrédient » a sa propre clé, `article_ingredient` (lot-2-spec §1, lignes 62 et 76). Rendu actuel en H : « Un composant n'existe pas dans votre référentiel […] qu'il n'existe pas […] créez la fourniture » : deux notions différentes dans la même réponse. Même chose en C (« composant », puis « matière première »).",
+    "correction": "`### [[Un:article_ingredient]] n'existe pas dans [[votre:referentiel]], que faire ?` ; ligne 43 : `qu'[[acc:article_ingredient:il:elle]] n'existe pas` et `[[acc:article_ingredient:S'il:Si elle]] manque réellement`. Essayé en mémoire avec le vrai moteur : rendu par défaut identique à l'origine, balises valides. H donne « Une fourniture n'existe pas […] qu'elle n'existe pas […] Si elle manque […] créez la fourniture », C « Une matière première […] qu'elle […] Si elle […] ».",
+    "etat": "clos",
+    "cloture": "Tour 4 : faq.md l. 41 et 43 portent [[Un:article_ingredient]], qu'[[acc:article_ingredient:il:elle]] et [[acc:article_ingredient:S'il:Si elle]]. Rendus frais : H « Une fourniture n'existe pas […] qu'elle […] Si elle manque […] créez la fourniture », C « Une matière première […] qu'elle […] Si elle […] », miroir « Une provision […] qu'elle […] ». Contrôleur OK (points 1 à 6, défaut identique)."
+  },
+  {
+    "slug": "support",
+    "domaine": "hotellerie, ceramique",
+    "phrase": "besoin d'aide, ingrédient absent du catalogue (l. 3) / demander l'ajout d'un ingrédient au catalogue (l. 17) / pour un ingrédient absent du catalogue, passez désormais par une demande **Besoin d'aide** (l. 21)",
+    "probleme": "Même faute de clé que dans faq : l'« ingrédient » qu'on demande d'ajouter au catalogue est un article (il a une catégorie et une unité, puis on le crée dans le référentiel). H écrit « composant absent du catalogue », alors que la même fiche renvoie ensuite à « vos Fournitures ».",
+    "correction": "l. 3 : `[[nom:article_ingredient]] [[acc:article_ingredient:absent:absente]]` ; l. 17 : `l'ajout d'[[un:article_ingredient]] au catalogue` ; l. 21 : `pour [[un:article_ingredient]] [[acc:article_ingredient:absent:absente]]`. « Ingrédient manquant », nom-fige, ne change pas. Essayé en mémoire : défaut identique à l'origine ; H « fourniture absente », « l'ajout d'une fourniture », C « matière première absente ».",
+    "etat": "clos",
+    "cloture": "Tour 4 : support.md l. 3, 17 et 21 conformes à la correction. Rendus frais : H « fourniture absente du catalogue », « l'ajout d'une fourniture », « pour une fourniture absente » ; C « matière première absente » ; miroir « provision absente ». « 🥕 Ingrédient manquant » reste en clair. Contrôleur OK."
+  },
+  {
+    "slug": "support",
+    "domaine": "hotellerie, ceramique",
+    "phrase": "**Demander un ingrédient absent du catalogue** / 1. Vérifiez d'abord dans vos [Articles](#referentiel-articles) que l'ingrédient n'existe pas […] / 2. […] le **nom exact de l'ingrédient**, sa catégorie et son unité.",
+    "probleme": "Même faute de clé (`ingredient` au lieu de `article_ingredient`). Le rendu H se contredit : « Vérifiez d'abord dans vos [Fournitures] que le composant n'existe pas », puis à l'étape 3 « créer la fourniture ».",
+    "correction": "`**Demander [[un:article_ingredient]] [[acc:article_ingredient:absent:absente]] du catalogue**` ; `que [[le:article_ingredient]] n'existe pas` ; `**nom exact [[du:article_ingredient]]**`. Essayé en mémoire : défaut identique, balises valides ; H « Demander une fourniture absente du catalogue », « que la fourniture n'existe pas », « nom exact de la fourniture » ; C « matière première ».",
+    "etat": "clos",
+    "cloture": "Tour 4 : support.md l. 46, 48 et 49 conformes. Rendus frais : H « Demander une fourniture absente du catalogue », « que la fourniture n'existe pas », « nom exact de la fourniture » ; C et miroir cohérents. Plus aucune balise `ingredient` nue dans faq.md ni support.md. Contrôleur OK."
+  },
+  {
+    "slug": "rapports",
+    "domaine": "hotellerie, ceramique",
+    "phrase": "- Le **rapport d'activités** (stock, achats, pertes, alertes de seuil) correspond à l'onglet **Achats & stock**",
+    "probleme": "C'est le nom en gras d'une ancienne page supprimée (« Les anciennes pages « Rapports » ont été intégrées au Tableau de bord »). Aucun écran ne porte plus ce nom, donc aucun appel `voc` ne le rend (R7.1.3). H écrit « rapport de services », qui se lit « rapport sur les services rendus » ; C écrit « rapport de points de vente ». Ni l'un ni l'autre n'est un nom qu'un utilisateur H ou C a pu voir.",
+    "correction": "Laisser en clair `Le **rapport d'activités**`, avec l'exclusion { \"extrait\": \"rapport d'activités\", \"forme\": \"activités\", \"type\": \"nom-fige\", \"occurrences\": 1, \"justification\": \"ancien nom d'une page supprimée, intégrée au tableau de bord : aucun écran ne le porte (R7.1.3, §7.2 ancien nom)\" }. Les autres balises de la ligne restent (stock, pertes, onglets « Achats & [[nom:stock]] » et « [[Nom:perte:pl]] », vus dans ClientDashboard.tsx:29-30).",
+    "etat": "clos",
+    "cloture": "Tour 4 : rapports.md l. 5 laisse « rapport d'activités » en clair ; exclusion nom-fige présente dans rapports.json (occurrences 1). Rendus frais H, C et miroir : « Le **rapport d'activités** », autres balises de la ligne inchangées (miroir « Achats & armoire », « Abandons »). Contrôleur OK."
+  },
+  {
+    "slug": "onboarding-configuration",
+    "domaine": "tous (aucun rendu ne change aujourd'hui)",
+    "phrase": "pour un **compte dépôt** (labo + base acheteurs, sans activité) (l. 7) / **Compte dépôt** (labo + base acheteurs, sans activité) (l. 22)",
+    "probleme": "Le même passage n'est pas balisé pareil d'un lot à l'autre. Ici « base acheteurs » est écrit `base [[nom:acheteur:pl]]` ; L1 et L2 écrivent `base [[court:acheteur:pl]]` (abonnement 1 fois, compte-activites-labos 3 fois, lexique 1 fois). Aujourd'hui, les rendus défaut, H, C et miroir sont identiques. Ils divergeront dès qu'un lexique donnera une forme courte à `acheteur`.",
+    "correction": "`base [[court:acheteur:pl]]` aux 2 endroits, comme L1 et L2 (essayé en mémoire : défaut identique). Sinon, l'intégrateur retient une seule forme pour tous les lots.",
+    "etat": "clos",
+    "cloture": "Tour 4 : onboarding-configuration.md l. 7 et 22 portent base [[court:acheteur:pl]], comme L1 et L2. Rendus frais : H « base clients professionnels », C « base revendeurs », miroir « base clientes ». Contrôleur OK."
+  },
+  {
+    "slug": "faq",
+    "domaine": "ceramique",
+    "phrase": "L'**article** est une matière première de votre [référentiel](#referentiel-articles) : il s'achète, se stocke […]",
+    "probleme": "Rendu C : « La **matière première** est une matière première de votre référentiel ». La définition tourne en rond et se lit comme une faute. Le baliseur l'a acceptée dans L3.auto.json (points 7 et 12). La raison tient : aucune balise ne peut l'éviter sans reformuler le texte commun (I10), et « matière première » d'origine n'est pas une forme par défaut, donc on ne peut pas l'exclure. Mais faq n'a pas de variante : un client céramique lira cette phrase telle quelle.",
+    "correction": "Aucune correction possible dans balise/ (garder `[[Det:article:le]]**[[nom:article]]**`). Pour l'intégrateur : inscrire ce cas dans la liste des effets acceptés (§10.3, fiches sans variante) et dans la question 9 au client, ou prévoir une variante C de faq.",
+    "etat": "clos (refus fondé)",
+    "cloture": "Tour 4 : refus fondé, aucune balise ne l'évite sans reformuler (I10) et pas d'exclusion possible ; balisage gardé, rendu C inchangé (« La **matière première** est une matière première »). La décision reste à l'intégrateur : besoins/L3.json L3-4 (OUVERT), renvoi ajouté aux 2 signalements faq/C de L3.auto.json."
+  }
+]

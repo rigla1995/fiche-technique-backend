@@ -1,0 +1,15 @@
+{
+  "slug": "produits-utilisables",
+  "titre": "Produits Utilisables",
+  "icone": "🧪",
+  "partie": "Espace Produit",
+  "ordre": 42,
+  "mots_cles": "produit utilisable, produit transformé, pt, semi-fini, sauce, appros libres, appros limités, transfert, labo, sous-produit, recette, stock",
+  "ecran": "/client/products?tab=utilisable",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "c90a12ceecd96cdbfc0b772fd58cf09c",
+  "md5Contenu": "c90a12ceecd96cdbfc0b772fd58cf09c"
+}

@@ -1,0 +1,15 @@
+{
+  "slug": "onboarding-avenants",
+  "titre": "Avenants & résiliation",
+  "exclusions": [
+    {
+      "extrait": "chaque supplément",
+      "forme": "supplément",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "supplément tarifaire de l'abonnement (prix par unité ajoutée), pas la clé supplement (spec 2c §7.2, exemple 10 du §7.7)"
+    }
+  ],
+  "baliseur": "L3",
+  "relecteur": "L8"
+}

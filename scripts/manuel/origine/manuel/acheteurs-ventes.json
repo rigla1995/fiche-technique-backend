@@ -1,0 +1,15 @@
+{
+  "slug": "acheteurs-ventes",
+  "titre": "Ventes & commandes acheteurs",
+  "icone": "🧾",
+  "partie": "Espace Acheteurs",
+  "ordre": 68,
+  "mots_cles": "vente acheteur, commande, valider, refuser, annuler, facture, timbre, stock labo, notification, portail",
+  "ecran": "/client/acheteurs/commandes",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-08T09:59:41.655Z",
+  "defautNull": true,
+  "md5Garde": "c5d2962271340f16066234b6679cd2f4",
+  "md5Contenu": "c5d2962271340f16066234b6679cd2f4"
+}

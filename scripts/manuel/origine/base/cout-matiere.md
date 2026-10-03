@@ -1,0 +1,1 @@
+Le coût matière est la valeur des ingrédients consommés pour réaliser les ventes d'une période. C'est le numérateur du food cost.

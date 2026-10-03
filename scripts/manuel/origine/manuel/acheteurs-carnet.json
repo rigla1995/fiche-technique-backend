@@ -1,0 +1,15 @@
+{
+  "slug": "acheteurs-carnet",
+  "titre": "Carnet d'Acheteurs",
+  "icone": "📇",
+  "partie": "Espace Acheteurs",
+  "ordre": 66,
+  "mots_cles": "carnet, acheteur, ajout, import excel, invitation, compte, remise, matricule fiscal, quota",
+  "ecran": "/client/acheteurs",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-08T09:59:41.655Z",
+  "defautNull": true,
+  "md5Garde": "f24faf3d5f21f80ac751b42b9afaf09a",
+  "md5Contenu": "f24faf3d5f21f80ac751b42b9afaf09a"
+}

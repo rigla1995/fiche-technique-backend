@@ -1,0 +1,1 @@
+[[Un:vente]] est une transaction enregistrée sur [[un:activite]], à une date, avec un statut (confirmée/annulée) et un canal : directe (sur place) ou via [[un:prestataire]] de livraison. Chaque [[nom:vente]] contient des lignes (article vendu, quantité, prix de vente, [[nom:cout_matiere]] unitaire). Le chiffre d'affaires (CA) est la somme des prix de vente.

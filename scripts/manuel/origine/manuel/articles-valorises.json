@@ -1,0 +1,15 @@
+{
+  "slug": "articles-valorises",
+  "titre": "Produits Valorisés",
+  "icone": "💎",
+  "partie": "Espace Produit",
+  "ordre": 43,
+  "mots_cles": "article valorisé, produit valorisé, composé, labo, revente, boisson, catégorisation, référentiel, transfert, négoce, catégorie produit",
+  "ecran": "/client/products/valorises",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-18T17:04:42.961Z",
+  "defautNull": false,
+  "md5Garde": "fc2df8ef58cbae82270d344b8252c460",
+  "md5Contenu": "fc2df8ef58cbae82270d344b8252c460"
+}

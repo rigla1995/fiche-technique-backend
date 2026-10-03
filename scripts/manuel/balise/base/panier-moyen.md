@@ -1,0 +1,1 @@
+Le panier moyen = chiffre d'affaires ÷ nombre [[de:vente:pl]]. Il indique le montant moyen dépensé par transaction.

@@ -1,0 +1,1 @@
+L'agent peut générer et envoyer par email un rapport Excel ou PDF récapitulant le stock, les pertes, les inventaires et les transferts du client. Le client peut le demander explicitement (ex : « envoie-moi le rapport Excel ») et l'agent peut aussi proposer de l'envoyer par email.

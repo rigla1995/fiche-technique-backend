@@ -1,0 +1,29 @@
+{
+  "slug": "calc-cout-recette",
+  "titre": "Coût de revient d'[[un:recette]]",
+  "exclusions": [
+    {
+      "extrait": "sous-produit transformé",
+      "forme": "produit transformé",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "décision 2 du client : « sous-produit » exclu en locution, pas de nouvelle clé (spec 2c §1, §7.2)"
+    },
+    {
+      "extrait": "sous-produits",
+      "forme": "produits",
+      "type": "locution",
+      "occurrences": 2,
+      "justification": "décision 2 du client : « sous-produit » exclu en locution, pas de nouvelle clé (spec 2c §1, §7.2)"
+    },
+    {
+      "extrait": "sous-produit",
+      "forme": "produit",
+      "type": "locution",
+      "occurrences": 6,
+      "justification": "décision 2 du client : « sous-produit » exclu en locution, pas de nouvelle clé (spec 2c §1, §7.2)"
+    }
+  ],
+  "baliseur": "L8",
+  "relecteur": "L3"
+}

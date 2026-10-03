@@ -1,0 +1,29 @@
+{
+  "slug": "fiches-techniques",
+  "titre": "[[Titre:fiche_technique:pl]]",
+  "exclusions": [
+    {
+      "extrait": "LabFlow produit",
+      "forme": "produit",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "verbe produire (« LabFlow produit un fichier Excel »), pas la notion produit (GUIDE §4)"
+    },
+    {
+      "extrait": "sous-produit",
+      "forme": "produit",
+      "type": "locution",
+      "occurrences": 2,
+      "justification": "décision 2 du client : « sous-produit » exclu en locution, pas de nouvelle clé (spec 2c §1, §7.2)"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 2,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L4",
+  "relecteur": "L9"
+}

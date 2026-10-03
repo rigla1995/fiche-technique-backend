@@ -1,0 +1,132 @@
+{
+  "_lisezmoi": [
+    "Lot 2c (docs/lot-2c-spec.md §9.2, §9.4) : répartition des fichiers par lot. FAIT FOI dès M0 (spec §9.2, dernière phrase).",
+    "Tenu par l'intégrateur seul. Un fichier = un propriétaire : le baliseur du lot écrit balise/manuel/<slug>.{md,json}",
+    "de ses « fiches » (L9 : balise/base/<fichier>.{md,json} de ses « base » ; V-* : variantes/<domaine>/<slug>.{md,json}).",
+    "« relecteur » = le lot qui relit en croix (§9.4) : vague 1 L1↔L2, L3↔L8 ; vague 2 en anneau (L4 relit L5, L5 relit L6,",
+    "L6 relit L7, L7 relit L9, L9 relit L4) ; vague V : V-H1↔V-C1, V-H2↔V-C2.",
+    "« formes » = formes des termes (motif de termesDans, formesParDefaut de src/utils/manuelRendu.js) dans le contenu et le",
+    "titre d'origine des fiches du lot (la base : titre et contenu) ; « taille » = caractères JavaScript du contenu d'origine.",
+    "Valeurs du tableau du §9.2, recalculées sur origine/ par scripts/manuel/test/lots.test.js (qui échoue si elles changent).",
+    "Les 6 formes des parties ne sont dans aucun lot : parties.json (intégrateur).",
+    "« aLever » (V-*, intégrateur B1) : tournures du texte commun balisé que la variante doit lever, relevées en vague 1",
+    "par la relecture croisée ou le contrôleur, sans signalement à accepter ; s'y ajoutent les signalements acceptés dont",
+    "la raison renvoie à la variante (relectures/<lot>.auto.json des lots L1, L2, L3, L8)."
+  ],
+  "lots": {
+    "L1": {
+      "vague": 1,
+      "relecteur": "L2",
+      "formes": 398,
+      "taille": 19018,
+      "fiches": ["lexique", "lexique-pt", "gerants"]
+    },
+    "L2": {
+      "vague": 1,
+      "relecteur": "L1",
+      "formes": 413,
+      "taille": 20402,
+      "fiches": ["decouvrir-labflow", "compte-activites-labos", "demarrage", "roles", "abonnement"]
+    },
+    "L3": {
+      "vague": 1,
+      "relecteur": "L8",
+      "formes": 421,
+      "taille": 45600,
+      "fiches": [
+        "onboarding-suivi", "onboarding-contrat", "onboarding-activation", "onboarding-configuration", "onboarding-avenants",
+        "compte", "assistant-ia", "support", "faq", "faq-chiffres",
+        "referentiel-unites", "referentiel-familles", "referentiel-categories", "rapports", "historique-paiements", "dashboard-gerant"
+      ]
+    },
+    "L8": {
+      "vague": 1,
+      "relecteur": "L3",
+      "formes": 406,
+      "taille": 23110,
+      "fiches": ["calc-cout-recette", "calc-valeur-stock", "calc-pmp", "calc-ht-ttc", "calc-production-pt", "calc-prix", "calc-tracabilite"]
+    },
+    "L4": {
+      "vague": 2,
+      "relecteur": "L9",
+      "formes": 448,
+      "taille": 25068,
+      "fiches": [
+        "referentiel-articles", "referentiel-import",
+        "categories-produits", "produits-vendables", "produits-utilisables", "articles-valorises", "fiches-techniques"
+      ]
+    },
+    "L5": {
+      "vague": 2,
+      "relecteur": "L4",
+      "formes": 418,
+      "taille": 21930,
+      "fiches": ["stock-activites", "inventaire", "pertes", "historique", "factures", "calc-seuils"]
+    },
+    "L6": {
+      "vague": 2,
+      "relecteur": "L5",
+      "formes": 413,
+      "taille": 19065,
+      "fiches": ["stock-labo", "transferts", "rapports-labo", "calc-transferts", "activites", "fournisseurs"]
+    },
+    "L7": {
+      "vague": 2,
+      "relecteur": "L6",
+      "formes": 424,
+      "taille": 27055,
+      "fiches": [
+        "configuration-vente", "charges", "saisie-ventes", "ventes-labo", "rapports-vente",
+        "acheteurs-module", "acheteurs-carnet", "acheteurs-tarifs", "acheteurs-ventes", "acheteurs-portail",
+        "dashboard"
+      ]
+    },
+    "L9": {
+      "vague": 2,
+      "relecteur": "L7",
+      "formes": 249,
+      "taille": 9574,
+      "base": [
+        "abonnement-et-capacite", "activite-point-de-vente", "approvisionnement-appro", "article-valorise", "article-vendable",
+        "categorie-de-produit", "charges-fixes", "cout-matiere", "famille-et-categorie-d-article", "fiche-technique",
+        "food-cost", "fournisseur", "gerant", "inventaire", "labo-central", "marge-brute",
+        "mode-de-prix-d-une-fiche-technique", "panier-moyen", "pertes", "prestataire-de-livraison", "produit-transforme-pt",
+        "produits-vendables-et-utilisables", "rapport-excel-pdf", "referentiel-articles", "seuil-minimum", "supplement",
+        "timbre-fiscal", "transferts", "tva-ht-ttc", "unite-de-mesure", "valeur-du-stock", "vente"
+      ]
+    },
+    "V-H1": {
+      "vague": "V",
+      "relecteur": "V-C1",
+      "domaine": "hotellerie",
+      "variantes": ["lexique", "lexique-pt", "calc-cout-recette"]
+    },
+    "V-C1": {
+      "vague": "V",
+      "relecteur": "V-H1",
+      "domaine": "ceramique",
+      "variantes": ["lexique", "lexique-pt", "calc-cout-recette"],
+      "aLever": [
+        "calc-cout-recette : « Le coût de revient d'une fiche de coût de revient » et « l'entrée du produit fini » (produit fini = produit_vendable en C, pour un produit qui sort de production) : relectures/L8.json, ligne 3 ; besoin L2-3",
+        "lexique : « | **Fiche de coût de revient** | … calcul automatique du coût de revient matière » (redite, besoin L2-3) ; « Réception (approvisionnement) » (glose exclue du texte commun, relectures/L1.json, ligne 1)"
+      ]
+    },
+    "V-H2": {
+      "vague": "V",
+      "relecteur": "V-C2",
+      "domaine": "hotellerie",
+      "variantes": ["decouvrir-labflow", "compte-activites-labos", "demarrage", "roles", "onboarding-configuration"]
+    },
+    "V-C2": {
+      "vague": "V",
+      "relecteur": "V-H2",
+      "domaine": "ceramique",
+      "variantes": ["decouvrir-labflow", "compte-activites-labos", "demarrage", "roles", "onboarding-configuration"],
+      "aLever": [
+        "decouvrir-labflow : « un ou plusieurs sites de production de production », « la production en site de production », « le site de production fabrique vos produits fabriqués », « une fiche de coût de revient dont le coût de revient se calcule » : relectures/L2.json, lignes 2 à 4 ; besoins L2-2, L2-3",
+        "compte-activites-labos : « Les sites de production (0 à N) : vos sites de production. Un site de production fabrique des produits fabriqués » : relectures/L2.json, ligne 5 ; sondage du contrôleur B1, n° 15",
+        "demarrage : « Créez vos produits et fiches de coût de revient — … le coût de revient se calcule automatiquement » : besoin L2-3"
+      ]
+    }
+  }
+}

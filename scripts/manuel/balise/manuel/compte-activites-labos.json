@@ -1,0 +1,43 @@
+{
+  "slug": "compte-activites-labos",
+  "titre": "Le modèle : compte, [[nom:activite:pl]], [[nom:labo:pl]]",
+  "exclusions": [
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "formule d'activités",
+      "forme": "activités",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom commercial de l'offre (spec §7.2 « Formule d'activités ») ; badges fixes « Activité Basique / Premium » (MonAbonnementPage.tsx:93-94)"
+    },
+    {
+      "extrait": "points de vente ou cuisines",
+      "forme": "points de vente",
+      "type": "glose",
+      "occurrences": 1,
+      "justification": "glose de « activités » par activite_desc : balisée, elle redit le terme (H « Les services (0 à N) : vos services ou cuisines ») ; spec §7.2, §7.5"
+    },
+    {
+      "extrait": "produit crèmes",
+      "forme": "produit",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "verbe « produire » (« le labo produit »), pas la clé produit (GUIDE-BALISAGE §4)"
+    },
+    {
+      "extrait": "produit et vend",
+      "forme": "produit",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "verbe « produire » (« l'atelier produit »), pas la clé produit (GUIDE-BALISAGE §4)"
+    }
+  ],
+  "baliseur": "L2",
+  "relecteur": "L1"
+}

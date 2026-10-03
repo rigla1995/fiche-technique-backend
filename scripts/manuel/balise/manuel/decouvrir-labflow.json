@@ -1,0 +1,44 @@
+{
+  "slug": "decouvrir-labflow",
+  "titre": "LabFlow en un coup d'œil",
+  "exclusions": [
+    {
+      "extrait": "Prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "points de vente, cuisines",
+      "forme": "points de vente",
+      "type": "glose",
+      "occurrences": 1,
+      "justification": "glose de « activités » par activite_desc : balisée, elle redit le terme (H « services (services, cuisines) ») ; spec §7.2, §7.5"
+    },
+    {
+      "extrait": "produit, les boutiques vendent",
+      "forme": "produit",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "verbe « produire » (« le labo produit »), pas la clé produit (GUIDE-BALISAGE §4)"
+    },
+    {
+      "extrait": "Produits vendables, utilisables et valorisés",
+      "forme": "Produits vendables",
+      "type": "locution",
+      "occurrences": 1,
+      "rendu": true,
+      "justification": "ligne « Espace Produits » : ellipse des trois catégories, balisée « [[Nom:produit:pl]] vendables, utilisables et [[acc:produit:valorisé:valorisée:pl]] » ; « produit » ne change ni en Hôtellerie ni en Céramique : « Produits vendables » (produit_vendable) se forme au rendu, à cheval sur la balise ; [[Nom:produit_vendable:pl]] donnerait un contresens (« Prestations vendues, utilisables… », besoin L9-3) et toute autre écriture casse I10 ; les variantes H et C de la fiche l'écrivent dans les mots du domaine (relectures/V-C2.json) ; limite des 8 fiches métier tant que leur variante n'est pas validée (spec §8.4, §10.3) ; absent en miroir. Exclusion « rendu » (étape C) : l'extrait est un passage du rendu par défaut, lu par l'oracle et le contrôle du PDF."
+    }
+  ],
+  "baliseur": "L2",
+  "relecteur": "L1"
+}

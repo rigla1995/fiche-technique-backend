@@ -1,0 +1,15 @@
+{
+  "slug": "demarrage",
+  "titre": "Parcours de démarrage",
+  "icone": "🚀",
+  "partie": "Découvrir LabFlow",
+  "ordre": 3,
+  "mots_cles": "démarrage, premiers pas, prise en main, parcours, déverrouillage, menu, cadenas, onboarding, référentiel, articles, assignation, guide, compte dépôt, acheteurs",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-18T17:04:42.961Z",
+  "defautNull": false,
+  "md5Garde": "0d999b6ddd5b3b91e369c5a37d292049",
+  "md5Contenu": "0d999b6ddd5b3b91e369c5a37d292049"
+}

@@ -1,0 +1,1 @@
+Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client.

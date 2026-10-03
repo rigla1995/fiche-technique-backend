@@ -1,0 +1,187 @@
+{
+ "le": "2026-10-03T14:04:28Z",
+ "source": "scripts/controle-avant-2c.sql (lectures 1, 2, 5, 6, 7), collé par le client dans psql sur labflow-prod-1 (conteneur postgres:16-alpine x1053anad8aeg1vl4wcrdi8g), transaction READ ONLY puis ROLLBACK ; mis en forme par l'orchestrateur à partir des captures ; seconde lecture (domaine usine, comptes par domaine) le même jour",
+ "derniereMigration": "192_composants_genre_elision.sql",
+ "fiches": 61,
+ "fichesActives": 60,
+ "entreesBase": 32,
+ "empreintes": {
+  "manuel": "67737956d92ba0e1d836c17747d66f5c",
+  "base": "8779fd652a4a4dd50531e9e3323aaad6"
+ },
+ "fichesModifiees": [],
+ "retoursChariot": {
+  "fiches": 0,
+  "entrees": 0
+ },
+ "domaines": [
+  {
+   "id": 8,
+   "slug": "restauration",
+   "nom": "Restauration",
+   "clesLexique": 0
+  },
+  {
+   "id": 9,
+   "slug": "cafe",
+   "nom": "Café",
+   "clesLexique": 0
+  },
+  {
+   "id": 11,
+   "slug": "boulangerie",
+   "nom": "Boulangerie",
+   "clesLexique": 0
+  },
+  {
+   "id": 15,
+   "slug": "hotellerie",
+   "nom": "Hôtellerie",
+   "clesLexique": 13
+  },
+  {
+   "id": 16,
+   "slug": "usine",
+   "nom": "Industrie",
+   "clesLexique": 19
+  }
+ ],
+ "hotellerie": {
+  "id": 15,
+  "slug": "hotellerie",
+  "md5Lexique": "ec83e7e8452932c874ebb66f66b8d980",
+  "composants": 10,
+  "remarque": "10 composants en production contre 9 en local : le 10e est « bureau_logisti » / « bureau logisti » (labo, m), probablement un essai saisi dans l'admin"
+ },
+ "ceramique": {
+  "id": 16,
+  "slug": "usine",
+  "nom": "Industrie",
+  "md5Lexique": "4468629dd1a10ecd1cce3cdcaa1fdccd",
+  "lexique": {
+   "pt": {
+    "g": "m",
+    "el": false,
+    "pl": "Produits fabriqués",
+    "sg": "Produit fabriqué"
+   },
+   "labo": {
+    "g": "m",
+    "el": false,
+    "pl": "Sites de production",
+    "sg": "Site de production"
+   },
+   "appro": {
+    "g": "f",
+    "el": false,
+    "pl": "Réceptions",
+    "sg": "Réception"
+   },
+   "perte": {
+    "g": "f",
+    "el": false,
+    "pl": "Casses / Rebuts / Seconds choix",
+    "sg": "Casse / Rebut / Second choix"
+   },
+   "gerant": {
+    "g": "m",
+    "el": false,
+    "pl": "Responsables de site",
+    "sg": "Responsable de site"
+   },
+   "article": {
+    "g": "f",
+    "el": false,
+    "pl": "Matières premières",
+    "sg": "Matière première"
+   },
+   "portion": {
+    "g": "f",
+    "el": false,
+    "pl": "Quantités par unité",
+    "sg": "Quantité par unité"
+   },
+   "recette": {
+    "g": "f",
+    "el": false,
+    "pl": "Nomenclatures",
+    "sg": "Nomenclature"
+   },
+   "acheteur": {
+    "g": "m",
+    "el": false,
+    "pl": "Revendeurs",
+    "sg": "Revendeur"
+   },
+   "activite": {
+    "g": "m",
+    "el": false,
+    "pl": "Points de vente",
+    "sg": "Point de vente"
+   },
+   "food_cost": {
+    "g": "m",
+    "el": false,
+    "pl": "Taux de coût matière",
+    "sg": "Taux de coût matière"
+   },
+   "transfert": {
+    "g": "f",
+    "el": false,
+    "pl": "Livraisons internes",
+    "sg": "Livraison interne"
+   },
+   "ingredient": {
+    "g": "m",
+    "el": false,
+    "pl": "Composants",
+    "sg": "Composant"
+   },
+   "supplement": {
+    "g": "f",
+    "el": true,
+    "pl": "Options",
+    "sg": "Option"
+   },
+   "prestataire": {
+    "g": "m",
+    "el": true,
+    "pl": "Intermédiaires",
+    "sg": "Intermédiaire"
+   },
+   "fiche_technique": {
+    "g": "f",
+    "el": false,
+    "pl": "Fiches de coût de revient",
+    "sg": "Fiche de coût de revient"
+   },
+   "produit_valorise": {
+    "g": "m",
+    "el": false,
+    "pl": "Produits finis catalogue",
+    "sg": "Produit fini catalogue"
+   },
+   "produit_vendable": {
+    "g": "m",
+    "el": false,
+    "pl": "Produits finis",
+    "sg": "Produit fini"
+   },
+   "produit_utilisable": {
+    "g": "m",
+    "el": false,
+    "pl": "Semi-finis",
+    "sg": "Semi-fini"
+   }
+  },
+  "composants": 6,
+  "remarque": "Composants identiques au domaine local « ceramique » (usine, entrepot, showroom, atelier, revendeur, responsable). Lexique = « ceramique » local SANS formes courtes (pt, labo, appro, fiche_technique) + clé perte « Casse / Rebut / Second choix » : reconstruit et vérifié par md5(lexique::text) identique à la production. Aucun compte sur ce domaine."
+ },
+ "remarques": [
+  "Le domaine « ceramique » n'existe pas en production ; « usine » (Industrie) en est la copie de production (mêmes composants, lexique vérifié par md5).",
+  "Comptes en production : 3, tous en restauration ; aucun compte Hôtellerie ni Industrie."
+ ],
+ "comptesParDomaine": {
+  "restauration": 3
+ }
+}

@@ -1,0 +1,203 @@
+[
+  {
+    "fiche": "stock-activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "fabriqué fabriqué",
+    "decision": "accepté",
+    "raison": "collision « fabriqué » (spec §10.3 : C pt = Produit fabriqué) dans « Un produit transformé fabriqué au labo » ; l'accord [[acc:pt:fabriqué:fabriquée]] est nécessaire en H (« Une préparation fabriquée ») ; aucune balise ne l'évite sans reformuler le texte commun (I10) ; fiche sans variante : noté dans besoins/L5.json (L5-1) pour le §10.3"
+  },
+  {
+    "fiche": "stock-activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Points de vente",
+    "decision": "accepté",
+    "raison": "« L'écran **Stock Activités** (menu **Espace Activités → Stock Activités**) » : nom de l'écran et chemin du menu, répétés dans l'origine, libellés de l'écran (fr.json:22 nav.stock_activite, Sidebar.tsx:475 et 480) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "stock-activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase (« **activité par activité** : sélectionnez le point de vente », « chaque point de vente », « activité par activité » en fin de fiche) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "stock-activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Produits Finis",
+    "decision": "accepté",
+    "raison": "libellés distincts cat_pt_vendable et cat_pt_valorise du lexique C (« Produits Finis », « Produits Finis Catalogue »), cités tels qu'à l'écran ; même acceptation que lexique-pt (L1) ; ils changeront avec la correction du lexique par le client"
+  },
+  {
+    "fiche": "inventaire",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "« menu **Espace Activités → Inventaire**, activité par activité » : chemin du menu puis consultation activité par activité, répétition d'origine ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "inventaire",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Matière première",
+    "decision": "accepté",
+    "raison": "« filtres … **Article**, …, colonnes Article (badge PT) » : nom du filtre puis de la colonne, répétés dans l'origine, libellés de l'écran (HistoriqueInventairePage.tsx:299 et 336, voc.Nom('article'))"
+  },
+  {
+    "fiche": "pertes",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "« consultation **activité par activité** » puis colonne « Activité » : répétition d'origine ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "historique",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Livraison interne",
+    "decision": "accepté",
+    "raison": "« badge du type : Manuel, Transfert (côté labo : « ↗ Transf. → X » …) » : badge Court:transfert puis abréviation transfert_abr, qui copie le terme parent hors restauration ; l'écran rend la même chose (HistoriqueApproPage.tsx:562, LaboHistoriqueApproPage.tsx:554)"
+  },
+  {
+    "fiche": "historique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Livraison interne",
+    "decision": "accepté",
+    "raison": "même cas qu'en H : badge Court:transfert puis abréviation transfert_abr (copie du terme parent), comme à l'écran (HistoriqueApproPage.tsx:562, LaboHistoriqueApproPage.tsx:554)"
+  },
+  {
+    "fiche": "historique",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Livraisons internes",
+    "decision": "accepté",
+    "raison": "« l'**Historique Transferts** du labo émetteur ([Transferts](#transferts)) » : nom de l'écran (Sidebar.tsx:531) puis libellé du lien vers la fiche, répétés dans l'origine (I10)"
+  },
+  {
+    "fiche": "historique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Livraisons internes",
+    "decision": "accepté",
+    "raison": "même cas qu'en H : nom de l'écran (Sidebar.tsx:531) puis libellé du lien, répétés dans l'origine (I10)"
+  },
+  {
+    "fiche": "historique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "« Consultation **activité par activité** : sélectionnez le point de vente » : répétition d'origine ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "historique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Produits Finis",
+    "decision": "accepté",
+    "raison": "libellés distincts cat_pt_vendable et cat_pt_valorise du lexique C (« Produits Finis », « Produits Finis Catalogue »), cités tels qu'à l'écran (HistoriqueApproPage.tsx:475-476) ; même acceptation que lexique-pt (L1)"
+  },
+  {
+    "fiche": "historique",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "réception",
+    "decision": "accepté",
+    "raison": "« pour une réception depuis le labo qui vous alimente », « (envoi ou réception) » : réception = côté qui reçoit une livraison interne ; le sens reste clair à côté de « livraison interne » (§10.3, collision réception ; même acceptation que calc-valeur-stock et calc-tracabilite en L8) ; fiche sans variante : noté dans besoins/L5.json (L5-1)"
+  },
+  {
+    "fiche": "factures",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "« (cession vers une activité ou un labo rattaché) ou … (réception depuis le labo qui vous alimente) » : l'origine répète déjà « labo » dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "factures",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "même phrase qu'en H : l'origine répète déjà « labo » (I10)"
+  },
+  {
+    "fiche": "factures",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Livraison interne",
+    "decision": "accepté",
+    "raison": "« Les badges « ↗ Transfert émis » et « ↙ Transfert reçu » signalent une facture interne issue d'un transfert » : libellés des badges (LaboFacturesApproPage.tsx:186-187) puis la notion, répétés dans l'origine (I10)"
+  },
+  {
+    "fiche": "factures",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Livraison interne",
+    "decision": "accepté",
+    "raison": "même phrase qu'en H : libellés des badges (LaboFacturesApproPage.tsx:186-187) puis la notion, répétés dans l'origine (I10)"
+  },
+  {
+    "fiche": "factures",
+    "point": 11,
+    "texte": "[[Nom:transfert:pl]] [[nom:labo]]",
+    "decision": "accepté",
+    "raison": "pas une apposition : libellé de lien « Transferts labo → activités », où « labo → activités » donne le sens du flux (du labo vers les activités) ; le nom entier est voulu de part et d'autre de la flèche ; même acceptation que assistant-ia (L3) ; compl donnerait « Livraisons internes de la cuisine centrale → services »"
+  },
+  {
+    "fiche": "factures",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "réception",
+    "decision": "accepté",
+    "raison": "« (réception depuis le labo qui vous alimente) » : réception d'une livraison interne, juste après le badge « ↙ Livraison interne reçue » ; le sens reste clair (§10.3, collision réception) ; fiche sans variante : noté dans besoins/L5.json (L5-1)"
+  },
+  {
+    "fiche": "calc-seuils",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "lignes du tableau « Article au labo | stock courant du labo et seuil réglé au labo » : l'origine répète déjà « labo » trois fois par ligne ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-seuils",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "mêmes lignes du tableau qu'en H : l'origine répète déjà « labo » (I10)"
+  },
+  {
+    "fiche": "calc-seuils",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "« Pour un produit transformé dans une activité, le seuil se règle par activité ; si aucun seuil n'est défini pour l'activité » et le tableau (« Article dans une activité | stock courant de l'activité … page Stock de l'activité ») : répétitions d'origine (I10)"
+  },
+  {
+    "fiche": "inventaire",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Produit fabriqué",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« badge PT ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:pt]] rend le nom complet, comme le badge de l'écran ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes) (« badge Produit fabriqué pour un produit fabriqué »)"
+  },
+  {
+    "fiche": "pertes",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "casse / rebut / second choix",
+    "decision": "accepté",
+    "raison": "« perte » = « Casse / Rebut / Second choix » dans le lexique de production d'usine : terme long, répété entre le bouton « Enregistrer la … » et la phrase qui suit comme « perte » l'est dans l'origine ; accords inchangés (féminin dans les deux) ; sens clair (étape C, A16.13)"
+  }
+]

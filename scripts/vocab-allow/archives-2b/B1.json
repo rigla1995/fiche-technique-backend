@@ -1,0 +1,299 @@
+[
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`activite_id`, `activites`, `activite`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`labo_id`, `labos`, `labo`, `labo_destinataire`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`ingredient`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`date_appro`, `type_appro`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`type_perte`, `date_perte`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`date_inventaire`, `quantite_reelle`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`date_transfert`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`nb_ventes`, `prix_vente`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`food_cost_pct`, `food_cost_eleve`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`cout_matiere`, `seuil_cout_matiere_pct`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`marge_brute`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`prestataires_livraison`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "`nb_gerants`",
+    "type": "discriminant",
+    "justification": "Noms de champs de données des outils de l'assistant (clés JSON des paramètres et résultats, I2), cités entre accents graves par le glossaire du §7.3 : jamais traduits, le modèle les lit tels quels."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "activite",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "labo",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "gerant",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "article_ingredient",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "ingredient",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧",
+    "occurrences": 5,
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Ces unités sont les appels voc.avec(entrée).nom/court/Nom('_') sur une entrée de lexique parcourue : l'outil ne peut pas les replier."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "« ⟦·⟧ »⟦?| / « ⟦·⟧ »⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦? (forme courte « ⟦·⟧ »)|⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦? — dans les données : ⟦·⟧|⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "copie",
+    "type": "discriminant",
+    "justification": "Clé du lexique ou mode de dérivation (« copie ») employé comme code par le glossaire du §7.3 (types de composants, clés « ingrédient ») : jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "« ⟦·⟧ » (ligne de stock, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'une recette → « ⟦·⟧ »⟦·⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦·⟧ → ⟦·⟧⟦·⟧⟦·⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": ", ",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "\n\n## Vocabulaire du compte\nCe compte n'emploie pas tous les mots de LabFlow. Correspondances (mot de LabFlow → mot du compte) :\n⟦·⟧⟦?\nUnités du compte (composants de son domaine) :\n⟦·⟧|⟧\nRègles :\n1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.\n2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.\n3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (`search_knowledge_base`), puis rends la réponse avec les mots du compte.⟦·⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : règle 4, « articles vendables » de get_config_vente = tout ce que le compte vend, émise seulement si « article » diffère du compte."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": " (labo)",
+    "apres": "⟦·⟧⟦? (labo)|⟧",
+    "type": "deplacement",
+    "justification": "Marqueur « (labo) » déplacé du SQL (ld.nom || ' (labo)') vers le JS (` (${voc.court('labo')})`), spec lot 2b §6.2 : le SQL renvoie le nom et la destination ; rendu par défaut identique (« Pâtisserie (labo) »), prouvé par test/B1-*.test.js."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": "Comment créer ⟦mon|mes@>1⟧ ⟦?⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧ ?",
+    "apres": "Comment créer ⟦?⟦mon|mes@>1⟧ ⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧ ?",
+    "type": "deplacement",
+    "justification": "déterminant déplacé dans voc.avec(entreeComposantVoc(voc, c)).mon ; rendu par défaut identique, prouvé par l'oracle (guide) — spec lot 2b §7.4 ; restauration : 252 configurations du guide identiques à la tête (comparaison B1), « mon cuisine » devient « ma cuisine » hors restauration."
+  },
+  {
+    "fichier": "src/services/reportService.js",
+    "avant": " (labo)",
+    "apres": "⟦·⟧⟦?⟦? (labo)|⟧|⟧",
+    "type": "deplacement",
+    "justification": "Marqueur « (labo) » déplacé du SQL (ld.nom || ' (labo)') vers le JS (` (${voc.court('labo')})`), spec lot 2b §6.2 : le SQL renvoie le nom et la destination ; rendu par défaut identique (« Pâtisserie (labo) »), prouvé par test/B1-*.test.js."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧|⟦·⟧",
+    "type": "discriminant",
+    "justification": "Clé interne du regroupement des clés copiées du glossaire (clé parente | rendu JSON) : une clé de Map, jamais affichée. Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "string",
+    "type": "discriminant",
+    "justification": "Résultat de typeof (ligne déjà écrite ou groupe de clés copiées à écrire) dans glossaireVocabulaire : un code, jamais affiché."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "article",
+    "occurrences": 3,
+    "type": "discriminant",
+    "justification": "Clé du lexique « article » lue par le glossaire (ici('article'), parDefaut('article')) pour la règle 4 : un code, jamais affiché. Vérification du lot 2b : règle 4, « articles vendables » de get_config_vente = tout ce que le compte vend, émise seulement si « article » diffère du compte."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦? (⟦·⟧)|⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "« ⟦·⟧ »",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦·⟧ → ⟦·⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : une ligne par clé copiée (labo_long, labo_desc, activite_desc) dont la forme diffère du compte, les copies d'une même clé au même rendu partageant la ligne (« « laboratoire » / « laboratoires » (« laboratoire de production ») → … »)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": null,
+    "apres": "⟦?|\n4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » de l'assistant (spec lot 2b §7.3), texte NOUVEAU : glossaireVocabulaire parcourt les clés du lexique (écart non-repliable sur cette seule fonction, spec §7.3) ; il n'est émis que si une forme diffère du lexique par défaut — absent pour un compte restauration (prouvé par test/B1-assistant.test.js : prompt identique à la référence de sortie). Vérification du lot 2b : règle 4, « articles vendables » de get_config_vente = tout ce que le compte vend, émise seulement si « article » diffère du compte. « article(s) » y est le mot de LabFlow cité (colonne de gauche), comme dans les lignes du glossaire."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": null,
+    "apres": "coût matière",
+    "type": "faute-corrigee",
+    "justification": "Vérification du lot 2b : « Seuil coût matière (taux de coût matière) » était redondant en Céramique ; la parenthèse est omise quand le nom du ratio (food_cost) contient déjà celui du coût (cout_matiere). Par défaut, « food cost » ne contient pas « coût matière » : rendu « Seuil coût matière (food cost) : … » identique au caractère près (référence de sortie et oracle restauration). Unité : voc.nom('cout_matiere') lu pour la comparaison."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": null,
+    "apres": "food cost",
+    "type": "faute-corrigee",
+    "justification": "Vérification du lot 2b : « Seuil coût matière (taux de coût matière) » était redondant en Céramique ; la parenthèse est omise quand le nom du ratio (food_cost) contient déjà celui du coût (cout_matiere). Par défaut, « food cost » ne contient pas « coût matière » : rendu « Seuil coût matière (food cost) : … » identique au caractère près (référence de sortie et oracle restauration). Unité : voc.nom('food_cost') lu pour la comparaison."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦?| (⟦·⟧)⟧",
+    "type": "faute-corrigee",
+    "justification": "Vérification du lot 2b : « Seuil coût matière (taux de coût matière) » était redondant en Céramique ; la parenthèse est omise quand le nom du ratio (food_cost) contient déjà celui du coût (cout_matiere). Par défaut, « food cost » ne contient pas « coût matière » : rendu « Seuil coût matière (food cost) : … » identique au caractère près (référence de sortie et oracle restauration)."
+  },
+  {
+    "fichier": "src/services/aiToolHandlers.js",
+    "avant": "Seuil coût matière (food cost) : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧",
+    "apres": "Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧",
+    "type": "faute-corrigee",
+    "justification": "Vérification du lot 2b : « Seuil coût matière (taux de coût matière) » était redondant en Céramique ; la parenthèse est omise quand le nom du ratio (food_cost) contient déjà celui du coût (cout_matiere). Par défaut, « food cost » ne contient pas « coût matière » : rendu « Seuil coût matière (food cost) : … » identique au caractère près (référence de sortie et oracle restauration)."
+  }
+]

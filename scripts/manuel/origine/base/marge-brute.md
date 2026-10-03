@@ -1,0 +1,1 @@
+La marge brute = chiffre d'affaires − coût matière. Le taux de marge = marge ÷ CA. C'est ce qui reste après le coût des ingrédients pour couvrir les charges.

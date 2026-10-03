@@ -26,7 +26,9 @@ const S = 'src/services/';
 export const LOTS = {
   socle: ['src/app.js', 'src/middleware/rendreMessages.js', 'src/middleware/auth.js', 'src/utils/vocab.js',
     'src/config/lexiqueDefaut.js', 'src/utils/vocabCompte.js', 'src/utils/excelNoms.js', 'src/utils/lexiqueValidation.js',
-    `${S}domaineProfilService.js`, `${C}domainesController.js`],
+    `${S}domaineProfilService.js`, `${C}domainesController.js`,
+    // Lot 2c (spec docs/lot-2c-spec.md §5.11) : module du manuel balisé (étape S0).
+    'src/utils/manuelRendu.js'],
   B3a: [`${C}laboController.js`],
   B3b: [`${C}produitsController.js`, `${C}produitTransformeController.js`, `${C}exportController.js`,
     `${C}categoriesProduitController.js`, `${C}unitesOperationnellesController.js`,

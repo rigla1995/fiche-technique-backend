@@ -1,0 +1,15 @@
+{
+  "slug": "rapports",
+  "titre": "Rapports (intégrés au tableau de bord)",
+  "icone": "📈",
+  "partie": "Gestion",
+  "ordre": 77,
+  "mots_cles": "rapports, tableau de bord, achats, stock, pertes, export",
+  "ecran": "/client/rapports",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T17:52:14.121Z",
+  "defautNull": false,
+  "md5Garde": "a304f13e652c9affba008757ede91e0e",
+  "md5Contenu": "a304f13e652c9affba008757ede91e0e"
+}

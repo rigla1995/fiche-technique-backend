@@ -1,0 +1,15 @@
+{
+  "slug": "calc-seuils",
+  "titre": "Seuils d'alerte",
+  "exclusions": [
+    {
+      "extrait": "marge de 10 %",
+      "forme": "marge",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "« la zone orange (marge de 10 %) » : marge de sécurité du seuil d'alerte (seuil + 10 %), pas la marge commerciale de la clé marge (spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L5",
+  "relecteur": "L4"
+}

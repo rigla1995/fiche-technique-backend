@@ -1,0 +1,272 @@
+[
+  {
+    "fiche": "stock-labo",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "de production de production",
+    "decision": "accepté",
+    "raison": "« [[nom:labo:pl]] de production » (origine « labos de production ») : C rend « sites de production de production » ; la grammaire ne peut pas l'éviter (C et défaut masculins, l'astuce de « central » ne s'applique pas ; spec §7.5, §10.3) ; fiche sans variante : limite connue, notée pour le §10.3 (besoins/L6.json, L6-1)"
+  },
+  {
+    "fiche": "stock-labo",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "réception",
+    "decision": "accepté",
+    "raison": "« ↑ réception (achats et réceptions d'un site de production source) » : les « réceptions » de l'origine sont justement des entrées d'appro (livraisons reçues d'un labo source) ; en C le terme et le mot en clair disent la même chose : le sens reste clair ; collision connue (§10.3, réception(s)), fiche sans variante (besoins/L6.json, L6-4)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Livraison interne",
+    "decision": "accepté",
+    "raison": "« le bloc **Livraison interne** : la Date Livraison interne » : deux libellés d'écran distincts, le bloc voc.Nom('transfert') et le champ « Date {voc.Court('transfert')} » (TransferPage.tsx:686, :691) ; l'origine répète déjà « Transfert » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisines centrales",
+    "decision": "accepté",
+    "raison": "« rattachez d'abord vos services ou cuisines centrales à cette cuisine centrale depuis [Services & cuisines centrales](#activites) » : l'origine répète « labos … labo … labos » et le libellé du lien est le titre de la fiche activites ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "« avec la **cuisine centrale source comme fournisseur** … côté cuisine centrale source » : l'origine répète « labo source » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Livraison interne",
+    "decision": "accepté",
+    "raison": "« le bloc **Livraison interne** : la Date Livraison interne » : deux libellés d'écran distincts, le bloc voc.Nom('transfert') et le champ « Date {voc.Court('transfert')} » (TransferPage.tsx:686, :691) ; l'origine répète déjà « Transfert » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "sites de production",
+    "decision": "accepté",
+    "raison": "« rattachez d'abord vos points de vente ou sites de production à ce site de production depuis [Points de vente & sites de production](#activites) » : l'origine répète « labos … labo … labos » et le libellé du lien est le titre de la fiche activites ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« avec le **site de production source comme fournisseur** … côté site de production source » : l'origine répète « labo source » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "cuisine",
+    "decision": "accepté",
+    "raison": "« (un économat vers une cuisine, par exemple) » : exemple de types d'unités ; en H la cuisine est bien l'unité qu'un économat alimente (composants H « Cuisine », « Économat / Logistique », domaines.json) : le sens reste clair"
+  },
+  {
+    "fiche": "transferts",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "réception",
+    "decision": "accepté",
+    "raison": "« la réception apparaît dans le stock comme une réception de type « Livraison interne » » : en C l'entrée reçue est bien une réception (clé appro) ; redite sans contresens ; collision connue (§10.3, réception(s)), fiche sans variante (besoins/L6.json, L6-4)"
+  },
+  {
+    "fiche": "calc-transferts",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "tableau « PMP TTC de la cuisine centrale pour une fourniture, coût de fiche de préparation à la cuisine centrale » : l'origine répète « du labo … au labo » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-transferts",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "tableau « PMP TTC du site de production pour une matière première, coût de nomenclature au site de production » : l'origine répète « du labo … au labo » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-transferts",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "réception",
+    "decision": "accepté",
+    "raison": "« au prix de la **dernière réception** » : en C la dernière réception est bien la dernière entrée de stock (le transfert reçu est enregistré comme un appro) : même sens ; collision connue (§10.3, réception(s)), fiche sans variante (besoins/L6.json, L6-4)"
+  },
+  {
+    "fiche": "activites",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Cuisine centrale",
+    "decision": "accepté",
+    "raison": "« la *Cuisine centrale* qui l'alimente (… la fiche de la cuisine centrale) » : en-tête de colonne d'écran (client.entreprise.labo = [[Nom:labo]], fr.json:98, ActivitesPage.tsx:704) puis la fiche ; l'origine répète « Labo … labo » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "activites",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "libellés d'écran « Avec cuisine centrale » / « Sans cuisine centrale » (Avec/Sans {voc.nom('labo')}, ActivitesPage.tsx:954, :970, :1393, :1406) et reprises de l'origine, qui répète « labo » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "de production de production",
+    "decision": "accepté",
+    "raison": "« vos **sites de production** de production » (origine « vos **labos** de production ») : la grammaire ne peut pas l'éviter (C et défaut masculins ; spec §7.5, §10.3) ; fiche sans variante : limite connue, notée pour le §10.3 (besoins/L6.json, L6-1)"
+  },
+  {
+    "fiche": "activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "points de vente",
+    "decision": "accepté",
+    "raison": "« vos **points de vente** (points de vente) » : la glose « (points de vente) » est exclue (type glose) pour garder un sens en H (« vos **services** (points de vente) ») ; en C le terme est la glose elle-même : redite sans contresens, irréductible sans variante (fiche sans variante ; besoins/L6.json, L6-2)"
+  },
+  {
+    "fiche": "activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Site de production",
+    "decision": "accepté",
+    "raison": "« le *Site de production* qui l'alimente (… la fiche du site de production) » : en-tête de colonne d'écran (client.entreprise.labo = [[Nom:labo]], fr.json:98, ActivitesPage.tsx:704) puis la fiche ; l'origine répète « Labo … labo » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "libellés d'écran « Avec site de production » / « Sans site de production » (Avec/Sans {voc.nom('labo')}, ActivitesPage.tsx:954, :970, :1393, :1406) et reprises de l'origine, qui répète « labo » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "« **Créer un point de vente** : *+ Nouveau point de vente* » : titre d'étape puis libellé du bouton (+ {voc.Nouveau('activite')}, ActivitesPage.tsx:677) ; l'origine répète « activité » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "activites",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Matières premières",
+    "decision": "accepté",
+    "raison": "« [Matières premières du référentiel](#referentiel-articles) — l'affectation des matières premières par point de vente » : l'origine répète « Articles … articles » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "activites",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "cuisine",
+    "decision": "accepté",
+    "raison": "« (Restaurant, Bar, Cuisine, Économat…) » et « (un économat alimente une cuisine, par exemple …) » : exemples de types d'unités, qui sont justement des composants du domaine H (« Cuisine », « Économat / Logistique », domaines.json) : le sens reste clair"
+  },
+  {
+    "fiche": "activites",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "glose « (points de vente) » exclue (type glose) : en C elle est le terme lui-même, redite sans contresens (voir le point 7 de la même phrase) ; irréductible sans variante, fiche sans variante (besoins/L6.json, L6-2)"
+  },
+  {
+    "fiche": "activites",
+    "point": 8,
+    "domaine": "ceramique",
+    "texte": "points de vente (points de vente)",
+    "decision": "accepté",
+    "raison": "« vos **points de vente** (points de vente) » : la glose « (points de vente) » est exclue (type glose) pour garder un sens en H (« vos **services** (points de vente) ») ; en C le terme est la glose elle-même, redite sans contresens (points 7 et 12 de la même phrase) ; irréductible sans variante, fiche sans variante (besoin L6-2) ; signalé par le point 8 depuis la correction de L4-3 (marques d'emphase retirées, intégrateur B2)"
+  },
+  {
+    "fiche": "fournisseurs",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "« pour chaque cuisine centrale — c'est sous ce nom que les livraisons de la cuisine centrale … » : l'origine répète « chaque labo … du labo » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "fournisseurs",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Points de vente",
+    "decision": "accepté",
+    "raison": "« | Points de vente liés | Pastilles des points de vente … | » : en-tête de colonne d'écran ({voc.Pl('activite')} {voc.acc('activite','liés','liées')}, FournisseursPage.tsx:259) puis la cellule ; l'origine répète « Activités … activités » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "fournisseurs",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« pour chaque site de production — c'est sous ce nom que les livraisons du site de production … » : l'origine répète « chaque labo … du labo » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "fournisseurs",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Sites de production",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« Labos liés ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:labo:pl]] rend le nom complet, comme l'en-tête de colonne de l'écran ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
+  },
+  {
+    "fiche": "fournisseurs",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Site de production",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« Fournisseurs Labo ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:labo]] rend le nom complet, comme le titre de la section de l'écran ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
+  },
+  {
+    "fiche": "rapports-labo",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« l'onglet Labo ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:labo]] rend le nom complet, comme l'onglet du tableau de bord ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
+  },
+  {
+    "fiche": "stock-labo",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "casse / rebut / second choix",
+    "decision": "accepté",
+    "raison": "« perte » = « Casse / Rebut / Second choix » dans le lexique de production d'usine : terme long, répété entre « Déclarer une … » et le bouton de l'écran comme « perte » l'est dans l'origine ; accords inchangés (féminin dans les deux) ; sens clair (étape C, A16.13)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "fabriqué fabriqué",
+    "decision": "accepté",
+    "raison": "origine « un PT fabriqué au labo » ([[un:pt:court]] [[acc:pt:fabriqué:fabriquée]]) : sans forme courte en production, usine lit « un produit fabriqué fabriqué » ; collision « fabriqué » (spec §10.3), même classe que stock-activites (L5-1) et calc-prix (L8-2) ; I10 interdit de reformuler ; répétition acceptée (étape C, A16.13)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Site de production",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« Stock Labo ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:labo]] rend le nom complet, comme le nom de l'écran ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes) (« Stock Site de production ou depuis l'espace site de production »)"
+  }
+]

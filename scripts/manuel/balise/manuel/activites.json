@@ -1,0 +1,22 @@
+{
+  "slug": "activites",
+  "titre": "[[Nom:activite:pl]] & [[nom:labo:pl]]",
+  "exclusions": [
+    {
+      "extrait": "(points de vente)",
+      "forme": "points de vente",
+      "type": "glose",
+      "occurrences": 1,
+      "justification": "glose de « activités » par activite_desc : balisée, elle redit le terme (H « vos **services** (services) ») ; spec §7.2, §7.5 ; même choix que compte-activites-labos (L2)"
+    },
+    {
+      "extrait": "demande de supplément",
+      "forme": "supplément",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "supplément tarifaire de l'abonnement (demande au support, /client/support?type=supplement, ActivitesPage.tsx:680-682), pas la clé supplement (C « Option » de vente) ; spec §7.2"
+    }
+  ],
+  "baliseur": "L6",
+  "relecteur": "L5"
+}

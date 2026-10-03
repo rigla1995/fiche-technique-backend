@@ -1,0 +1,15 @@
+{
+  "slug": "calc-tracabilite",
+  "titre": "Traçabilité automatique",
+  "exclusions": [
+    {
+      "extrait": "sous-produits",
+      "forme": "produits",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "décision 2 du client : « sous-produit » exclu en locution, pas de nouvelle clé (spec 2c §1, §7.2)"
+    }
+  ],
+  "baliseur": "L8",
+  "relecteur": "L3"
+}

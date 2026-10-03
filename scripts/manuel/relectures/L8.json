@@ -1,0 +1,56 @@
+[
+  {
+    "slug": "calc-production-pt",
+    "domaine": "miroir",
+    "phrase": "Une invention d'origine usine ne peut pas être produit ni approvisionnée directement dans un local : elle n'y arrive que par expédition.",
+    "probleme": "Le participe « produit » s'accorde avec le sujet [[Un:produit]] (R7.3.3), comme « approvisionné » et « il » juste à côté, qui sont accordés. L'exclusion « homonyme » (« être produit ») le fige au masculin. Le miroir le montre : « produit » au masculin entre « Une invention » et « approvisionnée ». H et C sont justes aujourd'hui, mais un futur terme féminin pour produit casserait la phrase. C'est le besoin L8-1.",
+    "correction": "« ne peut pas être [[acc:produit:produit:produite]] ni [[acc:produit:approvisionné:approvisionnée]] … » et retirer l'exclusion { extrait: \"être produit\", type: \"homonyme\" } de calc-production-pt.json. Essai sur une copie (controler.mjs --racine <copie> calc-production-pt) : points 1 à 6 OK, 5 acceptés, 0 à traiter ; rendus H et C inchangés, miroir « ne peut pas être produite ni approvisionnée ». La décision sur l'oracle reste à l'intégrateur (besoin L8-1). « les millefeuilles déjà produits » (calc-prix) reste en homonyme : le sujet n'est pas un terme.",
+    "etat": "clos",
+    "cloture": "Tour 4 : correction vérifiée. balise/manuel/calc-production-pt.md:40 porte « ne peut pas être [[acc:produit:produit:produite]] ni [[acc:produit:approvisionné:approvisionnée]] … » et l'exclusion homonyme « être produit » a disparu de calc-production-pt.json (restent les 2 locutions sous-produit/sous-produits). Rendus frais (controler --lot L8) : H et C inchangés (« ne peut pas être produit ni approvisionné … il n'y arrive »), miroir « ne peut pas être produite ni approvisionnée … elle n'y arrive » ; point 1 vert, 0 à traiter, 5 acceptés. Le besoin L8-1 reste OUVERT côté intégrateur (confirmation de l'oracle, puis clôture), ce qui ne concerne plus la relecture."
+  },
+  {
+    "slug": "calc-production-pt",
+    "domaine": "ceramique",
+    "phrase": "Ce qui est créé : une entrée en stock du produit fini, à la quantité produite… (aussi : formule « Entrée produit fini », note « le stock du produit fini », exemple « Le stock du produit fini gagne… », variations « l'entrée du produit fini reste valorisée »)",
+    "probleme": "Collision de sens (§10.3, ligne « produit(s) fini(s) ») : en C, « Produit fini » est le terme de produit_vendable. Or la fiche parle de la production d'un « produit fabriqué », qui peut être un semi-fini (produit_utilisable). Le point 12 ne le signale pas : « fini » est rendu par [[acc:produit:fini:finie]], donc il n'est pas « en clair ».",
+    "correction": "Aucune balise ne corrige ce point sans toucher au texte commun (I10). Je propose de l'accepter comme collision connue (§10.3) et de le noter pour une future variante C. Pas de ligne dans L8.auto.json : elle serait « sans objet », puisque le point 12 ne la signale pas.",
+    "etat": "clos (refus fondé)",
+    "cloture": "Tour 4 : le baliseur ne change pas de balise, à juste titre (I10 : aucune balise ne corrige sans toucher au texte commun ; le point 12 ne signale rien, donc pas de ligne dans L8.auto.json). Rendus C frais : la collision « produit fini » est toujours là (lignes 12, 27, 28, 41, 48). Reste à l'intégrateur : inscrire au §10.3 ou confier à une future variante C."
+  },
+  {
+    "slug": "calc-cout-recette",
+    "domaine": "ceramique",
+    "phrase": "Le coût de revient d'une fiche de coût de revient est la somme de ce que coûtent ses composants… (et plus bas : « l'entrée du produit fini reste valorisée au coût de la nomenclature standard »)",
+    "probleme": "Redite lourde : « coût de revient d'une fiche de coût de revient » ([[un:fiche_technique]] = « fiche de coût de revient » en C). Plus bas, on retrouve la collision « produit fini » (terme C de produit_vendable) pour un produit qui sort de production. Le point 7 ne voit ni l'une ni l'autre.",
+    "correction": "Pas de balise possible (I10). La variante V-C1 (calc-cout-recette est dans ses variantes) doit reformuler ces deux phrases. Côté texte commun : accepter.",
+    "etat": "clos (refus fondé)",
+    "cloture": "Tour 4 : le baliseur ne change pas de balise, à juste titre (I10). calc-cout-recette fait partie des variantes (V-C1), qui doivent reformuler ces deux phrases (rendu C frais, lignes 10 et 20). Reste à l'intégrateur : vérifier que la consigne figure dans la commande de V-C1."
+  },
+  {
+    "slug": "calc-pmp",
+    "domaine": "ceramique",
+    "phrase": "Le repli du site de production : si le point de vente n'a encore reçu aucune réception d'une matière première, le coût de nomenclature utilise le PMP du site de production lié.",
+    "probleme": "Redite : « reçu aucune réception » ([[aucun:appro]] = « aucune réception » en C, après le verbe « reçu » du texte commun).",
+    "correction": "Pas de balise possible : « aucun approvisionnement » doit rester identique par défaut, et « reçu » est hors lexique. Je propose d'accepter (limite §10.3). Aucune variante n'est prévue pour cette fiche.",
+    "etat": "clos (refus fondé)",
+    "cloture": "Tour 4 : le baliseur ne change pas de balise, à juste titre (« reçu » hors lexique, « aucun approvisionnement » identique par défaut). Rendu C frais ligne 19, inchangé. Reste à l'intégrateur : inscrire au §10.3."
+  },
+  {
+    "slug": "calc-prix",
+    "domaine": "ceramique",
+    "phrase": "Les produits fabriqués fabriqués dans un point de vente suivent le même principe : coût de nomenclature calculé et figé à chaque production.",
+    "probleme": "Mot répété, ridicule en C. Le baliseur l'a accepté au point 7, et l'acceptation est fondée : l'accord [[acc:pt:fabriqué:fabriquée:pl]] est nécessaire en H (« préparations fabriquées »). L'astuce de « central » ne marche pas ici, car le défaut et C sont tous deux masculins.",
+    "correction": "Aucune correction de balise. Je propose que l'intégrateur inscrive ce cas au §10.3, à côté de « sites de production de production » (limite de la grammaire), ou le confie à une variante C.",
+    "etat": "clos (refus fondé)",
+    "cloture": "Tour 4 : l'acceptation au point 7 (L8.auto.json, controle.json) est maintenue et fondée. Rendu C frais ligne 52, inchangé. Reste à l'intégrateur : inscrire au §10.3 à côté de « sites de production de production »."
+  },
+  {
+    "slug": "calc-valeur-stock",
+    "domaine": "hotellerie",
+    "phrase": "| Fourniture en service | … | et | Préparation en service | … |",
+    "probleme": "Dans la colonne « Où », « en service » ([[nom:activite]] = « service ») se lit aussi « en cours d'utilisation » ou « pendant le service ». Le sens reste devinable grâce à l'en-tête « Où » et à la ligne « à la cuisine centrale » juste en dessous.",
+    "correction": "Pas de balise possible : « en [[nom:activite]] » doit rester « en activité » par défaut, et « dans [[un:activite]] » changerait le texte commun. Je propose d'accepter (limite §10.3).",
+    "etat": "clos (refus fondé)",
+    "cloture": "Tour 4 : le baliseur ne change pas de balise, à juste titre (« en [[nom:activite]] » doit rester « en activité » par défaut ; l'en-tête « Où » lève l'ambiguïté). Reste à l'intégrateur : inscrire au §10.3."
+  }
+]

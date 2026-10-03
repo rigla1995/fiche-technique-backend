@@ -1,0 +1,15 @@
+{
+  "slug": "dashboard-gerant",
+  "titre": "Tableau de bord du gérant",
+  "icone": "🏠",
+  "partie": "Gestion",
+  "ordre": 71,
+  "mots_cles": "gerant, tableau de bord, perimetre, activites affectees",
+  "ecran": "/client/gerant-dashboard",
+  "actif": false,
+  "visible_gerant": true,
+  "updated_at": "2026-07-23T14:53:15.035Z",
+  "defautNull": false,
+  "md5Garde": "b3f2a151edcc9c783d1967aa2d6774c2",
+  "md5Contenu": "b3f2a151edcc9c783d1967aa2d6774c2"
+}

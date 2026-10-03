@@ -1,0 +1,15 @@
+{
+  "slug": "activites",
+  "titre": "Activités & labos",
+  "icone": "🏢",
+  "partie": "Gestion",
+  "ordre": 72,
+  "mots_cles": "activités, point de vente, labo, laboratoire, création, wizard, créer mon business, quota, abonnement, rattachement, suppression, adresse",
+  "ecran": "/client/activites",
+  "actif": true,
+  "visible_gerant": false,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "cdc496c97ba75b9940a30554de85b9b3",
+  "md5Contenu": "cdc496c97ba75b9940a30554de85b9b3"
+}

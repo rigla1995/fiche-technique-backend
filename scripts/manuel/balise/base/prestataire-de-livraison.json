@@ -1,0 +1,15 @@
+{
+  "cle": "prestataire de livraison",
+  "titre": "[[Nom:prestataire]] de livraison",
+  "exclusions": [
+    {
+      "extrait": "canal de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L9",
+  "relecteur": "L7"
+}

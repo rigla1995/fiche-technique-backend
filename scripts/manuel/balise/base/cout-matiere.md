@@ -1,0 +1,1 @@
+[[Le:cout_matiere]] est la valeur [[du:ingredient:pl]] [[acc:ingredient:consommé:consommée:pl]] pour réaliser [[le:vente:pl]] d'une période. C'est le numérateur [[du:food_cost]].

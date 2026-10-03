@@ -1,0 +1,329 @@
+[
+  {
+    "fichier": "src/middleware/rendreMessages.js",
+    "avant": null,
+    "apres": "object",
+    "type": "discriminant",
+    "justification": "Opérande de typeof (estObjetLitteral) dans le middleware de rendu au bord (spec lot 2b §5.1) : chaîne technique jamais affichée."
+  },
+  {
+    "fichier": "src/middleware/rendreMessages.js",
+    "avant": null,
+    "apres": "string",
+    "type": "discriminant",
+    "occurrences": 2,
+    "justification": "Opérandes de typeof (body.message, erreurs[].message) dans le middleware de rendu au bord (spec lot 2b §5.1) : chaînes techniques jamais affichées."
+  },
+  {
+    "fichier": "src/services/domaineProfilService.js",
+    "avant": null,
+    "apres": "f",
+    "type": "discriminant",
+    "occurrences": 3,
+    "justification": "Code de genre grammatical d'un composant ('m' | 'f', colonne domaine_composants.genre, migration 192, spec lot 2b §5.4) : valeur technique, jamais affichée. COMPOSANTS_IDENTITE (activite, acheteurs : féminins) et mapComposant."
+  },
+  {
+    "fichier": "src/services/domaineProfilService.js",
+    "avant": null,
+    "apres": "m",
+    "type": "discriminant",
+    "occurrences": 2,
+    "justification": "Code de genre grammatical d'un composant ('m' | 'f', colonne domaine_composants.genre, migration 192, spec lot 2b §5.4) : valeur technique, jamais affichée. COMPOSANTS_IDENTITE (labo, gerant : masculins)."
+  },
+  {
+    "fichier": "src/services/domaineProfilService.js",
+    "avant": null,
+    "apres": "⟦?f|m⟧",
+    "type": "discriminant",
+    "justification": "Lecture de la colonne genre (migration 192, spec lot 2b §5.4) : 'f' si la base dit 'f', sinon 'm' ; codes techniques, jamais affichés. (mapComposant)"
+  },
+  {
+    "fichier": "src/services/domaineProfilService.js",
+    "avant": null,
+    "apres": "boolean",
+    "type": "discriminant",
+    "justification": "Opérande de typeof (élision lue de la base : booléen, sinon null = déduite ; spec lot 2b §5.4) : chaîne technique jamais affichée. (mapComposant)"
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "composants[⟦·⟧] (⟦·⟧) : caractères [ ] | interdits dans le libellé et le pluriel",
+    "type": "admin",
+    "justification": "Refus 400 de validateComposant (spec lot 2b §5.4) : route PUT /api/domaines/:id (src/routes/domaines.js), garde requireSuperAdmin. Aucun terme du lexique."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "composants[⟦·⟧] (⟦·⟧) : genre invalide (m ou f)",
+    "type": "admin",
+    "justification": "Refus 400 de validateComposant (spec lot 2b §5.4) : route PUT /api/domaines/:id (src/routes/domaines.js), garde requireSuperAdmin. Aucun terme du lexique."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "composants[⟦·⟧] (⟦·⟧) : élision invalide (true, false, null ou auto)",
+    "type": "admin",
+    "justification": "Refus 400 de validateComposant (spec lot 2b §5.4) : route PUT /api/domaines/:id (src/routes/domaines.js), garde requireSuperAdmin. Aucun terme du lexique."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "f",
+    "type": "discriminant",
+    "occurrences": 2,
+    "justification": "Code de genre grammatical d'un composant ('m' | 'f', colonne domaine_composants.genre, migration 192, spec lot 2b §5.4) : valeur technique, jamais affichée. validateComposant et paramètre $14 de l'upsert."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "m",
+    "type": "discriminant",
+    "occurrences": 2,
+    "justification": "Code de genre grammatical d'un composant ('m' | 'f', colonne domaine_composants.genre, migration 192, spec lot 2b §5.4) : valeur technique, jamais affichée. validateComposant et paramètre $14 de l'upsert."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "elision",
+    "type": "discriminant",
+    "occurrences": 2,
+    "justification": "Nom du champ elision du payload d'un composant (« 'elision' in c » : le champ est-il envoyé ? spec lot 2b §5.4) : identifiant technique, jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "auto",
+    "type": "discriminant",
+    "justification": "Valeur 'auto' de l'élision d'un composant (= null = déduite, spec lot 2b §5.4), envoyée par l'onglet Composants de l'admin : code, jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'m'",
+    "type": "discriminant",
+    "justification": "Genre par défaut à l'insertion d'un composant (COALESCE($14, 'm'), spec lot 2b §5.4) : code de la colonne domaine_composants.genre, jamais affiché."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "Activité",
+    "type": "deplacement",
+    "justification": "Libellé du composant identité activite créé à la volée, rendu par voc.Nom('activite') du DOMAINE (spec lot 2b §5.4, §6.7) : il venait de COMPOSANTS_IDENTITE (domaineProfilService.js, texte inchangé par défaut, qui le garde pour la création d'un domaine)."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "Activités",
+    "type": "deplacement",
+    "justification": "Pluriel du composant identité activite créé à la volée, rendu par voc.Pl('activite') du DOMAINE (spec lot 2b §5.4, §6.7) : il venait de COMPOSANTS_IDENTITE (domaineProfilService.js), texte inchangé par défaut."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "Labo",
+    "type": "deplacement",
+    "justification": "Libellé du composant identité labo créé à la volée, rendu par voc.Nom('labo') du DOMAINE (spec lot 2b §5.4, §6.7) : il venait de COMPOSANTS_IDENTITE (domaineProfilService.js), texte inchangé par défaut."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "Labos",
+    "type": "deplacement",
+    "justification": "Pluriel du composant identité labo créé à la volée, rendu par voc.Pl('labo') du DOMAINE (spec lot 2b §5.4, §6.7) : il venait de COMPOSANTS_IDENTITE (domaineProfilService.js), texte inchangé par défaut."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "Gérant",
+    "type": "deplacement",
+    "justification": "Libellé du composant identité gerant créé à la volée, rendu par voc.Nom('gerant') du DOMAINE (spec lot 2b §5.4, §6.7) : il venait de COMPOSANTS_IDENTITE (domaineProfilService.js), texte inchangé par défaut."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "Gérants",
+    "type": "deplacement",
+    "justification": "Pluriel du composant identité gerant créé à la volée, rendu par voc.Pl('gerant') du DOMAINE (spec lot 2b §5.4, §6.7) : il venait de COMPOSANTS_IDENTITE (domaineProfilService.js), texte inchangé par défaut."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "Base acheteurs",
+    "type": "deplacement",
+    "occurrences": 2,
+    "justification": "Libellé et pluriel du composant identité acheteurs créé à la volée : « Base » + voc.court('acheteur', true) du DOMAINE (spec lot 2b §5.4, §6.5) ; ils venaient de COMPOSANTS_IDENTITE (domaineProfilService.js), texte inchangé par défaut."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "l'activité",
+    "type": "discriminant",
+    "justification": "voc.le('activite') sert seulement à lire l'élision du terme (/^l'/.test(…), spec lot 2b §5.4 : « elision = voc.le(k).startsWith(\"l'\") ») : jamais affiché ni écrit."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "le labo",
+    "type": "discriminant",
+    "justification": "voc.le('labo') sert seulement à lire l'élision du terme (/^l'/.test(…), spec lot 2b §5.4) : jamais affiché ni écrit."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "le gérant",
+    "type": "discriminant",
+    "justification": "voc.le('gerant') sert seulement à lire l'élision du terme (/^l'/.test(…), spec lot 2b §5.4) : jamais affiché ni écrit."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "f",
+    "type": "discriminant",
+    "occurrences": 3,
+    "justification": "Code de genre grammatical d'un composant ('m' | 'f', colonne domaine_composants.genre, migration 192, spec lot 2b §5.4) : valeur technique, jamais affichée. voc.acc(k, 'm', 'f') du composant identité, genre 'f' de « Base … », lecture de listComposantsConfig."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "m",
+    "type": "discriminant",
+    "occurrences": 2,
+    "justification": "Code de genre grammatical d'un composant ('m' | 'f', colonne domaine_composants.genre, migration 192, spec lot 2b §5.4) : valeur technique, jamais affichée. voc.acc('labo' | 'gerant', 'm', 'f') du composant identité."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "⟦?f|m⟧",
+    "type": "discriminant",
+    "justification": "Lecture de la colonne genre (migration 192, spec lot 2b §5.4) : 'f' si la base dit 'f', sinon 'm' ; codes techniques, jamais affichés. (listComposantsConfig)"
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "boolean",
+    "type": "discriminant",
+    "justification": "Opérande de typeof (élision lue de la base : booléen, sinon null = déduite ; spec lot 2b §5.4) : chaîne technique jamais affichée. (listComposantsConfig)"
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "composant identité : type technique inconnu « ⟦·⟧ »",
+    "type": "discriminant",
+    "justification": "Erreur technique levée par identiteDuDomaine (appel interne avec un type hors des 4 types techniques) : journalisée, jamais rendue au client (les appelants répondent par un message générique). Aucun terme du lexique."
+  },
+  {
+    "fichier": "src/services/configComposantsService.js",
+    "avant": null,
+    "apres": "composant identité : domaine ⟦·⟧ illisible, aucun libellé écrit",
+    "type": "discriminant",
+    "justification": "Erreur technique levée quand le profil du domaine est illisible (spec lot 2b §5.4 : on n'écrit jamais un libellé de repli, la transaction est annulée) : journalisée, jamais rendue au client. Aucun terme du lexique."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": null,
+    "apres": "⟦?f|m⟧",
+    "type": "discriminant",
+    "justification": "Lecture de la colonne genre (migration 192, spec lot 2b §5.4) : 'f' si la base dit 'f', sinon 'm' ; codes techniques, jamais affichés. (capacitesParComposant, spec lot 2b §5.4)"
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": null,
+    "apres": "f",
+    "type": "discriminant",
+    "justification": "Lecture de la colonne genre (migration 192, spec lot 2b §5.4) : 'f' si la base dit 'f', sinon 'm' ; codes techniques, jamais affichés. (capacitesParComposant, spec lot 2b §5.4)"
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": null,
+    "apres": "boolean",
+    "type": "discriminant",
+    "justification": "Opérande de typeof (élision lue de la base : booléen, sinon null = déduite ; spec lot 2b §5.4) : chaîne technique jamais affichée. (capacitesParComposant)"
+  },
+  {
+    "fichier": "src/controllers/exportController.js",
+    "avant": "Produit introuvable",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Erreur comparée par son code et non plus par son texte (spec lot 2b §5.2) : la comparaison err.message === 'Produit introuvable' devient err.code === 'PRODUIT_INTROUVABLE' ; texte jamais affiché ici (le 404 renvoie err.message, inchangé)."
+  },
+  {
+    "fichier": "src/controllers/exportController.js",
+    "avant": null,
+    "apres": "PRODUIT_INTROUVABLE",
+    "type": "discriminant",
+    "justification": "Erreur comparée par son code et non plus par son texte (spec lot 2b §5.2) : code d’erreur posé par produitsController.calculerCout, jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/exportController.js",
+    "avant": "circulaire",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Erreur comparée par son code et non plus par son texte (spec lot 2b §5.2) : le test err.message.includes('circulaire') devient err.code === 'REFERENCE_CIRCULAIRE' ; sous-chaîne de comparaison, jamais affichée."
+  },
+  {
+    "fichier": "src/controllers/exportController.js",
+    "avant": null,
+    "apres": "REFERENCE_CIRCULAIRE",
+    "type": "discriminant",
+    "justification": "Erreur comparée par son code et non plus par son texte (spec lot 2b §5.2) : code d’erreur posé par produitsController, jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/produitsController.js",
+    "avant": "Produit introuvable",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Erreur comparée par son code et non plus par son texte (spec lot 2b §5.2) : la comparaison err.message === 'Produit introuvable' de getCout devient err.code ; les textes levés (throw) sont inchangés."
+  },
+  {
+    "fichier": "src/controllers/produitsController.js",
+    "avant": "circulaire",
+    "apres": null,
+    "type": "discriminant",
+    "occurrences": 2,
+    "justification": "Erreur comparée par son code et non plus par son texte (spec lot 2b §5.2) : les deux tests err.message.includes('circulaire') (getCout, getFtContextes) deviennent err.code === 'REFERENCE_CIRCULAIRE'."
+  },
+  {
+    "fichier": "src/controllers/produitsController.js",
+    "avant": null,
+    "apres": "PRODUIT_INTROUVABLE",
+    "type": "discriminant",
+    "occurrences": 3,
+    "justification": "Erreur comparée par son code et non plus par son texte (spec lot 2b §5.2) : code posé sur les 2 throw « Produit introuvable » et lu par getCout ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/produitsController.js",
+    "avant": null,
+    "apres": "REFERENCE_CIRCULAIRE",
+    "type": "discriminant",
+    "occurrences": 4,
+    "justification": "Erreur comparée par son code et non plus par son texte (spec lot 2b §5.2) : code posé sur les 2 throw « Référence circulaire… » et lu par getCout et getFtContextes ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/pertesController.js",
+    "avant": "Content-Disposition",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Spec lot 2b §5.5 : en-tête mort de exportLaboPerteExcel supprimé (écrasé ensuite, et c’est lui qui levait ERR_INVALID_CHAR pour un nom hors Latin-1) ; nom d’en-tête HTTP, jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/pertesController.js",
+    "avant": "attachment; filename=\"Historique-Pertes-Labo-⟦·⟧.xlsx\"",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Spec lot 2b §5.5 : valeur de l’en-tête mort supprimé (le nom de fichier réellement envoyé est celui posé plus haut, inchangé, I2) ; §11.1 item 4."
+  },
+  {
+    "fichier": "src/utils/excelNoms.js",
+    "avant": null,
+    "apres": "-",
+    "type": "discriminant",
+    "justification": "Caractère de remplacement de nomFichierSur (spec lot 2b §5.5) dans un nom de fichier saisi : technique, aucun terme."
+  },
+  {
+    "fichier": "src/utils/lexiqueValidation.js",
+    "avant": "[ ] | * \\ ` { } $, le retour à la ligne, la tabulation et les caractères de contrôle",
+    "apres": "[ ] | * \\ ` { } $ < >, le retour à la ligne, la tabulation et les caractères de contrôle",
+    "type": "admin",
+    "justification": "Message de refus du lexique, qui cite désormais « < » et « > » (spec lot 2b §4.4) : lu seulement à l’enregistrement d’un domaine, routes POST et PUT /api/domaines, garde requireSuperAdmin."
+  }
+]

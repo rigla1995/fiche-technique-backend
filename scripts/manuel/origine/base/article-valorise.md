@@ -1,0 +1,1 @@
+Un produit valorisé (anciennement « article valorisé ») est vendu tel quel, sans décomposition en ingrédients à la vente. Il peut être simple (un article déduit directement du stock à la vente) ou composé au labo (« composé valorisé » : sa fabrication au labo déduit les ingrédients de sa recette). On lui affecte une catégorie et un prix de vente.

@@ -1,0 +1,15 @@
+{
+  "slug": "calc-pmp",
+  "titre": "Prix moyen pondéré (PMP)",
+  "icone": "⚖️",
+  "partie": "Comprendre les calculs",
+  "ordre": 82,
+  "mots_cles": "pmp, prix moyen pondéré, coût moyen, valorisation, achats, transferts, inventaire, prix ttc, moyenne, approvisionnement, coût unitaire",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "690cdf9a76da6ef27f7ccbe3c010ec55",
+  "md5Contenu": "690cdf9a76da6ef27f7ccbe3c010ec55"
+}

@@ -1,0 +1,397 @@
+[
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Client professionnel",
+    "decision": "accepté",
+    "raison": "ligne « Acheteur » : le terme défini et la définition d'origine « Client professionnel (B2B) » (mots en clair) rendent la même chose en H ; fiche à variante : la variante Hôtellerie (lot V-H1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "clients professionnels",
+    "decision": "accepté",
+    "raison": "« Base acheteurs (option Acheteurs) » : deux libellés d'écran distincts, le composant (Base ${voc.court('acheteur', true)}, MonAbonnementPage.tsx:19) et l'option (option ${voc.Court('acheteur', true)}, SupportPage.tsx:13) ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Clients professionnels",
+    "decision": "accepté",
+    "raison": "même ligne « Base acheteurs (option Acheteurs) » : nom du composant puis nom de l'option, tels qu'à l'écran (MonAbonnementPage.tsx:19, SupportPage.tsx:13) ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "client professionnel",
+    "decision": "accepté",
+    "raison": "ligne « Commande acheteur » : le terme défini est repris par sa définition (« Commande passée par un acheteur ») ; répétition d'origine, normale dans un lexique"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Cuisine centrale",
+    "decision": "accepté",
+    "raison": "ligne « Labo » : labo et labo_long (« Laboratoire central ») rendent la même forme en H ; fiche à variante : la variante Hôtellerie (lot V-H1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "ligne « Transfert » : « du labo » trois fois dans l'origine (mouvement, stock, coût) ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "hotellerie",
+    "texte": "| **Client professionnel** | Client professionnel",
+    "decision": "accepté",
+    "raison": "définition d'origine « Client professionnel (B2B) » en clair, égale au terme H ; fiche à variante : la variante Hôtellerie (lot V-H1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "hotellerie",
+    "texte": "| **Service** | Service ou",
+    "decision": "accepté",
+    "raison": "définition circulaire hors restauration (exemple 14 de la spec §7.7 : activite et activite_desc rendent « Service ») ; fiche à variante : la variante Hôtellerie (lot V-H1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "hotellerie",
+    "texte": "| **Fiche technique** | Fiche de",
+    "decision": "accepté",
+    "raison": "pas circulaire : la définition commence par « Fiche de préparation » (recette en H), pas par le terme défini ; le sens reste clair"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "hotellerie",
+    "texte": "| **Cuisine centrale** | Cuisine centrale",
+    "decision": "accepté",
+    "raison": "labo et labo_long rendent « Cuisine centrale » (exemple 12 : « Laboratoire central » balisé sans pléonasme) ; définition circulaire ; fiche à variante : la variante Hôtellerie (lot V-H1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "fabriqué fabriqué",
+    "decision": "accepté",
+    "raison": "collision « fabriqué » (spec §10.3 : C pt = Produit fabriqué) dans « Produit transformé fabriqué au labo » ; aucune balise ne l'évite ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Point de vente",
+    "decision": "accepté",
+    "raison": "ligne « Activité » : activite et activite_desc rendent « Point de vente » en C (exemple 14) ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Site de production",
+    "decision": "accepté",
+    "raison": "ligne « Labo » : labo, labo_long et « de production » d'origine (« Site de production central de production ») ; la grammaire ne peut pas l'éviter (spec §7.5) ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Produit fabriqué",
+    "decision": "accepté",
+    "raison": "ligne « Produit transformé (PT) » : définition d'origine « Produit fabriqué à partir d'une recette » (collision « fabriqué », §10.3) ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Produit fini",
+    "decision": "accepté",
+    "raison": "ligne « Produit vendable » : définition d'origine « Produit fini » (collision « produit fini », §10.3) ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "ligne « Transfert » : « du labo » trois fois dans l'origine (mouvement, stock, coût) ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "ligne « Transfert » : « vers une activité », « celui de l'activité », « côté activité » dans l'origine ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matière première",
+    "decision": "accepté",
+    "raison": "« article par article » d'origine (TVA) : répétition voulue"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "ceramique",
+    "texte": "coût matière (coût matière)",
+    "decision": "accepté",
+    "raison": "« Food cost (coût matière) » : le terme C de food_cost (« Taux de coût matière ») contient la glose ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "ceramique",
+    "texte": "| **Point de vente** | Point de",
+    "decision": "accepté",
+    "raison": "définition circulaire hors restauration (exemple 14 de la spec §7.7) ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "ceramique",
+    "texte": "| **Site de production** | Site de",
+    "decision": "accepté",
+    "raison": "labo et labo_long rendent « Site de production » ; définition circulaire ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "miroir",
+    "texte": "| **Usine** | Usine centrale",
+    "decision": "accepté",
+    "raison": "miroir : labo_long = « Usine centrale » ; même cas que H et C (définition par la forme longue) ; le miroir n'est pas un vrai domaine"
+  },
+  {
+    "fiche": "lexique",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "client professionnel",
+    "decision": "accepté",
+    "raison": "« Client professionnel (B2B) » : définition d'origine en clair, même sens que le terme H ; fiche à variante : la variante Hôtellerie (lot V-H1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "cuisine",
+    "decision": "accepté",
+    "raison": "« Point de vente ou cuisine exploité » et « *consommable* (utilisé en cuisine) » : cuisine au sens du lieu de travail, mot du métier hors lexique (§10.3) ; le sens reste clair ; fiche à variante : la variante Hôtellerie (lot V-H1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "consommable",
+    "decision": "accepté",
+    "raison": "« *consommable* » : propriété d'une famille, écrite en clair à l'écran (ReferentielFamillesPage.tsx:12, ConfigurationVentePage.tsx:838) ; le sens reste clair (« utilisé en cuisine ») ; fiche à variante : la variante Hôtellerie (lot V-H1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "préparation",
+    "decision": "accepté",
+    "raison": "« sous-préparations » : hors lexique, ni balisé ni exclu (spec §7.2) ; le sens reste clair"
+  },
+  {
+    "fiche": "lexique",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "revendeur",
+    "decision": "accepté",
+    "raison": "« épicerie, revendeur, restaurant… » et « plateforme de livraison, revendeur… » : exemples de clients et de canaux en clair ; en C le mot nomme aussi l'acheteur, sens voisin, qui reste clair ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« l'option Acheteurs », « Option de l'abonnement » : option d'abonnement (SupportPage.tsx:13), pas le supplement ; le contexte (« option Revendeurs », palier) garde le sens clair (spec §10.3)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "matière première",
+    "decision": "accepté",
+    "raison": "« hors matière première », « matières premières consommées » : sens général, voisin de la clé article en C ; le sens reste clair"
+  },
+  {
+    "fiche": "lexique",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "intermédiaire",
+    "decision": "accepté",
+    "raison": "« produit transformé intermédiaire » : adjectif, pas le prestataire ; le sens reste clair"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "livraison interne",
+    "decision": "accepté",
+    "raison": "ligne « Utilisable » : « ou transfert depuis le labo ; certains sont limités au transfert » ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "« labo » répété dans l'origine (tableau, paragraphes 1 et 3, astuce de production) ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Livraison interne",
+    "decision": "accepté",
+    "raison": "« **Transfert** : … le transfert diminue … » : titre d'étape puis phrase, répétition d'origine"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "produit fabriqué",
+    "decision": "accepté",
+    "raison": "collision « fabriqué » (spec §10.3) dans « Un produit transformé (PT) est un produit fabriqué » ; aucune balise ne l'évite ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Produits Finis",
+    "decision": "accepté",
+    "raison": "libellés distincts cat_pt_vendable et cat_pt_valorise (« Produits Finis », « Produits Finis Catalogue »), cités tels qu'à l'écran (catégories du lot 1, src/vocab/categoriesPt.ts)"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "livraison interne",
+    "decision": "accepté",
+    "raison": "ligne « Utilisable » : « ou transfert depuis le labo ; certains sont limités au transfert » ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "ligne « Vendable » : « Dans l'activité | Par l'activité … | Production dans l'activité » ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« labo » répété dans l'origine (tableau, paragraphes 1 et 3, astuce de production) ; répétition d'origine"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Livraison interne",
+    "decision": "accepté",
+    "raison": "« **Transfert** : … le transfert diminue … » : titre d'étape puis phrase, répétition d'origine"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "préparation",
+    "decision": "accepté",
+    "raison": "« sous-préparations » (hors lexique, spec §7.2) et « **préparation intermédiaire** » (H : « Un consommable est une préparation intermédiaire », cas cité au §10.3) ; fiche à variante : la variante Hôtellerie (lot V-H1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "intermédiaire",
+    "decision": "accepté",
+    "raison": "« les intermédiaires de vos recettes », « préparation intermédiaire » : semi-produits, pas le prestataire ; le sens reste clair ; fiche à variante : la variante Céramique (lot V-C1, spec §8.1) la réécrit ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "lexique-pt",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« trois options dédiées » : choix d'un filtre, pas le supplement ; le sens reste clair"
+  },
+  {
+    "fiche": "gerants",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Responsables de service",
+    "decision": "accepté",
+    "raison": "libellé du compteur (voc.Pl('gerant'), GerantsPage.tsx:194) puis « le nombre de gérants Actifs » : répétition d'origine"
+  },
+  {
+    "fiche": "gerants",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Responsables de site",
+    "decision": "accepté",
+    "raison": "libellé du compteur (voc.Pl('gerant'), GerantsPage.tsx:194) puis « le nombre de gérants Actifs » : répétition d'origine"
+  },
+  {
+    "fiche": "gerants",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "responsable de site",
+    "decision": "accepté",
+    "raison": "« Créez un gérant par responsable de site » : « responsable de site » en clair dans l'origine = terme C de gerant (collision, point 12) ; le conseil reste compris (un compte par personne) ; pas de variante pour cette fiche (décision 1, question 9 : le client veut moins) ; contestée par le relecteur (relectures/L1.json ligne 3) : limite connue, aucune balise ne la corrige (I10), décision de l'intégrateur B1 (besoins/L1.json, L1-1) : collision connue, acceptée pour le 2c et inscrite au §10.3 à l'étape C ; un autre terme C pour gerant (ex. « Gérant de site ») est proposé au client avec les corrections du lexique C"
+  },
+  {
+    "fiche": "gerants",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "responsable de site",
+    "decision": "accepté",
+    "raison": "« par responsable de site » : la personne qui tient le site, en clair dans l'origine ; en C c'est aussi le terme de gerant (« Créez un responsable de site par responsable de site ») ; le conseil reste compris ; pas de variante pour cette fiche (décision 1, question 9) ; contestée par le relecteur (relectures/L1.json ligne 3) : limite connue, aucune balise ne la corrige (I10), décision de l'intégrateur B1 (besoins/L1.json, L1-1) : collision connue, acceptée pour le 2c et inscrite au §10.3 à l'étape C ; un autre terme C pour gerant (ex. « Gérant de site ») est proposé au client avec les corrections du lexique C"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "produit fabriqué",
+    "decision": "accepté",
+    "raison": "glose redite « Produit fabriqué (produit fabriqué) » : sans forme courte en production, [[court:pt]] rend le nom ; avecCourt (qui n'écrit pas la parenthèse quand la forme courte égale le nom) ne se met pas en casse Nom (moteur gelé, besoin L9-2) ; fiche à variante : la variante usine (variantes/ceramique/lexique.md) écrit « Produit fabriqué » seul ; le texte commun ne se reformule pas (I10) (étape C, A16.13)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "produits fabriqués",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« Les 3 catégories de PT ») ; le lexique de production d'usine n'a pas de forme courte : [[court:pt:pl]] rend le nom complet ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes) ; fiche à variante (variante usine)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Produit fabriqué (produit fabriqué)",
+    "decision": "accepté",
+    "raison": "glose redite « Produit fabriqué (produit fabriqué) » : sans forme courte en production, [[court:pt]] rend le nom ; avecCourt (qui n'écrit pas la parenthèse quand la forme courte égale le nom) ne se met pas en casse Nom (moteur gelé, besoin L9-2) ; fiche à variante : la variante usine (variantes/ceramique/lexique.md) écrit « Produit fabriqué » seul ; le texte commun ne se reformule pas (I10) (étape C, A16.13)"
+  }
+]
