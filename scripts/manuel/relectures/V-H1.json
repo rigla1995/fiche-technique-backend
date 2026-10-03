@@ -53,5 +53,14 @@
     "correction": "« | **[[Nom:labo]]** | Lieu de production et de stockage commun à [[votre:activite:pl]], rattaché au compte, qui regroupe par exemple la production des repas et l'économat. [[acc:labo:Il:Elle]] achète … | » (sans mot du lexique H en clair).",
     "etat": "clos",
     "cloture": "tour 4 : corrigé comme proposé (variantes/hotellerie/lexique.md:22) ; rendu frais H : « …rattaché au compte, qui regroupe par exemple la production des repas et l'économat. Elle achète… » ; aucun mot H en clair, contrôle code 0."
+  },
+  {
+    "slug": "lexique",
+    "domaine": "hotellerie",
+    "phrase": "| **[[Nom:prestataire]]** | Canal de vente tiers (plateforme de réservation, agence de voyages…) pour lequel vous définissez un prix de vente dédié… |",
+    "probleme": "Vérification du 03/10 (revue langue) : exemples éloignés de LabFlow. Un prestataire y est un canal de vente de produits, avec un prix et une commission par produit (base « Prestataire de livraison » : Uber Eats, Talabat, Glovo ; fiche commune « plateforme de livraison ») ; une agence de voyages ne vend pas un produit à l'unité. R8.2.5 : une variante change les exemples, pas les règles.",
+    "correction": "« Canal de vente tiers (plateforme de livraison de repas…) ».",
+    "etat": "clos",
+    "cloture": "correcteur de la vérification : corrigé comme proposé (variantes/hotellerie/lexique.md:39) ; controler --variante hotellerie lexique code 0, --tout et --tout --production verts ; 196 régénérée par le générateur."
   }
 ]

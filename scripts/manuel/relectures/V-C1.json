@@ -43,5 +43,14 @@
     "correction": "« (ex. bougie parfumée, linge de table) », ou un autre article de décoration acheté pour être revendu tel quel.",
     "etat": "clos",
     "cloture": "Tour 4 : rendu lexique.md:45 « (ex. bougie parfumée, linge de table) »."
+  },
+  {
+    "slug": "lexique",
+    "domaine": "ceramique",
+    "phrase": "| **Domaine d'activité** | Secteur métier de votre compte (céramique, hôtellerie, café…). … |",
+    "probleme": "Vérification du 03/10 (revue langue) : le 2e domaine s'appelle « Industrie » en production (slug usine) ; la ligne lui donne un autre nom (« céramique »). La variante Hôtellerie écrit « (pour vous, l'hôtellerie) ».",
+    "correction": "« Secteur métier de votre compte (pour vous, l'industrie). »",
+    "etat": "clos",
+    "cloture": "correcteur de la vérification : corrigé comme proposé (variantes/ceramique/lexique.md:19) ; controler --variante ceramique lexique code 0, aussi avec --production ; --tout et --tout --production verts ; 196 régénérée par le générateur. Les autres exemples de céramique des 8 variantes restent : à adapter par le client avant validation si Industrie sert d'autres métiers (spec §8.6)."
   }
 ]

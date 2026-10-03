@@ -7,9 +7,14 @@
  *                                                              textes, suppression des 16 brouillons de la 196 (par slug de
  *                                                              fiche et de domaine), retrait de 194, 195 et 196 de _migrations
  *
- * Où le lancer (§4.5, §12.4) : dans le conteneur du serveur EN PLACE (terminal Coolify du service backend ; le Dockerfile
- * copie scripts/ dans l'image, les variables DB_* y sont posées), AVANT de remettre un ancien serveur sur une base
- * balisée : l'ancien serveur (e3bf29a) ne rend pas les balises, il servirait « [[…]] » à tous les comptes.
+ * Où et quand le lancer (§4.5, §12.4) : dans le conteneur du code D1 (terminal Coolify du service backend ; le Dockerfile
+ * copie scripts/ dans l'image, les variables DB_* y sont posées), APRÈS l'annulation de D2 (git revert -m 1 de la fusion
+ * D2 sur main, poussé, /health revenu) et AVANT de remettre l'ancien serveur : l'ancien serveur (production avant le 2c,
+ * ee9a28e) ne rend pas les balises, il servirait « [[…]] » à tous les comptes.
+ * Pourquoi pas dans le conteneur D2 : son dossier migrations/ porte encore 194 et 195 ; migrate.js applique au démarrage
+ * tout fichier absent de _migrations, donc le moindre redémarrage (plantage, mémoire, Coolify, VPS) rejouerait 194 et 195
+ * après le retour et rebaliserait la base sans rien signaler. Le script REFUSE donc (code 2) le retour réel quand
+ * migrations/ du code en place contient 194 ou 195 ; --essai reste permis, avec un avertissement.
  * En local : les variables DB_* du .env (DB_NAME peut valoir fiche_technique_2c, R2.8.2).
  *
  * Ce qu'il fait, dans UNE transaction qu'il ouvre et ferme lui-même :
@@ -29,8 +34,10 @@
  *
  * CommonJS, syntaxe de Node 20 (image du serveur). Dépendances : pg, dotenv, src/utils/vocab.js, src/utils/manuelRendu.js,
  * scripts/manuel/lib/commun.js, scripts/manuel/origine/ et lots.json (tous dans l'image).
- * Codes de sortie : 0 fait (ou essai fait) sans reste ; 1 erreur ou reste listé ; 2 refus (usage, hôte non local). */
+ * Codes de sortie : 0 fait (ou essai fait) sans reste ; 1 erreur ou reste listé ; 2 refus (usage, hôte non local,
+ * 194 ou 195 encore dans migrations/ du code en place sans --essai). */
 'use strict';
+const fs = require('fs');
 const path = require('path');
 const C = require('./lib/commun.js');
 const { rendre, vocabDefaut } = require('../../src/utils/vocab.js');
@@ -57,6 +64,12 @@ function pairesVariantes(lots = C.lireLots()) {
     for (const slug of l.variantes) out.push({ slug, domaine: l.domaine });
   }
   return out;
+}
+
+/** Fichiers 194 et 195 présents dans le dossier migrations/ du code en place (§12.4) : après le retour, un redémarrage
+ * les rejouerait (migrate.js applique tout fichier absent de _migrations). Vide dans le conteneur D1. */
+function migrationsEnPlace(dossier = path.join(C.RACINE, 'migrations')) {
+  return [MIGRATIONS_2C.manuel, MIGRATIONS_2C.base].filter((f) => fs.existsSync(path.join(dossier, f)));
 }
 
 /** Champs d'une ligne remis au texte par défaut ; note ce qui n'a pas pu l'être. */
@@ -163,6 +176,17 @@ async function principal(argv = process.argv.slice(2)) {
   }
   const essai = options.has('--essai');
   const remiseLocale = options.has('--remise-locale');
+  const enPlace = remiseLocale ? [] : migrationsEnPlace();
+  if (enPlace.length) {
+    const quoi = `le code en place porte encore ${enPlace.join(', ')} dans migrations/ : après le retour, un redémarrage du `
+      + 'conteneur les rejouerait et rebaliserait la base sans rien signaler. Annulez d\'abord D2 (git revert -m 1 de la '
+      + 'fusion D2 sur main, poussé), attendez /health, puis lancez ce script dans le conteneur D1 (spec §12.4).';
+    if (!essai) {
+      console.error(`[retour-2c] refus : ${quoi}`);
+      return 2;
+    }
+    console.warn(`[retour-2c] attention : ${quoi} L'essai est fait quand même ; le retour réel sera refusé ici.`);
+  }
   require('dotenv').config({ path: path.join(C.RACINE, '.env') }); // sans effet dans le conteneur (pas de .env, variables posées)
   const hote = process.env.DB_HOST || 'localhost';
   if (remiseLocale && !HOTES_LOCAUX.includes(hote)) {
@@ -199,7 +223,7 @@ async function principal(argv = process.argv.slice(2)) {
   }
 }
 
-module.exports = { retour, pairesVariantes, lignesCompteRendu, MIGRATIONS_2C, HOTES_LOCAUX };
+module.exports = { retour, pairesVariantes, lignesCompteRendu, migrationsEnPlace, MIGRATIONS_2C, HOTES_LOCAUX };
 
 if (require.main === module) {
   principal().then((code) => { process.exitCode = code; }, (err) => { console.error(`[retour-2c] ${err.message}`); process.exitCode = 1; });

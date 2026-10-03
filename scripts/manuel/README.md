@@ -361,8 +361,12 @@ node scripts/manuel/retour-2c.js                             tout, puis COMMIT
 node scripts/manuel/retour-2c.js --remise-locale [--essai]   base locale seulement (+ 16 brouillons, + ligne 196)
 ```
 
-À lancer dans le conteneur du serveur en place (terminal Coolify du backend) **avant** de remettre un ancien serveur sur
-une base balisée. Chaque champ balisé est remplacé par son rendu par défaut (I10 : le texte d'origine) ;
+À lancer dans le conteneur du **code D1** (terminal Coolify du backend), **après** l'annulation de D2 (`git revert -m 1`
+de la fusion D2, poussé, `/health` revenu) et **avant** de remettre l'ancien serveur sur une base balisée (§12.4). Jamais
+dans le conteneur D2 : ses fichiers 194 et 195 seraient rejoués par le moindre redémarrage, juste après le retour. Le
+script refuse donc le retour réel (code 2) quand `migrations/` du code en place contient 194 ou 195
+(`migrationsEnPlace`) ; `--essai` reste permis, avec un avertissement ; `--remise-locale` n'est pas concernée. Chaque
+champ balisé est remplacé par son rendu par défaut (I10 : le texte d'origine) ;
 `contenu_defaut` revient à NULL pour les 5 fiches acheteurs ; 194 et 195 quittent `_migrations` ; ce qui n'a pas pu
 être remis est listé (code 1). `updated_at` n'est jamais touché. `retour(client)` est exporté sans `BEGIN` ni
 `COMMIT` : l'essai l'appelle dans sa propre transaction.

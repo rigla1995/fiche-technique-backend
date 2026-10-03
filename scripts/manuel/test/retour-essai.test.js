@@ -8,7 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const C = require('../lib/commun');
-const { retour, pairesVariantes, MIGRATIONS_2C } = require('../retour-2c');
+const { retour, pairesVariantes, migrationsEnPlace, MIGRATIONS_2C } = require('../retour-2c');
 const { fichiersEssai } = require('../essai-migration');
 
 const { fiches, entrees } = C.lireOrigine();
@@ -132,6 +132,33 @@ test('retour-2c.js : --remise-locale refusée sur un hôte non local ; option in
   assert.match(p.stderr, /base locale seulement/);
   assert.equal(spawnSync(process.execPath, [outil, '--oups'], { encoding: 'utf8' }).status, 2);
 });
+
+test('retour-2c.js : 194 ou 195 dans migrations/ du code en place (conteneur D2) → retour réel refusé (§12.4)', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'retour-'));
+  try {
+    assert.deepEqual(migrationsEnPlace(d), [], 'code D1 : rien');
+    fs.writeFileSync(path.join(d, '193_manuel_sections_domaine.sql'), '');
+    fs.writeFileSync(path.join(d, MIGRATIONS_2C.variantes), '');
+    assert.deepEqual(migrationsEnPlace(d), [], 'la 193 et la 196 ne comptent pas');
+    fs.writeFileSync(path.join(d, MIGRATIONS_2C.base), '');
+    assert.deepEqual(migrationsEnPlace(d), [MIGRATIONS_2C.base]);
+    fs.writeFileSync(path.join(d, MIGRATIONS_2C.manuel), '');
+    assert.deepEqual(migrationsEnPlace(d), [MIGRATIONS_2C.manuel, MIGRATIONS_2C.base]);
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});
+
+test('retour-2c.js en ligne de commande, 194 et 195 dans migrations/ : refus (2) avant toute connexion ; --remise-locale non concernée',
+  { skip: migrationsEnPlace().length ? false : 'arbre sans 194 ni 195 (code D1)' }, () => {
+    const { spawnSync } = require('child_process');
+    const outil = path.join(__dirname, '..', 'retour-2c.js');
+    const p = spawnSync(process.execPath, [outil], { encoding: 'utf8', env: { ...process.env, DB_HOST: 'db.exemple.invalid' } });
+    assert.equal(p.status, 2);
+    assert.match(p.stderr, /refus : le code en place porte encore 194_manuel_balise\.sql, 195_base_connaissances_balisee\.sql/);
+    assert.match(p.stderr, /Annulez d'abord D2/);
+    const r = spawnSync(process.execPath, [outil, '--remise-locale'], { encoding: 'utf8', env: { ...process.env, DB_HOST: 'db.exemple.invalid' } });
+    assert.equal(r.status, 2);
+    assert.match(r.stderr, /base locale seulement/, 'la remise locale garde son propre refus (hôte), pas celui de D2');
+  });
 
 test('essai-migration.js : fichiers lus dans l\'ordre, inventaire du générateur exigé', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'essai-'));

@@ -1,4 +1,4 @@
-# Lot 2c — Spécification v3.0 (état final) : le manuel et la base de connaissances dans les mots du domaine
+# Lot 2c — Spécification v3.1 (état final, après la vérification) : le manuel et la base de connaissances dans les mots du domaine
 
 Références :
 - `docs/lot-2-spec.md` (moteur, balises, outil de preuve, invariants I1 à I6, cadrage du 2c au §5) ;
@@ -60,11 +60,26 @@ Historique :
   - §11 avec les preuves obtenues à l'étape C ; §12 avec la cible `usine` et les lignes de journal réelles ; §12.5
     (maintenance) dit ce que les outils savent faire et ce qui manque ; §15 réécrit : décisions à transmettre au
     client ; document client `labflow-reprise/lot-2c/ecarts-visibles-2c.md`.
+- **v3.1 (03/10/2026, soir), après la vérification** (oracle seul, parcours navigateur P12, revues restauration,
+  production et langue ; 22 constats, dont 5 importants, 0 bloquant ; traités par le correcteur, A16.15) :
+  - **retour arrière dans l'ordre inverse** : revert de D2 d'abord, puis `retour-2c.js` dans le conteneur D1 ; le
+    script refuse le retour réel dans un conteneur qui porte encore 194 ou 195 (§4.5, §12.4) ; cible du retour complet
+    = `ee9a28e` (production avant le 2c), au lieu de `e3bf29a` ;
+  - §12.2 : gel des éditions du manuel et de la base, NOTICE « _migrations existe déjà » dans les lignes attendues,
+    ligne « [manuel] … sans balises » = arrêt de la bascule, test PDF instable à relancer avant D1 ;
+  - §12.3 : pas de compte de test Hôtellerie en production (contrat DocuSeal réel), contrôle H par l'aperçu admin ;
+  - §8.4, §8.6, §10.3 : redites servies par les fiches à variante tant que la variante est un brouillon ; variantes
+    Usine écrites pour la céramique ; lieux ajoutés au §10.3.3, §10.3.4, §10.3.9, §10.3.12 ;
+  - variantes `lexique` corrigées (Usine : « (pour vous, l'industrie) » ; Hôtellerie : exemples de « Prestataire »),
+    196 régénérée par le générateur (194 et 195 identiques à l'octet) ;
+  - document client : section « Mise en ligne » (§15), répétitions et décision 9 complétées.
 
 **Têtes (état final, 03/10/2026).** Backend : `develop` = `a7c8424` (correctif « mois des mensualités en UTC »
-compris), branche `feat/lot-2c-manuel` = commit documentaire de l'étape C, au-dessus de `f0383cf` (point de
-restauration de l'étape C : migrations écrites) et de `1273be5`. Frontend : branche `feat/lot-2c-manuel` = `42e32d3`
-(écrans admin de l'étape A ; rien depuis). Les numéros de ligne cités dans ce document sont ceux de `develop` au
+compris), branche `feat/lot-2c-manuel` = commit des corrections de la vérification (v3.1), au-dessus de `498e761`
+(étape C, documents), `f0383cf` (point de restauration de l'étape C : migrations écrites) et `1273be5`. Frontend :
+branche `feat/lot-2c-manuel` = `42e32d3` (écrans admin de l'étape A ; rien depuis, la vérification n'y a rien changé).
+Production backend `main` = `ee9a28e` (correctif des mois en UTC), frontend `main` = `fd044b2`.
+Les numéros de ligne cités dans ce document sont ceux de `develop` au
 moment de la v2 (revérifiés alors), sauf mention.
 Base locale : `fiche_technique` à la migration 193 (R2.8.1 bis) ; photo `fiche_technique_avant2c` à la 192 ; les
 migrations 194 à 196 ne passent que sur une copie jetable `fiche_technique_2c` (R2.8.2). Empreintes globales de la
@@ -240,7 +255,10 @@ Mesuré dans `scripts/capture-vocab-baseline.js` et `scripts/check-invariant-voc
   (« 1er janvier »), `acheteurs-ventes` (« FA-ANN »), `historique-paiements` (« janvier 2026 »),
   `calc-production-pt` (« 15/07/2026 »), `calc-transferts` (« BL-0642 »), `calc-tracabilite` (« BL-0187 »,
   « 15 mars 2026 », « janvier 2027 ») (mesuré). Une empreinte md5 écrite dans les captures serait elle aussi masquée
-  (motif `[a-f0-9]{32,}`, `:246`).
+  (motif `[a-f0-9]{32,}`, `:246`). **Conséquence pour une comparaison faite à la main** (relevé de la vérification) :
+  la clé `recherches` de `restauration.json` est masquée ; un résultat de recherche obtenu hors de l'oracle (requête
+  directe, réécriture de `toolSearchKnowledge`) ne l'égale qu'après le même masque (ex. « transfert vers une
+  activité » : `stock-activites` porte « 1er janvier », écrit « ⟨date⟩ » dans la référence). Ce n'est pas un écart.
 - Les 32 exceptions de type `2c` de `scripts/vocab-baseline/exceptions-hors-restauration.json` couvrent la
   description de l'outil de recherche : 13 formes sur la description et 3 sur `query`, pour chacune des clés
   `outils` et `promptReel`.
@@ -811,7 +829,8 @@ donne un autre slug au domaine Hôtellerie, les brouillons de la 196 sont écrit
 **Étape C** : la lecture de production donne `ceramique.slug` = `usine` ; l'écriture dans `migrations/` est refusée
 tant que `--slug ceramique=` ne donne pas ce slug (besoin `C-4`). Commande de l'écriture :
 `node scripts/manuel/generer-migrations.mjs --slug ceramique=usine`. Tailles obtenues : 194 = 307 506 octets,
-195 = 39 276 octets, 196 = 116 802 octets, en LF, aucun « \r ».
+195 = 39 276 octets, 196 = 116 778 octets (régénérée par le même outil à la vérification : deux lignes des variantes
+`lexique` corrigées, §8.6 ; 116 802 à l'étape C), en LF, aucun « \r ».
 
 **R3.6.5** — Les 2 fiches sans terme (`onboarding-activation`, `historique-paiements`) ont un fichier balisé
 identique à l'origine ; le générateur n'écrit pas une fiche ou une entrée dont le balisé égale l'origine (NOTICE
@@ -1034,10 +1053,10 @@ ON CONFLICT (section_id, domaine_slug) DO NOTHING;
 
 ### 4.5 Retour arrière
 
-| Migration | Effet sur l'ancien serveur (`e3bf29a`) | Retour |
+| Migration | Effet sur l'ancien serveur (production avant le 2c, `ee9a28e`) | Retour |
 |---|---|---|
 | 193 | aucun (table ignorée) | rien |
-| 194 | **l'ancien `listPublic` servirait les balises brutes** à tous les comptes, restauration comprise | `retour-2c.js` AVANT de remettre l'ancien serveur |
+| 194 | **l'ancien `listPublic` servirait les balises brutes** à tous les comptes, restauration comprise | `retour-2c.js` dans le conteneur D1, APRÈS l'annulation de D2 et AVANT de remettre l'ancien serveur (§12.4) |
 | 195 | l'ancien outil enverrait les balises brutes au modèle | idem |
 | 196 | aucun | rien |
 
@@ -1046,10 +1065,16 @@ Le code D1 rend les balises : tant qu'il est en place, une base balisée ou non 
 **`scripts/manuel/retour-2c.js`** (écrit à M0, testé par l'essai) remplace le fichier SQL de la v1 : un fichier de
 plus de 210 Ko (les textes d'origine) à coller dans le terminal web de Coolify est fragile, et un `BEGIN … COMMIT`
 dans ce fichier validerait la transaction de l'essai (§3.7). Le script :
-- est lancé dans le conteneur du serveur en place (terminal Coolify du service backend ; `Dockerfile:5` copie
-  `scripts/` dans l'image, `.dockerignore` n'exclut que `node_modules`, `.env`, `*.log`, `.git` ; les variables `DB_*`
-  y sont posées) : `node scripts/manuel/retour-2c.js --essai` (tout, puis `ROLLBACK`, avec le compte rendu), puis sans
-  `--essai` ;
+- est lancé dans le conteneur du **code D1** (terminal Coolify du service backend ; `Dockerfile:5` copie `scripts/`
+  dans l'image, `.dockerignore` n'exclut que `node_modules`, `.env`, `*.log`, `.git` ; les variables `DB_*` y sont
+  posées ; `retour-2c.js` et `scripts/manuel/origine/` sont dans l'image D1), **après** l'annulation de D2 (§12.4) :
+  `node scripts/manuel/retour-2c.js --essai` (tout, puis `ROLLBACK`, avec le compte rendu), puis sans `--essai`.
+  **Jamais dans le conteneur D2** : son dossier `migrations/` porte encore 194 et 195, et `migrate.js:84-104` applique
+  au démarrage tout fichier absent de `_migrations` ; le moindre redémarrage (plantage, mémoire, Coolify, VPS,
+  redéploiement) rejouerait 194 et 195 juste après le retour et rebaliserait la base sans rien signaler (simulé dans une
+  transaction annulée à la vérification : 59 fiches et 32 entrées de nouveau balisées). Le script **refuse** donc le
+  retour réel (code 2) quand `migrations/` du code en place contient 194 ou 195 ; `--essai` reste permis, avec un
+  avertissement (vérification, `migrationsEnPlace`, test des outils) ;
 - remplace chaque champ balisé (`contenu`, `contenu_defaut`, `titre`, `partie` du manuel ; `titre`, `contenu` de la
   base) par `rendre(vocabDefaut, champ)` : I10 garantit que c'est le texte d'origine, et une fiche éditée depuis dans
   l'admin redevient elle aussi du texte en mots de la restauration ;
@@ -1646,7 +1671,9 @@ Elles portent 94 des 172 mots du métier hors lexique du manuel ; les 78 autres 
 
 **Le texte commun balisé**, rendu dans ses mots (recommandation, à confirmer par le client, §14). Les 8 fiches restent
 alors en partie fausses hors restauration : « métiers de bouche », exemples de recettes, lexique circulaire et mal
-trié (exemple 14). C'est une limite connue, écrite au §10.3.
+trié (exemple 14), et les redites des §10.3.3 et §10.3.4 (en H, dès la première fiche du manuel : « un carnet de
+clients professionnels professionnels »). C'est une limite connue, écrite au §10.3 ; d'où la consigne au client :
+valider les variantes **avant l'ouverture du premier compte Hôtellerie ou Usine** (§15).
 
 ### 8.5 Quand le texte commun change (maintenance)
 
@@ -1679,6 +1706,16 @@ Effets du lexique `usine` sans formes courtes (mesurés à l'étape C, acceptés
 complet (« Stock Site de production » au lieu de « Stock Site », « Fiche de coût de revient Stock », « un produit
 fabriqué fabriqué ») ; `perte` long (« Enregistrer la casse / rebut / second choix »). Ajouter dans l'admin les formes
 courtes PF, Site, FCR rendrait ces passages plus courts sans retoucher le manuel (§15).
+
+**Exemples des variantes du 2e domaine (relevé de la vérification).** Les 8 variantes ont été rédigées pour la
+Céramique d'essai : elles parlent d'une usine de céramique (« LabFlow est une application de gestion pour les usines et
+ateliers de céramique : carreaux, sanitaires, vaisselle… » dans `decouvrir-labflow` ; argile, émail, carreaux, bols,
+tasses : 94 mentions de mots de la céramique dans les 8 fichiers, dont 19 « showroom », libellé d'un composant
+d'`usine`). Le domaine de production s'appelle « Industrie » : si ce domaine doit servir d'autres métiers que la
+céramique, ces exemples sont à adapter **avant** la validation (ce sont des exemples, pas des termes : aucune balise ne
+les change). Seule correction faite : la ligne « Domaine d'activité » de la variante `lexique` écrivait « (céramique,
+hôtellerie, café…) », elle écrit « (pour vous, l'industrie) », comme la variante Hôtellerie (« pour vous,
+l'hôtellerie ») ; la 196 a été régénérée. Dit au client (`ecarts-visibles-2c.md` §2 et §4, point 9).
 
 Règle générale gardée : un domaine sans lexique (ou recréé sans lui) est sans écart ; ses variantes ne sont pas
 servies, même validées (I12), et l'admin montre « domaine sans lexique ». Un domaine absent : « domaine absent ».
@@ -1783,7 +1820,8 @@ ou boulangerie.
 ### 10.3 Effets hors restauration, acceptés
 
 Tous les effets ci-dessous sont acceptés pour le 2c : aucune balise ne les lève sans reformuler le texte commun (I10,
-donc I1), et ils sont dans des fiches sans variante, ou dans la base (qui n'a pas de variante, question 5). Chaque
+donc I1), et ils sont dans des fiches sans variante, dans la base (qui n'a pas de variante, question 5), ou dans les 8
+fiches à variante tant que leur variante est un brouillon (§8.4 : le texte commun est alors servi tel quel). Chaque
 ligne renvoie au besoin qui la porte (`scripts/manuel/besoins/<lot>.json`, état final dans le fichier ; récapitulatif
 des vagues : `L8-2`, `L9-4` ; étape C : `C-1`, `C-3`, `C-5`, et `C-2` pour le masque des cibles de liens de l'oracle
 (R2.4.2), qui a fait apparaître les formes traitées par `C-3`). Rendus « C » : lexique d'essai `ceramique` ; quand le lexique de
@@ -1838,23 +1876,43 @@ variante peut lever l'ambiguïté. La recherche en souffre aussi (en C, « vente
 
 **10.3.3 Répétitions que la grammaire ne peut pas éviter.**
 - C « sites de production de production » (« labos de production », C et défaut masculins, §7.5) : `stock-labo`,
-  `activites` (« vos **sites de production** de production ») (`L6-1`) ; dans `decouvrir-labflow` et
-  `compte-activites-labos`, levée par leur variante (`L2-2`).
+  `activites` (« vos **sites de production** de production ») (`L6-1`) ; dans `decouvrir-labflow` (« sites de
+  production de production ») et `compte-activites-labos` (« 1 site de production de production + 2 points de
+  vente »), **levée par leur variante une fois validée ; servie telle quelle avant** (§8.4) (`L2-2`).
 - C « produits fabriqués fabriqués » : `calc-prix` (`L8-2`) ; « produit fabriqué fabriqué » : `stock-activites`
   (`L5-1`) ; avec le lexique `usine` de production (sans forme courte), aussi « un produit fabriqué fabriqué » dans
   `transferts` et l'entrée « Produit transformé (PT) » de la base (`C-1`).
+- **Fiches à variante, servies en commun tant que la variante est un brouillon** (§8.4 ; relevé de la vérification,
+  rendus des lexiques de production ; toutes acceptées dans `relectures/L1.auto.json` et `L2.auto.json`, absentes de
+  cette liste à l'étape C) :
+  - H `decouvrir-labflow` (première fiche du manuel) : « une cuisine centrale et un carnet de clients professionnels
+    professionnels » ;
+  - H `roles` : « le **client professionnel** — un client professionnel externe » ;
+  - H `lexique` : « | **Service** | Service ou cuisine exploité… », « | **Client professionnel** | Client
+    professionnel (B2B)… » ;
+  - `usine` `lexique` : ligne Composé valorisé « Produit fabriqué fabriqué au site de production », ligne Labo
+    « Site de production central de production rattaché au compte » ;
+  - `usine` `lexique-pt` : « Un **produit fabriqué** est un produit fabriqué à partir d'une nomenclature » ;
+  - `usine` `compte-activites-labos` : « Les points de vente (0 à N) : vos points de vente ou cuisines », « Les
+    sites de production (0 à N) : vos sites de production ».
+  Chacune est levée par la variante de sa fiche une fois validée ; servie telle quelle avant.
 - Le pléonasme « cuisine centrale centrale » est évité partout (§7.5).
 
 **10.3.4 Gloses redites.**
 - Manuel, fiches sans variante : `produits-utilisables` H « Un **consommable** (consommable) », C « Un **semi-fini**
   (semi-fini) » (`L4-2`, §7.5) ; `activites` C « vos **points de vente** (points de vente) » (`L6-2`). Avec le lexique
   `usine` de production : « Produit fabriqué (produit fabriqué) » dans le tableau du texte commun de `lexique` (casse
-  `Nom`, que `avecCourt` n'a pas ; servi tant que la variante n'est pas validée) (`C-1`).
+  `Nom`, que `avecCourt` n'a pas) (`C-1`) ; en C comme en `usine`, « Taux de coût matière (coût matière) » dans le même
+  tableau (`relectures/L1.auto.json`). Levées par la variante une fois validée ; servies telles quelles avant.
 - Base, lue seulement par le modèle (tolérées, question 5) : « Transferts » (« un SERVICE (service) », exemple 9) ;
   « Activité (point de vente) » (titre H « Service (service) », C « Point de vente (point de vente) » ; définition H
   « Un service est un service ») ; « Approvisionnement (appro) » (titre C « Réception (réception) ») ; « Labo central »
   (H « La cuisine centrale (cuisine centrale) ») (`L9-2`) ; « Produit transformé (PT) » avec le lexique `usine`
-  (titre « Produit fabriqué (produit fabriqué) ») (`C-1`).
+  (titre « Produit fabriqué (produit fabriqué) ») (`C-1`) ; « Référentiel articles » : H « regroupe les
+  fournitures/fournitures du client », C et `usine` « les matières premières/matières premières » (relevé de la
+  vérification ; accepté dans `relectures/L9.auto.json`). Gardé : « articles/ingrédients » y nomme deux fois l'article
+  lui-même, donc `article_ingredient` (R7.1.7) ; `ingredient` (« Composant ») donnerait « les fournitures/composants »
+  et ferait croire à une autre sorte de fiche du référentiel (raison du baliseur L9).
 
 **10.3.5 Capitales partielles et noms abrégés gardés.** Base « Produits vendables et utilisables » : « Un produit
 VENDABLE », « Un produit UTILISABLE », et le titre lui-même : les notions VENDABLE / UTILISABLE restent dans les mots de
@@ -1886,7 +1944,9 @@ reformuler le texte commun (§0.4). H lit « transférer » à côté de « livr
 **10.3.9 Formes courtes en pleine phrase.** H lit « prépa » (mot familier) et C « PF » là où l'origine écrit « PT »
 (R7.1.5 ; `L5-2`). Le lexique `usine` de production n'a **pas de formes courtes** : chaque `[[court:…]]` y rend le nom
 complet, ce qui allonge des libellés repris de l'écran (« Stock Site de production », « Fiche de coût de revient
-Stock », « badge Produit fabriqué », « Ventes Site de production ») et donne les redites des §10.3.3 et §10.3.4 ;
+Stock », « badge Produit fabriqué », « Ventes Site de production ») ou du texte (`articles-valorises` : « choisissez
+le ou les **sites de production de fabrication** », origine « labos de fabrication », relevé de la vérification) et
+donne les redites des §10.3.3 et §10.3.4 ;
 `perte` y vaut « Casse / Rebut / Second choix » (« Enregistrer la casse / rebut / second choix »). 19 signalements
 acceptés avec `"lexique": "production"` (`C-1`). Ajouter les formes courtes PF, Site, FCR dans l'admin les raccourcit
 sans retoucher le manuel (décision client, §15).
@@ -1912,15 +1972,23 @@ sans retoucher le manuel (décision client, §15).
 **10.3.12 Relevés hors balisage, qui touchent aussi la restauration** (non corrigés : I10 interdit de changer le
 texte servi en restauration dans ce lot ; décision du client, puis maintenance §12.5) :
 - `acheteurs-tarifs` dit « sections repliées par défaut », l'écran les ouvre (`TarifsAcheteursPage.tsx:294`) (`L7-4`) ;
-- liens « Articles Valorisés » de `referentiel-familles` (`L3-3`, ci-dessus).
+- liens « Articles Valorisés » de `referentiel-familles` (`L3-3`, ci-dessus) ;
+- `calc-prix` : « Un **composé valorisé** est un produit vendable fabriqué au labo » (`[[un:produit_vendable]]`). Or
+  « produit vendable » est aussi le nom d'une catégorie, distincte du composé valorisé : l'ambiguïté est déjà dans
+  l'origine, et le rendu H la rend visible (« est une prestation vendue fabriquée à la cuisine centrale », alors que
+  « Prestations Vendues » est en H le nom de la catégorie des vendables ; `usine` « un produit fini fabriqué au site de
+  production » se lit bien). Balise gardée ; aucune balise ne lève l'ambiguïté (« est un produit fini » ne rend pas
+  l'origine) : reformuler le texte commun en maintenance (§12.5), en même temps en restauration (relevé de la
+  vérification).
 
 ---
 
 ## 11. Preuves
 
 Colonne « Obtenu » : résultats de l'étape C (03/10/2026, branche à `f0383cf`), passages réellement faits ; journaux et
-rapports dans le dossier temporaire de l'étape (`…\scratchpad\wf-C\integrateur-tech\`). « Vérification » : preuve qui
-revient à l'étape de vérification (§13), pas encore faite.
+rapports dans le dossier temporaire de l'étape (`…\scratchpad\wf-C\integrateur-tech\`). « Vérification » : preuve de
+l'étape de vérification (§13), faite le 03/10 ; les passages refaits par le correcteur après ses corrections sont sous
+le tableau.
 
 | # | Contrôle | Ce qu'il prouve | Obtenu |
 |---|---|---|---|
@@ -1936,10 +2004,37 @@ revient à l'étape de vérification (§13), pas encore faite.
 | P9 | `npm test` (dont `test/2c-manuel.test.js`, `test/B1-assistant.test.js`) ; tests des outils à part (A16.11) | rendu, variantes (café compris), enrichissement, ordre de la recherche, validation 400 / 409 / 404, `vocabBrut`, avertissement au démarrage champ par champ, description et glossaire | `npm test` 340/340 ; `node --test scripts/manuel/test/*.test.*` 65/65 |
 | P10 | `vocab-check` : `identite`, `residuels`, `accords` à 0 dans les deux dépôts, `lexique` conforme ; `vocab-lots.mjs` sans erreur | code du serveur sans écart non admis ; moteur et empreinte inchangés | 0 dans les deux dépôts |
 | P11 | E2E sur une copie migrée : `test-vocabulaire-domaine.js` étendu, `test-manuel-filtre.js` (15 contrôles), `check-invariant-config.js`, `check-invariant-stock.js`, `test-composants.js`, `test-transferts-chaine.js`, `test-onboarding-etapes.js`, `test-contrat-admin.js`, `test-bot-onboarding.js` (14/17, liste des contrôles verts comparée) | non-régression ; variante validée servie ; restauration et admin inchangés avant et après la validation | `test-vocabulaire-domaine` 236/236 (l'échec attendu avant C a disparu), `test-manuel-filtre` 15/15 (port 3101), `test-composants` 72/72 (port 3000 : adresse fixe dans le script), `check-invariant-config` et `check-invariant-stock` 0 écart ; démarrage du backend de test sur la copie : NOTICE 194 à 196, aucune ligne `[manuel]` (R5.8) ; `retour-2c.js --essai` exact sur la copie migrée. **Vérification** : `test-transferts-chaine`, `test-onboarding-etapes`, `test-contrat-admin`, `test-bot-onboarding` |
-| P12 | parcours navigateur (scripts de `labflow-reprise/lot-2/parcours-2a/`), backend de test sur une copie migrée | compte restauration : guide et PDF inchangés ; compte H : guide, PDF, recherche locale avec un mot du domaine, assistant ; admin : aperçu par domaine, légende, balise refusée, variante validée puis supprimée | **Vérification** |
-| P13 | `npm run build` (front), `git diff develop -- src/utils/manuelPdf.ts src/utils/pdfTexte.ts src/components/client/GuidePage.tsx src/components/common/MarkdownView.tsx` vide, entrées `jspdf` et `jspdf-autotable` de `package-lock.json` inchangées | écrans clients et PDF inchangés | **Vérification** (front inchangé depuis `42e32d3`, étape A) |
+| P12 | parcours navigateur (scripts de `labflow-reprise/lot-2/parcours-2a/`), backend de test sur une copie migrée | compte restauration : guide et PDF inchangés ; compte H : guide, PDF, recherche locale avec un mot du domaine, assistant ; admin : aperçu par domaine, légende, balise refusée, variante validée puis supprimée | **Vérification (03/10)**, scripts de `labflow-reprise/lot-2c/parcours-2c/`, comptes rendus dans `out/` : restauration 37/40 identiques (les 3 « ≠ » viennent d'une seule permutation de deux ex aequo dans une recherche de l'assistant, scores égaux, même ensemble de résultats : §10.2, point 1, accepté), PDF client et gérant identiques à l'octet hors `/ID` et `/CreationDate` ; Hôtellerie 24/24 ; Céramique 24/24 ; admin 38/38 (aperçu, légende, balise refusée en 400, variante validée puis remise, état final = état initial). Faite sur une copie migrée avant les corrections de la vérification, qui ne touchent que deux brouillons de variante non servis |
+| P13 | `npm run build` (front), `git diff develop -- src/utils/manuelPdf.ts src/utils/pdfTexte.ts src/components/client/GuidePage.tsx src/components/common/MarkdownView.tsx` vide, entrées `jspdf` et `jspdf-autotable` de `package-lock.json` inchangées | écrans clients et PDF inchangés | **Vérification (03/10, correcteur)** : `npm run build` réussi ; les 4 fichiers identiques à `develop` ; aucune ligne `jspdf` dans `git diff develop -- package-lock.json` (front inchangé depuis `42e32d3`, étape A) |
 | P14 | lecture de production avant (§12.1) et journaux après D1 et D2 (§12.2, §12.3) | le texte balisé part du texte réel de production ; aucune balise brute servie pendant la bascule ; 0 fiche sans balises | lecture faite le 03/10, **conforme** (A16.13) ; journaux : au déploiement |
-| P15 | `base-locale.js etat` à la fin de la vérification | la base `fiche_technique` n'a pas reçu 194 à 196 ; la photo est intacte | à l'étape C : `fiche_technique` à la 193, empreintes inchangées ; à refaire à la fin de la **vérification** |
+| P15 | `base-locale.js etat` à la fin de la vérification | la base `fiche_technique` n'a pas reçu 194 à 196 ; la photo est intacte | à l'étape C : `fiche_technique` à la 193, empreintes inchangées. **Fin de la vérification (03/10, correcteur)** : `fiche_technique` à la 193, 194-196 : aucune, 0 balise, empreintes `67737956…` / `8779fd65…` ; photo à la 192, intacte ; copie neuve `fiche_technique_2c` laissée en place (à la 192, migrée au premier passage qui charge l'application) |
+
+**Vérification (03/10/2026, soir) — passages du correcteur, après les corrections (A16.15), sur une copie neuve.**
+Journaux : `…\scratchpad\wf-verif\correcteur\`. Code : backend `feat/lot-2c-manuel` (commit des corrections, au-dessus
+de `498e761`) ; frontend `42e32d3`.
+- P1 : `controler.mjs --tout` VERT et `--tout --production` VERT (61/61, 32/32, 16/16, 0 échec d'ensemble, 0 à traiter,
+  0 acceptation sans objet ; md5 des lexiques de production `ec83e7e8…` et `4468629d…`).
+- P5 : générateur `--essai --slug ceramique=usine` puis écriture : 194 et 195 identiques à l'octet (`b1662d35…`,
+  `b2c8c857…`) ; 196 = 116 778 octets, `7bfaa58b…` (deux lignes des variantes `lexique`) ; `manuelSansBaliseAdmis.json`
+  inchangé (`25f4bb55…`) ; LF, 0 « \r ».
+- P4 : `essai-migration.js` sur la base principale : 14 contrôles verts, NOTICE 59/0/0, 32/0/0, 16 (hotellerie 8, usine 8 ;
+  domaine absent : usine) ; 2e passage 0/59/0, 0/32/0, 0 ; retour exact ; après `ROLLBACK` empreintes `67737956…` /
+  `8779fd65…`, 189 lignes `_migrations`.
+- P6 : restauration **IDENTIQUE** (copie neuve, la capture applique 193 à 196 : NOTICE 59/32/16) : 0 écart, 0 entrée sans
+  emploi ; 1 permutation entre ex aequo admise (`rapportIA`).
+- P7 : Hôtellerie, Céramique, miroir : « AUCUNE forme par défaut hors exceptions » (8 095 / 7 841 / 7 607 textes lus) ;
+  liste de travail `manuel` et `assistant` à 0 dans les trois ; mots-clés enrichis 89 / 107 / 152 contrôles, 0 manque ;
+  recherches du domaine 61 / 58 / 56 clés, 0 sans résultat ; fiche attendue absente des 4 résultats : 3 sur 12, 3 sur 9,
+  2 sur 7 (P7 bis inchangé).
+- P9 : `npm test` 340/340 ; tests des outils 67/67 (65 + 2 pour la garde de `retour-2c.js`).
+- P10 : front `lexique` conforme, `identite` 0, `residuels` 0, `accords` 0 ; backend `identite` 0 (17 requêtes SQL à
+  relire, comme avant), `residuels` 0, `accords` 0 ; `vocab.test.mjs` 39/39, `vocab-check.test.mjs` 114/114.
+- P11 : `test-vocabulaire-domaine` 236/236, `test-manuel-filtre` 15/15 (backend de test sur le port 3101, copie migrée,
+  aucune ligne `[manuel]` au démarrage, arrêté ensuite). Les autres scripts E2E du P11 ont tourné à la vérification
+  (`wf-verif\reference\e2e-resume-*.txt`), avant les corrections, qui ne touchent ni le code servi ni la base hors
+  brouillons : `test-composants` 72/72, `test-transferts-chaine` 130/130, `test-onboarding-etapes` 17/17,
+  `test-contrat-admin` 7/7, `test-bot-onboarding` 14/17 (les 3 échecs anciens et connus, REPRISE §8),
+  `check-invariant-config` 0 écart, `check-invariant-stock` 811 comparaisons, 0 écart.
 
 ---
 
@@ -2000,14 +2095,26 @@ les trois fichiers `migrations/194_*`, `195_*`, `196_*` (rien d'autre), puis un 
 remet). D1 fusionne X ; D2 fusionne Y. Aucune réécriture d'historique.
 
 0. **Avant tout** : télécharger le PDF du manuel du compte 328 (démo) et noter trois titres de fiches ; ne pas relancer
-   le seed du compte 328 entre ce PDF et le contrôle du §12.3. Lecture de production faite (§12.1).
-1. **D1 — serveur, code** : `npm test` vert ; fusion `--no-ff` du commit X dans `develop` et `main` du **backend** ;
+   le seed du compte 328 entre ce PDF et le contrôle du §12.3. Lecture de production faite (§12.1). **Gel des
+   éditions** : ne modifier ni le manuel ni la base de connaissances dans l'admin (ancien ou nouvel écran) depuis la
+   lecture de production jusqu'aux contrôles qui suivent D2. Une fiche modifiée entre-temps garderait son texte d'admin
+   (R4.2.2, R4.2.3) : NOTICE « 58 / 0 / 1 » pour une fiche acheteurs (défaut NULL, la garde ne la reconnaît plus) ou
+   « titres gardés » / « parties gardées » non vide ; pour les autres fiches, NOTICE 59 / 0 / 0 mais ligne « [manuel] …
+   sans balises » au démarrage. Dans les deux cas, la bascule s'arrête au point 3.
+1. **D1 — serveur, code** : `npm test` vert (si le seul échec est « documents à signer et résiliation (sans option) »
+   de `test/B2-pdfTexte.test.js`, test instable connu depuis le 2b, sans lien avec le 2c, relancer `npm test` : il doit
+   passer) ; fusion `--no-ff` du commit X dans `develop` et `main` du **backend** ;
    poussée de `main`. Part : tout le code du §5, la 193, R2.2, `.gitattributes`, `manuelSansBaliseAdmis.json` (1 champ
    admis, sans effet tant que la base n'est pas balisée), les outils et les fichiers de `scripts/manuel/`.
    La base reste en texte brut : le rendu par défaut est l'identité (prouvé par l'oracle à l'étape S).
-   Attendre `/health` et, dans les journaux Coolify : « Migration appliquee: 193_manuel_sections_domaine.sql », puis
-   « Serveur démarré » et la ligne unique « [manuel] manuel non balisé (aucune balise en base) ». Contrôles du §12.3,
-   partie restauration.
+   Attendre `/health` et, dans les journaux Coolify, dans cet ordre : la NOTICE sans danger affichée à chaque démarrage,
+   « [migration] la relation « _migrations » existe déjà, poursuite du traitement » (dans la langue du serveur
+   PostgreSQL de production ; en anglais : « [migration] relation "_migrations" already exists, skipping ») ; « Migration
+   appliquee: 193_manuel_sections_domaine.sql » ; « Toutes les migrations effectuees avec succes (… deja appliquees) » ;
+   « Serveur démarré » et la ligne unique « [manuel] manuel non balisé (aucune balise en base) » (écrite sur la sortie
+   d'erreur, `console.warn`). Ces journaux lèvent aussi le seul risque restant de l'écart d'environnement (tests faits
+   sous Node 25 et PostgreSQL 14 ; image `node:20-alpine`, base `postgres:16-alpine` ; aucune API postérieure à Node 20
+   dans les fichiers du 2c, dépendances inchangées). Contrôles du §12.3, partie restauration.
 2. **Écrans** : `npm run build` vert ; fusion de l'écran dans `develop` et `main` du **frontend** ; poussée. Attendre
    le nouveau bundle en ligne. Admin : aperçu, légende, onglets de variantes sur un texte encore brut.
 3. **D2 — serveur, données** : fusion du commit Y dans `develop` et `main` du backend ; poussée. Le conteneur qui reste
@@ -2015,6 +2122,7 @@ remet). D1 fusionne X ; D2 fusionne Y. Aucune réécriture d'historique.
    même si la 195 ou la 196 échoue. Lignes attendues dans les journaux (texte relevé au démarrage du backend de test
    sur une copie migrée, étape C ; seule la liste des domaines absents diffère en production) :
    ```
+   [migration] la relation « _migrations » existe déjà, poursuite du traitement
    [migration] 194 : 59 fiche(s) balisée(s), 0 déjà balisée(s), 0 gardée(s) : aucune ; titres gardés : aucun ; parties gardées : aucune ; sans terme : historique-paiements, onboarding-activation
    Migration appliquee: 194_manuel_balise.sql
    [migration] 195 : 32 entrée(s) balisée(s), 0 déjà balisée(s), 0 gardée(s) : aucune ; titres gardés : aucun ; sans terme : aucune
@@ -2024,9 +2132,17 @@ remet). D1 fusionne X ; D2 fusionne Y. Aucune réécriture d'historique.
    Toutes les migrations effectuees avec succes (… deja appliquees)
    Serveur démarré sur le port …
    ```
-   **Sans** ligne `[manuel]` ensuite. En production, les domaines `hotellerie` et `usine` existent (lecture (5)) :
-   « domaines absents : aucun » (en base locale : « usine »). Un autre compte que 59 / 0 / 0, 32 / 0 / 0 ou 16 inséré(s)
-   (« gardée(s) » non vide, par exemple) : ne pas poursuivre, lire la NOTICE (R4.2.2, R4.2.5). Contrôles du §12.3 complets.
+   La 1re ligne est la NOTICE sans danger de chaque démarrage (point 1). **Sans** ligne `[manuel]` ensuite. En
+   production, les domaines `hotellerie` et `usine` existent (lecture (5)) : « domaines absents : aucun » (en base
+   locale : « usine »). **Arrêt de la bascule** (ne pas poursuivre les contrôles ; lire la NOTICE et décider : rebaliser
+   la fiche, ou retour arrière §12.4), dans deux cas :
+   - un autre compte que 59 / 0 / 0, 32 / 0 / 0 ou 16 inséré(s) (« gardée(s) » non vide, par exemple) (R4.2.2, R4.2.5) ;
+   - une ligne « [manuel] … sans balises » après le démarrage, **même si la NOTICE dit 59 / 0 / 0** : une fiche dont le
+     contenu a été modifié dans l'admin (contenu ≠ défaut, défaut = origine) est comptée « balisée » par la NOTICE (son
+     défaut est balisé, son contenu d'admin est gardé tel quel, R4.2.2) et n'est signalée que par cette ligne et par le
+     badge « sans balises » (mesuré à la vérification sur `stock-labo`). La lecture de production du 03/10 n'a aucune
+     fiche modifiée ; le gel du point 0 garde cet état.
+   Contrôles du §12.3 complets.
 
 Jamais deux builds en même temps. Après D2 : `base-locale.js supprimer`, garde R2.8.3 retirée dans `develop`, mise à
 jour de `REPRISE.md`.
@@ -2035,23 +2151,45 @@ jour de `REPRISE.md`.
 
 - Après D1 : `/health` ; compte restauration (ou démo 328) : trois fiches et le PDF du manuel, comparés au PDF
   téléchargé au point 0 (seule la date d'édition change) ; un gérant ; l'assistant d'un compte restauration.
-- Après D2 : les mêmes contrôles restauration ; compte de test H : `/client/guide` dans ses mots (« cuisine centrale »,
-  « services », « fournitures », « préparations »), le PDF, l'assistant (« comment créer une cuisine centrale ? » cite
-  « Manuel — … » dans ses mots) ; admin : aperçu par domaine (« Hôtellerie », « Industrie ») ; onglets de variantes
-  `hotellerie` et `usine` présents sur les 8 fiches, au statut brouillon, sans « domaine absent » ni « domaine sans
-  lexique » ; une balise fausse refusée ; badge « sans balises » absent partout. La production n'a aucun compte H ni
-  `usine` : un compte de test H créé pour le contrôle est supprimé ensuite.
+- Après D2 : les mêmes contrôles restauration ; admin : aperçu par domaine (« Hôtellerie », « Industrie ») sur
+  quelques fiches, dont `stock-labo` et `transferts` (« cuisine centrale », « services », « fournitures »,
+  « préparations » en Hôtellerie) ; onglets de variantes `hotellerie` et `usine` présents sur les 8 fiches, au statut
+  brouillon, sans « domaine absent » ni « domaine sans lexique » ; une balise fausse refusée ; badge « sans balises »
+  absent partout.
+- **Pas de compte de test Hôtellerie en production** (relevé de la vérification). La production n'a aucun compte H ni
+  `usine`, et en créer un a des effets réels : `POST /admin/clients` soumet le contrat à DocuSeal et envoie un vrai
+  email de signature à l'adresse saisie ; le mail d'activation ne part qu'après la signature (webhook), donc le compte
+  ne peut pas se connecter avant (`clientsController.js:437-491`) ; la suppression envoie un acte de résiliation
+  DocuSeal par email (`:760-769`) ; changer le domaine d'un compte efface ses conversations avec l'assistant
+  (`lot-2b/VERIFIER-ET-MOTEUR.md:207-208`). Le contrôle H de production se limite donc à l'aperçu par domaine de
+  l'admin (rendu par le même moteur que le guide) ; le guide, le PDF et l'assistant d'un compte H sont prouvés en local
+  (P7, P8, P12). Si le client veut quand même un compte H réel : adresse email qu'il contrôle, contrat DocuSeal à
+  signer avant toute connexion, acte de résiliation reçu à la suppression ; ne jamais changer le domaine d'un compte
+  réel.
 - Une heure après D2 : aucune ligne « [vocab] », « [email] voc manquant » ni « [manuel] » dans les journaux.
 
 ### 12.4 Retour arrière
 
-- **Annuler D2 seul** (les textes) : lancer `node scripts/manuel/retour-2c.js --essai` puis sans `--essai` dans le
-  conteneur du serveur en place (§4.5) ; lire son compte rendu ; puis `git revert -m 1` de la fusion D2 sur `main`,
-  poussé normalement. Le code D1 reste et sert le texte brut.
-- **Annuler tout** : d'abord le retour des textes ci-dessus (le code D1 en place sert alors un texte sans balise :
-  rendu identique) ; ensuite l'écran, par `git revert -m 1` sur `main` (cible : contenu de `fd044b2`) ; ensuite le
-  serveur, par `git revert -m 1` des fusions D2 puis D1 (cible : contenu de `e3bf29a`). Jamais de `push --force`.
-  Sans le retour des textes, l'ancien serveur servirait « [[…]] » à tous les comptes.
+**Ordre corrigé à la vérification : le code D2 s'en va AVANT le retour des textes.** Le conteneur D2 porte les
+fichiers 194 à 196 ; si `retour-2c.js` y tournait, tout redémarrage entre son `COMMIT` et la mise en ligne du revert
+(plantage, manque de mémoire, redémarrage Coolify ou du VPS, redéploiement) rejouerait 194 et 195 (`migrate.js:84-104`)
+et rebaliserait la base sans rien signaler ; dans « Annuler tout », l'ancien serveur arriverait alors sur une base
+balisée. Le script refuse donc le retour réel dans un conteneur qui porte encore 194 ou 195 (§4.5).
+
+- **Annuler D2 seul** (les textes) :
+  1. `git revert -m 1` de la fusion D2 sur `main` du backend, poussé normalement. Le code D1 revient ; il n'a pas les
+     fichiers 194 à 196 et rend les balises : rien de visible. Attendre `/health`.
+  2. Ensuite seulement, dans le conteneur D1 : `node scripts/manuel/retour-2c.js --essai`, lire le compte rendu, puis
+     la même commande sans `--essai`. Le code D1 sert alors le texte brut (rendu identique).
+- **Annuler tout**, chaque étape dans sa propre poussée, en attendant `/health` (ou le nouveau bundle) entre deux :
+  1. revert de D2 (ci-dessus, étape 1) ;
+  2. `retour-2c.js` dans le conteneur D1 (ci-dessus, étape 2) ;
+  3. l'écran, par `git revert -m 1` sur `main` du frontend (cible : contenu de `fd044b2`) ;
+  4. le serveur, par `git revert -m 1` de la fusion D1 (cible : contenu de `main` avant D1, `ee9a28e` au 03/10 :
+     production avant le 2c, correctif des mois en UTC compris ; vérifié dans un clone : revert de D2 puis de D1 =
+     arbre de `ee9a28e`).
+  Jamais de `push --force`. Sans le retour des textes (étape 2), l'ancien serveur servirait « [[…]] » à tous les
+  comptes.
 - La table de la 193 et ses brouillons restent, inoffensifs.
 
 ### 12.5 Maintenance après le 2c
@@ -2103,6 +2241,7 @@ règles d'écriture : `scripts/manuel/GUIDE-BALISAGE.md`.
 | **C** | consolidation : `--tout` ; génération en essai ; **essai de migration AVANT le premier oracle** ; écriture dans `migrations/` ; dès lors copies de la base (R2.8.2) ; oracle restauration puis H, C, miroir ; besoins clos ; documents (`VOCAB-GUIDE-SERVEUR.md`, `ecarts-visibles-2b.md`, nouveau `ecarts-visibles-2c.md`, §15) ; spec mise à jour (« état final ») | commit | 0,75 j |
 | | **Fait le 03/10/2026.** Partie technique : `1273be5` (contrôle avec les lexiques de production, corrections, oracle A16.1, exclusions « rendu ») et `f0383cf` (migrations 194 à 196 écrites, cible `usine` ; point de restauration). Partie documentaire : spec v3.0, `ecarts-visibles-2c.md`, `VOCAB-GUIDE-SERVEUR.md` §9, README et guide des outils, besoins `L8-2` et `L9-4` clos (commit `docs(lot-2c): étape C — …`). « Fiche Céramique » sans objet (le domaine `usine` existe en production avec son lexique, §8.6). Corrections du contrôle de l'étape C : renvoi posé dans `ecarts-visibles-2b.md` §4 (décision 2), en-tête du §10.3, texte du masque des cibles de liens (R2.4.2). Reste : commits X et Y à la fin de la vérification (§12.2) | | |
 | **Vérif** | l'oracle seul d'abord (sur une copie) ; puis parcours navigateur et 3 revues en parallèle, sur la même copie (ports réservés du 2b) ; corrections (copie neuve, régénération, oracle) ; contrôle final indépendant | rapport | 1 j |
+| | **Faite le 03/10/2026 (soir)**, jusqu'aux corrections : 22 constats, 5 importants, 0 bloquant (A16.15) ; corrections et passages du correcteur au §11 (sous le tableau). Reste : contrôle final indépendant, puis commits X et Y (§12.2) | | |
 | **D** | lecture de production, commits X et Y, D1, écrans, D2 (§12) | en production | — |
 
 Total : **environ 10 jours-équivalent de travail** (9,5 à 11 ; R compris s'il le faut). La v1 estimait 9 ; s'ajoutent
@@ -2165,7 +2304,7 @@ jamais « Céramique »). Il reprend :
   | Composant Hôtellerie « bureau logisti » | 10e type d'unité de production, probablement un essai | le supprimer dans l'admin si c'est un essai (il entre dans les mots-clés enrichis et le guide de mise en route) | `C-5` |
   | Lien « Articles Valorisés » (`referentiel-familles`) | l'écran s'appelle « Produits Valorisés » | corriger après le 2c (change aussi le texte vu en restauration) | `L3-3` |
   | « sections repliées par défaut » (`acheteurs-tarifs`) | l'écran les ouvre par défaut | « ouvertes par défaut, repliables », après le 2c (change aussi la restauration) | `L7-4` |
-  | Les 16 variantes (8 Hôtellerie, 8 Usine) | livrées en brouillon : un compte lit le texte commun dans ses mots tant qu'elles ne sont pas validées | les relire et valider dans l'admin, **après** avoir corrigé les lexiques (sinon il validera des mots provisoires) | §8.3 |
+  | Les 16 variantes (8 Hôtellerie, 8 Usine) | livrées en brouillon : un compte lit le texte commun dans ses mots tant qu'elles ne sont pas validées, avec ses redites (§10.3.3) ; les 8 variantes Usine parlent d'une usine de céramique (§8.6) | les relire et valider dans l'admin, **après** avoir corrigé les lexiques (sinon il validera des mots provisoires) et **avant l'ouverture du premier compte Hôtellerie ou Usine** ; adapter les exemples Usine si le domaine Industrie doit servir d'autres métiers | §8.3, §8.4, §8.6 |
 
 - **Pas à pas de validation d'une variante** : Admin → 📖 Manuel → ✏️ (Modifier) sur l'une des 8 fiches → onglet
   « Hôtellerie · brouillon » ou « Industrie · brouillon » → 👁 Aperçu pour lire la fiche dans les mots du domaine →
@@ -2175,8 +2314,12 @@ jamais « Céramique »). Il reprend :
   parmi les 4 premiers résultats de l'assistant pour H 9 questions sur 12 (5 avant le balisage), Usine 6 sur 9 (3).
   Rien ne change en restauration.
 - **Déploiement** (§12.2) : trois poussées à autoriser (D1 serveur sans les données balisées, écrans, D2 données), les
-  lignes de journal attendues après chacune. **Contrôles après bascule** (§12.3) et **retour arrière** (§12.4) : la
-  commande à lancer dans le conteneur (`node scripts/manuel/retour-2c.js --essai`, puis sans `--essai`).
+  lignes de journal attendues après chacune (NOTICE « _migrations existe déjà » comprise), le gel des éditions du
+  manuel et de la base, les deux cas d'arrêt après D2. **Contrôles après bascule** (§12.3, sans compte de test H en
+  production) et **retour arrière** (§12.4, dans l'ordre corrigé : revert de D2 d'abord, puis la commande dans le
+  conteneur D1, `node scripts/manuel/retour-2c.js --essai`, puis sans `--essai`). Section « Mise en ligne » du
+  document (ajoutée à la vérification : le contrôle de l'étape C n'avait vérifié que la longueur et le vocabulaire du
+  document).
 - **Admin du manuel** : les balises dans le formulaire (légende, aperçu par domaine), le badge « sans balises » (une
   fiche à rebaliser), le refus d'une balise fausse ; toute migration future du manuel écrit du texte balisé (§12.5).
 
@@ -2184,11 +2327,11 @@ Lecture de production : faite le 03/10, conforme (§12.1) ; rien à renvoyer. Fi
 
 ---
 
-## 16. Amendements (v2.3 à v3.0, 03/10/2026) — historique
+## 16. Amendements (v2.3 à v3.1, 03/10/2026) — historique
 
 A16.1 à A16.11 viennent de l'étape M0 ∥ S ∥ A (intégration, 2 relectures et contrôle final : 11 constats, 0 bloquant ;
 tous corrigés ou acceptés), A16.12 et A16.13 du correctif hors lot et de la lecture de production, A16.14 de l'étape
-C. **Depuis la v3.0, chaque amendement est reporté dans la section qu'il touche** (renvoi « → » à la fin de chacun) ;
+C, A16.15 de la vérification. **Depuis la v3.0, chaque amendement est reporté dans la section qu'il touche** (renvoi « → » à la fin de chacun) ;
 ce chapitre reste comme historique. En cas d'écart, la section citée par le renvoi fait foi.
 
 **A16.1 — Cibles de liens (§3.5, point 3 ; R2.4.2).** Les cibles `(#slug)` portent 200 formes par défaut (185
@@ -2282,6 +2425,26 @@ lexique (§3.5, `C-1`) ; refus du générateur sans `--slug ceramique=usine` (R3
 B1 et B2 aux points 7, 8, 9 (§3.5, `L2-1`, `L2-2`, `L4-3`) ; exclusion d'une forme du domaine dans une variante (§3.3,
 R8.2.3, `V-H1-1`) ; gloses redites acceptées par écrit (§7.5, §7.7, `L4-2`) ; lexique sans formes courtes (§7.5,
 §10.3.9) ; récapitulatif des vagues au §10.3 (`L8-2`, `L9-4`, clos) ; preuves au §11 ; décisions client au §15.
+
+**A16.15 — Vérification (03/10/2026, soir).** 22 constats (5 importants, 17 mineurs, 0 bloquant), traités ainsi :
+- **corrigés** : ordre du retour arrière inversé et garde `migrationsEnPlace` dans `retour-2c.js`, avec son test
+  (§4.5, §12.4) ; cible `ee9a28e` (§4.5, §12.4, en-tête du script) ; §12.2 (gel des éditions, NOTICE « _migrations
+  existe déjà », arrêt sur une ligne « [manuel] … sans balises », test PDF instable) ; §12.3 (pas de compte de test H
+  en production) ; variantes `lexique` Usine (« pour vous, l'industrie ») et Hôtellerie (exemples de « Prestataire »),
+  196 régénérée ; lieux de redites, gloses, formes longues et ambiguïtés ajoutés au §8.4, §8.6, §10.3.3, §10.3.4,
+  §10.3.9, §10.3.12 ; document client (section « Mise en ligne », répétitions, céramique, décision 9) ; masque de date
+  à appliquer à une comparaison manuelle avec la clé `recherches` (§2.1) ;
+- **gardé, avec sa raison** : la redite « fournitures/fournitures » de l'entrée « Référentiel articles » (R7.1.7 :
+  `article_ingredient`, raison du baliseur L9 ; inscrite au §10.3.4 au lieu de la balise `ingredient` proposée) ;
+- **sans correction, constat juste et déjà couvert** : permutation de deux ex aequo dans une recherche restauration
+  (§10.2, point 1, accepté le 03/10) ; horodatages de la copie partagée (R2.8.2 : copie neuve avant l'oracle, refaite
+  par le correcteur) ; variante modifiable d'un domaine sans écart (A16.5) ; tests sous Node 25 et PostgreSQL 14 (aucune
+  API postérieure à Node 20, dépendances inchangées ; levé par les journaux de D1, §12.2) ; écarts de méthode du parcours
+  (Chrome installé, Gemini factice) ;
+- **hors lot** : en HTTP/1.1, les onglets ouverts par « ? » finissent par rester en « Chargement » (6 connexions par
+  hôte, un flux SSE `/api/notifications/stream` par onglet), avant comme après le 2c ; à voir plus tard (HTTP/2 en
+  production, ou flux SSE partagé entre onglets).
+→ §2.1, §4.5, §8.4, §8.6, §10.3, §11, §12.2, §12.3, §12.4, §15.
 
 ---
 
