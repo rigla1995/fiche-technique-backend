@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "decouvrir-labflow",
+    "domaine": "ceramique",
+    "phrase": "La maîtrise du coût matière : chaque nomenclature (argile, émail, engobe, emballage…) est décrite dans une fiche de coût de revient, calculée automatiquement à partir de vos prix d'achat réels.",
+    "probleme": "Métier inexact : la parenthèse donne des matières premières comme exemples de nomenclatures. Une nomenclature est la composition d'un produit (un carreau, une assiette), pas l'argile ni l'émail. Le lecteur comprend « nomenclature = argile ».",
+    "correction": "Reprendre la tournure de l'étape 5 de la variante demarrage : « chaque [[nom:recette]] (pour un carreau : argile, émail, engobe, emballage…) est [[acc:recette:décrit:décrite]] dans [[un:fiche_technique]]… », rendu « chaque nomenclature (pour un carreau : argile, émail, engobe, emballage…) est décrite dans une fiche de coût de revient… ».",
+    "etat": "clos",
+    "verification": "Tour 4 : vérifié dans variantes/ceramique/decouvrir-labflow.md l.7 (« chaque [[nom:recette]] (pour un carreau : …) est [[acc:recette:décrit:décrite]] dans [[un:fiche_technique]] ») et dans le rendu frais rendus/V-C2/ceramique/decouvrir-labflow.md l.13 « chaque nomenclature (pour un carreau : argile, émail, engobe, emballage…) est décrite dans une fiche de coût de revient ». Accords justes."
+  },
+  {
+    "slug": "decouvrir-labflow",
+    "domaine": "ceramique",
+    "phrase": "Le potier indépendant : un seul point de vente, l'atelier et sa vitrine, tout se gère au même endroit.",
+    "probleme": "Le modèle devient confus. Trois lignes plus haut, la même fiche donne « atelier » comme exemple de site de production (« (usine, atelier, entrepôt) »), et « atelier » est un composant de type labo du domaine (domaines.json, code atelier, typeTechnique labo). Or le potier n'a aucun site de production (compte-activites-labos : « 1 point de vente, 0 site de production »). Appeler « l'atelier » son point de vente mélange les deux niveaux que la fiche explique.",
+    "correction": "« [[acc:activite:un seul:une seule]] [[nom:activite]], où il façonne et vend ses pièces, tout se gère au même endroit », rendu « un seul point de vente, où il façonne et vend ses pièces, tout se gère au même endroit ».",
+    "etat": "clos",
+    "verification": "Tour 4 : vérifié dans la variante l.20 et le rendu frais l.26 « un seul point de vente, où il façonne et vend ses pièces, tout se gère au même endroit ». « atelier » n'est plus employé pour le point de vente."
+  },
+  {
+    "slug": "decouvrir-labflow",
+    "domaine": "ceramique",
+    "phrase": "| Espace Produits | Produits vendables, utilisables et valorisés, avec leurs fiches de coût de revient |",
+    "probleme": "Ce point répond au doute de l'auteur. En Céramique, ces trois sortes de produits s'appellent Produits finis, Semi-finis et Produits finis catalogue (clés produit_vendable, produit_utilisable et produit_valorise ; menu cat_pt_*). La variante emploie elle-même « les Produits Finis » pour le lien du menu (compte-activites-labos, demarrage). « vendables, utilisables, valorisés » sont les mots par défaut : un utilisateur céramiste ne les voit sur aucun écran. Une variante doit donner les mots du domaine, et la répétition « produits finis » vient des vrais noms : ce n'est pas une tournure fautive.",
+    "correction": "« [[Nom:produit_vendable:pl]], [[nom:produit_utilisable:pl]] et [[nom:produit_valorise:pl]], avec leurs [[nom:fiche_technique:pl]] », rendu « Produits finis, semi-finis et produits finis catalogue, avec leurs fiches de coût de revient ». Si le point 7 signale « produits finis », accepter le signalement : ce sont les noms du lexique.",
+    "etat": "clos",
+    "verification": "Tour 4 : vérifié dans la variante l.32 ([[Nom:produit_vendable:pl]], [[nom:produit_utilisable:pl]] et [[nom:produit_valorise:pl]]) et le rendu frais l.38 « Produits finis, semi-finis et produits finis catalogue, avec leurs fiches de coût de revient ». Le signalement point 7 « Produits finis » est accepté dans V-C2.auto.json avec une raison juste."
+  },
+  {
+    "slug": "onboarding-configuration",
+    "domaine": "ceramique",
+    "phrase": "Constituez ensuite le référentiel, affectez vos matières premières au site de production. Configurez enfin l'Espace Revendeurs : matières premières commandables, carnet de revendeurs et tarifs B2B…",
+    "probleme": "Français : deux impératifs sont juxtaposés par une simple virgule, puis la phrase s'arrête. La phrase boite. Elle vient de la coupe faite pour lever la répétition « matières premières ».",
+    "correction": "« Constituez ensuite [[le:referentiel]] et affectez [[votre:article:pl]] [[au:labo]]. Configurez enfin … », rendu « Constituez ensuite le référentiel et affectez vos matières premières au site de production. Configurez enfin l'Espace Revendeurs : … ». La coupe avant « Configurez enfin » reste, donc la répétition reste levée.",
+    "etat": "clos",
+    "verification": "Tour 4 : vérifié dans la variante l.22 et le rendu frais l.28 « Constituez ensuite le référentiel et affectez vos matières premières au site de production. Configurez enfin l'[Espace Revendeurs](#acheteurs-module) : … ». La phrase est correcte, la coupe avant « Configurez enfin » est conservée."
+  }
+]

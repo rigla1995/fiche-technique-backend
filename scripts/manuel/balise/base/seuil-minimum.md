@@ -1,0 +1,1 @@
+Le seuil minimum est la quantité plancher d'[[un:article]] ou d'[[un:pt]]. Il se définit séparément par [[nom:activite]] et par [[nom:labo]] : chaque site a ses propres seuils. En dessous, [[le:article]] passe en alerte (à réapprovisionner). Sert à éviter les ruptures [[de:stock]].

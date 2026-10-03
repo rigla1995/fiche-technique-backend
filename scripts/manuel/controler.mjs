@@ -35,7 +35,8 @@
  *      l'ordre de la liste, retirerExtraits de lib/commun.js, règle de l'oracle) puis MASQUÉES les cibles de liens
  *      « (#slug) » (jamais balisées ni exclues : GUIDE §4, 200 formes dans 185 cibles) ; chaque exclusion employée
  *      exactement « occurrences » fois (contenu et titre balisés réunis), de type admis, justifiée, contenant une forme
- *      par défaut, présente telle quelle dans chaque rendu ; aucune balise (hors acc, accN, ex) collée à un trait d'union
+ *      par défaut (variante : ou une forme du lexique de son domaine, R8.2.3), présente telle quelle dans chaque rendu ;
+ *      aucune balise (hors acc, accN, ex) collée à un trait d'union
  *      (« sous-[[nom:pt]] » rend « sous-préparation » en H, R3.4.3 : on n'y balise jamais) ;
  *   4. liens : même suite de cibles que l'origine dans chaque rendu ; chaque cible « #x » est un slug existant ; aucun
  *      libellé de lien rendu vide ;
@@ -48,10 +49,12 @@
  *      rendu d'une balise de deux mots ou plus (déterminant ôté) qui revient dans la même phrase à moins de 12 mots ;
  *      rendu d'une balise suivi d'un mot de même racine que son dernier mot (« cuisine centrale central »), marque
  *      d'emphase entre les deux comprise ;
- *   8. gloses identiques « X (X) » et définitions circulaires « | **X** | X … » (absentes du rendu par défaut) ;
+ *   8. gloses identiques « X (X) », marques d'emphase retirées (« **consommable** (consommable) », besoin L4-3), et
+ *      définitions circulaires « | **X** | X … » (absentes du rendu par défaut) ;
  *   9. élisions fautives (« d' », « l' », « qu' » + consonne ; « de », « le », « la », « que », « du », « au », « ce »,
- *      « ma », « ta », « sa » + voyelle ou h) et contractions manquées (« de le », « de les », « à le », « à les »,
- *      besoin L2-1) ; absentes du rendu par défaut ;
+ *      « ma », « ta », « sa » + voyelle ou h, y compris à travers une alternative « la/aux usine ») et contractions
+ *      manquées (« de le », « de les », « à le », « à les », besoin L2-1), marques d'emphase retirées (« que
+ *      **animatrice** », besoin L4-3) ; absentes du rendu par défaut ;
  *  10. déterminant en clair devant une balise nom, Nom, court, Court, Titre ou MAJ (sur le texte BALISÉ), collé à la
  *      balise ou séparé d'elle par un adjectif (« un autre [[nom:labo]] », « le même [[nom:labo]] ») ;
  *  11. appositions : deux balises collées dont la seconde est en nom / Nom sur une clé à apposition (appo du lexique) ;
@@ -280,8 +283,11 @@ const gloses = (t) => {
   }
   return out;
 };
+/** Point 8, gloses : marques d'emphase retirées des deux rendus, comme au point 7 (besoin L4-3) : sinon H « Un
+ * **consommable** (consommable) » échappait au point 8 (le texte avant la parenthèse finissait par « ** »). */
 export function glosesIdentiques(r, rd) {
-  return enPlus(gloses(r), gloses(rd)).map((x) => ({ texte: x.texte, contexte: contexte(r, x.index, x.texte.length) }));
+  const r0 = sansMarques(r);
+  return enPlus(gloses(r0), gloses(sansMarques(rd))).map((x) => ({ texte: x.texte, contexte: contexte(r0, x.index, x.texte.length) }));
 }
 const premierMot = (s) => ((String(s).replace(/^[\s*_«"“(]+/u, '').match(/^\p{L}[\p{L}\p{N}'’-]*/u) || [''])[0]).toLowerCase().replace(/[sx]$/, '');
 const circulaires = (t) => {
@@ -303,7 +309,9 @@ export function definitionsCirculaires(r, rd) {
 
 // ── Point 9 : élisions fautives ───────────────────────────────────────────────────────────────────────────────
 const RE_ELISION_CONSONNE = new RegExp(`(?<![${L}])(?:d|l|qu)['’][bcdfgjklmnpqrstvwxzç][\\p{L}'’-]*`, 'giu');
-const RE_SANS_ELISION = new RegExp(`(?<![${L}'’])(?:de|le|la|que|du|au|ce|ma|ta|sa)[^\\S\\n]+[aeiouàâäéèêëîïôöùûüœæh][\\p{L}'’-]*`, 'giu');
+// Le mot élidable peut porter une alternative « /mot » (besoin L4-3) : « à la/aux usine(s) », rendu miroir de
+// [[acc:labo:au(x):à la/aux]], où « la » précède le nom à travers « /aux ».
+const RE_SANS_ELISION = new RegExp(`(?<![${L}'’])(?:de|le|la|que|du|au|ce|ma|ta|sa)(?:\\/\\p{L}+)?[^\\S\\n]+[aeiouàâäéèêëîïôöùûüœæh][\\p{L}'’-]*`, 'giu');
 // Contractions manquées (besoin L2-1) : « de le », « de les », « à le », « à les », mots entiers. Exemple : un « de »
 // laissé en clair devant [[acc:activite:le premier:la première]] rendait en H « Création de le premier service ».
 const RE_CONTRACTION = new RegExp(`(?<![${L}'’])(?:de|à)[^\\S\\n]+les?(?![${L}'’])`, 'giu');
@@ -314,8 +322,11 @@ const elisions = (t) => {
   }
   return out.sort((a, b) => a.index - b.index);
 };
+/** Point 9 : marques d'emphase retirées des deux rendus, comme au point 7 (besoin L4-3) : sinon « En tant que
+ * **animatrice** » (miroir) échappait au point 9 (« que » suivi d'une espace puis de « ** », pas d'une voyelle). */
 export function elisionsFautives(r, rd) {
-  return enPlus(elisions(r), elisions(rd)).map((x) => ({ texte: x.texte, contexte: contexte(r, x.index, x.texte.length) }));
+  const r0 = sansMarques(r);
+  return enPlus(elisions(r0), elisions(sansMarques(rd))).map((x) => ({ texte: x.texte, contexte: contexte(r0, x.index, x.texte.length) }));
 }
 
 // ── Point 10 : déterminant en clair devant une balise de nom (texte balisé) ──────────────────────────────────
@@ -525,7 +536,11 @@ function lireBalise(dossier, nom) {
   return { md: C.lireTexte(md), json: C.lireJson(json) };
 }
 
-function verifierExclusions(exclusions, echecs) {
+/** Exclusions d'un texte balisé. `formesDomaine` (variantes seulement) : formes du lexique du domaine de la variante
+ * (Map de formesDuDomaine). Une variante peut exclure une forme de SON domaine écrite en clair (libellé d'écran,
+ * homonyme, nom de composant : spec §3.5 et R8.2.3, « sauf exclusion justifiée » ; besoins V-H1-1, V-C1-1, V-H2-1,
+ * V-C2-1) : son extrait porte alors une forme du domaine, et non une forme par défaut. */
+function verifierExclusions(exclusions, echecs, formesDomaine = null) {
   if (!Array.isArray(exclusions)) { echecs.push({ point: 3, message: '« exclusions » doit être un tableau' }); return []; }
   exclusions.forEach((x, i) => {
     const n = `exclusion ${i + 1}${x && x.extrait ? ` « ${x.extrait} »` : ''}`;
@@ -533,8 +548,8 @@ function verifierExclusions(exclusions, echecs) {
     if (typeof x.extrait !== 'string' || !x.extrait) echecs.push({ point: 3, message: `${n} : extrait absent` });
     else if (/\[\[|\]\]/.test(x.extrait)) echecs.push({ point: 3, message: `${n} : un extrait ne contient jamais de balise` });
     else {
-      const f = formesParDefaut(x.extrait);
-      if (!f.length) echecs.push({ point: 3, message: `${n} : sans emploi (l'extrait ne contient aucune forme par défaut)` });
+      const f = [...formesParDefaut(x.extrait), ...(formesDomaine ? formesEnClair(x.extrait, formesDomaine) : [])];
+      if (!f.length) echecs.push({ point: 3, message: `${n} : sans emploi (l'extrait ne contient aucune forme par défaut${formesDomaine ? ' ni forme du domaine' : ''})` });
       else if (x.forme !== undefined && !f.some((o) => o.texte.toLowerCase() === String(x.forme).toLowerCase())) {
         echecs.push({ point: 3, message: `${n} : « forme » ${JSON.stringify(x.forme)} absente de l'extrait (formes : ${f.map((o) => o.texte).join(', ')})` });
       }
@@ -568,13 +583,13 @@ export function balisesCollees(balise) {
 
 /** Point 3 : formes par défaut hors balises (extraits retirés, cibles masquées), emplois des exclusions, balises collées
  * à un trait d'union. */
-function pointResiduels(textes, exclusions, echecs, champs) {
+function pointResiduels(textes, exclusions, echecs, champs, formesDomaine = null) {
   textes.forEach((t, i) => {
     for (const x of balisesCollees(t)) {
       echecs.push({ point: 3, message: `${champs[i]} : balise collée à un trait d'union « ${x.texte} » (R3.4.3 : jamais de balise contre un tiret ; locution, exclusion ou phrase réécrite) — ${x.contexte}` });
     }
   });
-  const excl = verifierExclusions(exclusions, echecs);
+  const excl = verifierExclusions(exclusions, echecs, formesDomaine);
   const { textes: restes, emplois } = C.retirerExtraits(textes, excl);
   restes.forEach((t, i) => {
     for (const f of formesParDefaut(masquerCibles(t))) {
@@ -837,7 +852,7 @@ export function controlerVariante(ctx, domaine, slug, { ecrire = true } = {}) {
   // 3. Résiduels (forme par défaut) et formes du domaine en clair (R8.2.3), hors extraits.
   const textes = titre === null ? [md] : [md, titre];
   const nomsChamps = titre === null ? ['contenu'] : ['contenu', 'titre'];
-  const { excl, emplois } = pointResiduels(textes, json.exclusions, e, nomsChamps);
+  const { excl, emplois } = pointResiduels(textes, json.exclusions, e, nomsChamps, dom.formes);
   const { textes: restes } = C.retirerExtraits(textes, excl);
   restes.forEach((t, i) => {
     for (const x of formesEnClair(t, dom.formes)) e.push({ point: 3, message: `${nomsChamps[i]} : forme du domaine « ${x.texte} » écrite en clair hors balise (R8.2.3) — ${contexte(t, x.index, x.texte.length)}` });

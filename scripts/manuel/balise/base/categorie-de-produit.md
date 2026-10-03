@@ -1,0 +1,1 @@
+Les catégories [[de:produit]] classent [[le:produit_vendable:pl]], distinctes des catégories [[de:article:pl]]. Elles sont typées : vendable, [[nom:supplement]] ou valorisé. La catégorie est obligatoire à la création d'[[un:produit_vendable]] ou d'[[un:supplement]] et sert au regroupement dans la saisie [[de:vente]] et les rapports.

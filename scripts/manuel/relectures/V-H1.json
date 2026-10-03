@@ -1,0 +1,57 @@
+[
+  {
+    "slug": "lexique",
+    "domaine": "hotellerie",
+    "phrase": "| **Ratio matière (coût matière)** | Coût des matières premières consommées pour produire un petit-déjeuner, un cocktail ou un plateau, souvent rapporté à son prix de vente. Un petit-déjeuner continental vendu 15 DT dont les composants coûtent 4,500 DT a un ratio matière de 30 %. |",
+    "probleme": "Contradiction en H. Le terme est un ratio, mais la glose « ([[nom:cout_matiere]]) » le donne comme synonyme de « coût matière », et la définition commence par « Coût des… ». Or, dans la même variante, « coût matière » est un montant (lignes « Marge » et « Coefficient multiplicateur » : « Différence entre le prix de vente et le coût matière »). L'écran les sépare aussi : la carte du tableau de bord affiche le ratio en % avec, en dessous, « coût matière X DT » (ClientDashboard.tsx:546). La fiche commune a la même glose (« Food cost (coût matière) »), mais c'est la variante qui réécrit les définitions (R8.2.2), et ici le mot H « ratio » rend l'écart visible.",
+    "correction": "Retirer la glose et définir un ratio, sans règle nouvelle (l'exemple en % est déjà dans la fiche) : « | **[[Nom:food_cost]]** | Part [[du:cout_matiere]] dans le prix de vente : coût des matières premières consommées pour produire un petit-déjeuner, un cocktail ou un plateau, rapporté à son prix de vente. Un petit-déjeuner continental vendu 15 DT dont [[le:ingredient:pl]] coûtent 4,500 DT a [[un:food_cost]] de 30 %. | ». Le tri ne change pas (le terme reste sous R). Dans lexique.json, passer l'exclusion « prix de vente » de 6 à 7 occurrences. Essai sur une copie jetable (controler.mjs --racine) : OK, 0 signalement.",
+    "etat": "clos",
+    "cloture": "tour 4 : corrigé avec une tournure plus courte, acceptée. variantes/hotellerie/lexique.md:43 sans glose, définit un ratio (« Part [[du:cout_matiere]] (matières premières consommées) dans le prix de vente… ») ; rendu frais H : « Ratio matière | Part du coût matière (matières premières consommées) dans le prix de vente d'un petit-déjeuner… ». « prix de vente » = 6 occurrences, exclusion à 6 inchangée et juste ; tri des 43 termes H OK ; contrôle V-H1 code 0."
+  },
+  {
+    "slug": "lexique",
+    "domaine": "hotellerie",
+    "phrase": "| **Famille** | Regroupement de catégories de fournitures (« Petit-déjeuner », « Hygiène et accueil »…) portant deux propriétés clés : l'emploi en production (ses fournitures peuvent entrer dans les fiches de préparation) et la vente en l'état (*vendable*). […] |",
+    "probleme": "Pour lever l'acceptation L1.auto (point 12, « consommable »), la variante a supprimé le nom de la propriété. Mais l'écran Familles écrit ce nom en clair : colonne « Consommable » à côté de « Vendable » (ReferentielFamillesPage.tsx:143 et :201 ; « Consommable (activé) », :267). Un compte H ne retrouve donc plus dans le lexique la colonne qu'il voit à l'écran, alors que l'autre propriété garde son nom (*vendable*). De plus, la collision avec le terme H « Consommable » (produit_utilisable) existe à l'écran : c'est justement le lexique qui doit l'expliquer.",
+    "correction": "Garder le libellé de l'écran et le distinguer du terme H : « … portant deux propriétés clés : *consommable* (nom de la colonne à l'écran : [[son:article:pl]] peuvent entrer dans [[le:recette:pl]] ; rien à voir avec [[le:produit_utilisable:pl]]) et *vendable* ([[nom:vente]] en l'état). … ». BLOQUÉ PAR L'OUTIL, à trancher par l'intégrateur. Essai sur une copie jetable (controler.mjs --racine) : « consommable » en clair fait échouer le point 3 (« forme du domaine écrite en clair hors balise (R8.2.3) »). L'exclusion nom-fige correspondante est refusée « sans emploi » : l'outil ne compte que les formes par défaut, alors que la spec §3.5 (variantes) admet une forme du domaine « sauf exclusion justifiée ». C'est ce qui a poussé l'auteur à retirer le mot. Proposition : l'auteur ouvre un besoin dans besoins/V-H1.json (défaut d'outil : accepter une exclusion d'une forme du lexique du domaine dans une variante), puis applique ce texte quand l'outil le permet. S'il refuse, garder la phrase actuelle et l'accepter par écrit (perte du libellé d'écran connue).",
+    "etat": "clos",
+    "cloture": "tour 4 : non appliqué, bloqué par l'outil (verifierExclusions refuse une exclusion nom-fige sans forme par défaut). Renvoyé au besoin V-H1-1 (besoins/V-H1.json, état OUVERT, même cause que V-C1-1, V-C2-1, V-H2-1). Pour l'intégrateur : (a) clore SANS OBJET en gardant la phrase actuelle (sens juste, libellé d'écran « Consommable » absent, perte connue) ou (b) assouplir l'outil puis appliquer le texte de la ligne avec l'exclusion recopiée dans le besoin. Phrase actuelle vérifiée : contrôle code 0, 0 signalement.",
+    "integrateur": "Intégrateur B2 ∥ V (03/10/2026) : option (b) : outil corrigé (besoin V-H1-1, APPLIQUÉ), texte du relecteur appliqué à variantes/hotellerie/lexique.md:24 (« rien à voir avec » écrit « à ne pas confondre avec »), exclusion nom-fige « *consommable* (nom de la colonne à l'écran » ajoutée à lexique.json. Rendu H : « … portant deux propriétés clés : *consommable* (nom de la colonne à l'écran : ses fournitures peuvent entrer dans les fiches de préparation ; à ne pas confondre avec les consommables) et *vendable* (vente en l'état). … » ; controler --variante hotellerie lexique : code 0, 0 signalement."
+  },
+  {
+    "slug": "lexique",
+    "domaine": "hotellerie",
+    "phrase": "| **Commande du client professionnel** | Demande d'achat passée en ligne sur le portail, ou saisie directement en vente manuelle. […] |",
+    "probleme": "« Demande d'achat » est mal choisi en hôtellerie. C'est le nom courant de la demande interne d'un service à l'économat ou aux achats, soit le sens inverse d'une commande de client. Le mot prête aussi à confusion avec la page « Demandes » de LabFlow, citée deux fois dans la même fiche (lignes « Base clients professionnels » et « Formule d'activités »). La reformulation voulait seulement éviter de répéter « client professionnel ».",
+    "correction": "« | **Commande [[compl:acheteur]]** | Commande passée en ligne par le client sur son portail, ou saisie directement en [[nom:vente]] [[acc:vente:manuel:manuelle]]. Elle suit quatre états : … | ». Le mot « Commande » ouvre la définition comme dans la fiche commune, sans répéter le terme du lexique. Essai sur copie jetable : OK, 0 signalement.",
+    "etat": "clos",
+    "cloture": "tour 4 : corrigé comme proposé (variantes/hotellerie/lexique.md:18) ; rendu frais H : « Commande passée en ligne par le client sur son portail, ou saisie directement en vente manuelle. » ; contrôle code 0."
+  },
+  {
+    "slug": "lexique-pt",
+    "domaine": "hotellerie",
+    "phrase": "| **Vendable** (ex. cocktail de bienvenue) | Dans le service | Par le service, lors de la saisie des ventes | … |",
+    "probleme": "Exemple peu crédible pour illustrer une préparation « vendue par le service, lors de la saisie des ventes ». Dans un hôtel, le cocktail de bienvenue est en général offert au client à son arrivée, pas vendu. Pour calc-cout-recette, l'exemple tient (on chiffre aussi ce qu'on offre) : pas de changement nécessaire là-bas.",
+    "correction": "Prendre un produit vendu au bar : « **Vendable** (ex. cocktail maison du bar) ». Le § 2 (« cocktail, petit-déjeuner continental, club sandwich… ») reste juste.",
+    "etat": "clos",
+    "cloture": "tour 4 : corrigé comme proposé (variantes/hotellerie/lexique-pt.md:10) ; rendu frais H : « **Vendable** (ex. cocktail maison du bar) » ; calc-cout-recette inchangé comme prévu."
+  },
+  {
+    "slug": "calc-cout-recette",
+    "domaine": "hotellerie",
+    "phrase": "chaque sous-produit (par exemple [[un:produit_utilisable]] préparé à part) compte pour sa portion multipliée par son propre coût de revient",
+    "probleme": "Accord qui dépend du terme mais n'est pas balisé (R7.3.3, R8.2.3). « préparé » s'accorde avec [[un:produit_utilisable]] : juste aujourd'hui (H « Consommable », masculin), faux si le client corrige le lexique H avec un terme féminin. Les autres accords de la variante sont tous balisés.",
+    "correction": "« (par exemple [[un:produit_utilisable]] [[acc:produit_utilisable:préparé:préparée]] à part) ». Le rendu H ne change pas.",
+    "etat": "clos",
+    "cloture": "tour 4 : corrigé comme proposé (variantes/hotellerie/calc-cout-recette.md:3, [[acc:produit_utilisable:préparé:préparée]]) ; rendu frais H inchangé : « (par exemple un consommable préparé à part) » ; contrôle code 0."
+  },
+  {
+    "slug": "lexique",
+    "domaine": "hotellerie",
+    "phrase": "| **Cuisine centrale** | Lieu de production et de stockage commun à vos services, rattaché au compte : production centrale des repas, économat… |",
+    "probleme": "Tournure maladroite. Après « Lieu … : », la liste mêle une activité (« production centrale des repas ») et un lieu (« économat »). « production centrale » répète aussi « production » du début de la phrase. Le sens reste clair (mineur).",
+    "correction": "« | **[[Nom:labo]]** | Lieu de production et de stockage commun à [[votre:activite:pl]], rattaché au compte, qui regroupe par exemple la production des repas et l'économat. [[acc:labo:Il:Elle]] achète … | » (sans mot du lexique H en clair).",
+    "etat": "clos",
+    "cloture": "tour 4 : corrigé comme proposé (variantes/hotellerie/lexique.md:22) ; rendu frais H : « …rattaché au compte, qui regroupe par exemple la production des repas et l'économat. Elle achète… » ; aucun mot H en clair, contrôle code 0."
+  }
+]

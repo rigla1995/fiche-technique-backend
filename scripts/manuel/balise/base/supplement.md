@@ -1,0 +1,1 @@
+[[Un:supplement]] est [[un:produit]] [[acc:produit:vendu:vendue]] en plus d'[[un:produit]] [[acc:produit:principal:principale]] et [[acc:produit:facturé:facturée]] séparément (ex : sauce, extra fromage). [[acc:supplement:Il:Elle]] a sa propre catégorie de type "[[nom:supplement]]" et entre dans le calcul du chiffre d'affaires.

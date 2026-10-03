@@ -1,0 +1,1 @@
+Chaque [[nom:article]] a une unité de mesure (kg, L, pièce, g…) utilisée pour [[le:stock]], [[le:portion:pl]] [[du:fiche_technique:pl]] et les prix unitaires. Les unités sont propres à chaque client.

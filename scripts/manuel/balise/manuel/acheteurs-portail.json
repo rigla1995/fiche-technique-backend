@@ -1,0 +1,15 @@
+{
+  "slug": "acheteurs-portail",
+  "titre": "Le portail [[court:acheteur]]",
+  "exclusions": [
+    {
+      "extrait": "Tout article proposé",
+      "forme": "article",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "offre du catalogue du portail au sens générique (articleType ingredient|produit, PortailAcheteurPage.tsx:29), pas l'article du référentiel : balisé, H et C restreindraient la règle aux fournitures (matières premières)"
+    }
+  ],
+  "baliseur": "L7",
+  "relecteur": "L6"
+}

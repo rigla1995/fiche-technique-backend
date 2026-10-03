@@ -1,0 +1,98 @@
+[
+  {
+    "fiche": "acheteurs-carnet",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« L'option « Créer les comptes portail » » : case à cocher de l'import Excel, sans lien avec supplement (= Option en C) ; sens clair. Collision connue (§10.3, option(s)), besoin L7-3"
+  },
+  {
+    "fiche": "configuration-vente",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« L'Espace Vente est une option de votre abonnement » : option = module de l'abonnement (comme onboarding-avenants, L3.auto.json) ; collision connue avec supplement = Option en C (§10.3), sens clair dans le contexte de l'abonnement ; besoin L7-3"
+  },
+  {
+    "fiche": "configuration-vente",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme (« sélecteur d'activité : chaque activité ») ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "charges",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme (« sélecteur d'activité : les charges se déclarent activité par activité ») ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "charges",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« Mode de saisie avec deux options : Montant global ou Détail par poste » : choix d'un mode de saisie, sans lien avec supplement (= Option en C) ; sens clair ; besoin L7-3"
+  },
+  {
+    "fiche": "ventes-labo",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "l'origine écrit deux mots différents (« sélecteur de labo … pour choisir le laboratoire ») que H rend tous deux « cuisine centrale » (labo et labo_long) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "ventes-labo",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "même phrase que pour H : « labo » et « laboratoire » rendus tous deux « site de production » ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "acheteurs-module",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "« transforme votre labo en point de vente B2B » : sens général (lieu qui vend), exclu en homonyme ; en C le mot est aussi le terme d'activite, mais l'origine dit déjà la même chose en restauration (où « point de vente » décrit aussi l'activité) : sens clair ; besoin L7-3"
+  },
+  {
+    "fiche": "acheteurs-tarifs",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Matières premières",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme (« **Articles** marqués Commandable (… dans la page [Articles](#referentiel-articles) » : nom de la page, Sidebar et TarifsAcheteursPage.tsx:285 voc.Pl('article')) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "acheteurs-ventes",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "client professionnel",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme (« vers un acheteur : choisissez l'**acheteur** », libellé du champ VenteAcheteurPage.tsx:288 voc.Nom('acheteur')) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "dashboard",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "réception",
+    "decision": "accepté",
+    "raison": "« les réceptions en provenance du labo » : entrées en stock venues du labo, que l'historique classe comme approvisionnements de type transfert ; le sens C (appro = Réception) reste juste ; besoin L7-3"
+  },
+  {
+    "fiche": "dashboard",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "site",
+    "decision": "accepté",
+    "raison": "« pertes … par site » : site = activité ou labo (pertes consolidées des deux) ; en C, « site » est aussi la forme courte de labo, mais la phrase précédente nomme les deux : sens clair ; collision connue (§10.3, site(s)), besoin L7-3"
+  }
+]

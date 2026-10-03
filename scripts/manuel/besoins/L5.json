@@ -1,0 +1,18 @@
+[
+  {
+    "id": "L5-1",
+    "fiche": "stock-activites, historique, factures",
+    "besoin": "Collisions qu'aucune balise ne lève (I10), dans des fiches sans variante : C « Un produit fabriqué fabriqué au site de production » (stock-activites, origine « Un produit transformé fabriqué au labo » ; l'accord est nécessaire en H, « Une préparation fabriquée », signalement 7 accepté) ; C « réception » en clair pour le côté qui reçoit une livraison interne (historique ×2 : « pour une réception depuis le site de production », « (envoi ou réception) » ; factures ×1 : « (réception depuis le site de production qui vous alimente) » ; signalements 12 acceptés) ; H et C « livraison » en clair au sens de livraison d'un fournisseur, à côté de « livraison interne » (factures : « retrouver une livraison précise », « une même livraison » ; non signalé par l'outil, « livraison » seul n'étant pas une forme du lexique, collision « livraison(s) » du tableau du §10.3).",
+    "proposition": "Les accepter et les inscrire à l'étape C au §10.3 (tableau des collisions ; « produit fabriqué fabriqué » à côté de « produits fabriqués fabriqués » de calc-prix, besoin L8-2) et dans ecarts-visibles-2c.md.",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : acceptées pour le 2c (I10, fiches sans variante). Inscription au tableau des collisions du §10.3 (« produit fabriqué fabriqué » à côté de « produits fabriqués fabriqués » de calc-prix ; exemples de réception(s) et livraison(s)) et dans ecarts-visibles-2c.md reportée à l'étape C (récapitulatif L9-4)."
+  },
+  {
+    "id": "L5-2",
+    "fiche": "stock-activites",
+    "besoin": "Relecture L5, ligne 1 (R7.1.5, vérification C) : en C, la forme courte de pt rend le sigle « PF » 4 fois en pleine phrase (lien « le lexique des PF », « production de PF » ×2 dont le lien « production de PF », « quantité de PF » ; une 5e fois dans le tableau, « PF (consommé par vos productions) », badge du détail Stock Actuel, StockPage.tsx:1156-1166) sans qu'aucun « X (SIGLE) » ne l'explique dans la fiche ; même cas en H avec « prépa » (mot familier). L'origine n'explique pas non plus « PT » (aucun « (PT) » dans la fiche) et I10 interdit d'ajouter une glose au texte commun. Le lien « le lexique des PF » (#lexique-pt), dans la même fiche (ligne 11), mène à l'explication du sigle. Aucune balise n'est fausse : [[court:pt]] n'est posé que là où l'origine écrit « PT » (lignes 11, 16, 39, 46).",
+    "proposition": "Aucune correction du texte commun. Accepter au titre du §10.3 (« Formes courtes en pleine phrase » : H « prépa », C « PF »), qui couvre déjà ce cas : rien à ajouter à la spec ; seule une variante validée pourrait gloser le sigle.",
+    "etat": "SANS OBJET",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : aucune correction du texte commun (I10) et rien à ajouter : la ligne « Formes courtes en pleine phrase » du §10.3 (H « prépa », C « PF », R7.1.5) couvre déjà le cas ; le lien « le lexique des PF » (#lexique-pt) de la même fiche mène à l'explication du sigle."
+  }
+]

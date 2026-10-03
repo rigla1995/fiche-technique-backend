@@ -1,0 +1,15 @@
+{
+  "slug": "acheteurs-tarifs",
+  "titre": "Tarifs [[Court:acheteur:pl]]",
+  "exclusions": [
+    {
+      "extrait": "Les articles sont regroupés",
+      "forme": "articles",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "ligne du catalogue des tarifs au sens générique (onglets articles et produits, TarifsAcheteursPage.tsx:77), pas l'article du référentiel"
+    }
+  ],
+  "baliseur": "L7",
+  "relecteur": "L6"
+}

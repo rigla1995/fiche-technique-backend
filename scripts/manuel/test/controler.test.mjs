@@ -204,6 +204,25 @@ test('points 7 et 9 (besoins L2-1, L2-2) : contraction manquée ; répétition c
   assert.deepEqual(racinesRepetees('**[[votre:labo_long]]** central', vocabDefaut), []);
 });
 
+test('points 8 et 9 (besoin L4-3) : glose et élision coupées par une marque d\'emphase ; élision à travers « la/aux »', () => {
+  const H = VOC.hotellerie;
+  const M = VOC.miroir;
+  // produits-utilisables : H « Un **consommable** (consommable) » échappait au point 8 (« ** » avant la parenthèse).
+  const glose = 'Un **[[nom:produit_utilisable]]** ([[court:produit_utilisable]]) est';
+  assert.equal(rendu(vocabDefaut, glose), 'Un **produit utilisable** (PU) est');
+  assert.deepEqual(glosesIdentiques(rendu(H, glose), rendu(vocabDefaut, glose)).map((x) => x.texte), ['consommable (consommable)']);
+  assert.deepEqual(glosesIdentiques(rendu(vocabDefaut, glose), rendu(vocabDefaut, glose)), []);
+  // produits-vendables : miroir « En tant que **animatrice** » échappait au point 9.
+  const queGras = 'En tant que **[[nom:gerant]]**, vous consultez';
+  assert.deepEqual(elisionsFautives(rendu(M, queGras), rendu(vocabDefaut, queGras)).map((x) => x.texte), ['que animatrice']);
+  assert.deepEqual(elisionsFautives(rendu(H, queGras), rendu(vocabDefaut, queGras)), []);
+  // produits-utilisables : [[acc:labo:au(x):à la/aux]] donne en miroir « à la/aux usine(s) » (besoin L4-4) ; H juste.
+  const alt = 'fabriqué [[acc:labo:au(x):à la/aux]] [[nom:labo]](s) choisi(s)';
+  assert.equal(rendu(vocabDefaut, alt), 'fabriqué au(x) labo(s) choisi(s)');
+  assert.deepEqual(elisionsFautives(rendu(M, alt), rendu(vocabDefaut, alt)).map((x) => x.texte), ['la/aux usine']);
+  assert.deepEqual(elisionsFautives(rendu(H, alt), rendu(vocabDefaut, alt)), []);
+});
+
 test('acceptations (relectures/<lot>.auto.json) : signalement accepté, acceptation sans objet', () => {
   const r = racineTemoins();
   try {
@@ -288,6 +307,32 @@ test('--variante : points 2 à 6, forme du domaine en clair, caractère hors pol
     C.ecrireTexte(path.join(r, 'variantes', 'hotellerie', 'faq.md'), 'x');
     C.ecrireJson(path.join(r, 'variantes', 'hotellerie', 'faq.json'), { titre: null, baseMd5: 'x', exclusions: [] });
     assert.ok(controlerVariante(creerContexte({ racine: r }), 'hotellerie', 'faq', { ecrire: false }).echecs.some((e) => /lots\.json/.test(e.message)));
+  } finally { fs.rmSync(r, { recursive: true, force: true }); }
+});
+
+test('--variante : une forme du domaine écrite en clair s\'exclut (R8.2.3, besoins V-H1-1, V-C1-1, V-H2-1, V-C2-1) ; pas dans le texte commun', () => {
+  const r = racineTemoins();
+  try {
+    const commun = C.lireTexte(path.join(r, 'balise', 'manuel', 'lexique.md'));
+    const ecrireV = (md, exclusions) => {
+      C.ecrireTexte(path.join(r, 'variantes', 'hotellerie', 'lexique.md'), md);
+      C.ecrireJson(path.join(r, 'variantes', 'hotellerie', 'lexique.json'), { titre: null, baseMd5: C.md5(commun), exclusions });
+      return controlerVariante(creerContexte({ racine: r }), 'hotellerie', 'lexique', { ecrire: false });
+    };
+    // « Room service » (composant H) contient « service », forme H de activite : sans exclusion, échec du point 3.
+    const md = variantePropre().replace('servent les clients', 'servent les clients, du bar au room service,');
+    assert.ok(ecrireV(md, []).echecs.some((e) => e.point === 3 && /forme du domaine « service »/.test(e.message)));
+    const x = { extrait: 'room service', forme: 'service', type: 'nom-fige', occurrences: 1, justification: 'libellé du composant H (domaines.json)' };
+    const ok = ecrireV(md, [x]);
+    assert.equal(ok.passe, true, JSON.stringify(ok.echecs));
+    // Un extrait sans forme par défaut ni forme du domaine reste « sans emploi » ; « forme » doit être dans l'extrait.
+    assert.ok(ecrireV(md, [x, { ...x, extrait: 'du bar', forme: undefined }]).echecs.some((e) => /sans emploi \(l'extrait ne contient aucune forme par défaut ni forme du domaine\)/.test(e.message)));
+    assert.ok(ecrireV(md, [{ ...x, forme: 'room' }]).echecs.some((e) => /« forme » "room" absente de l'extrait/.test(e.message)));
+    // Texte commun : une exclusion doit toujours porter une forme PAR DÉFAUT (« service » n'en est pas une).
+    const hp = lireFiche(r, 'historique-paiements');
+    ecrireFiche(r, 'historique-paiements', hp.md, { ...hp.json, exclusions: [{ ...x, extrait: 'service' }] });
+    const f = controlerFiche(creerContexte({ racine: r }), 'historique-paiements', { ecrire: false });
+    assert.ok(f.echecs.some((e) => /sans emploi \(l'extrait ne contient aucune forme par défaut\)$/.test(e.message)), JSON.stringify(f.echecs));
   } finally { fs.rmSync(r, { recursive: true, force: true }); }
 });
 

@@ -1,0 +1,11 @@
+[
+  {
+    "slug": "stock-activites",
+    "domaine": "ceramique",
+    "phrase": "Par ailleurs, une même validation ne peut pas mélanger production de PF et réception de matières premières : dès qu'une quantité de PF est saisie, les champs Fournisseur et Réf Facture se désactivent",
+    "probleme": "R7.1.5 (vérification C) : le sigle « PF » apparaît 4 fois en pleine phrase (« le lexique des PF », « production de PF » ×2, « quantité de PF »), et la fiche ne l'explique jamais par un « X (SIGLE) ». L'origine n'en a pas non plus (« PT » jamais glosé dans cette fiche) ; I10 interdit d'en ajouter un. Le libellé de lien « le lexique des PF » (#lexique-pt), dans la même fiche, mène à l'explication. Même cas en H avec « prépa » (mot familier). Aucune balise n'est fausse : c'est une vérification demandée par R7.1.5, pas une faute.",
+    "correction": "Aucune correction dans le texte commun. À accepter au titre du §10.3 (« Formes courtes en pleine phrase » : H « prépa », C « PF »). L'auteur peut l'inscrire dans relectures/L5.auto.json ou dans besoins/L5.json (L5-1) pour l'étape C.",
+    "etat": "clos",
+    "cloture": "Tour 4 : clos. Aucune correction du texte commun n'était demandée (I10) ; l'auteur l'a inscrit dans besoins/L5.json (L5-2, OUVERT, pour l'intégrateur). Vérifié sur rendus frais : C « PF » 4 fois en pleine phrase (l.18, 46, 53 ×2) + badge du tableau (l.23) ; H « prépa(s) » aux mêmes endroits ; 0 « (PT) » dans l'origine ; la cible #lexique-pt (rendu C) explique « produit fabriqué (PF) » ; §10.3 l.1740 « Formes courtes en pleine phrase » couvre le cas."
+  }
+]

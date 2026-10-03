@@ -1,0 +1,47 @@
+[
+  {
+    "slug": "lexique-pt",
+    "domaine": "ceramique",
+    "phrase": "| **Vendable** (ex. bol émaillé) | Dans le point de vente | … ; puis §2 : « Un PF vendable est un produit fini vendu par le point de vente : bol, assiette, vase, carreau émaillé… … il permet de produire à l'avance »",
+    "probleme": "Métier peu crédible. La règle (inchangée) veut que le vendable soit fabriqué « dans le point de vente », et la variante définit le point de vente comme « showroom, boutique ou magasin d'usine » (lexique). On lit donc qu'un bol ou un carreau émaillé est façonné et cuit dans un showroom, ce qu'aucun lecteur céramiste ne croira. Le texte commun en restauration n'a pas ce problème : on fait bien une tarte dans un restaurant.",
+    "correction": "Garder la règle et rendre l'exemple vraisemblable, au plus court : dans le tableau, « **Vendable** (ex. bol tourné et émaillé en atelier-boutique) » ; au §2, « … vendu par le point de vente : bol, tasse ou assiette faits en atelier-boutique… » ; et ajouter « atelier-boutique » à la définition du lexique (« Showroom, boutique, atelier-boutique ou magasin d'usine exploité par votre compte »). La parenthèse déjà présente (un site de production peut aussi le gérer et l'envoyer par livraison interne) couvre le cas de l'usine.",
+    "etat": "clos",
+    "cloture": "Tour 4 : vérifié dans variantes/ceramique/lexique-pt.md et le rendu frais (rendus/V-C1/ceramique/lexique-pt.md:16 et :27) ; « atelier-boutique » ajouté à la définition du point de vente (rendu lexique.md:41) ; aucune balise collée, règle inchangée."
+  },
+  {
+    "slug": "calc-cout-recette",
+    "domaine": "ceramique",
+    "phrase": "- Émail blanc (sous-produit) : 0,200 kg × 6,550 DT/kg = 1,310 DT",
+    "probleme": "Quantité peu crédible. 200 g d'émail pour une assiette de 27 cm, c'est environ quatre fois trop : il en faut plutôt 40 à 60 g sur les deux faces, en émaillage normal. L'émail pèse alors la moitié du coût de l'assiette, et un céramiste le verra. Les calculs, eux, sont justes (vérifiés : 1,310 ; 6,550 ; 2,560).",
+    "correction": "« Émail blanc (sous-produit) : 0,060 kg × 6,550 DT/kg = 0,393 DT » et « **Coût de revient de l'assiette = 0,600 + 0,200 + 0,450 + 0,393 = 1,643 DT TTC.** » (recalculé : 0,060 × 6,550 = 0,393 ; total 1,643). Le reste de l'exemple ne change pas (nomenclature de l'émail pour 1 kg).",
+    "etat": "clos",
+    "cloture": "Tour 4 : rendu frais calc-cout-recette.md:32 « 0,060 kg × 6,550 DT/kg = 0,393 DT » et :36 total « 1,643 DT TTC » ; recalcul 0,060 × 6,550 = 0,393 ; 0,600 + 0,200 + 0,450 + 0,393 = 1,643."
+  },
+  {
+    "slug": "lexique",
+    "domaine": "ceramique",
+    "phrase": "| **Perte (avarie / déchet)** | Marchandise sortie du stock sans être vendue : *avarie* (produit fêlé, ébréché, défaut d'émail) ou *déchet* …",
+    "probleme": "Français : l'énumération mêle deux adjectifs qui qualifient « produit » (fêlé, ébréché) et un nom (défaut d'émail). Le texte commun n'aligne que des adjectifs (périmé, abîmé, impropre).",
+    "correction": "« *avarie* ([[nom:produit]] [[acc:produit:fêlé:fêlée]], [[acc:produit:ébréché:ébréchée]] ou présentant un défaut d'émail) » ; aucun accord à ajouter.",
+    "etat": "clos",
+    "cloture": "Tour 4 : source lexique.md:33 balisée comme proposé (nom:produit + 2 acc), rendu lexique.md:39 « produit fêlé, ébréché ou présentant un défaut d'émail »."
+  },
+  {
+    "slug": "lexique",
+    "domaine": "ceramique",
+    "phrase": "| **Coefficient multiplicateur** | … Un vase dont la matière coûte 4 DT et vendu 12 DT a un coefficient de 3. |",
+    "probleme": "Français : une relative (« dont la matière coûte ») est coordonnée à un participe (« vendu »). La tournure vient du texte commun, mais une variante peut reformuler (R8.2.5), et la relecture doit vérifier que le français est juste.",
+    "correction": "« Un vase dont la matière coûte 4 DT et qui est vendu 12 DT a un coefficient de 3. »",
+    "etat": "clos",
+    "cloture": "Tour 4 : rendu lexique.md:21 « dont la matière coûte 4 DT et qui est vendu 12 DT »."
+  },
+  {
+    "slug": "lexique",
+    "domaine": "ceramique",
+    "phrase": "| **Produit fini catalogue** | … marchandise achetée pour être revendue (ex. présentoir, bougie parfumée) …",
+    "probleme": "Métier, point mineur : un présentoir est d'ordinaire un mobilier du magasin, pas une marchandise qu'un showroom de céramique revend. La bougie parfumée, elle, va bien.",
+    "correction": "« (ex. bougie parfumée, linge de table) », ou un autre article de décoration acheté pour être revendu tel quel.",
+    "etat": "clos",
+    "cloture": "Tour 4 : rendu lexique.md:45 « (ex. bougie parfumée, linge de table) »."
+  }
+]

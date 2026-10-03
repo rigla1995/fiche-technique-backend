@@ -1,0 +1,50 @@
+[
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Produits finis",
+    "decision": "accepté",
+    "raison": "ligne du tableau « Les grands modules » : « Produits finis, semi-finis et produits finis catalogue » sont les trois noms du lexique Céramique (produit_vendable, produit_utilisable, produit_valorise ; menu cat_pt_*), écrits à la place des mots par défaut « vendables, utilisables et valorisés » absents des écrans (relectures/V-C2.json, ligne 3 du tour 2) ; la répétition vient des vrais noms, pas d'une tournure"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Point de vente",
+    "decision": "accepté",
+    "raison": "ligne du tableau « Qui possède quoi ? » : la colonne Niveau (« Point de vente / site de production ») puis la règle « Chaque point de vente a ses prix et ses ventes » ; même structure que la fiche commune (acceptation L2.auto.json, même cas) ; remplacer le terme par un exemple (« showroom ») restreindrait la règle à un type de point de vente"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« **Avec site de production** : le point de vente est rattaché à un site de production » : libellé du bouton de l'écran (« Avec {voc.nom('labo')} », ActivitesPage.tsx:954, R7.1.3) puis la notion ; un pronom (« celui qui ») rendrait la phrase moins claire"
+  },
+  {
+    "fiche": "demarrage",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "« vos points de vente … « + Ajouter mon point de vente » … compte dépôt (sans point de vente) » : libellé du bouton (« + Ajouter {voc.mon('activite')} », ActivitesPage.tsx:629, R7.1.3) entre la notion et la définition du compte dépôt, comme dans la fiche commune"
+  },
+  {
+    "fiche": "demarrage",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« Pour chaque point de vente approvisionné par le site de production, choisissez « Avec site de production » » : la notion puis le libellé du bouton (« Avec {voc.nom('labo')} », ActivitesPage.tsx:954 et 1393, R7.1.3) ; la répétition « inclut un labo) pour créer votre labo » de la fiche commune est levée (« pour le créer »)"
+  },
+  {
+    "fiche": "onboarding-configuration",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "libellés de l'écran cités tels quels (R7.1.3) : encadré « Démarrez {voc.votre('labo')} » (ActivitesPage.tsx:592), bouton « Créer {voc.mon('labo')} » (ActivitesPage.tsx:613), choix « Avec / Sans {voc.nom('labo')} » de l'assistant (ActivitesPage.tsx:1393, 1406), à côté de la notion ; les répétitions « matière première » / « matières premières » de la fiche commune (L3.auto.json) sont levées dans la variante"
+  }
+]

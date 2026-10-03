@@ -1,0 +1,26 @@
+{
+  "slug": "compte-activites-labos",
+  "domaine": "hotellerie",
+  "titre": null,
+  "mots_cles": null,
+  "statut": "brouillon",
+  "baseMd5": "4c32347fe4b89ff00361265b939826de",
+  "exclusions": [
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2), comme dans le texte commun"
+    },
+    {
+      "extrait": "formule d'activités",
+      "forme": "activités",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom commercial de l'offre (spec §7.2 « Formule d'activités ») ; badges fixes « Activité Basique / Premium » (MonAbonnementPage.tsx:93-94), comme dans le texte commun"
+    }
+  ],
+  "redacteur": "V-H2",
+  "relecteur": "V-C2"
+}

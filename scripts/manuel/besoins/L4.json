@@ -1,0 +1,34 @@
+[
+  {
+    "id": "L4-1",
+    "fiche": "referentiel-articles, produits-vendables, articles-valorises, fiches-techniques",
+    "besoin": "Collisions qu'aucune balise ne lève (I10), dans des fiches sans variante, acceptées dans relectures/L4.auto.json, à inscrire au §10.3 : C « Les matières premières sont vos matières premières et composants » (referentiel-articles, « matières premières » en clair dans l'origine ; manque au tableau du §10.3) ; C « Pour un produit fini (hors option), une option 📦 … » (produits-vendables) ; H « familles marquées « vendable » et « non consommable » » (articles-valorises) ; C, non signalé par le point 12 car « coût de revient » n'est pas une forme entière du lexique C : titre « Fiches de Coût de Revient & coût de revient » et « La fiche de coût de revient … calcule son coût de revient matière » (fiches-techniques), et « [Fiches de Coût de Revient](#fiches-techniques) — coût de revient et export » (produits-vendables, ligne 49, ajout relecture L4.json n°4) ; fiche_technique C = « Fiche de coût de revient ».",
+    "proposition": "Les accepter et les inscrire à l'étape C au §10.3 (tableau des collisions : ajouter « matière(s) première(s) » / C article et « coût de revient » / C fiche_technique) et dans ecarts-visibles-2c.md.",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : acceptées pour le 2c (I10, fiches sans variante). Inscription reportée à l'étape C : tableau des collisions du §10.3 (lignes nouvelles « matière(s) première(s) » / C article et « coût de revient » / C fiche_technique, 3 occurrences ; exemples ajoutés à « option(s) » et « consommable(s) ») et ecarts-visibles-2c.md. Repris dans le récapitulatif L9-4."
+  },
+  {
+    "id": "L4-2",
+    "fiche": "produits-utilisables",
+    "besoin": "Glose d'origine « Un **produit utilisable** (PU) » : le sigle est rendu par [[court:produit_utilisable]] ; en H et en C le terme n'a pas de forme courte, la glose redit le nom : H « Un **consommable** (consommable) », C « Un **semi-fini** (semi-fini) ». avecCourt (qui omet la parenthèse quand les deux formes sont égales) est impossible : le gras ne couvre que le nom, la parenthèse est hors du gras (I10). Une exclusion glose laisserait « (PU) », sigle que H et C ne voient jamais à l'écran (ProductList.tsx:566 écrit voc.court('produit_utilisable')).",
+    "proposition": "Accepter (sens clair, fiche sans variante) et l'inscrire au §10.3 avec les gloses redites. Hors 2c : une balise qui n'écrit « (court) » que si la forme courte diffère du nom (par exemple [[siCourt:clé]]), utile aussi à d'autres « X (SIGLE) » coupés par le gras.",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : redite acceptée, choix du relecteur (relectures/L4.json ligne 3) : le §7.5 et le GUIDE §7 permettent « une acceptation écrite dans relectures/ » ; une exclusion glose de « (PU) » ferait lire en H et en C un sigle qu'aucun écran ne montre (ProductList.tsx:566). L'écart avec le commentaire de l'exemple 9 (§7.7, GUIDE §11 : « corrigée ou exclue ») est levé dans le GUIDE (§7 et §11 : acceptée par écrit quand l'exclusion laisserait un sigle que le domaine ne voit jamais) ; la spec §7.7 est à amender à l'étape C. Depuis la correction de L4-3, le point 8 signale H « consommable (consommable) », C « semi-fini (semi-fini) » et miroir « invention utile (invention utile) » : acceptés dans relectures/L4.auto.json. Inscription au §10.3 (gloses redites, fiches sans variante) reportée à l'étape C (récapitulatif L9-4). La balise « siCourt » est hors 2c (§0.4)."
+  },
+  {
+    "id": "L4-3",
+    "fiche": "produits-utilisables, produits-vendables",
+    "besoin": "Défaut d'outil (controler.mjs) : les points 8 et 9 ne retirent pas les marques d'emphase, comme le fait le point 7 depuis B1 (besoin L2-2). Le point 8 ne voit pas H « Un **consommable** (consommable) » (gloses(), controler.mjs:269-281 : « avant » finit par « ** ») alors qu'il signale « semi-fini » en C par le point 7 seulement ; le point 9 ne voit pas, en miroir, « En tant que **animatrice** » (RE_SANS_ELISION, controler.mjs:309 : un espace puis « ** », pas une voyelle). Aucun cas dans H ou C pour le point 9 (gérant H et C commencent par une consonne). Le point 9 ne voit pas non plus « la » suivi de « / » (forme « à la/aux » de [[acc:labo:au(x):à la/aux]], voir L4-4) : « la/aux usine(s) » en miroir (relecture L4.json n°5).",
+    "proposition": "Retirer « ** », « * », « _ » avant les points 8 et 9 (même traitement que le point 7) ; relancer les lots déjà faits. Pour L4, le cas du point 8 est déjà accepté (L4-2).",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : controler.mjs : les points 8 (glosesIdentiques) et 9 (elisionsFautives) retirent les marques d'emphase des deux rendus avant la recherche, comme le point 7 (sansMarques) ; le point 9 voit aussi l'élision à travers une alternative « mot/mot » (« à la/aux usine(s) », RE_SANS_ELISION). Test ajouté (test/controler.test.mjs, « points 8 et 9 (besoin L4-3) ») ; en-tête de l'outil, README et GUIDE §10 mis à jour ; spec §3.5 points 8 et 9 à amender à l'étape C. Rejoué sur les 61 fiches, 32 entrées et 16 variantes : 6 signalements nouveaux, tous dans des fiches de B2, aucun dans B1 ni dans les variantes : produits-utilisables (point 8 H, C, miroir ; point 9 miroir « la/aux usine »), produits-vendables (point 9 miroir « que animatrice »), activites (point 8 C « points de vente (points de vente) ») ; acceptés dans relectures/L4.auto.json et L6.auto.json. controler --tout VERT."
+  },
+  {
+    "id": "L4-4",
+    "fiche": "produits-utilisables",
+    "besoin": "Limite de la grammaire (relecture L4.json n°5) : « [[acc:labo:au(x):à la/aux]] » ne sait pas élider. Un terme labo féminin commençant par une voyelle donne « à la/aux usine(s) » au lieu de « à l'/aux usine(s) » (miroir : « L'invention est **fabriquée à la/aux usine(s) choisie(s)** »). H (« à la/aux cuisine(s) centrale(s) ») et C (« au(x) site(s) de production ») sont justes. Aucune balise ne fait mieux sans reformuler le texte commun (I10) ; le point 9 ne voit pas ce cas (voir L4-3).",
+    "proposition": "L'accepter comme limite connue (miroir seulement aujourd'hui) et l'inscrire au §10.3, pour qu'un futur lexique au labo féminin à initiale vocalique soit relu à cet endroit (produits-utilisables, tableau des modes d'approvisionnement, ligne « limités aux transferts »).",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : limite de la grammaire acceptée pour le 2c (miroir seulement : H « à la/aux cuisine(s) centrale(s) » et C « au(x) site(s) de production » sont justes). Depuis la correction de L4-3, le point 9 la signale (« la/aux usine », acceptée pour le miroir dans relectures/L4.auto.json) : un futur lexique au labo féminin à initiale vocalique sera signalé à cet endroit sans relecture spéciale. Inscription au §10.3 reportée à l'étape C (récapitulatif L9-4)."
+  }
+]

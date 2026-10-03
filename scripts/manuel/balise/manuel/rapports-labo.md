@@ -1,0 +1,3 @@
+## 🧪 Le rapport [[compl:labo]] a rejoint le Tableau de bord
+
+Le suivi [[du:labo]] se fait désormais dans l'onglet **[[Court:labo]]** du [Tableau de bord](#dashboard) : valeur [[du:stock]], achats, **production [[de:pt:pl]]**, [[nom:transfert:pl]] [[acc:transfert:émis:émise:pl]] par [[nom:activite]] destinataire, [[nom:perte:pl]] et [[nom:vente:pl]] [[du:labo]] — avec la période et [[le:labo:pl]] de votre choix, et un export Excel.

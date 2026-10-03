@@ -222,6 +222,10 @@ est propre à l'outil :
 - **Points 7 et 9 (intégrateur B1, besoins L2-2 et L2-1).** Le point 7 retire les marques d'emphase (`**`, `*`, `_`)
   avant de chercher les répétitions (« **sites de production** de production ») ; le point 9 signale aussi les
   contractions manquées « de le », « de les », « à le », « à les » (« Création de le premier service »).
+- **Points 8 et 9 (intégrateur B2, besoin L4-3).** Ils retirent aussi les marques d'emphase avant de chercher les gloses
+  redites (« Un **consommable** (consommable) ») et les élisions (« En tant que **animatrice** ») ; le point 9 voit
+  l'élision à travers une alternative « la/aux » (« à la/aux usine(s) » en miroir, besoin L4-4). Rejoué sur les 61
+  fiches, les 32 entrées et les 16 variantes : 6 signalements nouveaux, tous dans L4 et L6, acceptés.
 - **`--lexique`.** Le fichier est une liste d'écarts (`{ cle: { sg, pl, g, el… } }`, ou `{ lexique: … }` /
   `{ ecarts: … }`). Refus (code 2) : une clé hors du lexique (fichier enveloppé, `{ "hotellerie": { … } }`), des écarts
   qui donnent le lexique par défaut (`{}`), un `md5Lexique` d'enveloppe qui ne correspond pas aux écarts, ou un md5
@@ -231,7 +235,8 @@ est propre à l'outil :
   avec un avertissement.
 - **Exclusions.** Appliquées dans l'ordre de la liste, sur le contenu et le titre balisés réunis (`retirerExtraits`).
   Chacune : type de la liste fermée, `justification`, `extrait` sans balise qui contient une forme par défaut (sinon
-  « sans emploi »), `forme` présente dans l'extrait, `occurrences` exact, extrait retrouvé dans chaque rendu.
+  « sans emploi » ; dans une variante, une forme du lexique de son domaine suffit), `forme` présente dans l'extrait,
+  `occurrences` exact, extrait retrouvé dans chaque rendu.
 - **`contenu_defaut`** : md5 du rendu par défaut = `md5Garde` de l'origine (pour les 5 fiches acheteurs, le contenu).
 - **Signalements 7 à 12** : une ligne par fiche, point, domaine et texte (`texte` = ce que l'outil affiche ; pour le
   point 12, le mot au singulier). Acceptation : `relectures/<lot>.auto.json`,
@@ -242,7 +247,8 @@ est propre à l'outil :
   passent (parties, titres du manuel et titres de la base rendus distincts dans les 4 vocabulaires, titres balisés de la
   base uniques sans casse, longueurs, `baseMd5`), s'il ne reste aucun signalement « à traiter » et aucune acceptation
   sans objet. Rapport : `rendus/tout.json`.
-- **Variantes** : points 2 à 6 dans leur domaine, plus : forme du lexique DU domaine en clair = échec (sauf exclusion),
+- **Variantes** : points 2 à 6 dans leur domaine, plus : forme du lexique DU domaine en clair = échec (sauf exclusion,
+  dont l'extrait porte alors cette forme du domaine : R8.2.3, intégrateur B2, besoins V-H1-1, V-C1-1, V-H2-1, V-C2-1),
   caractère que le PDF écrirait « ? » (`HORS_POLICE` et `EQUIVALENTS` lus dans `src/utils/pdfTexte.ts` du front),
   titre rendu égal à un autre titre, `baseMd5` périmé, variante hors des lots V-* ; liens et blocs = ceux de la fiche
   d'origine. Rapport « mots du métier » de la variante contre la fiche commune.
@@ -389,7 +395,7 @@ transaction sur la base locale, toujours annulée). `npm test` ne les lance pas 
 | `parties-lots.test.js` | `parties.json` (I10, I11, rendus distincts), `lots.json` (couverture, chiffres du §9.2, relecteurs) |
 | `prebaliser.test.mjs` | 3 fiches témoins à l'octet, I10 et I11 sur 61 fiches et 32 entrées, règles R3.4.1 à R3.4.4 |
 | `guide.test.js` | tableaux du guide à jour ; exemples « justes » identiques par défaut ; origines exactes |
-| `controler.test.mjs` | les 3 témoins verts et leurs rendus ; R3.1.1 par `controler.mjs` (« Espace Cuisine ») ; points 1 à 6 en échec un par un ; cibles de liens masquées ; signalements 7 à 12 sur les exemples de la spec, contractions et répétitions coupées par une marque d'emphase (B1) ; acceptations ; `--tout` ; variantes ; `--lexique` |
+| `controler.test.mjs` | les 3 témoins verts et leurs rendus ; R3.1.1 par `controler.mjs` (« Espace Cuisine ») ; points 1 à 6 en échec un par un ; cibles de liens masquées ; signalements 7 à 12 sur les exemples de la spec, contractions et répétitions coupées par une marque d'emphase (B1), gloses et élisions coupées par une marque d'emphase, élision à travers « la/aux » (B2) ; acceptations ; `--tout` ; variantes, dont l'exclusion d'une forme du domaine (B2) ; `--lexique` |
 | `generer-migrations.test.mjs` | chaînes SQL et étiquettes sans tiret ; 194 des témoins (LF, en-tête, inventaire, gardes, déterminisme) ; 196 avec `--slug` à tiret ; 195 et apostrophes ; champs admis ; refus du §3.6.2 ; écriture dans `migrations/` refusée sans lecture de production |
 | `retour-essai.test.js` | `retour(client)` sur un faux client : origine, défauts NULL, `_migrations`, non remis, sans `BEGIN` ni `COMMIT` ; `--remise-locale` (16 brouillons) et son refus hors local ; lecture des fichiers d'essai |
 

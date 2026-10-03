@@ -1,0 +1,22 @@
+{
+  "cle": "produits vendables et utilisables",
+  "titre": "[[Pl:produit]] vendables et utilisables",
+  "exclusions": [
+    {
+      "extrait": "sous-produit",
+      "forme": "produit",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "décision 2 du client : « sous-produit » exclu en locution, pas de nouvelle clé (spec 2c §1, §7.2)"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L9",
+  "relecteur": "L7"
+}

@@ -300,7 +300,9 @@ dans `activites` (2 fois) et `calc-transferts` ; « son propre [[nom:stock]] » 
 - **Glose qui explique un terme par une clé copiée** (`activite_desc`, `labo_long`, `labo_desc`) : elle redit le terme
   dès que le domaine le change (« un SERVICE (service) », exemple 9). Le point 8 la signale. Le relecteur choisit :
   - une exclusion `glose` (le texte reste celui d'origine) ;
-  - ou une acceptation écrite dans `relectures/`.
+  - ou une acceptation écrite dans `relectures/`, quand l'exclusion ferait lire un sigle que le domaine ne voit
+    jamais : « Un **produit utilisable** (PU) » donne H « Un **consommable** (consommable) », alors qu'une exclusion
+    de « (PU) » ferait lire en H un sigle qu'aucun écran ne montre (`produits-utilisables`, besoin L4-2).
 
   Dans la base, lue seulement par le modèle, la glose redite est tolérée (question 5 du client).
 - **« labo central », « laboratoire central »** :
@@ -394,9 +396,11 @@ Signalements, chacun corrigé ou accepté avec sa raison dans `relectures/<lot>.
 7. **mots répétés** (« centrale centrale », « de production de production »), marques d'emphase `**`, `*`, `_`
    retirées (« **sites de production** de production »), et mot de même racine collé au rendu d'une balise
    (« cuisine centrale central ») ;
-8. **gloses identiques et définitions circulaires** (« un SERVICE (service) », « | **Service** | Service ou… ») ;
-9. **élisions** fautives dans un rendu (« d'réception », « du usine », « ma armoire ») et **contractions** manquées
-   (« de le », « de les », « à le », « à les » : « Création de le premier service ») ;
+8. **gloses identiques et définitions circulaires** (« un SERVICE (service) », « | **Service** | Service ou… »),
+   marques d'emphase retirées (« Un **consommable** (consommable) », besoin L4-3) ;
+9. **élisions** fautives dans un rendu (« d'réception », « du usine », « ma armoire »), y compris à travers une
+   alternative (« à la/aux usine(s) ») et une marque d'emphase (« En tant que **animatrice** »), et **contractions**
+   manquées (« de le », « de les », « à le », « à les » : « Création de le premier service ») ;
 10. **déterminant en clair devant une balise de nom**, sur le texte balisé (« Le [[nom:labo]] »), collé ou séparé du nom
     par un adjectif (« un autre [[nom:labo]] ») ;
 11. **appositions** : deux balises de nom collées, la seconde à apposition ;
@@ -452,7 +456,7 @@ Ce que montrent ces rendus :
 - 3, 3 bis, 16 et 17 : une balise juste par défaut peut être fausse ailleurs (élision, accord). D'où les signalements 7
   à 12 et la relecture croisée.
 - 9 : la glose redite est tolérée dans la base, lue seulement par le modèle. Dans le manuel, lu par le client, elle est
-  corrigée ou exclue.
+  corrigée ou exclue, ou acceptée par écrit quand l'exclusion laisserait un sigle que le domaine ne voit jamais (§7).
 - 12 : le pléonasme « cuisine centrale centrale » est évité.
 - 13 et 14 : la grammaire est juste, mais l'exemple (tarte) ou la définition (circulaire) restent ceux de la
   restauration. C'est le rôle des variantes.
@@ -541,6 +545,12 @@ clair.
 - **Les termes du lexique restent balisés** dans la variante : une correction du lexique par le client y passera sans
   réécriture. Le contrôle refuse une forme du lexique DU DOMAINE écrite en clair. Les mots du métier hors lexique
   s'écrivent en clair.
+- **Une forme du domaine qui garde un autre sens** (libellé que l'écran écrit en clair, homonyme, nom de composant
+  comme « Room service ») s'exclut comme dans le texte commun (§4 : type, justification, occurrences) ; son extrait
+  porte alors la forme du domaine, et non une forme par défaut (intégrateur B2, besoins V-H1-1, V-C1-1, V-H2-1,
+  V-C2-1). Exemple, variante H de `lexique` : `{ "extrait": "*consommable* (nom de la colonne à l'écran", "forme":
+  "consommable", "type": "nom-fige", "occurrences": 1, … }`. Une reformulation qui garde le sens reste préférable
+  (« le module Revendeurs » plutôt que « l'option Acheteurs », variante C de `compte-activites-labos`).
 - **Fichiers** :
   - `variantes/<domaine>/<slug>.md` (contenu) ;
   - `.json` : `{ titre: null (titre commun) ou titre balisé, baseMd5, exclusions }`. `baseMd5` = md5 du

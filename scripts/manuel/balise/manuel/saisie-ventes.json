@@ -1,0 +1,78 @@
+{
+  "slug": "saisie-ventes",
+  "titre": "Saisie [[du:vente:pl]]",
+  "exclusions": [
+    {
+      "extrait": "Seuls les articles",
+      "forme": "articles",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "article vendable au sens générique (produit, supplément ou valorisé : ArticleVendable, article_type produit|ingredient), pas l'article du référentiel : balisé, H et C rangeraient les produits parmi les fournitures (matières premières)"
+    },
+    {
+      "extrait": "activer les articles",
+      "forme": "articles",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "article vendable au sens générique (produit, supplément ou valorisé : ArticleVendable, article_type produit|ingredient), pas l'article du référentiel : balisé, H et C rangeraient les produits parmi les fournitures (matières premières)"
+    },
+    {
+      "extrait": "type d'article",
+      "forme": "article",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "article vendable au sens générique (produit, supplément ou valorisé : ArticleVendable, article_type produit|ingredient), pas l'article du référentiel : balisé, H et C rangeraient les produits parmi les fournitures (matières premières)"
+    },
+    {
+      "extrait": "détaille l'article",
+      "forme": "article",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "colonne écrite en dur par l'écran : « Article » (VentesPage.tsx:716) (R7.1.3)"
+    },
+    {
+      "extrait": "chaque article",
+      "forme": "article",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "article vendable au sens générique (produit, supplément ou valorisé : ArticleVendable, article_type produit|ingredient), pas l'article du référentiel : balisé, H et C rangeraient les produits parmi les fournitures (matières premières)"
+    },
+    {
+      "extrait": "sous-produits transformés",
+      "forme": "produits transformés",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "décision 2 du client : « sous-produit » exclu en locution, pas de nouvelle clé (spec 2c §1, §7.2)"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "type de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "*Article*",
+      "forme": "Article",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "en-tête de colonne écrit en dur par l'écran, sans voc : « Article » (VentesPage.tsx:280) (R7.1.3)"
+    },
+    {
+      "extrait": "*Prix vente*",
+      "forme": "vente",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "en-tête de colonne écrit en dur par l'écran, sans voc : « Prix vente » (VentesPage.tsx:281) (R7.1.3)"
+    }
+  ],
+  "baliseur": "L7",
+  "relecteur": "L6"
+}

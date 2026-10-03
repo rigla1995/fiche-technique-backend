@@ -2,7 +2,7 @@
 
 Le carnet regroupe vos clients B2B. Chaque fiche porte : nom, entreprise, email, téléphone, adresse, **matricule fiscal** (repris sur les factures) et des notes.
 
-La **remise** n'est plus attachée à la fiche : elle se décide **à chaque commande** ([[nom:vente]] manuelle ou validation d'une commande portail).
+La **remise** n'est plus attachée à la fiche : elle se décide **à chaque commande** ([[nom:vente]] [[acc:vente:manuel:manuelle]] ou validation d'une commande portail).
 
 ### Ajouter [[un:acheteur:pl]]
 
@@ -24,5 +24,5 @@ Le badge de la colonne « Compte portail » indique l'état :
 Le bouton ✉️ crée le compte (ou renvoie l'invitation si elle a expiré). L'email d'[[un:acheteur]] **avec compte** ne peut plus être modifié : c'est son identifiant de connexion.
 
 :::attention
-Désactiver [[un:acheteur]] (interrupteur « Actif ») coupe immédiatement son accès au portail. Supprimer sa fiche supprime aussi son compte de connexion, **annule ses commandes encore en attente** (transition tracée dans l'historique des états) et **conserve ses commandes expédiées ou livrées avec leurs factures fiscales** : elles restent dans l'historique avec la mention « (supprimé) », [[le:stock]] ne bouge pas, et le filtre « [[Nom:acheteur:pl]] supprimés » de l'écran Commandes permet de les retrouver.
+Désactiver [[un:acheteur]] (interrupteur « Actif ») coupe immédiatement son accès au portail. Supprimer sa fiche supprime aussi son compte de connexion, **annule ses commandes encore en attente** (transition tracée dans l'historique des états) et **conserve ses commandes expédiées ou livrées avec leurs factures fiscales** : elles restent dans l'historique avec la mention « (supprimé) », [[le:stock]] ne bouge pas, et le filtre « [[Pl:acheteur]] [[acc:acheteur:supprimés:supprimées]] » de l'écran Commandes permet de les retrouver.
 :::

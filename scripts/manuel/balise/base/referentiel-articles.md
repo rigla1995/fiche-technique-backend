@@ -1,0 +1,1 @@
+[[Le:referentiel]] regroupe [[le:article:pl]]/[[nom:article_ingredient:pl]] du client avec leur unité, leur famille/catégorie et leur prix de référence. C'est la base à partir de laquelle on construit [[le:stock]], [[le:fiche_technique:pl]] et [[le:vente:pl]].

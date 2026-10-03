@@ -1,0 +1,18 @@
+[
+  {
+    "fiche": "lexique-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Produits Finis",
+    "decision": "accepté",
+    "raison": "« Produits Finis » et « Produits Finis Catalogue » sont deux libellés d'écran distincts (cat_pt_vendable et cat_pt_valorise, catégories du lot 1, src/vocab/categoriesPt.ts), cités tels qu'à l'écran dans l'introduction et dans la liste des filtres, comme dans la fiche commune (L1.auto.json) ; les écrire autrement ne serait plus le libellé de l'écran"
+  },
+  {
+    "fiche": "calc-cout-recette",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "quantité par unité",
+    "decision": "accepté",
+    "raison": "formule : les deux sommes parallèles répètent le terme portion (C « Quantité par unité »), comme la fiche commune (L8.auto.json) ; le terme reste balisé (R8.2.3) pour suivre une correction du lexique, et la répétition est voulue dans une formule"
+  }
+]

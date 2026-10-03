@@ -1,0 +1,1 @@
+La valeur [[du:stock]] = somme (quantité en [[nom:stock]] × prix moyen pondéré TTC) de chaque [[nom:article]] à une date donnée. Elle représente l'argent immobilisé en marchandises. Toutes les valeurs [[de:stock]] affichées dans LabFlow sont en TTC.

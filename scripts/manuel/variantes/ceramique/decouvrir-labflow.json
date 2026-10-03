@@ -1,0 +1,18 @@
+{
+  "slug": "decouvrir-labflow",
+  "titre": null,
+  "mots_cles": null,
+  "statut": "brouillon",
+  "baseMd5": "22019ceed9ce2d099a257e537e064070",
+  "exclusions": [
+    {
+      "extrait": "Prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2), comme dans la fiche commune"
+    }
+  ],
+  "redacteur": "V-C2",
+  "relecteur": "V-H2"
+}

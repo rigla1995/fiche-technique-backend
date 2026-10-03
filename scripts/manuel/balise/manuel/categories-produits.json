@@ -1,0 +1,15 @@
+{
+  "slug": "categories-produits",
+  "titre": "Catégories [[Court:produit:pl]]",
+  "exclusions": [
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L4",
+  "relecteur": "L9"
+}
