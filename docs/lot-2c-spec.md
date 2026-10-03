@@ -2191,6 +2191,10 @@ balisée. Le script refuse donc le retour réel dans un conteneur qui porte enco
   Jamais de `push --force`. Sans le retour des textes (étape 2), l'ancien serveur servirait « [[…]] » à tous les
   comptes.
 - La table de la 193 et ses brouillons restent, inoffensifs.
+- Chaque `git revert -m 1` fait sur `main` est fait aussi sur `develop` (même commit), pour que les deux branches
+  restent égales. Pour **redéployer D2** après « Annuler D2 seul », on ne refusionne pas Y (git le voit déjà
+  fusionné) : on fait `git revert` du commit de revert, sur `develop` et `main` ; au démarrage, 194 et 195 se
+  rejouent (59/0/0 et 32/0/0, prouvé au contrôle final sur une copie).
 
 ### 12.5 Maintenance après le 2c
 
