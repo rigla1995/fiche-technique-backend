@@ -1,0 +1,10 @@
+[
+  {
+    "id": "L1-1",
+    "fiche": "gerants",
+    "besoin": "Collision en Céramique : l'origine « Créez un gérant par responsable de site plutôt qu'un compte partagé » (bloc astuce) garde « responsable de site » en clair (la personne qui tient le site), qui est aussi le terme C de gerant. Rendu C : « Créez un responsable de site par responsable de site … », lu comme une tautologie (relectures/L1.json ligne 3). H : « un responsable de service par responsable de site », compris. Aucune balise ne corrige (I10 : le texte commun ne se reformule pas) ; pas de variante pour cette fiche (le client veut moins). Signalements 7 et 12 acceptés dans L1.auto.json en attendant.",
+    "proposition": "Intégrateur : (a) accepter comme limite connue et l'ajouter au tableau des collisions (spec §10.3) ; ou (b) poser la question au client avec les lexiques brouillons : le terme C de gerant (« Responsable de site ») est un brouillon, un autre terme (par exemple « Gérant de site ») réglerait le cas sans toucher le manuel. Variante C de gerants déconseillée.",
+    "etat": "DÉCISION CLIENT",
+    "decision": "Intégrateur B1 (03/10/2026) : option (a) retenue pour le 2c : collision connue, acceptée telle quelle (I10 ; pas de variante pour gerants, le client veut moins), à inscrire au tableau des collisions du §10.3 et dans ecarts-visibles-2c.md à l'étape C. L'option (b) relève du client : le terme C de gerant (« Responsable de site ») est un brouillon (§10.3, dernier point) ; un autre terme (ex. « Gérant de site ») lèverait la tautologie sans retouche du manuel. À joindre aux corrections du lexique C remises avec la livraison (§15). relectures/L1.json ligne 3 close (acceptée) ; les 2 acceptations gerants C de L1.auto.json sont gardées, raison mise à jour."
+  }
+]

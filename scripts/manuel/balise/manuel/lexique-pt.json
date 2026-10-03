@@ -1,0 +1,29 @@
+{
+  "slug": "lexique-pt",
+  "titre": "Les 3 catégories [[de:pt:pl:court]]",
+  "exclusions": [
+    {
+      "extrait": "on le produit",
+      "forme": "produit",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "verbe « produire » (« Où on le produit »), pas la clé produit (GUIDE-BALISAGE §4)"
+    },
+    {
+      "extrait": "déjà produits",
+      "forme": "produits",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "participe de « produire » (« les lots déjà produits »), pas la clé produit (GUIDE-BALISAGE §4)"
+    },
+    {
+      "extrait": "produit en 2026",
+      "forme": "produit",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "participe de « produire » (« « Crème Pâtissière » produit en 2026 »), pas la clé produit (GUIDE-BALISAGE §4)"
+    }
+  ],
+  "baliseur": "L1",
+  "relecteur": "L2"
+}

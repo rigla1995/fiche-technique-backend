@@ -163,6 +163,16 @@ dans n'importe quel ordre.
   - En pleine phrase, la forme courte rend un mot familier en H (« une prépa ») et un sigle en C (« un PF »).
   - La relecture C vérifie que la fiche explique le sigle une fois, souvent par un « X (SIGLE) » d'origine (§7).
 - **R7.1.6** — « compte dépôt » : `compte [[nom:depot]]` (exemple 21 ; aucun domaine ne change ce mot aujourd'hui).
+- **R7.1.7 — « Ingrédient » : deux clés** (intégrateur B1, besoin L3-5 ; `docs/lot-2-spec.md` §1.3). Les deux rendent
+  « Ingrédient » par défaut et le pré-baliseur propose toujours `ingredient` : vérifiez chaque « ingrédient ».
+  - `article_ingredient` (copie de `article` : H « Fourniture », C « Matière première ») quand « ingrédient » est un
+    autre nom de l'article du référentiel, pris pour lui-même : ligne de stock, article qu'on crée, qu'on cherche,
+    qu'on demande au catalogue, qu'on saisit à l'inventaire ou qu'on transfère (écrans `InventairePage.tsx:295`,
+    `TransferHistoriquePage.tsx:316` ; fiches `faq`, `support`).
+  - `ingredient` (H et C « Composant ») quand il est le composant d'une recette (ce que la recette contient, ce que la
+    production déduit, sa part dans un coût), ou quand il s'oppose à une autre sorte d'article (« ingrédient ou produit
+    acheté », `lexique` ; « Ingrédient » contre « Article valorisé », `referentiel-familles`). `article_ingredient`,
+    copie de l'article, effacerait l'opposition : H lirait « Fourniture » contre « Fourniture valorisée ».
 
 ---
 
@@ -381,10 +391,12 @@ dans `activites` (2 fois) et `calc-transferts` ; « son propre [[nom:stock]] » 
 
 Signalements, chacun corrigé ou accepté avec sa raison dans `relectures/<lot>.auto.json` :
 
-7. **mots répétés** (« centrale centrale », « de production de production »), et mot de même racine collé au rendu
-   d'une balise (« cuisine centrale central ») ;
+7. **mots répétés** (« centrale centrale », « de production de production »), marques d'emphase `**`, `*`, `_`
+   retirées (« **sites de production** de production »), et mot de même racine collé au rendu d'une balise
+   (« cuisine centrale central ») ;
 8. **gloses identiques et définitions circulaires** (« un SERVICE (service) », « | **Service** | Service ou… ») ;
-9. **élisions** fautives dans un rendu (« d'réception », « du usine », « ma armoire ») ;
+9. **élisions** fautives dans un rendu (« d'réception », « du usine », « ma armoire ») et **contractions** manquées
+   (« de le », « de les », « à le », « à les » : « Création de le premier service ») ;
 10. **déterminant en clair devant une balise de nom**, sur le texte balisé (« Le [[nom:labo]] »), collé ou séparé du nom
     par un adjectif (« un autre [[nom:labo]] ») ;
 11. **appositions** : deux balises de nom collées, la seconde à apposition ;

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "L3-1",
+    "fiche": "faq-chiffres",
+    "besoin": "L'origine emploie « appro » au féminin (« Une appro passée a été modifiée », « sur une appro d'il y a trois semaines », « nouvelles appros ») alors que la clé appro est masculine (un approvisionnement) : aucune balise ne reproduit « une appro » (R3.4.2). Balisé [[court:appro]] (et [[court:appro:pl]]) avec « Une / une / nouvelles / passée / modifiée » laissés en clair (point 10 accepté dans L3.auto.json). Rendus justes aujourd'hui (défaut et H « appro », C « réception », miroir « rentrée », tous féminins), faux si un lexique donne un jour une forme courte masculine (« un arrivage » → « Une arrivage passée »).",
+    "proposition": "Accepter tel quel pour le 2c (aucun lexique réel n'est touché). Hors 2c : un genre propre à la forme courte dans le lexique, ou l'exclusion de ces 3 passages si l'intégrateur préfère le texte d'origine en clair (C lirait alors « une appro »).",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B1 (03/10/2026) : accepté pour le 2c tel que balisé ([[court:appro]], déterminants et accords féminins en clair, signalement 10 accepté dans L3.auto.json) : rendus justes dans les lexiques réels et d'essai (défaut et H « appro », C « réception », miroir « rentrée », tous féminins). Un genre propre à la forme courte (moteur et lexique) est hors 2c (§0.4) : reporté au jour où un lexique donnera une forme courte masculine."
+  },
+  {
+    "id": "L3-2",
+    "fiche": "dashboard-gerant",
+    "besoin": "« En tant que [[nom:gerant]] » : la grammaire n'a pas de méthode qui élide « que » devant un terme à voyelle (miroir : « En tant que animatrice », point 9). Les lexiques réels commencent par une consonne.",
+    "proposition": "Accepter (signalement 9 accepté pour le miroir dans L3.auto.json) ; hors 2c, une méthode « que » (que / qu') si un lexique réel en a besoin.",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B1 (03/10/2026) : accepté pour le 2c : H « responsable de service » et C « responsable de site » commencent par une consonne ; seul le miroir lit « En tant que animatrice » (signalement 9 accepté dans L3.auto.json). Une méthode « que » (que / qu') du moteur est hors 2c (§0.4) : reportée au jour où un lexique réel commencera par une voyelle."
+  },
+  {
+    "id": "L3-3",
+    "fiche": "referentiel-familles",
+    "besoin": "Les 2 libellés de lien « Articles Valorisés » (#articles-valorises) gardent l'ancien nom de l'écran, devenu « Produits Valorisés » (Sidebar.tsx:619, voc.Titre('produit_valorise', true)) : exclus en nom-fige (R7.1.3). Hors restauration, le lien ne porte donc ni le nom de l'écran (H « Prestations Catalogue », C « Produits Finis Catalogue ») ni le mot du domaine pour « article ».",
+    "proposition": "Pour le 2c : nom-fige (I10 interdit de corriger le libellé). Après le 2c (maintenance, §12.5) : décision client de corriger le texte commun en « Produits Valorisés » ([[Titre:produit_valorise:pl]]), ce qui change aussi le texte restauration.",
+    "etat": "DÉCISION CLIENT",
+    "decision": "Intégrateur B1 (03/10/2026) : nom-fige gardé pour le 2c (I10 : le libellé d'origine ne change pas). Corriger le texte commun en « Produits Valorisés » ([[Titre:produit_valorise:pl]]) changerait aussi le manuel servi en restauration : décision du client, après le 2c (maintenance, §12.5), à transmettre avec la livraison (§15)."
+  },
+  {
+    "id": "L3-4",
+    "fiche": "faq",
+    "besoin": "Rendu C de la définition « L'**article** est une matière première de votre référentiel » : « La **matière première** est une matière première de votre référentiel » (définition redondante). Aucune balise ne l'évite sans reformuler le texte commun (I10), et « matière première » d'origine n'est pas une forme par défaut (pas d'exclusion possible). faq n'a pas de variante (relectures/L3.json, ligne 6 ; signalements 7 et 12 acceptés dans L3.auto.json).",
+    "proposition": "Intégrateur : inscrire le cas dans la liste des effets acceptés (§10.3, fiches sans variante) et dans la question 9 au client ; ou prévoir une variante C de faq.",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B1 (03/10/2026) : accepté comme limite connue pour le 2c : aucune balise ne l'évite (I10), aucune exclusion possible (« matière première » n'est pas une forme par défaut) et pas de variante de faq (question 9 : « non dans ce lot », le client veut moins). À inscrire à l'étape C au §10.3 (fiches sans variante qui restent marquées) et dans ecarts-visibles-2c.md, faq ajoutée à la liste des fiches candidates à une variante Céramique (question 9)."
+  },
+  {
+    "id": "L3-5",
+    "fiche": "faq, support",
+    "besoin": "Choix de clé pour « ingrédient » au sens d'article du référentiel (on le crée dans Articles, il a une catégorie et une unité) : L3 emploie désormais `article_ingredient` (lot-2-spec §1.3, l. 62 et 76 : `ingredient` = composant d'une recette), à la demande du relecteur. Le GUIDE ne dit pas quand l'employer dans le manuel, et le prébalisage cherche « Ingrédient(s) » sous `ingredient` : les lots L4 et L5 risquent le même écart.",
+    "proposition": "Intégrateur : trancher pour tous les lots et ajouter la règle au GUIDE §3 (« ingrédient » ligne de stock ou article à créer → `article_ingredient` ; composant d'une recette → `ingredient`).",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B1 (03/10/2026) : règle fixée pour tous les lots et écrite au GUIDE-BALISAGE §3 (R7.1.7) : article_ingredient quand « ingrédient » est un autre nom de l'article du référentiel pris pour lui-même (ligne de stock, article à créer, à chercher, à demander au catalogue, saisi à l'inventaire, transféré) ; ingredient quand il est le composant d'une recette (contenu d'une recette, déduction à la production, part d'un coût) ou quand il s'oppose à une autre sorte d'article (« ingrédient ou produit acheté », lexique ; « Ingrédient » contre « Article valorisé », referentiel-familles) : article_ingredient, copie de article, effacerait l'opposition (H « Fourniture » contre « Fourniture valorisée »). Vague 1 relue contre la règle : faq et support portent article_ingredient ; referentiel-familles:17 (sondage n° 5 du contrôleur) garde ingredient (opposition à « Article valorisé » : H « Composant » contre « Fourniture valorisée ») ; les autres emplois (lexique, lexique-pt, decouvrir-labflow, faq-chiffres, calc-*) sont des composants de recette ou des déductions à la production. Aucun fichier balisé à changer."
+  }
+]

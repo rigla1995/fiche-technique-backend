@@ -1,0 +1,30 @@
+[
+  {
+    "slug": "lexique",
+    "domaine": "ceramique",
+    "phrase": "| **Réception (réception)** | Entrée de marchandise dans le stock : …",
+    "probleme": "Glose redite : « Appro (approvisionnement) », balisé [[Court:appro]] ([[nom:appro]]), donne « Réception (réception) » en C et « Rentrée (rentrée) » en miroir. Le baliseur l'a acceptée (relectures/L1.auto.json, lignes 19 et 23) en renvoyant à la variante V-C1. Je conteste : spec §7.7 (commentaire de l'exemple 9) et GUIDE §11 disent que, dans le manuel lu par le client, une glose redite est corrigée ou exclue, pas acceptée. Et tant que la variante n'est pas validée, un compte C lit le texte commun (§8.4).",
+    "correction": "Exclure la glose. Dans balise/manuel/lexique.md : **[[Court:appro]] (approvisionnement)**. Dans lexique.json, ajouter à exclusions : { \"extrait\": \"(approvisionnement)\", \"forme\": \"approvisionnement\", \"type\": \"glose\", \"occurrences\": 1, \"justification\": \"glose de « Appro » : la baliser redit le terme en C (« Réception (réception) »), spec §7.5\" }. Retirer ensuite les lignes 19 et 23 de L1.auto.json, qui deviennent sans objet. Essai fait par le relecteur avec controler.mjs --racine (racine jetable) : points 1 à 6 verts, aucun signalement nouveau. Rendus : H « Appro (approvisionnement) », sans changement ; C « Réception (approvisionnement) » ; miroir « Rentrée (approvisionnement) ».",
+    "etat": "clos",
+    "cloture": "Tour 4 : vérifié. balise/manuel/lexique.md l.13 « **[[Court:appro]] (approvisionnement)** » ; exclusion glose « (approvisionnement) » présente dans lexique.json (9 exclusions) ; acceptations « Réception (réception) » / « Rentrée (rentrée) » retirées de L1.auto.json. Rendus frais : H « Appro (approvisionnement) » (= origine), C « Réception (approvisionnement) », miroir « Rentrée (approvisionnement) ». controler --lot L1 vert."
+  },
+  {
+    "slug": "lexique",
+    "domaine": "hotellerie",
+    "phrase": "- [Les 3 catégories de préparations](#lexique-pt) — le détail des prépas utilisables, vendables et composés valorisés",
+    "probleme": "Accord oublié. Ici, « composés valorisés » est un adjectif qui s'accorde avec le sigle (« des PT … composés valorisés »). En H, le sigle devient féminin (« prépas ») et l'adjectif reste au masculin : « des prépas … composés valorisés ». Le miroir a la même faute (« des EI … composés valorisés »). Le défaut et C sont justes. Gravité faible : ailleurs dans la fiche, « composé valorisé » est un nom de catégorie, gardé en clair (§10.3).",
+    "correction": "Écrire : le détail [[un:pt:pl:court]] utilisables, vendables et [[acc:pt:composés valorisés:composées valorisées]]. Pas d'argument pl : les deux formes sont déjà au pluriel. Essai fait par le relecteur (controler.mjs --racine) : identité verte. Rendus : H « des prépas utilisables, vendables et composées valorisées », C sans changement, miroir « composées valorisées ». Le baliseur peut aussi refuser, s'il juge que c'est un nom de catégorie : dans ce cas, il écrit la raison.",
+    "etat": "clos",
+    "cloture": "Tour 4 : vérifié. lexique.md l.57 « [[un:pt:pl:court]] utilisables, vendables et [[acc:pt:composés valorisés:composées valorisées]] » ; la phrase de catégories (l.39) reste en clair, à juste titre. Rendus frais : H « des prépas … composées valorisées », C « des PF … composés valorisés » (inchangé), miroir « des EI … composées valorisées » ; défaut identique à l'origine (points 1 à 6 verts)."
+  },
+  {
+    "slug": "gerants",
+    "domaine": "ceramique",
+    "phrase": ":::astuce Créez un responsable de site par responsable de site plutôt qu'un compte partagé : les historiques gardent ainsi la trace de qui a fait quoi.",
+    "probleme": "Phrase ridicule en C. L'origine dit « Créez un gérant par responsable de site » : « responsable de site » y est en clair et c'est justement le terme C de gerant (collision, point 12). Le baliseur l'a accepté (L1.auto.json, lignes 47 et 48) avec la raison « le conseil reste compris ». Je ne partage pas ce jugement : la phrase se lit comme une tautologie, dans un bloc astuce bien visible, et la fiche n'a pas de variante. En H, elle reste un peu étrange (« un responsable de service par responsable de site »), mais on la comprend.",
+    "correction": "Aucune balise ne corrige la phrase. « responsable de site » n'est pas une forme du lexique par défaut, et I10 interdit de reformuler. Je laisse la ligne ouverte pour l'intégrateur, qui choisit entre : (a) l'accepter comme limite connue et l'ajouter au tableau des collisions (§10.3) ; (b) poser la question au client avec les lexiques brouillons, car le terme C de gerant (« Responsable de site ») est un brouillon (§10.3, dernier point) et un autre terme, par exemple « Gérant de site », réglerait le cas sans toucher le manuel. Une variante C de gerants est déconseillée : le client veut moins.",
+    "etat": "accepté",
+    "cloture": "Tour 4 : reste ouvert pour l'intégrateur. Aucune correction possible dans le manuel (I10, pas de variante) ; rendu C frais toujours « Créez un responsable de site par responsable de site ». Le baliseur a renvoyé le cas à besoins/L1.json L1-1 (OUVERT) et gardé les 2 acceptations gerants C avec raison complétée. Décision attendue : (a) collision connue au tableau §10.3, ou (b) question au client sur le terme C brouillon de gerant (ex. « Gérant de site »).",
+    "integrateur": "Intégrateur B1 (03/10/2026) : option (a) retenue. La tautologie C est une collision connue, acceptée pour le 2c : I10 interdit de reformuler le texte commun et la fiche n'a pas de variante (le client veut moins). Elle sera inscrite au tableau des collisions du §10.3 et dans ecarts-visibles-2c.md à l'étape C. L'option (b), un autre terme C pour gerant (ex. « Gérant de site »), revient au client avec les corrections du lexique C, sans retouche du manuel (besoins/L1.json, L1-1 : DÉCISION CLIENT). Les 2 acceptations gerants C de L1.auto.json sont gardées, raison mise à jour."
+  }
+]

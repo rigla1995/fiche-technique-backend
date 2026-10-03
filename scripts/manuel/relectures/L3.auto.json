@@ -1,0 +1,199 @@
+[
+  {
+    "fiche": "onboarding-suivi",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "cuisine",
+    "decision": "accepté",
+    "raison": "« 1/2 Restaurant · 0/1 Cuisine » : exemple de noms de types d'unités d'un compte restauration (mots du métier, §10.3), pas la forme courte de labo ; le sens reste clair"
+  },
+  {
+    "fiche": "onboarding-contrat",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "réception",
+    "decision": "accepté",
+    "raison": "« Réception de l'email de signature » : réception d'un email, sens clair, sans lien avec la clé appro"
+  },
+  {
+    "fiche": "onboarding-configuration",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : l'origine écrit « labo » 4 fois dans la carte de bienvenue (« inclut un labo », « compte dépôt (labo + …) », « Démarrez votre labo », bouton « Créer mon labo ») et dans l'assistant (« Créez votre labo », « Laboratoire », « Avec labo » / « Sans labo », libellés de l'écran ActivitesPage.tsx:592, 612, 1257, 1393, 1406)"
+  },
+  {
+    "fiche": "onboarding-configuration",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : mêmes passages que pour la cuisine centrale (carte de bienvenue et assistant, libellés de l'écran)"
+  },
+  {
+    "fiche": "onboarding-configuration",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matière première",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : « dès qu'un article leur est affecté ; … dès votre premier article créé »"
+  },
+  {
+    "fiche": "onboarding-configuration",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matières premières",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : « affectez vos articles au labo … articles commandables »"
+  },
+  {
+    "fiche": "onboarding-avenants",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« l'option Acheteurs » / « palier de l'option » : option = module de l'abonnement, comme l'écran (« Option {voc.Court('acheteur', true)} », SupportPage.tsx:440) ; collision connue avec supplement = Option en C (§10.3), sens clair dans le contexte de l'abonnement"
+  },
+  {
+    "fiche": "assistant-ia",
+    "point": 11,
+    "texte": "[[le:transfert:pl]] [[nom:labo]]",
+    "decision": "accepté",
+    "raison": "pas une apposition : « labo → activités » donne le sens du flux (du labo vers les activités), le nom entier est voulu de part et d'autre de la flèche ; compl donnerait « les livraisons internes de la cuisine centrale → services »"
+  },
+  {
+    "fiche": "assistant-ia",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "cuisine",
+    "decision": "accepté",
+    "raison": "« 0/1 Cuisine » (exemple de noms de types d'un compte restauration) et « l'interroger en cuisine » (le lieu) : mots du métier (§10.3), pas la forme courte de labo ; sens clair"
+  },
+  {
+    "fiche": "support",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "points de vente",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : boutons « ⚡ Ajouter activités » et écran « Mes activités » cités tels qu'à l'écran (ActivitesPage.tsx:682, fr.json:21)"
+  },
+  {
+    "fiche": "support",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Matières premières",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : « [Articles](#referentiel-articles) — votre référentiel d'articles »"
+  },
+  {
+    "fiche": "support",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« option Acheteurs », « Option Acheteurs », « l'option » : module de l'abonnement, libellé de l'écran (« Option {voc.Court('acheteur', true)} », SupportPage.tsx:440 ; « l'option {voc.Court('acheteur', true)} », SupportPage.tsx:13) ; collision connue avec supplement = Option en C (§10.3), sens clair"
+  },
+  {
+    "fiche": "faq",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : « fabriqué par votre labo (produit utilisable d'origine labo …) » ; « d'origine {voc.nom('labo')} » est la forme de l'écran (TarifsAcheteursPage.tsx:286)"
+  },
+  {
+    "fiche": "faq",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : « fabriqué par votre labo (produit utilisable d'origine labo …) » et « depuis le labo »"
+  },
+  {
+    "fiche": "faq",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matière première",
+    "decision": "accepté",
+    "raison": "« L'article est une matière première de votre référentiel » : en C le terme article est lui-même « Matière première », la définition devient redondante mais reste juste ; fiche sans variante (§10.3) ; renvoyé à l'intégrateur (besoins/L3.json, L3-4)"
+  },
+  {
+    "fiche": "faq",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "matière première",
+    "decision": "accepté",
+    "raison": "même phrase de définition (« une matière première de votre référentiel ») : le mot garde le sens de la clé article en C, la phrase reste juste (redondante) ; fiche sans variante ; renvoyé à l'intégrateur (besoins/L3.json, L3-4)"
+  },
+  {
+    "fiche": "faq-chiffres",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : « fabriqué par le labo — … à son prix labo défini » (apposition « prix labo » rendue par compl, R7.1.4)"
+  },
+  {
+    "fiche": "faq-chiffres",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : « transfère un produit à une activité, l'activité le reçoit »"
+  },
+  {
+    "fiche": "faq-chiffres",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "l'origine répète déjà le terme dans la même phrase ; impossible à éviter sans reformuler le texte commun (I10) : « fabriqué par le labo — … à son prix labo défini »"
+  },
+  {
+    "fiche": "faq-chiffres",
+    "point": 10,
+    "texte": "Une [[court:appro]]",
+    "decision": "accepté",
+    "raison": "l'origine emploie la forme courte au féminin (« Une appro passée a été modifiée ») alors que la clé appro est masculine : aucune balise ne reproduit « une appro » (R3.4.2). Forme courte balisée, déterminant et accords au féminin laissés en clair : rendus justes en défaut, H (« Une appro »), C (« Une réception ») et miroir (« Une rentrée »). Limite écrite dans besoins/L3.json (L3-1)"
+  },
+  {
+    "fiche": "faq-chiffres",
+    "point": 10,
+    "texte": "une [[court:appro]]",
+    "decision": "accepté",
+    "raison": "même cas : « une correction sur une appro d'il y a trois semaines » ; rendus justes en défaut, H, C (« une réception ») et miroir (« une rentrée ») ; voir besoins/L3.json (L3-1)"
+  },
+  {
+    "fiche": "referentiel-familles",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "consommable",
+    "decision": "accepté",
+    "raison": "propriété de famille « Consommable » (colonne, interrupteur et réglage écrits tels quels par l'écran, ReferentielFamillesPage.tsx:143, 201, 267) : nom de propriété fixe, pas la clé produit_utilisable ; collision connue en H (§10.3), sens clair dans le contexte des familles"
+  },
+  {
+    "fiche": "referentiel-categories",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matières premières",
+    "decision": "accepté",
+    "raison": "« catégories d'articles (ce référentiel, pour vos matières premières) » : la glose d'origine écrit « matières premières » en clair (ce n'est pas une forme par défaut, donc ni balise ni exclusion possible) ; en C elle redit le terme, sens juste ; fiche sans variante"
+  },
+  {
+    "fiche": "referentiel-categories",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "matière première",
+    "decision": "accepté",
+    "raison": "même glose « pour vos matières premières » : le mot a exactement le sens de la clé article en C ; la phrase reste juste"
+  },
+  {
+    "fiche": "dashboard-gerant",
+    "point": 9,
+    "domaine": "miroir",
+    "texte": "que animatrice",
+    "decision": "accepté",
+    "raison": "« En tant que [[nom:gerant]] » : aucune balise n'élide « que » devant un terme à voyelle ; les lexiques réels (défaut, H « responsable de service », C « responsable de site ») commencent par une consonne, seul le miroir est touché. Besoin L3-2"
+  }
+]

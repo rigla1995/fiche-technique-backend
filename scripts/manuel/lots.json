@@ -8,7 +8,10 @@
     "« formes » = formes des termes (motif de termesDans, formesParDefaut de src/utils/manuelRendu.js) dans le contenu et le",
     "titre d'origine des fiches du lot (la base : titre et contenu) ; « taille » = caractères JavaScript du contenu d'origine.",
     "Valeurs du tableau du §9.2, recalculées sur origine/ par scripts/manuel/test/lots.test.js (qui échoue si elles changent).",
-    "Les 6 formes des parties ne sont dans aucun lot : parties.json (intégrateur)."
+    "Les 6 formes des parties ne sont dans aucun lot : parties.json (intégrateur).",
+    "« aLever » (V-*, intégrateur B1) : tournures du texte commun balisé que la variante doit lever, relevées en vague 1",
+    "par la relecture croisée ou le contrôleur, sans signalement à accepter ; s'y ajoutent les signalements acceptés dont",
+    "la raison renvoie à la variante (relectures/<lot>.auto.json des lots L1, L2, L3, L8)."
   ],
   "lots": {
     "L1": {
@@ -102,7 +105,11 @@
       "vague": "V",
       "relecteur": "V-H1",
       "domaine": "ceramique",
-      "variantes": ["lexique", "lexique-pt", "calc-cout-recette"]
+      "variantes": ["lexique", "lexique-pt", "calc-cout-recette"],
+      "aLever": [
+        "calc-cout-recette : « Le coût de revient d'une fiche de coût de revient » et « l'entrée du produit fini » (produit fini = produit_vendable en C, pour un produit qui sort de production) : relectures/L8.json, ligne 3 ; besoin L2-3",
+        "lexique : « | **Fiche de coût de revient** | … calcul automatique du coût de revient matière » (redite, besoin L2-3) ; « Réception (approvisionnement) » (glose exclue du texte commun, relectures/L1.json, ligne 1)"
+      ]
     },
     "V-H2": {
       "vague": "V",
@@ -114,7 +121,12 @@
       "vague": "V",
       "relecteur": "V-H2",
       "domaine": "ceramique",
-      "variantes": ["decouvrir-labflow", "compte-activites-labos", "demarrage", "roles", "onboarding-configuration"]
+      "variantes": ["decouvrir-labflow", "compte-activites-labos", "demarrage", "roles", "onboarding-configuration"],
+      "aLever": [
+        "decouvrir-labflow : « un ou plusieurs sites de production de production », « la production en site de production », « le site de production fabrique vos produits fabriqués », « une fiche de coût de revient dont le coût de revient se calcule » : relectures/L2.json, lignes 2 à 4 ; besoins L2-2, L2-3",
+        "compte-activites-labos : « Les sites de production (0 à N) : vos sites de production. Un site de production fabrique des produits fabriqués » : relectures/L2.json, ligne 5 ; sondage du contrôleur B1, n° 15",
+        "demarrage : « Créez vos produits et fiches de coût de revient — … le coût de revient se calcule automatiquement » : besoin L2-3"
+      ]
     }
   }
 }

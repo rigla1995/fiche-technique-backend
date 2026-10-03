@@ -43,12 +43,15 @@
  *      lignes ; chaque ligne de tableau garde son nombre de « | » dans chaque rendu ;
  *   6. rendus Hôtellerie, Céramique, miroir écrits dans rendus/<lot>/<domaine>/ ; aucun rendu (défaut compris) ne
  *      contient « [[ », « ]] » ni « ‹clé› » ;
- *   7. mots répétés (rendus H, C, miroir ; absents du rendu par défaut) : mot ou groupe de deux mots répété à la suite ;
+ *   7. mots répétés (rendus H, C, miroir ; absents du rendu par défaut) : mot ou groupe de deux mots répété à la suite,
+ *      marques d'emphase « ** », « * », « _ » retirées (« **sites de production** de production », besoin L2-2) ;
  *      rendu d'une balise de deux mots ou plus (déterminant ôté) qui revient dans la même phrase à moins de 12 mots ;
- *      rendu d'une balise suivi d'un mot de même racine que son dernier mot (« cuisine centrale central ») ;
+ *      rendu d'une balise suivi d'un mot de même racine que son dernier mot (« cuisine centrale central »), marque
+ *      d'emphase entre les deux comprise ;
  *   8. gloses identiques « X (X) » et définitions circulaires « | **X** | X … » (absentes du rendu par défaut) ;
  *   9. élisions fautives (« d' », « l' », « qu' » + consonne ; « de », « le », « la », « que », « du », « au », « ce »,
- *      « ma », « ta », « sa » + voyelle ou h ; absentes du rendu par défaut) ;
+ *      « ma », « ta », « sa » + voyelle ou h) et contractions manquées (« de le », « de les », « à le », « à les »,
+ *      besoin L2-1) ; absentes du rendu par défaut ;
  *  10. déterminant en clair devant une balise nom, Nom, court, Court, Titre ou MAJ (sur le texte BALISÉ), collé à la
  *      balise ou séparé d'elle par un adjectif (« un autre [[nom:labo]] », « le même [[nom:labo]] ») ;
  *  11. appositions : deux balises collées dont la seconde est en nom / Nom sur une clé à apposition (appo du lexique) ;
@@ -166,9 +169,14 @@ const repetitions = (t) => {
   }
   return out;
 };
-/** Point 7, première moitié : répétitions à la suite présentes dans `r` et pas dans le rendu par défaut `rd`. */
+// Marques Markdown d'emphase (« ** », « * », « _ ») retirées avant la recherche des répétitions (besoin L2-2) : sinon
+// « un ou plusieurs **sites de production** de production » (C) échappait au point 7.
+const sansMarques = (t) => String(t ?? '').replace(/[*_]+/g, '');
+/** Point 7, première moitié : répétitions à la suite présentes dans `r` et pas dans le rendu par défaut `rd`, marques
+ * d'emphase retirées des deux rendus (le contexte est montré sans elles). */
 export function motsRepetes(r, rd) {
-  return enPlus(repetitions(r), repetitions(rd)).map((x) => ({ texte: x.texte, contexte: contexte(r, x.index, x.texte.length) }));
+  const r0 = sansMarques(r);
+  return enPlus(repetitions(r0), repetitions(sansMarques(rd))).map((x) => ({ texte: x.texte, contexte: contexte(r0, x.index, x.texte.length) }));
 }
 
 const DETERMINANTS_TETE = ['de la ', "de l'", 'de l’', 'à la ', "à l'", 'à l’', 'tous les ', 'toutes les ', 'le ', 'la ', "l'", 'l’',
@@ -238,7 +246,8 @@ const RACINE_FIN = /(?:es|e|s)$/u;
 const racineMot = (m) => m.toLowerCase().replace(RACINE_FIN, '');
 const memeRacine = (a, b) => a.toLowerCase() !== b.toLowerCase() && racineMot(a).length >= 4 && racineMot(a) === racineMot(b);
 const dernierMot = (s) => (String(s).match(/\p{L}[\p{L}\p{N}'’-]*(?=[^\p{L}]*$)/u) || [''])[0];
-const motSuivant = (t, i) => (/^[^\S\n]+(\p{L}[\p{L}\p{N}'’-]*)/u.exec(t.slice(i)) || [])[1] || '';
+// Le mot suivant peut être séparé du rendu par une marque d'emphase (« **[[votre:labo_long]]** central », besoin L2-2).
+const motSuivant = (t, i) => (/^[*_]*[^\S\n]+[*_]*(\p{L}[\p{L}\p{N}'’-]*)/u.exec(t.slice(i)) || [])[1] || '';
 export function racinesRepetees(balise, voc) {
   const r = rendreParMorceaux(voc, balise);
   const d = rendreParMorceaux(vocabDefaut, balise);
@@ -295,9 +304,12 @@ export function definitionsCirculaires(r, rd) {
 // ── Point 9 : élisions fautives ───────────────────────────────────────────────────────────────────────────────
 const RE_ELISION_CONSONNE = new RegExp(`(?<![${L}])(?:d|l|qu)['’][bcdfgjklmnpqrstvwxzç][\\p{L}'’-]*`, 'giu');
 const RE_SANS_ELISION = new RegExp(`(?<![${L}'’])(?:de|le|la|que|du|au|ce|ma|ta|sa)[^\\S\\n]+[aeiouàâäéèêëîïôöùûüœæh][\\p{L}'’-]*`, 'giu');
+// Contractions manquées (besoin L2-1) : « de le », « de les », « à le », « à les », mots entiers. Exemple : un « de »
+// laissé en clair devant [[acc:activite:le premier:la première]] rendait en H « Création de le premier service ».
+const RE_CONTRACTION = new RegExp(`(?<![${L}'’])(?:de|à)[^\\S\\n]+les?(?![${L}'’])`, 'giu');
 const elisions = (t) => {
   const out = [];
-  for (const re of [RE_ELISION_CONSONNE, RE_SANS_ELISION]) {
+  for (const re of [RE_ELISION_CONSONNE, RE_SANS_ELISION, RE_CONTRACTION]) {
     for (const m of t.matchAll(re)) out.push({ cle: m[0].toLowerCase().replace(/\s+/g, ' '), texte: m[0], index: m.index });
   }
   return out.sort((a, b) => a.index - b.index);

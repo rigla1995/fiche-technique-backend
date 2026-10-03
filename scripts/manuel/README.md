@@ -219,6 +219,9 @@ est propre à l'outil :
 - **Cibles de liens.** Elles sont masquées avant la recherche des résiduels (point 3) : ni balise ni exclusion.
 - **Trait d'union.** Une balise (hors `acc`, `accN`, `ex`) collée à un tiret est un échec du point 3 :
   « sous-[[nom:pt]] » rendrait « sous-préparation » en H alors que l'identité passe (R3.4.3).
+- **Points 7 et 9 (intégrateur B1, besoins L2-2 et L2-1).** Le point 7 retire les marques d'emphase (`**`, `*`, `_`)
+  avant de chercher les répétitions (« **sites de production** de production ») ; le point 9 signale aussi les
+  contractions manquées « de le », « de les », « à le », « à les » (« Création de le premier service »).
 - **`--lexique`.** Le fichier est une liste d'écarts (`{ cle: { sg, pl, g, el… } }`, ou `{ lexique: … }` /
   `{ ecarts: … }`). Refus (code 2) : une clé hors du lexique (fichier enveloppé, `{ "hotellerie": { … } }`), des écarts
   qui donnent le lexique par défaut (`{}`), un `md5Lexique` d'enveloppe qui ne correspond pas aux écarts, ou un md5
@@ -386,7 +389,7 @@ transaction sur la base locale, toujours annulée). `npm test` ne les lance pas 
 | `parties-lots.test.js` | `parties.json` (I10, I11, rendus distincts), `lots.json` (couverture, chiffres du §9.2, relecteurs) |
 | `prebaliser.test.mjs` | 3 fiches témoins à l'octet, I10 et I11 sur 61 fiches et 32 entrées, règles R3.4.1 à R3.4.4 |
 | `guide.test.js` | tableaux du guide à jour ; exemples « justes » identiques par défaut ; origines exactes |
-| `controler.test.mjs` | les 3 témoins verts et leurs rendus ; R3.1.1 par `controler.mjs` (« Espace Cuisine ») ; points 1 à 6 en échec un par un ; cibles de liens masquées ; signalements 7 à 12 sur les exemples de la spec ; acceptations ; `--tout` ; variantes ; `--lexique` |
+| `controler.test.mjs` | les 3 témoins verts et leurs rendus ; R3.1.1 par `controler.mjs` (« Espace Cuisine ») ; points 1 à 6 en échec un par un ; cibles de liens masquées ; signalements 7 à 12 sur les exemples de la spec, contractions et répétitions coupées par une marque d'emphase (B1) ; acceptations ; `--tout` ; variantes ; `--lexique` |
 | `generer-migrations.test.mjs` | chaînes SQL et étiquettes sans tiret ; 194 des témoins (LF, en-tête, inventaire, gardes, déterminisme) ; 196 avec `--slug` à tiret ; 195 et apostrophes ; champs admis ; refus du §3.6.2 ; écriture dans `migrations/` refusée sans lecture de production |
 | `retour-essai.test.js` | `retour(client)` sur un faux client : origine, défauts NULL, `_migrations`, non remis, sans `BEGIN` ni `COMMIT` ; `--remise-locale` (16 brouillons) et son refus hors local ; lecture des fichiers d'essai |
 

@@ -1,0 +1,36 @@
+{
+  "slug": "support",
+  "titre": "Demandes & support",
+  "exclusions": [
+    {
+      "extrait": "Activité Basique",
+      "forme": "Activité",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom de formule, écrit tel quel par l'écran (MonAbonnementPage.tsx:93 « Activité Basique ») ; GUIDE exemple 22"
+    },
+    {
+      "extrait": "Activité Premium",
+      "forme": "Activité",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom de formule sur la carte « Passer en formule Activité Premium », écrit tel quel par l'écran (SupportPage.tsx:343)"
+    },
+    {
+      "extrait": "Ingrédient manquant",
+      "forme": "Ingrédient",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "ancien type de demande, retiré de l'écran (typeLabels de SupportPage.tsx:12-15 ne le porte plus ; repli « Demande », SupportPage.tsx:574) : ancien nom, R7.1.3"
+    },
+    {
+      "extrait": "s'est produit",
+      "forme": "produit",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "verbe « produire » (ce qui s'est produit), pas la notion produit (GUIDE §4)"
+    }
+  ],
+  "baliseur": "L3",
+  "relecteur": "L8"
+}

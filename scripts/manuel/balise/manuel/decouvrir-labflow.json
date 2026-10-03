@@ -1,0 +1,36 @@
+{
+  "slug": "decouvrir-labflow",
+  "titre": "LabFlow en un coup d'œil",
+  "exclusions": [
+    {
+      "extrait": "Prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "points de vente, cuisines",
+      "forme": "points de vente",
+      "type": "glose",
+      "occurrences": 1,
+      "justification": "glose de « activités » par activite_desc : balisée, elle redit le terme (H « services (services, cuisines) ») ; spec §7.2, §7.5"
+    },
+    {
+      "extrait": "produit, les boutiques vendent",
+      "forme": "produit",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "verbe « produire » (« le labo produit »), pas la clé produit (GUIDE-BALISAGE §4)"
+    }
+  ],
+  "baliseur": "L2",
+  "relecteur": "L1"
+}

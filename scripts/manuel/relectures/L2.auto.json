@@ -1,0 +1,338 @@
+[
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "professionnels professionnels",
+    "decision": "accepté",
+    "raison": "« un carnet d'acheteurs professionnels » : l'adjectif d'origine redouble le terme H « Client professionnel » ; aucune balise ne l'évite (l'astuce de « central » repose sur le genre, H est masculin) ; lève l'ambiguïté seulement dans la variante Hôtellerie (lot V-H2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "« cuisine centrale » rend à la fois « laboratoire » et « labo » de l'origine : répétition due au lexique, la grammaire ne peut pas l'éviter"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Clients professionnels",
+    "decision": "accepté",
+    "raison": "« l'option Acheteurs … un carnet de clients professionnels » : nom de l'option (écran) puis la notion en clair dans l'origine ; lève l'ambiguïté seulement dans la variante Hôtellerie (lot V-H2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« site de production » rend à la fois « laboratoire » et « labo » de l'origine : répétition due au lexique, la grammaire ne peut pas l'éviter ; la même phrase donne aussi en Céramique « la production en site de production » et « le site de production fabrique vos produits fabriqués » (collision du verbe « fabriquer » avec « Produit fabriqué », spec §10.3), qu'aucune balise n'évite sans reformuler (I10) ; lève l'ambiguïté seulement dans la variante Céramique (lot V-C2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "points de vente",
+    "decision": "accepté",
+    "raison": "« un ou plusieurs points de vente (points de vente, cuisines) » : la glose est exclue (type glose) pour garder un sens en Hôtellerie ; en Céramique le terme est la glose elle-même ; lève l'ambiguïté seulement dans la variante Céramique (lot V-C2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "de production de production",
+    "decision": "accepté",
+    "raison": "« un ou plusieurs **labos** de production » : C rend « sites de production** de production » ; la grammaire ne peut pas l'éviter (C et défaut masculins, l'astuce de « central » ne s'applique pas ; spec §7.5, §10.3) ; signalé depuis la correction du point 7 (besoin L2-2, marques d'emphase retirées), relevé par le relecteur (relectures/L2.json ligne 2) ; ajouté par l'intégrateur B1 ; lève l'ambiguïté seulement dans la variante Céramique (lot V-C2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "« restaurants, pâtisseries, traiteurs, cuisines centrales » : liste des métiers de bouche (hors lexique, spec §10.3) ; le sens reste clair ; lève l'ambiguïté seulement dans la variante Hôtellerie (lot V-H2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "cuisine",
+    "decision": "accepté",
+    "raison": "« cuisine professionnelle », « (points de vente, cuisines) » : mot du métier (spec §10.3), pas la forme courte de labo ; le sens reste clair"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "client professionnel",
+    "decision": "accepté",
+    "raison": "« clients professionnels » en clair = les acheteurs : en Hôtellerie c'est le terme même, le sens est conservé (spec §10.3)"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "site",
+    "decision": "accepté",
+    "raison": "« site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3)"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« option » = option de l'abonnement (option Acheteurs, écran « Option {voc.Court('acheteur', true)} », MonAbonnementPage.tsx:343) ou choix d'un formulaire ; le contexte la distingue de l'« Option » (supplément de vente) de Céramique (spec §10.3)"
+  },
+  {
+    "fiche": "decouvrir-labflow",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "dans la glose exclue « (points de vente, cuisines) » : c'est le sens même de « activité » (spec §7.2, glose)"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Clients professionnels",
+    "decision": "accepté",
+    "raison": "« l'option Acheteurs … le palier d'acheteurs » : nom de l'option puis la notion, comme dans l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "responsables de service",
+    "decision": "accepté",
+    "raison": "« celui des gérants sur la page Gérants » : notion puis nom d'écran (Sidebar.tsx:643), comme dans l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "« labo » répété dans l'origine (tableau, lien, exemples) ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "de production de production",
+    "decision": "accepté",
+    "raison": "« 1 labo de production » : la grammaire ne peut pas l'éviter (spec §7.5, §10.3) ; lève l'ambiguïté seulement dans la variante Céramique (lot V-C2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "responsables de site",
+    "decision": "accepté",
+    "raison": "« celui des gérants sur la page Gérants » : notion puis nom d'écran (Sidebar.tsx:643), comme dans l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "points de vente",
+    "decision": "accepté",
+    "raison": "« Les points de vente (0 à N) : vos points de vente ou cuisines » : glose exclue (type glose) pour garder un sens en Hôtellerie ; lève l'ambiguïté seulement dans la variante Céramique (lot V-C2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "sites de production",
+    "decision": "accepté",
+    "raison": "« Les sites de production (0 à N) : vos sites de production » : glose en clair de l'origine (« vos sites de production »), sans forme du lexique, donc ni balisable ni excluable (exemple du §3.5, point 7) ; la phrase suivante donne aussi « Un site de production fabrique des produits fabriqués » (collision du verbe « fabriquer » avec « Produit fabriqué », spec §10.3), qu'aucune balise n'évite sans reformuler (I10) ; lève l'ambiguïté seulement dans la variante Céramique (lot V-C2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Point de vente",
+    "decision": "accepté",
+    "raison": "« | Activité / labo | Chaque point de vente a ses prix » : niveau du tableau puis la notion, comme dans l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« labo » répété dans l'origine (tableau, lien, exemples) ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "cuisine",
+    "decision": "accepté",
+    "raison": "« vos points de vente ou cuisines » (glose exclue) : « cuisines » = cuisines des restaurants, mot du métier ; lève l'ambiguïté seulement dans la variante Hôtellerie (lot V-H2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "client professionnel",
+    "decision": "accepté",
+    "raison": "« clients professionnels » en clair = les acheteurs : en Hôtellerie c'est le terme même, le sens est conservé (spec §10.3)"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« option » = option de l'abonnement (option Acheteurs, écran « Option {voc.Court('acheteur', true)} », MonAbonnementPage.tsx:343) ou choix d'un formulaire ; le contexte la distingue de l'« Option » (supplément de vente) de Céramique (spec §10.3)"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "dans la glose exclue « vos points de vente ou cuisines » : c'est le sens même de « activité » (spec §7.2, glose)"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« vos sites de production » (glose en clair de l'origine pour les labos) : c'est le terme même en Céramique, le sens est conservé"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "site",
+    "decision": "accepté",
+    "raison": "« site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3) ; lève l'ambiguïté seulement dans la variante Céramique (lot V-C2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "compte-activites-labos",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "revendeur",
+    "decision": "accepté",
+    "raison": "« (épiceries, revendeurs, restaurants…) » : exemples de professionnels acheteurs ; en Céramique « Revendeur » est l'acheteur : sens conservé"
+  },
+  {
+    "fiche": "demarrage",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "« inclut un labo) pour créer votre labo » : répétition de l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "demarrage",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« inclut un labo) pour créer votre labo » : répétition de l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "demarrage",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "« vos activités … « + Ajouter mon activité » » : notion puis libellé du bouton (ActivitesPage.tsx:629), comme dans l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "demarrage",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matières premières",
+    "decision": "accepté",
+    "raison": "« Assignez les articles — Indiquez quels articles » : répétition de l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "demarrage",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« option » = option de l'abonnement (option Acheteurs, écran « Option {voc.Court('acheteur', true)} », MonAbonnementPage.tsx:343) ou choix d'un formulaire ; le contexte la distingue de l'« Option » (supplément de vente) de Céramique (spec §10.3)"
+  },
+  {
+    "fiche": "demarrage",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "site",
+    "decision": "accepté",
+    "raison": "« Créez vos sites » : « site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3)"
+  },
+  {
+    "fiche": "roles",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "client professionnel",
+    "decision": "accepté",
+    "raison": "« l'acheteur — un client professionnel externe » : glose en clair de l'origine, sans forme du lexique, donc ni balisable ni excluable ; elle redit le terme H ; lève l'ambiguïté seulement dans la variante Hôtellerie (lot V-H2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "roles",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Clients professionnels",
+    "decision": "accepté",
+    "raison": "« l'option Acheteurs … l'Espace Acheteurs » : nom de l'option puis de l'espace (Sidebar.tsx:571), comme dans l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "roles",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "client professionnel",
+    "decision": "accepté",
+    "raison": "« clients professionnels » en clair = les acheteurs : en Hôtellerie c'est le terme même, le sens est conservé (spec §10.3) ; lève l'ambiguïté seulement dans la variante Hôtellerie (lot V-H2, fiche à variante, spec §8.1)"
+  },
+  {
+    "fiche": "roles",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "site",
+    "decision": "accepté",
+    "raison": "« création et modification des sites » : « site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3)"
+  },
+  {
+    "fiche": "roles",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« option » = option de l'abonnement (option Acheteurs, écran « Option {voc.Court('acheteur', true)} », MonAbonnementPage.tsx:343) ou choix d'un formulaire ; le contexte la distingue de l'« Option » (supplément de vente) de Céramique (spec §10.3)"
+  },
+  {
+    "fiche": "abonnement",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "clients professionnels",
+    "decision": "accepté",
+    "raison": "« la base acheteurs … jusqu'à N acheteurs » : libellés de l'écran (MonAbonnementPage.tsx:19 et :252), comme dans l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "abonnement",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "Clients professionnels",
+    "decision": "accepté",
+    "raison": "« Option Acheteurs … jusqu'à N acheteurs » : libellés de l'écran (MonAbonnementPage.tsx:343 et :252), comme dans l'origine ; même terme répété comme dans l'origine (une forme de 2 mots ou plus rend la répétition visible) ; le sens reste juste"
+  },
+  {
+    "fiche": "abonnement",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« option » = option de l'abonnement (option Acheteurs, écran « Option {voc.Court('acheteur', true)} », MonAbonnementPage.tsx:343) ou choix d'un formulaire ; le contexte la distingue de l'« Option » (supplément de vente) de Céramique (spec §10.3)"
+  }
+]

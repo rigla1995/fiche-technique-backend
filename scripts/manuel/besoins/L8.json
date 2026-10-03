@@ -1,0 +1,19 @@
+[
+  {
+    "id": "L8-1",
+    "fiche": "calc-production-pt",
+    "besoin": "« Un produit d'origine labo ne peut pas être produit ni approvisionné … : il n'y arrive » : le participe « produit » (verbe produire) est une forme par défaut, exclu en homonyme (« être produit ») ; il ne suit donc pas le genre de la clé produit, alors que « approvisionné » et « il » sont accordés ([[acc:produit:…]]). Rendu miroir (produit féminin) : « Une invention … ne peut pas être produit ni approvisionnée … : elle n'y arrive ». H et C (produit = Produit, masculin) sont justes. Même cas, sans accord à faire, dans calc-prix (« les millefeuilles déjà produits », homonyme).",
+    "proposition": "Accepter tel quel (aucun lexique réel n'a produit au féminin). Autre voie si l'intégrateur la juge sûre : [[acc:produit:produit:produite]] sans exclusion (rendu par défaut identique), à condition que l'oracle (check-invariant-vocab.js --domaine) tolère une forme par défaut produite par une balise acc.",
+    "etat": "APPLIQUÉ",
+    "suite": "Tour 3 (relecture L3, ligne 1) : correction appliquée, « ne peut pas être [[acc:produit:produit:produite]] ni … » et exclusion homonyme « être produit » retirée. Défaut et H/C inchangés (produit = Produit, masculin, dans les deux domaines : la clé n'est pas changée, donc hors scan --domaine) ; miroir « ne peut pas être produite ». Le motif de formesParDefaut (manuelRendu.js:27, bornes de mot) ne voit pas « produite ». Reste à l'intégrateur de confirmer que l'oracle accepte la forme par défaut rendue par la balise acc, puis de clore. « les millefeuilles déjà produits » (calc-prix) reste en homonyme : le sujet n'est pas un terme.",
+    "decision": "Intégrateur B1 (03/10/2026) : correction du tour 3 confirmée (calc-production-pt.md:40, [[acc:produit:produit:produite]], exclusion homonyme « être produit » retirée ; point 1 vert). Oracle vérifié à la lecture de scripts/check-invariant-vocab.js : formesCherchees (l. 376-398) ne cherche que les formes par défaut dont le rendu change dans le domaine (l. 389-390) ; produit = « Produit » en H et en C, donc « produit » n'y est pas cherché ; en miroir la balise rend « produite », que la recherche à bornes de mot (repli l. 370, et formesDans du front, scripts/vocab-check.mjs:260-290) ne prend pas pour « produit ». Aucune exception à ajouter."
+  },
+  {
+    "id": "L8-2",
+    "fiche": "calc-production-pt, calc-pmp, calc-prix, calc-valeur-stock",
+    "besoin": "Ouvert par l'intégrateur B1 pour que rien ne se perde. Collisions et redites qu'aucune balise ne lève (I10), dans des fiches sans variante, relevées par la relecture croisée (relectures/L8.json, lignes 2, 4, 5 et 6, « clos (refus fondé) ») et par le sondage du contrôleur (n° 12) : C « une entrée en stock du produit fini » pour un produit fabriqué, qui peut être un semi-fini (calc-production-pt) ; C « n'a encore reçu aucune réception » (calc-pmp) ; C « Les produits fabriqués fabriqués » (calc-prix, signalement 7 accepté) ; C « Production au site de production » (calc-prix) ; H « Fourniture en service », « Préparation en service » (calc-valeur-stock).",
+    "proposition": "Les accepter et les inscrire à l'étape C au §10.3 (tableau des collisions ; « produits fabriqués fabriqués » à côté de « sites de production de production ») et dans ecarts-visibles-2c.md.",
+    "etat": "REPORTÉ",
+    "decision": "Intégrateur B1 (03/10/2026) : acceptés pour le 2c ; inscription reportée à l'étape C (la spec et ecarts-visibles-2c.md sont mis à jour à la consolidation, §13)."
+  }
+]

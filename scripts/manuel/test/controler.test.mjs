@@ -182,6 +182,28 @@ test('signalements 7 à 12 sur les exemples de la spec (§3.5, §7.7)', () => {
   assert.deepEqual(formesEnClair('une préparation intermédiaire', fH).map((x) => x.mot), ['préparation']);
 });
 
+test('points 7 et 9 (besoins L2-1, L2-2) : contraction manquée ; répétition coupée par une marque d\'emphase', () => {
+  const H = VOC.hotellerie;
+  const Cc = VOC.ceramique;
+  // L2-1 : « de » laissé en clair devant un accord qui porte le déterminant (demarrage, vague B1) : H « de le premier ».
+  const faux = 'Création de [[acc:activite:le premier:la première]] [[nom:activite]]';
+  assert.equal(rendu(vocabDefaut, faux), 'Création de la première activité');
+  assert.deepEqual(elisionsFautives(rendu(H, faux), rendu(vocabDefaut, faux)).map((x) => x.texte), ['de le']);
+  const juste = 'Création [[acc:activite:du premier:de la première]] [[nom:activite]]';
+  assert.equal(rendu(vocabDefaut, juste), 'Création de la première activité');
+  assert.deepEqual(elisionsFautives(rendu(H, juste), rendu(vocabDefaut, juste)), []);
+  // Pronom déjà présent dans le rendu par défaut : rien ; « À le », « à les » : mots entiers, sans casse.
+  assert.deepEqual(elisionsFautives('afin de le modifier, puis à les voir', 'afin de le modifier, puis à les voir'), []);
+  assert.deepEqual(elisionsFautives('À le service et à les cuisines ; voilà le code', 'Au labo et aux labos ; voilà le code').map((x) => x.texte), ['À le', 'à les']);
+  // L2-2 : « **sites de production** de production » (decouvrir-labflow, C) ; rien en H ni par défaut.
+  const b = 'et, si besoin, [[acc:labo:un:une]] ou plusieurs **[[nom:labo:pl]]** de production.';
+  assert.deepEqual(motsRepetes(rendu(Cc, b), rendu(vocabDefaut, b)).map((x) => x.texte), ['de production de production']);
+  assert.deepEqual(motsRepetes(rendu(H, b), rendu(vocabDefaut, b)), []);
+  // Même racine, marque d'emphase entre la balise et le mot suivant.
+  assert.deepEqual(racinesRepetees('**[[votre:labo_long]]** central', H).map((x) => x.texte), ['centrale central']);
+  assert.deepEqual(racinesRepetees('**[[votre:labo_long]]** central', vocabDefaut), []);
+});
+
 test('acceptations (relectures/<lot>.auto.json) : signalement accepté, acceptation sans objet', () => {
   const r = racineTemoins();
   try {

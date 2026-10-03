@@ -22,6 +22,48 @@
       "type": "homonyme",
       "occurrences": 1,
       "justification": "verbe « produire » (« le labo produit »), pas la clé produit (GUIDE-BALISAGE §4)"
+    },
+    {
+      "extrait": "Domaine d'activité",
+      "forme": "activité",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "secteur métier du compte, pas la clé activite (spec 2c §7.2, exemples du type homonyme)"
+    },
+    {
+      "extrait": "Formule d'activités",
+      "forme": "activités",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom commercial de la formule d'abonnement (spec 2c §7.2 ; admin AddClientModal.tsx:677, en clair)"
+    },
+    {
+      "extrait": "Activité Basique",
+      "forme": "Activité",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom d'offre écrit en clair à l'écran (MonAbonnementPage.tsx:93, FormuleGuard.tsx:84 ; spec 2c §7.2, GUIDE exemple 22)"
+    },
+    {
+      "extrait": "Activité Premium",
+      "forme": "Activité",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom d'offre écrit en clair à l'écran (MonAbonnementPage.tsx:94 ; spec 2c §7.2)"
+    },
+    {
+      "extrait": "pièce, portion",
+      "forme": "portion",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "« portion » nom d'une unité de mesure du référentiel (donnée : migrations/058_seed_referentiels.sql:10 ; ReferentielUnitesPage.tsx:201 « Ex: kg, L, pièce, portion… » en clair), pas la clé portion"
+    },
+    {
+      "extrait": "(approvisionnement)",
+      "forme": "approvisionnement",
+      "type": "glose",
+      "occurrences": 1,
+      "justification": "glose de « Appro » : la baliser redit le terme hors restauration (C « Réception (réception) », miroir « Rentrée (rentrée) ») ; dans le manuel lu par le client, glose redite exclue (spec §7.5, GUIDE §7 et §11 exemple 9) ; relectures/L1.json ligne 1"
     }
   ],
   "baliseur": "L1",

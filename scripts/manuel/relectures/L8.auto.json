@@ -1,0 +1,162 @@
+[
+  {
+    "fiche": "calc-cout-recette",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« fabriqué au labo … ses bases labo » : bases de type labo, apposition voulue) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-cout-recette",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« fabriqué au labo … ses bases labo » : bases de type labo, apposition voulue) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-cout-recette",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "quantité par unité",
+    "decision": "accepté",
+    "raison": "formule : les deux sommes parallèles répètent « portion » dans l'origine ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-cout-recette",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« ses composants » = ingrédients et sous-produits de la fiche technique : le mot garde un sens proche de la clé ingredient (Composant), le sens reste clair (§10.3, collision composant) ; variante V-H1 prévue pour cette fiche"
+  },
+  {
+    "fiche": "calc-cout-recette",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« ses composants » = ingrédients et sous-produits de la fiche technique : le mot garde un sens proche de la clé ingredient (Composant), le sens reste clair (§10.3, collision composant) ; variante V-C1 prévue pour cette fiche"
+  },
+  {
+    "fiche": "calc-valeur-stock",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "réception",
+    "decision": "accepté",
+    "raison": "« réception(s) » = entrée en stock par livraison interne ou par production (« réception de transfert », « coût de réception ») : le sens reste clair à côté de « livraison interne » (§10.3, collision réception) ; aucune variante prévue"
+  },
+  {
+    "fiche": "calc-pmp",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« Au labo, seuls les achats saisis au labo ») ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-pmp",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« Au labo, seuls les achats saisis au labo ») ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-production-pt",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« au labo pour les produits d'origine labo » : origine = valeur labo / activité) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-production-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« au labo pour les produits d'origine labo » : origine = valeur labo / activité) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-production-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "quantités par unité",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« Les portions de la recette, ou les portions personnalisées ») ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-production-pt",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« chaque composant », « les stocks des composants » = articles et sous-produits consommés : sens proche de la clé ingredient (Composant), le sens reste clair (§10.3, collision composant) ; aucune variante prévue"
+  },
+  {
+    "fiche": "calc-production-pt",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« chaque composant », « les stocks des composants » = articles et sous-produits consommés : sens proche de la clé ingredient (Composant), le sens reste clair (§10.3, collision composant) ; aucune variante prévue"
+  },
+  {
+    "fiche": "calc-prix",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "fabriqués fabriqués",
+    "decision": "accepté",
+    "raison": "« Les PT fabriqués » : le terme C de pt contient déjà « fabriqué » ; l'accord est nécessaire en H (« préparations fabriquées ») ; même limite que « sites de production de production » (§7.5, §10.3) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-prix",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "ligne de tableau : l'origine répète « activité » dans deux cellules (« transfert labo → activité | coût d'entrée côté activité ») ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-tracabilite",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« le nom du labo en fournisseur … la sortie côté labo ») ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-tracabilite",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "livraison interne",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« Les réceptions de transfert (badge Transfert) … saisie au transfert » ; badge = voc.Court('transfert'), StockPage.tsx:1302) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-tracabilite",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« le nom du labo en fournisseur … la sortie côté labo ») ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-tracabilite",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "livraison interne",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le terme dans la même phrase (« Les réceptions de transfert (badge Transfert) … saisie au transfert » ; badge = voc.Court('transfert'), StockPage.tsx:1302) ; impossible à éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "calc-tracabilite",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "réception",
+    "decision": "accepté",
+    "raison": "« les réceptions de transfert » = entrées côté activité d'une livraison interne : le sens reste clair à côté de « livraison interne » (§10.3, collision réception) ; aucune variante prévue"
+  }
+]
