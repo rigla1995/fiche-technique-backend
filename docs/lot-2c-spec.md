@@ -1,4 +1,4 @@
-# Lot 2c — Spécification v2.2 : le manuel et la base de connaissances dans les mots du domaine
+# Lot 2c — Spécification v2.3 : le manuel et la base de connaissances dans les mots du domaine
 
 Références :
 - `docs/lot-2-spec.md` (moteur, balises, outil de preuve, invariants I1 à I6, cadrage du 2c au §5) ;
@@ -43,6 +43,9 @@ Historique :
   des 32 entrées de la base dans la capture (R2.3.4) et leur scan hors restauration (R2.4.8) ; garde « date locale =
   date UTC » (§2.5) ; `verifierBalises` signale aussi une balise non fermée (§5.1) ; l'essai de migration vérifie
   aussi les 32 entrées (§3.7) ; la base principale peut porter la 193 (§2.8).
+- **v2.3 (03/10/2026)**, après l'étape M0 ∥ S ∥ A (backend `c8fff0c` à `6ed9873`, frontend `42e32d3` ; contrôle
+  `labflow-reprise/lot-2c/controle-m0-s-a.md`) : amendements regroupés au **§16**, qui prime sur le texte des
+  sections qu'il cite.
 
 **Têtes.** Backend : `develop` = `863f8f0`, branche `feat/lot-2c-manuel` = `fbca8ce` (develop + `b157b28`
 réépinglage de `scripts/vocab-check.base` + `fbca8ce` lecture de production `scripts/controle-avant-2c.sql`).
@@ -1946,6 +1949,72 @@ avant de signer un client hors restauration).
 - **Admin du manuel** : les balises dans le formulaire (légende, aperçu), le badge « sans balises » (une fiche à
   rebaliser), le refus d'une balise fausse ; toute migration future du manuel écrit du texte balisé.
 - Les questions du §14.
+
+---
+
+## 16. Amendements de l'étape M0 ∥ S ∥ A (v2.3, 03/10/2026)
+
+Ces règles priment sur le texte des sections citées. Elles viennent de l'intégration, des 2 relectures et du
+contrôle final de l'étape (11 constats, 0 bloquant ; tous corrigés ou acceptés ci-dessous).
+
+**A16.1 — Cibles de liens (§3.5, point 3 ; R2.4.2).** Les cibles `(#slug)` portent 200 formes par défaut (185
+cibles). Elles ne se balisent jamais (§7.6) : `controler.mjs`, le pré-baliseur et l'oracle les masquent avant de
+chercher les formes.
+
+**A16.2 — Balise collée à un trait d'union (§3.5, point 3 ; R3.4.3).** Toute balise collée à un trait d'union
+(« lettre- » avant ou « -lettre » après) est un ÉCHEC du point 3, sans exclusion possible, sauf `acc`, `accN` et
+`ex` (« peut-[[acc:labo:il:elle]] »). Raison : « sous-[[nom:pt]] » rend « sous-préparation » en H, contre la
+décision 2 du client (« sous-produit » reste tel quel). La forme reste en clair : locution, exclusion justifiée, ou
+phrase réécrite dans une variante.
+
+**A16.3 — Accords à distance (§3.5, points 7 et 10).** Le point 7 signale aussi le rendu d'une balise suivi d'un mot
+de même racine que son dernier mot, absent du rendu par défaut (« cuisine centrale central »). Le point 10 signale
+aussi un déterminant à genre séparé de la balise de nom par un adjectif (autre, même, seul, propre, premier, dernier,
+nouveau… : « un autre [[nom:labo]] », « son propre [[nom:stock]] »). Fiches concernées, listées dans
+`GUIDE-BALISAGE.md` : `stock-labo`, `activites`, `calc-transferts`, `compte-activites-labos`,
+`decouvrir-labflow` et l'entrée « labo central » de la base.
+
+**A16.4 — `controler.mjs --lexique` (§3.1, R3.1.1, §12.1).** Refus (code 2) d'un fichier dont une clé n'est pas dans
+`LEXIQUE_CLES` ou dont les écarts donnent le lexique par défaut. Le md5 de `lexique::text` est affiché et comparé à
+`hotellerie.md5Lexique` de la lecture de production (option `--lecture`, défaut
+`scripts/manuel/lecture-production.json`) : refus s'il diffère. Sans lecture de production, la comparaison n'a pas
+lieu : à l'étape C, le fichier de lecture doit exister avant `controler --tout --lexique`.
+
+**A16.5 — Variantes : refus à la création seulement (R5.7.3).** `DOMAINE_INCONNU` et `VARIANTE_DOMAINE_SANS_ECART` ne
+sont opposés qu'à la CRÉATION d'une variante. Une variante existante reste modifiable (les brouillons d'une
+Céramique recréée sans lexique, par exemple) ; elle n'est jamais servie tant que son domaine n'a pas d'écart (I12).
+R5.9 tient en une requête placée après l'`UPDATE domaines_activite` (même 409 `VARIANTES_EXISTANTES`).
+
+**A16.6 — Effet mesuré des mots-clés enrichis (§5.4, §14 Q10, §15).** L'effet n'est pas nul : c'est un échange de
+fiches trouvées. Questions du guide, fiche attendue dans les 4 résultats : H 5/12 avant et après (2 perdues, dont
+« créer un labo » → `activites` ; 2 gagnées : room service, housekeeping), C 3/9 → 3/9 (showroom / boutique
+gagné), miroir 1/7 → 3/7. Aucun effet en restauration. **Décision du client (03/10) : on garde l'enrichissement.**
+L'effet est remesuré à l'étape C (rapport R2.4.6), manuel balisé. À dire au client avec la livraison (§15).
+
+**A16.7 — Liste de travail relancée après S (R2.4.7).** L'enrichissement change le classement des résultats de la
+base hors restauration : la famille `assistant` montait (H 186 → 187, C 272 → 279, miroir 458 → 505), sans
+qu'aucun texte gagne de forme (chaque texte est celui d'une entrée d'origine ou figurait déjà dans la liste ; seule
+`recherchesDomaine` change, `manuel`, `baseParTitre` et `recherches` égales). La liste
+`hors-restauration-avant.json` a été relancée sur le code de S (commit `e28187e`) ; **elle est validée** et fait foi
+pour la porte `--hors-manuel` jusqu'à l'étape C. La référence restauration n'a pas bougé.
+
+**A16.8 — Tests qui gardent I1 avant l'étape C (§11).** Tant que le manuel n'est pas balisé, l'oracle et l'E2E ne
+voient pas trois fautes du serveur : titre non rendu par `listPublic`, troncature avant le rendu, variante servie à
+un compte restauration. Seul `npm test` (`test/2c-manuel.test.js`) les attrape, et pour la dernière il restera le
+seul : ces tests ne doivent jamais être affaiblis par les vagues ni par l'étape C.
+
+**A16.9 — E2E sur un port au choix (§5.11, P11).** `test-vocabulaire-domaine.js` et `test-manuel-filtre.js` lisent
+`E2E_BASE`, sinon `http://localhost:${PORT||3000}` ; leurs contrôles ne changent pas. Avant l'étape C,
+`test-vocabulaire-domaine.js` a 1 échec attendu (titres et parties du manuel H) : 235/236.
+
+**A16.10 — Oracle robuste à une mise en veille (§2.8).** Un passage interrompu par la veille du poste (jeton de 3 h
+expiré) laissait ses comptes en base, et une demande de support traitée par l'admin temporaire (clé
+`support_demandes_traite_par_fkey` sans ON DELETE) bloquait la purge suivante. Depuis `6ed9873`, le jeton est
+re-signé au nettoyage et les demandes sont détachées de l'admin temporaire avant sa suppression. Consigne : empêcher
+la mise en veille du poste pendant un passage.
+
+**A16.11 — Tests des outils.** `npm test` ne lance pas `scripts/manuel/test/` (58 tests) : chaque porte les lance à
+part (`node --test scripts/manuel/test/*.test.*`).
 
 ---
 
