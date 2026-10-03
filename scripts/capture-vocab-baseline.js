@@ -422,6 +422,12 @@ const supprimerClient = async (id) => {
   const r = await fetch(`${BASE}/admin/clients/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${ctx.adminTok}` } });
   return r.status;
 };
+// Une demande de support traitée par l'admin temporaire (traite_par, clé sans ON DELETE) bloquerait sa suppression :
+// cas vu le 03/10 après une mise en veille du poste pendant un passage (jeton expiré, nettoyage en 401).
+const supprimerAdminOracle = async (where, valeur) => {
+  await pool.query(`UPDATE support_demandes SET traite_par = NULL WHERE traite_par IN (SELECT id FROM utilisateurs WHERE ${where})`, [valeur]);
+  await pool.query(`DELETE FROM utilisateurs WHERE ${where}`, [valeur]);
+};
 const purgerOracle = async () => {
   // Comptes clients d'un passage interrompu (par motif d'email), puis admin, puis domaine miroir.
   const restes = await pool.query(`SELECT id FROM utilisateurs WHERE role = 'client' AND email LIKE $1`, [MOTIF_EMAILS]);
@@ -494,7 +500,7 @@ async function principal() {
   }
 
   // Super_admin temporaire (mot de passe aléatoire, jeton signé en interne)
-  await pool.query('DELETE FROM utilisateurs WHERE email = $1', [ADMIN_EMAIL]);
+  await supprimerAdminOracle('email = $1', ADMIN_EMAIL);
   const ins = await pool.query(
     `INSERT INTO utilisateurs (nom, email, mot_de_passe, role, actif) VALUES ('Oracle Admin', $1, $2, 'super_admin', true) RETURNING id`,
     [ADMIN_EMAIL, await bcrypt.hash(crypto.randomBytes(18).toString('base64url'), 10)]
@@ -1228,6 +1234,7 @@ const compter = (captures) => Object.fromEntries(CLES_CAPTURE.map((k) => [k, Obj
 async function nettoyer() {
   const bilan = {};
   try {
+    if (ctx.adminId) ctx.adminTok = jeton(ctx.adminId, 'super_admin');
     for (const id of [...ctx.clients]) bilan[`client ${id}`] = await supprimerClient(id).catch((e) => e.message);
     await attendreStable(5000);
     if (ctx.miroirId) {
@@ -1239,7 +1246,7 @@ async function nettoyer() {
     const noms = [N.clientA, N.clientA2, N.clientB, N.clientC, N.acheteur1, N.acheteur2, N.acheteur3, N.gerant];
     const n = await pool.query('DELETE FROM notifications WHERE id > $1 AND client_nom = ANY($2::text[])', [ctx.notifMaxId, noms]);
     bilan.notificationsAdmins = n.rowCount;
-    if (ctx.adminId) await pool.query('DELETE FROM utilisateurs WHERE id = $1', [ctx.adminId]);
+    if (ctx.adminId) await supprimerAdminOracle('id = $1', ctx.adminId);
   } catch (e) {
     bilan.erreur = e.message;
   }
