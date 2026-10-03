@@ -59,6 +59,10 @@
  *     - --hors-manuel (porte de S à C, R2.4.7) : les formes trouvées dans la famille manuel et dans les recherches
  *       sont comptées à part et ne font pas échouer ; le contrôle des mots-clés enrichis (famille manuel) est un
  *       rapport ; tout le reste échoue comme sans l'option. Le rapport complet est gardé et comparé à la liste avant.
+ *     - baseParTitre (réserve R1 du contrôle de O et S0, R2.4.8) : { titre, contenu } rendus des 32 recherches par titre,
+ *       capturés hors restauration seulement ; lus dans la famille assistant avec les exclusions de
+ *       scripts/manuel/balise/base/*.json ; ignorés par --hors-manuel comme les recherches (base pas encore balisée) ;
+ *       non-vacuité : clé présente, autant d'entrées que meta.entreesBase, aucun contenu vide (sinon échec).
  *
  *   Options communes :
  *     --capture <fichier>    analyser une capture déjà faite (aucun nouveau passage) ;
@@ -343,10 +347,11 @@ const FAMILLE = {
   exports: 'excel', pdf: 'documents', valeursContrat: 'documents', emails: 'emails',
   prompt: 'assistant', promptReel: 'assistant', outils: 'assistant', resultatsOutils: 'assistant', recherches: 'assistant',
   recherchesDomaine: 'assistant', contexte: 'assistant', guide: 'assistant', accueilMessenger: 'assistant', rapportIA: 'assistant',
-  persistes: 'persistes', manuel: 'manuel',
+  persistes: 'persistes', manuel: 'manuel', baseParTitre: 'assistant',
 };
 // Textes du lot 2c (R2.4.3, R2.4.7) : le manuel servi et les résultats de la recherche (manuel et base).
-const CLES_2C = ['manuel', 'recherches', 'recherchesDomaine'];
+// baseParTitre (R2.4.8) : contenu des 32 entrées de la base, hors restauration ; texte de la base, comme les recherches.
+const CLES_2C = ['manuel', 'recherches', 'recherchesDomaine', 'baseParTitre'];
 const estManuel = (t) => typeof t === 'string' && t.startsWith('Manuel — ');
 const citation = (s) => `Manuel — ${s.partie} › ${s.titre}`;
 
@@ -502,6 +507,11 @@ function textes(captures) {
       pousser('recherchesDomaine', `/${seg(k)}/base/${i}/titre`, x && x.titre, { entreeBase: x && x.titre });
       pousser('recherchesDomaine', `/${seg(k)}/base/${i}/contenu`, x && x.contenu, { entreeBase: x && x.titre });
     });
+  }
+  // Entrées de la base par titre (R2.4.8) : titre et contenu rendus, entrée retrouvée par son titre pour ses exclusions.
+  for (const [t, v] of Object.entries(captures.baseParTitre || {})) {
+    pousser('baseParTitre', `/${seg(t)}/titre`, v && v.titre, { entreeBase: v && v.titre });
+    pousser('baseParTitre', `/${seg(t)}/contenu`, v && v.contenu, { entreeBase: v && v.titre });
   }
   // Manuel servi (lot 2c, R2.4.1) : titre, partie, contenu ; jamais motsCles (non affiché, contrôle R2.4.4).
   for (const [slug, s] of Object.entries((captures.manuel && captures.manuel.sections) || {})) {
@@ -774,6 +784,16 @@ async function verifierHorsRestauration(capture) {
   else if (!empAdminRef) problemes.push(`meta.empreintesManuel.admin absent de la référence ${path.relative(RACINE, refFichier)} (recapturer la référence)`);
   else problemes.push(...ecartsEmpreintes({ admin: empAdminRef }, { admin: empAdmin }, ['admin']).map((p) => `I4 : ${p}`));
   if (!capture.captures.manuel || !capture.captures.manuel.sections || !Object.keys(capture.captures.manuel.sections).length) problemes.push('manuel.sections vide (clé manuel)');
+  // R2.4.8 : non-vacuité de baseParTitre (une entrée par entrée active de la base, chacune avec son contenu).
+  const baseParTitre = capture.captures.baseParTitre;
+  const nBase = baseParTitre && typeof baseParTitre === 'object' ? Object.keys(baseParTitre).length : 0;
+  if (!nBase) problemes.push('baseParTitre absent ou vide (contenu des entrées de la base, R2.4.8) : capture d\'avant la réserve R1 ?');
+  else {
+    if (nBase !== capture.meta.entreesBase) problemes.push(`baseParTitre : ${nBase} entrée(s), ${capture.meta.entreesBase} entrée(s) active(s) dans la base (meta.entreesBase)`);
+    for (const [t, v] of Object.entries(baseParTitre)) {
+      if (!v || typeof v.contenu !== 'string' || !v.contenu.trim()) problemes.push(`baseParTitre « ${t} » : contenu vide ou absent`);
+    }
+  }
   const resManuel = controlerResultatsManuel(capture.captures);
   problemes.push(...resManuel.problemes);
   const coherence = coherenceRecherches(capture, ref, vX, resManuel.parCitation);
@@ -839,6 +859,7 @@ async function verifierHorsRestauration(capture) {
     horsManuel: { formes: synthese(retenues).occurrences, ignorees: trouvees.length - trouvees.filter((f) => !texte2c(f)).length },
     exclusionsBalise: excl.fichiers,
     resultatsManuelControles: resManuel.controles,
+    baseParTitre: nBase,
     motsCles: { controles: motsCles.controles, manques: motsCles.manques.length, ...(motsCles.note ? { note: motsCles.note } : {}) },
     coherenceRecherches: {
       cles: coherence.termes.length,
@@ -853,10 +874,10 @@ async function verifierHorsRestauration(capture) {
   if (clesAbsentes.length) console.log(`[check-vocab] liste INCOMPLÈTE pour les clés absentes du moteur courant : ${clesAbsentes.join(', ')} (à relancer après S1)`);
   for (const [fam, s] of Object.entries(res.formes.parFamille)) console.log(`  ${fam.padEnd(10)} ${String(s.occurrences).padStart(5)} occurrence(s), ${String(s.textes).padStart(4)} texte(s) distinct(s)`);
   console.log(`  hors lexique : ${res.horsLexique.occurrences} occurrence(s) (${Object.entries(res.horsLexique.parFamille).map(([f, s]) => `${f} ${s.occurrences}`).join(', ') || 'aucune'})`);
-  console.log(`  lot 2c : ${resManuel.controles} résultat(s) du manuel contrôlé(s) (citation, début de fiche) ; mots-clés enrichis : ${motsCles.controles} contrôle(s), ${motsCles.manques.length} manque(s)${motsCles.note ? ` (${motsCles.note})` : ''} ; recherches du domaine : ${coherence.termes.length} clé(s), ${coherence.sansResultat.length} sans résultat, terme du domaine absent des résultats : ${res.coherenceRecherches.termeAbsent.length} ; fiche attendue absente des 4 résultats : ${coherence.fiches.filter((x) => x.ok === false).length} sur ${coherence.fiches.length} ; exclusions lues : ${excl.fichiers.fiches} fiche(s), ${excl.fichiers.variantes} variante(s), ${excl.fichiers.base} entrée(s)`);
+  console.log(`  lot 2c : ${resManuel.controles} résultat(s) du manuel contrôlé(s) (citation, début de fiche) ; mots-clés enrichis : ${motsCles.controles} contrôle(s), ${motsCles.manques.length} manque(s)${motsCles.note ? ` (${motsCles.note})` : ''} ; recherches du domaine : ${coherence.termes.length} clé(s), ${coherence.sansResultat.length} sans résultat, terme du domaine absent des résultats : ${res.coherenceRecherches.termeAbsent.length} ; fiche attendue absente des 4 résultats : ${coherence.fiches.filter((x) => x.ok === false).length} sur ${coherence.fiches.length} ; exclusions lues : ${excl.fichiers.fiches} fiche(s), ${excl.fichiers.variantes} variante(s), ${excl.fichiers.base} entrée(s) ; base par titre : ${nBase} entrée(s) lue(s)`);
   for (const c of comparaisonAvant) console.log(c.note ? `  liste avant : ${c.note}` : `  liste avant : ${c.famille} ${c.maintenant} forme(s) (avant : ${c.avant})${c.monte ? ' — MONTE' : ''}`);
   if (HORS_MANUEL) {
-    console.log(`  --hors-manuel : ${retenues.length} forme(s) hors manuel et recherches (${ignorees.length} ignorée(s) dans le manuel et les recherches)`);
+    console.log(`  --hors-manuel : ${retenues.length} forme(s) hors manuel et recherches (${ignorees.length} ignorée(s) dans le manuel, les recherches et la base par titre)`);
     for (const f of retenues.slice(0, 30)) console.log(`    ✗ ${f.cle}${f.chemin} « ${f.forme} » : ${extrait(f.texte, f.forme)}`);
   }
   for (const l of libellesKo) console.log(`  ✗ libellé écrit par le serveur ${l.chemin} : ${JSON.stringify(l.obtenu)} (attendu ${JSON.stringify(l.attendu)})`);
@@ -888,7 +909,7 @@ async function verifierHorsRestauration(capture) {
   for (const m of (HORS_MANUEL ? [] : motsCles.manques).slice(0, 20)) console.log(`  ✗ mots-clés de « ${m.slug} » sans « ${m.attendu} » (clé ${m.cle}, R2.4.4)`);
   const total = retenues.length + res.horsLexique.occurrences + libellesKo.length + manquesBloquants;
   const ok = !total && !problemes.length && !sansEmploi.length;
-  console.log(`[check-vocab] ${ok ? `AUCUNE forme par défaut hors exceptions${HORS_MANUEL ? ' (--hors-manuel : manuel et recherches ignorés)' : ''}` : `ÉCHEC — ${retenues.length} forme(s)${HORS_MANUEL ? ' hors manuel' : ''}, ${res.horsLexique.occurrences} mot(s) hors lexique, ${libellesKo.length} libellé(s) serveur, ${manquesBloquants} mot(s)-clé(s) manquant(s), ${problemes.length} problème(s), ${sansEmploi.length} exception(s) sans emploi`}`);
+  console.log(`[check-vocab] ${ok ? `AUCUNE forme par défaut hors exceptions${HORS_MANUEL ? ' (--hors-manuel : manuel, recherches et base par titre ignorés)' : ''}` : `ÉCHEC — ${retenues.length} forme(s)${HORS_MANUEL ? ' hors manuel' : ''}, ${res.horsLexique.occurrences} mot(s) hors lexique, ${libellesKo.length} libellé(s) serveur, ${manquesBloquants} mot(s)-clé(s) manquant(s), ${problemes.length} problème(s), ${sansEmploi.length} exception(s) sans emploi`}`);
   return ok ? 0 : 1;
 }
 

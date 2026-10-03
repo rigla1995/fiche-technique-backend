@@ -4,10 +4,10 @@
   "ceramique": {
    "domaine": "ceramique",
    "domaineNom": "Industrie — Céramique",
-   "migration": "192_composants_genre_elision.sql",
+   "migration": "193_manuel_sections_domaine.sql",
    "rechercheFormes": "vocab-check.mjs (E11)",
    "incompletePour": [],
-   "textesLus": 7734,
+   "textesLus": 7802,
    "formesCherchees": {
     "Acheteur": [
      "acheteur:Nom",
@@ -273,46 +273,52 @@
     ]
    },
    "formesRetirees": {},
-   "exceptionsEmployees": 80,
+   "exceptionsEmployees": 60,
    "formes": {
-    "occurrences": 835,
-    "textes": 163,
+    "occurrences": 957,
+    "textes": 215,
     "parFamille": {
      "assistant": {
-      "occurrences": 157,
-      "textes": 69,
+      "occurrences": 279,
+      "textes": 121,
       "parCle": {
+       "baseParTitre": 115,
        "recherches": 32,
-       "recherchesDomaine": 125
+       "recherchesDomaine": 132
       },
       "parForme": {
-       "Activité": 15,
-       "Activités": 8,
-       "Appro": 1,
-       "Approvisionnement": 2,
+       "Activité": 22,
+       "Activités": 14,
+       "Appro": 4,
+       "Appros": 2,
+       "Approvisionnement": 8,
        "Approvisionnements": 5,
-       "Article": 19,
-       "Fiche technique": 15,
-       "Fiches techniques": 14,
-       "Food cost": 4,
-       "Gérant": 1,
-       "Ingrédient": 6,
-       "Ingrédients": 7,
-       "Labo": 5,
-       "Laboratoire": 1,
-       "Labos": 5,
-       "Portions": 15,
-       "Prestataire": 3,
-       "Produit transformé": 2,
-       "Produit utilisable": 3,
-       "Produit vendable": 3,
-       "Produits transformés": 5,
-       "Produits vendables": 4,
-       "PT": 3,
-       "Recette": 4,
-       "Supplément": 1,
-       "Transfert": 2,
-       "Transferts": 4
+       "Article": 32,
+       "Articles": 7,
+       "Fiche technique": 20,
+       "Fiches techniques": 13,
+       "Food cost": 7,
+       "Gérant": 3,
+       "Gérants": 1,
+       "Ingrédient": 12,
+       "Ingrédients": 14,
+       "Labo": 12,
+       "Laboratoire": 2,
+       "Labos": 7,
+       "Portions": 14,
+       "Prestataire": 6,
+       "Prestataires": 1,
+       "Produit transformé": 4,
+       "Produit utilisable": 7,
+       "Produit valorisé": 2,
+       "Produit vendable": 9,
+       "Produits transformés": 15,
+       "Produits vendables": 9,
+       "PT": 4,
+       "Recette": 6,
+       "Supplément": 4,
+       "Transfert": 5,
+       "Transferts": 8
       }
      },
      "manuel": {
@@ -375,6 +381,571 @@
      }
     },
     "elements": [
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Abonnement et capacité/contenu",
+      "exemple": "/Abonnement et capacité/contenu",
+      "formes": [
+       "Activités",
+       "Labos",
+       "Gérants"
+      ],
+      "occurrences": 3,
+      "texte": "L'abonnement définit la capacité souscrite du client : nombre d'activités, de labos et de gérants, plus le forfait mensuel et l'onboarding. À la création du com…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Activité (point de vente)/contenu",
+      "exemple": "/Activité (point de vente)/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labos",
+       "Approvisionnements"
+      ],
+      "occurrences": 4,
+      "texte": "Une activité est un point de vente du client (restaurant, café, kiosque…). Elle a son propre stock, ses approvisionnements, ses ventes et ses pertes. Un compte …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Activité (point de vente)/titre",
+      "exemple": "/Activité (point de vente)/titre",
+      "formes": [
+       "Activité"
+      ],
+      "occurrences": 1,
+      "texte": "Activité (point de vente)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Approvisionnement (appro)/contenu",
+      "exemple": "/Approvisionnement (appro)/contenu",
+      "formes": [
+       "Activité",
+       "Labo",
+       "Ingrédient",
+       "Transfert",
+       "Approvisionnement",
+       "Appro",
+       "Appros",
+       "Produits transformés"
+      ],
+      "occurrences": 8,
+      "texte": "… transformés d'origine labo ne s'approvisionnent pas directement côté activité : ils arrivent uniquement par transfert depuis le labo."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Approvisionnement (appro)/titre",
+      "exemple": "/Approvisionnement (appro)/titre",
+      "formes": [
+       "Approvisionnement",
+       "Appro"
+      ],
+      "occurrences": 2,
+      "texte": "Approvisionnement (appro)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article valorisé/contenu",
+      "exemple": "/Article valorisé/contenu",
+      "formes": [
+       "Labo",
+       "Produit valorisé",
+       "Article",
+       "Ingrédients",
+       "Recette"
+      ],
+      "occurrences": 5,
+      "texte": "…ple (un article déduit directement du stock à la vente) ou composé au labo (« composé valorisé » : sa fabrication au labo déduit les ingrédients de sa recette).…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article valorisé/titre",
+      "exemple": "/Article valorisé/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Article valorisé"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article vendable/contenu",
+      "exemple": "/Article vendable/contenu",
+      "formes": [
+       "Activité",
+       "Produit vendable",
+       "Produit valorisé",
+       "Article",
+       "Fiche technique",
+       "Produit transformé"
+      ],
+      "occurrences": 6,
+      "texte": "…le vendable est un produit ou un article configuré à la vente sur une activité, avec un prix de vente et un statut actif. Il peut s'agir d'une fiche technique (…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article vendable/titre",
+      "exemple": "/Article vendable/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Article vendable"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Catégorie de produit/contenu",
+      "exemple": "/Catégorie de produit/contenu",
+      "formes": [
+       "Produit vendable",
+       "Produits vendables",
+       "Articles",
+       "Supplément"
+      ],
+      "occurrences": 4,
+      "texte": "…pplément ou valorisé. La catégorie est obligatoire à la création d'un produit vendable ou d'un supplément et sert au regroupement dans la saisie de vente et les…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Charges fixes/contenu",
+      "exemple": "/Charges fixes/contenu",
+      "formes": [
+       "Activité"
+      ],
+      "occurrences": 1,
+      "texte": "Les charges fixes d'une activité (loyer, charges de personnel, électricité/gaz, eau…) sont saisies soit en montant global, soit en détail. Elles servent au calc…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Coût matière/contenu",
+      "exemple": "/Coût matière/contenu",
+      "formes": [
+       "Ingrédients",
+       "Food cost"
+      ],
+      "occurrences": 2,
+      "texte": "Le coût matière est la valeur des ingrédients consommés pour réaliser les ventes d'une période. C'est le numérateur du food cost."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Famille et catégorie d'article/contenu",
+      "exemple": "/Famille et catégorie d'article/contenu",
+      "formes": [
+       "Article",
+       "Articles"
+      ],
+      "occurrences": 2,
+      "texte": "Le référentiel articles est organisé en deux niveaux : la famille (niveau 1, ex : Fruits, Légumes, Viandes) puis la catégorie (niveau 2 sous la famille). Chaque…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Famille et catégorie d'article/titre",
+      "exemple": "/Famille et catégorie d'article/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Famille et catégorie d'article"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Fiche technique/contenu",
+      "exemple": "/Fiche technique/contenu",
+      "formes": [
+       "Ingrédient",
+       "Recette",
+       "Fiche technique"
+      ],
+      "occurrences": 3,
+      "texte": "…ût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Fiche technique/titre",
+      "exemple": "/Fiche technique/titre",
+      "formes": [
+       "Fiche technique"
+      ],
+      "occurrences": 1,
+      "texte": "Fiche technique"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Food cost/contenu",
+      "exemple": "/Food cost/contenu",
+      "formes": [
+       "Portions",
+       "Food cost"
+      ],
+      "occurrences": 2,
+      "texte": "… = sain, 30 à 40% = à surveiller, plus de 40% = élevé (revoir prix ou portions). Plus il est bas, plus la marge est élevée."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Food cost/titre",
+      "exemple": "/Food cost/titre",
+      "formes": [
+       "Food cost"
+      ],
+      "occurrences": 1,
+      "texte": "Food cost"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Fournisseur/contenu",
+      "exemple": "/Fournisseur/contenu",
+      "formes": [
+       "Activités",
+       "Approvisionnement",
+       "Appro",
+       "Produits transformés"
+      ],
+      "occurrences": 4,
+      "texte": "…Les fournisseurs sont partagés au niveau du compte et affectables aux activités. Un fournisseur système « AUTO » est rattaché automatiquement aux mouvements de …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Gérant/contenu",
+      "exemple": "/Gérant/contenu",
+      "formes": [
+       "Activités",
+       "Labos",
+       "Appros",
+       "Gérant"
+      ],
+      "occurrences": 4,
+      "texte": "…ur délégué, rattaché à un compte client et affecté à une ou plusieurs activités et/ou labos. Il ne voit et ne gère que le périmètre qui lui est assigné. Il cons…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Gérant/titre",
+      "exemple": "/Gérant/titre",
+      "formes": [
+       "Gérant"
+      ],
+      "occurrences": 1,
+      "texte": "Gérant"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Labo central/contenu",
+      "exemple": "/Labo central/contenu",
+      "formes": [
+       "Activités",
+       "Labo",
+       "Ingrédients",
+       "Transferts",
+       "Produits transformés",
+       "PT",
+       "Laboratoire"
+      ],
+      "occurrences": 7,
+      "texte": "…rédients, fabrique des produits transformés (PT) et approvisionne les activités via des transferts. Le stock du labo est distinct du stock des activités."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Labo central/titre",
+      "exemple": "/Labo central/titre",
+      "formes": [
+       "Labo"
+      ],
+      "occurrences": 1,
+      "texte": "Labo central"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Marge brute/contenu",
+      "exemple": "/Marge brute/contenu",
+      "formes": [
+       "Ingrédients"
+      ],
+      "occurrences": 1,
+      "texte": "La marge brute = chiffre d'affaires − coût matière. Le taux de marge = marge ÷ CA. C'est ce qui reste après le coût des ingrédients pour couvrir les charges."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Mode de prix d'une fiche technique/contenu",
+      "exemple": "/Mode de prix d'une fiche technique/contenu",
+      "formes": [
+       "Ingrédients",
+       "Fiche technique"
+      ],
+      "occurrences": 2,
+      "texte": "…e fiche technique peut être calculé selon plusieurs modes de prix des ingrédients : le dernier prix d'achat (DP), la moyenne des prix du stock (MP : prix moyen …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Mode de prix d'une fiche technique/titre",
+      "exemple": "/Mode de prix d'une fiche technique/titre",
+      "formes": [
+       "Fiche technique"
+      ],
+      "occurrences": 1,
+      "texte": "Mode de prix d'une fiche technique"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Prestataire de livraison/contenu",
+      "exemple": "/Prestataire de livraison/contenu",
+      "formes": [
+       "Prestataire",
+       "Prestataires"
+      ],
+      "occurrences": 2,
+      "texte": "Un prestataire de livraison (ex : Uber Eats, Talabat, Glovo) est une plateforme tierce via laquelle des ventes sont réalisées, avec une commission en pourcentag…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Prestataire de livraison/titre",
+      "exemple": "/Prestataire de livraison/titre",
+      "formes": [
+       "Prestataire"
+      ],
+      "occurrences": 1,
+      "texte": "Prestataire de livraison"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produit transformé (PT)/contenu",
+      "exemple": "/Produit transformé (PT)/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labo",
+       "Ingrédients",
+       "Recette",
+       "Transfert",
+       "Produit transformé",
+       "PT"
+      ],
+      "occurrences": 8,
+      "texte": "…édients et éventuellement d'autres PT, au labo ou directement sur une activité selon son origine. Sa production déduit automatiquement du stock du site de produ…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produit transformé (PT)/titre",
+      "exemple": "/Produit transformé (PT)/titre",
+      "formes": [
+       "Produit transformé",
+       "PT"
+      ],
+      "occurrences": 2,
+      "texte": "Produit transformé (PT)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produits vendables et utilisables/contenu",
+      "exemple": "/Produits vendables et utilisables/contenu",
+      "formes": [
+       "Produit vendable",
+       "Produit utilisable",
+       "Ingrédient",
+       "Produits transformés"
+      ],
+      "occurrences": 4,
+      "texte": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué pui…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produits vendables et utilisables/titre",
+      "exemple": "/Produits vendables et utilisables/titre",
+      "formes": [
+       "Produits vendables"
+      ],
+      "occurrences": 1,
+      "texte": "Produits vendables et utilisables"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Rapport (Excel ~1 PDF)/contenu",
+      "exemple": "/Rapport (Excel ~1 PDF)/contenu",
+      "formes": [
+       "Transferts"
+      ],
+      "occurrences": 1,
+      "texte": "…xcel ou PDF récapitulant le stock, les pertes, les inventaires et les transferts du client. Le client peut le demander explicitement (ex : « envoie-moi le rappo…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Référentiel articles/contenu",
+      "exemple": "/Référentiel articles/contenu",
+      "formes": [
+       "Articles",
+       "Ingrédients",
+       "Fiches techniques"
+      ],
+      "occurrences": 3,
+      "texte": "Le référentiel regroupe les articles/ingrédients du client avec leur unité, leur famille/catégorie et leur prix de référence. C'est la base à partir de laquelle…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Référentiel articles/titre",
+      "exemple": "/Référentiel articles/titre",
+      "formes": [
+       "Articles"
+      ],
+      "occurrences": 1,
+      "texte": "Référentiel articles"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Seuil minimum/contenu",
+      "exemple": "/Seuil minimum/contenu",
+      "formes": [
+       "Activité",
+       "Labo",
+       "Article",
+       "Produit transformé"
+      ],
+      "occurrences": 4,
+      "texte": "…d'un article ou d'un produit transformé. Il se définit séparément par activité et par labo : chaque site a ses propres seuils. En dessous, l'article passe en al…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Supplément/contenu",
+      "exemple": "/Supplément/contenu",
+      "formes": [
+       "Supplément"
+      ],
+      "occurrences": 1,
+      "texte": "Un supplément est un produit vendu en plus d'un produit principal et facturé séparément (ex : sauce, extra fromage). Il a sa propre catégorie de type \"supplémen…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Supplément/titre",
+      "exemple": "/Supplément/titre",
+      "formes": [
+       "Supplément"
+      ],
+      "occurrences": 1,
+      "texte": "Supplément"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Timbre fiscal/contenu",
+      "exemple": "/Timbre fiscal/contenu",
+      "formes": [
+       "Approvisionnement"
+      ],
+      "occurrences": 1,
+      "texte": "…ure lorsqu'il s'applique. Il est suivi par LabFlow sur les factures d'approvisionnement."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Transferts/contenu",
+      "exemple": "/Transferts/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labo",
+       "Transfert",
+       "Approvisionnement",
+       "Produits transformés"
+      ],
+      "occurrences": 6,
+      "texte": "Un transfert déplace du stock du LABO (production centrale) vers une ACTIVITÉ (point de vente). Le labo s'approvisionne en gros puis alimente les activités. C'e…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Transferts/titre",
+      "exemple": "/Transferts/titre",
+      "formes": [
+       "Transferts"
+      ],
+      "occurrences": 1,
+      "texte": "Transferts"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/TVA (HT ~1 TTC)/contenu",
+      "exemple": "/TVA (HT ~1 TTC)/contenu",
+      "formes": [
+       "Ingrédients",
+       "Produits transformés"
+      ],
+      "occurrences": 2,
+      "texte": "…isés en TTC avec une TVA à 0 (leur coût intègre déjà les prix TTC des ingrédients)."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Unité de mesure/contenu",
+      "exemple": "/Unité de mesure/contenu",
+      "formes": [
+       "Article",
+       "Fiches techniques",
+       "Portions"
+      ],
+      "occurrences": 3,
+      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Valeur du stock/contenu",
+      "exemple": "/Valeur du stock/contenu",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "… stock = somme (quantité en stock × prix moyen pondéré TTC) de chaque article à une date donnée. Elle représente l'argent immobilisé en marchandises. Toutes les…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Vente/contenu",
+      "exemple": "/Vente/contenu",
+      "formes": [
+       "Activité",
+       "Article",
+       "Prestataire"
+      ],
+      "occurrences": 3,
+      "texte": "Une vente est une transaction enregistrée sur une activité, à une date, avec un statut (confirmée/annulée) et un canal : directe (sur place) ou via un prestatai…"
+     },
      {
       "famille": "assistant",
       "cle": "recherches",
@@ -625,6 +1196,31 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
+      "chemin": "/A|C'est quoi un produit fini catalogue ?/base/n/contenu",
+      "exemple": "/A|C'est quoi un produit fini catalogue ?/base/0/contenu",
+      "formes": [
+       "Produit vendable",
+       "Produit utilisable",
+       "Ingrédient",
+       "Produits transformés"
+      ],
+      "occurrences": 4,
+      "texte": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué pui…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/A|C'est quoi un produit fini catalogue ?/base/n/titre",
+      "exemple": "/A|C'est quoi un produit fini catalogue ?/base/0/titre",
+      "formes": [
+       "Produits vendables"
+      ],
+      "occurrences": 1,
+      "texte": "Produits vendables et utilisables"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
       "chemin": "/A|Comment affecter les matières premières à mon point de vente ?/base/n/contenu",
       "exemple": "/A|Comment affecter les matières premières à mon point de vente ?/base/0/contenu",
       "formes": [
@@ -652,19 +1248,6 @@
       "cle": "recherchesDomaine",
       "chemin": "/A|Comment ajouter mes fournisseurs ?/base/n/contenu",
       "exemple": "/A|Comment ajouter mes fournisseurs ?/base/0/contenu",
-      "formes": [
-       "Article",
-       "Fiches techniques",
-       "Portions"
-      ],
-      "occurrences": 3,
-      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/A|Comment ajouter mes matières premières ?/base/n/contenu",
-      "exemple": "/A|Comment ajouter mes matières premières ?/base/0/contenu",
       "formes": [
        "Article",
        "Fiches techniques",
@@ -737,7 +1320,7 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/A|Comment importer mes matières premières en masse ?/base/n/contenu",
-      "exemple": "/A|Comment importer mes matières premières en masse ?/base/0/contenu",
+      "exemple": "/A|Comment importer mes matières premières en masse ?/base/1/contenu",
       "formes": [
        "Article",
        "Fiches techniques",
@@ -745,6 +1328,29 @@
       ],
       "occurrences": 3,
       "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/A|Comment importer mes matières premières en masse ?/base/n/contenu",
+      "exemple": "/A|Comment importer mes matières premières en masse ?/base/0/contenu",
+      "formes": [
+       "Article",
+       "Articles"
+      ],
+      "occurrences": 2,
+      "texte": "Le référentiel articles est organisé en deux niveaux : la famille (niveau 1, ex : Fruits, Légumes, Viandes) puis la catégorie (niveau 2 sous la famille). Chaque…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/A|Comment importer mes matières premières en masse ?/base/n/titre",
+      "exemple": "/A|Comment importer mes matières premières en masse ?/base/0/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Famille et catégorie d'article"
      },
      {
       "famille": "assistant",
@@ -835,21 +1441,33 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/B|Comment ajouter mes fournisseurs ?/base/n/contenu",
-      "exemple": "/B|Comment ajouter mes fournisseurs ?/base/0/contenu",
+      "chemin": "/B|C'est quoi un produit fini catalogue ?/base/n/contenu",
+      "exemple": "/B|C'est quoi un produit fini catalogue ?/base/0/contenu",
       "formes": [
-       "Article",
-       "Fiches techniques",
-       "Portions"
+       "Produit vendable",
+       "Produit utilisable",
+       "Ingrédient",
+       "Produits transformés"
       ],
-      "occurrences": 3,
-      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+      "occurrences": 4,
+      "texte": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué pui…"
      },
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/B|Comment ajouter mes matières premières ?/base/n/contenu",
-      "exemple": "/B|Comment ajouter mes matières premières ?/base/0/contenu",
+      "chemin": "/B|C'est quoi un produit fini catalogue ?/base/n/titre",
+      "exemple": "/B|C'est quoi un produit fini catalogue ?/base/0/titre",
+      "formes": [
+       "Produits vendables"
+      ],
+      "occurrences": 1,
+      "texte": "Produits vendables et utilisables"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/B|Comment ajouter mes fournisseurs ?/base/n/contenu",
+      "exemple": "/B|Comment ajouter mes fournisseurs ?/base/0/contenu",
       "formes": [
        "Article",
        "Fiches techniques",
@@ -922,7 +1540,7 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/B|Comment importer mes matières premières en masse ?/base/n/contenu",
-      "exemple": "/B|Comment importer mes matières premières en masse ?/base/0/contenu",
+      "exemple": "/B|Comment importer mes matières premières en masse ?/base/1/contenu",
       "formes": [
        "Article",
        "Fiches techniques",
@@ -930,6 +1548,29 @@
       ],
       "occurrences": 3,
       "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/B|Comment importer mes matières premières en masse ?/base/n/contenu",
+      "exemple": "/B|Comment importer mes matières premières en masse ?/base/0/contenu",
+      "formes": [
+       "Article",
+       "Articles"
+      ],
+      "occurrences": 2,
+      "texte": "Le référentiel articles est organisé en deux niveaux : la famille (niveau 1, ex : Fruits, Légumes, Viandes) puis la catégorie (niveau 2 sous la famille). Chaque…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/B|Comment importer mes matières premières en masse ?/base/n/titre",
+      "exemple": "/B|Comment importer mes matières premières en masse ?/base/0/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Famille et catégorie d'article"
      },
      {
       "famille": "assistant",
@@ -972,31 +1613,6 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/B|Quelle est la différence entre un point de vente et un site de production ?/base/n/contenu",
-      "exemple": "/B|Quelle est la différence entre un point de vente et un site de production ?/base/0/contenu",
-      "formes": [
-       "Activité",
-       "Activités",
-       "Labos",
-       "Approvisionnements"
-      ],
-      "occurrences": 4,
-      "texte": "Une activité est un point de vente du client (restaurant, café, kiosque…). Elle a son propre stock, ses approvisionnements, ses ventes et ses pertes. Un compte …"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/B|Quelle est la différence entre un point de vente et un site de production ?/base/n/titre",
-      "exemple": "/B|Quelle est la différence entre un point de vente et un site de production ?/base/0/titre",
-      "formes": [
-       "Activité"
-      ],
-      "occurrences": 1,
-      "texte": "Activité (point de vente)"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
       "chemin": "/C|À quoi servent les familles et les catégories ?/base/n/contenu",
       "exemple": "/C|À quoi servent les familles et les catégories ?/base/0/contenu",
       "formes": [
@@ -1022,21 +1638,33 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/C|Comment ajouter mes fournisseurs ?/base/n/contenu",
-      "exemple": "/C|Comment ajouter mes fournisseurs ?/base/0/contenu",
+      "chemin": "/C|C'est quoi un produit fini catalogue ?/base/n/contenu",
+      "exemple": "/C|C'est quoi un produit fini catalogue ?/base/0/contenu",
       "formes": [
-       "Article",
-       "Fiches techniques",
-       "Portions"
+       "Produit vendable",
+       "Produit utilisable",
+       "Ingrédient",
+       "Produits transformés"
       ],
-      "occurrences": 3,
-      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+      "occurrences": 4,
+      "texte": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué pui…"
      },
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/C|Comment ajouter mes matières premières ?/base/n/contenu",
-      "exemple": "/C|Comment ajouter mes matières premières ?/base/0/contenu",
+      "chemin": "/C|C'est quoi un produit fini catalogue ?/base/n/titre",
+      "exemple": "/C|C'est quoi un produit fini catalogue ?/base/0/titre",
+      "formes": [
+       "Produits vendables"
+      ],
+      "occurrences": 1,
+      "texte": "Produits vendables et utilisables"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/C|Comment ajouter mes fournisseurs ?/base/n/contenu",
+      "exemple": "/C|Comment ajouter mes fournisseurs ?/base/0/contenu",
       "formes": [
        "Article",
        "Fiches techniques",
@@ -1122,7 +1750,7 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/C|Comment importer mes matières premières en masse ?/base/n/contenu",
-      "exemple": "/C|Comment importer mes matières premières en masse ?/base/0/contenu",
+      "exemple": "/C|Comment importer mes matières premières en masse ?/base/1/contenu",
       "formes": [
        "Article",
        "Fiches techniques",
@@ -1130,6 +1758,29 @@
       ],
       "occurrences": 3,
       "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/C|Comment importer mes matières premières en masse ?/base/n/contenu",
+      "exemple": "/C|Comment importer mes matières premières en masse ?/base/0/contenu",
+      "formes": [
+       "Article",
+       "Articles"
+      ],
+      "occurrences": 2,
+      "texte": "Le référentiel articles est organisé en deux niveaux : la famille (niveau 1, ex : Fruits, Légumes, Viandes) puis la catégorie (niveau 2 sous la famille). Chaque…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/C|Comment importer mes matières premières en masse ?/base/n/titre",
+      "exemple": "/C|Comment importer mes matières premières en masse ?/base/0/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Famille et catégorie d'article"
      },
      {
       "famille": "assistant",
@@ -1159,7 +1810,23 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/n/contenu",
-      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/0/contenu",
+      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/2/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labo",
+       "Transfert",
+       "Approvisionnement",
+       "Produits transformés"
+      ],
+      "occurrences": 6,
+      "texte": "Un transfert déplace du stock du LABO (production centrale) vers une ACTIVITÉ (point de vente). Le labo s'approvisionne en gros puis alimente les activités. C'e…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/n/contenu",
+      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/1/contenu",
       "formes": [
        "Activité",
        "Activités",
@@ -1173,12 +1840,23 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/n/titre",
-      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/0/titre",
+      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/1/titre",
       "formes": [
        "Activité"
       ],
       "occurrences": 1,
       "texte": "Activité (point de vente)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/n/titre",
+      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/2/titre",
+      "formes": [
+       "Transferts"
+      ],
+      "occurrences": 1,
+      "texte": "Transferts"
      },
      {
       "famille": "assistant",
@@ -1191,36 +1869,6 @@
       ],
       "occurrences": 2,
       "texte": "Le coût matière est la valeur des ingrédients consommés pour réaliser les ventes d'une période. C'est le numérateur du food cost."
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/fixe|créer [[un:labo]]/resultat/results/n/contenu",
-      "exemple": "/fixe|créer [[un:labo]]/resultat/results/3/contenu",
-      "formes": [
-       "Activité",
-       "Activités",
-       "Labo",
-       "Ingrédients",
-       "Recette",
-       "Transfert",
-       "Produit transformé",
-       "PT"
-      ],
-      "occurrences": 8,
-      "texte": "…édients et éventuellement d'autres PT, au labo ou directement sur une activité selon son origine. Sa production déduit automatiquement du stock du site de produ…"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/fixe|créer [[un:labo]]/resultat/results/n/titre",
-      "exemple": "/fixe|créer [[un:labo]]/resultat/results/3/titre",
-      "formes": [
-       "Produit transformé",
-       "PT"
-      ],
-      "occurrences": 2,
-      "texte": "Produit transformé (PT)"
      },
      {
       "famille": "manuel",
@@ -2851,26 +3499,42 @@
    "libellesServeur": [],
    "scan2c": true,
    "horsManuel": {
-    "formes": 835,
-    "ignorees": 835
+    "formes": 957,
+    "ignorees": 957
    },
    "exclusionsBalise": {
-    "fiches": 0,
+    "fiches": 3,
     "variantes": 0,
     "base": 0
    },
    "resultatsManuelControles": 211,
+   "baseParTitre": 32,
    "motsCles": {
     "controles": 107,
-    "manques": 104
+    "manques": 0
    },
    "coherenceRecherches": {
     "cles": 58,
     "termeAbsent": [
      {
+      "cle": "fixe|créer [[un:labo]]",
+      "termes": [
+       "site de production",
+       "sites de production",
+       "site",
+       "sites"
+      ]
+     },
+     {
       "cle": "fixe|calcul [[du:food_cost]]",
       "termes": [
        "taux de coût matière"
+      ]
+     },
+     {
+      "cle": "A|Comment importer mes matières premières en masse ?",
+      "termes": [
+       "Matières premières"
       ]
      },
      {
@@ -2880,9 +3544,21 @@
       ]
      },
      {
+      "cle": "B|Comment importer mes matières premières en masse ?",
+      "termes": [
+       "Matières premières"
+      ]
+     },
+     {
       "cle": "B|Comment est calculé le coût de revient d'une nomenclature ?",
       "termes": [
        "Nomenclature"
+      ]
+     },
+     {
+      "cle": "C|Comment importer mes matières premières en masse ?",
+      "termes": [
+       "Matières premières"
       ]
      },
      {
@@ -2917,20 +3593,20 @@
       "cle": "fixe|créer [[un:labo]]",
       "attendu": "activites",
       "obtenus": [
-       "activites",
-       "calc-production-pt",
-       "support"
+       "lexique-pt",
+       "onboarding-configuration",
+       "referentiel-articles",
+       "produits-utilisables"
       ],
-      "ok": true,
+      "ok": false,
       "note": null
      },
      {
       "cle": "fixe|[[nom:transfert]] vers [[un:activite]]",
       "attendu": "stock-activites",
       "obtenus": [
-       "configuration-vente",
-       "saisie-ventes",
-       "ventes-labo"
+       "ventes-labo",
+       "historique"
       ],
       "ok": false,
       "note": null
@@ -2941,7 +3617,7 @@
       "obtenus": [
        "calc-cout-recette",
        "calc-transferts",
-       "calc-ht-ttc"
+       "calc-valeur-stock"
       ],
       "ok": false,
       "note": null
@@ -2961,8 +3637,10 @@
       "cle": "fixe|inviter [[un:acheteur]]",
       "attendu": "acheteurs-module",
       "obtenus": [
+       "decouvrir-labflow",
        "compte-activites-labos",
-       "lexique"
+       "demarrage",
+       "roles"
       ],
       "ok": false,
       "note": null
@@ -2972,9 +3650,9 @@
       "attendu": "activites",
       "obtenus": [
        "demarrage",
-       "activites",
-       "abonnement",
-       "compte"
+       "lexique-pt",
+       "onboarding-configuration",
+       "activites"
       ],
       "ok": true
      },
@@ -2984,8 +3662,8 @@
       "obtenus": [
        "compte",
        "demarrage",
-       "abonnement",
-       "roles"
+       "lexique-pt",
+       "onboarding-configuration"
       ],
       "ok": false
      },
@@ -2993,12 +3671,12 @@
       "cle": "composant|Comment créer mon showroom / boutique ?",
       "attendu": "activites",
       "obtenus": [
-       "compte",
-       "demarrage",
-       "abonnement",
-       "decouvrir-labflow"
+       "onboarding-configuration",
+       "activites",
+       "fournisseurs",
+       "gerants"
       ],
-      "ok": false
+      "ok": true
      },
      {
       "cle": "composant|Comment créer mon atelier ?",
@@ -3006,8 +3684,8 @@
       "obtenus": [
        "compte",
        "demarrage",
-       "abonnement",
-       "decouvrir-labflow"
+       "lexique-pt",
+       "onboarding-configuration"
       ],
       "ok": false
      }
@@ -3018,10 +3696,10 @@
   "hotellerie": {
    "domaine": "hotellerie",
    "domaineNom": "Hôtellerie",
-   "migration": "192_composants_genre_elision.sql",
+   "migration": "193_manuel_sections_domaine.sql",
    "rechercheFormes": "vocab-check.mjs (E11)",
    "incompletePour": [],
-   "textesLus": 8022,
+   "textesLus": 8078,
    "formesCherchees": {
     "Acheteur": [
      "acheteur:Nom",
@@ -3243,38 +3921,43 @@
     ]
    },
    "formesRetirees": {},
-   "exceptionsEmployees": 73,
+   "exceptionsEmployees": 59,
    "formes": {
-    "occurrences": 647,
-    "textes": 140,
+    "occurrences": 739,
+    "textes": 175,
     "parFamille": {
      "assistant": {
-      "occurrences": 95,
-      "textes": 56,
+      "occurrences": 187,
+      "textes": 91,
       "parCle": {
+       "baseParTitre": 91,
        "recherches": 27,
-       "recherchesDomaine": 68
+       "recherchesDomaine": 69
       },
       "parForme": {
-       "Activité": 9,
-       "Activités": 5,
-       "Article": 20,
-       "Food cost": 3,
-       "Gérant": 1,
-       "Ingrédient": 6,
-       "Ingrédients": 9,
-       "Labo": 5,
-       "Laboratoire": 1,
-       "Labos": 2,
-       "Point de vente": 7,
-       "Produit utilisable": 3,
-       "Produit vendable": 3,
-       "Produits transformés": 6,
-       "Produits vendables": 4,
-       "PT": 1,
-       "Recette": 3,
-       "Transfert": 2,
-       "Transferts": 5
+       "Activité": 18,
+       "Activités": 12,
+       "Article": 27,
+       "Articles": 4,
+       "Food cost": 6,
+       "Gérant": 3,
+       "Gérants": 1,
+       "Ingrédient": 12,
+       "Ingrédients": 16,
+       "Labo": 12,
+       "Laboratoire": 2,
+       "Labos": 5,
+       "Point de vente": 10,
+       "Produit transformé": 4,
+       "Produit utilisable": 4,
+       "Produit valorisé": 2,
+       "Produit vendable": 6,
+       "Produits transformés": 12,
+       "Produits vendables": 6,
+       "PT": 4,
+       "Recette": 9,
+       "Transfert": 5,
+       "Transferts": 7
       }
      },
      "manuel": {
@@ -3326,6 +4009,467 @@
      }
     },
     "elements": [
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Abonnement et capacité/contenu",
+      "exemple": "/Abonnement et capacité/contenu",
+      "formes": [
+       "Activités",
+       "Labos",
+       "Gérants"
+      ],
+      "occurrences": 3,
+      "texte": "L'abonnement définit la capacité souscrite du client : nombre d'activités, de labos et de gérants, plus le forfait mensuel et l'onboarding. À la création du com…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Activité (point de vente)/contenu",
+      "exemple": "/Activité (point de vente)/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labos",
+       "Point de vente"
+      ],
+      "occurrences": 4,
+      "texte": "Une activité est un point de vente du client (restaurant, café, kiosque…). Elle a son propre stock, ses approvisionnements, ses ventes et ses pertes. Un compte …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Activité (point de vente)/titre",
+      "exemple": "/Activité (point de vente)/titre",
+      "formes": [
+       "Activité",
+       "Point de vente"
+      ],
+      "occurrences": 2,
+      "texte": "Activité (point de vente)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Approvisionnement (appro)/contenu",
+      "exemple": "/Approvisionnement (appro)/contenu",
+      "formes": [
+       "Activité",
+       "Labo",
+       "Ingrédient",
+       "Transfert",
+       "Produits transformés"
+      ],
+      "occurrences": 5,
+      "texte": "… transformés d'origine labo ne s'approvisionnent pas directement côté activité : ils arrivent uniquement par transfert depuis le labo."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article valorisé/contenu",
+      "exemple": "/Article valorisé/contenu",
+      "formes": [
+       "Labo",
+       "Produit valorisé",
+       "Article",
+       "Ingrédients",
+       "Recette"
+      ],
+      "occurrences": 5,
+      "texte": "…ple (un article déduit directement du stock à la vente) ou composé au labo (« composé valorisé » : sa fabrication au labo déduit les ingrédients de sa recette).…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article valorisé/titre",
+      "exemple": "/Article valorisé/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Article valorisé"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article vendable/contenu",
+      "exemple": "/Article vendable/contenu",
+      "formes": [
+       "Activité",
+       "Produit vendable",
+       "Produit valorisé",
+       "Article",
+       "Produit transformé"
+      ],
+      "occurrences": 5,
+      "texte": "…le vendable est un produit ou un article configuré à la vente sur une activité, avec un prix de vente et un statut actif. Il peut s'agir d'une fiche technique (…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article vendable/titre",
+      "exemple": "/Article vendable/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Article vendable"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Catégorie de produit/contenu",
+      "exemple": "/Catégorie de produit/contenu",
+      "formes": [
+       "Produit vendable",
+       "Produits vendables",
+       "Articles"
+      ],
+      "occurrences": 3,
+      "texte": "…pplément ou valorisé. La catégorie est obligatoire à la création d'un produit vendable ou d'un supplément et sert au regroupement dans la saisie de vente et les…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Charges fixes/contenu",
+      "exemple": "/Charges fixes/contenu",
+      "formes": [
+       "Activité"
+      ],
+      "occurrences": 1,
+      "texte": "Les charges fixes d'une activité (loyer, charges de personnel, électricité/gaz, eau…) sont saisies soit en montant global, soit en détail. Elles servent au calc…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Coût matière/contenu",
+      "exemple": "/Coût matière/contenu",
+      "formes": [
+       "Ingrédients",
+       "Food cost"
+      ],
+      "occurrences": 2,
+      "texte": "Le coût matière est la valeur des ingrédients consommés pour réaliser les ventes d'une période. C'est le numérateur du food cost."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Famille et catégorie d'article/contenu",
+      "exemple": "/Famille et catégorie d'article/contenu",
+      "formes": [
+       "Article",
+       "Articles"
+      ],
+      "occurrences": 2,
+      "texte": "Le référentiel articles est organisé en deux niveaux : la famille (niveau 1, ex : Fruits, Légumes, Viandes) puis la catégorie (niveau 2 sous la famille). Chaque…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Famille et catégorie d'article/titre",
+      "exemple": "/Famille et catégorie d'article/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Famille et catégorie d'article"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Fiche technique/contenu",
+      "exemple": "/Fiche technique/contenu",
+      "formes": [
+       "Ingrédient",
+       "Recette"
+      ],
+      "occurrences": 2,
+      "texte": "…ût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Food cost/contenu",
+      "exemple": "/Food cost/contenu",
+      "formes": [
+       "Food cost"
+      ],
+      "occurrences": 1,
+      "texte": "Le food cost (ratio de coût matière) = coût matière ÷ chiffre d'affaires, en %. Repères LabFlow : moins de 30% = sain, 30 à 40% = à surveiller, plus de 40% = él…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Food cost/titre",
+      "exemple": "/Food cost/titre",
+      "formes": [
+       "Food cost"
+      ],
+      "occurrences": 1,
+      "texte": "Food cost"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Fournisseur/contenu",
+      "exemple": "/Fournisseur/contenu",
+      "formes": [
+       "Activités",
+       "Produits transformés"
+      ],
+      "occurrences": 2,
+      "texte": "…Les fournisseurs sont partagés au niveau du compte et affectables aux activités. Un fournisseur système « AUTO » est rattaché automatiquement aux mouvements de …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Gérant/contenu",
+      "exemple": "/Gérant/contenu",
+      "formes": [
+       "Activités",
+       "Labos",
+       "Gérant"
+      ],
+      "occurrences": 3,
+      "texte": "…ur délégué, rattaché à un compte client et affecté à une ou plusieurs activités et/ou labos. Il ne voit et ne gère que le périmètre qui lui est assigné. Il cons…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Gérant/titre",
+      "exemple": "/Gérant/titre",
+      "formes": [
+       "Gérant"
+      ],
+      "occurrences": 1,
+      "texte": "Gérant"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Labo central/contenu",
+      "exemple": "/Labo central/contenu",
+      "formes": [
+       "Activités",
+       "Labo",
+       "Ingrédients",
+       "Transferts",
+       "Produits transformés",
+       "PT",
+       "Laboratoire"
+      ],
+      "occurrences": 7,
+      "texte": "…rédients, fabrique des produits transformés (PT) et approvisionne les activités via des transferts. Le stock du labo est distinct du stock des activités."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Labo central/titre",
+      "exemple": "/Labo central/titre",
+      "formes": [
+       "Labo"
+      ],
+      "occurrences": 1,
+      "texte": "Labo central"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Marge brute/contenu",
+      "exemple": "/Marge brute/contenu",
+      "formes": [
+       "Ingrédients"
+      ],
+      "occurrences": 1,
+      "texte": "La marge brute = chiffre d'affaires − coût matière. Le taux de marge = marge ÷ CA. C'est ce qui reste après le coût des ingrédients pour couvrir les charges."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Mode de prix d'une fiche technique/contenu",
+      "exemple": "/Mode de prix d'une fiche technique/contenu",
+      "formes": [
+       "Ingrédients"
+      ],
+      "occurrences": 1,
+      "texte": "…e fiche technique peut être calculé selon plusieurs modes de prix des ingrédients : le dernier prix d'achat (DP), la moyenne des prix du stock (MP : prix moyen …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produit transformé (PT)/contenu",
+      "exemple": "/Produit transformé (PT)/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labo",
+       "Ingrédients",
+       "Recette",
+       "Transfert",
+       "Produit transformé",
+       "PT"
+      ],
+      "occurrences": 8,
+      "texte": "…édients et éventuellement d'autres PT, au labo ou directement sur une activité selon son origine. Sa production déduit automatiquement du stock du site de produ…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produit transformé (PT)/titre",
+      "exemple": "/Produit transformé (PT)/titre",
+      "formes": [
+       "Produit transformé",
+       "PT"
+      ],
+      "occurrences": 2,
+      "texte": "Produit transformé (PT)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produits vendables et utilisables/contenu",
+      "exemple": "/Produits vendables et utilisables/contenu",
+      "formes": [
+       "Produit vendable",
+       "Produit utilisable",
+       "Ingrédient",
+       "Produits transformés"
+      ],
+      "occurrences": 4,
+      "texte": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué pui…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produits vendables et utilisables/titre",
+      "exemple": "/Produits vendables et utilisables/titre",
+      "formes": [
+       "Produits vendables"
+      ],
+      "occurrences": 1,
+      "texte": "Produits vendables et utilisables"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Rapport (Excel ~1 PDF)/contenu",
+      "exemple": "/Rapport (Excel ~1 PDF)/contenu",
+      "formes": [
+       "Transferts"
+      ],
+      "occurrences": 1,
+      "texte": "…xcel ou PDF récapitulant le stock, les pertes, les inventaires et les transferts du client. Le client peut le demander explicitement (ex : « envoie-moi le rappo…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Référentiel articles/contenu",
+      "exemple": "/Référentiel articles/contenu",
+      "formes": [
+       "Articles",
+       "Ingrédients"
+      ],
+      "occurrences": 2,
+      "texte": "Le référentiel regroupe les articles/ingrédients du client avec leur unité, leur famille/catégorie et leur prix de référence. C'est la base à partir de laquelle…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Référentiel articles/titre",
+      "exemple": "/Référentiel articles/titre",
+      "formes": [
+       "Articles"
+      ],
+      "occurrences": 1,
+      "texte": "Référentiel articles"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Seuil minimum/contenu",
+      "exemple": "/Seuil minimum/contenu",
+      "formes": [
+       "Activité",
+       "Labo",
+       "Article",
+       "Produit transformé"
+      ],
+      "occurrences": 4,
+      "texte": "…d'un article ou d'un produit transformé. Il se définit séparément par activité et par labo : chaque site a ses propres seuils. En dessous, l'article passe en al…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Transferts/contenu",
+      "exemple": "/Transferts/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labo",
+       "Transfert",
+       "Produits transformés",
+       "Point de vente"
+      ],
+      "occurrences": 6,
+      "texte": "Un transfert déplace du stock du LABO (production centrale) vers une ACTIVITÉ (point de vente). Le labo s'approvisionne en gros puis alimente les activités. C'e…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Transferts/titre",
+      "exemple": "/Transferts/titre",
+      "formes": [
+       "Transferts"
+      ],
+      "occurrences": 1,
+      "texte": "Transferts"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/TVA (HT ~1 TTC)/contenu",
+      "exemple": "/TVA (HT ~1 TTC)/contenu",
+      "formes": [
+       "Ingrédients",
+       "Produits transformés"
+      ],
+      "occurrences": 2,
+      "texte": "…isés en TTC avec une TVA à 0 (leur coût intègre déjà les prix TTC des ingrédients)."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Unité de mesure/contenu",
+      "exemple": "/Unité de mesure/contenu",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Valeur du stock/contenu",
+      "exemple": "/Valeur du stock/contenu",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "… stock = somme (quantité en stock × prix moyen pondéré TTC) de chaque article à une date donnée. Elle représente l'argent immobilisé en marchandises. Toutes les…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Vente/contenu",
+      "exemple": "/Vente/contenu",
+      "formes": [
+       "Activité",
+       "Article"
+      ],
+      "occurrences": 2,
+      "texte": "Une vente est une transaction enregistrée sur une activité, à une date, avec un statut (confirmée/annulée) et un canal : directe (sur place) ou via un prestatai…"
+     },
      {
       "famille": "assistant",
       "cle": "recherches",
@@ -3598,6 +4742,18 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
+      "chemin": "/A|Comment est calculé le coût de revient d'une fiche de préparation ?/base/n/contenu",
+      "exemple": "/A|Comment est calculé le coût de revient d'une fiche de préparation ?/base/1/contenu",
+      "formes": [
+       "Ingrédient",
+       "Recette"
+      ],
+      "occurrences": 2,
+      "texte": "…ût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
       "chemin": "/A|Comment importer mes fournitures en masse ?/base/n/contenu",
       "exemple": "/A|Comment importer mes fournitures en masse ?/base/0/contenu",
       "formes": [
@@ -3683,17 +4839,6 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/B|Comment affecter les fournitures à mes services et mes cuisines centrales ?/base/n/contenu",
-      "exemple": "/B|Comment affecter les fournitures à mes services et mes cuisines centrales ?/base/0/contenu",
-      "formes": [
-       "Article"
-      ],
-      "occurrences": 1,
-      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
       "chemin": "/B|Comment ajouter mes fournisseurs ?/base/n/contenu",
       "exemple": "/B|Comment ajouter mes fournisseurs ?/base/0/contenu",
       "formes": [
@@ -3757,6 +4902,18 @@
       ],
       "occurrences": 1,
       "texte": "…e fiche technique peut être calculé selon plusieurs modes de prix des ingrédients : le dernier prix d'achat (DP), la moyenne des prix du stock (MP : prix moyen …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/B|Comment est calculé le coût de revient d'une fiche de préparation ?/base/n/contenu",
+      "exemple": "/B|Comment est calculé le coût de revient d'une fiche de préparation ?/base/1/contenu",
+      "formes": [
+       "Ingrédient",
+       "Recette"
+      ],
+      "occurrences": 2,
+      "texte": "…ût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix …"
      },
      {
       "famille": "assistant",
@@ -3857,17 +5014,6 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/C|Comment configurer mes tarifs clients professionnels ?/base/n/contenu",
-      "exemple": "/C|Comment configurer mes tarifs clients professionnels ?/base/0/contenu",
-      "formes": [
-       "Article"
-      ],
-      "occurrences": 1,
-      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
       "chemin": "/C|Comment créer mes unités ?/base/n/contenu",
       "exemple": "/C|Comment créer mes unités ?/base/0/contenu",
       "formes": [
@@ -3913,24 +5059,14 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/C|Comment importer mes clients professionnels depuis Excel ?/base/n/contenu",
-      "exemple": "/C|Comment importer mes clients professionnels depuis Excel ?/base/1/contenu",
+      "chemin": "/C|Comment est calculé le coût de revient d'une fiche de préparation ?/base/n/contenu",
+      "exemple": "/C|Comment est calculé le coût de revient d'une fiche de préparation ?/base/1/contenu",
       "formes": [
-       "Transferts"
+       "Ingrédient",
+       "Recette"
       ],
-      "occurrences": 1,
-      "texte": "…xcel ou PDF récapitulant le stock, les pertes, les inventaires et les transferts du client. Le client peut le demander explicitement (ex : « envoie-moi le rappo…"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/C|Comment importer mes clients professionnels depuis Excel ?/base/n/contenu",
-      "exemple": "/C|Comment importer mes clients professionnels depuis Excel ?/base/0/contenu",
-      "formes": [
-       "Article"
-      ],
-      "occurrences": 1,
-      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+      "occurrences": 2,
+      "texte": "…ût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix …"
      },
      {
       "famille": "assistant",
@@ -3969,17 +5105,6 @@
       ],
       "occurrences": 1,
       "texte": "Transferts"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/fixe|créer [[un:labo]]/resultat/results/n/contenu",
-      "exemple": "/fixe|créer [[un:labo]]/resultat/results/0/contenu",
-      "formes": [
-       "Ingrédients"
-      ],
-      "occurrences": 1,
-      "texte": "…e fiche technique peut être calculé selon plusieurs modes de prix des ingrédients : le dernier prix d'achat (DP), la moyenne des prix du stock (MP : prix moyen …"
      },
      {
       "famille": "manuel",
@@ -5384,22 +6509,32 @@
    "libellesServeur": [],
    "scan2c": true,
    "horsManuel": {
-    "formes": 647,
-    "ignorees": 647
+    "formes": 739,
+    "ignorees": 739
    },
    "exclusionsBalise": {
-    "fiches": 0,
+    "fiches": 3,
     "variantes": 0,
     "base": 0
    },
-   "resultatsManuelControles": 219,
+   "resultatsManuelControles": 223,
+   "baseParTitre": 32,
    "motsCles": {
     "controles": 89,
-    "manques": 89
+    "manques": 0
    },
    "coherenceRecherches": {
     "cles": 61,
     "termeAbsent": [
+     {
+      "cle": "fixe|créer [[un:labo]]",
+      "termes": [
+       "cuisine centrale",
+       "cuisines centrales",
+       "cuisine",
+       "cuisines"
+      ]
+     },
      {
       "cle": "fixe|[[nom:transfert]] vers [[un:activite]]",
       "termes": [
@@ -5499,6 +6634,12 @@
       "termes": [
        "Service"
       ]
+     },
+     {
+      "cle": "composant|Comment créer ma cuisine ?",
+      "termes": [
+       "Cuisine"
+      ]
      }
     ],
     "sansTerme": 12,
@@ -5507,19 +6648,21 @@
       "cle": "fixe|créer [[un:labo]]",
       "attendu": "activites",
       "obtenus": [
-       "decouvrir-labflow",
        "lexique-pt",
-       "activites"
+       "onboarding-configuration",
+       "referentiel-articles",
+       "produits-utilisables"
       ],
-      "ok": true,
+      "ok": false,
       "note": null
      },
      {
       "cle": "fixe|[[nom:transfert]] vers [[un:activite]]",
       "attendu": "stock-activites",
       "obtenus": [
-       "factures",
-       "calc-transferts"
+       "transferts",
+       "calc-transferts",
+       "faq"
       ],
       "ok": false,
       "note": null
@@ -5528,10 +6671,10 @@
       "cle": "fixe|calcul [[du:food_cost]]",
       "attendu": "decouvrir-labflow",
       "obtenus": [
-       "configuration-vente",
        "calc-cout-recette",
-       "calc-pmp",
-       "calc-production-pt"
+       "configuration-vente",
+       "calc-valeur-stock",
+       "calc-pmp"
       ],
       "ok": false,
       "note": null
@@ -5553,8 +6696,8 @@
       "obtenus": [
        "decouvrir-labflow",
        "compte-activites-labos",
-       "roles",
-       "lexique"
+       "demarrage",
+       "roles"
       ],
       "ok": false,
       "note": null
@@ -5565,8 +6708,8 @@
       "obtenus": [
        "compte",
        "demarrage",
-       "activites",
-       "abonnement"
+       "onboarding-configuration",
+       "activites"
       ],
       "ok": true
      },
@@ -5585,12 +6728,12 @@
       "cle": "composant|Comment créer mon room service ?",
       "attendu": "activites",
       "obtenus": [
-       "compte",
-       "demarrage",
-       "abonnement",
-       "roles"
+       "onboarding-configuration",
+       "activites",
+       "fournisseurs",
+       "gerants"
       ],
-      "ok": false
+      "ok": true
      },
      {
       "cle": "composant|Comment créer mon housekeeping ?",
@@ -5598,10 +6741,10 @@
       "obtenus": [
        "compte",
        "demarrage",
-       "abonnement",
-       "roles"
+       "onboarding-configuration",
+       "activites"
       ],
-      "ok": false
+      "ok": true
      },
      {
       "cle": "composant|Comment créer mon spa ?",
@@ -5620,19 +6763,19 @@
       "obtenus": [
        "lexique-pt",
        "demarrage",
-       "referentiel-unites",
-       "activites"
+       "onboarding-configuration",
+       "referentiel-unites"
       ],
-      "ok": true
+      "ok": false
      },
      {
       "cle": "composant|Comment créer mon économat / logistique ?",
       "attendu": "activites",
       "obtenus": [
-       "compte",
-       "demarrage",
+       "lexique-pt",
+       "onboarding-configuration",
        "activites",
-       "abonnement"
+       "fournisseurs"
       ],
       "ok": true
      }
@@ -5643,10 +6786,10 @@
   "miroir": {
    "domaine": "miroir",
    "domaineNom": "Oracle Miroir",
-   "migration": "192_composants_genre_elision.sql",
+   "migration": "193_manuel_sections_domaine.sql",
    "rechercheFormes": "vocab-check.mjs (E11)",
    "incompletePour": [],
-   "textesLus": 7520,
+   "textesLus": 7588,
    "formesCherchees": {
     "Acheteur": [
      "acheteur:Nom",
@@ -6024,55 +7167,68 @@
     ]
    },
    "formesRetirees": {},
-   "exceptionsEmployees": 103,
+   "exceptionsEmployees": 71,
    "formes": {
-    "occurrences": 1323,
-    "textes": 201,
+    "occurrences": 1575,
+    "textes": 262,
     "parFamille": {
      "assistant": {
-      "occurrences": 253,
-      "textes": 84,
+      "occurrences": 505,
+      "textes": 145,
       "parCle": {
+       "baseParTitre": 205,
        "recherches": 55,
-       "recherchesDomaine": 198
+       "recherchesDomaine": 245
       },
       "parForme": {
-       "Activité": 5,
-       "Activités": 4,
-       "Appro": 1,
-       "Approvisionnement": 3,
-       "Article": 25,
-       "Coût matière": 8,
-       "Fiche technique": 11,
-       "Fiches techniques": 19,
-       "Food cost": 5,
-       "Fournisseur": 1,
-       "Gérant": 1,
-       "Ingrédient": 3,
-       "Ingrédients": 9,
-       "Inventaire": 8,
+       "Activité": 15,
+       "Activités": 10,
+       "Appro": 10,
+       "Appros": 5,
+       "Approvisionnement": 14,
+       "Approvisionnements": 1,
+       "Article": 35,
+       "Articles": 6,
+       "Coût matière": 10,
+       "Fiche technique": 22,
+       "Fiches techniques": 21,
+       "Food cost": 7,
+       "Fournisseur": 8,
+       "Fournisseurs": 1,
+       "Gérant": 3,
+       "Gérants": 1,
+       "Ingrédient": 12,
+       "Ingrédients": 18,
+       "Inventaire": 15,
        "Inventaires": 4,
-       "Labo": 7,
+       "Labo": 17,
        "Laboratoire": 2,
-       "Marge": 2,
-       "Pertes": 6,
-       "Point de vente": 3,
-       "Portions": 20,
-       "Prestataire": 5,
+       "Labos": 3,
+       "Marge": 5,
+       "Perte": 1,
+       "Pertes": 11,
+       "Point de vente": 6,
+       "Portions": 21,
+       "Prestataire": 4,
        "Prestataires": 1,
-       "Produit": 4,
-       "Produit utilisable": 3,
-       "Produit vendable": 3,
-       "Produits": 11,
-       "Produits transformés": 7,
-       "Produits vendables": 4,
-       "PT": 2,
-       "Stock": 39,
-       "Supplément": 1,
-       "Transfert": 2,
-       "Transferts": 9,
-       "Vente": 12,
-       "Ventes": 3
+       "Produit": 21,
+       "Produit transformé": 4,
+       "Produit utilisable": 4,
+       "Produit valorisé": 4,
+       "Produit vendable": 6,
+       "Produits": 22,
+       "Produits transformés": 15,
+       "Produits vendables": 6,
+       "PT": 4,
+       "Recette": 8,
+       "Référentiel": 5,
+       "Stock": 63,
+       "Stocks": 1,
+       "Supplément": 4,
+       "Transfert": 8,
+       "Transferts": 10,
+       "Vente": 23,
+       "Ventes": 8
       }
      },
      "manuel": {
@@ -6159,6 +7315,771 @@
      }
     },
     "elements": [
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Abonnement et capacité/contenu",
+      "exemple": "/Abonnement et capacité/contenu",
+      "formes": [
+       "Activités",
+       "Labos",
+       "Gérants"
+      ],
+      "occurrences": 3,
+      "texte": "L'abonnement définit la capacité souscrite du client : nombre d'activités, de labos et de gérants, plus le forfait mensuel et l'onboarding. À la création du com…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Activité (point de vente)/contenu",
+      "exemple": "/Activité (point de vente)/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labos",
+       "Approvisionnements",
+       "Pertes",
+       "Vente",
+       "Ventes",
+       "Stock",
+       "Point de vente"
+      ],
+      "occurrences": 9,
+      "texte": "Une activité est un point de vente du client (restaurant, café, kiosque…). Elle a son propre stock, ses approvisionnements, ses ventes et ses pertes. Un compte …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Activité (point de vente)/titre",
+      "exemple": "/Activité (point de vente)/titre",
+      "formes": [
+       "Activité",
+       "Vente",
+       "Point de vente"
+      ],
+      "occurrences": 3,
+      "texte": "Activité (point de vente)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Approvisionnement (appro)/contenu",
+      "exemple": "/Approvisionnement (appro)/contenu",
+      "formes": [
+       "Activité",
+       "Labo",
+       "Ingrédient",
+       "Transfert",
+       "Approvisionnement",
+       "Appro",
+       "Appros",
+       "Fournisseur",
+       "Produits transformés",
+       "Stock",
+       "Produits"
+      ],
+      "occurrences": 11,
+      "texte": "… transformés d'origine labo ne s'approvisionnent pas directement côté activité : ils arrivent uniquement par transfert depuis le labo."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Approvisionnement (appro)/titre",
+      "exemple": "/Approvisionnement (appro)/titre",
+      "formes": [
+       "Approvisionnement",
+       "Appro"
+      ],
+      "occurrences": 2,
+      "texte": "Approvisionnement (appro)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article valorisé/contenu",
+      "exemple": "/Article valorisé/contenu",
+      "formes": [
+       "Labo",
+       "Produit valorisé",
+       "Article",
+       "Ingrédients",
+       "Recette",
+       "Vente",
+       "Stock",
+       "Produit"
+      ],
+      "occurrences": 8,
+      "texte": "…ple (un article déduit directement du stock à la vente) ou composé au labo (« composé valorisé » : sa fabrication au labo déduit les ingrédients de sa recette).…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article valorisé/titre",
+      "exemple": "/Article valorisé/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Article valorisé"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article vendable/contenu",
+      "exemple": "/Article vendable/contenu",
+      "formes": [
+       "Activité",
+       "Produit vendable",
+       "Produit valorisé",
+       "Article",
+       "Fiche technique",
+       "Vente",
+       "Produit transformé",
+       "Stock",
+       "Produit"
+      ],
+      "occurrences": 9,
+      "texte": "…le vendable est un produit ou un article configuré à la vente sur une activité, avec un prix de vente et un statut actif. Il peut s'agir d'une fiche technique (…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Article vendable/titre",
+      "exemple": "/Article vendable/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Article vendable"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Catégorie de produit/contenu",
+      "exemple": "/Catégorie de produit/contenu",
+      "formes": [
+       "Produit vendable",
+       "Produits vendables",
+       "Articles",
+       "Vente",
+       "Supplément",
+       "Produit",
+       "Produits"
+      ],
+      "occurrences": 7,
+      "texte": "…pplément ou valorisé. La catégorie est obligatoire à la création d'un produit vendable ou d'un supplément et sert au regroupement dans la saisie de vente et les…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Catégorie de produit/titre",
+      "exemple": "/Catégorie de produit/titre",
+      "formes": [
+       "Produit"
+      ],
+      "occurrences": 1,
+      "texte": "Catégorie de produit"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Charges fixes/contenu",
+      "exemple": "/Charges fixes/contenu",
+      "formes": [
+       "Activité",
+       "Coût matière"
+      ],
+      "occurrences": 2,
+      "texte": "Les charges fixes d'une activité (loyer, charges de personnel, électricité/gaz, eau…) sont saisies soit en montant global, soit en détail. Elles servent au calc…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Coût matière/contenu",
+      "exemple": "/Coût matière/contenu",
+      "formes": [
+       "Ingrédients",
+       "Food cost",
+       "Coût matière",
+       "Ventes"
+      ],
+      "occurrences": 4,
+      "texte": "Le coût matière est la valeur des ingrédients consommés pour réaliser les ventes d'une période. C'est le numérateur du food cost."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Coût matière/titre",
+      "exemple": "/Coût matière/titre",
+      "formes": [
+       "Coût matière"
+      ],
+      "occurrences": 1,
+      "texte": "Coût matière"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Famille et catégorie d'article/contenu",
+      "exemple": "/Famille et catégorie d'article/contenu",
+      "formes": [
+       "Article",
+       "Articles",
+       "Référentiel"
+      ],
+      "occurrences": 3,
+      "texte": "Le référentiel articles est organisé en deux niveaux : la famille (niveau 1, ex : Fruits, Légumes, Viandes) puis la catégorie (niveau 2 sous la famille). Chaque…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Famille et catégorie d'article/titre",
+      "exemple": "/Famille et catégorie d'article/titre",
+      "formes": [
+       "Article"
+      ],
+      "occurrences": 1,
+      "texte": "Famille et catégorie d'article"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Fiche technique/contenu",
+      "exemple": "/Fiche technique/contenu",
+      "formes": [
+       "Ingrédient",
+       "Recette",
+       "Fiche technique",
+       "Inventaire",
+       "Vente",
+       "Stock",
+       "Produit"
+      ],
+      "occurrences": 7,
+      "texte": "…ût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Fiche technique/titre",
+      "exemple": "/Fiche technique/titre",
+      "formes": [
+       "Fiche technique"
+      ],
+      "occurrences": 1,
+      "texte": "Fiche technique"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Food cost/contenu",
+      "exemple": "/Food cost/contenu",
+      "formes": [
+       "Portions",
+       "Food cost",
+       "Coût matière",
+       "Marge"
+      ],
+      "occurrences": 4,
+      "texte": "… = sain, 30 à 40% = à surveiller, plus de 40% = élevé (revoir prix ou portions). Plus il est bas, plus la marge est élevée."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Food cost/titre",
+      "exemple": "/Food cost/titre",
+      "formes": [
+       "Food cost"
+      ],
+      "occurrences": 1,
+      "texte": "Food cost"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Fournisseur/contenu",
+      "exemple": "/Fournisseur/contenu",
+      "formes": [
+       "Activités",
+       "Approvisionnement",
+       "Appro",
+       "Fournisseur",
+       "Fournisseurs",
+       "Produits transformés",
+       "Stock",
+       "Produit",
+       "Produits"
+      ],
+      "occurrences": 9,
+      "texte": "…Les fournisseurs sont partagés au niveau du compte et affectables aux activités. Un fournisseur système « AUTO » est rattaché automatiquement aux mouvements de …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Fournisseur/titre",
+      "exemple": "/Fournisseur/titre",
+      "formes": [
+       "Fournisseur"
+      ],
+      "occurrences": 1,
+      "texte": "Fournisseur"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Gérant/contenu",
+      "exemple": "/Gérant/contenu",
+      "formes": [
+       "Activités",
+       "Labos",
+       "Appros",
+       "Pertes",
+       "Gérant",
+       "Stock"
+      ],
+      "occurrences": 6,
+      "texte": "…ur délégué, rattaché à un compte client et affecté à une ou plusieurs activités et/ou labos. Il ne voit et ne gère que le périmètre qui lui est assigné. Il cons…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Gérant/titre",
+      "exemple": "/Gérant/titre",
+      "formes": [
+       "Gérant"
+      ],
+      "occurrences": 1,
+      "texte": "Gérant"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Inventaire/contenu",
+      "exemple": "/Inventaire/contenu",
+      "formes": [
+       "Pertes",
+       "Inventaire",
+       "Stock"
+      ],
+      "occurrences": 3,
+      "texte": "… date. L'écart entre le stock théorique et le stock compté révèle des pertes non déclarées, des erreurs de saisie ou du gaspillage. L'inventaire sert aussi de p…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Inventaire/titre",
+      "exemple": "/Inventaire/titre",
+      "formes": [
+       "Inventaire"
+      ],
+      "occurrences": 1,
+      "texte": "Inventaire"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Labo central/contenu",
+      "exemple": "/Labo central/contenu",
+      "formes": [
+       "Activités",
+       "Labo",
+       "Ingrédients",
+       "Transferts",
+       "Produits transformés",
+       "PT",
+       "Stock",
+       "Produits",
+       "Laboratoire"
+      ],
+      "occurrences": 9,
+      "texte": "…rédients, fabrique des produits transformés (PT) et approvisionne les activités via des transferts. Le stock du labo est distinct du stock des activités."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Labo central/titre",
+      "exemple": "/Labo central/titre",
+      "formes": [
+       "Labo"
+      ],
+      "occurrences": 1,
+      "texte": "Labo central"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Marge brute/contenu",
+      "exemple": "/Marge brute/contenu",
+      "formes": [
+       "Ingrédients",
+       "Coût matière",
+       "Marge"
+      ],
+      "occurrences": 3,
+      "texte": "La marge brute = chiffre d'affaires − coût matière. Le taux de marge = marge ÷ CA. C'est ce qui reste après le coût des ingrédients pour couvrir les charges."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Marge brute/titre",
+      "exemple": "/Marge brute/titre",
+      "formes": [
+       "Marge"
+      ],
+      "occurrences": 1,
+      "texte": "Marge brute"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Mode de prix d'une fiche technique/contenu",
+      "exemple": "/Mode de prix d'une fiche technique/contenu",
+      "formes": [
+       "Ingrédients",
+       "Fiche technique",
+       "Inventaire",
+       "Stock"
+      ],
+      "occurrences": 4,
+      "texte": "…e fiche technique peut être calculé selon plusieurs modes de prix des ingrédients : le dernier prix d'achat (DP), la moyenne des prix du stock (MP : prix moyen …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Mode de prix d'une fiche technique/titre",
+      "exemple": "/Mode de prix d'une fiche technique/titre",
+      "formes": [
+       "Fiche technique"
+      ],
+      "occurrences": 1,
+      "texte": "Mode de prix d'une fiche technique"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Panier moyen/contenu",
+      "exemple": "/Panier moyen/contenu",
+      "formes": [
+       "Ventes"
+      ],
+      "occurrences": 1,
+      "texte": "Le panier moyen = chiffre d'affaires ÷ nombre de ventes. Il indique le montant moyen dépensé par transaction."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Pertes/contenu",
+      "exemple": "/Pertes/contenu",
+      "formes": [
+       "Perte",
+       "Pertes",
+       "Stock",
+       "Produit"
+      ],
+      "occurrences": 4,
+      "texte": "Une perte est une sortie de stock non vendue : avarie (produit abîmé ou périmé) ou déchet (épluchures, casse). Les pertes réduisent le stock et la rentabilité. …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Pertes/titre",
+      "exemple": "/Pertes/titre",
+      "formes": [
+       "Pertes"
+      ],
+      "occurrences": 1,
+      "texte": "Pertes"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Prestataire de livraison/contenu",
+      "exemple": "/Prestataire de livraison/contenu",
+      "formes": [
+       "Vente",
+       "Ventes",
+       "Prestataire",
+       "Prestataires"
+      ],
+      "occurrences": 4,
+      "texte": "…Uber Eats, Talabat, Glovo) est une plateforme tierce via laquelle des ventes sont réalisées, avec une commission en pourcentage. Les prestataires sont activés a…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Prestataire de livraison/titre",
+      "exemple": "/Prestataire de livraison/titre",
+      "formes": [
+       "Prestataire"
+      ],
+      "occurrences": 1,
+      "texte": "Prestataire de livraison"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produit transformé (PT)/contenu",
+      "exemple": "/Produit transformé (PT)/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labo",
+       "Ingrédients",
+       "Recette",
+       "Transfert",
+       "Fournisseur",
+       "Produit transformé",
+       "PT",
+       "Stock",
+       "Produit",
+       "Produits"
+      ],
+      "occurrences": 12,
+      "texte": "…édients et éventuellement d'autres PT, au labo ou directement sur une activité selon son origine. Sa production déduit automatiquement du stock du site de produ…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produit transformé (PT)/titre",
+      "exemple": "/Produit transformé (PT)/titre",
+      "formes": [
+       "Produit transformé",
+       "PT",
+       "Produit"
+      ],
+      "occurrences": 3,
+      "texte": "Produit transformé (PT)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produits vendables et utilisables/contenu",
+      "exemple": "/Produits vendables et utilisables/contenu",
+      "formes": [
+       "Produit vendable",
+       "Produit utilisable",
+       "Ingrédient",
+       "Vente",
+       "Produits transformés",
+       "Stock",
+       "Produit",
+       "Produits"
+      ],
+      "occurrences": 8,
+      "texte": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué pui…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Produits vendables et utilisables/titre",
+      "exemple": "/Produits vendables et utilisables/titre",
+      "formes": [
+       "Produits vendables",
+       "Produits"
+      ],
+      "occurrences": 2,
+      "texte": "Produits vendables et utilisables"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Rapport (Excel ~1 PDF)/contenu",
+      "exemple": "/Rapport (Excel ~1 PDF)/contenu",
+      "formes": [
+       "Transferts",
+       "Pertes",
+       "Inventaires",
+       "Stock"
+      ],
+      "occurrences": 4,
+      "texte": "…xcel ou PDF récapitulant le stock, les pertes, les inventaires et les transferts du client. Le client peut le demander explicitement (ex : « envoie-moi le rappo…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Référentiel articles/contenu",
+      "exemple": "/Référentiel articles/contenu",
+      "formes": [
+       "Articles",
+       "Ingrédients",
+       "Fiches techniques",
+       "Ventes",
+       "Stock",
+       "Référentiel"
+      ],
+      "occurrences": 6,
+      "texte": "Le référentiel regroupe les articles/ingrédients du client avec leur unité, leur famille/catégorie et leur prix de référence. C'est la base à partir de laquelle…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Référentiel articles/titre",
+      "exemple": "/Référentiel articles/titre",
+      "formes": [
+       "Articles",
+       "Référentiel"
+      ],
+      "occurrences": 2,
+      "texte": "Référentiel articles"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Seuil minimum/contenu",
+      "exemple": "/Seuil minimum/contenu",
+      "formes": [
+       "Activité",
+       "Labo",
+       "Article",
+       "Produit transformé",
+       "Stock",
+       "Produit"
+      ],
+      "occurrences": 6,
+      "texte": "…d'un article ou d'un produit transformé. Il se définit séparément par activité et par labo : chaque site a ses propres seuils. En dessous, l'article passe en al…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Supplément/contenu",
+      "exemple": "/Supplément/contenu",
+      "formes": [
+       "Supplément",
+       "Produit"
+      ],
+      "occurrences": 2,
+      "texte": "Un supplément est un produit vendu en plus d'un produit principal et facturé séparément (ex : sauce, extra fromage). Il a sa propre catégorie de type \"supplémen…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Supplément/titre",
+      "exemple": "/Supplément/titre",
+      "formes": [
+       "Supplément"
+      ],
+      "occurrences": 1,
+      "texte": "Supplément"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Timbre fiscal/contenu",
+      "exemple": "/Timbre fiscal/contenu",
+      "formes": [
+       "Approvisionnement"
+      ],
+      "occurrences": 1,
+      "texte": "…ure lorsqu'il s'applique. Il est suivi par LabFlow sur les factures d'approvisionnement."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Transferts/contenu",
+      "exemple": "/Transferts/contenu",
+      "formes": [
+       "Activité",
+       "Activités",
+       "Labo",
+       "Transfert",
+       "Approvisionnement",
+       "Vente",
+       "Produits transformés",
+       "Stock",
+       "Produits",
+       "Point de vente"
+      ],
+      "occurrences": 10,
+      "texte": "Un transfert déplace du stock du LABO (production centrale) vers une ACTIVITÉ (point de vente). Le labo s'approvisionne en gros puis alimente les activités. C'e…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Transferts/titre",
+      "exemple": "/Transferts/titre",
+      "formes": [
+       "Transferts"
+      ],
+      "occurrences": 1,
+      "texte": "Transferts"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/TVA (HT ~1 TTC)/contenu",
+      "exemple": "/TVA (HT ~1 TTC)/contenu",
+      "formes": [
+       "Ingrédients",
+       "Produits transformés",
+       "Stocks",
+       "Produits"
+      ],
+      "occurrences": 4,
+      "texte": "…isés en TTC avec une TVA à 0 (leur coût intègre déjà les prix TTC des ingrédients)."
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Unité de mesure/contenu",
+      "exemple": "/Unité de mesure/contenu",
+      "formes": [
+       "Article",
+       "Fiches techniques",
+       "Portions",
+       "Stock"
+      ],
+      "occurrences": 4,
+      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Valeur du stock/contenu",
+      "exemple": "/Valeur du stock/contenu",
+      "formes": [
+       "Article",
+       "Stock"
+      ],
+      "occurrences": 2,
+      "texte": "… stock = somme (quantité en stock × prix moyen pondéré TTC) de chaque article à une date donnée. Elle représente l'argent immobilisé en marchandises. Toutes les…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Valeur du stock/titre",
+      "exemple": "/Valeur du stock/titre",
+      "formes": [
+       "Stock"
+      ],
+      "occurrences": 1,
+      "texte": "Valeur du stock"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Vente/contenu",
+      "exemple": "/Vente/contenu",
+      "formes": [
+       "Activité",
+       "Article",
+       "Coût matière",
+       "Vente",
+       "Prestataire"
+      ],
+      "occurrences": 5,
+      "texte": "Une vente est une transaction enregistrée sur une activité, à une date, avec un statut (confirmée/annulée) et un canal : directe (sur place) ou via un prestatai…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "baseParTitre",
+      "chemin": "/Vente/titre",
+      "exemple": "/Vente/titre",
+      "formes": [
+       "Vente"
+      ],
+      "occurrences": 1,
+      "texte": "Vente"
+     },
      {
       "famille": "assistant",
       "cle": "recherches",
@@ -6537,6 +8458,34 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
+      "chemin": "/A|Comment affecter les denrées à mon local ?/base/n/contenu",
+      "exemple": "/A|Comment affecter les denrées à mon local ?/base/0/contenu",
+      "formes": [
+       "Articles",
+       "Ingrédients",
+       "Fiches techniques",
+       "Ventes",
+       "Stock",
+       "Référentiel"
+      ],
+      "occurrences": 6,
+      "texte": "Le référentiel regroupe les articles/ingrédients du client avec leur unité, leur famille/catégorie et leur prix de référence. C'est la base à partir de laquelle…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/A|Comment affecter les denrées à mon local ?/base/n/titre",
+      "exemple": "/A|Comment affecter les denrées à mon local ?/base/0/titre",
+      "formes": [
+       "Articles",
+       "Référentiel"
+      ],
+      "occurrences": 2,
+      "texte": "Référentiel articles"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
       "chemin": "/A|Comment ajouter mes denrées ?/base/n/contenu",
       "exemple": "/A|Comment ajouter mes denrées ?/base/0/contenu",
       "formes": [
@@ -6604,6 +8553,34 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
+      "chemin": "/A|Comment est calculé le coût de revient d'un assemblage ?/base/n/contenu",
+      "exemple": "/A|Comment est calculé le coût de revient d'un assemblage ?/base/0/contenu",
+      "formes": [
+       "Ingrédient",
+       "Recette",
+       "Fiche technique",
+       "Inventaire",
+       "Vente",
+       "Stock",
+       "Produit"
+      ],
+      "occurrences": 7,
+      "texte": "…ût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/A|Comment est calculé le coût de revient d'un assemblage ?/base/n/titre",
+      "exemple": "/A|Comment est calculé le coût de revient d'un assemblage ?/base/0/titre",
+      "formes": [
+       "Fiche technique"
+      ],
+      "occurrences": 1,
+      "texte": "Fiche technique"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
       "chemin": "/A|Comment importer mes denrées en masse ?/base/n/contenu",
       "exemple": "/A|Comment importer mes denrées en masse ?/base/0/contenu",
       "formes": [
@@ -6619,7 +8596,28 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/A|Comment importer mes enseignes depuis Excel ?/base/n/contenu",
-      "exemple": "/A|Comment importer mes enseignes depuis Excel ?/base/1/contenu",
+      "exemple": "/A|Comment importer mes enseignes depuis Excel ?/base/0/contenu",
+      "formes": [
+       "Activité",
+       "Labo",
+       "Ingrédient",
+       "Transfert",
+       "Approvisionnement",
+       "Appro",
+       "Appros",
+       "Fournisseur",
+       "Produits transformés",
+       "Stock",
+       "Produits"
+      ],
+      "occurrences": 11,
+      "texte": "… transformés d'origine labo ne s'approvisionnent pas directement côté activité : ils arrivent uniquement par transfert depuis le labo."
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/A|Comment importer mes enseignes depuis Excel ?/base/n/contenu",
+      "exemple": "/A|Comment importer mes enseignes depuis Excel ?/base/2/contenu",
       "formes": [
        "Transferts",
        "Pertes",
@@ -6633,7 +8631,7 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/A|Comment importer mes enseignes depuis Excel ?/base/n/contenu",
-      "exemple": "/A|Comment importer mes enseignes depuis Excel ?/base/0/contenu",
+      "exemple": "/A|Comment importer mes enseignes depuis Excel ?/base/1/contenu",
       "formes": [
        "Article",
        "Fiches techniques",
@@ -6646,17 +8644,43 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
+      "chemin": "/A|Comment importer mes enseignes depuis Excel ?/base/n/titre",
+      "exemple": "/A|Comment importer mes enseignes depuis Excel ?/base/0/titre",
+      "formes": [
+       "Approvisionnement",
+       "Appro"
+      ],
+      "occurrences": 2,
+      "texte": "Approvisionnement (appro)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
       "chemin": "/A|Comment saisir un encaissement ?/base/n/contenu",
       "exemple": "/A|Comment saisir un encaissement ?/base/0/contenu",
       "formes": [
-       "Activité",
+       "Labo",
+       "Produit valorisé",
        "Article",
-       "Coût matière",
+       "Ingrédients",
+       "Recette",
        "Vente",
-       "Prestataire"
+       "Stock",
+       "Produit"
       ],
-      "occurrences": 5,
-      "texte": "Une vente est une transaction enregistrée sur une activité, à une date, avec un statut (confirmée/annulée) et un canal : directe (sur place) ou via un prestatai…"
+      "occurrences": 8,
+      "texte": "…ple (un article déduit directement du stock à la vente) ou composé au labo (« composé valorisé » : sa fabrication au labo déduit les ingrédients de sa recette).…"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/A|Comment saisir un encaissement ?/base/n/contenu",
+      "exemple": "/A|Comment saisir un encaissement ?/base/1/contenu",
+      "formes": [
+       "Ventes"
+      ],
+      "occurrences": 1,
+      "texte": "Le panier moyen = chiffre d'affaires ÷ nombre de ventes. Il indique le montant moyen dépensé par transaction."
      },
      {
       "famille": "assistant",
@@ -6664,10 +8688,10 @@
       "chemin": "/A|Comment saisir un encaissement ?/base/n/titre",
       "exemple": "/A|Comment saisir un encaissement ?/base/0/titre",
       "formes": [
-       "Vente"
+       "Article"
       ],
       "occurrences": 1,
-      "texte": "Vente"
+      "texte": "Article valorisé"
      },
      {
       "famille": "assistant",
@@ -6783,6 +8807,34 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
+      "chemin": "/B|Comment est calculé le coût de revient d'un assemblage ?/base/n/contenu",
+      "exemple": "/B|Comment est calculé le coût de revient d'un assemblage ?/base/0/contenu",
+      "formes": [
+       "Ingrédient",
+       "Recette",
+       "Fiche technique",
+       "Inventaire",
+       "Vente",
+       "Stock",
+       "Produit"
+      ],
+      "occurrences": 7,
+      "texte": "…ût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/B|Comment est calculé le coût de revient d'un assemblage ?/base/n/titre",
+      "exemple": "/B|Comment est calculé le coût de revient d'un assemblage ?/base/0/titre",
+      "formes": [
+       "Fiche technique"
+      ],
+      "occurrences": 1,
+      "texte": "Fiche technique"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
       "chemin": "/B|Comment importer mes denrées en masse ?/base/n/contenu",
       "exemple": "/B|Comment importer mes denrées en masse ?/base/0/contenu",
       "formes": [
@@ -6798,21 +8850,28 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/B|Comment importer mes enseignes depuis Excel ?/base/n/contenu",
-      "exemple": "/B|Comment importer mes enseignes depuis Excel ?/base/1/contenu",
+      "exemple": "/B|Comment importer mes enseignes depuis Excel ?/base/0/contenu",
       "formes": [
-       "Transferts",
-       "Pertes",
-       "Inventaires",
-       "Stock"
+       "Activité",
+       "Labo",
+       "Ingrédient",
+       "Transfert",
+       "Approvisionnement",
+       "Appro",
+       "Appros",
+       "Fournisseur",
+       "Produits transformés",
+       "Stock",
+       "Produits"
       ],
-      "occurrences": 4,
-      "texte": "…xcel ou PDF récapitulant le stock, les pertes, les inventaires et les transferts du client. Le client peut le demander explicitement (ex : « envoie-moi le rappo…"
+      "occurrences": 11,
+      "texte": "… transformés d'origine labo ne s'approvisionnent pas directement côté activité : ils arrivent uniquement par transfert depuis le labo."
      },
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/B|Comment importer mes enseignes depuis Excel ?/base/n/contenu",
-      "exemple": "/B|Comment importer mes enseignes depuis Excel ?/base/0/contenu",
+      "exemple": "/B|Comment importer mes enseignes depuis Excel ?/base/1/contenu",
       "formes": [
        "Article",
        "Fiches techniques",
@@ -6825,17 +8884,32 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
+      "chemin": "/B|Comment importer mes enseignes depuis Excel ?/base/n/titre",
+      "exemple": "/B|Comment importer mes enseignes depuis Excel ?/base/0/titre",
+      "formes": [
+       "Approvisionnement",
+       "Appro"
+      ],
+      "occurrences": 2,
+      "texte": "Approvisionnement (appro)"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
       "chemin": "/B|Comment saisir un encaissement ?/base/n/contenu",
       "exemple": "/B|Comment saisir un encaissement ?/base/0/contenu",
       "formes": [
-       "Activité",
+       "Labo",
+       "Produit valorisé",
        "Article",
-       "Coût matière",
+       "Ingrédients",
+       "Recette",
        "Vente",
-       "Prestataire"
+       "Stock",
+       "Produit"
       ],
-      "occurrences": 5,
-      "texte": "Une vente est une transaction enregistrée sur une activité, à une date, avec un statut (confirmée/annulée) et un canal : directe (sur place) ou via un prestatai…"
+      "occurrences": 8,
+      "texte": "…ple (un article déduit directement du stock à la vente) ou composé au labo (« composé valorisé » : sa fabrication au labo déduit les ingrédients de sa recette).…"
      },
      {
       "famille": "assistant",
@@ -6843,35 +8917,10 @@
       "chemin": "/B|Comment saisir un encaissement ?/base/n/titre",
       "exemple": "/B|Comment saisir un encaissement ?/base/0/titre",
       "formes": [
-       "Vente"
+       "Article"
       ],
       "occurrences": 1,
-      "texte": "Vente"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/B|Quelle est la différence entre un local et une usine ?/base/n/contenu",
-      "exemple": "/B|Quelle est la différence entre un local et une usine ?/base/0/contenu",
-      "formes": [
-       "Vente",
-       "Ventes",
-       "Prestataire",
-       "Prestataires"
-      ],
-      "occurrences": 4,
-      "texte": "…Uber Eats, Talabat, Glovo) est une plateforme tierce via laquelle des ventes sont réalisées, avec une commission en pourcentage. Les prestataires sont activés a…"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/B|Quelle est la différence entre un local et une usine ?/base/n/titre",
-      "exemple": "/B|Quelle est la différence entre un local et une usine ?/base/0/titre",
-      "formes": [
-       "Prestataire"
-      ],
-      "occurrences": 1,
-      "texte": "Prestataire de livraison"
+      "texte": "Article valorisé"
      },
      {
       "famille": "assistant",
@@ -6987,6 +9036,34 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
+      "chemin": "/C|Comment est calculé le coût de revient d'un assemblage ?/base/n/contenu",
+      "exemple": "/C|Comment est calculé le coût de revient d'un assemblage ?/base/0/contenu",
+      "formes": [
+       "Ingrédient",
+       "Recette",
+       "Fiche technique",
+       "Inventaire",
+       "Vente",
+       "Stock",
+       "Produit"
+      ],
+      "occurrences": 7,
+      "texte": "…ût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix …"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/C|Comment est calculé le coût de revient d'un assemblage ?/base/n/titre",
+      "exemple": "/C|Comment est calculé le coût de revient d'un assemblage ?/base/0/titre",
+      "formes": [
+       "Fiche technique"
+      ],
+      "occurrences": 1,
+      "texte": "Fiche technique"
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
       "chemin": "/C|Comment importer mes clientes depuis Excel ?/base/n/contenu",
       "exemple": "/C|Comment importer mes clientes depuis Excel ?/base/1/contenu",
       "formes": [
@@ -7030,7 +9107,28 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/C|Comment importer mes enseignes depuis Excel ?/base/n/contenu",
-      "exemple": "/C|Comment importer mes enseignes depuis Excel ?/base/1/contenu",
+      "exemple": "/C|Comment importer mes enseignes depuis Excel ?/base/0/contenu",
+      "formes": [
+       "Activité",
+       "Labo",
+       "Ingrédient",
+       "Transfert",
+       "Approvisionnement",
+       "Appro",
+       "Appros",
+       "Fournisseur",
+       "Produits transformés",
+       "Stock",
+       "Produits"
+      ],
+      "occurrences": 11,
+      "texte": "… transformés d'origine labo ne s'approvisionnent pas directement côté activité : ils arrivent uniquement par transfert depuis le labo."
+     },
+     {
+      "famille": "assistant",
+      "cle": "recherchesDomaine",
+      "chemin": "/C|Comment importer mes enseignes depuis Excel ?/base/n/contenu",
+      "exemple": "/C|Comment importer mes enseignes depuis Excel ?/base/2/contenu",
       "formes": [
        "Transferts",
        "Pertes",
@@ -7044,7 +9142,7 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/C|Comment importer mes enseignes depuis Excel ?/base/n/contenu",
-      "exemple": "/C|Comment importer mes enseignes depuis Excel ?/base/0/contenu",
+      "exemple": "/C|Comment importer mes enseignes depuis Excel ?/base/1/contenu",
       "formes": [
        "Article",
        "Fiches techniques",
@@ -7057,41 +9155,20 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/composant|Comment créer mon unité alpha ?/base/n/contenu",
-      "exemple": "/composant|Comment créer mon unité alpha ?/base/0/contenu",
+      "chemin": "/C|Comment importer mes enseignes depuis Excel ?/base/n/titre",
+      "exemple": "/C|Comment importer mes enseignes depuis Excel ?/base/0/titre",
       "formes": [
-       "Article",
-       "Fiches techniques",
-       "Portions",
-       "Stock"
+       "Approvisionnement",
+       "Appro"
       ],
-      "occurrences": 4,
-      "texte": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propre…"
+      "occurrences": 2,
+      "texte": "Approvisionnement (appro)"
      },
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/n/contenu",
-      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/1/contenu",
-      "formes": [
-       "Activités",
-       "Labo",
-       "Ingrédients",
-       "Transferts",
-       "Produits transformés",
-       "PT",
-       "Stock",
-       "Produits",
-       "Laboratoire"
-      ],
-      "occurrences": 9,
-      "texte": "…rédients, fabrique des produits transformés (PT) et approvisionne les activités via des transferts. Le stock du labo est distinct du stock des activités."
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/n/contenu",
-      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/0/contenu",
+      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/3/contenu",
       "formes": [
        "Activité",
        "Activités",
@@ -7111,18 +9188,7 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/n/titre",
-      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/1/titre",
-      "formes": [
-       "Labo"
-      ],
-      "occurrences": 1,
-      "texte": "Labo central"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/n/titre",
-      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/0/titre",
+      "exemple": "/fixe|[[nom:transfert]] vers [[un:activite]]/resultat/results/3/titre",
       "formes": [
        "Transferts"
       ],
@@ -7133,7 +9199,7 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/fixe|calcul [[du:food_cost]]/resultat/results/n/contenu",
-      "exemple": "/fixe|calcul [[du:food_cost]]/resultat/results/2/contenu",
+      "exemple": "/fixe|calcul [[du:food_cost]]/resultat/results/3/contenu",
       "formes": [
        "Ingrédients",
        "Food cost",
@@ -7147,7 +9213,7 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/fixe|calcul [[du:food_cost]]/resultat/results/n/titre",
-      "exemple": "/fixe|calcul [[du:food_cost]]/resultat/results/2/titre",
+      "exemple": "/fixe|calcul [[du:food_cost]]/resultat/results/3/titre",
       "formes": [
        "Coût matière"
       ],
@@ -7183,18 +9249,6 @@
       "famille": "assistant",
       "cle": "recherchesDomaine",
       "chemin": "/fixe|inviter [[un:acheteur]]/resultat/results/n/contenu",
-      "exemple": "/fixe|inviter [[un:acheteur]]/resultat/results/3/contenu",
-      "formes": [
-       "Article",
-       "Stock"
-      ],
-      "occurrences": 2,
-      "texte": "… stock = somme (quantité en stock × prix moyen pondéré TTC) de chaque article à une date donnée. Elle représente l'argent immobilisé en marchandises. Toutes les…"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/fixe|inviter [[un:acheteur]]/resultat/results/n/contenu",
       "exemple": "/fixe|inviter [[un:acheteur]]/resultat/results/0/contenu",
       "formes": [
        "Ingrédients",
@@ -7208,31 +9262,6 @@
      {
       "famille": "assistant",
       "cle": "recherchesDomaine",
-      "chemin": "/fixe|inviter [[un:acheteur]]/resultat/results/n/contenu",
-      "exemple": "/fixe|inviter [[un:acheteur]]/resultat/results/2/contenu",
-      "formes": [
-       "Ingrédients",
-       "Food cost",
-       "Coût matière",
-       "Ventes"
-      ],
-      "occurrences": 4,
-      "texte": "Le coût matière est la valeur des ingrédients consommés pour réaliser les ventes d'une période. C'est le numérateur du food cost."
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/fixe|inviter [[un:acheteur]]/resultat/results/n/titre",
-      "exemple": "/fixe|inviter [[un:acheteur]]/resultat/results/2/titre",
-      "formes": [
-       "Coût matière"
-      ],
-      "occurrences": 1,
-      "texte": "Coût matière"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
       "chemin": "/fixe|inviter [[un:acheteur]]/resultat/results/n/titre",
       "exemple": "/fixe|inviter [[un:acheteur]]/resultat/results/0/titre",
       "formes": [
@@ -7240,17 +9269,6 @@
       ],
       "occurrences": 1,
       "texte": "Mode de prix d'une fiche technique"
-     },
-     {
-      "famille": "assistant",
-      "cle": "recherchesDomaine",
-      "chemin": "/fixe|inviter [[un:acheteur]]/resultat/results/n/titre",
-      "exemple": "/fixe|inviter [[un:acheteur]]/resultat/results/3/titre",
-      "formes": [
-       "Stock"
-      ],
-      "occurrences": 1,
-      "texte": "Valeur du stock"
      },
      {
       "famille": "manuel",
@@ -9528,18 +11546,19 @@
    ],
    "scan2c": true,
    "horsManuel": {
-    "formes": 1323,
-    "ignorees": 1323
+    "formes": 1575,
+    "ignorees": 1575
    },
    "exclusionsBalise": {
-    "fiches": 0,
+    "fiches": 3,
     "variantes": 0,
     "base": 0
    },
-   "resultatsManuelControles": 201,
+   "resultatsManuelControles": 199,
+   "baseParTitre": 32,
    "motsCles": {
     "controles": 152,
-    "manques": 152
+    "manques": 0
    },
    "coherenceRecherches": {
     "cles": 56,
@@ -9858,18 +11877,19 @@
       "attendu": "activites",
       "obtenus": [
        "demarrage",
-       "onboarding-configuration",
-       "activites"
+       "lexique-pt",
+       "onboarding-configuration"
       ],
-      "ok": true,
+      "ok": false,
       "note": null
      },
      {
       "cle": "fixe|[[nom:transfert]] vers [[un:activite]]",
       "attendu": "stock-activites",
       "obtenus": [
-       "decouvrir-labflow",
-       "demarrage"
+       "transferts",
+       "calc-transferts",
+       "faq"
       ],
       "ok": false,
       "note": null
@@ -9879,8 +11899,8 @@
       "attendu": "decouvrir-labflow",
       "obtenus": [
        "calc-cout-recette",
-       "calc-transferts",
-       "calc-valeur-stock"
+       "calc-production-pt",
+       "calc-transferts"
       ],
       "ok": false,
       "note": null
@@ -9890,18 +11910,20 @@
       "attendu": "inventaire",
       "obtenus": [
        "onboarding-avenants",
+       "inventaire",
        "pertes",
-       "dashboard",
-       "gerants"
+       "stock-labo"
       ],
-      "ok": false,
+      "ok": true,
       "note": null
      },
      {
       "cle": "fixe|inviter [[un:acheteur]]",
       "attendu": "acheteurs-module",
       "obtenus": [
-       "calc-cout-recette"
+       "calc-cout-recette",
+       "decouvrir-labflow",
+       "compte-activites-labos"
       ],
       "ok": false,
       "note": null
@@ -9912,20 +11934,21 @@
       "obtenus": [
        "referentiel-unites",
        "demarrage",
-       "compte"
+       "onboarding-configuration",
+       "activites"
       ],
-      "ok": false
+      "ok": true
      },
      {
       "cle": "composant|Comment créer mon pôle bêta ?",
       "attendu": "activites",
       "obtenus": [
-       "compte",
-       "demarrage",
-       "abonnement",
-       "roles"
+       "lexique-pt",
+       "onboarding-configuration",
+       "activites",
+       "fournisseurs"
       ],
-      "ok": false
+      "ok": true
      }
     ]
    },

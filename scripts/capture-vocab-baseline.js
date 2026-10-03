@@ -52,7 +52,12 @@
  *     par aucune recherche) : chaque entrée active de ai_knowledge_base, dans l'ordre des id, est cherchée par son
  *     titre (titre en base rendu avec le vocabulaire du passage), compte B, sans voc ; md5 NON masqué du JSON
  *     { titre, contenu } du résultat de même titre. Arrêt (aucune sortie) si l'entrée n'est pas parmi les résultats,
- *     ou si deux entrées ont le même titre rendu. `meta.entreesBase` = nombre d'entrées actives. */
+ *     ou si deux entrées ont le même titre rendu. `meta.entreesBase` = nombre d'entrées actives ;
+ *   - clé `baseParTitre` (réserve R1 du contrôle de O et S0, spec R2.4.8), HORS RESTAURATION SEULEMENT : pour
+ *     chacune de ces recherches par titre, `baseParTitre.<titre rendu>` = { titre, contenu } RENDUS du résultat (masqués
+ *     comme toute capture), scannés par check-invariant-vocab.js dans la famille assistant : `meta` n'est pas scanné, et
+ *     sans cette clé le contenu de 20 des 32 entrées n'apparaissait nulle part hors restauration. Arrêt si un contenu est
+ *     vide. Jamais capturée en restauration : la référence n'est pas recapturée pour elle. */
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -440,6 +445,9 @@ const C = {
   accueilMessenger: {}, emails: {}, pdf: {}, valeursContrat: {}, exports: {}, rapportIA: {},
   tableauxDeBord: {}, donneesLibelles: {}, persistes: {}, messages: {}, auth: {}, manuel: {},
 };
+// Réserve R1 (spec R2.4.8) : contenu des entrées de la base, hors restauration seulement (la référence restauration ne
+// porte pas cette clé ; en restauration, ces entrées sont tenues par meta.empreintesBase).
+if (DOMAINE !== 'restauration') C.baseParTitre = {};
 const CLES_CAPTURE = Object.keys(C);
 const pdfsDe = (f) => f.pdfs.map((p) => ({ info: p.info, textes: p.textes }));
 const emailsDe = (f) => f.emails.map((e) => ({
@@ -834,6 +842,10 @@ async function principal() {
     const trouve = (r && Array.isArray(r.results) ? r.results : []).find((x) => x.titre === query && !estManuel(x.titre));
     if (!trouve) throw new Error(`base de connaissances : l'entrée « ${query} » n'est pas parmi les résultats de sa recherche par titre (la capture s'arrête)`);
     meta.empreintesBase[query] = crypto.createHash('md5').update(JSON.stringify({ titre: trouve.titre, contenu: trouve.contenu }), 'utf8').digest('hex');
+    if (C.baseParTitre) {
+      if (typeof trouve.contenu !== 'string' || !trouve.contenu.trim()) throw new Error(`base de connaissances : l'entrée « ${query} » a un contenu vide (baseParTitre, la capture s'arrête)`);
+      C.baseParTitre[query] = { titre: trouve.titre, contenu: trouve.contenu };
+    }
   }
   meta.entreesBase = entreesBase.length;
 

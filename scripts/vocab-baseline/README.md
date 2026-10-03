@@ -14,7 +14,7 @@ l'application dans son processus, ce qui APPLIQUE les migrations en attente à l
 | `recherches-avant-ordre.json` | Lot 2c, étape O : clés `recherches` et `recherchesDomaine` de la capture restauration de `develop` (`863f8f0`, AVANT R2.2), et la liste des recherches changées (`resume`). Les valeurs après R2.2 sont celles de `restauration.json` (voir « Recapture du 2c »). |
 | `ordre-libre.json` | Listes dont l'ordre peut changer `{ cle, chemin, raison, cleTri? }` (voir « Ordre » ci-dessous). |
 | `exceptions-hors-restauration.json` | Exceptions typées du scan hors restauration `{ cle, chemin (motif), texte, type, justification, domaines?, extrait? }`. `texte` vaut la forme trouvée ou le texte entier ; avec `extrait: true`, c'est un PASSAGE exact retiré du texte avant la recherche (un prompt est UN texte : une exception par forme l'éteindrait en entier). Le glossaire « ## Vocabulaire du compte » du prompt (spec §7.3) est retiré du texte lu ; seule sa colonne de droite (mots du compte) est cherchée, sous `…/glossaire/droite`. |
-| `hors-restauration-avant.json` | Liste de travail de l'étape O : formes par défaut trouvées par domaine, chiffrées par famille. Complète depuis S1 (clés `*_abr` comprises) pour hotellerie, ceramique et miroir ; son `_lisezmoi` ne la dit « incomplète » que si un domaine a encore des clés absentes du moteur de son passage. **Réécrite à l'étape O du lot 2c** (`scan2c: true`) : famille `manuel` (manuel servi) et famille `assistant` étendue aux résultats de la recherche ; ses comptes `manuel` et `assistant` ne doivent jamais monter (R2.4.7). |
+| `hors-restauration-avant.json` | Liste de travail de l'étape O : formes par défaut trouvées par domaine, chiffrées par famille. Complète depuis S1 (clés `*_abr` comprises) pour hotellerie, ceramique et miroir ; son `_lisezmoi` ne la dit « incomplète » que si un domaine a encore des clés absentes du moteur de son passage. **Réécrite à l'étape O du lot 2c** (`scan2c: true`) : famille `manuel` (manuel servi) et famille `assistant` étendue aux résultats de la recherche ; ses comptes `manuel` et `assistant` ne doivent jamais monter (R2.4.7). **Relancée pour la réserve R1** (R2.4.8, 03/10/2026) : la famille `assistant` compte aussi la clé `baseParTitre`. **Relancée à l'intégration de M0 ∥ S ∥ A** (03/10/2026) : les mots-clés enrichis (R5.4) changent le classement de la recherche hors restauration ; seule la famille `assistant` change (voir « Intégration de M0 ∥ S ∥ A » plus bas). |
 
 ## Commandes (depuis la racine du dépôt backend)
 
@@ -126,6 +126,11 @@ neuve de la base : `node scripts/manuel/base-locale.js copie` puis `DB_NAME=fich
   l'ordre des `id`, est cherchée par son titre (titre en base rendu avec le vocabulaire du passage ; en restauration, le titre
   d'origine), compte B, sans voc ; md5 NON masqué du JSON `{ titre, contenu }` du résultat de même titre. La capture s'arrête
   si l'entrée n'est pas parmi les 4 résultats ou si deux entrées ont le même titre rendu ; `meta.entreesBase` = nombre d'entrées.
+- `baseParTitre` (réserve R1 du contrôle de O et S0, spec R2.4.8), **hors restauration seulement** : pour chacune de ces
+  recherches par titre, `baseParTitre.<titre rendu>` = `{ titre, contenu }` RENDUS du résultat (masqués comme toute capture).
+  `meta` n'est pas scanné : sans cette clé, le contenu de 20 des 32 entrées n'apparaissait nulle part dans une capture
+  Hôtellerie. La capture s'arrête si un contenu est vide ; le compte par clé vaut 32. Jamais capturée en restauration : la
+  référence n'a pas été recapturée pour elle (les 32 entrées y sont tenues par `meta.empreintesBase`).
 
 ### Contrôles ajoutés (§2.4)
 
@@ -135,7 +140,7 @@ neuve de la base : `node scripts/manuel/base-locale.js copie` puis `DB_NAME=fich
   écart est un échec qu'aucune entrée de `ecarts-restauration-attendus.json` ne peut admettre (I1, PDF compris, R2.6.1).
 - Hors restauration : famille `manuel` (`manuel/sections/<slug>/titre|partie|contenu`, jamais `motsCles` ni l'admin) et
   famille `assistant` étendue (`recherches`, `recherchesDomaine` : titres et contenus des résultats de la BASE, titres de
-  `disponibles`). Passages exclus au balisage retirés avant la recherche (`extrait` des fichiers
+  `disponibles` ; `baseParTitre` : titre et contenu des 32 entrées, R2.4.8). Passages exclus au balisage retirés avant la recherche (`extrait` des fichiers
   `scripts/manuel/balise/manuel/<slug>.json`, `scripts/manuel/variantes/<domaine>/<slug>.json`, et
   `scripts/manuel/balise/base/*.json` pour une entrée retrouvée par son titre rendu avec `meta.lexique`) ; aucune exception par
   forme dans `exceptions-hors-restauration.json` pour ces textes. `MOTS_HORS_LEXIQUE` ne s'y applique pas (R2.4.3).
@@ -145,11 +150,53 @@ neuve de la base : `node scripts/manuel/base-locale.js copie` puis `DB_NAME=fich
   celle d'aucune fiche servie, ou dont le contenu n'est pas le début de la fiche (suivi de « … » s'il est coupé) ; empreintes du
   lecteur `admin` ≠ référence restauration (I4) ; clé de `recherchesDomaine` sans résultat ; mots-clés servis sans la forme
   `nom` du domaine d'une clé que le domaine change et que les mots-clés d'origine portent comme entrée (R2.4.4) ; comptes des
-  familles `manuel` et `assistant` au-dessus de la liste avant (une fois celle-ci écrite par ce scan, `scan2c`).
+  familles `manuel` et `assistant` au-dessus de la liste avant (une fois celle-ci écrite par ce scan, `scan2c`) ;
+  `baseParTitre` absent, vide, d'un autre nombre d'entrées que `meta.entreesBase`, ou avec un contenu vide (R2.4.8).
 - Rapports (non bloquants, R2.4.6) : terme du domaine dans les 4 résultats, par clé ; première fiche du manuel de la référence
   parmi les 4 résultats d'une recherche fixe ; fiche `activites` parmi les 4 résultats d'une question de composant.
-- `--hors-manuel` : les formes du manuel et des recherches ne font pas échouer ; le contrôle des mots-clés (famille manuel) est
+- `--hors-manuel` : les formes du manuel, des recherches et de `baseParTitre` (base pas encore balisée, R2.4.8) ne font pas échouer ; le contrôle des mots-clés (famille manuel) est
   un rapport ; tout le reste échoue comme sans l'option. Porte de S, de A et des vagues : 0 dans les trois domaines.
+
+### Réserve R1 : contenu des 32 entrées hors restauration (R2.4.8, 03/10/2026)
+
+- Avant / après le changement des deux scripts : `node scripts/check-invariant-vocab.js` (restauration) IDENTIQUE les deux
+  fois, mêmes comptes par clé (20 clés, pas de `baseParTitre`) ; `restauration.json` inchangé (pas de recapture).
+- Captures `--domaine hotellerie`, `ceramique`, `miroir` : `baseParTitre` = 32 entrées (mêmes titres, même ordre que
+  `meta.empreintesBase`), 0 contenu vide, 9 574 caractères ; le contenu de 20 (H), 19 (C) et 20 (miroir) entrées n'apparaît
+  dans aucune autre clé de la capture.
+- Listes de travail relancées (`--liste-avant`, une capture par domaine) : famille `assistant` H 95 → 186 (`baseParTitre`
+  91), C 157 → 272 (115), miroir 253 → 458 (205) ; famille `manuel` inchangée (552, 678, 1 070) ; hors `baseParTitre`
+  (et la migration affichée, 192 → 193), chaque section est égale à celle de l'étape O. `--hors-manuel` : 0 dans les trois
+  domaines.
+- Mutation réelle (transaction validée, puis restaurée à l'identique : empreintes revenues à `67737956…` / `8779fd65…`,
+  fiches et entrées égales une à une, `updated_at` compris) : contenu de « Timbre fiscal », « (1 DT en Tunisie) » devenu
+  « (1 DT par labo en Tunisie) ». Scan Hôtellerie complet : ÉCHEC, famille `assistant` 187 au-dessus de la liste avant
+  (186) ; seul élément ajouté : `baseParTitre/Timbre fiscal/contenu`, forme « Labo ». Aucune autre clé ne le voyait.
+
+### Intégration de M0 ∥ S ∥ A : liste de travail relancée après S (03/10/2026)
+
+- Premier passage `--domaine … --hors-manuel` sur le code de S (04:02 à 04:08) : 0 forme hors manuel et recherches dans les
+  trois domaines, mais ÉCHEC « famille assistant au-dessus de la liste avant » : H 186 → 187, C 272 → 279, miroir 458 → 505.
+  Famille `manuel` inchangée (552, 678, 1 070) ; `baseParTitre` et `recherches` inchangés ; seule `recherchesDomaine` monte
+  (H 68 → 69, C 125 → 132, miroir 198 → 245).
+- Cause, mesurée : les mots-clés enrichis (R5.4, décision 3 du client) changent le classement de la recherche hors
+  restauration ; d'autres entrées de la base, encore non balisées, entrent dans les 4 résultats des questions posées dans les
+  mots du domaine (et d'autres en sortent). Preuves : (a) chaque texte de la famille `assistant` est le titre ou le contenu
+  d'origine d'une entrée (`scripts/manuel/origine/base/`) ou un texte déjà présent dans la liste avant (H 91 sur 91, C 121
+  sur 121, miroir 145 sur 145) : aucun texte n'a gagné de forme, seule la sélection des résultats change ; (b) en lecture
+  seule sur la base locale (textes non balisés), les rendus H et C des 32 entrées et des 60 fiches actives égalent les
+  textes bruts, seuls les mots-clés diffèrent (H 54, C 61 lignes enrichies), et l'outil de `08c3edf` et celui de S donnent
+  d'autres résultats pour les 11 questions essayées. En restauration, rien ne bouge (contrôle IDENTIQUE).
+- Liste relancée (`--liste-avant`, une capture par domaine, 04:11 à 04:14). Changent seulement : la famille `assistant` (sous
+  `recherchesDomaine`), `motsCles` (manques 89 / 104 / 152 → 0 : l'enrichissement est en place), les exceptions employées
+  (32 exceptions `2c` retirées par S, R2.4.5), les exclusions lues (3 fiches témoins de M0), le rapport de cohérence, et les
+  nombres de textes lus et de résultats du manuel contrôlés (autres résultats). Les éléments de la famille `manuel` sont
+  égaux un à un. Contrôle `--hors-manuel` relancé ensuite (04:15 à 04:19) : code 0
+  dans les trois domaines, comptes égaux à la liste.
+- Rapport R2.4.6 (non bloquant) : fiche attendue parmi les 4 résultats, H 5 sur 12 (5 avant S), C 3 sur 9 (3), miroir 3 sur
+  7 (1) ; perdus : « créer [[un:labo]] » (fiche `activites`) dans les trois domaines et « Comment créer ma cuisine ? » en H ;
+  gagnés : « room service » et « housekeeping » en H, « showroom / boutique » en C, 3 recherches miroir. À relire à l'étape C,
+  manuel et base balisés.
 
 ### Base locale protégée (§2.8)
 
