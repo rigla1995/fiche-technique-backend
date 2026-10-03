@@ -366,5 +366,32 @@
     "texte": "responsable de site",
     "decision": "accepté",
     "raison": "« par responsable de site » : la personne qui tient le site, en clair dans l'origine ; en C c'est aussi le terme de gerant (« Créez un responsable de site par responsable de site ») ; le conseil reste compris ; pas de variante pour cette fiche (décision 1, question 9) ; contestée par le relecteur (relectures/L1.json ligne 3) : limite connue, aucune balise ne la corrige (I10), décision de l'intégrateur B1 (besoins/L1.json, L1-1) : collision connue, acceptée pour le 2c et inscrite au §10.3 à l'étape C ; un autre terme C pour gerant (ex. « Gérant de site ») est proposé au client avec les corrections du lexique C"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "produit fabriqué",
+    "decision": "accepté",
+    "raison": "glose redite « Produit fabriqué (produit fabriqué) » : sans forme courte en production, [[court:pt]] rend le nom ; avecCourt (qui n'écrit pas la parenthèse quand la forme courte égale le nom) ne se met pas en casse Nom (moteur gelé, besoin L9-2) ; fiche à variante : la variante usine (variantes/ceramique/lexique.md) écrit « Produit fabriqué » seul ; le texte commun ne se reformule pas (I10) (étape C, A16.13)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "produits fabriqués",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« Les 3 catégories de PT ») ; le lexique de production d'usine n'a pas de forme courte : [[court:pt:pl]] rend le nom complet ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes) ; fiche à variante (variante usine)"
+  },
+  {
+    "fiche": "lexique",
+    "point": 8,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Produit fabriqué (produit fabriqué)",
+    "decision": "accepté",
+    "raison": "glose redite « Produit fabriqué (produit fabriqué) » : sans forme courte en production, [[court:pt]] rend le nom ; avecCourt (qui n'écrit pas la parenthèse quand la forme courte égale le nom) ne se met pas en casse Nom (moteur gelé, besoin L9-2) ; fiche à variante : la variante usine (variantes/ceramique/lexique.md) écrit « Produit fabriqué » seul ; le texte commun ne se reformule pas (I10) (étape C, A16.13)"
   }
 ]

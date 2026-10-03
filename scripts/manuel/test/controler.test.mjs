@@ -382,3 +382,120 @@ test('--lexique : lexique de production résolu pour H ; fichier absent ou mal f
     assert.equal(lancer(['--oups']).status, 2);
   } finally { fs.rmSync(r, { recursive: true, force: true }); }
 });
+
+test('étape C (A16.13) : --lexique-ceramique et --production (lexiques de production) ; md5 comparé à la lecture', () => {
+  const r = racineTemoins();
+  const lecture = path.join(r, 'lecture.json');
+  const lp = C.lireJsonExterne(path.join(C.DOSSIER, 'lecture-production.json'));
+  const usine = lp.ceramique.lexique;
+  const prod = path.join(r, 'usine.json');
+  fs.writeFileSync(prod, JSON.stringify({ lexique: usine }));
+  try {
+    // Lecture d'essai : H (md5 des écarts de domaines.json) et 2e domaine (lexique usine en clair).
+    fs.writeFileSync(lecture, JSON.stringify({
+      hotellerie: { slug: 'hotellerie', md5Lexique: V.md5Lexique(V.domaine('hotellerie').ecarts) },
+      ceramique: { slug: 'usine', md5Lexique: V.md5Lexique(usine), lexique: usine },
+    }));
+    const p = lancer(['acheteurs-carnet', '--racine', r, '--production', '--lecture', lecture]);
+    assert.equal(p.status, 0, p.stdout + p.stderr);
+    assert.match(p.stdout, /lexique Hôtellerie : domaines\.json › hotellerie\.ecarts .* égal à la lecture \(7\)/);
+    assert.match(p.stdout, new RegExp(`lexique 2e domaine .*ceramique\\.lexique \\(slug de production usine\\).*md5 de lexique::text ${V.md5Lexique(usine)} ; égal à la lecture du domaine usine`));
+    // Rendu du 2e domaine avec le lexique de production : sans forme courte, [[court:…]] rend le nom complet.
+    const ctx = creerContexte({ racine: r, lexiqueCeramique: 'lecture', lecture });
+    assert.equal(ctx.domaines.ceramique.production, true);
+    assert.equal(ctx.domaines.hotellerie.production, false);
+    const U = ctx.domaines.ceramique.voc;
+    assert.equal(rendu(U, '[[le:pt:pl]] ([[court:pt:pl]])'), 'les produits fabriqués (produits fabriqués)');
+    assert.equal(rendu(U, '[[det:pt:le:pl]][[avecCourt:pt:pl]]'), 'les produits fabriqués');
+    assert.equal(rendu(vocabDefaut, '[[det:pt:le:pl]][[avecCourt:pt:pl]]'), 'les produits transformés (PT)');
+    assert.equal(rendu(U, '[[nom:perte]]'), 'casse / rebut / second choix');
+    assert.ok(!ctx.domaines.ceramique.formes.has('Site'), 'pas de forme courte « Site » en production');
+    // Fichier : md5 comparé à ceramique.md5Lexique.
+    assert.equal(lancer(['acheteurs-carnet', '--racine', r, '--lexique-ceramique', prod, '--lecture', lecture]).status, 0);
+    fs.writeFileSync(lecture, JSON.stringify({ ceramique: { slug: 'usine', md5Lexique: '0'.repeat(32) } }));
+    const autre = lancer(['acheteurs-carnet', '--racine', r, '--lexique-ceramique', prod, '--lecture', lecture]);
+    assert.equal(autre.status, 2);
+    assert.match(autre.stderr, /≠ lecture du domaine usine .* n'est pas le lexique 2e domaine/);
+    // « lecture » sans champ lexique (2e domaine) ou sans lecture : refus.
+    assert.match(lancer(['acheteurs-carnet', '--racine', r, '--lexique-ceramique', 'lecture', '--lecture', lecture]).stderr, /pas de champ ceramique\.lexique/);
+    assert.match(lancer(['acheteurs-carnet', '--racine', r, '--production', '--lecture', path.join(r, 'absente.json')]).stderr, /lecture de production absente/);
+    // H « lecture » : écarts de domaines.json refusés si leur md5 ne vaut pas hotellerie.md5Lexique.
+    fs.writeFileSync(lecture, JSON.stringify({ hotellerie: { slug: 'hotellerie', md5Lexique: '0'.repeat(32) } }));
+    assert.match(lancer(['acheteurs-carnet', '--racine', r, '--lexique', 'lecture', '--lecture', lecture]).stderr, /≠ lecture \(7\)/);
+    assert.equal(lancer(['acheteurs-carnet', '--racine', r, '--lexique-ceramique']).status, 2);
+  } finally { fs.rmSync(r, { recursive: true, force: true }); }
+});
+
+test('étape C (A16.13) : acceptation « lexique » essai / production, appliquée et comptée dans son seul lexique', () => {
+  const r = racineTemoins();
+  const lecture = path.join(r, 'lecture.json');
+  const lp = C.lireJsonExterne(path.join(C.DOSSIER, 'lecture-production.json'));
+  fs.writeFileSync(lecture, JSON.stringify({ ceramique: { slug: 'usine', md5Lexique: lp.ceramique.md5Lexique, lexique: lp.ceramique.lexique } }));
+  const essaiCtx = () => creerContexte({ racine: r });
+  const prodCtx = () => creerContexte({ racine: r, lexiqueCeramique: 'lecture', lecture });
+  try {
+    // « [[le:pt:pl]] ([[court:pt:pl]]) » ne redit la glose qu'avec le lexique de production (contenu posé dans une
+    // fiche témoin : seuls ses signalements comptent ici).
+    const hp = lireFiche(r, 'historique-paiements');
+    ecrireFiche(r, 'historique-paiements', 'Les [[nom:pt:pl]] : [[le:pt:pl]] ([[court:pt:pl]]) partent.', hp.json);
+    const glose = (ctx) => controlerFiche(ctx, 'historique-paiements', { ecrire: false }).signalements.filter((s) => s.point === 8 && s.domaine === 'ceramique');
+    assert.deepEqual(glose(essaiCtx()), []);
+    assert.deepEqual(glose(prodCtx()).map((s) => s.texte), ['produits fabriqués (produits fabriqués)']);
+    ecrireFiche(r, 'historique-paiements', hp.md, hp.json);
+    // Une acceptation « essai » sert avec le lexique d'essai ; une « production » n'y est pas « sans objet ».
+    C.ecrireJson(path.join(r, 'relectures', 'L7.auto.json'), [
+      { fiche: 'acheteurs-carnet', point: 12, domaine: 'ceramique', lexique: 'essai', texte: 'option', decision: 'accepté', raison: 'essai seulement' },
+      { fiche: 'acheteurs-carnet', point: 7, domaine: 'ceramique', lexique: 'production', texte: 'rien', decision: 'accepté', raison: 'production seulement' },
+    ]);
+    const tEssai = controlerTout(essaiCtx(), { ecrire: false });
+    assert.deepEqual(tEssai.fiches.find((x) => x.nom === 'acheteurs-carnet').signalements.map((s) => s.etat), ['accepté']);
+    assert.deepEqual(tEssai.sansObjet, []);
+    // En production : la ligne « essai » ne s'applique pas ; la ligne « production » est sans objet (« rien »).
+    const tProd = controlerTout(prodCtx(), { ecrire: false });
+    assert.deepEqual(tProd.fiches.find((x) => x.nom === 'acheteurs-carnet').signalements.map((s) => s.etat), ['à traiter']);
+    assert.deepEqual(tProd.sansObjet.map((x) => [x.fiche, x.point, x.texte]), [['acheteurs-carnet', 7, 'rien']]);
+    assert.match(tProd.sansObjet[0].raison, /avec le lexique production/);
+    // « lexique » invalide : jamais appliqué, toujours sans objet.
+    C.ecrireJson(path.join(r, 'relectures', 'L7.auto.json'), [
+      { fiche: 'acheteurs-carnet', point: 12, domaine: 'ceramique', lexique: 'prod', texte: 'option', decision: 'accepté', raison: 'faute de frappe' },
+    ]);
+    const tInv = controlerTout(essaiCtx(), { ecrire: false });
+    assert.equal(tInv.fiches.find((x) => x.nom === 'acheteurs-carnet').signalements[0].etat, 'à traiter');
+    assert.match(tInv.sansObjet[0].raison, /« lexique » "prod"/);
+  } finally { fs.rmSync(r, { recursive: true, force: true }); }
+});
+
+test('exclusion « rendu » (étape C) : passage du rendu par défaut, compté là ; refusée si l\'extrait est dans le texte balisé', () => {
+  const r = fs.mkdtempSync(path.join(os.tmpdir(), 'controler-'));
+  const nom = 'produits-vendables-et-utilisables';
+  try {
+    const md = C.lireTexte(path.join(C.CHEMINS.baliseBase, `${nom}.md`));
+    const json = C.lireJson(path.join(C.CHEMINS.baliseBase, `${nom}.json`));
+    const ecrireE = (exclusions) => {
+      C.ecrireTexte(path.join(r, 'balise', 'base', `${nom}.md`), md);
+      C.ecrireJson(path.join(r, 'balise', 'base', `${nom}.json`), { ...json, exclusions });
+      return controlerEntree(creerContexte({ racine: r }), nom, { ecrire: false });
+    };
+    const rendus = json.exclusions.filter((x) => x.rendu === true);
+    const ordinaires = json.exclusions.filter((x) => x.rendu !== true);
+    assert.ok(rendus.length >= 1, 'l\'entrée porte des exclusions « rendu »');
+    assert.equal(ecrireE(json.exclusions).passe, true);
+    // Sans elles, le contrôle passe aussi (la forme n'existe qu'au rendu) : elles servent à l'oracle et au PDF.
+    assert.equal(ecrireE(ordinaires).passe, true);
+    const msg = (res) => res.echecs.map((x) => x.message).join(' | ');
+    assert.match(msg(ecrireE([...ordinaires, { ...rendus[0], occurrences: 2 }])), /emploi\(s\) dans le rendu par défaut, 2 déclaré\(s\)/);
+    assert.match(msg(ecrireE([...ordinaires, { ...rendus[0], extrait: 'Un produit VENDU' }])), /sans emploi|aucune forme/);
+    // Un extrait présent dans le texte balisé (« prix de vente ») n'est pas une exclusion « rendu ».
+    const pv = ordinaires.find((x) => x.extrait === 'prix de vente');
+    assert.match(msg(ecrireE([...ordinaires.filter((x) => x !== pv), { ...pv, rendu: true }])), /figure dans le texte balisé/);
+    assert.match(msg(ecrireE([...ordinaires, { ...rendus[0], rendu: 'oui' }])), /« rendu » vaut true/);
+  } finally { fs.rmSync(r, { recursive: true, force: true }); }
+});
+
+test('point 7 : la répétition du nom d\'une balise avecCourt est vue (parenthèse ôtée, étape C)', () => {
+  const Cc = VOC.ceramique;
+  const b = '[[Det:pt:un]]**[[avecCourt:pt]]** est [[un:produit]] [[acc:produit:fabriqué:fabriquée]] à partir d\'une recette';
+  assert.equal(rendu(Cc, b), 'Un **produit fabriqué (PF)** est un produit fabriqué à partir d\'une recette');
+  assert.deepEqual(balisesRepetees(b, Cc).map((x) => x.texte), ['produit fabriqué']);
+  assert.deepEqual(balisesRepetees(b, vocabDefaut), []);
+});

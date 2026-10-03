@@ -1,6 +1,6 @@
 ## 🔄 [[Nom:transfert:pl]]
 
-Cet écran envoie [[le:article:pl]] et [[le:pt:pl]] ([[court:pt:pl]]) [[du:labo]] vers [[votre:activite:pl]] **et vers [[le:labo:pl]] qu'[[acc:labo:il:elle]] alimente** (un économat vers une cuisine, par exemple) : [[le:stock]] [[du:labo]] diminue, [[acc:stock:celui:celle]] de chaque destination augmente d'autant. Vous y accédez par le bouton **↗ Transfert** [[du:stock:Nom]] [[Court:labo]] ou depuis [[le:espace_labo]] ; les pastilles en haut de page permettent de changer [[de:labo]].
+Cet écran envoie [[le:article:pl]] et [[det:pt:le:pl]][[avecCourt:pt:pl]] [[du:labo]] vers [[votre:activite:pl]] **et vers [[le:labo:pl]] qu'[[acc:labo:il:elle]] alimente** (un économat vers une cuisine, par exemple) : [[le:stock]] [[du:labo]] diminue, [[acc:stock:celui:celle]] de chaque destination augmente d'autant. Vous y accédez par le bouton **↗ Transfert** [[du:stock:Nom]] [[Court:labo]] ou depuis [[le:espace_labo]] ; les pastilles en haut de page permettent de changer [[de:labo]].
 
 ### Ce que vous voyez
 

@@ -209,8 +209,10 @@ node scripts/manuel/controler.mjs --lot <lot>                 fiches du lot (L9 
 node scripts/manuel/controler.mjs --base <fichier>…           entrées de la base
 node scripts/manuel/controler.mjs --variante <domaine> <slug>…   variantes (hotellerie, ceramique)
 node scripts/manuel/controler.mjs --tout                      tout, contrôles d'ensemble, rapport « mots du métier » (intégrateur)
-  --lexique <fichier>   lexique Hôtellerie de la lecture de production (écarts, résolus) à la place du lexique d'essai (§12.1)
-  --lecture <fichier>   avec --lexique : lecture de production à comparer (défaut : scripts/manuel/lecture-production.json)
+  --lexique <fichier|lecture>            lexique Hôtellerie de production (écarts, résolus) à la place du lexique d'essai (§12.1)
+  --lexique-ceramique <fichier|lecture>  lexique de production du 2e domaine (« usine » en production, A16.13)
+  --production                           = --lexique lecture --lexique-ceramique lecture (étape C)
+  --lecture <fichier>   lecture de production à comparer (défaut : scripts/manuel/lecture-production.json)
   --racine <dossier>    racine des fichiers de travail (balise/, variantes/, relectures/, rendus/) : essais, tests
 ```
 
@@ -233,10 +235,33 @@ est propre à l'outil :
   `lecture-production.json` s'il existe). Le md5 de `lexique::text` (texte JSONB de PostgreSQL, reproduit par
   `jsonbTexte` de `lib/vocabulaires.js`) est affiché ; un lexique que la validation du serveur refuserait est lu
   avec un avertissement.
+- **Lexiques de production (étape C, A16.13).** `--lexique-ceramique` fait de même pour le 2e domaine : md5 comparé à
+  `ceramique.md5Lexique` de la lecture. La valeur `lecture` lit le lexique dans la lecture de production elle-même :
+  champ `ceramique.lexique` (domaine `usine` « Industrie » en production, sans formes courtes, `perte` = « Casse / Rebut /
+  Second choix ») ; pour Hôtellerie, la lecture ne garde que le md5 (lexique identique au local) : les écarts de
+  `domaines.json`, acceptés seulement si leur md5 égale `hotellerie.md5Lexique`. `--production` pose les deux.
+  **À l'étape C, `--tout` doit être vert deux fois : sans option (lexiques d'essai) ET avec `--production`.**
+  Sans forme courte, `[[court:…]]` rend le nom complet : « [[le:pt:pl]] ([[court:pt:pl]]) » redirait la glose en
+  production ; on l'écrit `[[det:pt:le:pl]][[avecCourt:pt:pl]]` (même rendu par défaut ; avecCourt n'écrit pas de
+  parenthèse quand la forme courte égale le nom). Le point 7 ôte la parenthèse finale d'une balise avecCourt avant de
+  chercher une répétition.
+- **Acceptation propre à un lexique.** Une ligne de `relectures/<lot>.auto.json` peut porter `"lexique": "essai"` ou
+  `"lexique": "production"` (avec `domaine` hotellerie ou ceramique) : elle ne vaut que dans un passage qui rend ce
+  domaine avec ce lexique ; hors de lui, elle n'est ni appliquée ni « sans objet ». Exemples : les acceptations
+  « site » (forme courte de labo du lexique d'essai C) portent `essai` ; les 19 signalements propres au lexique usine
+  portent `production`. Sans `lexique`, une ligne vaut pour les deux passages et doit servir dans les deux.
 - **Exclusions.** Appliquées dans l'ordre de la liste, sur le contenu et le titre balisés réunis (`retirerExtraits`).
   Chacune : type de la liste fermée, `justification`, `extrait` sans balise qui contient une forme par défaut (sinon
   « sans emploi » ; dans une variante, une forme du lexique de son domaine suffit), `forme` présente dans l'extrait,
   `occurrences` exact, extrait retrouvé dans chaque rendu.
+- **Exclusion « rendu » (étape C).** `"rendu": true` : l'extrait est un passage du RENDU PAR DÉFAUT (le texte
+  d'origine, I10) où une forme par défaut ne se forme qu'au rendu, à cheval sur une balise : « [[Nom:produit:pl]]
+  vendables » rend « Produits vendables » (forme de `produit_vendable`) partout où « produit » ne change pas. Il ne
+  figure pas dans le texte balisé (sinon : exclusion ordinaire), il est compté dans le rendu par défaut et n'est pas
+  exigé dans les rendus des domaines. L'oracle et le contrôle du PDF du front retirent tout extrait du texte servi :
+  ils l'appliquent tels quels. Fiches et entrées seulement (jamais une variante). Emplois au 03/10/2026 :
+  `decouvrir-labflow` (« Produits vendables, utilisables et valorisés ») et l'entrée « Produits vendables et
+  utilisables » (titre, « Un produit VENDABLE », « Un produit UTILISABLE ») : besoin L9-3, §10.3.
 - **`contenu_defaut`** : md5 du rendu par défaut = `md5Garde` de l'origine (pour les 5 fiches acheteurs, le contenu).
 - **Signalements 7 à 12** : une ligne par fiche, point, domaine et texte (`texte` = ce que l'outil affiche ; pour le
   point 12, le mot au singulier). Acceptation : `relectures/<lot>.auto.json`,
@@ -286,8 +311,13 @@ node scripts/manuel/generer-migrations.mjs                    écriture dans mig
 - Refus (rien n'est écrit, code 1) : ceux du §3.6.2 (liste dans l'en-tête du script). En partiel, le contrôle exigé est
   « points 1 à 6 de chaque élément du périmètre » ; en essai complet et à l'écriture, `controler --tout` vert.
 - **Écrire dans `migrations/`** exige en plus : `lecture-production.json` présent et conforme, les 16 variantes de
-  `lots.json`, et aucun fichier 194 à 196 étranger dans `migrations/`. **Au 03/10/2026, la lecture de production manque :
-  l'écriture est refusée** (vérifié, `test/generer-migrations.test.mjs`).
+  `lots.json`, et aucun fichier 194 à 196 étranger dans `migrations/`. Sans lecture de production, l'écriture est
+  refusée (vérifié, `test/generer-migrations.test.mjs`).
+- **Étape C (03/10/2026)** : lecture de production conforme (A16.13) ; écriture faite par
+  `node scripts/manuel/generer-migrations.mjs --slug ceramique=usine` (le 2e domaine s'appelle « usine » en production,
+  décision du client ; « ceramique » reste son nom dans les outils et les lexiques d'essai). Sans `--slug ceramique=usine`,
+  l'écriture est refusée (champ `ceramique.slug` de la lecture). Dès lors, R2.8.2 : tout passage qui charge l'application
+  se fait sur une copie neuve (`base-locale.js copie`, `DB_NAME=fiche_technique_2c`).
 
 **`lecture-production.json`** (intégrateur, à partir de la sortie de `scripts/controle-avant-2c.sql` collée par le
 client) :
@@ -298,12 +328,14 @@ client) :
   "empreintes": { "manuel": "<lecture (1)>", "base": "<lecture (1)>" },
   "retoursChariot": { "fiches": 0, "entrees": 0 },
   "fichesModifiees": [],
-  "hotellerie": { "slug": "hotellerie", "md5Lexique": "<lecture (7)>" }
+  "hotellerie": { "slug": "hotellerie", "md5Lexique": "<lecture (7)>" },
+  "ceramique": { "slug": "usine", "md5Lexique": "<lecture du domaine usine>", "lexique": { "…": "écarts" } }
 }
 ```
 
 Les empreintes doivent égaler celles des fichiers d'origine (`extraire-origine.js --verifier`) : si la production
-diffère, réextraire et rebaliser d'abord (R3.2.2, mini-vague R). Si le slug Hôtellerie diffère : `--slug hotellerie=…`.
+diffère, réextraire et rebaliser d'abord (R3.2.2, mini-vague R). Si le slug Hôtellerie diffère : `--slug hotellerie=…` ;
+le slug du 2e domaine (`ceramique.slug`, « usine ») : `--slug ceramique=usine`.
 
 ## `essai-migration.js` : migration appliquée puis annulée (§3.7)
 
@@ -345,8 +377,9 @@ une base balisée. Chaque champ balisé est remplacé par son rendu par défaut 
   split/join, comme l'oracle (`check-invariant-vocab.js`, R2.4.2). `occurrences` = emplois sur le contenu et le titre
   balisés réunis. Le pré-baliseur, le contrôle et le guide (§4) suivent cette règle.
 - **Cibles de liens `(#slug)`.** Elles portent 200 formes par défaut dans 185 cibles. Ni balisées ni exclues (GUIDE §4) :
-  le point 3 de `controler.mjs` les masque, le pré-baliseur les compte à part (`ciblesDeLien`). **L'oracle
-  (`check-invariant-vocab.js --domaine`) doit faire de même** sur le manuel servi, sinon ces formes y seront comptées.
+  le point 3 de `controler.mjs` les masque, le pré-baliseur les compte à part (`ciblesDeLien`), et l'oracle
+  (`check-invariant-vocab.js --domaine`) les masque dans le manuel servi depuis l'étape C (A16.1 ; sans cela, 76
+  formes en Hôtellerie).
 - **Formats des relectures et des besoins** : GUIDE-BALISAGE §15.
 
 ## `lib/` : module partagé (CommonJS, syntaxe de Node 20)
@@ -395,8 +428,8 @@ transaction sur la base locale, toujours annulée). `npm test` ne les lance pas 
 | `parties-lots.test.js` | `parties.json` (I10, I11, rendus distincts), `lots.json` (couverture, chiffres du §9.2, relecteurs) |
 | `prebaliser.test.mjs` | 3 fiches témoins à l'octet, I10 et I11 sur 61 fiches et 32 entrées, règles R3.4.1 à R3.4.4 |
 | `guide.test.js` | tableaux du guide à jour ; exemples « justes » identiques par défaut ; origines exactes |
-| `controler.test.mjs` | les 3 témoins verts et leurs rendus ; R3.1.1 par `controler.mjs` (« Espace Cuisine ») ; points 1 à 6 en échec un par un ; cibles de liens masquées ; signalements 7 à 12 sur les exemples de la spec, contractions et répétitions coupées par une marque d'emphase (B1), gloses et élisions coupées par une marque d'emphase, élision à travers « la/aux » (B2) ; acceptations ; `--tout` ; variantes, dont l'exclusion d'une forme du domaine (B2) ; `--lexique` |
-| `generer-migrations.test.mjs` | chaînes SQL et étiquettes sans tiret ; 194 des témoins (LF, en-tête, inventaire, gardes, déterminisme) ; 196 avec `--slug` à tiret ; 195 et apostrophes ; champs admis ; refus du §3.6.2 ; écriture dans `migrations/` refusée sans lecture de production |
+| `controler.test.mjs` | les 3 témoins verts et leurs rendus ; R3.1.1 par `controler.mjs` (« Espace Cuisine ») ; points 1 à 6 en échec un par un ; cibles de liens masquées ; signalements 7 à 12 sur les exemples de la spec, contractions et répétitions coupées par une marque d'emphase (B1), gloses et élisions coupées par une marque d'emphase, élision à travers « la/aux » (B2) ; acceptations ; `--tout` ; variantes, dont l'exclusion d'une forme du domaine (B2) ; `--lexique` ; étape C : `--lexique-ceramique`, `--production`, acceptations « lexique » essai / production, répétition du nom d'une balise avecCourt |
+| `generer-migrations.test.mjs` | chaînes SQL et étiquettes sans tiret ; 194 des témoins (LF, en-tête, inventaire, gardes, déterminisme) ; 196 avec `--slug` à tiret ; 195 et apostrophes ; champs admis ; refus du §3.6.2 ; écriture dans `migrations/` refusée sans lecture de production, et sans `--slug ceramique=usine` avec la vraie lecture (étape C) |
 | `retour-essai.test.js` | `retour(client)` sur un faux client : origine, défauts NULL, `_migrations`, non remis, sans `BEGIN` ni `COMMIT` ; `--remise-locale` (16 brouillons) et son refus hors local ; lecture des fichiers d'essai |
 
 ## `.gitattributes` et fins de ligne (§3.8)

@@ -205,6 +205,14 @@ test('lecture de production : absente, empreintes différentes, retours chariot,
     C.ecrireJson(f, { ...ok, hotellerie: { slug: 'hotel' } });
     assert.match(verifierLectureProduction(f).join(), /--slug hotellerie=hotel/);
     assert.deepEqual(verifierLectureProduction(f, { slugs: { hotellerie: 'hotel' } }), []);
+    // 2e domaine (A16.13) : « usine » en production ; sans --slug ceramique=usine, l'écriture est refusée.
+    C.ecrireJson(f, { ...ok, ceramique: { slug: 'usine' } });
+    assert.match(verifierLectureProduction(f).join(), /--slug ceramique=usine/);
+    assert.deepEqual(verifierLectureProduction(f, { slugs: { ceramique: 'usine' } }), []);
+    // La vraie lecture de production : conforme avec --slug ceramique=usine.
+    const vraie = path.join(C.DOSSIER, 'lecture-production.json');
+    assert.match(verifierLectureProduction(vraie).join(), /--slug ceramique=usine/);
+    assert.deepEqual(verifierLectureProduction(vraie, { slugs: { ceramique: 'usine' } }), []);
   } finally { nettoyer(r); }
 });
 

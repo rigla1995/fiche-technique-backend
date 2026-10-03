@@ -1,6 +1,6 @@
 ## 🧩 Les 3 catégories [[de:pt:pl]]
 
-[[Det:pt:un]]**[[nom:pt]] ([[court:pt]])** est [[un:produit]] [[acc:produit:fabriqué:fabriquée]] à partir d'[[un:recette]] et [[acc:produit:suivi:suivie]] en [[nom:stock]] : quand vous en produisez, LabFlow déduit automatiquement [[du:stock]] [[le:article:pl]] et les sous-préparations [[acc:article:consommé:consommée:pl]]. [[Tous:pt:les:court]] ne jouent pas le même rôle : l'application les répartit en **trois catégories**, que vous retrouverez partout sous les libellés « [[Nom:cat_pt_utilisable]] », « [[Nom:cat_pt_vendable]] » et « [[Nom:cat_pt_valorise]] ».
+[[Det:pt:un]]**[[avecCourt:pt]]** est [[un:produit]] [[acc:produit:fabriqué:fabriquée]] à partir d'[[un:recette]] et [[acc:produit:suivi:suivie]] en [[nom:stock]] : quand vous en produisez, LabFlow déduit automatiquement [[du:stock]] [[le:article:pl]] et les sous-préparations [[acc:article:consommé:consommée:pl]]. [[Tous:pt:les:court]] ne jouent pas le même rôle : l'application les répartit en **trois catégories**, que vous retrouverez partout sous les libellés « [[Nom:cat_pt_utilisable]] », « [[Nom:cat_pt_vendable]] » et « [[Nom:cat_pt_valorise]] ».
 
 ### Vue d'ensemble
 

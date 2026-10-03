@@ -75,9 +75,10 @@
     "fiche": "decouvrir-labflow",
     "point": 12,
     "domaine": "ceramique",
+    "lexique": "essai",
     "texte": "site",
     "decision": "accepté",
-    "raison": "« site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3)"
+    "raison": "« site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3) — propre au lexique d'essai (forme courte « Site » de labo) : le lexique de production d'usine n'a pas de forme courte, « site » n'y est pas un terme (étape C, A16.13)"
   },
   {
     "fiche": "decouvrir-labflow",
@@ -211,9 +212,10 @@
     "fiche": "compte-activites-labos",
     "point": 12,
     "domaine": "ceramique",
+    "lexique": "essai",
     "texte": "site",
     "decision": "accepté",
-    "raison": "« site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3) ; lève l'ambiguïté seulement dans la variante Céramique (lot V-C2, fiche à variante, spec §8.1)"
+    "raison": "« site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3) ; lève l'ambiguïté seulement dans la variante Céramique (lot V-C2, fiche à variante, spec §8.1) — propre au lexique d'essai (forme courte « Site » de labo) : le lexique de production d'usine n'a pas de forme courte, « site » n'y est pas un terme (étape C, A16.13)"
   },
   {
     "fiche": "compte-activites-labos",
@@ -267,9 +269,10 @@
     "fiche": "demarrage",
     "point": 12,
     "domaine": "ceramique",
+    "lexique": "essai",
     "texte": "site",
     "decision": "accepté",
-    "raison": "« Créez vos sites » : « site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3)"
+    "raison": "« Créez vos sites » : « site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3) — propre au lexique d'essai (forme courte « Site » de labo) : le lexique de production d'usine n'a pas de forme courte, « site » n'y est pas un terme (étape C, A16.13)"
   },
   {
     "fiche": "roles",
@@ -299,9 +302,10 @@
     "fiche": "roles",
     "point": 12,
     "domaine": "ceramique",
+    "lexique": "essai",
     "texte": "site",
     "decision": "accepté",
-    "raison": "« création et modification des sites » : « site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3)"
+    "raison": "« création et modification des sites » : « site » désigne dans l'origine une activité ou un labo ; en Céramique « Site » est la forme courte de labo : sens général compris (spec §10.3) — propre au lexique d'essai (forme courte « Site » de labo) : le lexique de production d'usine n'a pas de forme courte, « site » n'y est pas un terme (étape C, A16.13)"
   },
   {
     "fiche": "roles",

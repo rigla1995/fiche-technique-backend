@@ -12,9 +12,15 @@
  *                        le lexique H d'essai pour les rendus et les signalements. Refus (code 2) d'un fichier dont une
  *                        clé n'est pas du lexique (fichier enveloppé) ou dont les écarts donnent le lexique par défaut ;
  *                        le md5 de lexique::text est affiché et comparé au champ hotellerie.md5Lexique de la lecture de
- *                        production (refus s'il diffère) ;
+ *                        production (refus s'il diffère). Valeur « lecture » : les écarts H de domaines.json, acceptés
+ *                        seulement si leur md5 égale hotellerie.md5Lexique (la lecture (7) a prouvé l'identité) ;
+ *   --lexique-ceramique <fichier|lecture>
+ *                        même chose pour le 2e domaine (« usine » en production, « ceramique » dans les outils, A16.13) :
+ *                        md5 comparé à ceramique.md5Lexique ; « lecture » = champ ceramique.lexique de la lecture ;
+ *   --production         = --lexique lecture --lexique-ceramique lecture (étape C : contrôle avec les lexiques de
+ *                        production ; le contrôle avec les lexiques d'essai reste exigé, sans option) ;
  *   --lecture <fichier>  lecture de production pour cette comparaison (défaut : scripts/manuel/lecture-production.json,
- *                        celle du générateur ; absente : md5 affiché, non comparé) ;
+ *                        celle du générateur ; absente : md5 affiché, non comparé ; exigée par « lecture ») ;
  *   --racine <dossier>   racine des fichiers de travail (balise/, variantes/, relectures/, rendus/) à la place de
  *                        scripts/manuel/ (tests, essais) ; origine/, parties.json, lots.json, domaines.json restent ceux
  *                        de scripts/manuel/.
@@ -22,7 +28,9 @@
  * Une fiche PASSE si les points 1 à 6 passent (code de sortie 0). Les points 7 à 12 sont des SIGNALEMENTS : chacun est
  * corrigé, ou accepté avec sa raison dans relectures/<lot>.auto.json (format : GUIDE-BALISAGE §15 ; une ligne
  * { fiche, point, domaine, texte, decision: "accepté", raison } ; « domaine » absent = tous les domaines ; pour le
- * point 12 « texte » = le mot, une ligne par mot et par fiche). « --tout » n'est vert que si, en plus, les contrôles
+ * point 12 « texte » = le mot, une ligne par mot et par fiche ; « lexique » : « essai » ou « production », avec le
+ * domaine hotellerie ou ceramique, pour une acceptation propre à l'un des deux lexiques de ce domaine : hors de son
+ * lexique elle n'est ni appliquée ni « sans objet »). « --tout » n'est vert que si, en plus, les contrôles
  * d'ensemble passent, aucun signalement ne reste « à traiter », aucune acceptation n'est sans objet et chaque variante
  * présente passe (P1, P2).
  *
@@ -37,7 +45,9 @@
  *      exactement « occurrences » fois (contenu et titre balisés réunis), de type admis, justifiée, contenant une forme
  *      par défaut (variante : ou une forme du lexique de son domaine, R8.2.3), présente telle quelle dans chaque rendu ;
  *      aucune balise (hors acc, accN, ex) collée à un trait d'union
- *      (« sous-[[nom:pt]] » rend « sous-préparation » en H, R3.4.3 : on n'y balise jamais) ;
+ *      (« sous-[[nom:pt]] » rend « sous-préparation » en H, R3.4.3 : on n'y balise jamais) ; exclusion « rendu »
+ *      (`"rendu": true`, étape C) : extrait cherché et compté dans le rendu par défaut (forme formée au rendu, à cheval
+ *      sur une balise), absent du texte balisé, pour l'oracle et le contrôle du PDF (voir pointResiduels) ;
  *   4. liens : même suite de cibles que l'origine dans chaque rendu ; chaque cible « #x » est un slug existant ; aucun
  *      libellé de lien rendu vide ;
  *   5. blocs et tableaux : même suite de mots-clés « ::: » que l'origine (texte balisé et chaque rendu) ; même nombre de
@@ -223,16 +233,20 @@ const contientMot = (texte, mot) => new RegExp(`(?<![${L}])${echapper(mot)}(?![$
 
 /** Point 7, seconde moitié : rendu d'une balise de deux mots ou plus (déterminant ôté) qui revient dans la même phrase
  * à moins de 12 mots, dans le rendu de `voc` et pas dans le rendu par défaut à la même place. */
+// Une balise avecCourt rend « nom (court) » ; le nom seul est ce qui se répète (« Un **produit fabriqué (PF)** est un
+// produit fabriqué ») : la parenthèse finale est ôtée avant la recherche (étape C : sans cela, remplacer
+// « [[le:pt:pl]] ([[court:pt:pl]]) » par avecCourt cachait la répétition au contrôle sans rien changer au texte).
+const coeurBalise = (b) => coeur(/^\[\[avecCourt:/.test(b.balise) ? String(b.rendu).replace(/\s*\([^()]*\)$/u, '') : b.rendu);
 export function balisesRepetees(balise, voc) {
   const r = rendreParMorceaux(voc, balise);
   const d = rendreParMorceaux(vocabDefaut, balise);
   const out = [];
   r.balises.forEach((b, i) => {
-    const c = coeur(b.rendu);
+    const c = coeurBalise(b);
     if (nbMots(c) < 2) return;
     if (!contientMot(fenetre12(r.texte, b.fin), c)) return;
     const bd = d.balises[i];
-    const cd = coeur(bd.rendu);
+    const cd = coeurBalise(bd);
     // Absent du rendu par défaut : la même balise y rend-elle aussi deux mots ou plus, répétés à moins de 12 mots ?
     // (« Les labos (0 à N) : vos labos » ne compte pas : un seul mot.)
     if (nbMots(cd) >= 2 && contientMot(fenetre12(d.texte, bd.fin), cd)) return;
@@ -433,44 +447,88 @@ export function formesEnClair(balise, formes) {
 
 // ── Domaines (lexiques résolus, R3.1.1) ───────────────────────────────────────────────────────────────────────
 export const LECTURE_DEFAUT = path.join(C.DOSSIER, 'lecture-production.json');
+/** Valeur de --lexique / --lexique-ceramique qui lit le lexique de production dans la lecture de production elle-même
+ * (étape C, A16.13) : champ ceramique.lexique pour le 2e domaine (« usine » en production) ; pour Hôtellerie, la lecture
+ * ne garde que le md5 (lexique identique au local) : les écarts de domaines.json, acceptés seulement si leur md5 égale
+ * hotellerie.md5Lexique. */
+export const LEXIQUE_DE_LA_LECTURE = 'lecture';
+/** Champ de la lecture de production par domaine interne, et nom affiché. */
+const DOMAINES_PRODUCTION = Object.freeze({
+  hotellerie: { option: '--lexique', nom: 'Hôtellerie', lecture: 'lecture (7)' },
+  ceramique: { option: '--lexique-ceramique', nom: '2e domaine (« usine » en production, « ceramique » dans les outils)', lecture: 'lecture du domaine usine' },
+});
 
-/** Comparaison du md5 d'un lexique --lexique à la lecture (7) de production (hotellerie.md5Lexique) : texte affiché, ou
- * refus (Error) si les deux diffèrent. */
-function comparerLecture(f, lecture) {
-  if (f.md5Fichier && f.md5Fichier !== f.md5) throw new Error(`md5Lexique du fichier (${f.md5Fichier}) ≠ md5 de ses écarts (${f.md5}) : fichier retouché ou mal tiré`);
-  const rel = lecture ? (path.relative(C.RACINE, lecture) || lecture) : '-';
-  if (!lecture || !fs.existsSync(lecture)) return `lecture de production absente (${rel}) : md5 non comparé`;
-  let j;
-  try { j = C.lireJsonExterne(lecture); } catch (err) { throw new Error(`lecture de production illisible (${rel}) : ${err.message}`); }
-  const h = j && j.hotellerie;
-  if (!h || typeof h.md5Lexique !== 'string') return `lecture de production sans hotellerie.md5Lexique (${rel}) : md5 non comparé`;
-  if (h.md5Lexique !== f.md5) throw new Error(`md5 du lexique lu ${f.md5} ≠ lecture (7) ${h.md5Lexique} (${rel}) : ce fichier n'est pas le lexique Hôtellerie de production`);
-  return `égal à la lecture (7) (${rel})`;
+const relatif = (f) => (f ? (path.relative(C.RACINE, f) || f) : '-');
+function lireLecture(lecture) {
+  if (!lecture || !fs.existsSync(lecture)) return null;
+  try { return C.lireJsonExterne(lecture); } catch (err) { throw new Error(`lecture de production illisible (${relatif(lecture)}) : ${err.message}`); }
 }
 
-function domainesEssai(lexiqueH = null, lecture = LECTURE_DEFAUT) {
+/** Comparaison du md5 d'un lexique de production à la lecture de production (`<domaine>.md5Lexique` : hotellerie,
+ * lecture (7) ; ceramique, lecture du domaine usine) : texte affiché, ou refus (Error) si les deux diffèrent. */
+function comparerLecture(f, lecture, domaine = 'hotellerie') {
+  if (f.md5Fichier && f.md5Fichier !== f.md5) throw new Error(`md5Lexique du fichier (${f.md5Fichier}) ≠ md5 de ses écarts (${f.md5}) : fichier retouché ou mal tiré`);
+  const dp = DOMAINES_PRODUCTION[domaine];
+  const rel = relatif(lecture);
+  const j = lireLecture(lecture);
+  if (!j) return `lecture de production absente (${rel}) : md5 non comparé`;
+  const h = j[domaine];
+  if (!h || typeof h.md5Lexique !== 'string') return `lecture de production sans ${domaine}.md5Lexique (${rel}) : md5 non comparé`;
+  if (h.md5Lexique !== f.md5) throw new Error(`md5 du lexique lu ${f.md5} ≠ ${dp.lecture} ${h.md5Lexique} (${rel}) : ce fichier n'est pas le lexique ${dp.nom} de production`);
+  return `égal à la ${dp.lecture} (${rel})`;
+}
+
+/** Écarts de production d'un domaine : fichier (--lexique <fichier>) ou lecture de production (« lecture »). */
+function lexiqueProduction(domaine, source, lecture) {
+  const dp = DOMAINES_PRODUCTION[domaine];
+  if (source !== LEXIQUE_DE_LA_LECTURE) {
+    const f = V.ecartsDuFichier(source);
+    return { f, source: path.resolve(source), lecture: comparerLecture(f, lecture, domaine) };
+  }
+  const j = lireLecture(lecture);
+  if (!j) throw new Error(`${dp.option} ${LEXIQUE_DE_LA_LECTURE} : lecture de production absente (${relatif(lecture)})`);
+  const champ = j[domaine];
+  if (!champ || typeof champ.md5Lexique !== 'string') throw new Error(`${dp.option} ${LEXIQUE_DE_LA_LECTURE} : la lecture de production (${relatif(lecture)}) n'a pas de champ ${domaine}.md5Lexique`);
+  let f;
+  let src;
+  if (champ.lexique) {
+    f = V.ecartsDeObjet({ lexique: champ.lexique, md5Lexique: champ.md5Lexique }, `${relatif(lecture)} › ${domaine}.lexique`);
+    src = `${relatif(lecture)} › ${domaine}.lexique (slug de production ${champ.slug || '?'})`;
+  } else if (domaine === 'hotellerie') {
+    // Lexique H de production identique au local : la lecture (7) n'en garde que le md5 (A16.13).
+    f = V.ecartsDeObjet({ lexique: V.domaine('hotellerie').ecarts }, 'domaines.json › hotellerie.ecarts');
+    src = `domaines.json › hotellerie.ecarts (md5 = ${relatif(lecture)} › hotellerie.md5Lexique, slug de production ${champ.slug || '?'})`;
+  } else throw new Error(`${dp.option} ${LEXIQUE_DE_LA_LECTURE} : la lecture de production (${relatif(lecture)}) n'a pas de champ ${domaine}.lexique`);
+  return { f, source: src, lecture: comparerLecture(f, lecture, domaine) };
+}
+
+/** Vocabulaires des 3 domaines de rendu. `lexiques` : { hotellerie, ceramique } = fichier d'écarts de production,
+ * « lecture », ou null (lexique d'essai). */
+function domainesEssai(lexiques = {}, lecture = LECTURE_DEFAUT) {
   const ecarts = V.lexiquesEssai();
   const out = {};
+  const lec = lecture ? path.resolve(lecture) : null;
   for (const d of DOMAINES_RENDUS) {
     let e = ecarts[d];
     let source = 'test/vocab-lexiques-test.json';
     let fichier = null;
-    if (d === 'hotellerie' && lexiqueH) {
-      const f = V.ecartsDuFichier(lexiqueH);
-      e = f.ecarts;
-      source = path.resolve(lexiqueH);
-      fichier = { md5: f.md5, cles: Object.keys(f.ecarts).length, avertissements: f.avertissements, lecture: comparerLecture(f, lecture ? path.resolve(lecture) : null) };
+    if (DOMAINES_PRODUCTION[d] && lexiques[d]) {
+      const p = lexiqueProduction(d, lexiques[d], lec);
+      e = p.f.ecarts;
+      source = p.source;
+      fichier = { md5: p.f.md5, cles: Object.keys(p.f.ecarts).length, avertissements: p.f.avertissements, lecture: p.lecture };
     }
     const lexique = V.resoudre(e);
-    out[d] = { voc: V.vocabDesEcarts(e), lexique, source, fichier };
+    out[d] = { voc: V.vocabDesEcarts(e), lexique, source, fichier, production: Boolean(fichier) };
   }
   for (const d of DOMAINES_COLLISIONS) out[d].formes = formesDuDomaine(out[d].lexique);
   return out;
 }
 
 // ── Contexte d'un passage ─────────────────────────────────────────────────────────────────────────────────────
-/** Charge l'origine, parties.json, lots.json et les vocabulaires. `racine` = racine des fichiers de travail. */
-export function creerContexte({ racine = C.DOSSIER, lexique = null, lecture = LECTURE_DEFAUT } = {}) {
+/** Charge l'origine, parties.json, lots.json et les vocabulaires. `racine` = racine des fichiers de travail ;
+ * `lexique` (Hôtellerie) et `lexiqueCeramique` (2e domaine) : lexiques de production (fichier ou « lecture »). */
+export function creerContexte({ racine = C.DOSSIER, lexique = null, lexiqueCeramique = null, lecture = LECTURE_DEFAUT } = {}) {
   const problemes = V.verifierLexiques();
   if (problemes.length) {
     const e = new Error(`lexiques incohérents (spec §3.1) : ${problemes.join(' ; ')}`);
@@ -485,7 +543,7 @@ export function creerContexte({ racine = C.DOSSIER, lexique = null, lecture = LE
     entrees: new Map(entrees.map((e) => [e.fichier, e])),
     parties: C.lireParties(),
     lots: C.lireLots(),
-    domaines: domainesEssai(lexique, lecture),
+    domaines: domainesEssai({ hotellerie: lexique, ceramique: lexiqueCeramique }, lecture),
     relectures: new Map(),
   };
 }
@@ -508,6 +566,20 @@ function acceptations(ctx, lot) {
   return liste;
 }
 
+/** Lexique d'un domaine dans ce passage : « production » (--lexique, --lexique-ceramique, --production) ou « essai ». */
+const lexiqueDuPassage = (ctx, d) => (ctx.domaines[d] && ctx.domaines[d].production ? 'production' : 'essai');
+export const LEXIQUES_ACCEPTATION = Object.freeze(['essai', 'production']);
+/** Une acceptation peut porter « lexique » : « essai » ou « production » (étape C, A16.13), avec un domaine H ou C. Elle
+ * ne vaut alors que pour un passage qui rend ce domaine avec ce lexique : un signalement propre au lexique de production
+ * (« usine » sans formes courtes : « produits fabriqués (produits fabriqués) ») n'existe pas avec le lexique d'essai, et
+ * inversement (« site », forme courte de labo dans le lexique d'essai). Hors de son lexique, elle n'est ni appliquée ni
+ * « sans objet ». Sans « lexique », elle vaut pour les deux, et doit servir dans les deux. */
+function acceptationDuPassage(ctx, a) {
+  if (!a || a.lexique === undefined) return true;
+  return DOMAINES_COLLISIONS.includes(a.domaine) && LEXIQUES_ACCEPTATION.includes(a.lexique) && lexiqueDuPassage(ctx, a.domaine) === a.lexique;
+}
+const lexiqueAcceptationInvalide = (a) => a && a.lexique !== undefined && !(DOMAINES_COLLISIONS.includes(a.domaine) && LEXIQUES_ACCEPTATION.includes(a.lexique));
+
 /** Regroupe les signalements bruts (une ligne par fiche, point, domaine, texte) et applique les acceptations. */
 function regrouper(ctx, lot, nom, bruts) {
   const groupes = new Map();
@@ -519,7 +591,7 @@ function regrouper(ctx, lot, nom, bruts) {
   const acc = acceptations(ctx, lot);
   return [...groupes.values()].map((g) => {
     const a = acc.find((x) => x && x.fiche === nom && Number(x.point) === g.point && x.texte === g.texte
-      && (!x.domaine || x.domaine === '*' || x.domaine === g.domaine));
+      && (!x.domaine || x.domaine === '*' || x.domaine === g.domaine) && acceptationDuPassage(ctx, x));
     if (a && a.decision === 'accepté' && typeof a.raison === 'string' && a.raison.trim()) {
       a.employee = true;
       return { ...g, etat: 'accepté', raison: a.raison };
@@ -554,6 +626,7 @@ function verifierExclusions(exclusions, echecs, formesDomaine = null) {
         echecs.push({ point: 3, message: `${n} : « forme » ${JSON.stringify(x.forme)} absente de l'extrait (formes : ${f.map((o) => o.texte).join(', ')})` });
       }
     }
+    if (x.rendu !== undefined && x.rendu !== true) echecs.push({ point: 3, message: `${n} : « rendu » vaut true ou est absent` });
     if (!TYPES_EXCLUSION.includes(x.type)) echecs.push({ point: 3, message: `${n} : type « ${x.type} » hors liste (${TYPES_EXCLUSION.join(', ')})` });
     if (!Number.isInteger(x.occurrences) || x.occurrences < 1) echecs.push({ point: 3, message: `${n} : « occurrences » entier ≥ 1 attendu` });
     if (typeof x.justification !== 'string' || !x.justification.trim()) echecs.push({ point: 3, message: `${n} : justification absente` });
@@ -582,14 +655,35 @@ export function balisesCollees(balise) {
 }
 
 /** Point 3 : formes par défaut hors balises (extraits retirés, cibles masquées), emplois des exclusions, balises collées
- * à un trait d'union. */
-function pointResiduels(textes, exclusions, echecs, champs, formesDomaine = null) {
+ * à un trait d'union.
+ *
+ * Exclusion « rendu » (étape C) : `"rendu": true`, extrait = passage du RENDU PAR DÉFAUT (donc du texte d'origine, I10)
+ * où une forme par défaut ne se forme qu'au rendu, à cheval sur une balise (« [[Nom:produit:pl]] vendables » rend
+ * « Produits vendables », forme de produit_vendable, dans tous les domaines où « produit » ne change pas). Le texte balisé
+ * ne peut pas porter cet extrait (il contient une balise) : il est cherché, et compté (`occurrences`), dans le rendu par
+ * défaut ; il ne doit PAS figurer dans le texte balisé (sinon : exclusion ordinaire) ; il n'est pas exigé dans les rendus
+ * des domaines (en miroir, « produit » change et la forme disparaît). L'oracle (check-invariant-vocab.js) et le contrôle du
+ * PDF du front retirent tout extrait du texte servi : ils l'appliquent sans changement. Fiches et entrées seulement. */
+function pointResiduels(textes, exclusions, echecs, champs, formesDomaine = null, rendusDefaut = null) {
   textes.forEach((t, i) => {
     for (const x of balisesCollees(t)) {
       echecs.push({ point: 3, message: `${champs[i]} : balise collée à un trait d'union « ${x.texte} » (R3.4.3 : jamais de balise contre un tiret ; locution, exclusion ou phrase réécrite) — ${x.contexte}` });
     }
   });
-  const excl = verifierExclusions(exclusions, echecs, formesDomaine);
+  const toutes = verifierExclusions(exclusions, echecs, formesDomaine);
+  const excl = toutes.filter((x) => x.rendu !== true);
+  const exclRendu = toutes.filter((x) => x.rendu === true);
+  if (exclRendu.length && !rendusDefaut) echecs.push({ point: 3, message: `exclusion(s) « rendu » non admise(s) dans une variante : ${exclRendu.map((x) => `« ${x.extrait} »`).join(', ')}` });
+  else if (exclRendu.length) {
+    for (const x of exclRendu) {
+      if (textes.some((t) => String(t ?? '').includes(x.extrait))) echecs.push({ point: 3, message: `exclusion « rendu » « ${x.extrait} » : l'extrait figure dans le texte balisé (écrire une exclusion ordinaire)` });
+    }
+    const er = C.retirerExtraits(rendusDefaut, exclRendu).emplois;
+    exclRendu.forEach((x, i) => {
+      if (er[i] === 0) echecs.push({ point: 3, message: `exclusion « rendu » « ${x.extrait} » sans emploi dans le rendu par défaut` });
+      else if (Number.isInteger(x.occurrences) && er[i] !== x.occurrences) echecs.push({ point: 3, message: `exclusion « rendu » « ${x.extrait} » : ${er[i]} emploi(s) dans le rendu par défaut, ${x.occurrences} déclaré(s)` });
+    });
+  }
   const { textes: restes, emplois } = C.retirerExtraits(textes, excl);
   restes.forEach((t, i) => {
     for (const f of formesParDefaut(masquerCibles(t))) {
@@ -718,7 +812,7 @@ export function controlerFiche(ctx, slug, { ecrire = true } = {}) {
     contenu: rendu(ctx.domaines[dm].voc, md), titre: rendu(ctx.domaines[dm].voc, json.titre), partie: rendu(ctx.domaines[dm].voc, partie),
   }]));
   // 3. Résiduels et exclusions.
-  const { excl, emplois } = pointResiduels([md, json.titre], json.exclusions, e, ['contenu', 'titre']);
+  const { excl, emplois } = pointResiduels([md, json.titre], json.exclusions, e, ['contenu', 'titre'], null, [d.contenu, d.titre]);
   if (formesParDefaut(partie).length) e.push({ point: 3, message: `partie « ${partie} » : forme par défaut hors balise (parties.json)` });
   extraitsDansRendus(excl, emplois, { defaut: [d.contenu, d.titre], ...Object.fromEntries(DOMAINES_RENDUS.map((dm) => [dm, [rendus[dm].contenu, rendus[dm].titre]])) }, e);
   // 4. Liens ; 5. blocs et tableaux.
@@ -779,7 +873,7 @@ export function controlerEntree(ctx, fichier, { ecrire = true } = {}) {
     for (const f of verifierBalises(t)) e.push({ point: 2, message: `${champ} : ${f.balise} (${f.raison})` });
   }
   const rendus = Object.fromEntries(DOMAINES_RENDUS.map((dm) => [dm, { contenu: rendu(ctx.domaines[dm].voc, md), titre: rendu(ctx.domaines[dm].voc, json.titre) }]));
-  const { excl, emplois } = pointResiduels([md, json.titre], json.exclusions, e, ['contenu', 'titre']);
+  const { excl, emplois } = pointResiduels([md, json.titre], json.exclusions, e, ['contenu', 'titre'], null, [d.contenu, d.titre]);
   extraitsDansRendus(excl, emplois, { defaut: [d.contenu, d.titre], ...Object.fromEntries(DOMAINES_RENDUS.map((dm) => [dm, [rendus[dm].contenu, rendus[dm].titre]])) }, e);
   const contenus = { defaut: d.contenu, ...Object.fromEntries(DOMAINES_RENDUS.map((dm) => [dm, rendus[dm].contenu])) };
   pointLiens(ctx, o.contenu, contenus, e);
@@ -967,7 +1061,12 @@ function acceptationsSansObjet(ctx, controles) {
   for (const [lot, liste] of ctx.relectures) {
     for (const a of liste) {
       if (a.employee || !noms.get(lot) || !noms.get(lot).has(a.fiche)) continue;
-      out.push({ lot, rang: a.rang + 1, fiche: a.fiche, point: a.point, texte: a.texte, raison: a.decision !== 'accepté' || !a.raison ? 'decision ≠ « accepté » ou raison absente' : 'aucun signalement de ce texte' });
+      if (lexiqueAcceptationInvalide(a)) {
+        out.push({ lot, rang: a.rang + 1, fiche: a.fiche, point: a.point, texte: a.texte, raison: `« lexique » ${JSON.stringify(a.lexique)} : ${LEXIQUES_ACCEPTATION.join(' ou ')} attendu, avec le domaine hotellerie ou ceramique` });
+        continue;
+      }
+      if (!acceptationDuPassage(ctx, a)) continue; // acceptation propre à l'autre lexique de son domaine
+      out.push({ lot, rang: a.rang + 1, fiche: a.fiche, point: a.point, texte: a.texte, raison: a.decision !== 'accepté' || !a.raison ? 'decision ≠ « accepté » ou raison absente' : `aucun signalement de ce texte${a.lexique ? ` avec le lexique ${a.lexique}` : ''}` });
     }
   }
   return out;
@@ -1007,13 +1106,15 @@ function ecrireRapport(ctx, fichier, contenu) {
 
 // ── Ligne de commande ─────────────────────────────────────────────────────────────────────────────────────────
 function lireArguments(argv) {
-  const o = { slugs: [], base: [], variante: null, lot: null, tout: false, lexique: null, lecture: null, racine: null };
+  const o = { slugs: [], base: [], variante: null, lot: null, tout: false, lexique: null, lexiqueCeramique: null, lecture: null, racine: null };
   let mode = 'slugs';
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--lot') o.lot = argv[++i];
     else if (a === '--tout') o.tout = true;
     else if (a === '--lexique') o.lexique = argv[++i];
+    else if (a === '--lexique-ceramique') o.lexiqueCeramique = argv[++i];
+    else if (a === '--production') { o.lexique = LEXIQUE_DE_LA_LECTURE; o.lexiqueCeramique = LEXIQUE_DE_LA_LECTURE; }
     else if (a === '--lecture') o.lecture = argv[++i];
     else if (a === '--racine') o.racine = argv[++i];
     else if (a === '--base') mode = 'base';
@@ -1022,7 +1123,8 @@ function lireArguments(argv) {
     else o[mode].push(a);
   }
   for (const k of ['lot', 'lexique', 'lecture', 'racine', 'variante']) if (o[k] === undefined) throw new Error(`--${k} attend une valeur`);
-  if (o.lecture && !o.lexique) throw new Error('--lecture ne sert qu\'avec --lexique');
+  if (o.lexiqueCeramique === undefined) throw new Error('--lexique-ceramique attend une valeur');
+  if (o.lecture && !o.lexique && !o.lexiqueCeramique) throw new Error('--lecture ne sert qu\'avec --lexique, --lexique-ceramique ou --production');
   if (!o.tout && !o.lot && !o.slugs.length && !o.base.length) throw new Error('rien à faire : <slug>…, --lot <lot>, --base <fichier>…, --variante <domaine> <slug>… ou --tout');
   if (o.variante && !o.slugs.length) throw new Error('--variante <domaine> <slug>… : slug attendu');
   return o;
@@ -1042,17 +1144,18 @@ export function principal(argv = process.argv.slice(2)) {
   let ctx;
   try {
     o = lireArguments(argv);
-    ctx = creerContexte({ racine: o.racine || C.DOSSIER, lexique: o.lexique, lecture: o.lecture || LECTURE_DEFAUT });
+    ctx = creerContexte({ racine: o.racine || C.DOSSIER, lexique: o.lexique, lexiqueCeramique: o.lexiqueCeramique, lecture: o.lecture || LECTURE_DEFAUT });
   } catch (err) {
     err.code = 2; // refus avant tout contrôle : usage, lexiques incohérents, fichier --lexique illisible
     throw err;
   }
   const sorties = [];
   const log = (s) => { sorties.push(s); console.log(s); };
-  if (o.lexique) {
-    const f = ctx.domaines.hotellerie.fichier;
-    log(`[controler] lexique Hôtellerie : ${ctx.domaines.hotellerie.source} (lecture de production, résolu) ; ${f.cles} clé(s) ; md5 de lexique::text ${f.md5} ; ${f.lecture}`);
-    for (const a of f.avertissements) log(`[controler] ! lexique Hôtellerie : ${a}`);
+  for (const [d, dp] of Object.entries(DOMAINES_PRODUCTION)) {
+    const f = ctx.domaines[d].fichier;
+    if (!f) continue;
+    log(`[controler] lexique ${dp.nom} : ${ctx.domaines[d].source} (lecture de production, résolu) ; ${f.cles} clé(s) ; md5 de lexique::text ${f.md5} ; ${f.lecture}`);
+    for (const a of f.avertissements) log(`[controler] ! lexique ${dp.nom} : ${a}`);
   }
 
   if (o.tout) {

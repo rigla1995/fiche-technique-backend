@@ -119,17 +119,22 @@ const md5Lexique = (ecarts) => md5(jsonbTexte(ecarts));
  * avertissement.
  */
 function ecartsDuFichier(fichier) {
-  const j = lireJsonExterne(path.resolve(fichier));
+  return ecartsDeObjet(lireJsonExterne(path.resolve(fichier)), fichier);
+}
+
+/** Même contrôle que ecartsDuFichier sur un objet déjà lu (`nom` : sa source, pour les messages). Sert aussi au lexique
+ * de production du 2e domaine lu dans la lecture de production (champ ceramique.lexique, étape C, A16.13). */
+function ecartsDeObjet(j, nom) {
   const enveloppe = j && typeof j === 'object' && !Array.isArray(j) ? j : null;
   const ecarts = enveloppe ? (enveloppe.ecarts || enveloppe.lexique || enveloppe) : null;
-  if (!ecarts || typeof ecarts !== 'object' || Array.isArray(ecarts)) throw new Error(`${fichier} : objet d'écarts attendu`);
+  if (!ecarts || typeof ecarts !== 'object' || Array.isArray(ecarts)) throw new Error(`${nom} : objet d'écarts attendu`);
   const inconnues = Object.keys(ecarts).filter((k) => !CLES_LEXIQUE.has(k));
   if (inconnues.length) {
-    throw new Error(`${fichier} : objet d'écarts attendu, clé(s) hors du lexique : ${inconnues.slice(0, 6).join(', ')}${inconnues.length > 6 ? '…' : ''} `
+    throw new Error(`${nom} : objet d'écarts attendu, clé(s) hors du lexique : ${inconnues.slice(0, 6).join(', ')}${inconnues.length > 6 ? '…' : ''} `
       + '(forme admise : { "cle": { "sg", "pl", "g", "el"… } }, ou { "lexique": { … } } ; un fichier enveloppé par domaine est refusé)');
   }
   if (vocabDesEcarts(ecarts).estDefaut) {
-    throw new Error(`${fichier} : ces écarts donnent le lexique par défaut (estDefaut vrai) : ce n'est pas un lexique Hôtellerie`);
+    throw new Error(`${nom} : ces écarts donnent le lexique par défaut (estDefaut vrai) : ce n'est pas le lexique d'un domaine hors restauration`);
   }
   const avertissements = [];
   const err = validerLexique(ecarts);
@@ -158,5 +163,6 @@ module.exports = {
   jsonbTexte,
   md5Lexique,
   ecartsDuFichier,
+  ecartsDeObjet,
   vocabDuFichier,
 };

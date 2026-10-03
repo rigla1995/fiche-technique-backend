@@ -1,6 +1,6 @@
 ## 🧩 Les 3 catégories [[de:pt:pl]]
 
-[[Det:pt:un]]**[[nom:pt]] ([[court:pt]])** est une pièce ou une préparation réalisée à partir d'[[un:recette]] et suivie en [[nom:stock]] : émail préparé, bol, coffret… Quand vous en produisez, LabFlow déduit automatiquement [[du:stock]] [[le:article:pl]] et [[le:produit_utilisable:pl]] consommés. [[Tous:pt:les:court]] ne jouent pas le même rôle : l'application les répartit en **trois catégories**, que vous retrouverez partout sous les libellés « [[Nom:cat_pt_utilisable]] », « [[Nom:cat_pt_vendable]] » et « [[Nom:cat_pt_valorise]] ».
+[[Det:pt:un]]**[[avecCourt:pt]]** est une pièce ou une préparation réalisée à partir d'[[un:recette]] et suivie en [[nom:stock]] : émail préparé, bol, coffret… Quand vous en produisez, LabFlow déduit automatiquement [[du:stock]] [[le:article:pl]] et [[le:produit_utilisable:pl]] consommés. [[Tous:pt:les:court]] ne jouent pas le même rôle : l'application les répartit en **trois catégories**, que vous retrouverez partout sous les libellés « [[Nom:cat_pt_utilisable]] », « [[Nom:cat_pt_vendable]] » et « [[Nom:cat_pt_valorise]] ».
 
 ### Vue d'ensemble
 

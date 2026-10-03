@@ -214,5 +214,59 @@
     "texte": "site de production",
     "decision": "accepté",
     "raison": "« pour chaque site de production — c'est sous ce nom que les livraisons du site de production … » : l'origine répète « chaque labo … du labo » ; répétition déjà dans l'origine (le terme y revient), allongée par un terme de deux mots ou plus ; la grammaire ne peut pas l'éviter sans reformuler le texte commun (I10)"
+  },
+  {
+    "fiche": "fournisseurs",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Sites de production",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« Labos liés ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:labo:pl]] rend le nom complet, comme l'en-tête de colonne de l'écran ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
+  },
+  {
+    "fiche": "fournisseurs",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Site de production",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« Fournisseurs Labo ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:labo]] rend le nom complet, comme le titre de la section de l'écran ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
+  },
+  {
+    "fiche": "rapports-labo",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« l'onglet Labo ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:labo]] rend le nom complet, comme l'onglet du tableau de bord ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
+  },
+  {
+    "fiche": "stock-labo",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "casse / rebut / second choix",
+    "decision": "accepté",
+    "raison": "« perte » = « Casse / Rebut / Second choix » dans le lexique de production d'usine : terme long, répété entre « Déclarer une … » et le bouton de l'écran comme « perte » l'est dans l'origine ; accords inchangés (féminin dans les deux) ; sens clair (étape C, A16.13)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "fabriqué fabriqué",
+    "decision": "accepté",
+    "raison": "origine « un PT fabriqué au labo » ([[un:pt:court]] [[acc:pt:fabriqué:fabriquée]]) : sans forme courte en production, usine lit « un produit fabriqué fabriqué » ; collision « fabriqué » (spec §10.3), même classe que stock-activites (L5-1) et calc-prix (L8-2) ; I10 interdit de reformuler ; répétition acceptée (étape C, A16.13)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Site de production",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« Stock Labo ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:labo]] rend le nom complet, comme le nom de l'écran ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes) (« Stock Site de production ou depuis l'espace site de production »)"
   }
 ]

@@ -158,5 +158,14 @@
     "texte": "réception",
     "decision": "accepté",
     "raison": "« les réceptions de transfert » = entrées côté activité d'une livraison interne : le sens reste clair à côté de « livraison interne » (§10.3, collision réception) ; aucune variante prévue"
+  },
+  {
+    "fiche": "calc-cout-recette",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "fiche de coût de revient",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« FT Stock ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:fiche_technique]] rend le nom complet, comme la carte de l'écran (voc.Court) ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
   }
 ]

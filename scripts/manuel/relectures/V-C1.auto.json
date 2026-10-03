@@ -14,5 +14,14 @@
     "texte": "quantité par unité",
     "decision": "accepté",
     "raison": "formule : les deux sommes parallèles répètent le terme portion (C « Quantité par unité »), comme la fiche commune (L8.auto.json) ; le terme reste balisé (R8.2.3) pour suivre une correction du lexique, et la répétition est voulue dans une formule"
+  },
+  {
+    "fiche": "calc-cout-recette",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "fiche de coût de revient",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« FT Stock ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:fiche_technique]] rend le nom complet, comme la carte de l'écran (voc.Court) ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes) ; la variante garde le libellé de l'écran"
   }
 ]

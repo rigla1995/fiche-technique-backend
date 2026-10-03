@@ -15,6 +15,30 @@
       "type": "locution",
       "occurrences": 1,
       "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "Produits vendables et utilisables",
+      "forme": "Produits vendables",
+      "type": "locution",
+      "occurrences": 1,
+      "rendu": true,
+      "justification": "titre en ellipse, balisé « [[Pl:produit]] vendables et utilisables » ; entrée « Produits vendables et utilisables » : seul « produit » est un terme et il ne change ni en Hôtellerie ni en Céramique, si bien que la forme par défaut (produit_vendable, produit_utilisable) se forme au rendu, à cheval sur la balise ; aucune balise ne replie ces notions sans casser I10 (spec §7.4, exemple 11 ; besoin L9-3 ; limite du §10.3) ; base lue par le modèle seul (pas de variante pour la base, question 5) ; absent en miroir (« produit » y change). Exclusion « rendu » (étape C) : l'extrait est un passage du rendu par défaut, lu par l'oracle et le contrôle du PDF."
+    },
+    {
+      "extrait": "Un produit VENDABLE",
+      "forme": "produit VENDABLE",
+      "type": "capitales",
+      "occurrences": 1,
+      "rendu": true,
+      "justification": "capitales partielles, balisées « [[Un:produit]] VENDABLE » ; entrée « Produits vendables et utilisables » : seul « produit » est un terme et il ne change ni en Hôtellerie ni en Céramique, si bien que la forme par défaut (produit_vendable, produit_utilisable) se forme au rendu, à cheval sur la balise ; aucune balise ne replie ces notions sans casser I10 (spec §7.4, exemple 11 ; besoin L9-3 ; limite du §10.3) ; base lue par le modèle seul (pas de variante pour la base, question 5) ; absent en miroir (« produit » y change). Exclusion « rendu » (étape C) : l'extrait est un passage du rendu par défaut, lu par l'oracle et le contrôle du PDF."
+    },
+    {
+      "extrait": "Un produit UTILISABLE",
+      "forme": "produit UTILISABLE",
+      "type": "capitales",
+      "occurrences": 1,
+      "rendu": true,
+      "justification": "capitales partielles, balisées « [[Un:produit]] UTILISABLE » ; entrée « Produits vendables et utilisables » : seul « produit » est un terme et il ne change ni en Hôtellerie ni en Céramique, si bien que la forme par défaut (produit_vendable, produit_utilisable) se forme au rendu, à cheval sur la balise ; aucune balise ne replie ces notions sans casser I10 (spec §7.4, exemple 11 ; besoin L9-3 ; limite du §10.3) ; base lue par le modèle seul (pas de variante pour la base, question 5) ; absent en miroir (« produit » y change). Exclusion « rendu » (étape C) : l'extrait est un passage du rendu par défaut, lu par l'oracle et le contrôle du PDF."
     }
   ],
   "baliseur": "L9",

@@ -131,9 +131,10 @@
     "fiche": "seuil-minimum",
     "point": 12,
     "domaine": "ceramique",
+    "lexique": "essai",
     "texte": "site",
     "decision": "accepté",
-    "raison": "« par activité et par labo : chaque site a ses propres seuils » : « site » générique (activité ou labo), sens clair en C (« par point de vente et par site de production : chaque site ») ; collision site(s) du §10.3, notée dans besoins/L9.json"
+    "raison": "« par activité et par labo : chaque site a ses propres seuils » : « site » générique (activité ou labo), sens clair en C (« par point de vente et par site de production : chaque site ») ; collision site(s) du §10.3, notée dans besoins/L9.json — propre au lexique d'essai (forme courte « Site » de labo) : le lexique de production d'usine n'a pas de forme courte, « site » n'y est pas un terme (étape C, A16.13)"
   },
   {
     "fiche": "transferts",
@@ -158,5 +159,32 @@
     "texte": "POINT DE VENTE (point de vente)",
     "decision": "accepté",
     "raison": "exemple 9 de la spec (§7.7), rendu C prévu : glose redite tolérée dans la base (question 5, §10.3)"
+  },
+  {
+    "fiche": "produit-transforme-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "fabriqué fabriqué",
+    "decision": "accepté",
+    "raison": "origine « un PT fabriqué au labo » ([[un:pt:court]] [[acc:pt:fabriqué:fabriquée]]) : sans forme courte en production, usine lit « un produit fabriqué fabriqué » ; collision « fabriqué » (spec §10.3), même classe que stock-activites (L5-1) et calc-prix (L8-2) ; I10 interdit de reformuler ; répétition acceptée (étape C, A16.13) ; base lue par le modèle seul"
+  },
+  {
+    "fiche": "produit-transforme-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Produit fabriqué",
+    "decision": "accepté",
+    "raison": "glose redite « Produit fabriqué (produit fabriqué) » : sans forme courte en production, [[court:pt]] rend le nom ; avecCourt (qui n'écrit pas la parenthèse quand la forme courte égale le nom) ne se met pas en casse Nom (moteur gelé, besoin L9-2) ; titre d'une entrée de la base, lue par le modèle seul : glose redite tolérée (question 5, besoin L9-2) (étape C, A16.13)"
+  },
+  {
+    "fiche": "produit-transforme-pt",
+    "point": 8,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Produit fabriqué (produit fabriqué)",
+    "decision": "accepté",
+    "raison": "glose redite « Produit fabriqué (produit fabriqué) » : sans forme courte en production, [[court:pt]] rend le nom ; avecCourt (qui n'écrit pas la parenthèse quand la forme courte égale le nom) ne se met pas en casse Nom (moteur gelé, besoin L9-2) ; titre d'une entrée de la base, lue par le modèle seul : glose redite tolérée (question 5, besoin L9-2) (étape C, A16.13)"
   }
 ]

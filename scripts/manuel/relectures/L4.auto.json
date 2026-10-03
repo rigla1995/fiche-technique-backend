@@ -318,5 +318,14 @@
     "texte": "composant",
     "decision": "accepté",
     "raison": "« composant(s) » = éléments d'une recette (articles et produits utilisables) : sens proche de la clé ingredient (Composant en H et C), le sens reste clair (§10.3, collision composant)"
+  },
+  {
+    "fiche": "fiches-techniques",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Fiche de coût de revient",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« FT Stock, FT Manuel ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:fiche_technique]] rend le nom complet, comme les deux modes de l'écran (voc.Court) ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
   }
 ]

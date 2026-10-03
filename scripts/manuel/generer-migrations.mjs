@@ -27,7 +27,8 @@
  *   - titres balisés de la base en double sans casse (R4.3.2), titre > 200 ou partie > 60 caractères ;
  *   - pour écrire dans migrations/ SEULEMENT : la lecture de production manque, ou ses empreintes (1) ne sont pas celles
  *     des fichiers d'origine (réextraction non faite, R3.2.2), ou elle compte des « \r » (6), ou le slug Hôtellerie lu
- *     (7) n'est pas celui de --slug ; une des 16 variantes de lots.json manque ; un fichier 194/195/196 de migrations/
+ *     (7) n'est pas celui de --slug, ni celui du 2e domaine (ceramique.slug, « usine » en production, A16.13) ; une des
+ *     16 variantes de lots.json manque ; un fichier 194/195/196 de migrations/
  *     n'a pas été écrit par cet outil.
  *
  * SQL (§4.2 à §4.4) : un bloc DO par fichier ; chaque texte balisé écrit UNE fois (variable t) en dollar-quoting, étiquettes
@@ -83,7 +84,7 @@ const ident = (slug) => `n_${String(slug).replace(/-/g, '_')}`;
  * Refus liés à la lecture de production, pour écrire dans migrations/ (R3.6.2, R3.2.2, R3.6.4). Format du fichier
  * (écrit par l'intégrateur à partir de la sortie collée par le client, README) :
  *   { le, source, empreintes: { manuel, base }, retoursChariot: { fiches, entrees }, fichesModifiees: [],
- *     hotellerie: { slug, md5Lexique } | null }
+ *     hotellerie: { slug, md5Lexique } | null, ceramique: { slug, md5Lexique, lexique } | null }
  * → liste de refus (vide si l'écriture est permise).
  */
 export function verifierLectureProduction(fichier, { slugs = {}, racine = C.DOSSIER } = {}) {
@@ -105,6 +106,11 @@ export function verifierLectureProduction(fichier, { slugs = {}, racine = C.DOSS
   const h = j && j.hotellerie;
   const slugH = slugs.hotellerie || 'hotellerie';
   if (h && h.slug && h.slug !== slugH) refus.push(`lecture de production : le domaine Hôtellerie a le slug « ${h.slug} » ; relancer avec --slug hotellerie=${h.slug} (R3.6.4)`);
+  // 2e domaine (A16.13) : en production, la copie de « ceramique » s'appelle « usine » (décision du client) ; les
+  // brouillons de la 196 ciblent le slug lu, jamais « ceramique » par mégarde.
+  const c = j && j.ceramique;
+  const slugC = slugs.ceramique || 'ceramique';
+  if (c && c.slug && c.slug !== slugC) refus.push(`lecture de production : le 2e domaine a le slug « ${c.slug} » en production ; relancer avec --slug ceramique=${c.slug} (R3.6.4, A16.13)`);
   return refus;
 }
 

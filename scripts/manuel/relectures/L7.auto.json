@@ -91,8 +91,27 @@
     "fiche": "dashboard",
     "point": 12,
     "domaine": "ceramique",
+    "lexique": "essai",
     "texte": "site",
     "decision": "accepté",
-    "raison": "« pertes … par site » : site = activité ou labo (pertes consolidées des deux) ; en C, « site » est aussi la forme courte de labo, mais la phrase précédente nomme les deux : sens clair ; collision connue (§10.3, site(s)), besoin L7-3"
+    "raison": "« pertes … par site » : site = activité ou labo (pertes consolidées des deux) ; en C, « site » est aussi la forme courte de labo, mais la phrase précédente nomme les deux : sens clair ; collision connue (§10.3, site(s)), besoin L7-3 — propre au lexique d'essai (forme courte « Site » de labo) : le lexique de production d'usine n'a pas de forme courte, « site » n'y est pas un terme (étape C, A16.13)"
+  },
+  {
+    "fiche": "dashboard",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Casses / Rebuts / Seconds choix",
+    "decision": "accepté",
+    "raison": "« perte » = « Casse / Rebut / Second choix » dans le lexique de production d'usine : terme long, répété entre le libellé de l'onglet et la phrase qui le décrit comme « perte » l'est dans l'origine ; accords inchangés (féminin dans les deux) ; sens clair (étape C, A16.13)"
+  },
+  {
+    "fiche": "saisie-ventes",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Site de production",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« Ventes Labo ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:labo]] rend le nom complet, comme le nom de l'écran ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes) (« Ventes Site de production — le pendant côté site de production »)"
   }
 ]
