@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { premierDuMoisUTC, normaliserMoisUTC, finDePeriodeUTC, moisCouvertsUTC } = require('../utils/dateUtils');
 const { sendInviteEmail, sendFactureEmail } = require('../services/emailService');
 const { getSubmissionDocuments } = require('../services/docusealService');
 const { generateFacturePdf } = require('../services/pdfService');
@@ -504,9 +505,7 @@ const createAbonnement = async (clientId, montantOnboarding, config = null) => {
     }
 
     // Auto-create current month payment record
-    const firstOfMonth = new Date();
-    firstOfMonth.setDate(1);
-    const moisStr = firstOfMonth.toISOString().slice(0, 10);
+    const moisStr = premierDuMoisUTC();
 
     let baseMontant = 0;
     if (cfgRow) {
@@ -801,9 +800,7 @@ const upsertPaiement = async (req, res) => {
     const { id: aboId } = aboRes.rows[0];
 
     // Normalize mois to first of month
-    const moisDate = new Date(mois);
-    moisDate.setDate(1);
-    const moisStr = moisDate.toISOString().slice(0, 10);
+    const moisStr = normaliserMoisUTC(mois);
 
     // Statut précédent (pour n'envoyer la facture qu'au PASSAGE à « payé »)
     const prevRes = await pool.query(
@@ -1033,10 +1030,7 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
 
   let dateFin = null;
   if (monthsDuration && Number(monthsDuration) > 0) {
-    const d = new Date(dateDebut);
-    d.setMonth(d.getMonth() + Number(monthsDuration));
-    d.setDate(d.getDate() - 1);
-    dateFin = d.toISOString().slice(0, 10);
+    dateFin = finDePeriodeUTC(dateDebut, monthsDuration);
   }
 
   const conflictMap = {
@@ -1157,10 +1151,7 @@ const updatePromotion = async (req, res) => {
     // Compute date_fin
     let dateFin = null;
     if (monthsDuration && Number(monthsDuration) > 0) {
-      const d = new Date(dateDebut);
-      d.setMonth(d.getMonth() + Number(monthsDuration));
-      d.setDate(d.getDate() - 1);
-      dateFin = d.toISOString().slice(0, 10);
+      dateFin = finDePeriodeUTC(dateDebut, monthsDuration);
     }
 
     // Conflict check (exclude self)
@@ -1291,11 +1282,7 @@ const syncPromoStatuts = async () => {
       [today]
     );
     for (const promo of activeFreeMens.rows) {
-      const startDate = new Date(promo.date_debut);
-      const endDate = promo.date_fin ? new Date(promo.date_fin) : new Date(today);
-      const cur = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-      while (cur <= endDate) {
-        const moisStr = cur.toISOString().slice(0, 10);
+      for (const moisStr of moisCouvertsUTC(promo.date_debut, promo.date_fin || today)) {
         await pool.query(
           `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut)
            VALUES ($1, $2, 0, 'gratuit')
@@ -1304,7 +1291,6 @@ const syncPromoStatuts = async () => {
            WHERE paiements.statut NOT IN ('payé')`,
           [promo.abonnement_id, moisStr]
         );
-        cur.setMonth(cur.getMonth() + 1);
       }
     }
 
@@ -1361,8 +1347,7 @@ const enforcerStatuts = async () => {
     await syncPromoStatuts();
 
     // Auto-create monthly payment record if missing (apply promo if active)
-    const now = new Date();
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const thisMonth = premierDuMoisUTC();
     // Grille chargée UNE fois, résolue par abonnement (domaine du compte)
     const t = await loadTarifs();
     const missingAbo = await pool.query(`
