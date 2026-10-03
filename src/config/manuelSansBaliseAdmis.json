@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "table": "ai_knowledge_base",
+    "champ": "titre",
+    "md5": "95126859bae568e38471ac9872834dc8",
+    "cle": "Article vendable"
+  }
+]
