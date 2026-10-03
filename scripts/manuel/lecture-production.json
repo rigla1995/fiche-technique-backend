@@ -1,0 +1,35 @@
+{
+ "le": "2026-10-03T14:04:28Z",
+ "source": "scripts/controle-avant-2c.sql (lectures 1, 2, 5, 6, 7), collé par le client dans psql sur labflow-prod-1 (conteneur postgres:16-alpine x1053anad8aeg1vl4wcrdi8g), transaction READ ONLY puis ROLLBACK ; mis en forme par l'orchestrateur à partir des captures",
+ "derniereMigration": "192_composants_genre_elision.sql",
+ "fiches": 61,
+ "fichesActives": 60,
+ "entreesBase": 32,
+ "empreintes": {
+  "manuel": "67737956d92ba0e1d836c17747d66f5c",
+  "base": "8779fd652a4a4dd50531e9e3323aaad6"
+ },
+ "fichesModifiees": [],
+ "retoursChariot": {
+  "fiches": 0,
+  "entrees": 0
+ },
+ "domaines": [
+  { "id": 8, "slug": "restauration", "nom": "Restauration", "clesLexique": 0 },
+  { "id": 9, "slug": "cafe", "nom": "Café", "clesLexique": 0 },
+  { "id": 11, "slug": "boulangerie", "nom": "Boulangerie", "clesLexique": 0 },
+  { "id": 15, "slug": "hotellerie", "nom": "Hôtellerie", "clesLexique": 13 },
+  { "id": 16, "slug": "usine", "nom": "Industrie", "clesLexique": 19 }
+ ],
+ "hotellerie": {
+  "id": 15,
+  "slug": "hotellerie",
+  "md5Lexique": "ec83e7e8452932c874ebb66f66b8d980",
+  "composants": 10,
+  "remarque": "10 composants en production contre 9 en local : le 10e est « bureau_logisti » / « bureau logisti » (labo, m), probablement un essai saisi dans l'admin"
+ },
+ "ceramique": null,
+ "remarques": [
+  "Le domaine « ceramique » n'existe pas en production ; un domaine « usine » (Industrie, 19 clés de lexique) existe, absent de la base locale."
+ ]
+}
