@@ -2024,6 +2024,17 @@ l'heure et du jour du passage (`dashboardV2Controller.js:334`) : la capture les 
 restauration a été masquée par la même règle (33 valeurs), sans recapture. Restauration IDENTIQUE, `--domaine
 hotellerie --hors-manuel` à 0, `npm test` 340/340.
 
+**A16.13 — Lecture de production et domaine « usine » (03/10/2026).** La lecture de production
+(`scripts/manuel/lecture-production.json`) est conforme : texte du manuel et de la base identique au local, lexique
+Hôtellerie identique (`ec83e7e8…`). Le domaine « ceramique » n'existe pas en production ; sa copie de production est
+le domaine **`usine`** (« Industrie », id 16) : mêmes composants, lexique = « ceramique » local sans formes courtes,
+plus `perte` = « Casse / Rebut / Second choix » (md5 `4468629d…` vérifié). **Décision du client : le 2e domaine
+s'appelle « usine »** ; les variantes du 2e domaine ciblent `usine` (générateur `--slug ceramique=usine`, R3.6.4).
+« ceramique » reste le nom INTERNE du 2e domaine dans les outils et les lexiques d'essai (figés). À l'étape C, le texte
+commun et les variantes du 2e domaine sont aussi contrôlés avec le lexique de PRODUCTION de `usine` (champ
+`ceramique.lexique` de la lecture), comme Hôtellerie avec le sien (§12.1). Question 4 (créer « ceramique » en
+production) : sans objet. Production : 3 comptes, tous restauration.
+
 ---
 
 ## Annexe A — Mesures
