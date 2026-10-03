@@ -104,9 +104,12 @@ des trous d'un point de rendu (§5.4).
 
 Un limiteur (express-rate-limit) n'est rendu que si son option `message` est un OBJET `{ message: … }`.
 
-**Sortie explicite.** Une route qui renvoie dans `message` une DONNÉE saisie (le message d'un visiteur du site,
-`PUT /admin/site/demandes-acces/:id`) pose `res.locals.vocabBrut = true;` juste avant `res.json(…)` : le corps part tel
-quel. Sans cela, une donnée de la forme d'une balise serait rendue (« ‹clé› »). Une donnée INTERPOLÉE dans un
+**Sortie explicite.** Une route qui renvoie dans `message` une DONNÉE saisie pose `res.locals.vocabBrut = true;` juste
+avant `res.json(…)` : le corps part tel quel. Sans cela, une donnée de la forme d'une balise serait rendue (« ‹clé› »).
+Deux sites le posent (lot 2c, R5.7.1) : `PUT /admin/site/demandes-acces/:id` (le message d'un visiteur du site,
+`adminSiteController.js`) et `refuserBalises` de `src/utils/manuelRendu.js`, qui répond aux refus 400
+`BALISE_INVALIDE` / `BALISE_INTERDITE` des écritures admin du manuel, de la base de connaissances et des variantes (le
+message cite la balise fautive saisie). Une donnée INTERPOLÉE dans un
 message balisé (nom de produit) est, elle, rendue avec le message : risque accepté (spec §5.1).
 
 ## 4. Table des formes (spec §6.5) et choix de la clé
@@ -387,7 +390,7 @@ Fichier de ton lot : `scripts/vocab-allow/<lot>.json` (format : `fiche-technique
 | `admin` | texte lu seulement par un super_admin ou le boss : justification = route + garde (`requireSuperAdmin`) |
 | `non-repliable` | signalement d'accord à tort (mode `accords`), `errors[].msg` d'express-validator (« champ non rendu »), glossaire à clé non littérale |
 | `deplacement` | texte déplacé d'un fichier à un autre (une entrée dans chacun), du SQL vers le JS sans unité JS identique, ou déterminant déplacé dans le moteur (`voc.avec(entreeComposantVoc(voc, c)).mon(…)`, §5.10) |
-| `reporte` (+ `lot`) | texte fixe du contrat (`3`), description de `search_knowledge_base` (`2c`) |
+| `reporte` (+ `lot`) | texte fixe du contrat (`3`) ; la description de `search_knowledge_base` (`2c`) passe par `voc` depuis le lot 2c (R5.5) |
 | `fiscal` | facture acheteur, facture d'abonnement |
 | `faute-corrigee` | faute de l'existant corrigée (sous-titre « Transfert labo → activité » d'un transfert labo→labo) |
 | `provisoire` | en attente d'un besoin (`vocab-besoins/<lot>.json`) : doit finir à 0 |

@@ -1,4 +1,4 @@
-/* Test E2E — manuel filtré selon la config du compte (backend démarré sur :3000,
+/* Test E2E — manuel filtré selon la config du compte (backend démarré sur :3000, ou PORT / E2E_BASE,
  * migration 182 appliquée). S'appuie sur le jeu de démo (seed-demo-vitrine.js) :
  * client demo@dar-yasmine.tn (module acheteurs ON, ≥1 labo, ≥1 activité) + gérant.
  * Vérifie aussi le RAG (search_knowledge_base) directement via aiToolHandlers.
@@ -7,7 +7,7 @@ require('dotenv').config();
 const pool = require('../src/config/database');
 const { executeToolCall } = require('../src/services/aiToolHandlers');
 
-const BASE = 'http://localhost:3000';
+const BASE = process.env.E2E_BASE || `http://localhost:${process.env.PORT || 3000}`; // backend de test (PORT=3101 node scripts/start-test-backend.js)
 const EMAIL = process.env.E2E_EMAIL || 'demo@dar-yasmine.tn';
 const PASSWORD = process.env.E2E_PASSWORD || 'DemoVitrine2026!';
 const GERANT_EMAIL = process.env.E2E_GERANT_EMAIL || 'gerant@dar-yasmine.tn';

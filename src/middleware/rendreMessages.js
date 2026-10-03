@@ -18,9 +18,10 @@
 // La copie `{ ...body, message }` garde la position de la clé `message`, donc l'ordre des clés.
 // Tous les statuts sont rendus, 2xx compris.
 //
-// Sortie explicite : une route dont le `message` est une DONNÉE saisie (message d'un visiteur du site
-// public, PUT /admin/site/demandes-acces/:id) pose `res.locals.vocabBrut = true` avant de répondre ; le corps
-// part alors tel quel. Sinon une donnée de la forme d'une balise serait rendue.
+// Sortie explicite : une route dont le `message` est une DONNÉE saisie pose `res.locals.vocabBrut = true`
+// avant de répondre ; le corps part alors tel quel. Sinon une donnée de la forme d'une balise serait rendue.
+// Deux sites : PUT /admin/site/demandes-acces/:id (message d'un visiteur du site public) et refuserBalises
+// de src/utils/manuelRendu.js (refus 400 d'une balise saisie dans le manuel, la base ou une variante, lot 2c).
 //
 // Une balise de syntaxe invalide reste telle quelle et n'est signalée qu'une fois par processus
 // (ensemble borné à SIGNALEES_MAX entrées, vidé au-delà). Une balise de forme valide dont la CLÉ est

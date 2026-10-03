@@ -57,7 +57,7 @@ const bcrypt = require('bcryptjs');
 const { LEXIQUE_DEFAUT, LEXIQUE_CLES } = require('../src/config/lexiqueDefaut');
 const { resoudreLexique, vocabDefaut, vocabDuLexique, rendre } = require('../src/utils/vocab');
 
-const BASE = 'http://localhost:3000';
+const BASE = process.env.E2E_BASE || `http://localhost:${process.env.PORT || 3000}`; // backend de test (PORT=3101 node scripts/start-test-backend.js)
 const RACINE = path.resolve(__dirname, '..');
 const results = [];
 const check = (name, ok, detail = '') => {
