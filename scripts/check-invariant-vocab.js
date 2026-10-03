@@ -50,7 +50,7 @@
  *       lecteur admin) ; passages exclus au balisage retirés avant la recherche (champ `extrait` des fichiers de
  *       scripts/manuel/balise/manuel/<slug>.json, de scripts/manuel/variantes/<domaine>/<slug>.json, et de
  *       scripts/manuel/balise/base/*.json pour une entrée retrouvée par son titre rendu avec meta.lexique) ; cibles de
- *       liens « (#slug) » du manuel masquées (A16.1 : jamais balisées ni exclues) ;
+ *       liens du manuel masquées (A16.1 : jamais balisées ni exclues ; toute cible « ](…) », toutes en (#slug) aujourd'hui) ;
  *       MOTS_HORS_LEXIQUE ne s'applique ni à la famille manuel ni aux recherches. Échecs : « [[ », « ]] » ou
  *       « ‹clé› » dans les familles manuel et assistant ; résultat du manuel qui n'est pas le début (suivi de « … »)
  *       de la fiche servie de même citation ; empreintes du lecteur admin ≠ référence restauration (I4) ; clé de
@@ -746,7 +746,8 @@ async function verifierHorsRestauration(capture) {
       if (texte.includes(x)) texte = texte.split(x).join('⟦x⟧');
     }
     // Lot 2c (A16.1) : les cibles de liens « (#slug) » du manuel ne se balisent jamais (200 formes par défaut dans 185
-    // cibles) : masquées avant la recherche, comme dans controler.mjs (masquerCibles) et le pré-baliseur.
+    // cibles) : masquées avant la recherche, comme dans controler.mjs (masquerCibles) et le pré-baliseur. Le motif
+    // prend toute cible « ](…) » (une cible n'est jamais lue, adresse externe comprise ; R2.4.2).
     if (t.cle === 'manuel') texte = texte.replace(/\]\([^)\n]*\)/g, ']()');
     for (const forme of formesDans(texte, listeF)) {
       const f = { famille: FAMILLE[t.cle], cle: t.cle, chemin: t.chemin, forme, cles: F.get(forme), texte };

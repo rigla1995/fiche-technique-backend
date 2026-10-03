@@ -379,7 +379,8 @@ une base balisée. Chaque champ balisé est remplacé par son rendu par défaut 
 - **Cibles de liens `(#slug)`.** Elles portent 200 formes par défaut dans 185 cibles. Ni balisées ni exclues (GUIDE §4) :
   le point 3 de `controler.mjs` les masque, le pré-baliseur les compte à part (`ciblesDeLien`), et l'oracle
   (`check-invariant-vocab.js --domaine`) les masque dans le manuel servi depuis l'étape C (A16.1 ; sans cela, 76
-  formes en Hôtellerie).
+  formes en Hôtellerie). Les trois masquent toute cible `](…)` (une cible n'est jamais lue, adresse externe
+  comprise) ; aujourd'hui toutes sont des `(#slug)`.
 - **Formats des relectures et des besoins** : GUIDE-BALISAGE §15.
 
 ## `lib/` : module partagé (CommonJS, syntaxe de Node 20)

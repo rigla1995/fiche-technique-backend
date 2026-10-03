@@ -216,7 +216,7 @@ Source : `labflow-reprise/lot-2c/DECISIONS-2c.md`.
 | # | Décision | Conséquence dans cette spec |
 |---|---|---|
 | 1 | **Variantes OUI, Hôtellerie ET Céramique**, dans ce lot, pour les 8 fiches métier (`decouvrir-labflow`, `compte-activites-labos`, `demarrage`, `roles`, `lexique`, `lexique-pt`, `onboarding-configuration`, `calc-cout-recette`) | Table `manuel_sections_domaine` (migration 193, §4.1), 16 brouillons (migration 196, §4.4), 4 lots de rédaction (§9), écran admin (§6.1). Variante ciblée par le **slug** du domaine, sans clé étrangère : un brouillon s'applique quand un domaine de ce slug existe **et** a son lexique (I12, §8.6). **Précisée le 03/10 (A16.13)** : la Céramique de production est le domaine `usine` (« Industrie ») ; le client garde ce nom, les 8 brouillons du 2e domaine ciblent `usine`. Les fiches de calcul et de catégories gardent leurs exemples de la restauration (§10.3) : question 9 au client (§14). |
-| 2 | **« sous-produit » : exclusion assumée**, type `locution` ; pas de nouvelle clé | Moteur et empreinte inchangés. 28 occurrences dans le manuel (19 « sous-produit », 9 « sous-produits » ; lots L4 : 6, L7 : 1, L8 : 21) et 2 dans la base : chacune est une exclusion typée `locution` dans le fichier de sa fiche (§3.3). Même traitement pour « sous-PT » (1 occurrence, même notion, §7.2). Hors restauration, le mot reste (§10.3). **Cette décision clôt aussi le point laissé ouvert par le 2b** pour les écrans et le serveur (lot-2b-spec, ligne 979) : les entrées `locution` de `scripts/vocab-allow/_global.json:16-28` restent. La décision est écrite pour le client dans `labflow-reprise/lot-2c/ecarts-visibles-2c.md` (§3) ; le renvoi dans `labflow-reprise/lot-2b/ecarts-visibles-2b.md` reste à poser (hors du périmètre de l'étape C documentaire, besoin noté au compte rendu). |
+| 2 | **« sous-produit » : exclusion assumée**, type `locution` ; pas de nouvelle clé | Moteur et empreinte inchangés. 28 occurrences dans le manuel (19 « sous-produit », 9 « sous-produits » ; lots L4 : 6, L7 : 1, L8 : 21) et 2 dans la base : chacune est une exclusion typée `locution` dans le fichier de sa fiche (§3.3). Même traitement pour « sous-PT » (1 occurrence, même notion, §7.2). Hors restauration, le mot reste (§10.3). **Cette décision clôt aussi le point laissé ouvert par le 2b** pour les écrans et le serveur (lot-2b-spec, ligne 979) : les entrées `locution` de `scripts/vocab-allow/_global.json:16-28` restent. La décision est écrite pour le client dans `labflow-reprise/lot-2c/ecarts-visibles-2c.md` (§3) ; le renvoi est posé dans `labflow-reprise/lot-2b/ecarts-visibles-2b.md` §4 (puce « Sous-produit », correction de l'étape C). |
 | 3 | **Mots-clés enrichis au rendu** avec les formes du domaine des clés surchargées ET les libellés des composants du domaine ; rien d'ajouté en restauration | `enrichirMotsCles` (R5.4). Garde : rien n'est ajouté quand `voc.estDefaut` est vrai (restauration, café, boulangerie). `mots_cles` n'est jamais balisé. Effet mesuré par la relecture : nul sur les questions du guide (R5.4) ; deux précisions (sigles sans casse, libellés de composants resserrés) : question 10 au client (§14). |
 | 4 | **Méthode** : workflow multi-agents comme au 2a et au 2b | Spec → 4 relectures contradictoires → contrôle indépendant → étapes O, S0, M0 / S / A, vagues de balisage, variantes, consolidation, vérification, déploiement (§13). |
 
@@ -365,7 +365,9 @@ inconnue, « ‹labbo› ») est un **échec** : `balisesInvalides` ne voit pas 
 - Texte d'une fiche (`manuel/sections`) : avant `formesDans`, le scan retire les passages exclus au balisage
   (champ `extrait` de `scripts/manuel/balise/manuel/<slug>.json`, §3.3, exclusions « rendu » comprises) et masque les
   cibles de liens `(#slug)` (A16.1 ; ajouté à l'étape C, besoin `C-2` : sans ce masque, 76 des 77 formes trouvées en H
-  venaient des cibles).
+  venaient des cibles). Le motif masque toute cible `](…)`, comme `masquerCibles` de `controler.mjs` : une cible n'est
+  jamais lue par le client, adresse externe comprise. Aujourd'hui toutes les cibles sont des `(#slug)` (mesuré à la
+  correction de l'étape C : 962 cibles dans `balise/`, `variantes/` et `origine/`, 0 qui ne commence pas par « # »).
 - Résultat de recherche qui vient du manuel : **il n'est pas rescanné** (une coupe à 6 000 peut tomber au milieu
   d'un extrait exclu : `lexique`, 10 358 caractères, est coupé dans tous les domaines). On vérifie à la place que
   son `contenu` est le début du `contenu` servi de la même fiche (`manuel.sections`), suivi de « … » s'il est
@@ -710,7 +712,7 @@ relecteur les relit.
 2. **Balises valides (I11)** : `verifierBalises(x)` vide (`balisesInvalides` ET chaque clé dans `LEXIQUE_CLES`).
 3. **Résiduels** : aucune forme par défaut d'un terme HORS balises, sauf dans les extraits exclus. Chaque exclusion
    est employée exactement `occurrences` fois (une exclusion « rendu » est comptée dans le rendu par défaut, §3.3).
-   Les cibles de liens `(#slug)` sont masquées avant la recherche (A16.1). Toute balise collée à un trait d'union est
+   Les cibles de liens sont masquées avant la recherche (A16.1 ; toute cible `](…)`, aujourd'hui toutes `(#slug)`). Toute balise collée à un trait d'union est
    un échec, sauf `acc`, `accN` et `ex` (A16.2).
 4. **Liens** : même suite de cibles `#slug` que l'origine, dans chaque rendu ; chaque cible est un slug existant ;
    aucun libellé de lien rendu vide.
@@ -1783,7 +1785,8 @@ ou boulangerie.
 Tous les effets ci-dessous sont acceptés pour le 2c : aucune balise ne les lève sans reformuler le texte commun (I10,
 donc I1), et ils sont dans des fiches sans variante, ou dans la base (qui n'a pas de variante, question 5). Chaque
 ligne renvoie au besoin qui la porte (`scripts/manuel/besoins/<lot>.json`, état final dans le fichier ; récapitulatif
-des vagues : `L8-2`, `L9-4` ; étape C : `C-1`, `C-5`). Rendus « C » : lexique d'essai `ceramique` ; quand le lexique de
+des vagues : `L8-2`, `L9-4` ; étape C : `C-1`, `C-3`, `C-5`, et `C-2` pour le masque des cibles de liens de l'oracle
+(R2.4.2), qui a fait apparaître les formes traitées par `C-3`). Rendus « C » : lexique d'essai `ceramique` ; quand le lexique de
 production d'`usine` rend autrement, c'est dit. Version pour le client : `labflow-reprise/lot-2c/ecarts-visibles-2c.md`.
 
 **10.3.1 Mots du métier hors lexique, sans variante.**
@@ -2098,7 +2101,7 @@ règles d'écriture : `scripts/manuel/GUIDE-BALISAGE.md`.
 | **B2 ∥ V** | vague 2 : L4, L5, L6, L7, L9 ; vague V : 4 lots de variantes ; 4 tours chacune ; un intégrateur pour les deux | point de restauration | 2,75 j (vague 2 : 1,25 ; V : 1,5), en parallèle |
 | **R** (si besoin) | mini-vague : fiches de production qui diffèrent (§12.1) ; 1 baliseur, 1 relecteur | point de restauration | 0,25 j |
 | **C** | consolidation : `--tout` ; génération en essai ; **essai de migration AVANT le premier oracle** ; écriture dans `migrations/` ; dès lors copies de la base (R2.8.2) ; oracle restauration puis H, C, miroir ; besoins clos ; documents (`VOCAB-GUIDE-SERVEUR.md`, `ecarts-visibles-2b.md`, nouveau `ecarts-visibles-2c.md`, §15) ; spec mise à jour (« état final ») | commit | 0,75 j |
-| | **Fait le 03/10/2026.** Partie technique : `1273be5` (contrôle avec les lexiques de production, corrections, oracle A16.1, exclusions « rendu ») et `f0383cf` (migrations 194 à 196 écrites, cible `usine` ; point de restauration). Partie documentaire : spec v3.0, `ecarts-visibles-2c.md`, `VOCAB-GUIDE-SERVEUR.md` §9, README et guide des outils, besoins `L8-2` et `L9-4` clos (commit `docs(lot-2c): étape C — …`). « Fiche Céramique » sans objet (le domaine `usine` existe en production avec son lexique, §8.6). Reste : renvoi dans `ecarts-visibles-2b.md` (décision 2) ; commits X et Y à la fin de la vérification (§12.2) | | |
+| | **Fait le 03/10/2026.** Partie technique : `1273be5` (contrôle avec les lexiques de production, corrections, oracle A16.1, exclusions « rendu ») et `f0383cf` (migrations 194 à 196 écrites, cible `usine` ; point de restauration). Partie documentaire : spec v3.0, `ecarts-visibles-2c.md`, `VOCAB-GUIDE-SERVEUR.md` §9, README et guide des outils, besoins `L8-2` et `L9-4` clos (commit `docs(lot-2c): étape C — …`). « Fiche Céramique » sans objet (le domaine `usine` existe en production avec son lexique, §8.6). Corrections du contrôle de l'étape C : renvoi posé dans `ecarts-visibles-2b.md` §4 (décision 2), en-tête du §10.3, texte du masque des cibles de liens (R2.4.2). Reste : commits X et Y à la fin de la vérification (§12.2) | | |
 | **Vérif** | l'oracle seul d'abord (sur une copie) ; puis parcours navigateur et 3 revues en parallèle, sur la même copie (ports réservés du 2b) ; corrections (copie neuve, régénération, oracle) ; contrôle final indépendant | rapport | 1 j |
 | **D** | lecture de production, commits X et Y, D1, écrans, D2 (§12) | en production | — |
 
