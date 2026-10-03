@@ -72,24 +72,6 @@
     "justification": "« article » au sens d'élément quelconque (produit ou article vendable, article_type ∈ {produit, ingredient}) : liste fermée de la spec lot 2b §6.5 (aiToolHandlers.js:685 « articles vendables »)."
   },
   {
-    "fichier": "src/services/aiToolHandlers.js",
-    "avant": "Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (fiche technique, food cost, coût matière, stock, approvisionnements, pertes, inventaire, transferts, articles valorisés, produits vendables/utilisables, seuil minimum, TVA, marge, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.",
-    "apres": "Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (fiche technique, food cost, coût matière, stock, approvisionnements, pertes, inventaire, transferts, articles valorisés, produits vendables/utilisables, seuil minimum, TVA, marge, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.",
-    "mode": "residuels",
-    "type": "reporte",
-    "lot": "2c",
-    "justification": "Description de l'outil search_knowledge_base et de son paramètre query : restent en mots de LabFlow jusqu'au lot 2c (la base et le manuel ne connaissent que ces mots, l'exemple de requête doit les employer), spec lot 2b §0 et §7.2."
-  },
-  {
-    "fichier": "src/services/aiToolHandlers.js",
-    "avant": "Mots-clés ou question du concept à rechercher (ex: \"fiche technique\", \"comment est calculé le food cost\")",
-    "apres": "Mots-clés ou question du concept à rechercher (ex: \"fiche technique\", \"comment est calculé le food cost\")",
-    "mode": "residuels",
-    "type": "reporte",
-    "lot": "2c",
-    "justification": "Description de l'outil search_knowledge_base et de son paramètre query : restent en mots de LabFlow jusqu'au lot 2c (la base et le manuel ne connaissent que ces mots, l'exemple de requête doit les employer), spec lot 2b §0 et §7.2."
-  },
-  {
     "fichier": "src/services/onboardingEtat.js",
     "avant": "articles",
     "apres": "articles",

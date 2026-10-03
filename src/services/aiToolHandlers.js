@@ -2,10 +2,12 @@ const pool = require('../config/database');
 const { generateAndSendReport } = require('./reportService');
 const { buildManuelContexte, manuelSectionVisible } = require('../utils/manuelVisibilite');
 // Lot 1b §5 — règles du domaine du compte : types de perte, seuil coût matière.
-const { getTypesPerteForClient, getSeuilCoutMatiereForClient, perteLabel } = require('./domaineProfilService');
+const { getTypesPerteForClient, getSeuilCoutMatiereForClient, perteLabel, getProfilForClient } = require('./domaineProfilService');
 // Lot 2b §7 — vocabulaire du compte : outils, ligne de contexte et résultats (jamais req.voc ici).
-const { rendre } = require('../utils/vocab');
+const { rendre, vocabDefaut } = require('../utils/vocab');
 const { vocabForClient } = require('../utils/vocabCompte');
+// Lot 2c §5.3 — manuel et base de connaissances rendus dans les mots du compte (variantes, mots-clés enrichis).
+const { requeteManuel, slugVariantes, rendreFiche, rendreEntreeBase } = require('../utils/manuelRendu');
 
 const CLIENT_SCOPE_CTE = `
   WITH pe AS (SELECT id FROM profil_entreprise WHERE client_id = $1),
@@ -285,27 +287,49 @@ async function toolGetTransferts(clientId, { activite_id, labo_id, ingredient, d
 
 // ── Base de connaissances LabFlow (RAG simple, recherche par mots-clés) ────────
 const normalizeKb = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-async function toolSearchKnowledge(clientId, toolInput) {
+// voc : vocabulaire du compte (passé par executeToolCall) ; profil : profil de son domaine (chatWithAI le passe),
+// relu ici s'il manque. Lot 2c (R5.3.2), dans cet ordre : domaine → lecture → filtre → rendu → citation →
+// troncature → score. Le résultat envoyé au modèle est RENDU (jamais de balise). Vocabulaire par défaut
+// (restauration, café, boulangerie, prospect) : aucun profil lu, aucune variante, rendu identité (I1).
+async function toolSearchKnowledge(clientId, toolInput, voc, profil) {
   const query = (toolInput?.query || '').trim();
-  // Deux sources : la base de connaissances IA + le manuel d'utilisation (source de vérité,
-  // éditable depuis l'admin). Les fiches du manuel sont préfixées pour citer la source.
+  const v = voc || vocabDefaut;
+  // 1. Domaine (variantes, composants) : toute erreur de lecture donne le texte commun, jamais une erreur d'outil.
+  let domaine = null;
+  if (!v.estDefaut) {
+    domaine = profil || null;
+    if (!domaine && clientId) {
+      try { domaine = await getProfilForClient(clientId); } catch (_) { domaine = null; }
+    }
+  }
+  // 2. Deux sources : la base de connaissances IA + le manuel d'utilisation (source de vérité,
+  // éditable depuis l'admin), variante VALIDE du domaine comprise (requête commune, spec 2c §5.2).
+  // Ordre fixé (R2.2) : ex aequo départagés par la base (id) puis l'ordre du manuel.
   // Le manuel est FILTRÉ selon la config du compte (manuelVisibilite) : l'IA ne doit
   // pas documenter des écrans que ce client ne voit pas. Sans clientId (ex. prospect
   // Messenger non lié), le manuel complet reste consultable (vitrines comprises).
+  const lectureManuel = requeteManuel(slugVariantes(v, domaine), { recherche: true });
   const [kb, manuel, ctx] = await Promise.all([
     pool.query('SELECT titre, contenu, mots_cles FROM ai_knowledge_base WHERE actif = true ORDER BY id'),
-    pool.query('SELECT slug, titre, partie, contenu, mots_cles FROM manuel_sections WHERE actif = true ORDER BY ordre, id'),
+    pool.query(lectureManuel.text, lectureManuel.values),
     clientId ? buildManuelContexte({ role: 'client', id: clientId }) : Promise.resolve(null),
   ]);
+  const composants = domaine ? domaine.composants : undefined;
   const TRUNC = 6000;
+  // 3. filtre, 4. rendu, 5. citation (titre et partie rendus), 6. troncature du contenu RENDU (jamais au milieu
+  // d'une balise) ; les fiches du manuel sont préfixées pour citer la source.
   const rows = [
-    ...kb.rows,
-    ...manuel.rows.filter((r) => manuelSectionVisible(r.slug, ctx)).map((r) => ({
-      titre: `Manuel — ${r.partie} › ${r.titre}`,
-      contenu: r.contenu.length > TRUNC ? `${r.contenu.slice(0, TRUNC)}…` : r.contenu,
-      mots_cles: r.mots_cles,
-    })),
+    ...kb.rows.map((r) => rendreEntreeBase(v, r, composants)),
+    ...manuel.rows.filter((r) => manuelSectionVisible(r.slug, ctx)).map((brute) => {
+      const r = rendreFiche(v, brute, composants);
+      return {
+        titre: `Manuel — ${r.partie} › ${r.titre}`,
+        contenu: r.contenu.length > TRUNC ? `${r.contenu.slice(0, TRUNC)}…` : r.contenu,
+        mots_cles: r.mots_cles,
+      };
+    }),
   ];
+  // 7. Score sur les textes rendus et les mots-clés enrichis.
   if (rows.length === 0) return { results: [], note: 'Base de connaissances vide.' };
   const terms = normalizeKb(query).split(/[^a-z0-9]+/).filter((w) => w.length > 2);
   const scored = rows.map((r) => {
@@ -531,7 +555,9 @@ async function toolSendReport(clientId) {
 
 // voc : vocabulaire du compte (lot 2b §7.1), passé par chatWithAI ; absent (oracle, scripts),
 // il est calculé ici par vocabForClient, seulement quand un outil ou une erreur l'emploie.
-async function executeToolCall(clientId, toolName, toolInput, voc) {
+// profil : profil du domaine du compte (lot 2c R5.3.3), passé par chatWithAI pour la recherche (variantes,
+// composants) ; absent, search_knowledge_base le relit (getProfilForClient) hors vocabulaire par défaut.
+async function executeToolCall(clientId, toolName, toolInput, voc, profil) {
   const vocDuCompte = async () => voc || (voc = await vocabForClient(clientId));
   try {
     switch (toolName) {
@@ -548,7 +574,7 @@ async function executeToolCall(clientId, toolName, toolInput, voc) {
       case 'get_produits':         return await toolGetProduits(clientId, toolInput);
       case 'get_config_vente':     return await toolGetConfigVente(clientId, toolInput);
       case 'send_report':          return await toolSendReport(clientId);
-      case 'search_knowledge_base': return await toolSearchKnowledge(clientId, toolInput);
+      case 'search_knowledge_base': return await toolSearchKnowledge(clientId, toolInput, await vocDuCompte(), profil);
       case 'ask_clarification':    return { __clarification: true, question: toolInput.question, options: toolInput.options };
       default:                     return { error: `Outil inconnu: ${toolName}` };
     }
@@ -725,11 +751,14 @@ const outilsAnthropic = (voc) => [
   },
   {
     name: 'search_knowledge_base',
-    description: "Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (fiche technique, food cost, coût matière, stock, approvisionnements, pertes, inventaire, transferts, articles valorisés, produits vendables/utilisables, seuil minimum, TVA, marge, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.",
+    // Lot 2c (R5.5) : le manuel et la base sont rendus dans les mots du compte, la description aussi. « produits
+    // vendables/utilisables » n'a pas d'écriture voc identique par défaut (une forme pour deux termes) : voc.ex
+    // garde le texte d'origine en restauration (écart assumé à la règle « voc.ex pour les exemples de saisie »).
+    description: `Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (${voc.nom('fiche_technique')}, ${voc.nom('food_cost')}, ${voc.nom('cout_matiere')}, ${voc.nom('stock')}, ${voc.nom('appro', true)}, ${voc.nom('perte', true)}, ${voc.nom('inventaire')}, ${voc.nom('transfert', true)}, ${voc.nom('article', true)} ${voc.acc('article', 'valorisés', 'valorisées')}, ${voc.ex('produits vendables/utilisables', `${voc.nom('produit_vendable', true)}, ${voc.nom('produit_utilisable', true)}`)}, seuil minimum, TVA, ${voc.nom('marge')}, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.`,
     input_schema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Mots-clés ou question du concept à rechercher (ex: "fiche technique", "comment est calculé le food cost")' },
+        query: { type: 'string', description: `Mots-clés ou question du concept à rechercher (ex: "${voc.nom('fiche_technique')}", "comment est ${voc.acc('food_cost', 'calculé', 'calculée')} ${voc.le('food_cost')}")` },
       },
       required: ['query'],
     },

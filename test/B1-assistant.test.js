@@ -78,7 +78,7 @@ test('toolsFor(vocabDefaut) : JSON identique à la référence de sortie (ancien
   assert.equal(outilsIA.TOOLS_ANTHROPIC, undefined);
 });
 
-test('toolsFor : vocabulaire du compte, codes et recherche (2c) inchangés', () => {
+test('toolsFor : vocabulaire du compte, codes inchangés ; recherche dans les mots du compte (lot 2c, R5.5)', () => {
   const parNom = (voc) => Object.fromEntries(outilsIA.toolsFor(voc).map((t) => [t.function.name, t.function]));
   const d = parNom(vocabDefaut);
   for (const [dom, voc] of Object.entries(V)) {
@@ -92,9 +92,21 @@ test('toolsFor : vocabulaire du compte, codes et recherche (2c) inchangés', () 
     assert.deepEqual(o.get_ventes.parameters.properties.canal.enum, ['directe', 'prestataire']);
     assert.ok(o.get_ventes.description.includes('répartition par canal (direct / prestataire)'), dom);
     assert.ok(o.get_pertes.description.includes('ex. avarie / dechet'), dom);
-    assert.equal(o.search_knowledge_base.description, d.search_knowledge_base.description, `${dom} : recherche reportée au 2c`);
-    assert.equal(o.search_knowledge_base.parameters.properties.query.description, d.search_knowledge_base.parameters.properties.query.description);
+    // Lot 2c (R5.5) : la description de search_knowledge_base et de query passent par voc (le manuel et la base
+    // sont rendus dans les mots du compte) ; nom, paramètre et required inchangés.
+    assert.notEqual(o.search_knowledge_base.description, d.search_knowledge_base.description, `${dom} : recherche dans les mots du compte`);
+    assert.notEqual(o.search_knowledge_base.parameters.properties.query.description, d.search_knowledge_base.parameters.properties.query.description, dom);
+    assert.deepEqual(o.search_knowledge_base.parameters.required, ['query']);
   }
+  // Par défaut : les deux textes d'avant le lot 2c, au caractère près (I1 ; voc.ex garde « produits vendables/utilisables »).
+  assert.equal(d.search_knowledge_base.description, "Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (fiche technique, food cost, coût matière, stock, approvisionnements, pertes, inventaire, transferts, articles valorisés, produits vendables/utilisables, seuil minimum, TVA, marge, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.");
+  assert.equal(d.search_knowledge_base.parameters.properties.query.description, 'Mots-clés ou question du concept à rechercher (ex: "fiche technique", "comment est calculé le food cost")');
+  const hs = parNom(V.hotellerie).search_knowledge_base;
+  assert.ok(hs.description.includes('(fiche technique, ratio matière, coût matière, stock, approvisionnements, pertes, inventaire, livraisons internes, fournitures valorisées, prestations vendues, consommables, seuil minimum, TVA, marge, panier moyen…)'), hs.description);
+  assert.equal(hs.parameters.properties.query.description, 'Mots-clés ou question du concept à rechercher (ex: "fiche technique", "comment est calculé le ratio matière")');
+  const cs = parNom(V.ceramique).search_knowledge_base;
+  assert.ok(cs.description.includes('(fiche de coût de revient, taux de coût matière, coût matière, stock, réceptions, pertes, inventaire, livraisons internes, matières premières valorisées, produits finis, semi-finis,'), cs.description);
+  assert.ok(parNom(V.miroir).search_knowledge_base.parameters.properties.query.description.includes('"comment est calculée l\'incidence matière"'), 'accord et élision de food_cost (miroir)');
   const h = parNom(V.hotellerie);
   assert.equal(h.get_stock.description, 'Récupère le stock de fournitures. Sans filtre = tous services et cuisines centrales. Supporte filtrage par service, cuisine centrale, fourniture, et période.');
   assert.equal(h.get_referentiel.description.slice(0, 66), 'Récupère le référentiel des fournitures/composants du client : nom');
@@ -102,9 +114,8 @@ test('toolsFor : vocabulaire du compte, codes et recherche (2c) inchangés', () 
   const m = parNom(V.miroir);
   assert.ok(m.get_ventes.description.includes('écart brut,'), 'accord de « marge brute »');
   assert.ok(m.get_config_vente.description.includes('agences de livraison actives par local'));
-  // aucune forme par défaut d'activité ou de labo hors recherche (Hôtellerie)
+  // aucune forme par défaut d'activité, de labo, d'article ou d'ingrédient (Hôtellerie), recherche comprise (lot 2c)
   for (const [n, f] of Object.entries(h)) {
-    if (n === 'search_knowledge_base') continue;
     const textes = [f.description, ...Object.values(f.parameters.properties).map((p) => p.description || '')].join(' ');
     assert.ok(!/\b(activité|activités|labo|labos|ingrédient|ingrédients|article|articles)\b/i.test(textes.replace(/articles vendables/g, '')), `${n} : ${textes}`);
   }
@@ -139,7 +150,10 @@ test('glossaire Hôtellerie : une ligne « ingrédient » (deux sens), unités d
   assert.ok(g.includes('4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend'));
   assert.ok(g.includes('ne le traduis pas par « fournitures vendables »'));
   assert.ok(g.includes('1. Réponds au client avec les mots du compte'));
-  assert.ok(g.includes('3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow'));
+  // Lot 2c (R5.6) : règle 3 remplacée — le manuel et la base parlent les mots du compte, les noms figés se citent tels quels.
+  assert.ok(g.includes("3. Le manuel et la base de connaissances sont écrits avec les mots du compte. Quelques noms de LabFlow y restent tels quels (noms d'offres comme « Activité Basique », « sous-produit ») : cite-les sans les traduire.\n4. « articles vendables »"), g);
+  assert.ok(!g.includes('rédigés avec les mots de LabFlow') && !g.includes('cherche avec ces mots'), 'ancienne règle 3 retirée');
+  assert.equal(lignes.filter((l) => /^\d\. /.test(l)).map((l) => l[0]).join(''), '1234', 'règles 1 à 4, dans l\'ordre');
   // placé juste après le bloc de contexte, dans le prompt
   const p = buildSystemPrompt(LIGNE_FIXE, V.hotellerie, { lexique: lexiques.hotellerie, composants: COMPOSANTS_HOTEL });
   assert.ok(p.indexOf('## Vocabulaire du compte') > p.indexOf('## Contexte du client'));

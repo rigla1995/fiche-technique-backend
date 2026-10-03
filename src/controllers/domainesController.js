@@ -312,6 +312,27 @@ const update = async (req, res) => {
       ]
     );
 
+    // Lot 2c, R5.9 : les variantes du manuel (manuel_sections_domaine) ciblent un domaine par son SLUG, sans clé
+    // étrangère ; elles suivent son renommage. Une requête, après l'UPDATE (un slug pris par un autre domaine a déjà
+    // levé 23505 → « existe déjà ») : 409 VARIANTES_EXISTANTES si des variantes existent déjà sous le nouveau slug
+    // (domaine supprimé puis recréé : l'unicité donnerait un faux « existe déjà ») ; sinon celles de l'ancien slug le
+    // prennent. Le slug « restauration » ne change jamais (garde ci-dessus) ; la suppression d'un domaine ne touche pas
+    // ses variantes.
+    const nouveauSlug = b.slug !== undefined ? slugify(b.slug) : null;
+    if (nouveauSlug && nouveauSlug !== cur.rows[0].slug) {
+      const variantes = await db.query(
+        `WITH deja AS (SELECT 1 FROM manuel_sections_domaine WHERE domaine_slug = $1 LIMIT 1),
+              suivies AS (UPDATE manuel_sections_domaine SET domaine_slug = $1, updated_at = NOW()
+                           WHERE domaine_slug = $2 AND NOT EXISTS (SELECT 1 FROM deja) RETURNING 1)
+         SELECT EXISTS (SELECT 1 FROM deja) AS deja, (SELECT COUNT(*)::int FROM suivies) AS suivies`,
+        [nouveauSlug, cur.rows[0].slug]
+      );
+      if (variantes.rows[0].deja) {
+        await db.query('ROLLBACK');
+        return res.status(409).json({ code: 'VARIANTES_EXISTANTES', message: 'Des variantes du manuel existent déjà pour ce slug' });
+      }
+    }
+
     if (composants) {
       const existants = (await db.query('SELECT * FROM domaine_composants WHERE domaine_id = $1', [id])).rows;
       const codesEnvoyes = new Set(composants.map((c) => c.code.trim()));

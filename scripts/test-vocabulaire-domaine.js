@@ -30,7 +30,17 @@
  *      lexique valide → clés dérivées résolues, propagé à /auth/me du compte rattaché (allégé) ;
  *      clé en plus (rendus du défaut) ou icône seule → lexique envoyé ; retour au défaut → null ;
  *      domaine par défaut « restauration » : aucun écart de lexique accepté (invariant I1).
- * Nettoie tout ce qu'il crée (clients, acheteur, gérant, domaine de test, admin temporaire).
+ *   7. lot 2c (docs/lot-2c-spec.md §5.11, P11) : manuel et base de connaissances. Admin : badge « sans balises »
+ *      absent partout (GET /admin/manuel, /admin/knowledge-base) ; balises refusées (400 BALISE_INVALIDE,
+ *      BALISE_INTERDITE), variante refusée (404 fiche inconnue, 400 slug « restauration », VARIANTE_DOMAINE_SANS_ECART,
+ *      DOMAINE_INCONNU), rien n'est écrit. Compte Hôtellerie : GET /api/manuel sans forme par défaut que le domaine
+ *      change dans les titres et les parties (hors extraits exclus de scripts/manuel/balise/manuel/<slug>.json), ni
+ *      « [[ », « ]] » ou « ‹clé› ». Variante : CRÉÉE par le test (PUT, brouillon : non servie), validée (servie,
+ *      rendue), relue dans GET /admin/manuel/variantes, trouvée par la recherche du compte, SUPPRIMÉE dans un finally.
+ *      Avant et après la validation : empreintes de GET /api/manuel du compte restauration et de l'admin identiques,
+ *      recherches du compte restauration identiques (une variante validée ne change rien ailleurs).
+ *      Après l'étape C du lot 2c : sur une copie de la base (DB_NAME=fiche_technique_2c, backend de test compris, R2.8.2).
+ * Nettoie tout ce qu'il crée (clients, acheteur, gérant, domaine de test, admin temporaire, variante du manuel).
  *
  * ⚠️ POST /admin/clients envoie l'email de bienvenue si RESEND_API_KEY est renseignée dans
  * l'environnement du BACKEND. Démarrer le backend de test par le lanceur versionné, qui vide les
@@ -84,6 +94,8 @@ const ACHETEUR_EMAIL = 'test-vocabulaire-acheteur@example.com';
 const TOUS_EMAILS = [ADMIN_EMAIL, HOTEL_EMAIL, CERAM_EMAIL, RESTO_EMAIL, GERANT_EMAIL, ACHETEUR_EMAIL];
 const DOM_SLUG = 'test-vocabulaire';
 const DOM_NOM = 'TEST-Domaine Vocabulaire';
+// Lot 2c : texte de la variante du manuel créée puis supprimée par le test (mot rare : la recherche la trouve seule).
+const MARQUE_VARIANTE = 'Variante E2E zygomorphe';
 const PWD = 'TestVocab2026!';
 // Le super_admin temporaire reçoit un mot de passe ALÉATOIRE (jamais réutilisable si un crash
 // avant le nettoyage laissait la ligne en base).
@@ -126,6 +138,7 @@ const CIBLES_191 = [
     await pool.query(`DELETE FROM acheteurs WHERE nom LIKE 'TEST-Voc %'`).catch(() => {});
     await pool.query(`DELETE FROM utilisateurs WHERE email = ANY($1)`, [TOUS_EMAILS]);
     await pool.query(`DELETE FROM domaines_activite WHERE slug = $1 OR nom = $2`, [DOM_SLUG, DOM_NOM]).catch(() => {});
+    await pool.query('DELETE FROM manuel_sections_domaine WHERE contenu LIKE $1', [`${MARQUE_VARIANTE}%`]).catch(() => {});
   };
   await wipe();
   await pool.query(
@@ -577,6 +590,133 @@ const CIBLES_191 = [
         h.status === 404 && h.body?.message === attendu && (vH.Nom('acheteur') === 'Acheteur' || attendu !== 'Acheteur introuvable'), `${h.status} ${h.body?.message}`);
     }
 
+    // ── 5 ter. Manuel et base de connaissances (lot 2c, spec docs/lot-2c-spec.md §5.11, P11) ──────────────
+    {
+      const { executeToolCall } = require('../src/services/aiToolHandlers');
+      const { formesParDefaut } = require('../src/utils/manuelRendu');
+      const { REGLES_VISIBILITE } = require('../src/utils/manuelVisibilite');
+      const md5 = (x) => require('crypto').createHash('md5').update(JSON.stringify(x), 'utf8').digest('hex');
+      const BALISE_BRUTE = /\[\[|\]\]|‹[a-z0-9_]+›/;
+      // Passages exclus au balisage (champ « extrait » de scripts/manuel/balise/manuel/<slug>.json), retirés avant la recherche.
+      const extraitsExclus = (slug) => {
+        try {
+          const j = JSON.parse(fs.readFileSync(path.join(RACINE, 'scripts', 'manuel', 'balise', 'manuel', `${slug}.json`), 'utf8'));
+          return (j.exclusions || []).map((e) => e.extrait).filter((x) => typeof x === 'string' && x);
+        } catch (_) { return []; }
+      };
+      // Formes par défaut d'une clé que le domaine Hôtellerie change (même rendu ici et par défaut : pas un reste).
+      const change = (cle) => !!cle && ['nom', 'court'].some((m) => [false, true].some((pl) => vH[m](cle, pl) !== vocabDefaut[m](cle, pl)));
+      const restes = (texte, slug) => {
+        let t = String(texte ?? '');
+        for (const x of extraitsExclus(slug)) t = t.split(x).join(' ');
+        return formesParDefaut(t).filter((o) => change(o.cle)).map((o) => o.texte);
+      };
+
+      // Admin : badge « sans balises » absent partout (manuel non balisé, ou balisé en entier).
+      let r = await A('/admin/manuel');
+      const fichesAdmin = Array.isArray(r.body) ? r.body : [];
+      check('GET /admin/manuel → 200, champ booléen sansBalises sur chaque fiche', r.status === 200 && fichesAdmin.length > 0 && fichesAdmin.every((f) => typeof f.sansBalises === 'boolean'), String(r.status));
+      check('GET /admin/manuel : badge « sans balises » absent partout', fichesAdmin.every((f) => f.sansBalises === false), fichesAdmin.filter((f) => f.sansBalises).map((f) => f.slug).join(', '));
+      r = await A('/admin/knowledge-base');
+      const entreesAdmin = Array.isArray(r.body) ? r.body : [];
+      check('GET /admin/knowledge-base → 200, badge « sans balises » absent partout', r.status === 200 && entreesAdmin.length > 0 && entreesAdmin.every((e) => e.sansBalises === false),
+        entreesAdmin.filter((e) => e.sansBalises !== false).map((e) => e.id).join(', '));
+
+      // Compte Hôtellerie : titres et parties dans les mots du domaine, aucune balise brute.
+      r = await H('/api/manuel');
+      const manuelH = Array.isArray(r.body) ? r.body : [];
+      check('GET /api/manuel (client Hôtellerie) → 200', r.status === 200 && manuelH.length > 0, String(r.status));
+      const restesH = manuelH.flatMap((f) => [...restes(f.titre, f.slug), ...restes(f.partie, f.slug)].map((x) => `${f.slug} : « ${x} »`));
+      check('manuel Hôtellerie : aucune forme par défaut que le domaine change dans les titres et les parties (hors extraits exclus)', restesH.length === 0, restesH.slice(0, 8).join(' ; '));
+      const brutesH = manuelH.filter((f) => BALISE_BRUTE.test(`${f.titre} ${f.partie} ${f.contenu}`)).map((f) => f.slug);
+      check('manuel Hôtellerie : ni « [[ », ni « ]] », ni « ‹clé› »', brutesH.length === 0, brutesH.join(', '));
+
+      // Références d'avant la variante : manuel du compte restauration et de l'admin, recherches du compte restauration.
+      const QUESTIONS_R = ['créer un labo', 'transfert vers une activité', 'calcul du food cost', MARQUE_VARIANTE];
+      const rechercheR = async () => JSON.stringify(await Promise.all(QUESTIONS_R.map((query) => executeToolCall(restoId, 'search_knowledge_base', { query }))));
+      const empreintes = async () => {
+        const [mr, ma] = [await R('/api/manuel'), await A('/api/manuel')];
+        return { resto: mr.status === 200 ? md5(mr.body) : `statut ${mr.status}`, admin: ma.status === 200 ? md5(ma.body) : `statut ${ma.status}`, recherche: await rechercheR() };
+      };
+      const avant = await empreintes();
+
+      // Fiche de l'essai : visible du compte Hôtellerie sans règle de visibilité, sans variante Hôtellerie déjà posée.
+      r = await A('/admin/manuel/variantes');
+      check('GET /admin/manuel/variantes (admin) → 200, liste', r.status === 200 && Array.isArray(r.body), String(r.status));
+      const dejaH = new Set((Array.isArray(r.body) ? r.body : []).filter((v) => v.domaineSlug === 'hotellerie').map((v) => v.sectionId));
+      const cible = manuelH.find((f) => !(f.slug in REGLES_VISIBILITE) && !dejaH.has(f.id));
+      check('fiche d\'essai trouvée (visible du compte Hôtellerie, sans variante Hôtellerie)', !!cible, cible ? cible.slug : '');
+      const avantAdmin = fichesAdmin.find((f) => cible && f.id === cible.id);
+
+      if (cible && avantAdmin) {
+        // Refus, sans écriture.
+        r = await put(A, `/admin/manuel/${cible.id}`, { contenu: 'Voir [[nom:labbo]].' });
+        check('PUT /admin/manuel/:id balise à clé inconnue → 400 BALISE_INVALIDE', r.status === 400 && r.body?.code === 'BALISE_INVALIDE' && Array.isArray(r.body.balises), `${r.status} ${r.body?.code}`);
+        check('refus BALISE_INVALIDE : message non rendu (la balise citée reste brute)', typeof r.body?.message === 'string' && r.body.message.includes('[[nom:labbo]]'), r.body?.message);
+        r = await put(A, `/admin/manuel/${cible.id}`, { motsCles: 'aide, [[nom:labo]]' });
+        check('PUT /admin/manuel/:id balise dans les mots-clés → 400 BALISE_INTERDITE', r.status === 400 && r.body?.code === 'BALISE_INTERDITE', `${r.status} ${r.body?.code}`);
+        if (entreesAdmin[0]) {
+          r = await put(A, `/admin/knowledge-base/${entreesAdmin[0].id}`, { categorie: '[[nom:labo]]' });
+          check('PUT /admin/knowledge-base/:id balise dans la catégorie → 400 BALISE_INTERDITE', r.status === 400 && r.body?.code === 'BALISE_INTERDITE', `${r.status} ${r.body?.code}`);
+        }
+        r = await put(A, '/admin/manuel/999999/variantes/hotellerie', { contenu: MARQUE_VARIANTE, statut: 'brouillon' });
+        check('PUT variante d\'une fiche inconnue → 404', r.status === 404, String(r.status));
+        r = await put(A, `/admin/manuel/${cible.id}/variantes/restauration`, { contenu: MARQUE_VARIANTE, statut: 'brouillon' });
+        check('PUT variante « restauration » → 400', r.status === 400, String(r.status));
+        if (domaines.some((d) => d.slug === 'cafe' && Object.keys(d.lexiqueEcarts || {}).length === 0)) {
+          r = await put(A, `/admin/manuel/${cible.id}/variantes/cafe`, { contenu: MARQUE_VARIANTE, statut: 'valide' });
+          check('PUT variante d\'un domaine sans écart (café) → 400 VARIANTE_DOMAINE_SANS_ECART', r.status === 400 && r.body?.code === 'VARIANTE_DOMAINE_SANS_ECART', `${r.status} ${r.body?.code}`);
+        }
+        r = await put(A, `/admin/manuel/${cible.id}/variantes/test-vocabulaire-absent`, { contenu: MARQUE_VARIANTE, statut: 'brouillon' });
+        check('PUT variante d\'un domaine absent → 400 DOMAINE_INCONNU', r.status === 400 && r.body?.code === 'DOMAINE_INCONNU', `${r.status} ${r.body?.code}`);
+        r = await A('/admin/manuel');
+        const apresRefus = (Array.isArray(r.body) ? r.body : []).find((f) => f.id === cible.id);
+        const variantesRefus = await pool.query('SELECT COUNT(*)::int AS n FROM manuel_sections_domaine WHERE contenu LIKE $1', [`${MARQUE_VARIANTE}%`]);
+        check('après les refus : fiche inchangée (contenu, mots-clés, date), aucune variante écrite',
+          !!apresRefus && apresRefus.contenu === avantAdmin.contenu && apresRefus.motsCles === avantAdmin.motsCles && apresRefus.updatedAt === avantAdmin.updatedAt && variantesRefus.rows[0].n === 0,
+          JSON.stringify({ n: variantesRefus.rows[0].n }));
+
+        // Variante : créée en brouillon (non servie), validée (servie), supprimée.
+        const TEXTE = `${MARQUE_VARIANTE} : [[Le:labo]] et [[le:activite:pl]] de votre hôtel.`;
+        const servie = async () => ((await H('/api/manuel')).body || []).find((f) => f.id === cible.id) || null;
+        let creee = false;
+        try {
+          r = await put(A, `/admin/manuel/${cible.id}/variantes/hotellerie`, { contenu: TEXTE, statut: 'brouillon' });
+          creee = r.status === 201;
+          check('PUT variante Hôtellerie (brouillon) → 201, texte brut, domaine présent et à écart, pas « à revoir »',
+            creee && r.body?.statut === 'brouillon' && r.body.contenu === TEXTE && r.body.domaineExiste === true && r.body.domaineAvecEcart === true && r.body.aRevoir === false,
+            `${r.status} ${JSON.stringify(r.body)?.slice(0, 160)}`);
+          let f = await servie();
+          check('variante en brouillon : jamais servie (texte commun)', !!f && f.contenu === cible.contenu && f.titre === cible.titre);
+          r = await put(A, `/admin/manuel/${cible.id}/variantes/hotellerie`, { statut: 'valide' });
+          check('PUT variante { statut: valide } → 200, contenu gardé', r.status === 200 && r.body?.statut === 'valide' && r.body.contenu === TEXTE, `${r.status} ${r.body?.message || ''}`);
+          f = await servie();
+          check(`variante validée : servie au compte Hôtellerie, rendue (« ${rendre(vH, TEXTE)} »), titre et partie communs`,
+            !!f && f.contenu === rendre(vH, TEXTE) && f.titre === cible.titre && f.partie === cible.partie && !BALISE_BRUTE.test(f.contenu), f?.contenu);
+          r = await A('/admin/manuel/variantes');
+          const lue = (Array.isArray(r.body) ? r.body : []).find((v) => v.sectionId === cible.id && v.domaineSlug === 'hotellerie');
+          check('GET /admin/manuel/variantes : variante validée, texte brut, pas « à revoir »', !!lue && lue.statut === 'valide' && lue.contenu === TEXTE && lue.aRevoir === false && lue.slug === cible.slug);
+          const rh = await executeToolCall(hotelId, 'search_knowledge_base', { query: MARQUE_VARIANTE });
+          const trouvee = (rh.results || []).find((x) => x.contenu === rendre(vH, TEXTE));
+          check('recherche du compte Hôtellerie : la variante validée est citée, rendue, sans balise', !!trouvee && trouvee.titre.startsWith('Manuel — ') && !BALISE_BRUTE.test(JSON.stringify(rh)),
+            (rh.results || []).map((x) => x.titre).join(' | '));
+          const apres = await empreintes();
+          check('variante validée : GET /api/manuel du compte restauration identique (empreinte)', apres.resto === avant.resto, `${avant.resto} → ${apres.resto}`);
+          check('variante validée : GET /api/manuel de l\'admin identique (empreinte)', apres.admin === avant.admin, `${avant.admin} → ${apres.admin}`);
+          check('variante validée : recherches du compte restauration identiques', apres.recherche === avant.recherche);
+        } finally {
+          if (creee) {
+            const d = await del(A, `/admin/manuel/${cible.id}/variantes/hotellerie`);
+            check('DELETE variante Hôtellerie → 204 (finally)', d.status === 204, String(d.status));
+          }
+        }
+        const f = await servie();
+        check('variante supprimée : texte commun servi de nouveau', !!f && f.contenu === cible.contenu);
+        r = await del(A, `/admin/manuel/${cible.id}/variantes/hotellerie`);
+        check('DELETE d\'une variante absente → 404', r.status === 404, String(r.status));
+      }
+    }
+
     // ── 6. Validation du lexique (PUT /api/domaines/:id) sur un domaine de test ─────────────────
     ({ status, body } = await post(A, '/api/domaines', { nom: DOM_NOM, slug: DOM_SLUG, description: 'Domaine de test du vocabulaire' }));
     check('POST /api/domaines (domaine de test) → 201, lexique par défaut, aucun écart',
@@ -738,11 +878,12 @@ const CIBLES_191 = [
       `SELECT (SELECT COUNT(*)::int FROM utilisateurs WHERE email = ANY($1)) AS users,
               (SELECT COUNT(*)::int FROM domaines_activite WHERE slug = $2 OR nom = $3) AS domaines,
               (SELECT COUNT(*)::int FROM acheteurs WHERE nom LIKE 'TEST-Voc %') AS acheteurs,
-              (SELECT COUNT(*)::int FROM abonnements WHERE client_id = ANY($4)) AS abonnements`,
-      [TOUS_EMAILS, DOM_SLUG, DOM_NOM, createdClients.length ? createdClients : [0]]
+              (SELECT COUNT(*)::int FROM abonnements WHERE client_id = ANY($4)) AS abonnements,
+              (SELECT COUNT(*)::int FROM manuel_sections_domaine WHERE contenu LIKE $5) AS variantes`,
+      [TOUS_EMAILS, DOM_SLUG, DOM_NOM, createdClients.length ? createdClients : [0], `${MARQUE_VARIANTE}%`]
     );
-    check('nettoyage complet (0 utilisateur, 0 domaine, 0 acheteur, 0 abonnement de test)',
-      egal(reste.rows[0], { users: 0, domaines: 0, acheteurs: 0, abonnements: 0 }), JSON.stringify(reste.rows[0]));
+    check('nettoyage complet (0 utilisateur, 0 domaine, 0 acheteur, 0 abonnement, 0 variante du manuel de test)',
+      egal(reste.rows[0], { users: 0, domaines: 0, acheteurs: 0, abonnements: 0, variantes: 0 }), JSON.stringify(reste.rows[0]));
   }
 
   const failed = results.filter((x) => !x.ok);

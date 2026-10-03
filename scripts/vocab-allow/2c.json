@@ -208,5 +208,288 @@
     "apres": "ai_knowledge_base",
     "type": "discriminant",
     "justification": "Nom de table (clé de CHAMPS_BALISES et de manuelSansBaliseAdmis.json) : technique."
+  },
+  {
+    "fichier": "src/controllers/aiKnowledgeController.js",
+    "avant": null,
+    "apres": "mots_cles",
+    "type": "discriminant",
+    "justification": "Nom de colonne cité par le refus 400 BALISE_INTERDITE (INTERDITS_BASE, spec 2c R5.7.1) : technique, jamais un terme (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/aiKnowledgeController.js",
+    "avant": null,
+    "apres": "categorie",
+    "type": "discriminant",
+    "justification": "Nom de colonne cité par le refus 400 BALISE_INTERDITE (INTERDITS_BASE, spec 2c R5.7.1) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/aiKnowledgeController.js",
+    "avant": null,
+    "apres": "string",
+    "type": "discriminant",
+    "justification": "Opérande de typeof (contrôle des champs interdits, R5.7.1) : technique, jamais affiché (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/aiKnowledgeController.js",
+    "avant": null,
+    "apres": "ai_knowledge_base",
+    "type": "discriminant",
+    "justification": "Nom de table passé à sansBalisesDesLignes (badge « sans balises », R5.7.2) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/aiKnowledgeController.js",
+    "avant": "Un article avec ce titre existe déjà",
+    "apres": null,
+    "type": "admin",
+    "justification": "Message 409 des routes POST /admin/knowledge-base et PUT /admin/knowledge-base/:id (src/routes/admin.js), garde requireSuperAdmin : ses deux littéraux identiques sont réunis dans la constante MSG_DOUBLON (même texte, aussi employé par le refus des titres de même rendu, R5.7.1) ; vocabulaire LabFlow (I4) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/aiKnowledgeController.js",
+    "avant": null,
+    "apres": "Titre trop long (⟦·⟧ caractères au plus)",
+    "type": "admin",
+    "justification": "Message 400 des routes POST /admin/knowledge-base et PUT /admin/knowledge-base/:id (src/routes/admin.js), garde requireSuperAdmin (titre > 200, varchar(200), R5.7.1 : aujourd'hui une erreur de base, donc 500) ; aucun terme, vocabulaire LabFlow (I4) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "VARIANTES_EXISTANTES",
+    "type": "discriminant",
+    "justification": "Code du refus 409 du renommage de slug (spec 2c R5.9), comparé par code : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/domainesController.js",
+    "avant": null,
+    "apres": "Des variantes du manuel existent déjà pour ce slug",
+    "type": "admin",
+    "justification": "Message 409 VARIANTES_EXISTANTES (spec 2c R5.9) de la route PUT /api/domaines/:id (src/routes/domaines.js:77), garde requireSuperAdmin ; texte de la spec, aucun terme (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "mots_cles",
+    "occurrences": 3,
+    "type": "discriminant",
+    "justification": "Nom de colonne (champs interdits de balise du manuel et des variantes, R5.7.1 ; colonne lue par garder()) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "slug",
+    "type": "discriminant",
+    "justification": "Nom de colonne cité par le refus 400 BALISE_INTERDITE (INTERDITS_MANUEL, R5.7.1) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "icone",
+    "type": "discriminant",
+    "justification": "Nom de colonne cité par le refus 400 BALISE_INTERDITE (INTERDITS_MANUEL, R5.7.1) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "ecran",
+    "type": "discriminant",
+    "justification": "Nom de colonne cité par le refus 400 BALISE_INTERDITE (INTERDITS_MANUEL, R5.7.1) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Titre trop long (⟦·⟧ caractères au plus)",
+    "type": "admin",
+    "justification": "Message 400 (titre > 200, varchar(200), R5.7.1) des routes POST /admin/manuel et PUT /admin/manuel/:id (src/routes/admin.js), garde requireSuperAdmin, et des variantes (PUT /admin/manuel/:id/variantes/:domaineSlug, même garde) ; aucun terme (I4) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Partie trop longue (⟦·⟧ caractères au plus)",
+    "type": "admin",
+    "justification": "Message 400 (partie > 60, varchar(60), R5.7.1) des routes POST /admin/manuel et PUT /admin/manuel/:id (src/routes/admin.js), garde requireSuperAdmin ; aucun terme (I4) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "string",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Opérande de typeof (champs interdits, contenu d'une variante) : technique, jamais affiché (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "manuel_sections",
+    "type": "discriminant",
+    "justification": "Nom de table passé à sansBalisesDesLignes (badge « sans balises », R5.7.2) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "restauration",
+    "type": "discriminant",
+    "justification": "Slug du domaine par défaut (SLUG_DEFAUT), refusé comme domaine de variante (I12, R5.7.3 ; contrainte de la migration 193) : un code, jamais affiché (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "brouillon",
+    "type": "discriminant",
+    "justification": "Valeur d'état de manuel_sections_domaine.statut (contrainte de la migration 193) : un code (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "valide",
+    "type": "discriminant",
+    "justification": "Valeur d'état de manuel_sections_domaine.statut (contrainte de la migration 193) : un code (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "\\r",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Constante SQL E'\\r' de md5(replace(s.contenu, E'\\r', '')) (aRevoir et base_md5 des variantes, R5.7.3) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Constante SQL '' de md5(replace(s.contenu, E'\\r', '')) (aRevoir et base_md5 des variantes, R5.7.3) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Slug de domaine invalide (minuscules, chiffres et tirets, 50 caractères au plus ; jamais « restauration »)",
+    "type": "admin",
+    "justification": "Message 400 des routes GET /admin/manuel/variantes, PUT et DELETE /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin (slug mal formé ou « restauration », R5.7.3) ; aucun terme (I4) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Contenu requis",
+    "type": "admin",
+    "justification": "Message 400 des routes GET /admin/manuel/variantes, PUT et DELETE /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin (création sans contenu) ; aucun terme (I4) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Erreur serveur",
+    "occurrences": 3,
+    "type": "admin",
+    "justification": "Message 500 des routes GET /admin/manuel/variantes, PUT et DELETE /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin, même texte que les autres routes du fichier ; aucun terme (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Identifiant invalide",
+    "occurrences": 2,
+    "type": "admin",
+    "justification": "Message 400 des routes GET /admin/manuel/variantes, PUT et DELETE /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin, même texte que les autres routes du fichier ; aucun terme (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "titre",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Nom de champ et de colonne d'une variante (champs balisables, garder()) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "contenu",
+    "type": "discriminant",
+    "justification": "Nom de champ balisable d'une variante (R5.7.1) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Statut invalide : brouillon ou valide",
+    "type": "admin",
+    "justification": "Message 400 des routes GET /admin/manuel/variantes, PUT et DELETE /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin ; « brouillon » et « valide » sont les deux états d'une variante, aucun terme (I4) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Section introuvable",
+    "occurrences": 2,
+    "type": "admin",
+    "justification": "Message 404 de la route PUT /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin, même texte que PUT /admin/manuel/:id ; aucun terme (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "DOMAINE_INCONNU",
+    "type": "discriminant",
+    "justification": "Code du refus 400 de la création d'une variante pour un domaine absent (R5.7.3) : comparé par code (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Aucun domaine de slug « ⟦·⟧ » : la variante ne peut pas être créée",
+    "type": "admin",
+    "justification": "Message 400 DOMAINE_INCONNU (R5.7.3) des routes GET /admin/manuel/variantes, PUT et DELETE /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin ; aucun terme (I4) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "VARIANTE_DOMAINE_SANS_ECART",
+    "type": "discriminant",
+    "justification": "Code du refus 400 de la création d'une variante pour un domaine sans écart de lexique (I12, R5.7.3) : comparé par code (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Le domaine « ⟦·⟧ » n'a pas de lexique propre : une variante n'y serait jamais servie",
+    "type": "admin",
+    "justification": "Message 400 VARIANTE_DOMAINE_SANS_ECART (I12, R5.7.3) des routes GET /admin/manuel/variantes, PUT et DELETE /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin ; aucun terme (I4) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "motsCles",
+    "type": "discriminant",
+    "justification": "Nom de champ du corps d'une variante (motsCles, lu par garder()) : technique (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Variante introuvable",
+    "type": "admin",
+    "justification": "Message 404 de la route DELETE /admin/manuel/:id/variantes/:domaineSlug (src/routes/admin.js), garde requireSuperAdmin ; aucun terme (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/routes/admin.js",
+    "avant": null,
+    "apres": "/manuel/variantes",
+    "type": "discriminant",
+    "justification": "Chemin de route admin des variantes (R5.7.3), garde requireSuperAdmin : technique, jamais affiché (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/routes/admin.js",
+    "avant": null,
+    "apres": "/manuel/:id/variantes/:domaineSlug",
+    "occurrences": 2,
+    "type": "discriminant",
+    "justification": "Chemin des routes admin PUT et DELETE d'une variante (R5.7.3), garde requireSuperAdmin : technique, jamais affiché (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "\n\n## Vocabulaire du compte\nCe compte n'emploie pas tous les mots de LabFlow. Correspondances (mot de LabFlow → mot du compte) :\n⟦·⟧⟦?\nUnités du compte (composants de son domaine) :\n⟦·⟧|⟧\nRègles :\n1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.\n2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.\n3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (`search_knowledge_base`), puis rends la réponse avec les mots du compte.⟦·⟧",
+    "apres": "\n\n## Vocabulaire du compte\nCe compte n'emploie pas tous les mots de LabFlow. Correspondances (mot de LabFlow → mot du compte) :\n⟦·⟧⟦?\nUnités du compte (composants de son domaine) :\n⟦·⟧|⟧\nRègles :\n1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.\n2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.\n3. Le manuel et la base de connaissances sont écrits avec les mots du compte. Quelques noms de LabFlow y restent tels quels (noms d'offres comme « Activité Basique », « sous-produit ») : cite-les sans les traduire.⟦·⟧",
+    "type": "non-repliable",
+    "justification": "Glossaire « Vocabulaire du compte » (spec 2c R5.6) : la règle 3 « La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots » devient « Le manuel et la base de connaissances sont écrits avec les mots du compte… cite-les sans les traduire » (le manuel et la base sont rendus dans les mots du compte depuis le lot 2c). glossaireVocabulaire parcourt les clés du lexique (non-repliable, lot 2b §7.3) ; absent pour un compte restauration, café ou boulangerie (prompt identique à la référence, test/B1-assistant.test.js) (lot 2c, étape S)."
+  },
+  {
+    "fichier": "src/services/aiService.js",
+    "avant": "Activité Basique",
+    "apres": "Activité Basique",
+    "mode": "residuels",
+    "type": "formule",
+    "justification": "Nom commercial de formule cité par la règle 3 du glossaire (spec 2c R5.6) comme exemple de nom de LabFlow resté tel quel dans le manuel (exclusion nom-fige) : le modèle le cite sans le traduire ; jamais le terme « activité » du domaine (lot 2c, étape S)."
   }
 ]

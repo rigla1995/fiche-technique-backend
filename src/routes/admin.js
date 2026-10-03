@@ -185,6 +185,10 @@ router.delete('/knowledge-base/:id', authenticate, requireSuperAdmin, kbRemove);
 // ── Manuel d'utilisation (centre d'aide) ──────────────────────────────────────
 const manuel = require('../controllers/manuelController');
 router.get('/manuel', authenticate, requireSuperAdmin, manuel.adminList);
+// Lot 2c (R5.7.3) : variantes par domaine (manuel_sections_domaine), avant les routes /manuel/:id.
+router.get('/manuel/variantes', authenticate, requireSuperAdmin, manuel.listVariantes);
+router.put('/manuel/:id/variantes/:domaineSlug', authenticate, requireSuperAdmin, manuel.putVariante);
+router.delete('/manuel/:id/variantes/:domaineSlug', authenticate, requireSuperAdmin, manuel.removeVariante);
 router.post('/manuel', authenticate, requireSuperAdmin, manuel.create);
 router.put('/manuel/:id', authenticate, requireSuperAdmin, manuel.update);
 router.post('/manuel/:id/restore', authenticate, requireSuperAdmin, manuel.restore);

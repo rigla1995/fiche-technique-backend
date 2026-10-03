@@ -2,7 +2,7 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 509 unité(s), 41 fichier(s).
+# 511 unité(s), 41 fichier(s).
 
 src/controllers/abonnementController.js
   l. 1594
@@ -1010,33 +1010,33 @@ src/middleware/auth.js
     miroir : Accès non autorisé à ce local
 
 src/services/aiService.js
-  l. 48
+  l. 50
     défaut : ⟦·⟧
     miroir : ⟦·⟧
-  l. 48
+  l. 50
     défaut : ⟦·⟧
     miroir : ⟦·⟧
-  l. 48
+  l. 50
     défaut : ⟦·⟧
     miroir : ⟦·⟧
-  l. 48
+  l. 50
     défaut : ⟦·⟧
     miroir : ⟦·⟧
-  l. 88
+  l. 91
     défaut : « ⟦·⟧ » (ligne de stock, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'une recette → « ⟦·⟧ »⟦·⟧
     miroir : « ⟦·⟧ » (ligne d'armoire, champ `ingredient` des données) → « ⟦·⟧ »⟦·⟧ ; « ⟦·⟧ » d'un assemblage → « ⟦·⟧ »⟦·⟧
-  l. 102
+  l. 105
     défaut : ⟦?|
 4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
     miroir : ⟦?|
 4. « articles vendables » (configuration d'encaissement, `get_config_vente`) = tout ce que le compte vend (inventions et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
-  l. 111
+  l. 114
     défaut : ⟦·⟧
     miroir : ⟦·⟧
-  l. 112
+  l. 115
     défaut : ⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)
     miroir : ⟦·⟧ = ⟦·⟧« ⟦·⟧ » (⟦·⟧ dans LabFlow)
-  l. 114
+  l. 117
     défaut : 
 
 ## Vocabulaire du compte
@@ -1047,7 +1047,7 @@ Unités du compte (composants de son domaine) :
 Règles :
 1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.
 2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.
-3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (`search_knowledge_base`), puis rends la réponse avec les mots du compte.⟦?|
+3. Le manuel et la base de connaissances sont écrits avec les mots du compte. Quelques noms de LabFlow y restent tels quels (noms d'offres comme « Activité Basique », « sous-produit ») : cite-les sans les traduire.⟦?|
 4. « articles vendables » (configuration de vente, `get_config_vente`) = tout ce que le compte vend (produits et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
     miroir : 
 
@@ -1059,9 +1059,9 @@ Unités du compte (composants de son domaine) :
 Règles :
 1. Réponds au client avec les mots du compte (à droite des flèches), jamais avec ceux de LabFlow.
 2. Les noms d'outils, les champs et les codes (`type_appro`, `canal`, `type_perte`, `PT`) restent ceux de LabFlow : ne les montre pas au client.
-3. La base de connaissances et le manuel sont rédigés avec les mots de LabFlow : cherche avec ces mots (`search_knowledge_base`), puis rends la réponse avec les mots du compte.⟦?|
+3. Le manuel et la base de connaissances sont écrits avec les mots du compte. Quelques noms de LabFlow y restent tels quels (noms d'offres comme « Activité Basique », « sous-produit ») : cite-les sans les traduire.⟦?|
 4. « articles vendables » (configuration d'encaissement, `get_config_vente`) = tout ce que le compte vend (inventions et articles revendus) : ne le traduis pas par « ⟦·⟧ vendables ».⟧
-  l. 127
+  l. 130
     défaut : ⟦?
 
 ## Contexte du client (DÉJÀ CONNU — ne rappelle PAS get_client_info, get_abonnement ni get_fournisseurs pour ces infos)
@@ -1072,7 +1072,7 @@ Utilise directement ces IDs d'activités/labos dès que le client nomme une acti
 ## Contexte du client (DÉJÀ CONNU — ne rappelle PAS get_client_info, get_abonnement ni get_fournisseurs pour ces infos)
 ⟦·⟧
 Utilise directement ces IDs de locaux/usines dès que le client nomme un local ou une usine. L'abonnement, la capacité souscrite et les compteurs ci-dessus sont déjà à jour : réponds-y directement, sans appeler d'outil.|⟧
-  l. 132
+  l. 135
     défaut : Tu es l'assistant IA professionnel de LabFlow. Aujourd'hui : ⟦·⟧.
 Tu communiques avec le client via Messenger ou le chat web de l'application. Tes réponses doivent être professionnelles, structurées et bien formatées (Markdown léger).
 Le client utilise l'agent pour CONSULTER ses données comme s'il était dans l'application — en lecture seule. Tu ne modifies, ne crées et ne supprimes JAMAIS de données ; tu réponds aux questions et tu envoies des rapports.⟦·⟧
@@ -1157,103 +1157,109 @@ Commence TOUJOURS par [CONF:0.XX] (niveau de confiance 0.00-1.00 selon la compl�
 - Si abandons élevés détectés → signaler avec 📉
 
 src/services/aiToolHandlers.js
-  l. 61
+  l. 63
     défaut : coût matière
     miroir : enveloppe matière
-  l. 61
+  l. 63
     défaut : food cost
     miroir : incidence matière
-  l. 63
+  l. 65
     défaut : Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
     miroir : Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
-  l. 64
+  l. 66
     défaut : ⟦?⟦·⟧ | |⟧Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevé) | Types de perte : ⟦·⟧
     miroir : ⟦?⟦·⟧ | |⟧Seuil ⟦·⟧ : ⟦·⟧ % (au-delà = élevée) | Types d'abandon : ⟦·⟧
-  l. 78
+  l. 80
     défaut : ⟦?⟦·⟧|aucune⟧
     miroir : ⟦?⟦·⟧|aucun⟧
-  l. 79
+  l. 81
     défaut : ⟦?⟦·⟧|aucun⟧
     miroir : ⟦?⟦·⟧|aucune⟧
-  l. 82
+  l. 84
     défaut : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Activités: ⟦?⟦·⟧|aucune⟧ | Labos: ⟦?⟦·⟧|aucun⟧
     miroir : Client: ⟦?⟦·⟧|—⟧ | Mode du compte: ⟦?⟦·⟧|—⟧ | Locaux: ⟦?⟦·⟧|aucun⟧ | Usines: ⟦?⟦·⟧|aucune⟧
-  l. 283
+  l. 285
     défaut : ⟦·⟧⟦? (labo)|⟧
     miroir : ⟦·⟧⟦? (abr-usine)|⟧
-  l. 413
+  l. 437
     défaut : Prestataire
     miroir : Agence
-  l. 567
+  l. 593
     défaut : Récupère le profil du client : nom, email, liste des activités (id + nom), liste des labos (id + nom). Appeler en premier pour connaître le périmètre disponible.
     miroir : Récupère le profil du client : nom, email, liste des locaux (id + nom), liste des usines (id + nom). Appeler en premier pour connaître le périmètre disponible.
-  l. 572
+  l. 598
     défaut : Récupère le stock d'ingrédients. Sans filtre = toutes activités et labos. Supporte filtrage par activité, labo, ingrédient, et période.
     miroir : Récupère l'armoire de provisions. Sans filtre = tous locaux et usines. Supporte filtrage par local, usine, provision, et période.
-  l. 576
+  l. 602
     défaut : ID de l'activité
     miroir : ID du local
-  l. 577
+  l. 603
     défaut : ID du labo
     miroir : ID de l'usine
-  l. 578
+  l. 604
     défaut : Nom partiel de l'ingrédient (recherche ILIKE)
     miroir : Nom partiel de la provision (recherche ILIKE)
-  l. 588
+  l. 614
     défaut : Récupère l'historique des approvisionnements manuels (achats) avec quantités et prix unitaires en TND. Les réassorts par transfert labo→activité relèvent de get_transferts.
     miroir : Récupère l'historique des rentrées manuelles (achats) avec quantités et prix unitaires en TND. Les réassorts par expédition usine→local relèvent de get_transferts.
-  l. 604
+  l. 630
     défaut : Récupère l'historique des pertes d'ingrédients. Filtrable par type de perte (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).
     miroir : Récupère l'historique des abandons de provisions. Filtrable par type d'abandon (codes du domaine du compte, ex. avarie / dechet — voir le contexte du client).
-  l. 611
+  l. 637
     défaut : Filtrer par type de perte (code du domaine, ex. avarie, dechet)
     miroir : Filtrer par type d'abandon (code du domaine, ex. avarie, dechet)
-  l. 621
+  l. 647
     défaut : Récupère l'historique des inventaires.
     miroir : Récupère l'historique des pesées.
-  l. 637
+  l. 663
     défaut : Récupère l'historique des transferts labo → activité.
     miroir : Récupère l'historique des expéditions usine → local.
-  l. 653
+  l. 679
     défaut : Récupère le référentiel des articles/ingrédients du client : nom et unité. Pour répondre aux questions sur le catalogue d'articles (les prix viennent des approvisionnements : get_stock, get_appros).
     miroir : Récupère l'encyclopédie des denrées/matières du client : nom et unité. Pour répondre aux questions sur le catalogue de denrées (les prix viennent des rentrées : get_stock, get_appros).
-  l. 657
+  l. 683
     défaut : Nom partiel d'article (recherche ILIKE)
     miroir : Nom partiel de denrée (recherche ILIKE)
-  l. 665
+  l. 691
     défaut : Récupère la liste des fournisseurs de l'entreprise (nom, adresse, téléphone).
     miroir : Récupère la liste des enseignes de l'entreprise (nom, adresse, téléphone).
-  l. 669
+  l. 695
     défaut : Nom partiel de fournisseur (recherche ILIKE)
     miroir : Nom partiel d'enseigne (recherche ILIKE)
-  l. 676
+  l. 702
     défaut : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre d'activités/labos/gérants, montant d'onboarding, date d'acceptation du contrat.
     miroir : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre de locaux/usines/animatrices, montant d'onboarding, date d'acceptation du contrat.
-  l. 681
+  l. 707
     défaut : Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.
     miroir : Récupère un résumé des encaissements : nombre d'encaissements, CA TTC (TND), enveloppe matière, incidence matière % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), écart brut, panier moyen, et répartition par canal (direct / prestataire). Filtrable par local, période et canal.
-  l. 685
+  l. 711
     défaut : ID de l'activité
     miroir : ID du local
-  l. 686
+  l. 712
     défaut : ID du labo (pour les ventes saisies au niveau labo)
     miroir : ID de l'usine (pour les encaissements saisis au niveau usine)
-  l. 696
+  l. 722
     défaut : Récupère la liste des produits / fiches techniques du client (nom, description).
     miroir : Récupère la liste des inventions / états techniques du client (nom, description).
-  l. 700
+  l. 726
     défaut : Nom partiel de produit (recherche ILIKE)
     miroir : Nom partiel d'invention (recherche ILIKE)
-  l. 708
+  l. 734
     défaut : Récupère la configuration de vente : prestataires de livraison actifs par activité, charges fixes par activité, et articles vendables par activité (avec prix de vente). Filtrable par activité.
     miroir : Récupère la configuration d'encaissement : agences de livraison actives par local, charges fixes par local, et articles vendables par local (avec prix de vente). Filtrable par local.
-  l. 712
+  l. 738
     défaut : ID de l'activité
     miroir : ID du local
-  l. 719
+  l. 745
     défaut : Génère et envoie par email un rapport Excel récapitulant stock, pertes, inventaires et transferts du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).
     miroir : Génère et envoie par email un rapport Excel récapitulant armoire, abandons, pesées et expéditions du client. À utiliser quand le client demande explicitement un rapport, ou propose-le toi-même quand c'est pertinent (l'email de destination est celui configuré pour l'agent).
-  l. 739
+  l. 757
+    défaut : Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (fiche technique, food cost, coût matière, stock, approvisionnements, pertes, inventaire, transferts, articles valorisés, produits vendables/utilisables, seuil minimum, TVA, marge, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.
+    miroir : Recherche dans la base de connaissances métier LabFlow pour comprendre/expliquer un concept (état technique, incidence matière, enveloppe matière, armoire, rentrées, abandons, pesée, expéditions, denrées valorisées, inventions vendues, inventions utiles, seuil minimum, TVA, écart, panier moyen…). À utiliser DÈS QUE le client pose une question conceptuelle, demande une définition, un conseil ou une interprétation — AVANT de répondre.
+  l. 761
+    défaut : Mots-clés ou question du concept à rechercher (ex: "fiche technique", "comment est calculé le food cost")
+    miroir : Mots-clés ou question du concept à rechercher (ex: "état technique", "comment est calculée l'incidence matière")
+  l. 768
     défaut : Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs activités et n'a pas précisé laquelle.
     miroir : Envoie une question de clarification au client avant de requêter les données. OBLIGATOIRE si le client a plusieurs locaux et n'a pas précisé lequel.
 
