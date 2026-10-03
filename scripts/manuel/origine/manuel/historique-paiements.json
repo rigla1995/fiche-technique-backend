@@ -1,0 +1,15 @@
+{
+  "slug": "historique-paiements",
+  "titre": "Historique des paiements",
+  "icone": "🧾",
+  "partie": "Gestion",
+  "ordre": 76,
+  "mots_cles": "paiements, mensualités, échéances, facture, payé, impayé, en attente, remisé, gratuit, téléchargement, abonnement, historique",
+  "ecran": "/client/historique-paiement",
+  "actif": true,
+  "visible_gerant": false,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "9d1f98e3a0fcf8f94ece6bda2f2f5766",
+  "md5Contenu": "9d1f98e3a0fcf8f94ece6bda2f2f5766"
+}

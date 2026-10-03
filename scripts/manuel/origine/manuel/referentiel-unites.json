@@ -1,0 +1,15 @@
+{
+  "slug": "referentiel-unites",
+  "titre": "Unités",
+  "icone": "📏",
+  "partie": "Référentiel",
+  "ordre": 30,
+  "mots_cles": "unités, unité de mesure, kg, litre, gramme, pièce, portion, quantité, mesure, référentiel, création, suppression",
+  "ecran": "/client/referentiel/unites",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "104b5ab3ce3d9605334cd5a69accee92",
+  "md5Contenu": "104b5ab3ce3d9605334cd5a69accee92"
+}

@@ -1,0 +1,15 @@
+{
+  "slug": "historique",
+  "titre": "Historiques",
+  "icone": "🕑",
+  "partie": "Stock & Appro",
+  "ordre": 53,
+  "mots_cles": "historique, approvisionnements, pertes, mouvements, filtres, export, excel, pdf, traçabilité, type appro, transfert, vente",
+  "ecran": "/client/stock/historique",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "68320356ff18cde19237256a09e0f57d",
+  "md5Contenu": "68320356ff18cde19237256a09e0f57d"
+}

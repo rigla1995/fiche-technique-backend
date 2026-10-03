@@ -1,0 +1,1 @@
+L'inventaire est le comptage réel des quantités en stock à une date. L'écart entre le stock théorique et le stock compté révèle des pertes non déclarées, des erreurs de saisie ou du gaspillage. L'inventaire sert aussi de point de départ au calcul du prix moyen pondéré : le PMP TTC est calculé sur les entrées enregistrées depuis le dernier inventaire.

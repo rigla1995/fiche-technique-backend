@@ -1,0 +1,15 @@
+{
+  "slug": "acheteurs-portail",
+  "titre": "Le portail acheteur",
+  "icone": "🛍️",
+  "partie": "Espace Acheteurs",
+  "ordre": 69,
+  "mots_cles": "portail, catalogue, panier, disponible, rupture, commande en ligne, facture pdf, statut",
+  "ecran": "/portail",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-08T09:59:41.655Z",
+  "defautNull": true,
+  "md5Garde": "33657a154190d5b972aa74f9600491c3",
+  "md5Contenu": "33657a154190d5b972aa74f9600491c3"
+}

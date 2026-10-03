@@ -1,0 +1,15 @@
+{
+  "slug": "transferts",
+  "titre": "Transferts",
+  "icone": "🔄",
+  "partie": "Stock & Appro",
+  "ordre": 55,
+  "mots_cles": "transfert, labo, activité, bon de livraison, prix de cession, quantité, stock, historique, export, affectation, réception",
+  "ecran": "/client/labo/transfer",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "8cf942351126e2138f2f8b19bf1db8be",
+  "md5Contenu": "8cf942351126e2138f2f8b19bf1db8be"
+}

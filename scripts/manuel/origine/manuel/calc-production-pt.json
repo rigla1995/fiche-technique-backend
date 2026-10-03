@@ -1,0 +1,15 @@
+{
+  "slug": "calc-production-pt",
+  "titre": "Production d'un produit transformé",
+  "icone": "🏭",
+  "partie": "Comprendre les calculs",
+  "ordre": 84,
+  "mots_cles": "production, produit transformé, pt, déduction, ingrédients, sous-produit, auto, référence, coût de recette, fabrication, mouvement de stock, traçabilité",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "af32bc003605762547bb6a7aa548b22b",
+  "md5Contenu": "af32bc003605762547bb6a7aa548b22b"
+}

@@ -1,0 +1,15 @@
+{
+  "slug": "compte-activites-labos",
+  "titre": "Le modèle : compte, activités, labos",
+  "icone": "🏢",
+  "partie": "Découvrir LabFlow",
+  "ordre": 2,
+  "mots_cles": "compte, activité, labo, point de vente, laboratoire, modèle, organisation, multi-sites, transfert, référentiel commun, quotas, rattachement, acheteurs, compte dépôt, formule, palier",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-18T17:04:42.961Z",
+  "defautNull": false,
+  "md5Garde": "af0a2cc41080f241bfd6fc6159013bba",
+  "md5Contenu": "af0a2cc41080f241bfd6fc6159013bba"
+}

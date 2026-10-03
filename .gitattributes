@@ -1,0 +1,4 @@
+# Lot 2c (docs/lot-2c-spec.md §3.8) : migrations et outils du manuel toujours en LF, quel que soit core.autocrlf.
+# Une migration ressortie en CRLF écrirait des \r dans les textes du manuel (rendu par défaut ≠ origine).
+migrations/*.sql text eol=lf
+scripts/manuel/** text eol=lf

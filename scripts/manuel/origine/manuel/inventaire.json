@@ -1,0 +1,15 @@
+{
+  "slug": "inventaire",
+  "titre": "Inventaire",
+  "icone": "🔢",
+  "partie": "Stock & Appro",
+  "ordre": 51,
+  "mots_cles": "inventaire, comptage, quantité réelle, stock théorique, écart, ajustement, remplacement, référence, historique inventaire, démarque",
+  "ecran": "/client/inventaire?section=activite",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-18T17:04:42.961Z",
+  "defautNull": false,
+  "md5Garde": "7d845f04cc81376cce7bfd52c5f3d1e8",
+  "md5Contenu": "7d845f04cc81376cce7bfd52c5f3d1e8"
+}

@@ -1,0 +1,1 @@
+Un gérant est un utilisateur délégué, rattaché à un compte client et affecté à une ou plusieurs activités et/ou labos. Il ne voit et ne gère que le périmètre qui lui est assigné. Il consulte/saisit le stock, les appros, les pertes de ses activités/labos.

@@ -1,0 +1,1 @@
+Une vente est une transaction enregistrée sur une activité, à une date, avec un statut (confirmée/annulée) et un canal : directe (sur place) ou via un prestataire de livraison. Chaque vente contient des lignes (article vendu, quantité, prix de vente, coût matière unitaire). Le chiffre d'affaires (CA) est la somme des prix de vente.

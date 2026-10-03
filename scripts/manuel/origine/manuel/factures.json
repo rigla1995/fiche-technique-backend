@@ -1,0 +1,15 @@
+{
+  "slug": "factures",
+  "titre": "Factures d'appro",
+  "icone": "🧾",
+  "partie": "Stock & Appro",
+  "ordre": 56,
+  "mots_cles": "factures, fournisseur, approvisionnement, achats, tva, ht, ttc, décaissement, rapprochement, transfert, référence, labo",
+  "ecran": "/client/stock/factures",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "dd7eda073df1efc741e41601bc2bf7ae",
+  "md5Contenu": "dd7eda073df1efc741e41601bc2bf7ae"
+}

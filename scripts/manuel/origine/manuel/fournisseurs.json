@@ -1,0 +1,15 @@
+{
+  "slug": "fournisseurs",
+  "titre": "Fournisseurs",
+  "icone": "🚚",
+  "partie": "Gestion",
+  "ordre": 73,
+  "mots_cles": "fournisseurs, achats, approvisionnement, affectation, activités, labo, téléphone, adresse, traçabilité, appros, coordonnées",
+  "ecran": "/client/fournisseurs",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-23T15:46:32.879Z",
+  "defautNull": false,
+  "md5Garde": "20ccf4a49a0a4bc433eb4a04f497f92b",
+  "md5Contenu": "20ccf4a49a0a4bc433eb4a04f497f92b"
+}

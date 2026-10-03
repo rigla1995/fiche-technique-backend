@@ -1,0 +1,15 @@
+{
+  "slug": "acheteurs-tarifs",
+  "titre": "Tarifs Acheteurs",
+  "icone": "💲",
+  "partie": "Espace Acheteurs",
+  "ordre": 67,
+  "mots_cles": "tarifs, offres, prix unité, prix lot, taille de lot, tva, achetable, famille, actif",
+  "ecran": "/client/acheteurs/tarifs",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-08T09:59:41.655Z",
+  "defautNull": true,
+  "md5Garde": "f2541a89832553ab8834d0372cb3ab7a",
+  "md5Contenu": "f2541a89832553ab8834d0372cb3ab7a"
+}

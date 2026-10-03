@@ -1,0 +1,1 @@
+Le référentiel articles est organisé en deux niveaux : la famille (niveau 1, ex : Fruits, Légumes, Viandes) puis la catégorie (niveau 2 sous la famille). Chaque article appartient à une catégorie. Cette arborescence sert au filtrage et aux regroupements.

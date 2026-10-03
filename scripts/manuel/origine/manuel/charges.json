@@ -1,0 +1,15 @@
+{
+  "slug": "charges",
+  "titre": "Charges",
+  "icone": "🏗️",
+  "partie": "Espace Vente",
+  "ordre": 61,
+  "mots_cles": "charges fixes, loyer, personnel, électricité, gaz, eau, rentabilité, seuil de rentabilité, charges annuelles, mensuel, exploitation, postes",
+  "ecran": "/client/ventes/charges",
+  "actif": true,
+  "visible_gerant": false,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "b393b8e0121fb4f275252badc06f2b31",
+  "md5Contenu": "b393b8e0121fb4f275252badc06f2b31"
+}

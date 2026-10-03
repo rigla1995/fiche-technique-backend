@@ -1,0 +1,15 @@
+{
+  "slug": "calc-cout-recette",
+  "titre": "Coût de revient d'une recette",
+  "icone": "🧮",
+  "partie": "Comprendre les calculs",
+  "ordre": 80,
+  "mots_cles": "coût de revient, recette, fiche technique, pmp, prix moyen, dernier prix, prix manuel, sous-produit, portion, ingrédient, coût matière, valorisation",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-18T17:04:42.961Z",
+  "defautNull": false,
+  "md5Garde": "cc4f28f13816d5c2a5c6faf579fcb9aa",
+  "md5Contenu": "cc4f28f13816d5c2a5c6faf579fcb9aa"
+}

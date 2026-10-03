@@ -1,0 +1,15 @@
+{
+  "slug": "rapports-labo",
+  "titre": "Rapport labo (intégré au tableau de bord)",
+  "icone": "📊",
+  "partie": "Stock & Appro",
+  "ordre": 57,
+  "mots_cles": "rapport labo, tableau de bord, production, transferts, stock labo",
+  "ecran": "/client/rapports/labo",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T17:52:14.121Z",
+  "defautNull": false,
+  "md5Garde": "6e7af0a6e6c8f9e18f2a4891d61230f6",
+  "md5Contenu": "6e7af0a6e6c8f9e18f2a4891d61230f6"
+}

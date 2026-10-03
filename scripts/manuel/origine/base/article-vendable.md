@@ -1,0 +1,1 @@
+Un article vendable est un produit ou un article configuré à la vente sur une activité, avec un prix de vente et un statut actif. Il peut s'agir d'une fiche technique (produit vendable), d'un produit transformé vendable ou d'un produit valorisé. Les vendables peuvent en option être gérés en stock. Les prix de vente sont historisés à chaque modification.

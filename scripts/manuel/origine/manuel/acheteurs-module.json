@@ -1,0 +1,15 @@
+{
+  "slug": "acheteurs-module",
+  "titre": "Le module Acheteurs",
+  "icone": "🤝",
+  "partie": "Espace Acheteurs",
+  "ordre": 65,
+  "mots_cles": "acheteurs, module, activation, quota, depot, b2b, carnet, vente labo",
+  "ecran": "/client/acheteurs",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-08T09:59:41.655Z",
+  "defautNull": true,
+  "md5Garde": "5b3bb1a63ae1594047e25145459795ba",
+  "md5Contenu": "5b3bb1a63ae1594047e25145459795ba"
+}

@@ -1,0 +1,15 @@
+{
+  "slug": "fiches-techniques",
+  "titre": "Fiches Techniques",
+  "icone": "📋",
+  "partie": "Espace Produit",
+  "ordre": 44,
+  "mots_cles": "fiche technique, coût de revient, coût matière, dernier prix, moyenne des prix, prix manuel, export excel, recette, valorisation, chiffrage, dp, mp",
+  "ecran": "/client/products?tab=fiche-technique",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-18T17:04:42.961Z",
+  "defautNull": false,
+  "md5Garde": "8af0aa3b5c1f3d43bb05cff10ebdecf8",
+  "md5Contenu": "8af0aa3b5c1f3d43bb05cff10ebdecf8"
+}

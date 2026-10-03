@@ -1,0 +1,15 @@
+{
+  "slug": "lexique-pt",
+  "titre": "Les 3 catégories de PT",
+  "icone": "🧩",
+  "partie": "Lexique",
+  "ordre": 11,
+  "mots_cles": "produit transformé, pt, utilisable, vendable, composé valorisé, catégories, production, transfert, stock, labo, recette, intermédiaire",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "8a457588c479c882632f63deacdab00b",
+  "md5Contenu": "8a457588c479c882632f63deacdab00b"
+}

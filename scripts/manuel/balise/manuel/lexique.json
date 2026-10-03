@@ -1,0 +1,29 @@
+{
+  "slug": "lexique",
+  "titre": "Lexique de A à Z",
+  "exclusions": [
+    {
+      "extrait": "Canal de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 6,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    },
+    {
+      "extrait": "produit et vend",
+      "forme": "produit",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "verbe « produire » (« le labo produit »), pas la clé produit (GUIDE-BALISAGE §4)"
+    }
+  ],
+  "baliseur": "L1",
+  "relecteur": "L2"
+}

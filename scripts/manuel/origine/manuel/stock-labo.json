@@ -1,0 +1,15 @@
+{
+  "slug": "stock-labo",
+  "titre": "Stock Labo",
+  "icone": "🏭",
+  "partie": "Stock & Appro",
+  "ordre": 54,
+  "mots_cles": "stock labo, laboratoire, labo central, production, produit transformé, pt, approvisionnement, perte, seuil, fournisseur, facture, inventaire",
+  "ecran": "/client/labo/stock",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "76fa05d0c973690ead80d4fc82c0e1d4",
+  "md5Contenu": "76fa05d0c973690ead80d4fc82c0e1d4"
+}

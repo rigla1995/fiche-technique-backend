@@ -1,0 +1,15 @@
+{
+  "slug": "ventes-labo",
+  "titre": "Ventes Labo",
+  "icone": "🏭",
+  "partie": "Espace Vente",
+  "ordre": 63,
+  "mots_cles": "ventes labo, transferts valorisés, prix de transfert, prix labo, écart, coût d achat, composés valorisés, laboratoire, marge labo, export excel",
+  "ecran": "/client/labo/ventes",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "ed4996a44ff3a774aa32bd68f4d79ab6",
+  "md5Contenu": "ed4996a44ff3a774aa32bd68f4d79ab6"
+}

@@ -1,0 +1,15 @@
+{
+  "slug": "calc-transferts",
+  "titre": "Valorisation des transferts",
+  "icone": "🚚",
+  "partie": "Comprendre les calculs",
+  "ordre": 85,
+  "mots_cles": "transfert, prix de cession, labo, activité, valorisation, pmp, bon de livraison, fournisseur labo, réception, coût labo, tva, sortie de stock",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "7ab3484df0b078e161fe537a1fe6b696",
+  "md5Contenu": "7ab3484df0b078e161fe537a1fe6b696"
+}

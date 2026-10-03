@@ -1,0 +1,15 @@
+{
+  "slug": "roles",
+  "titre": "Rôles & accès",
+  "icone": "👤",
+  "partie": "Découvrir LabFlow",
+  "ordre": 4,
+  "mots_cles": "rôles, client, propriétaire, gérant, collaborateur, accès, permissions, périmètre, lecture seule, bloqué, invitation, abonnement, acheteur, portail",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-14T17:41:54.036Z",
+  "defautNull": false,
+  "md5Garde": "ed0648ae54315ebd004be5ae2ce7884c",
+  "md5Contenu": "ed0648ae54315ebd004be5ae2ce7884c"
+}

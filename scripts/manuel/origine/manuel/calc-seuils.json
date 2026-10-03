@@ -1,0 +1,15 @@
+{
+  "slug": "calc-seuils",
+  "titre": "Seuils d'alerte",
+  "icone": "🚨",
+  "partie": "Comprendre les calculs",
+  "ordre": 86,
+  "mots_cles": "seuil, alerte, stock minimum, rupture, réapprovisionnement, rouge, orange, inventaire, produit transformé, activité, labo, vigilance",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "4ce1ee281f4ef488557357c42f111488",
+  "md5Contenu": "4ce1ee281f4ef488557357c42f111488"
+}
