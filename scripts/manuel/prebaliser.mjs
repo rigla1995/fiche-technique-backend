@@ -212,7 +212,7 @@ export function prebaliserTexte(texte, champ = 'contenu') {
     if (locs.some((x) => debut < x.fin && fin > x.debut)) { stats.locutions += 1; continue; }
     if (t[debut - 1] === '-' || t[fin] === '-') {
       stats.nonBalisees += 1;
-      noter(nonBalisees, debut, fin, { forme: o.texte, cle: o.cle, raison: 'collée à un trait d\'union (R3.4.3) : balise, exclusion ou locution, à la main' });
+      noter(nonBalisees, debut, fin, { forme: o.texte, cle: o.cle, raison: 'collée à un trait d\'union (R3.4.3) : jamais de balise contre un tiret (point 3 de controler.mjs) ; locution de la liste fermée, exclusion justifiée, ou nom d\'écran (nom-fige), à la main' });
       continue;
     }
     const noms = candidatsNom(o.cle, o.texte);

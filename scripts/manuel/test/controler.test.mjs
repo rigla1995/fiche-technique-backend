@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 import {
   creerContexte, controlerFiche, controlerEntree, controlerVariante, controlerTout, controlesEnsemble,
   motsRepetes, balisesRepetees, glosesIdentiques, definitionsCirculaires, elisionsFautives, determinantsEnClair,
-  appositions, formesEnClair, formesDuDomaine, caracteresHorsPdf, motsMetier, rendu,
+  appositions, formesEnClair, formesDuDomaine, caracteresHorsPdf, motsMetier, rendu, racinesRepetees, balisesCollees,
 } from '../controler.mjs';
 import { prebaliserFiche, prebaliserEntree } from '../prebaliser.mjs';
 
@@ -113,6 +113,28 @@ test('points 1 à 3 : identité, balises valides, résiduels et exclusions', () 
   } finally { fs.rmSync(r, { recursive: true, force: true }); }
 });
 
+test('point 3 : une balise collée à un trait d\'union est un échec (« sous-[[nom:pt]] » rend « sous-préparation » en H)', () => {
+  assert.deepEqual(balisesCollees('sous-[[nom:pt]] ; [[nom:stock]]-labo ; peut-[[acc:labo:il:elle]] ; [[acc:labo:lui:elle]]-même ; [[nom:labo]] - fin').map((x) => x.texte),
+    ['sous-[[nom:pt]]', '[[nom:stock]]-labo']);
+  const r = fs.mkdtempSync(path.join(os.tmpdir(), 'controler-'));
+  try {
+    const pb = prebaliserFiche(origine('calc-cout-recette'));
+    assert.ok(pb.md.includes('sous-produit transformé'));
+    ecrireFiche(r, 'calc-cout-recette', pb.md, pb.json);
+    const avant = controlerFiche(creerContexte({ racine: r }), 'calc-cout-recette', { ecrire: false });
+    assert.ok(!avant.echecs.some((e) => /trait d'union/.test(e.message)), JSON.stringify(avant.echecs.slice(0, 3)));
+    // Le piège de R3.4.3 : identité intacte, exclusion ajustée, et pourtant H lirait « sous-préparation ».
+    const md = pb.md.replace('sous-produit transformé', 'sous-[[nom:pt]]');
+    const exclusions = pb.json.exclusions.map((x) => (x.extrait === 'sous-produit transformé' ? { ...x, occurrences: x.occurrences - 1 } : x)).filter((x) => x.occurrences > 0);
+    ecrireFiche(r, 'calc-cout-recette', md, { ...pb.json, exclusions });
+    assert.match(rendu(VOC.hotellerie, md), /sous-préparation/);
+    const apres = controlerFiche(creerContexte({ racine: r }), 'calc-cout-recette', { ecrire: false });
+    assert.equal(apres.passe, false);
+    assert.ok(!apres.echecs.some((e) => e.point === 1), JSON.stringify(apres.echecs.slice(0, 3)));
+    assert.ok(apres.echecs.some((e) => e.point === 3 && /trait d'union « sous-\[\[nom:pt\]\] »/.test(e.message)), JSON.stringify(apres.echecs));
+  } finally { fs.rmSync(r, { recursive: true, force: true }); }
+});
+
 test('point 3 : les cibles de liens « (#slug) » sont masquées (jamais balisées ni exclues)', () => {
   const ctx = creerContexte({ racine: racineTemoins() });
   try {
@@ -141,8 +163,15 @@ test('signalements 7 à 12 sur les exemples de la spec (§3.5, §7.7)', () => {
   const b3 = 'la seule voie d\'[[nom:appro]] [[du:activite:pl]]';
   assert.deepEqual(elisionsFautives(rendu(Cc, b3), rendu(vocabDefaut, b3)).map((x) => x.texte), ['d\'réception']);
   assert.equal(elisionsFautives(rendu(Cc, 'voie [[de:appro]]'), rendu(vocabDefaut, 'voie [[de:appro]]')).length, 0);
+  // 7, suite : mot de même racine collé au rendu d'une balise (« cuisine centrale central »), absent par défaut.
+  assert.deepEqual(racinesRepetees('[[votre:labo_long]] central', H).map((x) => x.texte), ['centrale central']);
+  assert.deepEqual(racinesRepetees('[[votre:labo_long]] central', vocabDefaut), []);
+  assert.deepEqual(racinesRepetees('[[votre:labo_long]][[acc:labo_long: central:]] et [[Nom:labo]] fermé', H), []);
   // 10 : déterminant en clair devant une balise de nom ; 11 : apposition.
   assert.deepEqual(determinantsEnClair('Le [[nom:labo]] produit ; l\'[[nom:acheteur]] ; [[Le:labo]] ; **la** [[le:pt]]').map((x) => x.texte), ['Le [[nom:labo]]', 'l\'[[nom:acheteur]]']);
+  // 10, à distance : déterminant à genre + adjectif + balise de nom (« un autre cuisine centrale » en H).
+  assert.deepEqual(determinantsEnClair('un autre [[nom:labo]] ; son propre **[[nom:stock]]** ; les autres [[nom:labo:pl]] ; [[acc:labo:un autre:une autre]] [[nom:labo]] ; un seul [[nom:labo]]').map((x) => x.texte),
+    ['un autre [[nom:labo]]', 'son propre **[[nom:stock]]', 'seul [[nom:labo]]']);
   assert.equal(appositions('[[Nom:stock]] [[Nom:labo]]').length, 1);
   assert.equal(appositions('[[Nom:stock]] [[Court:labo]] et [[le:stock]] [[compl:labo]]').length, 0);
   // 12 : collision « option » en C (supplement = Option), aucune en H.
@@ -248,18 +277,41 @@ test('rapport « mots du métier » : un mot qui fait partie d\'une forme du lex
 test('--lexique : lexique de production résolu pour H ; fichier absent ou mal formé refusé ; option inconnue → 2', () => {
   const r = racineTemoins();
   const prod = path.join(r, 'lexique-production.json');
-  fs.writeFileSync(prod, JSON.stringify({ lexique: { acheteur: { sg: 'Client hôtelier', pl: 'Clients hôteliers', g: 'm', el: false } } }));
+  const lecture = path.join(r, 'lecture-absente.json'); // jamais la vraie lecture-production.json du dossier
+  const ecartsProd = { acheteur: { sg: 'Client hôtelier', pl: 'Clients hôteliers', g: 'm', el: false } };
+  fs.writeFileSync(prod, JSON.stringify({ lexique: ecartsProd }));
   try {
-    const p = lancer(['acheteurs-carnet', '--racine', r, '--lexique', prod]);
+    const p = lancer(['acheteurs-carnet', '--racine', r, '--lexique', prod, '--lecture', lecture]);
     assert.equal(p.status, 0, p.stdout + p.stderr);
     const h = C.lireTexte(path.join(r, 'rendus', 'L7', 'hotellerie', 'acheteurs-carnet.md'));
     assert.match(h, /titre: Carnet de Clients hôteliers/); // [[de:acheteur:pl:Nom]] : casse Nom, comme « d'Acheteurs »
     assert.ok(h.includes(`lexique: ${prod}`));
-    assert.equal(lancer(['lexique', '--racine', r, '--lexique', path.join(r, 'absent.json')]).status, 2);
+    assert.match(p.stdout, new RegExp(`md5 de lexique::text ${V.md5Lexique(ecartsProd)} ; lecture de production absente`));
+    assert.equal(lancer(['lexique', '--racine', r, '--lexique', path.join(r, 'absent.json'), '--lecture', lecture]).status, 2);
     fs.writeFileSync(prod, '[]');
-    const q = lancer(['lexique', '--racine', r, '--lexique', prod]);
+    const q = lancer(['lexique', '--racine', r, '--lexique', prod, '--lecture', lecture]);
     assert.equal(q.status, 2);
     assert.match(q.stderr, /objet d'écarts attendu/);
+    // Relecture de M0 ∥ S ∥ A : un fichier mal formé ne donne plus en silence le lexique par défaut (« Espace Labo »).
+    const essai = (contenu, args = []) => { fs.writeFileSync(prod, JSON.stringify(contenu)); return lancer(['acheteurs-carnet', '--racine', r, '--lexique', prod, '--lecture', lecture, ...args]); };
+    const vide = essai({});
+    assert.equal(vide.status, 2);
+    assert.match(vide.stderr, /lexique par défaut \(estDefaut vrai\)/);
+    const enveloppe = essai({ hotellerie: { slug: 'hotellerie', md5Lexique: 'x', lexique: ecartsProd } });
+    assert.equal(enveloppe.status, 2);
+    assert.match(enveloppe.stderr, /clé\(s\) hors du lexique : hotellerie/);
+    assert.equal(essai({ ...ecartsProd, slug: 'hotellerie' }).status, 2);
+    assert.match(essai({ slug: 'hotellerie', md5Lexique: '0'.repeat(32), lexique: ecartsProd }).stderr, /md5Lexique du fichier/);
+    // md5 comparé à la lecture (7) de production (hotellerie.md5Lexique).
+    fs.writeFileSync(lecture, JSON.stringify({ hotellerie: { slug: 'hotellerie', md5Lexique: '0'.repeat(32) } }));
+    const autre = essai({ lexique: ecartsProd });
+    assert.equal(autre.status, 2);
+    assert.match(autre.stderr, /≠ lecture \(7\)/);
+    fs.writeFileSync(lecture, JSON.stringify({ hotellerie: { slug: 'hotellerie', md5Lexique: V.md5Lexique(ecartsProd) } }));
+    const egal = essai({ slug: 'hotellerie', md5Lexique: V.md5Lexique(ecartsProd), lexique: ecartsProd });
+    assert.equal(egal.status, 0, egal.stdout + egal.stderr);
+    assert.match(egal.stdout, /égal à la lecture \(7\)/);
+    assert.equal(lancer(['lexique', '--racine', r, '--lecture', lecture]).status, 2, '--lecture sans --lexique');
     assert.equal(lancer(['--oups']).status, 2);
   } finally { fs.rmSync(r, { recursive: true, force: true }); }
 });

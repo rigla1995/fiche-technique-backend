@@ -255,6 +255,16 @@ PDF).
 Le pré-baliseur ne pose jamais d'accord. Il liste les mots accordables restés en clair juste devant une balise de nom
 (« dernier », « propre », « même », « premier », « seul »…).
 
+**Déterminant à distance.** Un déterminant séparé du nom par un adjectif s'accorde quand même avec le nom :
+« un autre [[nom:labo]] » donne en H « un autre cuisine centrale », « son propre [[nom:stock]] » donne en miroir « son
+propre armoire ». Écrivez déterminant et adjectif dans l'accord, collés au nom :
+`[[acc:labo:un autre:une autre]] [[nom:labo]]` (comme l'exemple 17). Le point 10 signale « le, la, un, une, du, au,
+ce, cet, cette, mon, ma, son, sa, aucun, aucune, quel, quelle, tout, toute » suivis de « autre, même, seul(e), propre,
+premier / première, dernier / dernière, nouveau / nouvel / nouvelle, second(e), deuxième, troisième, unique,
+principal(e) » puis d'une balise de nom. Fiches concernées (brouillons du pré-baliseur) : « un autre [[nom:labo]] »
+dans `activites` (2 fois) et `calc-transferts` ; « son propre [[nom:stock]] » dans `compte-activites-labos` et
+`decouvrir-labflow`.
+
 ---
 
 ## 6. Majuscules, capitales, déterminant suivi d'un adjectif (spec §7.4)
@@ -292,6 +302,10 @@ Le pré-baliseur ne pose jamais d'accord. Il liste les mots accordables restés 
   - **Limite** : l'astuce repose sur le genre, le féminin efface l'adjectif. Un terme féminin qui ne dit pas
     « central » le perd (miroir : « Usine »). Un futur terme masculin qui contiendrait déjà « central » le redoublerait
     (le point 7 le signale).
+  - Même piège sans accord : « [[votre:labo_long]] central » donne en H « votre cuisine centrale central ». Le point 7
+    signale aussi ce mot de même racine collé au terme (« centrale central ») ; écrivez l'adjectif dans l'accord, comme
+    ci-dessus. Fiches concernées (mesuré sur les brouillons du pré-baliseur) : `stock-labo`, `activites`,
+    `compte-activites-labos`, `decouvrir-labflow`, et l'entrée `labo-central` de la base.
   - « labos de production » donne en C « sites de production de production ». La grammaire ne peut pas l'éviter :
     signalé par le point 7, accepté par le relecteur.
 
@@ -333,7 +347,11 @@ Le pré-baliseur ne pose jamais d'accord. Il liste les mots accordables restés 
 - Il ne voit pas les homonymes : il balise le verbe « produit » et le « supplément » tarifaire. Excluez-les.
 - Il ne cherche pas les noms d'écran (R7.1.3).
 - Il ne pose pas la forme courte d'une apposition (`[[Court:labo]]`) ni `compl` : il les signale.
-- Il ne balise pas une forme collée à un trait d'union (« fournisseur-labo »).
+- Il ne balise pas une forme collée à un trait d'union (« fournisseur-labo »), et vous non plus : **jamais de balise
+  contre un tiret**. « sous-[[nom:pt]] » rend « sous-préparation » en H et « sous-[[nom:produit]] » « sous-invention »
+  en miroir, alors que l'identité passe. Le point 3 refuse toute balise (hors `acc`, `accN`, `ex` : « peut-[[acc:labo:il:elle]] »)
+  précédée de « lettre- » ou suivie de « -lettre ». La forme reste en clair : locution de la liste fermée
+  (« sous-produit »), exclusion justifiée (nom d'écran : `nom-fige`), ou phrase réécrite autour.
 - Il ne balise pas un passage qu'aucune balise ne reproduit : « une appro » (le lexique dit « un approvisionnement »),
   « produit VENDABLE », « espaces Activités ».
 
@@ -356,17 +374,19 @@ Le pré-baliseur ne pose jamais d'accord. Il liste les mots accordables restés 
    fiches Espace Acheteurs, l'origine est le contenu), le titre et la partie.
 2. **Balises valides (I11)** : grammaire, clé connue, balise fermée.
 3. **Résiduels** : aucune forme par défaut hors balises, sauf dans les extraits exclus. Chaque exclusion est employée
-   exactement `occurrences` fois.
+   exactement `occurrences` fois. Aucune balise collée à un trait d'union (« sous-[[nom:pt]] »), hors `acc`, `accN`, `ex`.
 4. **Liens** : même suite de cibles `#slug` que l'origine, dans chaque rendu ; aucun libellé rendu vide.
 5. **Blocs et tableaux** : mêmes lignes `:::…` ; même nombre de « | » par ligne de tableau, dans chaque rendu.
 6. **Rendus écrits** (H, C, miroir), sans « [[ », « ]] » ni « ‹clé› ».
 
 Signalements, chacun corrigé ou accepté avec sa raison dans `relectures/<lot>.auto.json` :
 
-7. **mots répétés** (« centrale centrale », « de production de production ») ;
+7. **mots répétés** (« centrale centrale », « de production de production »), et mot de même racine collé au rendu
+   d'une balise (« cuisine centrale central ») ;
 8. **gloses identiques et définitions circulaires** (« un SERVICE (service) », « | **Service** | Service ou… ») ;
 9. **élisions** fautives dans un rendu (« d'réception », « du usine », « ma armoire ») ;
-10. **déterminant en clair devant une balise de nom**, sur le texte balisé (« Le [[nom:labo]] ») ;
+10. **déterminant en clair devant une balise de nom**, sur le texte balisé (« Le [[nom:labo]] »), collé ou séparé du nom
+    par un adjectif (« un autre [[nom:labo]] ») ;
 11. **appositions** : deux balises de nom collées, la seconde à apposition ;
 12. **collisions de sens** : un mot du lexique H ou C écrit en clair dans l'origine (« option » en C, « préparation »
     en H). Une ligne par mot et par fiche : accepté (le sens reste clair) ou envoyé aux variantes.

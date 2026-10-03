@@ -58,6 +58,16 @@ test('§3.1 : composants actifs de domaines.json (libellé, pluriel, type techni
   assert.ok(H.some((c) => c.libelle === 'Cuisine' && c.genre === 'f' && c.typeTechnique === 'labo'));
 });
 
+test('md5Lexique reproduit md5(lexique::text) de PostgreSQL (champ md5Lexique de domaines.json, lecture (7))', () => {
+  const d = C.lireDomaines();
+  for (const slug of ['hotellerie', 'ceramique']) {
+    assert.match(d.domaines[slug].md5Lexique, /^[0-9a-f]{32}$/);
+    assert.equal(V.md5Lexique(d.domaines[slug].ecarts), d.domaines[slug].md5Lexique, slug);
+  }
+  // Clés triées par longueur en octets, puis par octets ; « , » et « : » suivis d'une espace.
+  assert.equal(V.jsonbTexte({ pt: { sg: 'é', g: 'f' }, a: [1, true, null] }), '{"a": [1, true, null], "pt": {"g": "f", "sg": "é"}}');
+});
+
 test('verifierLexiques signale un lexique résolu retouché à la main', () => {
   const d = JSON.parse(JSON.stringify(C.lireDomaines()));
   d.domaines.hotellerie.lexique.labo.sg = 'Cuisine';

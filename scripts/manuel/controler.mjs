@@ -9,7 +9,12 @@
  * Options :
  *   --lexique <fichier>  rejoue le contrôle avec le lexique Hôtellerie de la lecture de production (§12.1, (7)) : une
  *                        liste d'ÉCARTS (objet, ou { lexique } / { ecarts }), toujours résolue (R3.1.1) ; elle remplace
- *                        le lexique H d'essai pour les rendus et les signalements ;
+ *                        le lexique H d'essai pour les rendus et les signalements. Refus (code 2) d'un fichier dont une
+ *                        clé n'est pas du lexique (fichier enveloppé) ou dont les écarts donnent le lexique par défaut ;
+ *                        le md5 de lexique::text est affiché et comparé au champ hotellerie.md5Lexique de la lecture de
+ *                        production (refus s'il diffère) ;
+ *   --lecture <fichier>  lecture de production pour cette comparaison (défaut : scripts/manuel/lecture-production.json,
+ *                        celle du générateur ; absente : md5 affiché, non comparé) ;
  *   --racine <dossier>   racine des fichiers de travail (balise/, variantes/, relectures/, rendus/) à la place de
  *                        scripts/manuel/ (tests, essais) ; origine/, parties.json, lots.json, domaines.json restent ceux
  *                        de scripts/manuel/.
@@ -30,7 +35,8 @@
  *      l'ordre de la liste, retirerExtraits de lib/commun.js, règle de l'oracle) puis MASQUÉES les cibles de liens
  *      « (#slug) » (jamais balisées ni exclues : GUIDE §4, 200 formes dans 185 cibles) ; chaque exclusion employée
  *      exactement « occurrences » fois (contenu et titre balisés réunis), de type admis, justifiée, contenant une forme
- *      par défaut, présente telle quelle dans chaque rendu ;
+ *      par défaut, présente telle quelle dans chaque rendu ; aucune balise (hors acc, accN, ex) collée à un trait d'union
+ *      (« sous-[[nom:pt]] » rend « sous-préparation » en H, R3.4.3 : on n'y balise jamais) ;
  *   4. liens : même suite de cibles que l'origine dans chaque rendu ; chaque cible « #x » est un slug existant ; aucun
  *      libellé de lien rendu vide ;
  *   5. blocs et tableaux : même suite de mots-clés « ::: » que l'origine (texte balisé et chaque rendu) ; même nombre de
@@ -39,10 +45,12 @@
  *      contient « [[ », « ]] » ni « ‹clé› » ;
  *   7. mots répétés (rendus H, C, miroir ; absents du rendu par défaut) : mot ou groupe de deux mots répété à la suite ;
  *      rendu d'une balise de deux mots ou plus (déterminant ôté) qui revient dans la même phrase à moins de 12 mots ;
+ *      rendu d'une balise suivi d'un mot de même racine que son dernier mot (« cuisine centrale central ») ;
  *   8. gloses identiques « X (X) » et définitions circulaires « | **X** | X … » (absentes du rendu par défaut) ;
  *   9. élisions fautives (« d' », « l' », « qu' » + consonne ; « de », « le », « la », « que », « du », « au », « ce »,
  *      « ma », « ta », « sa » + voyelle ou h ; absentes du rendu par défaut) ;
- *  10. déterminant en clair devant une balise nom, Nom, court, Court, Titre ou MAJ (sur le texte BALISÉ) ;
+ *  10. déterminant en clair devant une balise nom, Nom, court, Court, Titre ou MAJ (sur le texte BALISÉ), collé à la
+ *      balise ou séparé d'elle par un adjectif (« un autre [[nom:labo]] », « le même [[nom:labo]] ») ;
  *  11. appositions : deux balises collées dont la seconde est en nom / Nom sur une clé à apposition (appo du lexique) ;
  *  12. collisions de sens (H et C) : forme du lexique du domaine (sg, pl, formes courtes) qui diffère du défaut et se
  *      trouve EN CLAIR dans la fiche (balises et cibles de liens masquées). Le tableau du §10.3 compte aussi des
@@ -222,6 +230,32 @@ export function balisesRepetees(balise, voc) {
   return out;
 }
 
+/** Point 7, suite : le rendu d'une balise suivi d'un mot de même racine que son dernier mot (« cuisine centrale
+ * central », de « [[votre:labo_long]] central »), dans le rendu de `voc` et pas dans le rendu par défaut à la même place.
+ * Même racine : deux mots différents (sans casse) égaux une fois ôtés un « e », un « s » ou un « es » final, d'au moins
+ * 4 lettres. Le mot identique (« centrale centrale ») est déjà la première moitié du point 7. */
+const RACINE_FIN = /(?:es|e|s)$/u;
+const racineMot = (m) => m.toLowerCase().replace(RACINE_FIN, '');
+const memeRacine = (a, b) => a.toLowerCase() !== b.toLowerCase() && racineMot(a).length >= 4 && racineMot(a) === racineMot(b);
+const dernierMot = (s) => (String(s).match(/\p{L}[\p{L}\p{N}'’-]*(?=[^\p{L}]*$)/u) || [''])[0];
+const motSuivant = (t, i) => (/^[^\S\n]+(\p{L}[\p{L}\p{N}'’-]*)/u.exec(t.slice(i)) || [])[1] || '';
+export function racinesRepetees(balise, voc) {
+  const r = rendreParMorceaux(voc, balise);
+  const d = rendreParMorceaux(vocabDefaut, balise);
+  const out = [];
+  r.balises.forEach((b, i) => {
+    const a = dernierMot(b.rendu);
+    const s = motSuivant(r.texte, b.fin);
+    if (!a || !s || !memeRacine(a, s)) return;
+    const bd = d.balises[i];
+    const ad = dernierMot(bd.rendu);
+    const sd = motSuivant(d.texte, bd.fin);
+    if (ad && sd && memeRacine(ad, sd)) return;
+    out.push({ texte: `${a} ${s}`, contexte: contexte(r.texte, b.debut, b.rendu.length) });
+  });
+  return out;
+}
+
 // ── Point 8 : gloses identiques, définitions circulaires ──────────────────────────────────────────────────────
 const gloses = (t) => {
   const out = [];
@@ -280,14 +314,29 @@ const METHODES_NOM = new Set(['nom', 'Nom', 'court', 'Court', 'Titre', 'MAJ']);
 const RE_DET_CLAIR = new RegExp(
   `(?<![${L}'’])(${ACCORDABLES.sort((a, b) => b.length - a.length).map(echapper).join('|')})((?<=['’])|[^\\S\\n]+)(\\*\\*|\\*|\\[)?(\\[\\[([A-Za-z]+):[^[\\]\\n]*\\]\\])`,
   'giu');
+// À distance : déterminant à genre + un adjectif + balise de nom (« un autre [[nom:labo]] » rend en H « un autre cuisine
+// centrale »). L'adjectif lui-même peut être épicène (autre, même, propre) : c'est le déterminant qui s'accorde. On ne
+// prend que les déterminants qui changent avec le genre devant un adjectif (pas « l' », « de », « les »).
+const GENRES_DISTANCE = ['de la', 'à la', 'le', 'la', 'un', 'une', 'du', 'au', 'ce', 'cet', 'cette', 'mon', 'ma', 'ton', 'ta', 'son',
+  'sa', 'aucun', 'aucune', 'quel', 'quelle', 'tout', 'toute'];
+const ADJECTIFS_DISTANCE = ['autre', 'même', 'seul', 'seule', 'propre', 'premier', 'première', 'dernier', 'dernière', 'nouveau',
+  'nouvel', 'nouvelle', 'second', 'seconde', 'deuxième', 'troisième', 'unique', 'principal', 'principale'];
+const RE_DET_DISTANCE = new RegExp(
+  `(?<![${L}'’])(${GENRES_DISTANCE.sort((a, b) => b.length - a.length).map(echapper).join('|')})[^\\S\\n]+(${ADJECTIFS_DISTANCE.map(echapper).join('|')})[^\\S\\n]+(\\*\\*|\\*|\\[)?(\\[\\[([A-Za-z]+):[^[\\]\\n]*\\]\\])`,
+  'giu');
 export function determinantsEnClair(balise) {
   const t = String(balise ?? '');
   const out = [];
   for (const m of t.matchAll(RE_DET_CLAIR)) {
     if (!METHODES_NOM.has(m[5])) continue;
-    out.push({ texte: m[0], contexte: contexte(t, m.index, m[0].length) });
+    out.push({ index: m.index, texte: m[0], contexte: contexte(t, m.index, m[0].length) });
   }
-  return out;
+  for (const m of t.matchAll(RE_DET_DISTANCE)) {
+    if (!METHODES_NOM.has(m[5])) continue;
+    if (out.some((x) => x.index < m.index + m[0].length && m.index < x.index + x.texte.length)) continue; // déjà vu collé
+    out.push({ index: m.index, texte: m[0], contexte: contexte(t, m.index, m[0].length) });
+  }
+  return out.sort((a, b) => a.index - b.index).map(({ texte, contexte: c }) => ({ texte, contexte: c }));
 }
 
 // ── Point 11 : appositions ────────────────────────────────────────────────────────────────────────────────────
@@ -360,20 +409,37 @@ export function formesEnClair(balise, formes) {
 }
 
 // ── Domaines (lexiques résolus, R3.1.1) ───────────────────────────────────────────────────────────────────────
-function domainesEssai(lexiqueH = null) {
+export const LECTURE_DEFAUT = path.join(C.DOSSIER, 'lecture-production.json');
+
+/** Comparaison du md5 d'un lexique --lexique à la lecture (7) de production (hotellerie.md5Lexique) : texte affiché, ou
+ * refus (Error) si les deux diffèrent. */
+function comparerLecture(f, lecture) {
+  if (f.md5Fichier && f.md5Fichier !== f.md5) throw new Error(`md5Lexique du fichier (${f.md5Fichier}) ≠ md5 de ses écarts (${f.md5}) : fichier retouché ou mal tiré`);
+  const rel = lecture ? (path.relative(C.RACINE, lecture) || lecture) : '-';
+  if (!lecture || !fs.existsSync(lecture)) return `lecture de production absente (${rel}) : md5 non comparé`;
+  let j;
+  try { j = C.lireJsonExterne(lecture); } catch (err) { throw new Error(`lecture de production illisible (${rel}) : ${err.message}`); }
+  const h = j && j.hotellerie;
+  if (!h || typeof h.md5Lexique !== 'string') return `lecture de production sans hotellerie.md5Lexique (${rel}) : md5 non comparé`;
+  if (h.md5Lexique !== f.md5) throw new Error(`md5 du lexique lu ${f.md5} ≠ lecture (7) ${h.md5Lexique} (${rel}) : ce fichier n'est pas le lexique Hôtellerie de production`);
+  return `égal à la lecture (7) (${rel})`;
+}
+
+function domainesEssai(lexiqueH = null, lecture = LECTURE_DEFAUT) {
   const ecarts = V.lexiquesEssai();
   const out = {};
   for (const d of DOMAINES_RENDUS) {
     let e = ecarts[d];
     let source = 'test/vocab-lexiques-test.json';
+    let fichier = null;
     if (d === 'hotellerie' && lexiqueH) {
-      const j = C.lireJsonExterne(path.resolve(lexiqueH));
-      e = j && typeof j === 'object' ? (j.ecarts || j.lexique || j) : null;
-      if (!e || typeof e !== 'object' || Array.isArray(e)) throw new Error(`${lexiqueH} : objet d'écarts attendu`);
+      const f = V.ecartsDuFichier(lexiqueH);
+      e = f.ecarts;
       source = path.resolve(lexiqueH);
+      fichier = { md5: f.md5, cles: Object.keys(f.ecarts).length, avertissements: f.avertissements, lecture: comparerLecture(f, lecture ? path.resolve(lecture) : null) };
     }
     const lexique = V.resoudre(e);
-    out[d] = { voc: V.vocabDesEcarts(e), lexique, source };
+    out[d] = { voc: V.vocabDesEcarts(e), lexique, source, fichier };
   }
   for (const d of DOMAINES_COLLISIONS) out[d].formes = formesDuDomaine(out[d].lexique);
   return out;
@@ -381,7 +447,7 @@ function domainesEssai(lexiqueH = null) {
 
 // ── Contexte d'un passage ─────────────────────────────────────────────────────────────────────────────────────
 /** Charge l'origine, parties.json, lots.json et les vocabulaires. `racine` = racine des fichiers de travail. */
-export function creerContexte({ racine = C.DOSSIER, lexique = null } = {}) {
+export function creerContexte({ racine = C.DOSSIER, lexique = null, lecture = LECTURE_DEFAUT } = {}) {
   const problemes = V.verifierLexiques();
   if (problemes.length) {
     const e = new Error(`lexiques incohérents (spec §3.1) : ${problemes.join(' ; ')}`);
@@ -396,7 +462,7 @@ export function creerContexte({ racine = C.DOSSIER, lexique = null } = {}) {
     entrees: new Map(entrees.map((e) => [e.fichier, e])),
     parties: C.lireParties(),
     lots: C.lireLots(),
-    domaines: domainesEssai(lexique),
+    domaines: domainesEssai(lexique, lecture),
     relectures: new Map(),
   };
 }
@@ -468,8 +534,34 @@ function verifierExclusions(exclusions, echecs) {
   return exclusions.filter((x) => x && typeof x.extrait === 'string' && x.extrait);
 }
 
-/** Point 3 : formes par défaut hors balises (extraits retirés, cibles masquées) et emplois des exclusions. */
+// Balise collée à un trait d'union (R3.4.3, relecture de M0 ∥ S ∥ A) : « sous-[[nom:pt]] » rend « sous-préparation »
+// en H, « sous-[[nom:produit]] » rend « sous-invention » en miroir, alors que les points 1, 2 et 3 passent. Le motif de
+// termesDans prend « - » pour une limite de mot ; on ne balise donc jamais une forme collée à un tiret (locution,
+// exclusion ou phrase réécrite). Seules les balises d'accord et d'exemple y sont admises : « peut-[[acc:labo:il:elle]] »,
+// « [[acc:labo:lui:elle]]-même ».
+const METHODES_TIRET_ADMISES = new Set(['acc', 'accN', 'ex']);
+export function balisesCollees(balise) {
+  const t = String(balise ?? '');
+  const out = [];
+  for (const m of t.matchAll(CANDIDATE)) {
+    const methode = (/^([A-Za-z]+):/.exec(m[1]) || [])[1];
+    if (!methode || METHODES_TIRET_ADMISES.has(methode)) continue;
+    const fin = m.index + m[0].length;
+    const avant = (/(\p{L}+-)$/u.exec(t.slice(Math.max(0, m.index - 30), m.index)) || [])[1];
+    const apres = (/^(-\p{L}+)/u.exec(t.slice(fin, fin + 30)) || [])[1];
+    if (avant || apres) out.push({ texte: `${avant || ''}${m[0]}${apres || ''}`, contexte: contexte(t, m.index, m[0].length) });
+  }
+  return out;
+}
+
+/** Point 3 : formes par défaut hors balises (extraits retirés, cibles masquées), emplois des exclusions, balises collées
+ * à un trait d'union. */
 function pointResiduels(textes, exclusions, echecs, champs) {
+  textes.forEach((t, i) => {
+    for (const x of balisesCollees(t)) {
+      echecs.push({ point: 3, message: `${champs[i]} : balise collée à un trait d'union « ${x.texte} » (R3.4.3 : jamais de balise contre un tiret ; locution, exclusion ou phrase réécrite) — ${x.contexte}` });
+    }
+  });
   const excl = verifierExclusions(exclusions, echecs);
   const { textes: restes, emplois } = C.retirerExtraits(textes, excl);
   restes.forEach((t, i) => {
@@ -551,6 +643,7 @@ function signalements7a11(champ, balise, domaines) {
     const r = rendu(dom.voc, balise);
     for (const s of motsRepetes(r, rd)) out.push({ point: 7, domaine: d, champ, ...s });
     for (const s of balisesRepetees(balise, dom.voc)) out.push({ point: 7, domaine: d, champ, ...s });
+    for (const s of racinesRepetees(balise, dom.voc)) out.push({ point: 7, domaine: d, champ, ...s });
     for (const s of glosesIdentiques(r, rd)) out.push({ point: 8, domaine: d, champ, ...s });
     for (const s of definitionsCirculaires(r, rd)) out.push({ point: 8, domaine: d, champ, ...s });
     for (const s of elisionsFautives(r, rd)) out.push({ point: 9, domaine: d, champ, ...s });
@@ -764,6 +857,7 @@ export function controlerVariante(ctx, domaine, slug, { ecrire = true } = {}) {
     const rrd = rendu(vocabDefaut, t);
     for (const s of motsRepetes(rr, rrd)) bruts.push({ point: 7, domaine, champ, ...s });
     for (const s of balisesRepetees(t, dom.voc)) bruts.push({ point: 7, domaine, champ, ...s });
+    for (const s of racinesRepetees(t, dom.voc)) bruts.push({ point: 7, domaine, champ, ...s });
     for (const s of glosesIdentiques(rr, rrd)) bruts.push({ point: 8, domaine, champ, ...s });
     for (const s of definitionsCirculaires(rr, rrd)) bruts.push({ point: 8, domaine, champ, ...s });
     for (const s of elisionsFautives(rr, rrd)) bruts.push({ point: 9, domaine, champ, ...s });
@@ -886,20 +980,22 @@ function ecrireRapport(ctx, fichier, contenu) {
 
 // ── Ligne de commande ─────────────────────────────────────────────────────────────────────────────────────────
 function lireArguments(argv) {
-  const o = { slugs: [], base: [], variante: null, lot: null, tout: false, lexique: null, racine: null };
+  const o = { slugs: [], base: [], variante: null, lot: null, tout: false, lexique: null, lecture: null, racine: null };
   let mode = 'slugs';
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--lot') o.lot = argv[++i];
     else if (a === '--tout') o.tout = true;
     else if (a === '--lexique') o.lexique = argv[++i];
+    else if (a === '--lecture') o.lecture = argv[++i];
     else if (a === '--racine') o.racine = argv[++i];
     else if (a === '--base') mode = 'base';
     else if (a === '--variante') { o.variante = argv[++i]; mode = 'slugs'; }
     else if (a.startsWith('--')) throw new Error(`option inconnue « ${a} »`);
     else o[mode].push(a);
   }
-  for (const k of ['lot', 'lexique', 'racine', 'variante']) if (o[k] === undefined) throw new Error(`--${k} attend une valeur`);
+  for (const k of ['lot', 'lexique', 'lecture', 'racine', 'variante']) if (o[k] === undefined) throw new Error(`--${k} attend une valeur`);
+  if (o.lecture && !o.lexique) throw new Error('--lecture ne sert qu\'avec --lexique');
   if (!o.tout && !o.lot && !o.slugs.length && !o.base.length) throw new Error('rien à faire : <slug>…, --lot <lot>, --base <fichier>…, --variante <domaine> <slug>… ou --tout');
   if (o.variante && !o.slugs.length) throw new Error('--variante <domaine> <slug>… : slug attendu');
   return o;
@@ -919,14 +1015,18 @@ export function principal(argv = process.argv.slice(2)) {
   let ctx;
   try {
     o = lireArguments(argv);
-    ctx = creerContexte({ racine: o.racine || C.DOSSIER, lexique: o.lexique });
+    ctx = creerContexte({ racine: o.racine || C.DOSSIER, lexique: o.lexique, lecture: o.lecture || LECTURE_DEFAUT });
   } catch (err) {
     err.code = 2; // refus avant tout contrôle : usage, lexiques incohérents, fichier --lexique illisible
     throw err;
   }
   const sorties = [];
   const log = (s) => { sorties.push(s); console.log(s); };
-  if (o.lexique) log(`[controler] lexique Hôtellerie : ${ctx.domaines.hotellerie.source} (lecture de production, résolu)`);
+  if (o.lexique) {
+    const f = ctx.domaines.hotellerie.fichier;
+    log(`[controler] lexique Hôtellerie : ${ctx.domaines.hotellerie.source} (lecture de production, résolu) ; ${f.cles} clé(s) ; md5 de lexique::text ${f.md5} ; ${f.lecture}`);
+    for (const a of f.avertissements) log(`[controler] ! lexique Hôtellerie : ${a}`);
+  }
 
   if (o.tout) {
     const t = controlerTout(ctx);

@@ -210,12 +210,22 @@ node scripts/manuel/controler.mjs --base <fichier>…           entrées de la b
 node scripts/manuel/controler.mjs --variante <domaine> <slug>…   variantes (hotellerie, ceramique)
 node scripts/manuel/controler.mjs --tout                      tout, contrôles d'ensemble, rapport « mots du métier » (intégrateur)
   --lexique <fichier>   lexique Hôtellerie de la lecture de production (écarts, résolus) à la place du lexique d'essai (§12.1)
+  --lecture <fichier>   avec --lexique : lecture de production à comparer (défaut : scripts/manuel/lecture-production.json)
   --racine <dossier>    racine des fichiers de travail (balise/, variantes/, relectures/, rendus/) : essais, tests
 ```
 
 **Une fiche passe si les points 1 à 6 passent** (code 0). Le détail des 12 points est dans l'en-tête du script. Ce qui
 est propre à l'outil :
 - **Cibles de liens.** Elles sont masquées avant la recherche des résiduels (point 3) : ni balise ni exclusion.
+- **Trait d'union.** Une balise (hors `acc`, `accN`, `ex`) collée à un tiret est un échec du point 3 :
+  « sous-[[nom:pt]] » rendrait « sous-préparation » en H alors que l'identité passe (R3.4.3).
+- **`--lexique`.** Le fichier est une liste d'écarts (`{ cle: { sg, pl, g, el… } }`, ou `{ lexique: … }` /
+  `{ ecarts: … }`). Refus (code 2) : une clé hors du lexique (fichier enveloppé, `{ "hotellerie": { … } }`), des écarts
+  qui donnent le lexique par défaut (`{}`), un `md5Lexique` d'enveloppe qui ne correspond pas aux écarts, ou un md5
+  différent du champ `hotellerie.md5Lexique` de la lecture de production (`--lecture`, sinon
+  `lecture-production.json` s'il existe). Le md5 de `lexique::text` (texte JSONB de PostgreSQL, reproduit par
+  `jsonbTexte` de `lib/vocabulaires.js`) est affiché ; un lexique que la validation du serveur refuserait est lu
+  avec un avertissement.
 - **Exclusions.** Appliquées dans l'ordre de la liste, sur le contenu et le titre balisés réunis (`retirerExtraits`).
   Chacune : type de la liste fermée, `justification`, `extrait` sans balise qui contient une forme par défaut (sinon
   « sans emploi »), `forme` présente dans l'extrait, `occurrences` exact, extrait retrouvé dans chaque rendu.
@@ -239,7 +249,7 @@ est propre à l'outil :
 Sorties (non versionnées) : `rendus/<lot>/<domaine>/<slug>.md` (en-tête : fiche, domaine, lexique, titre et partie
 rendus ; puis le contenu rendu), `rendus/<lot>/controle.json`, `rendus/tout.json`.
 Codes : 0 tout passe, 1 au moins un échec, 2 refus (usage, lexiques incohérents au démarrage, fichier `--lexique`
-illisible).
+illisible, mal formé ou différent de la lecture de production).
 
 ## `generer-migrations.mjs` : les migrations 194, 195, 196 (§3.6, §4.2 à §4.4)
 

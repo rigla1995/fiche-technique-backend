@@ -8,10 +8,12 @@
  * Moteur : celui du serveur (src/utils/vocab.js, généré depuis le front), aucune copie. */
 'use strict';
 const path = require('path');
-const { RACINE, lireJsonExterne, lireDomaines } = require('./commun');
+const { RACINE, lireJsonExterne, lireDomaines, md5 } = require('./commun');
 
-const { LEXIQUE_DEFAUT } = require(path.join(RACINE, 'src', 'config', 'lexiqueDefaut'));
+const { LEXIQUE_DEFAUT, LEXIQUE_CLES } = require(path.join(RACINE, 'src', 'config', 'lexiqueDefaut'));
 const { vocabDefaut, vocabDuLexique, resoudreLexique } = require(path.join(RACINE, 'src', 'utils', 'vocab'));
+const { validerLexique } = require(path.join(RACINE, 'src', 'utils', 'lexiqueValidation'));
+const CLES_LEXIQUE = new Set(LEXIQUE_CLES);
 
 const FICHIER_ESSAIS = path.join(RACINE, 'test', 'vocab-lexiques-test.json');
 const DOMAINES_ESSAI = Object.freeze(['hotellerie', 'ceramique', 'miroir']);
@@ -84,14 +86,61 @@ function verifierLexiques(domaines = lireDomaines()) {
   return problemes;
 }
 
-/** Vocabulaire d'un fichier --lexique (lecture de production, §12.1) : un objet d'écarts, ou { lexique: écarts },
- * ou { ecarts: … } ; toujours résolu (R3.1.1). */
-function vocabDuFichier(fichier) {
-  const j = lireJsonExterne(path.resolve(fichier));
-  const ecarts = j && typeof j === 'object' ? (j.ecarts || j.lexique || j) : null;
-  if (!ecarts || typeof ecarts !== 'object' || Array.isArray(ecarts)) throw new Error(`${fichier} : objet d'écarts attendu`);
-  return vocabDesEcarts(ecarts);
+/**
+ * Texte de `lexique::text` en PostgreSQL (colonne JSONB) : clés triées par longueur en octets puis par octets,
+ * séparateurs « , » et « : » suivis d'une espace, chaînes échappées comme en JSON. Son md5 est celui de la lecture (7)
+ * de scripts/controle-avant-2c.sql et du champ « md5Lexique » de domaines.json (vérifié par test/vocabulaires.test.js).
+ */
+function jsonbTexte(v) {
+  if (v === null || v === undefined) return 'null';
+  if (Array.isArray(v)) return `[${v.map(jsonbTexte).join(', ')}]`;
+  if (typeof v === 'object') {
+    const cles = Object.keys(v).sort((a, b) => {
+      const A = Buffer.from(a, 'utf8');
+      const B = Buffer.from(b, 'utf8');
+      return A.length - B.length || Buffer.compare(A, B);
+    });
+    return `{${cles.map((k) => `${JSON.stringify(k)}: ${jsonbTexte(v[k])}`).join(', ')}}`;
+  }
+  return JSON.stringify(v);
 }
+/** md5(lexique::text) d'une liste d'écarts, comparable à la lecture (7) de production. */
+const md5Lexique = (ecarts) => md5(jsonbTexte(ecarts));
+
+/**
+ * Écarts d'un fichier --lexique (lecture de production, §12.1, (7)) : un objet d'écarts { cle: { sg, pl, g, el… } },
+ * ou { lexique: écarts } / { ecarts: écarts } (les autres champs de l'enveloppe, comme slug ou md5Lexique, sont lus à
+ * part). Refus (Error) au lieu d'un lexique par défaut silencieux (relecture de M0 ∥ S ∥ A) :
+ *   - pas un objet ;
+ *   - une clé hors de LEXIQUE_CLES (fichier enveloppé : { "hotellerie": { … } }, ou champ d'enveloppe mêlé aux clés) ;
+ *   - des écarts qui rendent le lexique par défaut (estDefaut vrai : {} ou lexique vide).
+ * → { ecarts, md5, md5Fichier (champ md5Lexique de l'enveloppe, ou null), avertissements: [] } ; un lexique que la
+ * validation du serveur (validerLexique) refuserait est lu quand même (c'est celui que sert la production), avec un
+ * avertissement.
+ */
+function ecartsDuFichier(fichier) {
+  const j = lireJsonExterne(path.resolve(fichier));
+  const enveloppe = j && typeof j === 'object' && !Array.isArray(j) ? j : null;
+  const ecarts = enveloppe ? (enveloppe.ecarts || enveloppe.lexique || enveloppe) : null;
+  if (!ecarts || typeof ecarts !== 'object' || Array.isArray(ecarts)) throw new Error(`${fichier} : objet d'écarts attendu`);
+  const inconnues = Object.keys(ecarts).filter((k) => !CLES_LEXIQUE.has(k));
+  if (inconnues.length) {
+    throw new Error(`${fichier} : objet d'écarts attendu, clé(s) hors du lexique : ${inconnues.slice(0, 6).join(', ')}${inconnues.length > 6 ? '…' : ''} `
+      + '(forme admise : { "cle": { "sg", "pl", "g", "el"… } }, ou { "lexique": { … } } ; un fichier enveloppé par domaine est refusé)');
+  }
+  if (vocabDesEcarts(ecarts).estDefaut) {
+    throw new Error(`${fichier} : ces écarts donnent le lexique par défaut (estDefaut vrai) : ce n'est pas un lexique Hôtellerie`);
+  }
+  const avertissements = [];
+  const err = validerLexique(ecarts);
+  if (err) avertissements.push(`validation du serveur : ${err.code}${err.cle ? ` (${err.cle})` : ''} — ${err.message}`);
+  const md5Fichier = enveloppe && ecarts !== enveloppe && typeof enveloppe.md5Lexique === 'string' ? enveloppe.md5Lexique : null;
+  return { ecarts, md5: md5Lexique(ecarts), md5Fichier, avertissements };
+}
+
+/** Vocabulaire d'un fichier --lexique (lecture de production, §12.1) : écarts contrôlés par ecartsDuFichier, toujours
+ * résolus (R3.1.1). */
+const vocabDuFichier = (fichier) => vocabDesEcarts(ecartsDuFichier(fichier).ecarts);
 
 module.exports = {
   LEXIQUE_DEFAUT,
@@ -106,5 +155,8 @@ module.exports = {
   vocabDuDomaine,
   composantsDuDomaine,
   verifierLexiques,
+  jsonbTexte,
+  md5Lexique,
+  ecartsDuFichier,
   vocabDuFichier,
 };
