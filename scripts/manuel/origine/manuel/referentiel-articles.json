@@ -1,0 +1,15 @@
+{
+  "slug": "referentiel-articles",
+  "titre": "Articles",
+  "icone": "🧂",
+  "partie": "Référentiel",
+  "ordre": 33,
+  "mots_cles": "articles, ingrédients, matières premières, unité, catégorie, affectation, activités, labo, ajout multiple, assistant, référentiel",
+  "ecran": "/client/referentiel/articles",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "e5ae49c419a0a1a48c571c2c0625ca80",
+  "md5Contenu": "e5ae49c419a0a1a48c571c2c0625ca80"
+}

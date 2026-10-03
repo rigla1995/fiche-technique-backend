@@ -2,6 +2,7 @@
 
 Guide des agents B1 à B5 (B6, les écrans, suit `fiche-technique-frontend/scripts/VOCAB-GUIDE.md`).
 La spécification fait foi : `docs/lot-2b-spec.md`. Ce guide en est le résumé pratique.
+Depuis le lot 2c, le manuel et la base de connaissances sont balisés en base : voir le §9 (`docs/lot-2c-spec.md`).
 
 **But.** Un compte hors restauration ne lit plus aucun mot de la restauration dans ce que le serveur produit.
 Un compte restauration ne voit **rien** changer, au caractère près (hors spec §11).
@@ -27,7 +28,7 @@ un exemple qui laisse un résidu, ou qui ne se rend juste qu'en Hôtellerie, est
   du compte (admin, webhook, assistant, rapport) : `vocabForClient(clientId)`, `vocabDuDomaine(domaineId)` ou
   `vocabPourUtilisateur(userId)` (`src/utils/vocabCompte.js`). Admin et boss : défaut (I4).
 - **I7 — une balise `[[…]]` seulement à un point de rendu** (§3). Partout ailleurs : des appels `voc`. Jamais de
-  balise en base, dans un email, un PDF, un classeur, le prompt, `src/routes/*.js`, ni dans un champ JSON autre
+  balise en base (seule exception, depuis le lot 2c : les colonnes de texte du manuel et de la base de connaissances, §9), dans un email, un PDF, un classeur, le prompt, `src/routes/*.js`, ni dans un champ JSON autre
   que `message`.
 - **I8 — jamais de vocabulaire dans le SQL.** Ni appel `voc`, ni balise, ni terme interpolé. Le libellé passe en
   paramètre `$n` (propre à la requête) ou devient un code traduit en JS (§5.12, §5.13).
@@ -104,9 +105,12 @@ des trous d'un point de rendu (§5.4).
 
 Un limiteur (express-rate-limit) n'est rendu que si son option `message` est un OBJET `{ message: … }`.
 
-**Sortie explicite.** Une route qui renvoie dans `message` une DONNÉE saisie (le message d'un visiteur du site,
-`PUT /admin/site/demandes-acces/:id`) pose `res.locals.vocabBrut = true;` juste avant `res.json(…)` : le corps part tel
-quel. Sans cela, une donnée de la forme d'une balise serait rendue (« ‹clé› »). Une donnée INTERPOLÉE dans un
+**Sortie explicite.** Une route qui renvoie dans `message` une DONNÉE saisie pose `res.locals.vocabBrut = true;` juste
+avant `res.json(…)` : le corps part tel quel. Sans cela, une donnée de la forme d'une balise serait rendue (« ‹clé› »).
+Deux sites le posent (lot 2c, R5.7.1) : `PUT /admin/site/demandes-acces/:id` (le message d'un visiteur du site,
+`adminSiteController.js`) et `refuserBalises` de `src/utils/manuelRendu.js`, qui répond aux refus 400
+`BALISE_INVALIDE` / `BALISE_INTERDITE` des écritures admin du manuel, de la base de connaissances et des variantes (le
+message cite la balise fautive saisie). Une donnée INTERPOLÉE dans un
 message balisé (nom de produit) est, elle, rendue avec le message : risque accepté (spec §5.1).
 
 ## 4. Table des formes (spec §6.5) et choix de la clé
@@ -387,7 +391,7 @@ Fichier de ton lot : `scripts/vocab-allow/<lot>.json` (format : `fiche-technique
 | `admin` | texte lu seulement par un super_admin ou le boss : justification = route + garde (`requireSuperAdmin`) |
 | `non-repliable` | signalement d'accord à tort (mode `accords`), `errors[].msg` d'express-validator (« champ non rendu »), glossaire à clé non littérale |
 | `deplacement` | texte déplacé d'un fichier à un autre (une entrée dans chacun), du SQL vers le JS sans unité JS identique, ou déterminant déplacé dans le moteur (`voc.avec(entreeComposantVoc(voc, c)).mon(…)`, §5.10) |
-| `reporte` (+ `lot`) | texte fixe du contrat (`3`), description de `search_knowledge_base` (`2c`) |
+| `reporte` (+ `lot`) | texte fixe du contrat (`3`). Plus de `2c` : la description de `search_knowledge_base` passe par `voc` depuis le lot 2c (R5.5) |
 | `fiscal` | facture acheteur, facture d'abonnement |
 | `faute-corrigee` | faute de l'existant corrigée (sous-titre « Transfert labo → activité » d'un transfert labo→labo) |
 | `provisoire` | en attente d'un besoin (`vocab-besoins/<lot>.json`) : doit finir à 0 |
@@ -430,3 +434,68 @@ Référence connue de `test-bot-onboarding` (spec §12.4) : 14/17, avant comme a
 anciens : « chat 200 pendant la mise en route » et « le bot cite l'étape manquante » demandent un vrai appel Gemini
 (bouchonné) ; « questions capacités : création d'activités proposée » monte `nb_activites`, alors que les questions
 se calculent par composant. Compare la LISTE des contrôles verts : toute autre baisse est une régression.
+
+## 9. Manuel et base de connaissances après le lot 2c
+
+Spécification : `docs/lot-2c-spec.md` (I7 révisée au §0.2, serveur au §5, maintenance au §12.5). Outils :
+`scripts/manuel/README.md` ; règles d'écriture d'un texte balisé : `scripts/manuel/GUIDE-BALISAGE.md`.
+
+**Ce qui est balisé en base** (liste fermée, la seule exception à « jamais de balise en base ») :
+
+| Table | Colonnes balisées | Jamais balisées (400 `BALISE_INTERDITE` à l'écriture) |
+|---|---|---|
+| `manuel_sections` | `contenu`, `contenu_defaut`, `titre`, `partie` | `slug`, `icone`, `ecran`, `mots_cles` |
+| `manuel_sections_domaine` (variantes, migration 193) | `contenu`, `titre` | `domaine_slug`, `mots_cles` |
+| `ai_knowledge_base` | `titre`, `contenu` | `mots_cles`, `categorie` |
+
+**Points de rendu** (liste fermée) : `manuelController.listPublic` ; `aiToolHandlers.toolSearchKnowledge` (rendu AVANT
+la troncature à 6 000 caractères, la citation et le score) ; les écrans admin du manuel et de la base (moteur du
+front) ; le contrôle des titres en double de la base et `scripts/manuel/retour-2c.js` (vocabulaire par défaut). Tout
+autre lecteur lit le texte brut, pour l'éditer ou le contrôler. Le lecteur reçoit SON vocabulaire (`req.voc`, ou
+`vocabForClient` pour l'assistant) et les variantes validées du même domaine, jamais pour un domaine sans écart (I12).
+Fonctions, sans copie ailleurs : `src/utils/manuelRendu.js` (`rendreFiche`, `rendreEntreeBase`, `requeteManuel`,
+`verifierBalises`, `champsSansBalises`, `refuserBalises`, `enrichirMotsCles`, `controlerBalisesAuDemarrage`).
+
+**Écritures admin** (manuel, base, variantes) : `verifierBalises` sur les seuls champs présents dans le corps (un
+`{ actif }` seul ne touche rien d'autre) ; balise invalide ou clé inconnue → 400 `BALISE_INVALIDE`
+(`balises: [{ champ, balise, raison }]`), réponse par `refuserBalises`, qui pose `res.locals.vocabBrut = true` (§3) ;
+`titre` > 200 ou `partie` > 60 → 400 ; deux titres de la base au même rendu par défaut → 409.
+
+**Badge et avertissement « sans balises ».** Un champ qui porte une forme par défaut et aucune « [[ » est signalé :
+- dans l'admin, badge « sans balises » (champ `sansBalises` de `GET /admin/manuel` et `GET /admin/knowledge-base`) ;
+- au démarrage du serveur : `[manuel] N fiche(s) sans balises : slug (champs), …` et
+  `[manuel] base de connaissances : N entrée(s) sans balises : …` (ou la ligne unique
+  `[manuel] manuel non balisé (aucune balise en base)` tant qu'aucune fiche n'a de balise).
+
+Attendu en production après la mise en ligne du 2c : aucune ligne `[manuel]`, aucun badge. Seule exception admise :
+le titre de l'entrée « Article vendable » (`src/config/manuelSansBaliseAdmis.json`, écrit par le générateur, jamais à
+la main). Une fiche signalée ne s'adapte pas aux domaines : la baliser (dans l'admin, ou par une migration balisée).
+
+**Migrations du manuel et de la base : la règle.**
+- **Toute migration écrit du texte BALISÉ.** Plus de `REPLACE(contenu, '<texte exact>', …)` sur le modèle des
+  anciennes migrations du manuel : depuis les migrations 194 et 195, le texte stocké est balisé, un `REPLACE` sur un
+  texte en clair ne trouverait rien et ne ferait rien, sans erreur.
+- Modèle : un bloc de `migrations/194_manuel_balise.sql`. Texte balisé entier en dollar-quoting (étiquette sans
+  tiret) ; `UPDATE` gardé par le md5 du texte précédent (sans `\r`) ; `contenu` remplacé seulement s'il égale encore
+  `contenu_defaut` (une fiche retouchée dans l'admin garde sa retouche) ; titre et partie gardés par égalité exacte ;
+  NOTICE (faites, déjà faites, gardées) ; `updated_at` et `mots_cles` jamais touchés. Base : la clé est `lower(titre)`,
+  et 23 titres sur 32 sont balisés en base.
+- Fiche à variantes (les 8 fiches métier) : la migration ne touche jamais `manuel_sections_domaine` et le dit par une
+  NOTICE ; l'admin montrera « à revoir » sur ses variantes.
+- Avant d'écrire la migration : le texte balisé dans `scripts/manuel/balise/…` (la source), puis
+  `node scripts/manuel/controler.mjs <slug>` (points 2 à 12 verts ; le point 1 compare à l'origine d'avant le 2c :
+  sur une fiche changée volontairement, c'est le seul échec admis), et les rendus Hôtellerie, Céramique et miroir
+  relus, plus `--production` (lexiques de la production).
+- **Outillage** : `generer-migrations.mjs` n'écrit que 194, 195 et 196 ; il n'existe pas encore d'outil pour une
+  migration de maintenance. La première s'écrit à la main sur le modèle ci-dessus, ou ajoute cette option aux outils
+  (décision au premier besoin, spec §12.5).
+- Fichier en LF (`.gitattributes` : `migrations/*.sql text eol=lf`) ; aucune balise dans un autre champ ni dans une
+  autre table (I7) ; aucun appel `voc` dans le SQL (I8).
+- Une migration qui change le texte servi en restauration change la référence de l'oracle : écart à admettre ou
+  référence recapturée (`scripts/vocab-baseline/README.md`).
+
+**Outils de `scripts/manuel/`** (mode d'emploi : `README.md`) : `controler.mjs` (contrôle par fiche, `--tout`,
+`--production`) ; `prebaliser.mjs` (brouillon de balisage) ; `generer-migrations.mjs` (194 à 196) ;
+`essai-migration.js` (migration appliquée puis annulée) ; `retour-2c.js` (retour arrière des textes, à lancer dans le
+conteneur : `--essai`, puis sans) ; `base-locale.js` (photo et copies de la base locale, jusqu'à la mise en ligne).
+Tests à part de `npm test` : `node --test scripts/manuel/test/*.test.*`.

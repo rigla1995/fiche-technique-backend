@@ -25,10 +25,39 @@
  *
  * Données datées dans le MOIS PRÉCÉDENT (jours 2 à 22) : deux captures du même mois civil sont
  * comparables (spec §2.4). Refus de démarrer en janvier (le mois précédent serait d'un autre
- * exercice) et entre 00:45 et 01:15 (job quotidien de 01:00).
+ * exercice), entre 00:45 et 01:15 (job quotidien de 01:00), et quand la date locale n'est pas la date UTC
+ * (relecture de l'étape O du lot 2c : abonnementController.js:506-508 calcule le mois de la mensualité en UTC ;
+ * en heure d'été, entre 00:00 et 02:00, le mois courant devient le mois précédent, la promotion « 1er mois
+ * offert » ne s'applique pas et auth/client.abonnement change : faux écart sans aucune modification).
  *
  * Sortie : { meta, comptes: { cle: n }, captures: { cle: { element: valeur } } }, valeurs
- * masquées (§2.4). `comptes` = éléments non vides par clé (règle de non-vacuité). */
+ * masquées (§2.4). `comptes` = éléments non vides par clé (règle de non-vacuité).
+ *
+ * Lot 2c (docs/lot-2c-spec.md §2.3, §2.8) :
+ *   - clé `manuel` : GET /api/manuel pour 6 lecteurs (client.A, client.B, gerant.B, client.C, acheteur.C, admin) ;
+ *     `manuel.lecteurs.<lecteur>` = slugs reçus, dans l'ordre ; `manuel.sections.<slug>` = la section telle que l'API
+ *     la renvoie, écrite une fois par slug (restauration : union des 6 lecteurs ; ailleurs : des 5 lecteurs hors
+ *     admin) ; `meta.empreintesManuel.<lecteur>.<slug>` = md5 du JSON BRUT (non masqué) de la section, `id` retiré,
+ *     `updatedAt` gardé ; `meta.sectionsParLecteur`. Arrêt (aucune sortie) si un lecteur reçoit 0 section, ou si deux
+ *     lecteurs d'une même union reçoivent le même slug différemment (champ `id` ignoré) ;
+ *   - clé `recherchesDomaine` : les 5 recherches fixes écrites en gabarits balisés, rendues avec le vocabulaire du
+ *     domaine (compte B) ; les questions du guide de mise en route des comptes A, B, C, chacune cherchée avec SON
+ *     compte ; « Comment créer <mon composant> ? » pour chaque composant activite / labo actif du domaine (compte A) ;
+ *   - clé `recherches` : une 6ᵉ question sans résultat (« zzz qwerty ») capte la liste `disponibles` (R2.2) ;
+ *   - `--brut <dossier>` (hors dépôt) : écrit aussi la réponse brute, non masquée, de GET /api/manuel du client B
+ *     (`manuel-client-B.json`), pour scripts/controle-manuel-pdf.mjs du frontend (§2.6) ;
+ *   - garde R2.8.3 : `--reference` refuse d'écrire si `_migrations` contient 194, 195 ou 196 (une référence se
+ *     capture toujours sur un manuel non balisé) ;
+ *   - `meta.empreintesBase.<titre rendu>` (relecture de l'étape O : 21 des 32 entrées de la base n'étaient captées
+ *     par aucune recherche) : chaque entrée active de ai_knowledge_base, dans l'ordre des id, est cherchée par son
+ *     titre (titre en base rendu avec le vocabulaire du passage), compte B, sans voc ; md5 NON masqué du JSON
+ *     { titre, contenu } du résultat de même titre. Arrêt (aucune sortie) si l'entrée n'est pas parmi les résultats,
+ *     ou si deux entrées ont le même titre rendu. `meta.entreesBase` = nombre d'entrées actives ;
+ *   - clé `baseParTitre` (réserve R1 du contrôle de O et S0, spec R2.4.8), HORS RESTAURATION SEULEMENT : pour
+ *     chacune de ces recherches par titre, `baseParTitre.<titre rendu>` = { titre, contenu } RENDUS du résultat (masqués
+ *     comme toute capture), scannés par check-invariant-vocab.js dans la famille assistant : `meta` n'est pas scanné, et
+ *     sans cette clé le contenu de 20 des 32 entrées n'apparaissait nulle part hors restauration. Arrêt si un contenu est
+ *     vide. Jamais capturée en restauration : la référence n'est pas recapturée pour elle. */
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -59,6 +88,16 @@ const SORTIE = REFERENCE
   ? path.join(RACINE, 'scripts', 'vocab-baseline', 'restauration.json')
   : path.resolve(arg('sortie', path.join(os.tmpdir(), `capture-vocab-${DOMAINE}.json`)));
 const PORT = arg('port', '3197');
+// Lot 2c (R2.3.1) : réponse brute du manuel du client B, écrite HORS des dépôts (jamais versionnée).
+const BRUT = arg('brut') ? path.resolve(arg('brut')) : null;
+if (BRUT) {
+  const dedans = (d) => (BRUT.toLowerCase() + path.sep).startsWith(path.resolve(d).toLowerCase() + path.sep);
+  if (dedans(RACINE) || dedans(path.join(RACINE, '..', 'fiche-technique-frontend'))) {
+    console.error('[capture] --brut : dossier hors des dépôts seulement (la réponse brute n\'est jamais versionnée)');
+    process.exit(2);
+  }
+}
+let brutManuelB = null;
 
 // ── Fenêtres interdites ──────────────────────────────────────────────────────────────────────
 {
@@ -70,6 +109,13 @@ const PORT = arg('port', '3197');
   }
   if (n.getMonth() === 0) {
     console.error('[capture] refus : en janvier, le mois précédent est d\'un autre exercice (données de l\'oracle).');
+    process.exit(2);
+  }
+  // Le serveur calcule le mois de la mensualité en UTC (abonnementController.js:506-508) : quand la date locale n'est
+  // pas la date UTC (en heure d'été, de 00:00 à 02:00 ; en heure d'hiver, de 00:00 à 01:00), le « mois courant »
+  // est le mois précédent et la capture diffère de la référence sans aucune modification (relecture de l'étape O).
+  if (n.getDate() !== n.getUTCDate()) {
+    console.error(`[capture] refus : date locale (${n.getDate()}) ≠ date UTC (${n.getUTCDate()}) ; le serveur prendrait le mois précédent pour la mensualité (abonnementController.js:506-508). Relancer quand les deux dates sont de nouveau égales (heure de Paris : après 02:00 en été, après 01:00 en hiver ; heure de Tunis : après 01:00).`);
     process.exit(2);
   }
 }
@@ -124,6 +170,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const ExcelJS = require('exceljs');
 const { vocabDuDomaine, vocabDefaut } = require(path.join(RACINE, 'src', 'utils', 'vocabCompte'));
+const { rendre, entreeComposantVoc } = require(path.join(RACINE, 'src', 'utils', 'vocab'));
 const BASE = `http://127.0.0.1:${PORT}`;
 
 // ── Utilitaires ──────────────────────────────────────────────────────────────────────────────
@@ -274,6 +321,9 @@ const masquerTexte = (s) => {
 const CLE_ID = /^(id|ids)$|Ids?$|_ids?$|^userId$|^token$|^inviteToken$|Token$|By$|_by$/;
 // Clés composées « a-314 » / « l-12 » (destKey, sourceKey…) : le numéro est un id.
 const CLE_COMPOSEE = /Key$/;
+// Compteurs de jours relatifs à l'instant du passage (tableaux de bord : Math.round((Date.now() - date) / 86400000),
+// dashboardV2Controller.js:334) : la valeur change avec l'heure et le jour, pas avec le code.
+const CLE_RELATIVE = /^jours(_|$)/;
 const estBase64Long = (s) => s.length >= 200 && /^[A-Za-z0-9+/=\r\n]+$/.test(s);
 const masquer = (v, cleParent = '') => {
   if (v == null) return v;
@@ -283,7 +333,7 @@ const masquer = (v, cleParent = '') => {
     if (CLE_COMPOSEE.test(cleParent) && /^[a-z]+-\d+$/.test(v)) return v.replace(/\d+$/, '⟨id⟩');
     return masquerTexte(v);
   }
-  if (typeof v === 'number') return CLE_ID.test(cleParent) ? '⟨id⟩' : v;
+  if (typeof v === 'number') return CLE_ID.test(cleParent) ? '⟨id⟩' : CLE_RELATIVE.test(cleParent) ? '⟨jours⟩' : v;
   if (Array.isArray(v)) return v.map((x) => masquer(x, cleParent));
   if (Buffer.isBuffer(v)) return '⟨base64⟩';
   if (typeof v === 'object') {
@@ -346,6 +396,12 @@ const COMPOSANTS_MIROIR = {
   labo: { libelle: 'Pôle Bêta', libellePluriel: 'Pôles Bêta' },
   acheteurs: { libelle: 'Cercle Gamma', libellePluriel: 'Cercle Gamma' },
 };
+// Recherches fixes de l'assistant (clé `recherches`, mots de la restauration, dans tous les domaines) et leurs
+// gabarits balisés (clé `recherchesDomaine`, lot 2c R2.3.2) : en restauration, le rendu du gabarit EST la recherche
+// fixe (vérifié à chaque passage).
+const RECHERCHES_FIXES = ['créer un labo', 'transfert vers une activité', 'calcul du food cost', 'inventaire de fin de mois', 'inviter un acheteur'];
+const GABARITS_RECHERCHE = ['créer [[un:labo]]', '[[nom:transfert]] vers [[un:activite]]', 'calcul [[du:food_cost]]', '[[nom:inventaire]] de fin de mois', 'inviter [[un:acheteur]]'];
+const QUESTION_SANS_RESULTAT = 'zzz qwerty';
 
 // ── État de la base (contrôle avant / après) ────────────────────────────────────────────────
 const etatBase = async () => {
@@ -369,6 +425,12 @@ const supprimerClient = async (id) => {
   const r = await fetch(`${BASE}/admin/clients/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${ctx.adminTok}` } });
   return r.status;
 };
+// Une demande de support traitée par l'admin temporaire (traite_par, clé sans ON DELETE) bloquerait sa suppression :
+// cas vu le 03/10 après une mise en veille du poste pendant un passage (jeton expiré, nettoyage en 401).
+const supprimerAdminOracle = async (where, valeur) => {
+  await pool.query(`UPDATE support_demandes SET traite_par = NULL WHERE traite_par IN (SELECT id FROM utilisateurs WHERE ${where})`, [valeur]);
+  await pool.query(`DELETE FROM utilisateurs WHERE ${where}`, [valeur]);
+};
 const purgerOracle = async () => {
   // Comptes clients d'un passage interrompu (par motif d'email), puis admin, puis domaine miroir.
   const restes = await pool.query(`SELECT id FROM utilisateurs WHERE role = 'client' AND email LIKE $1`, [MOTIF_EMAILS]);
@@ -388,10 +450,13 @@ const purgerOracle = async () => {
 
 // ── Captures ─────────────────────────────────────────────────────────────────────────────────
 const C = {
-  prompt: {}, promptReel: {}, outils: {}, resultatsOutils: {}, recherches: {}, contexte: {}, guide: {},
+  prompt: {}, promptReel: {}, outils: {}, resultatsOutils: {}, recherches: {}, recherchesDomaine: {}, contexte: {}, guide: {},
   accueilMessenger: {}, emails: {}, pdf: {}, valeursContrat: {}, exports: {}, rapportIA: {},
-  tableauxDeBord: {}, donneesLibelles: {}, persistes: {}, messages: {}, auth: {},
+  tableauxDeBord: {}, donneesLibelles: {}, persistes: {}, messages: {}, auth: {}, manuel: {},
 };
+// Réserve R1 (spec R2.4.8) : contenu des entrées de la base, hors restauration seulement (la référence restauration ne
+// porte pas cette clé ; en restauration, ces entrées sont tenues par meta.empreintesBase).
+if (DOMAINE !== 'restauration') C.baseParTitre = {};
 const CLES_CAPTURE = Object.keys(C);
 const pdfsDe = (f) => f.pdfs.map((p) => ({ info: p.info, textes: p.textes }));
 const emailsDe = (f) => f.emails.map((e) => ({
@@ -429,9 +494,16 @@ async function principal() {
   JWT_SECRET = process.env.JWT_SECRET;
   const mig = await pool.query('SELECT filename FROM _migrations ORDER BY filename DESC LIMIT 1');
   meta.derniereMigration = mig.rows[0]?.filename || null;
+  // Garde R2.8.3 (lot 2c) : une référence se capture sur un manuel NON balisé, jamais après 194, 195 ou 196.
+  if (REFERENCE) {
+    const m2c = await pool.query("SELECT filename FROM _migrations WHERE filename ~ '^(194|195|196)_' ORDER BY filename");
+    if (m2c.rows.length) {
+      throw new Error(`--reference refusé : la base a reçu ${m2c.rows.map((r) => r.filename).join(', ')} (manuel balisé, spec lot 2c R2.8.3) ; capturer sur une copie neuve de la photo (node scripts/manuel/base-locale.js copie, puis DB_NAME=fiche_technique_2c)`);
+    }
+  }
 
   // Super_admin temporaire (mot de passe aléatoire, jeton signé en interne)
-  await pool.query('DELETE FROM utilisateurs WHERE email = $1', [ADMIN_EMAIL]);
+  await supprimerAdminOracle('email = $1', ADMIN_EMAIL);
   const ins = await pool.query(
     `INSERT INTO utilisateurs (nom, email, mot_de_passe, role, actif) VALUES ('Oracle Admin', $1, $2, 'super_admin', true) RETURNING id`,
     [ADMIN_EMAIL, await bcrypt.hash(crypto.randomBytes(18).toString('base64url'), 10)]
@@ -727,7 +799,7 @@ async function principal() {
     if (etiquette in C.resultatsOutils) throw new Error(`étiquette d'outil en double : ${etiquette}`);
     C.resultatsOutils[etiquette] = await outil(nom, args);
   }
-  for (const q of ['créer un labo', 'transfert vers une activité', 'calcul du food cost', 'inventaire de fin de mois', 'inviter un acheteur']) {
+  for (const q of [...RECHERCHES_FIXES, QUESTION_SANS_RESULTAT]) {
     C.recherches[q] = await outil('search_knowledge_base', { query: q });
   }
   // Guide de mise en route : A, B, C, puis A' (branche « repli » sans détail des composants)
@@ -738,6 +810,80 @@ async function principal() {
     C.guide[`${l}.etat`] = etat;
     C.guide[`${l}.blocPrompt`] = onboarding.onboardingPromptBlock(etat, voc);
     C.guide[`${l}.http`] = (await api(tok).get('/api/ai-assistant/onboarding')).body;
+  }
+
+  // ── Recherches dans les mots du compte (lot 2c, R2.3.2), appels SANS voc (repli, R2.3.3) ──
+  // Valeur d'une question : titres des résultats, et titre + contenu des résultats de la BASE (le contenu d'un
+  // résultat du manuel est la fiche servie, captée par la clé `manuel`).
+  const estManuel = (t) => typeof t === 'string' && t.startsWith('Manuel — ');
+  const resumeRecherche = (r) => {
+    const res = r && Array.isArray(r.results) ? r.results : [];
+    return { titres: res.map((x) => x.titre), base: res.filter((x) => !estManuel(x.titre)).map((x) => ({ titre: x.titre, contenu: x.contenu })) };
+  };
+  for (const [i, g] of GABARITS_RECHERCHE.entries()) {
+    const query = rendre(voc, g);
+    if (DOMAINE === 'restauration' && query !== RECHERCHES_FIXES[i]) throw new Error(`gabarit « ${g} » rendu « ${query} » en restauration (attendu « ${RECHERCHES_FIXES[i]} »)`);
+    C.recherchesDomaine[`fixe|${g}`] = { query, resultat: await outil('search_knowledge_base', { query }) };
+  }
+  // Questions suggérées du guide (textes envoyés à l'assistant par l'écran) : chacune avec SON compte.
+  for (const [l, c] of [['A', cA], ['B', cB], ['C', cC]]) {
+    const questions = [...new Set((C.guide[`${l}.etat`].etapes || []).flatMap((e) => e.questions || []))];
+    for (const q of questions) {
+      C.recherchesDomaine[`${l}|${q}`] = resumeRecherche(await outilsIA.executeToolCall(c.id, 'search_knowledge_base', { query: q }));
+    }
+  }
+  // Une question par composant actif activite / labo du domaine, écrite comme onboardingEtat (compte A).
+  for (const comp of (dom.composants || []).filter((c) => c.actif !== false && (c.typeTechnique === 'activite' || c.typeTechnique === 'labo'))) {
+    const q = `Comment créer ${voc.avec(entreeComposantVoc(voc, comp)).mon('_')} ?`;
+    if (`composant|${q}` in C.recherchesDomaine) continue;
+    C.recherchesDomaine[`composant|${q}`] = resumeRecherche(await outilsIA.executeToolCall(cA.id, 'search_knowledge_base', { query: q }));
+  }
+  // Entrées de la base, une par une (relecture de l'étape O : 21 des 32 entrées n'étaient captées par aucune
+  // recherche, une mutation de leur contenu passait inaperçue). Recherche par titre (titre en base rendu avec le
+  // vocabulaire du passage), compte B, sans voc ; empreinte NON masquée de { titre, contenu } du résultat.
+  const entreesBase = (await pool.query('SELECT titre FROM ai_knowledge_base WHERE actif = true ORDER BY id')).rows;
+  if (!entreesBase.length) throw new Error('base de connaissances : aucune entrée active (la capture s\'arrête)');
+  meta.empreintesBase = {};
+  for (const { titre } of entreesBase) {
+    const query = rendre(voc, titre);
+    if (query in meta.empreintesBase) throw new Error(`base de connaissances : deux entrées de même titre rendu « ${query} » (la capture s'arrête)`);
+    const r = await outil('search_knowledge_base', { query });
+    const trouve = (r && Array.isArray(r.results) ? r.results : []).find((x) => x.titre === query && !estManuel(x.titre));
+    if (!trouve) throw new Error(`base de connaissances : l'entrée « ${query} » n'est pas parmi les résultats de sa recherche par titre (la capture s'arrête)`);
+    meta.empreintesBase[query] = crypto.createHash('md5').update(JSON.stringify({ titre: trouve.titre, contenu: trouve.contenu }), 'utf8').digest('hex');
+    if (C.baseParTitre) {
+      if (typeof trouve.contenu !== 'string' || !trouve.contenu.trim()) throw new Error(`base de connaissances : l'entrée « ${query} » a un contenu vide (baseParTitre, la capture s'arrête)`);
+      C.baseParTitre[query] = { titre: trouve.titre, contenu: trouve.contenu };
+    }
+  }
+  meta.entreesBase = entreesBase.length;
+
+  // ── Manuel servi (lot 2c, R2.3.1) : 6 lecteurs ; l'acheteur est lu AVANT sa suppression ─────
+  const lecteursManuel = [['client.A', tokA], ['client.B', tokB], ['gerant.B', tokG], ['client.C', tokC], ['acheteur.C', tokAch], ['admin', ctx.adminTok]];
+  const sansId = (s) => Object.fromEntries(Object.entries(s).filter(([k]) => k !== 'id'));
+  const sourceSection = {};
+  C.manuel = { lecteurs: {}, sections: {} };
+  meta.empreintesManuel = {};
+  meta.sectionsParLecteur = {};
+  for (const [l, tok] of lecteursManuel) {
+    const liste = exiger(await api(tok).get('/api/manuel'), 200, `GET /api/manuel (${l})`);
+    if (!Array.isArray(liste) || liste.length === 0) throw new Error(`GET /api/manuel (${l}) : aucune section (la capture s'arrête, R2.3.1)`);
+    if (l === 'client.B') brutManuelB = liste;
+    C.manuel.lecteurs[l] = liste.map((s) => s.slug);
+    meta.sectionsParLecteur[l] = liste.length;
+    meta.empreintesManuel[l] = {};
+    for (const s of liste) {
+      const json = JSON.stringify(sansId(s));
+      meta.empreintesManuel[l][s.slug] = crypto.createHash('md5').update(json, 'utf8').digest('hex');
+      // Hors restauration, l'admin lit le manuel en mots de LabFlow (I4) : hors de l'union, comparé par empreinte.
+      if (l === 'admin' && DOMAINE !== 'restauration') continue;
+      if (s.slug in C.manuel.sections) {
+        if (JSON.stringify(sansId(C.manuel.sections[s.slug])) !== json) throw new Error(`manuel : la fiche « ${s.slug} » diffère entre ${sourceSection[s.slug]} et ${l} (R2.3.1)`);
+      } else {
+        C.manuel.sections[s.slug] = s;
+        sourceSection[s.slug] = l;
+      }
+    }
   }
   // Prompt réel : chatWithAI(B) → corps capté par le bouchon Gemini
   const fChat = await fenetre(async () => ai.chatWithAI(cB.id, 'oracle-session', 'Bonjour, quel est mon stock ?'));
@@ -1091,6 +1237,7 @@ const compter = (captures) => Object.fromEntries(CLES_CAPTURE.map((k) => [k, Obj
 async function nettoyer() {
   const bilan = {};
   try {
+    if (ctx.adminId) ctx.adminTok = jeton(ctx.adminId, 'super_admin');
     for (const id of [...ctx.clients]) bilan[`client ${id}`] = await supprimerClient(id).catch((e) => e.message);
     await attendreStable(5000);
     if (ctx.miroirId) {
@@ -1102,7 +1249,7 @@ async function nettoyer() {
     const noms = [N.clientA, N.clientA2, N.clientB, N.clientC, N.acheteur1, N.acheteur2, N.acheteur3, N.gerant];
     const n = await pool.query('DELETE FROM notifications WHERE id > $1 AND client_nom = ANY($2::text[])', [ctx.notifMaxId, noms]);
     bilan.notificationsAdmins = n.rowCount;
-    if (ctx.adminId) await pool.query('DELETE FROM utilisateurs WHERE id = $1', [ctx.adminId]);
+    if (ctx.adminId) await supprimerAdminOracle('id = $1', ctx.adminId);
   } catch (e) {
     bilan.erreur = e.message;
   }
@@ -1143,6 +1290,11 @@ async function nettoyer() {
         const sortie = { meta, comptes, captures };
         fs.mkdirSync(path.dirname(SORTIE), { recursive: true });
         fs.writeFileSync(SORTIE, JSON.stringify(sortie, null, 1) + '\n', 'utf8');
+        if (BRUT) {
+          fs.mkdirSync(BRUT, { recursive: true });
+          fs.writeFileSync(path.join(BRUT, 'manuel-client-B.json'), JSON.stringify(brutManuelB, null, 1) + '\n', 'utf8');
+          console.log(`[capture] réponse brute du manuel (client B, ${brutManuelB.length} sections) : ${path.join(BRUT, 'manuel-client-B.json')}`);
+        }
         console.log(`[capture] comptes par clé : ${JSON.stringify(comptes)}`);
         console.log(`[capture] écrit : ${SORTIE} (${Math.round(fs.statSync(SORTIE).size / 1024)} Ko) — dernière migration ${meta.derniereMigration} — ${duree} s`);
         code = 0;

@@ -1,0 +1,22 @@
+{
+  "slug": "acheteurs-module",
+  "titre": "Le module [[Court:acheteur:pl]]",
+  "exclusions": [
+    {
+      "extrait": "les articles proposés et leurs prix HT",
+      "forme": "articles",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "ligne du catalogue des tarifs au sens générique (onglets articles et produits, TarifsAcheteursPage.tsx:77), pas l'article du référentiel"
+    },
+    {
+      "extrait": "point de vente B2B",
+      "forme": "point de vente",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "« transforme votre labo en point de vente B2B » : sens général (lieu qui vend), le labo ne devient pas une activité ; balisé, H lirait « en service B2B » (la notion d'activité)"
+    }
+  ],
+  "baliseur": "L7",
+  "relecteur": "L6"
+}

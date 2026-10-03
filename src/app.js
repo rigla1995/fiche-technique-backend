@@ -181,6 +181,7 @@ migrate()
   .then(() => {
     const server = app.listen(PORT, () => {
       console.log(`Serveur démarré sur le port ${PORT}`);
+      require('./utils/manuelRendu').controlerBalisesAuDemarrage(require('./config/database')).catch(() => {}); // lot 2c R5.8 : sans attendre, ne lève jamais
     });
     // Daily job at 01:00 to enforce subscription payment deadlines (no external dep)
     const { enforcerStatuts } = require('./controllers/abonnementController');

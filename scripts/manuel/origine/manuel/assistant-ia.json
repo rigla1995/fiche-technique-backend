@@ -1,0 +1,15 @@
+{
+  "slug": "assistant-ia",
+  "titre": "Assistant IA",
+  "icone": "🤖",
+  "partie": "Compte & Aide",
+  "ordre": 91,
+  "mots_cles": "assistant, ia, intelligence artificielle, chat, questions, langage naturel, analyse, stock critique, pertes, messagerie, telegram, messenger",
+  "ecran": "/client/ai-assistant",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "8f4045db4a93a85969c7e2febc6d1e22",
+  "md5Contenu": "8f4045db4a93a85969c7e2febc6d1e22"
+}

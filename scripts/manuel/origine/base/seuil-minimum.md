@@ -1,0 +1,1 @@
+Le seuil minimum est la quantité plancher d'un article ou d'un produit transformé. Il se définit séparément par activité et par labo : chaque site a ses propres seuils. En dessous, l'article passe en alerte (à réapprovisionner). Sert à éviter les ruptures de stock.

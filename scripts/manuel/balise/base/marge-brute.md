@@ -1,0 +1,1 @@
+[[Le:marge]] [[acc:marge:brut:brute]] = chiffre d'affaires − [[nom:cout_matiere]]. Le taux [[de:marge]] = [[nom:marge]] ÷ CA. C'est ce qui reste après le coût [[du:ingredient:pl]] pour couvrir les charges.

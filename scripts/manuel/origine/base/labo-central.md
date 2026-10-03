@@ -1,0 +1,1 @@
+Le labo (laboratoire central) est l'unité de production d'un compte client ; un compte peut en avoir zéro, un ou plusieurs. Il détient son propre stock d'ingrédients, fabrique des produits transformés (PT) et approvisionne les activités via des transferts. Le stock du labo est distinct du stock des activités.

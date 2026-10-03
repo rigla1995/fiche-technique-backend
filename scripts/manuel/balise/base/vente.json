@@ -1,0 +1,22 @@
+{
+  "cle": "vente",
+  "titre": "[[Nom:vente]]",
+  "exclusions": [
+    {
+      "extrait": "article vendu",
+      "forme": "article",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "ligne de vente : l'élément vendu (tout ce que le compte vend), pas l'article du référentiel ; même sens que « article vendable » (src/services/aiService.js:104-106) ; balisé, H lirait « fourniture vendue »"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 2,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L9",
+  "relecteur": "L7"
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "V-H2-1",
+    "fiche": "decouvrir-labflow, compte-activites-labos, demarrage, roles, onboarding-configuration",
+    "besoin": "Le composant Hôtellerie « Room service » (type activite, domaines.json) ne peut pas être cité en clair dans une variante H : son libellé contient « service », forme du lexique H (activite = Service), et le contrôle des variantes (R8.2.3, controler.mjs : forme du domaine en clair = échec du point 3) le refuse ; une exclusion n'est pas possible non plus (son extrait doit contenir une forme par défaut, verifierExclusions). Les variantes V-H2 citent donc « restaurant, bar, spa, housekeeping » sans le room service. Même cas pour toute tournure du métier qui contient « service » ou « cuisine » (« service des étages », « cuisine de production »).",
+    "proposition": "Accepter la limite pour le 2c (les exemples s'en passent) ; si le client tient au room service dans les variantes : admettre en variante une exclusion « nom-fige » sans forme par défaut, réservée aux libellés de composants du domaine (outil, intégrateur), ou renommer le composant (« Room-service » ne suffit pas : le tiret est une limite de mot).",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : la limite est levée par la correction de V-H1-1 : « room service » peut désormais être cité dans une variante H avec une exclusion nom-fige (libellé du composant, extrait portant la forme H « service » ; test ajouté sur ce cas). Les variantes V-H2 restent telles quelles (les exemples s'en passent, le client veut moins) ; le client pourra l'ajouter en validant les brouillons dans l'admin."
+  },
+  {
+    "id": "V-H2-2",
+    "fiche": "compte-activites-labos, decouvrir-labflow",
+    "besoin": "Le domaine Hôtellerie a deux composants de type labo, « Cuisine » et « Économat / Logistique » (domaines.json), et sa description parle de services « alimentés par une cuisine centrale et un économat ». Le terme H de labo (« Cuisine centrale ») ne couvre pas l'économat, et la fiche commune décrit le labo comme un site qui « fabrique » des produits transformés. Présenter l'économat comme un labo dans la variante serait une affirmation que la fiche commune ne porte pas (R8.2.5) : les variantes V-H2 ne le citent pas.",
+    "proposition": "À transmettre au client avec les corrections du lexique H (spec §15) : soit un terme H de labo qui couvre aussi l'économat, soit garder « Cuisine centrale » et laisser l'économat aux fiches qui en parlent déjà ; aucune retouche du texte commun.",
+    "etat": "DÉCISION CLIENT",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : aucune retouche du texte commun ni des variantes (R8.2.5 : présenter l'économat comme un labo serait une affirmation que la fiche commune ne porte pas). À transmettre au client avec les corrections du lexique H (§15) : un terme H de labo qui couvre aussi l'économat, ou garder « Cuisine centrale »."
+  }
+]

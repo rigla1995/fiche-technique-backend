@@ -1,0 +1,1 @@
+Les catégories de produit classent les produits vendables, distinctes des catégories d'articles. Elles sont typées : vendable, supplément ou valorisé. La catégorie est obligatoire à la création d'un produit vendable ou d'un supplément et sert au regroupement dans la saisie de vente et les rapports.

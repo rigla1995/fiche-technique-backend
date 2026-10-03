@@ -1,0 +1,1 @@
+[[Un:gerant]] est un utilisateur délégué, rattaché à un compte client et affecté à [[acc:activite:un:une]] ou plusieurs [[nom:activite:pl]] et/ou [[nom:labo:pl]]. [[acc:gerant:Il:Elle]] ne voit et ne gère que le périmètre qui lui est assigné. [[acc:gerant:Il:Elle]] consulte/saisit [[le:stock]], [[le:appro:pl:court]], [[le:perte:pl]] de [[son:activite:pl]]/[[nom:labo:pl]].

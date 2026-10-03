@@ -1,0 +1,10 @@
+[
+  {
+    "fichier": "src/controllers/exportController.js",
+    "avant": null,
+    "apres": "FT",
+    "type": "deplacement",
+    "occurrences": 2,
+    "justification": "Préfixe « FT » des onglets de la fiche technique (exportExcel, onglet unique et onglets « — DP » / « — PMP ») : il était lu dans le littéral du NOM DE FICHIER (`FT-…xlsx`, inchangé, I2) ; il est désormais rendu à part par `.replace(/^FT/, () => voc.Court('fiche_technique'))` (sigle de la fiche technique, « FCR » en Céramique, « ET » dans le miroir ; liste de travail hors restauration : onglet « FT-… », forme FT). Rendu par défaut identique (« FT »), nom d'onglet inchangé en restauration (ongletSur sans effet sur un nom déjà assaini)."
+  }
+]

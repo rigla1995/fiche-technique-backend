@@ -1,0 +1,25 @@
+{
+  "_lisezmoi": [
+    "Lot 2c (docs/lot-2c-spec.md §3.3) : les 12 parties du manuel, texte d'origine → texte balisé. Écrit une fois à M0,",
+    "tenu par l'intégrateur (un agent de balisage ne le modifie jamais : un manque va dans besoins/<lot>.json).",
+    "Une partie est partagée par plusieurs fiches : sa forme balisée vit ici, pas dans balise/manuel/<slug>.json.",
+    "6 formes dans 5 parties (spec §0.1) : Référentiel, Espace Produit, Stock + Appro, Espace Vente, Espace Acheteurs.",
+    "Contrôles (scripts/manuel/test/parties.test.js) : rendu par défaut = origine octet pour octet ; balises valides ;",
+    "aucune forme par défaut hors balises ; 12 rendus distincts en Hôtellerie, Céramique et miroir ; 60 caractères au plus.",
+    "« ordre » = plus petit ordre des fiches de la partie (ordre d'affichage du guide)."
+  ],
+  "parties": [
+    { "ordre": 1, "origine": "Découvrir LabFlow", "balisee": "Découvrir LabFlow" },
+    { "ordre": 10, "origine": "Lexique", "balisee": "Lexique" },
+    { "ordre": 20, "origine": "Onboarding", "balisee": "Onboarding" },
+    { "ordre": 30, "origine": "Référentiel", "balisee": "[[Nom:referentiel]]" },
+    { "ordre": 40, "origine": "Espace Produit", "balisee": "[[Nom:espace_produits]]" },
+    { "ordre": 50, "origine": "Stock & Appro", "balisee": "[[Nom:stock]] & [[Court:appro]]" },
+    { "ordre": 60, "origine": "Espace Vente", "balisee": "[[Nom:espace_vente]]" },
+    { "ordre": 65, "origine": "Espace Acheteurs", "balisee": "[[Nom:espace_acheteurs]]" },
+    { "ordre": 70, "origine": "Gestion", "balisee": "Gestion" },
+    { "ordre": 80, "origine": "Comprendre les calculs", "balisee": "Comprendre les calculs" },
+    { "ordre": 90, "origine": "Compte & Aide", "balisee": "Compte & Aide" },
+    { "ordre": 97, "origine": "FAQ", "balisee": "FAQ" }
+  ]
+}

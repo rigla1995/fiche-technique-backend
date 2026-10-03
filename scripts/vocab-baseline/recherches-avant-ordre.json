@@ -1,0 +1,914 @@
+{
+ "_lisezmoi": "Lot 2c, étape O (spec docs/lot-2c-spec.md §2.2, §2.7 point 4) : clés recherches et recherchesDomaine de la capture restauration COMPLÈTE de develop (863f8f0, sans R2.2 : toolSearchKnowledge sans ORDER BY, ordre physique des lignes de la base locale), faite dans un arbre à part (git archive) avec les scripts de l'oracle de la branche. Les valeurs après R2.2 sont celles de restauration.json. Comparaison : node scripts/check-invariant-vocab.js --reference <capture de develop> --capture scripts/vocab-baseline/restauration.json (fichier d'écarts vide) → écarts sous recherches/ et recherchesDomaine/ seulement, empreintes du manuel égales. « resume » : recherches changées (ensemble = au moins un des 4 résultats remplacé ; ordre = mêmes résultats, autre ordre ; disponibles = liste des titres proposés quand rien ne répond).",
+ "source": {
+  "commit": "863f8f0",
+  "moisCapture": "2026-10",
+  "derniereMigration": "192_composants_genre_elision.sql",
+  "reference": "restauration.json (branche feat/lot-2c-manuel, R2.2 compris)"
+ },
+ "resume": {
+  "recherches": {
+   "total": 6,
+   "changees": 6,
+   "ensemble": [
+    "calcul du food cost",
+    "inventaire de fin de mois",
+    "inviter un acheteur"
+   ],
+   "ordre": [
+    "créer un labo",
+    "transfert vers une activité"
+   ],
+   "disponibles": [
+    "zzz qwerty"
+   ]
+  },
+  "recherchesDomaine": {
+   "total": 56,
+   "changees": 51,
+   "ensemble": [
+    "fixe|calcul [[du:food_cost]]",
+    "fixe|[[nom:inventaire]] de fin de mois",
+    "fixe|inviter [[un:acheteur]]",
+    "A|Par quoi commencer pour mon référentiel ?",
+    "A|Comment créer mes unités ?",
+    "A|Comment ajouter mes articles ?",
+    "A|Comment affecter les articles à mon activité ?",
+    "A|Comment ajouter mes fournisseurs ?",
+    "A|Comment créer un produit et sa fiche technique ?",
+    "A|Comment mon stock est-il calculé ?",
+    "B|Par quoi commencer pour mon référentiel ?",
+    "B|Comment créer mes unités ?",
+    "B|Comment ajouter mes articles ?",
+    "B|Comment affecter les articles à mes activités et mes labos ?",
+    "B|Comment ajouter mes fournisseurs ?",
+    "B|Comment importer mes fournisseurs depuis Excel ?",
+    "B|Comment créer un produit et sa fiche technique ?",
+    "B|Comment est calculé le coût de revient d'une recette ?",
+    "B|Comment saisir une vente ?",
+    "C|Par quoi commencer pour mon référentiel ?",
+    "C|Comment créer mes unités ?",
+    "C|Comment ajouter mes articles ?",
+    "C|Comment affecter les articles à mon labo ?",
+    "C|Comment ajouter mes fournisseurs ?",
+    "C|Comment créer un produit et sa fiche technique ?",
+    "C|Comment remplir mon carnet d'acheteurs ?",
+    "C|Comment importer mes acheteurs depuis Excel ?",
+    "C|Comment configurer mes tarifs acheteurs ?"
+   ],
+   "ordre": [
+    "fixe|créer [[un:labo]]",
+    "fixe|[[nom:transfert]] vers [[un:activite]]",
+    "A|Comment créer mon activité ?",
+    "A|Comment importer mes articles en masse ?",
+    "A|Comment importer mes fournisseurs depuis Excel ?",
+    "A|À quoi servent les affectations d'un fournisseur ?",
+    "A|C'est quoi un produit valorisé ?",
+    "A|Comment est calculé le coût de revient d'une recette ?",
+    "A|Comment saisir mon premier approvisionnement ?",
+    "A|Comment saisir une vente ?",
+    "B|Comment importer mes articles en masse ?",
+    "B|À quoi servent les affectations d'un fournisseur ?",
+    "B|C'est quoi un produit valorisé ?",
+    "B|Comment saisir mon premier approvisionnement ?",
+    "B|Comment mon stock est-il calculé ?",
+    "C|Comment importer mes articles en masse ?",
+    "C|Comment importer mes fournisseurs depuis Excel ?",
+    "C|À quoi servent les affectations d'un fournisseur ?",
+    "C|C'est quoi un produit valorisé ?",
+    "C|Comment est calculé le coût de revient d'une recette ?",
+    "C|Comment saisir mon premier approvisionnement ?",
+    "composant|Comment créer mon activité ?",
+    "composant|Comment créer mon labo ?"
+   ],
+   "disponibles": []
+  }
+ },
+ "recherches": {
+  "créer un labo": {
+   "results": [
+    {
+     "titre": "Manuel — Gestion › Activités & labos",
+     "contenu": "## 🏢 Activités & labos\n\nCet écran vous permet de créer et gérer vos **activités** (points de vente) et vos **labos** de production, dans la limite de votre abonnement. Vous le trouvez dans le menu latéral, entrée **Mes activités**. Un compte peut gérer une ou plusieurs activités, avec ou sans labo central.\n\n### Ce que vous voyez\n\nLe bandeau affiche vos **compteurs de quota** : activités utilisées / incluses, et labos utilisés / inclus si votre abonnement en prévoit ; si votre domaine distingue plusieurs types d'unités (Restaurant, Bar, Cuisine, Économat…), la répartition par type s'affiche à titre indicatif et chaque fiche porte un badge de type. Une barre de recherche filtre activités et labos par nom.\n\n- **Section Activités** : un tableau avec le *Nom*, l'*Adresse*, le *Labo* qui l'alimente (pastille 🏭 cliquable qui ouvre la fiche du labo) et les boutons ✏️ modifier / 🗑 supprimer. Le bouton **+ Nouvelle activité** est remplacé par **⚡ Ajouter activités** quand le quota est atteint : il ouvre alors une demande de supplément auprès du support.\n- **Section Espace Labos** (si votre abonnement inclut au moins un labo) : tableau *Nom*, *Réf.*, *Adresse*, avec **+ Nouveau labo** ou **⚡ Ajouter labos** au quota atteint.\n\nÀ la toute première visite, quand rien n'existe encore, un écran de démarrage propose **✨ Créer mon business** (si un labo est inclus) ou **+ Ajouter mon activité**.\n\n### Actions pas à pas\n\n1. **Premier démarrage avec le wizard « Créer mon business »** : à l'étape *Laboratoire*, saisissez le nom, la référence (unique) et l'adresse du labo — ou cochez *Passer cette étape*. À l'étape *Activités*, remplissez un bloc par activité (nom obligatoire, adresse, choix **Avec labo** / **Sans labo**), ajoutez des blocs avec *+ Ajouter une activité* dans la limite du quota, puis validez avec **✅ Enregistrer tout**.\n2. **Créer une activité** : *+ Nouvelle activité* → nom (un doublon de nom est signalé immédiatement), adresse facultative. Si des labos existent, choisissez **Avec labo** (puis sélectionnez lequel : c'est le labo qui l'alimente) ou **Sans labo** (gestion autonome). Si votre domaine propose plusieurs types d'activités, choisissez aussi le **type** (Restaurant, Bar…) : il préconfigure la vente et la production de l'unité. Quand tous les emplacements prévus par votre abonnement sont créés, LabFlow vous emmène automatiquement vers le Référentiel (page Unités) pour créer vos articles.\n3. **Créer un labo** : nom, **référence unique** (demandée uniquement à la création), adresse, et le champ **Alimenté par** pour désigner un autre labo qui l'approvisionne (un économat alimente une cuisine, par exemple ; les boucles sont refusées) ; vous pouvez cocher directement les activités sans labo à lui rattacher.\n4. **Modifier** une activité ou un labo avec ✏️ ; le rattachement d'une activité (« Alimentée par ») ou la source d'un labo (« Alimenté par ») se change dans la même fenêtre.\n\n### Points d'attention\n\n:::attention\nLa suppression est bloquée (message 🔒) tant que des articles sont affectés à l'activité ou au labo : retirez d'abord ces articles. La suppression d'un labo fait passer ses activités en gestion séparée, retire leur source aux labos qu'il alimentait et met fin aux transferts depuis ce labo ; elle est refusée tant que ce labo a émis ou reçu des transferts. Ces suppressions sont irréversibles.\n:::\n\n:::astuce\nRattacher une activité à un labo signifie que ses produits transformés d'origine labo arriveront uniquement par transfert — c'est le mode de fonctionnement recommandé quand vous produisez en central ; un labo peut lui aussi être alimenté par un autre labo : les articles reçus entrent à son stock au prix de cession et servent de base au coût de ses productions.\n:::\n\n### Voir aussi\n\n- [Compte, activités et labos](#compte-activites-labos) — le modèle général\n- [Transferts labo → activités et labos rattachés](#transferts)\n- [Articles du référentiel](#referentiel-articles) — l'affectation des articles par activité\n- [Mon abonnement](#abonnement) · [Comptes gérants](#gerants)"
+    },
+    {
+     "titre": "Labo central",
+     "contenu": "Le labo (laboratoire central) est l'unité de production d'un compte client ; un compte peut en avoir zéro, un ou plusieurs. Il détient son propre stock d'ingrédients, fabrique des produits transformés (PT) et approvisionne les activités via des transferts. Le stock du labo est distinct du stock des activités."
+    },
+    {
+     "titre": "Manuel — Stock & Appro › Stock Labo",
+     "contenu": "## 🏭 Stock Labo\n\nCet écran gère le stock de votre laboratoire central : les articles que vous y achetez et les produits transformés (PT) que vous y fabriquez. Vous y accédez depuis l'espace labo ; si vous possédez plusieurs labos, une rangée de pastilles en haut de page permet de passer de l'un à l'autre — le menu latéral suit alors le labo affiché.\n\n### Ce que vous voyez\n\nUn bandeau rappelle le nom du labo et propose le bouton **↗ Transfert** vers l'écran d'envoi aux activités et aux labos rattachés. En dessous : une barre de filtres (Catégorie, Article, Nom, Fournisseur, Réf. Facture), puis le bloc **Approvisionnement** avec la Date d'appro, le Fournisseur, la Réf Facture et les boutons **Enregistrer** (le nombre de lignes prêtes s'affiche entre parenthèses) et **Réinitialiser**.\n\nLe stock est présenté par catégories repliables :\n\n| Colonne | Contenu |\n|---|---|\n| Article | nom, unité, badge **PT** (et « ◆ Composé valorisé » pour les composés fabriqués au labo), bouton 📋 Historique — les 5 derniers mouvements avec leur type : Manuel, Transfert (↗ envoyé ou ↙ reçu du labo qui vous alimente), PT, Perte… |\n| Stock Actuel | quantité restante et sa ventilation depuis le dernier inventaire : ↑ appro (achats et réceptions d'un labo source), ⇄ transferts, ↘ pertes, consommation PT |\n| Coût Total | valeur du stock en DT (TTC, avec rappel du HT) |\n| Quantité · Prix · TVA (%) | saisie d'un nouvel appro — le prix d'un PT est calculé automatiquement, il ne se saisit pas |\n| Actions | 🔧 Seuil, 📉 Perte, ⚙️ Personnaliser (PT uniquement) |\n\nUn panneau « Aperçu saisie » totalise en direct, en TTC, ce que vous êtes en train d'enregistrer.\n\n### Actions pas à pas\n\nApprovisionner des articles :\n\n1. Renseignez la date, le fournisseur et le n° de facture dans le bloc Approvisionnement.\n2. Saisissez quantité et prix HT (TVA facultative) sur chaque ligne concernée.\n3. Cliquez sur **Enregistrer** : une fenêtre récapitule la facture, avec une case **Timbre Fiscal** (+1,000 DT, cochée par défaut) ; confirmez.\n\nProduire un PT (labos de production uniquement — un labo configuré sans production, tel un économat, n'affiche pas de PT) :\n\n1. Saisissez la **quantité produite** sur la ligne du PT — aucun prix à saisir, son coût est calculé d'après les prix des articles du labo.\n2. Enregistrez : les ingrédients de la recette **et les sous-PT** qu'elle contient sont déduits automatiquement du stock du labo.\n3. Au besoin, le bouton **⚙️ Personnaliser** permet d'ajuster les portions réellement utilisées pour cette production.\n\nDéclarer une perte : bouton **📉 Perte**, puis quantité, type (selon votre domaine : Avarie ou Déchet par défaut) et date ; la fenêtre affiche le stock disponible, le prix unitaire retenu et le coût total de la perte.\n\nDéfinir un seuil : bouton **🔧 Seuil**. Le stock s'affiche ensuite en 🔴 (au seuil ou en dessous), 🟠 (jusqu'à seuil + 10 %) ou 🟢 (au-dessus).\n\n### Points d'attention\n\n:::attention\nOn ne mélange pas appro d'articles et production de PT dans un même enregistrement : dès qu'une quantité est saisie sur un PT, les champs Fournisseur et Réf Facture se grisent (et inversement). Procédez en deux enregistrements séparés.\n:::\n\n:::attention\nUne perte ne peut pas dépasser le stock disponible, ni porter une date antérieure au premier approvisionnement de l'article.\n:::\n\n:::astuce\nSi la date choisie correspond déjà à un appro existant pour un article, ses champs de saisie s'entourent d'orange : consultez l'historique 📋 avant d'enregistrer, car les quantités s'additionnent.\n:::\n\nL'affectation des articles aux activités (cases à cocher) se gère depuis la fiche de l'article ([Articles](#referentiel-articles)) ; elle est réservée au propriétaire du compte.\n\n### Voir aussi\n\n- [Les produits transformés](#lexique-pt) · [Le calcul d'une production](#calc-production-pt)\n- [Les seuils d'alerte](#calc-seuils) · [La valeur du stock](#calc-valeur-stock)\n- [Transferts vers les activités et labos rattachés](#transferts) · [Factures d'appro](#factures) · [Pertes](#pertes)"
+    },
+    {
+     "titre": "Manuel — Découvrir LabFlow › Le modèle : compte, activités, labos",
+     "contenu": "## 🏢 Le modèle : compte, activités, labos\n\nToute l'organisation de LabFlow repose sur trois niveaux : le **compte**, les **activités** et les **labos**. Comprendre qui possède quoi est la clé de lecture de tous les autres écrans.\n\n### Les trois niveaux\n\n- **Le compte** : c'est votre entreprise dans LabFlow. Il porte l'abonnement, qui fixe vos quotas : nombre d'activités, de labos et de comptes gérants — et, si l'option Acheteurs est active, le palier d'acheteurs. Il porte aussi la **formule d'activités** (Basique ou Premium), qui détermine l'étendue de l'Espace Produit. Les compteurs d'activités et de labos s'affichent sur la page Mes Activités, celui des gérants sur la page Gérants. Il n'y a pas de distinction entre indépendant et entreprise : le même modèle s'adapte à toutes les tailles.\n- **Les activités (0 à N)** : vos points de vente ou cuisines — boutique, restaurant, kiosque… Chaque activité vend, consomme et gère son propre stock.\n- **Les labos (0 à N)** : vos sites de production. Un labo fabrique des produits transformés, approvisionne les activités qui lui sont rattachées **exclusivement par transfert** — et, avec l'option Acheteurs, vend directement aux professionnels.\n\n### Qui possède quoi ?\n\n| Élément | Niveau | En pratique |\n|---|---|---|\n| Référentiel (unités, familles, catégories, articles) | Compte | Défini une seule fois, partagé par tous les sites |\n| Sélection d'articles | Activité / labo | Chaque site n'utilise que les articles qu'on lui a assignés |\n| Stock, appros, inventaires, pertes | Activité / labo | Chaque site a les siens, suivis séparément |\n| Produits et fiches techniques | Activité / labo | Un produit est affecté aux sites qui le fabriquent ou le vendent |\n| Ventes et prix de vente | Activité / labo | Chaque point de vente a ses prix et ses ventes ; le labo peut aussi saisir ses ventes directes |\n| Carnet d'acheteurs et tarifs B2B | Compte | Communs à tous les labos ; les ventes aux acheteurs partent du stock d'un labo |\n\n### Le lien activité ↔ labo\n\nDès qu'un labo existe sur votre compte, la création ou la modification d'une activité vous propose deux options :\n\n- **Avec labo** : l'activité est rattachée à un labo qui l'approvisionne par transfert — la production du labo arrive dans le stock de la boutique à chaque transfert.\n- **Sans labo** : l'activité gère seule ses approvisionnements auprès de ses fournisseurs.\n\nUne même entreprise peut mélanger les deux : des boutiques rattachées au labo et un point de vente autonome, par exemple.\n\n### La base acheteurs et le compte dépôt\n\nAvec l'**option Acheteurs**, le labo ne fait pas que produire pour vos boutiques : il vend aussi **directement aux professionnels** (épiceries, revendeurs, restaurants…). Le carnet d'acheteurs, les tarifs B2B, les commandes et le portail en ligne sont réunis dans l'[Espace Acheteurs](#acheteurs-module).\n\n- L'option nécessite **au moins un labo** : les ventes aux acheteurs partent toujours du stock d'un labo.\n- Elle est facturée **par palier** selon la taille du carnet : jusqu'à 10, 20, 50 ou 100 acheteurs.\n- Un **compte dépôt** est un compte **sans activité** : un labo + la base acheteurs. C'est le modèle de l'atelier de production qui ne vend qu'aux professionnels. Son menu est allégé : sans activité, l'Espace Vente, les Transferts et les Produits Vendables sont masqués — ils réapparaissent automatiquement dès la première activité créée.\n\n### Quatre exemples concrets\n\n- **Pâtisserie avec labo central** : 1 labo + 3 boutiques. Le labo produit crèmes, entremets et viennoiseries ; chaque boutique reçoit sa production par transfert et saisit ses propres ventes. Le référentiel (farine, beurre, sucre…) est commun à tous.\n- **Restaurant simple** : 1 activité, 0 labo. Le restaurant fait ses achats, ses fiches techniques et ses ventes ; le modèle reste le même, simplement sans Espace Labo.\n- **Traiteur multi-sites** : 1 labo de production + 2 points de vente. Le labo prépare, les sites vendent, et les rapports donnent la vision d'ensemble du compte.\n- **Atelier en dépôt** : 0 activité, 1 labo + base acheteurs. L'atelier produit et vend exclusivement à ses clients professionnels, via l'Espace Acheteurs et le portail de commande.\n\n:::regle\nLe référentiel est commun au compte ; les stocks sont locaux à chaque site. Un article se crée une seule fois, mais son stock et son prix moyen pondéré vivent séparément dans chaque activité et chaque labo.\n:::\n\n:::attention\nUn produit transformé d'origine labo ne peut être approvisionné côté activité que par transfert : pas de saisie d'achat directe pour ces produits en boutique. Voir [les produits transformés](#lexique-pt).\n:::\n\n### Voir aussi\n\n- [Parcours de démarrage](#demarrage)\n- [Activités](#activites) — l'écran de gestion de vos sites\n- [Le module Acheteurs](#acheteurs-module) — la vente aux professionnels\n- [Transferts](#transferts)\n- [Rôles & accès](#roles)\n- [Calculs : les transferts](#calc-transferts)"
+    }
+   ]
+  },
+  "transfert vers une activité": {
+   "results": [
+    {
+     "titre": "Transferts",
+     "contenu": "Un transfert déplace du stock du LABO (production centrale) vers une ACTIVITÉ (point de vente). Le labo s'approvisionne en gros puis alimente les activités. C'est la seule voie d'approvisionnement des activités en produits transformés d'origine labo."
+    },
+    {
+     "titre": "Manuel — Stock & Appro › Transferts",
+     "contenu": "## 🔄 Transferts\n\nCet écran envoie les articles et les produits transformés (PT) du labo vers vos activités **et vers les labos qu'il alimente** (un économat vers une cuisine, par exemple) : le stock du labo diminue, celui de chaque destination augmente d'autant. Vous y accédez par le bouton **↗ Transfert** du Stock Labo ou depuis l'espace labo ; les pastilles en haut de page permettent de changer de labo.\n\n### Ce que vous voyez\n\nLe bandeau propose un retour vers le **Stock Labo** et le bouton **📋 Historique Transferts** (grisé tant qu'aucun transfert n'existe). Suivent la barre de filtres (Activité, Catégorie, Article, Nom) et le bloc **Transfert** : la Date Transfert et la **Réf. Facture / BL** (toutes deux obligatoires), puis les boutons **↗ Transférer** et **↺ Réinitialiser**.\n\nLe tableau, par catégories repliables, affiche pour chaque article : le stock disponible au labo (vert, orange ou rouge selon le niveau), le **prix unitaire TTC** de cession, puis **une colonne de quantité par destination** (activité ou labo rattaché). Le bouton 📋 Historique déplie les 5 derniers transferts de l'article (dates, quantités par activité, prix, référence). Un panneau « Aperçu saisie » totalise en direct, en TTC, les montants de votre saisie.\n\nLe prix de cession est proposé automatiquement au coût du labo : coût de production TTC pour un PT, prix moyen pondéré converti en TTC pour un article. Vous pouvez l'ajuster, mais il reste obligatoire pour toute ligne transférée.\n\n### Actions pas à pas\n\n1. Sélectionnez le labo, choisissez la date du transfert et saisissez le n° de bon de livraison.\n2. Saisissez les quantités dans les colonnes des destinations (activités ou labos rattachés) ; ajustez le prix de cession si nécessaire.\n3. Cliquez sur **↗ Transférer** : la fenêtre « Confirmation de transfert » récapitule les lignes groupées par destination (quantités, prix HT/TTC, totaux).\n4. Cliquez sur **Confirmer le transfert** : les stocks sont mis à jour immédiatement.\n\nPour corriger ou exporter : ouvrez l'**Historique Transferts** (filtres Du/Au, Destination, Catégorie), sélectionnez des lignes si besoin (elles seront surlignées dans le fichier), exportez en Excel, modifiez une quantité (✏️) ou supprimez un transfert (🗑️ — les stocks du labo et de l'activité sont alors recalculés).\n\n### Points d'attention\n\n:::regle\nUn article ou un PT ne peut être transféré que vers une destination (activité ou labo rattaché) où il est **affecté** : sinon la case de quantité est remplacée par « — ». Si aucune destination n'apparaît, rattachez d'abord vos activités ou labos à ce labo depuis [Activités & labos](#activites). Pour un PT fabriqué au labo, le transfert est le **seul** moyen d'approvisionner une activité. Si aucun article n'apparaît, affectez d'abord vos articles aux activités liées au labo depuis la fiche de chaque article ([Articles](#referentiel-articles)).\n:::\n\n:::attention\nImpossible de transférer plus que le stock du labo : la ligne passe en rouge avec l'excédent affiché, et l'enregistrement est bloqué avec le détail Disponible / Demandé / Excédent.\n:::\n\n:::attention\nSi un transfert existe déjà le même jour vers la même destination, une fenêtre de vérification détaille « Déjà envoyé / Nouveau transfert / Total après ». Ne confirmez que s'il s'agit bien d'un envoi complémentaire : les quantités s'additionnent.\n:::\n\n:::astuce\nCôté destination (activité ou labo rattaché), la réception apparaît dans le stock comme un approvisionnement de type « Transfert », avec le **labo source comme fournisseur**, au prix de cession saisi ; côté labo source, la sortie porte le badge « ↗ Transf. → destination ».\n:::\n\n### Voir aussi\n\n- [Le calcul des transferts](#calc-transferts) · [Le prix moyen pondéré](#calc-pmp)\n- [Stock Labo](#stock-labo) · [Stock des activités](#stock-activites)\n- [Factures d'appro](#factures) · [Historique des mouvements](#historique)"
+    },
+    {
+     "titre": "Manuel — Gestion › Activités & labos",
+     "contenu": "## 🏢 Activités & labos\n\nCet écran vous permet de créer et gérer vos **activités** (points de vente) et vos **labos** de production, dans la limite de votre abonnement. Vous le trouvez dans le menu latéral, entrée **Mes activités**. Un compte peut gérer une ou plusieurs activités, avec ou sans labo central.\n\n### Ce que vous voyez\n\nLe bandeau affiche vos **compteurs de quota** : activités utilisées / incluses, et labos utilisés / inclus si votre abonnement en prévoit ; si votre domaine distingue plusieurs types d'unités (Restaurant, Bar, Cuisine, Économat…), la répartition par type s'affiche à titre indicatif et chaque fiche porte un badge de type. Une barre de recherche filtre activités et labos par nom.\n\n- **Section Activités** : un tableau avec le *Nom*, l'*Adresse*, le *Labo* qui l'alimente (pastille 🏭 cliquable qui ouvre la fiche du labo) et les boutons ✏️ modifier / 🗑 supprimer. Le bouton **+ Nouvelle activité** est remplacé par **⚡ Ajouter activités** quand le quota est atteint : il ouvre alors une demande de supplément auprès du support.\n- **Section Espace Labos** (si votre abonnement inclut au moins un labo) : tableau *Nom*, *Réf.*, *Adresse*, avec **+ Nouveau labo** ou **⚡ Ajouter labos** au quota atteint.\n\nÀ la toute première visite, quand rien n'existe encore, un écran de démarrage propose **✨ Créer mon business** (si un labo est inclus) ou **+ Ajouter mon activité**.\n\n### Actions pas à pas\n\n1. **Premier démarrage avec le wizard « Créer mon business »** : à l'étape *Laboratoire*, saisissez le nom, la référence (unique) et l'adresse du labo — ou cochez *Passer cette étape*. À l'étape *Activités*, remplissez un bloc par activité (nom obligatoire, adresse, choix **Avec labo** / **Sans labo**), ajoutez des blocs avec *+ Ajouter une activité* dans la limite du quota, puis validez avec **✅ Enregistrer tout**.\n2. **Créer une activité** : *+ Nouvelle activité* → nom (un doublon de nom est signalé immédiatement), adresse facultative. Si des labos existent, choisissez **Avec labo** (puis sélectionnez lequel : c'est le labo qui l'alimente) ou **Sans labo** (gestion autonome). Si votre domaine propose plusieurs types d'activités, choisissez aussi le **type** (Restaurant, Bar…) : il préconfigure la vente et la production de l'unité. Quand tous les emplacements prévus par votre abonnement sont créés, LabFlow vous emmène automatiquement vers le Référentiel (page Unités) pour créer vos articles.\n3. **Créer un labo** : nom, **référence unique** (demandée uniquement à la création), adresse, et le champ **Alimenté par** pour désigner un autre labo qui l'approvisionne (un économat alimente une cuisine, par exemple ; les boucles sont refusées) ; vous pouvez cocher directement les activités sans labo à lui rattacher.\n4. **Modifier** une activité ou un labo avec ✏️ ; le rattachement d'une activité (« Alimentée par ») ou la source d'un labo (« Alimenté par ») se change dans la même fenêtre.\n\n### Points d'attention\n\n:::attention\nLa suppression est bloquée (message 🔒) tant que des articles sont affectés à l'activité ou au labo : retirez d'abord ces articles. La suppression d'un labo fait passer ses activités en gestion séparée, retire leur source aux labos qu'il alimentait et met fin aux transferts depuis ce labo ; elle est refusée tant que ce labo a émis ou reçu des transferts. Ces suppressions sont irréversibles.\n:::\n\n:::astuce\nRattacher une activité à un labo signifie que ses produits transformés d'origine labo arriveront uniquement par transfert — c'est le mode de fonctionnement recommandé quand vous produisez en central ; un labo peut lui aussi être alimenté par un autre labo : les articles reçus entrent à son stock au prix de cession et servent de base au coût de ses productions.\n:::\n\n### Voir aussi\n\n- [Compte, activités et labos](#compte-activites-labos) — le modèle général\n- [Transferts labo → activités et labos rattachés](#transferts)\n- [Articles du référentiel](#referentiel-articles) — l'affectation des articles par activité\n- [Mon abonnement](#abonnement) · [Comptes gérants](#gerants)"
+    },
+    {
+     "titre": "Manuel — Stock & Appro › Stock Activités",
+     "contenu": "## 📦 Stock Activités\n\nL'écran **Stock Activités** (menu **Espace Activités → Stock Activités**) est le poste central de chaque point de vente : quantités disponibles, saisie des approvisionnements, seuils d'alerte et déclaration des pertes. Le stock se consulte **activité par activité** : sélectionnez le point de vente grâce aux pastilles 🏪 en haut de l'écran — il n'existe pas de vue globale « Toutes ». Un gérant ne voit que les activités qui lui sont affectées.\n\n### Ce que vous voyez\n\nUne barre de filtres cible les lignes affichées : **Catégorie**, **Article** (débloqué après le choix d'une catégorie), **Nom** (recherche libre), **Fournisseur** et **Réf. Facture**, avec un bouton **Réinitialiser**.\n\nLe bloc bleu **Approvisionnement** regroupe les informations communes à la saisie : **Date d'appro** (obligatoire, entre le ⟨date⟩ de l'année en cours et aujourd'hui), **Fournisseur**, **Réf Facture** (obligatoire), puis le bouton **Enregistrer (N)** — N compte les lignes prêtes.\n\nLes articles sont groupés par **catégories repliables** (cliquez sur l'en-tête pour ouvrir). Les produits transformés apparaissent dans leurs propres catégories : **Produits Transformés Utilisables**, **Produits Transformés Vendables** et **Produits Composés Valorisés** (voir [le lexique des PT](#lexique-pt)).\n\n| Colonne | Contenu |\n|---|---|\n| Article | nom, unité, lien 📋 Historique, date et quantité du dernier inventaire 📦 |\n| Stock Actuel | quantité disponible + détail : ↑ appro, ⇄ transf, ↘ pertes, PT (consommé par vos productions), 💰 VENTE |\n| Coût Total | valeur du stock en TTC (le montant HT s'affiche en dessous) |\n| Quantité | saisie de la nouvelle quantité approvisionnée |\n| Prix | prix d'achat HT unitaire (calculé automatiquement pour un produit transformé) |\n| TVA (%) | taux de TVA, optionnel |\n| Actions | 🔧 Seuil, 📉 Perte, ⚙️ Personnaliser (produits transformés) |\n\nLa couleur du stock reflète le **seuil minimum** : 🔴 stock inférieur ou égal au seuil, 🟠 juste au-dessus (jusqu'à seuil + 10 %), 🟢 au-delà.\n\n:::formule Stock actuel\nStock = Approvisionnements + Transferts entrants − Consommations (ventes, productions) − Pertes ± Ajustements d'inventaire\n:::\n\n### Actions pas à pas\n\nEnregistrer un approvisionnement :\n\n1. Sélectionnez l'activité, puis renseignez le bloc Approvisionnement : date, fournisseur et n° de facture.\n2. Ouvrez les catégories concernées et saisissez, ligne par ligne, la **quantité** et le **prix HT** unitaire (et le taux de TVA si vous le connaissez).\n3. Contrôlez l'**Aperçu saisie** flottant en bas à droite : il cumule les lignes et le total TTC.\n4. Cliquez sur **Enregistrer (N)** : une fenêtre récapitulative façon facture s'ouvre (lignes, Total HT, Total TTC, case **Timbre Fiscal** ajoutant 1,000 DT, cochée par défaut). Confirmez.\n5. Si un appro existe déjà à cette date pour un article, une confirmation supplémentaire affiche le cumul avant validation.\n\nProduire un produit transformé : saisissez la quantité sur sa ligne — l'indication **Max** montre le maximum réalisable avec le stock d'ingrédients, et le prix se calcule automatiquement depuis la recette ([production de PT](#calc-production-pt)). Le bouton **⚙️ Personnaliser** permet d'ajuster les quantités d'ingrédients réellement consommées.\n\nConfigurer un seuil : bouton **🔧 Seuil**, saisissez la valeur minimale (laisser vide pour désactiver), puis Enregistrer. Le seuil d'un produit transformé se règle aussi activité par activité.\n\n### Points d'attention\n\n:::attention\nUn produit transformé fabriqué au **labo** porte le badge **⇄ Transfert uniquement** : sa quantité ne se saisit pas ici, il n'entre en stock d'activité que par [transfert](#transferts). Par ailleurs, une même validation ne peut pas mélanger production de PT et appro d'articles : dès qu'une quantité de PT est saisie, les champs Fournisseur et Réf Facture se désactivent — enregistrez les deux séparément. Enfin, si le champ Fournisseur affiche « ⚠ Aucun fournisseur », créez d'abord vos [fournisseurs](#fournisseurs) : le n° de facture est toujours exigé, et le choix d'un fournisseur devient obligatoire dès qu'au moins un fournisseur existe.\n:::\n\n:::formule Prix TTC\nTTC = HT × ( 1 + TVA ÷ 100 )\nnote: Un article acheté 10 DT HT avec 19 % de TVA revient à 11,900 DT TTC.\n:::\n\n:::astuce\nLe lien **📋 Historique** sous chaque article affiche ses derniers mouvements (date, type, quantité, prix HT et TTC, fournisseur, réf. facture) sans quitter l'écran, avec un bouton vers l'historique complet.\n:::\n\n### Voir aussi\n\n- [Valeur du stock](#calc-valeur-stock) — comment le stock actuel est calculé\n- [HT et TTC](#calc-ht-ttc) · [Seuils d'alerte](#calc-seuils)\n- [Pertes](#pertes) · [Historiques](#historique) · [Transferts](#transferts) · [Factures d'appro](#factures)"
+    }
+   ]
+  },
+  "calcul du food cost": {
+   "results": [
+    {
+     "titre": "Food cost",
+     "contenu": "Le food cost (ratio de coût matière) = coût matière ÷ chiffre d'affaires, en %. Repères LabFlow : moins de 30% = sain, 30 à 40% = à surveiller, plus de 40% = élevé (revoir prix ou portions). Plus il est bas, plus la marge est élevée."
+    },
+    {
+     "titre": "Manuel — Découvrir LabFlow › LabFlow en un coup d'œil",
+     "contenu": "## 🌟 LabFlow en un coup d'œil\n\nLabFlow est une application de gestion dédiée aux métiers de bouche : restaurants, pâtisseries, traiteurs, cuisines centrales. Elle réunit dans un seul outil tout ce qui fait la rentabilité d'une cuisine professionnelle : le référentiel d'articles, les fiches techniques et le coût matière, les stocks de chaque site, la production en laboratoire, les transferts entre sites, les ventes — au comptoir comme aux professionnels — et les rapports.\n\n### Ce que LabFlow vous apporte\n\n- **La maîtrise du coût matière** : chaque recette est décrite dans une fiche technique dont le coût de revient se calcule automatiquement à partir de vos prix d'achat réels. Quand un prix fournisseur évolue, vos coûts suivent.\n- **Des stocks multi-sites** : chaque point de vente et chaque labo dispose de son propre stock, avec approvisionnements, inventaires, pertes et valeur de stock suivis site par site.\n- **La production en laboratoire** : le labo fabrique vos produits transformés (crèmes, pâtes, plats préparés…), les ingrédients sont déduits automatiquement, et les boutiques sont approvisionnées par transfert.\n- **La vente aux professionnels (B2B)** : avec l'option Acheteurs, votre labo vend directement à un carnet de clients professionnels — tarifs dédiés, commandes en ligne via un portail, factures de vente.\n- **La traçabilité** : chaque mouvement laisse une trace consultable — approvisionnements, pertes, transferts, inventaires, ventes — avec filtres et exports dans les pages d'historique.\n- **Les ventes et les marges** : la saisie des ventes déduit le stock et alimente vos indicateurs : chiffre d'affaires, food cost, marge brute, valeur du stock, pertes, panier moyen.\n\nTous les montants sont exprimés en **DT**. Les prix d'achat se saisissent en HT avec leur taux de TVA, et l'application affiche les valeurs en TTC dans les rapports et tableaux de bord (voir [la règle HT/TTC](#calc-ht-ttc)).\n\n### Pour qui ?\n\nLabFlow s'adapte à la taille de votre organisation grâce à un modèle unique : un compte regroupe une ou plusieurs **activités** (points de vente, cuisines) et, si besoin, un ou plusieurs **labos** de production.\n\n- Le **restaurant indépendant** : une seule activité, tout se gère au même endroit.\n- La **pâtisserie avec laboratoire central** : le labo produit, les boutiques vendent, les transferts font le lien.\n- Le **traiteur ou groupe multi-sites** : plusieurs activités, chacune avec son stock et ses prix de vente, et des rapports pour piloter l'ensemble.\n- L'**atelier de production en dépôt** : pas de point de vente — un labo et un carnet d'acheteurs professionnels, avec commandes via le portail.\n\nLe détail de ce modèle est expliqué dans [Le modèle : compte, activités, labos](#compte-activites-labos).\n\n### Les grands modules\n\n| Module | Ce qu'il couvre |\n|---|---|\n| Référentiel | Unités, familles, catégories et articles : la base commune de votre compte |\n| Espace Produits | Produits vendables, utilisables et valorisés, avec leurs fiches techniques |\n| Espace Activités | Stock, approvisionnements, factures, pertes et inventaires de chaque point de vente |\n| Espace Labo | Stock du labo, production, transferts vers les activités |\n| Espace Vente | Prix de vente, prestataires, charges, saisie des ventes et rapport de vente |\n| Espace Acheteurs *(option)* | Carnet d'acheteurs B2B, tarifs dédiés, ventes et commandes, portail en ligne, factures de vente |\n| Gestion | Tableau de bord, rapports, fournisseurs, gérants, abonnement |\n\n:::astuce\nSur la plupart des écrans, un petit bouton « ? » ouvre ce manuel directement à la page concernée. Vous retrouvez aussi le lien Manuel d'utilisation en bas du menu latéral.\n:::\n\n### Voir aussi\n\n- [Le modèle : compte, activités, labos](#compte-activites-labos)\n- [Parcours de démarrage](#demarrage)\n- [Le module Acheteurs](#acheteurs-module)\n- [Lexique](#lexique)\n- [Tableau de bord](#dashboard)\n- [Fiches techniques](#fiches-techniques)"
+    },
+    {
+     "titre": "Manuel — Comprendre les calculs › Coût de revient d'une recette",
+     "contenu": "## 🧮 Le coût de revient d'une recette\n\nLe coût de revient d'une fiche technique est la somme de ce que coûtent ses composants : chaque ingrédient compte pour sa portion multipliée par son prix unitaire TTC, et chaque sous-produit transformé compte pour sa portion multipliée par son propre coût de revient, calculé de la même façon. Le calcul descend ainsi dans la recette du sous-produit, puis de ses éventuels sous-produits, jusqu'au dernier ingrédient.\n\n### Les paramètres qui influencent le résultat\n\n- **Les portions de la recette** : la quantité de chaque ingrédient et de chaque sous-produit nécessaire pour une unité produite.\n- **Le prix unitaire de chaque ingrédient**, selon le mode choisi au moment de générer la fiche technique (carte *FT Stock* avec ses méthodes *DP* / *PMP*, ou carte *FT Manuel*) :\n  - **Prix moyen pondéré (PMP)** — méthode *PMP* : la moyenne pondérée des prix TTC de vos achats (et transferts reçus, côté activité) depuis le dernier inventaire — voir [Le prix moyen pondéré](#calc-pmp). C'est ce prix qui sert à valoriser les productions.\n  - **Dernier prix** — méthode *DP* : le dernier prix TTC enregistré pour l'article.\n  - **Prix manuel** — carte *FT Manuel* : un prix que vous saisissez vous-même, mémorisé par base de prix, pour simuler un coût.\n- **La base de prix choisie** : la fiche technique se génère pour une ou plusieurs bases (activités ou labos assignés au produit) — les prix proviennent du stock de chaque base, avec repli sur les prix du labo lié quand un article n'a pas encore de prix côté activité. Un produit fabriqué au labo se calcule uniquement sur ses bases labo.\n- **Les portions personnalisées** : au moment d'une production, vous pouvez ajuster ponctuellement les quantités réellement consommées ; les déductions de stock suivent ces quantités, sans modifier la fiche technique (l'entrée du produit fini reste valorisée au coût de la recette standard).\n\n:::formule Coût de revient d'une recette\nCoût total = somme(portion ingrédient × prix unitaire TTC) + somme(portion sous-produit × coût de revient du sous-produit)\nnote: le coût de chaque sous-produit est calculé récursivement avec la même règle, aux mêmes prix.\n:::\n\n:::exemple\nRecette « Tarte aux fraises » (pour 1 tarte), valorisée au PMP TTC de l'activité :\n\n- Farine : 0,250 kg × 2,400 DT/kg = 0,600 DT\n- Fraises : 0,300 kg × 8,000 DT/kg = 2,400 DT\n- Sucre : 0,100 kg × 3,200 DT/kg = 0,320 DT\n- Crème pâtissière (sous-produit) : 0,500 unité × 4,440 DT/unité = 2,220 DT\n\nLe coût de la crème pâtissière (4,440 DT) est lui-même calculé à partir de sa propre recette : lait 0,500 L × 2,000 DT = 1,000 DT ; œufs 4 pièces × 0,700 DT = 2,800 DT ; sucre 0,200 kg × 3,200 DT = 0,640 DT.\n\n**Coût de revient de la tarte = 0,600 + 2,400 + 0,320 + 2,220 = 5,540 DT TTC.**\n:::\n\n### Ce qui peut faire varier le résultat\n\n- Chaque nouvel achat à un prix différent déplace le PMP, donc le coût de revient recalculé.\n- Un inventaire redémarre la période de calcul du PMP : le coût peut évoluer juste après.\n- Si un ingrédient n'a encore aucun prix connu (jamais approvisionné), sa part est comptée à zéro : le coût affiché est alors incomplet.\n- La modification ou la suppression d'une ligne d'approvisionnement passée change le PMP, donc le coût, rétroactivement.\n- Une recette ne peut pas se contenir elle-même (directement ou via ses sous-produits) : le calcul le refuse.\n\n### Voir aussi\n\n- [Fiches techniques](#fiches-techniques)\n- [Le prix moyen pondéré](#calc-pmp)\n- [La production d'un produit transformé](#calc-production-pt)\n- [HT et TTC](#calc-ht-ttc)\n- [Lexique des produits transformés](#lexique-pt)"
+    },
+    {
+     "titre": "Manuel — Comprendre les calculs › Valeur du stock",
+     "contenu": "## 💰 La valeur du stock actuel\n\nLa valeur de votre stock est calculée ligne par ligne : quantité actuelle × coût unitaire moyen TTC. La quantité actuelle repart toujours du **dernier inventaire** : on prend la quantité comptée ce jour-là, puis on ajoute et retranche tous les mouvements survenus depuis. S'il n'y a jamais eu d'inventaire, tous les mouvements depuis l'origine sont pris en compte.\n\n### Les paramètres qui influencent le résultat\n\n- **Le dernier inventaire** : quantité comptée et date (point de départ du calcul).\n- **Les mouvements depuis cette date** : achats, transferts, consommations de production, ventes, pertes.\n- **Les prix TTC des entrées**, qui déterminent le coût moyen (voir [Le prix moyen pondéré](#calc-pmp)).\n- **La nature de la ligne** (article ou produit transformé) et **le lieu** (activité ou labo) :\n\n| Où | Quantité actuelle |\n|---|---|\n| Article en activité | inventaire + achats + transferts reçus − consommations de production − ventes − pertes |\n| Article au labo | inventaire + achats − consommations de production − transferts envoyés − pertes |\n| Produit transformé en activité | inventaire + réceptions (transferts ou productions) − ventes − consommations en sous-produit − pertes |\n| Produit transformé au labo | inventaire + productions − consommations en sous-produit − transferts envoyés − pertes |\n\nPour la valorisation :\n\n- **Article** : valeur = quantité actuelle × PMP TTC. Le dernier prix reçu (achat ou transfert) est affiché à titre d'information, mais la valeur totale est bien calculée au coût moyen pondéré.\n- **Produit transformé** : chaque entrée porte son coût — coût de recette pour une production, prix de cession TTC pour une réception de transfert ; la valeur = quantité actuelle × moyenne des coûts des entrées depuis le dernier inventaire. À défaut d'entrée valorisée depuis l'inventaire, la moyenne de toutes les entrées sert de base ; en dernier recours, le dernier coût de réception connu ou le coût de recette actuel.\n\n:::formule Valeur du stock d'un article\nValeur = quantité actuelle × PMP TTC\nnote: quantité actuelle = quantité d'inventaire + entrées − sorties depuis le dernier inventaire ; sans inventaire, tous les mouvements depuis l'origine.\n:::\n\n:::exemple\nFarine dans une activité, dernier inventaire le 30/06 : **12,000 kg comptés**. Depuis :\n\n- achats : +25,000 kg à 2,400 DT TTC le kg\n- consommations de production : −6,000 kg\n- ventes : −4,500 kg\n- pertes : −1,500 kg\n\nQuantité actuelle = 12,000 + 25,000 − 6,000 − 4,500 − 1,500 = **25,000 kg**.\n\nAucun achat n'avait été enregistré avant cet inventaire : seul l'achat de 25 kg à 2,400 DT entre dans le coût moyen, donc PMP = 2,400 DT TTC.\n\n**Valeur du stock = 25,000 kg × 2,400 DT = 60,000 DT TTC.**\n:::\n\n### Ce qui peut faire varier le résultat\n\n- Un nouvel inventaire remplace la base de calcul : la quantité repart de la valeur comptée.\n- La quantité comptée à l'inventaire est valorisée à son coût moyen d'avant l'inventaire quand il existe ; sinon elle compte dans la quantité mais pas dans le coût moyen.\n- Si la quantité actuelle est nulle ou négative, la valeur affichée est 0.\n- Modifier ou supprimer un mouvement passé (achat, transfert, perte) recalcule immédiatement quantité et valeur.\n- Les quantités sont arrondies au millième (trois décimales).\n\n### Voir aussi\n\n- [Stock des activités](#stock-activites)\n- [Stock du labo](#stock-labo)\n- [Inventaire](#inventaire)\n- [Le prix moyen pondéré](#calc-pmp)\n- [Pertes](#pertes)"
+    }
+   ]
+  },
+  "inventaire de fin de mois": {
+   "results": [
+    {
+     "titre": "Manuel — Stock & Appro › Inventaire",
+     "contenu": "## 🔢 Inventaire\n\nL'écran **Inventaire** sert à compter physiquement votre stock et à enregistrer les quantités réelles : elles remplacent le stock théorique calculé par l'application et deviennent la nouvelle référence. Vous y accédez depuis le menu **Espace Activités → Inventaire**, activité par activité (pastilles 🏪).\n\n### Ce que vous voyez\n\n- Un en-tête avec compteurs : nombre d'**Ingrédients**, lignes saisies (compteur **Saisis**), et alerte **⚠ Date existante** si un inventaire existe déjà à la date choisie.\n- Une barre de filtres : **Catégorie**, **Ingrédient** (après choix d'une catégorie), **Date inventaire** (aujourd'hui par défaut, jamais dans le futur), et le bouton **Enregistrer (N)**.\n- Un tableau groupé par catégories repliables (avec compteur d'ingrédients et de lignes saisies) :\n\n| Colonne | Contenu |\n|---|---|\n| Ingrédient | nom (badge **PT** pour un produit transformé), unité, lien 📋 « 5 derniers inv. » |\n| Stock actuel | stock théorique calculé par l'application |\n| Qté réelle | saisie de la quantité réellement comptée |\n\n- Un panneau flottant **Aperçu saisie** (en bas à droite) récapitule les lignes saisies avec l'écart par rapport au stock théorique (en vert si positif, en rouge si négatif).\n\n### Actions pas à pas\n\n1. Sélectionnez l'activité, puis la **date d'inventaire**.\n2. Ouvrez les catégories et saisissez la **quantité réelle comptée** pour chaque ingrédient concerné — il n'est pas obligatoire de tout compter, seules les lignes saisies sont enregistrées.\n3. Contrôlez les écarts dans l'aperçu flottant.\n4. Cliquez sur **Enregistrer (N)** : une fenêtre de confirmation liste les lignes et rappelle que l'inventaire **ne peut pas être supprimé**, seulement modifié, et qu'il **recalcule le stock à partir de sa date**.\n5. Confirmez : le message « Inventaire enregistré avec succès » s'affiche.\n\nSi un inventaire existe déjà à la date choisie pour un ingrédient, sa ligne porte un badge **⚠ DATE** et la confirmation devient « 🚨 Remplacement détecté » : l'ancienne valeur, barrée, et la nouvelle sont affichées côte à côte avant que vous ne validiez le remplacement.\n\n### L'impact sur vos calculs\n\n:::formule Écart d'inventaire\nÉcart = Quantité réelle comptée − Stock théorique\nnote: Un écart négatif révèle des pertes ou consommations non saisies ; un écart positif, un surplus.\n:::\n\n:::regle\nL'inventaire devient le **point de départ** des calculs : le stock repart de la quantité comptée, puis les mouvements postérieurs (appros, transferts, pertes, productions, ventes) s'y ajoutent ou s'en retranchent. Le détail est expliqué dans [la valeur du stock](#calc-valeur-stock). La date et la quantité du dernier inventaire s'affichent d'ailleurs sous chaque article dans [Stock Activités](#stock-activites).\n:::\n\n### Consulter et corriger les inventaires passés\n\nL'écran **Historique Inventaire** liste tous les comptages : filtres **Du / Au**, **Catégorie** et **Article**, export **Excel** (les lignes cochées y sont surlignées), colonnes Article (badge PT), Date, Qté réelle, Note et Par (auteur de la saisie). Le bouton **✏️ Modifier** permet de corriger la quantité et la note — la date, elle, ne peut pas être modifiée. Un gérant ne peut corriger que ses propres saisies.\n\n### Points d'attention\n\n:::attention\nUn inventaire est définitif : il ne se supprime pas. En cas d'erreur, corrigez la quantité depuis l'historique, ou enregistrez un nouvel inventaire à une date plus récente.\n:::\n\n:::astuce\nRéalisez des inventaires réguliers (hebdomadaires ou mensuels) : ils fiabilisent la valeur du stock et font apparaître les pertes oubliées. Le lien « 5 derniers inv. » sous chaque ingrédient aide à repérer les dérives d'un comptage à l'autre.\n:::\n\n### Voir aussi\n\n- [Valeur du stock](#calc-valeur-stock) · [Stock Activités](#stock-activites) · [Pertes](#pertes) · [Historiques](#historique)"
+    },
+    {
+     "titre": "Inventaire",
+     "contenu": "L'inventaire est le comptage réel des quantités en stock à une date. L'écart entre le stock théorique et le stock compté révèle des pertes non déclarées, des erreurs de saisie ou du gaspillage. L'inventaire sert aussi de point de départ au calcul du prix moyen pondéré : le PMP TTC est calculé sur les entrées enregistrées depuis le dernier inventaire."
+    },
+    {
+     "titre": "Manuel — Gestion › Comptes gérants",
+     "contenu": "## 👥 Comptes gérants\n\nCet écran vous permet de donner un accès LabFlow à vos collaborateurs : chaque **gérant** reçoit une invitation par email et ne voit que les activités et labos que vous lui affectez. Vous le trouvez dans le menu latéral, entrée **Gérants**.\n\n### Ce que vous voyez\n\nLe bandeau affiche le compteur **Gérants** (utilisés / inclus dans votre abonnement), le nombre de gérants **Actifs**, et le bouton **+ Nouveau gérant** — remplacé par la mention 🔒 *Limite atteinte* quand le quota est plein. Un bandeau jaune signale les **invitations en attente d'activation**.\n\nChaque gérant apparaît sous forme de carte avec :\n\n- ses initiales, son nom, son email et son téléphone ;\n- son statut : **● Actif** ou **○ Inactif**, plus **⏳ Invitation en attente** tant qu'il n'a pas activé son compte ;\n- un badge **Gratuit** ou le montant facturé (en DT/mois) ;\n- 📍 la liste de ses **affectations** (activités et labos) ;\n- les actions : **✉️ Renvoyer** l'invitation (si non activée), **⏸ Désactiver** / **▶ Activer**, **🗑** supprimer.\n\n### Actions pas à pas\n\n1. Cliquez **+ Nouveau gérant** et renseignez le **nom**, le **téléphone** et l'**email** (tous obligatoires). La disponibilité de l'adresse email est vérifiée en direct : une adresse déjà utilisée est refusée.\n2. Cochez les **activités et labos assignés** — au moins un est obligatoire. Le lien *✓ Tout* coche l'ensemble d'un clic.\n3. Validez avec **✓ Créer et envoyer l'invitation** : le gérant reçoit un email et active son compte en cliquant sur le lien puis en définissant son mot de passe.\n4. Tant que l'invitation n'est pas acceptée, le badge ⏳ reste affiché : utilisez **✉️ Renvoyer** si l'email s'est égaré.\n5. Pour suspendre temporairement un accès, cliquez **⏸ Désactiver** (réversible à tout moment avec ▶ Activer). Pour retirer définitivement l'accès, utilisez 🗑 (une confirmation est demandée).\n\n### Points d'attention\n\n:::regle\nTrois comptes gérants gratuits sont inclus. Au-delà, le formulaire vous prévient : chaque gérant supplémentaire est facturé 80 DT/mois et nécessite une validation de l'équipe LabFlow. Le nombre total reste plafonné par votre abonnement.\n:::\n\n:::attention\nLe gérant ne voit que son périmètre : il travaille sur le stock, les appros, les pertes, les inventaires (et les ventes si le module est actif) de ses activités et labos affectés, mais n'a pas accès à la gestion des activités, des gérants, de l'abonnement ni des paiements.\n:::\n\n:::astuce\nCréez un gérant par responsable de site plutôt qu'un compte partagé : les historiques gardent ainsi la trace de qui a fait quoi.\n:::\n\n### Voir aussi\n\n- [Les rôles dans LabFlow](#roles) — client vs gérant en détail\n- [Tableau de bord gérant](#dashboard-gerant) — ce que voit votre collaborateur\n- [Activités & labos](#activites) · [Mon abonnement](#abonnement)"
+    },
+    {
+     "titre": "Manuel — Stock & Appro › Pertes",
+     "contenu": "## 📉 Pertes\n\nDéclarez les produits perdus — casse, péremption, chutes de production — pour que le stock et vos coûts reflètent la réalité. La **saisie** se fait directement depuis [Stock Activités](#stock-activites) (bouton **📉 Perte** sur la ligne de l'article) ; la **consultation** dans l'écran **Historique Pertes** du menu Espace Activités.\n\n### Les types de perte\n\n| Type | Usage |\n|---|---|\n| **Avarie** | produit abîmé, périmé, impropre à la vente |\n| **Déchet** | pertes de production, parures, casse (domaine Restauration) |\n\nUn autre domaine d'activité peut définir ses propres types de perte (par exemple *casse* ou *rebut*) : ce sont alors ceux-là qui apparaissent dans la fenêtre de saisie, les filtres et les badges.\n\n### Actions pas à pas\n\n1. Dans **Stock Activités**, sélectionnez l'activité puis cliquez sur **📉 Perte** sur la ligne de l'article.\n2. La fenêtre affiche le **stock disponible**. Saisissez la **quantité perdue** — elle ne peut pas dépasser ce stock (un avertissement s'affiche sinon).\n3. Choisissez le **type** (Avarie ou Déchet par défaut — selon votre domaine) et la **date de la perte** : elle doit se situer entre le premier approvisionnement de l'article (rappelé sous le champ) et aujourd'hui.\n4. Le **prix unitaire** d'achat en vigueur à la date choisie est récupéré automatiquement, et le **coût total** de la perte s'affiche aussitôt.\n5. Cliquez sur **Enregistrer la perte** : le stock diminue et la perte est tracée.\n\n:::formule Valeur d'une perte\nValeur = Quantité perdue × Prix unitaire d'achat à la date de la perte\nnote: L'écran Pertes affiche le prix d'achat HT ; dans les rapports et tableaux de bord, les pertes sont valorisées en TTC.\n:::\n\n### Où retrouver vos pertes\n\n- **Historique Pertes** : consultation **activité par activité** (pastilles 🏪), filtres **Du / Au**, **Catégorie**, **Article** et **Type** (les types de votre domaine), bouton **Rechercher**. Le tableau affiche Activité, Article, Date, Type (badge coloré), Quantité, Prix Unit., Coût Total et Par (auteur de la saisie), avec les totaux **quantité** et **coût** affichés au-dessus et en pied de tableau. Export **Excel**, avec surbrillance des lignes cochées.\n- Dans **Stock Activités** : la ligne **↘ pertes** de la colonne Stock Actuel cumule les quantités perdues ; pour un produit transformé, le lien 📋 Historique marque en plus chaque perte d'un badge 🗑️.\n\nDepuis l'historique, **✏️ Modifier** permet de corriger la quantité et le type — la date et le prix restent verrouillés, et un avertissement rappelle que changer la quantité impacte le calcul du stock actuel. **🗑️ Supprimer** recalcule le stock ; l'action est **irréversible**. Un gérant ne peut modifier ou supprimer que ses propres saisies.\n\n### Points d'attention\n\n:::attention\nImpossible de déclarer une perte sur un article jamais approvisionné : l'application demande d'enregistrer d'abord un appro. Pour un produit transformé, il n'y a pas de prix d'achat : aucun coût ne s'affiche à la saisie, mais la perte est valorisée au coût de recette du produit (quand il est calculable) dans l'historique et les rapports.\n:::\n\n:::astuce\nSaisissez les pertes au fil de l'eau plutôt qu'en fin de mois : votre stock reste juste, et l'[inventaire](#inventaire) ne sert plus qu'à confirmer. Un écart d'inventaire négatif récurrent signale des pertes non déclarées.\n:::\n\n### Voir aussi\n\n- [Stock Activités](#stock-activites) · [Inventaire](#inventaire) · [Historiques](#historique)\n- [Valeur du stock](#calc-valeur-stock) · [HT et TTC](#calc-ht-ttc)"
+    }
+   ]
+  },
+  "inviter un acheteur": {
+   "results": [
+    {
+     "titre": "Manuel — Espace Acheteurs › Le module Acheteurs",
+     "contenu": "## 🤝 Le module Acheteurs\n\nLe module Acheteurs transforme votre labo en **point de vente B2B** : vous gérez un carnet d'acheteurs (restaurants, superettes, grossistes…), vous leur vendez des articles et des produits depuis votre **stock labo**, et chaque vente génère une **facture fiscale** numérotée.\n\nIl permet aussi le **compte dépôt** : un compte LabFlow composé uniquement d'un labo et d'un carnet d'acheteurs, sans aucune activité.\n\n### Activation\n\nLe module est **optionnel** et désactivé par défaut. Deux façons de l'activer :\n\n1. Depuis l'écran verrouillé de l'Espace Acheteurs, envoyez une **demande d'activation** — l'administrateur la valide sous 24 h.\n2. L'administrateur peut l'activer directement sur votre compte.\n\nÀ l'activation, un **quota d'acheteurs** est défini sur votre abonnement : c'est le nombre maximum de fiches dans votre carnet. Pour l'augmenter, contactez l'administrateur.\n\n### Ce que le module ajoute\n\n| Élément | Rôle |\n| --- | --- |\n| Carnet d'Acheteurs | vos clients B2B (fiches, comptes portail) |\n| Tarifs Acheteurs | les articles proposés et leurs prix HT (+ TVA) |\n| Vente Acheteur | la vente manuelle depuis le stock labo |\n| Commandes | le suivi des ventes et des commandes du portail |\n| Portail acheteur | l'espace où vos acheteurs commandent en ligne |\n\n:::regle\nToutes les ventes aux acheteurs partent du **stock labo** (jamais du stock d'une activité). Le labo source est choisi à chaque vente, et la **remise** éventuelle se décide à chaque commande.\n:::"
+    },
+    {
+     "titre": "Manuel — Découvrir LabFlow › LabFlow en un coup d'œil",
+     "contenu": "## 🌟 LabFlow en un coup d'œil\n\nLabFlow est une application de gestion dédiée aux métiers de bouche : restaurants, pâtisseries, traiteurs, cuisines centrales. Elle réunit dans un seul outil tout ce qui fait la rentabilité d'une cuisine professionnelle : le référentiel d'articles, les fiches techniques et le coût matière, les stocks de chaque site, la production en laboratoire, les transferts entre sites, les ventes — au comptoir comme aux professionnels — et les rapports.\n\n### Ce que LabFlow vous apporte\n\n- **La maîtrise du coût matière** : chaque recette est décrite dans une fiche technique dont le coût de revient se calcule automatiquement à partir de vos prix d'achat réels. Quand un prix fournisseur évolue, vos coûts suivent.\n- **Des stocks multi-sites** : chaque point de vente et chaque labo dispose de son propre stock, avec approvisionnements, inventaires, pertes et valeur de stock suivis site par site.\n- **La production en laboratoire** : le labo fabrique vos produits transformés (crèmes, pâtes, plats préparés…), les ingrédients sont déduits automatiquement, et les boutiques sont approvisionnées par transfert.\n- **La vente aux professionnels (B2B)** : avec l'option Acheteurs, votre labo vend directement à un carnet de clients professionnels — tarifs dédiés, commandes en ligne via un portail, factures de vente.\n- **La traçabilité** : chaque mouvement laisse une trace consultable — approvisionnements, pertes, transferts, inventaires, ventes — avec filtres et exports dans les pages d'historique.\n- **Les ventes et les marges** : la saisie des ventes déduit le stock et alimente vos indicateurs : chiffre d'affaires, food cost, marge brute, valeur du stock, pertes, panier moyen.\n\nTous les montants sont exprimés en **DT**. Les prix d'achat se saisissent en HT avec leur taux de TVA, et l'application affiche les valeurs en TTC dans les rapports et tableaux de bord (voir [la règle HT/TTC](#calc-ht-ttc)).\n\n### Pour qui ?\n\nLabFlow s'adapte à la taille de votre organisation grâce à un modèle unique : un compte regroupe une ou plusieurs **activités** (points de vente, cuisines) et, si besoin, un ou plusieurs **labos** de production.\n\n- Le **restaurant indépendant** : une seule activité, tout se gère au même endroit.\n- La **pâtisserie avec laboratoire central** : le labo produit, les boutiques vendent, les transferts font le lien.\n- Le **traiteur ou groupe multi-sites** : plusieurs activités, chacune avec son stock et ses prix de vente, et des rapports pour piloter l'ensemble.\n- L'**atelier de production en dépôt** : pas de point de vente — un labo et un carnet d'acheteurs professionnels, avec commandes via le portail.\n\nLe détail de ce modèle est expliqué dans [Le modèle : compte, activités, labos](#compte-activites-labos).\n\n### Les grands modules\n\n| Module | Ce qu'il couvre |\n|---|---|\n| Référentiel | Unités, familles, catégories et articles : la base commune de votre compte |\n| Espace Produits | Produits vendables, utilisables et valorisés, avec leurs fiches techniques |\n| Espace Activités | Stock, approvisionnements, factures, pertes et inventaires de chaque point de vente |\n| Espace Labo | Stock du labo, production, transferts vers les activités |\n| Espace Vente | Prix de vente, prestataires, charges, saisie des ventes et rapport de vente |\n| Espace Acheteurs *(option)* | Carnet d'acheteurs B2B, tarifs dédiés, ventes et commandes, portail en ligne, factures de vente |\n| Gestion | Tableau de bord, rapports, fournisseurs, gérants, abonnement |\n\n:::astuce\nSur la plupart des écrans, un petit bouton « ? » ouvre ce manuel directement à la page concernée. Vous retrouvez aussi le lien Manuel d'utilisation en bas du menu latéral.\n:::\n\n### Voir aussi\n\n- [Le modèle : compte, activités, labos](#compte-activites-labos)\n- [Parcours de démarrage](#demarrage)\n- [Le module Acheteurs](#acheteurs-module)\n- [Lexique](#lexique)\n- [Tableau de bord](#dashboard)\n- [Fiches techniques](#fiches-techniques)"
+    },
+    {
+     "titre": "Manuel — Découvrir LabFlow › Le modèle : compte, activités, labos",
+     "contenu": "## 🏢 Le modèle : compte, activités, labos\n\nToute l'organisation de LabFlow repose sur trois niveaux : le **compte**, les **activités** et les **labos**. Comprendre qui possède quoi est la clé de lecture de tous les autres écrans.\n\n### Les trois niveaux\n\n- **Le compte** : c'est votre entreprise dans LabFlow. Il porte l'abonnement, qui fixe vos quotas : nombre d'activités, de labos et de comptes gérants — et, si l'option Acheteurs est active, le palier d'acheteurs. Il porte aussi la **formule d'activités** (Basique ou Premium), qui détermine l'étendue de l'Espace Produit. Les compteurs d'activités et de labos s'affichent sur la page Mes Activités, celui des gérants sur la page Gérants. Il n'y a pas de distinction entre indépendant et entreprise : le même modèle s'adapte à toutes les tailles.\n- **Les activités (0 à N)** : vos points de vente ou cuisines — boutique, restaurant, kiosque… Chaque activité vend, consomme et gère son propre stock.\n- **Les labos (0 à N)** : vos sites de production. Un labo fabrique des produits transformés, approvisionne les activités qui lui sont rattachées **exclusivement par transfert** — et, avec l'option Acheteurs, vend directement aux professionnels.\n\n### Qui possède quoi ?\n\n| Élément | Niveau | En pratique |\n|---|---|---|\n| Référentiel (unités, familles, catégories, articles) | Compte | Défini une seule fois, partagé par tous les sites |\n| Sélection d'articles | Activité / labo | Chaque site n'utilise que les articles qu'on lui a assignés |\n| Stock, appros, inventaires, pertes | Activité / labo | Chaque site a les siens, suivis séparément |\n| Produits et fiches techniques | Activité / labo | Un produit est affecté aux sites qui le fabriquent ou le vendent |\n| Ventes et prix de vente | Activité / labo | Chaque point de vente a ses prix et ses ventes ; le labo peut aussi saisir ses ventes directes |\n| Carnet d'acheteurs et tarifs B2B | Compte | Communs à tous les labos ; les ventes aux acheteurs partent du stock d'un labo |\n\n### Le lien activité ↔ labo\n\nDès qu'un labo existe sur votre compte, la création ou la modification d'une activité vous propose deux options :\n\n- **Avec labo** : l'activité est rattachée à un labo qui l'approvisionne par transfert — la production du labo arrive dans le stock de la boutique à chaque transfert.\n- **Sans labo** : l'activité gère seule ses approvisionnements auprès de ses fournisseurs.\n\nUne même entreprise peut mélanger les deux : des boutiques rattachées au labo et un point de vente autonome, par exemple.\n\n### La base acheteurs et le compte dépôt\n\nAvec l'**option Acheteurs**, le labo ne fait pas que produire pour vos boutiques : il vend aussi **directement aux professionnels** (épiceries, revendeurs, restaurants…). Le carnet d'acheteurs, les tarifs B2B, les commandes et le portail en ligne sont réunis dans l'[Espace Acheteurs](#acheteurs-module).\n\n- L'option nécessite **au moins un labo** : les ventes aux acheteurs partent toujours du stock d'un labo.\n- Elle est facturée **par palier** selon la taille du carnet : jusqu'à 10, 20, 50 ou 100 acheteurs.\n- Un **compte dépôt** est un compte **sans activité** : un labo + la base acheteurs. C'est le modèle de l'atelier de production qui ne vend qu'aux professionnels. Son menu est allégé : sans activité, l'Espace Vente, les Transferts et les Produits Vendables sont masqués — ils réapparaissent automatiquement dès la première activité créée.\n\n### Quatre exemples concrets\n\n- **Pâtisserie avec labo central** : 1 labo + 3 boutiques. Le labo produit crèmes, entremets et viennoiseries ; chaque boutique reçoit sa production par transfert et saisit ses propres ventes. Le référentiel (farine, beurre, sucre…) est commun à tous.\n- **Restaurant simple** : 1 activité, 0 labo. Le restaurant fait ses achats, ses fiches techniques et ses ventes ; le modèle reste le même, simplement sans Espace Labo.\n- **Traiteur multi-sites** : 1 labo de production + 2 points de vente. Le labo prépare, les sites vendent, et les rapports donnent la vision d'ensemble du compte.\n- **Atelier en dépôt** : 0 activité, 1 labo + base acheteurs. L'atelier produit et vend exclusivement à ses clients professionnels, via l'Espace Acheteurs et le portail de commande.\n\n:::regle\nLe référentiel est commun au compte ; les stocks sont locaux à chaque site. Un article se crée une seule fois, mais son stock et son prix moyen pondéré vivent séparément dans chaque activité et chaque labo.\n:::\n\n:::attention\nUn produit transformé d'origine labo ne peut être approvisionné côté activité que par transfert : pas de saisie d'achat directe pour ces produits en boutique. Voir [les produits transformés](#lexique-pt).\n:::\n\n### Voir aussi\n\n- [Parcours de démarrage](#demarrage)\n- [Activités](#activites) — l'écran de gestion de vos sites\n- [Le module Acheteurs](#acheteurs-module) — la vente aux professionnels\n- [Transferts](#transferts)\n- [Rôles & accès](#roles)\n- [Calculs : les transferts](#calc-transferts)"
+    },
+    {
+     "titre": "Manuel — Compte & Aide › Assistant IA",
+     "contenu": "## 🤖 Assistant IA\n\nL'assistant IA de LabFlow répond en langage naturel à vos questions sur **vos données** (stock, pertes, inventaires, ventes, coûts) et sur **le fonctionnement de LabFlow** : il connaît ce manuel et peut vous guider pas à pas. Il s'affiche via le bouton 🤖 de la barre du haut (à côté de la cloche de notifications) **pendant votre mise en route** : le panneau montre l'avancement de votre configuration étape par étape (vos unités par type — par exemple « 1/2 Restaurant · 0/1 Cuisine » selon votre domaine —, référentiel, articles, fournisseurs, produits, premières saisies, carnet d'acheteurs si le module est actif), avec des questions suggérées pour l'étape en cours. Une fois votre configuration terminée, le guide se retire automatiquement — et il revient de lui-même si un avenant ajoute de nouvelles capacités à configurer (activité, labo, module Acheteurs…). Le chat s'ouvre par-dessus votre écran, sans vous faire quitter la page en cours.\n\n### Ce que vous voyez\n\n- Le bouton 🤖 de la barre du haut, visible pendant votre mise en route : un clic ouvre ou referme le guide, et la conversation reste affichée pendant que vous naviguez d'une page à l'autre.\n- Un en-tête « Assistant IA LabFlow » qui rappelle sa mission : analyser vos données (stock, ventes, pertes…) et répondre à vos questions sur le fonctionnement de LabFlow.\n- La conversation sous forme de bulles : vos messages d'un côté, les réponses de l'assistant de l'autre.\n- À la première visite, des suggestions cliquables pour démarrer : « Quel est mon stock critique actuellement ? », « Comment réduire mes pertes ? », « Comment fonctionnent les transferts labo → activités ? », « Comment la valeur de mon stock est-elle calculée ? ».\n- Une zone de saisie en bas de page, avec un bouton d'envoi.\n- Un bouton **Effacer**, en haut de la conversation dès qu'elle contient des messages, pour repartir de zéro.\n\nVotre conversation est conservée : si vous quittez la page et revenez plus tard, vous retrouvez l'historique de vos échanges.\n\n### Actions pas à pas\n\n**Poser une question**\n\n1. Tapez votre question dans la zone de saisie, comme vous la poseriez à un collaborateur.\n2. Appuyez sur **Entrée** pour envoyer — utilisez **Maj+Entrée** pour aller à la ligne sans envoyer.\n3. L'assistant analyse vos données et répond directement dans la conversation.\n\n**Exemples de questions utiles**\n\n- Sur vos données : « Quel est mon stock critique actuellement ? », « Quelles ont été mes plus grosses pertes ce mois-ci ? », « Analyse mes inventaires récents », « Quels articles devrais-je réapprovisionner en priorité ? »\n- Sur LabFlow : « Comment déclarer une perte ? », « Comment fonctionne un transfert entre labo et activité, ou entre deux labos ? », « Où retrouver mes factures ? » — l'assistant s'appuie sur ce manuel pour vous répondre.\n\n**Effacer la conversation**\n\n1. Cliquez sur **Effacer** en haut de la conversation.\n2. L'historique est supprimé et une nouvelle conversation démarre.\n\n### Points d'attention\n\n:::attention\nSi la page affiche « Assistant IA non activé », l'assistant n'est pas encore ouvert pour votre compte : contactez l'administration, par exemple via une [demande d'aide](#support), pour l'activer.\n:::\n\n:::astuce\nSelon la configuration de votre compte, l'assistant peut aussi être joignable depuis Facebook Messenger : pratique pour l'interroger en cuisine, sans ouvrir LabFlow. Ce raccordement est mis en place par l'administration.\n:::\n\n:::regle\nL'assistant n'analyse que les données de votre propre compte LabFlow. Ses réponses sont une aide à la décision : les chiffres de référence restent ceux de vos écrans et de vos [rapports](#rapports).\n:::\n\n### Voir aussi\n\n- [Demandes et support](#support) — pour les demandes qui nécessitent une action de l'équipe LabFlow\n- [Questions fréquentes](#faq) — les réponses aux questions les plus courantes\n- [Stock des activités](#stock-activites), [Pertes](#pertes), [Rapports](#rapports)"
+    }
+   ]
+  },
+  "zzz qwerty": {
+   "results": [],
+   "disponibles": [
+    "Food cost",
+    "Coût matière",
+    "Pertes",
+    "Marge brute",
+    "Panier moyen",
+    "Vente",
+    "Supplément",
+    "Catégorie de produit",
+    "Famille et catégorie d'article",
+    "Unité de mesure",
+    "Timbre fiscal",
+    "Rapport (Excel / PDF)",
+    "Référentiel articles",
+    "Charges fixes",
+    "Fiche technique",
+    "Valeur du stock",
+    "Approvisionnement (appro)",
+    "Inventaire",
+    "Transferts",
+    "Article valorisé",
+    "Produits vendables et utilisables",
+    "Seuil minimum",
+    "TVA (HT / TTC)",
+    "Activité (point de vente)",
+    "Labo central"
+   ]
+  }
+ },
+ "recherchesDomaine": {
+  "fixe|créer [[un:labo]]": {
+   "query": "créer un labo",
+   "resultat": {
+    "results": [
+     {
+      "titre": "Manuel — Gestion › Activités & labos",
+      "contenu": "## 🏢 Activités & labos\n\nCet écran vous permet de créer et gérer vos **activités** (points de vente) et vos **labos** de production, dans la limite de votre abonnement. Vous le trouvez dans le menu latéral, entrée **Mes activités**. Un compte peut gérer une ou plusieurs activités, avec ou sans labo central.\n\n### Ce que vous voyez\n\nLe bandeau affiche vos **compteurs de quota** : activités utilisées / incluses, et labos utilisés / inclus si votre abonnement en prévoit ; si votre domaine distingue plusieurs types d'unités (Restaurant, Bar, Cuisine, Économat…), la répartition par type s'affiche à titre indicatif et chaque fiche porte un badge de type. Une barre de recherche filtre activités et labos par nom.\n\n- **Section Activités** : un tableau avec le *Nom*, l'*Adresse*, le *Labo* qui l'alimente (pastille 🏭 cliquable qui ouvre la fiche du labo) et les boutons ✏️ modifier / 🗑 supprimer. Le bouton **+ Nouvelle activité** est remplacé par **⚡ Ajouter activités** quand le quota est atteint : il ouvre alors une demande de supplément auprès du support.\n- **Section Espace Labos** (si votre abonnement inclut au moins un labo) : tableau *Nom*, *Réf.*, *Adresse*, avec **+ Nouveau labo** ou **⚡ Ajouter labos** au quota atteint.\n\nÀ la toute première visite, quand rien n'existe encore, un écran de démarrage propose **✨ Créer mon business** (si un labo est inclus) ou **+ Ajouter mon activité**.\n\n### Actions pas à pas\n\n1. **Premier démarrage avec le wizard « Créer mon business »** : à l'étape *Laboratoire*, saisissez le nom, la référence (unique) et l'adresse du labo — ou cochez *Passer cette étape*. À l'étape *Activités*, remplissez un bloc par activité (nom obligatoire, adresse, choix **Avec labo** / **Sans labo**), ajoutez des blocs avec *+ Ajouter une activité* dans la limite du quota, puis validez avec **✅ Enregistrer tout**.\n2. **Créer une activité** : *+ Nouvelle activité* → nom (un doublon de nom est signalé immédiatement), adresse facultative. Si des labos existent, choisissez **Avec labo** (puis sélectionnez lequel : c'est le labo qui l'alimente) ou **Sans labo** (gestion autonome). Si votre domaine propose plusieurs types d'activités, choisissez aussi le **type** (Restaurant, Bar…) : il préconfigure la vente et la production de l'unité. Quand tous les emplacements prévus par votre abonnement sont créés, LabFlow vous emmène automatiquement vers le Référentiel (page Unités) pour créer vos articles.\n3. **Créer un labo** : nom, **référence unique** (demandée uniquement à la création), adresse, et le champ **Alimenté par** pour désigner un autre labo qui l'approvisionne (un économat alimente une cuisine, par exemple ; les boucles sont refusées) ; vous pouvez cocher directement les activités sans labo à lui rattacher.\n4. **Modifier** une activité ou un labo avec ✏️ ; le rattachement d'une activité (« Alimentée par ») ou la source d'un labo (« Alimenté par ») se change dans la même fenêtre.\n\n### Points d'attention\n\n:::attention\nLa suppression est bloquée (message 🔒) tant que des articles sont affectés à l'activité ou au labo : retirez d'abord ces articles. La suppression d'un labo fait passer ses activités en gestion séparée, retire leur source aux labos qu'il alimentait et met fin aux transferts depuis ce labo ; elle est refusée tant que ce labo a émis ou reçu des transferts. Ces suppressions sont irréversibles.\n:::\n\n:::astuce\nRattacher une activité à un labo signifie que ses produits transformés d'origine labo arriveront uniquement par transfert — c'est le mode de fonctionnement recommandé quand vous produisez en central ; un labo peut lui aussi être alimenté par un autre labo : les articles reçus entrent à son stock au prix de cession et servent de base au coût de ses productions.\n:::\n\n### Voir aussi\n\n- [Compte, activités et labos](#compte-activites-labos) — le modèle général\n- [Transferts labo → activités et labos rattachés](#transferts)\n- [Articles du référentiel](#referentiel-articles) — l'affectation des articles par activité\n- [Mon abonnement](#abonnement) · [Comptes gérants](#gerants)"
+     },
+     {
+      "titre": "Labo central",
+      "contenu": "Le labo (laboratoire central) est l'unité de production d'un compte client ; un compte peut en avoir zéro, un ou plusieurs. Il détient son propre stock d'ingrédients, fabrique des produits transformés (PT) et approvisionne les activités via des transferts. Le stock du labo est distinct du stock des activités."
+     },
+     {
+      "titre": "Manuel — Stock & Appro › Stock Labo",
+      "contenu": "## 🏭 Stock Labo\n\nCet écran gère le stock de votre laboratoire central : les articles que vous y achetez et les produits transformés (PT) que vous y fabriquez. Vous y accédez depuis l'espace labo ; si vous possédez plusieurs labos, une rangée de pastilles en haut de page permet de passer de l'un à l'autre — le menu latéral suit alors le labo affiché.\n\n### Ce que vous voyez\n\nUn bandeau rappelle le nom du labo et propose le bouton **↗ Transfert** vers l'écran d'envoi aux activités et aux labos rattachés. En dessous : une barre de filtres (Catégorie, Article, Nom, Fournisseur, Réf. Facture), puis le bloc **Approvisionnement** avec la Date d'appro, le Fournisseur, la Réf Facture et les boutons **Enregistrer** (le nombre de lignes prêtes s'affiche entre parenthèses) et **Réinitialiser**.\n\nLe stock est présenté par catégories repliables :\n\n| Colonne | Contenu |\n|---|---|\n| Article | nom, unité, badge **PT** (et « ◆ Composé valorisé » pour les composés fabriqués au labo), bouton 📋 Historique — les 5 derniers mouvements avec leur type : Manuel, Transfert (↗ envoyé ou ↙ reçu du labo qui vous alimente), PT, Perte… |\n| Stock Actuel | quantité restante et sa ventilation depuis le dernier inventaire : ↑ appro (achats et réceptions d'un labo source), ⇄ transferts, ↘ pertes, consommation PT |\n| Coût Total | valeur du stock en DT (TTC, avec rappel du HT) |\n| Quantité · Prix · TVA (%) | saisie d'un nouvel appro — le prix d'un PT est calculé automatiquement, il ne se saisit pas |\n| Actions | 🔧 Seuil, 📉 Perte, ⚙️ Personnaliser (PT uniquement) |\n\nUn panneau « Aperçu saisie » totalise en direct, en TTC, ce que vous êtes en train d'enregistrer.\n\n### Actions pas à pas\n\nApprovisionner des articles :\n\n1. Renseignez la date, le fournisseur et le n° de facture dans le bloc Approvisionnement.\n2. Saisissez quantité et prix HT (TVA facultative) sur chaque ligne concernée.\n3. Cliquez sur **Enregistrer** : une fenêtre récapitule la facture, avec une case **Timbre Fiscal** (+1,000 DT, cochée par défaut) ; confirmez.\n\nProduire un PT (labos de production uniquement — un labo configuré sans production, tel un économat, n'affiche pas de PT) :\n\n1. Saisissez la **quantité produite** sur la ligne du PT — aucun prix à saisir, son coût est calculé d'après les prix des articles du labo.\n2. Enregistrez : les ingrédients de la recette **et les sous-PT** qu'elle contient sont déduits automatiquement du stock du labo.\n3. Au besoin, le bouton **⚙️ Personnaliser** permet d'ajuster les portions réellement utilisées pour cette production.\n\nDéclarer une perte : bouton **📉 Perte**, puis quantité, type (selon votre domaine : Avarie ou Déchet par défaut) et date ; la fenêtre affiche le stock disponible, le prix unitaire retenu et le coût total de la perte.\n\nDéfinir un seuil : bouton **🔧 Seuil**. Le stock s'affiche ensuite en 🔴 (au seuil ou en dessous), 🟠 (jusqu'à seuil + 10 %) ou 🟢 (au-dessus).\n\n### Points d'attention\n\n:::attention\nOn ne mélange pas appro d'articles et production de PT dans un même enregistrement : dès qu'une quantité est saisie sur un PT, les champs Fournisseur et Réf Facture se grisent (et inversement). Procédez en deux enregistrements séparés.\n:::\n\n:::attention\nUne perte ne peut pas dépasser le stock disponible, ni porter une date antérieure au premier approvisionnement de l'article.\n:::\n\n:::astuce\nSi la date choisie correspond déjà à un appro existant pour un article, ses champs de saisie s'entourent d'orange : consultez l'historique 📋 avant d'enregistrer, car les quantités s'additionnent.\n:::\n\nL'affectation des articles aux activités (cases à cocher) se gère depuis la fiche de l'article ([Articles](#referentiel-articles)) ; elle est réservée au propriétaire du compte.\n\n### Voir aussi\n\n- [Les produits transformés](#lexique-pt) · [Le calcul d'une production](#calc-production-pt)\n- [Les seuils d'alerte](#calc-seuils) · [La valeur du stock](#calc-valeur-stock)\n- [Transferts vers les activités et labos rattachés](#transferts) · [Factures d'appro](#factures) · [Pertes](#pertes)"
+     },
+     {
+      "titre": "Manuel — Découvrir LabFlow › Le modèle : compte, activités, labos",
+      "contenu": "## 🏢 Le modèle : compte, activités, labos\n\nToute l'organisation de LabFlow repose sur trois niveaux : le **compte**, les **activités** et les **labos**. Comprendre qui possède quoi est la clé de lecture de tous les autres écrans.\n\n### Les trois niveaux\n\n- **Le compte** : c'est votre entreprise dans LabFlow. Il porte l'abonnement, qui fixe vos quotas : nombre d'activités, de labos et de comptes gérants — et, si l'option Acheteurs est active, le palier d'acheteurs. Il porte aussi la **formule d'activités** (Basique ou Premium), qui détermine l'étendue de l'Espace Produit. Les compteurs d'activités et de labos s'affichent sur la page Mes Activités, celui des gérants sur la page Gérants. Il n'y a pas de distinction entre indépendant et entreprise : le même modèle s'adapte à toutes les tailles.\n- **Les activités (0 à N)** : vos points de vente ou cuisines — boutique, restaurant, kiosque… Chaque activité vend, consomme et gère son propre stock.\n- **Les labos (0 à N)** : vos sites de production. Un labo fabrique des produits transformés, approvisionne les activités qui lui sont rattachées **exclusivement par transfert** — et, avec l'option Acheteurs, vend directement aux professionnels.\n\n### Qui possède quoi ?\n\n| Élément | Niveau | En pratique |\n|---|---|---|\n| Référentiel (unités, familles, catégories, articles) | Compte | Défini une seule fois, partagé par tous les sites |\n| Sélection d'articles | Activité / labo | Chaque site n'utilise que les articles qu'on lui a assignés |\n| Stock, appros, inventaires, pertes | Activité / labo | Chaque site a les siens, suivis séparément |\n| Produits et fiches techniques | Activité / labo | Un produit est affecté aux sites qui le fabriquent ou le vendent |\n| Ventes et prix de vente | Activité / labo | Chaque point de vente a ses prix et ses ventes ; le labo peut aussi saisir ses ventes directes |\n| Carnet d'acheteurs et tarifs B2B | Compte | Communs à tous les labos ; les ventes aux acheteurs partent du stock d'un labo |\n\n### Le lien activité ↔ labo\n\nDès qu'un labo existe sur votre compte, la création ou la modification d'une activité vous propose deux options :\n\n- **Avec labo** : l'activité est rattachée à un labo qui l'approvisionne par transfert — la production du labo arrive dans le stock de la boutique à chaque transfert.\n- **Sans labo** : l'activité gère seule ses approvisionnements auprès de ses fournisseurs.\n\nUne même entreprise peut mélanger les deux : des boutiques rattachées au labo et un point de vente autonome, par exemple.\n\n### La base acheteurs et le compte dépôt\n\nAvec l'**option Acheteurs**, le labo ne fait pas que produire pour vos boutiques : il vend aussi **directement aux professionnels** (épiceries, revendeurs, restaurants…). Le carnet d'acheteurs, les tarifs B2B, les commandes et le portail en ligne sont réunis dans l'[Espace Acheteurs](#acheteurs-module).\n\n- L'option nécessite **au moins un labo** : les ventes aux acheteurs partent toujours du stock d'un labo.\n- Elle est facturée **par palier** selon la taille du carnet : jusqu'à 10, 20, 50 ou 100 acheteurs.\n- Un **compte dépôt** est un compte **sans activité** : un labo + la base acheteurs. C'est le modèle de l'atelier de production qui ne vend qu'aux professionnels. Son menu est allégé : sans activité, l'Espace Vente, les Transferts et les Produits Vendables sont masqués — ils réapparaissent automatiquement dès la première activité créée.\n\n### Quatre exemples concrets\n\n- **Pâtisserie avec labo central** : 1 labo + 3 boutiques. Le labo produit crèmes, entremets et viennoiseries ; chaque boutique reçoit sa production par transfert et saisit ses propres ventes. Le référentiel (farine, beurre, sucre…) est commun à tous.\n- **Restaurant simple** : 1 activité, 0 labo. Le restaurant fait ses achats, ses fiches techniques et ses ventes ; le modèle reste le même, simplement sans Espace Labo.\n- **Traiteur multi-sites** : 1 labo de production + 2 points de vente. Le labo prépare, les sites vendent, et les rapports donnent la vision d'ensemble du compte.\n- **Atelier en dépôt** : 0 activité, 1 labo + base acheteurs. L'atelier produit et vend exclusivement à ses clients professionnels, via l'Espace Acheteurs et le portail de commande.\n\n:::regle\nLe référentiel est commun au compte ; les stocks sont locaux à chaque site. Un article se crée une seule fois, mais son stock et son prix moyen pondéré vivent séparément dans chaque activité et chaque labo.\n:::\n\n:::attention\nUn produit transformé d'origine labo ne peut être approvisionné côté activité que par transfert : pas de saisie d'achat directe pour ces produits en boutique. Voir [les produits transformés](#lexique-pt).\n:::\n\n### Voir aussi\n\n- [Parcours de démarrage](#demarrage)\n- [Activités](#activites) — l'écran de gestion de vos sites\n- [Le module Acheteurs](#acheteurs-module) — la vente aux professionnels\n- [Transferts](#transferts)\n- [Rôles & accès](#roles)\n- [Calculs : les transferts](#calc-transferts)"
+     }
+    ]
+   }
+  },
+  "fixe|[[nom:transfert]] vers [[un:activite]]": {
+   "query": "transfert vers une activité",
+   "resultat": {
+    "results": [
+     {
+      "titre": "Transferts",
+      "contenu": "Un transfert déplace du stock du LABO (production centrale) vers une ACTIVITÉ (point de vente). Le labo s'approvisionne en gros puis alimente les activités. C'est la seule voie d'approvisionnement des activités en produits transformés d'origine labo."
+     },
+     {
+      "titre": "Manuel — Stock & Appro › Transferts",
+      "contenu": "## 🔄 Transferts\n\nCet écran envoie les articles et les produits transformés (PT) du labo vers vos activités **et vers les labos qu'il alimente** (un économat vers une cuisine, par exemple) : le stock du labo diminue, celui de chaque destination augmente d'autant. Vous y accédez par le bouton **↗ Transfert** du Stock Labo ou depuis l'espace labo ; les pastilles en haut de page permettent de changer de labo.\n\n### Ce que vous voyez\n\nLe bandeau propose un retour vers le **Stock Labo** et le bouton **📋 Historique Transferts** (grisé tant qu'aucun transfert n'existe). Suivent la barre de filtres (Activité, Catégorie, Article, Nom) et le bloc **Transfert** : la Date Transfert et la **Réf. Facture / BL** (toutes deux obligatoires), puis les boutons **↗ Transférer** et **↺ Réinitialiser**.\n\nLe tableau, par catégories repliables, affiche pour chaque article : le stock disponible au labo (vert, orange ou rouge selon le niveau), le **prix unitaire TTC** de cession, puis **une colonne de quantité par destination** (activité ou labo rattaché). Le bouton 📋 Historique déplie les 5 derniers transferts de l'article (dates, quantités par activité, prix, référence). Un panneau « Aperçu saisie » totalise en direct, en TTC, les montants de votre saisie.\n\nLe prix de cession est proposé automatiquement au coût du labo : coût de production TTC pour un PT, prix moyen pondéré converti en TTC pour un article. Vous pouvez l'ajuster, mais il reste obligatoire pour toute ligne transférée.\n\n### Actions pas à pas\n\n1. Sélectionnez le labo, choisissez la date du transfert et saisissez le n° de bon de livraison.\n2. Saisissez les quantités dans les colonnes des destinations (activités ou labos rattachés) ; ajustez le prix de cession si nécessaire.\n3. Cliquez sur **↗ Transférer** : la fenêtre « Confirmation de transfert » récapitule les lignes groupées par destination (quantités, prix HT/TTC, totaux).\n4. Cliquez sur **Confirmer le transfert** : les stocks sont mis à jour immédiatement.\n\nPour corriger ou exporter : ouvrez l'**Historique Transferts** (filtres Du/Au, Destination, Catégorie), sélectionnez des lignes si besoin (elles seront surlignées dans le fichier), exportez en Excel, modifiez une quantité (✏️) ou supprimez un transfert (🗑️ — les stocks du labo et de l'activité sont alors recalculés).\n\n### Points d'attention\n\n:::regle\nUn article ou un PT ne peut être transféré que vers une destination (activité ou labo rattaché) où il est **affecté** : sinon la case de quantité est remplacée par « — ». Si aucune destination n'apparaît, rattachez d'abord vos activités ou labos à ce labo depuis [Activités & labos](#activites). Pour un PT fabriqué au labo, le transfert est le **seul** moyen d'approvisionner une activité. Si aucun article n'apparaît, affectez d'abord vos articles aux activités liées au labo depuis la fiche de chaque article ([Articles](#referentiel-articles)).\n:::\n\n:::attention\nImpossible de transférer plus que le stock du labo : la ligne passe en rouge avec l'excédent affiché, et l'enregistrement est bloqué avec le détail Disponible / Demandé / Excédent.\n:::\n\n:::attention\nSi un transfert existe déjà le même jour vers la même destination, une fenêtre de vérification détaille « Déjà envoyé / Nouveau transfert / Total après ». Ne confirmez que s'il s'agit bien d'un envoi complémentaire : les quantités s'additionnent.\n:::\n\n:::astuce\nCôté destination (activité ou labo rattaché), la réception apparaît dans le stock comme un approvisionnement de type « Transfert », avec le **labo source comme fournisseur**, au prix de cession saisi ; côté labo source, la sortie porte le badge « ↗ Transf. → destination ».\n:::\n\n### Voir aussi\n\n- [Le calcul des transferts](#calc-transferts) · [Le prix moyen pondéré](#calc-pmp)\n- [Stock Labo](#stock-labo) · [Stock des activités](#stock-activites)\n- [Factures d'appro](#factures) · [Historique des mouvements](#historique)"
+     },
+     {
+      "titre": "Manuel — Gestion › Activités & labos",
+      "contenu": "## 🏢 Activités & labos\n\nCet écran vous permet de créer et gérer vos **activités** (points de vente) et vos **labos** de production, dans la limite de votre abonnement. Vous le trouvez dans le menu latéral, entrée **Mes activités**. Un compte peut gérer une ou plusieurs activités, avec ou sans labo central.\n\n### Ce que vous voyez\n\nLe bandeau affiche vos **compteurs de quota** : activités utilisées / incluses, et labos utilisés / inclus si votre abonnement en prévoit ; si votre domaine distingue plusieurs types d'unités (Restaurant, Bar, Cuisine, Économat…), la répartition par type s'affiche à titre indicatif et chaque fiche porte un badge de type. Une barre de recherche filtre activités et labos par nom.\n\n- **Section Activités** : un tableau avec le *Nom*, l'*Adresse*, le *Labo* qui l'alimente (pastille 🏭 cliquable qui ouvre la fiche du labo) et les boutons ✏️ modifier / 🗑 supprimer. Le bouton **+ Nouvelle activité** est remplacé par **⚡ Ajouter activités** quand le quota est atteint : il ouvre alors une demande de supplément auprès du support.\n- **Section Espace Labos** (si votre abonnement inclut au moins un labo) : tableau *Nom*, *Réf.*, *Adresse*, avec **+ Nouveau labo** ou **⚡ Ajouter labos** au quota atteint.\n\nÀ la toute première visite, quand rien n'existe encore, un écran de démarrage propose **✨ Créer mon business** (si un labo est inclus) ou **+ Ajouter mon activité**.\n\n### Actions pas à pas\n\n1. **Premier démarrage avec le wizard « Créer mon business »** : à l'étape *Laboratoire*, saisissez le nom, la référence (unique) et l'adresse du labo — ou cochez *Passer cette étape*. À l'étape *Activités*, remplissez un bloc par activité (nom obligatoire, adresse, choix **Avec labo** / **Sans labo**), ajoutez des blocs avec *+ Ajouter une activité* dans la limite du quota, puis validez avec **✅ Enregistrer tout**.\n2. **Créer une activité** : *+ Nouvelle activité* → nom (un doublon de nom est signalé immédiatement), adresse facultative. Si des labos existent, choisissez **Avec labo** (puis sélectionnez lequel : c'est le labo qui l'alimente) ou **Sans labo** (gestion autonome). Si votre domaine propose plusieurs types d'activités, choisissez aussi le **type** (Restaurant, Bar…) : il préconfigure la vente et la production de l'unité. Quand tous les emplacements prévus par votre abonnement sont créés, LabFlow vous emmène automatiquement vers le Référentiel (page Unités) pour créer vos articles.\n3. **Créer un labo** : nom, **référence unique** (demandée uniquement à la création), adresse, et le champ **Alimenté par** pour désigner un autre labo qui l'approvisionne (un économat alimente une cuisine, par exemple ; les boucles sont refusées) ; vous pouvez cocher directement les activités sans labo à lui rattacher.\n4. **Modifier** une activité ou un labo avec ✏️ ; le rattachement d'une activité (« Alimentée par ») ou la source d'un labo (« Alimenté par ») se change dans la même fenêtre.\n\n### Points d'attention\n\n:::attention\nLa suppression est bloquée (message 🔒) tant que des articles sont affectés à l'activité ou au labo : retirez d'abord ces articles. La suppression d'un labo fait passer ses activités en gestion séparée, retire leur source aux labos qu'il alimentait et met fin aux transferts depuis ce labo ; elle est refusée tant que ce labo a émis ou reçu des transferts. Ces suppressions sont irréversibles.\n:::\n\n:::astuce\nRattacher une activité à un labo signifie que ses produits transformés d'origine labo arriveront uniquement par transfert — c'est le mode de fonctionnement recommandé quand vous produisez en central ; un labo peut lui aussi être alimenté par un autre labo : les articles reçus entrent à son stock au prix de cession et servent de base au coût de ses productions.\n:::\n\n### Voir aussi\n\n- [Compte, activités et labos](#compte-activites-labos) — le modèle général\n- [Transferts labo → activités et labos rattachés](#transferts)\n- [Articles du référentiel](#referentiel-articles) — l'affectation des articles par activité\n- [Mon abonnement](#abonnement) · [Comptes gérants](#gerants)"
+     },
+     {
+      "titre": "Manuel — Stock & Appro › Stock Activités",
+      "contenu": "## 📦 Stock Activités\n\nL'écran **Stock Activités** (menu **Espace Activités → Stock Activités**) est le poste central de chaque point de vente : quantités disponibles, saisie des approvisionnements, seuils d'alerte et déclaration des pertes. Le stock se consulte **activité par activité** : sélectionnez le point de vente grâce aux pastilles 🏪 en haut de l'écran — il n'existe pas de vue globale « Toutes ». Un gérant ne voit que les activités qui lui sont affectées.\n\n### Ce que vous voyez\n\nUne barre de filtres cible les lignes affichées : **Catégorie**, **Article** (débloqué après le choix d'une catégorie), **Nom** (recherche libre), **Fournisseur** et **Réf. Facture**, avec un bouton **Réinitialiser**.\n\nLe bloc bleu **Approvisionnement** regroupe les informations communes à la saisie : **Date d'appro** (obligatoire, entre le ⟨date⟩ de l'année en cours et aujourd'hui), **Fournisseur**, **Réf Facture** (obligatoire), puis le bouton **Enregistrer (N)** — N compte les lignes prêtes.\n\nLes articles sont groupés par **catégories repliables** (cliquez sur l'en-tête pour ouvrir). Les produits transformés apparaissent dans leurs propres catégories : **Produits Transformés Utilisables**, **Produits Transformés Vendables** et **Produits Composés Valorisés** (voir [le lexique des PT](#lexique-pt)).\n\n| Colonne | Contenu |\n|---|---|\n| Article | nom, unité, lien 📋 Historique, date et quantité du dernier inventaire 📦 |\n| Stock Actuel | quantité disponible + détail : ↑ appro, ⇄ transf, ↘ pertes, PT (consommé par vos productions), 💰 VENTE |\n| Coût Total | valeur du stock en TTC (le montant HT s'affiche en dessous) |\n| Quantité | saisie de la nouvelle quantité approvisionnée |\n| Prix | prix d'achat HT unitaire (calculé automatiquement pour un produit transformé) |\n| TVA (%) | taux de TVA, optionnel |\n| Actions | 🔧 Seuil, 📉 Perte, ⚙️ Personnaliser (produits transformés) |\n\nLa couleur du stock reflète le **seuil minimum** : 🔴 stock inférieur ou égal au seuil, 🟠 juste au-dessus (jusqu'à seuil + 10 %), 🟢 au-delà.\n\n:::formule Stock actuel\nStock = Approvisionnements + Transferts entrants − Consommations (ventes, productions) − Pertes ± Ajustements d'inventaire\n:::\n\n### Actions pas à pas\n\nEnregistrer un approvisionnement :\n\n1. Sélectionnez l'activité, puis renseignez le bloc Approvisionnement : date, fournisseur et n° de facture.\n2. Ouvrez les catégories concernées et saisissez, ligne par ligne, la **quantité** et le **prix HT** unitaire (et le taux de TVA si vous le connaissez).\n3. Contrôlez l'**Aperçu saisie** flottant en bas à droite : il cumule les lignes et le total TTC.\n4. Cliquez sur **Enregistrer (N)** : une fenêtre récapitulative façon facture s'ouvre (lignes, Total HT, Total TTC, case **Timbre Fiscal** ajoutant 1,000 DT, cochée par défaut). Confirmez.\n5. Si un appro existe déjà à cette date pour un article, une confirmation supplémentaire affiche le cumul avant validation.\n\nProduire un produit transformé : saisissez la quantité sur sa ligne — l'indication **Max** montre le maximum réalisable avec le stock d'ingrédients, et le prix se calcule automatiquement depuis la recette ([production de PT](#calc-production-pt)). Le bouton **⚙️ Personnaliser** permet d'ajuster les quantités d'ingrédients réellement consommées.\n\nConfigurer un seuil : bouton **🔧 Seuil**, saisissez la valeur minimale (laisser vide pour désactiver), puis Enregistrer. Le seuil d'un produit transformé se règle aussi activité par activité.\n\n### Points d'attention\n\n:::attention\nUn produit transformé fabriqué au **labo** porte le badge **⇄ Transfert uniquement** : sa quantité ne se saisit pas ici, il n'entre en stock d'activité que par [transfert](#transferts). Par ailleurs, une même validation ne peut pas mélanger production de PT et appro d'articles : dès qu'une quantité de PT est saisie, les champs Fournisseur et Réf Facture se désactivent — enregistrez les deux séparément. Enfin, si le champ Fournisseur affiche « ⚠ Aucun fournisseur », créez d'abord vos [fournisseurs](#fournisseurs) : le n° de facture est toujours exigé, et le choix d'un fournisseur devient obligatoire dès qu'au moins un fournisseur existe.\n:::\n\n:::formule Prix TTC\nTTC = HT × ( 1 + TVA ÷ 100 )\nnote: Un article acheté 10 DT HT avec 19 % de TVA revient à 11,900 DT TTC.\n:::\n\n:::astuce\nLe lien **📋 Historique** sous chaque article affiche ses derniers mouvements (date, type, quantité, prix HT et TTC, fournisseur, réf. facture) sans quitter l'écran, avec un bouton vers l'historique complet.\n:::\n\n### Voir aussi\n\n- [Valeur du stock](#calc-valeur-stock) — comment le stock actuel est calculé\n- [HT et TTC](#calc-ht-ttc) · [Seuils d'alerte](#calc-seuils)\n- [Pertes](#pertes) · [Historiques](#historique) · [Transferts](#transferts) · [Factures d'appro](#factures)"
+     }
+    ]
+   }
+  },
+  "fixe|calcul [[du:food_cost]]": {
+   "query": "calcul du food cost",
+   "resultat": {
+    "results": [
+     {
+      "titre": "Food cost",
+      "contenu": "Le food cost (ratio de coût matière) = coût matière ÷ chiffre d'affaires, en %. Repères LabFlow : moins de 30% = sain, 30 à 40% = à surveiller, plus de 40% = élevé (revoir prix ou portions). Plus il est bas, plus la marge est élevée."
+     },
+     {
+      "titre": "Manuel — Découvrir LabFlow › LabFlow en un coup d'œil",
+      "contenu": "## 🌟 LabFlow en un coup d'œil\n\nLabFlow est une application de gestion dédiée aux métiers de bouche : restaurants, pâtisseries, traiteurs, cuisines centrales. Elle réunit dans un seul outil tout ce qui fait la rentabilité d'une cuisine professionnelle : le référentiel d'articles, les fiches techniques et le coût matière, les stocks de chaque site, la production en laboratoire, les transferts entre sites, les ventes — au comptoir comme aux professionnels — et les rapports.\n\n### Ce que LabFlow vous apporte\n\n- **La maîtrise du coût matière** : chaque recette est décrite dans une fiche technique dont le coût de revient se calcule automatiquement à partir de vos prix d'achat réels. Quand un prix fournisseur évolue, vos coûts suivent.\n- **Des stocks multi-sites** : chaque point de vente et chaque labo dispose de son propre stock, avec approvisionnements, inventaires, pertes et valeur de stock suivis site par site.\n- **La production en laboratoire** : le labo fabrique vos produits transformés (crèmes, pâtes, plats préparés…), les ingrédients sont déduits automatiquement, et les boutiques sont approvisionnées par transfert.\n- **La vente aux professionnels (B2B)** : avec l'option Acheteurs, votre labo vend directement à un carnet de clients professionnels — tarifs dédiés, commandes en ligne via un portail, factures de vente.\n- **La traçabilité** : chaque mouvement laisse une trace consultable — approvisionnements, pertes, transferts, inventaires, ventes — avec filtres et exports dans les pages d'historique.\n- **Les ventes et les marges** : la saisie des ventes déduit le stock et alimente vos indicateurs : chiffre d'affaires, food cost, marge brute, valeur du stock, pertes, panier moyen.\n\nTous les montants sont exprimés en **DT**. Les prix d'achat se saisissent en HT avec leur taux de TVA, et l'application affiche les valeurs en TTC dans les rapports et tableaux de bord (voir [la règle HT/TTC](#calc-ht-ttc)).\n\n### Pour qui ?\n\nLabFlow s'adapte à la taille de votre organisation grâce à un modèle unique : un compte regroupe une ou plusieurs **activités** (points de vente, cuisines) et, si besoin, un ou plusieurs **labos** de production.\n\n- Le **restaurant indépendant** : une seule activité, tout se gère au même endroit.\n- La **pâtisserie avec laboratoire central** : le labo produit, les boutiques vendent, les transferts font le lien.\n- Le **traiteur ou groupe multi-sites** : plusieurs activités, chacune avec son stock et ses prix de vente, et des rapports pour piloter l'ensemble.\n- L'**atelier de production en dépôt** : pas de point de vente — un labo et un carnet d'acheteurs professionnels, avec commandes via le portail.\n\nLe détail de ce modèle est expliqué dans [Le modèle : compte, activités, labos](#compte-activites-labos).\n\n### Les grands modules\n\n| Module | Ce qu'il couvre |\n|---|---|\n| Référentiel | Unités, familles, catégories et articles : la base commune de votre compte |\n| Espace Produits | Produits vendables, utilisables et valorisés, avec leurs fiches techniques |\n| Espace Activités | Stock, approvisionnements, factures, pertes et inventaires de chaque point de vente |\n| Espace Labo | Stock du labo, production, transferts vers les activités |\n| Espace Vente | Prix de vente, prestataires, charges, saisie des ventes et rapport de vente |\n| Espace Acheteurs *(option)* | Carnet d'acheteurs B2B, tarifs dédiés, ventes et commandes, portail en ligne, factures de vente |\n| Gestion | Tableau de bord, rapports, fournisseurs, gérants, abonnement |\n\n:::astuce\nSur la plupart des écrans, un petit bouton « ? » ouvre ce manuel directement à la page concernée. Vous retrouvez aussi le lien Manuel d'utilisation en bas du menu latéral.\n:::\n\n### Voir aussi\n\n- [Le modèle : compte, activités, labos](#compte-activites-labos)\n- [Parcours de démarrage](#demarrage)\n- [Le module Acheteurs](#acheteurs-module)\n- [Lexique](#lexique)\n- [Tableau de bord](#dashboard)\n- [Fiches techniques](#fiches-techniques)"
+     },
+     {
+      "titre": "Manuel — Comprendre les calculs › Coût de revient d'une recette",
+      "contenu": "## 🧮 Le coût de revient d'une recette\n\nLe coût de revient d'une fiche technique est la somme de ce que coûtent ses composants : chaque ingrédient compte pour sa portion multipliée par son prix unitaire TTC, et chaque sous-produit transformé compte pour sa portion multipliée par son propre coût de revient, calculé de la même façon. Le calcul descend ainsi dans la recette du sous-produit, puis de ses éventuels sous-produits, jusqu'au dernier ingrédient.\n\n### Les paramètres qui influencent le résultat\n\n- **Les portions de la recette** : la quantité de chaque ingrédient et de chaque sous-produit nécessaire pour une unité produite.\n- **Le prix unitaire de chaque ingrédient**, selon le mode choisi au moment de générer la fiche technique (carte *FT Stock* avec ses méthodes *DP* / *PMP*, ou carte *FT Manuel*) :\n  - **Prix moyen pondéré (PMP)** — méthode *PMP* : la moyenne pondérée des prix TTC de vos achats (et transferts reçus, côté activité) depuis le dernier inventaire — voir [Le prix moyen pondéré](#calc-pmp). C'est ce prix qui sert à valoriser les productions.\n  - **Dernier prix** — méthode *DP* : le dernier prix TTC enregistré pour l'article.\n  - **Prix manuel** — carte *FT Manuel* : un prix que vous saisissez vous-même, mémorisé par base de prix, pour simuler un coût.\n- **La base de prix choisie** : la fiche technique se génère pour une ou plusieurs bases (activités ou labos assignés au produit) — les prix proviennent du stock de chaque base, avec repli sur les prix du labo lié quand un article n'a pas encore de prix côté activité. Un produit fabriqué au labo se calcule uniquement sur ses bases labo.\n- **Les portions personnalisées** : au moment d'une production, vous pouvez ajuster ponctuellement les quantités réellement consommées ; les déductions de stock suivent ces quantités, sans modifier la fiche technique (l'entrée du produit fini reste valorisée au coût de la recette standard).\n\n:::formule Coût de revient d'une recette\nCoût total = somme(portion ingrédient × prix unitaire TTC) + somme(portion sous-produit × coût de revient du sous-produit)\nnote: le coût de chaque sous-produit est calculé récursivement avec la même règle, aux mêmes prix.\n:::\n\n:::exemple\nRecette « Tarte aux fraises » (pour 1 tarte), valorisée au PMP TTC de l'activité :\n\n- Farine : 0,250 kg × 2,400 DT/kg = 0,600 DT\n- Fraises : 0,300 kg × 8,000 DT/kg = 2,400 DT\n- Sucre : 0,100 kg × 3,200 DT/kg = 0,320 DT\n- Crème pâtissière (sous-produit) : 0,500 unité × 4,440 DT/unité = 2,220 DT\n\nLe coût de la crème pâtissière (4,440 DT) est lui-même calculé à partir de sa propre recette : lait 0,500 L × 2,000 DT = 1,000 DT ; œufs 4 pièces × 0,700 DT = 2,800 DT ; sucre 0,200 kg × 3,200 DT = 0,640 DT.\n\n**Coût de revient de la tarte = 0,600 + 2,400 + 0,320 + 2,220 = 5,540 DT TTC.**\n:::\n\n### Ce qui peut faire varier le résultat\n\n- Chaque nouvel achat à un prix différent déplace le PMP, donc le coût de revient recalculé.\n- Un inventaire redémarre la période de calcul du PMP : le coût peut évoluer juste après.\n- Si un ingrédient n'a encore aucun prix connu (jamais approvisionné), sa part est comptée à zéro : le coût affiché est alors incomplet.\n- La modification ou la suppression d'une ligne d'approvisionnement passée change le PMP, donc le coût, rétroactivement.\n- Une recette ne peut pas se contenir elle-même (directement ou via ses sous-produits) : le calcul le refuse.\n\n### Voir aussi\n\n- [Fiches techniques](#fiches-techniques)\n- [Le prix moyen pondéré](#calc-pmp)\n- [La production d'un produit transformé](#calc-production-pt)\n- [HT et TTC](#calc-ht-ttc)\n- [Lexique des produits transformés](#lexique-pt)"
+     },
+     {
+      "titre": "Manuel — Comprendre les calculs › Valeur du stock",
+      "contenu": "## 💰 La valeur du stock actuel\n\nLa valeur de votre stock est calculée ligne par ligne : quantité actuelle × coût unitaire moyen TTC. La quantité actuelle repart toujours du **dernier inventaire** : on prend la quantité comptée ce jour-là, puis on ajoute et retranche tous les mouvements survenus depuis. S'il n'y a jamais eu d'inventaire, tous les mouvements depuis l'origine sont pris en compte.\n\n### Les paramètres qui influencent le résultat\n\n- **Le dernier inventaire** : quantité comptée et date (point de départ du calcul).\n- **Les mouvements depuis cette date** : achats, transferts, consommations de production, ventes, pertes.\n- **Les prix TTC des entrées**, qui déterminent le coût moyen (voir [Le prix moyen pondéré](#calc-pmp)).\n- **La nature de la ligne** (article ou produit transformé) et **le lieu** (activité ou labo) :\n\n| Où | Quantité actuelle |\n|---|---|\n| Article en activité | inventaire + achats + transferts reçus − consommations de production − ventes − pertes |\n| Article au labo | inventaire + achats − consommations de production − transferts envoyés − pertes |\n| Produit transformé en activité | inventaire + réceptions (transferts ou productions) − ventes − consommations en sous-produit − pertes |\n| Produit transformé au labo | inventaire + productions − consommations en sous-produit − transferts envoyés − pertes |\n\nPour la valorisation :\n\n- **Article** : valeur = quantité actuelle × PMP TTC. Le dernier prix reçu (achat ou transfert) est affiché à titre d'information, mais la valeur totale est bien calculée au coût moyen pondéré.\n- **Produit transformé** : chaque entrée porte son coût — coût de recette pour une production, prix de cession TTC pour une réception de transfert ; la valeur = quantité actuelle × moyenne des coûts des entrées depuis le dernier inventaire. À défaut d'entrée valorisée depuis l'inventaire, la moyenne de toutes les entrées sert de base ; en dernier recours, le dernier coût de réception connu ou le coût de recette actuel.\n\n:::formule Valeur du stock d'un article\nValeur = quantité actuelle × PMP TTC\nnote: quantité actuelle = quantité d'inventaire + entrées − sorties depuis le dernier inventaire ; sans inventaire, tous les mouvements depuis l'origine.\n:::\n\n:::exemple\nFarine dans une activité, dernier inventaire le 30/06 : **12,000 kg comptés**. Depuis :\n\n- achats : +25,000 kg à 2,400 DT TTC le kg\n- consommations de production : −6,000 kg\n- ventes : −4,500 kg\n- pertes : −1,500 kg\n\nQuantité actuelle = 12,000 + 25,000 − 6,000 − 4,500 − 1,500 = **25,000 kg**.\n\nAucun achat n'avait été enregistré avant cet inventaire : seul l'achat de 25 kg à 2,400 DT entre dans le coût moyen, donc PMP = 2,400 DT TTC.\n\n**Valeur du stock = 25,000 kg × 2,400 DT = 60,000 DT TTC.**\n:::\n\n### Ce qui peut faire varier le résultat\n\n- Un nouvel inventaire remplace la base de calcul : la quantité repart de la valeur comptée.\n- La quantité comptée à l'inventaire est valorisée à son coût moyen d'avant l'inventaire quand il existe ; sinon elle compte dans la quantité mais pas dans le coût moyen.\n- Si la quantité actuelle est nulle ou négative, la valeur affichée est 0.\n- Modifier ou supprimer un mouvement passé (achat, transfert, perte) recalcule immédiatement quantité et valeur.\n- Les quantités sont arrondies au millième (trois décimales).\n\n### Voir aussi\n\n- [Stock des activités](#stock-activites)\n- [Stock du labo](#stock-labo)\n- [Inventaire](#inventaire)\n- [Le prix moyen pondéré](#calc-pmp)\n- [Pertes](#pertes)"
+     }
+    ]
+   }
+  },
+  "fixe|[[nom:inventaire]] de fin de mois": {
+   "query": "inventaire de fin de mois",
+   "resultat": {
+    "results": [
+     {
+      "titre": "Manuel — Stock & Appro › Inventaire",
+      "contenu": "## 🔢 Inventaire\n\nL'écran **Inventaire** sert à compter physiquement votre stock et à enregistrer les quantités réelles : elles remplacent le stock théorique calculé par l'application et deviennent la nouvelle référence. Vous y accédez depuis le menu **Espace Activités → Inventaire**, activité par activité (pastilles 🏪).\n\n### Ce que vous voyez\n\n- Un en-tête avec compteurs : nombre d'**Ingrédients**, lignes saisies (compteur **Saisis**), et alerte **⚠ Date existante** si un inventaire existe déjà à la date choisie.\n- Une barre de filtres : **Catégorie**, **Ingrédient** (après choix d'une catégorie), **Date inventaire** (aujourd'hui par défaut, jamais dans le futur), et le bouton **Enregistrer (N)**.\n- Un tableau groupé par catégories repliables (avec compteur d'ingrédients et de lignes saisies) :\n\n| Colonne | Contenu |\n|---|---|\n| Ingrédient | nom (badge **PT** pour un produit transformé), unité, lien 📋 « 5 derniers inv. » |\n| Stock actuel | stock théorique calculé par l'application |\n| Qté réelle | saisie de la quantité réellement comptée |\n\n- Un panneau flottant **Aperçu saisie** (en bas à droite) récapitule les lignes saisies avec l'écart par rapport au stock théorique (en vert si positif, en rouge si négatif).\n\n### Actions pas à pas\n\n1. Sélectionnez l'activité, puis la **date d'inventaire**.\n2. Ouvrez les catégories et saisissez la **quantité réelle comptée** pour chaque ingrédient concerné — il n'est pas obligatoire de tout compter, seules les lignes saisies sont enregistrées.\n3. Contrôlez les écarts dans l'aperçu flottant.\n4. Cliquez sur **Enregistrer (N)** : une fenêtre de confirmation liste les lignes et rappelle que l'inventaire **ne peut pas être supprimé**, seulement modifié, et qu'il **recalcule le stock à partir de sa date**.\n5. Confirmez : le message « Inventaire enregistré avec succès » s'affiche.\n\nSi un inventaire existe déjà à la date choisie pour un ingrédient, sa ligne porte un badge **⚠ DATE** et la confirmation devient « 🚨 Remplacement détecté » : l'ancienne valeur, barrée, et la nouvelle sont affichées côte à côte avant que vous ne validiez le remplacement.\n\n### L'impact sur vos calculs\n\n:::formule Écart d'inventaire\nÉcart = Quantité réelle comptée − Stock théorique\nnote: Un écart négatif révèle des pertes ou consommations non saisies ; un écart positif, un surplus.\n:::\n\n:::regle\nL'inventaire devient le **point de départ** des calculs : le stock repart de la quantité comptée, puis les mouvements postérieurs (appros, transferts, pertes, productions, ventes) s'y ajoutent ou s'en retranchent. Le détail est expliqué dans [la valeur du stock](#calc-valeur-stock). La date et la quantité du dernier inventaire s'affichent d'ailleurs sous chaque article dans [Stock Activités](#stock-activites).\n:::\n\n### Consulter et corriger les inventaires passés\n\nL'écran **Historique Inventaire** liste tous les comptages : filtres **Du / Au**, **Catégorie** et **Article**, export **Excel** (les lignes cochées y sont surlignées), colonnes Article (badge PT), Date, Qté réelle, Note et Par (auteur de la saisie). Le bouton **✏️ Modifier** permet de corriger la quantité et la note — la date, elle, ne peut pas être modifiée. Un gérant ne peut corriger que ses propres saisies.\n\n### Points d'attention\n\n:::attention\nUn inventaire est définitif : il ne se supprime pas. En cas d'erreur, corrigez la quantité depuis l'historique, ou enregistrez un nouvel inventaire à une date plus récente.\n:::\n\n:::astuce\nRéalisez des inventaires réguliers (hebdomadaires ou mensuels) : ils fiabilisent la valeur du stock et font apparaître les pertes oubliées. Le lien « 5 derniers inv. » sous chaque ingrédient aide à repérer les dérives d'un comptage à l'autre.\n:::\n\n### Voir aussi\n\n- [Valeur du stock](#calc-valeur-stock) · [Stock Activités](#stock-activites) · [Pertes](#pertes) · [Historiques](#historique)"
+     },
+     {
+      "titre": "Inventaire",
+      "contenu": "L'inventaire est le comptage réel des quantités en stock à une date. L'écart entre le stock théorique et le stock compté révèle des pertes non déclarées, des erreurs de saisie ou du gaspillage. L'inventaire sert aussi de point de départ au calcul du prix moyen pondéré : le PMP TTC est calculé sur les entrées enregistrées depuis le dernier inventaire."
+     },
+     {
+      "titre": "Manuel — Gestion › Comptes gérants",
+      "contenu": "## 👥 Comptes gérants\n\nCet écran vous permet de donner un accès LabFlow à vos collaborateurs : chaque **gérant** reçoit une invitation par email et ne voit que les activités et labos que vous lui affectez. Vous le trouvez dans le menu latéral, entrée **Gérants**.\n\n### Ce que vous voyez\n\nLe bandeau affiche le compteur **Gérants** (utilisés / inclus dans votre abonnement), le nombre de gérants **Actifs**, et le bouton **+ Nouveau gérant** — remplacé par la mention 🔒 *Limite atteinte* quand le quota est plein. Un bandeau jaune signale les **invitations en attente d'activation**.\n\nChaque gérant apparaît sous forme de carte avec :\n\n- ses initiales, son nom, son email et son téléphone ;\n- son statut : **● Actif** ou **○ Inactif**, plus **⏳ Invitation en attente** tant qu'il n'a pas activé son compte ;\n- un badge **Gratuit** ou le montant facturé (en DT/mois) ;\n- 📍 la liste de ses **affectations** (activités et labos) ;\n- les actions : **✉️ Renvoyer** l'invitation (si non activée), **⏸ Désactiver** / **▶ Activer**, **🗑** supprimer.\n\n### Actions pas à pas\n\n1. Cliquez **+ Nouveau gérant** et renseignez le **nom**, le **téléphone** et l'**email** (tous obligatoires). La disponibilité de l'adresse email est vérifiée en direct : une adresse déjà utilisée est refusée.\n2. Cochez les **activités et labos assignés** — au moins un est obligatoire. Le lien *✓ Tout* coche l'ensemble d'un clic.\n3. Validez avec **✓ Créer et envoyer l'invitation** : le gérant reçoit un email et active son compte en cliquant sur le lien puis en définissant son mot de passe.\n4. Tant que l'invitation n'est pas acceptée, le badge ⏳ reste affiché : utilisez **✉️ Renvoyer** si l'email s'est égaré.\n5. Pour suspendre temporairement un accès, cliquez **⏸ Désactiver** (réversible à tout moment avec ▶ Activer). Pour retirer définitivement l'accès, utilisez 🗑 (une confirmation est demandée).\n\n### Points d'attention\n\n:::regle\nTrois comptes gérants gratuits sont inclus. Au-delà, le formulaire vous prévient : chaque gérant supplémentaire est facturé 80 DT/mois et nécessite une validation de l'équipe LabFlow. Le nombre total reste plafonné par votre abonnement.\n:::\n\n:::attention\nLe gérant ne voit que son périmètre : il travaille sur le stock, les appros, les pertes, les inventaires (et les ventes si le module est actif) de ses activités et labos affectés, mais n'a pas accès à la gestion des activités, des gérants, de l'abonnement ni des paiements.\n:::\n\n:::astuce\nCréez un gérant par responsable de site plutôt qu'un compte partagé : les historiques gardent ainsi la trace de qui a fait quoi.\n:::\n\n### Voir aussi\n\n- [Les rôles dans LabFlow](#roles) — client vs gérant en détail\n- [Tableau de bord gérant](#dashboard-gerant) — ce que voit votre collaborateur\n- [Activités & labos](#activites) · [Mon abonnement](#abonnement)"
+     },
+     {
+      "titre": "Manuel — Stock & Appro › Pertes",
+      "contenu": "## 📉 Pertes\n\nDéclarez les produits perdus — casse, péremption, chutes de production — pour que le stock et vos coûts reflètent la réalité. La **saisie** se fait directement depuis [Stock Activités](#stock-activites) (bouton **📉 Perte** sur la ligne de l'article) ; la **consultation** dans l'écran **Historique Pertes** du menu Espace Activités.\n\n### Les types de perte\n\n| Type | Usage |\n|---|---|\n| **Avarie** | produit abîmé, périmé, impropre à la vente |\n| **Déchet** | pertes de production, parures, casse (domaine Restauration) |\n\nUn autre domaine d'activité peut définir ses propres types de perte (par exemple *casse* ou *rebut*) : ce sont alors ceux-là qui apparaissent dans la fenêtre de saisie, les filtres et les badges.\n\n### Actions pas à pas\n\n1. Dans **Stock Activités**, sélectionnez l'activité puis cliquez sur **📉 Perte** sur la ligne de l'article.\n2. La fenêtre affiche le **stock disponible**. Saisissez la **quantité perdue** — elle ne peut pas dépasser ce stock (un avertissement s'affiche sinon).\n3. Choisissez le **type** (Avarie ou Déchet par défaut — selon votre domaine) et la **date de la perte** : elle doit se situer entre le premier approvisionnement de l'article (rappelé sous le champ) et aujourd'hui.\n4. Le **prix unitaire** d'achat en vigueur à la date choisie est récupéré automatiquement, et le **coût total** de la perte s'affiche aussitôt.\n5. Cliquez sur **Enregistrer la perte** : le stock diminue et la perte est tracée.\n\n:::formule Valeur d'une perte\nValeur = Quantité perdue × Prix unitaire d'achat à la date de la perte\nnote: L'écran Pertes affiche le prix d'achat HT ; dans les rapports et tableaux de bord, les pertes sont valorisées en TTC.\n:::\n\n### Où retrouver vos pertes\n\n- **Historique Pertes** : consultation **activité par activité** (pastilles 🏪), filtres **Du / Au**, **Catégorie**, **Article** et **Type** (les types de votre domaine), bouton **Rechercher**. Le tableau affiche Activité, Article, Date, Type (badge coloré), Quantité, Prix Unit., Coût Total et Par (auteur de la saisie), avec les totaux **quantité** et **coût** affichés au-dessus et en pied de tableau. Export **Excel**, avec surbrillance des lignes cochées.\n- Dans **Stock Activités** : la ligne **↘ pertes** de la colonne Stock Actuel cumule les quantités perdues ; pour un produit transformé, le lien 📋 Historique marque en plus chaque perte d'un badge 🗑️.\n\nDepuis l'historique, **✏️ Modifier** permet de corriger la quantité et le type — la date et le prix restent verrouillés, et un avertissement rappelle que changer la quantité impacte le calcul du stock actuel. **🗑️ Supprimer** recalcule le stock ; l'action est **irréversible**. Un gérant ne peut modifier ou supprimer que ses propres saisies.\n\n### Points d'attention\n\n:::attention\nImpossible de déclarer une perte sur un article jamais approvisionné : l'application demande d'enregistrer d'abord un appro. Pour un produit transformé, il n'y a pas de prix d'achat : aucun coût ne s'affiche à la saisie, mais la perte est valorisée au coût de recette du produit (quand il est calculable) dans l'historique et les rapports.\n:::\n\n:::astuce\nSaisissez les pertes au fil de l'eau plutôt qu'en fin de mois : votre stock reste juste, et l'[inventaire](#inventaire) ne sert plus qu'à confirmer. Un écart d'inventaire négatif récurrent signale des pertes non déclarées.\n:::\n\n### Voir aussi\n\n- [Stock Activités](#stock-activites) · [Inventaire](#inventaire) · [Historiques](#historique)\n- [Valeur du stock](#calc-valeur-stock) · [HT et TTC](#calc-ht-ttc)"
+     }
+    ]
+   }
+  },
+  "fixe|inviter [[un:acheteur]]": {
+   "query": "inviter un acheteur",
+   "resultat": {
+    "results": [
+     {
+      "titre": "Manuel — Espace Acheteurs › Le module Acheteurs",
+      "contenu": "## 🤝 Le module Acheteurs\n\nLe module Acheteurs transforme votre labo en **point de vente B2B** : vous gérez un carnet d'acheteurs (restaurants, superettes, grossistes…), vous leur vendez des articles et des produits depuis votre **stock labo**, et chaque vente génère une **facture fiscale** numérotée.\n\nIl permet aussi le **compte dépôt** : un compte LabFlow composé uniquement d'un labo et d'un carnet d'acheteurs, sans aucune activité.\n\n### Activation\n\nLe module est **optionnel** et désactivé par défaut. Deux façons de l'activer :\n\n1. Depuis l'écran verrouillé de l'Espace Acheteurs, envoyez une **demande d'activation** — l'administrateur la valide sous 24 h.\n2. L'administrateur peut l'activer directement sur votre compte.\n\nÀ l'activation, un **quota d'acheteurs** est défini sur votre abonnement : c'est le nombre maximum de fiches dans votre carnet. Pour l'augmenter, contactez l'administrateur.\n\n### Ce que le module ajoute\n\n| Élément | Rôle |\n| --- | --- |\n| Carnet d'Acheteurs | vos clients B2B (fiches, comptes portail) |\n| Tarifs Acheteurs | les articles proposés et leurs prix HT (+ TVA) |\n| Vente Acheteur | la vente manuelle depuis le stock labo |\n| Commandes | le suivi des ventes et des commandes du portail |\n| Portail acheteur | l'espace où vos acheteurs commandent en ligne |\n\n:::regle\nToutes les ventes aux acheteurs partent du **stock labo** (jamais du stock d'une activité). Le labo source est choisi à chaque vente, et la **remise** éventuelle se décide à chaque commande.\n:::"
+     },
+     {
+      "titre": "Manuel — Découvrir LabFlow › LabFlow en un coup d'œil",
+      "contenu": "## 🌟 LabFlow en un coup d'œil\n\nLabFlow est une application de gestion dédiée aux métiers de bouche : restaurants, pâtisseries, traiteurs, cuisines centrales. Elle réunit dans un seul outil tout ce qui fait la rentabilité d'une cuisine professionnelle : le référentiel d'articles, les fiches techniques et le coût matière, les stocks de chaque site, la production en laboratoire, les transferts entre sites, les ventes — au comptoir comme aux professionnels — et les rapports.\n\n### Ce que LabFlow vous apporte\n\n- **La maîtrise du coût matière** : chaque recette est décrite dans une fiche technique dont le coût de revient se calcule automatiquement à partir de vos prix d'achat réels. Quand un prix fournisseur évolue, vos coûts suivent.\n- **Des stocks multi-sites** : chaque point de vente et chaque labo dispose de son propre stock, avec approvisionnements, inventaires, pertes et valeur de stock suivis site par site.\n- **La production en laboratoire** : le labo fabrique vos produits transformés (crèmes, pâtes, plats préparés…), les ingrédients sont déduits automatiquement, et les boutiques sont approvisionnées par transfert.\n- **La vente aux professionnels (B2B)** : avec l'option Acheteurs, votre labo vend directement à un carnet de clients professionnels — tarifs dédiés, commandes en ligne via un portail, factures de vente.\n- **La traçabilité** : chaque mouvement laisse une trace consultable — approvisionnements, pertes, transferts, inventaires, ventes — avec filtres et exports dans les pages d'historique.\n- **Les ventes et les marges** : la saisie des ventes déduit le stock et alimente vos indicateurs : chiffre d'affaires, food cost, marge brute, valeur du stock, pertes, panier moyen.\n\nTous les montants sont exprimés en **DT**. Les prix d'achat se saisissent en HT avec leur taux de TVA, et l'application affiche les valeurs en TTC dans les rapports et tableaux de bord (voir [la règle HT/TTC](#calc-ht-ttc)).\n\n### Pour qui ?\n\nLabFlow s'adapte à la taille de votre organisation grâce à un modèle unique : un compte regroupe une ou plusieurs **activités** (points de vente, cuisines) et, si besoin, un ou plusieurs **labos** de production.\n\n- Le **restaurant indépendant** : une seule activité, tout se gère au même endroit.\n- La **pâtisserie avec laboratoire central** : le labo produit, les boutiques vendent, les transferts font le lien.\n- Le **traiteur ou groupe multi-sites** : plusieurs activités, chacune avec son stock et ses prix de vente, et des rapports pour piloter l'ensemble.\n- L'**atelier de production en dépôt** : pas de point de vente — un labo et un carnet d'acheteurs professionnels, avec commandes via le portail.\n\nLe détail de ce modèle est expliqué dans [Le modèle : compte, activités, labos](#compte-activites-labos).\n\n### Les grands modules\n\n| Module | Ce qu'il couvre |\n|---|---|\n| Référentiel | Unités, familles, catégories et articles : la base commune de votre compte |\n| Espace Produits | Produits vendables, utilisables et valorisés, avec leurs fiches techniques |\n| Espace Activités | Stock, approvisionnements, factures, pertes et inventaires de chaque point de vente |\n| Espace Labo | Stock du labo, production, transferts vers les activités |\n| Espace Vente | Prix de vente, prestataires, charges, saisie des ventes et rapport de vente |\n| Espace Acheteurs *(option)* | Carnet d'acheteurs B2B, tarifs dédiés, ventes et commandes, portail en ligne, factures de vente |\n| Gestion | Tableau de bord, rapports, fournisseurs, gérants, abonnement |\n\n:::astuce\nSur la plupart des écrans, un petit bouton « ? » ouvre ce manuel directement à la page concernée. Vous retrouvez aussi le lien Manuel d'utilisation en bas du menu latéral.\n:::\n\n### Voir aussi\n\n- [Le modèle : compte, activités, labos](#compte-activites-labos)\n- [Parcours de démarrage](#demarrage)\n- [Le module Acheteurs](#acheteurs-module)\n- [Lexique](#lexique)\n- [Tableau de bord](#dashboard)\n- [Fiches techniques](#fiches-techniques)"
+     },
+     {
+      "titre": "Manuel — Découvrir LabFlow › Le modèle : compte, activités, labos",
+      "contenu": "## 🏢 Le modèle : compte, activités, labos\n\nToute l'organisation de LabFlow repose sur trois niveaux : le **compte**, les **activités** et les **labos**. Comprendre qui possède quoi est la clé de lecture de tous les autres écrans.\n\n### Les trois niveaux\n\n- **Le compte** : c'est votre entreprise dans LabFlow. Il porte l'abonnement, qui fixe vos quotas : nombre d'activités, de labos et de comptes gérants — et, si l'option Acheteurs est active, le palier d'acheteurs. Il porte aussi la **formule d'activités** (Basique ou Premium), qui détermine l'étendue de l'Espace Produit. Les compteurs d'activités et de labos s'affichent sur la page Mes Activités, celui des gérants sur la page Gérants. Il n'y a pas de distinction entre indépendant et entreprise : le même modèle s'adapte à toutes les tailles.\n- **Les activités (0 à N)** : vos points de vente ou cuisines — boutique, restaurant, kiosque… Chaque activité vend, consomme et gère son propre stock.\n- **Les labos (0 à N)** : vos sites de production. Un labo fabrique des produits transformés, approvisionne les activités qui lui sont rattachées **exclusivement par transfert** — et, avec l'option Acheteurs, vend directement aux professionnels.\n\n### Qui possède quoi ?\n\n| Élément | Niveau | En pratique |\n|---|---|---|\n| Référentiel (unités, familles, catégories, articles) | Compte | Défini une seule fois, partagé par tous les sites |\n| Sélection d'articles | Activité / labo | Chaque site n'utilise que les articles qu'on lui a assignés |\n| Stock, appros, inventaires, pertes | Activité / labo | Chaque site a les siens, suivis séparément |\n| Produits et fiches techniques | Activité / labo | Un produit est affecté aux sites qui le fabriquent ou le vendent |\n| Ventes et prix de vente | Activité / labo | Chaque point de vente a ses prix et ses ventes ; le labo peut aussi saisir ses ventes directes |\n| Carnet d'acheteurs et tarifs B2B | Compte | Communs à tous les labos ; les ventes aux acheteurs partent du stock d'un labo |\n\n### Le lien activité ↔ labo\n\nDès qu'un labo existe sur votre compte, la création ou la modification d'une activité vous propose deux options :\n\n- **Avec labo** : l'activité est rattachée à un labo qui l'approvisionne par transfert — la production du labo arrive dans le stock de la boutique à chaque transfert.\n- **Sans labo** : l'activité gère seule ses approvisionnements auprès de ses fournisseurs.\n\nUne même entreprise peut mélanger les deux : des boutiques rattachées au labo et un point de vente autonome, par exemple.\n\n### La base acheteurs et le compte dépôt\n\nAvec l'**option Acheteurs**, le labo ne fait pas que produire pour vos boutiques : il vend aussi **directement aux professionnels** (épiceries, revendeurs, restaurants…). Le carnet d'acheteurs, les tarifs B2B, les commandes et le portail en ligne sont réunis dans l'[Espace Acheteurs](#acheteurs-module).\n\n- L'option nécessite **au moins un labo** : les ventes aux acheteurs partent toujours du stock d'un labo.\n- Elle est facturée **par palier** selon la taille du carnet : jusqu'à 10, 20, 50 ou 100 acheteurs.\n- Un **compte dépôt** est un compte **sans activité** : un labo + la base acheteurs. C'est le modèle de l'atelier de production qui ne vend qu'aux professionnels. Son menu est allégé : sans activité, l'Espace Vente, les Transferts et les Produits Vendables sont masqués — ils réapparaissent automatiquement dès la première activité créée.\n\n### Quatre exemples concrets\n\n- **Pâtisserie avec labo central** : 1 labo + 3 boutiques. Le labo produit crèmes, entremets et viennoiseries ; chaque boutique reçoit sa production par transfert et saisit ses propres ventes. Le référentiel (farine, beurre, sucre…) est commun à tous.\n- **Restaurant simple** : 1 activité, 0 labo. Le restaurant fait ses achats, ses fiches techniques et ses ventes ; le modèle reste le même, simplement sans Espace Labo.\n- **Traiteur multi-sites** : 1 labo de production + 2 points de vente. Le labo prépare, les sites vendent, et les rapports donnent la vision d'ensemble du compte.\n- **Atelier en dépôt** : 0 activité, 1 labo + base acheteurs. L'atelier produit et vend exclusivement à ses clients professionnels, via l'Espace Acheteurs et le portail de commande.\n\n:::regle\nLe référentiel est commun au compte ; les stocks sont locaux à chaque site. Un article se crée une seule fois, mais son stock et son prix moyen pondéré vivent séparément dans chaque activité et chaque labo.\n:::\n\n:::attention\nUn produit transformé d'origine labo ne peut être approvisionné côté activité que par transfert : pas de saisie d'achat directe pour ces produits en boutique. Voir [les produits transformés](#lexique-pt).\n:::\n\n### Voir aussi\n\n- [Parcours de démarrage](#demarrage)\n- [Activités](#activites) — l'écran de gestion de vos sites\n- [Le module Acheteurs](#acheteurs-module) — la vente aux professionnels\n- [Transferts](#transferts)\n- [Rôles & accès](#roles)\n- [Calculs : les transferts](#calc-transferts)"
+     },
+     {
+      "titre": "Manuel — Compte & Aide › Assistant IA",
+      "contenu": "## 🤖 Assistant IA\n\nL'assistant IA de LabFlow répond en langage naturel à vos questions sur **vos données** (stock, pertes, inventaires, ventes, coûts) et sur **le fonctionnement de LabFlow** : il connaît ce manuel et peut vous guider pas à pas. Il s'affiche via le bouton 🤖 de la barre du haut (à côté de la cloche de notifications) **pendant votre mise en route** : le panneau montre l'avancement de votre configuration étape par étape (vos unités par type — par exemple « 1/2 Restaurant · 0/1 Cuisine » selon votre domaine —, référentiel, articles, fournisseurs, produits, premières saisies, carnet d'acheteurs si le module est actif), avec des questions suggérées pour l'étape en cours. Une fois votre configuration terminée, le guide se retire automatiquement — et il revient de lui-même si un avenant ajoute de nouvelles capacités à configurer (activité, labo, module Acheteurs…). Le chat s'ouvre par-dessus votre écran, sans vous faire quitter la page en cours.\n\n### Ce que vous voyez\n\n- Le bouton 🤖 de la barre du haut, visible pendant votre mise en route : un clic ouvre ou referme le guide, et la conversation reste affichée pendant que vous naviguez d'une page à l'autre.\n- Un en-tête « Assistant IA LabFlow » qui rappelle sa mission : analyser vos données (stock, ventes, pertes…) et répondre à vos questions sur le fonctionnement de LabFlow.\n- La conversation sous forme de bulles : vos messages d'un côté, les réponses de l'assistant de l'autre.\n- À la première visite, des suggestions cliquables pour démarrer : « Quel est mon stock critique actuellement ? », « Comment réduire mes pertes ? », « Comment fonctionnent les transferts labo → activités ? », « Comment la valeur de mon stock est-elle calculée ? ».\n- Une zone de saisie en bas de page, avec un bouton d'envoi.\n- Un bouton **Effacer**, en haut de la conversation dès qu'elle contient des messages, pour repartir de zéro.\n\nVotre conversation est conservée : si vous quittez la page et revenez plus tard, vous retrouvez l'historique de vos échanges.\n\n### Actions pas à pas\n\n**Poser une question**\n\n1. Tapez votre question dans la zone de saisie, comme vous la poseriez à un collaborateur.\n2. Appuyez sur **Entrée** pour envoyer — utilisez **Maj+Entrée** pour aller à la ligne sans envoyer.\n3. L'assistant analyse vos données et répond directement dans la conversation.\n\n**Exemples de questions utiles**\n\n- Sur vos données : « Quel est mon stock critique actuellement ? », « Quelles ont été mes plus grosses pertes ce mois-ci ? », « Analyse mes inventaires récents », « Quels articles devrais-je réapprovisionner en priorité ? »\n- Sur LabFlow : « Comment déclarer une perte ? », « Comment fonctionne un transfert entre labo et activité, ou entre deux labos ? », « Où retrouver mes factures ? » — l'assistant s'appuie sur ce manuel pour vous répondre.\n\n**Effacer la conversation**\n\n1. Cliquez sur **Effacer** en haut de la conversation.\n2. L'historique est supprimé et une nouvelle conversation démarre.\n\n### Points d'attention\n\n:::attention\nSi la page affiche « Assistant IA non activé », l'assistant n'est pas encore ouvert pour votre compte : contactez l'administration, par exemple via une [demande d'aide](#support), pour l'activer.\n:::\n\n:::astuce\nSelon la configuration de votre compte, l'assistant peut aussi être joignable depuis Facebook Messenger : pratique pour l'interroger en cuisine, sans ouvrir LabFlow. Ce raccordement est mis en place par l'administration.\n:::\n\n:::regle\nL'assistant n'analyse que les données de votre propre compte LabFlow. Ses réponses sont une aide à la décision : les chiffres de référence restent ceux de vos écrans et de vos [rapports](#rapports).\n:::\n\n### Voir aussi\n\n- [Demandes et support](#support) — pour les demandes qui nécessitent une action de l'équipe LabFlow\n- [Questions fréquentes](#faq) — les réponses aux questions les plus courantes\n- [Stock des activités](#stock-activites), [Pertes](#pertes), [Rapports](#rapports)"
+     }
+    ]
+   }
+  },
+  "A|Comment créer mon activité ?": {
+   "titres": [
+    "Manuel — Gestion › Activités & labos",
+    "Manuel — Compte & Aide › Mon compte",
+    "Manuel — Gestion › Mon abonnement",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage"
+   ],
+   "base": []
+  },
+  "A|Par quoi commencer pour mon référentiel ?": {
+   "titres": [
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Compte & Aide › Mon compte"
+   ],
+   "base": []
+  },
+  "A|À quoi servent les familles et les catégories ?": {
+   "titres": [
+    "Manuel — Référentiel › Familles",
+    "Manuel — Lexique › Les 3 catégories de PT",
+    "Manuel — Espace Produit › Produits Utilisables",
+    "Produits vendables et utilisables"
+   ],
+   "base": [
+    {
+     "titre": "Produits vendables et utilisables",
+     "contenu": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué puis intégré dans d'autres produits ; il est mis en stock et géré comme un ingrédient. Les produits transformés se répartissent en trois catégories : Utilisables, Vendables et Composés Valorisés."
+    }
+   ]
+  },
+  "A|Comment créer mes unités ?": {
+   "titres": [
+    "Manuel — Référentiel › Unités",
+    "Unité de mesure",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?"
+   ],
+   "base": [
+    {
+     "titre": "Unité de mesure",
+     "contenu": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client."
+    }
+   ]
+  },
+  "A|Comment ajouter mes articles ?": {
+   "titres": [
+    "Manuel — Référentiel › Articles",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Référentiel › Unités"
+   ],
+   "base": []
+  },
+  "A|Comment importer mes articles en masse ?": {
+   "titres": [
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — Référentiel › Articles",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Unité de mesure"
+   ],
+   "base": [
+    {
+     "titre": "Unité de mesure",
+     "contenu": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client."
+    }
+   ]
+  },
+  "A|Comment affecter les articles à mon activité ?": {
+   "titres": [
+    "Manuel — Référentiel › Articles",
+    "Référentiel articles",
+    "Manuel — Gestion › Activités & labos",
+    "Manuel — Comprendre les calculs › Qui fixe quel prix"
+   ],
+   "base": [
+    {
+     "titre": "Référentiel articles",
+     "contenu": "Le référentiel regroupe les articles/ingrédients du client avec leur unité, leur famille/catégorie et leur prix de référence. C'est la base à partir de laquelle on construit le stock, les fiches techniques et les ventes."
+    }
+   ]
+  },
+  "A|Comment ajouter mes fournisseurs ?": {
+   "titres": [
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Unité de mesure",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — FAQ › Questions fréquentes"
+   ],
+   "base": [
+    {
+     "titre": "Unité de mesure",
+     "contenu": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client."
+    }
+   ]
+  },
+  "A|Comment importer mes fournisseurs depuis Excel ?": {
+   "titres": [
+    "Manuel — Compte & Aide › Assistant IA",
+    "Manuel — Comprendre les calculs › Traçabilité automatique",
+    "Manuel — Gestion › Fournisseurs",
+    "Manuel — Gestion › Tableau de bord"
+   ],
+   "base": []
+  },
+  "A|À quoi servent les affectations d'un fournisseur ?": {
+   "titres": [
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — Espace Produit › Produits Utilisables",
+    "Manuel — Comprendre les calculs › Qui fixe quel prix",
+    "Manuel — Gestion › Fournisseurs"
+   ],
+   "base": []
+  },
+  "A|Comment créer un produit et sa fiche technique ?": {
+   "titres": [
+    "Manuel — Espace Produit › Fiches Techniques",
+    "Fiche technique",
+    "Mode de prix d'une fiche technique",
+    "Manuel — Espace Produit › Produits Valorisés"
+   ],
+   "base": [
+    {
+     "titre": "Fiche technique",
+     "contenu": "La fiche technique est le coût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix TTC selon le mode choisi : prix moyen pondéré du stock (PMP TTC depuis le dernier inventaire), dernier prix d'achat, ou prix manuels saisis (simulation). Elle sert à connaître le coût de revient d'un produit et à fixer son prix de vente."
+    },
+    {
+     "titre": "Mode de prix d'une fiche technique",
+     "contenu": "Le coût d'une fiche technique peut être calculé selon plusieurs modes de prix des ingrédients : le dernier prix d'achat (DP), la moyenne des prix du stock (MP : prix moyen pondéré TTC calculé depuis le dernier inventaire), ou des prix saisis manuellement (simulation). DP et MP peuvent être affichés ensemble pour comparaison. Tous les prix sont en TTC. Cela permet de simuler le coût de revient selon différents scénarios d'achat."
+    }
+   ]
+  },
+  "A|C'est quoi un produit valorisé ?": {
+   "titres": [
+    "Manuel — Espace Produit › Produits Valorisés",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Espace Produit › Produits Utilisables"
+   ],
+   "base": []
+  },
+  "A|Comment est calculé le coût de revient d'une recette ?": {
+   "titres": [
+    "Manuel — Comprendre les calculs › Coût de revient d'une recette",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Lexique › Les 3 catégories de PT",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage"
+   ],
+   "base": []
+  },
+  "A|Comment saisir mon premier approvisionnement ?": {
+   "titres": [
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Compte & Aide › Mon compte",
+    "Manuel — Référentiel › Unités",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage"
+   ],
+   "base": []
+  },
+  "A|Comment saisir une vente ?": {
+   "titres": [
+    "Vente",
+    "Activité (point de vente)",
+    "Mode de prix d'une fiche technique",
+    "Manuel — Découvrir LabFlow › Le modèle : compte, activités, labos"
+   ],
+   "base": [
+    {
+     "titre": "Vente",
+     "contenu": "Une vente est une transaction enregistrée sur une activité, à une date, avec un statut (confirmée/annulée) et un canal : directe (sur place) ou via un prestataire de livraison. Chaque vente contient des lignes (article vendu, quantité, prix de vente, coût matière unitaire). Le chiffre d'affaires (CA) est la somme des prix de vente."
+    },
+    {
+     "titre": "Activité (point de vente)",
+     "contenu": "Une activité est un point de vente du client (restaurant, café, kiosque…). Elle a son propre stock, ses approvisionnements, ses ventes et ses pertes. Un compte client gère une ou plusieurs activités (et éventuellement un ou plusieurs labos), sans distinction de type de compte. Les données peuvent être filtrées par activité."
+    },
+    {
+     "titre": "Mode de prix d'une fiche technique",
+     "contenu": "Le coût d'une fiche technique peut être calculé selon plusieurs modes de prix des ingrédients : le dernier prix d'achat (DP), la moyenne des prix du stock (MP : prix moyen pondéré TTC calculé depuis le dernier inventaire), ou des prix saisis manuellement (simulation). DP et MP peuvent être affichés ensemble pour comparaison. Tous les prix sont en TTC. Cela permet de simuler le coût de revient selon différents scénarios d'achat."
+    }
+   ]
+  },
+  "A|Comment mon stock est-il calculé ?": {
+   "titres": [
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Gestion › Mon abonnement",
+    "Manuel — Gestion › Activités & labos",
+    "Manuel — Comprendre les calculs › Valeur du stock"
+   ],
+   "base": []
+  },
+  "B|Quelle est la différence entre une activité et un labo ?": {
+   "titres": [
+    "Manuel — Gestion › Activités & labos",
+    "Manuel — Découvrir LabFlow › Le modèle : compte, activités, labos",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Gestion › Tableau de bord"
+   ],
+   "base": []
+  },
+  "B|Par quoi commencer pour mon référentiel ?": {
+   "titres": [
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Compte & Aide › Mon compte"
+   ],
+   "base": []
+  },
+  "B|À quoi servent les familles et les catégories ?": {
+   "titres": [
+    "Manuel — Référentiel › Familles",
+    "Manuel — Lexique › Les 3 catégories de PT",
+    "Manuel — Espace Produit › Produits Utilisables",
+    "Produits vendables et utilisables"
+   ],
+   "base": [
+    {
+     "titre": "Produits vendables et utilisables",
+     "contenu": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué puis intégré dans d'autres produits ; il est mis en stock et géré comme un ingrédient. Les produits transformés se répartissent en trois catégories : Utilisables, Vendables et Composés Valorisés."
+    }
+   ]
+  },
+  "B|Comment créer mes unités ?": {
+   "titres": [
+    "Manuel — Référentiel › Unités",
+    "Unité de mesure",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?"
+   ],
+   "base": [
+    {
+     "titre": "Unité de mesure",
+     "contenu": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client."
+    }
+   ]
+  },
+  "B|Comment ajouter mes articles ?": {
+   "titres": [
+    "Manuel — Référentiel › Articles",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Référentiel › Unités"
+   ],
+   "base": []
+  },
+  "B|Comment importer mes articles en masse ?": {
+   "titres": [
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — Référentiel › Articles",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Unité de mesure"
+   ],
+   "base": [
+    {
+     "titre": "Unité de mesure",
+     "contenu": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client."
+    }
+   ]
+  },
+  "B|Comment affecter les articles à mes activités et mes labos ?": {
+   "titres": [
+    "Manuel — Référentiel › Articles",
+    "Manuel — Découvrir LabFlow › Le modèle : compte, activités, labos",
+    "Manuel — Gestion › Activités & labos",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?"
+   ],
+   "base": []
+  },
+  "B|Comment ajouter mes fournisseurs ?": {
+   "titres": [
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Unité de mesure",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — FAQ › Questions fréquentes"
+   ],
+   "base": [
+    {
+     "titre": "Unité de mesure",
+     "contenu": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client."
+    }
+   ]
+  },
+  "B|Comment importer mes fournisseurs depuis Excel ?": {
+   "titres": [
+    "Manuel — Compte & Aide › Assistant IA",
+    "Manuel — Stock & Appro › Stock Activités",
+    "Manuel — Comprendre les calculs › Traçabilité automatique",
+    "Manuel — Gestion › Fournisseurs"
+   ],
+   "base": []
+  },
+  "B|À quoi servent les affectations d'un fournisseur ?": {
+   "titres": [
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — Espace Produit › Produits Utilisables",
+    "Manuel — Comprendre les calculs › Qui fixe quel prix",
+    "Manuel — Gestion › Fournisseurs"
+   ],
+   "base": []
+  },
+  "B|Comment créer un produit et sa fiche technique ?": {
+   "titres": [
+    "Manuel — Espace Produit › Fiches Techniques",
+    "Fiche technique",
+    "Mode de prix d'une fiche technique",
+    "Manuel — Espace Produit › Produits Valorisés"
+   ],
+   "base": [
+    {
+     "titre": "Fiche technique",
+     "contenu": "La fiche technique est le coût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix TTC selon le mode choisi : prix moyen pondéré du stock (PMP TTC depuis le dernier inventaire), dernier prix d'achat, ou prix manuels saisis (simulation). Elle sert à connaître le coût de revient d'un produit et à fixer son prix de vente."
+    },
+    {
+     "titre": "Mode de prix d'une fiche technique",
+     "contenu": "Le coût d'une fiche technique peut être calculé selon plusieurs modes de prix des ingrédients : le dernier prix d'achat (DP), la moyenne des prix du stock (MP : prix moyen pondéré TTC calculé depuis le dernier inventaire), ou des prix saisis manuellement (simulation). DP et MP peuvent être affichés ensemble pour comparaison. Tous les prix sont en TTC. Cela permet de simuler le coût de revient selon différents scénarios d'achat."
+    }
+   ]
+  },
+  "B|C'est quoi un produit valorisé ?": {
+   "titres": [
+    "Manuel — Espace Produit › Produits Valorisés",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Espace Produit › Produits Utilisables"
+   ],
+   "base": []
+  },
+  "B|Comment est calculé le coût de revient d'une recette ?": {
+   "titres": [
+    "Manuel — Comprendre les calculs › Coût de revient d'une recette",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Stock & Appro › Stock Activités",
+    "Manuel — Lexique › Les 3 catégories de PT"
+   ],
+   "base": []
+  },
+  "B|Comment saisir mon premier approvisionnement ?": {
+   "titres": [
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Compte & Aide › Mon compte",
+    "Manuel — Référentiel › Unités",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage"
+   ],
+   "base": []
+  },
+  "B|Comment saisir une vente ?": {
+   "titres": [
+    "Manuel — Espace Vente › Saisie des ventes",
+    "Vente",
+    "Activité (point de vente)",
+    "Manuel — Espace Vente › Ventes Labo"
+   ],
+   "base": [
+    {
+     "titre": "Vente",
+     "contenu": "Une vente est une transaction enregistrée sur une activité, à une date, avec un statut (confirmée/annulée) et un canal : directe (sur place) ou via un prestataire de livraison. Chaque vente contient des lignes (article vendu, quantité, prix de vente, coût matière unitaire). Le chiffre d'affaires (CA) est la somme des prix de vente."
+    },
+    {
+     "titre": "Activité (point de vente)",
+     "contenu": "Une activité est un point de vente du client (restaurant, café, kiosque…). Elle a son propre stock, ses approvisionnements, ses ventes et ses pertes. Un compte client gère une ou plusieurs activités (et éventuellement un ou plusieurs labos), sans distinction de type de compte. Les données peuvent être filtrées par activité."
+    }
+   ]
+  },
+  "B|Comment mon stock est-il calculé ?": {
+   "titres": [
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Stock & Appro › Stock Activités",
+    "Manuel — Stock & Appro › Transferts",
+    "Manuel — Stock & Appro › Historiques"
+   ],
+   "base": []
+  },
+  "C|Par quoi commencer pour mon référentiel ?": {
+   "titres": [
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Compte & Aide › Mon compte"
+   ],
+   "base": []
+  },
+  "C|À quoi servent les familles et les catégories ?": {
+   "titres": [
+    "Manuel — Référentiel › Familles",
+    "Manuel — Lexique › Les 3 catégories de PT",
+    "Manuel — Espace Produit › Produits Utilisables",
+    "Produits vendables et utilisables"
+   ],
+   "base": [
+    {
+     "titre": "Produits vendables et utilisables",
+     "contenu": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué puis intégré dans d'autres produits ; il est mis en stock et géré comme un ingrédient. Les produits transformés se répartissent en trois catégories : Utilisables, Vendables et Composés Valorisés."
+    }
+   ]
+  },
+  "C|Comment créer mes unités ?": {
+   "titres": [
+    "Manuel — Référentiel › Unités",
+    "Unité de mesure",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?"
+   ],
+   "base": [
+    {
+     "titre": "Unité de mesure",
+     "contenu": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client."
+    }
+   ]
+  },
+  "C|Comment ajouter mes articles ?": {
+   "titres": [
+    "Manuel — Référentiel › Articles",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Référentiel › Unités"
+   ],
+   "base": []
+  },
+  "C|Comment importer mes articles en masse ?": {
+   "titres": [
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — Référentiel › Articles",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Unité de mesure"
+   ],
+   "base": [
+    {
+     "titre": "Unité de mesure",
+     "contenu": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client."
+    }
+   ]
+  },
+  "C|Comment affecter les articles à mon labo ?": {
+   "titres": [
+    "Manuel — Référentiel › Articles",
+    "Référentiel articles",
+    "Manuel — Gestion › Activités & labos",
+    "Manuel — Espace Vente › Ventes Labo"
+   ],
+   "base": [
+    {
+     "titre": "Référentiel articles",
+     "contenu": "Le référentiel regroupe les articles/ingrédients du client avec leur unité, leur famille/catégorie et leur prix de référence. C'est la base à partir de laquelle on construit le stock, les fiches techniques et les ventes."
+    }
+   ]
+  },
+  "C|Comment ajouter mes fournisseurs ?": {
+   "titres": [
+    "Manuel — Découvrir LabFlow › Parcours de démarrage",
+    "Unité de mesure",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — FAQ › Questions fréquentes"
+   ],
+   "base": [
+    {
+     "titre": "Unité de mesure",
+     "contenu": "Chaque article a une unité de mesure (kg, L, pièce, g…) utilisée pour le stock, les portions des fiches techniques et les prix unitaires. Les unités sont propres à chaque client."
+    }
+   ]
+  },
+  "C|Comment importer mes fournisseurs depuis Excel ?": {
+   "titres": [
+    "Manuel — Compte & Aide › Assistant IA",
+    "Manuel — Comprendre les calculs › Traçabilité automatique",
+    "Manuel — Gestion › Fournisseurs",
+    "Manuel — Gestion › Tableau de bord"
+   ],
+   "base": []
+  },
+  "C|À quoi servent les affectations d'un fournisseur ?": {
+   "titres": [
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — Espace Produit › Produits Utilisables",
+    "Manuel — Comprendre les calculs › Qui fixe quel prix",
+    "Manuel — Gestion › Fournisseurs"
+   ],
+   "base": []
+  },
+  "C|Comment créer un produit et sa fiche technique ?": {
+   "titres": [
+    "Manuel — Espace Produit › Fiches Techniques",
+    "Fiche technique",
+    "Mode de prix d'une fiche technique",
+    "Manuel — Espace Produit › Produits Valorisés"
+   ],
+   "base": [
+    {
+     "titre": "Fiche technique",
+     "contenu": "La fiche technique est le coût détaillé d'un produit (recette). Elle additionne le coût de chaque ingrédient et sous-produit selon sa quantité. Le coût d'un ingrédient est calculé en prix TTC selon le mode choisi : prix moyen pondéré du stock (PMP TTC depuis le dernier inventaire), dernier prix d'achat, ou prix manuels saisis (simulation). Elle sert à connaître le coût de revient d'un produit et à fixer son prix de vente."
+    },
+    {
+     "titre": "Mode de prix d'une fiche technique",
+     "contenu": "Le coût d'une fiche technique peut être calculé selon plusieurs modes de prix des ingrédients : le dernier prix d'achat (DP), la moyenne des prix du stock (MP : prix moyen pondéré TTC calculé depuis le dernier inventaire), ou des prix saisis manuellement (simulation). DP et MP peuvent être affichés ensemble pour comparaison. Tous les prix sont en TTC. Cela permet de simuler le coût de revient selon différents scénarios d'achat."
+    }
+   ]
+  },
+  "C|C'est quoi un produit valorisé ?": {
+   "titres": [
+    "Manuel — Espace Produit › Produits Valorisés",
+    "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Espace Produit › Produits Utilisables"
+   ],
+   "base": []
+  },
+  "C|Comment est calculé le coût de revient d'une recette ?": {
+   "titres": [
+    "Manuel — Comprendre les calculs › Coût de revient d'une recette",
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Lexique › Les 3 catégories de PT",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage"
+   ],
+   "base": []
+  },
+  "C|Comment saisir mon premier approvisionnement ?": {
+   "titres": [
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Compte & Aide › Mon compte",
+    "Manuel — Référentiel › Unités",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage"
+   ],
+   "base": []
+  },
+  "C|Comment mon stock est-il calculé ?": {
+   "titres": [
+    "Manuel — FAQ › Questions fréquentes",
+    "Manuel — Stock & Appro › Historiques",
+    "Manuel — Stock & Appro › Factures d'appro",
+    "Manuel — Gestion › Mon abonnement"
+   ],
+   "base": []
+  },
+  "C|Comment remplir mon carnet d'acheteurs ?": {
+   "titres": [
+    "Manuel — Espace Acheteurs › Carnet d'Acheteurs",
+    "Manuel — Compte & Aide › Assistant IA",
+    "Manuel — Espace Acheteurs › Le module Acheteurs",
+    "Manuel — Gestion › Mon abonnement"
+   ],
+   "base": []
+  },
+  "C|Comment importer mes acheteurs depuis Excel ?": {
+   "titres": [
+    "Manuel — Espace Acheteurs › Ventes & commandes acheteurs",
+    "Manuel — Espace Acheteurs › Le portail acheteur",
+    "Manuel — Espace Acheteurs › Carnet d'Acheteurs",
+    "Manuel — Compte & Aide › Assistant IA"
+   ],
+   "base": []
+  },
+  "C|Comment configurer mes tarifs acheteurs ?": {
+   "titres": [
+    "Manuel — Espace Acheteurs › Tarifs Acheteurs",
+    "Manuel — Compte & Aide › Assistant IA",
+    "Manuel — Espace Acheteurs › Le portail acheteur",
+    "Manuel — Espace Acheteurs › Le module Acheteurs"
+   ],
+   "base": []
+  },
+  "composant|Comment créer mon activité ?": {
+   "titres": [
+    "Manuel — Gestion › Activités & labos",
+    "Manuel — Compte & Aide › Mon compte",
+    "Manuel — Gestion › Mon abonnement",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage"
+   ],
+   "base": []
+  },
+  "composant|Comment créer mon labo ?": {
+   "titres": [
+    "Manuel — Gestion › Activités & labos",
+    "Manuel — Compte & Aide › Mon compte",
+    "Manuel — Gestion › Mon abonnement",
+    "Manuel — Découvrir LabFlow › Parcours de démarrage"
+   ],
+   "base": []
+  }
+ }
+}

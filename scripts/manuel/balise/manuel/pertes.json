@@ -1,0 +1,15 @@
+{
+  "slug": "pertes",
+  "titre": "[[Nom:perte:pl]]",
+  "exclusions": [
+    {
+      "extrait": "domaine d'activité",
+      "forme": "activité",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "« Un autre domaine d'activité peut définir ses propres types de perte » : secteur métier du compte (Hôtellerie, Céramique…), pas la clé activite (spec 2c §7.2, exemples du type homonyme)"
+    }
+  ],
+  "baliseur": "L5",
+  "relecteur": "L4"
+}

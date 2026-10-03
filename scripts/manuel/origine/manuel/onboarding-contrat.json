@@ -1,0 +1,15 @@
+{
+  "slug": "onboarding-contrat",
+  "titre": "Création du compte & signature du contrat",
+  "icone": "✍️",
+  "partie": "Onboarding",
+  "ordre": 21,
+  "mots_cles": "contrat, signature, signature électronique, création de compte, email, abonnement, tarif, promotion, spam, courrier indésirable, administrateur",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": false,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "de8c858652b8001e7a0dcdd1cb7c1b8f",
+  "md5Contenu": "de8c858652b8001e7a0dcdd1cb7c1b8f"
+}

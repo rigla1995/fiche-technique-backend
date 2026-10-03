@@ -1,0 +1,15 @@
+{
+  "slug": "support",
+  "titre": "Demandes & support",
+  "icone": "💬",
+  "partie": "Compte & Aide",
+  "ordre": 92,
+  "mots_cles": "support, demandes, aide, assistance, ingrédient manquant, capacité, avenant, signature, statut, ticket, réclamation, contact, option acheteurs, palier, formule premium",
+  "ecran": "/client/support",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-14T17:41:54.036Z",
+  "defautNull": false,
+  "md5Garde": "82d0ae1e30a3b9157a4416c7ac402d1d",
+  "md5Contenu": "82d0ae1e30a3b9157a4416c7ac402d1d"
+}

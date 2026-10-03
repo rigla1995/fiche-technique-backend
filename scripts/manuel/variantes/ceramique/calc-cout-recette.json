@@ -1,0 +1,25 @@
+{
+  "slug": "calc-cout-recette",
+  "titre": null,
+  "mots_cles": null,
+  "statut": "brouillon",
+  "baseMd5": "9550800d9be7121890531fd0b30b1349",
+  "exclusions": [
+    {
+      "extrait": "sous-produits",
+      "forme": "produits",
+      "type": "locution",
+      "occurrences": 2,
+      "justification": "décision 2 du client : « sous-produit » reste tel quel, exclu en locution, pas de nouvelle clé (spec 2c §1, §7.2), comme dans la fiche commune"
+    },
+    {
+      "extrait": "sous-produit",
+      "forme": "produit",
+      "type": "locution",
+      "occurrences": 7,
+      "justification": "décision 2 du client : « sous-produit » reste tel quel, exclu en locution, pas de nouvelle clé (spec 2c §1, §7.2), comme dans la fiche commune"
+    }
+  ],
+  "redacteur": "V-C1",
+  "relecteur": "V-H1"
+}

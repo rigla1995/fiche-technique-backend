@@ -1,0 +1,42 @@
+[
+  {
+    "id": "C-1",
+    "fiche": "manuel, base et variantes du 2e domaine (lexique de production « usine »)",
+    "besoin": "Contrôle avec les lexiques de PRODUCTION (A16.13, §12.1). Hôtellerie : identique au lexique d'essai (md5 ec83e7e8…), 0 signalement nouveau. 2e domaine : le lexique de production d'« usine » (champ ceramique.lexique de lecture-production.json, md5 4468629d…) n'a pas de formes courtes (PF, Site, Réception, FCR) et pose perte = « Casse / Rebut / Second choix ». Premier passage controler --tout --production : 32 signalements à traiter (tous en C) et 6 acceptations « site » sans objet.",
+    "proposition": "Corriger ce qu'une balise peut corriger sans toucher au rendu par défaut (I10), accepter le reste avec sa raison, inscrire les limites au §10.3.",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur C (03/10/2026). (1) controler.mjs : --lexique-ceramique <fichier|lecture>, --production ; acceptations « lexique » : « essai » / « production ». (2) Gloses « X (X) » corrigées par avecCourt (rendu par défaut identique ; sans parenthèse quand la forme courte égale le nom) : balise/manuel/lexique-pt.md, stock-labo.md, transferts.md ; balise/base/labo-central.md, produit-transforme-pt.md ; variantes/ceramique/lexique-pt.md (avecCourt), variantes/ceramique/lexique.md (« | **[[Nom:pt]]** | ») ; baseMd5 des deux variantes de lexique-pt mis à jour (variantes relues : seul le balisage du texte commun a changé, rendu par défaut et rendus d'essai identiques) ; variantes/ceramique/decouvrir-labflow.md : « (casse, pièces ratées à la cuisson) » → « (pièces fêlées ou ratées à la cuisson) » (la glose redisait « casse » en production). Point 7 : la parenthèse finale d'une balise avecCourt est ôtée avant de chercher une répétition. (3) 19 signalements acceptés avec « lexique »: « production » (L1 3, L4 1, L5 2, L6 6, L7 2, L8 1, L9 3, V-C1 1) : répétition du nom complet là où l'origine écrit la forme courte (libellés d'écran : « Fiche de coût de revient Stock », « Stock Site de production », « badge Produit fabriqué », « Ventes Site de production »…), « perte » long (« Enregistrer la casse / rebut / second choix »), « un produit fabriqué fabriqué » (transferts, base produit-transforme-pt), glose redite en casse Nom « Produit fabriqué (produit fabriqué) » (tableau de lexique, titre de la base produit-transforme-pt : avecCourt n'existe qu'en minuscules). (4) Les 6 acceptations « site » (forme courte de labo du lexique d'essai) portent « lexique »: « essai ». Résultat : controler --tout VERT avec les lexiques d'essai ET avec --production (61/61, 32/32, 16/16, 0 à traiter, 0 sans objet). Inscriptions au §10.3 et à ecarts-visibles-2c.md : à faire par l'intégrateur documentaire (liste dans le rapport de l'étape C)."
+  },
+  {
+    "id": "C-2",
+    "fiche": "scripts/check-invariant-vocab.js (oracle, --domaine)",
+    "besoin": "A16.1 dit que l'oracle masque les cibles de liens « (#slug) » du manuel ; il ne le faisait pas : premier scan complet en Hôtellerie, 77 formes dans la famille manuel, dont 76 dans des cibles (#stock-labo, #transferts, #referentiel-articles, #calc-cout-recette…).",
+    "proposition": "Masquer les cibles « ](…) » des textes de la famille manuel avant formesDans, comme masquerCibles de controler.mjs.",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur C (03/10/2026) : une ligne dans verifierHorsRestauration (t.cle === 'manuel'), en-tête du script mis à jour. Sans effet en restauration (comparaison à la référence)."
+  },
+  {
+    "id": "C-3",
+    "fiche": "decouvrir-labflow ; base « Produits vendables et utilisables »",
+    "besoin": "Après C-2, 5 formes en H et 14 en C, toutes formées AU RENDU à cheval sur une balise : « [[Nom:produit:pl]] vendables, utilisables et valorisés » rend « Produits vendables » (forme de produit_vendable) dans les domaines où « produit » ne change pas ; même chose pour « [[Un:produit]] VENDABLE / UTILISABLE » et le titre « [[Pl:produit]] vendables et utilisables » de la base (L9-3). Le fichier de la fiche ne pouvait pas les exclure (un extrait est un passage du texte balisé, sans balise) ; une exception de l'oracle n'aurait pas servi au contrôle du PDF du front (H : 1 forme trouvée), qui ne lit que les exclusions des fichiers balisés.",
+    "proposition": "Exclusion « rendu » (\"rendu\": true) dans le fichier de la fiche ou de l'entrée : extrait cherché et compté dans le rendu par défaut, absent du texte balisé, non exigé dans les rendus des domaines ; l'oracle et le contrôle du PDF l'appliquent sans changement (ils retirent tout extrait du texte servi). Amendement à porter au §3.3 / §3.5 de la spec (R2.4.2 tenu : la justification vit avec la fiche, aucune exception ajoutée à exceptions-hors-restauration.json).",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur C (03/10/2026) : controler.mjs (pointResiduels, test « exclusion rendu ») ; 4 exclusions « rendu » : decouvrir-labflow (« Produits vendables, utilisables et valorisés », locution), base produits-vendables-et-utilisables (titre, locution ; « Un produit VENDABLE », « Un produit UTILISABLE », capitales). Oracle --domaine hotellerie, ceramique, miroir : 0 forme ; PDF H : 0 forme."
+  },
+  {
+    "id": "C-4",
+    "fiche": "generer-migrations.mjs",
+    "besoin": "La lecture de production donne ceramique.slug = « usine » ; écrire la 196 sans --slug ceramique=usine aurait ciblé « ceramique », contre la décision du client (A16.13).",
+    "proposition": "Refus d'écrire dans migrations/ quand le slug du 2e domaine lu diffère de --slug ceramique (comme pour Hôtellerie).",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur C (03/10/2026) : verifierLectureProduction ; test ajouté (la vraie lecture exige --slug ceramique=usine). Migrations écrites par « generer-migrations.mjs --slug ceramique=usine »."
+  },
+  {
+    "id": "C-5",
+    "fiche": "décisions à transmettre au client (§15)",
+    "besoin": "Constats de la lecture de production sans action technique : (a) Hôtellerie de production a un 10e composant « bureau logisti » (labo, m), probablement un essai saisi dans l'admin : il entre dans les mots-clés enrichis (R5.4) des fiches qui nomment « labo(s) » et dans les questions du guide de mise en route ; (b) le lexique d'« usine » n'a pas de formes courtes : en production, « [[court:…]] » rend le nom complet (« Stock Site de production », « Fiche de coût de revient Stock », « un produit fabriqué fabriqué ») ; ajouter des formes courtes (PF, Site, FCR) les rendrait plus courts sans retoucher le manuel.",
+    "proposition": "Les écrire dans la note au client (§15) avec L1-1, L2-3, L3-3, L7-2, L7-4, V-H2-2 et la validation des 16 variantes (8 hotellerie, 8 usine).",
+    "etat": "DÉCISION CLIENT",
+    "decision": "Intégrateur C (03/10/2026) : à reprendre par l'intégrateur documentaire."
+  }
+]

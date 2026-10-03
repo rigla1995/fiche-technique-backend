@@ -1,0 +1,1 @@
+[[Un:prestataire]] de livraison (ex : Uber Eats, Talabat, Glovo) est une plateforme tierce via laquelle [[un:vente:pl]] sont [[acc:vente:réalisé:réalisée:pl]], avec une commission en pourcentage. [[Le:prestataire:pl]] sont [[acc:prestataire:activé:activée:pl]] au niveau du compte et le canal de vente "[[nom:prestataire]]" s'oppose [[au:vente]] "[[acc:vente:direct:directe]]".

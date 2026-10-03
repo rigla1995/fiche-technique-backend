@@ -1,0 +1,1 @@
+[[Le:food_cost]] (ratio [[de:cout_matiere]]) = [[nom:cout_matiere]] ÷ chiffre d'affaires, en %. Repères LabFlow : moins de 30% = [[acc:food_cost:sain:saine]], 30 à 40% = à surveiller, plus de 40% = [[acc:food_cost:élevé:élevée]] (revoir prix ou [[nom:portion:pl]]). Plus [[acc:food_cost:il:elle]] est [[acc:food_cost:bas:basse]], plus [[le:marge]] est [[acc:marge:élevé:élevée]].

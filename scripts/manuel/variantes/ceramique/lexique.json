@@ -1,0 +1,53 @@
+{
+  "slug": "lexique",
+  "titre": null,
+  "mots_cles": null,
+  "statut": "brouillon",
+  "baseMd5": "abe5dd9e375046d8e59f783b5c8a46c5",
+  "exclusions": [
+    {
+      "extrait": "Canal de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2), comme dans la fiche commune"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 6,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2), comme dans la fiche commune"
+    },
+    {
+      "extrait": "Domaine d'activité",
+      "forme": "activité",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "secteur métier du compte, pas la clé activite (spec 2c §7.2), comme dans la fiche commune"
+    },
+    {
+      "extrait": "Formule d'activités",
+      "forme": "activités",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom commercial de la formule d'abonnement, en clair à l'écran (AddClientModal.tsx:677), comme dans la fiche commune"
+    },
+    {
+      "extrait": "Activité Basique",
+      "forme": "Activité",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom d'offre écrit en clair à l'écran (MonAbonnementPage.tsx:93), comme dans la fiche commune (GUIDE exemple 22)"
+    },
+    {
+      "extrait": "Activité Premium",
+      "forme": "Activité",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom d'offre écrit en clair à l'écran (MonAbonnementPage.tsx:94), comme dans la fiche commune"
+    }
+  ],
+  "redacteur": "V-C1",
+  "relecteur": "V-H1"
+}

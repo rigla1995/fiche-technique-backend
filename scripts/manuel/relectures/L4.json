@@ -1,0 +1,48 @@
+[
+  {
+    "slug": "articles-valorises",
+    "domaine": "hotellerie, ceramique",
+    "phrase": "2. **Affectation** — choisissez le ou les **sites de production de fabrication** ; les points de vente rattachés sont pré-cochés…",
+    "probleme": "Nom d'écran (R7.1.3). « **labos de fabrication** » est le libellé du champ de l'assistant, et l'écran écrit `{voc.NomS('labo', 'Court')} de fabrication` (ComposedValoriseModal.tsx:150, cité dans le compte rendu mais pas appliqué). Le balisage `[[nom:labo:pl]]` prend le nom long : C lit « sites de production de fabrication » (lourd, et ce n'est pas le libellé de l'écran, « Site(s) de fabrication »), H « cuisines centrales de fabrication » au lieu de « Cuisine(s) de fabrication ».",
+    "correction": "Ligne 22 de balise/manuel/articles-valorises.md : `[[det:labo:le:pl]]**[[court:labo:pl]] de fabrication**` (le reste de la ligne inchangé). Essai du relecteur sur une copie (controler.mjs --racine, racine jetable) : points 1 à 6 verts, aucun signalement nouveau. Rendus : défaut « le ou les **labos de fabrication** » (identique), H « la ou les **cuisines de fabrication** », C « le ou les **sites de fabrication** », miroir « la ou les **usines de fabrication** ». La ligne 27 (« **prix d'approvisionnement du labo** de fabrication ») n'est pas un libellé d'écran : la laisser telle quelle (R7.1.5).",
+    "etat": "clos",
+    "cloture": "Tour 4 : corrigé ligne 22 ([[court:labo:pl]] devant « de fabrication »), contrôle vert. Rendus frais : H « la ou les **cuisines de fabrication** », C « le ou les **sites de fabrication** », miroir « la ou les **usines de fabrication** » ; défaut identique (point 1)."
+  },
+  {
+    "slug": "produits-vendables",
+    "domaine": "hotellerie",
+    "phrase": "Pour une prestation vendue (hors supplément), une option **📦 « Gérer ce produit en stock (appros libres) »** permet de le suivre dans le stock des services choisis : … Vous pouvez alors aussi cocher les **cuisines centrales** où il sera géré.",
+    "probleme": "Accord (R7.3.2) : les reprises « le », « il » et « géré » désignent le produit vendable, sujet de la phrase (`[[un:produit_vendable]]`). Le balisage les accorde sur `produit` (le « ce produit » du libellé entre guillemets). En H, la phrase parle d'« une prestation vendue » puis la reprend au masculin. C et miroir ne montrent rien, car les deux clés y ont le même genre.",
+    "correction": "Ligne 16 : `permet de [[acc:produit_vendable:le:la]] suivre` et `où [[acc:produit_vendable:il:elle]] sera [[acc:produit_vendable:géré:gérée]]`. Essai sur une copie (controler.mjs --racine) : points 1 à 6 verts, aucun signalement nouveau. Rendus : défaut et C sans changement ; H « permet de la suivre … où elle sera gérée » ; miroir sans changement. Le « ce produit » du libellé reste `[[ce:produit]]`, comme l'écran (ProductList.tsx:963).",
+    "etat": "clos",
+    "cloture": "Tour 4 : corrigé ligne 16 (acc:produit_vendable pour le/il/géré, [[ce:produit]] gardé dans le libellé). Rendus frais : H « permet de la suivre … où elle sera gérée », C « permet de le suivre … où il sera géré », miroir « la … elle … gérée » ; défaut identique (point 1)."
+  },
+  {
+    "slug": "produits-utilisables",
+    "domaine": "hotellerie",
+    "phrase": "Un **consommable** (consommable) est une préparation intermédiaire — sauce, pâte, fond, crème — …",
+    "probleme": "Glose redite dans le manuel. En C et en miroir, elle est signalée par le point 7 et acceptée (L4.auto.json, lignes 13 et 14). En H, elle n'est signalée par aucun point (défaut d'outil L4-3, point 8), donc aucune acceptation n'est écrite. Choix du relecteur (§7.5) : j'accepte la redite, comme le propose le besoin L4-2. Une exclusion `glose` sur « (PU) » ferait lire en H et en C un sigle qu'aucun écran ne montre (ProductList.tsx:566 écrit `voc.court('produit_utilisable')`, soit « consommable »). Écart avec §7.7 et GUIDE §11 (« corrigée ou exclue ») : décision laissée à l'intégrateur.",
+    "correction": "Balisage inchangé (I10). Intégrateur : clore L4-2 en inscrivant les 3 gloses redites au §10.3. Une fois L4-3 corrigé (emphase retirée avant le point 8), le point 8 signalera H « consommable (consommable) » : l'auteur ajoutera alors cette acceptation dans L4.auto.json. Aujourd'hui elle y serait « sans objet » et ferait échouer --tout.",
+    "etat": "clos",
+    "cloture": "Tour 4 : rien à faire côté auteur (balisage inchangé, conforme). Reste pour l'intégrateur : trancher l'écart glose redite / §7.7 et GUIDE §11 (besoin L4-2) et corriger le défaut d'outil L4-3 ; ensuite l'auteur ajoute l'acceptation H « consommable (consommable) » dans L4.auto.json (rendu H frais ligne 10, toujours non signalé).",
+    "integrateur": "Intégrateur B2 ∥ V (03/10/2026) : redite acceptée (choix du relecteur, besoin L4-2 REPORTÉ ; GUIDE §7 et §11 précisés : acceptée par écrit quand l'exclusion laisserait un sigle que le domaine ne voit jamais ; spec §7.7 à amender à l'étape C). Défaut d'outil L4-3 corrigé (points 8 et 9, marques d'emphase retirées) : le point 8 signale maintenant H « consommable (consommable) » (et C, miroir) ; acceptations écrites dans relectures/L4.auto.json par l'intégrateur, seul à écrire à ce stade. controler --tout VERT."
+  },
+  {
+    "slug": "produits-vendables",
+    "domaine": "ceramique",
+    "phrase": "- [Fiches de Coût de Revient](#fiches-techniques) — coût de revient et export",
+    "probleme": "Même redite que « Fiches de Coût de Revient & coût de revient » (fiches-techniques), que le besoin L4-1 inscrit au §10.3. Cette 3e occurrence, ligne 49 de produits-vendables, manque à la liste de L4-1. Le point 12 ne la voit pas, pour la raison déjà donnée dans L4-1 : « coût de revient » n'est pas une forme entière du lexique C.",
+    "correction": "Balisage inchangé (I10). Ajouter cette ligne au texte du besoin L4-1 (besoins/L4.json), à côté des deux occurrences de fiches-techniques.",
+    "etat": "clos",
+    "cloture": "Tour 4 : 3e occurrence (produits-vendables ligne 49) ajoutée au texte du besoin L4-1 (besoins/L4.json, OUVERT pour l'intégrateur) ; balisage inchangé."
+  },
+  {
+    "slug": "produits-utilisables",
+    "domaine": "miroir",
+    "phrase": "L'invention est **fabriquée à la/aux usine(s) choisie(s)**.",
+    "probleme": "`[[acc:labo:au(x):à la/aux]]` ne sait pas faire l'élision : un terme labo féminin qui commence par une voyelle donne « à la/aux usine(s) » au lieu de « à l'/aux usine(s) ». H et C sont justes. Le compte rendu le signale, mais aucun fichier ne le garde, et le point 9 ne le voit pas (« la » est suivi de « / », pas d'une espace). Aucune balise ne peut faire mieux sans casser I10.",
+    "correction": "Balisage inchangé. L'accepter comme limite de la grammaire (miroir seulement aujourd'hui), avec une ligne dans besoins/L4.json ou au §10.3, pour qu'un futur lexique au labo féminin élidé soit relu à cet endroit.",
+    "etat": "clos",
+    "cloture": "Tour 4 : consigné dans besoins/L4.json (nouveau L4-4, limite de la grammaire pour le §10.3, OUVERT pour l'intégrateur ; L4-3 complété pour « la/ » au point 9). Rendus frais : miroir « à la/aux usine(s) », H « à la/aux cuisine(s) centrale(s) », C « au(x) site(s) de production »."
+  }
+]

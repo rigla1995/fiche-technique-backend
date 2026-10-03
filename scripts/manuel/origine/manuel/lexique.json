@@ -1,0 +1,15 @@
+{
+  "slug": "lexique",
+  "titre": "Lexique de A à Z",
+  "icone": "📖",
+  "partie": "Lexique",
+  "ordre": 10,
+  "mots_cles": "lexique, glossaire, définitions, vocabulaire, termes, dictionnaire, abréviations, pmp, food cost, coût matière, ht ttc, pt, acheteur, base acheteurs, palier, portail, compte dépôt, formule basique premium, timbre fiscal",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-14T17:41:54.036Z",
+  "defautNull": false,
+  "md5Garde": "57bc637719685b0fb5cba6bb34fdf0aa",
+  "md5Contenu": "57bc637719685b0fb5cba6bb34fdf0aa"
+}

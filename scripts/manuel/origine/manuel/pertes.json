@@ -1,0 +1,15 @@
+{
+  "slug": "pertes",
+  "titre": "Pertes",
+  "icone": "📉",
+  "partie": "Stock & Appro",
+  "ordre": 52,
+  "mots_cles": "pertes, perte, avarie, déchet, casse, périmé, démarque, coût, valorisation, historique pertes, stock",
+  "ecran": "/client/stock/historique-pertes",
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "3a2ea75db3b37c9d439f2397e51a73f9",
+  "md5Contenu": "3a2ea75db3b37c9d439f2397e51a73f9"
+}

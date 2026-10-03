@@ -1,0 +1,15 @@
+{
+  "cle": "produit transformé (pt)",
+  "titre": "[[Nom:pt]] ([[court:pt]])",
+  "exclusions": [
+    {
+      "extrait": "sous-PT",
+      "forme": "PT",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "même notion que « sous-produit » (décision 2 du client, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L9",
+  "relecteur": "L7"
+}

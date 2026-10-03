@@ -1,0 +1,190 @@
+[
+  {
+    "fiche": "activite-point-de-vente",
+    "point": 8,
+    "domaine": "hotellerie",
+    "texte": "Service (service)",
+    "decision": "accepté",
+    "raison": "titre « Activité (point de vente) » : glose par activite_desc, qui recopie le terme hors restauration ; glose redite tolérée dans la base, lue seulement par le modèle (question 5 du client, spec §7.7 ex. 9, §10.3, GUIDE §12)"
+  },
+  {
+    "fiche": "activite-point-de-vente",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Point de vente",
+    "decision": "accepté",
+    "raison": "titre « Activité (point de vente) » : la glose activite_desc égale le terme en C ; glose redite tolérée dans la base (question 5, spec §10.3, GUIDE §12)"
+  },
+  {
+    "fiche": "activite-point-de-vente",
+    "point": 8,
+    "domaine": "ceramique",
+    "texte": "Point de vente (point de vente)",
+    "decision": "accepté",
+    "raison": "même titre : glose redite tolérée dans la base (question 5, spec §10.3, GUIDE §12)"
+  },
+  {
+    "fiche": "activite-point-de-vente",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "« Une activité est un point de vente du client » : définition par activite_desc (spec R7.3.2), égale au terme en C (H : « Un service est un service ») ; redite tolérée dans la base, lue par le modèle seul (question 5) ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "approvisionnement-appro",
+    "point": 8,
+    "domaine": "ceramique",
+    "texte": "Réception (réception)",
+    "decision": "accepté",
+    "raison": "titre « Approvisionnement (appro) » : en C la forme courte de appro égale le nom ; avecCourt (qui ôterait la parenthèse) refuse l'argument de casse « Nom » (essai : « argument non reconnu ») ; le contenu, lui, passe par avecCourt (« Une réception est une entrée de stock ») ; glose redite tolérée dans la base (question 5)"
+  },
+  {
+    "fiche": "approvisionnement-appro",
+    "point": 8,
+    "domaine": "miroir",
+    "texte": "Rentrée (rentrée)",
+    "decision": "accepté",
+    "raison": "même titre, même cause que C (forme courte = nom) ; glose redite tolérée dans la base (question 5)"
+  },
+  {
+    "fiche": "article-valorise",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "répétition d'origine « composé au labo (… sa fabrication au labo …) » ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "article-valorise",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "répétition d'origine « au labo … au labo » ; le texte commun ne se reformule pas (I10)"
+  },
+  {
+    "fiche": "article-vendable",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "produit fini",
+    "decision": "accepté",
+    "raison": "deux termes distincts du lexique C qui partagent leurs mots (produit_vendable « Produit fini », produit_valorise « Produit fini catalogue ») ; notions distinctes dans l'origine (produit vendable, produit valorisé) ; lexique C brouillon (spec §10.3)"
+  },
+  {
+    "fiche": "article-vendable",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« peuvent en option être gérés en stock » : locution adverbiale (facultativement), sens clair en C malgré supplement = Option ; collision du tableau du §10.3 (option(s)), notée dans besoins/L9.json"
+  },
+  {
+    "fiche": "labo-central",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale",
+    "decision": "accepté",
+    "raison": "« Le labo (laboratoire central) » : en H labo_long égale labo, la glose redit le terme ; tolérée dans la base (question 5, GUIDE §12) ; le pléonasme « cuisine centrale centrale » est évité par l'accord à forme féminine vide (spec §7.5, exemple 12)"
+  },
+  {
+    "fiche": "labo-central",
+    "point": 8,
+    "domaine": "hotellerie",
+    "texte": "cuisine centrale (cuisine centrale)",
+    "decision": "accepté",
+    "raison": "même glose redite (labo_long = labo en H), tolérée dans la base (question 5, spec §10.3) ; pléonasme évité (spec §7.5)"
+  },
+  {
+    "fiche": "labo-central",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« Le site de production (site de production central) » : glose redite (labo_long = labo en C), tolérée dans la base (question 5, spec §7.5 et §10.3 : entrée « labo central » citée)"
+  },
+  {
+    "fiche": "produit-transforme-pt",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "site de production",
+    "decision": "accepté",
+    "raison": "« du stock du site de production » : sens générique d'origine (le lieu qui produit, labo ou activité : « au labo ou directement sur une activité » juste avant) ; en C se lit comme le terme labo ; aucune balise ne le rend (ce n'est pas la notion labo) et la base n'a pas de variante : collision connue, notée dans besoins/L9.json pour le §10.3"
+  },
+  {
+    "fiche": "produits-vendables-et-utilisables",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« il peut en option être géré en stock » : locution adverbiale (facultativement), sens clair en C malgré supplement = Option ; collision du §10.3, notée dans besoins/L9.json"
+  },
+  {
+    "fiche": "referentiel-articles",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matières premières",
+    "decision": "accepté",
+    "raison": "« les articles/ingrédients » : deux synonymes dans l'origine ; « ingrédient » y est un autre nom de l'article lui-même, donc article_ingredient (R7.1.7, copie de article) ; hors restauration le domaine n'a qu'un mot (H « fournitures/fournitures », C « matières premières/matières premières ») : redite sans contresens, lue par le modèle seul ; ingredient (« Composant ») ferait croire à une autre sorte de fiche du référentiel"
+  },
+  {
+    "fiche": "seuil-minimum",
+    "point": 12,
+    "domaine": "ceramique",
+    "lexique": "essai",
+    "texte": "site",
+    "decision": "accepté",
+    "raison": "« par activité et par labo : chaque site a ses propres seuils » : « site » générique (activité ou labo), sens clair en C (« par point de vente et par site de production : chaque site ») ; collision site(s) du §10.3, notée dans besoins/L9.json — propre au lexique d'essai (forme courte « Site » de labo) : le lexique de production d'usine n'a pas de forme courte, « site » n'y est pas un terme (étape C, A16.13)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 8,
+    "domaine": "hotellerie",
+    "texte": "SERVICE (service)",
+    "decision": "accepté",
+    "raison": "exemple 9 de la spec (§7.7) : glose « (point de vente) » par activite_desc ; glose redite tolérée dans la base, entrée citée par le §10.3 (question 5)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "POINT DE VENTE",
+    "decision": "accepté",
+    "raison": "même glose (exemple 9, §7.7) : activite_desc égale le terme en C ; tolérée dans la base (question 5, §10.3)"
+  },
+  {
+    "fiche": "transferts",
+    "point": 8,
+    "domaine": "ceramique",
+    "texte": "POINT DE VENTE (point de vente)",
+    "decision": "accepté",
+    "raison": "exemple 9 de la spec (§7.7), rendu C prévu : glose redite tolérée dans la base (question 5, §10.3)"
+  },
+  {
+    "fiche": "produit-transforme-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "fabriqué fabriqué",
+    "decision": "accepté",
+    "raison": "origine « un PT fabriqué au labo » ([[un:pt:court]] [[acc:pt:fabriqué:fabriquée]]) : sans forme courte en production, usine lit « un produit fabriqué fabriqué » ; collision « fabriqué » (spec §10.3), même classe que stock-activites (L5-1) et calc-prix (L8-2) ; I10 interdit de reformuler ; répétition acceptée (étape C, A16.13) ; base lue par le modèle seul"
+  },
+  {
+    "fiche": "produit-transforme-pt",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Produit fabriqué",
+    "decision": "accepté",
+    "raison": "glose redite « Produit fabriqué (produit fabriqué) » : sans forme courte en production, [[court:pt]] rend le nom ; avecCourt (qui n'écrit pas la parenthèse quand la forme courte égale le nom) ne se met pas en casse Nom (moteur gelé, besoin L9-2) ; titre d'une entrée de la base, lue par le modèle seul : glose redite tolérée (question 5, besoin L9-2) (étape C, A16.13)"
+  },
+  {
+    "fiche": "produit-transforme-pt",
+    "point": 8,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Produit fabriqué (produit fabriqué)",
+    "decision": "accepté",
+    "raison": "glose redite « Produit fabriqué (produit fabriqué) » : sans forme courte en production, [[court:pt]] rend le nom ; avecCourt (qui n'écrit pas la parenthèse quand la forme courte égale le nom) ne se met pas en casse Nom (moteur gelé, besoin L9-2) ; titre d'une entrée de la base, lue par le modèle seul : glose redite tolérée (question 5, besoin L9-2) (étape C, A16.13)"
+  }
+]

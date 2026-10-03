@@ -1,0 +1,15 @@
+{
+  "slug": "abonnement",
+  "titre": "Mon abonnement",
+  "icone": "💳",
+  "partie": "Gestion",
+  "ordre": 75,
+  "mots_cles": "abonnement, tarification, mensualité, configuration, contrat, promotion, module vente, lecture seule, suspendu, onboarding, supplément, formule, basique, premium, option acheteurs, palier",
+  "ecran": "/client/abonnement",
+  "actif": true,
+  "visible_gerant": false,
+  "updated_at": "2026-07-18T17:04:42.961Z",
+  "defautNull": false,
+  "md5Garde": "15d723b608750541be9225c8058efeb7",
+  "md5Contenu": "15d723b608750541be9225c8058efeb7"
+}

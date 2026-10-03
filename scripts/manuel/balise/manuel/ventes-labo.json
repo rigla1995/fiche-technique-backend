@@ -1,0 +1,15 @@
+{
+  "slug": "ventes-labo",
+  "titre": "[[Pl:vente]] [[Court:labo]]",
+  "exclusions": [
+    {
+      "extrait": "à perte",
+      "forme": "perte",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "« transférer à perte » : perte financière (sous le coût), pas la notion de perte de stock (écran Pertes)"
+    }
+  ],
+  "baliseur": "L7",
+  "relecteur": "L6"
+}

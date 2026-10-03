@@ -38,11 +38,39 @@
  *     --liste-avant : écrit la section du domaine dans scripts/vocab-baseline/hors-restauration-avant.json
  *     (liste de travail de l'étape O, chiffrée par famille) ; code 0 si l'écriture a réussi.
  *
+ *   Lot 2c (docs/lot-2c-spec.md §2.3, §2.4) :
+ *     - restauration : `meta.empreintesManuel` (md5 NON masqués du manuel servi, lecteur par lecteur et slug par slug)
+ *       doivent être ÉGALES à celles de la référence ; un écart est un échec qu'aucune entrée de
+ *       ecarts-restauration-attendus.json ne peut admettre (I1 : manuel et PDF au caractère près) ; de même
+ *       `meta.empreintesBase` (md5 NON masqués de { titre, contenu } de chaque entrée active de la base, cherchée par
+ *       son titre, dans l'ordre des id ; relecture de l'étape O) ;
+ *     - hors restauration (R2.4.1 à R2.4.7) : sont lus aussi les résultats de la recherche (`recherches`,
+ *       `recherchesDomaine`, famille assistant : titres et contenus des résultats de la BASE, titres de `disponibles`)
+ *       et le manuel servi (famille manuel : titre, partie, contenu de `manuel.sections`, jamais `motsCles` ni le
+ *       lecteur admin) ; passages exclus au balisage retirés avant la recherche (champ `extrait` des fichiers de
+ *       scripts/manuel/balise/manuel/<slug>.json, de scripts/manuel/variantes/<domaine>/<slug>.json, et de
+ *       scripts/manuel/balise/base/*.json pour une entrée retrouvée par son titre rendu avec meta.lexique) ; cibles de
+ *       liens du manuel masquées (A16.1 : jamais balisées ni exclues ; toute cible « ](…) », toutes en (#slug) aujourd'hui) ;
+ *       MOTS_HORS_LEXIQUE ne s'applique ni à la famille manuel ni aux recherches. Échecs : « [[ », « ]] » ou
+ *       « ‹clé› » dans les familles manuel et assistant ; résultat du manuel qui n'est pas le début (suivi de « … »)
+ *       de la fiche servie de même citation ; empreintes du lecteur admin ≠ référence restauration (I4) ; clé de
+ *       `recherchesDomaine` sans résultat ; mots-clés servis sans la forme du domaine (R2.4.4) ; comptes des
+ *       familles manuel et assistant au-dessus de ceux de hors-restauration-avant.json. Rapports (non bloquants) :
+ *       terme du domaine dans les résultats, fiche de la référence parmi les 4 résultats (R2.4.6).
+ *     - --hors-manuel (porte de S à C, R2.4.7) : les formes trouvées dans la famille manuel et dans les recherches
+ *       sont comptées à part et ne font pas échouer ; le contrôle des mots-clés enrichis (famille manuel) est un
+ *       rapport ; tout le reste échoue comme sans l'option. Le rapport complet est gardé et comparé à la liste avant.
+ *     - baseParTitre (réserve R1 du contrôle de O et S0, R2.4.8) : { titre, contenu } rendus des 32 recherches par titre,
+ *       capturés hors restauration seulement ; lus dans la famille assistant avec les exclusions de
+ *       scripts/manuel/balise/base/*.json ; ignorés par --hors-manuel comme les recherches (base pas encore balisée) ;
+ *       non-vacuité : clé présente, autant d'entrées que meta.entreesBase, aucun contenu vide (sinon échec).
+ *
  *   Options communes :
  *     --capture <fichier>    analyser une capture déjà faite (aucun nouveau passage) ;
  *     --reference <fichier>  autre référence (ex. : preuve de déterminisme entre deux captures) ;
  *     --rapport <fichier>    rapport détaillé JSON (défaut : dossier temporaire du système) ;
- *     --port <n>             port de la capture (défaut 3197).
+ *     --port <n>             port de la capture (défaut 3197) ;
+ *     --brut <dossier>       transmis à la capture : réponse brute du manuel du client B (hors dépôt, lot 2c §2.6).
  *
  * ⚠️ Une capture applique les migrations en attente à la base locale : seul l'intégrateur la lance. */
 'use strict';
@@ -74,6 +102,7 @@ if (DOMAINE !== 'restauration' && !HORS.includes(DOMAINE)) {
   process.exit(2);
 }
 const RAPPORT = path.resolve(arg('rapport', path.join(os.tmpdir(), `check-invariant-vocab-${DOMAINE}.json`)));
+const HORS_MANUEL = argv.includes('--hors-manuel');
 
 const lireJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 const ecrireJson = (f, o) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(o, null, 1) + '\n', 'utf8'); };
@@ -85,7 +114,8 @@ function capturer() {
   if (fourni) return lireJson(path.resolve(fourni));
   const sortie = path.join(os.tmpdir(), `capture-vocab-${DOMAINE}-${process.pid}.json`);
   const t0 = Date.now();
-  const r = spawnSync(process.execPath, [path.join(__dirname, 'capture-vocab-baseline.js'), '--domaine', DOMAINE, '--sortie', sortie, '--port', arg('port', '3197')], { stdio: 'inherit', cwd: RACINE });
+  const brut = arg('brut');
+  const r = spawnSync(process.execPath, [path.join(__dirname, 'capture-vocab-baseline.js'), '--domaine', DOMAINE, '--sortie', sortie, '--port', arg('port', '3197'), ...(brut ? ['--brut', path.resolve(brut)] : [])], { stdio: 'inherit', cwd: RACINE });
   console.log(`[check-vocab] capture ${DOMAINE} : code ${r.status}, ${Math.round((Date.now() - t0) / 1000)} s`);
   if (r.status !== 0 || !fs.existsSync(sortie)) {
     console.error('[check-vocab] ÉCHEC : la capture n\'a rien écrit (voir son journal ci-dessus).');
@@ -179,6 +209,31 @@ function comparer(avant, apres, chemin, sortie) {
   sortie.ecarts.push({ chemin, avant, apres });
 }
 
+// Empreintes du manuel (meta.empreintesManuel) : mêmes lecteurs, mêmes slugs dans le même ordre, mêmes md5.
+function ecartsEmpreintes(ref, cour, lecteurs = null) {
+  const out = [];
+  for (const l of lecteurs || [...new Set([...Object.keys(ref), ...Object.keys(cour)])]) {
+    const a = ref[l];
+    const b = cour[l];
+    if (!a || !b) { out.push(`manuel ${l} : lecteur absent ${!a ? 'de la référence' : 'de la capture'} (meta.empreintesManuel)`); continue; }
+    if (!egal(Object.keys(a), Object.keys(b))) out.push(`manuel ${l} : fiches reçues différentes ou dans un autre ordre (${Object.keys(a).length} → ${Object.keys(b).length})`);
+    for (const s of new Set([...Object.keys(a), ...Object.keys(b)])) {
+      if (a[s] !== b[s]) out.push(`manuel ${l} › ${s} : empreinte ${a[s] || ABSENT} → ${b[s] || ABSENT}`);
+    }
+  }
+  return out;
+}
+
+// Empreintes de la base (meta.empreintesBase) : mêmes titres, dans le même ordre, mêmes md5 ; aucun écart admissible.
+function ecartsEmpreintesBase(ref, cour) {
+  const out = [];
+  if (!egal(Object.keys(ref), Object.keys(cour))) out.push(`base de connaissances : entrées différentes ou dans un autre ordre (${Object.keys(ref).length} → ${Object.keys(cour).length})`);
+  for (const t of new Set([...Object.keys(ref), ...Object.keys(cour)])) {
+    if (ref[t] !== cour[t]) out.push(`base de connaissances › ${t} : empreinte ${ref[t] || ABSENT} → ${cour[t] || ABSENT}`);
+  }
+  return out;
+}
+
 function verifierRestauration(courante) {
   const refFichier = path.resolve(arg('reference', FICHIERS.reference));
   if (!fs.existsSync(refFichier)) { console.error(`[check-vocab] référence absente : ${refFichier}`); process.exit(2); }
@@ -205,6 +260,17 @@ function verifierRestauration(courante) {
     if (!b) problemes.push(`clé « ${k} » vide ou absente dans la capture`);
     else if (a && a !== b) problemes.push(`clé « ${k} » : ${b} élément(s), ${a} dans la référence`);
   }
+
+  // Lot 2c (R2.3.1) : empreintes NON masquées du manuel servi, lecteur par lecteur et slug par slug (ordre compris).
+  // Un écart est un échec qu'aucune entrée de ecarts-restauration-attendus.json ne peut admettre.
+  if (!ref.meta.empreintesManuel) problemes.push('meta.empreintesManuel absent de la référence : recapturer la référence avec la capture du lot 2c');
+  else if (!courante.meta.empreintesManuel) problemes.push('meta.empreintesManuel absent de la capture');
+  else problemes.push(...ecartsEmpreintes(ref.meta.empreintesManuel, courante.meta.empreintesManuel));
+  // Relecture de l'étape O : chaque entrée active de la base, par son titre (empreintes NON masquées de { titre,
+  // contenu }) ; un écart est un échec qu'aucune entrée de ecarts-restauration-attendus.json ne peut admettre.
+  if (!ref.meta.empreintesBase) problemes.push('meta.empreintesBase absent de la référence : recapturer la référence avec la capture du lot 2c');
+  else if (!courante.meta.empreintesBase) problemes.push('meta.empreintesBase absent de la capture');
+  else problemes.push(...ecartsEmpreintesBase(ref.meta.empreintesBase, courante.meta.empreintesBase));
 
   // Ex aequo des listes triées sur une clé non unique (ordre-libre.json avec cleTri) : normalisés
   // sur des copies, AVANT la comparaison.
@@ -281,8 +347,14 @@ const FAMILLE = {
   messages: 'messages', tableauxDeBord: 'donnees', donneesLibelles: 'donnees', auth: 'donnees',
   exports: 'excel', pdf: 'documents', valeursContrat: 'documents', emails: 'emails',
   prompt: 'assistant', promptReel: 'assistant', outils: 'assistant', resultatsOutils: 'assistant', recherches: 'assistant',
-  contexte: 'assistant', guide: 'assistant', accueilMessenger: 'assistant', rapportIA: 'assistant', persistes: 'persistes',
+  recherchesDomaine: 'assistant', contexte: 'assistant', guide: 'assistant', accueilMessenger: 'assistant', rapportIA: 'assistant',
+  persistes: 'persistes', manuel: 'manuel', baseParTitre: 'assistant',
 };
+// Textes du lot 2c (R2.4.3, R2.4.7) : le manuel servi et les résultats de la recherche (manuel et base).
+// baseParTitre (R2.4.8) : contenu des 32 entrées de la base, hors restauration ; texte de la base, comme les recherches.
+const CLES_2C = ['manuel', 'recherches', 'recherchesDomaine', 'baseParTitre'];
+const estManuel = (t) => typeof t === 'string' && t.startsWith('Manuel — ');
+const citation = (s) => `Manuel — ${s.partie} › ${s.titre}`;
 
 // Recherche : formesDans de l'outil de preuve (E11, vocab-check.mjs du frontend), sinon le même motif.
 let formesDans = null;
@@ -370,7 +442,7 @@ const estCode = (s) => CODE.some((re) => re.test(s));
 // Textes d'une capture, par sortie (§2.5, point 3) : [{ cle, chemin, texte }].
 function textes(captures) {
   const out = [];
-  const pousser = (cle, chemin, t) => { if (typeof t === 'string' && t.trim()) out.push({ cle, chemin, texte: t }); };
+  const pousser = (cle, chemin, t, plus = null) => { if (typeof t === 'string' && t.trim()) out.push({ cle, chemin, texte: t, ...(plus || {}) }); };
   // JSON de données : clés ignorées (sauf clé avec espace ou capitale), valeurs de forme code ignorées.
   const donnees = (cle, v, chemin) => {
     if (v == null) return;
@@ -414,8 +486,38 @@ function textes(captures) {
     (Array.isArray(b.errors) ? b.errors : []).forEach((e, i) => pousser('messages', `/${seg(nom)}/body/errors/${i}/msg`, e && e.msg));
     (Array.isArray(b.details) ? b.details : []).forEach((e, i) => pousser('messages', `/${seg(nom)}/body/details/${i}/error`, e && e.error));
   }
-  // `recherches` (résultats de search_knowledge_base = manuel et base de connaissances) n'est PAS lue : lot 2c,
-  // hors lot 2b (spec §0) ; elle reste comparée à l'identique en restauration.
+  // Recherches (lot 2c, R2.4.1, R2.4.2) : résultats de la BASE lus (titre, contenu ; entrée retrouvée par son titre
+  // pour ses exclusions), titres de `disponibles` lus ; résultats du MANUEL non relus : contrôlés à part (citation
+  // d'une fiche servie, contenu = début de la fiche), voir controlerResultatsManuel().
+  const resultat = (cle, r, chemin) => {
+    if (!r || typeof r !== 'object') return;
+    (Array.isArray(r.results) ? r.results : []).forEach((x, i) => {
+      if (!x || estManuel(x.titre)) return;
+      pousser(cle, `${chemin}/results/${i}/titre`, x.titre, { entreeBase: x.titre });
+      pousser(cle, `${chemin}/results/${i}/contenu`, x.contenu, { entreeBase: x.titre });
+    });
+    (Array.isArray(r.disponibles) ? r.disponibles : []).forEach((t, i) => pousser(cle, `${chemin}/disponibles/${i}`, t, { entreeBase: t }));
+    if (typeof r.error === 'string') pousser(cle, `${chemin}/error`, r.error);
+  };
+  for (const [q, r] of Object.entries(captures.recherches || {})) resultat('recherches', r, `/${seg(q)}`);
+  for (const [k, v] of Object.entries(captures.recherchesDomaine || {})) {
+    if (!v || typeof v !== 'object') continue;
+    if (v.resultat) { resultat('recherchesDomaine', v.resultat, `/${seg(k)}/resultat`); continue; }
+    // Question du guide ou d'un composant : les titres de la base sont aussi dans `base` (lus une seule fois).
+    (Array.isArray(v.base) ? v.base : []).forEach((x, i) => {
+      pousser('recherchesDomaine', `/${seg(k)}/base/${i}/titre`, x && x.titre, { entreeBase: x && x.titre });
+      pousser('recherchesDomaine', `/${seg(k)}/base/${i}/contenu`, x && x.contenu, { entreeBase: x && x.titre });
+    });
+  }
+  // Entrées de la base par titre (R2.4.8) : titre et contenu rendus, entrée retrouvée par son titre pour ses exclusions.
+  for (const [t, v] of Object.entries(captures.baseParTitre || {})) {
+    pousser('baseParTitre', `/${seg(t)}/titre`, v && v.titre, { entreeBase: v && v.titre });
+    pousser('baseParTitre', `/${seg(t)}/contenu`, v && v.contenu, { entreeBase: v && v.titre });
+  }
+  // Manuel servi (lot 2c, R2.4.1) : titre, partie, contenu ; jamais motsCles (non affiché, contrôle R2.4.4).
+  for (const [slug, s] of Object.entries((captures.manuel && captures.manuel.sections) || {})) {
+    for (const champ of ['titre', 'partie', 'contenu']) pousser('manuel', `/sections/${seg(slug)}/${champ}`, s && s[champ], { slug });
+  }
   // Clés de premier niveau = étiquettes de capture de l'oracle (« v2.labo.sansFiltre », « get_ventes canal=… ») :
   // jamais lues comme du texte du serveur.
   for (const k of ['tableauxDeBord', 'donneesLibelles', 'resultatsOutils', 'auth', 'persistes', 'valeursContrat']) {
@@ -458,17 +560,147 @@ const extrait = (t, f) => {
 // Chemin générique (indices de lignes et de documents remplacés), pour regrouper la liste de travail.
 const cheminGenerique = (c) => c.replace(/\/\d+(?=\/|$)/g, '/n');
 
+// Lot 2c (R2.4.2) : passages exclus au balisage, retirés du texte avant la recherche. Fiche : par slug (fichier
+// balisé et, s'il existe, celui de la variante du domaine du passage). Entrée de la base : par son titre balisé rendu
+// avec le lexique du passage. Une exclusion « sans emploi » ne compte jamais ici (seulement dans controler.mjs).
+function chargerExclusionsBalise(vX, domaine) {
+  const { rendre } = require(path.join(RACINE, 'src', 'utils', 'vocab'));
+  const dossier = path.join(RACINE, 'scripts', 'manuel');
+  const fiches = new Map();
+  const base = new Map();
+  const problemes = [];
+  const fichiers = { fiches: 0, variantes: 0, base: 0 };
+  const extraits = (o) => (o && Array.isArray(o.exclusions) ? o.exclusions.map((x) => x && x.extrait).filter((x) => typeof x === 'string' && x) : []);
+  const ajouter = (m, k, l) => { if (!m.has(k)) m.set(k, []); m.get(k).push(...l); };
+  const parcourir = (d, type, fn) => {
+    if (!fs.existsSync(d)) return;
+    for (const n of fs.readdirSync(d).filter((x) => x.endsWith('.json')).sort()) {
+      let o;
+      try { o = lireJson(path.join(d, n)); } catch (e) { problemes.push(`${path.relative(RACINE, path.join(d, n))} : JSON illisible (${e.message})`); continue; }
+      fichiers[type] += 1;
+      fn(n.replace(/\.json$/, ''), o);
+    }
+  };
+  parcourir(path.join(dossier, 'balise', 'manuel'), 'fiches', (n, o) => ajouter(fiches, o.slug || n, extraits(o)));
+  parcourir(path.join(dossier, 'variantes', domaine), 'variantes', (n, o) => ajouter(fiches, o.slug || n, extraits(o)));
+  parcourir(path.join(dossier, 'balise', 'base'), 'base', (n, o) => {
+    if (typeof o.titre === 'string') ajouter(base, rendre(vX, o.titre), extraits(o));
+    else problemes.push(`scripts/manuel/balise/base/${n}.json : titre absent`);
+  });
+  return { fiches, base, problemes, fichiers };
+}
+
+// Lot 2c (R2.4.2) : un résultat de la recherche qui vient du manuel n'est pas relu ; sa citation doit être celle
+// d'une fiche servie (manuel.sections du même passage) et son contenu le début de cette fiche, suivi de « … » s'il
+// est coupé (troncature à 6 000 de aiToolHandlers). Une question du guide ne garde que les titres : citation seule.
+function controlerResultatsManuel(captures) {
+  const sections = (captures.manuel && captures.manuel.sections) || {};
+  const parCitation = new Map(Object.entries(sections).map(([slug, s]) => [citation(s), slug]));
+  const problemes = [];
+  let controles = 0;
+  const verifier = (chemin, titre, contenu) => {
+    controles += 1;
+    const slug = parCitation.get(titre);
+    if (!slug) { problemes.push(`${chemin} : « ${court(titre, 100)} » n'est la citation d'aucune fiche servie (manuel.sections)`); return; }
+    if (contenu === undefined) return;
+    const servi = sections[slug].contenu;
+    const ok = contenu === servi
+      || (typeof contenu === 'string' && contenu.endsWith('…') && contenu.length - 1 < servi.length && servi.startsWith(contenu.slice(0, -1)));
+    if (!ok) problemes.push(`${chemin} : le contenu n'est pas le début de la fiche servie « ${slug} »`);
+  };
+  const resultat = (base, r) => (r && Array.isArray(r.results) ? r.results : []).forEach((x, i) => {
+    if (x && estManuel(x.titre)) verifier(`${base}/results/${i}`, x.titre, x.contenu === undefined ? null : x.contenu);
+  });
+  for (const [q, r] of Object.entries(captures.recherches || {})) resultat(`recherches/${seg(q)}`, r);
+  for (const [k, v] of Object.entries(captures.recherchesDomaine || {})) {
+    if (v && v.resultat) resultat(`recherchesDomaine/${seg(k)}/resultat`, v.resultat);
+    else ((v && v.titres) || []).forEach((t, i) => { if (estManuel(t)) verifier(`recherchesDomaine/${seg(k)}/titres/${i}`, t); });
+  }
+  return { controles, problemes, parCitation };
+}
+
+// Lot 2c (R2.4.4) : une fiche servie dont les mots-clés d'origine (référence restauration) portent, comme entrée, une
+// forme par défaut d'une clé que le domaine change doit porter la forme nom (singulier) du domaine dans ses mots-clés.
+function controlerMotsCles(capture, ref, vX) {
+  const { LEXIQUE_DEFAUT } = require(path.join(RACINE, 'src', 'config', 'lexiqueDefaut'));
+  const { vocabDefaut } = require(path.join(RACINE, 'src', 'utils', 'vocab'));
+  const entrees = (s) => String(s || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const formes = (v, k) => [v.nom(k), v.nom(k, true), v.court(k), v.court(k, true)].map((x) => String(x).toLowerCase());
+  const cles = Object.keys(LEXIQUE_DEFAUT).filter((k) => !/_abr$/.test(k));
+  const origine = (ref && ref.captures && ref.captures.manuel && ref.captures.manuel.sections) || null;
+  if (!origine) return { controles: 0, manques: [], note: 'référence sans manuel.sections : contrôle impossible (recapturer la référence)' };
+  let controles = 0;
+  const manques = [];
+  for (const [slug, s] of Object.entries((capture.captures.manuel && capture.captures.manuel.sections) || {})) {
+    if (!origine[slug]) continue;
+    const avant = entrees(origine[slug].motsCles);
+    const servis = entrees(s.motsCles);
+    for (const k of cles) {
+      const d = formes(vocabDefaut, k);
+      if (egal(d, formes(vX, k)) || !d.some((f) => avant.includes(f))) continue;
+      controles += 1;
+      if (!servis.includes(String(vX.nom(k)).toLowerCase())) manques.push({ slug, cle: k, attendu: vX.nom(k) });
+    }
+  }
+  return { controles, manques };
+}
+
+// Lot 2c (R2.4.6) : garde-fou (chaque clé de recherchesDomaine a au moins un résultat) et rapports (terme du domaine
+// parmi les 4 résultats ; première fiche du manuel de la référence restauration parmi les 4 résultats d'une recherche
+// fixe ; fiche « activites » parmi les 4 résultats d'une question de composant).
+function coherenceRecherches(capture, ref, vX, parCitation) {
+  const { LEXIQUE_DEFAUT } = require(path.join(RACINE, 'src', 'config', 'lexiqueDefaut'));
+  const sections = (capture.captures.manuel && capture.captures.manuel.sections) || {};
+  const formesDomaine = [...new Set(Object.keys(LEXIQUE_DEFAUT).flatMap((k) => [vX.Nom(k), vX.Pl(k), vX.Court(k), vX.Court(k, 2)].map(String)))].filter(Boolean);
+  const refSections = (ref && ref.captures && ref.captures.manuel && ref.captures.manuel.sections) || {};
+  const refCitations = new Map(Object.entries(refSections).map(([slug, s]) => [citation(s), slug]));
+  const refRecherches = (ref && ref.captures && ref.captures.recherchesDomaine) || {};
+  const sansResultat = [];
+  const termes = [];
+  const fiches = [];
+  for (const [k, v] of Object.entries(capture.captures.recherchesDomaine || {})) {
+    if (!v || typeof v !== 'object') { sansResultat.push(k); continue; }
+    const res = v.resultat ? (Array.isArray(v.resultat.results) ? v.resultat.results : []) : null;
+    const titres = res ? res.map((x) => x.titre) : (Array.isArray(v.titres) ? v.titres : []);
+    if (!titres.length) { sansResultat.push(k); continue; }
+    // Textes des résultats : titre, contenu de la base, fiche servie pour un résultat du manuel.
+    const contenus = res ? res.map((x) => x.contenu) : (Array.isArray(v.base) ? v.base.map((x) => x.contenu) : []);
+    const textesRes = [...titres, ...contenus, ...titres.filter(estManuel).map((t) => (sections[parCitation.get(t)] || {}).contenu)].filter((x) => typeof x === 'string');
+    let cles;
+    if (k.startsWith('fixe|')) cles = [...k.matchAll(/\[\[[A-Za-z]+:([a-z0-9_]+)/g)].map((m) => m[1]);
+    const question = v.query || k.slice(k.indexOf('|') + 1);
+    const cherches = cles
+      ? [...new Set(cles.flatMap((c) => [vX.nom(c), vX.nom(c, true), vX.court(c), vX.court(c, true)].map(String)))]
+      : formesDans(question, formesDomaine);
+    const trouves = cherches.filter((f) => textesRes.some((t) => formesDans(t, [f]).length));
+    termes.push({ cle: k, termes: cherches, trouves, ok: !cherches.length ? null : trouves.length > 0 });
+    const slugs = titres.filter(estManuel).map((t) => parCitation.get(t) || null);
+    if (k.startsWith('fixe|')) {
+      const r0 = refRecherches[k] && refRecherches[k].resultat && Array.isArray(refRecherches[k].resultat.results) ? refRecherches[k].resultat.results : null;
+      const premier = r0 ? r0.map((x) => x.titre).find(estManuel) : undefined;
+      const attendu = premier ? refCitations.get(premier) || null : null;
+      fiches.push({ cle: k, attendu, obtenus: slugs, ok: attendu ? slugs.includes(attendu) : null, note: r0 ? (premier ? null : 'aucune fiche du manuel dans la référence') : 'référence sans recherchesDomaine' });
+    } else if (k.startsWith('composant|')) {
+      fiches.push({ cle: k, attendu: 'activites', obtenus: slugs, ok: slugs.includes('activites') });
+    }
+  }
+  return { sansResultat, termes, fiches };
+}
+
 async function verifierHorsRestauration(capture) {
   const source = await chargerFormesDans();
   const { F, retirees, vX, clesAbsentes } = formesCherchees(capture.meta.lexique);
   const listeF = [...F.keys()];
+  const refFichier = path.resolve(arg('reference', FICHIERS.reference));
+  const ref = fs.existsSync(refFichier) ? lireJson(refFichier) : null;
+  const excl = chargerExclusionsBalise(vX, capture.meta.domaine);
 
   // Données de l'oracle → « ⟦d⟧ », du plus long au plus court (jamais relues en base).
   const donnees = [...new Set([...(capture.meta.donnees || []), ...(capture.meta.composantsOracle || [])])].filter(Boolean).sort((a, b) => b.length - a.length);
   const masquerDonnees = (t) => donnees.reduce((s, d) => s.split(d).join('⟦d⟧'), t);
 
   const exceptions = fs.existsSync(FICHIERS.exceptions) ? lireJson(FICHIERS.exceptions) : [];
-  const problemes = [];
+  const problemes = [...excl.problemes];
   exceptions.forEach((e, i) => {
     if (!e || !e.cle || !e.chemin || !e.texte || !e.justification) problemes.push(`exceptions-hors-restauration.json[${i}] : cle, chemin, texte et justification obligatoires`);
     if (!TYPES_EXCEPTION.includes(e && e.type)) problemes.push(`exceptions-hors-restauration.json[${i}] : type « ${e && e.type} » hors liste (${TYPES_EXCEPTION.join(', ')})`);
@@ -485,6 +717,7 @@ async function verifierHorsRestauration(capture) {
 
   const trouvees = [];
   const horsLexique = [];
+  const balisesBrutes = [];
   let nTextes = 0;
   // Glossaire du prompt : retiré du texte, sa colonne de droite lue à part (voir separerGlossaire).
   const lus = [];
@@ -496,6 +729,11 @@ async function verifierHorsRestauration(capture) {
   }
   for (const t of lus) {
     nTextes += 1;
+    // Lot 2c (R2.4.1, I11) : aucune balise brute ni marque de clé inconnue dans le manuel et l'assistant.
+    if (FAMILLE[t.cle] === 'manuel' || FAMILLE[t.cle] === 'assistant') {
+      const m = t.texte.match(/\[\[|\]\]|‹[a-z0-9_]+›/);
+      if (m) balisesBrutes.push({ cle: t.cle, chemin: t.chemin, marque: m[0], texte: extrait(t.texte, m[0]) });
+    }
     let texte = masquerDonnees(t.texte);
     // Exceptions « extrait » : passage exact retiré avant la recherche (il ne couvre que ce passage).
     exceptions.forEach((e, i) => {
@@ -503,10 +741,21 @@ async function verifierHorsRestauration(capture) {
       texte = texte.split(e.texte).join('⟦x⟧');
       employees.add(i);
     });
+    // Lot 2c (R2.4.2) : passages exclus au balisage (fiche par slug, entrée de la base par titre rendu).
+    for (const x of (t.slug ? excl.fiches.get(t.slug) : t.entreeBase ? excl.base.get(t.entreeBase) : null) || []) {
+      if (texte.includes(x)) texte = texte.split(x).join('⟦x⟧');
+    }
+    // Lot 2c (A16.1) : les cibles de liens « (#slug) » du manuel ne se balisent jamais (200 formes par défaut dans 185
+    // cibles) : masquées avant la recherche, comme dans controler.mjs (masquerCibles) et le pré-baliseur. Le motif
+    // prend toute cible « ](…) » (une cible n'est jamais lue, adresse externe comprise ; R2.4.2).
+    if (t.cle === 'manuel') texte = texte.replace(/\]\([^)\n]*\)/g, ']()');
     for (const forme of formesDans(texte, listeF)) {
       const f = { famille: FAMILLE[t.cle], cle: t.cle, chemin: t.chemin, forme, cles: F.get(forme), texte };
       if (exception(f) < 0) trouvees.push(f);
     }
+    // R2.4.3 : les mots du métier restent dans le texte commun par construction (I10) ; liste de travail des
+    // variantes = rapport de controler.mjs --tout. Pas de recherche ici pour le manuel et les recherches.
+    if (CLES_2C.includes(t.cle)) continue;
     for (const mot of formesDans(texte, MOTS_HORS_LEXIQUE)) {
       const f = { famille: FAMILLE[t.cle], cle: t.cle, chemin: t.chemin, forme: mot, texte };
       if (exception(f) < 0) horsLexique.push(f);
@@ -530,6 +779,49 @@ async function verifierHorsRestauration(capture) {
   }
   const libellesKo = libellesServeur.filter((l) => !l.ok);
   const sansEmploi = exceptions.map((e, i) => ({ ...e, i })).filter((e) => applicable(e) && !employees.has(e.i));
+
+  // ── Lot 2c : contrôles du manuel et des recherches ─────────────────────────────────────────
+  for (const b of balisesBrutes) problemes.push(`balise brute « ${b.marque} » dans ${b.cle}${b.chemin} : ${b.texte}`);
+  // I4 : le lecteur admin lit le manuel en mots de LabFlow, identique à la référence restauration.
+  const empAdmin = capture.meta.empreintesManuel && capture.meta.empreintesManuel.admin;
+  const empAdminRef = ref && ref.meta && ref.meta.empreintesManuel && ref.meta.empreintesManuel.admin;
+  if (!empAdmin) problemes.push('meta.empreintesManuel.admin absent de la capture (lecteur admin du manuel)');
+  else if (!empAdminRef) problemes.push(`meta.empreintesManuel.admin absent de la référence ${path.relative(RACINE, refFichier)} (recapturer la référence)`);
+  else problemes.push(...ecartsEmpreintes({ admin: empAdminRef }, { admin: empAdmin }, ['admin']).map((p) => `I4 : ${p}`));
+  if (!capture.captures.manuel || !capture.captures.manuel.sections || !Object.keys(capture.captures.manuel.sections).length) problemes.push('manuel.sections vide (clé manuel)');
+  // R2.4.8 : non-vacuité de baseParTitre (une entrée par entrée active de la base, chacune avec son contenu).
+  const baseParTitre = capture.captures.baseParTitre;
+  const nBase = baseParTitre && typeof baseParTitre === 'object' ? Object.keys(baseParTitre).length : 0;
+  if (!nBase) problemes.push('baseParTitre absent ou vide (contenu des entrées de la base, R2.4.8) : capture d\'avant la réserve R1 ?');
+  else {
+    if (nBase !== capture.meta.entreesBase) problemes.push(`baseParTitre : ${nBase} entrée(s), ${capture.meta.entreesBase} entrée(s) active(s) dans la base (meta.entreesBase)`);
+    for (const [t, v] of Object.entries(baseParTitre)) {
+      if (!v || typeof v.contenu !== 'string' || !v.contenu.trim()) problemes.push(`baseParTitre « ${t} » : contenu vide ou absent`);
+    }
+  }
+  const resManuel = controlerResultatsManuel(capture.captures);
+  problemes.push(...resManuel.problemes);
+  const coherence = coherenceRecherches(capture, ref, vX, resManuel.parCitation);
+  for (const k of coherence.sansResultat) problemes.push(`recherchesDomaine « ${k} » : aucun résultat (R2.4.6)`);
+  const motsCles = controlerMotsCles(capture, ref, vX);
+  // R2.4.7 : --hors-manuel ignore les formes du manuel et des recherches ; les comptes complets des familles manuel et
+  // assistant ne montent jamais au-dessus de la liste avant (une fois celle-ci écrite par le scan du lot 2c).
+  const texte2c = (f) => CLES_2C.includes(f.cle);
+  const retenues = HORS_MANUEL ? trouvees.filter((f) => !texte2c(f)) : trouvees;
+  const ignorees = HORS_MANUEL ? trouvees.filter(texte2c) : [];
+  const compte = (fam) => trouvees.filter((f) => f.famille === fam).length;
+  const listeAvant = fs.existsSync(FICHIERS.avant) ? lireJson(FICHIERS.avant) : {};
+  const avantDom = listeAvant.domaines && listeAvant.domaines[capture.meta.domaine];
+  const comparaisonAvant = [];
+  if (!argv.includes('--liste-avant')) {
+    if (avantDom && avantDom.scan2c) {
+      for (const fam of ['manuel', 'assistant']) {
+        const n0 = (avantDom.formes && avantDom.formes.parFamille && avantDom.formes.parFamille[fam] && avantDom.formes.parFamille[fam].occurrences) || 0;
+        comparaisonAvant.push({ famille: fam, avant: n0, maintenant: compte(fam), monte: compte(fam) > n0 });
+      }
+      for (const c of comparaisonAvant.filter((x) => x.monte)) problemes.push(`famille ${c.famille} : ${c.maintenant} forme(s), au-dessus de la liste avant (${c.avant}) (R2.4.7)`);
+    } else comparaisonAvant.push({ note: 'liste avant écrite avant le scan du lot 2c : comparaison sans objet' });
+  }
 
   // Synthèse par famille, puis liste de travail regroupée par texte distinct.
   const synthese = (liste) => {
@@ -567,13 +859,32 @@ async function verifierHorsRestauration(capture) {
     formes: synthese(trouvees),
     horsLexique: synthese(horsLexique),
     libellesServeur,
+    // Lot 2c : liste écrite par le scan étendu (familles manuel et assistant avec les recherches, §2.4).
+    scan2c: true,
+    horsManuel: { formes: synthese(retenues).occurrences, ignorees: trouvees.length - trouvees.filter((f) => !texte2c(f)).length },
+    exclusionsBalise: excl.fichiers,
+    resultatsManuelControles: resManuel.controles,
+    baseParTitre: nBase,
+    motsCles: { controles: motsCles.controles, manques: motsCles.manques.length, ...(motsCles.note ? { note: motsCles.note } : {}) },
+    coherenceRecherches: {
+      cles: coherence.termes.length,
+      termeAbsent: coherence.termes.filter((x) => x.ok === false).map((x) => ({ cle: x.cle, termes: x.termes })),
+      sansTerme: coherence.termes.filter((x) => x.ok === null).length,
+      fiches: coherence.fiches,
+    },
   };
 
-  ecrireJson(RAPPORT, { ...res, problemes, exceptionsSansEmploi: sansEmploi });
+  ecrireJson(RAPPORT, { ...res, problemes, exceptionsSansEmploi: sansEmploi, motsClesManquants: motsCles.manques, coherenceTermes: coherence.termes, comparaisonAvant, horsManuelRetenues: HORS_MANUEL ? synthese(retenues) : null });
   console.log(`[check-vocab] ${res.domaine} (${res.domaineNom}) — ${listeF.length} forme(s) cherchée(s) (${retirees.size} retirée(s) car rendue(s) aussi par le domaine), ${nTextes} texte(s) lu(s), recherche : ${source}`);
   if (clesAbsentes.length) console.log(`[check-vocab] liste INCOMPLÈTE pour les clés absentes du moteur courant : ${clesAbsentes.join(', ')} (à relancer après S1)`);
   for (const [fam, s] of Object.entries(res.formes.parFamille)) console.log(`  ${fam.padEnd(10)} ${String(s.occurrences).padStart(5)} occurrence(s), ${String(s.textes).padStart(4)} texte(s) distinct(s)`);
   console.log(`  hors lexique : ${res.horsLexique.occurrences} occurrence(s) (${Object.entries(res.horsLexique.parFamille).map(([f, s]) => `${f} ${s.occurrences}`).join(', ') || 'aucune'})`);
+  console.log(`  lot 2c : ${resManuel.controles} résultat(s) du manuel contrôlé(s) (citation, début de fiche) ; mots-clés enrichis : ${motsCles.controles} contrôle(s), ${motsCles.manques.length} manque(s)${motsCles.note ? ` (${motsCles.note})` : ''} ; recherches du domaine : ${coherence.termes.length} clé(s), ${coherence.sansResultat.length} sans résultat, terme du domaine absent des résultats : ${res.coherenceRecherches.termeAbsent.length} ; fiche attendue absente des 4 résultats : ${coherence.fiches.filter((x) => x.ok === false).length} sur ${coherence.fiches.length} ; exclusions lues : ${excl.fichiers.fiches} fiche(s), ${excl.fichiers.variantes} variante(s), ${excl.fichiers.base} entrée(s) ; base par titre : ${nBase} entrée(s) lue(s)`);
+  for (const c of comparaisonAvant) console.log(c.note ? `  liste avant : ${c.note}` : `  liste avant : ${c.famille} ${c.maintenant} forme(s) (avant : ${c.avant})${c.monte ? ' — MONTE' : ''}`);
+  if (HORS_MANUEL) {
+    console.log(`  --hors-manuel : ${retenues.length} forme(s) hors manuel et recherches (${ignorees.length} ignorée(s) dans le manuel, les recherches et la base par titre)`);
+    for (const f of retenues.slice(0, 30)) console.log(`    ✗ ${f.cle}${f.chemin} « ${f.forme} » : ${extrait(f.texte, f.forme)}`);
+  }
   for (const l of libellesKo) console.log(`  ✗ libellé écrit par le serveur ${l.chemin} : ${JSON.stringify(l.obtenu)} (attendu ${JSON.stringify(l.attendu)})`);
   for (const p of problemes) console.log(`  ✗ ${p}`);
   for (const e of sansEmploi) console.log(`  ✗ exception sans emploi : ${e.cle} ${e.chemin} « ${e.texte} » (${e.type})`);
@@ -588,7 +899,7 @@ async function verifierHorsRestauration(capture) {
     avant.domaines = Object.fromEntries(Object.entries(avant.domaines).sort(([a], [b]) => a.localeCompare(b)));
     // « Incomplète » seulement si un domaine a encore des clés *_abr absentes du moteur de son passage.
     const incompletes = Object.entries(avant.domaines).filter(([, d]) => (d.incompletePour || []).length).map(([nom]) => nom);
-    avant._lisezmoi = 'Liste de travail hors restauration capturée à l\'étape O (spec lot 2b §2.5) : formes par défaut trouvées dans les sorties du serveur pour un compte de chaque domaine, hors exceptions typées, regroupées par famille puis par texte distinct. '
+    avant._lisezmoi = 'Liste de travail hors restauration capturée à l\'étape O (spec lot 2b §2.5), étendue à l\'étape O du lot 2c (spec lot 2c §2.4 : famille manuel = manuel servi, famille assistant avec les résultats de la recherche ; « scan2c » vrai) : formes par défaut trouvées dans les sorties du serveur pour un compte de chaque domaine, hors exceptions typées, regroupées par famille puis par texte distinct. Les comptes des familles manuel et assistant ne doivent jamais monter (R2.4.7). '
       + (incompletes.length
         ? `Incomplète pour les clés *_abr (absentes du moteur du passage) dans : ${incompletes.join(', ')} ; relancer le scan de ces domaines. `
         : 'Complète depuis S1 pour tous les domaines (clés *_abr comprises). ')
@@ -598,9 +909,12 @@ async function verifierHorsRestauration(capture) {
     console.log(`[check-vocab] liste de travail écrite : ${path.relative(RACINE, FICHIERS.avant)} (section ${res.domaine})`);
     return 0;
   }
-  const total = res.formes.occurrences + res.horsLexique.occurrences + libellesKo.length;
+  // --hors-manuel : formes hors manuel et recherches seulement ; mots-clés enrichis en rapport (famille manuel).
+  const manquesBloquants = HORS_MANUEL ? 0 : motsCles.manques.length;
+  for (const m of (HORS_MANUEL ? [] : motsCles.manques).slice(0, 20)) console.log(`  ✗ mots-clés de « ${m.slug} » sans « ${m.attendu} » (clé ${m.cle}, R2.4.4)`);
+  const total = retenues.length + res.horsLexique.occurrences + libellesKo.length + manquesBloquants;
   const ok = !total && !problemes.length && !sansEmploi.length;
-  console.log(`[check-vocab] ${ok ? 'AUCUNE forme par défaut hors exceptions' : `ÉCHEC — ${res.formes.occurrences} forme(s), ${res.horsLexique.occurrences} mot(s) hors lexique, ${libellesKo.length} libellé(s) serveur, ${sansEmploi.length} exception(s) sans emploi`}`);
+  console.log(`[check-vocab] ${ok ? `AUCUNE forme par défaut hors exceptions${HORS_MANUEL ? ' (--hors-manuel : manuel, recherches et base par titre ignorés)' : ''}` : `ÉCHEC — ${retenues.length} forme(s)${HORS_MANUEL ? ' hors manuel' : ''}, ${res.horsLexique.occurrences} mot(s) hors lexique, ${libellesKo.length} libellé(s) serveur, ${manquesBloquants} mot(s)-clé(s) manquant(s), ${problemes.length} problème(s), ${sansEmploi.length} exception(s) sans emploi`}`);
   return ok ? 0 : 1;
 }
 

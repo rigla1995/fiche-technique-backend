@@ -1,0 +1,1 @@
+Les charges fixes d'une activité (loyer, charges de personnel, électricité/gaz, eau…) sont saisies soit en montant global, soit en détail. Elles servent au calcul de la rentabilité au-delà du coût matière.

@@ -1,0 +1,15 @@
+{
+  "slug": "rapports-vente",
+  "titre": "Rapport [[de:vente:pl]] (intégré au tableau de bord)",
+  "exclusions": [
+    {
+      "extrait": "types de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 1,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L7",
+  "relecteur": "L6"
+}

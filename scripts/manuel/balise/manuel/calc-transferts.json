@@ -1,0 +1,15 @@
+{
+  "slug": "calc-transferts",
+  "titre": "Valorisation [[du:transfert:pl]]",
+  "exclusions": [
+    {
+      "extrait": "fournisseur-labo",
+      "forme": "fournisseur",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom composé à trait d'union (« fournisseur » et « labo ») : aucune balise contre un tiret (A16.2, R3.4.3) ; désigne la fiche fournisseur auto-gérée du labo ; l'écran, lui, écrit le terme (FournisseursPage.tsx:220 : voc.Pl('fournisseur') + voc.Court('labo')), ce n'est donc pas un nom d'écran figé : type nom-fige retenu à défaut, à confirmer par l'intégrateur (besoin L6-3)"
+    }
+  ],
+  "baliseur": "L6",
+  "relecteur": "L5"
+}

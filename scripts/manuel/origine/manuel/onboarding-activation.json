@@ -1,0 +1,15 @@
+{
+  "slug": "onboarding-activation",
+  "titre": "Activation de votre compte",
+  "icone": "🔑",
+  "partie": "Onboarding",
+  "ordre": 22,
+  "mots_cles": "activation, mot de passe, lien, 48 heures, email, invitation, première connexion, sécurité, règles, lien expiré, bienvenue",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": false,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "6d18eb0efd5a42a64f54a7e39ad6e99d",
+  "md5Contenu": "6d18eb0efd5a42a64f54a7e39ad6e99d"
+}

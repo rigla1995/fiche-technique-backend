@@ -1,0 +1,1 @@
+Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué puis intégré dans d'autres produits ; il est mis en stock et géré comme un ingrédient. Les produits transformés se répartissent en trois catégories : Utilisables, Vendables et Composés Valorisés.

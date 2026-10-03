@@ -1,0 +1,15 @@
+{
+  "cle": "fournisseur",
+  "titre": "[[Nom:fournisseur]]",
+  "exclusions": [
+    {
+      "extrait": "partenaire d'approvisionnement",
+      "forme": "approvisionnement",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "sens courant (le fournisseur approvisionne le compte), pas l'entrée de stock appro ; balisé, C lirait « partenaire de réception » (relecture L9, tour 2)"
+    }
+  ],
+  "baliseur": "L9",
+  "relecteur": "L7"
+}

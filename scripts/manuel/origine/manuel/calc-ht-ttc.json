@@ -1,0 +1,15 @@
+{
+  "slug": "calc-ht-ttc",
+  "titre": "HT et TTC",
+  "icone": "🧾",
+  "partie": "Comprendre les calculs",
+  "ordre": 83,
+  "mots_cles": "ht, ttc, tva, taxe, hors taxe, toutes taxes comprises, taux de tva, facture, conversion, montant, timbre fiscal, prix d'achat",
+  "ecran": null,
+  "actif": true,
+  "visible_gerant": true,
+  "updated_at": "2026-07-18T17:04:42.961Z",
+  "defautNull": false,
+  "md5Garde": "0c5a4f69078f10a26d222c52227fff46",
+  "md5Contenu": "0c5a4f69078f10a26d222c52227fff46"
+}

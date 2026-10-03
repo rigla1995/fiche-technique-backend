@@ -1,0 +1,15 @@
+{
+  "slug": "onboarding-suivi",
+  "titre": "Suivi de votre mise en route",
+  "icone": "🚀",
+  "partie": "Onboarding",
+  "ordre": 20,
+  "mots_cles": "mise en route, onboarding, démarrage, progression, checklist, étapes, suivi, bienvenue, premiers pas, accompagnement",
+  "ecran": "/client/guide",
+  "actif": true,
+  "visible_gerant": false,
+  "updated_at": "2026-09-28T17:49:08.076Z",
+  "defautNull": false,
+  "md5Garde": "4d0cbaaa2e3ac53df592c86f1ebdb567",
+  "md5Contenu": "4d0cbaaa2e3ac53df592c86f1ebdb567"
+}

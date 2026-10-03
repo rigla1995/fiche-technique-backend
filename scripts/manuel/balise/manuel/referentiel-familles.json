@@ -1,0 +1,22 @@
+{
+  "slug": "referentiel-familles",
+  "titre": "Familles",
+  "exclusions": [
+    {
+      "extrait": "Articles Valorisés",
+      "forme": "Articles",
+      "type": "nom-fige",
+      "occurrences": 2,
+      "justification": "libellé de lien = ancien nom de l'écran, devenu « Produits Valorisés » (Sidebar.tsx:619 voc.Titre('produit_valorise', true)) : l'écran ne porte pas le terme article (R7.1.3)"
+    },
+    {
+      "extrait": "Produits laitiers",
+      "forme": "Produits",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "nom de famille d'exemple (denrées laitières), pas la notion produit ; l'écran l'écrit en exemple métier voc.ex('Ex: Produits laitiers', …) (ReferentielFamillesPage.tsx:210)"
+    }
+  ],
+  "baliseur": "L3",
+  "relecteur": "L8"
+}

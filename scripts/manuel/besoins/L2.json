@@ -1,0 +1,26 @@
+[
+  {
+    "id": "L2-1",
+    "fiche": "demarrage",
+    "besoin": "Défaut d'un outil (contrôle) : une contraction manquée dans un rendu n'est signalée par aucun point. Un « de » en clair devant [[acc:activite:le premier:la première]] (origine « Création de la première activité ») rendait en H « Création de le premier service » ; controler.mjs était vert et sans signalement (le point 9 ne cherche que « de » + voyelle). Corrigé dans la fiche par [[acc:activite:du premier:de la première]].",
+    "proposition": "Point 9 (ou 10) : signaler aussi, dans les rendus H, C et miroir, « de le », « de les », « à le », « à les » (sans casse, mot entier), absents du rendu par défaut.",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B1 (03/10/2026) : controler.mjs, point 9 : il signale aussi les contractions manquées « de le », « de les », « à le », « à les » (mots entiers, sans casse), absentes du rendu par défaut comme le reste du point 9 (RE_CONTRACTION). Test ajouté (test/controler.test.mjs : le cas de demarrage, « Création de le premier service » en H ; un pronom déjà présent par défaut n'est pas signalé). En-tête de l'outil, README et GUIDE §10 mis à jour ; spec §3.5 point 9 à amender à l'étape C. Rejoué sur L1, L2, L3, L8 : aucun signalement nouveau (demarrage était déjà corrigé)."
+  },
+  {
+    "id": "L2-2",
+    "fiche": "decouvrir-labflow",
+    "besoin": "Défaut d'un outil (contrôle, point 7) : une répétition coupée par une marque Markdown n'est pas vue. Rendu Céramique de « [[acc:labo:un:une]] ou plusieurs **[[nom:labo:pl]]** de production » : « un ou plusieurs **sites de production** de production » ; controler.mjs ne le signale pas (il ne signale que « 1 site de production de production » dans compte-activites-labos), donc aucune acceptation n'est possible (elle serait « sans objet »). Aucune balise ne l'évite (C et défaut masculins). Relevé par le relecteur, relectures/L2.json ligne 2.",
+    "proposition": "Point 7 : retirer les marques Markdown (**, *, _) avant de chercher les répétitions, puis signaler ce cas ; le baliseur ajoutera alors l'acceptation (« de production de production », renvoi à la variante V-C2).",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B1 (03/10/2026) : controler.mjs, point 7 : les marques d'emphase (**, *, _) sont retirées des deux rendus avant la recherche des répétitions (sansMarques) ; le mot de même racine qui suit une balise peut aussi en être séparé par une marque (motSuivant). Tests ajoutés (test/controler.test.mjs). En-tête de l'outil, README et GUIDE §10 mis à jour ; spec §3.5 point 7 à amender à l'étape C. Rejoué sur L1, L2, L3, L8 : un seul signalement nouveau, celui attendu (decouvrir-labflow, C, « de production de production ») ; acceptation ajoutée dans relectures/L2.auto.json par l'intégrateur, seul à écrire à ce stade, avec renvoi à V-C2."
+  },
+  {
+    "id": "L2-3",
+    "fiche": "decouvrir-labflow",
+    "besoin": "Lexique Céramique (brouillon) : le terme de fiche_technique « Fiche de coût de revient » double le texte commun qui le suit. Rendu C : « chaque nomenclature est décrite dans une fiche de coût de revient dont le coût de revient se calcule automatiquement ». Aucun point ne le signale (la 2e occurrence est du texte commun) et aucune balise ne l'évite (I10). Renvoyé à la variante V-C2 pour cette fiche ; la même tournure risque de revenir dans des fiches sans variante (calc-*, fiches-techniques). Relevé par le relecteur, relectures/L2.json ligne 4.",
+    "proposition": "À trancher par le client ou l'intégrateur : garder le terme C et lever la tournure dans les variantes, ou choisir un terme C qui ne contient pas « coût de revient ».",
+    "etat": "DÉCISION CLIENT",
+    "decision": "Intégrateur B1 (03/10/2026) : le terme C de fiche_technique reste celui du brouillon pour le 2c : les lexiques H et C sont au client (§10.3, dernier point) et le manuel suit sans retouche. Dans la vague 1, la redite « fiche de coût de revient … coût de revient » ne sort que dans des fiches à variante (lexique et calc-cout-recette : V-C1 ; decouvrir-labflow et demarrage : V-C2) : consignes écrites dans lots.json (champ « aLever » de V-C1 et V-C2). Vague 2 (fiches-techniques, calc-*) : si la tournure sort dans une fiche sans variante, elle est acceptée et listée au §10.3 à l'étape C. Un terme C sans « coût de revient » est à proposer au client avec les corrections du lexique C (§15)."
+  }
+]

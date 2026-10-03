@@ -1,0 +1,133 @@
+[
+  {
+    "id": "L9-1",
+    "fiche": "base (seuil-minimum, produit-transforme-pt, article-vendable, produits-vendables-et-utilisables, labo-central, prestataire-de-livraison)",
+    "besoin": "Collisions de sens de la base, sans variante possible (la base n'en a pas) : le tableau du §10.3 ne mesure que le manuel. Relevées dans la base : C « site » générique (seuil-minimum : « chaque site a ses propres seuils », activité ou labo) ; C « site de production » générique (produit-transforme-pt : « déduit du stock du site de production », le lieu qui produit, labo ou activité) ; C « option » (article-vendable, produits-vendables-et-utilisables : « en option », adverbe) ; C « fabriqué » (labo-central : « fabrique des produits fabriqués (PF) » ; produit-transforme-pt : « Un produit fabriqué (PF) est fabriqué ») ; H et C « livraison » (prestataire-de-livraison : « prestataire de livraison », à côté de transfert = « Livraison interne », non signalé par le point 12 qui ne cherche que les formes entières). Signalements 12 acceptés dans relectures/L9.auto.json (le sens reste clair) ; aucune balise ne les rend (ce ne sont pas les notions du lexique) et I10 interdit de reformuler.",
+    "proposition": "Intégrateur, étape C : ajouter ces occurrences de la base au tableau des collisions du §10.3 et à ecarts-visibles-2c.md (collisions connues, acceptées). Aucune action sur les fichiers balisés.",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : acceptées pour le 2c (la base n'a pas de variante ; I10). À l'étape C : occurrences de la base ajoutées au tableau des collisions du §10.3 et à ecarts-visibles-2c.md (récapitulatif L9-4).",
+    "suite": "Intégrateur documentaire de l'étape C (03/10/2026) : occurrences de la base inscrites au tableau des collisions de la spec (§10.3.2 : option(s), fabriqué(e)(s), site(s), livraison(s)) et dans labflow-reprise/lot-2c/ecarts-visibles-2c.md (§3)."
+  },
+  {
+    "id": "L9-2",
+    "fiche": "base (activite-point-de-vente, approvisionnement-appro, labo-central, transferts)",
+    "besoin": "Gloses redites de la base (point 8, tolérées : question 5) plus nombreuses que l'entrée 8 citée au §10.3 : titre « Activité (point de vente) » (H « Service (service) », C « Point de vente (point de vente) ») et sa définition « Une activité est un point de vente » (H « Un service est un service ») ; titre « Approvisionnement (appro) » (C « Réception (réception) » : avecCourt, qui ôterait la parenthèse, refuse l'argument de casse « Nom », moteur gelé ; le contenu passe par [[Det:appro:un]][[avecCourt:appro]] et rend « Une réception est une entrée de stock ») ; « Le labo (laboratoire central) » (H « La cuisine centrale (cuisine centrale) », sans pléonasme grâce au §7.5) ; transferts (exemple 9). Toutes acceptées dans relectures/L9.auto.json.",
+    "proposition": "Intégrateur, étape C : compléter la ligne « Gloses redites dans la base » du §10.3 (et ecarts-visibles-2c.md) avec ces 4 entrées. Aucune action sur les fichiers balisés.",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : tolérées dans la base (question 5), acceptées dans relectures/L9.auto.json. À l'étape C : la ligne « Gloses redites dans la base » du §10.3 (et ecarts-visibles-2c.md) complétée avec ces 4 entrées (récapitulatif L9-4).",
+    "suite": "Intégrateur documentaire de l'étape C (03/10/2026) : les 4 entrées inscrites à la spec (§10.3.4, gloses redites, base) et résumées dans ecarts-visibles-2c.md (§3, base de connaissances)."
+  },
+  {
+    "id": "L9-3",
+    "fiche": "produits-vendables-et-utilisables, produit-transforme-pt",
+    "besoin": "Cette entrée garde les notions « VENDABLE » / « UTILISABLE » dans les mots de la restauration pour tous les domaines : capitales partielles du contenu (« Un produit VENDABLE », §7.4, exemple 11 : seul « produit » est balisé) et titre en ellipse « Produits vendables et utilisables », balisé [[Pl:produit]] vendables et utilisables (même analyse que decouvrir-labflow de L2 et que l'exemple 11 ; [[Nom:produit_vendable:pl]] donnait H « Prestations vendues et utilisables », un contresens, aucune balise ne rendant « utilisables » seul). Les termes H « Prestation vendue » / « Consommable » et C « Produit fini » / « Semi-fini » n'apparaissent donc pas dans cette entrée ; le modèle les tient du glossaire du prompt. Même limite dans produit-transforme-pt : noms abrégés des 3 catégories (Utilisables, Vendables, Composés Valorisés), que les écrans rendent par cat_pt_* (voc.Nom('cat_pt_utilisable' / 'cat_pt_vendable' / 'cat_pt_valorise'), HistoriqueApproPage.tsx:476, categoriesPt.ts:12) : en H et en C ils restent dans les mots de la restauration ; aucune balise ne les rend sans casser I10 (abréviations).",
+    "proposition": "Limite connue, acceptée (I10, pas de variante pour la base) : à inscrire au §10.3 avec les capitales partielles déjà citées (« produit VENDABLE ») ; à la même ligne, les noms abrégés des 3 catégories de produit-transforme-pt (Utilisables, Vendables, Composés Valorisés), que les écrans rendent par cat_pt_*. Aucune action sur les fichiers balisés.",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : limite connue, acceptée (I10, pas de variante pour la base). À l'étape C : inscrite au §10.3 avec les capitales partielles (« produit VENDABLE »), à la même ligne les noms abrégés des 3 catégories de produit-transforme-pt (récapitulatif L9-4).",
+    "suite": "Intégrateur documentaire de l'étape C (03/10/2026) : inscrit à la spec (§10.3.5, capitales partielles et noms abrégés, avec les exclusions « rendu » de l'étape C, besoin C-3) et dans ecarts-visibles-2c.md (§3)."
+  },
+  {
+    "id": "L9-4",
+    "fiche": "récapitulatif des vagues B1, B2 et V (manuel et base)",
+    "besoin": "Ouvert par l'intégrateur B2 ∥ V pour que rien ne se perde à l'étape C : collisions, redites et tournures qu'aucune balise ne lève (I10), acceptées pour le 2c dans des fiches sans variante ou dans la base, à inscrire au §10.3 de la spec et dans ecarts-visibles-2c.md ; amendements de la spec qu'appellent les corrections d'outils des vagues ; décisions à transmettre au client (§15). Chaque ligne de « liste » renvoie au besoin qui la porte (état final dans son fichier).",
+    "proposition": "À l'étape C, l'intégrateur reprend chaque rubrique de « liste » dans la spec (§10.3, §3.5, §7.7, R8.2.3), dans ecarts-visibles-2c.md et dans la note au client (§15), puis clôt ce besoin.",
+    "liste": [
+      {
+        "rubrique": "§10.3, tableau des collisions : lignes nouvelles",
+        "lignes": [
+          "matière(s) première(s) / C article : referentiel-articles « Les matières premières sont vos matières premières et composants » (L4-1) ; faq « La matière première est une matière première de votre référentiel » (L3-4)",
+          "coût de revient / C fiche_technique « Fiche de coût de revient » : fiches-techniques (titre « Fiches de Coût de Revient & coût de revient » ; « La fiche de coût de revient … calcule son coût de revient matière »), produits-vendables ligne 49 « [Fiches de Coût de Revient](#fiches-techniques) — coût de revient et export » (L4-1) ; dans les fiches à variante, levée par V-C1 et V-C2 (L2-3)",
+          "point de vente / C activite : acheteurs-module « transforme votre labo en point de vente B2B » (homonyme exclu, L7-3)",
+          "responsable de site / C gerant : gerants, bloc astuce « Créez un responsable de site par responsable de site » (L1-1)"
+        ]
+      },
+      {
+        "rubrique": "§10.3, tableau des collisions : exemples à ajouter aux lignes existantes",
+        "lignes": [
+          "option(s) / C supplement : produits-vendables « Pour un produit fini (hors option), une option 📦 … » (L4-1) ; configuration-vente (module), charges (mode de saisie), acheteurs-carnet (case « Créer les comptes portail ») (L7-3) ; base article-vendable et produits-vendables-et-utilisables « en option » (L9-1)",
+          "consommable(s) / H produit_utilisable : articles-valorises « familles marquées « vendable » et « non consommable » » (L4-1)",
+          "fabriqué(e)(s) / C pt : stock-activites « Un produit fabriqué fabriqué au site de production » (L5-1) ; calc-prix « Les produits fabriqués fabriqués » (L8-2) ; stock-labo et calc-transferts, verbe fabriquer (L6-4) ; base labo-central « fabrique des produits fabriqués (PF) », produit-transforme-pt « Un produit fabriqué (PF) est fabriqué » (L9-1)",
+          "réception(s) / C appro : historique ×2, factures ×1 (L5-1) ; stock-labo, transferts, calc-transferts (L6-4) ; dashboard (L7-3) ; calc-pmp « n'a encore reçu aucune réception » (L8-2)",
+          "livraison(s) / H, C transfert : factures « retrouver une livraison précise », « une même livraison » (L5-1) ; fournisseurs, transferts et calc-transferts « bon de livraison » (L6-4) ; base prestataire-de-livraison (L9-1)",
+          "site(s) / C labo, forme courte : dashboard « pertes … par site » (L7-3) ; base seuil-minimum « chaque site a ses propres seuils » (L9-1) ; « site de production » générique : base produit-transforme-pt (L9-1), calc-prix « Production au site de production » (L8-2)",
+          "produit(s) fini(s) / C produit_vendable : calc-production-pt « une entrée en stock du produit fini » (L8-2)",
+          "intermédiaire(s) / C prestataire, lu comme un adjectif : configuration-vente, saisie-ventes, ventes-labo, dashboard (« prix intermédiaire », « canaux intermédiaires », « commissions intermédiaires ») (L7-2)",
+          "H « Fourniture en service », « Préparation en service » : calc-valeur-stock (L8-2)"
+        ]
+      },
+      {
+        "rubrique": "§10.3, répétitions que la grammaire ne peut pas éviter (à côté de « sites de production de production » de stock-labo)",
+        "lignes": [
+          "C « vos **sites de production** de production » : activites (L6-1)",
+          "C « produits fabriqués fabriqués » : calc-prix (L8-2) ; C « produit fabriqué fabriqué » : stock-activites (L5-1)"
+        ]
+      },
+      {
+        "rubrique": "§10.3, gloses redites",
+        "lignes": [
+          "manuel, fiches sans variante : produits-utilisables H « Un **consommable** (consommable) », C « Un **semi-fini** (semi-fini) » (L4-2) ; activites C « vos **points de vente** (points de vente) » (L6-2)",
+          "base (tolérées, question 5) : activite-point-de-vente (titre H « Service (service) », C « Point de vente (point de vente) » ; « Un service est un service »), approvisionnement-appro (C « Réception (réception) »), labo-central (H « La cuisine centrale (cuisine centrale) »), transferts (exemple 9) (L9-2)"
+        ]
+      },
+      {
+        "rubrique": "§10.3, capitales partielles et noms abrégés",
+        "lignes": [
+          "base produits-vendables-et-utilisables : « produit VENDABLE », titre « Produits vendables et utilisables » ; produit-transforme-pt : « Utilisables, Vendables, Composés Valorisés », que les écrans rendent par cat_pt_* (L9-3)"
+        ]
+      },
+      {
+        "rubrique": "§10.3, formes collées à un trait d'union gardées",
+        "lignes": [
+          "« fournisseur-labo » : calc-transferts, exclusion nom-fige (L6-3), à côté de « sous-produit » (décision 2)"
+        ]
+      },
+      {
+        "rubrique": "§10.3, limites de la grammaire (miroir seulement aujourd'hui, signalées par le point 9)",
+        "lignes": [
+          "« à la/aux usine(s) » : produits-utilisables, [[acc:labo:au(x):à la/aux]] (L4-4)",
+          "« En tant que animatrice » : dashboard-gerant (L3-2), produits-vendables (L4.auto.json)",
+          "« une appro » au féminin, forme courte sans genre propre : faq-chiffres (L3-1)"
+        ]
+      },
+      {
+        "rubrique": "ecarts-visibles-2c.md : libellés d'écran gardés en nom-fige",
+        "lignes": [
+          "« *Article* », « *Prix vente* » (saisie-ventes ; VentesPage.tsx:280-281, :716, en dur) (L7-1)",
+          "liens « Articles Valorisés » (referentiel-familles ; l'écran dit « Produits Valorisés ») (L3-3)"
+        ]
+      },
+      {
+        "rubrique": "§10.3 et question 9 : fiches sans variante candidates à une variante Céramique",
+        "lignes": [
+          "faq (L3-4), activites (L6-2)"
+        ]
+      },
+      {
+        "rubrique": "Spec : amendements dus aux corrections d'outils",
+        "lignes": [
+          "§3.5 point 7 : marques d'emphase retirées (B1, L2-2) ; point 9 : contractions manquées (B1, L2-1)",
+          "§3.5 points 8 et 9 : marques d'emphase retirées ; point 9 : élision à travers « la/aux » (B2, L4-3)",
+          "§3.5 (variantes) et R8.2.3 : l'extrait d'une exclusion de variante peut porter une forme du lexique du domaine (B2, V-H1-1, V-C1-1, V-H2-1, V-C2-1)",
+          "§7.5 et §7.7 (commentaire de l'exemple 9) : dans le manuel, une glose redite est corrigée, exclue, ou acceptée par écrit quand l'exclusion laisserait un sigle que le domaine ne voit jamais (B2, L4-2) ; GUIDE §7 et §11 déjà à jour",
+          "consolidation : le champ admis sans balise ai_knowledge_base.titre « Article vendable » (seul champ admis, générateur) ira dans src/config/manuelSansBaliseAdmis.json",
+          "A16.11 : les tests des outils sont 61 après B2 (58 à M0, +1 en B1, +2 en B2), toujours lancés à part de npm test"
+        ]
+      },
+      {
+        "rubrique": "§15 : décisions à transmettre au client",
+        "lignes": [
+          "terme C de gerant « Responsable de site » (L1-1, option b)",
+          "terme C de fiche_technique sans « coût de revient » (L2-3)",
+          "libellé de lien « Articles Valorisés » → « Produits Valorisés », change aussi la restauration (L3-3)",
+          "terme C de prestataire qui ne soit pas un adjectif (L7-2)",
+          "« sections repliées par défaut » → « ouvertes par défaut, repliables », change aussi la restauration (L7-4)",
+          "économat et terme H de labo (V-H2-2)",
+          "les 16 variantes, livrées en brouillon, à valider dans l'admin"
+        ]
+      }
+    ],
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : liste à reprendre à l'étape C (la spec et ecarts-visibles-2c.md sont mis à jour à la consolidation, §13) ; aucun fichier balisé à changer.",
+    "suite": "Intégrateur documentaire de l'étape C (03/10/2026) : chaque rubrique de « liste » reprise. Collisions (lignes nouvelles et exemples) : spec §10.3.2 ; répétitions : §10.3.3 ; gloses redites : §10.3.4 ; capitales partielles et noms abrégés : §10.3.5 ; formes collées à un trait d'union : §10.3.6 ; limites de la grammaire : §10.3.7 ; libellés d'écran gardés en nom-fige : §10.3.10 ; fiches candidates à une variante du 2e domaine (faq, activites) : §10.3.1 et question 9 ; amendements dus aux corrections d'outils : §3.5 points 7, 8, 9, §3.3 et §3.5 (variantes), R8.2.3, §7.5, §7.7 (exemple 9), R3.6.5 (champ admis « Article vendable »), A16.11 (65 tests des outils après l'étape C) ; décisions à transmettre au client : spec §15 et ecarts-visibles-2c.md §4 (L1-1, L2-3, L3-3, L7-2, L7-4, V-H2-2, validation des 16 variantes, plus C-5 : « bureau logisti » et formes courtes du lexique usine). Les besoins REPORTÉ des autres lots qui renvoient à ce récapitulatif (L3-1, L3-2, L3-4, L4-1, L4-2, L4-4, L5-1, L6-1 à L6-4, L7-1, L7-3) y sont inscrits ; leur fichier n'est pas réécrit. Spec v3.0 (« état final »), commit docs(lot-2c) de l'étape C."
+  }
+]

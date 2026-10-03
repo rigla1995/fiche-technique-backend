@@ -1,0 +1,15 @@
+{
+  "slug": "gerants",
+  "titre": "Comptes gérants",
+  "icone": "👥",
+  "partie": "Gestion",
+  "ordre": 74,
+  "mots_cles": "gérants, collaborateurs, invitation, email, accès, affectation, activités, labos, désactiver, périmètre, délégation, mot de passe",
+  "ecran": "/client/gerants",
+  "actif": true,
+  "visible_gerant": false,
+  "updated_at": "2026-07-06T16:11:31.248Z",
+  "defautNull": false,
+  "md5Garde": "ec7ed82e7b5585ca34a6a6684498a00e",
+  "md5Contenu": "ec7ed82e7b5585ca34a6a6684498a00e"
+}

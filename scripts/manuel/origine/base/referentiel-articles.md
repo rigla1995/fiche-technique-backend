@@ -1,0 +1,1 @@
+Le référentiel regroupe les articles/ingrédients du client avec leur unité, leur famille/catégorie et leur prix de référence. C'est la base à partir de laquelle on construit le stock, les fiches techniques et les ventes.

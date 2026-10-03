@@ -1,0 +1,15 @@
+{
+  "slug": "articles-valorises",
+  "titre": "[[Titre:produit_valorise:pl]]",
+  "exclusions": [
+    {
+      "extrait": "Fiche technique (XLS)",
+      "forme": "Fiche technique",
+      "type": "nom-fige",
+      "occurrences": 2,
+      "justification": "bouton cité sous un ancien libellé : l'écran écrit « Fiche tech. » sans le terme (ValorisesPage.tsx:326, info-bulle :321) ; l'écran ne porte pas le terme (R7.1.3)"
+    }
+  ],
+  "baliseur": "L4",
+  "relecteur": "L9"
+}

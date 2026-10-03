@@ -1,0 +1,1 @@
+Les prix d'achat sont saisis HT (hors taxe) avec un taux de TVA ; le TTC = HT × (1 + TVA). LabFlow affiche les valeurs en TTC partout : coûts, stocks, rapports et tableaux de bord. Les produits transformés sont valorisés en TTC avec une TVA à 0 (leur coût intègre déjà les prix TTC des ingrédients).

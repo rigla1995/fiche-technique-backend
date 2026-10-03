@@ -1,0 +1,15 @@
+{
+  "slug": "rapports-vente",
+  "titre": "Rapport de ventes (intégré au tableau de bord)",
+  "icone": "📈",
+  "partie": "Espace Vente",
+  "ordre": 64,
+  "mots_cles": "rapport ventes, tableau de bord, marges, canal, categories, food cost",
+  "ecran": "/client/ventes/rapport",
+  "actif": true,
+  "visible_gerant": false,
+  "updated_at": "2026-07-06T17:52:14.121Z",
+  "defautNull": false,
+  "md5Garde": "31981ac6267d52b2807260be55baa2d9",
+  "md5Contenu": "31981ac6267d52b2807260be55baa2d9"
+}

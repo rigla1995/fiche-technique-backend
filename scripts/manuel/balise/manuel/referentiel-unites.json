@@ -1,0 +1,15 @@
+{
+  "slug": "referentiel-unites",
+  "titre": "Unités",
+  "exclusions": [
+    {
+      "extrait": "pièce, portion",
+      "forme": "portion",
+      "type": "homonyme",
+      "occurrences": 2,
+      "justification": "« portion » nom d'une unité de mesure dans une liste d'exemples (kg, L, pièce, portion), pas la portion d'une fiche technique (clé portion)"
+    }
+  ],
+  "baliseur": "L3",
+  "relecteur": "L8"
+}

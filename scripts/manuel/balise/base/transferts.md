@@ -1,0 +1,1 @@
+[[Un:transfert]] déplace [[du:stock]] [[det:labo:du]][[MAJ:labo]] (production centrale) vers [[det:activite:un]][[MAJ:activite]] ([[nom:activite_desc]]). [[Le:labo]] s'approvisionne en gros puis alimente [[le:activite:pl]]. C'est la seule voie [[de:appro]] [[du:activite:pl]] en [[nom:pt:pl]] d'origine [[nom:labo]].

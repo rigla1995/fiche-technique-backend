@@ -1,0 +1,331 @@
+[
+  {
+    "fiche": "referentiel-articles",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matières premières",
+    "decision": "accepté",
+    "raison": "collision : l'origine écrit « matières premières » en clair (« vos matières premières et ingrédients ») et C nomme l'article « Matière première » : « Les matières premières sont vos matières premières et composants » ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante ; noté pour le §10.3 (besoin L4-1)"
+  },
+  {
+    "fiche": "referentiel-articles",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "matière première",
+    "decision": "accepté",
+    "raison": "même phrase que le point 7 : collision irréductible sans variante, notée pour le §10.3 (besoin L4-1)"
+  },
+  {
+    "fiche": "referentiel-import",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matière première",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le même terme dans la phrase (« une ligne par article : nom de l'article ») ; le terme du domaine est seulement plus long, français correct ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 9,
+    "domaine": "hotellerie",
+    "texte": "le ou",
+    "decision": "accepté",
+    "raison": "« le ou les » / « la ou les » : pas d'élision devant la conjonction « ou », français correct (faux positif du point 9) ; l'accord du déterminant singulier est posé ([[acc:…:le:la]])"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 9,
+    "domaine": "ceramique",
+    "texte": "le ou",
+    "decision": "accepté",
+    "raison": "« le ou les » / « la ou les » : pas d'élision devant la conjonction « ou », français correct (faux positif du point 9) ; l'accord du déterminant singulier est posé ([[acc:…:le:la]])"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 9,
+    "domaine": "miroir",
+    "texte": "le ou",
+    "decision": "accepté",
+    "raison": "« le ou les » / « la ou les » : pas d'élision devant la conjonction « ou », français correct (faux positif du point 9) ; l'accord du déterminant singulier est posé ([[acc:…:le:la]])"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Matières premières",
+    "decision": "accepté",
+    "raison": "libellé d'étape de l'assistant (voc.Pl('article'), ProductList.tsx:883 ; voc.Titre('produit_utilisable', true), ComposedValoriseModal.tsx:116) suivi des éléments qu'il désigne, comme dans l'origine ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le même terme dans la phrase (« Affecter à une activité : … pastille d'activité » ; « filtres Activité … la carte d'un point de vente » : activite et activite_desc ont le même nom en C) ; le terme du domaine est seulement plus long, français correct ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "préparation",
+    "decision": "accepté",
+    "raison": "« sous-préparation(s) » est hors lexique (spec §7.2 : ni balisé ni exclu) ; en H une préparation est justement un produit transformé, le sens reste clair (§10.3, collision préparation)"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« composant(s) » = éléments d'une recette (articles et produits utilisables) : sens proche de la clé ingredient (Composant en H et C), le sens reste clair (§10.3, collision composant)"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "option",
+    "decision": "accepté",
+    "raison": "« une option » = case à cocher de l'écran, et C nomme le supplément « Option » (« hors option, une option ») ; collision connue (§10.3, option(s)) ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante (besoin L4-1)"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« composant(s) » = éléments d'une recette (articles et produits utilisables) : sens proche de la clé ingredient (Composant en H et C), le sens reste clair (§10.3, collision composant)"
+  },
+  {
+    "fiche": "produits-vendables",
+    "point": 9,
+    "domaine": "miroir",
+    "texte": "que animatrice",
+    "decision": "accepté",
+    "raison": "« En tant que [[nom:gerant]] » : aucune méthode n'élide « que » devant un terme à voyelle (même cas que dashboard-gerant, besoin L3-2, REPORTÉ) ; H « responsable de service » et C « responsable de site » commencent par une consonne, seul le miroir lit « que animatrice » ; signalé par le point 9 depuis la correction de L4-3 (marques d'emphase retirées, intégrateur B2)"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "semi-fini",
+    "decision": "accepté",
+    "raison": "glose d'origine « (PU) » rendue par [[court:produit_utilisable]] : le domaine n'a pas de forme courte, la glose redit le nom ; avecCourt (qui l'omettrait) est impossible car le gras ne couvre que le nom (I10) ; sens clair ; besoin L4-2"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 7,
+    "domaine": "miroir",
+    "texte": "invention utile",
+    "decision": "accepté",
+    "raison": "glose d'origine « (PU) » rendue par [[court:produit_utilisable]] : le domaine n'a pas de forme courte, la glose redit le nom ; avecCourt (qui l'omettrait) est impossible car le gras ne couvre que le nom (I10) ; sens clair ; besoin L4-2"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "quantité par unité",
+    "decision": "accepté",
+    "raison": "formule : les deux sommes parallèles répètent « portion » dans l'origine ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "préparation",
+    "decision": "accepté",
+    "raison": "« une préparation intermédiaire », « vos préparations » : en H un produit utilisable est bien une préparation (clé pt), le sens reste juste (§10.3, collision préparation)"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« composant(s) » = éléments d'une recette (articles et produits utilisables) : sens proche de la clé ingredient (Composant en H et C), le sens reste clair (§10.3, collision composant)"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "intermédiaire",
+    "decision": "accepté",
+    "raison": "adjectif (« préparation intermédiaire »), pas le prestataire (Intermédiaire en C) : le sens reste clair (§10.3, collision intermédiaire)"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« composant(s) » = éléments d'une recette (articles et produits utilisables) : sens proche de la clé ingredient (Composant en H et C), le sens reste clair (§10.3, collision composant)"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 8,
+    "domaine": "hotellerie",
+    "texte": "consommable (consommable)",
+    "decision": "accepté",
+    "raison": "glose d'origine « Un **produit utilisable** (PU) » : le sigle est rendu par [[court:produit_utilisable]] ; le domaine n'a pas de forme courte, la glose redit le nom. avecCourt (qui omettrait la parenthèse) est impossible : le gras ne couvre que le nom (I10). Une exclusion glose laisserait « (PU) », sigle que le domaine ne voit jamais à l'écran (ProductList.tsx:566, voc.court('produit_utilisable')). Redite acceptée, sens clair, fiche sans variante ; signalée par le point 8 depuis la correction de L4-3 (intégrateur B2, relectures/L4.json ligne 3 ; besoin L4-2, à inscrire au §10.3)"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 8,
+    "domaine": "ceramique",
+    "texte": "semi-fini (semi-fini)",
+    "decision": "accepté",
+    "raison": "glose d'origine « Un **produit utilisable** (PU) » : le sigle est rendu par [[court:produit_utilisable]] ; le domaine n'a pas de forme courte, la glose redit le nom. avecCourt (qui omettrait la parenthèse) est impossible : le gras ne couvre que le nom (I10). Une exclusion glose laisserait « (PU) », sigle que le domaine ne voit jamais à l'écran (ProductList.tsx:566, voc.court('produit_utilisable')). Redite acceptée, sens clair, fiche sans variante ; signalée par le point 8 depuis la correction de L4-3 (intégrateur B2, relectures/L4.json ligne 3 ; besoin L4-2, à inscrire au §10.3)"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 8,
+    "domaine": "miroir",
+    "texte": "invention utile (invention utile)",
+    "decision": "accepté",
+    "raison": "glose d'origine « Un **produit utilisable** (PU) » : le sigle est rendu par [[court:produit_utilisable]] ; le domaine n'a pas de forme courte, la glose redit le nom. avecCourt (qui omettrait la parenthèse) est impossible : le gras ne couvre que le nom (I10). Une exclusion glose laisserait « (PU) », sigle que le domaine ne voit jamais à l'écran (ProductList.tsx:566, voc.court('produit_utilisable')). Redite acceptée, sens clair, fiche sans variante ; signalée par le point 8 depuis la correction de L4-3 (intégrateur B2, relectures/L4.json ligne 3 ; besoin L4-2, à inscrire au §10.3)"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 9,
+    "domaine": "miroir",
+    "texte": "la/aux usine",
+    "decision": "accepté",
+    "raison": "[[acc:labo:au(x):à la/aux]] ne sait pas élider : un terme labo féminin à initiale vocalique donne « à la/aux usine(s) » au lieu de « à l'/aux usine(s) » ; H « à la/aux cuisine(s) centrale(s) » et C « au(x) site(s) de production » sont justes ; limite de la grammaire, miroir seulement aujourd'hui (besoin L4-4) ; signalé par le point 9 depuis la correction de L4-3 (intégrateur B2), il le sera pour tout futur lexique concerné"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "livraison interne",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le même terme dans la phrase (« en mode transfert : pensez-y avant votre premier transfert ») ; le terme du domaine est seulement plus long, français correct ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "livraison interne",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le même terme dans la phrase (« en mode transfert : pensez-y avant votre premier transfert ») ; le terme du domaine est seulement plus long, français correct ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 9,
+    "domaine": "hotellerie",
+    "texte": "la ou",
+    "decision": "accepté",
+    "raison": "« le ou les » / « la ou les » : pas d'élision devant la conjonction « ou », français correct (faux positif du point 9) ; l'accord du déterminant singulier est posé ([[acc:…:le:la]])"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 9,
+    "domaine": "miroir",
+    "texte": "la ou",
+    "decision": "accepté",
+    "raison": "« le ou les » / « la ou les » : pas d'élision devant la conjonction « ou », français correct (faux positif du point 9) ; l'accord du déterminant singulier est posé ([[acc:…:le:la]])"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "matière première",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le même terme dans la phrase (« regroupés par catégorie d'article, … — Article (et son unité) ») ; le terme du domaine est seulement plus long, français correct ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Matières premières",
+    "decision": "accepté",
+    "raison": "libellé d'étape de l'assistant (voc.Pl('article'), ProductList.tsx:883 ; voc.Titre('produit_utilisable', true), ComposedValoriseModal.tsx:116) suivi des éléments qu'il désigne, comme dans l'origine ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Semi-finis",
+    "decision": "accepté",
+    "raison": "libellé d'étape de l'assistant (voc.Pl('article'), ProductList.tsx:883 ; voc.Titre('produit_utilisable', true), ComposedValoriseModal.tsx:116) suivi des éléments qu'il désigne, comme dans l'origine ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 7,
+    "domaine": "miroir",
+    "texte": "Inventions Utiles",
+    "decision": "accepté",
+    "raison": "libellé d'étape de l'assistant (voc.Pl('article'), ProductList.tsx:883 ; voc.Titre('produit_utilisable', true), ComposedValoriseModal.tsx:116) suivi des éléments qu'il désigne, comme dans l'origine ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "point de vente",
+    "decision": "accepté",
+    "raison": "l'origine reprend déjà le même terme dans la phrase (« une pastille d'activité … au stock de cette activité ») ; le terme du domaine est seulement plus long, français correct ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« composant(s) » = éléments d'une recette (articles et produits utilisables) : sens proche de la clé ingredient (Composant en H et C), le sens reste clair (§10.3, collision composant)"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "consommable",
+    "decision": "accepté",
+    "raison": "« non consommable » = propriété de famille du référentiel (interrupteur Consommable, ReferentielFamillesPage), et H nomme le produit utilisable « Consommable » ; collision connue (§10.3, consommable(s)) ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante (besoin L4-1)"
+  },
+  {
+    "fiche": "articles-valorises",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« composant(s) » = éléments d'une recette (articles et produits utilisables) : sens proche de la clé ingredient (Composant en H et C), le sens reste clair (§10.3, collision composant)"
+  },
+  {
+    "fiche": "fiches-techniques",
+    "point": 7,
+    "domaine": "ceramique",
+    "texte": "Produits Finis",
+    "decision": "accepté",
+    "raison": "deux clés distinctes dont les noms C partagent des mots (produit_vendable « Produit fini », produit_valorise « Produit fini catalogue ») : « Produits Finis, Semi-finis et Produits Finis Catalogue composés » ; impossible à éviter sans reformuler le texte commun (I10), fiche sans variante"
+  },
+  {
+    "fiche": "fiches-techniques",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "préparation",
+    "decision": "accepté",
+    "raison": "« sous-préparation(s) » est hors lexique (spec §7.2 : ni balisé ni exclu) ; en H une préparation est justement un produit transformé, le sens reste clair (§10.3, collision préparation)"
+  },
+  {
+    "fiche": "fiches-techniques",
+    "point": 12,
+    "domaine": "hotellerie",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« composant(s) » = éléments d'une recette (articles et produits utilisables) : sens proche de la clé ingredient (Composant en H et C), le sens reste clair (§10.3, collision composant)"
+  },
+  {
+    "fiche": "fiches-techniques",
+    "point": 12,
+    "domaine": "ceramique",
+    "texte": "composant",
+    "decision": "accepté",
+    "raison": "« composant(s) » = éléments d'une recette (articles et produits utilisables) : sens proche de la clé ingredient (Composant en H et C), le sens reste clair (§10.3, collision composant)"
+  },
+  {
+    "fiche": "fiches-techniques",
+    "point": 7,
+    "domaine": "ceramique",
+    "lexique": "production",
+    "texte": "Fiche de coût de revient",
+    "decision": "accepté",
+    "raison": "l'origine écrit la forme courte (« FT Stock, FT Manuel ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:fiche_technique]] rend le nom complet, comme les deux modes de l'écran (voc.Court) ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
+  }
+]

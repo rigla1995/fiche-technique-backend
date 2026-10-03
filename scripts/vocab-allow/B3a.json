@@ -64,13 +64,6 @@
   },
   {
     "fichier": "src/controllers/laboController.js",
-    "avant": " (labo)",
-    "apres": "⟦·⟧⟦? (labo)|⟧",
-    "type": "deplacement",
-    "justification": "Marqueur « (labo) » de la destination déplacé du SQL (ld.nom || ' (labo)') vers le JS (spec §6.2) : le SQL renvoie le nom et le drapeau dest_labo, le JS assemble `${r.dest_nom} (${voc.court('labo')})` quand le drapeau est vrai et le nom != null ; rendu par défaut identique (NULL reste NULL), vérifié par test/B3a-exportsLabo.test.js."
-  },
-  {
-    "fichier": "src/controllers/laboController.js",
     "avant": "La production de produits transformés est désactivée pour ce labo.",
     "apres": "La production de produits transformés est désactivée pour ce labo.",
     "type": "non-repliable",

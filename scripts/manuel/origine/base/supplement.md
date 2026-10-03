@@ -1,0 +1,1 @@
+Un supplément est un produit vendu en plus d'un produit principal et facturé séparément (ex : sauce, extra fromage). Il a sa propre catégorie de type "supplément" et entre dans le calcul du chiffre d'affaires.

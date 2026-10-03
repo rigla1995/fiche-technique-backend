@@ -1,0 +1,20 @@
+[
+  {
+    "slug": "fournisseur",
+    "domaine": "ceramique",
+    "phrase": "Un fournisseur est un partenaire de réception du compte (nom, adresse, téléphone).",
+    "probleme": "Le sens change. Dans « partenaire d'approvisionnement », le mot a son sens courant : le rôle du fournisseur, qui approvisionne le compte. Ce n'est pas la notion LabFlow « un approvisionnement » (une entrée de stock), que la suite de l'entrée balise à juste titre (« Chaque ligne [[de:appro:court]] »). Balisé [[de:appro]], le texte donne en C « partenaire de réception » : le fournisseur passe pour celui qui reçoit, pas pour celui qui livre. Le miroir donne « partenaire de rentrée ». L'exemple 3 ter (« voie de réception ») ne s'applique pas ici : il parle d'une voie d'entrée de stock, donc bien de la notion.",
+    "correction": "Exclure le mot, en homonyme. Dans balise/base/fournisseur.md, écrire « partenaire d'approvisionnement » en clair à la place de « partenaire [[de:appro]] ». Dans fournisseur.json, ajouter à exclusions : { \"extrait\": \"partenaire d'approvisionnement\", \"forme\": \"approvisionnement\", \"type\": \"homonyme\", \"occurrences\": 1, \"justification\": \"sens courant (le fournisseur approvisionne le compte), pas l'entrée de stock appro ; balisé, C lirait « partenaire de réception »\" }. Essai du relecteur avec controler.mjs --racine (copie jetable de balise/ et relectures/), --base fournisseur : points 1 à 6 verts, 0 signalement, code 0. Rendus : « partenaire d'approvisionnement » en H, C et miroir. Le reste de l'entrée ne change pas. Si tu tiens au balisage, écris ta raison et je clos en « refusé ».",
+    "etat": "clos",
+    "verification": "Tour 4 : balise/base/fournisseur.md porte « partenaire d'approvisionnement » en clair (identique à l'origine), « [[de:appro:court]] » conservé ; exclusion homonyme ajoutée à fournisseur.json (occurrences 1). controler --lot L9 : 32/32, code 0, fournisseur 0 à traiter. Rendus frais : H et C « partenaire d'approvisionnement du compte », C « Chaque ligne de réception », miroir « partenaire d'approvisionnement », « ligne de rentrée »."
+  },
+  {
+    "slug": "produit-transforme-pt",
+    "domaine": "hotellerie",
+    "phrase": "Les prépas se répartissent en trois catégories : Utilisables (intégrées dans d'autres produits), Vendables (vendues au client final) et Composées Valorisées (fabriquées à la cuisine centrale et vendues telles quelles).",
+    "probleme": "Même limite que celle du besoin L9-3, mais cette entrée n'y figure pas. Les trois noms de catégorie gardent les mots de la restauration. Or les écrans les rendent dans les mots du domaine : voc.Nom('cat_pt_utilisable' / 'cat_pt_vendable' / 'cat_pt_valorise'), par exemple HistoriqueApproPage.tsx:476 et categoriesPt.ts:12. En H, on lit à l'écran « Consommables », « Prestations Vendues » et « Prestations Catalogue » ; en C, « Semi-finis », « Produits Finis » et « Produits Finis Catalogue ». Aucune balise ne peut rendre ces noms ici : le texte les abrège (« Utilisables » pour « Produits Transformés Utilisables »), et une balise cat_pt_* casserait I10. Il n'y a donc rien à corriger dans le fichier balisé.",
+    "correction": "Aucune retouche de balise/base/produit-transforme-pt.*. Dans besoins/L9.json, ajouter produit-transforme-pt au champ fiche du besoin L9-3, avec une phrase : « noms abrégés des 3 catégories (Utilisables, Vendables, Composés Valorisés), que les écrans rendent par cat_pt_* : à inscrire à la même ligne du §10.3 ».",
+    "etat": "clos",
+    "verification": "Tour 4 : besoins/L9.json, L9-3 (etat OUVERT) : fiche « produits-vendables-et-utilisables, produit-transforme-pt », besoin et proposition citent les noms abrégés des 3 catégories (cat_pt_*, HistoriqueApproPage.tsx:476, categoriesPt.ts:12), étendus à H et C. produit-transforme-pt : controler OK, 0 à traiter, 1 accepté (inchangé). Reste pour l'intégrateur via L9-3 (§10.3)."
+  }
+]

@@ -1,0 +1,29 @@
+{
+  "cle": "article vendable",
+  "titre": "Article vendable",
+  "exclusions": [
+    {
+      "extrait": "Article vendable",
+      "forme": "Article",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "titre : sens « tout ce que le compte vend » (produits et articles revendus), pas l'article du référentiel : règle 4 du glossaire de l'assistant (src/services/aiService.js:104-106, « ne le traduis pas par « … vendables » ») ; balisé, H lirait « fourniture vendable », un contresens"
+    },
+    {
+      "extrait": "article vendable",
+      "forme": "article",
+      "type": "homonyme",
+      "occurrences": 1,
+      "justification": "sens « tout ce que le compte vend » (produits et articles revendus), pas l'article du référentiel : règle 4 du glossaire de l'assistant (src/services/aiService.js:104-106, « ne le traduis pas par « … vendables » ») ; balisé, H lirait « fourniture vendable », un contresens"
+    },
+    {
+      "extrait": "prix de vente",
+      "forme": "vente",
+      "type": "locution",
+      "occurrences": 2,
+      "justification": "locution figée du métier (lot-2-spec §3 règle 4, spec 2c §7.2)"
+    }
+  ],
+  "baliseur": "L9",
+  "relecteur": "L7"
+}

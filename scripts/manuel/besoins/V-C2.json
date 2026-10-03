@@ -1,0 +1,10 @@
+[
+  {
+    "id": "V-C2-1",
+    "fiche": "decouvrir-labflow, compte-activites-labos, demarrage, roles, onboarding-configuration",
+    "besoin": "Défaut d'un outil (contrôle des variantes, point 3) : R8.2.3 et le §3.5 admettent une forme du lexique du domaine écrite en clair « sauf exclusion justifiée », mais verifierExclusions (controler.mjs) refuse tout extrait sans forme par DÉFAUT (« sans emploi »). Une forme du domaine qui n'est pas une forme par défaut ne peut donc jamais être exclue dans une variante, même homonyme. Cas de V-C2 en Céramique : « option » (option Acheteurs de l'abonnement, écran « Option {voc.Court('acheteur', true)} », MonAbonnementPage.tsx:343) est la forme du terme C de supplement ; « site » (au sens général d'implantation) est la forme courte C de labo. Essai fait avec controler.mjs --racine (racine jetable) : exclusion { extrait: « l'option », type: homonyme } refusée, « sans emploi ». Contourné sans perte dans la variante : « le module Revendeurs » (écran « Module {voc.Court('acheteur', true)} », AcheteursGuard.tsx:90 et 101), « établissement(s) » pour « site(s) », « deux choix » pour « deux options », « *(facultatif)* » pour « *(option)* ».",
+    "proposition": "Intégrateur : soit accepter la règle telle qu'elle est (la variante reformule, ce que V-C2 a fait ; amender la phrase « sauf exclusion justifiée » du §3.5 et du GUIDE §14) ; soit admettre, pour une variante seulement, un extrait qui contient une forme du lexique de SON domaine.",
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : défaut d'outil corrigé (même correction que V-H1-1 : la phrase « sauf exclusion justifiée » du §3.5 et de R8.2.3 vaut désormais aussi pour une forme du domaine, sans amendement de sens ; précision à écrire à l'étape C). Les contournements de V-C2 sont gardés (« le module Revendeurs », AcheteursGuard.tsx:90 ; « établissement(s) » ; « deux choix » ; « *(facultatif)* »), sans perte ; le GUIDE §14 les cite comme reformulation préférable."
+  }
+]

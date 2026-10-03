@@ -1,0 +1,1 @@
+Le food cost (ratio de coût matière) = coût matière ÷ chiffre d'affaires, en %. Repères LabFlow : moins de 30% = sain, 30 à 40% = à surveiller, plus de 40% = élevé (revoir prix ou portions). Plus il est bas, plus la marge est élevée.

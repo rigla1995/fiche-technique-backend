@@ -1,0 +1,1 @@
+Une activité est un point de vente du client (restaurant, café, kiosque…). Elle a son propre stock, ses approvisionnements, ses ventes et ses pertes. Un compte client gère une ou plusieurs activités (et éventuellement un ou plusieurs labos), sans distinction de type de compte. Les données peuvent être filtrées par activité.
