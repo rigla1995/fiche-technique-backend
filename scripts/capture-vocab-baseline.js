@@ -321,6 +321,9 @@ const masquerTexte = (s) => {
 const CLE_ID = /^(id|ids)$|Ids?$|_ids?$|^userId$|^token$|^inviteToken$|Token$|By$|_by$/;
 // Clés composées « a-314 » / « l-12 » (destKey, sourceKey…) : le numéro est un id.
 const CLE_COMPOSEE = /Key$/;
+// Compteurs de jours relatifs à l'instant du passage (tableaux de bord : Math.round((Date.now() - date) / 86400000),
+// dashboardV2Controller.js:334) : la valeur change avec l'heure et le jour, pas avec le code.
+const CLE_RELATIVE = /^jours(_|$)/;
 const estBase64Long = (s) => s.length >= 200 && /^[A-Za-z0-9+/=\r\n]+$/.test(s);
 const masquer = (v, cleParent = '') => {
   if (v == null) return v;
@@ -330,7 +333,7 @@ const masquer = (v, cleParent = '') => {
     if (CLE_COMPOSEE.test(cleParent) && /^[a-z]+-\d+$/.test(v)) return v.replace(/\d+$/, '⟨id⟩');
     return masquerTexte(v);
   }
-  if (typeof v === 'number') return CLE_ID.test(cleParent) ? '⟨id⟩' : v;
+  if (typeof v === 'number') return CLE_ID.test(cleParent) ? '⟨id⟩' : CLE_RELATIVE.test(cleParent) ? '⟨jours⟩' : v;
   if (Array.isArray(v)) return v.map((x) => masquer(x, cleParent));
   if (Buffer.isBuffer(v)) return '⟨base64⟩';
   if (typeof v === 'object') {

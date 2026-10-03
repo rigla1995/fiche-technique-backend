@@ -267,3 +267,11 @@ principale. La 193 ne touche ni le manuel ni la base : les empreintes globales (
   « article » générique du §6.5 : en-tête de l'export « Ventes du labo », description de `get_config_vente`).
   Restent à typer après leur vague : l'« article » générique de `aiService.js:34`, `:49` (le prompt est UN texte : une
   exception par forme l'éteindrait en entier), et les libellés de contrat qui relèvent du lot 3.
+
+### Compteurs de jours relatifs masqués (03/10/2026)
+
+Les champs `jours` et `jours_inventaire` des tableaux de bord valent `Math.round((Date.now() - date) / 86400000)`
+(`dashboardV2Controller.js:334`) : ils changent avec l'heure et le jour du passage, pas avec le code (un contrôle à
+15:21 donnait 33 écarts « 15 → 16 » contre une référence de la nuit). La capture les masque en `⟨jours⟩`
+(`CLE_RELATIVE`), et les 33 valeurs de `restauration.json` ont été masquées par la même règle (le masquage est une
+fonction pure de la capture : cela équivaut à une recapture). Contrôle ensuite : IDENTIQUE.

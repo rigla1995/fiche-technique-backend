@@ -2016,6 +2016,14 @@ la mise en veille du poste pendant un passage.
 **A16.11 — Tests des outils.** `npm test` ne lance pas `scripts/manuel/test/` (58 tests) : chaque porte les lance à
 part (`node --test scripts/manuel/test/*.test.*`).
 
+**A16.12 — Correctif hors lot fusionné, et compteurs de jours masqués (03/10/2026).** Le correctif « mois des
+mensualités en UTC » (backend `4897e09`, `develop` `a7c8424`, `main` `ee9a28e`, déployé) a été fusionné dans la
+branche (`27f5340`) ; `scripts/vocab-check.base` est réépinglé sur `a7c8424`. Il ne change aucune sortie de
+l'oracle. Le contrôle a révélé que les compteurs `jours` et `jours_inventaire` des tableaux de bord dépendent de
+l'heure et du jour du passage (`dashboardV2Controller.js:334`) : la capture les masque en `⟨jours⟩`, et la référence
+restauration a été masquée par la même règle (33 valeurs), sans recapture. Restauration IDENTIQUE, `--domaine
+hotellerie --hors-manuel` à 0, `npm test` 340/340.
+
 ---
 
 ## Annexe A — Mesures

@@ -5,10 +5,10 @@
 # 511 unité(s), 41 fichier(s).
 
 src/controllers/abonnementController.js
-  l. 1594
+  l. 1579
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
-  l. 1992
+  l. 1977
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
 
