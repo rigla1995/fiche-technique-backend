@@ -1,4 +1,4 @@
-# Lot 2c — Spécification v2.1 : le manuel et la base de connaissances dans les mots du domaine
+# Lot 2c — Spécification v2.2 : le manuel et la base de connaissances dans les mots du domaine
 
 Références :
 - `docs/lot-2-spec.md` (moteur, balises, outil de preuve, invariants I1 à I6, cadrage du 2c au §5) ;
@@ -38,6 +38,11 @@ Historique :
   `$v196_` sans tiret de domaine (R3.6.3) ; pas de badge « sans balises » ni de règle 3 trompeuse dans la fenêtre
   D1 → D2 (R5.7.2, §6.4) ; caractères d'un terme et Markdown (§7.6, question 13) ; contrôle du PDF lancé à la sortie
   de M0 (§2.7) ; `base-locale.js` connecté à la base `postgres` (R2.8.1).
+- **v2.2 (03/10/2026)**, après les étapes O et S0 (backend `d6c2b11` à `d634b3a`, frontend `3c90c50` ; contrôle
+  final `labflow-reprise/lot-2c/controle-o-s0.md` : « prêt pour M0 ∥ S ∥ A : OUI, avec réserves ») : empreintes
+  des 32 entrées de la base dans la capture (R2.3.4) et leur scan hors restauration (R2.4.8) ; garde « date locale =
+  date UTC » (§2.5) ; `verifierBalises` signale aussi une balise non fermée (§5.1) ; l'essai de migration vérifie
+  aussi les 32 entrées (§3.7) ; la base principale peut porter la 193 (§2.8).
 
 **Têtes.** Backend : `develop` = `863f8f0`, branche `feat/lot-2c-manuel` = `fbca8ce` (develop + `b157b28`
 réépinglage de `scripts/vocab-check.base` + `fbca8ce` lecture de production `scripts/controle-avant-2c.sql`).
@@ -311,6 +316,13 @@ question posée avec les anciens mots trouve encore la fiche. Elle reçoit une *
 **R2.3.3 — Signatures.** Les appels restent sans `voc` (`:710` et ceux de R2.3.2) : ils prouvent le repli de
 `executeToolCall` (R5.3.3).
 
+**R2.3.4 — Empreintes de la base (ajout de l'étape O, `d634b3a`).** Les recherches ne lisent le contenu que de
+11 entrées sur 32 (mesuré par la relecture de O : une mutation du contenu de « Timbre fiscal » passait inaperçue).
+La capture fait donc une recherche par entrée active (titre rendu, compte B, sans `voc`) et écrit
+`meta.empreintesBase` (md5 non masqué de `{ titre, contenu }`, ordre des titres) ; elle s'arrête si une entrée ne
+sort pas. En restauration, le contrôle exige ces empreintes égales à la référence, ordre compris, sans écart
+admissible.
+
 ### 2.4 Scan hors restauration étendu (`check-invariant-vocab.js --domaine …`)
 
 **R2.4.1 — Ce qui est lu.** Le commentaire et l'exclusion de `:417-418` sont retirés. Famille `assistant`
@@ -379,10 +391,25 @@ avec `--hors-manuel` dans les trois domaines, en particulier sur la description 
 `outils` et `promptReel`) dès l'étape S. Le rapport complet (sans l'option) est gardé et comparé à
 `hors-restauration-avant.json` : les comptes des familles `manuel` et `assistant` ne montent jamais.
 
+**R2.4.8 — Contenu des 32 entrées hors restauration (réserve R1 du contrôle de O et S0, à faire AVANT l'étape C).**
+`meta.empreintesBase` ne garde qu'un md5, et `meta` n'est pas scanné : en Hôtellerie, le contenu de 20 entrées sur
+32 n'apparaît nulle part dans la capture (mesuré). Une entrée mal balisée ou restée brute après la 195 serait donc
+vue en restauration (empreinte) mais pas hors restauration. Correction : hors restauration, la capture garde
+`{ titre, contenu }` RENDUS des 32 recherches par titre sous une clé `baseParTitre` (comptes non nuls, non-vacuité
+comme les autres clés) ; le scan la lit dans la famille `assistant`, avec les exclusions de
+`scripts/manuel/balise/base/*.json`. La clé n'est capturée que hors restauration : la référence restauration n'est
+pas recapturée pour elle. Elle est ignorée par `--hors-manuel` (comme `recherches*`) tant que la base n'est pas
+balisée.
+
 ### 2.5 Règle du même mois civil
 
 Inchangée (`scripts/vocab-baseline/README.md:30`) : la référence (`meta.moisCapture` = `2026-10` aujourd'hui) et
-chaque contrôle sont du même mois civil ; refus entre 00 h 45 et 01 h 15 et en janvier. Le lot durera plus d'un mois
+chaque contrôle sont du même mois civil ; refus entre 00 h 45 et 01 h 15 et en janvier. **Garde ajoutée à l'étape O
+(`d634b3a`)** : la capture refuse aussi de tourner quand la date locale n'est pas la date UTC (sur ce poste, réglé à
+l'heure de Paris, UTC+2 en été : de 00 h 00 à 02 h 00). Raison : `abonnementController.js:506-508` calcule le mois de la mensualité en UTC sur une date locale ;
+une référence capturée dans cette fenêtre échouait sans aucune mutation dès 02 h 00 (faux rouge mesuré par la
+relecture de O). Ce défaut de l'application est hors lot (REPRISE §10) ; en production, il
+ne joue que si le conteneur n'est pas à l'heure UTC. Le lot durera plus d'un mois
 s'il dépasse fin octobre : la référence est alors recapturée sur la tête de `develop` dans un arbre à part
 (`git worktree` ou `git archive`), avec les scripts de la branche **et le commit R2.2**, **sur une copie neuve de la
 photo de la base** (§2.8) : jamais sur une base qui a reçu 194 à 196.
@@ -480,6 +507,10 @@ seule) : le rôle local peut créer une base (`rolcreatedb` vrai), base de 23 Mo
 `French_France.1252` ; `src/config/database.js:9` lit `DB_NAME` de l'environnement, et `dotenv` n'écrase pas une
 variable déjà posée (aucun script de l'oracle ne fixe `DB_NAME` : `scripts/lib/bouchons-test.js` ne contrôle que
 `DB_HOST`, `:136-138`).
+
+**R2.8.1 bis — La 193 dans la base principale.** Depuis l'étape O, la base principale `fiche_technique` est à la
+migration 193 (appliquée par le premier passage de l'oracle après le commit de S0) : c'est admis, la 193 est sans
+effet sur les textes (§4.1) et R2.8.2 ne vise que 194 à 196. La photo `fiche_technique_avant2c` reste à la 192.
 
 **R2.8.2 — Règle.** La photo n'est jamais ouverte directement. Dès que 194, 195 ou 196 sont dans `migrations/` (étape C,
 vérification, toute correction), **tout** processus du 2c qui charge l'application ou lit la base (capture, contrôle,
@@ -747,6 +778,8 @@ transaction**, et `ROLLBACK` toujours :
 - pour chaque fiche : le rendu par défaut de `contenu`, `titre` et `partie` relus en base, par `rendreFiche` de
   `manuelRendu.js` (la fonction du serveur, pas une copie), égal à l'origine octet pour octet ; aucun `\r` ;
 - pour les 5 fiches acheteurs : `contenu_defaut` n'est plus NULL ;
+- pour chacune des 32 entrées de la base : `rendreEntreeBase(vocabDefaut, ligne)` relue en base égale l'origine
+  (`titre`, `contenu`), octet pour octet (constat 2 de la relecture de O) ;
 - la requête du §5.2 (exportée par `manuelRendu.js`) et `rendreFiche` pour le domaine `hotellerie` de la base
   locale (son profil RÉSOLU par `getProfil`, lexique et composants, R3.1.1) : aucune « [[ », aucun « ‹ » suivi
   d'une clé ;
@@ -979,7 +1012,9 @@ Fonctions pures, sauf `refuserBalises` (elle répond) et `controlerBalisesAuDema
 - `formesParDefaut(texte)` : formes de `LEXIQUE_DEFAUT` présentes, motif de `termesDans` (mot entier, sigle avec
   casse). Sert à `champsSansBalises` et aux outils.
 - `verifierBalises(texte)` → `[{ balise, raison }]` : `balisesInvalides(texte)` (`vocab.js:164`), plus « clé
-  inconnue » pour toute balise de grammaire valide dont la clé n'est pas dans `LEXIQUE_CLES` (I11).
+  inconnue » pour toute balise de grammaire valide dont la clé n'est pas dans `LEXIQUE_CLES` (I11), plus « balise
+  non fermée » et « fin de balise sans début » (ajout de `d634b3a` : `balisesInvalides` ne voit ni un « [[ » sans
+  « ]] », ni une balise coupée par un retour à la ligne ; aucun faux positif sur les 94 exemples balisés des specs).
 - `refuserBalises(res, erreurs)` : pose `res.locals.vocabBrut = true` et répond 400 (R5.7.1).
 - `slugVariantes(voc, profil)` = `voc.estDefaut ? null : (profil?.slug ?? null)` (I12).
 - `enrichirMotsCles(voc, motsCles, composants)` (R5.4).
@@ -1274,7 +1309,7 @@ libellé de lien qui contient une balise ne serait plus reconnu (`MarkdownView.t
 `[[det:labo:du]]`), chacune avec son rendu par défaut et dans le domaine choisi, calculés à l'affichage.
 
 **R6.1.4 — Balise fautive.** Avant l'enregistrement, l'écran signale les balises invalides et les clés inconnues
-(même contrôle que `verifierBalises`, avec le moteur du front et `LEXIQUE_CLES`). Le serveur reste juge (R5.7.1) ;
+(même contrôle que `verifierBalises`, balise non fermée comprise, avec le moteur du front et `LEXIQUE_CLES`). Le serveur reste juge (R5.7.1) ;
 son message s'affiche comme aujourd'hui (`:91`).
 
 **R6.1.5 — Variantes.** Dans la fenêtre d'édition, une rangée d'onglets « Commun » puis un onglet par variante de la
