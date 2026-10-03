@@ -13,7 +13,8 @@
     "fiche": "calc-production-pt, calc-pmp, calc-prix, calc-valeur-stock",
     "besoin": "Ouvert par l'intégrateur B1 pour que rien ne se perde. Collisions et redites qu'aucune balise ne lève (I10), dans des fiches sans variante, relevées par la relecture croisée (relectures/L8.json, lignes 2, 4, 5 et 6, « clos (refus fondé) ») et par le sondage du contrôleur (n° 12) : C « une entrée en stock du produit fini » pour un produit fabriqué, qui peut être un semi-fini (calc-production-pt) ; C « n'a encore reçu aucune réception » (calc-pmp) ; C « Les produits fabriqués fabriqués » (calc-prix, signalement 7 accepté) ; C « Production au site de production » (calc-prix) ; H « Fourniture en service », « Préparation en service » (calc-valeur-stock).",
     "proposition": "Les accepter et les inscrire à l'étape C au §10.3 (tableau des collisions ; « produits fabriqués fabriqués » à côté de « sites de production de production ») et dans ecarts-visibles-2c.md.",
-    "etat": "REPORTÉ",
-    "decision": "Intégrateur B1 (03/10/2026) : acceptés pour le 2c ; inscription reportée à l'étape C (la spec et ecarts-visibles-2c.md sont mis à jour à la consolidation, §13)."
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B1 (03/10/2026) : acceptés pour le 2c ; inscription reportée à l'étape C (la spec et ecarts-visibles-2c.md sont mis à jour à la consolidation, §13).",
+    "suite": "Intégrateur documentaire de l'étape C (03/10/2026) : inscrits à la spec : tableau des collisions §10.3.2 (produit(s) fini(s) de calc-production-pt, réception(s) de calc-pmp, site(s) « Production au site de production » de calc-prix, ligne nouvelle « en service » pour calc-valeur-stock) et §10.3.3 (« produits fabriqués fabriqués » de calc-prix, à côté de « sites de production de production ») ; résumés dans labflow-reprise/lot-2c/ecarts-visibles-2c.md (§3)."
   }
 ]

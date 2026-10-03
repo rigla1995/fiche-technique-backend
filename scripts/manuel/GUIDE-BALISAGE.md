@@ -10,6 +10,11 @@ Ce qui fait foi : `docs/lot-2c-spec.md`. Ce guide en reprend :
 
 En cas de doute, la spec gagne, et le doute va dans `besoins/<lot>.json`.
 
+**Après le lot 2c**, ce guide reste la règle d'écriture de tout texte du manuel ou de la base : une migration du
+manuel écrit du texte balisé (spec §12.5, `scripts/VOCAB-GUIDE-SERVEUR.md` §9). Le 2e domaine d'essai s'appelle
+« ceramique » dans les outils ; en production, c'est le domaine `usine` (« Industrie »), dont le lexique n'a pas de
+formes courtes (spec §8.6).
+
 Les tableaux des §2, §11 et §13 sont produits par le vrai moteur (`src/utils/vocab.js`), avec :
 - Hôtellerie et Céramique : les lexiques de `domaines.json`, résolus ;
 - miroir : le lexique d'essai de `test/vocab-lexiques-test.json`.
@@ -223,6 +228,13 @@ emploi » :
 - `justification` est obligatoire et courte : la règle, la décision ou l'écran (`fichier:ligne`).
 - Une fiche qui porte au moins une forme non exclue porte au moins une balise. Un champ dont toutes les formes sont
   exclues reste sans balise : le générateur l'inscrit dans la liste des champs admis sans balise.
+
+**Exclusion « rendu »** (`"rendu": true`, étape C). Pour une forme par défaut qui ne se forme qu'AU RENDU, à cheval
+sur une balise : « [[Nom:produit:pl]] vendables » rend « Produits vendables » (forme de `produit_vendable`) partout où
+« produit » ne change pas. L'extrait est alors un passage du rendu par défaut (le texte d'origine), absent du texte
+balisé ; il est compté dans le rendu par défaut et n'est pas exigé dans les rendus des domaines. Fiches et entrées
+seulement, jamais une variante. Emplois : `decouvrir-labflow` et l'entrée « Produits vendables et utilisables »
+(spec §3.3).
 
 **Cible d'un lien `(#slug)`.** Elle n'est ni balisée ni exclue : elle n'est jamais affichée (lien à l'écran, retirée du
 PDF).
@@ -580,6 +592,10 @@ clair.
     "decision": "accepté", "raison": "la grammaire ne peut pas l'éviter (spec §7.5, §10.3)" }
 ]
 ```
+
+Champ facultatif `"lexique": "essai"` ou `"production"` (avec `domaine` hotellerie ou ceramique) : l'acceptation ne
+vaut que pour ce lexique du domaine (spec §3.5, étape C) ; sans lui, elle vaut pour les deux et doit servir dans les
+deux passages (`controler.mjs --tout` et `--tout --production`).
 
 `relectures/<lot>.json` (le relecteur, seul) :
 

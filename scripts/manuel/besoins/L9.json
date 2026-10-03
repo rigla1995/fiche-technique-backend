@@ -4,24 +4,27 @@
     "fiche": "base (seuil-minimum, produit-transforme-pt, article-vendable, produits-vendables-et-utilisables, labo-central, prestataire-de-livraison)",
     "besoin": "Collisions de sens de la base, sans variante possible (la base n'en a pas) : le tableau du §10.3 ne mesure que le manuel. Relevées dans la base : C « site » générique (seuil-minimum : « chaque site a ses propres seuils », activité ou labo) ; C « site de production » générique (produit-transforme-pt : « déduit du stock du site de production », le lieu qui produit, labo ou activité) ; C « option » (article-vendable, produits-vendables-et-utilisables : « en option », adverbe) ; C « fabriqué » (labo-central : « fabrique des produits fabriqués (PF) » ; produit-transforme-pt : « Un produit fabriqué (PF) est fabriqué ») ; H et C « livraison » (prestataire-de-livraison : « prestataire de livraison », à côté de transfert = « Livraison interne », non signalé par le point 12 qui ne cherche que les formes entières). Signalements 12 acceptés dans relectures/L9.auto.json (le sens reste clair) ; aucune balise ne les rend (ce ne sont pas les notions du lexique) et I10 interdit de reformuler.",
     "proposition": "Intégrateur, étape C : ajouter ces occurrences de la base au tableau des collisions du §10.3 et à ecarts-visibles-2c.md (collisions connues, acceptées). Aucune action sur les fichiers balisés.",
-    "etat": "REPORTÉ",
-    "decision": "Intégrateur B2 ∥ V (03/10/2026) : acceptées pour le 2c (la base n'a pas de variante ; I10). À l'étape C : occurrences de la base ajoutées au tableau des collisions du §10.3 et à ecarts-visibles-2c.md (récapitulatif L9-4)."
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : acceptées pour le 2c (la base n'a pas de variante ; I10). À l'étape C : occurrences de la base ajoutées au tableau des collisions du §10.3 et à ecarts-visibles-2c.md (récapitulatif L9-4).",
+    "suite": "Intégrateur documentaire de l'étape C (03/10/2026) : occurrences de la base inscrites au tableau des collisions de la spec (§10.3.2 : option(s), fabriqué(e)(s), site(s), livraison(s)) et dans labflow-reprise/lot-2c/ecarts-visibles-2c.md (§3)."
   },
   {
     "id": "L9-2",
     "fiche": "base (activite-point-de-vente, approvisionnement-appro, labo-central, transferts)",
     "besoin": "Gloses redites de la base (point 8, tolérées : question 5) plus nombreuses que l'entrée 8 citée au §10.3 : titre « Activité (point de vente) » (H « Service (service) », C « Point de vente (point de vente) ») et sa définition « Une activité est un point de vente » (H « Un service est un service ») ; titre « Approvisionnement (appro) » (C « Réception (réception) » : avecCourt, qui ôterait la parenthèse, refuse l'argument de casse « Nom », moteur gelé ; le contenu passe par [[Det:appro:un]][[avecCourt:appro]] et rend « Une réception est une entrée de stock ») ; « Le labo (laboratoire central) » (H « La cuisine centrale (cuisine centrale) », sans pléonasme grâce au §7.5) ; transferts (exemple 9). Toutes acceptées dans relectures/L9.auto.json.",
     "proposition": "Intégrateur, étape C : compléter la ligne « Gloses redites dans la base » du §10.3 (et ecarts-visibles-2c.md) avec ces 4 entrées. Aucune action sur les fichiers balisés.",
-    "etat": "REPORTÉ",
-    "decision": "Intégrateur B2 ∥ V (03/10/2026) : tolérées dans la base (question 5), acceptées dans relectures/L9.auto.json. À l'étape C : la ligne « Gloses redites dans la base » du §10.3 (et ecarts-visibles-2c.md) complétée avec ces 4 entrées (récapitulatif L9-4)."
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : tolérées dans la base (question 5), acceptées dans relectures/L9.auto.json. À l'étape C : la ligne « Gloses redites dans la base » du §10.3 (et ecarts-visibles-2c.md) complétée avec ces 4 entrées (récapitulatif L9-4).",
+    "suite": "Intégrateur documentaire de l'étape C (03/10/2026) : les 4 entrées inscrites à la spec (§10.3.4, gloses redites, base) et résumées dans ecarts-visibles-2c.md (§3, base de connaissances)."
   },
   {
     "id": "L9-3",
     "fiche": "produits-vendables-et-utilisables, produit-transforme-pt",
     "besoin": "Cette entrée garde les notions « VENDABLE » / « UTILISABLE » dans les mots de la restauration pour tous les domaines : capitales partielles du contenu (« Un produit VENDABLE », §7.4, exemple 11 : seul « produit » est balisé) et titre en ellipse « Produits vendables et utilisables », balisé [[Pl:produit]] vendables et utilisables (même analyse que decouvrir-labflow de L2 et que l'exemple 11 ; [[Nom:produit_vendable:pl]] donnait H « Prestations vendues et utilisables », un contresens, aucune balise ne rendant « utilisables » seul). Les termes H « Prestation vendue » / « Consommable » et C « Produit fini » / « Semi-fini » n'apparaissent donc pas dans cette entrée ; le modèle les tient du glossaire du prompt. Même limite dans produit-transforme-pt : noms abrégés des 3 catégories (Utilisables, Vendables, Composés Valorisés), que les écrans rendent par cat_pt_* (voc.Nom('cat_pt_utilisable' / 'cat_pt_vendable' / 'cat_pt_valorise'), HistoriqueApproPage.tsx:476, categoriesPt.ts:12) : en H et en C ils restent dans les mots de la restauration ; aucune balise ne les rend sans casser I10 (abréviations).",
     "proposition": "Limite connue, acceptée (I10, pas de variante pour la base) : à inscrire au §10.3 avec les capitales partielles déjà citées (« produit VENDABLE ») ; à la même ligne, les noms abrégés des 3 catégories de produit-transforme-pt (Utilisables, Vendables, Composés Valorisés), que les écrans rendent par cat_pt_*. Aucune action sur les fichiers balisés.",
-    "etat": "REPORTÉ",
-    "decision": "Intégrateur B2 ∥ V (03/10/2026) : limite connue, acceptée (I10, pas de variante pour la base). À l'étape C : inscrite au §10.3 avec les capitales partielles (« produit VENDABLE »), à la même ligne les noms abrégés des 3 catégories de produit-transforme-pt (récapitulatif L9-4)."
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : limite connue, acceptée (I10, pas de variante pour la base). À l'étape C : inscrite au §10.3 avec les capitales partielles (« produit VENDABLE »), à la même ligne les noms abrégés des 3 catégories de produit-transforme-pt (récapitulatif L9-4).",
+    "suite": "Intégrateur documentaire de l'étape C (03/10/2026) : inscrit à la spec (§10.3.5, capitales partielles et noms abrégés, avec les exclusions « rendu » de l'étape C, besoin C-3) et dans ecarts-visibles-2c.md (§3)."
   },
   {
     "id": "L9-4",
@@ -123,7 +126,8 @@
         ]
       }
     ],
-    "etat": "REPORTÉ",
-    "decision": "Intégrateur B2 ∥ V (03/10/2026) : liste à reprendre à l'étape C (la spec et ecarts-visibles-2c.md sont mis à jour à la consolidation, §13) ; aucun fichier balisé à changer."
+    "etat": "APPLIQUÉ",
+    "decision": "Intégrateur B2 ∥ V (03/10/2026) : liste à reprendre à l'étape C (la spec et ecarts-visibles-2c.md sont mis à jour à la consolidation, §13) ; aucun fichier balisé à changer.",
+    "suite": "Intégrateur documentaire de l'étape C (03/10/2026) : chaque rubrique de « liste » reprise. Collisions (lignes nouvelles et exemples) : spec §10.3.2 ; répétitions : §10.3.3 ; gloses redites : §10.3.4 ; capitales partielles et noms abrégés : §10.3.5 ; formes collées à un trait d'union : §10.3.6 ; limites de la grammaire : §10.3.7 ; libellés d'écran gardés en nom-fige : §10.3.10 ; fiches candidates à une variante du 2e domaine (faq, activites) : §10.3.1 et question 9 ; amendements dus aux corrections d'outils : §3.5 points 7, 8, 9, §3.3 et §3.5 (variantes), R8.2.3, §7.5, §7.7 (exemple 9), R3.6.5 (champ admis « Article vendable »), A16.11 (65 tests des outils après l'étape C) ; décisions à transmettre au client : spec §15 et ecarts-visibles-2c.md §4 (L1-1, L2-3, L3-3, L7-2, L7-4, V-H2-2, validation des 16 variantes, plus C-5 : « bureau logisti » et formes courtes du lexique usine). Les besoins REPORTÉ des autres lots qui renvoient à ce récapitulatif (L3-1, L3-2, L3-4, L4-1, L4-2, L4-4, L5-1, L6-1 à L6-4, L7-1, L7-3) y sont inscrits ; leur fichier n'est pas réécrit. Spec v3.0 (« état final »), commit docs(lot-2c) de l'étape C."
   }
 ]

@@ -443,3 +443,22 @@ Mesure du 03/10, `git ls-files --eol` après l'ajout du fichier :
 **Aucune renormalisation à faire** : les blobs de l'index sont déjà tous en LF. Les copies de travail en CRLF le
 restent jusqu'à leur prochaine sortie de git, puis passent en LF. Les nouveaux fichiers de ce dossier et les
 migrations générées (194 à 196) sont écrits en LF et le resteront.
+
+## Après le lot 2c : maintenance (spec §12.5)
+
+État au 03/10/2026 : migrations 194, 195, 196 écrites (étape C, cible `hotellerie` et `usine`), contrôles verts
+(spec §11). Après leur mise en production, la base stockée est balisée et **`balise/` (et `variantes/`) devient la
+source** du texte du manuel et de la base ; `origine/` reste l'instantané d'avant le 2c, figé.
+
+- **Toute migration du manuel ou de la base écrit du texte balisé** : plus de `REPLACE(contenu, '<texte exact>', …)`
+  (le texte en clair n'existe plus en base ; un `REPLACE` ne ferait rien, sans erreur). Règle et modèle :
+  `scripts/VOCAB-GUIDE-SERVEUR.md` §9.
+- Avant une telle migration : texte balisé dans `balise/…`, `controler.mjs <slug>` (points 2 à 12 verts ; le point 1
+  compare à `origine/` : sur une fiche changée volontairement, c'est le seul échec admis), puis `--production`.
+- **Ce qui manque** : `generer-migrations.mjs` n'écrit que 194 à 196. Il n'y a pas encore d'outil pour une migration de
+  maintenance ; la première s'écrit à la main sur le modèle d'un bloc de la 194, ou ajoute cette option aux outils
+  (décision au premier besoin).
+- Une fiche ou une entrée sans balise (créée ou retouchée dans l'admin) porte le badge « sans balises » et une ligne
+  `[manuel] …` au démarrage du serveur ; seul champ admis : le titre de l'entrée « Article vendable »
+  (`src/config/manuelSansBaliseAdmis.json`, écrit par le générateur).
+- Après D2 (spec §12.2) : `base-locale.js supprimer` ; garde R2.8.3 retirée dans `develop`.

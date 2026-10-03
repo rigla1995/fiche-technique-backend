@@ -1,4 +1,4 @@
-# Lot 2c — Spécification v2.3 : le manuel et la base de connaissances dans les mots du domaine
+# Lot 2c — Spécification v3.0 (état final) : le manuel et la base de connaissances dans les mots du domaine
 
 Références :
 - `docs/lot-2-spec.md` (moteur, balises, outil de preuve, invariants I1 à I6, cadrage du 2c au §5) ;
@@ -44,18 +44,36 @@ Historique :
   date UTC » (§2.5) ; `verifierBalises` signale aussi une balise non fermée (§5.1) ; l'essai de migration vérifie
   aussi les 32 entrées (§3.7) ; la base principale peut porter la 193 (§2.8).
 - **v2.3 (03/10/2026)**, après l'étape M0 ∥ S ∥ A (backend `c8fff0c` à `6ed9873`, frontend `42e32d3` ; contrôle
-  `labflow-reprise/lot-2c/controle-m0-s-a.md`) : amendements regroupés au **§16**, qui prime sur le texte des
-  sections qu'il cite.
+  `labflow-reprise/lot-2c/controle-m0-s-a.md`) : amendements regroupés au **§16**, qui primait sur le texte des
+  sections qu'il cite (depuis la v3.0, ils sont reportés dans ces sections ; le §16 reste comme historique).
+- **v3.0 (03/10/2026), état final**, après les vagues B1 (`768a5a8`), B2 ∥ V (`275b8a3`), la lecture de production
+  (`0cdc301`, `c910567`, A16.13) et l'étape C (partie technique `1273be5`, point de restauration `f0383cf` : migrations
+  194, 195, 196 écrites). Changements :
+  - le 2e domaine s'appelle **« usine »** (« Industrie ») en production, décision du client : les variantes de ce
+    domaine ciblent le slug `usine` ; « ceramique » reste son nom interne dans les outils et les lexiques d'essai
+    (§8.6, R3.6.4, A16.13) ;
+  - amendements du §16 et corrections d'outils des vagues reportés dans les sections qu'ils touchent : §3.3
+    (exclusion « rendu »), §3.5 (points 3, 7, 8, 9, acceptations propres à un lexique, variantes, lexiques de
+    production), §7.5, §7.7, R8.2.3 ; le §16 reste comme historique, avec le renvoi de chaque amendement ;
+  - §10.3 complété par le récapitulatif des vagues (besoins `L8-2` et `L9-4`, `scripts/manuel/besoins/`) et par le
+    contrôle avec le lexique de production d'« usine » (besoin `C-1`) ;
+  - §11 avec les preuves obtenues à l'étape C ; §12 avec la cible `usine` et les lignes de journal réelles ; §12.5
+    (maintenance) dit ce que les outils savent faire et ce qui manque ; §15 réécrit : décisions à transmettre au
+    client ; document client `labflow-reprise/lot-2c/ecarts-visibles-2c.md`.
 
-**Têtes.** Backend : `develop` = `863f8f0`, branche `feat/lot-2c-manuel` = `fbca8ce` (develop + `b157b28`
-réépinglage de `scripts/vocab-check.base` + `fbca8ce` lecture de production `scripts/controle-avant-2c.sql`).
-Frontend : `develop` = `1683d7b`, branche = `53b91f8` (develop + réépinglage). `git diff develop feat/lot-2c-manuel`
-ne touche aucun fichier de `src/` (vérifié) : **les numéros de ligne sont ceux de `develop`** (revérifiés pour la v2).
-Base locale à la migration `192_composants_genre_elision.sql`, sans table `manuel_sections_domaine` (mesuré).
-**Prochaine migration libre : 193.**
+**Têtes (état final, 03/10/2026).** Backend : `develop` = `a7c8424` (correctif « mois des mensualités en UTC »
+compris), branche `feat/lot-2c-manuel` = commit documentaire de l'étape C, au-dessus de `f0383cf` (point de
+restauration de l'étape C : migrations écrites) et de `1273be5`. Frontend : branche `feat/lot-2c-manuel` = `42e32d3`
+(écrans admin de l'étape A ; rien depuis). Les numéros de ligne cités dans ce document sont ceux de `develop` au
+moment de la v2 (revérifiés alors), sauf mention.
+Base locale : `fiche_technique` à la migration 193 (R2.8.1 bis) ; photo `fiche_technique_avant2c` à la 192 ; les
+migrations 194 à 196 ne passent que sur une copie jetable `fiche_technique_2c` (R2.8.2). Empreintes globales de la
+base principale inchangées (`67737956…`, `8779fd65…`). **Prochaine migration libre : 197.**
 
 Vocabulaire de ce document : « le manuel » = table `manuel_sections` (61 fiches) ; « la base » = table
-`ai_knowledge_base` (32 entrées) ; « H » = Hôtellerie, « C » = Céramique ; « miroir » = lexique d'essai où chaque
+`ai_knowledge_base` (32 entrées) ; « H » = Hôtellerie ; « C » = le 2e domaine, appelé « ceramique » dans les outils et
+les lexiques d'essai (lexique avec formes courtes PF, Site, FCR) et **« usine » (« Industrie ») en production**
+(même lexique sans formes courtes, plus `perte` = « Casse / Rebut / Second choix », A16.13) ; « miroir » = lexique d'essai où chaque
 terme change (genre et élision inversés). « Balisé » = texte où les termes du lexique sont écrits en balises
 `[[méthode:clé:args]]` (grammaire : lot-2-spec §2.2). « Domaine sans écart » = domaine dont le lexique résolu donne
 les rendus par défaut (`voc.estDefaut` vrai : restauration, café, boulangerie, ou un domaine créé sans lexique).
@@ -141,7 +159,8 @@ l'API inchangée). Pour le 2c, ils se lisent ainsi :
 - **I12 (nouveau) — Variantes.** Une variante n'est servie que si son statut est `valide` **et** si le domaine du
   lecteur a un lexique qui s'écarte du défaut (`voc.estDefaut` faux). Aucune variante n'existe ni ne peut être créée
   pour `restauration` (contrainte), ni créée par l'admin pour un domaine sans écart (400, R5.7.3). Ainsi un domaine
-  « Céramique » recréé en production sans son lexique ne sert pas ses variantes (§8.6).
+  dont on viderait le lexique (ou recréé sans lexique) ne sert pas ses variantes (§8.6). En production, `hotellerie`
+  et `usine` ont chacun leur lexique : leurs variantes seront servies dès leur validation.
 
 ### 0.3 Vocabulaire du destinataire (I6) appliqué au manuel
 
@@ -186,7 +205,7 @@ de `profil_entreprise` (`:20-23`). `req.user.domaine_id` et `getProfilForClient`
   « bar » dans « barre » ou « barème » (24 fiches) (mesuré). Ce défaut ancien n'est pas corrigé ici.
 - Un **contrôle permanent** séparé du manuel (`check-invariant-manuel.js`, proposé le 30/09) : pas d'outil de plus.
   En local, l'oracle `--domaine` (§2.4) et `controler.mjs --tout` (§3.5) le font ; en production, une fiche éditée
-  dans l'admin est vue par le badge et l'avertissement « sans balises » (§5.7.2, §5.8).
+  dans l'admin est vue par le badge et l'avertissement « sans balises » (R5.7.2, R5.8).
 
 ---
 
@@ -196,8 +215,8 @@ Source : `labflow-reprise/lot-2c/DECISIONS-2c.md`.
 
 | # | Décision | Conséquence dans cette spec |
 |---|---|---|
-| 1 | **Variantes OUI, Hôtellerie ET Céramique**, dans ce lot, pour les 8 fiches métier (`decouvrir-labflow`, `compte-activites-labos`, `demarrage`, `roles`, `lexique`, `lexique-pt`, `onboarding-configuration`, `calc-cout-recette`) | Table `manuel_sections_domaine` (migration 193, §4.1), 16 brouillons (migration 196, §4.4), 4 lots de rédaction (§9), écran admin (§6.1). Variante ciblée par le **slug** du domaine, sans clé étrangère : les brouillons Céramique sont écrits en production et s'appliquent quand un domaine de slug `ceramique` existe **et** a son lexique (I12, §8.6). Les fiches de calcul et de catégories gardent leurs exemples de la restauration (§10.3) : question 9 au client (§14). |
-| 2 | **« sous-produit » : exclusion assumée**, type `locution` ; pas de nouvelle clé | Moteur et empreinte inchangés. 28 occurrences dans le manuel (19 « sous-produit », 9 « sous-produits » ; lots L4 : 6, L7 : 1, L8 : 21) et 2 dans la base : chacune est une exclusion typée `locution` dans le fichier de sa fiche (§3.3). Même traitement pour « sous-PT » (1 occurrence, même notion, §7.2). Hors restauration, le mot reste (§10.3). **Cette décision clôt aussi le point laissé ouvert par le 2b** pour les écrans et le serveur (lot-2b-spec, ligne 979) : les entrées `locution` de `scripts/vocab-allow/_global.json:16-28` restent ; `labflow-reprise/lot-2b/ecarts-visibles-2b.md` est mis à jour à l'étape C. |
+| 1 | **Variantes OUI, Hôtellerie ET Céramique**, dans ce lot, pour les 8 fiches métier (`decouvrir-labflow`, `compte-activites-labos`, `demarrage`, `roles`, `lexique`, `lexique-pt`, `onboarding-configuration`, `calc-cout-recette`) | Table `manuel_sections_domaine` (migration 193, §4.1), 16 brouillons (migration 196, §4.4), 4 lots de rédaction (§9), écran admin (§6.1). Variante ciblée par le **slug** du domaine, sans clé étrangère : un brouillon s'applique quand un domaine de ce slug existe **et** a son lexique (I12, §8.6). **Précisée le 03/10 (A16.13)** : la Céramique de production est le domaine `usine` (« Industrie ») ; le client garde ce nom, les 8 brouillons du 2e domaine ciblent `usine`. Les fiches de calcul et de catégories gardent leurs exemples de la restauration (§10.3) : question 9 au client (§14). |
+| 2 | **« sous-produit » : exclusion assumée**, type `locution` ; pas de nouvelle clé | Moteur et empreinte inchangés. 28 occurrences dans le manuel (19 « sous-produit », 9 « sous-produits » ; lots L4 : 6, L7 : 1, L8 : 21) et 2 dans la base : chacune est une exclusion typée `locution` dans le fichier de sa fiche (§3.3). Même traitement pour « sous-PT » (1 occurrence, même notion, §7.2). Hors restauration, le mot reste (§10.3). **Cette décision clôt aussi le point laissé ouvert par le 2b** pour les écrans et le serveur (lot-2b-spec, ligne 979) : les entrées `locution` de `scripts/vocab-allow/_global.json:16-28` restent. La décision est écrite pour le client dans `labflow-reprise/lot-2c/ecarts-visibles-2c.md` (§3) ; le renvoi dans `labflow-reprise/lot-2b/ecarts-visibles-2b.md` reste à poser (hors du périmètre de l'étape C documentaire, besoin noté au compte rendu). |
 | 3 | **Mots-clés enrichis au rendu** avec les formes du domaine des clés surchargées ET les libellés des composants du domaine ; rien d'ajouté en restauration | `enrichirMotsCles` (R5.4). Garde : rien n'est ajouté quand `voc.estDefaut` est vrai (restauration, café, boulangerie). `mots_cles` n'est jamais balisé. Effet mesuré par la relecture : nul sur les questions du guide (R5.4) ; deux précisions (sigles sans casse, libellés de composants resserrés) : question 10 au client (§14). |
 | 4 | **Méthode** : workflow multi-agents comme au 2a et au 2b | Spec → 4 relectures contradictoires → contrôle indépendant → étapes O, S0, M0 / S / A, vagues de balisage, variantes, consolidation, vérification, déploiement (§13). |
 
@@ -344,7 +363,9 @@ inconnue, « ‹labbo› ») est un **échec** : `balisesInvalides` ne voit pas 
 
 **R2.4.2 — Exclusions et résultats tronqués.**
 - Texte d'une fiche (`manuel/sections`) : avant `formesDans`, le scan retire les passages exclus au balisage
-  (champ `extrait` de `scripts/manuel/balise/manuel/<slug>.json`, §3.3).
+  (champ `extrait` de `scripts/manuel/balise/manuel/<slug>.json`, §3.3, exclusions « rendu » comprises) et masque les
+  cibles de liens `(#slug)` (A16.1 ; ajouté à l'étape C, besoin `C-2` : sans ce masque, 76 des 77 formes trouvées en H
+  venaient des cibles).
 - Résultat de recherche qui vient du manuel : **il n'est pas rescanné** (une coupe à 6 000 peut tomber au milieu
   d'un extrait exclu : `lexique`, 10 358 caractères, est coupé dans tous les domaines). On vérifie à la place que
   son `contenu` est le début du `contenu` servi de la même fiche (`manuel.sections`), suivi de « … » s'il est
@@ -484,7 +505,8 @@ libre : leur contrôle est au §3.5.
    (`--liste-avant`) : `hors-restauration-avant.json` reçoit les familles `manuel` et `assistant` étendues (chiffrées).
    Elle est attendue très longue : c'est le travail des vagues.
 6. **Lecture de production** (§12.1) : la sortie, collée par le client, est comparée aux valeurs locales. Tant
-   qu'elle manque, le générateur de migrations (§3.6) refuse d'écrire dans `migrations/`.
+   qu'elle manque, le générateur de migrations (§3.6) refuse d'écrire dans `migrations/`. Faite le 03/10, conforme
+   (`scripts/manuel/lecture-production.json`, §12.1).
 
 ### 2.8 Base locale protégée
 
@@ -549,8 +571,9 @@ et `retour-2c.js` (§4.5).
 | `extraire-origine.js` | instantané d'origine, UNE fois, base locale, lecture seule (§3.2) | M0 |
 | `domaines.json` | lexique, composants actifs (libellé, pluriel, type technique, genre) et description de `hotellerie` et `ceramique`, lus une fois en lecture seule : les agents n'ont pas accès à la base | M0 |
 | `prebaliser.mjs` | brouillon de balisage (§3.4) | M0 |
-| `controler.mjs` | contrôle par fiche (§3.5) ; option `--lexique <fichier>` pour rejouer le contrôle avec un lexique de production (§12.1) | M0 |
+| `controler.mjs` | contrôle par fiche (§3.5) ; options `--lexique <fichier>` (Hôtellerie) et `--lexique-ceramique <fichier>` (2e domaine), ou `--production` (les deux lexiques de la lecture de production), pour rejouer le contrôle avec les lexiques de production (§12.1) | M0, étape C |
 | `generer-migrations.mjs` | SQL des migrations 194, 195, 196 et liste des champs admis sans balise (§3.6) | M0 |
+| `lecture-production.json` | lecture de production mise en forme (empreintes, `\r`, domaines, lexiques H et `usine`) ; exigée pour écrire dans `migrations/` | étape C |
 | `essai-migration.js` | application en transaction annulée (§3.7) | M0 |
 | `base-locale.js` | photo et copies de la base locale (§2.8) | O |
 | `retour-2c.js` | retour arrière (§4.5) et remise à zéro locale (R2.8.4) | M0 |
@@ -626,10 +649,22 @@ et le README le note.
   par défaut restée hors balise, et qui se retrouve tel quel dans tous les rendus. Une exclusion sans emploi fait
   échouer le contrôle : on n'exclut donc jamais un passage qui ne contient plus de forme par défaut hors balise
   (ex. 11 du §7.7).
+- **Exclusion « rendu »** (`"rendu": true`, ajoutée à l'étape C, besoin `C-3`) : l'extrait est un passage du **rendu
+  par défaut** (donc du texte d'origine, I10) où une forme par défaut ne se forme qu'au rendu, à cheval sur une balise :
+  « [[Nom:produit:pl]] vendables » rend « Produits vendables », forme de `produit_vendable`, dans tout domaine où
+  « produit » ne change pas. L'extrait est absent du texte balisé (sinon c'est une exclusion ordinaire), compté dans le
+  rendu par défaut, non exigé dans les rendus des domaines. L'oracle et le contrôle du PDF du front retirent tout
+  extrait du texte servi : ils l'appliquent sans changement (R2.4.2 tenu : la justification vit dans le fichier de la
+  fiche, aucune exception dans `exceptions-hors-restauration.json`). Fiches et entrées seulement, jamais une variante.
+  4 emplois : `decouvrir-labflow` (« Produits vendables, utilisables et valorisés », `locution`) et l'entrée
+  « Produits vendables et utilisables » (titre, `locution` ; « Un produit VENDABLE », « Un produit UTILISABLE »,
+  `capitales`).
 - Base : `balise/base/<fichier>.md` (contenu) et `.json` (`cle`, `titre` balisé, `exclusions`).
 - Variante : `variantes/<domaine>/<slug>.md` (contenu) et `.json` (`titre` balisé ou `null` = titre commun,
   `baseMd5` = md5 du contenu commun balisé (`balise/manuel/<slug>.md`, LF) contre lequel elle est écrite,
-  `exclusions`).
+  `exclusions`). Dans une variante, l'extrait d'une exclusion peut porter une forme du lexique **de son domaine**
+  écrite en clair, au lieu d'une forme par défaut (R8.2.3 ; besoins `V-H1-1`, `V-C1-1`, `V-C2-1`, `V-H2-1` : par
+  exemple la colonne « *consommable* » de l'écran Familles en H, ou le composant « Room service »).
 
 ### 3.4 Pré-baliseur (`prebaliser.mjs`)
 
@@ -674,7 +709,9 @@ relecteur les relit.
    `partie`.
 2. **Balises valides (I11)** : `verifierBalises(x)` vide (`balisesInvalides` ET chaque clé dans `LEXIQUE_CLES`).
 3. **Résiduels** : aucune forme par défaut d'un terme HORS balises, sauf dans les extraits exclus. Chaque exclusion
-   est employée exactement `occurrences` fois.
+   est employée exactement `occurrences` fois (une exclusion « rendu » est comptée dans le rendu par défaut, §3.3).
+   Les cibles de liens `(#slug)` sont masquées avant la recherche (A16.1). Toute balise collée à un trait d'union est
+   un échec, sauf `acc`, `accN` et `ex` (A16.2).
 4. **Liens** : même suite de cibles `#slug` que l'origine, dans chaque rendu ; chaque cible est un slug existant ;
    aucun libellé de lien rendu vide.
 5. **Blocs et tableaux** : même suite de lignes `:::…` (mot-clé compris) que l'origine ; dans chaque rendu, chaque
@@ -683,18 +720,26 @@ relecteur les relit.
    contient « [[ », « ]] » ni « ‹ » suivi d'une clé (`/‹[a-z0-9_]+›/`).
 7. **Mots répétés** : dans un rendu, absent du rendu par défaut : un mot ou un groupe de deux mots répété à la suite
    (« centrale centrale », « de production de production ») ; ou le rendu d'une balise de deux mots ou plus qui
-   revient dans la même phrase, à moins de 12 mots (« Les sites de production (0 à N) : vos sites de production »).
+   revient dans la même phrase, à moins de 12 mots (« Les sites de production (0 à N) : vos sites de production ») ;
+   ou le rendu d'une balise suivi d'un mot de même racine que son dernier mot (« cuisine centrale central », A16.3).
+   Les marques d'emphase `**`, `*`, `_` sont retirées des deux rendus avant la recherche (« un ou plusieurs **sites de
+   production** de production », besoin `L2-2`), et la parenthèse finale d'une balise `avecCourt` est ôtée (étape C).
 8. **Gloses identiques et définitions circulaires** : un motif « X (X) », sans tenir compte de la casse (« un
    SERVICE (service) ») ; une ligne de tableau `| **X** | X …` dont la définition commence par le terme défini
-   (« | **Service** | Service ou cuisine exploité… ») ; absents du rendu par défaut.
+   (« | **Service** | Service ou cuisine exploité… ») ; absents du rendu par défaut. Marques d'emphase retirées comme au
+   point 7 (« Un **consommable** (consommable) », besoin `L4-3`).
 9. **Élisions** : sans tenir compte de la casse, absents du rendu par défaut : « d' », « l' », « qu' » suivis d'une
    consonne ; « de », « le », « la », « que », « du », « au », « ce », « ma », « ta », « sa » suivis d'une voyelle ou
-   d'un h muet (mesuré au §7.7, exemple 3 : « d'réception » ; en miroir : « du usine », « ma armoire »).
+   d'un h muet (mesuré au §7.7, exemple 3 : « d'réception » ; en miroir : « du usine », « ma armoire »), y compris à
+   travers une marque d'emphase (« En tant que **animatrice** ») ou une alternative « mot/mot » (« à la/aux usine(s) »,
+   besoin `L4-3`) ; et les **contractions manquées** « de le », « de les », « à le », « à les » (mots entiers ; « Création
+   de le premier service », besoin `L2-1`).
 10. **Déterminant en clair devant une balise de nom** (sur le texte BALISÉ, pas sur un rendu) : un mot qui s'accorde
     (le, la, l', un, une, du, de, de la, de l', d', au, à la, à l', ce, cet, cette, mon, ma, son, sa, aucun, aucune,
     quel, quelle, quels, quelles, nouveau, nouvel, nouvelle, premier, première, seul, seule, tout, toute, tous,
     toutes), sans tenir compte de la casse, écrit juste avant une balise `nom`, `Nom`, `court`, `Court`, `Titre` ou
-    `MAJ`. Les fautes de genre devant une consonne (« Le cuisine centrale ») ne se voient qu'ici.
+    `MAJ`, ou séparé d'elle par un adjectif (autre, même, seul, propre, premier, dernier, nouveau…, A16.3). Les fautes
+    de genre devant une consonne (« Le cuisine centrale ») ne se voient qu'ici.
 11. **Appositions** : deux balises de nom collées dont la seconde porte une clé à apposition (`activite`, `labo`,
     `acheteur`, `gerant` : `appo: true`, `lexiqueDefaut.ts:56-75`) en `nom` ou `Nom` (prototype de la relecture :
     33 paires ; rendu vérifié : `[[Nom:stock]] [[Nom:labo]]` donne H « Stock Cuisine centrale », contre « Stock
@@ -706,6 +751,13 @@ relecteur les relit.
 
 Rapport « mots du métier » (`--tout`) : par fiche, le compte des mots de `MOTS_METIER_MANUEL` (R2.4.3) dans le
 texte d'origine. C'est la liste de travail des variantes ; jamais un échec.
+
+**Acceptation propre à un lexique** (étape C). Une ligne de `relectures/<lot>.auto.json` peut porter
+`"lexique": "essai"` ou `"lexique": "production"`, avec le domaine `hotellerie` ou `ceramique` : elle ne vaut que dans
+un passage qui rend ce domaine avec ce lexique ; hors de lui, elle n'est ni appliquée ni « sans objet ». Les
+acceptations « site » (forme courte de `labo` du lexique d'essai C) portent `essai` ; les 19 signalements propres au
+lexique `usine` de production portent `production` (§10.3). **`--tout` doit être vert deux fois** : avec les lexiques
+d'essai (sans option) et avec `--production` (lexiques H et `usine` de la lecture de production, md5 vérifiés).
 
 Une fiche qui porte au moins une forme **non exclue** porte au moins une balise. Un champ (titre, partie, contenu,
 ou titre et contenu d'une entrée) dont toutes les formes sont exclues reste sans balise : le générateur l'inscrit
@@ -720,7 +772,8 @@ la casse, dans chaque domaine ; longueurs brutes : `titre` ≤ 200, `partie` ≤
 Variantes (`controler.mjs --variante <domaine> <slug>`) : points 2 à 12, rendu dans SON domaine seulement, et pas de
 point 1 (une variante n'a pas d'origine). En plus :
 - aucune forme du lexique **du domaine de la variante** (sg, pl, formes courtes) écrite en clair hors balises, sauf
-  exclusion justifiée : sinon une correction du lexique par le client ne passerait pas dans la variante (R8.2.3) ;
+  exclusion justifiée : sinon une correction du lexique par le client ne passerait pas dans la variante (R8.2.3).
+  L'extrait d'une telle exclusion porte la forme du domaine (pas forcément une forme par défaut, §3.3) ;
 - aucun caractère que `pdfTexte` changerait en « ? » (motif `HORS_POLICE` et table `EQUIVALENTS` de
   `src/utils/pdfTexte.ts:12-30` du front, lus par l'outil), émojis retirés comme `stripEmoji` (`manuelPdf.ts:33-34`) ;
 - un titre de variante rendu n'égale aucun autre titre rendu du manuel dans ce domaine ;
@@ -753,6 +806,10 @@ L'imbrication `DO $m194$ … t := $m194_stock_labo$…$m194_stock_labo$; … $m1
 `migrations/169_manuel_acheteurs_formules_lexique.sql:13-79`). Taille attendue : environ 230 000 caractères pour la
 194 (la 143 faisait 447 Ko). Option `--slug hotellerie=<slug>` (et `ceramique=…`) : si la lecture de production
 donne un autre slug au domaine Hôtellerie, les brouillons de la 196 sont écrits sous ce slug (le README le note).
+**Étape C** : la lecture de production donne `ceramique.slug` = `usine` ; l'écriture dans `migrations/` est refusée
+tant que `--slug ceramique=` ne donne pas ce slug (besoin `C-4`). Commande de l'écriture :
+`node scripts/manuel/generer-migrations.mjs --slug ceramique=usine`. Tailles obtenues : 194 = 307 506 octets,
+195 = 39 276 octets, 196 = 116 802 octets, en LF, aucun « \r ».
 
 **R3.6.5** — Les 2 fiches sans terme (`onboarding-activation`, `historique-paiements`) ont un fichier balisé
 identique à l'origine ; le générateur n'écrit pas une fiche ou une entrée dont le balisé égale l'origine (NOTICE
@@ -762,7 +819,8 @@ formes sont exclues, `{ table, champ, md5, cle }` (md5 du texte tel qu'écrit en
 d'origine, pour la lecture humaine : le serveur cherche par `table`, `champ` et `md5`, car le titre d'une entrée de
 la base change à la 195). Attendu : peu
 d'entrées, peut-être aucune (des entrées de la base ne portent qu'une ou deux formes : « Panier moyen »,
-« Timbre fiscal », « Charges fixes », mesuré par la relecture). Toute chaîne SQL qu'il écrit (titres, parties, clés
+« Timbre fiscal », « Charges fixes », mesuré par la relecture). **Obtenu à l'étape C : 1 seul champ admis**, le
+titre de l'entrée « Article vendable » (`ai_knowledge_base.titre`, md5 `95126859…`). Toute chaîne SQL qu'il écrit (titres, parties, clés
 `lower(titre)` de la base, qui contiennent des apostrophes : « Famille et catégorie d'article », « Mode de prix
 d'une fiche technique », mesuré) passe par le dollar-quoting ou par le doublement des apostrophes ; un test du
 générateur le vérifie.
@@ -776,8 +834,8 @@ consolidation (§13), et dès lors la règle R2.8.2 s'applique.
 **R3.7** — Sur la base locale ou sur une copie (R2.8.2 après l'étape C) : `BEGIN`, applique dans l'ordre les fichiers
 donnés (193 si absente, puis 194, 195, 196, ou les SQL d'essai d'un `--fiches`), puis vérifie **dans la même
 transaction**, et `ROLLBACK` toujours :
-- les NOTICE attendues (59 fiches balisées, 0 déjà balisée, 0 gardée ; 32 entrées ; 16 brouillons ; avec
-  `--fiches`, celles des fiches données) ;
+- les NOTICE attendues (59 fiches balisées, 0 déjà balisée, 0 gardée ; 32 entrées ; 16 brouillons, `hotellerie` 8
+  et `usine` 8 ; avec `--fiches`, celles des fiches données) ;
 - pour chaque fiche : le rendu par défaut de `contenu`, `titre` et `partie` relus en base, par `rendreFiche` de
   `manuelRendu.js` (la fonction du serveur, pas une copie), égal à l'origine octet pour octet ; aucun `\r` ;
 - pour les 5 fiches acheteurs : `contenu_defaut` n'est plus NULL ;
@@ -853,8 +911,9 @@ Raisons :
   fiche : rien d'existant ne change (16 des 19 migrations du manuel visent une fiche par son slug).
 - **Ciblage par slug de domaine, sans clé étrangère** (décision 1). Les ids diffèrent entre la base locale
   (restauration 1585 … hotellerie 1589, ceramique 1590) et la production ; le slug est unique
-  (`domaines_activite_slug_key`, mesuré). Céramique n'existe pas en production : ses brouillons y sont écrits quand
-  même et s'appliquent quand un domaine de slug `ceramique` existe et a son lexique (I12, §8.6).
+  (`domaines_activite_slug_key`, mesuré). Un brouillon est écrit même si son domaine manque, et s'applique quand un
+  domaine de ce slug existe et a son lexique (I12, §8.6). En production, le 2e domaine est `usine` (id 16), qui existe
+  avec son lexique (A16.13) ; en base locale, `usine` n'existe pas (le 2e domaine y est `ceramique`, id 1590).
 - Le motif du slug accepte 1 à 50 caractères, comme ce que produit `slugify` (`domainesController.js:37-40` : 1 à
   45 caractères) : un renommage en slug d'une lettre ne doit pas finir en erreur 500 (R5.9).
 - `base_md5` porte sur le texte commun **servi** (`contenu`) et non sur `contenu_defaut` : l'admin modifie
@@ -941,7 +1000,7 @@ END IF;
 
 - **R4.3.1 — Clé** : `lower(titre)` d'origine (index unique `idx_ai_kb_titre`, mesuré) ; les ids ne sont pas fiables
   d'une base à l'autre. Garde : md5 du contenu sans `\r` ; le titre a sa propre garde d'égalité. Au 2e passage, la clé
-  d'origine ne trouve plus une entrée dont le titre est balisé (24 titres porteurs sur 32) : le test « déjà
+  d'origine ne trouve plus une entrée dont le titre est balisé (24 titres porteurs sur 32 ; 23 balisés à l'étape C, le titre « Article vendable » étant admis sans balise) : le test « déjà
   balisée » cherche donc sous les deux titres.
 - **R4.3.2 — Unicité** : le générateur vérifie que les titres balisés restent uniques sans tenir compte de la casse
   (contrainte de l'index), et le contrôle `--tout` que les titres **rendus** restent distincts dans chaque domaine.
@@ -949,6 +1008,7 @@ END IF;
   `[[Nom:transfert:pl]]`) : R5.7.1 le refuse à l'écriture.
 - **R4.3.3** — La base n'a pas de défaut ni de « restaurer ». NOTICE : « 195 : N entrée(s) balisée(s), M déjà
   balisée(s), K gardée(s) ». Attendu : 32 / 0 / 0 (ou moins si des entrées sont sans terme) ; au 2e passage : 0 / 32 / 0.
+  Obtenu à l'étape C : les 32 entrées portent un terme (« sans terme : aucune ») ; 32 / 0 / 0 puis 0 / 32 / 0.
 
 ### 4.4 Migration 196 : brouillons des variantes
 
@@ -965,8 +1025,10 @@ ON CONFLICT (section_id, domaine_slug) DO NOTHING;
 - `DO NOTHING` : un brouillon déjà corrigé par le client n'est jamais écrasé ; idempotente.
 - `base_md5` = md5 du contenu commun balisé (LF), égal au `contenu` servi après la 194 pour une fiche non modifiée.
   Pour une fiche modifiée en production (R4.2.2), « à revoir » s'allume tout de suite : c'est le bon signal.
-- Insérée que le domaine existe ou non (décision 1). NOTICE : « 196 : N brouillon(s) inséré(s) (hotellerie a,
-  ceramique b) ; domaines absents : ceramique ». Slug d'Hôtellerie : celui de la lecture de production (R3.6.4).
+- Insérée que le domaine existe ou non (décision 1). Slugs : ceux de la lecture de production (R3.6.4),
+  `hotellerie` et **`usine`** (A16.13). NOTICE réelle : « 196 : 16 brouillon(s) inséré(s) (hotellerie 8, usine 8) ;
+  domaines absents : … ; fiches absentes : aucune ». En base locale (pas de domaine `usine`) : « domaines absents :
+  usine » ; en production, les deux domaines existent : « domaines absents : aucun ».
 
 ### 4.5 Retour arrière
 
@@ -1212,7 +1274,7 @@ calculable (défaut posé par la 194).
   404 si la fiche `:id` n'existe pas ; 400 si le slug est mal formé ou vaut `restauration` ; 400
   `VARIANTE_DOMAINE_SANS_ECART` si le domaine existe et que son lexique résolu ne s'écarte pas du défaut (I12) ;
   400 `DOMAINE_INCONNU` pour **créer** une variante d'un domaine qui n'existe pas (une variante existante d'un
-  domaine absent, comme les brouillons Céramique en production, reste modifiable) ; `titre` > 200 → 400 ; balises
+  domaine absent, comme les brouillons `usine` en base locale, reste modifiable, A16.5) ; `titre` > 200 → 400 ; balises
   vérifiées comme au R5.7.1 ; `base_md5` reprend `md5(replace(contenu commun servi, E'\r', ''))` du moment
   (enregistrer vaut relecture) ;
 - `DELETE /admin/manuel/:id/variantes/:domaineSlug`.
@@ -1452,7 +1514,19 @@ mais la relecture vérifie la phrase (« transférer » à côté de « livraiso
   (exemples 1 et 1 bis). `avecCourt` n'écrit pas de parenthèse si les deux formes sont égales.
 - Glose qui explique un terme par une clé copiée (`activite_desc`, `labo_long`, `labo_desc`) : elle redit le terme
   dès que le domaine le change (« un SERVICE (service) »). Le contrôle le signale (§3.5, point 8) ; le relecteur
-  choisit : exclusion `glose` (le texte reste celui d'origine) ou acceptation écrite dans `relectures/`.
+  choisit : exclusion `glose` (le texte reste celui d'origine) ou acceptation écrite dans `relectures/`. Dans le
+  manuel, une glose redite est **corrigée** (balise qui l'évite), **exclue**, ou **acceptée par écrit** quand
+  l'exclusion laisserait un sigle que le domaine ne voit jamais à l'écran (« Un **produit utilisable** (PU) » : exclure
+  « (PU) » ferait lire « (PU) » en H et en C, alors que l'écran écrit `voc.court('produit_utilisable')` ; redite
+  acceptée, besoin `L4-2`).
+- **Lexique sans formes courtes** (lexique `usine` de production, étape C). Quand un domaine n'a pas de forme courte,
+  `[[court:pt]]` rend le nom complet : « produits fabriqués (produits fabriqués) » si l'origine écrit « … (PT) » avec
+  deux balises. On écrit donc le « X (SIGLE) » d'origine avec `avecCourt` (`[[det:pt:le:pl]][[avecCourt:pt:pl]]`),
+  qui n'écrit pas la parenthèse quand la forme courte égale le nom : même rendu par défaut (I10). Corrigé ainsi à
+  l'étape C : `lexique-pt`, `stock-labo`, `transferts`, les entrées « Labo central » et « Produit transformé (PT) »,
+  et les variantes `usine` de `lexique-pt` et `lexique` (besoin `C-1`). `avecCourt` n'existe qu'en minuscules : un
+  « X (SIGLE) » en début de phrase ou de cellule (casse `Nom`) reste redit (« Produit fabriqué (produit fabriqué) »,
+  accepté, §10.3).
 - **« labo central », « laboratoire central »** (5 fiches : `decouvrir-labflow`, `compte-activites-labos`,
   `lexique`, `stock-labo`, `activites`, et l'entrée 16 de la base, titre et contenu, mesuré) : le terme H « cuisine
   centrale » contient déjà l'adjectif ; `[[acc:labo_long:central:centrale]]` donne « cuisine centrale centrale ».
@@ -1520,7 +1594,8 @@ Ce que montrent ces rendus :
 - 3, 3 bis, 16, 17 : une balise juste par défaut peut être fausse ailleurs (élision, accord) ; d'où les contrôles 7 à
   12 et la relecture croisée ;
 - 9 : glose redite ; 12 bis : pléonasme évité par 12. La base n'est lue que par le modèle : ses gloses redites y sont
-  tolérées et listées (§10.3). Dans le manuel, lu par le client, elles sont corrigées ou exclues ;
+  tolérées et listées (§10.3). Dans le manuel, lu par le client, elles sont corrigées ou exclues, ou acceptées par
+  écrit quand l'exclusion laisserait un sigle que le domaine ne voit jamais (§7.5, besoin `L4-2`) ;
 - 13, 14 : la grammaire est juste, mais l'exemple (tarte) ou la définition (circulaire, tri alphabétique perdu)
   restent ceux de la restauration : c'est le rôle des variantes (§8).
 
@@ -1546,8 +1621,11 @@ Elles portent 94 des 172 mots du métier hors lexique du manuel ; les 78 autres 
   lexique de A à Z de la variante est écrit et trié dans les mots du domaine, sans définition circulaire).
 - **R8.2.3** — Les termes du lexique restent **balisés** dans la variante : une correction du lexique par le client
   (les lexiques H et C sont encore des brouillons, `lot-2/brouillons-lexique-a-corriger.md`) passe dans la variante
-  sans la réécrire. Le contrôle refuse une forme du lexique du domaine écrite en clair (§3.5). Les mots du métier hors
-  lexique s'écrivent en clair.
+  sans la réécrire. Le contrôle refuse une forme du lexique du domaine écrite en clair (§3.5), sauf exclusion
+  justifiée dont l'extrait porte cette forme (par exemple « option Revendeurs », nom de l'option d'abonnement, ou le
+  libellé d'écran « *consommable* » en H ; besoins `V-H1-1`, `V-C1-1`, `V-C2-1`). Reformuler reste préférable quand le
+  sens est gardé (« le module Revendeurs », « établissement(s) » pour « site(s) »). Les mots du métier hors lexique
+  s'écrivent en clair.
 - **R8.2.4** — `titre` à `null` (titre commun balisé) sauf besoin réel ; `mots_cles` à `null`.
 - **R8.2.5** — Contrôle `controler.mjs --variante` (§3.5) ; aucune affirmation sur le fonctionnement de LabFlow qui ne
   soit déjà dans la fiche commune : une variante change les mots et les exemples, pas les règles. Une variante peut
@@ -1558,9 +1636,9 @@ Elles portent 94 des 172 mots du métier hors lexique du manuel ; les 78 autres 
 - Relecture croisée par un autre agent (langue, exactitude par rapport à la fiche commune), dans
   `relectures/V-*.json`.
 - Livrées au statut `brouillon` (migration 196).
-- **Validation par le client** dans l'admin : il ouvre la fiche, choisit l'onglet du domaine, lit l'aperçu, corrige
-  s'il le veut, coche « Validée ». À partir de là, la variante est servie aux comptes du domaine (si son lexique
-  s'écarte du défaut, I12). Pas à pas remis au client : §15.
+- **Validation par le client** dans l'admin : il ouvre la fiche, choisit l'onglet du domaine (« Hôtellerie » ou
+  « Industrie »), lit l'aperçu, corrige s'il le veut, coche « Validée ». À partir de là, la variante est servie aux
+  comptes du domaine (si son lexique s'écarte du défaut, I12). Pas à pas remis au client : §15.
 
 ### 8.4 Ce que voit un compte tant que la variante n'est pas validée
 
@@ -1579,24 +1657,29 @@ trié (exemple 14). C'est une limite connue, écrite au §10.3.
   par un besoin clos par l'intégrateur, qui rouvre la relecture de la variante et fait mettre à jour son `baseMd5`
   (le générateur refuse sinon, R3.6.2).
 
-### 8.6 Céramique en production
+### 8.6 Le 2e domaine en production : `usine` (« Industrie »)
 
-La 196 écrit les 8 brouillons `ceramique` même si le domaine n'existe pas (lecture (5) de `controle-avant-2c.sql`).
-La 187 avait créé le domaine (`187_domaines_profil_composants_tarifs.sql:110-115`) et la 191 lui posait son lexique :
-il a donc été supprimé en production, et ni la 187 ni la 191 ne repasseront. Recréé dans l'admin, il n'a **aucun
-lexique** et seulement les 4 composants d'identité par défaut (« Activité », « Labo », « Gérant », « Base acheteurs »,
-`domainesController.js:221-229`), contre 18 clés de lexique et 6 composants en base locale (mesuré).
+**État final (A16.13, lecture de production du 03/10).** Le domaine `ceramique` n'existe pas en production ; sa copie
+de production est le domaine **`usine`** (« Industrie », id 16) : mêmes 6 composants (usine, entrepôt, showroom,
+atelier, revendeur, responsable), lexique = celui de `ceramique` d'essai **sans formes courtes** (pas de PF, Site, FCR ;
+« Réception », forme courte égale au nom, ne change rien) **plus** `perte` = « Casse / Rebut / Second choix » (19 clés ;
+md5 `4468629d…` vérifié). Le client garde ce nom : la 196 écrit les 8 brouillons du 2e domaine sous le slug `usine`
+(générateur `--slug ceramique=usine`). **Rien n'est à créer en production** : le domaine existe et a son lexique,
+ses variantes seront servies dès leur validation (I12). Aucun compte n'est rattaché à `usine` aujourd'hui (production :
+3 comptes, tous restauration).
 
-Pour que les variantes s'appliquent, le client doit :
-1. créer le domaine avec le slug **`ceramique`** : le formulaire propose un slug calculé à partir du nom
-   (`AdminDomainesPage.tsx:14`, `:50`) ; le nom « Industrie — Céramique » donne `industrie-ceramique` : taper
-   `ceramique` dans le champ slug ;
-2. saisir son lexique (18 clés) et ses 6 composants, à partir de la fiche remise avec la livraison (§15 : valeurs de
-   la base locale, extraites en lecture seule).
+En base locale, `usine` n'existe pas : la 196 y écrit les brouillons `usine` quand même (« domaines absents : usine »),
+l'admin les montre « domaine absent » et ne peut pas les prévisualiser ; les contrôles du 2e domaine (oracle,
+E2E, PDF) tournent sur le domaine local `ceramique` et son lexique d'essai, et le texte est en plus contrôlé avec le
+lexique de production d'`usine` (`controler.mjs --production`, §3.5).
 
-Tant que le lexique n'est pas saisi, le domaine est sans écart : ses variantes ne sont pas servies, même validées
-(I12), et l'admin montre « domaine sans lexique ». Tant que le domaine manque, l'admin montre « domaine absent » et ne
-peut pas prévisualiser ces variantes.
+Effets du lexique `usine` sans formes courtes (mesurés à l'étape C, acceptés, §10.3) : `[[court:…]]` rend le nom
+complet (« Stock Site de production » au lieu de « Stock Site », « Fiche de coût de revient Stock », « un produit
+fabriqué fabriqué ») ; `perte` long (« Enregistrer la casse / rebut / second choix »). Ajouter dans l'admin les formes
+courtes PF, Site, FCR rendrait ces passages plus courts sans retoucher le manuel (§15).
+
+Règle générale gardée : un domaine sans lexique (ou recréé sans lui) est sans écart ; ses variantes ne sont pas
+servies, même validées (I12), et l'admin montre « domaine sans lexique ». Un domaine absent : « domaine absent ».
 
 ---
 
@@ -1693,84 +1776,167 @@ ou boulangerie.
    change après la 195).
 4. Le texte stocké change (balises) ; `updated_at` ne change pas (R4.2.4).
 5. Journal du serveur : après D1, la ligne `[manuel] manuel non balisé` ; au déploiement D2, les NOTICE des migrations
-   194 à 196 ; ensuite, aucune ligne `[manuel]`.
+   194 à 196 (texte exact au §12.2) ; ensuite, aucune ligne `[manuel]`.
 
 ### 10.3 Effets hors restauration, acceptés
 
-- **Mots du métier hors lexique, sans variante** (mesuré dans le manuel, contenu, mot entier, sans casse) :
-  « menu(s) » 39 (presque toujours le menu de l'application : homonyme), « carte(s) » 27 (surtout des cartes
-  d'écran), « restaurant(s) » 13, « cuisine(s) » 12, « boutique(s) » 11, « farine » 10, « beurre » 8,
-  « pâtisserie(s) » 8, « plat(s) » 8, « crème(s) » 16, « pâtissier / pâtissière(s) » 13, « boisson(s) » 8,
-  « sauce(s) » 7, « sucre » 6, « dessert(s) » 5, « viande(s) » 5, « tarte(s) » 5, « lait » 4, « pâte(s) » 4,
-  « économat(s) » 4, « œuf(s) » 3, « entremets » 3, « traiteur(s) » 3, « pizza(s) » 2, « restauration » 2,
-  « métiers de bouche » 1. Seule une variante validée les corrige. « composé(s) valorisé(s) » (28, dont 5 dans
-  « produit(s) composé(s) valorisé(s) », qui est une forme du lexique ; ailleurs, notion de LabFlow sans clé, que
-  l'écran écrit aussi en dur, `StockLaboPage.tsx:928`) : gardé.
-- **Fiches sans variante qui restent marquées par la restauration** (mots du métier, mesuré) : `calc-production-pt`
-  12 (`:::exemple` « Crème pâtissière »), `calc-tracabilite` 8, `categories-produits` 6 (« Entrées », « Boissons »,
+Tous les effets ci-dessous sont acceptés pour le 2c : aucune balise ne les lève sans reformuler le texte commun (I10,
+donc I1), et ils sont dans des fiches sans variante, ou dans la base (qui n'a pas de variante, question 5). Chaque
+ligne renvoie au besoin qui la porte (`scripts/manuel/besoins/<lot>.json`, état final dans le fichier ; récapitulatif
+des vagues : `L8-2`, `L9-4` ; étape C : `C-1`, `C-5`). Rendus « C » : lexique d'essai `ceramique` ; quand le lexique de
+production d'`usine` rend autrement, c'est dit. Version pour le client : `labflow-reprise/lot-2c/ecarts-visibles-2c.md`.
+
+**10.3.1 Mots du métier hors lexique, sans variante.**
+- Mesuré dans le manuel (contenu, mot entier, sans casse) : « menu(s) » 39 (presque toujours le menu de
+  l'application : homonyme), « carte(s) » 27 (surtout des cartes d'écran), « restaurant(s) » 13, « cuisine(s) » 12,
+  « boutique(s) » 11, « farine » 10, « beurre » 8, « pâtisserie(s) » 8, « plat(s) » 8, « crème(s) » 16, « pâtissier /
+  pâtissière(s) » 13, « boisson(s) » 8, « sauce(s) » 7, « sucre » 6, « dessert(s) » 5, « viande(s) » 5, « tarte(s) » 5,
+  « lait » 4, « pâte(s) » 4, « économat(s) » 4, « œuf(s) » 3, « entremets » 3, « traiteur(s) » 3, « pizza(s) » 2,
+  « restauration » 2, « métiers de bouche » 1. Seule une variante validée les corrige. « composé(s) valorisé(s) » (28,
+  dont 5 dans « produit(s) composé(s) valorisé(s) », qui est une forme du lexique ; ailleurs, notion de LabFlow sans
+  clé, que l'écran écrit aussi en dur, `StockLaboPage.tsx:928`) : gardé.
+- Fiches sans variante qui restent marquées par la restauration (mots du métier, mesuré) : `calc-production-pt` 12
+  (`:::exemple` « Crème pâtissière »), `calc-tracabilite` 8, `categories-produits` 6 (« Entrées », « Boissons »,
   « Desserts »), `activites` 6 (restaurant, cuisine, économat), `produits-utilisables` 4, `calc-transferts` 4,
   `referentiel-categories` 3, `produits-vendables` 3, `dashboard` 3, `calc-seuils` 3, `assistant-ia` 3,
   `faq-chiffres` 3. Les 8 variantes couvrent 94 des 172 mots ; 78 restent ailleurs. 10 des 11 blocs `:::exemple`
-  restent ceux de la pâtisserie (seul celui de `calc-cout-recette` a une variante). Question 9 au client.
-- **Mots qui changent de sens hors restauration (collisions)** : un mot écrit en clair dans le texte commun est le mot
-  même d'un autre terme du domaine. Mesuré dans le contenu :
+  restent ceux de la pâtisserie (seul celui de `calc-cout-recette` a une variante).
+- Fiches candidates à une variante du 2e domaine si un client industriel signe (question 9, « non dans ce lot ») :
+  `categories-produits`, `calc-production-pt`, `calc-tracabilite`, `activites` (`L6-2`) et `faq` (`L3-4`).
 
-  | Mot en clair | Terme du domaine | Occurrences | Exemple rendu |
-  |---|---|---|---|
-  | option(s) | C `supplement` = Option | 37 | « l'option Revendeurs » (module) et « options » (suppléments) dans les mêmes fiches |
-  | fabriqué(e)(s) | C `pt` = Produit fabriqué | 27 | C « Un site de production fabrique les produits fabriqués » |
-  | site(s) | C `labo`, forme courte Site | 19 | C « partagé par tous les sites » = activités ET labos dans l'origine |
-  | réception(s) | C `appro` = Réception | 13 | C « ↑ réception (achats et réceptions d'un site de production source) » |
-  | préparation(s) | H `pt` = Préparation | 13 | H « Un consommable est une préparation intermédiaire » |
-  | livraison(s) | H, C `transfert` | 13 | « bon de livraison », « plateforme de livraison » |
-  | produit(s) fini(s) | C `produit_vendable` | 12 | « une entrée en stock du produit fini » (`calc-production-pt`) |
-  | consommable(s) | H `produit_utilisable` | 10 | famille « *consommable* (utilisé en cuisine) » |
-  | composant(s) | H, C `ingredient` | 10 | |
-  | client(s) professionnel(s) | H `acheteur` | 5 | H « Client professionnel (B2B) enregistré dans votre carnet de clients professionnels » |
-  | intermédiaire(s) | C `prestataire` | 4 | « préparation intermédiaire » |
-  | revendeur(s) | C `acheteur` | 3 | C « Canal de vente tiers (plateforme de livraison, revendeur…) » |
+**10.3.2 Mots qui changent de sens hors restauration (collisions).** Un mot écrit en clair dans le texte commun est le
+mot même d'un autre terme du domaine, ou un terme du domaine se lit autrement à côté du texte commun. Occurrences
+mesurées dans le contenu du manuel (avant le balisage) ; la dernière colonne liste les lieux relevés par les vagues et
+l'étape C (M = manuel, B = base) :
 
-  Signalés fiche par fiche (§3.5, point 12) ; seule une variante peut lever l'ambiguïté. La recherche en souffre aussi
-  (en C, « vente » est dans « point de vente » : « Comment saisir une vente ? » met plusieurs fiches ex aequo).
-- « sous-produit(s) » : 28 + 2, gardé (décision 2), et « sous-PT » (1). En Céramique, « sous-produit » se lit « déchet
-  valorisable ». « sous-préparation(s) » (10) et « sous-composant(s) » (2) restent aussi tels quels (hors lexique).
-- **Verbes du métier** (formes verbales, mesuré) : « transférer » 12, « approvisionner » 15 (dont
-  « approvisionnable »), « vendre » 42. Gardés : I10 interdit de reformuler le texte commun (§0.4). H lit
-  « transférer » à côté de « livraison interne ».
-- **Formes courtes en pleine phrase** : H lit « prépa » (mot familier) et C « PF » là où l'origine écrit « PT »
-  (R7.1.5).
+| Mot en clair | Terme du domaine | Occ. | Exemple rendu | Autres lieux relevés (besoin) |
+|---|---|---|---|---|
+| option(s) | C `supplement` = Option | 37 | « l'option Revendeurs » (module) et « options » (suppléments) dans les mêmes fiches | M `produits-vendables` « Pour un produit fini (hors option), une option 📦 … » (`L4-1`) ; M `configuration-vente` (module), `charges` (mode de saisie), `acheteurs-carnet` (case « Créer les comptes portail ») (`L7-3`) ; B « Article vendable », « Produits vendables et utilisables » : « en option » (`L9-1`) |
+| fabriqué(e)(s), fabriquer | C `pt` = Produit fabriqué | 27 | C « Un site de production fabrique les produits fabriqués » | M `stock-activites` (`L5-1`), `calc-prix` (`L8-2`), `stock-labo` et `calc-transferts`, verbe (`L6-4`) ; B « Labo central » « fabrique des produits fabriqués (PF) », « Produit transformé (PT) » « Un produit fabriqué (PF) est fabriqué » (`L9-1`) |
+| site(s) | C `labo`, forme courte Site | 19 | C « partagé par tous les sites » = activités ET labos dans l'origine | M `dashboard` « pertes … par site » (`L7-3`) ; « site de production » générique : M `calc-prix` « Production au site de production » (`L8-2`), B « Produit transformé (PT) » « déduit du stock du site de production » (`L9-1`) ; B « Seuil minimum » « chaque site a ses propres seuils » (`L9-1`) |
+| réception(s) | C `appro` = Réception | 13 | C « ↑ réception (achats et réceptions d'un site de production source) » | M `historique` ×2, `factures` (`L5-1`) ; `stock-labo`, `transferts`, `calc-transferts` (`L6-4`) ; `dashboard` (`L7-3`) ; `calc-pmp` « n'a encore reçu aucune réception » (`L8-2`) |
+| préparation(s) | H `pt` = Préparation | 13 | H « Un consommable est une préparation intermédiaire » | |
+| livraison(s) | H, C `transfert` = Livraison interne | 13 | « bon de livraison », « plateforme de livraison » | M `factures` « retrouver une livraison précise » (`L5-1`) ; `fournisseurs`, `transferts`, `calc-transferts` « bon de livraison » (`L6-4`) ; B « Prestataire de livraison » (`L9-1`) |
+| produit(s) fini(s) | C `produit_vendable` | 12 | « une entrée en stock du produit fini » (`calc-production-pt`, pour un produit fabriqué qui peut être un semi-fini, `L8-2`) | |
+| consommable(s) | H `produit_utilisable` | 10 | famille « *consommable* (utilisé en cuisine) » | M `articles-valorises` « familles marquées « vendable » et « non consommable » » (`L4-1`) |
+| composant(s) | H, C `ingredient` | 10 | | |
+| client(s) professionnel(s) | H `acheteur` | 5 | H « Client professionnel (B2B) enregistré dans votre carnet de clients professionnels » | |
+| intermédiaire(s) | C `prestataire` = Intermédiaire | 4 | « préparation intermédiaire » | le terme balisé se lit comme un adjectif après un nom : M `configuration-vente`, `saisie-ventes`, `ventes-labo`, `dashboard` « prix intermédiaire », « canaux intermédiaires », « commissions intermédiaires » (`L7-2`, décision client §15) |
+| revendeur(s) | C `acheteur` | 3 | C « Canal de vente tiers (plateforme de livraison, revendeur…) » | |
+| matière(s) première(s) | C `article` = Matière première | — | C « Les matières premières sont vos matières premières et composants » (`referentiel-articles`) | M `faq` « La matière première est une matière première de votre référentiel » (`L4-1`, `L3-4`) |
+| coût de revient | C `fiche_technique` = Fiche de coût de revient | — | C titre « Fiches de Coût de Revient & coût de revient » (`fiches-techniques`) | M `fiches-techniques` « … calcule son coût de revient matière », `produits-vendables` « [Fiches de Coût de Revient](#fiches-techniques) — coût de revient et export » (`L4-1`) ; levée par les variantes dans les fiches qui en ont (`L2-3`, décision client §15) |
+| point de vente | C `activite` = Point de vente | — | C « transforme votre labo en point de vente B2B » (`acheteurs-module`, homonyme exclu) (`L7-3`) | |
+| responsable de site | C `gerant` = Responsable de site | — | C « Créez un responsable de site par responsable de site » (`gerants`, bloc astuce) (`L1-1`, décision client §15) | |
+| en service | H `activite` = Service | — | H « Fourniture en service », « Préparation en service » (`calc-valeur-stock`) (`L8-2`) | |
+
+Signalés fiche par fiche (§3.5, point 12, « — » : mot non compté au départ, relevé par la relecture) ; seule une
+variante peut lever l'ambiguïté. La recherche en souffre aussi (en C, « vente » est dans « point de vente » :
+« Comment saisir une vente ? » met plusieurs fiches ex aequo).
+
+**10.3.3 Répétitions que la grammaire ne peut pas éviter.**
+- C « sites de production de production » (« labos de production », C et défaut masculins, §7.5) : `stock-labo`,
+  `activites` (« vos **sites de production** de production ») (`L6-1`) ; dans `decouvrir-labflow` et
+  `compte-activites-labos`, levée par leur variante (`L2-2`).
+- C « produits fabriqués fabriqués » : `calc-prix` (`L8-2`) ; « produit fabriqué fabriqué » : `stock-activites`
+  (`L5-1`) ; avec le lexique `usine` de production (sans forme courte), aussi « un produit fabriqué fabriqué » dans
+  `transferts` et l'entrée « Produit transformé (PT) » de la base (`C-1`).
+- Le pléonasme « cuisine centrale centrale » est évité partout (§7.5).
+
+**10.3.4 Gloses redites.**
+- Manuel, fiches sans variante : `produits-utilisables` H « Un **consommable** (consommable) », C « Un **semi-fini**
+  (semi-fini) » (`L4-2`, §7.5) ; `activites` C « vos **points de vente** (points de vente) » (`L6-2`). Avec le lexique
+  `usine` de production : « Produit fabriqué (produit fabriqué) » dans le tableau du texte commun de `lexique` (casse
+  `Nom`, que `avecCourt` n'a pas ; servi tant que la variante n'est pas validée) (`C-1`).
+- Base, lue seulement par le modèle (tolérées, question 5) : « Transferts » (« un SERVICE (service) », exemple 9) ;
+  « Activité (point de vente) » (titre H « Service (service) », C « Point de vente (point de vente) » ; définition H
+  « Un service est un service ») ; « Approvisionnement (appro) » (titre C « Réception (réception) ») ; « Labo central »
+  (H « La cuisine centrale (cuisine centrale) ») (`L9-2`) ; « Produit transformé (PT) » avec le lexique `usine`
+  (titre « Produit fabriqué (produit fabriqué) ») (`C-1`).
+
+**10.3.5 Capitales partielles et noms abrégés gardés.** Base « Produits vendables et utilisables » : « Un produit
+VENDABLE », « Un produit UTILISABLE », et le titre lui-même : les notions VENDABLE / UTILISABLE restent dans les mots de
+la restauration dans tous les domaines ; le modèle tient les termes du domaine (H « Prestation vendue » /
+« Consommable », C « Produit fini » / « Semi-fini ») du glossaire du prompt. Base « Produit transformé (PT) » : les
+noms abrégés « Utilisables, Vendables, Composés Valorisés », que les écrans rendent par `cat_pt_*` (`L9-3`). Manuel
+`decouvrir-labflow` : « Produits vendables, utilisables et valorisés ». Ces passages sont tenus par des exclusions
+« rendu » (§3.3, `C-3`).
+
+**10.3.6 Formes collées à un trait d'union, gardées** (A16.2 : jamais de balise contre un tiret). « sous-produit(s) » :
+28 dans le manuel et 2 dans la base, gardé (décision 2) ; en C il se lit « déchet valorisable ». « sous-PT » (1, même
+notion). « fournisseur-labo » (`calc-transferts`, exclusion `nom-fige`, `L6-3`). « sous-préparation(s) » (10) et
+« sous-composant(s) » (2) restent aussi tels quels (hors lexique).
+
+**10.3.7 Limites de la grammaire** (justes en H et en C aujourd'hui ; fausses dans le miroir, donc pour un futur lexique
+qui aurait ces traits ; signalées par le point 9 du contrôle à cet endroit) :
+- « à la/aux usine(s) » au lieu de « à l'/aux » : `[[acc:labo:au(x):à la/aux]]` ne sait pas élider (`produits-utilisables`,
+  `L4-4`) ;
+- « En tant que animatrice » : pas de méthode qui élide « que » (`dashboard-gerant`, `L3-2` ; `produits-vendables`) ;
+- « une appro » au féminin (`faq-chiffres`) : la forme courte n'a pas de genre propre ; faux si un lexique donne un jour
+  une forme courte masculine (`L3-1`) ;
+- accord avec « et » laissé sans balise au masculin pluriel (R7.3.4) ; astuce « central » liée au genre (§7.5).
+
+**10.3.8 Verbes du métier** (formes verbales, mesuré) : « transférer » 12, « approvisionner » 15 (dont
+« approvisionnable »), « vendre » 42 ; et « fabriquer » à côté du terme C de `pt` (`L6-4`). Gardés : I10 interdit de
+reformuler le texte commun (§0.4). H lit « transférer » à côté de « livraison interne », dans des fiches titrées
+« Livraisons internes » qui citent le bouton « ↗ Transfert » (`nom-fige`, R7.1.3).
+
+**10.3.9 Formes courtes en pleine phrase.** H lit « prépa » (mot familier) et C « PF » là où l'origine écrit « PT »
+(R7.1.5 ; `L5-2`). Le lexique `usine` de production n'a **pas de formes courtes** : chaque `[[court:…]]` y rend le nom
+complet, ce qui allonge des libellés repris de l'écran (« Stock Site de production », « Fiche de coût de revient
+Stock », « badge Produit fabriqué », « Ventes Site de production ») et donne les redites des §10.3.3 et §10.3.4 ;
+`perte` y vaut « Casse / Rebut / Second choix » (« Enregistrer la casse / rebut / second choix »). 19 signalements
+acceptés avec `"lexique": "production"` (`C-1`). Ajouter les formes courtes PF, Site, FCR dans l'admin les raccourcit
+sans retoucher le manuel (décision client, §15).
+
+**10.3.10 Libellés d'écran gardés tels quels** (`nom-fige`, R7.1.3) :
+- « *Article* », « *Prix vente* » (`saisie-ventes`) : l'écran Ventes les écrit en dur, sans `voc`
+  (`VentesPage.tsx:280-281`, `:716`) ; à passer par `voc` dans le front, puis à baliser en maintenance (`L7-1`) ;
+- liens « Articles Valorisés » (`referentiel-familles`) : ancien nom de l'écran, devenu « Produits Valorisés »
+  (`L3-3`, décision client §15 : la correction change aussi la restauration) ;
+- bouton « ↗ Transfert » (`transferts`).
+
+**10.3.11 Autres effets.**
 - Les 8 fiches métier tant que leur variante n'est pas validée (§8.4).
-- Gloses redites dans la base, lue seulement par le modèle (« un SERVICE (service) », entrée 8) ; capitales partielles
-  gardées (« produit VENDABLE »). Le pléonasme « cuisine centrale centrale » est évité (§7.5), sauf « sites de
-  production de production » en C (`stock-labo`), que la grammaire ne peut pas éviter.
 - `motsCles` garde ses mots d'origine (il n'est pas affiché ; c'est voulu pour la recherche).
 - PDF : un mot de lexique hors Windows-1252 sortirait en « ? » (aucun aujourd'hui).
-- Les variantes Céramique ne s'appliquent en production qu'une fois le domaine créé avec le slug `ceramique` ET son
-  lexique saisi (§8.6).
-- Les rendus héritent des brouillons de lexique (« Livraison interne », « Prestation vendue »…) : ils changeront avec
-  les corrections du client, sans retouche du manuel. Les rendus de contrôle sont à refaire après ces corrections.
+- Hôtellerie de production a un 10e composant « bureau logisti » (type labo, masculin), probablement un essai saisi
+  dans l'admin : il entre dans les mots-clés enrichis (R5.4) des fiches qui nomment « labo(s) » et dans les questions
+  du guide de mise en route (`C-5`, décision client §15).
+- Les rendus héritent des brouillons de lexique (« Livraison interne », « Prestation vendue », « Intermédiaire »…) : ils
+  changeront avec les corrections du client, sans retouche du manuel. Les rendus de contrôle sont à refaire après ces
+  corrections (`controler.mjs --tout --lexique …`).
+
+**10.3.12 Relevés hors balisage, qui touchent aussi la restauration** (non corrigés : I10 interdit de changer le
+texte servi en restauration dans ce lot ; décision du client, puis maintenance §12.5) :
+- `acheteurs-tarifs` dit « sections repliées par défaut », l'écran les ouvre (`TarifsAcheteursPage.tsx:294`) (`L7-4`) ;
+- liens « Articles Valorisés » de `referentiel-familles` (`L3-3`, ci-dessus).
 
 ---
 
 ## 11. Preuves
 
-| # | Contrôle | Ce qu'il prouve |
-|---|---|---|
-| P1 | `controler.mjs --tout` (§3.5), 61 fiches et 32 entrées | I10 sur les fichiers (4 champs, octet pour octet) ; I11 ; aucun résiduel hors exclusions ; liens, blocs, tableaux intacts ; parties et titres distincts dans chaque domaine ; signalements 7 à 12 tous traités ; `baseMd5` à jour |
-| P2 | `controler.mjs --variante` sur les 16 variantes | variantes valides, sans résiduel, sans forme du domaine en clair, liens intacts, lisibles dans le PDF |
-| P3 | relectures croisées closes (`relectures/*.json`), rendus H, C, miroir lus en entier | accords, élisions, sens, collisions (ce que l'outil ne voit pas) |
-| P4 | `essai-migration.js` (§3.7), sur une copie après l'étape C | les migrations appliquées à une vraie base rendent l'origine par défaut ; 59 / 32 / 16 ; idempotence (« déjà balisée ») ; retour exact ; base intacte après `ROLLBACK` (empreinte, table, `_migrations`) |
-| P5 | `generer-migrations.mjs` : aucune fiche écartée sans mention, aucun `\r`, LF, `baseMd5` vérifiés, liste des champs admis écrite | migrations complètes et sûres |
-| P6 | `node scripts/check-invariant-vocab.js` (restauration), sur une copie migrée | I1 côté serveur, sur le vrai contrôleur : manuel de 6 lecteurs (sections et empreintes NON masquées, `updatedAt` compris), recherches, recherches dans les mots du compte, outils, prompt : identiques à la référence (R2.2 compris) ; aucune entrée sans emploi |
-| P7 | `--domaine hotellerie`, `ceramique`, `miroir`, l'un après l'autre, sur une copie migrée | I2 : aucune forme par défaut hors exclusions dans le manuel servi, les résultats de la base et la description ; aucun « [[ » ni « ‹clé› » ; résultats du manuel = début des fiches servies ; manuel de l'admin égal à la référence (I4) ; mots-clés enrichis ; 0 exception `2c` ; chaque recherche a un résultat ; rapport de cohérence relu |
-| P8 | `controle-manuel-pdf.mjs` (front) | PDF restauration (`develop` + origine) identique à l'octet au PDF courant + réponse brute du serveur ; PDF H et C sans forme par défaut, sans balise, sans chaîne sur deux octets |
-| P9 | `npm test` (dont `test/2c-manuel.test.js`, `test/B1-assistant.test.js`) | rendu, variantes (café compris), enrichissement, ordre de la recherche, validation 400 / 409 / 404, `vocabBrut`, avertissement au démarrage champ par champ, description et glossaire |
-| P10 | `vocab-check` : `identite`, `residuels`, `accords` à 0 dans les deux dépôts, `lexique` conforme ; `vocab-lots.mjs` sans erreur | code du serveur sans écart non admis ; moteur et empreinte inchangés |
-| P11 | E2E sur une copie migrée : `test-vocabulaire-domaine.js` étendu, `test-manuel-filtre.js` (15 contrôles), `check-invariant-config.js`, `check-invariant-stock.js`, `test-composants.js`, `test-transferts-chaine.js`, `test-onboarding-etapes.js`, `test-contrat-admin.js`, `test-bot-onboarding.js` (14/17, liste des contrôles verts comparée) | non-régression ; variante validée servie ; restauration et admin inchangés avant et après la validation |
-| P12 | parcours navigateur (scripts de `labflow-reprise/lot-2/parcours-2a/`), backend de test sur une copie migrée | compte restauration : guide et PDF inchangés ; compte H : guide, PDF, recherche locale avec un mot du domaine, assistant ; admin : aperçu par domaine, légende, balise refusée, variante validée puis supprimée |
-| P13 | `npm run build` (front), `git diff develop -- src/utils/manuelPdf.ts src/utils/pdfTexte.ts src/components/client/GuidePage.tsx src/components/common/MarkdownView.tsx` vide, entrées `jspdf` et `jspdf-autotable` de `package-lock.json` inchangées | écrans clients et PDF inchangés |
-| P14 | lecture de production avant (§12.1) et journaux après D1 et D2 (§12.2, §12.3) | le texte balisé part du texte réel de production ; aucune balise brute servie pendant la bascule ; 0 fiche sans balises |
-| P15 | `base-locale.js etat` à la fin de la vérification | la base `fiche_technique` n'a pas reçu 194 à 196 ; la photo est intacte |
+Colonne « Obtenu » : résultats de l'étape C (03/10/2026, branche à `f0383cf`), passages réellement faits ; journaux et
+rapports dans le dossier temporaire de l'étape (`…\scratchpad\wf-C\integrateur-tech\`). « Vérification » : preuve qui
+revient à l'étape de vérification (§13), pas encore faite.
+
+| # | Contrôle | Ce qu'il prouve | Obtenu |
+|---|---|---|---|
+| P1 | `controler.mjs --tout` (§3.5), 61 fiches et 32 entrées, lexiques d'essai **et** `--production` | I10 sur les fichiers (4 champs, octet pour octet) ; I11 ; aucun résiduel hors exclusions ; liens, blocs, tableaux intacts ; parties et titres distincts dans chaque domaine ; signalements 7 à 12 tous traités ; `baseMd5` à jour | VERT deux fois : 61/61 fiches, 32/32 entrées, 16/16 variantes, 0 échec d'ensemble, 0 à traiter, 0 acceptation sans objet. `--production` : H = lecture (md5 `ec83e7e8…`, identique à l'essai, 0 signalement nouveau) ; `usine` md5 `4468629d…` : 1er passage 32 à traiter et 6 sans objet, tous traités (`C-1`, §7.5, §10.3.9) |
+| P2 | `controler.mjs --variante` sur les 16 variantes | variantes valides, sans résiduel, sans forme du domaine en clair, liens intacts, lisibles dans le PDF | 16/16 dans `--tout` ; variantes du 2e domaine avec le lexique `usine` : 3/3 (`--lot V-C1 --lexique-ceramique lecture`), V-C2 par `--tout --production` |
+| P3 | relectures croisées closes (`relectures/*.json`), rendus H, C, miroir lus en entier | accords, élisions, sens, collisions (ce que l'outil ne voit pas) | closes aux points de restauration des vagues (`768a5a8`, `275b8a3` ; contrôles `labflow-reprise/lot-2c/controle-vague-B1.md`, `controle-vague-B2-V.md`) ; besoins tous clos (`APPLIQUÉ`, `REPORTÉ` inscrit au §10.3, ou `DÉCISION CLIENT` au §15) |
+| P4 | `essai-migration.js` (§3.7) | les migrations appliquées à une vraie base rendent l'origine par défaut ; 59 / 32 / 16 ; idempotence (« déjà balisée ») ; retour exact ; base intacte après `ROLLBACK` (empreinte, table, `_migrations`) | Base principale, SQL d'essai, avant l'écriture : NOTICE 59/0/0, 32/0/0, 16 (hotellerie 8, usine 8 ; domaine absent : usine) ; 2e passage 0/59/0, 0/32/0, 0 inséré ; rendu par défaut = origine (61 fiches, 32 entrées) ; retour exact ; après `ROLLBACK` empreintes `67737956…` / `8779fd65…`, 189 lignes `_migrations`. Copie neuve, `--migrations` : même résultat (193 appliquée dans la transaction ; après `ROLLBACK` table absente, 188 lignes) |
+| P5 | `generer-migrations.mjs` : aucune fiche écartée sans mention, aucun `\r`, LF, `baseMd5` vérifiés, liste des champs admis écrite | migrations complètes et sûres | `--essai --slug ceramique=usine` puis écriture : 194 = 59 contenus, 32 titres, 28 parties, sans terme `historique-paiements` et `onboarding-activation` (307 506 octets, md5 `b1662d35…`) ; 195 = 32 entrées (39 276 octets, `b2c8c857…`) ; 196 = 16 brouillons (116 802 octets, `a08d6b6b…`) ; 1 champ admis ; LF, 0 « \r » ; md5 de l'essai = md5 de l'écriture |
+| P6 | `node scripts/check-invariant-vocab.js` (restauration), sur une copie migrée | I1 côté serveur, sur le vrai contrôleur : manuel de 6 lecteurs (sections et empreintes NON masquées, `updatedAt` compris), recherches, recherches dans les mots du compte, outils, prompt : identiques à la référence (R2.2 compris) ; aucune entrée sans emploi | **IDENTIQUE**, deux fois, sur deux copies neuves (la capture applique 193 à 196 : NOTICE 59/32/16) : 0 écart, 0 entrée sans emploi ; 1 permutation entre ex aequo admise (`rapportIA`, `ordre-libre.json`) |
+| P7 | `--domaine hotellerie`, `ceramique`, `miroir`, l'un après l'autre, sur une copie migrée | I2 : aucune forme par défaut hors exclusions dans le manuel servi, les résultats de la base et la description ; aucun « [[ » ni « ‹clé› » ; résultats du manuel = début des fiches servies ; manuel de l'admin égal à la référence (I4) ; mots-clés enrichis ; 0 exception `2c` ; chaque recherche a un résultat ; rapport de cohérence relu | « AUCUNE forme par défaut hors exceptions » dans les trois : H 8 095 textes lus, C 7 841, miroir 7 607 ; 0 problème, 0 exception sans emploi, 0 exception ajoutée. Liste de travail : famille `manuel` 552 → 0 (H), 678 → 0 (C), 1 070 → 0 (miroir) ; `assistant` 187 → 0, 279 → 0, 505 → 0. Résultats du manuel contrôlés : 231 / 208 / 206 ; mots-clés enrichis : 89 / 107 / 152 contrôles, 0 manque ; recherches du domaine : 61 / 58 / 56 clés, 0 sans résultat, terme du domaine toujours présent. Avant le passage final : masque des cibles de liens ajouté à l'oracle (`C-2`) et exclusions « rendu » (`C-3`) |
+| P7 bis | rapport R2.4.6 (A16.6, remesure manuel balisé) | effet de la recherche et des mots-clés enrichis | fiche attendue parmi les 4 résultats : **H 9/12** (avant le balisage 5/12), **C 6/9** (3/9), **miroir 5/7** (3/7). Manques : « calcul du food cost » (3 domaines : fiches de calcul devant `decouvrir-labflow`) ; H « mon bar », « mon spa » (libellés de moins de 4 lettres, §0.4) ; C « mon entrepôt », « mon atelier » ; miroir « transfert vers une activité ». Non bloquant (le score n'est pas changé par le 2c) |
+| P8 | `controle-manuel-pdf.mjs` (front) | PDF restauration (`develop` + origine) identique à l'octet au PDF courant + réponse brute du serveur ; PDF H et C sans forme par défaut, sans balise, sans chaîne sur deux octets | restauration identique à l'octet ; H et C : 0 forme par défaut (réponses brutes du client B des passages H et C) |
+| P9 | `npm test` (dont `test/2c-manuel.test.js`, `test/B1-assistant.test.js`) ; tests des outils à part (A16.11) | rendu, variantes (café compris), enrichissement, ordre de la recherche, validation 400 / 409 / 404, `vocabBrut`, avertissement au démarrage champ par champ, description et glossaire | `npm test` 340/340 ; `node --test scripts/manuel/test/*.test.*` 65/65 |
+| P10 | `vocab-check` : `identite`, `residuels`, `accords` à 0 dans les deux dépôts, `lexique` conforme ; `vocab-lots.mjs` sans erreur | code du serveur sans écart non admis ; moteur et empreinte inchangés | 0 dans les deux dépôts |
+| P11 | E2E sur une copie migrée : `test-vocabulaire-domaine.js` étendu, `test-manuel-filtre.js` (15 contrôles), `check-invariant-config.js`, `check-invariant-stock.js`, `test-composants.js`, `test-transferts-chaine.js`, `test-onboarding-etapes.js`, `test-contrat-admin.js`, `test-bot-onboarding.js` (14/17, liste des contrôles verts comparée) | non-régression ; variante validée servie ; restauration et admin inchangés avant et après la validation | `test-vocabulaire-domaine` 236/236 (l'échec attendu avant C a disparu), `test-manuel-filtre` 15/15 (port 3101), `test-composants` 72/72 (port 3000 : adresse fixe dans le script), `check-invariant-config` et `check-invariant-stock` 0 écart ; démarrage du backend de test sur la copie : NOTICE 194 à 196, aucune ligne `[manuel]` (R5.8) ; `retour-2c.js --essai` exact sur la copie migrée. **Vérification** : `test-transferts-chaine`, `test-onboarding-etapes`, `test-contrat-admin`, `test-bot-onboarding` |
+| P12 | parcours navigateur (scripts de `labflow-reprise/lot-2/parcours-2a/`), backend de test sur une copie migrée | compte restauration : guide et PDF inchangés ; compte H : guide, PDF, recherche locale avec un mot du domaine, assistant ; admin : aperçu par domaine, légende, balise refusée, variante validée puis supprimée | **Vérification** |
+| P13 | `npm run build` (front), `git diff develop -- src/utils/manuelPdf.ts src/utils/pdfTexte.ts src/components/client/GuidePage.tsx src/components/common/MarkdownView.tsx` vide, entrées `jspdf` et `jspdf-autotable` de `package-lock.json` inchangées | écrans clients et PDF inchangés | **Vérification** (front inchangé depuis `42e32d3`, étape A) |
+| P14 | lecture de production avant (§12.1) et journaux après D1 et D2 (§12.2, §12.3) | le texte balisé part du texte réel de production ; aucune balise brute servie pendant la bascule ; 0 fiche sans balises | lecture faite le 03/10, **conforme** (A16.13) ; journaux : au déploiement |
+| P15 | `base-locale.js etat` à la fin de la vérification | la base `fiche_technique` n'a pas reçu 194 à 196 ; la photo est intacte | à l'étape C : `fiche_technique` à la 193, empreintes inchangées ; à refaire à la fin de la **vérification** |
 
 ---
 
@@ -1806,6 +1972,14 @@ Lecture des résultats :
   production (option `--lexique <fichier>`, une liste d'écarts résolue par R3.1.1) avant la consolidation, et ses
   signalements sont relus. Si le slug n'est pas `hotellerie` : option `--slug` du générateur (R3.6.4).
 
+**Résultat (03/10/2026, `scripts/manuel/lecture-production.json`, A16.13) : conforme.** (1) empreintes égales au local
+(`67737956…`, `8779fd65…`), 61 fiches dont 60 actives, 32 entrées ; (2) aucune fiche modifiée ; (6) 0 `\r` ; dernière
+migration 192. (5) domaines : `restauration`, `cafe`, `boulangerie` (0 clé), `hotellerie` (13 clés), **`usine`**
+« Industrie » (19 clés) ; pas de `ceramique`. (7) Hôtellerie : slug `hotellerie`, lexique identique au local (md5
+`ec83e7e8…`), 10 composants (le 10e, « bureau logisti », ressemble à un essai, §10.3.11). Seconde lecture du même jour :
+`usine` = la Céramique de production (§8.6) ; 3 comptes, tous restauration. Suites : génération à partir des fichiers ;
+`controler.mjs --tout --production` (§3.5) ; générateur `--slug ceramique=usine` (R3.6.4).
+
 ### 12.2 Ordre : trois poussées
 
 **Pourquoi.** Coolify garde l'ancien conteneur en service tant que le nouveau n'est pas déclaré sain
@@ -1825,7 +1999,8 @@ remet). D1 fusionne X ; D2 fusionne Y. Aucune réécriture d'historique.
 0. **Avant tout** : télécharger le PDF du manuel du compte 328 (démo) et noter trois titres de fiches ; ne pas relancer
    le seed du compte 328 entre ce PDF et le contrôle du §12.3. Lecture de production faite (§12.1).
 1. **D1 — serveur, code** : `npm test` vert ; fusion `--no-ff` du commit X dans `develop` et `main` du **backend** ;
-   poussée de `main`. Part : tout le code du §5, la 193, R2.2, `.gitattributes`, `manuelSansBaliseAdmis.json`.
+   poussée de `main`. Part : tout le code du §5, la 193, R2.2, `.gitattributes`, `manuelSansBaliseAdmis.json` (1 champ
+   admis, sans effet tant que la base n'est pas balisée), les outils et les fichiers de `scripts/manuel/`.
    La base reste en texte brut : le rendu par défaut est l'identité (prouvé par l'oracle à l'étape S).
    Attendre `/health` et, dans les journaux Coolify : « Migration appliquee: 193_manuel_sections_domaine.sql », puis
    « Serveur démarré » et la ligne unique « [manuel] manuel non balisé (aucune balise en base) ». Contrôles du §12.3,
@@ -1834,12 +2009,21 @@ remet). D1 fusionne X ; D2 fusionne Y. Aucune réécriture d'historique.
    le nouveau bundle en ligne. Admin : aperçu, légende, onglets de variantes sur un texte encore brut.
 3. **D2 — serveur, données** : fusion du commit Y dans `develop` et `main` du backend ; poussée. Le conteneur qui reste
    en service pendant le chevauchement est déjà le code D1, qui rend les balises : aucune balise brute n'est servie,
-   même si la 195 ou la 196 échoue. Lignes attendues dans les journaux :
-   « Migration appliquee: 194_manuel_balise.sql » avec « [migration] 194 : 59 fiche(s) balisée(s), 0 déjà balisée(s),
-   0 gardée(s) … » ; « … 195_base_connaissances_balisee.sql » avec « [migration] 195 : 32 entrée(s) balisée(s) … »
-   (ou le nombre d'entrées porteuses) ; « … 196_manuel_variantes_brouillons.sql » avec « [migration] 196 : 16
-   brouillon(s) inséré(s) … » (`ceramique` peut être « domaine absent ») ; puis « Serveur démarré », **sans** ligne
-   `[manuel]`. Contrôles du §12.3 complets.
+   même si la 195 ou la 196 échoue. Lignes attendues dans les journaux (texte relevé au démarrage du backend de test
+   sur une copie migrée, étape C ; seule la liste des domaines absents diffère en production) :
+   ```
+   [migration] 194 : 59 fiche(s) balisée(s), 0 déjà balisée(s), 0 gardée(s) : aucune ; titres gardés : aucun ; parties gardées : aucune ; sans terme : historique-paiements, onboarding-activation
+   Migration appliquee: 194_manuel_balise.sql
+   [migration] 195 : 32 entrée(s) balisée(s), 0 déjà balisée(s), 0 gardée(s) : aucune ; titres gardés : aucun ; sans terme : aucune
+   Migration appliquee: 195_base_connaissances_balisee.sql
+   [migration] 196 : 16 brouillon(s) inséré(s) (hotellerie 8, usine 8) ; domaines absents : aucun ; fiches absentes : aucune
+   Migration appliquee: 196_manuel_variantes_brouillons.sql
+   Toutes les migrations effectuees avec succes (… deja appliquees)
+   Serveur démarré sur le port …
+   ```
+   **Sans** ligne `[manuel]` ensuite. En production, les domaines `hotellerie` et `usine` existent (lecture (5)) :
+   « domaines absents : aucun » (en base locale : « usine »). Un autre compte que 59 / 0 / 0, 32 / 0 / 0 ou 16 inséré(s)
+   (« gardée(s) » non vide, par exemple) : ne pas poursuivre, lire la NOTICE (R4.2.2, R4.2.5). Contrôles du §12.3 complets.
 
 Jamais deux builds en même temps. Après D2 : `base-locale.js supprimer`, garde R2.8.3 retirée dans `develop`, mise à
 jour de `REPRISE.md`.
@@ -1850,8 +2034,10 @@ jour de `REPRISE.md`.
   téléchargé au point 0 (seule la date d'édition change) ; un gérant ; l'assistant d'un compte restauration.
 - Après D2 : les mêmes contrôles restauration ; compte de test H : `/client/guide` dans ses mots (« cuisine centrale »,
   « services », « fournitures », « préparations »), le PDF, l'assistant (« comment créer une cuisine centrale ? » cite
-  « Manuel — … » dans ses mots) ; admin : aperçu par domaine ; une balise fausse refusée ; badge « sans balises »
-  absent partout.
+  « Manuel — … » dans ses mots) ; admin : aperçu par domaine (« Hôtellerie », « Industrie ») ; onglets de variantes
+  `hotellerie` et `usine` présents sur les 8 fiches, au statut brouillon, sans « domaine absent » ni « domaine sans
+  lexique » ; une balise fausse refusée ; badge « sans balises » absent partout. La production n'a aucun compte H ni
+  `usine` : un compte de test H créé pour le contrôle est supprimé ensuite.
 - Une heure après D2 : aucune ligne « [vocab] », « [email] voc manquant » ni « [manuel] » dans les journaux.
 
 ### 12.4 Retour arrière
@@ -1867,16 +2053,37 @@ jour de `REPRISE.md`.
 
 ### 12.5 Maintenance après le 2c
 
-- **Toute migration du manuel écrit du texte balisé.** On modifie `scripts/manuel/balise/…` (la source après le 2c),
-  on lance `controler.mjs` (sans le point 1 : un changement de texte n'a pas d'origine), puis le générateur, qui
-  écrit un `UPDATE` gardé par le md5 du texte balisé précédent. Les `REPLACE(contenu, '<texte exact>', …)` des
+Après D2, le texte stocké du manuel et de la base est **balisé** ; la source de travail est `scripts/manuel/balise/`
+(et `variantes/`), plus la base de production. Mode d'emploi pour les agents : `scripts/VOCAB-GUIDE-SERVEUR.md` §9 ;
+règles d'écriture : `scripts/manuel/GUIDE-BALISAGE.md`.
+
+- **Toute migration du manuel ou de la base écrit du texte balisé.** Les `REPLACE(contenu, '<texte exact>', …)` des
   anciennes migrations (209 `REPLACE(` dans 10 des 19 migrations du manuel, dont 93 sur `contenu` et 92 sur
-  `contenu_defaut`) **ne sont plus un modèle** : leurs textes n'existent plus sous cette forme.
-- Une migration qui touche une fiche à variantes le signale par NOTICE et ne touche pas les variantes (§8.5).
-- `scripts/VOCAB-GUIDE-SERVEUR.md` reçoit une section « Manuel et base de connaissances » : colonnes balisées et
-  points de rendu (I7 révisée), validation admin et `vocabBrut`, outils de `scripts/manuel/`, règle des migrations
-  ci-dessus. Son tableau des types (`:390`) perd la ligne « description de `search_knowledge_base` (`2c`) ».
-- Une nouvelle fiche créée dans l'admin sans balise est signalée au démarrage (§5.8) jusqu'à ce qu'on la balise.
+  `contenu_defaut`) **ne sont plus un modèle** : leurs textes n'existent plus sous cette forme en base, un `REPLACE`
+  ne trouverait rien et ne ferait rien, sans erreur. Une migration du manuel remplace un texte balisé entier, gardé
+  par le md5 du texte balisé précédent, sur le modèle d'un bloc de la 194 (§4.2 : `contenu_defaut` remplacé, `contenu`
+  seulement s'il égale encore le défaut, dollar-quoting, NOTICE balisées / déjà faites / gardées).
+- **Ce que les outils savent faire aujourd'hui, et ce qui manque.** `controler.mjs` contrôle un texte balisé (points
+  2 à 12, rendus H, C, miroir, lexiques de production) ; son point 1 compare à `origine/`, l'instantané d'avant le 2c,
+  figé : sur une fiche dont le texte change volontairement, il échoue, et c'est le seul échec admis. Le générateur
+  `generer-migrations.mjs` n'écrit que 194, 195 et 196 (et refuse d'écraser un de ces fichiers qu'il n'a pas écrit). **Il n'existe pas encore d'outil
+  pour une migration de maintenance** : la première qui viendra écrit son SQL à la main sur le modèle de la 194, ou
+  ajoute aux outils une option de maintenance (nouvelle migration numérotée, garde par le md5 du balisé précédent,
+  point 1 remplacé par la comparaison au rendu par défaut voulu). C'est à décider avec le premier besoin, pas avant
+  (le client veut moins).
+- Une migration qui touche une fiche à variantes ne touche jamais ses variantes et le signale par une NOTICE (§8.5) ;
+  l'admin montrera « à revoir » sur ces variantes (`base_md5`), à relire et enregistrer.
+- **Admin** : une fiche créée ou modifiée dans l'admin avec une forme par défaut et sans balise porte le badge « sans
+  balises » (R5.7.2) et est signalée au démarrage par une ligne `[manuel] … sans balises` (R5.8), jusqu'à ce qu'on la
+  balise ; le seul champ admis sans balise est le titre de l'entrée « Article vendable »
+  (`src/config/manuelSansBaliseAdmis.json`, régénéré seulement par le générateur). Une balise fausse est refusée à
+  l'enregistrement (400 `BALISE_INVALIDE`, R5.7.1).
+- `scripts/VOCAB-GUIDE-SERVEUR.md` a reçu sa section « Manuel et base de connaissances après le 2c » (§9) : colonnes
+  balisées et points de rendu (I7 révisée), validation admin et `vocabBrut`, outils de `scripts/manuel/`, règle des
+  migrations ci-dessus. Son tableau des types ne range plus la description de `search_knowledge_base` dans
+  `reporte` (`2c`).
+- Après D2 : `base-locale.js supprimer`, garde R2.8.3 retirée dans `develop` (§12.2) ; la base locale
+  `fiche_technique` reçoit 194 à 196 au premier passage qui charge l'application (R2.8.2).
 
 ---
 
@@ -1890,7 +2097,8 @@ jour de `REPRISE.md`.
 | **B1** | vague 1 : L1, L2, L3, L8, en 4 tours, contrôleur, intégrateur | point de restauration ; textes communs des 8 fiches figés | 1,25 j |
 | **B2 ∥ V** | vague 2 : L4, L5, L6, L7, L9 ; vague V : 4 lots de variantes ; 4 tours chacune ; un intégrateur pour les deux | point de restauration | 2,75 j (vague 2 : 1,25 ; V : 1,5), en parallèle |
 | **R** (si besoin) | mini-vague : fiches de production qui diffèrent (§12.1) ; 1 baliseur, 1 relecteur | point de restauration | 0,25 j |
-| **C** | consolidation : `--tout` ; génération en essai ; **essai de migration AVANT le premier oracle** ; écriture dans `migrations/` ; dès lors copies de la base (R2.8.2) ; oracle restauration puis H, C, miroir ; besoins clos ; documents (`VOCAB-GUIDE-SERVEUR.md`, `ecarts-visibles-2b.md`, nouveau `ecarts-visibles-2c.md`, fiche Céramique, §15) ; spec mise à jour (« état final ») | commit | 0,75 j |
+| **C** | consolidation : `--tout` ; génération en essai ; **essai de migration AVANT le premier oracle** ; écriture dans `migrations/` ; dès lors copies de la base (R2.8.2) ; oracle restauration puis H, C, miroir ; besoins clos ; documents (`VOCAB-GUIDE-SERVEUR.md`, `ecarts-visibles-2b.md`, nouveau `ecarts-visibles-2c.md`, §15) ; spec mise à jour (« état final ») | commit | 0,75 j |
+| | **Fait le 03/10/2026.** Partie technique : `1273be5` (contrôle avec les lexiques de production, corrections, oracle A16.1, exclusions « rendu ») et `f0383cf` (migrations 194 à 196 écrites, cible `usine` ; point de restauration). Partie documentaire : spec v3.0, `ecarts-visibles-2c.md`, `VOCAB-GUIDE-SERVEUR.md` §9, README et guide des outils, besoins `L8-2` et `L9-4` clos (commit `docs(lot-2c): étape C — …`). « Fiche Céramique » sans objet (le domaine `usine` existe en production avec son lexique, §8.6). Reste : renvoi dans `ecarts-visibles-2b.md` (décision 2) ; commits X et Y à la fin de la vérification (§12.2) | | |
 | **Vérif** | l'oracle seul d'abord (sur une copie) ; puis parcours navigateur et 3 revues en parallèle, sur la même copie (ports réservés du 2b) ; corrections (copie neuve, régénération, oracle) ; contrôle final indépendant | rapport | 1 j |
 | **D** | lecture de production, commits X et Y, D1, écrans, D2 (§12) | en production | — |
 
@@ -1912,7 +2120,7 @@ backend de test par `node scripts/start-test-backend.js` (avec `DB_NAME` après 
 | 1 | Accepter que l'ordre des résultats ex aequo de la recherche de l'assistant, et la liste des titres proposés quand rien ne répond, soient fixés (§2.2, §10.2, point 1) ? Non visible à l'écran ; le modèle peut citer une autre fiche de même score | **Oui** : sans cela, l'ordre changerait de toute façon au déploiement, au hasard |
 | 2 | Une variante encore « brouillon » : le compte lit le texte commun balisé (§8.4) ? | **Oui**, texte commun ; on ne montre jamais un brouillon |
 | 3 | Qui valide les 16 variantes, et quand ? | Le client, dans l'admin, après le déploiement, **après** avoir corrigé les lexiques H et C (sinon il validera des mots encore provisoires) |
-| 4 | Céramique : la recréer en production avec le slug **`ceramique`**, puis saisir son lexique (18 clés) et ses 6 composants à partir de la fiche remise (§8.6, §15) ? | Oui, au moment voulu ; sans le slug exact les variantes ne s'appliquent pas, et sans le lexique elles ne sont pas servies (I12) |
+| 4 | Céramique : la recréer en production avec le slug **`ceramique`**, puis saisir son lexique (18 clés) et ses 6 composants à partir de la fiche remise (§8.6, §15) ? | Oui, au moment voulu ; sans le slug exact les variantes ne s'appliquent pas, et sans le lexique elles ne sont pas servies (I12). **Sans objet depuis le 03/10 (A16.13)** : le domaine `usine` (« Industrie ») de production est la Céramique, avec son lexique ; les variantes le ciblent |
 | 5 | Base de connaissances : accepter les gloses redites vues seulement par le modèle (« un SERVICE (service) ») ? | **Oui** : pas de variantes pour la base (le client veut moins). Le pléonasme « cuisine centrale centrale » est, lui, évité (§7.5) |
 | 6 | Corriger dans ce lot le défaut de l'admin de la base : cocher « actif » efface les mots-clés et la catégorie (§12.1, R5.7.1) ? | **Oui**, correction côté serveur, invisible pour les clients ; sinon les mots-clés enrichis perdent leur source |
 | 7 | La phrase d'aide de l'écran Articles (« … matières premières et ingrédients », `ReferentielArticlesPage.tsx:413`), renvoyée au 2c par le 2a | **La laisser hors du 2c** (c'est un écran, pas le manuel) ; à reprendre avec le lot 3 ou plus tard |
@@ -1925,7 +2133,8 @@ backend de test par `node scripts/start-test-backend.js` (avec `DB_NAME` après 
 
 **Réponses du client (03/10/2026)** : les 13 recommandations sont acceptées telles quelles (Q1 ordre fixé ; Q6
 défaut de l'admin de la base corrigé dans ce lot ; Q11 trois poussées ; Q12 retour arrière par commande dans le
-conteneur ; Q2 à Q5, Q7 à Q10 et Q13 selon la colonne « Recommandation »).
+conteneur ; Q2 à Q5, Q7 à Q10 et Q13 selon la colonne « Recommandation »). Q4 est devenue sans objet le 03/10
+(A16.13 : « je n'aime pas céramique, je préfère usine »). Q10 : le client garde l'enrichissement (A16.6).
 
 Rappels déjà posés ailleurs, sans effet sur le code du 2c : lexiques H et C à corriger
 (`lot-2/brouillons-lexique-a-corriger.md`, `lot-2b/ecarts-visibles-2b.md` §4) ; décision 6 du 2b (faire le lot 3
@@ -1935,86 +2144,114 @@ avant de signer un client hors restauration).
 
 ## 15. À transmettre au client avec la livraison
 
+Document remis : **`labflow-reprise/lot-2c/ecarts-visibles-2c.md`** (court, en français simple ; « Usine (Industrie) »,
+jamais « Céramique »). Il reprend :
+
 - **Ce qui change** : rien pour un compte restauration, café ou boulangerie (manuel, PDF, assistant). Hors
-  restauration : le manuel, son PDF et l'assistant parlent les mots du domaine, avec les limites du §10.3 (mots du
-  métier, collisions, « sous-produit », verbes).
-- **Pas à pas de validation des 16 variantes** : Admin → Manuel → ouvrir la fiche → onglet du domaine → lire
-  l'aperçu (sélecteur de domaine) → corriger si besoin → cocher « Validée » → enregistrer. Le faire après avoir
-  corrigé les lexiques H et C. « À revoir » = le texte commun a changé depuis la dernière relecture.
-- **Fiche Céramique** (question 4) : slug `ceramique`, les 18 clés du lexique et les 6 composants (libellé, pluriel,
-  type, genre) de la base locale, extraits en lecture seule à l'étape C.
-- **Lecture de production** (§12.1) : le script à coller, et ce qu'il faut renvoyer.
-- **Déploiement** (§12.2) : trois poussées à autoriser, les lignes de journal attendues après chacune.
-- **Contrôles après bascule** (§12.3) et **retour arrière** (§12.4) : la commande à lancer dans le conteneur.
-- **Admin du manuel** : les balises dans le formulaire (légende, aperçu), le badge « sans balises » (une fiche à
-  rebaliser), le refus d'une balise fausse ; toute migration future du manuel écrit du texte balisé.
-- Les questions du §14.
+  restauration (Hôtellerie, Usine) : le manuel, son PDF et l'assistant parlent les mots du domaine, avec les limites
+  du §10.3, résumées (mots du métier, collisions, « sous-produit », verbes, formes courtes, gloses de la base).
+- **Décisions qui reviennent au client** (aucune n'est urgente ; aucune ne bloque le déploiement) :
+
+  | Sujet | Constat | Proposition | Besoin |
+  |---|---|---|---|
+  | Terme Usine de `gerant` | « Créez un responsable de site par responsable de site » (`gerants`) | « Gérant de site » | `L1-1` |
+  | Terme Usine de `fiche_technique` | « fiche de coût de revient … dont le coût de revient se calcule » | un terme sans « coût de revient » | `L2-3` |
+  | Terme Usine de `prestataire` | « Intermédiaire » se lit comme un adjectif : « prix intermédiaire », « canaux intermédiaires » | « Plateforme de vente » | `L7-2` |
+  | Terme Hôtellerie de `labo` | 2 types d'unité labo (« Cuisine », « Économat / Logistique ») ; « Cuisine centrale » ne couvre pas l'économat | un terme qui couvre les deux, ou garder « Cuisine centrale » | `V-H2-2` |
+  | Formes courtes du lexique Usine | absentes en production : « Stock Site de production », « un produit fabriqué fabriqué » | ajouter dans l'admin PF (produit fabriqué), Site (site de production), FCR (fiche de coût de revient), s'il le souhaite ; aucune retouche du manuel | `C-5` |
+  | Composant Hôtellerie « bureau logisti » | 10e type d'unité de production, probablement un essai | le supprimer dans l'admin si c'est un essai (il entre dans les mots-clés enrichis et le guide de mise en route) | `C-5` |
+  | Lien « Articles Valorisés » (`referentiel-familles`) | l'écran s'appelle « Produits Valorisés » | corriger après le 2c (change aussi le texte vu en restauration) | `L3-3` |
+  | « sections repliées par défaut » (`acheteurs-tarifs`) | l'écran les ouvre par défaut | « ouvertes par défaut, repliables », après le 2c (change aussi la restauration) | `L7-4` |
+  | Les 16 variantes (8 Hôtellerie, 8 Usine) | livrées en brouillon : un compte lit le texte commun dans ses mots tant qu'elles ne sont pas validées | les relire et valider dans l'admin, **après** avoir corrigé les lexiques (sinon il validera des mots provisoires) | §8.3 |
+
+- **Pas à pas de validation d'une variante** : Admin → 📖 Manuel → ✏️ (Modifier) sur l'une des 8 fiches → onglet
+  « Hôtellerie · brouillon » ou « Industrie · brouillon » → 👁 Aperçu pour lire la fiche dans les mots du domaine →
+  corriger si besoin (✏️ Éditer) → cocher « Validée : servie aux comptes du domaine » → Enregistrer. « à revoir » = le
+  texte commun a changé depuis le dernier enregistrement de la variante : la relire, puis l'enregistrer.
+- **Mots-clés enrichis** (A16.6, gardés par le client) : remesure de l'étape C, manuel balisé : la fiche attendue est
+  parmi les 4 premiers résultats de l'assistant pour H 9 questions sur 12 (5 avant le balisage), Usine 6 sur 9 (3).
+  Rien ne change en restauration.
+- **Déploiement** (§12.2) : trois poussées à autoriser (D1 serveur sans les données balisées, écrans, D2 données), les
+  lignes de journal attendues après chacune. **Contrôles après bascule** (§12.3) et **retour arrière** (§12.4) : la
+  commande à lancer dans le conteneur (`node scripts/manuel/retour-2c.js --essai`, puis sans `--essai`).
+- **Admin du manuel** : les balises dans le formulaire (légende, aperçu par domaine), le badge « sans balises » (une
+  fiche à rebaliser), le refus d'une balise fausse ; toute migration future du manuel écrit du texte balisé (§12.5).
+
+Lecture de production : faite le 03/10, conforme (§12.1) ; rien à renvoyer. Fiche « Céramique » : sans objet (§8.6).
 
 ---
 
-## 16. Amendements de l'étape M0 ∥ S ∥ A (v2.3, 03/10/2026)
+## 16. Amendements (v2.3 à v3.0, 03/10/2026) — historique
 
-Ces règles priment sur le texte des sections citées. Elles viennent de l'intégration, des 2 relectures et du
-contrôle final de l'étape (11 constats, 0 bloquant ; tous corrigés ou acceptés ci-dessous).
+A16.1 à A16.11 viennent de l'étape M0 ∥ S ∥ A (intégration, 2 relectures et contrôle final : 11 constats, 0 bloquant ;
+tous corrigés ou acceptés), A16.12 et A16.13 du correctif hors lot et de la lecture de production, A16.14 de l'étape
+C. **Depuis la v3.0, chaque amendement est reporté dans la section qu'il touche** (renvoi « → » à la fin de chacun) ;
+ce chapitre reste comme historique. En cas d'écart, la section citée par le renvoi fait foi.
 
 **A16.1 — Cibles de liens (§3.5, point 3 ; R2.4.2).** Les cibles `(#slug)` portent 200 formes par défaut (185
 cibles). Elles ne se balisent jamais (§7.6) : `controler.mjs`, le pré-baliseur et l'oracle les masquent avant de
-chercher les formes.
+chercher les formes. → §3.5 point 3, R2.4.2 (masque de l'oracle ajouté à l'étape C, besoin `C-2`).
 
 **A16.2 — Balise collée à un trait d'union (§3.5, point 3 ; R3.4.3).** Toute balise collée à un trait d'union
 (« lettre- » avant ou « -lettre » après) est un ÉCHEC du point 3, sans exclusion possible, sauf `acc`, `accN` et
 `ex` (« peut-[[acc:labo:il:elle]] »). Raison : « sous-[[nom:pt]] » rend « sous-préparation » en H, contre la
 décision 2 du client (« sous-produit » reste tel quel). La forme reste en clair : locution, exclusion justifiée, ou
-phrase réécrite dans une variante.
+phrase réécrite dans une variante. → §3.5 point 3, §10.3.6.
 
 **A16.3 — Accords à distance (§3.5, points 7 et 10).** Le point 7 signale aussi le rendu d'une balise suivi d'un mot
 de même racine que son dernier mot, absent du rendu par défaut (« cuisine centrale central »). Le point 10 signale
 aussi un déterminant à genre séparé de la balise de nom par un adjectif (autre, même, seul, propre, premier, dernier,
 nouveau… : « un autre [[nom:labo]] », « son propre [[nom:stock]] »). Fiches concernées, listées dans
 `GUIDE-BALISAGE.md` : `stock-labo`, `activites`, `calc-transferts`, `compte-activites-labos`,
-`decouvrir-labflow` et l'entrée « labo central » de la base.
+`decouvrir-labflow` et l'entrée « labo central » de la base. → §3.5 points 7 et 10.
 
 **A16.4 — `controler.mjs --lexique` (§3.1, R3.1.1, §12.1).** Refus (code 2) d'un fichier dont une clé n'est pas dans
 `LEXIQUE_CLES` ou dont les écarts donnent le lexique par défaut. Le md5 de `lexique::text` est affiché et comparé à
 `hotellerie.md5Lexique` de la lecture de production (option `--lecture`, défaut
 `scripts/manuel/lecture-production.json`) : refus s'il diffère. Sans lecture de production, la comparaison n'a pas
-lieu : à l'étape C, le fichier de lecture doit exister avant `controler --tout --lexique`.
+lieu : à l'étape C, le fichier de lecture doit exister avant `controler --tout --lexique`. → §3.1, §3.5 (avec
+`--lexique-ceramique` et `--production`, étape C).
 
 **A16.5 — Variantes : refus à la création seulement (R5.7.3).** `DOMAINE_INCONNU` et `VARIANTE_DOMAINE_SANS_ECART` ne
 sont opposés qu'à la CRÉATION d'une variante. Une variante existante reste modifiable (les brouillons d'une
 Céramique recréée sans lexique, par exemple) ; elle n'est jamais servie tant que son domaine n'a pas d'écart (I12).
-R5.9 tient en une requête placée après l'`UPDATE domaines_activite` (même 409 `VARIANTES_EXISTANTES`).
+R5.9 tient en une requête placée après l'`UPDATE domaines_activite` (même 409 `VARIANTES_EXISTANTES`). → R5.7.3.
 
 **A16.6 — Effet mesuré des mots-clés enrichis (§5.4, §14 Q10, §15).** L'effet n'est pas nul : c'est un échange de
 fiches trouvées. Questions du guide, fiche attendue dans les 4 résultats : H 5/12 avant et après (2 perdues, dont
 « créer un labo » → `activites` ; 2 gagnées : room service, housekeeping), C 3/9 → 3/9 (showroom / boutique
 gagné), miroir 1/7 → 3/7. Aucun effet en restauration. **Décision du client (03/10) : on garde l'enrichissement.**
 L'effet est remesuré à l'étape C (rapport R2.4.6), manuel balisé. À dire au client avec la livraison (§15).
+→ §11 P7 bis (remesure : H 9/12, C 6/9, miroir 5/7), §14 Q10, §15.
 
 **A16.7 — Liste de travail relancée après S (R2.4.7).** L'enrichissement change le classement des résultats de la
 base hors restauration : la famille `assistant` montait (H 186 → 187, C 272 → 279, miroir 458 → 505), sans
 qu'aucun texte gagne de forme (chaque texte est celui d'une entrée d'origine ou figurait déjà dans la liste ; seule
 `recherchesDomaine` change, `manuel`, `baseParTitre` et `recherches` égales). La liste
 `hors-restauration-avant.json` a été relancée sur le code de S (commit `e28187e`) ; **elle est validée** et fait foi
-pour la porte `--hors-manuel` jusqu'à l'étape C. La référence restauration n'a pas bougé.
+pour la porte `--hors-manuel` jusqu'à l'étape C. La référence restauration n'a pas bougé. → §11 P7 (à l'étape C :
+familles `manuel` et `assistant` à 0 dans les trois domaines).
 
 **A16.8 — Tests qui gardent I1 avant l'étape C (§11).** Tant que le manuel n'est pas balisé, l'oracle et l'E2E ne
 voient pas trois fautes du serveur : titre non rendu par `listPublic`, troncature avant le rendu, variante servie à
 un compte restauration. Seul `npm test` (`test/2c-manuel.test.js`) les attrape, et pour la dernière il restera le
-seul : ces tests ne doivent jamais être affaiblis par les vagues ni par l'étape C.
+seul : ces tests ne doivent jamais être affaiblis par les vagues ni par l'étape C. → §11 P9. Toujours en vigueur.
 
 **A16.9 — E2E sur un port au choix (§5.11, P11).** `test-vocabulaire-domaine.js` et `test-manuel-filtre.js` lisent
 `E2E_BASE`, sinon `http://localhost:${PORT||3000}` ; leurs contrôles ne changent pas. Avant l'étape C,
-`test-vocabulaire-domaine.js` a 1 échec attendu (titres et parties du manuel H) : 235/236.
+`test-vocabulaire-domaine.js` a 1 échec attendu (titres et parties du manuel H) : 235/236. → §11 P11 (à l'étape C :
+236/236).
 
 **A16.10 — Oracle robuste à une mise en veille (§2.8).** Un passage interrompu par la veille du poste (jeton de 3 h
 expiré) laissait ses comptes en base, et une demande de support traitée par l'admin temporaire (clé
 `support_demandes_traite_par_fkey` sans ON DELETE) bloquait la purge suivante. Depuis `6ed9873`, le jeton est
 re-signé au nettoyage et les demandes sont détachées de l'admin temporaire avant sa suppression. Consigne : empêcher
-la mise en veille du poste pendant un passage.
+la mise en veille du poste pendant un passage. → REPRISE §7 (un seul passage à la fois ; relancer après une veille).
 
-**A16.11 — Tests des outils.** `npm test` ne lance pas `scripts/manuel/test/` (58 tests) : chaque porte les lance à
-part (`node --test scripts/manuel/test/*.test.*`).
+**A16.11 — Tests des outils.** `npm test` ne lance pas `scripts/manuel/test/` : chaque porte les lance à part
+(`node --test scripts/manuel/test/*.test.*`). Nombre de tests : 58 à M0, 59 après B1, 61 après B2, **65 après l'étape
+C** (`--lexique-ceramique`, `--production`, acceptations « lexique », exclusion « rendu », refus sans
+`--slug ceramique=usine`). → §11 P9.
 
 **A16.12 — Correctif hors lot fusionné, et compteurs de jours masqués (03/10/2026).** Le correctif « mois des
 mensualités en UTC » (backend `4897e09`, `develop` `a7c8424`, `main` `ee9a28e`, déployé) a été fusionné dans la
@@ -2022,7 +2259,7 @@ branche (`27f5340`) ; `scripts/vocab-check.base` est réépinglé sur `a7c8424`.
 l'oracle. Le contrôle a révélé que les compteurs `jours` et `jours_inventaire` des tableaux de bord dépendent de
 l'heure et du jour du passage (`dashboardV2Controller.js:334`) : la capture les masque en `⟨jours⟩`, et la référence
 restauration a été masquée par la même règle (33 valeurs), sans recapture. Restauration IDENTIQUE, `--domaine
-hotellerie --hors-manuel` à 0, `npm test` 340/340.
+hotellerie --hors-manuel` à 0, `npm test` 340/340. → §2.5, Têtes.
 
 **A16.13 — Lecture de production et domaine « usine » (03/10/2026).** La lecture de production
 (`scripts/manuel/lecture-production.json`) est conforme : texte du manuel et de la base identique au local, lexique
@@ -2033,7 +2270,15 @@ s'appelle « usine »** ; les variantes du 2e domaine ciblent `usine` (générat
 « ceramique » reste le nom INTERNE du 2e domaine dans les outils et les lexiques d'essai (figés). À l'étape C, le texte
 commun et les variantes du 2e domaine sont aussi contrôlés avec le lexique de PRODUCTION de `usine` (champ
 `ceramique.lexique` de la lecture), comme Hôtellerie avec le sien (§12.1). Question 4 (créer « ceramique » en
-production) : sans objet. Production : 3 comptes, tous restauration.
+production) : sans objet. Production : 3 comptes, tous restauration. → Vocabulaire, §1, §4.4, §8.6, R3.6.4, §12.1,
+§12.2, §14 Q4.
+
+**A16.14 — Étape C (03/10/2026).** Reportés dans les sections : exclusion « rendu » (§3.3, besoin `C-3`) ; masque des
+cibles de liens dans l'oracle (R2.4.2, `C-2`) ; contrôle avec les lexiques de production et acceptations propres à un
+lexique (§3.5, `C-1`) ; refus du générateur sans `--slug ceramique=usine` (R3.6.4, `C-4`) ; corrections des vagues
+B1 et B2 aux points 7, 8, 9 (§3.5, `L2-1`, `L2-2`, `L4-3`) ; exclusion d'une forme du domaine dans une variante (§3.3,
+R8.2.3, `V-H1-1`) ; gloses redites acceptées par écrit (§7.5, §7.7, `L4-2`) ; lexique sans formes courtes (§7.5,
+§10.3.9) ; récapitulatif des vagues au §10.3 (`L8-2`, `L9-4`, clos) ; preuves au §11 ; décisions client au §15.
 
 ---
 
