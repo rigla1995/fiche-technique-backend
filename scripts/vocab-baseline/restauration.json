@@ -14473,7 +14473,7 @@
      "type": "labo",
      "actuel": 2,
      "max": 2,
-     "message": "Limite atteinte : votre formule comprend 2 labos — quota entièrement utilisé (2/2). Demandez un supplément pour en ajouter."
+     "message": "Limite atteinte : votre formule comprend 2 labos — quota entièrement utilisé (2/2). Demandez un ajout de capacité pour en ajouter."
     }
    },
    "gerantSansAffectation": {

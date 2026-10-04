@@ -97,16 +97,21 @@ const traiterDemande = async (statut, repondeur) => {
 };
 const indice = (debut) => requetes.findIndex((r) => r.texte.startsWith(debut));
 const CFG_APRES = { nb_activites: 2, nb_labos: 2, nb_gerants: 0, nb_acheteurs: 20, domaine_id: null, formule_activites: 'premium' };
+// Configuration DU MOMENT relue et verrouillée dans la transaction (recontrôle du palier et de la composition)
+const CFG_AVANT = { nb_activites: 1, nb_labos: 1, nb_gerants: 0, nb_acheteurs: 0, domaine_id: null, formule_activites: 'premium' };
+const estLectureVerrouillee = (texte) => texte.startsWith('SELECT ac.* FROM abonnement_config') && texte.includes('FOR UPDATE OF ac');
 
 test('validation d\'un supplément (admin) : une transaction, puis email de confirmation au vocabulaire du compte DESTINATAIRE', async () => {
   const res = await traiterDemande('validée', (texte) => {
     if (texte.startsWith('UPDATE support_demandes')) return { rows: [{ ...DEMANDE, statut: 'validée' }] };
     if (texte.startsWith('SELECT email AS client_email')) return { rows: [{ client_email: 'compte@test.invalid', client_nom_u: 'Compte' }] };
-    if (texte.startsWith('SELECT ac.nb_acheteurs FROM abonnement_config')) return { rows: [{ nb_acheteurs: 0 }] };
+    if (estLectureVerrouillee(texte)) return { rows: [CFG_AVANT] };
     if (texte.startsWith('SELECT ac.* FROM abonnement_config')) return { rows: [CFG_APRES] };
     return { rows: [] };
   });
   assert.equal(res.statusCode, 200, JSON.stringify(res.corps));
+  const lecture = requetes.findIndex((r) => estLectureVerrouillee(r.texte));
+  assert.ok(lecture > indice('UPDATE support_demandes') && lecture < indice('COMMIT'), 'configuration relue et verrouillée dans la transaction');
   assert.equal(res.corps.statut, 'validée');
   assert.equal(res.corps.avenantEmailSent, undefined);
   // Statut posé seulement si la demande est encore en attente ; tout dans la même transaction
@@ -130,6 +135,28 @@ test('validation d\'un supplément (admin) : une transaction, puis email de conf
   assert.ok(!Number.isNaN(Date.parse(args.dateValidation)), 'date de validation');
   assert.ok(!('pdfBase64' in args) && !('dateAvenant' in args), 'plus de PDF ni de date d\'avenant');
   assert.ok(!appels.some(([n]) => n === 'generateAvenantPdf' || n === 'buildAvenantDocument' || n === 'avenantExtraFields'), 'aucun document d\'avenant');
+});
+
+test('validation : palier Acheteurs déjà atteint, ou compte sans configuration → 409, rien d\'appliqué', async () => {
+  for (const [cas, cfg, attendu] of [
+    ['palier déjà atteint', { ...CFG_AVANT, nb_acheteurs: 20 }, /palier égal ou supérieur/],
+    ['sans configuration', null, /pas de configuration d'abonnement/],
+  ]) {
+    const res = await traiterDemande('validée', (texte) => {
+      if (texte.startsWith('UPDATE support_demandes')) return { rows: [{ ...DEMANDE, statut: 'validée' }] };
+      if (texte.startsWith('SELECT email AS client_email')) return { rows: [{ client_email: 'compte@test.invalid', client_nom_u: 'Compte' }] };
+      if (estLectureVerrouillee(texte)) return { rows: cfg ? [cfg] : [] };
+      return { rows: [] };
+    });
+    assert.equal(res.statusCode, 409, cas);
+    assert.match(res.corps.message, attendu, cas);
+    assert.ok(indice('ROLLBACK') > indice('UPDATE support_demandes'), `${cas} : ROLLBACK`);
+    assert.equal(indice('COMMIT'), -1, `${cas} : pas de COMMIT`);
+    for (const ecriture of ['SELECT a.id, ac.domaine_id FROM abonnements a', 'UPDATE profil_entreprise']) {
+      assert.equal(indice(ecriture), -1, `${cas} : rien d'appliqué (${ecriture})`);
+    }
+    assert.deepEqual(appels, [], `${cas} : aucun email`);
+  }
 });
 
 test('2e validation d\'une demande déjà traitée : 409, rien d\'appliqué, aucun email', async () => {
@@ -277,4 +304,15 @@ test('quota acheteurs (admin) : même balise que configComposantsService (besoin
   const ab = lire('src/controllers/abonnementController.js');
   assert.equal((ab.match(/'Quota \[\[court:acheteur:pl\]\] invalide \(paliers de 1 à 100\)'/g) || []).length, 2);
   assert.ok(lire('src/services/configComposantsService.js').includes('Quota [[court:acheteur:pl]] invalide (paliers de 1 à 100)'));
+});
+
+// Lot 3, étape 4 : plus d'avenant signé par le titulaire — un gérant ne demande pas d'ajout de capacité (403).
+test('demande de supplément par un gérant : 403, rien d\'écrit', async () => {
+  requetes.length = 0;
+  repondreA = () => ({ rows: [] });
+  const res = fauxRes();
+  await support.create({ body: { type: 'supplement', nbActivitesSupp: 1 }, user: { id: 9, role: 'gerant', gerant_parent_id: 42 } }, res);
+  assert.equal(res.statusCode, 403);
+  assert.match(res.corps.message, /titulaire du compte/);
+  assert.equal(requetes.length, 0, 'aucune requête');
 });

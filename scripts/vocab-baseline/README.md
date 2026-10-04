@@ -307,10 +307,14 @@ remplacé par la validation admin de la 1ʳᵉ demande (`emails.site.validationS
 passages, mêmes écarts) : 22 écarts, tous dus à l'étape 4 (6 emails fixes d'avenant retirés et 6 de confirmation
 ajoutés, email de signature de la demande retiré, sujet / HTML / pièce jointe de l'email de traitement, PDF d'avenant
 du traitement, soumission DocuSeal de la demande, `webhook.avenant.sse` renommé `validationSupplement.sse`, fin du
-message de quota « Demandez un supplément pour en ajouter. », message 409 nouveau), aucun inattendu ; comptes par clé
+message de quota, message 409 nouveau), aucun inattendu ; comptes par clé
 emails 33 → 32, pdf 19 → 18, valeursContrat 3 → 2, messages 19 → 20. Référence RECAPTURÉE le 04/10 vers 16 h 15
 (passage 1 `--reference`, passage 2 contrôle : IDENTIQUE). Hors restauration : 3 exceptions devenues sans emploi
 (`valeursContrat` `/name$` « Nb activités », « Nb labos », « Nb gérants » : noms de champs du modèle DocuSeal de
 l'avenant) retirées de `exceptions-hors-restauration.json` ; ensuite hotellerie, ceramique, miroir : code 0, aucune forme
-par défaut (email de confirmation et message de quota compris : « Demandez [[un:supplement]] … » rend « une option » en
-céramique). L'ancienne référence reste dans l'historique git.
+par défaut (email de confirmation et message de quota compris). L'ancienne référence reste dans l'historique git.
+
+Correction de la relecture (même jour, vers 17 h) : la fin du message de quota devient « Demandez un ajout de capacité
+pour en ajouter. », en texte fixe — la clé `supplement` du lexique désigne l'extra vendu avec un produit (« option » en
+céramique), pas un ajout à l'abonnement. Contrôle : 1 écart (`messages/laboQuota/body/message`), attendu ; référence
+RECAPTURÉE puis contrôle IDENTIQUE ; hotellerie, ceramique, miroir : code 0, aucune forme par défaut.

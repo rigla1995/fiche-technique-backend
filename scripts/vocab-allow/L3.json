@@ -1255,8 +1255,35 @@
     "avant": "avenant",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
-    "occurrences": 2
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": null,
+    "apres": "gerant",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Aucun avenant associé à cette demande",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": null,
+    "apres": "Seul le titulaire du compte peut demander un ajout de capacité",
+    "type": "remplace",
+    "justification": "Lot 3, étape 4 — plus d'avenant signé par le titulaire (décision du client du 04/10/2026) : message VISIBLE qui refuse à un gérant une demande d'ajout de capacité (route POST /api/abonnements/support)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "avenant",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/supportController.js",
@@ -1288,11 +1315,24 @@
   },
   {
     "fichier": "src/controllers/supportController.js",
-    "avant": "supplement",
+    "avant": "Configuration abonnement introuvable",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
-    "occurrences": 2
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": null,
+    "apres": "Ce compte n'a pas de configuration d'abonnement : la capacité ne peut pas être ajoutée",
+    "type": "admin",
+    "justification": "Lot 3, étape 4 : message de la validation d'une demande par l'admin — route PUT /api/abonnements/admin/support/:id, garde requireSuperAdmin."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": null,
+    "apres": "Le compte a déjà un palier égal ou supérieur (jusqu'à ⟦·⟧) : refusez cette demande",
+    "type": "admin",
+    "justification": "Lot 3, étape 4 : message de la validation d'une demande par l'admin — route PUT /api/abonnements/admin/support/:id, garde requireSuperAdmin."
   },
   {
     "fichier": "src/controllers/supportController.js",
@@ -1303,14 +1343,14 @@
   },
   {
     "fichier": "src/controllers/supportController.js",
-    "avant": "validée",
+    "avant": "supplement",
     "apres": null,
     "type": "retire",
     "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/supportController.js",
-    "avant": "Configuration abonnement introuvable",
+    "avant": "validée",
     "apres": null,
     "type": "retire",
     "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
@@ -1325,13 +1365,6 @@
   {
     "fichier": "src/controllers/supportController.js",
     "avant": "Demande introuvable",
-    "apres": null,
-    "type": "retire",
-    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
-  },
-  {
-    "fichier": "src/controllers/supportController.js",
-    "avant": "Aucun avenant associé à cette demande",
     "apres": null,
     "type": "retire",
     "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
@@ -1422,13 +1455,6 @@
   },
   {
     "fichier": "src/services/quotaService.js",
-    "avant": null,
-    "apres": "Demandez un supplément pour en ajouter.",
-    "type": "remplace",
-    "justification": "Lot 3, étape 4 — plus d'avenants (décision écrite du client du 04/10/2026) : texte VISIBLE qui remplace la mention de l'avenant (« Demandez un supplément », demande envoyée à l'équipe LabFlow puis validée)."
-  },
-  {
-    "fichier": "src/services/quotaService.js",
     "avant": "Limite atteinte : votre formule comprend ⟦·⟧ ⟦·⟧ — quota entièrement utilisé (⟦·⟧/⟦·⟧). Demandez un avenant pour en ajouter.",
     "apres": null,
     "type": "retire",
@@ -1437,8 +1463,8 @@
   {
     "fichier": "src/services/quotaService.js",
     "avant": null,
-    "apres": "Limite atteinte : votre formule comprend ⟦·⟧ ⟦·⟧ — quota entièrement utilisé (⟦·⟧/⟦·⟧). ⟦·⟧",
+    "apres": "Limite atteinte : votre formule comprend ⟦·⟧ ⟦·⟧ — quota entièrement utilisé (⟦·⟧/⟦·⟧). Demandez un ajout de capacité pour en ajouter.",
     "type": "remplace",
-    "justification": "Lot 3, étape 4 — plus d'avenants (décision écrite du client du 04/10/2026) : texte VISIBLE qui remplace la mention de l'avenant (« Demandez un supplément », demande envoyée à l'équipe LabFlow puis validée)."
+    "justification": "Lot 3, étape 4 — plus d'avenants (décision écrite du client du 04/10/2026) : texte VISIBLE qui remplace la mention de l'avenant (« Demandez un ajout de capacité », demande envoyée à l'équipe LabFlow puis validée)."
   }
 ]

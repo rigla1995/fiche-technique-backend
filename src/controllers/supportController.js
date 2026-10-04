@@ -84,6 +84,11 @@ const create = async (req, res) => {
   const { type } = req.body;
   const validTypes = ['supplement', 'aide'];
   if (!validTypes.includes(type)) return res.status(400).json({ message: 'Type invalide' });
+  // Lot 3, étape 4 : plus d'avenant signé par le titulaire — un ajout de capacité (facturé) n'est demandé que par
+  // le titulaire du compte, jamais par un gérant (l'écran ne le lui propose pas).
+  if (type === 'supplement' && req.user.role === 'gerant') {
+    return res.status(403).json({ message: "Seul le titulaire du compte peut demander un ajout de capacité" });
+  }
 
   try {
     const userRes = await pool.query('SELECT nom FROM utilisateurs WHERE id = $1', [createdById]);
@@ -248,14 +253,41 @@ const traiter = async (req, res) => {
     demande = { ...ligne, ...(info.rows[0] || {}) };
 
     if (statut === 'validée' && demande.type === 'supplement') {
+      // Configuration DU MOMENT, verrouillée : la demande a pu être faite il y a longtemps (autre demande validée
+      // depuis, quota relevé par l'admin, labo retiré). On recontrôle ce que la création avait contrôlé.
+      const curRes = await db.query(
+        `SELECT ac.* FROM abonnement_config ac
+           JOIN abonnements a ON a.id = ac.abonnement_id
+          WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1 FOR UPDATE OF ac`,
+        [demande.client_id]
+      );
+      const cur = curRes.rows[0];
+      if (!cur) {
+        await db.query('ROLLBACK');
+        return res.status(409).json({ message: "Ce compte n'a pas de configuration d'abonnement : la capacité ne peut pas être ajoutée" });
+      }
       // Quota acheteurs AVANT application (la cible REMPLACE le quota) : sert à l'« ancien mensuel » de l'email.
-      if (demande.nb_acheteurs_cible) {
-        const avantRes = await db.query(
-          `SELECT ac.nb_acheteurs FROM abonnement_config ac
-           JOIN abonnements a ON a.id = ac.abonnement_id WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
-          [demande.client_id]
-        );
-        acheteursAvant = parseInt(avantRes.rows[0]?.nb_acheteurs) || 0;
+      acheteursAvant = parseInt(cur.nb_acheteurs) || 0;
+      if (demande.nb_acheteurs_cible && demande.nb_acheteurs_cible <= (palierAcheteurs(acheteursAvant) ?? 0)) {
+        await db.query('ROLLBACK');
+        return res.status(409).json({ message: `Le compte a déjà un palier égal ou supérieur (jusqu'à ${palierAcheteurs(acheteursAvant)}) : refusez cette demande` });
+      }
+      const profil = cur.domaine_id ? await getProfil(cur.domaine_id) : null;
+      const erreursCompo = erreursIntroduites(
+        validerComposition({ compteurs: cur, regles: profil?.regles }),
+        validerComposition({
+          compteurs: {
+            nb_activites: (parseInt(cur.nb_activites, 10) || 0) + (demande.nb_activites_supp || 0),
+            nb_labos: (parseInt(cur.nb_labos, 10) || 0) + (demande.nb_labos_supp || 0),
+            nb_gerants: (parseInt(cur.nb_gerants, 10) || 0) + (demande.nb_gerants_supp || 0),
+            nb_acheteurs: demande.nb_acheteurs_cible || acheteursAvant,
+          },
+          regles: profil?.regles,
+        })
+      );
+      if (erreursCompo.length) {
+        await db.query('ROLLBACK');
+        return res.status(409).json({ message: erreursCompo[0].message, code: erreursCompo[0].code, erreurs: erreursCompo });
       }
       // Capacité appliquée PAR COMPOSANT (1er composant de chaque type ; la cible acheteurs REMPLACE le quota ;
       // formule premium par défaut si 1ère activité), puis paiements en attente recalculés : même transaction.
