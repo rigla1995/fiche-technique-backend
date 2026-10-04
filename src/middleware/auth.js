@@ -34,6 +34,11 @@ const setCachedAuth = (userId, entry) => {
 // désactivation) pour ne pas attendre l'expiration du TTL sur cette instance.
 const invalidateAuthCache = (userId) => { authCache.delete(Number(userId)); };
 
+// Un jeton accompagne-t-il la requête ? En-tête Authorization OU adresse (?token=, flux des notifications).
+// Seule définition, lue par authenticate ET par la garde globale d'écriture de app.js : une garde qui ne regarderait
+// que l'en-tête laisserait passer l'écriture d'un compte en lecture seule envoyée avec le jeton dans l'adresse.
+const jetonPresent = (req) => Boolean(req.headers.authorization || req.query?.token);
+
 const authenticate = async (req, res, next) => {
   // Idempotent : le write-guard global (app.js) a pu déjà authentifier cette requête —
   // le authenticate par-route ne refait alors AUCUN travail (fini le double auth des mutations).
@@ -42,7 +47,7 @@ const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   // SSE connections pass token via query param (EventSource doesn't support headers)
   const queryToken = req.query?.token;
-  if (!authHeader && !queryToken) {
+  if (!jetonPresent(req)) {
     return res.status(401).json({ message: 'Token d\'authentification manquant' });
   }
   if (authHeader && !authHeader.startsWith('Bearer ')) {
@@ -330,7 +335,7 @@ const scopeGerantActivite = (req, res) => {
 };
 
 module.exports = {
-  authenticate, invalidateAuthCache, requireSuperAdmin, requireBoss, requireClient, requireEntreprise,
+  authenticate, jetonPresent, invalidateAuthCache, requireSuperAdmin, requireBoss, requireClient, requireEntreprise,
   requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
   requireModuleAcheteurs, requireGerantAcheteursAccess, requireAcheteur, requireFormulePremium,
   requireClientOwner, gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
