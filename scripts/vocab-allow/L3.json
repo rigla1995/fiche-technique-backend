@@ -503,7 +503,7 @@
     "apres": "",
     "type": "discriminant",
     "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
-    "occurrences": 4
+    "occurrences": 6
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -511,7 +511,7 @@
     "apres": "[^0-9]",
     "type": "discriminant",
     "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
-    "occurrences": 2
+    "occurrences": 3
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -519,7 +519,7 @@
     "apres": "⟦sql⟧'g'",
     "type": "discriminant",
     "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
-    "occurrences": 2
+    "occurrences": 3
   },
   {
     "fichier": "src/controllers/clientsController.js",

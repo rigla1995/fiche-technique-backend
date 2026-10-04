@@ -2325,7 +2325,8 @@ const getClientContratPdf = async (req, res) => {
 const previewContratPdf = async (req, res) => {
   try {
     const { nom, email, telephone } = req.body;
-    // Lot 3, étape 2 : adresse (rue) saisie dans l'assistant, imprimée par l'aperçu comme par le contrat créé.
+    // Lot 3, étape 2 : adresse (rue) saisie dans l'assistant. L'aperçu l'imprime ; le contrat DocuSeal en flux « modèle »
+    // (production) ne la porte qu'à partir du nouveau modèle (étape 7).
     const adresse = typeof req.body.adresse === 'string' ? (req.body.adresse.replace(/\s+/g, ' ').trim().slice(0, 300) || null) : null;
     const nA = ((v) => (Number.isFinite(v) && v >= 0 ? v : 1))(parseInt(req.body.nbActivites));
     const nbLabos = parseInt(req.body.nbLabos) || 0;

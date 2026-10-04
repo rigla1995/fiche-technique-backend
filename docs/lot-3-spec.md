@@ -114,8 +114,10 @@ un client existant non saisi garde son titre (pastille visible) ; rien ne change
 ## 3. Étape 2 — Création d'un client, 1re étape refaite
 
 Points de la relecture du 04/10 à traiter à cette étape : `previewContratPdf` ne lit pas l'adresse (serveur à modifier,
-garder la forme vérifiée par `B2-controleurs.test.js:120`) ; l'adresse envoyée à la création S'IMPRIME sur le contrat
-DocuSeal à signer (`generate.js:417`) — à dire dans la fiche, ville accolée ou non à décider ; identité validée AVANT
+garder la forme vérifiée par `B2-controleurs.test.js:120`) ; l'adresse envoyée à la création s'imprime sur le PDF du
+contrat (aperçu, contrat régénéré, repli sans DocuSeal, flux « PDF rempli », `generate.js:417`) mais PAS sur le contrat
+DocuSeal en flux « modèle » (production) avant le nouveau modèle de l'étape 7 — à dire dans la fiche ; ville non accolée
+(étape 6) ; identité validée AVANT
 toute écriture et à l'écran au clic sur « Suivant » (le 400 arriverait sinon à la dernière étape) ; contraintes réelles
 `utilisateurs_email_key` (vue en production), `profil_entreprise_telephone_unique` ; un 23505 inconnu → message
 générique ; téléphones comparés normalisés ; `demandes_acces.ville` pré-remplie ; garder les formes de `create`

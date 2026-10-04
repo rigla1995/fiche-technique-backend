@@ -104,15 +104,36 @@ const MDP = 'TestCri2026!';
       ['arabe dans la raison sociale', { raisonSociale: 'شركة' }],
       ['adresse trop longue', { adresse: 'x'.repeat(301) }],
       ['nom du contact > 100 caractères', { nom: 'N'.repeat(101) }],
+      ['nom du contact de 101 caractères entouré d\'espaces', { nom: ' ' + 'N'.repeat(101) + ' ' }],
     ]) {
       r = await post('/admin/clients', base(EMAIL_C, '20123463', extra));
       check(`création refusée (400) : ${cas}, aucun compte créé`, r.status === 400 && (await compte(EMAIL_C)) === 0, `${r.status} ${r.body?.message || ''}`);
     }
 
-    // ── 6. Doublons : téléphone (8 derniers chiffres, deux tables), email sans la casse
-    r = await post('/admin/clients', base(EMAIL_C, '98765432'));
-    check('téléphone porté par un profil d\'entreprise (+216 98 765 432) → 409 nommant le compte, aucun compte créé',
-      r.status === 409 && /TEST Porteur SARL/.test(r.body?.message || '') && (await compte(EMAIL_C)) === 0, `${r.status} ${r.body?.message || ''}`);
+    r = await post('/admin/clients', base('test-cri-f@example.com', '20123465', { nom: '  ' + 'N'.repeat(100) + '  ' }));
+    const nomF = (await pool.query('SELECT nom FROM utilisateurs WHERE email = $1', ['test-cri-f@example.com'])).rows[0]?.nom;
+    check('nom du contact de 100 caractères entouré d\'espaces : rogné puis accepté (201, pas de 500)', r.status === 201 && nomF === 'N'.repeat(100), `${r.status} ${r.body?.message || ''}`);
+
+    // ── 6. Doublons : téléphone (8 derniers chiffres ; fiches entreprise À JOUR seulement), email sans la casse
+    // Porteur 2 : fiche à jour (même numéro que le compte, écrit autrement) ; porteur 3 : copie périmée au numéro EXACT.
+    const p2 = await pool.query(`INSERT INTO utilisateurs (nom, email, role, actif, onboarding_step, telephone) VALUES ('TEST-Cri Porteur2', 'test-cri-porteur2@example.com', 'client', true, 0, '22 333 444') RETURNING id`);
+    await pool.query(`INSERT INTO profil_entreprise (client_id, nom, email, telephone, raison_sociale) VALUES ($1, 'TEST-Cri Porteur2', 'test-cri-porteur2@example.com', '22333444', 'TEST Porteur2 SARL')`, [p2.rows[0].id]);
+    const p3 = await pool.query(`INSERT INTO utilisateurs (nom, email, role, actif, onboarding_step, telephone) VALUES ('TEST-Cri Porteur3', 'test-cri-porteur3@example.com', 'client', true, 0, '23000003') RETURNING id`);
+    await pool.query(`INSERT INTO profil_entreprise (client_id, nom, email, telephone) VALUES ($1, 'TEST-Cri Porteur3', 'test-cri-porteur3@example.com', '24555666')`, [p3.rows[0].id]);
+
+    r = await post('/admin/clients', base(EMAIL_C, '+216 22 333 444'));
+    check('téléphone d\'une fiche entreprise à jour (écrit autrement) → 409 nommant le compte, aucun compte créé',
+      r.status === 409 && /TEST Porteur2 SARL|TEST-Cri Porteur2/.test(r.body?.message || '') && (await compte(EMAIL_C)) === 0, `${r.status} ${r.body?.message || ''}`);
+    r = await post('/admin/clients', base('test-cri-d@example.com', '98765432'));
+    check('copie PÉRIMÉE d\'un ancien numéro (+216 98 765 432, le compte a changé de numéro) → pas un doublon : 201',
+      r.status === 201, `${r.status} ${r.body?.message || ''}`);
+    const peD = (await pool.query('SELECT telephone FROM profil_entreprise WHERE client_id = $1', [r.body?.id])).rows[0];
+    check('copie périmée écrite autrement : le nouveau profil garde son numéro', peD?.telephone === '98765432', JSON.stringify(peD));
+    r = await post('/admin/clients', base('test-cri-e@example.com', '24555666'));
+    check('copie PÉRIMÉE au numéro exact (contrainte UNIQUE) → 201, téléphone du nouveau profil laissé vide',
+      r.status === 201, `${r.status} ${r.body?.message || ''}`);
+    const peE = (await pool.query('SELECT p.telephone, u.telephone AS tel_compte FROM profil_entreprise p JOIN utilisateurs u ON u.id = p.client_id WHERE p.client_id = $1', [r.body?.id])).rows[0];
+    check('… compte créé avec son téléphone, copie du profil vide', peE?.telephone === null && peE?.tel_compte === '24555666', JSON.stringify(peE));
     r = await post('/admin/clients', base(EMAIL_C, '+216 20 000 001'));
     check('téléphone d\'un utilisateur écrit autrement (+216 20 000 001) → 409', r.status === 409 && /TEST-Cri Porteur/.test(r.body?.message || ''), `${r.status} ${r.body?.message || ''}`);
     r = await post('/admin/clients', base('Test-Cri-A@Example.com', '20123464'));

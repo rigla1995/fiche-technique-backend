@@ -363,7 +363,8 @@ const create = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const nom = req.body.name || req.body.nom;
+  // Lot 3 : rogné une seule fois (la garde de 100 caractères porte sur la valeur réellement enregistrée).
+  const nom = String(req.body.name || req.body.nom || '').trim();
   const { email, telephone } = req.body;
   const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : [];
 
@@ -382,11 +383,13 @@ const create = async (req, res) => {
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   if (!email) return res.status(400).json({ message: 'Email requis' });
   // utilisateurs.nom est un VARCHAR(100) : 400 explicite plutôt qu'une erreur de base (500).
-  if (String(nom).trim().length > 100) return res.status(400).json({ message: 'Nom du contact : 100 caractères au maximum' });
+  if (nom.length > 100) return res.status(400).json({ message: 'Nom du contact : 100 caractères au maximum' });
 
   // Lot 3, étape 2 (spec §3) : identité légale lue et contrôlée AVANT toute écriture, mêmes règles que
   // PUT /admin/clients/:id/identite (src/utils/identite.js). Toute l'identité est facultative (pastille ensuite).
-  // L'adresse (rue) est une colonne d'identité : normalisée ici, imprimée telle quelle par le contrat comme avant.
+  // L'adresse (rue) est une colonne d'identité, normalisée ici. Elle s'imprime sur le PDF du contrat (aperçu, contrat
+  // régénéré, repli sans DocuSeal, flux « PDF rempli ») ; PAS sur le contrat DocuSeal en flux « modèle » (production)
+  // tant que le nouveau modèle n'est pas déposé (étape 7) : le modèle actuel n'a que « Nom du client » et « Email ».
   const identite = lireIdentite(req.body);
   if (identite.erreurs.length) return res.status(400).json({ message: identite.erreurs[0].message, erreurs: identite.erreurs });
   const adresse = identite.valeurs.adresse ?? null;
@@ -433,8 +436,10 @@ const create = async (req, res) => {
   const nbAcheteursEff = config ? config.nbAcheteurs : nbAcheteurs;
 
   try {
-    // Lot 3 : téléphone comparé sur ses 8 derniers chiffres (« +216 20 123 456 » = « 20123456 »), dans utilisateurs
-    // ET profil_entreprise (contrainte UNIQUE profil_entreprise_telephone_unique) ; le compte qui le porte est nommé.
+    // Lot 3 : téléphone comparé sur ses 8 derniers chiffres (« +216 20 123 456 » = « 20123456 ») avec celui des comptes
+    // (utilisateurs, tous rôles, comme avant) et des fiches entreprise À JOUR. Une copie périmée de profil_entreprise
+    // (le contact a changé de numéro depuis : la copie n'est jamais resynchronisée — 1 cas en production au 04/10)
+    // n'est pas un doublon. Le compte qui porte le numéro est nommé (route admin).
     if (telephone) {
       const tel8 = String(telephone).replace(/\D/g, '').slice(-8);
       const telCheck = await pool.query(
@@ -442,7 +447,9 @@ const create = async (req, res) => {
           WHERE RIGHT(regexp_replace(COALESCE(u.telephone, ''), '[^0-9]', '', 'g'), 8) = $1
          UNION ALL
          SELECT COALESCE(pe.nom_commercial, pe.raison_sociale, pe.nom) FROM profil_entreprise pe
+           JOIN utilisateurs u2 ON u2.id = pe.client_id
           WHERE RIGHT(regexp_replace(COALESCE(pe.telephone, ''), '[^0-9]', '', 'g'), 8) = $1
+            AND RIGHT(regexp_replace(COALESCE(u2.telephone, ''), '[^0-9]', '', 'g'), 8) = $1
          LIMIT 1`,
         [tel8]
       );
@@ -473,13 +480,23 @@ const create = async (req, res) => {
       );
       user = userResult.rows[0];
 
+      // Lot 3 : une copie périmée de profil_entreprise porte peut-être EXACTEMENT ce numéro (contrainte UNIQUE
+      // profil_entreprise_telephone_unique) : la copie du nouveau compte reste alors vide, le compte est créé.
+      let telProfil = telephone || null;
+      if (telProfil) {
+        const perime = await dbClient.query('SELECT client_id FROM profil_entreprise WHERE telephone = $1', [telProfil]);
+        if (perime.rows.length) {
+          console.warn(`[clients.create] téléphone ${telProfil} encore copié dans le profil du compte ${perime.rows[0].client_id} (copie périmée) : copie du nouveau compte laissée vide`);
+          telProfil = null;
+        }
+      }
       // Lot 3 : + colonnes d'identité saisies (raison sociale, matricule fiscal…), déjà contrôlées.
       await dbClient.query(
         `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse${colonnesIdentite.map((c) => `, ${c}`).join('')})
          VALUES ($1, $2, $3, $4, $5${colonnesIdentite.map((_, i) => `, $${i + 6}`).join('')})
          ON CONFLICT (client_id) DO NOTHING
          RETURNING id`,
-        [user.id, nom, email, telephone || null, adresse || null, ...colonnesIdentite.map((c) => identite.valeurs[c])]
+        [user.id, nom, email, telProfil, adresse || null, ...colonnesIdentite.map((c) => identite.valeurs[c])]
       );
 
       // Option Acheteurs choisie dès la création : module activé immédiatement
