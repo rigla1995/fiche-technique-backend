@@ -121,6 +121,11 @@ const docusealWebhook = async (req, res) => {
         console.log(`[docuseal-webhook] Avenant signé → capacité appliquée (demande ${d.id})`);
         return; // ne pas exécuter le flux contrat
       }
+      // Lot 3, étape 3 : DocuSeal envoie form.completed PUIS submission.completed. Le 2e événement d'un avenant déjà
+      // validé ne doit pas tomber dans la branche contrat : depuis qu'il n'y a plus de contrat (sans engagement), un
+      // compte récent a contrat_accepte_le vide et recevrait une fausse date d'acceptation.
+      const dejaAvenant = await pool.query('SELECT 1 FROM support_demandes WHERE docuseal_submission_id = $1 LIMIT 1', [submissionId]);
+      if (dejaAvenant.rows.length > 0) return;
     }
 
     // ── 2) CONTRAT ────────────────────────────────────────────────────────────────

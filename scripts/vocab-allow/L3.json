@@ -74,7 +74,7 @@
     "avant": null,
     "apres": "Raison sociale",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -95,7 +95,7 @@
     "avant": null,
     "apres": "Nom commercial",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -117,7 +117,7 @@
     "avant": null,
     "apres": "Forme juridique",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -139,7 +139,7 @@
     "avant": null,
     "apres": "Matricule fiscal",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -154,7 +154,7 @@
     "avant": null,
     "apres": "RNE",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -169,7 +169,7 @@
     "avant": null,
     "apres": "Adresse",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -184,7 +184,7 @@
     "avant": null,
     "apres": "Ville",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -205,7 +205,7 @@
     "avant": null,
     "apres": "Représentant",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -226,7 +226,7 @@
     "avant": null,
     "apres": "Qualité du représentant",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -339,21 +339,21 @@
     "avant": null,
     "apres": "⟦·⟧ : ⟦·⟧ caractères au maximum",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "⟦·⟧ : caractères latins seulement (les lettres arabes et les émojis ne s'impriment pas sur les factures)",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Forme juridique inconnue",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
@@ -374,25 +374,32 @@
     "avant": null,
     "apres": "Matricule fiscal invalide : 7 chiffres attendus avant la lettre de clé (un zéro de tête manque-t-il ?)",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
     "avant": null,
     "apres": "Matricule fiscal invalide (exemples : 1234567A/A/M/000 ou 1234567A)",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
     "avant": null,
     "apres": "Matricule fiscal sans lettre de clé (1234567A…) : à vérifier sur la patente",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "Option Acheteurs",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
     "apres": "utilisateurs_email_key",
     "type": "discriminant",
     "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
@@ -409,7 +416,7 @@
     "avant": null,
     "apres": "Enregistrement impossible : une donnée qui doit être unique est déjà utilisée",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -540,9 +547,18 @@
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "⟦?⟦·⟧|Client⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
     "apres": "Client introuvable",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin.",
+    "occurrences": 2
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -555,30 +571,37 @@
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": ", puis ⟦·⟧ à partir du ⟦·⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
     "apres": "Ce matricule fiscal est déjà porté par le compte « ⟦·⟧ »",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "Contrôle de l'identité indisponible — réessayez.",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "⟦sql⟧'client'",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : code SQL d'une requête nouvelle (jamais affiché)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "Client introuvable",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -591,6 +614,13 @@
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "⟦?⟦·⟧ DT|—⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
     "apres": "$⟦·⟧",
     "type": "discriminant",
     "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
@@ -607,14 +637,14 @@
     "avant": null,
     "apres": "Erreur lors de l'enregistrement de l'identité",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "Nom du contact : 100 caractères au maximum",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -644,7 +674,7 @@
     "avant": null,
     "apres": "⟦sql⟧'g'",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : code SQL d'une requête nouvelle (jamais affiché).",
     "occurrences": 3
   },
   {
@@ -652,11 +682,18 @@
     "avant": null,
     "apres": "Ce numéro de téléphone est déjà utilisé (compte « ⟦·⟧ »)",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": " pendant ⟦·⟧ mois",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
     "apres": ", ⟦·⟧",
     "type": "discriminant",
     "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
@@ -920,16 +957,30 @@
   {
     "fichier": "src/services/emailService.js",
     "avant": "Nous ⟦?avons le plaisir de vous accueillir sur <strong>⟦·⟧</strong>. Votre contrat d'abonnement figure en pièce jointe au format PDF.<br>\n        Pour accéder à votre espace, il vous suffit d'activer votre compte et de définir votre mot de passe|vous remercions pour la signature de votre contrat. Votre espace <strong>⟦·⟧</strong> est désormais prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous⟧.",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
     "apres": "Nous avons le plaisir de vous accueillir sur <strong>⟦·⟧</strong>. Votre espace est prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.",
-    "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "type": "remplace",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE de l'email de bienvenue envoyé dès la création (« Votre espace est prêt »), sans contrat ni pièce jointe ; il remplace l'introduction « signature de votre contrat » et le bloc « Document joint »."
   },
   {
     "fichier": "src/services/emailService.js",
     "avant": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;\">Bienvenue, ⟦·⟧</h2>\n      <p style=\"margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;\">\n        ⟦·⟧\n      </p>\n      ⟦·⟧\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"⟦·⟧\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : ⟦·⟧</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; ⟦·⟧\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
     "apres": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;\">Bienvenue, ⟦·⟧</h2>\n      <p style=\"margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;\">\n        ⟦·⟧\n      </p>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"⟦·⟧\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : ⟦·⟧</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; ⟦·⟧\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
-    "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "type": "remplace",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE de l'email de bienvenue envoyé dès la création (« Votre espace est prêt »), sans contrat ni pièce jointe ; il remplace l'introduction « signature de votre contrat » et le bloc « Document joint »."
   },
   {
     "fichier": "src/services/emailService.js",

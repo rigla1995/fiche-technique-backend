@@ -86,9 +86,10 @@ const MDP = 'TestCri2026!';
       && peA.matricule_fiscal === '1234567A/A/M/000' && peA.rne === '1234567A' && peA.adresse === '3 rue de Rome' && peA.ville === '1000 Tunis'
       && peA.representant_nom === 'Ali Ben Salah' && peA.representant_qualite === 'Gérant' && peA.nom_commercial === null, JSON.stringify(peA));
     check('base : nom / email / téléphone du profil = contact (comme avant)', peA.nom === 'TEST-Cri Contact' && peA.email === EMAIL_A && peA.telephone === '20123461');
-    // Lot 3, étape 3 : email d'activation parti tout de suite, aucune soumission de contrat
+    // Lot 3, étape 3 : invite_sent posé dès la création, aucune soumission de contrat. NB : ce backend de test n'a pas
+    // de DocuSeal ; la preuve « même avec DocuSeal configuré » est la clé emails.site.creation de la référence de sortie.
     const aboA = (await pool.query('SELECT invite_sent, contrat_submission_id FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1', [idA])).rows[0];
-    check('création : email d\'activation envoyé tout de suite (invite_sent), aucun contrat soumis', aboA?.invite_sent === true && aboA.contrat_submission_id === null, JSON.stringify(aboA));
+    check('création : invite_sent vrai dès la création, aucune soumission de contrat enregistrée', aboA?.invite_sent === true && aboA.contrat_submission_id === null, JSON.stringify(aboA));
     const ficheA = await fetch(`${BASE}/admin/clients/${idA}`, { headers: H }).then((x) => x.json());
     check('fiche : nom affiché = raison sociale, identité complète', ficheA.nomAffiche === 'TEST Cri SARL' && ficheA.identiteComplete === true);
 
