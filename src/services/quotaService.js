@@ -12,6 +12,9 @@ const LIBELLES = {
   labo: { col: 'nb_labos', sg: '[[nom:labo]]', pl: '[[nom:labo:pl]]' },
   gerant: { col: 'nb_gerants', sg: '[[nom:gerant]]', pl: '[[nom:gerant:pl]]' },
 };
+// Lot 3, étape 4 (plus d'avenants) : phrase de fin du message, balisée (« supplément » est un terme du lexique),
+// assemblée dans le `message` du quota comme LIBELLES (scripts/vocab-rendu.json).
+const TEXTES = { demande: 'Demandez [[un:supplement]] pour en ajouter.' };
 
 async function checkQuota(db, clientId, type) {
   const d = db || pool;
@@ -49,7 +52,7 @@ async function checkQuota(db, clientId, type) {
     type,
     actuel,
     max,
-    message: `Limite atteinte : votre formule comprend ${max} ${max > 1 ? def.pl : def.sg} — quota entièrement utilisé (${actuel}/${max}). Demandez un avenant pour en ajouter.`,
+    message: `Limite atteinte : votre formule comprend ${max} ${max > 1 ? def.pl : def.sg} — quota entièrement utilisé (${actuel}/${max}). ${TEXTES.demande}`,
   };
 }
 

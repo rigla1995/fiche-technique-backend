@@ -289,3 +289,28 @@ email de bienvenue, résiliations, contrats legacy, champs DocuSeal, `inviteSent
 inattendu ; comptes par clé emails 39 → 33, pdf 21 → 19, valeursContrat 11 → 3. Référence RECAPTURÉE le 04/10 vers
 15 h 20 (passage 1 `--reference`, passage 2 contrôle : IDENTIQUE). Hors restauration (hotellerie, ceramique, miroir) :
 code 0, aucune exception sans emploi. L'ancienne référence reste dans l'historique git.
+
+### Lot 3, étape 4 — suppléments sans avenant (04/10/2026)
+
+Décision du client : LabFlow est sans engagement, plus d'avenant à signer. Une demande de supplément attend la
+validation de l'équipe LabFlow ; la validation admin applique la capacité et envoie un email de CONFIRMATION
+(sendSupplementValideEmail, sans PDF ni le mot « avenant », option Acheteurs comprise). Capture adaptée : la demande du
+client ne doit produire ni appel DocuSeal ni email (sinon la capture s'arrête) ; retirés : `emails.site.demandeAvenantClient`,
+`valeursContrat.soumission.demandeAvenant`, `pdf.site.traitementDemande.avenantLegacy` (garde : aucun PDF), la bascule
+du jeton DocuSeal ; `emails.site.traitementDemande` garde sa clé (nouvel email) ; nouvelle clé
+`messages.demandeDejaTraitee` (2ᵉ validation : 409) ; les 6 `fixe.avenant.*` deviennent les 6
+`fixe.supplementValide.*` (la variante « promo » devient « sansOption »). Domaine miroir : le webhook d'avenant est
+remplacé par la validation admin de la 1ʳᵉ demande (`emails.site.validationSupplement`,
+`persistes.validationSupplement.sse|composants` au lieu de `persistes.webhook.avenant.*` ; hors miroir,
+`persistes.validationSupplement.sse` = null). Gardés jusqu'à l'étape 5 : `fixe.signature.*`, `pdf.avenant.flux`,
+`pdf.legacy.avenant`, `valeursContrat.avenantExtraFields.*`, webhook « contrat ». Contrôle avant recapture (deux
+passages, mêmes écarts) : 22 écarts, tous dus à l'étape 4 (6 emails fixes d'avenant retirés et 6 de confirmation
+ajoutés, email de signature de la demande retiré, sujet / HTML / pièce jointe de l'email de traitement, PDF d'avenant
+du traitement, soumission DocuSeal de la demande, `webhook.avenant.sse` renommé `validationSupplement.sse`, fin du
+message de quota « Demandez un supplément pour en ajouter. », message 409 nouveau), aucun inattendu ; comptes par clé
+emails 33 → 32, pdf 19 → 18, valeursContrat 3 → 2, messages 19 → 20. Référence RECAPTURÉE le 04/10 vers 16 h 15
+(passage 1 `--reference`, passage 2 contrôle : IDENTIQUE). Hors restauration : 3 exceptions devenues sans emploi
+(`valeursContrat` `/name$` « Nb activités », « Nb labos », « Nb gérants » : noms de champs du modèle DocuSeal de
+l'avenant) retirées de `exceptions-hors-restauration.json` ; ensuite hotellerie, ceramique, miroir : code 0, aucune forme
+par défaut (email de confirmation et message de quota compris : « Demandez [[un:supplement]] … » rend « une option » en
+céramique). L'ancienne référence reste dans l'historique git.

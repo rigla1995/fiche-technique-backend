@@ -16,8 +16,20 @@
     "fichier": "src/services/quotaService.js",
     "genre": "valeurs-objet",
     "nom": "LIBELLES",
-    "cles": ["sg", "pl"],
+    "cles": [
+      "sg",
+      "pl"
+    ],
     "justification": "Libellés sg / pl de LIBELLES : assemblés dans le `message` du quota, renvoyé tel quel en 409 (spec lot 2b §3.2 E2, §6.6 : une balise littérale par entrée)."
+  },
+  {
+    "fichier": "src/services/quotaService.js",
+    "genre": "valeurs-objet",
+    "nom": "TEXTES",
+    "cles": [
+      "demande"
+    ],
+    "justification": "Lot 3, étape 4 : phrase de fin du message de quota (« Demandez [[un:supplement]] pour en ajouter. »), assemblée dans le message renvoyé tel quel en 409, comme LIBELLES."
   },
   {
     "fichier": "src/controllers/produitsController.js",

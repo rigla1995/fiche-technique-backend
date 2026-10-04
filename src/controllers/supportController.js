@@ -1,10 +1,9 @@
 const pool = require('../config/database');
-const { sendAvenantEmail } = require('../services/emailService');
-const { vocabDefaut, vocabForClient } = require('../utils/vocabCompte');
-const { generateAvenantPdf } = require('../services/pdfService');
+const { sendSupplementValideEmail } = require('../services/emailService');
+const { vocabForClient } = require('../utils/vocabCompte');
 const { pushTo, pushToAdmins } = require('../services/sseService');
 const { saveNotification, saveNotificationToAdmins } = require('./notificationController');
-const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeBaseAcheteursFromConfig, computeMensuelTotalFromConfig, computeAvenantPricing, palierAcheteurs, loadTarifs, tarifsFor, recalcPaiementsEnAttente } = require('./abonnementController');
+const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGerantFromConfig, computeBaseAcheteursFromConfig, computeMensuelTotalFromConfig, palierAcheteurs, loadTarifs, tarifsFor, recalcPaiementsEnAttente } = require('./abonnementController');
 // Lot 1a : la capacité s'applique PAR COMPOSANT (applyComposants = seul écrivain des compteurs)
 const { applyComposants, invaliderProfilApresCommit, composantsDepuisCompteurs, validerComposition, erreursIntroduites } = require('../services/configComposantsService');
 const { getProfil } = require('../services/domaineProfilService');
@@ -28,54 +27,6 @@ const appliquerSupplement = async (db, clientId, { addActivites = 0, addLabos = 
   const result = await applyComposants(db, aboId, { composants, mode: 'add' });
   return { aboId, result };
 };
-const {
-  createSubmission, createSubmissionFromPdf, getSubmissionDocuments,
-  isConfigured: docusealConfigured, isConfiguredPdf: docusealPdfConfigured,
-} = require('../services/docusealService');
-const { buildAvenantDocument, avenantExtraFields } = require('../services/contractPdfService');
-const { sendDocusealSigningEmail } = require('../services/emailService');
-
-const fmtDtS = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
-
-// Soumission Docuseal de l'avenant : flux « PDF rempli » (document généré pour le
-// client, prestataire pré-signé) avec REPLI sur le flux template historique si la
-// génération ou l'API échoue. Retourne { submissionId, signingUrl }.
-// voc : vocabulaire du compte qui demande l'avenant (req.voc, lot 2b spec §8.2).
-const submitAvenantForSignature = async ({ demandeId, info, pricing, ajouts, voc = vocabDefaut }) => {
-  const clientName = info.nom || 'Client';
-  if (docusealPdfConfigured() && pricing) {
-    try {
-      const docu = await buildAvenantDocument({
-        demandeId,
-        client: { nom: clientName, email: info.email, telephone: info.telephone, adresse: info.adresse },
-        pricing,
-        ajouts,
-        abonnementId: info.abo_id,
-        abonnementDate: info.abo_created_at,
-        voc,
-      });
-      return await createSubmissionFromPdf({
-        pdfBase64: docu.base64,
-        documentName: docu.documentName,
-        clientName,
-        clientEmail: info.email,
-      });
-    } catch (e) {
-      console.error('[avenant] flux PDF rempli échoué, repli sur le template:', e.message);
-    }
-  }
-  return createSubmission({
-    type: 'avenant',
-    clientName,
-    clientEmail: info.email,
-    nbActivites: pricing?.nbActivites,
-    nbLabos: pricing?.nbLabos,
-    nbGerants: pricing?.nbGerants,
-    montantMensuel: pricing?.effMensuel,
-    extraFields: avenantExtraFields({ ajouts, abonnementId: info.abo_id, abonnementDate: info.abo_created_at, pricing, voc }),
-  });
-};
-
 const mapDemande = (row) => ({
   id: row.id,
   clientId: row.client_id,
@@ -214,60 +165,8 @@ const create = async (req, res) => {
 
     const result = await pool.query(sql, params);
     const demande = mapDemande(result.rows[0]);
-
-    // Nouveau flux : une demande de capacité déclenche un avenant Docuseal à signer.
-    // À la signature (webhook), la capacité est appliquée et la demande validée automatiquement.
-    let signingUrl = null;
-    if (type === 'supplement' && (docusealPdfConfigured() || docusealConfigured('avenant'))) {
-      try {
-        const infoRes = await pool.query(
-          `SELECT u.nom, u.email, u.telephone, pe.adresse,
-                  a.id AS abo_id, a.created_at AS abo_created_at
-             FROM utilisateurs u
-             LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
-             LEFT JOIN abonnements a ON a.client_id = u.id
-            WHERE u.id = $1
-            ORDER BY a.id DESC
-            LIMIT 1`,
-          [clientId]
-        );
-        const info = infoRes.rows[0] || {};
-        const clientEmail = info.email || null;
-        const clientNomFull = info.nom || clientNom || 'Client';
-        if (clientEmail) {
-          const ajouts = {
-            addActivites: req.body.nbActivitesSupp || 0,
-            addLabos: req.body.nbLabosSupp || 0,
-            addGerants: req.body.nbGerantsSupp || 0,
-            setAcheteurs: demande.nbAcheteursCible || null,
-          };
-          const pricing = await computeAvenantPricing(clientId, ajouts);
-          const sub = await submitAvenantForSignature({ demandeId: demande.id, info, pricing, ajouts, voc: req.voc ?? vocabDefaut });
-          if (sub?.submissionId) {
-            await pool.query('UPDATE support_demandes SET docuseal_submission_id = $1 WHERE id = $2',
-              [String(sub.submissionId), demande.id]);
-          }
-          if (sub?.signingUrl) {
-            signingUrl = sub.signingUrl;
-            sendDocusealSigningEmail({
-              to: clientEmail,
-              nom: clientNomFull,
-              signingUrl: sub.signingUrl,
-              avenant: {
-                addActivites: req.body.nbActivitesSupp || 0,
-                addLabos: req.body.nbLabosSupp || 0,
-                addGerants: req.body.nbGerantsSupp || 0,
-                setAcheteurs: demande.nbAcheteursCible || null,
-              },
-              voc: req.voc,
-            })
-              .catch((e) => console.error('[avenant] envoi email signature:', e.message));
-          }
-        }
-      } catch (e) {
-        console.error('[avenant] création soumission Docuseal:', e.message);
-      }
-    }
+    // Lot 3, étape 4 : plus d'avenant à signer (LabFlow est sans engagement, décision du client du 04/10/2026).
+    // La demande attend la validation de l'équipe LabFlow, qui applique la capacité (traiter).
 
     const notifPayload = { eventType: 'new_demande', demandeId: demande.id, type: demande.type, clientNom: clientNom || 'Client' };
     // Don't notify admins for auto-validated aide requests
@@ -275,8 +174,7 @@ const create = async (req, res) => {
       pushToAdmins('new_demande', notifPayload);
       saveNotificationToAdmins(notifPayload).catch(console.error);
     }
-    // On n'expose PAS le lien de signature au front : le client signe l'avenant via l'email reçu.
-    res.status(201).json({ ...demande, avenantEmailSent: !!signingUrl });
+    res.status(201).json(demande);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -315,92 +213,63 @@ const listAll = async (req, res) => {
   }
 };
 
-// Admin: process (validate/refuse) a support request
+// Admin : traite (valide / refuse) une demande. Lot 3, étape 4 (plus d'avenant) : UNE transaction pose le statut —
+// seulement si la demande est encore « en_attente » (une 2e validation ou un double clic répond 409 sans rien
+// appliquer) — et, pour un supplément validé, applique la capacité par composant, active l'option Acheteurs et
+// recalcule les paiements en attente. Notifications et email de confirmation APRÈS le COMMIT (best effort).
 const traiter = async (req, res) => {
   const { id } = req.params;
   const { statut, notesAdmin } = req.body;
 
   if (!['validée', 'refusée'].includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
+  if (!/^\d{1,9}$/.test(String(id))) return res.status(404).json({ message: 'Demande introuvable' });
 
+  const db = await pool.connect();
+  let demande;
+  let ligne;
+  let resultatComposants = null;
+  let acheteursAvant = null;
   try {
-    const demandeRes = await pool.query(
-      `SELECT sd.*, u.email AS client_email, u.nom AS client_nom_u
-       FROM support_demandes sd
-       LEFT JOIN utilisateurs u ON u.id = sd.client_id
-       WHERE sd.id = $1`,
-      [id]
-    );
-    if (demandeRes.rows.length === 0) return res.status(404).json({ message: 'Demande introuvable' });
-    const demande = demandeRes.rows[0];
-
-    // Une demande de capacité avec avenant Docuseal en attente est validée automatiquement
-    // à la signature du client — l'admin ne peut pas la valider manuellement (mais peut la refuser).
-    if (statut === 'validée' && demande.type === 'supplement' && demande.docuseal_submission_id && demande.statut === 'en_attente') {
-      return res.status(409).json({ message: "Cette demande sera validée automatiquement dès que le client aura signé l'avenant." });
-    }
-
-    const result = await pool.query(
+    await db.query('BEGIN');
+    const up = await db.query(
       `UPDATE support_demandes
        SET statut = $1, notes_admin = $2, traite_par = $3, traite_le = NOW()
-       WHERE id = $4 RETURNING *`,
+       WHERE id = $4 AND statut = 'en_attente' RETURNING *`,
       [statut, notesAdmin || null, req.user.id, id]
     );
+    if (up.rows.length === 0) {
+      await db.query('ROLLBACK');
+      const existe = await pool.query('SELECT statut FROM support_demandes WHERE id = $1', [id]);
+      if (existe.rows.length === 0) return res.status(404).json({ message: 'Demande introuvable' });
+      return res.status(409).json({ message: `Cette demande a déjà été traitée (${existe.rows[0].statut})` });
+    }
+    ligne = up.rows[0];
+    const info = await db.query('SELECT email AS client_email, nom AS client_nom_u FROM utilisateurs WHERE id = $1', [ligne.client_id]);
+    demande = { ...ligne, ...(info.rows[0] || {}) };
 
-    const traiteePayload = {
-      eventType: 'demande_traitee',
-      demandeId: Number(id),
-      type: demande.type,
-      statut,
-      notesAdmin: notesAdmin || null,
-    };
-    pushTo(demande.client_id, 'demande_traitee', traiteePayload);
-    saveNotification(demande.client_id, traiteePayload).catch(console.error);
-
-    // Update abonnement_config when supplement request is validated.
-    // Skip if an avenant Docuseal is pending (docuseal_submission_id) : la capacité
-    // est alors appliquée automatiquement par le webhook à la signature (évite le double).
-    let acheteursAvant = null;
-    if (statut === 'validée' && demande.type === 'supplement' && !demande.docuseal_submission_id) {
-      // Quota acheteurs AVANT application — nécessaire pour l'« ancien mensuel » de
-      // l'email d'avenant (la cible REMPLACE le quota, l'avant n'est pas dérivable après coup).
+    if (statut === 'validée' && demande.type === 'supplement') {
+      // Quota acheteurs AVANT application (la cible REMPLACE le quota) : sert à l'« ancien mensuel » de l'email.
       if (demande.nb_acheteurs_cible) {
-        const avantRes = await pool.query(
+        const avantRes = await db.query(
           `SELECT ac.nb_acheteurs FROM abonnement_config ac
-           JOIN abonnements a ON a.id = ac.abonnement_id WHERE a.client_id = $1`,
+           JOIN abonnements a ON a.id = ac.abonnement_id WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
           [demande.client_id]
         );
         acheteursAvant = parseInt(avantRes.rows[0]?.nb_acheteurs) || 0;
       }
-      // Capacité appliquée PAR COMPOSANT (1er composant de chaque type ; la cible
-      // acheteurs REMPLACE le quota ; formule premium par défaut si 1ère activité) —
-      // transaction + recalcul des paiements en attente sur la nouvelle mensualité.
-      const db = await pool.connect();
-      let aboIdApplique = null;
-      let resultatComposants = null;
-      try {
-        await db.query('BEGIN');
-        const applied = await appliquerSupplement(db, demande.client_id, {
-          addActivites: demande.nb_activites_supp || 0,
-          addLabos: demande.nb_labos_supp || 0,
-          addGerants: demande.nb_gerants_supp || 0,
-          setAcheteurs: demande.nb_acheteurs_cible || null,
-        });
-        aboIdApplique = applied?.aboId ?? null;
-        resultatComposants = applied?.result ?? null;
-        await db.query('COMMIT');
-        invaliderProfilApresCommit(resultatComposants); // composant identité créé à la volée (spec §5.4)
-      } catch (e) {
-        await db.query('ROLLBACK').catch(() => {});
-        throw e;
-      } finally {
-        db.release();
-      }
-      if (aboIdApplique) {
-        await recalcPaiementsEnAttente(pool, aboIdApplique).catch((e) => console.error('[support.traiter] recalc paiements:', e.message));
-      }
+      // Capacité appliquée PAR COMPOSANT (1er composant de chaque type ; la cible acheteurs REMPLACE le quota ;
+      // formule premium par défaut si 1ère activité), puis paiements en attente recalculés : même transaction.
+      const applied = await appliquerSupplement(db, demande.client_id, {
+        addActivites: demande.nb_activites_supp || 0,
+        addLabos: demande.nb_labos_supp || 0,
+        addGerants: demande.nb_gerants_supp || 0,
+        setAcheteurs: demande.nb_acheteurs_cible || null,
+      });
+      resultatComposants = applied?.result ?? null;
+      if (applied?.aboId) await recalcPaiementsEnAttente(db, applied.aboId);
       // Passage/activation de l'option Acheteurs : le module doit être actif côté profil
       if (demande.nb_acheteurs_cible) {
-        await pool.query(
+        await db.query(
           `UPDATE profil_entreprise
            SET module_acheteurs_actif = true,
                module_acheteurs_activated_at = COALESCE(module_acheteurs_activated_at, NOW())
@@ -409,166 +278,82 @@ const traiter = async (req, res) => {
         );
       }
     }
-
-    // Send avenant email (PDF) only for the manual fallback (no Docuseal submission)
-    if (statut === 'validée' && demande.type === 'supplement' && !demande.docuseal_submission_id) {
-      const clientEmail = demande.client_email;
-      const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
-      if (clientEmail) {
-        (async () => {
-          try {
-            // Fetch config AFTER update
-            const configRes = await pool.query(
-              `SELECT ac.* FROM abonnement_config ac
-               JOIN abonnements a ON a.id = ac.abonnement_id
-               WHERE a.client_id = $1`,
-              [demande.client_id]
-            );
-            const cfg = configRes.rows[0];
-            if (!cfg) return;
-            // Grille du domaine du compte (tarifs_domaine vide ⇒ grille générale)
-            const tarifs = tarifsFor(await loadTarifs(), cfg.domaine_id);
-
-            const nbARaw = parseInt(cfg.nb_activites);
-            const nbA = Number.isFinite(nbARaw) && nbARaw >= 0 ? nbARaw : 1;
-            const nbL = parseInt(cfg.nb_labos) || 0;
-            const nbG = parseInt(cfg.nb_gerants) || 0;
-
-            // Reconstruct config BEFORE supplement to compute ancien mensuel
-            const cfgBefore = {
-              ...cfg,
-              nb_activites: nbA - (demande.nb_activites_supp || 0),
-              nb_labos:     nbL - (demande.nb_labos_supp     || 0),
-              nb_gerants:   nbG - (demande.nb_gerants_supp   || 0),
-              // La cible acheteurs REMPLACE le quota : l'avant a été capturé avant l'UPDATE
-              nb_acheteurs: acheteursAvant != null ? acheteursAvant : (parseInt(cfg.nb_acheteurs) || 0),
-            };
-            const ancienMensuel = computeMensuelTotalFromConfig(cfgBefore, tarifs) || 0;
-
-            const activiteCost = computeBaseMensuelFromConfig(cfg, tarifs) || 0;
-            const laboCost     = computeBaseLaboFromConfig(cfg, tarifs)    || 0;
-            const gerantCost   = computeBaseGerantFromConfig(cfg, tarifs)  || 0;
-            const newMensuel   = computeMensuelTotalFromConfig(cfg, tarifs) || 0;
-            const dateAvenant  = new Date().toISOString();
-
-            const pdfData = {
-              nom: clientNom,
-              notesAdmin: notesAdmin || null,
-              nbActivitesAdded: demande.nb_activites_supp || 0,
-              nbLabosAdded:     demande.nb_labos_supp     || 0,
-              nbGerantsAdded:   demande.nb_gerants_supp   || 0,
-              acheteursCible:   demande.nb_acheteurs_cible || null,
-              nbActivites: nbA,
-              nbLabos: nbL,
-              nbGerants: nbG,
-              activiteCost,
-              laboCost,
-              gerantCost,
-              formuleActivites: cfg.formule_activites || null,
-              nbAcheteurs: parseInt(cfg.nb_acheteurs) || 0,
-              acheteursCost: computeBaseAcheteursFromConfig(cfg, tarifs) || 0,
-              newMensuel,
-              ancienMensuel,
-              promoApplied: false,
-              effectifMensuel: newMensuel,
-              dateAvenant,
-            };
-
-            // Traitée par un admin : vocabulaire du compte DESTINATAIRE (I6), pour le PDF et l'email
-            const voc = await vocabForClient(demande.client_id);
-            const pdfBase64 = await generateAvenantPdf(pdfData, voc).catch((e) => {
-              console.error('PDF generation error:', e);
-              return null;
-            });
-
-            await sendAvenantEmail({ to: clientEmail, ...pdfData, pdfBase64, voc });
-          } catch (e) {
-            console.error('Avenant email error:', e);
-          }
-        })();
-      }
-    }
-
-    res.json(mapDemande(result.rows[0]));
+    await db.query('COMMIT');
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
+    await db.query('ROLLBACK').catch(() => {});
+    console.error('[support.traiter]', err);
+    return res.status(500).json({ message: 'Erreur serveur' });
+  } finally {
+    db.release();
   }
-};
+  invaliderProfilApresCommit(resultatComposants); // composant identité créé à la volée (spec §5.4)
 
-// Admin: preview avenant PDF for a supplement request (no DB changes)
-const previewAvenant = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const demandeRes = await pool.query(
-      `SELECT sd.*, u.nom AS client_nom_u
-       FROM support_demandes sd
-       LEFT JOIN utilisateurs u ON u.id = sd.client_id
-       WHERE sd.id = $1 AND sd.type = 'supplement'`,
-      [id]
-    );
-    if (demandeRes.rows.length === 0) return res.status(404).json({ message: 'Demande introuvable' });
-    const demande = demandeRes.rows[0];
+  const traiteePayload = {
+    eventType: 'demande_traitee',
+    demandeId: Number(id),
+    type: demande.type,
+    statut,
+    notesAdmin: notesAdmin || null,
+  };
+  pushTo(demande.client_id, 'demande_traitee', traiteePayload);
+  saveNotification(demande.client_id, traiteePayload).catch(console.error);
 
-    const configRes = await pool.query(
-      `SELECT ac.* FROM abonnement_config ac
-       JOIN abonnements a ON a.id = ac.abonnement_id
-       WHERE a.client_id = $1`,
-      [demande.client_id]
-    );
-    const cfg = configRes.rows[0];
-    if (!cfg) return res.status(404).json({ message: 'Configuration abonnement introuvable' });
-    // Grille du domaine du compte (tarifs_domaine vide ⇒ grille générale)
-    const tarifs = tarifsFor(await loadTarifs(), cfg.domaine_id);
-
-    // Simulate config after supplement is applied
-    const cfgAfter = {
-      ...cfg,
-      nb_activites: ((v) => (Number.isFinite(v) && v >= 0 ? v : 1))(parseInt(cfg.nb_activites)) + (demande.nb_activites_supp || 0),
-      nb_labos:     (parseInt(cfg.nb_labos)     || 0) + (demande.nb_labos_supp     || 0),
-      nb_gerants:   (parseInt(cfg.nb_gerants)   || 0) + (demande.nb_gerants_supp   || 0),
-      // Option Acheteurs : la cible remplace le quota
-      nb_acheteurs: demande.nb_acheteurs_cible || (parseInt(cfg.nb_acheteurs) || 0),
-    };
-
-    const ancienMensuel = computeMensuelTotalFromConfig(cfg, tarifs) || 0;
-
-    const activiteCost = computeBaseMensuelFromConfig(cfgAfter, tarifs) || 0;
-    const laboCost     = computeBaseLaboFromConfig(cfgAfter, tarifs)    || 0;
-    const gerantCost   = computeBaseGerantFromConfig(cfgAfter, tarifs)  || 0;
-    const newMensuel   = computeMensuelTotalFromConfig(cfgAfter, tarifs) || 0;
-
+  // Email de confirmation d'un supplément validé (sans PDF ni avenant), best effort.
+  if (statut === 'validée' && demande.type === 'supplement' && demande.client_email) {
     const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
-    const pdfData = {
-      nom: clientNom,
-      notesAdmin: null,
-      nbActivitesAdded: demande.nb_activites_supp || 0,
-      nbLabosAdded:     demande.nb_labos_supp     || 0,
-      nbGerantsAdded:   demande.nb_gerants_supp   || 0,
-      acheteursCible:   demande.nb_acheteurs_cible || null,
-      nbActivites: cfgAfter.nb_activites,
-      nbLabos:     cfgAfter.nb_labos,
-      nbGerants:   cfgAfter.nb_gerants,
-      activiteCost,
-      laboCost,
-      gerantCost,
-      formuleActivites: cfg.formule_activites || null,
-      nbAcheteurs: parseInt(cfgAfter.nb_acheteurs) || 0,
-      acheteursCost: computeBaseAcheteursFromConfig(cfgAfter, tarifs) || 0,
-      newMensuel,
-      ancienMensuel,
-      promoApplied: false,
-      effectifMensuel: newMensuel,
-      dateAvenant: new Date().toISOString(),
-    };
-
-    // Aperçu admin : vocabulaire du compte DESTINATAIRE (I6, lot 2b spec §8.2)
-    const pdfBase64 = await generateAvenantPdf(pdfData, await vocabForClient(demande.client_id));
-    res.json({ pdfBase64 });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
+    (async () => {
+      try {
+        const configRes = await pool.query(
+          `SELECT ac.* FROM abonnement_config ac
+           JOIN abonnements a ON a.id = ac.abonnement_id
+           WHERE a.client_id = $1 ORDER BY a.id DESC LIMIT 1`,
+          [demande.client_id]
+        );
+        const cfg = configRes.rows[0];
+        if (!cfg) return;
+        // Grille du domaine du compte (tarifs_domaine vide ⇒ grille générale)
+        const tarifs = tarifsFor(await loadTarifs(), cfg.domaine_id);
+        const nbARaw = parseInt(cfg.nb_activites);
+        const nbA = Number.isFinite(nbARaw) && nbARaw >= 0 ? nbARaw : 1;
+        const nbL = parseInt(cfg.nb_labos) || 0;
+        const nbG = parseInt(cfg.nb_gerants) || 0;
+        const cfgBefore = {
+          ...cfg,
+          nb_activites: nbA - (demande.nb_activites_supp || 0),
+          nb_labos:     nbL - (demande.nb_labos_supp     || 0),
+          nb_gerants:   nbG - (demande.nb_gerants_supp   || 0),
+          nb_acheteurs: acheteursAvant != null ? acheteursAvant : (parseInt(cfg.nb_acheteurs) || 0),
+        };
+        // Traitée par un admin : vocabulaire du compte DESTINATAIRE (I6)
+        const voc = await vocabForClient(demande.client_id);
+        await sendSupplementValideEmail({
+          to: demande.client_email,
+          nom: clientNom,
+          notesAdmin: notesAdmin || null,
+          nbActivitesAdded: demande.nb_activites_supp || 0,
+          nbLabosAdded:     demande.nb_labos_supp     || 0,
+          nbGerantsAdded:   demande.nb_gerants_supp   || 0,
+          acheteursCible:   demande.nb_acheteurs_cible || null,
+          nbActivites: nbA,
+          nbLabos: nbL,
+          nbGerants: nbG,
+          nbAcheteurs: parseInt(cfg.nb_acheteurs) || 0,
+          activiteCost: computeBaseMensuelFromConfig(cfg, tarifs) || 0,
+          laboCost:     computeBaseLaboFromConfig(cfg, tarifs)    || 0,
+          gerantCost:   computeBaseGerantFromConfig(cfg, tarifs)  || 0,
+          acheteursCost: computeBaseAcheteursFromConfig(cfg, tarifs) || 0,
+          ancienMensuel: computeMensuelTotalFromConfig(cfgBefore, tarifs) || 0,
+          newMensuel:    computeMensuelTotalFromConfig(cfg, tarifs) || 0,
+          dateValidation: new Date().toISOString(),
+          voc,
+        });
+      } catch (e) {
+        console.error('[support.traiter] email de confirmation :', e.message);
+      }
+    })();
   }
+
+  res.json(mapDemande(ligne));
 };
 
 // Client: delete a pending support request
@@ -592,33 +377,4 @@ const deleteMine = async (req, res) => {
   }
 };
 
-// Client: télécharge le contrat (avenant) signé — proxifié pour ne PAS exposer Docuseal au client
-const getContratSigne = async (req, res) => {
-  const clientId = req.user.gerant_parent_id || req.user.id;
-  try {
-    const { rows } = await pool.query(
-      'SELECT docuseal_submission_id FROM support_demandes WHERE id = $1 AND client_id = $2',
-      [req.params.id, clientId]
-    );
-    const dem = rows[0];
-    if (!dem) return res.status(404).json({ message: 'Demande introuvable' });
-    if (!dem.docuseal_submission_id) return res.status(404).json({ message: 'Aucun avenant associé à cette demande' });
-    const docs = await getSubmissionDocuments(dem.docuseal_submission_id);
-    if (!docs.length) return res.status(404).json({ message: "Le contrat signé n'est pas encore disponible" });
-    // Récupère le PDF côté serveur et le renvoie en pièce jointe (le client ne voit jamais Docuseal)
-    const fileRes = await fetch(docs[0].url);
-    if (!fileRes.ok) return res.status(502).json({ message: 'Contrat momentanément indisponible' });
-    const buf = Buffer.from(await fileRes.arrayBuffer());
-    const base = String(docs[0].name || 'contrat-avenant').replace(/[^a-zA-Z0-9._-]/g, '_');
-    const filename = base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', buf.length);
-    return res.send(buf);
-  } catch (err) {
-    console.error('[contrat-signe]', err.message);
-    res.status(500).json({ message: 'Erreur lors de la récupération du contrat signé' });
-  }
-};
-
-module.exports = { listMine, create, listAll, traiter, deleteMine, previewAvenant, getContratSigne };
+module.exports = { listMine, create, listAll, traiter, deleteMine };

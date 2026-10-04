@@ -4,70 +4,70 @@
     "avant": null,
     "apres": "SARL",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "SUARL",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "SA",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "SNC",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "EI",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "AUTO_ENTREPRENEUR",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ASSOCIATION",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "AUTRE",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "raisonSociale",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "raison_sociale",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -81,14 +81,14 @@
     "avant": null,
     "apres": "nomCommercial",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "nom_commercial",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -102,7 +102,7 @@
     "avant": null,
     "apres": "formeJuridique",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML).",
     "occurrences": 3
   },
   {
@@ -110,7 +110,7 @@
     "avant": null,
     "apres": "forme_juridique",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -124,7 +124,7 @@
     "avant": null,
     "apres": "matriculeFiscal",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML).",
     "occurrences": 2
   },
   {
@@ -132,7 +132,7 @@
     "avant": null,
     "apres": "matricule_fiscal",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -146,7 +146,7 @@
     "avant": null,
     "apres": "rne",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML).",
     "occurrences": 2
   },
   {
@@ -161,7 +161,7 @@
     "avant": null,
     "apres": "adresse",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML).",
     "occurrences": 2
   },
   {
@@ -176,7 +176,7 @@
     "avant": null,
     "apres": "ville",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML).",
     "occurrences": 2
   },
   {
@@ -191,14 +191,14 @@
     "avant": null,
     "apres": "representantNom",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "representant_nom",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -212,14 +212,14 @@
     "avant": null,
     "apres": "representantQualite",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "representant_qualite",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -233,84 +233,84 @@
     "avant": null,
     "apres": "ﬀ",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ff",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬁ",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "fi",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬂ",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "fl",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬃ",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ffi",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬄ",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ffl",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬅ",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "st",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML).",
     "occurrences": 2
   },
   {
@@ -318,21 +318,21 @@
     "avant": null,
     "apres": "ﬆ",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "NFC",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "-",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -360,14 +360,14 @@
     "avant": null,
     "apres": "⟦·⟧⟦·⟧/⟦·⟧/⟦·⟧/⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
     "avant": null,
     "apres": "⟦·⟧/⟦·⟧/⟦·⟧/⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
@@ -395,21 +395,21 @@
     "avant": "Option Acheteurs",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "utilisateurs_email_key",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "profil_entreprise_telephone_unique",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -423,133 +423,133 @@
     "avant": "fr-FR",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "2-digit",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "long",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "numeric",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "Aucune promotion — tarifs standard.",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "Frais d'activation ⟦?offerts (au lieu de ⟦·⟧)|: ⟦·⟧ au lieu de ⟦·⟧⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "raison_sociale",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "Mensualité ⟦?offerte (au lieu de ⟦·⟧)|: ⟦·⟧ au lieu de ⟦·⟧⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "pe.raison_sociale, pe.nom_commercial, pe.forme_juridique, pe.matricule_fiscal, pe.rne,\n              pe.ville, pe.representant_nom, pe.representant_qualite",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "  ·  ",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "⟦?Activité ⟦?Basique|Premium⟧|⟦?Activité Premium|⟧⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "basique",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "⟦?Palier jusqu'à ⟦·⟧ acheteurs|⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "Formule",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "Détail promotion",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "Mensualité après promo",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "Reprise prix de base",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "Domaine",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": "⟦?⟦·⟧|Client⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 2
   },
   {
@@ -565,7 +565,7 @@
     "avant": "resiliation",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 3
   },
   {
@@ -573,7 +573,7 @@
     "avant": ", puis ⟦·⟧ à partir du ⟦·⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -608,7 +608,7 @@
     "avant": null,
     "apres": ", ",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML).",
     "occurrences": 3
   },
   {
@@ -616,21 +616,21 @@
     "avant": "⟦?⟦·⟧ DT|—⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "$⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "⟦·⟧ = EXCLUDED.⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -651,14 +651,14 @@
     "avant": null,
     "apres": "adresse",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML).",
     "occurrences": 6
   },
   {
@@ -666,7 +666,7 @@
     "avant": null,
     "apres": "[^0-9]",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML).",
     "occurrences": 3
   },
   {
@@ -689,63 +689,63 @@
     "avant": " pendant ⟦·⟧ mois",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": ", ⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": ", $⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "23505",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/routes/admin.js",
     "avant": null,
     "apres": "/clients/identite/controle",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/routes/admin.js",
     "avant": null,
     "apres": "/clients/:id/identite",
     "type": "discriminant",
-    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "⟦sql⟧'supplement'",
     "apres": null,
     "type": "discriminant",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision du client du 04/10/2026) : code SQL de la requête supprimée avec la fonction de contrat (jamais affiché)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision du client du 04/10/2026) : code SQL d'une requête supprimée (jamais affiché)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "validée",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "avenant",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 2
   },
   {
@@ -753,35 +753,35 @@
     "avant": "contrat",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "1",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "Aucun contrat signé disponible",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "Le contrat signé n'est pas encore disponible",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "Contrat momentanément indisponible",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 2
   },
   {
@@ -789,14 +789,14 @@
     "avant": "⟦?⟦·⟧|contrat⟦?-avenant|⟧⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "_",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 2
   },
   {
@@ -804,7 +804,7 @@
     "avant": "⟦·⟧⟦?|.pdf⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 2
   },
   {
@@ -812,7 +812,7 @@
     "avant": ".pdf",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 2
   },
   {
@@ -820,7 +820,7 @@
     "avant": "Content-Type",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 3
   },
   {
@@ -828,7 +828,7 @@
     "avant": "application/pdf",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 3
   },
   {
@@ -836,7 +836,7 @@
     "avant": "Content-Disposition",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 3
   },
   {
@@ -844,7 +844,7 @@
     "avant": "attachment; filename=\"⟦·⟧\"",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 2
   },
   {
@@ -852,7 +852,7 @@
     "avant": "Content-Length",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 3
   },
   {
@@ -860,77 +860,77 @@
     "avant": "Erreur lors de la récupération du contrat",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "⟦sql⟧'client'",
     "apres": null,
     "type": "discriminant",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision du client du 04/10/2026) : code SQL de la requête supprimée avec la fonction de contrat (jamais affiché)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision du client du 04/10/2026) : code SQL d'une requête supprimée (jamais affiché)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "⟦?⟦·⟧|contrat⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "Aucun contrat disponible pour ce client",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "base64",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "attachment; filename=\"contrat-⟦·⟧.pdf\"",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "⟦?⟦?basique|premium⟧|⟦·⟧⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "basique",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "⟦?⟦·⟧|premium⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "mensualite",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "les_deux",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
     "occurrences": 2
   },
   {
@@ -938,104 +938,507 @@
     "avant": "onboarding",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "⟦?⟦·⟧|Client⟧",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
     "avant": "Erreur lors de la génération du contrat",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/services/emailService.js",
     "avant": "Nous ⟦?avons le plaisir de vous accueillir sur <strong>⟦·⟧</strong>. Votre contrat d'abonnement figure en pièce jointe au format PDF.<br>\n        Pour accéder à votre espace, il vous suffit d'activer votre compte et de définir votre mot de passe|vous remercions pour la signature de votre contrat. Votre espace <strong>⟦·⟧</strong> est désormais prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous⟧.",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/services/emailService.js",
     "avant": null,
     "apres": "Nous avons le plaisir de vous accueillir sur <strong>⟦·⟧</strong>. Votre espace est prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.",
     "type": "remplace",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE de l'email de bienvenue envoyé dès la création (« Votre espace est prêt »), sans contrat ni pièce jointe ; il remplace l'introduction « signature de votre contrat » et le bloc « Document joint »."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
   },
   {
     "fichier": "src/services/emailService.js",
     "avant": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;\">Bienvenue, ⟦·⟧</h2>\n      <p style=\"margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;\">\n        ⟦·⟧\n      </p>\n      ⟦·⟧\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"⟦·⟧\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : ⟦·⟧</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; ⟦·⟧\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/services/emailService.js",
     "avant": null,
     "apres": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;\">Bienvenue, ⟦·⟧</h2>\n      <p style=\"margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;\">\n        ⟦·⟧\n      </p>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"⟦·⟧\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : ⟦·⟧</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; ⟦·⟧\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
     "type": "remplace",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE de l'email de bienvenue envoyé dès la création (« Votre espace est prêt »), sans contrat ni pièce jointe ; il remplace l'introduction « signature de votre contrat » et le bloc « Document joint »."
-  },
-  {
-    "fichier": "src/services/emailService.js",
-    "avant": "⟦?\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">📎 Document joint</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Contrat d'abonnement — ⟦·⟧</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">En activant votre compte, vous acceptez les termes de ce contrat.</p>\n      </div>|⟧",
-    "apres": null,
-    "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
   },
   {
     "fichier": "src/services/emailService.js",
     "avant": "contrat-abonnement-⟦·⟧.pdf",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/services/emailService.js",
     "avant": "-",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "&",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "&amp;",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "<",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "&lt;",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": ">",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "&gt;",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "\"",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "&quot;",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "'",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "&#39;",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, journal serveur, gabarit de normalisation ou d'échappement HTML)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "⟦?Option Acheteurs : jusqu'à ⟦·⟧ acheteurs|⟧",
+    "type": "remplace",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "⟦?\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">📎 Document joint</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Contrat d'abonnement — ⟦·⟧</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">En activant votre compte, vous acceptez les termes de ce contrat.</p>\n      </div>|⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "<tr style=\"border-bottom:1px solid #e2e8f0;\">\n            <td style=\"padding:8px 0;color:#6b7280;\">⟦·⟧</td>\n            <td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n            <td style=\"padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;\">⟦·⟧</td>\n          </tr>",
+    "type": "remplace",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>\n<body style=\"margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n\n    <!-- Header -->\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.82rem;\">Contrat Avenant — Ajout de capacité</p>\n    </div>\n\n    <!-- Body -->\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;\">Bonjour ⟦·⟧,</h2>\n      <p style=\"margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;\">\n        Votre demande d'ajout de capacité a été <strong style=\"color:#16a34a;\">validée</strong>.\n        Cet email constitue votre avenant de contrat daté du <strong>⟦·⟧</strong>.\n      </p>\n\n      <!-- Capacité ajoutée -->\n      <div style=\"background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;\">\n        <div style=\"font-size:0.72rem;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;\">✅ Capacité ajoutée</div>\n        <div style=\"font-size:1rem;font-weight:700;color:#14532d;\">⟦·⟧</div>\n      </div>\n\n      <!-- Nouvelle configuration -->\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;\">\n        <div style=\"font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;\">Votre configuration après avenant</div>\n        <table style=\"width:100%;border-collapse:collapse;font-size:0.88rem;\">\n          <tr style=\"border-bottom:1px solid #e2e8f0;\">\n            <td style=\"padding:8px 0;color:#6b7280;\">Activités</td>\n            <td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n            <td style=\"padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;\">⟦·⟧</td>\n          </tr>\n          ⟦?<tr style=\"border-bottom:1px solid #e2e8f0;\">\n            <td style=\"padding:8px 0;color:#6b7280;\">Labos</td>\n            <td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n            <td style=\"padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;\">⟦·⟧</td>\n          </tr>|⟧\n          ⟦?<tr style=\"border-bottom:1px solid #e2e8f0;\">\n            <td style=\"padding:8px 0;color:#6b7280;\">Gérants</td>\n            <td style=\"padding:8px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n            <td style=\"padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;\">⟦·⟧</td>\n          </tr>|⟧\n          <tr>\n            <td style=\"padding:12px 0 4px;font-weight:800;color:#1e40af;\" colspan=\"2\">Nouveau mensuel de base</td>\n            <td style=\"padding:12px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;\">⟦·⟧/mois</td>\n          </tr>\n          ⟦?<tr>\n            <td style=\"padding:4px 0;font-size:0.78rem;color:#7c3aed;\" colspan=\"2\">🎉 Promotion appliquée</td>\n            <td style=\"padding:4px 0;text-align:right;font-weight:900;color:#7c3aed;font-size:1.05rem;\">⟦·⟧/mois</td>\n          </tr>|⟧\n        </table>\n      </div>\n\n      ⟦?<div style=\"background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;\">\n        <div style=\"font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;\">Note de l'administration</div>\n        <div style=\"font-size:0.88rem;color:#1e3a5f;line-height:1.6;\">⟦·⟧</div>\n      </div>|⟧\n\n      <p style=\"margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;\">\n        Votre espace est déjà mis à jour. Connectez-vous pour consulter votre nouvelle configuration.\n      </p>\n    </div>\n\n    <!-- Footer -->\n    <div style=\"background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;\">\n      <p style=\"margin:0;color:#94a3b8;font-size:0.75rem;\">⟦·⟧ · Avenant du ⟦·⟧</p>\n    </div>\n  </div>\n</body>\n</html>",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>\n<body style=\"margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n\n    <!-- Header -->\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.82rem;\">Ajout de capacité validé</p>\n    </div>\n\n    <!-- Body -->\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;\">Bonjour ⟦·⟧,</h2>\n      <p style=\"margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;\">\n        Votre demande d'ajout de capacité a été <strong style=\"color:#16a34a;\">validée</strong> le <strong>⟦·⟧</strong>.\n        Elle est active dès maintenant dans votre espace.\n      </p>\n\n      <!-- Capacité ajoutée -->\n      <div style=\"background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;\">\n        <div style=\"font-size:0.72rem;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;\">✅ Capacité ajoutée</div>\n        <div style=\"font-size:1rem;font-weight:700;color:#14532d;\">⟦·⟧</div>\n      </div>\n\n      <!-- Nouvelle configuration -->\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;\">\n        <div style=\"font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;\">Votre nouvelle configuration</div>\n        <table style=\"width:100%;border-collapse:collapse;font-size:0.88rem;\">\n          ⟦·⟧\n          ⟦?⟦·⟧|⟧\n          ⟦?⟦·⟧|⟧\n          ⟦?⟦·⟧|⟧\n          ⟦?<tr>\n            <td style=\"padding:12px 0 4px;color:#6b7280;\" colspan=\"2\">Mensuel avant l'ajout</td>\n            <td style=\"padding:12px 0 4px;text-align:right;color:#6b7280;\">⟦·⟧/mois</td>\n          </tr>|⟧\n          <tr>\n            <td style=\"padding:8px 0 4px;font-weight:800;color:#1e40af;\" colspan=\"2\">Nouveau mensuel de base</td>\n            <td style=\"padding:8px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;\">⟦·⟧/mois</td>\n          </tr>\n        </table>\n      </div>\n\n      ⟦?<div style=\"background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;\">\n        <div style=\"font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;\">Note de l'équipe LabFlow</div>\n        <div style=\"font-size:0.88rem;color:#1e3a5f;line-height:1.6;\">⟦·⟧</div>\n      </div>|⟧\n\n      <p style=\"margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;\">\n        Votre espace est déjà mis à jour. Connectez-vous pour consulter votre nouvelle configuration.\n      </p>\n    </div>\n\n    <!-- Footer -->\n    <div style=\"background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;\">\n      <p style=\"margin:0;color:#94a3b8;font-size:0.75rem;\">⟦·⟧ · Ajout validé le ⟦·⟧</p>\n    </div>\n  </div>\n</body>\n</html>",
+    "type": "remplace",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "Activités",
+    "type": "remplace",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "Labos",
+    "type": "remplace",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "Gérants",
+    "type": "remplace",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "Option Acheteurs",
+    "type": "remplace",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "jusqu'à ⟦·⟧",
+    "type": "remplace",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "⟦·⟧ — Avenant validé : ⟦·⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "⟦·⟧ — Ajout de capacité validé : ⟦·⟧",
+    "type": "remplace",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026) : nouveau texte VISIBLE d'un email — bienvenue envoyé dès la création (sans contrat ni pièce jointe), ou confirmation d'un ajout de capacité validé par l'équipe LabFlow (sans PDF ni avenant, option Acheteurs incluse)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "avenant-⟦·⟧-⟦·⟧.pdf",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "numeric",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "fr-FR",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "2-digit",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "long",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/services/onboardingEtat.js",
     "avant": "contrat",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/services/onboardingEtat.js",
     "avant": "Contrat signé",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/routes/abonnements.js",
     "avant": "/contrat-actif",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/routes/abonnements.js",
     "avant": "/client/:clientId/contrat-pdf",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
   },
   {
     "fichier": "src/routes/abonnements.js",
     "avant": "/contrat-preview",
     "apres": null,
     "type": "retire",
-    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/routes/abonnements.js",
+    "avant": "/support/:id/contrat-signe",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/routes/abonnements.js",
+    "avant": "/admin/support/:id/avenant-preview",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "⟦?⟦·⟧ DT|—⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "⟦?⟦·⟧|Client⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "avenant",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "⟦sql⟧'supplement'",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision du client du 04/10/2026) : code SQL d'une requête supprimée (jamais affiché)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'en_attente'",
+    "type": "discriminant",
+    "justification": "Lot 3 : code SQL d'une requête nouvelle (jamais affiché)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Cette demande sera validée automatiquement dès que le client aura signé l'avenant.",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": null,
+    "apres": "Cette demande a déjà été traitée (⟦·⟧)",
+    "type": "admin",
+    "justification": "Lot 3, étape 4 : message de la validation d'une demande par l'admin — route PUT /api/abonnements/admin/support/:id, garde requireSuperAdmin."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "supplement",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "en_attente",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "validée",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Configuration abonnement introuvable",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Erreur serveur",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Demande introuvable",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Aucun avenant associé à cette demande",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Le contrat signé n'est pas encore disponible",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Contrat momentanément indisponible",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "⟦?⟦·⟧|contrat-avenant⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "_",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "⟦·⟧⟦?|.pdf⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": ".pdf",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Content-Type",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "application/pdf",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Content-Disposition",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "attachment; filename=\"⟦·⟧\"",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Content-Length",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": "Erreur lors de la récupération du contrat signé",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/services/quotaService.js",
+    "avant": null,
+    "apres": "Demandez un supplément pour en ajouter.",
+    "type": "remplace",
+    "justification": "Lot 3, étape 4 — plus d'avenants (décision écrite du client du 04/10/2026) : texte VISIBLE qui remplace la mention de l'avenant (« Demandez un supplément », demande envoyée à l'équipe LabFlow puis validée)."
+  },
+  {
+    "fichier": "src/services/quotaService.js",
+    "avant": "Limite atteinte : votre formule comprend ⟦·⟧ ⟦·⟧ — quota entièrement utilisé (⟦·⟧/⟦·⟧). Demandez un avenant pour en ajouter.",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étapes 3-4 — plus de contrats ni d'avenants (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat, avenant DocuSeal d'une demande de supplément, aperçu et téléchargement de l'avenant, email « Avenant validé » avec PDF)."
+  },
+  {
+    "fichier": "src/services/quotaService.js",
+    "avant": null,
+    "apres": "Limite atteinte : votre formule comprend ⟦·⟧ ⟦·⟧ — quota entièrement utilisé (⟦·⟧/⟦·⟧). ⟦·⟧",
+    "type": "remplace",
+    "justification": "Lot 3, étape 4 — plus d'avenants (décision écrite du client du 04/10/2026) : texte VISIBLE qui remplace la mention de l'avenant (« Demandez un supplément », demande envoyée à l'équipe LabFlow puis validée)."
   }
 ]

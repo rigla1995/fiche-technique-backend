@@ -40,8 +40,12 @@ const ref = chargerReference('docuseal-templates/generate.js');
 
 // Un contrat ou une résiliation porte la date du jour dans /CreationDate (et l'identifiant qui en dérive) :
 // seules ces entrées sont neutralisées pour comparer deux générations.
+// Relevé au lot 3, étape 4 : PDFKit écrit cette date en objet INDIRECT (« 102 0 obj (D:20261004135640Z) »), que le
+// motif /CreationDate (…) ne voyait pas — le test échouait quand les deux générations tombaient de part et d'autre
+// d'une seconde (souvent sous la charge de npm test). La chaîne de date PDF est neutralisée elle aussi.
 const sansHorodatage = (buf) => buf.toString('latin1')
   .replace(/\/CreationDate \([^)]*\)/g, '/CreationDate ()')
+  .replace(/\(D:\d{14}[^)]*\)/g, '(D:)')
   .replace(/\/ID \[<[0-9a-f]+> <[0-9a-f]+>\]/gi, '/ID []');
 
 test('pdfTexte : équivalents, « ? » hors police, retraits conditionnels, idempotence', () => {

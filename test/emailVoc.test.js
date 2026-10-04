@@ -15,7 +15,10 @@ const path = require('node:path');
 
 const RACINE = path.join(__dirname, '..');
 const SRC = path.join(RACINE, 'src');
-const FONCTIONS = ['sendInviteEmail', 'sendDocusealSigningEmail', 'sendAvenantEmail', 'sendRapportWithAttachment', 'sendMessengerInviteEmail'];
+// Lot 3, étape 4 : sendAvenantEmail est remplacée par sendSupplementValideEmail (email de confirmation d'un ajout de
+// capacité validé, sans avenant ni PDF) ; sendDocusealSigningEmail existe encore (retirée à l'étape 5) mais n'est
+// plus appelée nulle part dans src/.
+const FONCTIONS = ['sendInviteEmail', 'sendDocusealSigningEmail', 'sendSupplementValideEmail', 'sendRapportWithAttachment', 'sendMessengerInviteEmail'];
 
 // ── 1. Contrôle statique ─────────────────────────────────────────────────────────────────────
 
@@ -131,8 +134,14 @@ test('outil : un objet porte `voc` seulement à son premier niveau', () => {
 test('chaque appel des 5 fonctions d\'email dans src/ porte une clé `voc` (spec §5.6)', () => {
   const tous = appels();
   // Non-vacuité : les 12 appels du §5.6, moins les 2 de clientsController retirés au lot 3, étape 3 (contrat de
-  // création et acte de résiliation : plus de contrat) — 10 au moins (un appel ajouté plus tard doit aussi la porter).
-  assert.ok(tous.length >= 10, `${tous.length} appel(s) trouvé(s), 10 attendus au moins`);
+  // création et acte de résiliation : plus de contrat), moins celui de supportController.create retiré au lot 3,
+  // étape 4 (sendDocusealSigningEmail de l'avenant à signer : plus d'avenant) — 9 au moins (un appel ajouté plus tard
+  // doit aussi la porter). L'appel de sendAvenantEmail (supportController.traiter) est devenu celui de
+  // sendSupplementValideEmail : il reste compté.
+  assert.ok(tous.length >= 9, `${tous.length} appel(s) trouvé(s), 9 attendus au moins`);
+  assert.ok(!tous.some((a) => a.fonction === 'sendDocusealSigningEmail'), 'lot 3, étape 4 : plus aucun appel de sendDocusealSigningEmail dans src/');
+  assert.equal(tous.filter((a) => a.fonction === 'sendSupplementValideEmail' && a.ou.startsWith('src/controllers/supportController.js:')).length, 1,
+    'lot 3, étape 4 : un appel de sendSupplementValideEmail, dans supportController (traiter)');
   const fautifs = tous.filter((a) => !porteVoc(a.arg)).map((a) => `${a.ou} ${a.fonction}(${a.arg.trim().slice(0, 80)})`);
   assert.deepEqual(fautifs, [], `appels sans clé voc :\n${fautifs.join('\n')}`);
   // Les fichiers du §5.6 (clientsController n'en appelle plus aucune depuis le lot 3, étape 3 : son email de
@@ -181,11 +190,13 @@ const ARGS = {
     to: 'a@test.invalid', nom: 'Nom', signingUrl: 'https://signature.invalid/s',
     avenant: { addActivites: 1, addLabos: 2, addGerants: 1, setAcheteurs: 20 },
   },
-  sendAvenantEmail: {
+  // Lot 3, étape 4 : remplace sendAvenantEmail (date fixe : sinon les deux rendus comparés pourraient différer).
+  sendSupplementValideEmail: {
     to: 'a@test.invalid', nom: 'Nom', notesAdmin: 'Note',
-    nbActivitesAdded: 1, nbLabosAdded: 2, nbGerantsAdded: 1, nbActivites: 2, nbLabos: 3, nbGerants: 1,
-    activiteCost: 10, laboCost: 20, gerantCost: 5, newMensuel: 35, promoApplied: false, effectifMensuel: 35,
-    dateAvenant: '2026-10-01T10:00:00.000Z', pdfBase64: null,
+    nbActivitesAdded: 1, nbLabosAdded: 2, nbGerantsAdded: 1, acheteursCible: 20,
+    nbActivites: 2, nbLabos: 3, nbGerants: 1, nbAcheteurs: 20,
+    activiteCost: 10, laboCost: 20, gerantCost: 5, acheteursCost: 15, newMensuel: 50, ancienMensuel: 30,
+    dateValidation: '2026-10-01T10:00:00.000Z',
   },
   sendRapportWithAttachment: {
     to: 'a@test.invalid', clientNom: 'Compte', buffer: Buffer.from('x'), filename: 'r.xlsx',
