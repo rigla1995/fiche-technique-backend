@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { list, getById, create, update, remove } = require('../controllers/clientsController');
+const { list, getById, updateIdentite, create, update, remove } = require('../controllers/clientsController');
 const { getRapportsStats } = require('../controllers/adminRapportsController');
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 
@@ -173,6 +173,8 @@ router.get('/clients', authenticate, requireSuperAdmin, list);
 router.get('/clients/:id', authenticate, requireSuperAdmin, getById);
 router.post('/clients', authenticate, requireSuperAdmin, validateCreate, create);
 router.put('/clients/:id', authenticate, requireSuperAdmin, validateUpdate, update);
+// Lot 3, étape 1 (docs/lot-3-spec.md §2) : identité légale du client (raison sociale, MF, adresse…)
+router.put('/clients/:id/identite', authenticate, requireSuperAdmin, updateIdentite);
 router.delete('/clients/:id', authenticate, requireSuperAdmin, remove);
 
 // ── Base de connaissances des agents IA ───────────────────────────────────────
