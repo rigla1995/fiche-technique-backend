@@ -18,6 +18,7 @@ const {
   isConfigured: docusealConfigured, isConfiguredPdf: docusealPdfConfigured,
 } = require('../services/docusealService');
 const { buildContratDocument, buildResiliationDocument } = require('../services/contractPdfService');
+const { lireIdentite, nomAffiche, identiteComplete, mapIdentite } = require('../utils/identite');
 
 // Formatage pour les champs Docuseal
 const fmtDtC = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
@@ -158,7 +159,18 @@ const mapClient = (row) => ({
   domaineNom: row.domaine_nom ?? null,
   // Adresse portée par profil_entreprise (fiche « Consulter » côté admin)
   adresse: row.adresse ?? null,
+  // Lot 3 (spec §2) : identité légale (profil_entreprise), nom affiché, pastille « Identité à compléter » —
+  // seulement quand la requête a lu l'identité (liste, fiche) : les réponses de create / update ne changent pas (I9).
+  ...('raison_sociale' in row ? {
+    entreprise: mapIdentite(row),
+    nomAffiche: nomAffiche({ ...row, contact: row.nom }),
+    identiteComplete: identiteComplete(row),
+  } : {}),
 });
+
+// Colonnes d'identité lues par la liste et la fiche (GROUP BY pe.id : clé primaire, Postgres admet pe.*)
+const IDENTITE_COLS = `pe.raison_sociale, pe.nom_commercial, pe.forme_juridique, pe.matricule_fiscal, pe.rne,
+              pe.ville, pe.representant_nom, pe.representant_qualite`;
 
 // Sous-requête LATERAL : domaine du dernier abonnement du client (id + nom)
 const DOMAINE_LATERAL = `
@@ -186,14 +198,14 @@ const list = async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.activated_at, u.origine,
-              pe.adresse, dom.domaine_id, dom.domaine_nom,
+              pe.adresse, ${IDENTITE_COLS}, dom.domaine_id, dom.domaine_nom,
               ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
        FROM utilisateurs u
        LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
        LEFT JOIN client_domaines cd ON cd.client_id = u.id
        ${DOMAINE_LATERAL}
        WHERE u.role = 'client'
-       GROUP BY u.id, pe.adresse, dom.domaine_id, dom.domaine_nom
+       GROUP BY u.id, pe.id, dom.domaine_id, dom.domaine_nom
        ORDER BY u.nom`
     );
     res.json(result.rows.map(mapClient));
@@ -203,28 +215,80 @@ const list = async (req, res) => {
   }
 };
 
+// Fiche d'un client (rôle client), ou null. Lot 3 : activated_at ajouté (oubli ancien : activatedAt valait null).
+const chargerClient = async (db, id) => {
+  const result = await db.query(
+    `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.activated_at, u.origine,
+            pe.adresse, ${IDENTITE_COLS}, dom.domaine_id, dom.domaine_nom,
+            ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
+     FROM utilisateurs u
+     LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
+     LEFT JOIN client_domaines cd ON cd.client_id = u.id
+     ${DOMAINE_LATERAL}
+     WHERE u.id = $1 AND u.role = 'client'
+     GROUP BY u.id, pe.id, dom.domaine_id, dom.domaine_nom`,
+    [id]
+  );
+  return result.rows[0] ? mapClient(result.rows[0]) : null;
+};
+
 const getById = async (req, res) => {
   const { id } = req.params;
+  if (!/^\d{1,9}$/.test(String(id))) return res.status(404).json({ message: 'Client introuvable' });
   try {
-    const result = await pool.query(
-      `SELECT u.id, u.nom, u.email, u.telephone, u.role, u.onboarding_step, u.actif, u.created_at, u.origine,
-              pe.adresse, dom.domaine_id, dom.domaine_nom,
-              ARRAY_REMOVE(ARRAY_AGG(DISTINCT cd.domaine_id), NULL) as domaine_ids
-       FROM utilisateurs u
-       LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
-       LEFT JOIN client_domaines cd ON cd.client_id = u.id
-       ${DOMAINE_LATERAL}
-       WHERE u.id = $1 AND u.role = 'client'
-       GROUP BY u.id, pe.adresse, dom.domaine_id, dom.domaine_nom`,
-      [id]
-    );
-    if (result.rows.length === 0) {
+    const client = await chargerClient(pool, id);
+    if (!client) {
       return res.status(404).json({ message: 'Client introuvable' });
     }
-    res.json(mapClient(result.rows[0]));
+    res.json(client);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// PUT /admin/clients/:id/identite — lot 3, étape 1 (spec §2) : identité légale saisie par l'admin.
+// N'écrit QUE les colonnes d'identité présentes dans le corps (+ adresse) ; rien d'autre ne les lit à cette étape.
+// Un matricule fiscal déjà porté par un autre compte (même identifiant à 7 chiffres) n'est pas refusé (groupes,
+// franchises) : avertissement. Garde de l'id : 1 à 9 chiffres (au-delà, Postgres répondrait 22003, donc 500).
+const updateIdentite = async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d{1,9}$/.test(String(id))) return res.status(404).json({ message: 'Client introuvable' });
+  const { valeurs, erreurs, avertissements } = lireIdentite(req.body || {});
+  if (erreurs.length) {
+    return res.status(400).json({ message: erreurs[0].message, erreurs });
+  }
+  const colonnes = Object.keys(valeurs);
+  try {
+    const u = await pool.query(`SELECT id, nom, email FROM utilisateurs WHERE id = $1 AND role = 'client'`, [id]);
+    if (!u.rows.length) return res.status(404).json({ message: 'Client introuvable' });
+    if (colonnes.length) {
+      // Ligne créée si absente (nom et email NOT NULL : copie du contact, comme à la création du compte).
+      const params = [id, u.rows[0].nom, u.rows[0].email, ...colonnes.map((c) => valeurs[c])];
+      await pool.query(
+        `INSERT INTO profil_entreprise (client_id, nom, email, ${colonnes.join(', ')})
+         VALUES ($1, $2, $3, ${colonnes.map((_, i) => `$${i + 4}`).join(', ')})
+         ON CONFLICT (client_id) DO UPDATE SET ${colonnes.map((c) => `${c} = EXCLUDED.${c}`).join(', ')}, updated_at = NOW()`,
+        params
+      );
+    }
+    if (valeurs.matricule_fiscal) {
+      const autres = await pool.query(
+        `SELECT u.nom, pe.raison_sociale, pe.nom_commercial
+           FROM profil_entreprise pe JOIN utilisateurs u ON u.id = pe.client_id
+          WHERE LEFT(pe.matricule_fiscal, 7) = LEFT($1, 7) AND pe.client_id <> $2
+          ORDER BY pe.client_id LIMIT 3`,
+        [valeurs.matricule_fiscal, id]
+      );
+      for (const r of autres.rows) {
+        avertissements.push(`Ce matricule fiscal est déjà porté par le compte « ${nomAffiche({ ...r, contact: r.nom })} »`);
+      }
+    }
+    const client = await chargerClient(pool, id);
+    res.json({ ...client, avertissements });
+  } catch (err) {
+    console.error('[clients.updateIdentite]', err);
+    res.status(500).json({ message: "Erreur lors de l'enregistrement de l'identité" });
   }
 };
 
@@ -780,4 +844,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { list, getById, create, update, remove, buildContractPricingFields };
+module.exports = { list, getById, updateIdentite, create, update, remove, buildContractPricingFields };
