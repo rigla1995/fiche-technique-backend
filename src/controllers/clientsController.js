@@ -141,6 +141,14 @@ const submitResiliationForSignature = async ({ id, nom, email }) => {
   return createSubmission({ type: 'resiliation', clientName, clientEmail: email });
 };
 
+// Message d'un doublon refusé par la base (23505), selon la contrainte réelle (lot 3) : avant, toute collision
+// répondait « email déjà utilisé ». utilisateurs_email_key : vu en production le 04/10.
+const messageDoublon = (err) => {
+  if (err?.constraint === 'utilisateurs_email_key') return 'Cet email est déjà utilisé';
+  if (err?.constraint === 'profil_entreprise_telephone_unique') return 'Ce numéro de téléphone est déjà utilisé';
+  return 'Enregistrement impossible : une donnée qui doit être unique est déjà utilisée';
+};
+
 const mapClient = (row) => ({
   id: row.id,
   name: row.nom,
@@ -247,6 +255,35 @@ const getById = async (req, res) => {
   }
 };
 
+// Avertissement « déjà porté » (lot 3) : même identifiant (7 premiers caractères du matricule) sur un autre compte.
+// Jamais un refus : groupes et franchises partagent un matricule. excludeId = le compte en cours d'édition.
+const avertissementsMatricule = async (db, mf, excludeId = null) => {
+  if (!mf) return [];
+  const r = await db.query(
+    `SELECT u.nom, pe.raison_sociale, pe.nom_commercial
+       FROM profil_entreprise pe JOIN utilisateurs u ON u.id = pe.client_id
+      WHERE LEFT(pe.matricule_fiscal, 7) = LEFT($1, 7) AND ($2::int IS NULL OR pe.client_id <> $2)
+      ORDER BY pe.client_id LIMIT 3`,
+    [mf, excludeId]
+  );
+  return r.rows.map((x) => `Ce matricule fiscal est déjà porté par le compte « ${nomAffiche({ ...x, contact: x.nom })} »`);
+};
+
+// POST /admin/clients/identite/controle — lot 3, étape 2 (spec §3) : contrôle de l'identité saisie à la 1re étape de
+// l'assistant de création, avec les règles de la création (rien n'est écrit). 200 { valeurs normalisées,
+// avertissements } ou 400 { message, erreurs }. Jamais 500 (l'écran perdrait la saisie) : erreur de base → 422.
+const controlerIdentite = async (req, res) => {
+  const { valeurs, erreurs, avertissements } = lireIdentite(req.body || {});
+  if (erreurs.length) return res.status(400).json({ message: erreurs[0].message, erreurs });
+  try {
+    avertissements.push(...await avertissementsMatricule(pool, valeurs.matricule_fiscal));
+  } catch (err) {
+    console.error('[clients.controlerIdentite]', err.message);
+    return res.status(422).json({ message: "Contrôle de l'identité indisponible — réessayez." });
+  }
+  res.json({ valeurs: mapIdentite(valeurs), avertissements });
+};
+
 // PUT /admin/clients/:id/identite — lot 3, étape 1 (spec §2) : identité légale saisie par l'admin.
 // N'écrit QUE les colonnes d'identité présentes dans le corps (+ adresse) ; rien d'autre ne les lit à cette étape.
 // Un matricule fiscal déjà porté par un autre compte (même identifiant à 7 chiffres) n'est pas refusé (groupes,
@@ -272,18 +309,7 @@ const updateIdentite = async (req, res) => {
         params
       );
     }
-    if (valeurs.matricule_fiscal) {
-      const autres = await pool.query(
-        `SELECT u.nom, pe.raison_sociale, pe.nom_commercial
-           FROM profil_entreprise pe JOIN utilisateurs u ON u.id = pe.client_id
-          WHERE LEFT(pe.matricule_fiscal, 7) = LEFT($1, 7) AND pe.client_id <> $2
-          ORDER BY pe.client_id LIMIT 3`,
-        [valeurs.matricule_fiscal, id]
-      );
-      for (const r of autres.rows) {
-        avertissements.push(`Ce matricule fiscal est déjà porté par le compte « ${nomAffiche({ ...r, contact: r.nom })} »`);
-      }
-    }
+    avertissements.push(...await avertissementsMatricule(pool, valeurs.matricule_fiscal, Number(id)));
     const client = await chargerClient(pool, id);
     res.json({ ...client, avertissements });
   } catch (err) {
@@ -338,7 +364,7 @@ const create = async (req, res) => {
   }
 
   const nom = req.body.name || req.body.nom;
-  const { email, telephone, adresse } = req.body;
+  const { email, telephone } = req.body;
   const domaineIds = Array.isArray(req.body.domaineIds) ? req.body.domaineIds.map(Number).filter(Boolean) : [];
 
   // New config-based fields (new modal flow).
@@ -355,6 +381,16 @@ const create = async (req, res) => {
 
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   if (!email) return res.status(400).json({ message: 'Email requis' });
+  // utilisateurs.nom est un VARCHAR(100) : 400 explicite plutôt qu'une erreur de base (500).
+  if (String(nom).trim().length > 100) return res.status(400).json({ message: 'Nom du contact : 100 caractères au maximum' });
+
+  // Lot 3, étape 2 (spec §3) : identité légale lue et contrôlée AVANT toute écriture, mêmes règles que
+  // PUT /admin/clients/:id/identite (src/utils/identite.js). Toute l'identité est facultative (pastille ensuite).
+  // L'adresse (rue) est une colonne d'identité : normalisée ici, imprimée telle quelle par le contrat comme avant.
+  const identite = lireIdentite(req.body);
+  if (identite.erreurs.length) return res.status(400).json({ message: identite.erreurs[0].message, erreurs: identite.erreurs });
+  const adresse = identite.valeurs.adresse ?? null;
+  const colonnesIdentite = Object.keys(identite.valeurs).filter((c) => c !== 'adresse');
 
   // ── Domaine du compte + composition (lot 1a) — validée AVANT toute écriture ──
   // domaineId (int) sinon domaineIds[0] (legacy) sinon domaine par défaut (restauration).
@@ -396,14 +432,27 @@ const create = async (req, res) => {
   }
   const nbAcheteursEff = config ? config.nbAcheteurs : nbAcheteurs;
 
-  if (telephone) {
-    const telCheck = await pool.query('SELECT id FROM utilisateurs WHERE telephone = $1', [telephone]);
-    if (telCheck.rows.length > 0)
-      return res.status(409).json({ message: 'Ce numéro de téléphone est déjà utilisé' });
-  }
-
   try {
-    const existing = await pool.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
+    // Lot 3 : téléphone comparé sur ses 8 derniers chiffres (« +216 20 123 456 » = « 20123456 »), dans utilisateurs
+    // ET profil_entreprise (contrainte UNIQUE profil_entreprise_telephone_unique) ; le compte qui le porte est nommé.
+    if (telephone) {
+      const tel8 = String(telephone).replace(/\D/g, '').slice(-8);
+      const telCheck = await pool.query(
+        `SELECT u.nom AS porteur FROM utilisateurs u
+          WHERE RIGHT(regexp_replace(COALESCE(u.telephone, ''), '[^0-9]', '', 'g'), 8) = $1
+         UNION ALL
+         SELECT COALESCE(pe.nom_commercial, pe.raison_sociale, pe.nom) FROM profil_entreprise pe
+          WHERE RIGHT(regexp_replace(COALESCE(pe.telephone, ''), '[^0-9]', '', 'g'), 8) = $1
+         LIMIT 1`,
+        [tel8]
+      );
+      if (telCheck.rows.length > 0) {
+        return res.status(409).json({ message: `Ce numéro de téléphone est déjà utilisé (compte « ${telCheck.rows[0].porteur} »)` });
+      }
+    }
+
+    // Comparaison sans la casse, comme GET /auth/check-email (contrôle de l'assistant).
+    const existing = await pool.query('SELECT id FROM utilisateurs WHERE LOWER(email) = LOWER($1)', [email]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ message: 'Cet email est déjà utilisé' });
     }
@@ -424,12 +473,13 @@ const create = async (req, res) => {
       );
       user = userResult.rows[0];
 
-      const peResult = await dbClient.query(
-        `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse)
-         VALUES ($1, $2, $3, $4, $5)
+      // Lot 3 : + colonnes d'identité saisies (raison sociale, matricule fiscal…), déjà contrôlées.
+      await dbClient.query(
+        `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse${colonnesIdentite.map((c) => `, ${c}`).join('')})
+         VALUES ($1, $2, $3, $4, $5${colonnesIdentite.map((_, i) => `, $${i + 6}`).join('')})
          ON CONFLICT (client_id) DO NOTHING
          RETURNING id`,
-        [user.id, nom, email, telephone || null, adresse || null]
+        [user.id, nom, email, telephone || null, adresse || null, ...colonnesIdentite.map((c) => identite.valeurs[c])]
       );
 
       // Option Acheteurs choisie dès la création : module activé immédiatement
@@ -571,6 +621,8 @@ const create = async (req, res) => {
   } catch (err) {
     // Erreur métier de createAbonnement (ex. DOMAINE_INTROUVABLE) : 400 explicite, jamais un 500 wizard
     if (err?.status === 400) return res.status(400).json({ message: err.message, code: err.code || 'CONFIG_INVALIDE' });
+    // Lot 3 : doublon détecté par la base (course entre deux créations) — message selon la contrainte réelle.
+    if (err?.code === '23505') return res.status(409).json({ message: messageDoublon(err) });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -703,7 +755,7 @@ const update = async (req, res) => {
   } catch (err) {
     await dbClient.query('ROLLBACK').catch(() => {});
     if (err.code === '23505') {
-      return res.status(409).json({ message: 'Cet email est déjà utilisé' });
+      return res.status(409).json({ message: messageDoublon(err) });
     }
     if (err instanceof CompositionError) {
       return res.status(400).json({ message: err.message, code: err.code, erreurs: err.erreurs });
@@ -844,4 +896,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { list, getById, updateIdentite, create, update, remove, buildContractPricingFields };
+module.exports = { list, getById, updateIdentite, controlerIdentite, create, update, remove, buildContractPricingFields };
