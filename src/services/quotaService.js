@@ -49,7 +49,7 @@ async function checkQuota(db, clientId, type) {
     type,
     actuel,
     max,
-    message: `Limite atteinte : votre formule comprend ${max} ${max > 1 ? def.pl : def.sg} — quota entièrement utilisé (${actuel}/${max}). Demandez un avenant pour en ajouter.`,
+    message: `Limite atteinte : votre formule comprend ${max} ${max > 1 ? def.pl : def.sg} — quota entièrement utilisé (${actuel}/${max}). Demandez un ajout de capacité pour en ajouter.`,
   };
 }
 
