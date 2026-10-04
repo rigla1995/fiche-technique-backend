@@ -1,4 +1,7 @@
-// Lot 2b, B2 — les 5 emails à terme écrivent leurs termes par appels voc (spec docs/lot-2b-spec.md §8.1).
+// Lot 2b, B2 — les 4 emails à terme écrivent leurs termes par appels voc (spec docs/lot-2b-spec.md §8.1).
+// (5 au lot 2b ; lot 3, étape 5 : sendDocusealSigningEmail est retirée — plus de contrat, d'avenant ni de
+// résiliation à signer. Restent sendInviteEmail, sendSupplementValideEmail, sendRapportWithAttachment,
+// sendMessengerInviteEmail.)
 //   node --test test/B2-emails.test.js
 //
 // 1. Vocabulaire par défaut : sujet, HTML et pièces jointes IDENTIQUES à ceux de la référence (emailService.js
@@ -71,12 +74,8 @@ const VARIANTES = [
   ['sendInviteEmail', { to: 'a@test.invalid', nom: 'Nom', token: 'jeton', role: 'gerant' }],
   ['sendInviteEmail', { to: 'a@test.invalid', nom: 'Nom', token: 'jeton', role: 'acheteur' }],
   ['sendInviteEmail', { to: 'a@test.invalid', nom: 'Nom', token: 'jeton', role: 'client' }],
-  ['sendDocusealSigningEmail', { to: 'a@test.invalid', nom: 'Nom', signingUrl: 'https://s.invalid/1', avenant: { addActivites: 1, addLabos: 1, addGerants: 1, setAcheteurs: 10 } }],
-  ['sendDocusealSigningEmail', { to: 'a@test.invalid', nom: 'Nom', signingUrl: 'https://s.invalid/2', avenant: { addActivites: 2, addLabos: 3, addGerants: 2, setAcheteurs: 50 } }],
-  ['sendDocusealSigningEmail', { to: 'a@test.invalid', nom: 'Nom', signingUrl: 'https://s.invalid/3', avenant: { addLabos: '1' } }],
-  ['sendDocusealSigningEmail', { to: 'a@test.invalid', nom: 'Nom', signingUrl: 'https://s.invalid/4' }],
-  ['sendDocusealSigningEmail', { to: 'a@test.invalid', nom: 'Nom', signingUrl: 'https://s.invalid/5', type: 'resiliation' }],
-  // (lot 3, étape 4 : les 2 variantes de sendAvenantEmail sont retirées — fonction remplacée, texte changé)
+  // (lot 3, étape 4 : les 2 variantes de sendAvenantEmail sont retirées — fonction remplacée, texte changé ;
+  //  étape 5 : les 5 variantes de sendDocusealSigningEmail sont retirées avec la fonction)
   ['sendRapportWithAttachment', { to: 'a@test.invalid', clientNom: 'Compte', buffer: Buffer.from('x'), filename: 'r.xlsx', mimeType: 'application/octet-stream', format: 'excel' }],
   ['sendRapportWithAttachment', { to: 'a@test.invalid', clientNom: 'Compte', buffer: Buffer.from('x'), filename: 'r.pdf', mimeType: 'application/pdf', format: 'pdf' }],
   ['sendMessengerInviteEmail', { to: 'a@test.invalid', clientNom: 'Compte', inviteLink: 'https://m.me/x?ref=y', appName: 'LabFlow' }],
@@ -90,6 +89,8 @@ const envoyer = async (module_, nom, args) => {
 };
 
 test('vocabulaire par défaut : chaque email IDENTIQUE à la référence (sujet, HTML, pièces jointes)', { skip: !reference && 'git indisponible' }, async () => {
+  assert.equal(VARIANTES.length, 6, 'non-vacuité : 3 invitations, 2 rapports, 1 invitation Messenger');
+  assert.equal(email.sendDocusealSigningEmail, undefined, 'lot 3, étape 5 : email de signature retiré');
   for (const [nom, args] of VARIANTES) {
     const avant = await envoyer(reference, nom, { ...args, voc: vocabDefaut });
     const apres = await envoyer(email, nom, { ...args, voc: vocabDefaut });
@@ -144,7 +145,6 @@ test('sendSupplementValideEmail (lot 3, étape 4) : sujet, sans pièce jointe ni
 const ATTENDUS = {
   hotellerie: {
     roles: ['responsable de service', 'client professionnel', 'client'],
-    demande: "1 service, 2 cuisines centrales, 1 responsable de service, l'option Clients professionnels (palier jusqu'à 20 clients professionnels)",
     sujetSupplement: "LabFlow — Ajout de capacité validé : +2 services · +1 cuisine centrale · +1 responsable de service · Option Clients professionnels : jusqu'à 20 clients professionnels",
     tableau: "Services 3 10.00 DT Cuisines centrales 2 20.00 DT Responsables de service 1 5.00 DT Option Clients professionnels jusqu'à 20 15.00 DT",
     rapport: 'votre stock actuel, vos pertes récentes et vos inventaires',
@@ -152,7 +152,6 @@ const ATTENDUS = {
   },
   ceramique: {
     roles: ['responsable de site', 'revendeur', 'client'],
-    demande: "1 point de vente, 2 sites de production, 1 responsable de site, l'option Revendeurs (palier jusqu'à 20 revendeurs)",
     sujetSupplement: "LabFlow — Ajout de capacité validé : +2 points de vente · +1 site de production · +1 responsable de site · Option Revendeurs : jusqu'à 20 revendeurs",
     tableau: "Points de vente 3 10.00 DT Sites de production 2 20.00 DT Responsables de site 1 5.00 DT Option Revendeurs jusqu'à 20 15.00 DT",
     rapport: 'votre stock actuel, vos pertes récentes et vos inventaires',
@@ -160,7 +159,6 @@ const ATTENDUS = {
   },
   miroir: {
     roles: ['animatrice', 'cliente', 'client'],
-    demande: "1 local, 2 usines, 1 animatrice, l'option Clientes (palier jusqu'à 20 clientes)",
     sujetSupplement: "LabFlow — Ajout de capacité validé : +2 locaux · +1 usine · +1 animatrice · Option Clientes : jusqu'à 20 clientes",
     tableau: "Locaux 3 10.00 DT Usines 2 20.00 DT Animatrices 1 5.00 DT Option Clientes jusqu'à 20 15.00 DT",
     rapport: 'votre armoire actuelle, vos abandons récents et vos pesées',
@@ -169,7 +167,7 @@ const ATTENDUS = {
 };
 
 for (const [domaine, att] of Object.entries(ATTENDUS)) {
-  test(`${domaine} : termes du domaine dans les 5 emails`, async () => {
+  test(`${domaine} : termes du domaine dans les 4 emails`, async () => {
     const voc = VOC[domaine];
     const roles = [];
     for (const role of ['gerant', 'acheteur', 'client']) {
@@ -177,9 +175,6 @@ for (const [domaine, att] of Object.entries(ATTENDUS)) {
       roles.push(extrait(texte(m.html), /en tant que (.*?) \. Cliquez/));
     }
     assert.deepEqual(roles, att.roles);
-
-    const sig = await envoyer(email, 'sendDocusealSigningEmail', { to: 'a@test.invalid', nom: 'N', signingUrl: 'https://s.invalid', voc, avenant: { addActivites: 1, addLabos: 2, addGerants: 1, setAcheteurs: 20 } });
-    assert.equal(extrait(texte(sig.html), /ajout de (.*?) , votre avenant/), att.demande);
 
     // Lot 3, étape 4 : email de confirmation (remplace l'email d'avenant), option Acheteurs comprise
     const sup = await envoyer(email, 'sendSupplementValideEmail', { ...SUPPLEMENT, nbActivitesAdded: 2, nbLabosAdded: 1, nbGerantsAdded: 1, acheteursCible: 20, voc });

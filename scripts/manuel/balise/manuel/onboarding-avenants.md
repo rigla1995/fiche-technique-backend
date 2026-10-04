@@ -1,31 +1,29 @@
-## 📑 Avenants & résiliation
+## 📑 Faire évoluer votre abonnement
 
-Votre abonnement évolue avec votre entreprise : vous pouvez à tout moment demander [[un:activite:pl]], [[nom:labo:pl]] ou [[nom:gerant:pl]] supplémentaires — ou activer l'option [[Court:acheteur:pl]] et changer de palier — depuis la page **Demandes** du menu. Chaque ajout de capacité donne lieu à un avenant au contrat, signé électroniquement.
+Votre abonnement évolue avec votre entreprise : vous pouvez à tout moment demander [[un:activite:pl]], [[nom:labo:pl]] ou [[nom:gerant:pl]] supplémentaires — ou activer l'option [[Court:acheteur:pl]] ou changer de palier — depuis la page **Demandes** du menu. Chaque demande est soumise à la validation de l'équipe LabFlow. LabFlow est **sans engagement** : il n'y a aucun document à signer.
 
 ### Ce que vous voyez
 
 - le bouton **+ Nouvelle demande** en haut de la page ;
 - la liste de vos demandes avec leur statut — **En attente**, **Validée** ou **Refusée** — filtrable par statut et par période ;
-- pour une demande d'ajout de capacité : un encart indiquant que le contrat avenant a été envoyé à votre adresse email, son état (en attente de signature ou signé), puis un bouton pour télécharger le contrat avenant signé.
+- pour une demande traitée : la réponse de l'administration, lorsqu'elle en a laissé une.
 
 ### Demander de la capacité supplémentaire
 
 1. Cliquez sur **+ Nouvelle demande**, puis choisissez **Ajout de capacité**.
 2. Le formulaire rappelle votre configuration actuelle et affiche le prix de chaque supplément en DT, par unité et par mois ([[nom:activite]], [[nom:labo]], [[nom:gerant]]), promotions éventuelles comprises.
 3. Réglez les compteurs + / − et, si vous le souhaitez, choisissez un **palier de l'option [[Court:acheteur:pl]]** (activation ou passage à un palier supérieur — le prix du palier s'affiche) ; le bloc « Nouveau total estimé » calcule en direct votre future mensualité en DT.
-4. Cliquez sur **Envoyer la demande** : votre avenant est généré et un email de signature vous est envoyé immédiatement.
-5. Ouvrez l'email « Signature de votre avenant d'abonnement » et cliquez sur **Consulter et signer mon avenant**.
-6. Dès la signature, la capacité supplémentaire est **appliquée automatiquement** à votre compte : la demande passe en « Validée », vous recevez une notification et pouvez utiliser vos [[nouveau:activite:pl]], [[nom:labo:pl]], [[nom:gerant:pl]] — et, le cas échéant, votre nouveau palier [[nom:acheteur:pl]] — sans autre démarche.
-7. Le contrat avenant signé reste ensuite téléchargeable depuis la demande concernée.
+4. Cliquez sur **Envoyer la demande** : elle est transmise à l'équipe LabFlow.
+5. Dès sa validation, la capacité supplémentaire est **appliquée automatiquement** à votre compte : la demande passe en « Validée », vous recevez une notification et un email de confirmation, et vous pouvez utiliser vos [[nouveau:activite:pl]], [[nom:labo:pl]], [[nom:gerant:pl]] — et, le cas échéant, votre nouveau palier [[nom:acheteur:pl]] — sans autre démarche.
 
-### Résiliation
+### Arrêter votre abonnement
 
-À la clôture de votre abonnement, vous recevez par email un **acte de résiliation** à signer électroniquement (bouton « Consulter et signer l'acte »). Ce document formalise la fin de votre abonnement ; la signature se fait entièrement en ligne, comme pour le contrat initial.
+Vous pouvez arrêter (résilier) votre abonnement à tout moment : prévenez l'équipe LabFlow. Votre accès reste ouvert jusqu'à la fin du mois payé ; il n'y a aucun document à signer.
 
 ### Points d'attention
 
 :::attention
-Tant que l'avenant n'est pas signé, la demande reste « En attente » et la capacité n'est pas ajoutée. Une demande en attente peut être supprimée si vous changez d'avis (bouton « Supprimer »).
+Tant que la demande n'est pas validée, elle reste « En attente » et la capacité n'est pas ajoutée. Une demande en attente peut être supprimée si vous changez d'avis (bouton « Supprimer »).
 :::
 
 :::regle
@@ -33,7 +31,7 @@ Le palier [[nom:acheteur:pl]] demandé **remplace** le palier actuel (les palier
 :::
 
 :::astuce
-Le total estimé tient compte des promotions actives : le prix de base apparaît barré et le prix remisé s'affiche à côté. C'est ce montant qui figure sur l'avenant.
+Le total estimé tient compte des promotions actives : le prix de base apparaît barré et le prix remisé s'affiche à côté.
 :::
 
 ### Voir aussi
@@ -41,4 +39,4 @@ Le total estimé tient compte des promotions actives : le prix de base apparaît
 - [[[Mon:activite:pl]]](#activites) · [[[Nom:gerant:pl]]](#gerants)
 - [Le module [[Court:acheteur:pl]]](#acheteurs-module)
 - [Mon abonnement](#abonnement) · [Historique des paiements](#historique-paiements)
-- [Support & demandes](#support)
+- [Demandes & support](#support)

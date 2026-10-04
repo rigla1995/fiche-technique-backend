@@ -9,8 +9,9 @@
  * de vraies clés : un `npm start` ordinaire enverrait de vrais emails à des adresses de test.
  *
  * Ce que fait ce lanceur, AVANT de charger l'application :
- *   1. vide les clés des services externes (email, IA, Messenger, DocuSeal, Telegram) — dotenv ne
- *      réécrit pas une variable déjà définie, même vide ;
+ *   1. vide les clés des services externes (email, IA, Messenger, Telegram, et les anciennes clés DocuSeal,
+ *      que plus aucun code ne lit depuis le lot 3, étape 5) — dotenv ne réécrit pas une variable déjà
+ *      définie, même vide ;
  *   2. remplace le module `resend` par un bouchon qui journalise « [BOUCHON resend] » ;
  *   3. refuse tout appel réseau sortant (fetch, http.request, https.request) vers autre chose que
  *      localhost, en le journalisant « [BLOQUÉ …] » ;

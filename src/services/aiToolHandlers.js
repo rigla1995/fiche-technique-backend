@@ -387,7 +387,7 @@ async function toolGetFournisseurs(clientId, { search } = {}) {
 // ── Abonnement & capacité souscrite (+ mensualité calculée) ───────────────────
 async function toolGetAbonnement(clientId) {
   const { rows } = await pool.query(
-    `SELECT a.mode_compte, a.contrat_accepte_le,
+    `SELECT a.mode_compte,
             ac.nb_activites, ac.nb_labos, ac.nb_gerants, ac.montant_onboarding
      FROM abonnements a
      LEFT JOIN abonnement_config ac ON ac.abonnement_id = a.id
@@ -699,7 +699,7 @@ const outilsAnthropic = (voc) => [
   },
   {
     name: 'get_abonnement',
-    description: `Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre ${voc.de('activite', true)}/${voc.pl('labo')}/${voc.pl('gerant')}, montant d'onboarding, date d'acceptation du contrat.`,
+    description: `Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre ${voc.de('activite', true)}/${voc.pl('labo')}/${voc.pl('gerant')}, montant d'onboarding.`,
     input_schema: { type: 'object', properties: {}, required: [] },
   },
   {

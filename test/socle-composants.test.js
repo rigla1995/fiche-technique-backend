@@ -378,8 +378,9 @@ test('§5.4 : chaque fichier de src/ qui appelle applyComposants appelle invalid
       assert.match(avant, /query\('COMMIT'\)/, `${path.relative(RACINE, p)} : invalidation sans COMMIT juste avant`);
     }
   }
+  // Lot 3, étape 5 : webhookController.js (webhook DocuSeal d'avenant) est supprimé — 3 appelants.
   assert.deepEqual(appelants.sort(), [
     'src/controllers/abonnementController.js', 'src/controllers/clientsController.js',
-    'src/controllers/supportController.js', 'src/controllers/webhookController.js',
+    'src/controllers/supportController.js',
   ]);
 });

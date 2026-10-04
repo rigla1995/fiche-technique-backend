@@ -7,7 +7,7 @@ const { vocabDuProfil } = require('../utils/vocabCompte');
 // ── État de mise en route d'un compte, calculé EN DIRECT contre sa config ────
 // Le bot d'onboarding (bulle 🤖) n'existe que tant que la configuration
 // souscrite n'est pas entièrement mise en place ; il disparaît quand tout est
-// fait et RÉAPPARAÎT automatiquement après un avenant (nouvelle activité,
+// fait et RÉAPPARAÎT automatiquement après un ajout de capacité (nouvelle activité,
 // nouveau labo, module acheteurs…) puisque rien n'est stocké : chaque étape
 // est recalculée données réelles vs souscription à chaque appel.
 

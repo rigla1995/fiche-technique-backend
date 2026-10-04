@@ -12,7 +12,7 @@ Oui, dans la plupart des cas : ouvrez l'[historique [[du:appro:pl]]](#historique
 
 ### Comment ajouter [[un:activite]] ou [[un:labo]] ?
 
-Si votre abonnement dispose encore de capacité, créez-les directement dans [[[Mon:activite:pl]]](#activites). Sinon, envoyez une demande d'**Ajout de capacité** depuis l'écran [Demandes](#support) : un avenant vous est envoyé par e-mail pour signature, et la capacité est ajoutée automatiquement dès la signature (voir [Avenants](#onboarding-avenants)).
+Si votre abonnement dispose encore de capacité, créez-les directement dans [[[Mon:activite:pl]]](#activites). Sinon, envoyez une demande d'**Ajout de capacité** depuis l'écran [Demandes](#support) : la capacité est ajoutée automatiquement dès la validation de votre demande par l'équipe LabFlow (voir [Faire évoluer votre abonnement](#onboarding-avenants)).
 
 ### Pourquoi [[ce:produit]] n'est-[[acc:produit:il:elle]] pas approvisionnable directement dans [[mon:activite]] ?
 
@@ -24,7 +24,7 @@ Vous continuez à consulter tous vos écrans, historiques et rapports, mais tout
 
 ### Comment retrouver une facture ?
 
-Les **factures [[de:appro]]** se trouvent dans l'écran [Factures](#factures) de chaque [[nom:activite]] ou [[nom:labo]] : elles sont générées à la validation et re-téléchargeables à tout moment. Les **paiements d'abonnement** se consultent dans l'[historique des paiements](#historique-paiements). Vos **avenants signés** se téléchargent depuis l'écran [Demandes](#support).
+Les **factures [[de:appro]]** se trouvent dans l'écran [Factures](#factures) de chaque [[nom:activite]] ou [[nom:labo]] : elles sont générées à la validation et re-téléchargeables à tout moment. Les **paiements d'abonnement** se consultent dans l'[historique des paiements](#historique-paiements).
 
 ### Pourquoi les montants sont-ils affichés en TTC alors que je saisis mes prix en HT ?
 

@@ -1,7 +1,7 @@
 // Lot 2b, spec §5.6 — plomberie `voc` des emails.
-// Les 5 fonctions d'email à terme reçoivent le vocabulaire du DESTINATAIRE en clé `voc` de leur
+// Les 4 fonctions d'email à terme reçoivent le vocabulaire du DESTINATAIRE en clé `voc` de leur
 // objet d'arguments. Deux preuves :
-//   1. contrôle statique, par lecture des sources : chaque appel de ces 5 fonctions dans src/
+//   1. contrôle statique, par lecture des sources : chaque appel de ces 4 fonctions dans src/
 //      passe un objet littéral qui porte une clé `voc` à son premier niveau (`voc` ou `voc: …`) ;
 //      un appel à objet tout fait s'écrit `f({ ...inv, voc })` ;
 //   2. repli : sans `voc`, la fonction journalise l'oubli et envoie quand même l'email, rendu
@@ -16,9 +16,9 @@ const path = require('node:path');
 const RACINE = path.join(__dirname, '..');
 const SRC = path.join(RACINE, 'src');
 // Lot 3, étape 4 : sendAvenantEmail est remplacée par sendSupplementValideEmail (email de confirmation d'un ajout de
-// capacité validé, sans avenant ni PDF) ; sendDocusealSigningEmail existe encore (retirée à l'étape 5) mais n'est
-// plus appelée nulle part dans src/.
-const FONCTIONS = ['sendInviteEmail', 'sendDocusealSigningEmail', 'sendSupplementValideEmail', 'sendRapportWithAttachment', 'sendMessengerInviteEmail'];
+// capacité validé, sans avenant ni PDF). Étape 5 : sendDocusealSigningEmail est retirée d'emailService (plus de
+// contrat, d'avenant ni de résiliation à signer) — 4 fonctions à terme au lieu de 5.
+const FONCTIONS = ['sendInviteEmail', 'sendSupplementValideEmail', 'sendRapportWithAttachment', 'sendMessengerInviteEmail'];
 
 // ── 1. Contrôle statique ─────────────────────────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@ const porteVoc = (arg) => {
   return !!membres && membres.some((m) => m === 'voc' || /^voc\s*:/.test(m));
 };
 
-// Appels des 5 fonctions dans src/ : `nom(` hors commentaire (les définitions s'écrivent
+// Appels des 4 fonctions dans src/ : `nom(` hors commentaire (les définitions s'écrivent
 // `const nom = async (`, les imports et exports sans parenthèse).
 const appels = () => {
   const out = [];
@@ -131,15 +131,20 @@ test('outil : un objet porte `voc` seulement à son premier niveau', () => {
   assert.equal(porteVoc("{ to, nom: 'voc' }"), false);
 });
 
-test('chaque appel des 5 fonctions d\'email dans src/ porte une clé `voc` (spec §5.6)', () => {
+test('chaque appel des 4 fonctions d\'email dans src/ porte une clé `voc` (spec §5.6)', () => {
   const tous = appels();
   // Non-vacuité : les 12 appels du §5.6, moins les 2 de clientsController retirés au lot 3, étape 3 (contrat de
   // création et acte de résiliation : plus de contrat), moins celui de supportController.create retiré au lot 3,
   // étape 4 (sendDocusealSigningEmail de l'avenant à signer : plus d'avenant) — 9 au moins (un appel ajouté plus tard
   // doit aussi la porter). L'appel de sendAvenantEmail (supportController.traiter) est devenu celui de
-  // sendSupplementValideEmail : il reste compté.
+  // sendSupplementValideEmail : il reste compté. Compte relevé au lot 3, étape 5 (fonction de signature retirée,
+  // elle n'avait plus d'appel) : 9 appels dans 7 fichiers — abonnementController 1, acheteursController 3,
+  // aiAssistantController 1, authController 1, gerantController 1, supportController 1, reportService 1.
   assert.ok(tous.length >= 9, `${tous.length} appel(s) trouvé(s), 9 attendus au moins`);
-  assert.ok(!tous.some((a) => a.fonction === 'sendDocusealSigningEmail'), 'lot 3, étape 4 : plus aucun appel de sendDocusealSigningEmail dans src/');
+  // Lot 3, étape 5 : la fonction de signature a disparu — plus aucune mention dans src/ (définition, export, appel).
+  const citent = fichiersJs(SRC).filter((f) => fs.readFileSync(f, 'utf8').includes('sendDocusealSigningEmail'))
+    .map((f) => path.relative(RACINE, f).replace(/\\/g, '/'));
+  assert.deepEqual(citent, [], 'lot 3, étape 5 : sendDocusealSigningEmail retirée de src/');
   assert.equal(tous.filter((a) => a.fonction === 'sendSupplementValideEmail' && a.ou.startsWith('src/controllers/supportController.js:')).length, 1,
     'lot 3, étape 4 : un appel de sendSupplementValideEmail, dans supportController (traiter)');
   const fautifs = tous.filter((a) => !porteVoc(a.arg)).map((a) => `${a.ou} ${a.fonction}(${a.arg.trim().slice(0, 80)})`);
@@ -155,7 +160,7 @@ test('chaque appel des 5 fonctions d\'email dans src/ porte une clé `voc` (spec
   ]) assert.ok(fichiers.includes(f), `aucun appel lu dans ${f}`);
 });
 
-test('les 5 fonctions prennent `voc` dans leur objet d\'arguments, avec repli', () => {
+test('les 4 fonctions prennent `voc` dans leur objet d\'arguments, avec repli', () => {
   const src = fs.readFileSync(path.join(SRC, 'services/emailService.js'), 'utf8').replace(/\r\n/g, '\n');
   for (const nom of FONCTIONS) {
     const m = new RegExp(`const ${nom} = async \\(\\{([\\s\\S]*?)\\}\\) => \\{\\n\\s*const voc = vocDuDestinataire\\(vocRecu, ${nom}\\);`).exec(src);
@@ -178,7 +183,7 @@ require.cache[cheminResend] = {
     },
   },
 };
-// Clé factice NON vide : sinon 4 des 5 fonctions sortent avant l'envoi (garde de développement).
+// Clé factice NON vide : sinon 3 des 4 fonctions sortent avant l'envoi (garde de développement).
 process.env.RESEND_API_KEY = 'faux-test-emailVoc';
 
 const email = require('../src/services/emailService');
@@ -186,10 +191,6 @@ const { vocabDefaut } = require('../src/utils/vocab');
 
 const ARGS = {
   sendInviteEmail: { to: 'a@test.invalid', nom: 'Nom', token: 'jeton', role: 'gerant' },
-  sendDocusealSigningEmail: {
-    to: 'a@test.invalid', nom: 'Nom', signingUrl: 'https://signature.invalid/s',
-    avenant: { addActivites: 1, addLabos: 2, addGerants: 1, setAcheteurs: 20 },
-  },
   // Lot 3, étape 4 : remplace sendAvenantEmail (date fixe : sinon les deux rendus comparés pourraient différer).
   sendSupplementValideEmail: {
     to: 'a@test.invalid', nom: 'Nom', notesAdmin: 'Note',

@@ -225,7 +225,7 @@ async function _chatWithAI(clientId, sessionId, message, threshold) {
 
 // Le bot web est un GUIDE DE MISE EN ROUTE (décision client 2026-07-24) : il
 // n'est proposé qu'au rôle client, tant que sa configuration souscrite n'est
-// pas terminée — et il revient de lui-même après un avenant (l'état est
+// pas terminée — et il revient de lui-même après un ajout de capacité (l'état est
 // recalculé en direct, rien n'est stocké). Le flag admin ai_assistant_config
 // ne gate plus le chat web (il reste utilisé par l'agent Messenger).
 const getClientStatus = async (req, res) => {
@@ -256,7 +256,7 @@ const getOnboardingEtat = async (req, res) => {
 
 // POST /api/ai-assistant/onboarding/purge — appelé par AssistantWidget seul. Mise en route
 // TERMINÉE ⇒ la conversation web du guide et son historique sont SUPPRIMÉS (décision client
-// 2026-07-24) : un futur avenant repart d'un chat vierge. Les conversations Messenger (PSID)
+// 2026-07-24) : un futur ajout de capacité repart d'un chat vierge. Les conversations Messenger (PSID)
 // ne sont pas touchées. Mise en route en cours ⇒ rien n'est supprimé.
 const purgeOnboardingConversation = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;

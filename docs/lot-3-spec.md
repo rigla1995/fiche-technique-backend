@@ -4,6 +4,13 @@ Dernier lot du programme « LabFlow multi-métiers ». Sources : `labflow-repris
 décisions), `labflow-reprise/lot-3/DECISIONS-3.md` (choix du client du 04/10, faits de la cartographie),
 `docs/plan-identite-legale-tarifs-domaine-2026-09-28.md` §2-§5, V3.2, V3.3 (les numéros de migration du plan sont périmés).
 
+> **Mise à jour du 04/10/2026 — décision du client : plus de contrat, d'avenant ni de résiliation (LabFlow est sans
+> engagement).** Les §7, §8 et §9 (aperçus du contrat et de l'avenant, nouveau modèle DocuSeal, avenants par composant)
+> sont CADUCS : le code DocuSeal a été retiré à l'étape 5 (webhook, services, générateurs, email de signature ;
+> `docuseal-templates/generate.js` ne porte plus que les factures ; manuel réécrit par la migration 198).
+> Découpage en vigueur et journal : `labflow-reprise/lot-3/DECISIONS-3.md`. Les numéros d'étape des titres ci-dessous
+> sont ceux du découpage d'origine : « Mon entreprise » = étape 6, patente = étape 7, factures = étape 8, clôture = étape 9.
+
 ## 0. Règle de livraison (rappel)
 
 Une étape = un déploiement en production (serveur, `/health` + migration dans les journaux, puis écrans), puis ARRÊT

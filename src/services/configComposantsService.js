@@ -3,9 +3,9 @@
 // Les 4 compteurs nb_activites / nb_labos / nb_gerants / nb_acheteurs de
 // abonnement_config restent des DÉRIVÉS (Σ par type technique ; acheteurs = MAX)
 // du détail abonnement_config_composants. `applyComposants` est le SEUL écrivain
-// des compteurs : createAbonnement, updateAbonnementConfig, toggleModuleAcheteurs,
-// supportController.traiter et le webhook DocuSeal passent tous par lui — les
-// ~25 lecteurs des compteurs (moteur de prix, gardes, onboarding, contrat, IA,
+// des compteurs : createAbonnement, updateAbonnementConfig, toggleModuleAcheteurs et
+// supportController.traiter passent tous par lui — les
+// ~25 lecteurs des compteurs (moteur de prix, gardes, onboarding, IA,
 // dashboards) sont inchangés.
 //
 //   deriveCompteurs(composants)                     → { nb_activites, nb_labos, nb_gerants, nb_acheteurs }
@@ -143,7 +143,7 @@ const IDENTITE_DU_VOC = Object.freeze({
 });
 
 // Libellés, genre et élision du composant identité `type` du domaine. Le profil est lu ICI
-// (getProfil) : la fonction est atteinte par le webhook DocuSeal et par des requêtes admin, qui
+// (getProfil) : la fonction est atteinte par des requêtes admin, qui
 // n'ont pas le vocabulaire du compte. Domaine illisible → LÈVE : on n'écrit jamais en base un
 // libellé de repli (la transaction de l'appelant est annulée).
 const identiteDuDomaine = async (domaineId, type) => {

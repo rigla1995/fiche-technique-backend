@@ -2,13 +2,13 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 511 unité(s), 41 fichier(s).
+# 491 unité(s), 38 fichier(s).
 
 src/controllers/abonnementController.js
-  l. 1579
+  l. 1577
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
-  l. 1977
+  l. 1975
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
 
@@ -144,11 +144,6 @@ src/controllers/categoriesProduitController.js
   l. 62
     défaut : Type de produit invalide (vendable, supplement ou valorise)
     miroir : Type d'invention invalide (vendable, supplement ou valorise)
-
-src/controllers/clientsController.js
-  l. 67
-    défaut : ⟦?Palier jusqu'à ⟦·⟧ acheteurs|⟧
-    miroir : ⟦?Palier jusqu'à ⟦·⟧ clientes|⟧
 
 src/controllers/dashboardController.js
   l. 168
@@ -906,13 +901,13 @@ src/controllers/stockController.js
     miroir : Local introuvable
 
 src/controllers/supportController.js
-  l. 156
+  l. 111
     défaut : Palier acheteurs invalide (10, 20, 50 ou 100)
     miroir : Palier abr-clientes invalide (10, 20, 50 ou 100)
-  l. 169
+  l. 124
     défaut : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ acheteurs)
     miroir : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ clientes)
-  l. 172
+  l. 127
     défaut : L'option Acheteurs nécessite au moins un labo (ajoutez-en un à la demande)
     miroir : L'option Abr-Clientes nécessite au moins une usine (ajoutez-en une à la demande)
 
@@ -1227,8 +1222,8 @@ src/services/aiToolHandlers.js
     défaut : Nom partiel de fournisseur (recherche ILIKE)
     miroir : Nom partiel d'enseigne (recherche ILIKE)
   l. 702
-    défaut : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre d'activités/labos/gérants, montant d'onboarding, date d'acceptation du contrat.
-    miroir : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre de locaux/usines/animatrices, montant d'onboarding, date d'acceptation du contrat.
+    défaut : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre d'activités/labos/gérants, montant d'onboarding.
+    miroir : Récupère l'abonnement et la capacité souscrite du client : mode du compte, nombre de locaux/usines/animatrices, montant d'onboarding.
   l. 707
     défaut : Récupère un résumé des ventes : nombre de ventes, CA TTC (TND), coût matière, food cost % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), marge brute, panier moyen, et répartition par canal (direct / prestataire). Filtrable par activité, période et canal.
     miroir : Récupère un résumé des encaissements : nombre d'encaissements, CA TTC (TND), enveloppe matière, incidence matière % (avec le seuil du domaine : seuil_cout_matiere_pct et food_cost_eleve), écart brut, panier moyen, et répartition par canal (direct / prestataire). Filtrable par local, période et canal.
@@ -1339,38 +1334,6 @@ src/services/configComposantsService.js
     défaut : Base acheteurs
     miroir : Base abr-clientes
 
-src/services/contractPdfService.js
-  l. 109
-    défaut : activité
-    miroir : local
-  l. 109
-    défaut : activités
-    miroir : locaux
-  l. 110
-    défaut : laboratoire
-    miroir : usine centrale
-  l. 110
-    défaut : laboratoires
-    miroir : usines centrales
-  l. 111
-    défaut : compte gérant
-    miroir : compte animatrice
-  l. 111
-    défaut : comptes gérants
-    miroir : comptes animatrices
-  l. 112
-    défaut : Option Acheteurs → palier jusqu'à ⟦·⟧
-    miroir : Option Abr-Clientes → palier jusqu'à ⟦·⟧
-  l. 138
-    défaut : Palier jusqu'à ⟦·⟧ acheteurs
-    miroir : Palier jusqu'à ⟦·⟧ clientes
-  l. 169
-    défaut : ⟦?palier jusqu'à ⟦·⟧ acheteurs|⟦·⟧⟧
-    miroir : ⟦?palier jusqu'à ⟦·⟧ clientes|⟦·⟧⟧
-  l. 208
-    défaut : ⟦?palier jusqu'à ⟦·⟧ acheteurs|⟦·⟧⟧
-    miroir : ⟦?palier jusqu'à ⟦·⟧ clientes|⟦·⟧⟧
-
 src/services/emailService.js
   l. 32
     défaut : ⟦?gérant|⟦?acheteur|client⟧⟧
@@ -1446,177 +1409,31 @@ src/services/emailService.js
   </div>
 </body>
 </html>
-  l. 225
-    défaut : ⟦·⟧ ⟦activité|activités@>1⟧
-    miroir : ⟦·⟧ ⟦local|locaux@>1⟧
-  l. 226
-    défaut : ⟦·⟧ ⟦labo|labos@>1⟧
-    miroir : ⟦·⟧ ⟦usine|usines@>1⟧
-  l. 227
-    défaut : ⟦·⟧ ⟦gérant|gérants@>1⟧
-    miroir : ⟦·⟧ ⟦animatrice|animatrices@>1⟧
-  l. 228
-    défaut : l'option Acheteurs (palier jusqu'à ⟦·⟧ acheteurs)
-    miroir : l'option Abr-Clientes (palier jusqu'à ⟦·⟧ clientes)
-  l. 344
+  l. 219
     défaut : ⟦?+⟦·⟧ ⟦activité|activités@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦local|locaux@>1⟧|⟧
-  l. 345
+  l. 220
     défaut : ⟦?+⟦·⟧ ⟦labo|labos@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦usine|usines@>1⟧|⟧
-  l. 346
+  l. 221
     défaut : ⟦?+⟦·⟧ ⟦gérant|gérants@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦animatrice|animatrices@>1⟧|⟧
-  l. 349
-    défaut : 
-<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
-
-    <!-- Header -->
-    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
-      ⟦·⟧
-      <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Contrat Avenant — Ajout de capacité</p>
-    </div>
-
-    <!-- Body -->
-    <div style="padding:40px 48px;">
-      <h2 style="margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
-      <p style="margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;">
-        Votre demande d'ajout de capacité a été <strong style="color:#16a34a;">validée</strong>.
-        Cet email constitue votre avenant de contrat daté du <strong>⟦·⟧</strong>.
-      </p>
-
-      <!-- Capacité ajoutée -->
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
-        <div style="font-size:0.72rem;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">✅ Capacité ajoutée</div>
-        <div style="font-size:1rem;font-weight:700;color:#14532d;">⟦·⟧</div>
-      </div>
-
-      <!-- Nouvelle configuration -->
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
-        <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre configuration après avenant</div>
-        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
-          <tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">Activités</td>
-            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
-            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
-          </tr>
-          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">Labos</td>
-            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
-            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
-          </tr>|⟧
-          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">Gérants</td>
-            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
-            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
-          </tr>|⟧
-          <tr>
-            <td style="padding:12px 0 4px;font-weight:800;color:#1e40af;" colspan="2">Nouveau mensuel de base</td>
-            <td style="padding:12px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;">⟦·⟧/mois</td>
-          </tr>
-          ⟦?<tr>
-            <td style="padding:4px 0;font-size:0.78rem;color:#7c3aed;" colspan="2">🎉 Promotion appliquée</td>
-            <td style="padding:4px 0;text-align:right;font-weight:900;color:#7c3aed;font-size:1.05rem;">⟦·⟧/mois</td>
-          </tr>|⟧
-        </table>
-      </div>
-
-      ⟦?<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
-        <div style="font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Note de l'administration</div>
-        <div style="font-size:0.88rem;color:#1e3a5f;line-height:1.6;">⟦·⟧</div>
-      </div>|⟧
-
-      <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">
-        Votre espace est déjà mis à jour. Connectez-vous pour consulter votre nouvelle configuration.
-      </p>
-    </div>
-
-    <!-- Footer -->
-    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;">
-      <p style="margin:0;color:#94a3b8;font-size:0.75rem;">⟦·⟧ · Avenant du ⟦·⟧</p>
-    </div>
-  </div>
-</body>
-</html>
-    miroir : 
-<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
-
-    <!-- Header -->
-    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
-      ⟦·⟧
-      <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Contrat Avenant — Ajout de capacité</p>
-    </div>
-
-    <!-- Body -->
-    <div style="padding:40px 48px;">
-      <h2 style="margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;">Bonjour ⟦·⟧,</h2>
-      <p style="margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;">
-        Votre demande d'ajout de capacité a été <strong style="color:#16a34a;">validée</strong>.
-        Cet email constitue votre avenant de contrat daté du <strong>⟦·⟧</strong>.
-      </p>
-
-      <!-- Capacité ajoutée -->
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
-        <div style="font-size:0.72rem;font-weight:800;color:#15803d;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">✅ Capacité ajoutée</div>
-        <div style="font-size:1rem;font-weight:700;color:#14532d;">⟦·⟧</div>
-      </div>
-
-      <!-- Nouvelle configuration -->
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
-        <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre configuration après avenant</div>
-        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
-          <tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">Locaux</td>
-            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
-            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
-          </tr>
-          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">Usines</td>
-            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
-            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
-          </tr>|⟧
-          ⟦?<tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">Animatrices</td>
-            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">⟦·⟧</td>
-            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">⟦·⟧</td>
-          </tr>|⟧
-          <tr>
-            <td style="padding:12px 0 4px;font-weight:800;color:#1e40af;" colspan="2">Nouveau mensuel de base</td>
-            <td style="padding:12px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;">⟦·⟧/mois</td>
-          </tr>
-          ⟦?<tr>
-            <td style="padding:4px 0;font-size:0.78rem;color:#7c3aed;" colspan="2">🎉 Promotion appliquée</td>
-            <td style="padding:4px 0;text-align:right;font-weight:900;color:#7c3aed;font-size:1.05rem;">⟦·⟧/mois</td>
-          </tr>|⟧
-        </table>
-      </div>
-
-      ⟦?<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
-        <div style="font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Note de l'administration</div>
-        <div style="font-size:0.88rem;color:#1e3a5f;line-height:1.6;">⟦·⟧</div>
-      </div>|⟧
-
-      <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">
-        Votre espace est déjà mis à jour. Connectez-vous pour consulter votre nouvelle configuration.
-      </p>
-    </div>
-
-    <!-- Footer -->
-    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;">
-      <p style="margin:0;color:#94a3b8;font-size:0.75rem;">⟦·⟧ · Avenant du ⟦·⟧</p>
-    </div>
-  </div>
-</body>
-</html>
-  l. 550
+  l. 222
+    défaut : ⟦?Option Acheteurs : jusqu'à ⟦·⟧ acheteurs|⟧
+    miroir : ⟦?Option Abr-Clientes : jusqu'à ⟦·⟧ clientes|⟧
+  l. 262
+    défaut : Activités
+    miroir : Locaux
+  l. 263
+    défaut : Labos
+    miroir : Usines
+  l. 264
+    défaut : Gérants
+    miroir : Animatrices
+  l. 265
+    défaut : Option Acheteurs
+    miroir : Option Abr-Clientes
+  l. 415
     défaut : <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
       <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
         <div style="font-size:36px;margin-bottom:8px">⟦?📊|📄⟧</div>
@@ -1641,7 +1458,7 @@ src/services/emailService.js
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
       <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ⟦·⟧</p>
     </div>
-  l. 575
+  l. 440
     défaut : 
 <!DOCTYPE html>
 <html lang="fr">
@@ -1808,130 +1625,130 @@ Je suis votre agent LabFlow. Consultez toutes vos données, comme dans l'applica
 Exemple : « les expéditions du mois actuel » ou « mon incidence matière de septembre ». Posez votre question !
 
 src/services/onboardingEtat.js
-  l. 106
+  l. 105
     défaut : ⟦?Activités & labos|⟦?⟦Labo|Labos@>1⟧|⟦Activité|Activités@>1⟧⟧⟧ de votre formule
     miroir : ⟦?Locaux & usines|⟦?⟦Usine|Usines@>1⟧|⟦Local|Locaux@>1⟧⟧⟧ de votre formule
-  l. 122
+  l. 121
     défaut : ⟦?⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧
     miroir : ⟦?⟦?⟦local|locaux@>1⟧|⟦usine|usines@>1⟧⟧|⟦·⟧⟧
-  l. 125
+  l. 124
     défaut : ⟦·⟧/⟦·⟧ ⟦?⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧
     miroir : ⟦·⟧/⟦·⟧ ⟦?⟦?⟦local|locaux@>1⟧|⟦usine|usines@>1⟧⟧|⟦·⟧⟧
-  l. 127
+  l. 126
     défaut : Comment créer ⟦?⟦mon|mes@>1⟧ ⟦?⟦activité|activités@>1⟧|⟦labo|labos@>1⟧⟧|⟦·⟧⟧ ?
     miroir : Comment créer ⟦?⟦mon|mes@>1⟧ ⟦?⟦local|locaux@>1⟧|⟦usine|usines@>1⟧⟧|⟦·⟧⟧ ?
-  l. 134
+  l. 133
     défaut : ⟦·⟧/⟦·⟧ ⟦activité|activités@>1⟧
     miroir : ⟦·⟧/⟦·⟧ ⟦local|locaux@>1⟧
-  l. 135
+  l. 134
     défaut : ⟦·⟧/⟦·⟧ ⟦labo|labos@>1⟧
     miroir : ⟦·⟧/⟦·⟧ ⟦usine|usines@>1⟧
-  l. 136
+  l. 135
     défaut : Comment créer ⟦mon|mes@>1⟧ ⟦activité|activités@>1⟧ ?
     miroir : Comment créer ⟦mon|mes@>1⟧ ⟦local|locaux@>1⟧ ?
-  l. 137
+  l. 136
     défaut : Comment créer ⟦mon|mes@>1⟧ ⟦labo|labos@>1⟧ ?
     miroir : Comment créer ⟦mon|mes@>1⟧ ⟦usine|usines@>1⟧ ?
-  l. 140
+  l. 139
     défaut : Quelle est la différence entre une activité et un labo ?
     miroir : Quelle est la différence entre un local et une usine ?
-  l. 150
+  l. 149
     défaut : Référentiel de base (unités, familles, catégories)
     miroir : Encyclopédie de base (unités, familles, catégories)
-  l. 153
+  l. 152
     défaut : Par quoi commencer pour mon référentiel ?
     miroir : Par quoi commencer pour mon encyclopédie ?
-  l. 160
+  l. 159
     défaut : ⟦·⟧ ⟦article|articles@>1⟧
     miroir : ⟦·⟧ ⟦denrée|denrées@>1⟧
-  l. 161
+  l. 160
     défaut : ⟦·⟧/⟦·⟧ ⟦activité|activités@>1⟧ ⟦affectée|affectées@>1⟧
     miroir : ⟦·⟧/⟦·⟧ ⟦local|locaux@>1⟧ ⟦affecté|affectés@>1⟧
-  l. 162
+  l. 161
     défaut : ⟦·⟧/⟦·⟧ ⟦labo|labos@>1⟧
     miroir : ⟦·⟧/⟦·⟧ ⟦usine|usines@>1⟧
-  l. 166
+  l. 165
     défaut : ⟦?mes activités|mon activité⟧
     miroir : ⟦?mes locaux|mon local⟧
-  l. 167
+  l. 166
     défaut : ⟦?mes labos|mon labo⟧
     miroir : ⟦?mes usines|mon usine⟧
-  l. 169
+  l. 168
     défaut : ⟦?aux activités/labos|⟦?au labo|aux activités⟧⟧
     miroir : ⟦?aux locaux/usines|⟦?à l'usine|aux locaux⟧⟧
-  l. 170
+  l. 169
     défaut : Articles + affectation ⟦?aux activités/labos|⟦?au labo|aux activités⟧⟧
     miroir : Denrées + affectation ⟦?aux locaux/usines|⟦?à l'usine|aux locaux⟧⟧
-  l. 172
+  l. 171
     défaut : Comment ajouter mes articles ?
     miroir : Comment ajouter mes denrées ?
-  l. 173
+  l. 172
     défaut : Comment importer mes articles en masse ?
     miroir : Comment importer mes denrées en masse ?
-  l. 174
+  l. 173
     défaut : Comment affecter les articles à ⟦·⟧ ?
     miroir : Comment affecter les denrées à ⟦·⟧ ?
-  l. 178
+  l. 177
     défaut : Fournisseurs
     miroir : Enseignes
-  l. 179
+  l. 178
     défaut : ⟦·⟧⟦? ⟦fournisseur|fournisseurs@>1⟧|⟧
     miroir : ⟦·⟧⟦? ⟦enseigne|enseignes@>1⟧|⟧
-  l. 181
+  l. 180
     défaut : Comment ajouter mes fournisseurs ?
     miroir : Comment ajouter mes enseignes ?
-  l. 182
+  l. 181
     défaut : Comment importer mes fournisseurs depuis Excel ?
     miroir : Comment importer mes enseignes depuis Excel ?
-  l. 183
+  l. 182
     défaut : À quoi servent les affectations d'un fournisseur ?
     miroir : À quoi servent les affectations d'une enseigne ?
-  l. 188
+  l. 187
     défaut : Produits & fiches techniques
     miroir : Inventions & états techniques
-  l. 189
+  l. 188
     défaut : ⟦·⟧⟦? ⟦produit|produits@>1⟧|⟧
     miroir : ⟦·⟧⟦? ⟦invention|inventions@>1⟧|⟧
-  l. 191
+  l. 190
     défaut : Comment créer un produit et sa fiche technique ?
     miroir : Comment créer une invention et son état technique ?
-  l. 192
+  l. 191
     défaut : C'est quoi un produit valorisé ?
     miroir : C'est quoi une invention valorisée ?
-  l. 193
+  l. 192
     défaut : Comment est calculé le coût de revient d'une recette ?
     miroir : Comment est calculé le coût de revient d'un assemblage ?
-  l. 199
+  l. 198
     défaut : Comment saisir mon premier approvisionnement ?
     miroir : Comment saisir ma première rentrée ?
-  l. 200
+  l. 199
     défaut : Comment saisir une vente ?
     miroir : Comment saisir un encaissement ?
-  l. 201
+  l. 200
     défaut : Comment mon stock est-il calculé ?
     miroir : Comment mon armoire est-elle calculée ?
-  l. 202
+  l. 201
     défaut : ⟦?Première saisie (appro / vente)|Premier approvisionnement du labo⟧
     miroir : Première ⟦?saisie (abr-rentrée / encaissement)|rentrée de l'usine⟧
-  l. 203
+  l. 202
     défaut : ⟦?⟦·⟧|aucun approvisionnement ni vente pour l'instant⟧
     miroir : ⟦?⟦·⟧|aucune rentrée ni encaissement pour l'instant⟧
-  l. 209
+  l. 208
     défaut : Carnet d'acheteurs
     miroir : Carnet de clientes
-  l. 210
+  l. 209
     défaut : ⟦·⟧⟦? ⟦acheteur|acheteurs@>1⟧|⟧
     miroir : ⟦·⟧⟦? ⟦cliente|clientes@>1⟧|⟧
-  l. 212
+  l. 211
     défaut : Comment remplir mon carnet d'acheteurs ?
     miroir : Comment remplir mon carnet de clientes ?
-  l. 213
+  l. 212
     défaut : Comment importer mes acheteurs depuis Excel ?
     miroir : Comment importer mes clientes depuis Excel ?
-  l. 214
+  l. 213
     défaut : Comment configurer mes tarifs acheteurs ?
     miroir : Comment configurer mes tarifs abr-clientes ?
-  l. 275
+  l. 274
     défaut : 
 
 ## MISSION PRIORITAIRE : guide de mise en route
@@ -1958,35 +1775,6 @@ Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concr�
 - Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Encyclopédie → Unités**)
 - Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte
 - Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)
-
-src/services/pdfService.js
-  l. 102
-    défaut : ⟦?+⟦·⟧ ⟦activité|activités@>1⟧|⟧
-    miroir : ⟦?+⟦·⟧ ⟦local|locaux@>1⟧|⟧
-  l. 103
-    défaut : ⟦?+⟦·⟧ ⟦labo|labos@>1⟧|⟧
-    miroir : ⟦?+⟦·⟧ ⟦usine|usines@>1⟧|⟧
-  l. 104
-    défaut : ⟦?+⟦·⟧ ⟦gérant|gérants@>1⟧|⟧
-    miroir : ⟦?+⟦·⟧ ⟦animatrice|animatrices@>1⟧|⟧
-  l. 105
-    défaut : ⟦?Option Acheteurs → palier jusqu'à ⟦·⟧|⟧
-    miroir : ⟦?Option Abr-Clientes → palier jusqu'à ⟦·⟧|⟧
-  l. 139
-    défaut : Activités⟦?⟦·⟧|⟧
-    miroir : Locaux⟦?⟦·⟧|⟧
-  l. 140
-    défaut : Labos
-    miroir : Usines
-  l. 141
-    défaut : Gérants
-    miroir : Animatrices
-  l. 143
-    défaut : Option Acheteurs
-    miroir : Option Abr-Clientes
-  l. 309
-    défaut : palier jusqu'à ⟦·⟧ acheteurs
-    miroir : palier jusqu'à ⟦·⟧ clientes
 
 src/services/quotaService.js
   l. 11

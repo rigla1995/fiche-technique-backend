@@ -47,7 +47,6 @@ const publicSiteRoutes = require('./routes/publicSite');
 const adminSiteRoutes = require('./routes/adminSite');
 const bossRoutes = require('./routes/boss');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
-const { docusealWebhook } = require('./controllers/webhookController');
 
 const { authenticate, requireWriteAccess } = require('./middleware/auth');
 const { rendreMessages } = require('./middleware/rendreMessages');
@@ -67,7 +66,7 @@ app.use(cors());
 // Les logos partenaires (data-URI ≤ 300 000 caractères) dépassent la limite JSON
 // par défaut (100kb) : parser dédié monté AVANT le parser global.
 app.use('/admin/site', express.json({ limit: '1mb' }));
-// Capture the raw request body so webhook handlers can verify HMAC/secret signatures.
+// Capture the raw request body so the Messenger webhook can verify its HMAC signature.
 app.use(express.json({
   verify: (req, _res, buf) => { req.rawBody = buf; },
 }));
@@ -138,7 +137,6 @@ app.use('/api/boss', bossRoutes);
 app.use('/api/ai-assistant', aiAssistantRoutes);
 app.get('/api/messenger/webhook', verifyWebhook);
 app.post('/api/messenger/webhook', receiveWebhook);
-app.post('/api/webhooks/docuseal', docusealWebhook);
 app.use('/api', ventesRoutes);
 app.use('/api/referentiel', referentielRoutes);
 app.use('/api/gerant', gerantRoutes);

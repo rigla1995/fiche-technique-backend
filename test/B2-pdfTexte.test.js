@@ -6,8 +6,11 @@
 //    a été retiré (« Sauce () » inchangé) ; idempotent.
 // 2. Octets : les documents qui ne prennent PAS l'option sont identiques à l'octet à ceux de la référence
 //    (generate.js au commit du socle, 62288e4) : facture acheteur avec remise « − » et données hors Windows-1252,
-//    facture d'abonnement, résiliation, contrat et avenant à signer. La facture d'appro prend toujours l'option :
-//    identique tant que son texte est dans la police, différente sinon.
+//    facture d'abonnement. La facture d'appro prend toujours l'option : identique tant que son texte est dans la
+//    police, différente sinon.
+// Lot 3, étape 5 : buildContrat, buildAvenant et buildResiliation sont retirés de generate.js (plus de contrat,
+// d'avenant ni de résiliation) ; leurs 2 tests partent avec eux. Les 3 tests de facture « IDENTIQUE à l'octet »
+// restent : ils prouvent que l'élagage n'a touché aucun élément partagé (en-tête, bloc des parties, pied, logo).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -37,16 +40,6 @@ const chargerReference = (relatif) => {
 const generate = require('../docuseal-templates/generate');
 const { pdfTexte, pdfTexteSur } = generate;
 const ref = chargerReference('docuseal-templates/generate.js');
-
-// Un contrat ou une résiliation porte la date du jour dans /CreationDate (et l'identifiant qui en dérive) :
-// seules ces entrées sont neutralisées pour comparer deux générations.
-// Relevé au lot 3, étape 4 : PDFKit écrit cette date en objet INDIRECT (« 102 0 obj (D:20261004135640Z) »), que le
-// motif /CreationDate (…) ne voyait pas — le test échouait quand les deux générations tombaient de part et d'autre
-// d'une seconde (souvent sous la charge de npm test). La chaîne de date PDF est neutralisée elle aussi.
-const sansHorodatage = (buf) => buf.toString('latin1')
-  .replace(/\/CreationDate \([^)]*\)/g, '/CreationDate ()')
-  .replace(/\(D:\d{14}[^)]*\)/g, '(D:)')
-  .replace(/\/ID \[<[0-9a-f]+> <[0-9a-f]+>\]/gi, '/ID []');
 
 test('pdfTexte : équivalents, « ? » hors police, retraits conditionnels, idempotence', () => {
   assert.equal(pdfTexte('Transfert labo → activité'), 'Transfert labo › activité');
@@ -124,39 +117,10 @@ test('facture d\'abonnement : IDENTIQUE à l\'octet à la référence', { skip: 
   assert.ok((await ref.buildFacture(null, data)).equals(await generate.buildFacture(null, data)));
 });
 
-const client = { nom: 'مطعم → Le Carthage 🍔', forme: 'SARL', mfrc: 'MF 1', representant: 'M. X', email: 'a@b.tn', tel: '+216', adresse: 'Rue ✓ ()' };
-
-test('documents à signer et résiliation (sans option) : identiques à la référence (hors horodatage)', { skip: !ref && 'git indisponible' }, async () => {
-  const contrat = {
-    ref: 'CTR-2026-00042', date: '27 juin 2026', previewMode: false, client,
-    config: { activites: 3, labos: 1, gerants: 2, formule: 'Activité Premium', acheteurs: 'palier jusqu\'à 20 acheteurs' },
-    pricing: { onboarding: '600 DT', mensuel: '240 DT', mensuelBase: '300 DT', promoDetail: 'Remise → 20 %' },
-  };
-  assert.equal(sansHorodatage(await generate.buildContrat(null, contrat)), sansHorodatage(await ref.buildContrat(null, contrat)));
-  assert.equal(sansHorodatage(await generate.buildContrat(null, contrat, {})), sansHorodatage(await ref.buildContrat(null, contrat)));
-  const avenant = {
-    ref: 'AVN-2026-00017', date: '27 juin 2026', previewMode: false, client, contratRef: 'CTR-1', contratDate: '1 mars 2026',
-    ajout: '+1 activité   ·   Option Acheteurs → palier jusqu\'à 20',
-    config: { activites: 4, labos: 1, gerants: 3 }, pricing: { mensuel: '360 DT', mensuelBase: '360 DT' },
-  };
-  assert.equal(sansHorodatage(await generate.buildAvenant(null, avenant, { pdfTexte: true })), sansHorodatage(await ref.buildAvenant(null, avenant)),
-    'buildAvenant ignore toute option (document à signer)');
-  const resiliation = { ref: 'RES-1', date: '27 juin 2026', previewMode: false, client };
-  assert.equal(sansHorodatage(await generate.buildResiliation(null, resiliation)), sansHorodatage(await ref.buildResiliation(null, resiliation)));
-});
-
-test('contrat avec l\'option pdfTexte (régénéré, aperçu) : texte sûr appliqué ; sans caractère hors police, identique', { skip: !ref && 'git indisponible' }, async () => {
-  const base = {
-    ref: 'CTR-2026-00001', date: '27 juin 2026', previewMode: false,
-    config: { activites: 1, labos: 0, gerants: 0, formule: 'Activité Premium' },
-    pricing: { mensuel: '240 DT', mensuelBase: '240 DT' },
-  };
-  const sur = { ...base, client: { nom: 'Le Carthage', email: 'a@b.tn' } };
-  assert.equal(sansHorodatage(await generate.buildContrat(null, sur, { pdfTexte: true })), sansHorodatage(await ref.buildContrat(null, sur)),
-    'texte dans la police : mêmes octets avec ou sans l\'option');
-  const horsPolice = { ...base, client };
-  assert.notEqual(sansHorodatage(await generate.buildContrat(null, horsPolice, { pdfTexte: true })), sansHorodatage(await ref.buildContrat(null, horsPolice)),
-    'donnée hors police : l\'option change le document');
+// Lot 3, étape 5 : les documents à signer n'existent plus dans generate.js (garde : un retour de l'un d'eux doit
+// ramener son test).
+test('generate.js : plus de contrat, d\'avenant ni de résiliation ; les 3 factures et pdfTexte restent exportés', () => {
+  assert.deepEqual(Object.keys(generate).sort(), ['LIBELLES_FACTURE_APPRO', 'PRESTATAIRE', 'buildFacture', 'buildFactureAcheteur', 'buildFactureAppro', 'pdfTexte', 'pdfTexteSur']);
 });
 
 test('facture d\'appro : toujours l\'option ; libellés par défaut = textes d\'avant le lot', { skip: !ref && 'git indisponible' }, async () => {

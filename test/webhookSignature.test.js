@@ -1,11 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
-const {
-  verifyMetaSignature,
-  verifyDocusealSignature,
-  timingSafeEqualStr,
-} = require('../src/utils/webhookSignature');
+// Lot 3, étape 5 : verifyDocusealSignature est retirée avec le webhook DocuSeal (plus de contrat ni d'avenant) ;
+// ses 4 tests partent avec elle. Restent la comparaison à temps constant et la signature Meta (Messenger).
+const webhookSignature = require('../src/utils/webhookSignature');
+const { verifyMetaSignature, timingSafeEqualStr } = webhookSignature;
+
+test('exports : timingSafeEqualStr et verifyMetaSignature seulement (plus de signature DocuSeal)', () => {
+  assert.deepEqual(Object.keys(webhookSignature).sort(), ['timingSafeEqualStr', 'verifyMetaSignature']);
+});
 
 test('timingSafeEqualStr: equal and unequal', () => {
   assert.equal(timingSafeEqualStr('abc', 'abc'), true);
@@ -36,30 +39,5 @@ test('meta: forged/invalid signature rejected when enforced', () => {
 
 test('meta: missing signature header rejected when enforced', () => {
   const r = verifyMetaSignature(Buffer.from('{}'), undefined, 'secret');
-  assert.equal(r.ok, false);
-});
-
-test('docuseal: fail-open when no secret configured', () => {
-  const r = verifyDocusealSignature(Buffer.from('{}'), {}, '');
-  assert.equal(r.enforced, false);
-  assert.equal(r.ok, true);
-});
-
-test('docuseal: shared-secret header accepted / rejected', () => {
-  assert.equal(verifyDocusealSignature(Buffer.from('{}'), { 'x-docuseal-secret': 'abc' }, 'abc').ok, true);
-  assert.equal(verifyDocusealSignature(Buffer.from('{}'), { 'x-docuseal-secret': 'wrong' }, 'abc').ok, false);
-});
-
-test('docuseal: HMAC signature accepted', () => {
-  const secret = 'k';
-  const body = Buffer.from('{"x":1}');
-  const sig = crypto.createHmac('sha256', secret).update(body).digest('hex');
-  assert.equal(verifyDocusealSignature(body, { 'x-docuseal-signature': sig }, secret).ok, true);
-  assert.equal(verifyDocusealSignature(body, { 'x-docuseal-signature': 'sha256=' + sig }, secret).ok, true);
-});
-
-test('docuseal: no signature/secret header present but secret configured -> reject', () => {
-  const r = verifyDocusealSignature(Buffer.from('{}'), {}, 'secret');
-  assert.equal(r.enforced, true);
   assert.equal(r.ok, false);
 });

@@ -8,7 +8,7 @@ Utilisez la recherche de votre navigateur (Ctrl+F) pour retrouver un terme rapid
 
 | Terme | Définition |
 |---|---|
-| **Avenant** | Modification de votre contrat d'abonnement : ajout [[de:activite:pl]], [[de:labo:pl]] ou [[de:gerant:pl]], activation ou changement de palier de la base [[court:acheteur:pl]]… L'avenant vous est envoyé par e-mail pour signature électronique et le document signé reste téléchargeable. |
+| **Ajout de capacité** | Demande faite depuis la page Demandes pour ajouter [[un:activite:pl]], [[un:labo:pl]] ou [[un:gerant:pl]], ou pour activer la base [[court:acheteur:pl]] ou en changer le palier. Dès que l'équipe LabFlow la valide, la capacité est ajoutée, sans document à signer. |
 | **Base [[court:acheteur:pl]]** | Extension de l'abonnement qui active [[le:espace_acheteurs:Nom]]. Elle est facturée par palier selon la taille de votre carnet : jusqu'à 10, 20, 50 ou 100 [[nom:acheteur:pl]]. Le passage à un palier supérieur se demande depuis la page Demandes ; le nouveau palier remplace l'ancien. |
 | **Catégorie** | Deux notions distinctes : la *catégorie [[de:article:pl]]* ([[nom:referentiel]]) affine une famille (ex. « Oxydes colorants » dans la famille « Émaux et décors ») ; la *catégorie [[de:produit:pl]]* ([[Nom:espace_produits]]) classe ce qui se vend (ex. « Arts de la table ») et est typée vendable, [[nom:supplement]] ou valorisé. |
 | **Charge** | Dépense d'exploitation hors [[nom:article]] : énergie des fours, emballages, main-d'œuvre… Saisie dans [[le:espace_vente:Nom]], elle affine l'analyse de rentabilité au-delà [[acc:cout_matiere:du seul:de la seule]] [[nom:cout_matiere]]. |

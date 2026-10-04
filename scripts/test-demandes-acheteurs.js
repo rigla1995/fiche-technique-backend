@@ -4,6 +4,8 @@
  * Lot 3, étape 4 (plus d'avenant : LabFlow est sans engagement) : une demande ne crée plus de soumission DocuSeal ;
  * l'ancienne étape 6 (webhook DocuSeal simulé) devient la validation admin, avec les mêmes contrôles, plus : une 2e
  * validation répond 409 sans rien appliquer, une demande refusée n'ajoute aucune capacité.
+ * Lot 3, étape 5 (code DocuSeal mort retiré) : la réponse d'une demande n'expose plus `docusealSubmissionId` (la
+ * colonne docuseal_submission_id reste en base, toujours NULL) ; la route publique du webhook DocuSeal a disparu.
  * Crée un super_admin + clients de test temporaires, puis nettoie. */
 // ⚠️ Ce script crée des comptes par POST /admin/clients (email de bienvenue). Démarrer le backend de test par
 //    « node scripts/start-test-backend.js » (clés externes vidées, resend bouchonné, réseau sortant bloqué) —
@@ -85,11 +87,12 @@ const check = (name, ok, detail = '') => {
   body = await r.json();
   const dem1 = body.id;
   check('demande palier 20 créée (201)', r.status === 201 && body.nbAcheteursCible === 20, JSON.stringify({ s: r.status, cible: body.nbAcheteursCible }));
-  // Lot 3, étape 4 : plus d'avenant à signer — ni soumission DocuSeal, ni indicateur d'email d'avenant
+  // Lot 3, étape 4 : plus d'avenant à signer — ni soumission DocuSeal, ni indicateur d'email d'avenant.
+  // Lot 3, étape 5 : la réponse n'expose plus le champ docusealSubmissionId (la colonne reste en base, NULL).
   const dem1Row = (await pool.query(`SELECT statut, docuseal_submission_id FROM support_demandes WHERE id = $1`, [dem1])).rows[0];
-  check('demande : en attente, aucune soumission DocuSeal (lot 3, étape 4)',
-    dem1Row?.statut === 'en_attente' && dem1Row.docuseal_submission_id === null && body.docusealSubmissionId === null && !('avenantEmailSent' in body),
-    JSON.stringify({ ...dem1Row, avenantEmailSent: body.avenantEmailSent }));
+  check('demande : en attente, aucune soumission DocuSeal (lot 3, étapes 4 et 5)',
+    dem1Row?.statut === 'en_attente' && dem1Row.docuseal_submission_id === null && !('docusealSubmissionId' in body) && !('avenantEmailSent' in body),
+    JSON.stringify({ ...dem1Row, docusealSubmissionId: body.docusealSubmissionId, avenantEmailSent: body.avenantEmailSent }));
 
   // ── 4. Validation manuelle admin → quota appliqué (cible REMPLACE, pas d'addition)
   r = await fetch(`${BASE}/api/abonnements/admin/support/${dem1}`, {
@@ -190,6 +193,13 @@ const check = (name, ok, detail = '') => {
   check('aperçu d\'avenant retiré → 404', r.status === 404, String(r.status));
   r = await fetch(`${BASE}/api/abonnements/support/${dem2}/contrat-signe`, { headers: H2 });
   check('contrat signé (client) retiré → 404', r.status === 404, String(r.status));
+  // Lot 3, étape 5 : le webhook DocuSeal (route publique, sans jeton) n'existe plus — un événement « signé » envoyé
+  // sans authentification n'est plus accepté (404, ou 401 si un routeur protégé de /api répond avant).
+  r = await fetch(`${BASE}/api/webhooks/docuseal`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event_type: 'form.completed', data: { email: EMAILS[2], submission_id: 1, completed_at: new Date().toISOString() } }),
+  });
+  check('webhook DocuSeal retiré → 404 ou 401, jamais accepté', r.status === 404 || r.status === 401, String(r.status));
 
   // ── Nettoyage
   await wipe();

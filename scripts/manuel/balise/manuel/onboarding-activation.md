@@ -1,6 +1,6 @@
 ## 🔑 Activation de votre compte
 
-Une fois votre contrat signé, vous recevez automatiquement l'email « Bienvenue sur LabFlow — Activez votre compte ». Il contient le lien qui vous permet de définir votre mot de passe et d'accéder à votre espace.
+Dès la création de votre compte par l'équipe LabFlow, vous recevez l'email « Bienvenue sur LabFlow — Activez votre compte ». Il contient le lien qui vous permet de définir votre mot de passe et d'accéder à votre espace.
 
 ### Ce que vous voyez
 
@@ -36,5 +36,5 @@ Utilisez le bouton œil pour vérifier votre saisie avant de valider, et conserv
 ### Voir aussi
 
 - [Configuration initiale](#onboarding-configuration)
-- [Création du compte & signature du contrat](#onboarding-contrat)
+- [Création de votre compte](#onboarding-contrat)
 - [Mon compte](#compte)

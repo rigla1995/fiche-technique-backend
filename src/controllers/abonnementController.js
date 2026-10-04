@@ -2021,7 +2021,7 @@ const toggleModuleAcheteurs = async (req, res) => {
 };
 
 // Calcule le détail tarifaire effectif (base + promotion active) d'un client.
-// Réutilisé pour les contrats et avenants Docuseal. Lit tout depuis la base.
+// Lit tout depuis la base.
 const computeEffectivePricing = async (clientId) => {
   const aboRes = await pool.query(
     `SELECT id, montant_onboarding FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1`,
@@ -2082,97 +2082,9 @@ const computeEffectivePricing = async (clientId) => {
   };
 };
 
-// Calcule la tarification d'un avenant : nouvelle config (actuelle + suppléments) et
-// nouvelle mensualité effective (promo mensualité active appliquée). Pour l'avenant Docuseal.
-// setAcheteurs = QUOTA TOTAL cible de l'option Acheteurs (les paliers ne s'additionnent
-// pas) ; null/undefined = quota inchangé.
-const computeAvenantPricing = async (clientId, { addActivites = 0, addLabos = 0, addGerants = 0, setAcheteurs = null }) => {
-  const aboRes = await pool.query(
-    `SELECT id FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1`,
-    [clientId]
-  );
-  if (aboRes.rows.length === 0) return null;
-  const aboId = aboRes.rows[0].id;
-  const cfgRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
-  const cur = cfgRes.rows[0] || { nb_activites: 1, nb_labos: 0, nb_gerants: 0, nb_acheteurs: 0, formule_activites: 'premium', domaine_id: null };
-
-  const newCfg = {
-    nb_activites: (parseInt(cur.nb_activites) || 0) + (addActivites || 0),
-    nb_labos:     (parseInt(cur.nb_labos)     || 0) + (addLabos     || 0),
-    nb_gerants:   (parseInt(cur.nb_gerants)   || 0) + (addGerants   || 0),
-    nb_acheteurs: setAcheteurs != null ? (parseInt(setAcheteurs) || 0) : (parseInt(cur.nb_acheteurs) || 0),
-    formule_activites: cur.formule_activites || 'premium',
-    domaine_id: cur.domaine_id ?? null,
-  };
-
-  const tarifs = tarifsFor(await loadTarifs(), newCfg.domaine_id);
-  const baseMensuel = computeMensuelTotalFromConfig(newCfg, tarifs) || 0;
-
-  const promoRes = await pool.query(
-    `SELECT * FROM promotions
-      WHERE abonnement_id = $1
-        AND date_debut <= CURRENT_DATE
-        AND (date_fin IS NULL OR date_fin >= CURRENT_DATE)
-        AND applies_to IN ('mensualite', 'les_deux')
-      ORDER BY date_debut DESC LIMIT 1`,
-    [aboId]
-  );
-  const promoMens = promoRes.rows[0] || null;
-  const effMensuel = promoMens ? applyPromoMensualite(baseMensuel, promoMens) : baseMensuel;
-
-  // Nouvelle configuration PAR COMPOSANT (mots du domaine, pour l'avenant PDF) :
-  // détail actuel + ajouts sur le 1er composant de chaque type (comme le webhook).
-  let composants = [];
-  let domaineNom = null;
-  let domaineSlug = null;
-  try {
-    const actuels = await listComposantsConfig(aboId);
-    const ajouts = await composantsDepuisCompteurs(newCfg.domaine_id ?? (await getDomaineDefautId()), {
-      nbActivites: addActivites || 0, nbLabos: addLabos || 0, nbGerants: addGerants || 0,
-      nbAcheteurs: setAcheteurs != null ? (parseInt(setAcheteurs) || 0) : 0,
-    });
-    const parCode = new Map(actuels.map((c) => [c.code, { ...c }]));
-    const dispo = (await pool.query('SELECT * FROM domaine_composants WHERE domaine_id = $1 ORDER BY ordre, id', [newCfg.domaine_id])).rows;
-    for (const a of ajouts) {
-      const meta = dispo.find((d) => d.code === a.code);
-      const type = meta?.type_technique || a.code;
-      if (type === 'acheteurs') {
-        for (const c of parCode.values()) if (c.typeTechnique === 'acheteurs') c.nb = 0;
-      }
-      const cur = parCode.get(a.code) || {
-        code: a.code, libelle: meta?.libelle || a.code, libellePluriel: meta?.libelle_pluriel || null,
-        icone: meta?.icone || null, typeTechnique: type, nb: 0,
-      };
-      cur.nb = type === 'acheteurs' ? a.nb : cur.nb + a.nb;
-      parCode.set(a.code, cur);
-    }
-    composants = [...parCode.values()].filter((c) => c.nb > 0);
-    if (newCfg.domaine_id) {
-      const d = await pool.query('SELECT nom, slug FROM domaines_activite WHERE id = $1', [newCfg.domaine_id]);
-      domaineNom = d.rows[0]?.nom || null;
-      domaineSlug = d.rows[0]?.slug || null;
-    }
-  } catch (e) {
-    console.warn('[avenant] détail composants indisponible:', e.message);
-  }
-
-  return {
-    abonnementId: aboId,
-    nbActivites: newCfg.nb_activites, nbLabos: newCfg.nb_labos, nbGerants: newCfg.nb_gerants,
-    formuleActivites: newCfg.formule_activites,
-    nbAcheteurs: newCfg.nb_acheteurs,
-    palierAcheteurs: palierAcheteurs(newCfg.nb_acheteurs),
-    baseMensuel, effMensuel,
-    promoMens,
-    promoMonths: promoMens ? (promoMens.months_duration || null) : null,
-    hasPromo: !!promoMens,
-    composants, domaineNom, domaineSlug,
-  };
-};
-
 module.exports = {
   getTarifs, updateTarif, deleteTarifDomaine,
-  computeEffectivePricing, computeAvenantPricing,
+  computeEffectivePricing,
   // Grille par domaine (lot 1a)
   loadTarifs, tarifsFor, resolveTarifs, TARIF_KEYS_SURCHARGEABLES, getDomaineDefautId,
   recalcPaiementsEnAttente, buildTarifsPourDomaine, loadConfigComplete, remapperComposants,

@@ -40,7 +40,6 @@ const mapDemande = (row) => ({
   nbGerantsSupp: row.nb_gerants_supp,
   // Option Acheteurs : QUOTA TOTAL cible (borne de palier), pas un incrément
   nbAcheteursCible: row.nb_acheteurs_cible || null,
-  docusealSubmissionId: row.docuseal_submission_id || null,
   // aide
   description: row.description,
   // admin
