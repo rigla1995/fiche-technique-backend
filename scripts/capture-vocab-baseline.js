@@ -46,8 +46,9 @@
  *   - clé `recherches` : une 6ᵉ question sans résultat (« zzz qwerty ») capte la liste `disponibles` (R2.2) ;
  *   - `--brut <dossier>` (hors dépôt) : écrit aussi la réponse brute, non masquée, de GET /api/manuel du client B
  *     (`manuel-client-B.json`), pour scripts/controle-manuel-pdf.mjs du frontend (§2.6) ;
- *   - garde R2.8.3 : `--reference` refuse d'écrire si `_migrations` contient 194, 195 ou 196 (une référence se
- *     capture toujours sur un manuel non balisé) ;
+ *   - la garde R2.8.3 (`--reference` refusé si `_migrations` contient 194, 195 ou 196) est RETIRÉE au lot 3, étape 3,
+ *     comme le prévoyait la spec du lot 2c §12.2 après l'envoi D2 (en production) : le chargement de l'application
+ *     applique 194 à 196 à toute base, la garde refusait donc toute recapture ;
  *   - `meta.empreintesBase.<titre rendu>` (relecture de l'étape O : 21 des 32 entrées de la base n'étaient captées
  *     par aucune recherche) : chaque entrée active de ai_knowledge_base, dans l'ordre des id, est cherchée par son
  *     titre (titre en base rendu avec le vocabulaire du passage), compte B, sans voc ; md5 NON masqué du JSON
@@ -57,7 +58,24 @@
  *     chacune de ces recherches par titre, `baseParTitre.<titre rendu>` = { titre, contenu } RENDUS du résultat (masqués
  *     comme toute capture), scannés par check-invariant-vocab.js dans la famille assistant : `meta` n'est pas scanné, et
  *     sans cette clé le contenu de 20 des 32 entrées n'apparaissait nulle part hors restauration. Arrêt si un contenu est
- *     vide. Jamais capturée en restauration : la référence n'est pas recapturée pour elle. */
+ *     vide. Jamais capturée en restauration : la référence n'est pas recapturée pour elle.
+ *
+ * Lot 3, étape 3 (création sans contrat : LabFlow est sans engagement) :
+ *   - création des 4 comptes (A, B, C, A2) en UN seul passage : plus de passe « DocuSeal configuré » ni de passe « non
+ *     configuré » (la création n'envoie plus de contrat, quel que soit DocuSeal) ; A2 reste (guide « repli »,
+ *     confirmation d'invitation). Une seule clé `emails.site.creation` (email d'activation immédiat, sendWelcomeEmail) ;
+ *     retirées : `emails.site.creation.passe1|passe2`, `valeursContrat.soumission.creation.passe1`,
+ *     `pdf.creation.passe1|passe2.contratLegacy` ;
+ *   - suppression des comptes : plus d'acte de résiliation (retirées : `emails.site.resiliation.*`,
+ *     `valeursContrat.soumission.resiliation.*`) ; les 4 DELETE restent (nettoyage, contrôle du 204) ;
+ *   - `valeursContrat.pricingFields.*` et `meta.signatures.pricingFields` retirés (buildContractPricingFields n'existe
+ *     plus) ; les emails fixes `sansTerme.bienvenueAvecContrat|SansContrat` deviennent `sansTerme.bienvenue`
+ *     (sendWelcomeEmail) ;
+ *   - domaine miroir : le webhook « contrat » n'envoie plus d'email (invitation déjà partie à la création) :
+ *     `emails.site.webhookContrat` retiré, `persistes.webhook.contrat.statut` gardé ;
+ *   - GARDÉS (code encore en place, retiré aux étapes 4 et 5) : demande de supplément et avenant DocuSeal, webhook
+ *     d'avenant, emails fixes `signature.*` (sendDocusealSigningEmail), PDF directs du contrat, de l'avenant et de la
+ *     résiliation (contractPdfService), `legacy.contrat` / `legacy.avenant` (pdfService), `avenantExtraFields`. */
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -473,12 +491,10 @@ const messenger = require(path.join(RACINE, 'src', 'services', 'messengerService
 const emailService = require(path.join(RACINE, 'src', 'services', 'emailService'));
 const pdfService = require(path.join(RACINE, 'src', 'services', 'pdfService'));
 const contractPdf = require(path.join(RACINE, 'src', 'services', 'contractPdfService'));
-const clientsCtrl = require(path.join(RACINE, 'src', 'controllers', 'clientsController'));
 const domaineProfil = require(path.join(RACINE, 'src', 'services', 'domaineProfilService'));
 const SIGNATURES = {
   outils: typeof outilsIA.toolsFor === 'function' ? 'toolsFor(voc)' : 'TOOLS_OPENAI',
   messenger: typeof messenger.texteAccueilMessenger === 'function' ? 'texteAccueilMessenger(nom, voc)' : 'absente',
-  pricingFields: typeof clientsCtrl.buildContractPricingFields === 'function' ? 'buildContractPricingFields(pricing, domaineNom, voc)' : 'absente',
 };
 const outilsPour = (voc) => (typeof outilsIA.toolsFor === 'function' ? outilsIA.toolsFor(voc) : outilsIA.TOOLS_OPENAI);
 
@@ -494,13 +510,8 @@ async function principal() {
   JWT_SECRET = process.env.JWT_SECRET;
   const mig = await pool.query('SELECT filename FROM _migrations ORDER BY filename DESC LIMIT 1');
   meta.derniereMigration = mig.rows[0]?.filename || null;
-  // Garde R2.8.3 (lot 2c) : une référence se capture sur un manuel NON balisé, jamais après 194, 195 ou 196.
-  if (REFERENCE) {
-    const m2c = await pool.query("SELECT filename FROM _migrations WHERE filename ~ '^(194|195|196)_' ORDER BY filename");
-    if (m2c.rows.length) {
-      throw new Error(`--reference refusé : la base a reçu ${m2c.rows.map((r) => r.filename).join(', ')} (manuel balisé, spec lot 2c R2.8.3) ; capturer sur une copie neuve de la photo (node scripts/manuel/base-locale.js copie, puis DB_NAME=fiche_technique_2c)`);
-    }
-  }
+  // Garde R2.8.3 du lot 2c (pas de --reference après 194, 195 ou 196) retirée au lot 3, étape 3 : prévu par la spec du
+  // lot 2c §12.2 après l'envoi D2 (en production).
 
   // Super_admin temporaire (mot de passe aléatoire, jeton signé en interne)
   await supprimerAdminOracle('email = $1', ADMIN_EMAIL);
@@ -572,7 +583,8 @@ async function principal() {
     C: [{ code: labL2.code, nb: 1 }, { code: cAch[0].code, nb: 10 }],
   };
 
-  // ── Création des comptes : passe 1 (DocuSeal configuré), passe 2 (non configuré) ─────────
+  // ── Création des comptes A, B, C, A2 (lot 3, étape 3 : sans contrat, email d'activation immédiat) ─────────
+  // A2 (même composition que A) sert au guide « repli » et à la confirmation d'invitation.
   const creerCompte = async (lettre, nom, email, tel, composants) => {
     const f = await fenetre(async () => A.post('/admin/clients', {
       nom, email, telephone: tel, domaineId: dom.id, formuleActivites: 'premium', montantOnboarding: 700, composants,
@@ -581,24 +593,11 @@ async function principal() {
     ctx.clients.push(b.id);
     return { id: b.id, nom, email, f };
   };
-  const passe1 = {};
-  for (const [lettre, nom, suffixe, n] of [['A', N.clientA, 'a', 1], ['B', N.clientB, 'b', 2], ['C', N.clientC, 'c', 3]]) {
-    passe1[lettre] = await creerCompte(lettre, nom, EMAIL(suffixe), TEL(n), compo[lettre]);
-  }
-  const jetonDocuseal = process.env.DOCUSEAL_API_TOKEN;
-  delete process.env.DOCUSEAL_API_TOKEN;
-  let compteA2;
-  try {
-    compteA2 = await creerCompte('A2', N.clientA2, EMAIL('a2'), TEL(4), compo.A);
-  } finally {
-    process.env.DOCUSEAL_API_TOKEN = jetonDocuseal;
-  }
-  const { A: cA, B: cB, C: cC } = passe1;
-  C.emails['site.creation.passe1'] = [cA, cB, cC].flatMap((c) => emailsDe(c.f));
-  C.valeursContrat['soumission.creation.passe1'] = [cA, cB, cC].flatMap((c) => c.f.docuseal);
-  C.pdf['creation.passe1.contratLegacy'] = [cA, cB, cC].flatMap((c) => pdfsDe(c.f));
-  C.emails['site.creation.passe2'] = emailsDe(compteA2.f);
-  C.pdf['creation.passe2.contratLegacy'] = pdfsDe(compteA2.f);
+  const cA = await creerCompte('A', N.clientA, EMAIL('a'), TEL(1), compo.A);
+  const cB = await creerCompte('B', N.clientB, EMAIL('b'), TEL(2), compo.B);
+  const cC = await creerCompte('C', N.clientC, EMAIL('c'), TEL(3), compo.C);
+  const compteA2 = await creerCompte('A2', N.clientA2, EMAIL('a2'), TEL(4), compo.A);
+  C.emails['site.creation'] = [cA, cB, cC, compteA2].flatMap((c) => emailsDe(c.f));
   C.persistes['creation.composantsAlaVolee'] = DOMAINE === 'miroir'
     ? (await pool.query(`SELECT code, libelle, libelle_pluriel, type_technique FROM domaine_composants WHERE domaine_id = $1 AND type_technique = 'gerant' ORDER BY code`, [dom.id])).rows
     : null;
@@ -917,9 +916,9 @@ async function principal() {
   await fixe('avenant.acheteursSeuls', () => emailService.sendAvenantEmail({ ...avenantBase, nbActivitesAdded: 0, nbLabosAdded: 0, nbGerantsAdded: 0, acheteursCible: 20 }));
   await fixe('rapport', () => emailService.sendRapportWithAttachment({ to: EM, clientNom: 'Client Oracle', buffer: Buffer.from('oracle'), filename: 'rapport-oracle.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', format: 'excel', voc }));
   await fixe('messenger', () => emailService.sendMessengerInviteEmail({ to: EM, clientNom: 'Client Oracle', inviteLink: 'https://m.me/labflow.oracle?ref=jeton-fixe', appName: 'LabFlow', voc }));
-  // Les 7 emails sans terme (preuve qu'ils ne bougent pas)
-  await fixe('sansTerme.bienvenueAvecContrat', () => emailService.sendWelcomeWithContractEmail({ to: EM, nom: 'Client Oracle', token: 'jeton-fixe', contractPdfBase64: 'UERGLW9yYWNsZQ==', voc }));
-  await fixe('sansTerme.bienvenueSansContrat', () => emailService.sendWelcomeWithContractEmail({ to: EM, nom: 'Client Oracle', token: 'jeton-fixe', contractPdfBase64: null, voc }));
+  // Les 6 emails sans terme (preuve qu'ils ne bougent pas). Lot 3, étape 3 : un seul email de bienvenue, sans contrat
+  // ni pièce jointe (sendWelcomeEmail remplace sendWelcomeWithContractEmail et ses deux variantes).
+  await fixe('sansTerme.bienvenue', () => emailService.sendWelcomeEmail({ to: EM, nom: 'Client Oracle', token: 'jeton-fixe', voc }));
   await fixe('sansTerme.motDePasse', () => emailService.sendPasswordResetEmail({ to: EM, nom: 'Client Oracle', token: 'jeton-fixe', voc }));
   await fixe('sansTerme.facture', () => emailService.sendFactureEmail({ to: EM, nom: 'Client Oracle', numero: 'FAC-2030-0001', periodeLabel: 'juin 2030', montantTtc: 178.5, dateReglement: '2030-06-15', pdfBase64: 'UERGLW9yYWNsZQ==', voc }));
   await fixe('sansTerme.rapportTexte', () => emailService.sendRapportEmail({ to: EM, clientNom: 'Client Oracle', rapportText: 'Texte fixe du rapport.', voc }));
@@ -963,11 +962,7 @@ async function principal() {
   await figer(async () => {
     C.valeursContrat['avenantExtraFields.complet'] = contractPdf.avenantExtraFields({ ajouts: { addActivites: 1, addLabos: 2, addGerants: 1, setAcheteurs: 20 }, abonnementId: 42, abonnementDate: '2030-01-10', pricing, voc });
     C.valeursContrat['avenantExtraFields.unSeul'] = contractPdf.avenantExtraFields({ ajouts: { addActivites: 1 }, pricing: pricingSansPalier, voc });
-    if (typeof clientsCtrl.buildContractPricingFields === 'function') {
-      C.valeursContrat['pricingFields.promoPalier'] = clientsCtrl.buildContractPricingFields(pricing, dom.nom, voc);
-      C.valeursContrat['pricingFields.sansPromo'] = clientsCtrl.buildContractPricingFields(pricingSansPalier, null, voc);
-      C.valeursContrat['pricingFields.depot'] = clientsCtrl.buildContractPricingFields({ ...pricing, nbActivites: 0, formuleActivites: null }, dom.nom, voc);
-    }
+    // Lot 3, étape 3 : buildContractPricingFields (champs DocuSeal du contrat de création) n'existe plus.
   });
   // Factures d'appro (HTTP, req.voc) et facture acheteur (compte C)
   const factures = exiger(await BA.get('/api/factures?limit=200'), 200, 'factures B');
@@ -1131,6 +1126,7 @@ async function principal() {
   C.emails['site.demandeAvenantClient'] = emailsDe(fDem1);
   C.valeursContrat['soumission.demandeAvenant'] = fDem1.docuseal;
   // Demande sans DocuSeal, puis traitement admin → email d'avenant + PDF legacy
+  const jetonDocuseal = process.env.DOCUSEAL_API_TOKEN;
   delete process.env.DOCUSEAL_API_TOKEN;
   let dem2;
   try {
@@ -1143,8 +1139,9 @@ async function principal() {
   } finally {
     process.env.DOCUSEAL_API_TOKEN = jetonDocuseal;
   }
-  // Webhook DocuSeal signé (miroir) : avenant (applyComposants add, notification) puis contrat
-  // (email de bienvenue)
+  // Webhook DocuSeal signé (miroir) : avenant (applyComposants add, notification) puis contrat. Lot 3, étape 3 : le
+  // webhook « contrat » n'envoie plus d'email de bienvenue (parti dès la création, invite_sent déjà vrai) ; seul son
+  // statut est capté (branche retirée à une étape suivante).
   if (DOMAINE === 'miroir') {
     const autres = await pool.query(`SELECT COUNT(*)::int AS n FROM support_demandes WHERE docuseal_submission_id = '1' AND statut = 'en_attente'`);
     if (autres.rows[0].n !== 1) throw new Error(`webhook : ${autres.rows[0].n} demande(s) en attente avec la soumission 1 (1 attendue)`);
@@ -1159,7 +1156,6 @@ async function principal() {
       `SELECT dc.code, dc.libelle, dc.libelle_pluriel, dc.type_technique, acc.nb FROM abonnement_config_composants acc
          JOIN domaine_composants dc ON dc.id = acc.composant_id JOIN abonnements a ON a.id = acc.abonnement_id
         WHERE a.client_id = $1 ORDER BY dc.type_technique, dc.code`, [cB.id])).rows;
-    C.emails['site.webhookContrat'] = emailsDe(fWh2);
     C.persistes['webhook.contrat.statut'] = fWh2.resultat;
   } else {
     C.persistes['webhook.avenant.sse'] = null;
@@ -1186,13 +1182,11 @@ async function principal() {
   C.persistes['C.notifications'] = (await CA.get('/api/notifications')).body;
   C.persistes['sse.tous'] = triStable(journal.sse);
 
-  // ── Suppression des comptes (résiliation : soumission + email, site d'appel) ────────────
+  // ── Suppression des comptes (lot 3, étape 3 : plus d'acte de résiliation, aucun email) ─────────
   for (const [l, c] of [['A', cA], ['A2', compteA2], ['B', cB], ['C', cC]]) {
-    const f = await fenetre(async () => supprimerClient(c.id));
-    if (f.resultat !== 204) throw new Error(`DELETE /admin/clients/${c.id} (${l}) → ${f.resultat}`);
+    const r = await supprimerClient(c.id);
+    if (r !== 204) throw new Error(`DELETE /admin/clients/${c.id} (${l}) → ${r}`);
     ctx.clients = ctx.clients.filter((x) => x !== c.id);
-    C.emails[`site.resiliation.${l}`] = emailsDe(f);
-    C.valeursContrat[`soumission.resiliation.${l}`] = f.docuseal;
   }
   return meta;
 }

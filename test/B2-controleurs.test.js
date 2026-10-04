@@ -1,10 +1,10 @@
 // Lot 2b, B2 — vocabulaire des documents et messages des contrôleurs du lot (spec docs/lot-2b-spec.md §8.2, §8.3, §9).
 //   node --test test/B2-controleurs.test.js
 //
-// 1. Origine du vocabulaire de chaque document (§8.2) : aperçu du wizard → vocabDuDomaine(domaine du corps) ;
-//    aperçu et traitement d'un avenant legacy → vocabForClient(demande.client_id) ; contrat régénéré →
-//    vocabForClient(clientId) ; avenant demandé par le client → req.voc ; création → vocabDuDomaine ; facture
-//    d'appro → req.voc. pdfTexte posé SEULEMENT par le contrat régénéré et l'aperçu du wizard.
+// 1. Origine du vocabulaire de chaque document (§8.2) : aperçu et traitement d'un avenant legacy →
+//    vocabForClient(demande.client_id) ; avenant demandé par le client → req.voc ; facture d'appro → req.voc.
+//    Lot 3, étape 3 : plus de contrat (aperçu du wizard, contrat régénéré et contrat de création retirés) —
+//    la création envoie l'email de bienvenue, sans contrat ; pdfTexte n'est plus posé nulle part dans src/.
 // 2. Messages balisés (point de rendu `message`) : rendus par défaut à l'identique de l'existant, terme du domaine sinon.
 // Sans base de données : pool, documents et vocabulaire du compte sont des faux.
 const test = require('node:test');
@@ -71,17 +71,6 @@ const fauxRes = () => ({
   json(corps) { this.corps = corps; return this; },
 });
 
-test('aperçu du contrat (wizard) : vocabulaire du domaine du CORPS, pdfTexte posé', async () => {
-  appels.length = 0;
-  repondreA = (texte, params) => (texte.startsWith('SELECT id, nom, slug FROM domaines_activite') ? { rows: [{ id: params[0], nom: 'Hôtellerie', slug: 'hotellerie' }] } : { rows: [] });
-  const res = fauxRes();
-  await abonnement.previewContratPdf({ body: { nom: 'X', email: 'x@test.invalid', nbActivites: 1, domaineId: 5 } }, res);
-  assert.equal(res.statusCode, 200, JSON.stringify(res.corps));
-  const [, args] = appels.find(([n]) => n === 'buildContratDocument');
-  assert.deepEqual(args.voc, marque('domaine', 5));
-  assert.equal(args.pdfTexte, true);
-});
-
 const DEMANDE = { id: 3, client_id: 42, type: 'supplement', nb_activites_supp: 1, nb_labos_supp: 1, nb_gerants_supp: 0, nb_acheteurs_cible: 20, client_nom: 'Compte' };
 test('aperçu d\'un avenant legacy (admin) : vocabulaire du compte DESTINATAIRE', async () => {
   appels.length = 0;
@@ -113,27 +102,24 @@ const fichiersJs = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap
 });
 
 test('sources : vocabulaire de chaque document et option pdfTexte (spec §8.2, §8.3)', () => {
-  const ab = lire('src/controllers/abonnementController.js');
-  const regen = corpsDe(ab, 'const regenerateContratPdf = async (clientId) => {');
-  assert.match(regen, /voc: await vocabForClient\(clientId\),/);
-  assert.match(regen, /pdfTexte: true,/);
-  assert.match(corpsDe(ab, 'const previewContratPdf = async (req, res) => {'), /voc: await vocabDuDomaine\(domaineId\),\n\s*pdfTexte: true,/);
-  // pdfTexte posé nulle part ailleurs dans src/ (documents à signer, factures acheteur et d'abonnement : jamais)
+  // Lot 3, étape 3 : contrat régénéré et aperçu du wizard retirés — pdfTexte n'est plus posé nulle part dans src/
+  // (documents à signer, factures acheteur et d'abonnement : jamais ; facture d'appro : option de generate.js).
   const poses = fichiersJs(path.join(RACINE, 'src')).flatMap((f) => {
     const n = (fs.readFileSync(f, 'utf8').match(/pdfTexte: true/g) || []).length;
     return n ? [[path.relative(RACINE, f).replace(/\\/g, '/'), n]] : [];
   });
-  assert.deepEqual(poses, [['src/controllers/abonnementController.js', 2]]);
+  assert.deepEqual(poses, []);
+  const ab = lire('src/controllers/abonnementController.js');
+  for (const retire of ['const regenerateContratPdf', 'const previewContratPdf', 'const getClientContratPdf', 'const getContratActif']) {
+    assert.ok(!ab.includes(retire), `retiré : ${retire}`);
+  }
 
+  // Création : email de bienvenue (activation) tout de suite, plus aucun contrat ni soumission DocuSeal.
   const cl = lire('src/controllers/clientsController.js');
-  const soumission = corpsDe(cl, 'const submitContratForSignature = async (');
-  assert.match(soumission, /montantOnboarding,\n\s*voc,\n\s*\}\);\n\s*return await createSubmissionFromPdf/, 'contrat à signer : voc, sans pdfTexte');
-  assert.doesNotMatch(soumission, /pdfTexte/);
-  assert.match(soumission, /buildContractPricingFields\(pricing, config\?\.domaineNom \|\| null, voc\)/);
   const creation = corpsDe(cl, 'const create = async (req, res) => {');
-  assert.match(creation, /const voc = await vocabDuDomaine\(domaineId\);\n\s*const aboConfig = config \|\| \{\};/);
-  assert.match(creation, /dateContrat: new Date\(\),\n\s*\}, voc\);/, 'contrat legacy : vocabulaire du compte créé');
-  assert.match(creation, /montantOnboarding,\n\s*voc,\n\s*\}\)/, 'soumission : vocabulaire du compte créé');
+  assert.match(creation, /await sendWelcomeEmail\(\{ to: email, nom, token: inviteToken \}\);\n\s*await pool\.query\(`UPDATE abonnements SET invite_sent = TRUE WHERE client_id = \$1`/);
+  assert.doesNotMatch(creation, /submitContratForSignature|generateContratPdf|sendDocusealSigningEmail|contractPdfBase64/);
+  assert.doesNotMatch(corpsDe(cl, 'const remove = async (req, res) => {'), /résiliation|resiliation|DocusealSigning/i, 'suppression : plus d\'acte de résiliation');
 
   const su = lire('src/controllers/supportController.js');
   const soumAv = corpsDe(su, 'const submitAvenantForSignature = async (');

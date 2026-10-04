@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "193_manuel_sections_domaine.sql",
+  "derniereMigration": "197_identite_legale_profil.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -816,8 +816,7 @@
   },
   "signatures": {
    "outils": "toolsFor(voc)",
-   "messenger": "texteAccueilMessenger(nom, voc)",
-   "pricingFields": "buildContractPricingFields(pricing, domaineNom, voc)"
+   "messenger": "texteAccueilMessenger(nom, voc)"
   },
   "rangsTri": {
    "resultatsOutils/get_stock": [
@@ -872,9 +871,9 @@
   "contexte": 3,
   "guide": 10,
   "accueilMessenger": 1,
-  "emails": 39,
-  "pdf": 21,
-  "valeursContrat": 11,
+  "emails": 33,
+  "pdf": 19,
+  "valeursContrat": 3,
   "exports": 29,
   "rapportIA": 4,
   "tableauxDeBord": 68,
@@ -1665,19 +1664,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "-30.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.550",
-     "source": "Réserve Nord / Est",
-     "type_appro": "manuel"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "30.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.550",
      "source": "Bloc chaud",
      "type_appro": "transfert"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "-30.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.550",
+     "source": "Réserve Nord / Est",
+     "type_appro": "manuel"
     },
     {
      "ingredient": "Drap 240x300",
@@ -3154,14 +3153,6 @@
     "complet": false,
     "etapes": [
      {
-      "key": "contrat",
-      "titre": "Contrat signé",
-      "fait": true,
-      "detail": null,
-      "questions": [],
-      "route": null
-     },
-     {
       "key": "activation",
       "titre": "Compte activé",
       "fait": true,
@@ -3250,18 +3241,10 @@
     ],
     "aFaire": "capacites"
    },
-   "A.blocPrompt": "\n\n## MISSION PRIORITAIRE : guide de mise en route\nCe client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :\n- [FAIT] Contrat signé\n- [FAIT] Compte activé\n- [À FAIRE] Activité de votre formule (0/1 activité)\n- [À FAIRE] Référentiel de base (unités, familles, catégories) (à créer : unités, familles, catégories)\n- [À FAIRE] Articles + affectation aux activités (0 article)\n- [À FAIRE] Fournisseurs\n- [À FAIRE] Produits & fiches techniques\n- [À FAIRE] Première saisie (appro / vente) (aucun approvisionnement ni vente pour l'instant)\nRègles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.\n\n## FORMAT DES RÉPONSES DU GUIDE (obligatoire)\n- Commence par un court titre en **gras** avec un emoji (ex. **🧂 Créer vos unités**)\n- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte\n- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Référentiel → Unités**)\n- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte\n- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)",
+   "A.blocPrompt": "\n\n## MISSION PRIORITAIRE : guide de mise en route\nCe client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :\n- [FAIT] Compte activé\n- [À FAIRE] Activité de votre formule (0/1 activité)\n- [À FAIRE] Référentiel de base (unités, familles, catégories) (à créer : unités, familles, catégories)\n- [À FAIRE] Articles + affectation aux activités (0 article)\n- [À FAIRE] Fournisseurs\n- [À FAIRE] Produits & fiches techniques\n- [À FAIRE] Première saisie (appro / vente) (aucun approvisionnement ni vente pour l'instant)\nRègles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.\n\n## FORMAT DES RÉPONSES DU GUIDE (obligatoire)\n- Commence par un court titre en **gras** avec un emoji (ex. **🧂 Créer vos unités**)\n- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte\n- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Référentiel → Unités**)\n- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte\n- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)",
    "A.http": {
     "complet": false,
     "etapes": [
-     {
-      "key": "contrat",
-      "titre": "Contrat signé",
-      "fait": true,
-      "detail": null,
-      "questions": [],
-      "route": null
-     },
      {
       "key": "activation",
       "titre": "Compte activé",
@@ -3354,14 +3337,6 @@
    "B.etat": {
     "complet": true,
     "etapes": [
-     {
-      "key": "contrat",
-      "titre": "Contrat signé",
-      "fait": true,
-      "detail": null,
-      "questions": [],
-      "route": null
-     },
      {
       "key": "activation",
       "titre": "Compte activé",
@@ -3462,14 +3437,6 @@
     "complet": true,
     "etapes": [
      {
-      "key": "contrat",
-      "titre": "Contrat signé",
-      "fait": true,
-      "detail": null,
-      "questions": [],
-      "route": null
-     },
-     {
       "key": "activation",
       "titre": "Compte activé",
       "fait": true,
@@ -3567,14 +3534,6 @@
    "C.etat": {
     "complet": true,
     "etapes": [
-     {
-      "key": "contrat",
-      "titre": "Contrat signé",
-      "fait": true,
-      "detail": null,
-      "questions": [],
-      "route": null
-     },
      {
       "key": "activation",
       "titre": "Compte activé",
@@ -3678,14 +3637,6 @@
     "complet": true,
     "etapes": [
      {
-      "key": "contrat",
-      "titre": "Contrat signé",
-      "fait": true,
-      "detail": null,
-      "questions": [],
-      "route": null
-     },
-     {
       "key": "activation",
       "titre": "Compte activé",
       "fait": true,
@@ -3787,14 +3738,6 @@
     "complet": false,
     "etapes": [
      {
-      "key": "contrat",
-      "titre": "Contrat signé",
-      "fait": true,
-      "detail": null,
-      "questions": [],
-      "route": null
-     },
-     {
       "key": "activation",
       "titre": "Compte activé",
       "fait": true,
@@ -3876,18 +3819,10 @@
     ],
     "aFaire": "capacites"
    },
-   "A2.blocPrompt": "\n\n## MISSION PRIORITAIRE : guide de mise en route\nCe client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :\n- [FAIT] Contrat signé\n- [FAIT] Compte activé\n- [À FAIRE] Activité de votre formule (0/1 activité)\n- [À FAIRE] Référentiel de base (unités, familles, catégories) (à créer : unités, familles, catégories)\n- [À FAIRE] Articles + affectation aux activités (0 article)\n- [À FAIRE] Fournisseurs\n- [À FAIRE] Produits & fiches techniques\n- [À FAIRE] Première saisie (appro / vente) (aucun approvisionnement ni vente pour l'instant)\nRègles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.\n\n## FORMAT DES RÉPONSES DU GUIDE (obligatoire)\n- Commence par un court titre en **gras** avec un emoji (ex. **🧂 Créer vos unités**)\n- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte\n- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Référentiel → Unités**)\n- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte\n- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)",
+   "A2.blocPrompt": "\n\n## MISSION PRIORITAIRE : guide de mise en route\nCe client est EN PHASE D'ONBOARDING. Ton rôle premier est de le guider pas à pas pour terminer sa mise en route. Son avancement réel :\n- [FAIT] Compte activé\n- [À FAIRE] Activité de votre formule (0/1 activité)\n- [À FAIRE] Référentiel de base (unités, familles, catégories) (à créer : unités, familles, catégories)\n- [À FAIRE] Articles + affectation aux activités (0 article)\n- [À FAIRE] Fournisseurs\n- [À FAIRE] Produits & fiches techniques\n- [À FAIRE] Première saisie (appro / vente) (aucun approvisionnement ni vente pour l'instant)\nRègles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concrètement où cliquer et quoi faire dans LabFlow (appuie-toi sur search_knowledge_base pour les procédures) ; ne parle JAMAIS d'une capacité que ce compte n'a pas (pas de labo si aucun labo ci-dessus, pas d'acheteurs si l'étape n'existe pas) ; le client ne peut PAS taper de texte libre (il clique des questions proposées) : n'utilise JAMAIS ask_clarification, réponds toujours complètement ; propose l'étape suivante quand une étape semble terminée ; reste encourageant.\n\n## FORMAT DES RÉPONSES DU GUIDE (obligatoire)\n- Commence par un court titre en **gras** avec un emoji (ex. **🧂 Créer vos unités**)\n- Actions en liste numérotée : 1. 2. 3. — UNE action par ligne, courte\n- Chemins de navigation TOUJOURS au format : 📍 **Menu → Page** (ex. 📍 **Référentiel → Unités**)\n- Une ligne VIDE entre chaque bloc (titre, liste, remarque) — jamais de pavé de texte\n- Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)",
    "A2.http": {
     "complet": false,
     "etapes": [
-     {
-      "key": "contrat",
-      "titre": "Contrat signé",
-      "fait": true,
-      "detail": null,
-      "questions": [],
-      "route": null
-     },
      {
       "key": "activation",
       "titre": "Compte activé",
@@ -3975,37 +3910,30 @@
    "texte": "👋 Bonjour Riad Zitouna Essai !\n\nJe suis votre agent LabFlow. Consultez toutes vos données, comme dans l'application :\n\n🏪 Activités & 🏭 labos\n📦 Stock, seuils & 🛒 approvisionnements\n🔄 Transferts labo → activités\n📉 Pertes & 📊 inventaires\n🧾 Ventes, CA & food cost\n📚 Référentiel, fournisseurs & produits\n💳 Abonnement & configuration de vente\n📄 Rapports Excel par email\n\nExemple : « les transferts du mois actuel » ou « mon food cost de septembre ». Posez votre question !"
   },
   "emails": {
-   "site.creation.passe1": [
+   "site.creation": [
     {
      "to": "oracle-vocab-restauration-a@example.com",
-     "subject": "LabFlow — Signature de votre contrat d'abonnement",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.85rem;\">Signature électronique de votre contrat</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 8px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bonjour Dar Yasmine Essai,</h2>\n      <p style=\"margin:0 0 24px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>.<br>\n        Pour lancer la mise en service de votre espace, il ne reste qu'une étape : la signature électronique de votre contrat d'abonnement. Une fois le contrat signé, vous recevrez votre lien d'activation pour configurer votre accès.\n      </p>\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">✍️ Signature requise</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Contrat d'abonnement — LabFlow</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">Document personnalisé avec votre configuration et votre tarification. Signature 100 % en ligne et sécurisée.</p>\n      </div>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://docuseal.oracle.invalid/s/oracle\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Consulter et signer mon contrat\n        </a>\n      </div>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://docuseal.oracle.invalid/s/oracle</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+     "subject": "Bienvenue sur LabFlow — Activez votre compte",
+     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bienvenue, Dar Yasmine Essai</h2>\n      <p style=\"margin:0 0 28px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>. Votre espace est prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.\n      </p>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://app.oracle.invalid/invite/⟨jeton⟩\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://app.oracle.invalid/invite/⟨jeton⟩</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
      "attachments": []
     },
     {
      "to": "oracle-vocab-restauration-b@example.com",
-     "subject": "LabFlow — Signature de votre contrat d'abonnement",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.85rem;\">Signature électronique de votre contrat</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 8px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bonjour Riad Zitouna Essai,</h2>\n      <p style=\"margin:0 0 24px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>.<br>\n        Pour lancer la mise en service de votre espace, il ne reste qu'une étape : la signature électronique de votre contrat d'abonnement. Une fois le contrat signé, vous recevrez votre lien d'activation pour configurer votre accès.\n      </p>\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">✍️ Signature requise</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Contrat d'abonnement — LabFlow</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">Document personnalisé avec votre configuration et votre tarification. Signature 100 % en ligne et sécurisée.</p>\n      </div>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://docuseal.oracle.invalid/s/oracle\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Consulter et signer mon contrat\n        </a>\n      </div>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://docuseal.oracle.invalid/s/oracle</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+     "subject": "Bienvenue sur LabFlow — Activez votre compte",
+     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bienvenue, Riad Zitouna Essai</h2>\n      <p style=\"margin:0 0 28px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>. Votre espace est prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.\n      </p>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://app.oracle.invalid/invite/⟨jeton⟩\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://app.oracle.invalid/invite/⟨jeton⟩</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
      "attachments": []
     },
     {
      "to": "oracle-vocab-restauration-c@example.com",
-     "subject": "LabFlow — Signature de votre contrat d'abonnement",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.85rem;\">Signature électronique de votre contrat</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 8px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bonjour Fournil Carthage Essai,</h2>\n      <p style=\"margin:0 0 24px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>.<br>\n        Pour lancer la mise en service de votre espace, il ne reste qu'une étape : la signature électronique de votre contrat d'abonnement. Une fois le contrat signé, vous recevrez votre lien d'activation pour configurer votre accès.\n      </p>\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">✍️ Signature requise</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Contrat d'abonnement — LabFlow</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">Document personnalisé avec votre configuration et votre tarification. Signature 100 % en ligne et sécurisée.</p>\n      </div>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://docuseal.oracle.invalid/s/oracle\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Consulter et signer mon contrat\n        </a>\n      </div>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://docuseal.oracle.invalid/s/oracle</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+     "subject": "Bienvenue sur LabFlow — Activez votre compte",
+     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bienvenue, Fournil Carthage Essai</h2>\n      <p style=\"margin:0 0 28px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>. Votre espace est prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.\n      </p>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://app.oracle.invalid/invite/⟨jeton⟩\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://app.oracle.invalid/invite/⟨jeton⟩</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
      "attachments": []
-    }
-   ],
-   "site.creation.passe2": [
+    },
     {
      "to": "oracle-vocab-restauration-a2@example.com",
      "subject": "Bienvenue sur LabFlow — Activez votre compte",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bienvenue, Dar Narjes Essai</h2>\n      <p style=\"margin:0 0 28px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>. Votre contrat d'abonnement figure en pièce jointe au format PDF.<br>\n        Pour accéder à votre espace, il vous suffit d'activer votre compte et de définir votre mot de passe.\n      </p>\n      \n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">📎 Document joint</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Contrat d'abonnement — LabFlow</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">En activant votre compte, vous acceptez les termes de ce contrat.</p>\n      </div>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://app.oracle.invalid/invite/⟨jeton⟩\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://app.oracle.invalid/invite/⟨jeton⟩</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
-     "attachments": [
-      {
-       "filename": "contrat-abonnement-dar-narjes-essai.pdf",
-       "content": "⟨base64⟩"
-      }
-     ]
+     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bienvenue, Dar Narjes Essai</h2>\n      <p style=\"margin:0 0 28px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>. Votre espace est prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.\n      </p>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://app.oracle.invalid/invite/⟨jeton⟩\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://app.oracle.invalid/invite/⟨jeton⟩</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+     "attachments": []
     }
    ],
    "site.invitationGerant": [
@@ -4181,24 +4109,11 @@
      "attachments": []
     }
    ],
-   "fixe.sansTerme.bienvenueAvecContrat": [
+   "fixe.sansTerme.bienvenue": [
     {
      "to": "destinataire@oracle.invalid",
      "subject": "Bienvenue sur LabFlow — Activez votre compte",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bienvenue, Client Oracle</h2>\n      <p style=\"margin:0 0 28px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>. Votre contrat d'abonnement figure en pièce jointe au format PDF.<br>\n        Pour accéder à votre espace, il vous suffit d'activer votre compte et de définir votre mot de passe.\n      </p>\n      \n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">📎 Document joint</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Contrat d'abonnement — LabFlow</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">En activant votre compte, vous acceptez les termes de ce contrat.</p>\n      </div>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://app.oracle.invalid/invite/jeton-fixe\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://app.oracle.invalid/invite/jeton-fixe</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
-     "attachments": [
-      {
-       "filename": "contrat-abonnement-client-oracle.pdf",
-       "content": "⟨base64⟩"
-      }
-     ]
-    }
-   ],
-   "fixe.sansTerme.bienvenueSansContrat": [
-    {
-     "to": "destinataire@oracle.invalid",
-     "subject": "Bienvenue sur LabFlow — Activez votre compte",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bienvenue, Client Oracle</h2>\n      <p style=\"margin:0 0 28px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous vous remercions pour la signature de votre contrat. Votre espace <strong>LabFlow</strong> est désormais prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.\n      </p>\n      \n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://app.oracle.invalid/invite/jeton-fixe\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://app.oracle.invalid/invite/jeton-fixe</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bienvenue, Client Oracle</h2>\n      <p style=\"margin:0 0 28px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous avons le plaisir de vous accueillir sur <strong>LabFlow</strong>. Votre espace est prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.\n      </p>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://app.oracle.invalid/invite/jeton-fixe\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://app.oracle.invalid/invite/jeton-fixe</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
      "attachments": []
     }
    ],
@@ -4296,241 +4211,9 @@
       }
      ]
     }
-   ],
-   "site.resiliation.A": [
-    {
-     "to": "oracle-vocab-restauration-a@example.com",
-     "subject": "LabFlow — Acte de résiliation de votre abonnement",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.85rem;\">Acte de résiliation de votre abonnement</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 8px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bonjour Dar Yasmine Essai,</h2>\n      <p style=\"margin:0 0 24px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous vous confirmons la clôture de votre abonnement <strong>LabFlow</strong>.<br>\n        Pour finaliser la résiliation dans les règles, il vous suffit de signer électroniquement votre acte de résiliation ci-dessous. Nous vous remercions sincèrement de la confiance que vous nous avez accordée.\n      </p>\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">📄 Document à signer</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Acte de résiliation — LabFlow</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">Ce document formalise la fin de votre abonnement. Signature 100 % en ligne et sécurisée.</p>\n      </div>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://docuseal.oracle.invalid/s/oracle\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Consulter et signer l'acte\n        </a>\n      </div>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://docuseal.oracle.invalid/s/oracle</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Une question sur votre résiliation ? Notre équipe reste à votre disposition. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
-     "attachments": []
-    }
-   ],
-   "site.resiliation.A2": [
-    {
-     "to": "oracle-vocab-restauration-a2@example.com",
-     "subject": "LabFlow — Acte de résiliation de votre abonnement",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.85rem;\">Acte de résiliation de votre abonnement</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 8px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bonjour Dar Narjes Essai,</h2>\n      <p style=\"margin:0 0 24px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous vous confirmons la clôture de votre abonnement <strong>LabFlow</strong>.<br>\n        Pour finaliser la résiliation dans les règles, il vous suffit de signer électroniquement votre acte de résiliation ci-dessous. Nous vous remercions sincèrement de la confiance que vous nous avez accordée.\n      </p>\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">📄 Document à signer</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Acte de résiliation — LabFlow</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">Ce document formalise la fin de votre abonnement. Signature 100 % en ligne et sécurisée.</p>\n      </div>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://docuseal.oracle.invalid/s/oracle\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Consulter et signer l'acte\n        </a>\n      </div>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://docuseal.oracle.invalid/s/oracle</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Une question sur votre résiliation ? Notre équipe reste à votre disposition. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
-     "attachments": []
-    }
-   ],
-   "site.resiliation.B": [
-    {
-     "to": "oracle-vocab-restauration-b@example.com",
-     "subject": "LabFlow — Acte de résiliation de votre abonnement",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.85rem;\">Acte de résiliation de votre abonnement</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 8px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bonjour Riad Zitouna Essai,</h2>\n      <p style=\"margin:0 0 24px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous vous confirmons la clôture de votre abonnement <strong>LabFlow</strong>.<br>\n        Pour finaliser la résiliation dans les règles, il vous suffit de signer électroniquement votre acte de résiliation ci-dessous. Nous vous remercions sincèrement de la confiance que vous nous avez accordée.\n      </p>\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">📄 Document à signer</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Acte de résiliation — LabFlow</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">Ce document formalise la fin de votre abonnement. Signature 100 % en ligne et sécurisée.</p>\n      </div>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://docuseal.oracle.invalid/s/oracle\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Consulter et signer l'acte\n        </a>\n      </div>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://docuseal.oracle.invalid/s/oracle</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Une question sur votre résiliation ? Notre équipe reste à votre disposition. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
-     "attachments": []
-    }
-   ],
-   "site.resiliation.C": [
-    {
-     "to": "oracle-vocab-restauration-c@example.com",
-     "subject": "LabFlow — Acte de résiliation de votre abonnement",
-     "html": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      <img src=\"http://app.oracle.invalid/logo-email.png\" alt=\"LabFlow\" width=\"138\" height=\"34\" style=\"display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\" />\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.85rem;\">Acte de résiliation de votre abonnement</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 8px;color:#⟨id⟩;font-size:1.2rem;font-weight:700;\">Bonjour Fournil Carthage Essai,</h2>\n      <p style=\"margin:0 0 24px;color:#⟨id⟩;font-size:0.95rem;line-height:1.7;\">\n        Nous vous confirmons la clôture de votre abonnement <strong>LabFlow</strong>.<br>\n        Pour finaliser la résiliation dans les règles, il vous suffit de signer électroniquement votre acte de résiliation ci-dessous. Nous vous remercions sincèrement de la confiance que vous nous avez accordée.\n      </p>\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">📄 Document à signer</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Acte de résiliation — LabFlow</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">Ce document formalise la fin de votre abonnement. Signature 100 % en ligne et sécurisée.</p>\n      </div>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"http://docuseal.oracle.invalid/s/oracle\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Consulter et signer l'acte\n        </a>\n      </div>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : http://docuseal.oracle.invalid/s/oracle</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Une question sur votre résiliation ? Notre équipe reste à votre disposition. &mdash; LabFlow\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
-     "attachments": []
-    }
    ]
   },
   "pdf": {
-   "creation.passe1.contratLegacy": [
-    {
-     "info": {
-      "Producer": "PDFKit",
-      "Creator": "PDFKit",
-      "CreationDate": "⟨date⟩"
-     },
-     "textes": [
-      "LabFlow",
-      "CONTRAT D'ABONNEMENT",
-      "Réf. ⟨ref⟩",
-      "Émis le ⟨date⟩",
-      "PARTIES AU CONTRAT",
-      "PRESTATAIRE",
-      "LabFlow",
-      "CLIENT",
-      "Dar Yasmine Essai",
-      "oracle-vocab-restauration-a@example.com",
-      "70991100",
-      "OBJET",
-      "LabFlow met à disposition du Client une plateforme SaaS de gestion de stocks, approvisionnements, pertes, inventaires et ventes pour la restauration. L'accès est fourni via l'interface web sur abonnement mensuel.",
-      "CONFIGURATION SOUSCRITE",
-      "Poste",
-      "Quantité",
-      "Activités",
-      "1",
-      "Formule d'activités",
-      "Activité Premium",
-      "Labos",
-      "0",
-      "Gérants",
-      "0",
-      "TARIFICATION",
-      "Mensualité",
-      "700 DT / mois",
-      "Facturation mensuelle récurrente",
-      "CONDITIONS GÉNÉRALES",
-      "Durée : Le contrat est conclu pour une durée indéterminée, renouvelable tacitement chaque mois.\nRésiliation : Chaque partie peut résilier avec un préavis de 30 jours par email.\nConfidentialité : Les données du Client sont traitées conformément à la loi n° ⟨mois⟩ du ⟨date⟩ relative à la protection des données à caractère personnel et à la politique de confidentialité de LabFlow.\nDisponibilité : Le service est accessible 24h/24 sous réserve de maintenance planifiée.",
-      "SIGNATURES",
-      "PRESTATAIRE",
-      "LabFlow",
-      "Date : ⟨date⟩",
-      "Signature validée",
-      "CLIENT",
-      "Dar Yasmine Essai",
-      "Signature à l'activation du compte",
-      "En activant votre compte LabFlow, vous acceptez électroniquement les termes du présent contrat. Cette acceptation est horodatée et constitue une signature électronique valide.",
-      "LabFlow  ·  Contrat généré le ⟨date⟩  ·  Document confidentiel"
-     ]
-    },
-    {
-     "info": {
-      "Producer": "PDFKit",
-      "Creator": "PDFKit",
-      "CreationDate": "⟨date⟩"
-     },
-     "textes": [
-      "LabFlow",
-      "CONTRAT D'ABONNEMENT",
-      "Réf. ⟨ref⟩",
-      "Émis le ⟨date⟩",
-      "PARTIES AU CONTRAT",
-      "PRESTATAIRE",
-      "LabFlow",
-      "CLIENT",
-      "Riad Zitouna Essai",
-      "oracle-vocab-restauration-b@example.com",
-      "70991200",
-      "OBJET",
-      "LabFlow met à disposition du Client une plateforme SaaS de gestion de stocks, approvisionnements, pertes, inventaires et ventes pour la restauration. L'accès est fourni via l'interface web sur abonnement mensuel.",
-      "CONFIGURATION SOUSCRITE",
-      "Poste",
-      "Quantité",
-      "Activités",
-      "2",
-      "Formule d'activités",
-      "Activité Premium",
-      "Labos",
-      "2",
-      "Gérants",
-      "1",
-      "TARIFICATION",
-      "Mensualité",
-      "700 DT / mois",
-      "Facturation mensuelle récurrente",
-      "CONDITIONS GÉNÉRALES",
-      "Durée : Le contrat est conclu pour une durée indéterminée, renouvelable tacitement chaque mois.\nRésiliation : Chaque partie peut résilier avec un préavis de 30 jours par email.\nConfidentialité : Les données du Client sont traitées conformément à la loi n° ⟨mois⟩ du ⟨date⟩ relative à la protection des données à caractère personnel et à la politique de confidentialité de LabFlow.\nDisponibilité : Le service est accessible 24h/24 sous réserve de maintenance planifiée.",
-      "SIGNATURES",
-      "PRESTATAIRE",
-      "LabFlow",
-      "Date : ⟨date⟩",
-      "Signature validée",
-      "CLIENT",
-      "Riad Zitouna Essai",
-      "Signature à l'activation du compte",
-      "En activant votre compte LabFlow, vous acceptez électroniquement les termes du présent contrat. Cette acceptation est horodatée et constitue une signature électronique valide.",
-      "LabFlow  ·  Contrat généré le ⟨date⟩  ·  Document confidentiel"
-     ]
-    },
-    {
-     "info": {
-      "Producer": "PDFKit",
-      "Creator": "PDFKit",
-      "CreationDate": "⟨date⟩"
-     },
-     "textes": [
-      "LabFlow",
-      "CONTRAT D'ABONNEMENT",
-      "Réf. ⟨ref⟩",
-      "Émis le ⟨date⟩",
-      "PARTIES AU CONTRAT",
-      "PRESTATAIRE",
-      "LabFlow",
-      "CLIENT",
-      "Fournil Carthage Essai",
-      "oracle-vocab-restauration-c@example.com",
-      "70991300",
-      "OBJET",
-      "LabFlow met à disposition du Client une plateforme SaaS de gestion de stocks, approvisionnements, pertes, inventaires et ventes pour la restauration. L'accès est fourni via l'interface web sur abonnement mensuel.",
-      "CONFIGURATION SOUSCRITE",
-      "Poste",
-      "Quantité",
-      "Activités",
-      "0",
-      "Labos",
-      "1",
-      "Gérants",
-      "0",
-      "Option Acheteurs",
-      "palier jusqu'à 10 acheteurs",
-      "TARIFICATION",
-      "Mensualité",
-      "700 DT / mois",
-      "Facturation mensuelle récurrente",
-      "CONDITIONS GÉNÉRALES",
-      "Durée : Le contrat est conclu pour une durée indéterminée, renouvelable tacitement chaque mois.\nRésiliation : Chaque partie peut résilier avec un préavis de 30 jours par email.\nConfidentialité : Les données du Client sont traitées conformément à la loi n° ⟨mois⟩ du ⟨date⟩ relative à la protection des données à caractère personnel et à la politique de confidentialité de LabFlow.\nDisponibilité : Le service est accessible 24h/24 sous réserve de maintenance planifiée.",
-      "SIGNATURES",
-      "PRESTATAIRE",
-      "LabFlow",
-      "Date : ⟨date⟩",
-      "Signature validée",
-      "CLIENT",
-      "Fournil Carthage Essai",
-      "Signature à l'activation du compte",
-      "En activant votre compte LabFlow, vous acceptez électroniquement les termes du présent contrat. Cette acceptation est horodatée et constitue une signature électronique valide.",
-      "LabFlow  ·  Contrat généré le ⟨date⟩  ·  Document confidentiel"
-     ]
-    }
-   ],
-   "creation.passe2.contratLegacy": [
-    {
-     "info": {
-      "Producer": "PDFKit",
-      "Creator": "PDFKit",
-      "CreationDate": "⟨date⟩"
-     },
-     "textes": [
-      "LabFlow",
-      "CONTRAT D'ABONNEMENT",
-      "Réf. ⟨ref⟩",
-      "Émis le ⟨date⟩",
-      "PARTIES AU CONTRAT",
-      "PRESTATAIRE",
-      "LabFlow",
-      "CLIENT",
-      "Dar Narjes Essai",
-      "oracle-vocab-restauration-a2@example.com",
-      "70991400",
-      "OBJET",
-      "LabFlow met à disposition du Client une plateforme SaaS de gestion de stocks, approvisionnements, pertes, inventaires et ventes pour la restauration. L'accès est fourni via l'interface web sur abonnement mensuel.",
-      "CONFIGURATION SOUSCRITE",
-      "Poste",
-      "Quantité",
-      "Activités",
-      "1",
-      "Formule d'activités",
-      "Activité Premium",
-      "Labos",
-      "0",
-      "Gérants",
-      "0",
-      "TARIFICATION",
-      "Mensualité",
-      "700 DT / mois",
-      "Facturation mensuelle récurrente",
-      "CONDITIONS GÉNÉRALES",
-      "Durée : Le contrat est conclu pour une durée indéterminée, renouvelable tacitement chaque mois.\nRésiliation : Chaque partie peut résilier avec un préavis de 30 jours par email.\nConfidentialité : Les données du Client sont traitées conformément à la loi n° ⟨mois⟩ du ⟨date⟩ relative à la protection des données à caractère personnel et à la politique de confidentialité de LabFlow.\nDisponibilité : Le service est accessible 24h/24 sous réserve de maintenance planifiée.",
-      "SIGNATURES",
-      "PRESTATAIRE",
-      "LabFlow",
-      "Date : ⟨date⟩",
-      "Signature validée",
-      "CLIENT",
-      "Dar Narjes Essai",
-      "Signature à l'activation du compte",
-      "En activant votre compte LabFlow, vous acceptez électroniquement les termes du présent contrat. Cette acceptation est horodatée et constitue une signature électronique valide.",
-      "LabFlow  ·  Contrat généré le ⟨date⟩  ·  Document confidentiel"
-     ]
-    }
-   ],
    "contrat.identite.palier": [
     {
      "info": {
@@ -5852,254 +5535,6 @@
    ]
   },
   "valeursContrat": {
-   "soumission.creation.passe1": [
-    {
-     "methode": "POST",
-     "chemin": "/api/submissions",
-     "corps": {
-      "template_id": "⟨id⟩",
-      "send_email": false,
-      "submitters": [
-       {
-        "role": "Première partie",
-        "email": "oracle-vocab-restauration-a@example.com",
-        "name": "Dar Yasmine Essai",
-        "fields": [
-         {
-          "name": "Nom du client",
-          "default_value": "Dar Yasmine Essai",
-          "readonly": true
-         },
-         {
-          "name": "Email",
-          "default_value": "oracle-vocab-restauration-a@example.com",
-          "readonly": true
-         },
-         {
-          "name": "Date du contrat",
-          "default_value": "⟨date⟩",
-          "readonly": true
-         },
-         {
-          "name": "Nb activités",
-          "default_value": "1",
-          "readonly": true
-         },
-         {
-          "name": "Nb labos",
-          "default_value": "0",
-          "readonly": true
-         },
-         {
-          "name": "Nb gérants",
-          "default_value": "0",
-          "readonly": true
-         },
-         {
-          "name": "Montant onboarding",
-          "default_value": "700 DT",
-          "readonly": true
-         },
-         {
-          "name": "Montant mensuel",
-          "default_value": "0 DT",
-          "readonly": true
-         },
-         {
-          "name": "Formule",
-          "default_value": "Activité Premium",
-          "readonly": true
-         },
-         {
-          "name": "Détail promotion",
-          "default_value": "Mensualité offerte (au lieu de 200 DT) pendant 1 mois, puis 200 DT à partir du ⟨date⟩",
-          "readonly": true
-         },
-         {
-          "name": "Mensualité après promo",
-          "default_value": "200 DT",
-          "readonly": true
-         },
-         {
-          "name": "Reprise prix de base",
-          "default_value": "⟨date⟩",
-          "readonly": true
-         },
-         {
-          "name": "Domaine",
-          "default_value": "Restauration",
-          "readonly": true
-         }
-        ]
-       }
-      ]
-     }
-    },
-    {
-     "methode": "POST",
-     "chemin": "/api/submissions",
-     "corps": {
-      "template_id": "⟨id⟩",
-      "send_email": false,
-      "submitters": [
-       {
-        "role": "Première partie",
-        "email": "oracle-vocab-restauration-b@example.com",
-        "name": "Riad Zitouna Essai",
-        "fields": [
-         {
-          "name": "Nom du client",
-          "default_value": "Riad Zitouna Essai",
-          "readonly": true
-         },
-         {
-          "name": "Email",
-          "default_value": "oracle-vocab-restauration-b@example.com",
-          "readonly": true
-         },
-         {
-          "name": "Date du contrat",
-          "default_value": "⟨date⟩",
-          "readonly": true
-         },
-         {
-          "name": "Nb activités",
-          "default_value": "2",
-          "readonly": true
-         },
-         {
-          "name": "Nb labos",
-          "default_value": "2",
-          "readonly": true
-         },
-         {
-          "name": "Nb gérants",
-          "default_value": "1",
-          "readonly": true
-         },
-         {
-          "name": "Montant onboarding",
-          "default_value": "700 DT",
-          "readonly": true
-         },
-         {
-          "name": "Montant mensuel",
-          "default_value": "0 DT",
-          "readonly": true
-         },
-         {
-          "name": "Formule",
-          "default_value": "Activité Premium",
-          "readonly": true
-         },
-         {
-          "name": "Détail promotion",
-          "default_value": "Mensualité offerte (au lieu de 760 DT) pendant 1 mois, puis 760 DT à partir du ⟨date⟩",
-          "readonly": true
-         },
-         {
-          "name": "Mensualité après promo",
-          "default_value": "760 DT",
-          "readonly": true
-         },
-         {
-          "name": "Reprise prix de base",
-          "default_value": "⟨date⟩",
-          "readonly": true
-         },
-         {
-          "name": "Domaine",
-          "default_value": "Restauration",
-          "readonly": true
-         }
-        ]
-       }
-      ]
-     }
-    },
-    {
-     "methode": "POST",
-     "chemin": "/api/submissions",
-     "corps": {
-      "template_id": "⟨id⟩",
-      "send_email": false,
-      "submitters": [
-       {
-        "role": "Première partie",
-        "email": "oracle-vocab-restauration-c@example.com",
-        "name": "Fournil Carthage Essai",
-        "fields": [
-         {
-          "name": "Nom du client",
-          "default_value": "Fournil Carthage Essai",
-          "readonly": true
-         },
-         {
-          "name": "Email",
-          "default_value": "oracle-vocab-restauration-c@example.com",
-          "readonly": true
-         },
-         {
-          "name": "Date du contrat",
-          "default_value": "⟨date⟩",
-          "readonly": true
-         },
-         {
-          "name": "Nb activités",
-          "default_value": "0",
-          "readonly": true
-         },
-         {
-          "name": "Nb labos",
-          "default_value": "1",
-          "readonly": true
-         },
-         {
-          "name": "Nb gérants",
-          "default_value": "0",
-          "readonly": true
-         },
-         {
-          "name": "Montant onboarding",
-          "default_value": "700 DT",
-          "readonly": true
-         },
-         {
-          "name": "Montant mensuel",
-          "default_value": "0 DT",
-          "readonly": true
-         },
-         {
-          "name": "Option Acheteurs",
-          "default_value": "Palier jusqu'à 10 acheteurs",
-          "readonly": true
-         },
-         {
-          "name": "Détail promotion",
-          "default_value": "Mensualité offerte (au lieu de 250 DT) pendant 1 mois, puis 250 DT à partir du ⟨date⟩",
-          "readonly": true
-         },
-         {
-          "name": "Mensualité après promo",
-          "default_value": "250 DT",
-          "readonly": true
-         },
-         {
-          "name": "Reprise prix de base",
-          "default_value": "⟨date⟩",
-          "readonly": true
-         },
-         {
-          "name": "Domaine",
-          "default_value": "Restauration",
-          "readonly": true
-         }
-        ]
-       }
-      ]
-     }
-    }
-   ],
    "avenantExtraFields.complet": [
     {
      "name": "Capacité ajoutée",
@@ -6128,96 +5563,6 @@
      "default_value": "Activité Premium"
     }
    ],
-   "pricingFields.promoPalier": {
-    "montantOnboarding": 700,
-    "montantMensuel": 0,
-    "extraFields": [
-     {
-      "name": "Formule",
-      "default_value": "Activité Premium"
-     },
-     {
-      "name": "Option Acheteurs",
-      "default_value": "Palier jusqu'à 20 acheteurs"
-     },
-     {
-      "name": "Détail promotion",
-      "default_value": "Frais d'activation : 700 DT au lieu de 900 DT  ·  Mensualité offerte (au lieu de 150 DT) pendant 1 mois, puis 150 DT à partir du ⟨date⟩"
-     },
-     {
-      "name": "Mensualité après promo",
-      "default_value": "150 DT"
-     },
-     {
-      "name": "Reprise prix de base",
-      "default_value": "⟨date⟩"
-     },
-     {
-      "name": "Domaine",
-      "default_value": "Restauration"
-     }
-    ]
-   },
-   "pricingFields.sansPromo": {
-    "montantOnboarding": 700,
-    "montantMensuel": 0,
-    "extraFields": [
-     {
-      "name": "Formule",
-      "default_value": "Activité Premium"
-     },
-     {
-      "name": "Option Acheteurs",
-      "default_value": ""
-     },
-     {
-      "name": "Détail promotion",
-      "default_value": "Aucune promotion — tarifs standard."
-     },
-     {
-      "name": "Mensualité après promo",
-      "default_value": ""
-     },
-     {
-      "name": "Reprise prix de base",
-      "default_value": "⟨date⟩"
-     },
-     {
-      "name": "Domaine",
-      "default_value": ""
-     }
-    ]
-   },
-   "pricingFields.depot": {
-    "montantOnboarding": 700,
-    "montantMensuel": 0,
-    "extraFields": [
-     {
-      "name": "Formule",
-      "default_value": ""
-     },
-     {
-      "name": "Option Acheteurs",
-      "default_value": "Palier jusqu'à 20 acheteurs"
-     },
-     {
-      "name": "Détail promotion",
-      "default_value": "Frais d'activation : 700 DT au lieu de 900 DT  ·  Mensualité offerte (au lieu de 150 DT) pendant 1 mois, puis 150 DT à partir du ⟨date⟩"
-     },
-     {
-      "name": "Mensualité après promo",
-      "default_value": "150 DT"
-     },
-     {
-      "name": "Reprise prix de base",
-      "default_value": "⟨date⟩"
-     },
-     {
-      "name": "Domaine",
-      "default_value": "Restauration"
-     }
-    ]
-   },
    "soumission.demandeAvenant": [
     {
      "methode": "POST",
@@ -6279,142 +5624,6 @@
          {
           "name": "Formule",
           "default_value": "Activité Premium",
-          "readonly": true
-         }
-        ]
-       }
-      ]
-     }
-    }
-   ],
-   "soumission.resiliation.A": [
-    {
-     "methode": "POST",
-     "chemin": "/api/submissions",
-     "corps": {
-      "template_id": "⟨id⟩",
-      "send_email": false,
-      "submitters": [
-       {
-        "role": "Première partie",
-        "email": "oracle-vocab-restauration-a@example.com",
-        "name": "Dar Yasmine Essai",
-        "fields": [
-         {
-          "name": "Nom du client",
-          "default_value": "Dar Yasmine Essai",
-          "readonly": true
-         },
-         {
-          "name": "Email",
-          "default_value": "oracle-vocab-restauration-a@example.com",
-          "readonly": true
-         },
-         {
-          "name": "Date du contrat",
-          "default_value": "⟨date⟩",
-          "readonly": true
-         }
-        ]
-       }
-      ]
-     }
-    }
-   ],
-   "soumission.resiliation.A2": [
-    {
-     "methode": "POST",
-     "chemin": "/api/submissions",
-     "corps": {
-      "template_id": "⟨id⟩",
-      "send_email": false,
-      "submitters": [
-       {
-        "role": "Première partie",
-        "email": "oracle-vocab-restauration-a2@example.com",
-        "name": "Dar Narjes Essai",
-        "fields": [
-         {
-          "name": "Nom du client",
-          "default_value": "Dar Narjes Essai",
-          "readonly": true
-         },
-         {
-          "name": "Email",
-          "default_value": "oracle-vocab-restauration-a2@example.com",
-          "readonly": true
-         },
-         {
-          "name": "Date du contrat",
-          "default_value": "⟨date⟩",
-          "readonly": true
-         }
-        ]
-       }
-      ]
-     }
-    }
-   ],
-   "soumission.resiliation.B": [
-    {
-     "methode": "POST",
-     "chemin": "/api/submissions",
-     "corps": {
-      "template_id": "⟨id⟩",
-      "send_email": false,
-      "submitters": [
-       {
-        "role": "Première partie",
-        "email": "oracle-vocab-restauration-b@example.com",
-        "name": "Riad Zitouna Essai",
-        "fields": [
-         {
-          "name": "Nom du client",
-          "default_value": "Riad Zitouna Essai",
-          "readonly": true
-         },
-         {
-          "name": "Email",
-          "default_value": "oracle-vocab-restauration-b@example.com",
-          "readonly": true
-         },
-         {
-          "name": "Date du contrat",
-          "default_value": "⟨date⟩",
-          "readonly": true
-         }
-        ]
-       }
-      ]
-     }
-    }
-   ],
-   "soumission.resiliation.C": [
-    {
-     "methode": "POST",
-     "chemin": "/api/submissions",
-     "corps": {
-      "template_id": "⟨id⟩",
-      "send_email": false,
-      "submitters": [
-       {
-        "role": "Première partie",
-        "email": "oracle-vocab-restauration-c@example.com",
-        "name": "Fournil Carthage Essai",
-        "fields": [
-         {
-          "name": "Nom du client",
-          "default_value": "Fournil Carthage Essai",
-          "readonly": true
-         },
-         {
-          "name": "Email",
-          "default_value": "oracle-vocab-restauration-c@example.com",
-          "readonly": true
-         },
-         {
-          "name": "Date du contrat",
-          "default_value": "⟨date⟩",
           "readonly": true
          }
         ]
@@ -16341,7 +15550,7 @@
     "archiveDate": null,
     "suppressionCascadeDate": null,
     "hasActivePromo": true,
-    "inviteSent": false,
+    "inviteSent": true,
     "moduleVenteActif": true,
     "moduleVenteActivatedAt": null,
     "moduleAcheteursActif": false,

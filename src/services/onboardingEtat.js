@@ -96,8 +96,7 @@ async function computeOnboardingEtat(clientId) {
   const add = (key, titre, fait, detail, questions, extra) =>
     etapes.push({ key, titre, fait: !!fait, detail: detail || null, questions: questions || [], route: ROUTES[key] || null, ...(extra || {}) });
 
-  // 1-2 : un client connecté a forcément signé son contrat et activé son compte
-  add('contrat', 'Contrat signé', true);
+  // 1 : un client connecté a forcément activé son compte (lot 3 : plus de contrat à signer, sans engagement)
   add('activation', 'Compte activé', true);
 
   // 3 : capacités souscrites créées (activités et/ou labos selon la config)

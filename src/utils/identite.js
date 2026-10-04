@@ -22,7 +22,7 @@ const CHAMPS_IDENTITE = [
 
 // Caractères que les polices standard des PDF (pdfkit, Windows-1252) savent écrire : même table que HORS_POLICE de
 // docuseal-templates/generate.js, sans tabulation ni retour à la ligne (réduits en espace par `texte`), sans le
-// drapeau g (un .test() sur une regex /g garde un état) ; test/identite.test.js vérifie que les deux tables concordent. Une identité est imprimée telle quelle sur les contrats et les factures (jamais
+// drapeau g (un .test() sur une regex /g garde un état) ; test/identite.test.js vérifie que les deux tables concordent. Une identité est imprimée telle quelle sur les factures (jamais
 // passée par pdfTexte) : un caractère hors de cette table sortirait illisible, il est donc refusé à la saisie.
 const HORS_W1252 = /[^\x20-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/u;
 
@@ -57,7 +57,7 @@ const lireIdentite = (body = {}) => {
     if (!v) { valeurs[colonne] = null; continue; }
     if (v.length > max) { erreurs.push({ champ, message: `${libelle} : ${max} caractères au maximum` }); continue; }
     if (HORS_W1252.test(v)) {
-      erreurs.push({ champ, message: `${libelle} : caractères latins seulement (les lettres arabes et les émojis ne s'impriment pas sur les contrats et les factures)` });
+      erreurs.push({ champ, message: `${libelle} : caractères latins seulement (les lettres arabes et les émojis ne s'impriment pas sur les factures)` });
       continue;
     }
     if (champ === 'formeJuridique' && !FORMES_JURIDIQUES.includes(v)) {

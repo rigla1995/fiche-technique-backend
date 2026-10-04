@@ -130,16 +130,18 @@ test('outil : un objet porte `voc` seulement à son premier niveau', () => {
 
 test('chaque appel des 5 fonctions d\'email dans src/ porte une clé `voc` (spec §5.6)', () => {
   const tous = appels();
-  // Non-vacuité : les 12 appels du §5.6 au moins (un appel ajouté plus tard doit aussi la porter).
-  assert.ok(tous.length >= 12, `${tous.length} appel(s) trouvé(s), 12 attendus au moins`);
+  // Non-vacuité : les 12 appels du §5.6, moins les 2 de clientsController retirés au lot 3, étape 3 (contrat de
+  // création et acte de résiliation : plus de contrat) — 10 au moins (un appel ajouté plus tard doit aussi la porter).
+  assert.ok(tous.length >= 10, `${tous.length} appel(s) trouvé(s), 10 attendus au moins`);
   const fautifs = tous.filter((a) => !porteVoc(a.arg)).map((a) => `${a.ou} ${a.fonction}(${a.arg.trim().slice(0, 80)})`);
   assert.deepEqual(fautifs, [], `appels sans clé voc :\n${fautifs.join('\n')}`);
-  // Les 8 fichiers du §5.6
+  // Les fichiers du §5.6 (clientsController n'en appelle plus aucune depuis le lot 3, étape 3 : son email de
+  // bienvenue, sendWelcomeEmail, n'écrit aucun terme du lexique)
   const fichiers = [...new Set(tous.map((a) => a.ou.split(':')[0]))].sort();
   for (const f of [
     'src/controllers/abonnementController.js', 'src/controllers/acheteursController.js',
     'src/controllers/aiAssistantController.js', 'src/controllers/authController.js',
-    'src/controllers/clientsController.js', 'src/controllers/gerantController.js',
+    'src/controllers/gerantController.js',
     'src/controllers/supportController.js', 'src/services/reportService.js',
   ]) assert.ok(fichiers.includes(f), `aucun appel lu dans ${f}`);
 });

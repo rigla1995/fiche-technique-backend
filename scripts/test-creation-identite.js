@@ -1,5 +1,5 @@
 /* Test E2E local — lot 3, étape 2 (docs/lot-3-spec.md §3) : création d'un client avec son identité légale.
- *   POST /admin/clients/identite/controle, POST /admin/clients, POST /api/abonnements/contrat-preview (adresse)
+ *   POST /admin/clients/identite/controle, POST /admin/clients (étape 3 : sans contrat, activation immédiate)
  * Crée un super_admin et des clients de test, puis nettoie (SQL, par motif d'email).
  * Backend de test : « node scripts/start-test-backend.js » (jamais « npm start » : la création envoie des emails).
  * Port : PORT (3000 par défaut). */
@@ -68,10 +68,9 @@ const MDP = 'TestCri2026!';
     // Le contrôle n'écrit rien
     check('contrôle : rien n\'est écrit en base', (await pool.query(`SELECT count(*)::int AS n FROM profil_entreprise WHERE raison_sociale = 'TEST Cri SARL'`)).rows[0].n === 0);
 
-    // ── 2. Aperçu du contrat avec l'adresse
-    r = await post('/api/abonnements/contrat-preview', { nom: 'TEST-Cri Contact', email: 'test-cri-x@example.com', telephone: '20123456', adresse: '3 rue de Rome', domaineId: restau, nbActivites: 1, nbLabos: 0, nbGerants: 0, nbAcheteurs: 0, montantOnboarding: 0, promotions: [] });
-    const pdfOk = r.status === 200 && typeof r.body?.pdfBase64 === 'string' && Buffer.from(r.body.pdfBase64, 'base64').slice(0, 4).toString() === '%PDF';
-    check('aperçu du contrat avec adresse : 200 + PDF', pdfOk, String(r.status));
+    // ── 2. Lot 3, étape 3 : plus d'aperçu de contrat (sans engagement)
+    r = await post('/api/abonnements/contrat-preview', { nom: 'TEST-Cri Contact', email: 'test-cri-x@example.com', domaineId: restau, nbActivites: 1 });
+    check('aperçu du contrat retiré (lot 3) → 404', r.status === 404, String(r.status));
 
     // ── 3. Création avec identité complète
     const EMAIL_A = 'test-cri-a@example.com';
@@ -87,6 +86,10 @@ const MDP = 'TestCri2026!';
       && peA.matricule_fiscal === '1234567A/A/M/000' && peA.rne === '1234567A' && peA.adresse === '3 rue de Rome' && peA.ville === '1000 Tunis'
       && peA.representant_nom === 'Ali Ben Salah' && peA.representant_qualite === 'Gérant' && peA.nom_commercial === null, JSON.stringify(peA));
     check('base : nom / email / téléphone du profil = contact (comme avant)', peA.nom === 'TEST-Cri Contact' && peA.email === EMAIL_A && peA.telephone === '20123461');
+    // Lot 3, étape 3 : invite_sent posé dès la création, aucune soumission de contrat. NB : ce backend de test n'a pas
+    // de DocuSeal ; la preuve « même avec DocuSeal configuré » est la clé emails.site.creation de la référence de sortie.
+    const aboA = (await pool.query('SELECT invite_sent, contrat_submission_id FROM abonnements WHERE client_id = $1 ORDER BY id DESC LIMIT 1', [idA])).rows[0];
+    check('création : invite_sent vrai dès la création, aucune soumission de contrat enregistrée', aboA?.invite_sent === true && aboA.contrat_submission_id === null, JSON.stringify(aboA));
     const ficheA = await fetch(`${BASE}/admin/clients/${idA}`, { headers: H }).then((x) => x.json());
     check('fiche : nom affiché = raison sociale, identité complète', ficheA.nomAffiche === 'TEST Cri SARL' && ficheA.identiteComplete === true);
 
