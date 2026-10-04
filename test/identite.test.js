@@ -44,6 +44,11 @@ test('lireIdentite : texte copié d’un PDF ou d’un Mac nettoyé avant le con
   assert.equal(r.valeurs.raison_sociale, 'Société décor');
   assert.equal(r.valeurs.nom_commercial, 'fine fleur');
   assert.equal(r.valeurs.adresse, '12 rue de-Carthage - blocB');
+  // DEL et les caractères de contrôle U+0080 à U+009F (invisibles, admis par la plage Windows-1252) sont retirés.
+  const c = lireIdentite({ adresse: `12${String.fromCharCode(0x7f)} rue${String.fromCharCode(0x85)} de${String.fromCharCode(0x9f)} Tunis`, ville: String.fromCharCode(0x80, 0x9f) });
+  assert.deepEqual(c.erreurs, []);
+  assert.equal(c.valeurs.adresse, '12 rue de Tunis');
+  assert.equal(c.valeurs.ville, null);
 });
 
 test('lireIdentite : champs absents ignorés, vides → NULL, espaces réduits', () => {

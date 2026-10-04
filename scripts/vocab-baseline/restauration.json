@@ -14533,6 +14533,18 @@
     "module_acheteurs_actif": false,
     "module_acheteurs_activated_at": null,
     "createdAt": "⟨date⟩",
+    "identite": {
+     "raisonSociale": null,
+     "nomCommercial": null,
+     "formeJuridique": null,
+     "matriculeFiscal": null,
+     "rne": null,
+     "adresse": null,
+     "ville": null,
+     "representantNom": null,
+     "representantQualite": null
+    },
+    "identiteComplete": false,
     "formule_activites": "premium",
     "domaine": {
      "id": "⟨id⟩",

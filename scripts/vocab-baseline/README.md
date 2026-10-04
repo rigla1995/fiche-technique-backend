@@ -385,3 +385,19 @@ Premium » sur tout PDF (`/textes/\d+$`), a été donnée « sans emploi » par 
 hotellerie, ceramique, miroir : code 0, aucune forme par défaut, aucune exception sans emploi (exceptions employées :
 27, 25, 35 ; textes lus : 7 007, 6 753, 6 504). Les comptes des familles `manuel` et `assistant` ne montent pas
 (0 forme ; liste avant inchangée, non relancée).
+
+### Lot 3, étape 6 — « Mon entreprise » côté client (04/10/2026)
+
+`GET /api/entreprise` renvoie en plus l'identité légale (`mapEntreprise`). Premier contrôle (22 h 28) : 2 écarts, tous
+deux attendus, aucun autre :
+
+| Écart | Nombre |
+|---|---|
+| `auth/client.entreprise/identite` : absent → objet à 9 clés (toutes `null` pour le compte de la capture) | 1 |
+| `auth/client.entreprise/identiteComplete` : absent → `false` | 1 |
+
+Les clés existantes de `client.entreprise` gardent leur ordre et leur valeur ; les comptes par clé ne changent pas
+(auth 11). **Recapture.** Référence RECAPTURÉE le 04/10 à 22 h 30 (`--reference`) : 12 lignes ajoutées, rien d'autre ;
+contrôle suivant IDENTIQUE (22 h 31), et de nouveau IDENTIQUE après les corrections des relectures (22 h 42).
+**Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut, aucune exception sans emploi
+(textes lus : 7 014, 6 760, 6 511).

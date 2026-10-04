@@ -152,6 +152,22 @@ vérifiées par `B2-controleurs.test.js:128-136`.
   LabFlow ») ; bandeau si incomplet (« envoyez votre patente à LabFlow »). Textes client : vocabulaire du compte si un
   terme métier apparaît (aucun prévu).
 
+**Réalisé (étape 6 du découpage en vigueur, 04/10/2026)** — écarts par rapport au texte ci-dessus :
+- `upsertEntreprise` et la route `PUT /api/entreprise` sont SUPPRIMÉES (aucun appelant) plutôt que restreintes.
+- `GET /api/entreprise` : champs ajoutés sous `identite` (les 9 champs) et `identiteComplete` ; `PUT
+  /api/entreprise/identite` (`requireClientOwner`) répond `{ identite, identiteComplete }` ; une valeur non texte → 400 ;
+  DEL et les caractères de contrôle U+0080 à U+009F sont retirés par le nettoyage commun (`src/utils/identite.js`).
+- Écran : `src/components/client/MonEntrepriseSection.tsx` (champs figés pour un compte en lecture seule). Textes : le
+  bandeau ne demande aucun envoi (« l'équipe LabFlow la renseigne à partir de votre patente ») — l'espace client n'a
+  pas de canal pour envoyer un fichier ; « seule l'équipe LabFlow les modifie ».
+- **La ville n'est imprimée par AUCUNE facture avant l'étape 8** : l'avertissement de l'adresse le dit (« si elle
+  figure dans votre adresse, laissez-la ») ; phrase à retirer à l'étape 8, quand les factures imprimeront la ville.
+- `identiteLegale.ts` est déplacé de `src/components/admin/` vers `src/utils/` (lu par l'admin ET par le profil du
+  client, donc dans le périmètre de `vocab-check`). « Gérant », qualité juridique du représentant, y est admis par une
+  entrée `homonyme` (et non `fiscal` : ce type désigne un document fiscal inchangé à l'octet).
+- Outil de preuve : type d'écart `ajoute` (texte nouveau et visible d'une fonction nouvelle, `avant: null`, mode
+  identite seulement) ; `ajoute` et `remplace` refusent tout autre mode que identite.
+
 ## 5. Étape 4 — Lecture de la patente sans IA (3 couches, dans le navigateur)
 
 - **Essai d'abord** (`labflow-reprise/lot-3/patentes/`, hors git) : script local (pdfjs-dist, jsQR, tesseract.js

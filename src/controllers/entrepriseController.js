@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const unitesOp = require('../services/unitesOperationnellesService');
 const { checkQuota } = require('../services/quotaService');
+const { lireIdentite, identiteComplete, mapIdentite } = require('../utils/identite');
 
 // Erreur d'unité opérationnelle (composant, source, cycle…) → 4xx explicite, sinon rethrow.
 function replyUniteError(res, err) {
@@ -59,21 +60,39 @@ const getEntreprise = async (req, res) => {
   }
 };
 
-const upsertEntreprise = async (req, res) => {
-  const { nom, email, telephone, adresse } = req.body;
-  if (!nom || !email) return res.status(400).json({ message: 'Nom et email requis' });
+// PUT /api/entreprise/identite — lot 3, étape 6 (spec docs/lot-3-spec.md §4) : le client complète lui-même
+// l'adresse, la ville et le représentant de son entreprise. Liste blanche : le reste de l'identité légale (raison
+// sociale, forme, matricule fiscal, RNE, nom commercial) ne se modifie que par l'équipe LabFlow, et un champ hors
+// liste envoyé ici est ignoré. Route réservée au compte client (requireClientOwner) : req.user.id est le compte parent.
+// Seuls les champs PRÉSENTS sont écrits (un champ absent n'est pas touché ; chaîne vide = NULL).
+const CHAMPS_IDENTITE_CLIENT = ['adresse', 'ville', 'representantNom', 'representantQualite'];
+
+const updateIdentiteClient = async (req, res) => {
   try {
-    const result = await pool.query(
-      `INSERT INTO profil_entreprise (client_id, nom, email, telephone, adresse)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (client_id) DO UPDATE
-         SET nom = $2, email = $3, telephone = $4, adresse = $5, updated_at = NOW()
-       RETURNING *`,
-      [req.user.id, nom, email, telephone || null, adresse || null]
-    );
-    res.json(mapEntreprise(result.rows[0]));
+    const corps = {};
+    for (const champ of CHAMPS_IDENTITE_CLIENT) {
+      if (!req.body || !Object.prototype.hasOwnProperty.call(req.body, champ)) continue;
+      const v = req.body[champ];
+      if (v != null && typeof v !== 'string') return res.status(400).json({ message: 'Requête invalide' });
+      corps[champ] = v;
+    }
+    const { valeurs, erreurs } = lireIdentite(corps);
+    if (erreurs.length) return res.status(400).json({ message: erreurs[0].message, erreurs });
+    const colonnes = Object.keys(valeurs);
+    if (colonnes.length) {
+      // Ligne créée si absente (nom et email NOT NULL : copie du contact, comme à la création du compte).
+      const u = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [req.user.id]);
+      await pool.query(
+        `INSERT INTO profil_entreprise (client_id, nom, email, ${colonnes.join(', ')})
+         VALUES ($1, $2, $3, ${colonnes.map((_, i) => `$${i + 4}`).join(', ')})
+         ON CONFLICT (client_id) DO UPDATE SET ${colonnes.map((c) => `${c} = EXCLUDED.${c}`).join(', ')}, updated_at = NOW()`,
+        [req.user.id, u.rows[0].nom, u.rows[0].email, ...colonnes.map((c) => valeurs[c])]
+      );
+    }
+    const r = await pool.query('SELECT * FROM profil_entreprise WHERE client_id = $1', [req.user.id]);
+    res.json({ identite: mapIdentite(r.rows[0]), identiteComplete: identiteComplete(r.rows[0]) });
   } catch (err) {
-    console.error(err);
+    console.error('[entreprise.updateIdentiteClient]', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
@@ -91,6 +110,9 @@ const mapEntreprise = (row) => ({
   module_acheteurs_actif: row.module_acheteurs_actif ?? false,
   module_acheteurs_activated_at: row.module_acheteurs_activated_at ?? null,
   createdAt: row.created_at,
+  // Identité légale (lot 3, étape 6) : lue par la section « Mon entreprise » du profil du client.
+  identite: mapIdentite(row),
+  identiteComplete: identiteComplete(row),
 });
 
 // ─── Activities ────────────────────────────────────────────────────────────
@@ -747,7 +769,7 @@ const getActivitesArticlesConsommables = async (req, res) => {
 };
 
 module.exports = {
-  getEntreprise, upsertEntreprise,
+  getEntreprise, updateIdentiteClient,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
   hasActivites,
   getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
