@@ -2325,6 +2325,9 @@ const getClientContratPdf = async (req, res) => {
 const previewContratPdf = async (req, res) => {
   try {
     const { nom, email, telephone } = req.body;
+    // Lot 3, étape 2 : adresse (rue) saisie dans l'assistant. L'aperçu l'imprime ; le contrat DocuSeal en flux « modèle »
+    // (production) ne la porte qu'à partir du nouveau modèle (étape 7).
+    const adresse = typeof req.body.adresse === 'string' ? (req.body.adresse.replace(/\s+/g, ' ').trim().slice(0, 300) || null) : null;
     const nA = ((v) => (Number.isFinite(v) && v >= 0 ? v : 1))(parseInt(req.body.nbActivites));
     const nbLabos = parseInt(req.body.nbLabos) || 0;
     const nbGerants = parseInt(req.body.nbGerants) || 0;
@@ -2412,7 +2415,7 @@ const previewContratPdf = async (req, res) => {
     };
     const docu = await buildContratDocument({
       abonnementId: 0,
-      client: { nom: nom || 'Client', email, telephone },
+      client: { nom: nom || 'Client', email, telephone, adresse },
       config: { nbActivites: nbA, nbLabos: nbL, nbGerants: nbG, formuleActivites: formuleEff, composants: composantsContrat, domaineNom, domaineSlug },
       pricing,
       // Aperçu wizard : ne jamais bloquer la création de client sur le garde placeholders

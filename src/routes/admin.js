@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { list, getById, updateIdentite, create, update, remove } = require('../controllers/clientsController');
+const { list, getById, updateIdentite, controlerIdentite, create, update, remove } = require('../controllers/clientsController');
 const { getRapportsStats } = require('../controllers/adminRapportsController');
 const { authenticate, requireSuperAdmin } = require('../middleware/auth');
 
@@ -172,6 +172,8 @@ router.get('/rapports/stats', authenticate, requireSuperAdmin, getRapportsStats)
 router.get('/clients', authenticate, requireSuperAdmin, list);
 router.get('/clients/:id', authenticate, requireSuperAdmin, getById);
 router.post('/clients', authenticate, requireSuperAdmin, validateCreate, create);
+// Lot 3, étape 2 (docs/lot-3-spec.md §3) : contrôle de l'identité à la 1re étape de l'assistant (rien n'est écrit)
+router.post('/clients/identite/controle', authenticate, requireSuperAdmin, controlerIdentite);
 router.put('/clients/:id', authenticate, requireSuperAdmin, validateUpdate, update);
 // Lot 3, étape 1 (docs/lot-3-spec.md §2) : identité légale du client (raison sociale, MF, adresse…)
 router.put('/clients/:id/identite', authenticate, requireSuperAdmin, updateIdentite);
