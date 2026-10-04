@@ -316,15 +316,14 @@ const PWD = 'TestCompo2026!';
     ({ status, body } = await J(`/api/abonnements/client/${c1}?withPricing=1`));
     check(`withPricing après DELETE = ${attendu2112x20} (retour grille générale)`, approx(body?.pricing?.baseMensuel, attendu2112x20), String(body?.pricing?.baseMensuel));
 
-    // ── 9. contrat-preview avec composants ──────────────────────────────────────
+    // ── 9. Lot 3, étape 3 : plus de contrat (sans engagement) — aperçu et contrat client retirés ──────────────
     ({ status, body } = await J('/api/abonnements/contrat-preview', {
       method: 'POST',
       body: JSON.stringify({ nom: 'TEST-Compo', email: 'x@example.com', telephone: '20123456', domaineId: domId, composants: compos, formuleActivites: 'premium', montantOnboarding: 700, promotions: [] }),
     }));
-    check('contrat-preview (domaineId + composants) → 200 PDF', status === 200 && typeof body?.pdfBase64 === 'string' && Buffer.from(body.pdfBase64, 'base64').slice(0, 4).toString() === '%PDF', String(status));
+    check('contrat-preview retiré (lot 3) → 404', status === 404, String(status));
     r = await fetch(`${BASE}/api/abonnements/client/${c1}/contrat-pdf`, { headers: HA });
-    const buf = Buffer.from(await r.arrayBuffer());
-    check('contrat-pdf client (composants + domaine) → 200 PDF', r.status === 200 && buf.slice(0, 4).toString() === '%PDF' && buf.length > 2000, `${r.status} ${buf.length}`);
+    check('contrat-pdf client retiré (lot 3) → 404', r.status === 404, String(r.status));
 
     // ── 10. Domaine utilisé : composant utilisé → 409 ; DELETE → 409 ────────────
     ({ status, body } = await J(`/api/domaines/${domId}`, {

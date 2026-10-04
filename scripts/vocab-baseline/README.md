@@ -120,7 +120,8 @@ neuve de la base : `node scripts/manuel/base-locale.js copie` puis `DB_NAME=fich
   (`<compte>|<question>`, chacune avec SON compte) ; « Comment créer <mon composant> ? » par composant actif `activite` /
   `labo` du domaine (`composant|<question>`, compte A). Appels sans `voc` (repli de `executeToolCall`).
 - `recherches` : 6ᵉ question sans résultat, « zzz qwerty » (liste `disponibles`).
-- Garde R2.8.3 : `--reference` refuse d'écrire si `_migrations` contient 194, 195 ou 196 (retirée dans `develop` après D2).
+- Garde R2.8.3 (refus de `--reference` si `_migrations` contient 194, 195 ou 196) : RETIRÉE au lot 3, étape 3 (prévu par
+  la spec 2c §12.2 après D2, déjà en production).
 - `meta.empreintesBase.<titre rendu>` (relecture de l'étape O : 21 des 32 entrées de la base n'étaient captées par aucune
   recherche, et 4 n'apparaissaient nulle part, pas même dans `disponibles`) : chaque entrée active de `ai_knowledge_base`, dans
   l'ordre des `id`, est cherchée par son titre (titre en base rendu avec le vocabulaire du passage ; en restauration, le titre
@@ -275,3 +276,16 @@ Les champs `jours` et `jours_inventaire` des tableaux de bord valent `Math.round
 15:21 donnait 33 écarts « 15 → 16 » contre une référence de la nuit). La capture les masque en `⟨jours⟩`
 (`CLE_RELATIVE`), et les 33 valeurs de `restauration.json` ont été masquées par la même règle (le masquage est une
 fonction pure de la capture : cela équivaut à une recapture). Contrôle ensuite : IDENTIQUE.
+
+### Lot 3, étape 3 — plus de contrats (04/10/2026)
+
+Décision du client : LabFlow est sans engagement, plus de contrat DocuSeal à la création ni d'acte de résiliation à la
+suppression (l'avenant reste jusqu'à l'étape 4). Capture adaptée : les 4 comptes A, B, C, A2 sont créés en un seul
+passage (clé `emails.site.creation` : l'email « Bienvenue sur LabFlow — Activez votre compte » envoyé tout de suite) ;
+retirés : passes 1/2 et bascule du jeton DocuSeal, `soumission.creation.*`, `pricingFields.*`, contrats legacy de la
+création, résiliations à la suppression, `webhookContrat` ; `fixe.sansTerme.bienvenue` remplace les deux variantes avec
+et sans contrat. Contrôle avant recapture : 31 écarts, tous dus à l'étape 3 (étape « Contrat signé » du guide retirée,
+email de bienvenue, résiliations, contrats legacy, champs DocuSeal, `inviteSent` vrai dès la création), aucun
+inattendu ; comptes par clé emails 39 → 33, pdf 21 → 19, valeursContrat 11 → 3. Référence RECAPTURÉE le 04/10 vers
+15 h 20 (passage 1 `--reference`, passage 2 contrôle : IDENTIQUE). Hors restauration (hotellerie, ceramique, miroir) :
+code 0, aucune exception sans emploi. L'ancienne référence reste dans l'historique git.

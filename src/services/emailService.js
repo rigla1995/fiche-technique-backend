@@ -83,23 +83,12 @@ const sendInviteEmail = async ({ to, nom, token, role, voc: vocRecu }) => {
   return { success: true, id: data?.id };
 };
 
-const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 }) => {
+// Email de bienvenue envoyé DÈS la création du compte (lot 3, étape 3 : LabFlow est sans engagement, il n'y a plus
+// de contrat à signer ni de pièce jointe). Même sujet, même bouton, même délai de 48 h qu'avant.
+const sendWelcomeEmail = async ({ to, nom, token }) => {
   const activateUrl = `${APP_URL}/invite/${token}`;
-  const hasContract = !!contractPdfBase64;
-
-  // Sans pièce jointe (activation après signature DocuSeal) : pas de bloc « document joint ».
-  const intro = hasContract
-    ? `Nous avons le plaisir de vous accueillir sur <strong>${APP_NAME}</strong>. Votre contrat d'abonnement figure en pièce jointe au format PDF.<br>
-        Pour accéder à votre espace, il vous suffit d'activer votre compte et de définir votre mot de passe.`
-    : `Nous vous remercions pour la signature de votre contrat. Votre espace <strong>${APP_NAME}</strong> est désormais prêt.<br>
+  const intro = `Nous avons le plaisir de vous accueillir sur <strong>${APP_NAME}</strong>. Votre espace est prêt.<br>
         Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.`;
-
-  const contractBlock = hasContract ? `
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;">
-        <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">📎 Document joint</p>
-        <p style="margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;">Contrat d'abonnement — ${APP_NAME}</p>
-        <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">En activant votre compte, vous acceptez les termes de ce contrat.</p>
-      </div>` : '';
 
   const html = `
 <!DOCTYPE html>
@@ -116,7 +105,6 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
       <p style="margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;">
         ${intro}
       </p>
-      ${contractBlock}
       <div style="text-align:center;margin:0 0 28px;">
         <a href="${activateUrl}" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
           Activer mon compte
@@ -134,13 +122,8 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
 </body>
 </html>`;
 
-  const attachments = contractPdfBase64 ? [{
-    filename: `contrat-abonnement-${nom.replace(/\s+/g, '-').toLowerCase()}.pdf`,
-    content: contractPdfBase64,
-  }] : [];
-
   if (!process.env.RESEND_API_KEY) {
-    console.log(`[DEV] Welcome+contract email to ${to}: ${activateUrl}`);
+    console.log(`[DEV] Welcome email to ${to}: ${activateUrl}`);
     return { success: true, dev: true, activateUrl };
   }
 
@@ -149,7 +132,6 @@ const sendWelcomeWithContractEmail = async ({ to, nom, token, contractPdfBase64 
     to,
     subject: `Bienvenue sur ${APP_NAME} — Activez votre compte`,
     html,
-    attachments,
   });
 
   if (error) throw new Error(error.message);
@@ -743,4 +725,4 @@ const sendDemandeAccesRefusEmail = async ({ to, nom }) => {
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeWithContractEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail, sendBossRevealCode, sendDemandeAccesRefusEmail };
+module.exports = { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail, sendBossRevealCode, sendDemandeAccesRefusEmail };
