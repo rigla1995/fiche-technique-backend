@@ -14,7 +14,7 @@ const APP_NAME = process.env.APP_NAME || 'LabFlow';
 const BRAND_LOGO = `<img src="${APP_URL}/logo-email.png" alt="LabFlow" width="138" height="34" style="display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;" />`;
 
 // Vocabulaire du DESTINATAIRE (lot 2b, spec §5.6). Les 5 fonctions à terme
-// (sendInviteEmail, sendDocusealSigningEmail, sendAvenantEmail, sendRapportWithAttachment,
+// (sendInviteEmail, sendDocusealSigningEmail, sendSupplementValideEmail, sendRapportWithAttachment,
 // sendMessengerInviteEmail) reçoivent `voc` en CLÉ de leur objet d'arguments, et chaque appel
 // dans src/ la porte (contrôle statique : test/emailVoc.test.js). Sans elle, l'oubli est
 // journalisé et l'email part quand même, avec le vocabulaire par défaut : un email n'est
@@ -296,37 +296,39 @@ const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, t
   return { success: true, id: data?.id };
 };
 
-/**
- * Supplement validation email — serves as the amendment contract (avenant).
- * Includes the added capacity, full new pricing breakdown, and admin note.
- * Only sent when a supplement request is validated (not for other types).
- */
-const sendAvenantEmail = async ({
+// Lot 3, étape 4 : email de CONFIRMATION d'un ajout de capacité validé par l'équipe LabFlow (LabFlow est sans
+// engagement : plus d'avenant, plus de PDF). Option Acheteurs incluse (oubliée par l'ancien email d'avenant) ;
+// date du jour par défaut.
+const sendSupplementValideEmail = async ({
   to, nom, notesAdmin,
-  // Added supplements
-  nbActivitesAdded, nbLabosAdded, nbGerantsAdded,
-  // New config after supplement
-  nbActivites, nbLabos, nbGerants,
-  // New pricing breakdown
-  activiteCost, laboCost, gerantCost, newMensuel,
-  // Optional promo
-  promoApplied, effectifMensuel,
-  // Date
-  dateAvenant,
-  // PDF contract attachment (base64)
-  pdfBase64,
+  // Ajouts validés
+  nbActivitesAdded = 0, nbLabosAdded = 0, nbGerantsAdded = 0, acheteursCible = null,
+  // Configuration après l'ajout
+  nbActivites, nbLabos, nbGerants, nbAcheteurs = 0,
+  // Détail du mensuel après l'ajout
+  activiteCost, laboCost, gerantCost, acheteursCost = 0, newMensuel, ancienMensuel = null,
+  dateValidation,
   // Vocabulaire du destinataire (vocDuDestinataire)
   voc: vocRecu,
 }) => {
-  const voc = vocDuDestinataire(vocRecu, sendAvenantEmail);
+  const voc = vocDuDestinataire(vocRecu, sendSupplementValideEmail);
+  // Nom et note saisis : échappés (défaut relevé au lot 2b : texte inséré sans échappement dans le HTML).
+  const h = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const fmtDt = (n) => (n != null ? `${Number(n).toFixed(2)} DT` : '—');
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const fmtDate = (d) => new Date(d || Date.now()).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const addedParts = [
     nbActivitesAdded > 0 && `+${nbActivitesAdded} ${voc.nom('activite', nbActivitesAdded > 1)}`,
     nbLabosAdded > 0     && `+${nbLabosAdded} ${voc.nom('labo', nbLabosAdded > 1)}`,
     nbGerantsAdded > 0   && `+${nbGerantsAdded} ${voc.nom('gerant', nbGerantsAdded > 1)}`,
+    acheteursCible       && `Option ${voc.Court('acheteur', true)} : jusqu'à ${acheteursCible} ${voc.nom('acheteur', true)}`,
   ].filter(Boolean).join(' · ');
+
+  const ligne = (libelle, nb, cout) => `<tr style="border-bottom:1px solid #e2e8f0;">
+            <td style="padding:8px 0;color:#6b7280;">${libelle}</td>
+            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nb}</td>
+            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(cout)}</td>
+          </tr>`;
 
   const html = `
 <!DOCTYPE html>
@@ -338,15 +340,15 @@ const sendAvenantEmail = async ({
     <!-- Header -->
     <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
       ${BRAND_LOGO}
-      <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Contrat Avenant — Ajout de capacité</p>
+      <p style="margin:0;color:#c7d2fe;font-size:0.82rem;">Ajout de capacité validé</p>
     </div>
 
     <!-- Body -->
     <div style="padding:40px 48px;">
-      <h2 style="margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;">Bonjour ${nom},</h2>
+      <h2 style="margin:0 0 6px;color:#111827;font-size:1.1rem;font-weight:700;">Bonjour ${h(nom)},</h2>
       <p style="margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;">
-        Votre demande d'ajout de capacité a été <strong style="color:#16a34a;">validée</strong>.
-        Cet email constitue votre avenant de contrat daté du <strong>${fmtDate(dateAvenant)}</strong>.
+        Votre demande d'ajout de capacité a été <strong style="color:#16a34a;">validée</strong> le <strong>${fmtDate(dateValidation)}</strong>.
+        Elle est active dès maintenant dans votre espace.
       </p>
 
       <!-- Capacité ajoutée -->
@@ -357,37 +359,26 @@ const sendAvenantEmail = async ({
 
       <!-- Nouvelle configuration -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;">
-        <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre configuration après avenant</div>
+        <div style="font-size:0.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px;">Votre nouvelle configuration</div>
         <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
-          <tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">${voc.Pl('activite')}</td>
-            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nbActivites}</td>
-            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(activiteCost)}</td>
-          </tr>
-          ${nbLabos > 0 ? `<tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">${voc.Pl('labo')}</td>
-            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nbLabos}</td>
-            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(laboCost)}</td>
-          </tr>` : ''}
-          ${nbGerants > 0 ? `<tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:8px 0;color:#6b7280;">${voc.Pl('gerant')}</td>
-            <td style="padding:8px 0;text-align:right;font-weight:700;color:#111827;">${nbGerants}</td>
-            <td style="padding:8px 0;text-align:right;color:#4c1d95;font-weight:600;">${fmtDt(gerantCost)}</td>
+          ${ligne(voc.Pl('activite'), nbActivites, activiteCost)}
+          ${nbLabos > 0 ? ligne(voc.Pl('labo'), nbLabos, laboCost) : ''}
+          ${nbGerants > 0 ? ligne(voc.Pl('gerant'), nbGerants, gerantCost) : ''}
+          ${nbAcheteurs > 0 ? ligne(`Option ${voc.Court('acheteur', true)}`, `jusqu'à ${nbAcheteurs}`, acheteursCost) : ''}
+          ${ancienMensuel != null ? `<tr>
+            <td style="padding:12px 0 4px;color:#6b7280;" colspan="2">Mensuel avant l'ajout</td>
+            <td style="padding:12px 0 4px;text-align:right;color:#6b7280;">${fmtDt(ancienMensuel)}/mois</td>
           </tr>` : ''}
           <tr>
-            <td style="padding:12px 0 4px;font-weight:800;color:#1e40af;" colspan="2">Nouveau mensuel de base</td>
-            <td style="padding:12px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;">${fmtDt(newMensuel)}/mois</td>
+            <td style="padding:8px 0 4px;font-weight:800;color:#1e40af;" colspan="2">Nouveau mensuel de base</td>
+            <td style="padding:8px 0 4px;text-align:right;font-weight:900;color:#1e40af;font-size:1rem;">${fmtDt(newMensuel)}/mois</td>
           </tr>
-          ${promoApplied && effectifMensuel != null && effectifMensuel !== newMensuel ? `<tr>
-            <td style="padding:4px 0;font-size:0.78rem;color:#7c3aed;" colspan="2">🎉 Promotion appliquée</td>
-            <td style="padding:4px 0;text-align:right;font-weight:900;color:#7c3aed;font-size:1.05rem;">${fmtDt(effectifMensuel)}/mois</td>
-          </tr>` : ''}
         </table>
       </div>
 
       ${notesAdmin ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
-        <div style="font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Note de l'administration</div>
-        <div style="font-size:0.88rem;color:#1e3a5f;line-height:1.6;">${notesAdmin}</div>
+        <div style="font-size:0.72rem;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Note de l'équipe LabFlow</div>
+        <div style="font-size:0.88rem;color:#1e3a5f;line-height:1.6;">${h(notesAdmin)}</div>
       </div>` : ''}
 
       <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">
@@ -397,28 +388,22 @@ const sendAvenantEmail = async ({
 
     <!-- Footer -->
     <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 48px;text-align:center;">
-      <p style="margin:0;color:#94a3b8;font-size:0.75rem;">${APP_NAME} · Avenant du ${fmtDate(dateAvenant)}</p>
+      <p style="margin:0;color:#94a3b8;font-size:0.75rem;">${APP_NAME} · Ajout validé le ${fmtDate(dateValidation)}</p>
     </div>
   </div>
 </body>
 </html>`;
 
-  const attachments = pdfBase64 ? [{
-    filename: `avenant-${nom.replace(/\s+/g, '-').toLowerCase()}-${new Date(dateAvenant).toISOString().slice(0, 10)}.pdf`,
-    content: pdfBase64,
-  }] : [];
-
   if (!process.env.RESEND_API_KEY) {
-    console.log(`[DEV] Avenant email to ${to} (PDF attached: ${!!pdfBase64})`);
+    console.log(`[DEV] Supplement valide email to ${to} : ${addedParts}`);
     return { success: true, dev: true };
   }
 
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: `${APP_NAME} — Avenant validé : ${addedParts}`,
+    subject: `${APP_NAME} — Ajout de capacité validé : ${addedParts}`,
     html,
-    attachments,
   });
   if (error) throw new Error(error.message);
   return { success: true, id: data?.id };
@@ -725,4 +710,4 @@ const sendDemandeAccesRefusEmail = async ({ to, nom }) => {
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, sendAvenantEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail, sendBossRevealCode, sendDemandeAccesRefusEmail };
+module.exports = { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, sendSupplementValideEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail, sendBossRevealCode, sendDemandeAccesRefusEmail };

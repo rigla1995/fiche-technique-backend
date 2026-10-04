@@ -75,7 +75,28 @@
  *     `emails.site.webhookContrat` retiré, `persistes.webhook.contrat.statut` gardé ;
  *   - GARDÉS (code encore en place, retiré aux étapes 4 et 5) : demande de supplément et avenant DocuSeal, webhook
  *     d'avenant, emails fixes `signature.*` (sendDocusealSigningEmail), PDF directs du contrat, de l'avenant et de la
- *     résiliation (contractPdfService), `legacy.contrat` / `legacy.avenant` (pdfService), `avenantExtraFields`. */
+ *     résiliation (contractPdfService), `legacy.contrat` / `legacy.avenant` (pdfService), `avenantExtraFields`.
+ *
+ * Lot 3, étape 4 (suppléments sans avenant : LabFlow est sans engagement) :
+ *   - la demande de supplément du client (compte B) ne crée plus de soumission DocuSeal ni d'email de signature : la
+ *     capture S'ARRÊTE si elle en produit un (garde) ; retirées : `emails.site.demandeAvenantClient`,
+ *     `valeursContrat.soumission.demandeAvenant` (`valeursContrat` garde `avenantExtraFields.*`, non vide) ;
+ *   - la 2ᵉ demande n'a plus besoin de la bascule du jeton DocuSeal ; son traitement admin envoie l'email de
+ *     CONFIRMATION (sendSupplementValideEmail), sans PDF : `emails.site.traitementDemande` gardé (nouveau texte),
+ *     `pdf.site.traitementDemande.avenantLegacy` retiré (garde : aucun PDF) ; nouvelle clé
+ *     `messages.demandeDejaTraitee` : 2ᵉ validation de la même demande (409, texte nouveau) ;
+ *   - domaine miroir : le webhook d'avenant ne peut plus appliquer la capacité (aucune demande n'a de
+ *     `docuseal_submission_id`) ; il est remplacé par la VALIDATION ADMIN de la 1ʳᵉ demande (PUT
+ *     /api/abonnements/admin/support/:id, statut « validée ») : `emails.site.validationSupplement` (email de
+ *     confirmation, +1 de chaque composant), `persistes.validationSupplement.sse` et
+ *     `persistes.validationSupplement.composants` remplacent `persistes.webhook.avenant.sse|statut|composants`
+ *     (hors miroir : `persistes.validationSupplement.sse` = null, comme avant `webhook.avenant.sse`) ; le webhook
+ *     « contrat » et `persistes.webhook.contrat.statut` restent (retirés à l'étape 5) ;
+ *   - emails fixes : les 6 `fixe.avenant.*` (sendAvenantEmail, remplacée) deviennent les 6
+ *     `fixe.supplementValide.*` (sendSupplementValideEmail : tousPostes, labos0, gerants0, noteAdmin, acheteursSeuls,
+ *     sansOption ; la variante « promo » n'existe plus, l'email n'a plus de ligne de promotion) ;
+ *   - GARDÉS (retirés à l'étape 5) : `fixe.signature.*` (sendDocusealSigningEmail), `pdf.avenant.flux`
+ *     (buildAvenantDocument), `pdf.legacy.avenant` (generateAvenantPdf), `valeursContrat.avenantExtraFields.*`. */
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -903,17 +924,18 @@ async function principal() {
   await fixe('signature.avenant.1', () => emailService.sendDocusealSigningEmail({ to: EM, nom: 'Client Oracle', signingUrl: 'http://docuseal.oracle.invalid/s/oracle', avenant: { addActivites: 1, addLabos: 1, addGerants: 1, setAcheteurs: 10 }, voc }));
   await fixe('signature.avenant.2', () => emailService.sendDocusealSigningEmail({ to: EM, nom: 'Client Oracle', signingUrl: 'http://docuseal.oracle.invalid/s/oracle', avenant: { addActivites: 2, addLabos: 2, addGerants: 2, setAcheteurs: 50 }, voc }));
   await fixe('signature.resiliation', () => emailService.sendDocusealSigningEmail({ to: EM, nom: 'Client Oracle', signingUrl: 'http://docuseal.oracle.invalid/s/oracle', type: 'resiliation', voc }));
-  const avenantBase = {
-    to: EM, nom: 'Client Oracle', notesAdmin: null, nbActivitesAdded: 1, nbLabosAdded: 2, nbGerantsAdded: 1,
-    nbActivites: 3, nbLabos: 3, nbGerants: 2, activiteCost: 120, laboCost: 90, gerantCost: 40, newMensuel: 250,
-    promoApplied: false, effectifMensuel: 250, dateAvenant: '2030-06-15T09:30:00Z', pdfBase64: null, voc,
+  // Lot 3, étape 4 : email de confirmation d'un ajout de capacité validé (remplace l'email d'avenant, sans PDF).
+  const supplementBase = {
+    to: EM, nom: 'Client Oracle', notesAdmin: null, nbActivitesAdded: 1, nbLabosAdded: 2, nbGerantsAdded: 1, acheteursCible: 20,
+    nbActivites: 3, nbLabos: 3, nbGerants: 2, nbAcheteurs: 20, activiteCost: 120, laboCost: 90, gerantCost: 40, acheteursCost: 30,
+    newMensuel: 280, ancienMensuel: 190, dateValidation: '2030-06-15T09:30:00Z', voc,
   };
-  await fixe('avenant.tousPostes', () => emailService.sendAvenantEmail(avenantBase));
-  await fixe('avenant.labos0', () => emailService.sendAvenantEmail({ ...avenantBase, nbLabosAdded: 0, nbLabos: 0 }));
-  await fixe('avenant.gerants0', () => emailService.sendAvenantEmail({ ...avenantBase, nbGerantsAdded: 0, nbGerants: 0 }));
-  await fixe('avenant.promo', () => emailService.sendAvenantEmail({ ...avenantBase, promoApplied: true, effectifMensuel: 200 }));
-  await fixe('avenant.noteAdmin', () => emailService.sendAvenantEmail({ ...avenantBase, notesAdmin: N.notesAdmin }));
-  await fixe('avenant.acheteursSeuls', () => emailService.sendAvenantEmail({ ...avenantBase, nbActivitesAdded: 0, nbLabosAdded: 0, nbGerantsAdded: 0, acheteursCible: 20 }));
+  await fixe('supplementValide.tousPostes', () => emailService.sendSupplementValideEmail(supplementBase));
+  await fixe('supplementValide.labos0', () => emailService.sendSupplementValideEmail({ ...supplementBase, nbLabosAdded: 0, nbLabos: 0 }));
+  await fixe('supplementValide.gerants0', () => emailService.sendSupplementValideEmail({ ...supplementBase, nbGerantsAdded: 0, nbGerants: 0 }));
+  await fixe('supplementValide.noteAdmin', () => emailService.sendSupplementValideEmail({ ...supplementBase, notesAdmin: N.notesAdmin }));
+  await fixe('supplementValide.acheteursSeuls', () => emailService.sendSupplementValideEmail({ ...supplementBase, nbActivitesAdded: 0, nbLabosAdded: 0, nbGerantsAdded: 0 }));
+  await fixe('supplementValide.sansOption', () => emailService.sendSupplementValideEmail({ ...supplementBase, acheteursCible: null, nbAcheteurs: 0, acheteursCost: 0, ancienMensuel: null }));
   await fixe('rapport', () => emailService.sendRapportWithAttachment({ to: EM, clientNom: 'Client Oracle', buffer: Buffer.from('oracle'), filename: 'rapport-oracle.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', format: 'excel', voc }));
   await fixe('messenger', () => emailService.sendMessengerInviteEmail({ to: EM, clientNom: 'Client Oracle', inviteLink: 'https://m.me/labflow.oracle?ref=jeton-fixe', appName: 'LabFlow', voc }));
   // Les 6 emails sans terme (preuve qu'ils ne bougent pas). Lot 3, étape 3 : un seul email de bienvenue, sans contrat
@@ -1119,48 +1141,47 @@ async function principal() {
   C.persistes['C.commandeAnnuleeParSuppression'] = (await CA.get(`/api/acheteurs/commandes/${cmd2.id}`)).body;
   C.persistes['C.commandeAnnuleeParVendeur'] = (await CA.get(`/api/acheteurs/commandes/${cmd1.id}`)).body;
 
-  // ── Sites d'appel admin et demandes d'avenant ───────────────────────────────────────────
-  // Demande d'avenant du client, DocuSeal configuré → soumission + email de signature
+  // ── Sites d'appel admin et demandes de supplément ───────────────────────────────────────
+  // Lot 3, étape 4 (plus d'avenant) : la demande du client attend la validation de l'équipe LabFlow — aucune
+  // soumission DocuSeal, aucun email (DocuSeal factice pourtant configuré) : sinon la capture s'arrête.
   const fDem1 = await fenetre(async () => BA.post('/api/abonnements/support', { type: 'supplement', nbActivitesSupp: 1, nbLabosSupp: 1, nbGerantsSupp: 1 }));
-  const dem1 = exiger(fDem1.resultat, 201, 'demande d\'avenant (DocuSeal)');
-  C.emails['site.demandeAvenantClient'] = emailsDe(fDem1);
-  C.valeursContrat['soumission.demandeAvenant'] = fDem1.docuseal;
-  // Demande sans DocuSeal, puis traitement admin → email d'avenant + PDF legacy
-  const jetonDocuseal = process.env.DOCUSEAL_API_TOKEN;
-  delete process.env.DOCUSEAL_API_TOKEN;
-  let dem2;
-  try {
-    dem2 = exiger(await BA.post('/api/abonnements/support', { type: 'supplement', nbLabosSupp: 1 }), 201, 'demande d\'avenant (sans DocuSeal)');
-    const fTraiter = await fenetre(async () => A.put(`/api/abonnements/admin/support/${dem2.id}`, { statut: 'validée', notesAdmin: N.notesAdmin }));
-    exiger(fTraiter.resultat, 200, 'traitement de la demande (admin)');
-    C.emails['site.traitementDemande'] = emailsDe(fTraiter);
-    C.pdf['site.traitementDemande.avenantLegacy'] = pdfsDe(fTraiter);
-    C.persistes['sse.traitementDemande'] = fTraiter.sse;
-  } finally {
-    process.env.DOCUSEAL_API_TOKEN = jetonDocuseal;
+  const dem1 = exiger(fDem1.resultat, 201, 'demande de supplément');
+  if (fDem1.docuseal.length || fDem1.emails.length) {
+    throw new Error(`demande de supplément : ${fDem1.docuseal.length} appel(s) DocuSeal et ${fDem1.emails.length} email(s), aucun attendu (lot 3, étape 4)`);
   }
-  // Webhook DocuSeal signé (miroir) : avenant (applyComposants add, notification) puis contrat. Lot 3, étape 3 : le
-  // webhook « contrat » n'envoie plus d'email de bienvenue (parti dès la création, invite_sent déjà vrai) ; seul son
-  // statut est capté (branche retirée à une étape suivante).
+  // 2ᵉ demande, puis traitement admin → email de confirmation (sans PDF) ; 2ᵉ validation → 409
+  const dem2 = exiger(await BA.post('/api/abonnements/support', { type: 'supplement', nbLabosSupp: 1 }), 201, 'demande de supplément (labo)');
+  const fTraiter = await fenetre(async () => A.put(`/api/abonnements/admin/support/${dem2.id}`, { statut: 'validée', notesAdmin: N.notesAdmin }));
+  exiger(fTraiter.resultat, 200, 'traitement de la demande (admin)');
+  if (fTraiter.pdfs.length || fTraiter.docuseal.length) {
+    throw new Error(`traitement de la demande : ${fTraiter.pdfs.length} PDF et ${fTraiter.docuseal.length} appel(s) DocuSeal, aucun attendu (lot 3, étape 4)`);
+  }
+  C.emails['site.traitementDemande'] = emailsDe(fTraiter);
+  C.persistes['sse.traitementDemande'] = fTraiter.sse;
+  const fDeja = await fenetre(async () => A.put(`/api/abonnements/admin/support/${dem2.id}`, { statut: 'validée' }));
+  exiger(fDeja.resultat, 409, '2e validation de la demande (admin)');
+  if (fDeja.emails.length) throw new Error(`2e validation : ${fDeja.emails.length} email(s), aucun attendu`);
+  C.messages['demandeDejaTraitee'] = { status: fDeja.resultat.status, body: fDeja.resultat.body };
+  // Miroir : validation admin de la 1ʳᵉ demande (+1 de chaque composant ; applyComposants add, notification, email de
+  // confirmation) — remplace le webhook d'avenant (lot 3, étape 4). Webhook « contrat » : son statut seulement (lot 3,
+  // étape 3 : plus d'email de bienvenue au webhook ; branche retirée à l'étape 5).
   if (DOMAINE === 'miroir') {
-    const autres = await pool.query(`SELECT COUNT(*)::int AS n FROM support_demandes WHERE docuseal_submission_id = '1' AND statut = 'en_attente'`);
-    if (autres.rows[0].n !== 1) throw new Error(`webhook : ${autres.rows[0].n} demande(s) en attente avec la soumission 1 (1 attendue)`);
-    const webhook = (corps) => fetch(`${BASE}/api/webhooks/docuseal`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Docuseal-Secret': process.env.DOCUSEAL_WEBHOOK_SECRET }, body: JSON.stringify(corps),
-    });
-    const fWh1 = await fenetre(async () => (await webhook({ event_type: 'form.completed', data: { submission_id: 1 } })).status);
-    const fWh2 = await fenetre(async () => (await webhook({ event_type: 'form.completed', data: { email: cA.email, completed_at: '2030-06-15T09:30:00Z' } })).status);
-    C.persistes['webhook.avenant.sse'] = fWh1.sse;
-    C.persistes['webhook.avenant.statut'] = fWh1.resultat;
-    C.persistes['webhook.avenant.composants'] = (await pool.query(
+    const fVal = await fenetre(async () => A.put(`/api/abonnements/admin/support/${dem1.id}`, { statut: 'validée' }));
+    exiger(fVal.resultat, 200, 'validation admin de la demande de supplément (miroir)');
+    C.emails['site.validationSupplement'] = emailsDe(fVal);
+    C.persistes['validationSupplement.sse'] = fVal.sse;
+    C.persistes['validationSupplement.composants'] = (await pool.query(
       `SELECT dc.code, dc.libelle, dc.libelle_pluriel, dc.type_technique, acc.nb FROM abonnement_config_composants acc
          JOIN domaine_composants dc ON dc.id = acc.composant_id JOIN abonnements a ON a.id = acc.abonnement_id
         WHERE a.client_id = $1 ORDER BY dc.type_technique, dc.code`, [cB.id])).rows;
+    const webhook = (corps) => fetch(`${BASE}/api/webhooks/docuseal`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Docuseal-Secret': process.env.DOCUSEAL_WEBHOOK_SECRET }, body: JSON.stringify(corps),
+    });
+    const fWh2 = await fenetre(async () => (await webhook({ event_type: 'form.completed', data: { email: cA.email, completed_at: '2030-06-15T09:30:00Z' } })).status);
     C.persistes['webhook.contrat.statut'] = fWh2.resultat;
   } else {
-    C.persistes['webhook.avenant.sse'] = null;
+    C.persistes['validationSupplement.sse'] = null;
   }
-  void dem1;
   // Invitation Messenger (admin), confirmation d'invitation (admin, compte A')
   const fMsgr = await fenetre(async () => A.post(`/api/ai-assistant/config/${cB.id}/messenger-invite`, {}));
   exiger(fMsgr.resultat, 200, 'invitation Messenger');

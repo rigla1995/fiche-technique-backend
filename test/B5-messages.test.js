@@ -2,7 +2,8 @@
 // Sans base de données : le pool, l'envoi d'emails et le SSE sont remplacés par des faux.
 //   node --test test/B5-messages.test.js
 //
-// 1. quotaService : LIBELLES balisés ; message rendu par défaut identique à l'existant, terme du domaine sinon.
+// 1. quotaService : LIBELLES balisés ; message rendu par défaut identique à l'existant, terme du domaine sinon
+//    (lot 3, étape 4 : « Demandez un ajout de capacité pour en ajouter. », plus d'avenant).
 // 2. configComposantsService.validerComposition : les 4 messages balisés, rendus par défaut à l'identique.
 // 3. Motif « Acheteur supprimé du carnet » (acheteursController.remove) : rendu À L'ÉCRITURE avec req.voc,
 //    jamais de balise en base (I7), accord du participe.
@@ -74,17 +75,21 @@ const quota = async (type, max, actuel) => {
   return r;
 };
 
-test('quota : message par défaut identique à l\'existant (pluriel > 1 inchangé)', async () => {
+// Lot 3, étape 4 : plus d'avenant (LabFlow est sans engagement) — la fin du message devient « Demandez un ajout de
+// capacité pour en ajouter. » (au lieu de « Demandez un avenant… »), en texte fixe : « supplément » est, dans le lexique,
+// l'extra vendu avec un produit (« option » en Céramique), pas un ajout à l'abonnement. Le reste du message est inchangé.
+test('quota : message par défaut identique à l\'existant (pluriel > 1 inchangé), « ajout de capacité » au lieu d\'« avenant »', async () => {
   const attendus = [
-    ['labo', 2, 'Limite atteinte : votre formule comprend 2 labos — quota entièrement utilisé (2/2). Demandez un avenant pour en ajouter.'],
-    ['activite', 1, 'Limite atteinte : votre formule comprend 1 activité — quota entièrement utilisé (1/1). Demandez un avenant pour en ajouter.'],
-    ['gerant', 3, 'Limite atteinte : votre formule comprend 3 gérants — quota entièrement utilisé (3/3). Demandez un avenant pour en ajouter.'],
+    ['labo', 2, 'Limite atteinte : votre formule comprend 2 labos — quota entièrement utilisé (2/2). Demandez un ajout de capacité pour en ajouter.'],
+    ['activite', 1, 'Limite atteinte : votre formule comprend 1 activité — quota entièrement utilisé (1/1). Demandez un ajout de capacité pour en ajouter.'],
+    ['gerant', 3, 'Limite atteinte : votre formule comprend 3 gérants — quota entièrement utilisé (3/3). Demandez un ajout de capacité pour en ajouter.'],
   ];
   for (const [type, max, texte] of attendus) {
     const r = await quota(type, max, max);
     assert.equal(r.code, 'LIMITE_ATTEINTE');
     assert.equal(r.type, type);
     assert.equal(rendre(vocabDefaut, r.message), texte);
+    assert.doesNotMatch(r.message, /avenant/i, 'lot 3, étape 4 : plus d\'avenant');
   }
 });
 
@@ -94,6 +99,10 @@ test('quota : terme du domaine au rendu (Hôtellerie, Céramique, miroir)', asyn
   assert.match(rendre(VOC.ceramique, r.message), /comprend 2 sites de production —/);
   const g = await quota('gerant', 1, 1);
   assert.match(rendre(VOC.miroir, g.message), /comprend 1 animatrice —/);
+  // Lot 3, étape 4 : fin du message en texte fixe, identique dans tous les domaines (aucun terme du lexique)
+  for (const texte of [rendre(VOC.hotellerie, r.message), rendre(VOC.ceramique, r.message), rendre(VOC.miroir, g.message)]) {
+    assert.match(texte, /\. Demandez un ajout de capacité pour en ajouter\.$/);
+  }
   assert.equal(await quota('labo', 3, 2), null);
 });
 

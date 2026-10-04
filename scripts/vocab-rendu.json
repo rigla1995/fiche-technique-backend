@@ -16,7 +16,10 @@
     "fichier": "src/services/quotaService.js",
     "genre": "valeurs-objet",
     "nom": "LIBELLES",
-    "cles": ["sg", "pl"],
+    "cles": [
+      "sg",
+      "pl"
+    ],
     "justification": "Libellés sg / pl de LIBELLES : assemblés dans le `message` du quota, renvoyé tel quel en 409 (spec lot 2b §3.2 E2, §6.6 : une balise littérale par entrée)."
   },
   {

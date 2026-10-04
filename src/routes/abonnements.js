@@ -659,19 +659,6 @@ router.put('/admin/demandes/:id', authenticate, requireSuperAdmin, demande.trait
  *       200:
  *         description: Tous les tickets
  *
- * /api/abonnements/admin/support/{id}/avenant-preview:
- *   get:
- *     tags: [Support]
- *     summary: Prévisualiser l'avenant contractuel pour un ticket (super_admin)
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Aperçu avenant
- *
  * /api/abonnements/admin/support/{id}:
  *   put:
  *     tags: [Support]
@@ -696,9 +683,7 @@ router.put('/admin/demandes/:id', authenticate, requireSuperAdmin, demande.trait
 router.get('/support', authenticate, requireClient, support.listMine);
 router.post('/support', authenticate, requireClient, support.create);
 router.delete('/support/:id', authenticate, requireClient, support.deleteMine);
-router.get('/support/:id/contrat-signe', authenticate, requireClient, support.getContratSigne);
 router.get('/admin/support', authenticate, requireSuperAdmin, support.listAll);
-router.get('/admin/support/:id/avenant-preview', authenticate, requireSuperAdmin, support.previewAvenant);
 router.put('/admin/support/:id', authenticate, requireSuperAdmin, support.traiter);
 
 module.exports = router;

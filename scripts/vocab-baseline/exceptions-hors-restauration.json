@@ -32,27 +32,6 @@
  },
  {
   "cle": "valeursContrat",
-  "chemin": "/name$",
-  "texte": "Nb activités",
-  "type": "code-api",
-  "justification": "Nom de champ DocuSeal (clientsController.js:68-72, contractPdfService.js:122-127, avenantExtraFields) : un nom traduit serait retiré EN SILENCE par le nouvel essai après un 422 de DocuSeal (spec §6.8) ; inchangé (§8.2 « les noms de champs »)."
- },
- {
-  "cle": "valeursContrat",
-  "chemin": "/name$",
-  "texte": "Nb labos",
-  "type": "code-api",
-  "justification": "Nom de champ DocuSeal (clientsController.js:68-72, contractPdfService.js:122-127, avenantExtraFields) : un nom traduit serait retiré EN SILENCE par le nouvel essai après un 422 de DocuSeal (spec §6.8) ; inchangé (§8.2 « les noms de champs »)."
- },
- {
-  "cle": "valeursContrat",
-  "chemin": "/name$",
-  "texte": "Nb gérants",
-  "type": "code-api",
-  "justification": "Nom de champ DocuSeal (clientsController.js:68-72, contractPdfService.js:122-127, avenantExtraFields) : un nom traduit serait retiré EN SILENCE par le nouvel essai après un 422 de DocuSeal (spec §6.8) ; inchangé (§8.2 « les noms de champs »)."
- },
- {
-  "cle": "valeursContrat",
   "chemin": "/default_value$",
   "texte": "Activité Premium",
   "type": "formule",
