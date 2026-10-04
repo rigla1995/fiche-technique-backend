@@ -307,4 +307,39 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { list, create, update, remove };
+// POST /api/abonnements/gerants/:id/inviter — renvoie l'invitation d'un gérant NON activé du compte (48 h ré-armées).
+// Comble le trou de /auth/invite/resend (réservé au super admin) : le client gère SES gérants, comme ses acheteurs.
+const inviter = async (req, res) => {
+  const { id } = req.params;
+  if (!/^\d{1,9}$/.test(String(id))) return res.status(404).json({ message: '[[Nom:gerant]] introuvable' });
+  try {
+    const own = await pool.query(
+      `SELECT id, nom, email, activated_at FROM utilisateurs WHERE id = $1 AND role = 'gerant' AND gerant_parent_id = $2`,
+      [id, req.user.id]
+    );
+    if (own.rows.length === 0) return res.status(404).json({ message: '[[Nom:gerant]] introuvable' });
+    const g = own.rows[0];
+    if (g.activated_at) return res.status(409).json({ message: 'Le compte de [[ce:gerant]] est déjà activé' });
+
+    const token = generateInviteToken();
+    const expires = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    await pool.query(
+      `UPDATE utilisateurs SET invite_token = $1, invite_token_expires_at = $2, updated_at = NOW()
+        WHERE id = $3 AND role = 'gerant' AND gerant_parent_id = $4 AND activated_at IS NULL`,
+      [token, expires, g.id, req.user.id]
+    );
+    // Un échec d'envoi ne doit pas produire un 5xx (l'écran redirige les 500 vers la page d'erreur) : 502, à réessayer.
+    try {
+      await sendInviteEmail({ to: g.email, nom: g.nom, token, role: 'gerant', voc: req.voc });
+    } catch (e) {
+      console.error('Invite gérant (renvoi):', e.message);
+      return res.status(502).json({ message: "L'invitation n'a pas pu être envoyée, réessayez dans un instant" });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { list, create, update, remove, inviter };

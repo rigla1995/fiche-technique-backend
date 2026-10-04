@@ -4499,5 +4499,64 @@
     "apres": null,
     "type": "retire",
     "justification": "Lot 3, étape 5 — code DocuSeal mort retiré (décision écrite du client du 04/10/2026, « sans engagement » : plus de contrat, d'avenant ni de résiliation) : chaîne de verifyDocusealSignature (en-têtes et signature du webhook DocuSeal), supprimée avec le webhook ; la signature Meta (Messenger) reste."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": null,
+    "apres": "Gérant introuvable",
+    "type": "remplace",
+    "justification": "Correctif du 04/10/2026 (demande écrite du client) — renvoi de l'invitation d'un gérant par le client propriétaire : message VISIBLE de la nouvelle route POST /api/abonnements/gerants/:id/inviter (garde requireClientOwner), qui remplace pour le client l'appel à /auth/invite/resend, réservé au super admin (403). Écrit avec les balises du vocabulaire.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": null,
+    "apres": "Le compte de ce gérant est déjà activé",
+    "type": "remplace",
+    "justification": "Correctif du 04/10/2026 (demande écrite du client) — renvoi de l'invitation d'un gérant par le client propriétaire : message VISIBLE de la nouvelle route POST /api/abonnements/gerants/:id/inviter (garde requireClientOwner), qui remplace pour le client l'appel à /auth/invite/resend, réservé au super admin (403). Écrit avec les balises du vocabulaire."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": null,
+    "apres": "L'invitation n'a pas pu être envoyée, réessayez dans un instant",
+    "type": "remplace",
+    "justification": "Correctif du 04/10/2026 (demande écrite du client) — renvoi de l'invitation d'un gérant par le client propriétaire : message VISIBLE de la nouvelle route POST /api/abonnements/gerants/:id/inviter (garde requireClientOwner), qui remplace pour le client l'appel à /auth/invite/resend, réservé au super admin (403). Écrit avec les balises du vocabulaire."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": null,
+    "apres": "Erreur serveur",
+    "type": "remplace",
+    "justification": "Correctif du 04/10/2026 (demande écrite du client) — renvoi de l'invitation d'un gérant par le client propriétaire : message VISIBLE de la nouvelle route POST /api/abonnements/gerants/:id/inviter (garde requireClientOwner), qui remplace pour le client l'appel à /auth/invite/resend, réservé au super admin (403). Écrit avec les balises du vocabulaire."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'gerant'",
+    "type": "discriminant",
+    "justification": "Correctif du 04/10/2026 — renvoi de l'invitation d'un gérant par le client propriétaire : chaîne technique jamais affichée (code SQL, rôle, chemin de route) de la nouvelle route POST /api/abonnements/gerants/:id/inviter.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": null,
+    "apres": "gerant",
+    "type": "discriminant",
+    "justification": "Correctif du 04/10/2026 — renvoi de l'invitation d'un gérant par le client propriétaire : chaîne technique jamais affichée (code SQL, rôle, chemin de route) de la nouvelle route POST /api/abonnements/gerants/:id/inviter."
+  },
+  {
+    "fichier": "src/routes/abonnements.js",
+    "avant": null,
+    "apres": "/gerants/:id/inviter",
+    "type": "discriminant",
+    "justification": "Correctif du 04/10/2026 — renvoi de l'invitation d'un gérant par le client propriétaire : chaîne technique jamais affichée (code SQL, rôle, chemin de route) de la nouvelle route POST /api/abonnements/gerants/:id/inviter."
+  },
+  {
+    "fichier": "src/controllers/gerantController.js",
+    "avant": "Le compte de ce gérant est déjà activé",
+    "apres": "Le compte de ce gérant est déjà activé",
+    "type": "non-repliable",
+    "mode": "accords",
+    "justification": "Signalement d'accord à tort : « activé » s'accorde avec « Le compte » (masculin fixe), pas avec le terme rendu par [[ce:gerant]]. Rendu miroir juste : « Le compte de cette animatrice est déjà activé ». Même cas que le message des acheteurs (B5.json)."
   }
 ]
