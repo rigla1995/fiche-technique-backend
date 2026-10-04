@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, requireSuperAdmin, requireClient, requireClientOrGerant } = require('../middleware/auth');
+const { authenticate, requireSuperAdmin, requireClient, requireClientOrGerant, requireClientOwner } = require('../middleware/auth');
 const ab = require('../controllers/abonnementController');
 const gerant = require('../controllers/gerantController');
 const demande = require('../controllers/demandeController');
@@ -546,11 +546,34 @@ router.get('/client/:clientId/supplement-pricing', authenticate, requireSuperAdm
  *     responses:
  *       200:
  *         description: Gérant supprimé
+ *
+ * /api/abonnements/gerants/{id}/inviter:
+ *   post:
+ *     tags: [Gérant]
+ *     summary: Renvoyer l'invitation d'un gérant non activé (client propriétaire du compte, ses gérants seulement)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Invitation renvoyée (lien valable 48 h)
+ *       403:
+ *         description: Réservé au compte client (un gérant ou un admin est refusé)
+ *       404:
+ *         description: Gérant introuvable sur ce compte
+ *       409:
+ *         description: Compte du gérant déjà activé
+ *       502:
+ *         description: L'email n'a pas pu être envoyé
  */
 router.get('/gerants', authenticate, requireClient, gerant.list);
 router.post('/gerants', authenticate, requireClient, gerant.create);
 router.put('/gerants/:id', authenticate, requireClient, gerant.update);
 router.delete('/gerants/:id', authenticate, requireClient, gerant.remove);
+// Renvoi de l'invitation : le client propriétaire seulement (ni gérant, ni admin — l'admin garde /auth/invite/resend).
+router.post('/gerants/:id/inviter', authenticate, requireClientOwner, gerant.inviter);
 
 /**
  * @openapi

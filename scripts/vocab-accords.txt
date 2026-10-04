@@ -2,7 +2,7 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 491 unité(s), 38 fichier(s).
+# 494 unité(s), 38 fichier(s).
 
 src/controllers/abonnementController.js
   l. 1577
@@ -330,6 +330,15 @@ src/controllers/gerantController.js
   l. 300
     défaut : Gérant introuvable
     miroir : Animatrice introuvable
+  l. 314
+    défaut : Gérant introuvable
+    miroir : Animatrice introuvable
+  l. 320
+    défaut : Gérant introuvable
+    miroir : Animatrice introuvable
+  l. 322
+    défaut : Le compte de ce gérant est déjà activé
+    miroir : Le compte de cette animatrice est déjà activé
 
 src/controllers/gerantDashboardController.js
   l. 43
