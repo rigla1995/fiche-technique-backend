@@ -27,7 +27,7 @@ const path = require('path');
 const pool = require('../src/config/database');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { sendWelcomeWithContractEmail, sendAiAgentInviteEmail } = require('../src/services/emailService');
+const { sendWelcomeEmail, sendAiAgentInviteEmail } = require('../src/services/emailService');
 
 // ─── Auto-apply migration 078 if domaines_activite doesn't exist ──────────────
 async function ensureMigration078() {
@@ -600,7 +600,7 @@ async function main() {
       : `[Configurer TELEGRAM_BOT_TOKEN pour générer le lien]`;
 
     try {
-      await sendWelcomeWithContractEmail({ to: EMAIL, nom: NOM, token: inviteToken });
+      await sendWelcomeEmail({ to: EMAIL, nom: NOM, token: inviteToken });
       console.log('Email de bienvenue envoyé.');
     } catch (e) {
       console.warn('Email bienvenue (skipped):', e.message);

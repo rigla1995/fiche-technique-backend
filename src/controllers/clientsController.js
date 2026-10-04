@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const {
-  createAbonnement, insertPromoForAbonnement, computeEffectivePricing,
+  createAbonnement, insertPromoForAbonnement,
   recalcPaiementsEnAttente, remapperComposants, loadConfigComplete,
 } = require('./abonnementController');
 const {
@@ -9,137 +9,9 @@ const {
   applyComposants, invaliderProfilApresCommit, listComposantsConfig,
 } = require('../services/configComposantsService');
 const { getProfil, getDomaineDefautId } = require('../services/domaineProfilService');
-const { vocabDefaut, vocabDuDomaine } = require('../utils/vocabCompte');
 const { oublierConversationsIA } = require('../services/clientConfigService');
-const { generateInviteToken, sendWelcomeWithContractEmail, sendDocusealSigningEmail } = require('../services/emailService');
-const { generateContratPdf } = require('../services/pdfService');
-const {
-  createContractSubmission, createSubmission, createSubmissionFromPdf,
-  isConfigured: docusealConfigured, isConfiguredPdf: docusealPdfConfigured,
-} = require('../services/docusealService');
-const { buildContratDocument, buildResiliationDocument } = require('../services/contractPdfService');
+const { generateInviteToken, sendWelcomeEmail } = require('../services/emailService');
 const { lireIdentite, nomAffiche, identiteComplete, mapIdentite } = require('../utils/identite');
-
-// Formatage pour les champs Docuseal
-const fmtDtC = (n) => (n != null ? `${Math.round(Number(n))} DT` : '—');
-const fmtDateC = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '';
-
-// Construit les champs promo du contrat à partir du détail tarifaire effectif.
-// Retourne { montantOnboarding, montantMensuel, extraFields } pour la soumission Docuseal.
-// `domaineNom` (lot 1a) : champ « Domaine » du flux template (filtré par le retry 422
-// tant que le template DocuSeal ne le porte pas — cf docuseal-templates/CHAMPS.md).
-// `voc` (lot 2b, spec §8.2) : vocabulaire du compte, pour la VALEUR « Option Acheteurs » ; les noms de
-// champs DocuSeal ne changent pas (un nom traduit serait retiré en silence par le retry 422).
-const buildContractPricingFields = (pricing, domaineNom = null, voc = vocabDefaut) => {
-  if (!pricing) return { montantOnboarding: null, montantMensuel: null, extraFields: [] };
-  const { baseOnboarding, effOnboarding, baseMensuel, effMensuel, promoMens, promoOb, promoMonths, baseResumeDate, hasPromo } = pricing;
-
-  let detail;
-  if (!hasPromo) {
-    detail = 'Aucune promotion — tarifs standard.';
-  } else {
-    const parts = [];
-    if (promoOb) {
-      parts.push(effOnboarding === 0
-        ? "Frais d'activation offerts (au lieu de " + fmtDtC(baseOnboarding) + ')'
-        : `Frais d'activation : ${fmtDtC(effOnboarding)} au lieu de ${fmtDtC(baseOnboarding)}`);
-    }
-    if (promoMens) {
-      let m = effMensuel === 0
-        ? `Mensualité offerte (au lieu de ${fmtDtC(baseMensuel)})`
-        : `Mensualité : ${fmtDtC(effMensuel)} au lieu de ${fmtDtC(baseMensuel)}`;
-      if (promoMonths) m += ` pendant ${promoMonths} mois`;
-      if (baseResumeDate) m += `, puis ${fmtDtC(baseMensuel)} à partir du ${fmtDateC(baseResumeDate)}`;
-      parts.push(m);
-    }
-    detail = parts.join('  ·  ');
-  }
-
-  // Formule d'activités + option Acheteurs : nouvelles lignes du contrat (le
-  // template Docuseal doit porter les champs éponymes, cf docuseal-templates/CHAMPS.md ;
-  // createSubmission ignore proprement les champs absents d'un template en retard).
-  // Formule : Basique/Premium. Défense — si la formule manque alors qu'il y a des
-  // activités, on retombe sur « Activité Premium » (aligné sur buildContratDocument),
-  // pour ne jamais envoyer un champ Formule vide au contrat.
-  const aDesActivites = (pricing.nbActivites ?? 1) >= 1;
-  const formuleLabel = pricing.formuleActivites
-    ? (pricing.formuleActivites === 'basique' ? 'Activité Basique' : 'Activité Premium')
-    : (aDesActivites ? 'Activité Premium' : '');
-  const acheteursLabel = pricing.palierAcheteurs
-    ? `Palier jusqu'à ${pricing.palierAcheteurs} ${voc.nom('acheteur', true)}`
-    : '';
-
-  return {
-    montantOnboarding: effOnboarding,
-    montantMensuel: effMensuel,
-    extraFields: [
-      { name: 'Formule', default_value: formuleLabel },
-      { name: 'Option Acheteurs', default_value: acheteursLabel },
-      { name: 'Détail promotion', default_value: detail },
-      { name: 'Mensualité après promo', default_value: hasPromo && promoMens ? fmtDtC(baseMensuel) : '' },
-      { name: 'Reprise prix de base', default_value: baseResumeDate ? fmtDateC(baseResumeDate) : '' },
-      { name: 'Domaine', default_value: domaineNom || '' },
-    ],
-  };
-};
-
-// Soumission Docuseal du contrat : d'abord le flux « PDF rempli » (document généré
-// par client, prestataire pré-signé — createSubmissionFromPdf), avec REPLI sur le
-// flux template historique si la génération ou l'API échoue, ou si seul le template
-// est configuré. Retourne { submissionId, signingUrl } dans les deux cas.
-// voc : vocabulaire du compte créé (vocabDuDomaine, lot 2b spec §8.2) — valeurs du document et des champs.
-const submitContratForSignature = async ({ aboId, pricing, nom, email, telephone, adresse, config, montantOnboarding, voc = vocabDefaut }) => {
-  if (docusealPdfConfigured() && pricing) {
-    try {
-      const docu = await buildContratDocument({
-        abonnementId: aboId,
-        client: { nom, email, telephone, adresse },
-        config,
-        pricing,
-        montantOnboarding,
-        voc,
-      });
-      return await createSubmissionFromPdf({
-        pdfBase64: docu.base64,
-        documentName: docu.documentName,
-        clientName: nom,
-        clientEmail: email,
-      });
-    } catch (e) {
-      console.error('[docuseal] flux PDF rempli échoué, repli sur le template:', e.message);
-    }
-  }
-  const pf = buildContractPricingFields(pricing, config?.domaineNom || null, voc);
-  return createContractSubmission({
-    clientName: nom,
-    clientEmail: email,
-    nbActivites:       config.nbActivites ?? 1,
-    nbLabos:           config.nbLabos ?? 0,
-    nbGerants:         config.nbGerants ?? 0,
-    montantOnboarding: pf.montantOnboarding ?? montantOnboarding ?? null,
-    montantMensuel:    pf.montantMensuel ?? null,
-    extraFields:       pf.extraFields,
-  });
-};
-
-// Acte de résiliation : même logique PDF rempli → repli template.
-const submitResiliationForSignature = async ({ id, nom, email }) => {
-  const clientName = nom || 'Client';
-  if (docusealPdfConfigured()) {
-    try {
-      const docu = await buildResiliationDocument({ clientId: id, client: { nom: clientName, email } });
-      return await createSubmissionFromPdf({
-        pdfBase64: docu.base64,
-        documentName: docu.documentName,
-        clientName,
-        clientEmail: email,
-      });
-    } catch (e) {
-      console.error('[resiliation] flux PDF rempli échoué, repli sur le template:', e.message);
-    }
-  }
-  return createSubmission({ type: 'resiliation', clientName, clientEmail: email });
-};
 
 // Message d'un doublon refusé par la base (23505), selon la contrainte réelle (lot 3) : avant, toute collision
 // répondait « email déjà utilisé ». utilisateurs_email_key : vu en production le 04/10.
@@ -378,7 +250,6 @@ const create = async (req, res) => {
   // Formule des activités : basique | premium (défaut premium quand il y a des activités)
   const formuleActivites = req.body.formuleActivites === 'basique' ? 'basique' : 'premium';
   const montantOnboardingConfig = req.body.montantOnboarding != null ? parseFloat(req.body.montantOnboarding) : null;
-  const contractPdfBase64 = req.body.contractPdfBase64 || null;
 
   if (!nom) return res.status(400).json({ message: 'Nom requis' });
   if (!email) return res.status(400).json({ message: 'Email requis' });
@@ -387,9 +258,7 @@ const create = async (req, res) => {
 
   // Lot 3, étape 2 (spec §3) : identité légale lue et contrôlée AVANT toute écriture, mêmes règles que
   // PUT /admin/clients/:id/identite (src/utils/identite.js). Toute l'identité est facultative (pastille ensuite).
-  // L'adresse (rue) est une colonne d'identité, normalisée ici. Elle s'imprime sur le PDF du contrat (aperçu, contrat
-  // régénéré, repli sans DocuSeal, flux « PDF rempli ») ; PAS sur le contrat DocuSeal en flux « modèle » (production)
-  // tant que le nouveau modèle n'est pas déposé (étape 7) : le modèle actuel n'a que « Nom du client » et « Email ».
+  // L'adresse (rue) est une colonne d'identité, normalisée ici.
   const identite = lireIdentite(req.body);
   if (identite.erreurs.length) return res.status(400).json({ message: identite.erreurs[0].message, erreurs: identite.erreurs });
   const adresse = identite.valeurs.adresse ?? null;
@@ -527,7 +396,7 @@ const create = async (req, res) => {
     const montantOnboarding = montantOnboardingConfig;
 
     const aboId = await createAbonnement(user.id, montantOnboarding, config);
-    // Détail réel écrit en base (libellés des composants + nom du domaine) pour le contrat
+    // Détail réel écrit en base (nom du domaine) pour la réponse
     const cfgComplete = config ? await loadConfigComplete(aboId).catch(() => null) : null;
 
     // Seeds par domaine (unités de mesure, canaux) — jamais bloquant pour la création.
@@ -565,65 +434,11 @@ const create = async (req, res) => {
       console.warn(`[clients.create] promo « 1er mois offert » non appliquée (abo ${aboId}) : ${promoErr.message}`);
     }
 
-    // Auto-generate contract PDF, send via Docuseal (e-signature) + welcome email
+    // Lot 3, étape 3 : LabFlow est sans engagement — plus de contrat à signer. L'email d'activation part tout de suite
+    // (jeton de 48 h créé plus haut) ; un échec d'envoi n'empêche pas la création (« ✉️ Renvoyer » côté admin).
     try {
-      // Vocabulaire du compte créé (domaine du profil, en cache : aucune requête de plus)
-      const voc = await vocabDuDomaine(domaineId);
-      const aboConfig = config || {};
-      const pdfBase64 = contractPdfBase64 || await generateContratPdf({
-        nom,
-        email,
-        telephone: telephone || null,
-        adresse: adresse || null,
-        montantMensuel: montantOnboarding || null,
-        nbActivites: aboConfig.nbActivites ?? 1,
-        nbLabos: aboConfig.nbLabos ?? 0,
-        nbGerants: aboConfig.nbGerants ?? 0,
-        formuleActivites: (aboConfig.nbActivites ?? 1) >= 1 ? formuleActivites : null,
-        nbAcheteurs: nbAcheteursEff,
-        dateContrat: new Date(),
-      }, voc);
-
-      // Contrat e-signature : PDF rempli par client (prioritaire) ou template Docuseal.
-      if (docusealPdfConfigured() || docusealConfigured()) {
-        // + composants (libellés du domaine) et nom du domaine pour le document (lot 1a)
-        const aboConfigForDocuseal = {
-          ...(config || {}),
-          composants: cfgComplete?.composants || [],
-          domaineNom: cfgComplete?.domaine_nom || null,
-          domaineSlug: cfgComplete?.domaine_slug || null,
-        };
-        const pricing = await computeEffectivePricing(user.id).catch(() => null);
-        submitContratForSignature({
-          aboId,
-          pricing,
-          nom,
-          email,
-          telephone: telephone || null,
-          adresse: adresse || null,
-          config: aboConfigForDocuseal,
-          montantOnboarding,
-          voc,
-        })
-          .then(({ submissionId, signingUrl }) => {
-            console.log(`[docuseal] Contrat soumis: ${submissionId} pour ${email}`);
-            if (submissionId) {
-              pool.query('UPDATE abonnements SET contrat_submission_id = $1 WHERE client_id = $2', [String(submissionId), user.id])
-                .catch((e) => console.error('[docuseal] Stockage contrat_submission_id échoué:', e.message));
-            }
-            if (signingUrl) {
-              sendDocusealSigningEmail({ to: email, nom, signingUrl, voc })
-                .then(() => console.log(`[docuseal] Email de signature envoyé à ${email}`))
-                .catch((err) => console.error('[docuseal] Erreur envoi email signature:', err.message));
-            }
-          })
-          .catch((err) => console.error('[docuseal] Erreur création contrat:', err.message));
-        // Mail d'activation DIFFÉRÉ : envoyé par le webhook Docuseal une fois le contrat signé.
-      } else {
-        // Fallback (Docuseal non configuré) : on envoie l'activation immédiatement avec le PDF en pièce jointe
-        await sendWelcomeWithContractEmail({ to: email, nom, token: inviteToken, contractPdfBase64: pdfBase64 });
-        await pool.query(`UPDATE abonnements SET invite_sent = TRUE WHERE client_id = $1`, [user.id]).catch(() => {});
-      }
+      await sendWelcomeEmail({ to: email, nom, token: inviteToken });
+      await pool.query(`UPDATE abonnements SET invite_sent = TRUE WHERE client_id = $1`, [user.id]).catch(() => {});
     } catch (emailErr) {
       console.error('Welcome email error:', emailErr.message);
     }
@@ -798,7 +613,6 @@ const remove = async (req, res) => {
       await dbClient.query('ROLLBACK');
       return res.status(404).json({ message: 'Client introuvable' });
     }
-    const deletedClient = check.rows[0];
 
     // Collect all user IDs owned by this client (client + its gérants)
     const usersRes = await dbClient.query(
@@ -890,19 +704,6 @@ const remove = async (req, res) => {
 
     await dbClient.query('COMMIT');
 
-    // Le client est supprimé. On lui envoie son acte de résiliation Docuseal pour
-    // archive/formalité (best-effort, n'impacte pas la suppression déjà effectuée).
-    if (deletedClient.email && (docusealPdfConfigured() || docusealConfigured('resiliation'))) {
-      submitResiliationForSignature(deletedClient)
-        .then(({ signingUrl }) => signingUrl
-          // Vocabulaire par défaut, voulu (spec §5.6) : le compte est supprimé AVANT l'envoi,
-          // et la variante résiliation n'écrit aucun terme.
-          ? sendDocusealSigningEmail({ to: deletedClient.email, nom: deletedClient.nom || 'Client', signingUrl, type: 'resiliation', voc: vocabDefaut })
-          : null)
-        .then(() => console.log(`[resiliation] acte envoyé à ${deletedClient.email}`))
-        .catch((e) => console.error('[resiliation] envoi échoué:', e.message));
-    }
-
     res.status(204).send();
   } catch (err) {
     await dbClient.query('ROLLBACK');
@@ -913,4 +714,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { list, getById, updateIdentite, controlerIdentite, create, update, remove, buildContractPricingFields };
+module.exports = { list, getById, updateIdentite, controlerIdentite, create, update, remove };

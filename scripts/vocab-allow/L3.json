@@ -4,70 +4,70 @@
     "avant": null,
     "apres": "SARL",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "SUARL",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "SA",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "SNC",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "EI",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "AUTO_ENTREPRENEUR",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ASSOCIATION",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "AUTRE",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "raisonSociale",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "raison_sociale",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -81,14 +81,14 @@
     "avant": null,
     "apres": "nomCommercial",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "nom_commercial",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -102,7 +102,7 @@
     "avant": null,
     "apres": "formeJuridique",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 3
   },
   {
@@ -110,7 +110,7 @@
     "avant": null,
     "apres": "forme_juridique",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -124,7 +124,7 @@
     "avant": null,
     "apres": "matriculeFiscal",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -132,7 +132,7 @@
     "avant": null,
     "apres": "matricule_fiscal",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -146,7 +146,7 @@
     "avant": null,
     "apres": "rne",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -161,7 +161,7 @@
     "avant": null,
     "apres": "adresse",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -176,7 +176,7 @@
     "avant": null,
     "apres": "ville",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -191,14 +191,14 @@
     "avant": null,
     "apres": "representantNom",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "representant_nom",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -212,14 +212,14 @@
     "avant": null,
     "apres": "representantQualite",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "representant_qualite",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -233,84 +233,84 @@
     "avant": null,
     "apres": "ﬀ",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ff",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬁ",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "fi",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬂ",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "fl",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬃ",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ffi",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬄ",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ffl",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬅ",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "st",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -318,21 +318,21 @@
     "avant": null,
     "apres": "ﬆ",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "NFC",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "-",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -344,7 +344,7 @@
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
-    "apres": "⟦·⟧ : caractères latins seulement (les lettres arabes et les émojis ne s'impriment pas sur les contrats et les factures)",
+    "apres": "⟦·⟧ : caractères latins seulement (les lettres arabes et les émojis ne s'impriment pas sur les factures)",
     "type": "admin",
     "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
@@ -360,14 +360,14 @@
     "avant": null,
     "apres": "⟦·⟧⟦·⟧/⟦·⟧/⟦·⟧/⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
     "avant": null,
     "apres": "⟦·⟧/⟦·⟧/⟦·⟧/⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
@@ -392,17 +392,17 @@
   },
   {
     "fichier": "src/controllers/clientsController.js",
-    "avant": null,
+    "avant": "Option Acheteurs",
     "apres": "utilisateurs_email_key",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "profil_entreprise_telephone_unique",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -413,29 +413,148 @@
   },
   {
     "fichier": "src/controllers/clientsController.js",
+    "avant": "fr-FR",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "2-digit",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "long",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "numeric",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "Aucune promotion — tarifs standard.",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "Frais d'activation ⟦?offerts (au lieu de ⟦·⟧)|: ⟦·⟧ au lieu de ⟦·⟧⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "raison_sociale",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "Mensualité ⟦?offerte (au lieu de ⟦·⟧)|: ⟦·⟧ au lieu de ⟦·⟧⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "pe.raison_sociale, pe.nom_commercial, pe.forme_juridique, pe.matricule_fiscal, pe.rne,\n              pe.ville, pe.representant_nom, pe.representant_qualite",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
-    "avant": null,
+    "avant": "  ·  ",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "⟦?Activité ⟦?Basique|Premium⟧|⟦?Activité Premium|⟧⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "basique",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "⟦?Palier jusqu'à ⟦·⟧ acheteurs|⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "Formule",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "Détail promotion",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "Mensualité après promo",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "Reprise prix de base",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "Domaine",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "⟦?⟦·⟧|Client⟧",
     "apres": "Client introuvable",
     "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change.",
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": "resiliation",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
     "occurrences": 3
   },
   {
     "fichier": "src/controllers/clientsController.js",
-    "avant": null,
+    "avant": ", puis ⟦·⟧ à partir du ⟦·⟧",
     "apres": "Ce matricule fiscal est déjà porté par le compte « ⟦·⟧ »",
     "type": "admin",
     "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
@@ -452,29 +571,36 @@
     "avant": null,
     "apres": "⟦sql⟧'client'",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "Client introuvable",
+    "type": "admin",
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": ", ",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 3
   },
   {
     "fichier": "src/controllers/clientsController.js",
-    "avant": null,
+    "avant": "⟦?⟦·⟧ DT|—⟧",
     "apres": "$⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "⟦·⟧ = EXCLUDED.⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
@@ -495,14 +621,14 @@
     "avant": null,
     "apres": "adresse",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 6
   },
   {
@@ -510,7 +636,7 @@
     "avant": null,
     "apres": "[^0-9]",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 3
   },
   {
@@ -518,7 +644,7 @@
     "avant": null,
     "apres": "⟦sql⟧'g'",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 3
   },
   {
@@ -530,44 +656,335 @@
   },
   {
     "fichier": "src/controllers/clientsController.js",
-    "avant": null,
+    "avant": " pendant ⟦·⟧ mois",
     "apres": ", ⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": ", $⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "23505",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/routes/admin.js",
     "avant": null,
     "apres": "/clients/identite/controle",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/routes/admin.js",
     "avant": null,
     "apres": "/clients/:id/identite",
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/abonnementController.js",
-    "avant": null,
-    "apres": "string",
+    "avant": "⟦sql⟧'supplement'",
+    "apres": null,
     "type": "discriminant",
-    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+    "justification": "Lot 3, étape 3 — plus de contrats (décision du client du 04/10/2026) : code SQL de la requête supprimée avec la fonction de contrat (jamais affiché)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "validée",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "avenant",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "contrat",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "1",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "Aucun contrat signé disponible",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "Le contrat signé n'est pas encore disponible",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "Contrat momentanément indisponible",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "⟦?⟦·⟧|contrat⟦?-avenant|⟧⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "_",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "⟦·⟧⟦?|.pdf⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": ".pdf",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "Content-Type",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "application/pdf",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "Content-Disposition",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "attachment; filename=\"⟦·⟧\"",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "Content-Length",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "Erreur lors de la récupération du contrat",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "⟦sql⟧'client'",
+    "apres": null,
+    "type": "discriminant",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision du client du 04/10/2026) : code SQL de la requête supprimée avec la fonction de contrat (jamais affiché)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "⟦?⟦·⟧|contrat⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "Aucun contrat disponible pour ce client",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "base64",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "attachment; filename=\"contrat-⟦·⟧.pdf\"",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "⟦?⟦?basique|premium⟧|⟦·⟧⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "basique",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "⟦?⟦·⟧|premium⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "mensualite",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "les_deux",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "onboarding",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "⟦?⟦·⟧|Client⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "Erreur lors de la génération du contrat",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "Nous ⟦?avons le plaisir de vous accueillir sur <strong>⟦·⟧</strong>. Votre contrat d'abonnement figure en pièce jointe au format PDF.<br>\n        Pour accéder à votre espace, il vous suffit d'activer votre compte et de définir votre mot de passe|vous remercions pour la signature de votre contrat. Votre espace <strong>⟦·⟧</strong> est désormais prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous⟧.",
+    "apres": "Nous avons le plaisir de vous accueillir sur <strong>⟦·⟧</strong>. Votre espace est prêt.<br>\n        Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;\">Bienvenue, ⟦·⟧</h2>\n      <p style=\"margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;\">\n        ⟦·⟧\n      </p>\n      ⟦·⟧\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"⟦·⟧\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : ⟦·⟧</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; ⟦·⟧\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+    "apres": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:8px 0 0;color:#c7d2fe;font-size:0.85rem;\">Activation de votre compte</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;\">Bienvenue, ⟦·⟧</h2>\n      <p style=\"margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;\">\n        ⟦·⟧\n      </p>\n      <div style=\"text-align:center;margin:0 0 28px;\">\n        <a href=\"⟦·⟧\" style=\"display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);\">\n          Activer mon compte\n        </a>\n      </div>\n      <p style=\"margin:0 0 6px;color:#6b7280;font-size:0.8rem;\">⏳ Ce lien d'activation est valable <strong>48 heures</strong>.</p>\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;\">Lien direct : ⟦·⟧</p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">\n        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email. &mdash; ⟦·⟧\n      </p>\n    </div>\n  </div>\n</body>\n</html>",
+    "type": "discriminant",
+    "justification": "Lot 3 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "⟦?\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;\">📎 Document joint</p>\n        <p style=\"margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;\">Contrat d'abonnement — ⟦·⟧</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#64748b;\">En activant votre compte, vous acceptez les termes de ce contrat.</p>\n      </div>|⟧",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "contrat-abonnement-⟦·⟧.pdf",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "-",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": "contrat",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/services/onboardingEtat.js",
+    "avant": "Contrat signé",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/routes/abonnements.js",
+    "avant": "/contrat-actif",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/routes/abonnements.js",
+    "avant": "/client/:clientId/contrat-pdf",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
+  },
+  {
+    "fichier": "src/routes/abonnements.js",
+    "avant": "/contrat-preview",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 3 — plus de contrats (décision écrite du client du 04/10/2026, « sans engagement ») : texte supprimé avec la fonctionnalité qui l'affichait (contrat à la création, aperçu et téléchargement du contrat, acte de résiliation, étape « Contrat signé » du guide, email de bienvenue avec contrat)."
   }
 ]

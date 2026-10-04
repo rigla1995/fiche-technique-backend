@@ -68,13 +68,12 @@ const { pdfTexte, LIBELLES_FACTURE_APPRO } = require('../docuseal-templates/gene
 const contrat = require('../src/services/contractPdfService');
 const pdfService = require('../src/services/pdfService');
 const { buildFactureApproPdf, libellesFactureAppro } = require('../src/services/factureApproPdf');
-const { buildContractPricingFields } = require('../src/controllers/clientsController');
+// Lot 3, étape 3 : buildContractPricingFields (champs DocuSeal du contrat de création) est retiré — plus de contrat.
 const ref = {
   contrat: chargerReference('src/services/contractPdfService.js'),
   pdf: chargerReference('src/services/pdfService.js'),
-  clients: chargerReference('src/controllers/clientsController.js'),
 };
-const sansRef = !ref.contrat || !ref.pdf || !ref.clients;
+const sansRef = !ref.contrat || !ref.pdf;
 
 // Les références et dates du jour varient d'une génération à l'autre : écartées de la comparaison.
 const stables = (textes) => textes.filter((t) => !/^Réf\. |^(Émis|Établi) le |généré le /.test(t));
@@ -86,11 +85,7 @@ const PRICING = {
 };
 const AJOUTS = { addActivites: 2, addLabos: 1, addGerants: 1, setAcheteurs: 50 };
 
-test('défaut : valeurs DocuSeal identiques à la référence (contrat et avenant, flux template)', { skip: sansRef && 'git indisponible' }, () => {
-  for (const p of [PRICING, { ...PRICING, palierAcheteurs: null, hasPromo: false, formuleActivites: null }, null]) {
-    assert.deepEqual(buildContractPricingFields(p, 'Restauration', vocabDefaut), ref.clients.buildContractPricingFields(p, 'Restauration'));
-    assert.deepEqual(buildContractPricingFields(p, null), ref.clients.buildContractPricingFields(p, null), 'sans voc : défaut');
-  }
+test('défaut : valeurs DocuSeal de l\'avenant identiques à la référence (flux template)', { skip: sansRef && 'git indisponible' }, () => {
   for (const ajouts of [AJOUTS, { addActivites: 1 }, { addLabos: 2, addGerants: 2 }, {}]) {
     const args = { ajouts, abonnementId: 12, abonnementDate: '2026-03-01', pricing: PRICING };
     assert.deepEqual(contrat.avenantExtraFields({ ...args, voc: vocabDefaut }), ref.contrat.avenantExtraFields(args));
@@ -98,7 +93,7 @@ test('défaut : valeurs DocuSeal identiques à la référence (contrat et avenan
   }
 });
 
-test('domaines : VALEURS du domaine, noms de champs et formule inchangés', () => {
+test('domaines : VALEURS du domaine, noms de champs et formule inchangés (avenant)', () => {
   const attendus = {
     hotellerie: ['Palier jusqu\'à 20 clients professionnels', '+2 services   ·   +1 cuisine centrale   ·   +1 compte responsable de service   ·   Option Clients professionnels → palier jusqu\'à 50'],
     ceramique: ['Palier jusqu\'à 20 revendeurs', '+2 points de vente   ·   +1 site de production   ·   +1 compte responsable de site   ·   Option Revendeurs → palier jusqu\'à 50'],
@@ -106,10 +101,6 @@ test('domaines : VALEURS du domaine, noms de champs et formule inchangés', () =
   };
   for (const [domaine, [palier, ajout]] of Object.entries(attendus)) {
     const voc = VOC[domaine];
-    const pf = buildContractPricingFields(PRICING, 'Domaine X', voc);
-    assert.deepEqual(pf.extraFields.map((f) => f.name), ['Formule', 'Option Acheteurs', 'Détail promotion', 'Mensualité après promo', 'Reprise prix de base', 'Domaine']);
-    assert.equal(pf.extraFields[0].default_value, 'Activité Premium', 'formule : nom commercial inchangé');
-    assert.equal(pf.extraFields[1].default_value, palier);
     const champs = contrat.avenantExtraFields({ ajouts: AJOUTS, pricing: PRICING, voc });
     assert.deepEqual(champs, [
       { name: 'Capacité ajoutée', default_value: ajout },

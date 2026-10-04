@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { sendWelcomeWithContractEmail, generateInviteToken } = require('../services/emailService');
+const { sendWelcomeEmail, generateInviteToken } = require('../services/emailService');
 const { saveNotificationToAdmins, saveNotification } = require('./notificationController');
 const { pushToAdmins, pushTo } = require('../services/sseService');
 const { verifyDocusealSignature } = require('../utils/webhookSignature');
@@ -182,7 +182,7 @@ const docusealWebhook = async (req, res) => {
         [newToken, newExpires, u.id]
       );
       try {
-        await sendWelcomeWithContractEmail({ to: u.email, nom: u.nom, token: newToken, contractPdfBase64: null });
+        await sendWelcomeEmail({ to: u.email, nom: u.nom, token: newToken });
         console.log(`[docuseal-webhook] Mail d'activation envoyé à ${u.email} après signature`);
       } catch (mailErr) {
         // Échec d'envoi : on remet invite_sent à FALSE pour réessai au prochain événement
