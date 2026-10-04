@@ -4,105 +4,105 @@
     "avant": null,
     "apres": "SARL",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "SUARL",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "SA",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "SNC",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "EI",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "AUTO_ENTREPRENEUR",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ASSOCIATION",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "AUTRE",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "raisonSociale",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "raison_sociale",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Raison sociale",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "nomCommercial",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "nom_commercial",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Nom commercial",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "formeJuridique",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal).",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 3
   },
   {
@@ -110,21 +110,21 @@
     "avant": null,
     "apres": "forme_juridique",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Forme juridique",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "matriculeFiscal",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal).",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -132,21 +132,21 @@
     "avant": null,
     "apres": "matricule_fiscal",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Matricule fiscal",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "rne",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal).",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -154,14 +154,14 @@
     "avant": null,
     "apres": "RNE",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "adresse",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal).",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -169,14 +169,14 @@
     "avant": null,
     "apres": "Adresse",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ville",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal).",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -184,133 +184,133 @@
     "avant": null,
     "apres": "Ville",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "representantNom",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "representant_nom",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Représentant",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "representantQualite",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "representant_qualite",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Qualité du représentant",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬀ",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ff",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬁ",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "fi",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬂ",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "fl",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬃ",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ffi",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬄ",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ffl",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "ﬅ",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "st",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal).",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 2
   },
   {
@@ -318,113 +318,148 @@
     "avant": null,
     "apres": "ﬆ",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "NFC",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "-",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "⟦·⟧ : ⟦·⟧ caractères au maximum",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "⟦·⟧ : caractères latins seulement (les lettres arabes et les émojis ne s'impriment pas sur les contrats et les factures)",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Forme juridique inconnue",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
     "avant": null,
     "apres": "⟦·⟧⟦·⟧/⟦·⟧/⟦·⟧/⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
     "avant": null,
     "apres": "⟦·⟧/⟦·⟧/⟦·⟧/⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
     "avant": null,
     "apres": "Matricule fiscal invalide : 7 chiffres attendus avant la lettre de clé (un zéro de tête manque-t-il ?)",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
     "avant": null,
     "apres": "Matricule fiscal invalide (exemples : 1234567A/A/M/000 ou 1234567A)",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/utils/matriculeFiscal.js",
     "avant": null,
     "apres": "Matricule fiscal sans lettre de clé (1234567A…) : à vérifier sur la patente",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "utilisateurs_email_key",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "profil_entreprise_telephone_unique",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "Enregistrement impossible : une donnée qui doit être unique est déjà utilisée",
+    "type": "admin",
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "raison_sociale",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "pe.raison_sociale, pe.nom_commercial, pe.forme_juridique, pe.matricule_fiscal, pe.rne,\n              pe.ville, pe.representant_nom, pe.representant_qualite",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "Client introuvable",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change.",
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change.",
     "occurrences": 3
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "Ce matricule fiscal est déjà porté par le compte « ⟦·⟧ »",
+    "type": "admin",
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "Contrôle de l'identité indisponible — réessayez.",
+    "type": "admin",
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "⟦sql⟧'client'",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": ", ",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal).",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
     "occurrences": 3
   },
   {
@@ -432,34 +467,107 @@
     "avant": null,
     "apres": "$⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "⟦·⟧ = EXCLUDED.⟦·⟧",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
-  },
-  {
-    "fichier": "src/controllers/clientsController.js",
-    "avant": null,
-    "apres": "Ce matricule fiscal est déjà porté par le compte « ⟦·⟧ »",
-    "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/controllers/clientsController.js",
     "avant": null,
     "apres": "Erreur lors de l'enregistrement de l'identité",
     "type": "admin",
-    "justification": "Lot 3, étape 1 : libellé ou message de la saisie d'identité légale lu seulement par l'admin — route PUT /admin/clients/:id/identite (et GET /admin/clients/:id), garde requireSuperAdmin. Aucun texte existant ne change."
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "Nom du contact : 100 caractères au maximum",
+    "type": "admin",
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "adresse",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "occurrences": 6
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "[^0-9]",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'g'",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation).",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "Ce numéro de téléphone est déjà utilisé (compte « ⟦·⟧ »)",
+    "type": "admin",
+    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin. Aucun texte existant ne change."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": ", ⟦·⟧",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": ", $⟦·⟧",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "23505",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/routes/admin.js",
+    "avant": null,
+    "apres": "/clients/identite/controle",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   },
   {
     "fichier": "src/routes/admin.js",
     "avant": null,
     "apres": "/clients/:id/identite",
     "type": "discriminant",
-    "justification": "Lot 3, étape 1 : chaîne technique jamais affichée (code de forme juridique, nom de champ de l'API ou de colonne, fragment SQL, chemin de route, gabarit de normalisation du matricule fiscal)."
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "string",
+    "type": "discriminant",
+    "justification": "Lot 3, étapes 1-2 : chaîne technique jamais affichée (code de forme juridique, nom de champ, de colonne ou de contrainte, fragment SQL, chemin de route, code d'erreur, gabarit de normalisation)."
   }
 ]
