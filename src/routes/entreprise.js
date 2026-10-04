@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getEntreprise, upsertEntreprise,
+  getEntreprise, updateIdentiteClient,
   listActivites, createActivite, updateActivite, deleteActivite, duplicateActivite,
   hasActivites, getActiviteIngredients, toggleActiviteIngredient, updateIngredientPrice,
   getActiviteTypesSummary,
@@ -44,10 +44,10 @@ router.get('/', authenticate, requireEntreprise, getEntreprise);
 
 /**
  * @openapi
- * /api/entreprise:
+ * /api/entreprise/identite:
  *   put:
  *     tags: [Entreprise]
- *     summary: Créer ou mettre à jour le profil de l'entreprise
+ *     summary: Le client complète l'adresse, la ville et le représentant de son entreprise
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -57,19 +57,25 @@ router.get('/', authenticate, requireEntreprise, getEntreprise);
  *           schema:
  *             type: object
  *             properties:
- *               nom:
+ *               adresse:
  *                 type: string
- *               domaineId:
- *                 type: integer
+ *               ville:
+ *                 type: string
+ *               representantNom:
+ *                 type: string
+ *               representantQualite:
+ *                 type: string
  *     responses:
  *       200:
- *         description: Profil mis à jour
+ *         description: Identité légale après l'enregistrement
+ *       400:
+ *         description: Valeur refusée (trop longue, caractères non latins)
  *       401:
  *         description: Non authentifié
  *       403:
- *         description: Accès réservé aux entreprises
+ *         description: Action réservée au compte client
  */
-router.put('/', authenticate, requireEntreprise, upsertEntreprise);
+router.put('/identite', authenticate, requireClientOwner, updateIdentiteClient);
 
 // Activities
 /**
