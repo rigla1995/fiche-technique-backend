@@ -386,12 +386,14 @@ Fichier de ton lot : `scripts/vocab-allow/<lot>.json` (format : `fiche-technique
 | `discriminant` | code, valeur d'état, nom d'en-tête, code SQL ajouté ou retiré (`⟦sql⟧'activite'`), nom de fichier |
 | `locution` | prix de vente, type de vente, canal de vente, sous-produit, prestataires de livraison |
 | `formule` | Activité Basique / Premium, « Fiche Technique App » (`creator`) |
-| `homonyme` | « article » générique (liste fermée §6.5), « ARTICLE n » du contrat, « PRESTATAIRE », « PU HT », « Domaine d'activité » |
+| `homonyme` | « article » générique (liste fermée §6.5), « PRESTATAIRE », « PU HT », « Domaine d'activité » (« ARTICLE n » du contrat : disparu avec les contrats, lot 3, étape 5) |
 | `verbe` | « se transférer », « s'approvisionne » |
 | `admin` | texte lu seulement par un super_admin ou le boss : justification = route + garde (`requireSuperAdmin`) |
 | `non-repliable` | signalement d'accord à tort (mode `accords`), `errors[].msg` d'express-validator (« champ non rendu »), glossaire à clé non littérale |
 | `deplacement` | texte déplacé d'un fichier à un autre (une entrée dans chacun), du SQL vers le JS sans unité JS identique, ou déterminant déplacé dans le moteur (`voc.avec(entreeComposantVoc(voc, c)).mon(…)`, §5.10) |
-| `reporte` (+ `lot`) | texte fixe du contrat (`3`). Plus de `2c` : la description de `search_knowledge_base` passe par `voc` depuis le lot 2c (R5.5) |
+| `reporte` (+ `lot`) | PLUS AUCUN emploi au serveur. Les textes fixes du contrat (`3`) ont été SUPPRIMÉS au lot 3, étape 5 (plus de contrat, d'avenant ni de résiliation) : les 18 entrées `reporte` de `B2.json` sont retirées. Plus de `2c` non plus : la description de `search_knowledge_base` passe par `voc` depuis le lot 2c (R5.5) |
+| `retire` | lot 3 : texte SUPPRIMÉ avec la fonction qui l'affichait, sur décision écrite du client (`apres: null` seulement ; la justification nomme la décision). Tout texte retiré avec les contrats, visible ou technique, sauf un code SQL (`discriminant`) : un texte visible n'est jamais `discriminant` (`vocab-allow/L3.json`) |
+| `remplace` | lot 3 : texte NOUVEAU et visible qui remplace un texte retiré, sur décision écrite du client (`avant: null` seulement) |
 | `fiscal` | facture acheteur, facture d'abonnement |
 | `faute-corrigee` | faute de l'existant corrigée (sous-titre « Transfert labo → activité » d'un transfert labo→labo) |
 | `provisoire` | en attente d'un besoin (`vocab-besoins/<lot>.json`) : doit finir à 0 |
@@ -426,9 +428,12 @@ modifiée, à relire » : dis-la dans ta sortie.
 l'oracle `node scripts/check-invariant-vocab.js` (restauration IDENTIQUE hors `ecarts-restauration-attendus.json`,
 0 entrée sans emploi) puis `--domaine hotellerie|ceramique|miroir` ; les E2E sur `node scripts/start-test-backend.js`
 (`test-vocabulaire-domaine`, `test-composants`, `test-onboarding-etapes`, `test-transferts-chaine`,
-`test-contrat-admin`, `test-manuel-filtre`, `check-invariant-config`, `check-invariant-stock`, `test-bot-onboarding`) ; au front
-`vocab.test.mjs`, `vocab-check.test.mjs`, `controle-contexte.mjs`, `controle-avenant.mjs`, `npm run build`. Il
+`test-manuel-filtre`, `check-invariant-config`, `check-invariant-stock`, `test-bot-onboarding`) ; au front
+`vocab.test.mjs`, `vocab-check.test.mjs`, `controle-contexte.mjs`, `npm run build`. Il
 conteste chaque écart admis, tient les fichiers partagés (spec §10.4) et commite un point de restauration.
+(Lot 3 : `test-contrat-admin` au serveur et `controle-avenant.mjs` au front sont supprimés avec les contrats et les
+avenants, étapes 3 et 4 ; les E2E du lot 3 sont `test-creation-identite`, `test-identite-legale` et
+`test-demandes-acheteurs`.)
 
 Référence connue de `test-bot-onboarding` (spec §12.4) : 14/17, avant comme après le socle. Les 3 échecs sont
 anciens : « chat 200 pendant la mise en route » et « le bot cite l'étape manquante » demandent un vrai appel Gemini
@@ -480,15 +485,22 @@ la main). Une fiche signalée ne s'adapte pas aux domaines : la baliser (dans l'
   `contenu_defaut` (une fiche retouchée dans l'admin garde sa retouche) ; titre et partie gardés par égalité exacte ;
   NOTICE (faites, déjà faites, gardées) ; `updated_at` et `mots_cles` jamais touchés. Base : la clé est `lower(titre)`,
   et 23 titres sur 32 sont balisés en base.
-- Fiche à variantes (les 8 fiches métier) : la migration ne touche jamais `manuel_sections_domaine` et le dit par une
-  NOTICE ; l'admin montrera « à revoir » sur ses variantes.
-- Avant d'écrire la migration : le texte balisé dans `scripts/manuel/balise/…` (la source), puis
-  `node scripts/manuel/controler.mjs <slug>` (points 2 à 12 verts ; le point 1 compare à l'origine d'avant le 2c :
-  sur une fiche changée volontairement, c'est le seul échec admis), et les rendus Hôtellerie, Céramique et miroir
-  relus, plus `--production` (lexiques de la production).
-- **Outillage** : `generer-migrations.mjs` n'écrit que 194, 195 et 196 ; il n'existe pas encore d'outil pour une
-  migration de maintenance. La première s'écrit à la main sur le modèle ci-dessus, ou ajoute cette option aux outils
-  (décision au premier besoin, spec §12.5).
+- Fiche à variantes (les 8 fiches métier) : la migration ne touche jamais une variante VALIDÉE ni un brouillon
+  retouché dans l'admin (l'admin montre « à revoir », la NOTICE les nomme). Seul un BROUILLON resté tel que la 196
+  l'a écrit peut être mis à jour avec son texte commun, et `base_md5` avec lui (198, lot 3 : sans cela les brouillons
+  gardaient l'ancien texte sur l'avenant).
+- Avant d'écrire la migration : le texte balisé dans `scripts/manuel/balise/…` (la source) et, pour une fiche à
+  variantes, ses brouillons de `scripts/manuel/variantes/…` (avec leur `baseMd5`) ; puis l'entrée de la migration dans
+  `scripts/manuel/revisions.json` (`md5Avant` = texte en base à remplacer, `md5` = texte balisé courant) ;
+  `node scripts/manuel/controler.mjs --tout` VERT (pour une fiche révisée, le point 1 devient « texte balisé = celui de
+  sa dernière migration » et les points 4 et 5 se comparent à son rendu par défaut : l'origine du 2c ne fait plus foi),
+  aussi avec `--production` ; rendus Hôtellerie, Céramique et miroir relus.
+- **Outillage** : `generer-migrations.mjs` n'écrit que 194, 195 et 196 (ne plus le lancer). Une migration de
+  maintenance s'écrit par `node scripts/manuel/generer-maintenance.mjs <numéro>` (depuis `revisions.json` ; refuse si
+  une empreinte ne suit pas), puis s'essaie par `node scripts/manuel/essai-maintenance.js <numéro>` (base locale,
+  transaction annulée : deux passages, textes relus, reste du manuel intact). Première du genre : la 198 (lot 3,
+  étape 5 — plus de contrat ni d'avenant). Une fois déployée, la migration est immuable : une retouche = une nouvelle
+  entrée de `revisions.json` et une nouvelle migration.
 - Fichier en LF (`.gitattributes` : `migrations/*.sql text eol=lf`) ; aucune balise dans un autre champ ni dans une
   autre table (I7) ; aucun appel `voc` dans le SQL (I8).
 - Une migration qui change le texte servi en restauration change la référence de l'oracle : écart à admettre ou

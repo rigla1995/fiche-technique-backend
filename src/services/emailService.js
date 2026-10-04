@@ -13,8 +13,8 @@ const APP_NAME = process.env.APP_NAME || 'LabFlow';
 // le texte alt « LabFlow » stylé en blanc. Source : public/logo-email.png du frontend.
 const BRAND_LOGO = `<img src="${APP_URL}/logo-email.png" alt="LabFlow" width="138" height="34" style="display:block;margin:0 auto;height:34px;width:138px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:22px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;" />`;
 
-// Vocabulaire du DESTINATAIRE (lot 2b, spec §5.6). Les 5 fonctions à terme
-// (sendInviteEmail, sendDocusealSigningEmail, sendSupplementValideEmail, sendRapportWithAttachment,
+// Vocabulaire du DESTINATAIRE (lot 2b, spec §5.6). Les 4 fonctions à terme
+// (sendInviteEmail, sendSupplementValideEmail, sendRapportWithAttachment,
 // sendMessengerInviteEmail) reçoivent `voc` en CLÉ de leur objet d'arguments, et chaque appel
 // dans src/ la porte (contrôle statique : test/emailVoc.test.js). Sans elle, l'oubli est
 // journalisé et l'email part quand même, avec le vocabulaire par défaut : un email n'est
@@ -187,108 +187,6 @@ const sendPasswordResetEmail = async ({ to, nom, token }) => {
     from: FROM_EMAIL,
     to,
     subject: `${APP_NAME} — Réinitialisation de votre mot de passe`,
-    html,
-  });
-
-  if (error) throw new Error(error.message);
-  return { success: true, id: data?.id };
-};
-
-const sendDocusealSigningEmail = async ({ to, nom, signingUrl, avenant = null, type = null, voc: vocRecu }) => {
-  const voc = vocDuDestinataire(vocRecu, sendDocusealSigningEmail);
-  // kind ∈ 'contrat' | 'avenant' | 'resiliation' (avenant prioritaire pour rétro-compat)
-  const kind = avenant ? 'avenant' : (type || 'contrat');
-  const isAvenant = kind === 'avenant';
-  const isResiliation = kind === 'resiliation';
-  // Rappel de la capacité demandée (uniquement pour un avenant)
-  const supParts = [];
-  if (isAvenant) {
-    const n = (v) => parseInt(v, 10) || 0;
-    if (n(avenant.addActivites) > 0) supParts.push(`${n(avenant.addActivites)} ${voc.nom('activite', n(avenant.addActivites) > 1)}`);
-    if (n(avenant.addLabos) > 0) supParts.push(`${n(avenant.addLabos)} ${voc.nom('labo', n(avenant.addLabos) > 1)}`);
-    if (n(avenant.addGerants) > 0) supParts.push(`${n(avenant.addGerants)} ${voc.nom('gerant', n(avenant.addGerants) > 1)}`);
-    if (n(avenant.setAcheteurs) > 0) supParts.push(`l'option ${voc.Court('acheteur', true)} (palier jusqu'à ${n(avenant.setAcheteurs)} ${voc.nom('acheteur', true)})`);
-  }
-  const supText = supParts.join(', ') || 'capacité supplémentaire';
-
-  let subtitle, intro, cardTitle, cardSub, buttonText, footerText, subject, cardIcon;
-  if (isAvenant) {
-    subtitle = 'Signature électronique de votre avenant';
-    intro = `Suite à votre demande d'ajout de <strong>${supText}</strong>, votre <strong>avenant au contrat d'abonnement ${APP_NAME}</strong> est prêt à être signé électroniquement.<br>
-        Cliquez sur le bouton ci-dessous pour le consulter et le signer — <strong>dès la signature, votre nouvelle capacité sera immédiatement disponible dans votre espace</strong>.`;
-    cardTitle = `Avenant au contrat d'abonnement — ${APP_NAME}`;
-    cardSub = "Ce document acte l'ajout de capacité demandé et votre nouvelle tarification.";
-    buttonText = 'Consulter et signer mon avenant';
-    footerText = "Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email.";
-    subject = `${APP_NAME} — Signature de votre avenant d'abonnement`;
-    cardIcon = '✍️ Signature requise';
-  } else if (isResiliation) {
-    subtitle = "Acte de résiliation de votre abonnement";
-    intro = `Nous vous confirmons la clôture de votre abonnement <strong>${APP_NAME}</strong>.<br>
-        Pour finaliser la résiliation dans les règles, il vous suffit de signer électroniquement votre acte de résiliation ci-dessous. Nous vous remercions sincèrement de la confiance que vous nous avez accordée.`;
-    cardTitle = `Acte de résiliation — ${APP_NAME}`;
-    cardSub = "Ce document formalise la fin de votre abonnement. Signature 100 % en ligne et sécurisée.";
-    buttonText = "Consulter et signer l'acte";
-    footerText = "Une question sur votre résiliation ? Notre équipe reste à votre disposition.";
-    subject = `${APP_NAME} — Acte de résiliation de votre abonnement`;
-    cardIcon = '📄 Document à signer';
-  } else {
-    subtitle = 'Signature électronique de votre contrat';
-    intro = `Nous avons le plaisir de vous accueillir sur <strong>${APP_NAME}</strong>.<br>
-        Pour lancer la mise en service de votre espace, il ne reste qu'une étape : la signature électronique de votre contrat d'abonnement. Une fois le contrat signé, vous recevrez votre lien d'activation pour configurer votre accès.`;
-    cardTitle = `Contrat d'abonnement — ${APP_NAME}`;
-    cardSub = 'Document personnalisé avec votre configuration et votre tarification. Signature 100 % en ligne et sécurisée.';
-    buttonText = 'Consulter et signer mon contrat';
-    footerText = "Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email.";
-    subject = `${APP_NAME} — Signature de votre contrat d'abonnement`;
-    cardIcon = '✍️ Signature requise';
-  }
-
-  const html = `
-<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);">
-    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706">
-      ${BRAND_LOGO}
-      <p style="margin:0;color:#c7d2fe;font-size:0.85rem;">${subtitle}</p>
-    </div>
-    <div style="padding:40px 48px;">
-      <h2 style="margin:0 0 8px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ${nom},</h2>
-      <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.7;">
-        ${intro}
-      </p>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 24px;margin-bottom:28px;">
-        <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">${cardIcon}</p>
-        <p style="margin:0;font-size:0.92rem;color:#1e293b;font-weight:600;">${cardTitle}</p>
-        <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">${cardSub}</p>
-      </div>
-      <div style="text-align:center;margin:0 0 28px;">
-        <a href="${signingUrl}" style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-size:1rem;font-weight:700;letter-spacing:0.01em;box-shadow:0 4px 16px rgba(99,102,241,0.35);">
-          ${buttonText}
-        </a>
-      </div>
-      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ${signingUrl}</p>
-    </div>
-    <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
-      <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
-        ${footerText} &mdash; ${APP_NAME}
-      </p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-  if (!process.env.RESEND_API_KEY) {
-    console.log(`[DEV] Docuseal signing email (${kind}) to ${to}: ${signingUrl}`);
-    return { success: true, dev: true, signingUrl };
-  }
-
-  const { data, error } = await resend.emails.send({
-    from: FROM_EMAIL,
-    to,
-    subject,
     html,
   });
 
@@ -710,4 +608,4 @@ const sendDemandeAccesRefusEmail = async ({ to, nom }) => {
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, sendSupplementValideEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendDocusealSigningEmail, sendBossRevealCode, sendDemandeAccesRefusEmail };
+module.exports = { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, sendSupplementValideEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendBossRevealCode, sendDemandeAccesRefusEmail };

@@ -538,6 +538,7 @@ export function creerContexte({ racine = C.DOSSIER, lexique = null, lexiqueCeram
   const { fiches, entrees } = C.lireOrigine();
   return {
     racine: path.resolve(racine),
+    revisions: revisionsCourantes(path.resolve(racine)),
     ch: C.chemins(path.resolve(racine)),
     fiches: new Map(fiches.map((f) => [f.slug, f])),
     entrees: new Map(entrees.map((e) => [e.fichier, e])),
@@ -547,6 +548,23 @@ export function creerContexte({ racine = C.DOSSIER, lexique = null, lexiqueCeram
     relectures: new Map(),
   };
 }
+
+/** Dernière révision de chaque fiche et de chaque entrée, d'après <racine>/revisions.json (absent : aucune). Une fiche
+ * réécrite par une migration de maintenance (après le lot 2c) ne se compare plus à l'origine : son texte balisé doit
+ * être celui de sa dernière migration (point 1), et les points 4 et 5 prennent pour référence son rendu par défaut. */
+function revisionsCourantes(racine) {
+  const out = { manuel: new Map(), base: new Map() };
+  const f = path.join(racine, 'revisions.json');
+  if (!fs.existsSync(f)) return out;
+  const migrations = [...(C.lireJson(f).migrations || [])].sort((a, b) => a.numero - b.numero);
+  for (const m of migrations) {
+    for (const x of m.manuel || []) out.manuel.set(x.slug, { ...out.manuel.get(x.slug), ...x, migration: m.numero });
+    for (const x of m.base || []) out.base.set(x.fichier, { ...out.base.get(x.fichier), ...x, migration: m.numero });
+  }
+  return out;
+}
+const ecartRevision = (rev, md) => (C.md5(md) === rev.md5 ? null
+  : `texte balisé ≠ celui de la migration ${rev.migration} (md5 ${C.md5(md)} contre ${rev.md5}, revisions.json) : une retouche passe par une nouvelle migration de maintenance`);
 
 const lotVariante = (ctx, domaine, slug) => Object.entries(ctx.lots.lots || {})
   .find(([, l]) => l.domaine === domaine && Array.isArray(l.variantes) && l.variantes.includes(slug))?.[0] || null;
@@ -797,12 +815,20 @@ export function controlerFiche(ctx, slug, { ecrire = true } = {}) {
   try { partie = C.partieBalisee(o.partie, ctx.parties); } catch (err) { e.push({ point: 0, message: err.message }); return res; }
   const champs = { contenu: md, titre: json.titre, partie };
 
-  // 1. Identité (I10).
+  // 1. Identité (I10) ; fiche révisée (revisions.json) : texte balisé et titre de sa dernière migration de maintenance.
+  const rev = ctx.revisions.manuel.get(slug) || null;
   const d = { contenu: rendu(vocabDefaut, md), titre: rendu(vocabDefaut, json.titre), partie: rendu(vocabDefaut, partie) };
-  if (!memesOctets(d.contenu, o.contenu)) e.push({ point: 1, message: `contenu : rendu par défaut ≠ origine${premiereDifference(d.contenu, o.contenu)}` });
-  if (C.md5(d.contenu) !== o.md5Garde) e.push({ point: 1, message: `contenu_defaut : md5 du rendu par défaut ≠ md5Garde de l'origine${o.defautNull ? ' (défaut NULL : l\'origine est le contenu)' : ''}` });
-  if (!memesOctets(d.titre, o.titre)) e.push({ point: 1, message: `titre : rendu par défaut « ${d.titre} » ≠ origine « ${o.titre} »` });
+  if (rev) {
+    const ecart = ecartRevision(rev, md);
+    if (ecart) e.push({ point: 1, message: `contenu : ${ecart}` });
+    if (rev.titre !== undefined && json.titre !== rev.titre) e.push({ point: 1, message: `titre : « ${json.titre} » ≠ titre de la migration ${rev.migration} « ${rev.titre} »` });
+  } else {
+    if (!memesOctets(d.contenu, o.contenu)) e.push({ point: 1, message: `contenu : rendu par défaut ≠ origine${premiereDifference(d.contenu, o.contenu)}` });
+    if (C.md5(d.contenu) !== o.md5Garde) e.push({ point: 1, message: `contenu_defaut : md5 du rendu par défaut ≠ md5Garde de l'origine${o.defautNull ? ' (défaut NULL : l\'origine est le contenu)' : ''}` });
+  }
+  if (!(rev && rev.titre !== undefined) && !memesOctets(d.titre, o.titre)) e.push({ point: 1, message: `titre : rendu par défaut « ${d.titre} » ≠ origine « ${o.titre} »` });
   if (!memesOctets(d.partie, o.partie)) e.push({ point: 1, message: `partie : rendu par défaut « ${d.partie} » ≠ origine « ${o.partie} »` });
+  const reference = rev ? d.contenu : o.contenu;
   // 2. Balises valides (I11).
   for (const [champ, t] of Object.entries(champs)) {
     for (const f of verifierBalises(t)) e.push({ point: 2, message: `${champ} : ${f.balise} (${f.raison})` });
@@ -817,8 +843,8 @@ export function controlerFiche(ctx, slug, { ecrire = true } = {}) {
   extraitsDansRendus(excl, emplois, { defaut: [d.contenu, d.titre], ...Object.fromEntries(DOMAINES_RENDUS.map((dm) => [dm, [rendus[dm].contenu, rendus[dm].titre]])) }, e);
   // 4. Liens ; 5. blocs et tableaux.
   const contenus = { defaut: d.contenu, ...Object.fromEntries(DOMAINES_RENDUS.map((dm) => [dm, rendus[dm].contenu])) };
-  pointLiens(ctx, o.contenu, contenus, e);
-  pointBlocs(o.contenu, o.contenu, md, contenus, e);
+  pointLiens(ctx, reference, contenus, e);
+  pointBlocs(reference, reference, md, contenus, e);
   // 6. Rendus écrits, propres.
   pointRendusPropres({ defaut: d, ...rendus }, e);
   if (ecrire) {
@@ -866,9 +892,14 @@ export function controlerEntree(ctx, fichier, { ecrire = true } = {}) {
   const e = res.echecs;
   if (!json || json.cle !== o.cle) e.push({ point: 0, message: `balise/base/${fichier}.json : « cle » ≠ ${JSON.stringify(o.cle)}` });
   if (typeof json.titre !== 'string') { e.push({ point: 0, message: `balise/base/${fichier}.json : « titre » absent` }); return res; }
+  const rev = ctx.revisions.base.get(fichier) || null;
   const d = { contenu: rendu(vocabDefaut, md), titre: rendu(vocabDefaut, json.titre) };
-  if (!memesOctets(d.contenu, o.contenu)) e.push({ point: 1, message: `contenu : rendu par défaut ≠ origine${premiereDifference(d.contenu, o.contenu)}` });
+  if (rev) {
+    const ecart = ecartRevision(rev, md);
+    if (ecart) e.push({ point: 1, message: `contenu : ${ecart}` });
+  } else if (!memesOctets(d.contenu, o.contenu)) e.push({ point: 1, message: `contenu : rendu par défaut ≠ origine${premiereDifference(d.contenu, o.contenu)}` });
   if (!memesOctets(d.titre, o.titre)) e.push({ point: 1, message: `titre : rendu par défaut « ${d.titre} » ≠ origine « ${o.titre} »` });
+  const reference = rev ? d.contenu : o.contenu;
   for (const [champ, t] of [['contenu', md], ['titre', json.titre]]) {
     for (const f of verifierBalises(t)) e.push({ point: 2, message: `${champ} : ${f.balise} (${f.raison})` });
   }
@@ -876,8 +907,8 @@ export function controlerEntree(ctx, fichier, { ecrire = true } = {}) {
   const { excl, emplois } = pointResiduels([md, json.titre], json.exclusions, e, ['contenu', 'titre'], null, [d.contenu, d.titre]);
   extraitsDansRendus(excl, emplois, { defaut: [d.contenu, d.titre], ...Object.fromEntries(DOMAINES_RENDUS.map((dm) => [dm, [rendus[dm].contenu, rendus[dm].titre]])) }, e);
   const contenus = { defaut: d.contenu, ...Object.fromEntries(DOMAINES_RENDUS.map((dm) => [dm, rendus[dm].contenu])) };
-  pointLiens(ctx, o.contenu, contenus, e);
-  pointBlocs(o.contenu, o.contenu, md, contenus, e);
+  pointLiens(ctx, reference, contenus, e);
+  pointBlocs(reference, reference, md, contenus, e);
   pointRendusPropres({ defaut: d, ...rendus }, e);
   if (ecrire) {
     for (const dm of DOMAINES_RENDUS) ecrireRendu(ctx, lot, dm, fichier, { entree: o.cle, domaine: dm, lexique: ctx.domaines[dm].source, titre: rendus[dm].titre }, rendus[dm].contenu);
@@ -953,8 +984,11 @@ export function controlerVariante(ctx, domaine, slug, { ecrire = true } = {}) {
   });
   extraitsDansRendus(excl, emplois, { [domaine]: titre === null ? [r.contenu] : [r.contenu, r.titre] }, e);
   // 4. Liens (ceux de la fiche commune) ; 5. blocs (ceux de la fiche commune), tableaux (le texte de la variante).
-  pointLiens(ctx, o.contenu, { [domaine]: r.contenu }, e);
-  pointBlocs(o.contenu, masquerBalises(md), md, { [domaine]: r.contenu }, e);
+  // Fiche commune révisée (revisions.json) : la référence est son rendu par défaut courant, pas l'origine du lot 2c.
+  const communRevise = ctx.revisions.manuel.has(slug) && !commun.absent;
+  const referenceCommune = communRevise ? rendu(vocabDefaut, commun.md) : o.contenu;
+  pointLiens(ctx, referenceCommune, { [domaine]: r.contenu }, e);
+  pointBlocs(referenceCommune, masquerBalises(md), md, { [domaine]: r.contenu }, e);
   // 6. Rendu propre et écrit.
   pointRendusPropres({ [domaine]: r }, e);
   if (ecrire) ecrireRendu(ctx, lot, domaine, slug, { variante: `${domaine}/${slug}`, domaine, lexique: dom.source, titre: r.titre === null ? '(titre commun)' : r.titre }, r.contenu);
@@ -987,7 +1021,7 @@ export function controlerVariante(ctx, domaine, slug, { ecrire = true } = {}) {
   }
   res.signalements = regrouper(ctx, lot, slug, bruts);
   const mmV = motsMetier(md);
-  const mmC = motsMetier(o.contenu);
+  const mmC = motsMetier(referenceCommune);
   res.infos = { balises: nbBalises(md) + nbBalises(titre), exclusions: excl.length, motsMetier: { variante: mmV, commun: mmC } };
   res.passe = e.length === 0;
   return res;

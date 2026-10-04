@@ -8,8 +8,8 @@ Utilisez la recherche de votre navigateur (Ctrl+F) pour retrouver un terme rapid
 
 | Terme | Définition |
 |---|---|
+| **Ajout de capacité** | Demande faite depuis la page Demandes pour ajouter [[un:activite:pl]], [[un:labo:pl]] ou [[un:gerant:pl]], ou pour activer l'option [[Court:acheteur:pl]] ou en changer le palier. Dès que l'équipe LabFlow la valide, la capacité est ajoutée, sans document à signer. |
 | **[[Court:appro]] (approvisionnement)** | Entrée de marchandise dans [[le:stock]] : vous saisissez la quantité, le prix d'achat HT et le taux de TVA. [[Un:appro:court]] peut provenir d'un achat auprès d'[[un:fournisseur]], d'[[un:transfert]] depuis [[le:labo]] ou d'une production [[de:pt]]. |
-| **Avenant** | Modification de votre contrat d'abonnement : ajout [[de:activite:pl]], [[de:labo:pl]] ou [[de:gerant:pl]], activation ou changement de palier de l'option [[Court:acheteur:pl]]… L'avenant vous est envoyé par e-mail pour signature électronique et le document signé reste téléchargeable. |
 | **Base [[court:acheteur:pl]]** | Option de l'abonnement, facturée par palier selon la taille de votre carnet : jusqu'à 10, 20, 50 ou 100 [[nom:acheteur:pl]]. Elle active [[le:espace_acheteurs:Nom]]. Le passage à un palier supérieur se demande depuis la page Demandes ; le nouveau palier remplace l'ancien. On l'appelle aussi l'option [[Court:acheteur:pl]]. |
 | **Catégorie** | Deux notions distinctes : la *catégorie [[de:article:pl]]* ([[nom:referentiel]]) affine une famille (ex. « Jus de fruits » dans la famille « Petit-déjeuner ») ; la *catégorie [[de:produit:pl]]* ([[Nom:espace_produits]]) classe ce qui se vend (ex. « Cocktails ») et est typée vendable, [[nom:supplement]] ou valorisé. |
 | **Charge** | Dépense d'exploitation hors matière première : énergie, blanchisserie, main-d'œuvre… Saisie dans [[le:espace_vente:Nom]], elle affine l'analyse de rentabilité au-delà [[acc:cout_matiere:du seul:de la seule]] [[nom:cout_matiere]]. |

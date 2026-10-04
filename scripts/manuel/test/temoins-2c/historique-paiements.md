@@ -38,4 +38,5 @@ Le bouton Facture n'existe que pour les mensualités payées : téléchargez-les
 ### Voir aussi
 
 - [Mon abonnement](#abonnement) — tarification, promotions et état du compte
+- [Le contrat d'onboarding](#onboarding-contrat)
 - [Support](#support) — en cas de désaccord sur une mensualité

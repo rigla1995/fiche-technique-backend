@@ -42,9 +42,11 @@ export const LOTS = {
     `${S}quotaService.js`, `${S}configComposantsService.js`],
   B1: [`${S}aiService.js`, `${S}aiToolHandlers.js`, `${S}aiFormatter.js`, `${S}onboardingEtat.js`, `${S}clientConfigService.js`,
     `${S}messengerService.js`, `${S}reportService.js`, `${C}aiAssistantController.js`, `${C}aiKnowledgeController.js`],
-  B2: [`${S}emailService.js`, `${S}pdfService.js`, `${S}contractPdfService.js`, `${S}factureApproPdf.js`, `${S}factureAcheteurPdf.js`,
-    `${S}docusealService.js`, 'docuseal-templates/generate.js', 'docuseal-templates/CHAMPS.md',
-    `${C}clientsController.js`, `${C}abonnementController.js`, `${C}supportController.js`, `${C}webhookController.js`,
+  // Lot 3, étape 5 (plus de contrat, d'avenant ni de résiliation) : contractPdfService.js, docusealService.js,
+  // webhookController.js et docuseal-templates/CHAMPS.md sont supprimés, donc retirés du lot B2.
+  B2: [`${S}emailService.js`, `${S}pdfService.js`, `${S}factureApproPdf.js`, `${S}factureAcheteurPdf.js`,
+    'docuseal-templates/generate.js',
+    `${C}clientsController.js`, `${C}abonnementController.js`, `${C}supportController.js`,
     `${C}authController.js`, `${C}facturesController.js`],
 };
 // Vague de chaque lot (§1, §10.1) ; B6 (écrans) est au frontend.

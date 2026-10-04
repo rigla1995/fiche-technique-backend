@@ -2,8 +2,9 @@
  *
  * Capture, sur des comptes ÉPHÉMÈRES d'un domaine, tout ce que le serveur produit comme texte
  * (liste fermée du §0) : prompt et outils de l'assistant, guide de mise en route, emails (jeux
- * fixes ET sites d'appel réels), PDF, valeurs du contrat, exports Excel, tableaux de bord,
- * données à libellés, textes persistés, messages, authentification.
+ * fixes ET sites d'appel réels), PDF (factures), exports Excel, tableaux de bord,
+ * données à libellés, textes persistés, messages, authentification. (Les « valeurs du contrat » et les
+ * PDF de contrat, d'avenant et de résiliation ont disparu au lot 3, étape 5 : voir plus bas.)
  *
  *   node scripts/capture-vocab-baseline.js [--domaine restauration|hotellerie|ceramique|miroir]
  *                                          [--sortie <fichier.json>] [--reference] [--port 3197]
@@ -15,8 +16,8 @@
  * UN PROCESSUS PAR DOMAINE (limiteur de connexion en mémoire, 20 / 15 min). L'application est
  * chargée DANS ce processus (port dédié, attente de /health) avec les bouchons du mode
  * « capture » (scripts/lib/bouchons-test.js), posés AVANT dotenv et avant tout require de
- * l'application : aucun email ne part, DocuSeal et Gemini sont factices et leurs corps captés,
- * tout autre hôte est refusé. ⚠️ Charger l'application APPLIQUE les migrations en attente à la
+ * l'application : aucun email ne part, Gemini est factice et son corps capté, tout autre hôte
+ * est refusé (DocuSeal n'est plus simulé depuis le lot 3, étape 5 : plus aucun code ne l'appelle). ⚠️ Charger l'application APPLIQUE les migrations en attente à la
  * base locale (src/app.js) : seul l'intégrateur lance l'oracle.
  *
  * Comptes créés par l'API admin (super_admin temporaire à mot de passe aléatoire), supprimés par
@@ -96,7 +97,22 @@
  *     `fixe.supplementValide.*` (sendSupplementValideEmail : tousPostes, labos0, gerants0, noteAdmin, acheteursSeuls,
  *     sansOption ; la variante « promo » n'existe plus, l'email n'a plus de ligne de promotion) ;
  *   - GARDÉS (retirés à l'étape 5) : `fixe.signature.*` (sendDocusealSigningEmail), `pdf.avenant.flux`
- *     (buildAvenantDocument), `pdf.legacy.avenant` (generateAvenantPdf), `valeursContrat.avenantExtraFields.*`. */
+ *     (buildAvenantDocument), `pdf.legacy.avenant` (generateAvenantPdf), `valeursContrat.avenantExtraFields.*`.
+ *
+ * Lot 3, étape 5 (code DocuSeal mort retiré : plus de contrat, d'avenant ni de résiliation) :
+ *   - modules supprimés, donc plus requis ni appelés ici : contractPdfService, docusealService, webhookController ;
+ *     pdfService ne garde que generateFacturePdf, emailService n'a plus sendDocusealSigningEmail ;
+ *   - retirés : les 4 emails fixes `emails.fixe.signature.*` ; les PDF directs `pdf.contrat.identite|hotellerie.
+ *     palier|sansPalier`, `pdf.avenant.flux`, `pdf.resiliation`, `pdf.legacy.avenant`, `pdf.legacy.contrat` ; la clé
+ *     `valeursContrat` EN ENTIER (elle n'avait plus que `avenantExtraFields.*` ; une clé vide arrête la capture) ;
+ *     domaine miroir : le webhook « contrat » et `persistes.webhook.contrat.statut` (la route n'existe plus) ;
+ *   - DocuSeal n'est plus simulé (scripts/lib/bouchons-test.js) : plus de `journal.docuseal` ; les variables
+ *     DOCUSEAL_* sont posées vides. Les gardes de l'étape 4 restent sur ce qui se mesure encore : la demande de
+ *     supplément du client n'envoie AUCUN email, son traitement admin ne produit AUCUN PDF ; un appel vers un hôte
+ *     DocuSeal serait refusé comme tout hôte externe (hôtes refusés : aucune sortie écrite) ;
+ *   - GARDÉS : les 4 comptes A, A2, B, C et leurs 4 suppressions (nettoyage, 204), les factures
+ *     (`pdf.factureAbonnement`, `pdf.factureAppro.*`, `pdf.factureAcheteur`), la demande de supplément validée par
+ *     l'admin (`emails.site.traitementDemande`, `messages.demandeDejaTraitee`), les 6 `fixe.supplementValide.*`. */
 'use strict';
 const path = require('path');
 const fs = require('fs');
@@ -196,7 +212,7 @@ const figer = async (fn) => {
 };
 
 // ── 4. Application ───────────────────────────────────────────────────────────────────────────
-// Variables retirées toujours vides (DOCUSEAL_PDF_FLOW : flux modèle garanti, §2.2), valeurs
+// Variables retirées toujours vides (DOCUSEAL_* : plus aucun lecteur depuis le lot 3, étape 5), valeurs
 // fixées intactes, avant ET après le chargement (src/app.js rappelle dotenv) : sinon arrêt.
 const envCapture = (quand) => {
   try { bouchons.controlerEnvCapture(); } catch (e) { console.error(`[capture] ${quand} : ${e.message}`); process.exit(2); }
@@ -214,7 +230,7 @@ const BASE = `http://127.0.0.1:${PORT}`;
 
 // ── Utilitaires ──────────────────────────────────────────────────────────────────────────────
 const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
-const journaux = () => [journal.emails.length, journal.docuseal.length, journal.gemini.length, journal.sse.length, pdfsTermines.length];
+const journaux = () => [journal.emails.length, journal.gemini.length, journal.sse.length, pdfsTermines.length];
 // Envois en tâche de fond : on lit quand les journaux sont stables depuis 500 ms.
 const attendreStable = async (maxMs = 20000) => {
   let dernier = JSON.stringify(journaux());
@@ -234,13 +250,12 @@ const triStable = (l) => [...l].sort((a, b) => cle(a).localeCompare(cle(b)));
 // Fenêtre de capture : ce que les journaux ont reçu pendant fn (envois de fond compris).
 const fenetre = async (fn) => {
   await attendreStable();
-  const [e0, d0, g0, s0, p0] = journaux();
+  const [e0, g0, s0, p0] = journaux();
   const resultat = await fn();
   await attendreStable();
   return {
     resultat,
     emails: triEmails(journal.emails.slice(e0)),
-    docuseal: journal.docuseal.slice(d0),
     gemini: journal.gemini.slice(g0),
     sse: triStable(journal.sse.slice(s0)),
     pdfs: pdfsTermines.slice(p0),
@@ -378,7 +393,7 @@ const masquer = (v, cleParent = '') => {
   if (typeof v === 'object') {
     const o = {};
     for (const [k, x] of Object.entries(v)) {
-      if ((k === 'content' || k === 'pdfBase64' || k === 'contractPdfBase64' || k === 'file') && typeof x === 'string') { o[k] = '⟨base64⟩'; continue; }
+      if ((k === 'content' || k === 'pdfBase64' || k === 'file') && typeof x === 'string') { o[k] = '⟨base64⟩'; continue; }
       // Clé masquée (date, id numérique) : suffixe en cas de collision, rien n'est perdu.
       let k2 = /^\d{3,}$/.test(k) ? '⟨id⟩' : masquerTexte(k);
       if (k2 !== k) { let i = 2; const base = k2; while (k2 in o) k2 = `${base}·${i++}`; }
@@ -490,7 +505,7 @@ const purgerOracle = async () => {
 // ── Captures ─────────────────────────────────────────────────────────────────────────────────
 const C = {
   prompt: {}, promptReel: {}, outils: {}, resultatsOutils: {}, recherches: {}, recherchesDomaine: {}, contexte: {}, guide: {},
-  accueilMessenger: {}, emails: {}, pdf: {}, valeursContrat: {}, exports: {}, rapportIA: {},
+  accueilMessenger: {}, emails: {}, pdf: {}, exports: {}, rapportIA: {},
   tableauxDeBord: {}, donneesLibelles: {}, persistes: {}, messages: {}, auth: {}, manuel: {},
 };
 // Réserve R1 (spec R2.4.8) : contenu des entrées de la base, hors restauration seulement (la référence restauration ne
@@ -511,7 +526,6 @@ const clientConfig = require(path.join(RACINE, 'src', 'services', 'clientConfigS
 const messenger = require(path.join(RACINE, 'src', 'services', 'messengerService'));
 const emailService = require(path.join(RACINE, 'src', 'services', 'emailService'));
 const pdfService = require(path.join(RACINE, 'src', 'services', 'pdfService'));
-const contractPdf = require(path.join(RACINE, 'src', 'services', 'contractPdfService'));
 const domaineProfil = require(path.join(RACINE, 'src', 'services', 'domaineProfilService'));
 const SIGNATURES = {
   outils: typeof outilsIA.toolsFor === 'function' ? 'toolsFor(voc)' : 'TOOLS_OPENAI',
@@ -570,7 +584,6 @@ async function principal() {
     dom = doms.find((d) => d.slug === DOMAINE);
   }
   if (!dom) throw new Error(`domaine ${DOMAINE} absent de la base locale`);
-  const domHotel = doms.find((d) => d.slug === 'hotellerie');
   const voc = await vocabDuDomaine(dom.id);
   meta.domaineNom = dom.nom;
   meta.lexique = dom.lexique;
@@ -920,10 +933,8 @@ async function principal() {
     C.emails[`fixe.${nom}`] = emailsDe(f);
   };
   for (const role of ['client', 'gerant', 'acheteur']) await fixe(`invitation.${role}`, () => emailService.sendInviteEmail({ to: EM, nom: 'Client Oracle', token: 'jeton-fixe', role, voc }));
-  await fixe('signature.contrat', () => emailService.sendDocusealSigningEmail({ to: EM, nom: 'Client Oracle', signingUrl: 'http://docuseal.oracle.invalid/s/oracle', voc }));
-  await fixe('signature.avenant.1', () => emailService.sendDocusealSigningEmail({ to: EM, nom: 'Client Oracle', signingUrl: 'http://docuseal.oracle.invalid/s/oracle', avenant: { addActivites: 1, addLabos: 1, addGerants: 1, setAcheteurs: 10 }, voc }));
-  await fixe('signature.avenant.2', () => emailService.sendDocusealSigningEmail({ to: EM, nom: 'Client Oracle', signingUrl: 'http://docuseal.oracle.invalid/s/oracle', avenant: { addActivites: 2, addLabos: 2, addGerants: 2, setAcheteurs: 50 }, voc }));
-  await fixe('signature.resiliation', () => emailService.sendDocusealSigningEmail({ to: EM, nom: 'Client Oracle', signingUrl: 'http://docuseal.oracle.invalid/s/oracle', type: 'resiliation', voc }));
+  // Lot 3, étape 5 : les 4 emails de signature (`fixe.signature.*`, sendDocusealSigningEmail) sont retirés avec la
+  // fonction — plus de contrat, d'avenant ni de résiliation à signer.
   // Lot 3, étape 4 : email de confirmation d'un ajout de capacité validé (remplace l'email d'avenant, sans PDF).
   const supplementBase = {
     to: EM, nom: 'Client Oracle', notesAdmin: null, nbActivitesAdded: 1, nbLabosAdded: 2, nbGerantsAdded: 1, acheteursCible: 20,
@@ -947,45 +958,17 @@ async function principal() {
   await fixe('sansTerme.codeBoss', () => emailService.sendBossRevealCode({ to: EM, code: '123456', targetLabel: 'Compte oracle', voc }));
   await fixe('sansTerme.refusDemande', () => emailService.sendDemandeAccesRefusEmail({ to: EM, nom: 'Client Oracle', voc }));
 
-  // ── PDF et valeurs du contrat (appels directs, horloge figée) ───────────────────────────
-  const pricing = {
-    baseOnboarding: 900, effOnboarding: 700, baseMensuel: 150, effMensuel: 0, promoMens: true, promoOb: true, promoMonths: 1,
-    baseResumeDate: '2030-07-01', hasPromo: true, palierAcheteurs: 20, formuleActivites: 'premium', nbActivites: 2, nbLabos: 1, nbGerants: 1,
-  };
-  const pricingSansPalier = { ...pricing, palierAcheteurs: null, hasPromo: false, promoMens: false, promoOb: false };
-  const compIdentite = [
-    { code: 'activite', typeTechnique: 'activite', libelle: 'Activité', libellePluriel: 'Activités', nb: 2 },
-    { code: 'labo', typeTechnique: 'labo', libelle: 'Labo', libellePluriel: 'Labos', nb: 1 },
-    { code: 'gerant', typeTechnique: 'gerant', libelle: 'Gérant', libellePluriel: 'Gérants', nb: 1 },
-  ];
-  const compHotel = (domHotel ? domHotel.composants : []).filter((c) => c.actif !== false).slice(0, 4)
-    .map((c, i) => ({ code: c.code, typeTechnique: c.typeTechnique, libelle: c.libelle, libellePluriel: c.libellePluriel, nb: i + 1 }));
-  const clientDoc = { nom: 'Client Oracle', email: EM, telephone: '+216 70 000 002', adresse: '1 rue Fixe, Tunis' };
+  // ── PDF directs (horloge figée) ──────────────────────────────────────────────────────────
+  // Lot 3, étape 5 : plus de contrat, d'avenant ni de résiliation. Retirés avec leur code : les 4 contrats
+  // (`contrat.identite|hotellerie.palier|sansPalier`), `avenant.flux`, `resiliation` (contractPdfService supprimé),
+  // `legacy.avenant` et `legacy.contrat` (generateAvenantPdf, generateContratPdf retirées de pdfService), et la clé
+  // `valeursContrat` en entier (`avenantExtraFields.*`). Reste la facture d'abonnement : avec les factures d'appro et
+  // la facture acheteur ci-dessous, c'est elle qui prouve que la charte commune de generate.js n'a pas bougé.
   const docPdf = async (nom, fn) => {
     const f = await fenetre(async () => figer(fn));
     C.pdf[nom] = pdfsDe(f);
   };
-  for (const [nom, composants, pr] of [
-    ['contrat.identite.palier', compIdentite, pricing], ['contrat.identite.sansPalier', compIdentite, pricingSansPalier],
-    ['contrat.hotellerie.palier', compHotel, pricing], ['contrat.hotellerie.sansPalier', compHotel, pricingSansPalier],
-  ]) {
-    await docPdf(nom, () => contractPdf.buildContratDocument({ abonnementId: 42, client: clientDoc, config: { nbActivites: 2, nbLabos: 1, nbGerants: 1, formuleActivites: 'premium', composants, domaineNom: 'Domaine fixe', domaineSlug: 'fixe' }, pricing: pr, montantOnboarding: 700, voc }));
-  }
-  await docPdf('avenant.flux', () => contractPdf.buildAvenantDocument({ demandeId: 7, client: clientDoc, pricing: { ...pricing, composants: compIdentite }, ajouts: { addActivites: 1, addLabos: 2, addGerants: 1, setAcheteurs: 20 }, abonnementId: 42, abonnementDate: '2030-01-10', voc }));
-  await docPdf('resiliation', () => contractPdf.buildResiliationDocument({ clientId: 42, client: clientDoc, voc }));
-  const legacyAvenant = {
-    nom: 'Client Oracle', notesAdmin: N.notesAdmin, nbActivitesAdded: 1, nbLabosAdded: 1, nbGerantsAdded: 1, acheteursCible: 20,
-    nbActivites: 3, nbLabos: 2, nbGerants: 2, activiteCost: 120, laboCost: 90, gerantCost: 40, formuleActivites: 'premium',
-    nbAcheteurs: 20, acheteursCost: 30, newMensuel: 280, ancienMensuel: 190, promoApplied: false, effectifMensuel: 280, dateAvenant: '2030-06-15',
-  };
-  await docPdf('legacy.avenant', () => pdfService.generateAvenantPdf(legacyAvenant, voc));
-  await docPdf('legacy.contrat', () => pdfService.generateContratPdf({ nom: 'Client Oracle', email: EM, telephone: '+216 70 000 002', adresse: '1 rue Fixe, Tunis', montantMensuel: 150, nbActivites: 2, nbLabos: 1, nbGerants: 1, formuleActivites: 'premium', nbAcheteurs: 20, dateContrat: '2030-06-15' }, voc));
   await docPdf('factureAbonnement', () => pdfService.generateFacturePdf({ numero: 'FAC-2030-0001', dateFacture: '2030-06-15', periodeLabel: 'juin 2030', clientNom: 'Client Oracle', clientEmail: EM, montantHt: 150, montantTva: 28.5, montantTtc: 178.5, tvaRate: 19 }));
-  await figer(async () => {
-    C.valeursContrat['avenantExtraFields.complet'] = contractPdf.avenantExtraFields({ ajouts: { addActivites: 1, addLabos: 2, addGerants: 1, setAcheteurs: 20 }, abonnementId: 42, abonnementDate: '2030-01-10', pricing, voc });
-    C.valeursContrat['avenantExtraFields.unSeul'] = contractPdf.avenantExtraFields({ ajouts: { addActivites: 1 }, pricing: pricingSansPalier, voc });
-    // Lot 3, étape 3 : buildContractPricingFields (champs DocuSeal du contrat de création) n'existe plus.
-  });
   // Factures d'appro (HTTP, req.voc) et facture acheteur (compte C)
   const factures = exiger(await BA.get('/api/factures?limit=200'), 200, 'factures B');
   const listeFactures = Array.isArray(factures) ? factures : (factures.factures || factures.rows || []);
@@ -1142,19 +1125,20 @@ async function principal() {
   C.persistes['C.commandeAnnuleeParVendeur'] = (await CA.get(`/api/acheteurs/commandes/${cmd1.id}`)).body;
 
   // ── Sites d'appel admin et demandes de supplément ───────────────────────────────────────
-  // Lot 3, étape 4 (plus d'avenant) : la demande du client attend la validation de l'équipe LabFlow — aucune
-  // soumission DocuSeal, aucun email (DocuSeal factice pourtant configuré) : sinon la capture s'arrête.
+  // Lot 3, étape 4 (plus d'avenant) : la demande du client attend la validation de l'équipe LabFlow — aucun email,
+  // sinon la capture s'arrête. Lot 3, étape 5 : DocuSeal n'est plus simulé (plus aucun code ne l'appelle) ; un appel
+  // vers son hôte serait refusé par le bouchon (hôtes refusés : aucune sortie écrite).
   const fDem1 = await fenetre(async () => BA.post('/api/abonnements/support', { type: 'supplement', nbActivitesSupp: 1, nbLabosSupp: 1, nbGerantsSupp: 1 }));
   const dem1 = exiger(fDem1.resultat, 201, 'demande de supplément');
-  if (fDem1.docuseal.length || fDem1.emails.length) {
-    throw new Error(`demande de supplément : ${fDem1.docuseal.length} appel(s) DocuSeal et ${fDem1.emails.length} email(s), aucun attendu (lot 3, étape 4)`);
+  if (fDem1.emails.length) {
+    throw new Error(`demande de supplément : ${fDem1.emails.length} email(s), aucun attendu (lot 3, étape 4)`);
   }
   // 2ᵉ demande, puis traitement admin → email de confirmation (sans PDF) ; 2ᵉ validation → 409
   const dem2 = exiger(await BA.post('/api/abonnements/support', { type: 'supplement', nbLabosSupp: 1 }), 201, 'demande de supplément (labo)');
   const fTraiter = await fenetre(async () => A.put(`/api/abonnements/admin/support/${dem2.id}`, { statut: 'validée', notesAdmin: N.notesAdmin }));
   exiger(fTraiter.resultat, 200, 'traitement de la demande (admin)');
-  if (fTraiter.pdfs.length || fTraiter.docuseal.length) {
-    throw new Error(`traitement de la demande : ${fTraiter.pdfs.length} PDF et ${fTraiter.docuseal.length} appel(s) DocuSeal, aucun attendu (lot 3, étape 4)`);
+  if (fTraiter.pdfs.length) {
+    throw new Error(`traitement de la demande : ${fTraiter.pdfs.length} PDF, aucun attendu (lot 3, étape 4)`);
   }
   C.emails['site.traitementDemande'] = emailsDe(fTraiter);
   C.persistes['sse.traitementDemande'] = fTraiter.sse;
@@ -1163,8 +1147,8 @@ async function principal() {
   if (fDeja.emails.length) throw new Error(`2e validation : ${fDeja.emails.length} email(s), aucun attendu`);
   C.messages['demandeDejaTraitee'] = { status: fDeja.resultat.status, body: fDeja.resultat.body };
   // Miroir : validation admin de la 1ʳᵉ demande (+1 de chaque composant ; applyComposants add, notification, email de
-  // confirmation) — remplace le webhook d'avenant (lot 3, étape 4). Webhook « contrat » : son statut seulement (lot 3,
-  // étape 3 : plus d'email de bienvenue au webhook ; branche retirée à l'étape 5).
+  // confirmation) — remplace le webhook d'avenant (lot 3, étape 4). Lot 3, étape 5 : le webhook « contrat » et
+  // `persistes.webhook.contrat.statut` sont retirés (route POST /api/webhooks/docuseal supprimée).
   if (DOMAINE === 'miroir') {
     const fVal = await fenetre(async () => A.put(`/api/abonnements/admin/support/${dem1.id}`, { statut: 'validée' }));
     exiger(fVal.resultat, 200, 'validation admin de la demande de supplément (miroir)');
@@ -1174,11 +1158,6 @@ async function principal() {
       `SELECT dc.code, dc.libelle, dc.libelle_pluriel, dc.type_technique, acc.nb FROM abonnement_config_composants acc
          JOIN domaine_composants dc ON dc.id = acc.composant_id JOIN abonnements a ON a.id = acc.abonnement_id
         WHERE a.client_id = $1 ORDER BY dc.type_technique, dc.code`, [cB.id])).rows;
-    const webhook = (corps) => fetch(`${BASE}/api/webhooks/docuseal`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Docuseal-Secret': process.env.DOCUSEAL_WEBHOOK_SECRET }, body: JSON.stringify(corps),
-    });
-    const fWh2 = await fenetre(async () => (await webhook({ event_type: 'form.completed', data: { email: cA.email, completed_at: '2030-06-15T09:30:00Z' } })).status);
-    C.persistes['webhook.contrat.statut'] = fWh2.resultat;
   } else {
     C.persistes['validationSupplement.sse'] = null;
   }
@@ -1291,7 +1270,7 @@ async function nettoyer() {
     console.log(`[capture] nettoyage : ${JSON.stringify(bilan)}`);
     console.log(`[capture] base avant : ${JSON.stringify(ctx.etatAvant)}`);
     console.log(`[capture] base après : ${JSON.stringify(etatApres)} → ${propre ? 'PROPRE' : 'DIFFÉRENTE'}`);
-    console.log(`[capture] journal du bouchon : ${journal.emails.length} email(s) capté(s), AUCUN envoyé (resend réel ${requireCacheOk ? 'jamais chargé' : 'CHARGÉ'}) ; ${journal.docuseal.length} appel(s) DocuSeal factice ; ${journal.gemini.length} appel(s) Gemini factice ; hôtes refusés : ${journal.bloques.length ? [...new Set(journal.bloques)].join(', ') : 'aucun'}`);
+    console.log(`[capture] journal du bouchon : ${journal.emails.length} email(s) capté(s), AUCUN envoyé (resend réel ${requireCacheOk ? 'jamais chargé' : 'CHARGÉ'}) ; ${journal.gemini.length} appel(s) Gemini factice ; hôtes refusés : ${journal.bloques.length ? [...new Set(journal.bloques)].join(', ') : 'aucun'}`);
     if (!erreur && propre && requireCacheOk && !journal.bloques.length) {
       const captures = masquer(C);
       const comptes = compter(captures);

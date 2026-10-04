@@ -1,0 +1,130 @@
+{
+  "_lisezmoi": [
+    "Révisions du manuel et de la base de connaissances APRÈS le lot 2c : une entrée par migration de maintenance",
+    "(scripts/VOCAB-GUIDE-SERVEUR.md §9, docs/lot-2c-spec.md §12.5). Écrit par l'intégrateur avec la migration.",
+    "« md5Avant » = md5 (sans \\r) du texte en base que la migration remplace (sa garde) ; « md5 » = md5 du texte balisé",
+    "qu'elle écrit, soit le fichier balise/manuel/<slug>.md, balise/base/<fichier>.md ou variantes/<domaine>/<slug>.md",
+    "courant. « titreAvant » / « titre » : seulement si le titre change (gardé par égalité exacte).",
+    "Variantes : « baseMd5 » = md5 du texte commun balisé courant ; seuls les BROUILLONS jamais retouchés sont mis à jour.",
+    "« slugsDomaine » : dossier de variantes/ → slug du domaine en base (le 2e domaine s'appelle « usine » en production).",
+    "Lu par controler.mjs : pour une fiche révisée, le point 1 devient « texte balisé = celui de la dernière migration »",
+    "et les points 4 et 5 se comparent au rendu par défaut du texte balisé courant (l'origine du lot 2c ne fait plus foi).",
+    "Lu par generer-maintenance.mjs, qui écrit le SQL de la migration."
+  ],
+  "slugsDomaine": {
+    "hotellerie": "hotellerie",
+    "ceramique": "usine"
+  },
+  "migrations": [
+    {
+      "numero": 198,
+      "nom": "198_manuel_sans_contrat.sql",
+      "objet": "Lot 3, étape 5 : LabFlow est sans engagement — plus de contrat, d'avenant ni de résiliation dans le manuel et la base de connaissances.",
+      "manuel": [
+        {
+          "slug": "abonnement",
+          "md5Avant": "a52d65609c412c23aca9708e1d536ce6",
+          "md5": "d88b2d3734d63358ae973e5e1072e1e3"
+        },
+        {
+          "slug": "assistant-ia",
+          "md5Avant": "874bbddc72cdb1c62ba6e693d18cad34",
+          "md5": "5cc11d4a445b7113e50683ff3a41c8e1"
+        },
+        {
+          "slug": "compte",
+          "md5Avant": "97068182631cc111a0ffa5e4ec11cd7b",
+          "md5": "548544cb7ebd2701d4e80190a4c510ad"
+        },
+        {
+          "slug": "faq",
+          "md5Avant": "97b4fa1098230952695d9b929f388fe3",
+          "md5": "2671d371a67a970b43ac199953076878"
+        },
+        {
+          "slug": "historique-paiements",
+          "md5Avant": "9d1f98e3a0fcf8f94ece6bda2f2f5766",
+          "md5": "4c656d209d89900adffc09fbb4a8cca8"
+        },
+        {
+          "slug": "lexique",
+          "md5Avant": "abe5dd9e375046d8e59f783b5c8a46c5",
+          "md5": "f8cb03f85a63d72f0e3ff70431725b28"
+        },
+        {
+          "slug": "onboarding-activation",
+          "md5Avant": "6d18eb0efd5a42a64f54a7e39ad6e99d",
+          "md5": "87a2741f40fe0c604b3ee245bfc539ba"
+        },
+        {
+          "slug": "onboarding-avenants",
+          "md5Avant": "4c9cddad5b6d8d3ca79235839eea1308",
+          "md5": "843fa688c729f275af2e74a2b11ed6d5",
+          "titreAvant": "Avenants & résiliation",
+          "titre": "Faire évoluer votre abonnement"
+        },
+        {
+          "slug": "onboarding-configuration",
+          "md5Avant": "794a5b32a2476bbe4e0088e07744f3b0",
+          "md5": "a7d78a7979106b1cd0ed7451cfb11c1e"
+        },
+        {
+          "slug": "onboarding-contrat",
+          "md5Avant": "0c5b13fcb9275c015675400efbad814c",
+          "md5": "2a5797447acbec530e66fcc23040587c",
+          "titreAvant": "Création du compte & signature du contrat",
+          "titre": "Création de votre compte"
+        },
+        {
+          "slug": "onboarding-suivi",
+          "md5Avant": "98056f9fd43080357ddc2a3484751a8b",
+          "md5": "3f4b7c1ff29ff5b041332a234145a8e3"
+        },
+        {
+          "slug": "support",
+          "md5Avant": "70381d74e6f332a160942fea9faa0056",
+          "md5": "2ca957d0ab94084693f561c4c72604de"
+        }
+      ],
+      "base": [
+        {
+          "fichier": "abonnement-et-capacite",
+          "cle": "abonnement et capacité",
+          "titre": "Abonnement et capacité",
+          "md5Avant": "a4867777df1c4cc3c0aed2ef10b58e05",
+          "md5": "c1a25c3e6632b2a9a036ee2148255421"
+        }
+      ],
+      "variantes": [
+        {
+          "domaine": "hotellerie",
+          "slug": "lexique",
+          "md5Avant": "cf9c25e3c96e508213af66675d7a2307",
+          "md5": "77cf3382224cc6902a3864bd39efd289",
+          "baseMd5": "f8cb03f85a63d72f0e3ff70431725b28"
+        },
+        {
+          "domaine": "hotellerie",
+          "slug": "onboarding-configuration",
+          "md5Avant": "7d293580a805c569505a95bb4cd4e4d7",
+          "md5": "a59201a33942645c465d11eb567a2059",
+          "baseMd5": "a7d78a7979106b1cd0ed7451cfb11c1e"
+        },
+        {
+          "domaine": "ceramique",
+          "slug": "lexique",
+          "md5Avant": "0e34b51bd151addfce726937011ca1c2",
+          "md5": "2e57007b1fa034dcedd06ca998dfc367",
+          "baseMd5": "f8cb03f85a63d72f0e3ff70431725b28"
+        },
+        {
+          "domaine": "ceramique",
+          "slug": "onboarding-configuration",
+          "md5Avant": "0b3c77015921d1f61d16bc9d7bde7700",
+          "md5": "81b568b40f9d9ac001423470960ae418",
+          "baseMd5": "a7d78a7979106b1cd0ed7451cfb11c1e"
+        }
+      ]
+    }
+  ]
+}

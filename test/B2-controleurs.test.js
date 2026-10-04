@@ -8,6 +8,9 @@
 //    de supplément attend la validation de l'équipe LabFlow ; traiter() valide en UNE transaction, seulement une
 //    demande « en_attente » (sinon 409, 404 si absente), puis envoie l'email de confirmation
 //    sendSupplementValideEmail avec le vocabulaire du compte DESTINATAIRE, vocabForClient(demande.client_id).
+//    Lot 3, étape 5 : le code DocuSeal mort est retiré (docusealService, contractPdfService, webhookController,
+//    generateAvenantPdf / generateContratPdf de pdfService, computeAvenantPricing) — plus aucun bouchon de ces
+//    modules ici ; le test « sources » vérifie qu'ils ont disparu et que rien dans src/ ne les requiert.
 // 2. Messages balisés (point de rendu `message`) : rendus par défaut à l'identique de l'existant, terme du domaine sinon.
 // Sans base de données : pool, documents et vocabulaire du compte sont des faux.
 const test = require('node:test');
@@ -44,16 +47,10 @@ remplacer('src/utils/vocabCompte', {
   vocabForClient: async (id) => marque('client', id),
 });
 const appels = [];
-remplacer('src/services/contractPdfService', {
-  buildContratDocument: async (args) => { appels.push(['buildContratDocument', args]); return { base64: 'JVBE', ref: 'CTR-0', documentName: 'x' }; },
-  buildAvenantDocument: async (args) => { appels.push(['buildAvenantDocument', args]); return { base64: 'JVBE', ref: 'AVN-0', documentName: 'x' }; },
-  buildResiliationDocument: async () => ({ base64: 'JVBE', ref: 'RES-0', documentName: 'x' }),
-  avenantExtraFields: (args) => { appels.push(['avenantExtraFields', args]); return []; },
-});
+// Lot 3, étape 5 : pdfService ne produit plus que la facture d'abonnement (bouchon capté : aucun document ne doit
+// être généré par le traitement d'une demande).
 remplacer('src/services/pdfService', {
-  generateAvenantPdf: async (donnees, voc) => { appels.push(['generateAvenantPdf', donnees, voc]); return 'JVBE'; },
-  generateContratPdf: async (donnees, voc) => { appels.push(['generateContratPdf', donnees, voc]); return 'JVBE'; },
-  generateFacturePdf: async () => 'JVBE',
+  generateFacturePdf: async (...args) => { appels.push(['generateFacturePdf', ...args]); return 'JVBE'; },
 });
 
 // Lot 3, étape 4 : l'email de confirmation d'un supplément validé est capté (vocabulaire reçu, arguments).
@@ -134,7 +131,8 @@ test('validation d\'un supplément (admin) : une transaction, puis email de conf
   assert.deepEqual([args.nbActivites, args.nbLabos, args.nbGerants, args.nbAcheteurs], [2, 2, 0, 20]);
   assert.ok(!Number.isNaN(Date.parse(args.dateValidation)), 'date de validation');
   assert.ok(!('pdfBase64' in args) && !('dateAvenant' in args), 'plus de PDF ni de date d\'avenant');
-  assert.ok(!appels.some(([n]) => n === 'generateAvenantPdf' || n === 'buildAvenantDocument' || n === 'avenantExtraFields'), 'aucun document d\'avenant');
+  // Lot 3, étape 5 : les générateurs d'avenant n'existent plus — le seul appel capté est l'email (aucun document).
+  assert.deepEqual(appels.map(([n]) => n), ['sendSupplementValideEmail'], 'aucun document généré');
 });
 
 test('validation : palier Acheteurs déjà atteint, ou compte sans configuration → 409, rien d\'appliqué', async () => {
@@ -242,6 +240,19 @@ test('sources : vocabulaire de chaque document et option pdfTexte (spec §8.2, �
   assert.doesNotMatch(traiterSu, /docuseal_submission_id|pdfBase64|generateAvenantPdf/);
   assert.match(su, /module\.exports = \{ listMine, create, listAll, traiter, deleteMine \};/);
   assert.doesNotMatch(lire('src/routes/abonnements.js'), /avenant-preview|contrat-signe|previewAvenant|getContratSigne/, 'routes retirées');
+
+  // Lot 3, étape 5 : code DocuSeal mort retiré. Les modules n'existent plus, rien dans src/ ne les requiert ni ne
+  // cite leurs fonctions ; la route du webhook DocuSeal a disparu ; pdfService ne garde que la facture.
+  for (const supprime of ['src/services/docusealService.js', 'src/services/contractPdfService.js', 'src/controllers/webhookController.js']) {
+    assert.ok(!fs.existsSync(path.join(RACINE, supprime)), `supprimé : ${supprime}`);
+  }
+  const restes = fichiersJs(path.join(RACINE, 'src')).flatMap((f) => {
+    const m = fs.readFileSync(f, 'utf8').match(/docusealService|contractPdfService|webhookController|sendDocusealSigningEmail|verifyDocusealSignature|generateAvenantPdf|generateContratPdf|computeAvenantPricing|DOCUSEAL_/g);
+    return m ? [[path.relative(RACINE, f).replace(/\\/g, '/'), [...new Set(m)].sort()]] : [];
+  });
+  assert.deepEqual(restes, [], 'plus aucune référence au code DocuSeal dans src/');
+  assert.doesNotMatch(lire('src/app.js'), /webhooks\/docuseal/, 'route du webhook DocuSeal retirée');
+  assert.match(lire('src/services/pdfService.js'), /module\.exports = \{ generateFacturePdf \};/);
 
   const fa = lire('src/controllers/facturesController.js');
   assert.match(corpsDe(fa, 'const downloadPdf = async (req, res) => {'), /const voc = req\.voc \?\? vocabDefaut;\n\s*const buffer = await buildFactureApproPdf\(facture, lignes, voc\);/);

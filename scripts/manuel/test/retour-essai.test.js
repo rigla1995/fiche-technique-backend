@@ -12,9 +12,11 @@ const { retour, pairesVariantes, migrationsEnPlace, MIGRATIONS_2C } = require('.
 const { fichiersEssai } = require('../essai-migration');
 
 const { fiches, entrees } = C.lireOrigine();
+// Témoins FIGÉS dans leur état du lot 2c (test/temoins-2c/) : voir controler.test.mjs.
+const TEMOINS_2C = path.join(__dirname, 'temoins-2c');
 const balise = (slug) => ({
-  md: C.lireTexte(path.join(C.CHEMINS.baliseManuel, `${slug}.md`)),
-  json: C.lireJson(path.join(C.CHEMINS.baliseManuel, `${slug}.json`)),
+  md: C.lireTexte(path.join(TEMOINS_2C, `${slug}.md`)),
+  json: C.lireJson(path.join(TEMOINS_2C, `${slug}.json`)),
 });
 
 /** Faux client pg : tables manuel_sections, ai_knowledge_base, _migrations, manuel_sections_domaine en mémoire. */

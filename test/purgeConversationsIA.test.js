@@ -70,9 +70,8 @@ remplacer('../src/services/domaineProfilService', {
   getDomaineIdForClient: async () => DOMAINE_ACTUEL,
   REGLES_DEFAUT: {},
 });
-remplacer('../src/services/docusealService', {});
+// Lot 3, étape 5 : docusealService et contractPdfService sont supprimés (plus de contrat) — plus de bouchon pour eux.
 remplacer('../src/services/pdfService', {});
-remplacer('../src/services/contractPdfService', {});
 
 const { oublierConversationsIA } = require('../src/services/clientConfigService');
 const { updateAbonnementConfig } = require('../src/controllers/abonnementController');

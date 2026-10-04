@@ -33,7 +33,7 @@ Lorsque vous modifiez l'e-mail, une vérification s'effectue en direct : si l'ad
 ### Points d'attention
 
 :::attention
-Votre e-mail est votre identifiant de connexion : c'est aussi l'adresse qui reçoit vos contrats, avenants et factures. Vérifiez-le soigneusement avant d'enregistrer un changement.
+Votre e-mail est votre identifiant de connexion : c'est aussi l'adresse qui reçoit vos factures et les e-mails de LabFlow. Vérifiez-le soigneusement avant d'enregistrer un changement.
 :::
 
 :::attention

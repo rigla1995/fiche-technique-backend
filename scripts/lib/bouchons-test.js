@@ -4,8 +4,9 @@
  * identique. Deux modes :
  *
  *   installer()                      → mode « test » (lanceur du backend de test) :
- *     1. vide les clés des services externes (email, IA, Messenger, DocuSeal, Telegram) AVANT
- *        dotenv — dotenv ne réécrit pas une variable déjà définie, même vide ;
+ *     1. vide les clés des services externes (email, IA, Messenger, Telegram, et les anciennes clés
+ *        DocuSeal, que plus aucun code ne lit depuis le lot 3, étape 5) AVANT dotenv — dotenv ne
+ *        réécrit pas une variable déjà définie, même vide ;
  *     2. refuse une base de données non locale (sauf --base-distante) ;
  *     3. remplace le module `resend` par un bouchon qui journalise « [BOUCHON resend] » ;
  *     4. refuse tout appel réseau sortant (fetch, http.request, https.request) vers autre chose
@@ -17,18 +18,19 @@
  *   installer({ capture: true })     → mode « capture » de l'oracle du vocabulaire
  *     (scripts/capture-vocab-baseline.js). En plus, AVANT dotenv et avant tout require de
  *     l'application :
- *     - fausse RESEND_API_KEY NON vide (sinon 9 fonctions d'email sortent avant l'envoi) ;
+ *     - fausse RESEND_API_KEY NON vide (sinon 8 fonctions d'email sortent avant l'envoi) ;
  *       APP_URL, APP_NAME, FROM_EMAIL, TZ fixés ; variables PRESTATAIRE_* et FACTURE_* fixées
  *       (FACTURE_STRICT vidée) ; MESSENGER_PAGE_USERNAME fixé (invitation Messenger) ;
- *     - DocuSeal factice (hôte docuseal.oracle.invalid, jeton, 3 modèles, secret de webhook de
- *       test ; DOCUSEAL_PDF_FLOW vide = absent = flux modèle) et Gemini factice (GEMINI_API_KEY=oracle) ;
+ *     - Gemini factice (GEMINI_API_KEY=oracle). Lot 3, étape 5 : PLUS de DocuSeal factice (plus de
+ *       contrat, d'avenant ni de résiliation : docusealService et le webhook sont supprimés) ; les
+ *       variables DOCUSEAL_* sont posées VIDES (ENV_RETIREES_CAPTURE) pour qu'un .env de poste ne les
+ *       rallume pas, et un appel vers un hôte DocuSeal serait REFUSÉ comme tout hôte externe ;
  *     - `resend` remplacé : emails.send POUSSE { to, subject, html, attachments } dans
  *       journal.emails (rien ne part) ;
- *     - fetch : hôte DocuSeal → réponses fixes, corps CAPTÉ (journal.docuseal) ; hôte Gemini →
- *       réponse fixe sans appel d'outil, corps CAPTÉ (journal.gemini) ; localhost → appel réel
- *       (l'oracle parle HTTP à l'application chargée dans son processus) ; tout autre hôte
- *       REFUSÉ (journal.bloques) ; http/https.request et .get, et toute connexion TCP/TLS
- *       directe : localhost seulement ;
+ *     - fetch : hôte Gemini → réponse fixe sans appel d'outil, corps CAPTÉ (journal.gemini) ;
+ *       localhost → appel réel (l'oracle parle HTTP à l'application chargée dans son processus) ;
+ *       tout autre hôte REFUSÉ (journal.bloques) ; http/https.request et .get, et toute connexion
+ *       TCP/TLS directe : localhost seulement ;
  *     - variables ENV_RETIREES_CAPTURE « retirées » en les posant VIDES avant dotenv, comme les
  *       clés du mode « test » : dotenv (ici, puis src/app.js et src/config/migrate.js, qui le
  *       rappellent) recharge une variable ABSENTE depuis le .env du poste, jamais une variable
@@ -49,7 +51,8 @@ const Module = require('module');
 
 const RACINE = path.resolve(__dirname, '..', '..');
 
-// Clés vidées en mode « test » (ordre et liste inchangés depuis start-test-backend.js).
+// Clés vidées en mode « test » (ordre et liste inchangés depuis start-test-backend.js ; les 3 clés DocuSeal ne
+// sont plus lues par aucun code depuis le lot 3, étape 5 : les vider reste sans effet et sans risque).
 const CLES_EXTERNES = [
   'RESEND_API_KEY', 'GROQ_API_KEY', 'GEMINI_API_KEY', 'TELEGRAM_BOT_TOKEN',
   'MESSENGER_PAGE_ACCESS_TOKEN', 'MESSENGER_APP_SECRET', 'MESSENGER_VERIFY_TOKEN',
@@ -57,7 +60,6 @@ const CLES_EXTERNES = [
 ];
 
 // Valeurs du mode « capture » : fixes, pour des sorties identiques d'un passage à l'autre.
-const HOTE_DOCUSEAL = 'docuseal.oracle.invalid';
 const HOTE_GEMINI = 'generativelanguage.googleapis.com';
 const ENV_CAPTURE = {
   RESEND_API_KEY: 're_oracle_bouchon',
@@ -65,19 +67,14 @@ const ENV_CAPTURE = {
   APP_URL: 'http://app.oracle.invalid',
   APP_NAME: 'LabFlow',
   TZ: 'Africa/Tunis',
-  // DocuSeal factice : flux modèle (DOCUSEAL_PDF_FLOW vide, voir ENV_RETIREES_CAPTURE)
-  DOCUSEAL_URL: `http://${HOTE_DOCUSEAL}`,
-  DOCUSEAL_API_TOKEN: 'oracle',
-  DOCUSEAL_TEMPLATE_ID: '1',
-  DOCUSEAL_TEMPLATE_AVENANT_ID: '2',
-  DOCUSEAL_TEMPLATE_RESILIATION_ID: '3',
-  DOCUSEAL_WEBHOOK_SECRET: 'oracle-secret-webhook',
   // Gemini factice
   GEMINI_API_KEY: 'oracle',
   GEMINI_MODEL: 'gemini-oracle',
   // Invitation Messenger (lien m.me, aucun appel)
   MESSENGER_PAGE_USERNAME: 'labflow.oracle',
-  // Identité du prestataire et facturation : valeurs non fictives et fixes
+  // Identité du prestataire et facturation : valeurs non fictives et fixes, lues par les FACTURES
+  // (docuseal-templates/generate.js). Lot 3, étape 5 : PRESTATAIRE_VILLE et PRESTATAIRE_SIGNATAIRE retirées
+  // (lues seulement par le bloc des signatures des contrats, supprimé).
   FACTURE_PRESTATAIRE_NOM: 'LabFlow Oracle',
   FACTURE_ADRESSE: '12 rue des Essais, 1000 Tunis',
   FACTURE_MATRICULE_FISCAL: '7654321/B/A/000',
@@ -89,17 +86,19 @@ const ENV_CAPTURE = {
   PRESTATAIRE_RC: 'B9999992026',
   PRESTATAIRE_CAPITAL: '5 000 DT',
   PRESTATAIRE_ADRESSE: '12 rue des Essais, 1000 Tunis',
-  PRESTATAIRE_VILLE: 'Tunis',
   PRESTATAIRE_EMAIL: 'contact@oracle.invalid',
   PRESTATAIRE_TEL: '+216 70 000 001',
-  PRESTATAIRE_SIGNATAIRE: 'Le Gérant Oracle',
 };
 // Variables retirées en mode « capture » : posées VIDES avant dotenv (une variable supprimée serait
 // rechargée depuis le .env du poste par chaque dotenv.config(), src/app.js compris — mesuré).
-// Lecteurs : DOCUSEAL_PDF_FLOW === '1', FACTURE_STRICT === '1' / !== '0' (hors production),
-// MESSENGER_* par vérité : vide équivaut à absente pour chacun.
+// Lecteurs : MESSENGER_* par vérité : vide équivaut à absente. Lot 3, étape 5 : toutes les variables DOCUSEAL_*
+// (URL, jeton, 3 modèles, secret de webhook, flux PDF) et FACTURE_STRICT n'ont plus AUCUN lecteur (code des
+// contrats supprimé) ; elles restent posées vides pour qu'un .env de poste ne puisse rien rallumer si du code
+// DocuSeal revenait — controlerEnvCapture() le vérifie avant et après le chargement de l'application.
 const ENV_RETIREES_CAPTURE = [
-  'DOCUSEAL_PDF_FLOW', 'FACTURE_STRICT', 'GROQ_API_KEY', 'TELEGRAM_BOT_TOKEN',
+  'DOCUSEAL_PDF_FLOW', 'DOCUSEAL_URL', 'DOCUSEAL_API_TOKEN', 'DOCUSEAL_TEMPLATE_ID',
+  'DOCUSEAL_TEMPLATE_AVENANT_ID', 'DOCUSEAL_TEMPLATE_RESILIATION_ID', 'DOCUSEAL_WEBHOOK_SECRET',
+  'FACTURE_STRICT', 'GROQ_API_KEY', 'TELEGRAM_BOT_TOKEN',
   'MESSENGER_PAGE_ACCESS_TOKEN', 'MESSENGER_APP_SECRET', 'MESSENGER_VERIFY_TOKEN',
 ];
 
@@ -120,7 +119,7 @@ const reponseJson = (corps, status = 200) => new Response(JSON.stringify(corps),
 
 function installer({ capture = false, argv = process.argv } = {}) {
   process.chdir(RACINE);
-  const journal = { emails: [], docuseal: [], gemini: [], sse: [], bloques: [] };
+  const journal = { emails: [], gemini: [], sse: [], bloques: [] };
 
   // 1. Variables d'environnement, AVANT dotenv.
   if (capture) {
@@ -169,7 +168,7 @@ function installer({ capture = false, argv = process.argv } = {}) {
     return chargerOrigine.apply(this, arguments);
   };
 
-  // 4. Réseau sortant : localhost seulement (et, en capture, DocuSeal et Gemini factices).
+  // 4. Réseau sortant : localhost seulement (et, en capture, Gemini factice).
   const fetchOrigine = global.fetch;
   global.fetch = async (url, opts) => {
     let hote = '';
@@ -179,16 +178,6 @@ function installer({ capture = false, argv = process.argv } = {}) {
       urlTexte = typeof url === 'string' ? url : (capture && url instanceof URL ? url.href : url.url);
       hote = new URL(urlTexte).hostname;
     } catch (_) { /* URL relative ou invalide */ }
-    if (capture && hote === HOTE_DOCUSEAL) {
-      const u = new URL(urlTexte);
-      const methode = String((opts && opts.method) || 'GET').toUpperCase();
-      let corps = null;
-      try { corps = opts && opts.body ? JSON.parse(opts.body) : null; } catch (_) { corps = opts && opts.body; }
-      journal.docuseal.push({ methode, chemin: u.pathname, corps });
-      if (methode === 'POST' && u.pathname === '/api/submissions') return reponseJson([{ submission_id: 1, slug: 'oracle' }]);
-      if (methode === 'GET' && /^\/api\/submissions\/\w+$/.test(u.pathname)) return reponseJson({ id: 1, documents: [] });
-      return reponseJson({ error: 'route DocuSeal non prévue par le bouchon' }, 404);
-    }
     if (capture && hote === HOTE_GEMINI) {
       let corps = null;
       try { corps = opts && opts.body ? JSON.parse(opts.body) : null; } catch (_) { corps = opts && opts.body; }
@@ -268,11 +257,11 @@ function installer({ capture = false, argv = process.argv } = {}) {
     // 6. Job quotidien de 01:00 neutralisé (lu par app.js après les migrations).
     const abonnement = require(path.join(RACINE, 'src', 'controllers', 'abonnementController'));
     abonnement.enforcerStatuts = () => {};
-    console.log(`[bouchons-test] mode capture : resend capté, DocuSeal et Gemini factices, réseau externe bloqué, SSE capté, enforcerStatuts neutralisé — base ${hoteBase}`);
+    console.log(`[bouchons-test] mode capture : resend capté, Gemini factice, réseau externe bloqué, SSE capté, enforcerStatuts neutralisé — base ${hoteBase}`);
   } else {
     console.log(`[start-test-backend] clés externes vidées (${CLES_EXTERNES.length}), resend bouchonné, réseau externe bloqué — base ${hoteBase}`);
   }
-  return { journal, hoteBase, ENV_CAPTURE, HOTE_DOCUSEAL, HOTE_GEMINI };
+  return { journal, hoteBase, ENV_CAPTURE, HOTE_GEMINI };
 }
 
 // Contrôle du mode « capture » : variables retirées vides, valeurs fixées intactes. Appelé par
@@ -295,4 +284,4 @@ function controlerRequireCache() {
   return true;
 }
 
-module.exports = { installer, controlerRequireCache, controlerEnvCapture, CLES_EXTERNES, ENV_RETIREES_CAPTURE, ENV_CAPTURE, HOTE_DOCUSEAL, HOTE_GEMINI, estLocal };
+module.exports = { installer, controlerRequireCache, controlerEnvCapture, CLES_EXTERNES, ENV_RETIREES_CAPTURE, ENV_CAPTURE, HOTE_GEMINI, estLocal };

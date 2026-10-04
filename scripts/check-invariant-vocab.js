@@ -336,7 +336,8 @@ function verifierRestauration(courante) {
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // Mode hors restauration (§2.5)
 // ══════════════════════════════════════════════════════════════════════════════════════════════
-const TYPES_EXCEPTION = ['lot-3', '2c', 'fiscal', 'formule', 'non-repliable', 'nom-de-fichier', 'code-api', 'donnee', 'locution', 'homonyme', 'admin'];
+// (type « lot-3 » — textes fixes des documents de contrat — retiré au lot 3, étape 5, avec ses 13 entrées : plus de contrat)
+const TYPES_EXCEPTION = ['2c', 'fiscal', 'formule', 'non-repliable', 'nom-de-fichier', 'code-api', 'donnee', 'locution', 'homonyme', 'admin'];
 // Mots de la restauration hors lexique (§2.5, point 6), cherchés en mot entier, sans casse.
 const MOTS_HORS_LEXIQUE = ['restaurant', 'restaurants', 'restauration', 'plat', 'plats', 'menu', 'menus', 'chef', 'chefs', 'couverts', 'carte', 'cartes', 'métiers de bouche', 'food'];
 // Clés *_abr de la spec §4.3, ajoutées à l'étape S1 : absentes avant, la liste « avant » est incomplète pour elles.
@@ -345,7 +346,7 @@ const CLES_ABR = ['pt_abr', 'produit_utilisable_abr', 'produit_vendable_abr', 'p
 // Familles de sorties (liste fermée du §0).
 const FAMILLE = {
   messages: 'messages', tableauxDeBord: 'donnees', donneesLibelles: 'donnees', auth: 'donnees',
-  exports: 'excel', pdf: 'documents', valeursContrat: 'documents', emails: 'emails',
+  exports: 'excel', pdf: 'documents', emails: 'emails',
   prompt: 'assistant', promptReel: 'assistant', outils: 'assistant', resultatsOutils: 'assistant', recherches: 'assistant',
   recherchesDomaine: 'assistant', contexte: 'assistant', guide: 'assistant', accueilMessenger: 'assistant', rapportIA: 'assistant',
   persistes: 'persistes', manuel: 'manuel', baseParTitre: 'assistant',
@@ -520,7 +521,8 @@ function textes(captures) {
   }
   // Clés de premier niveau = étiquettes de capture de l'oracle (« v2.labo.sansFiltre », « get_ventes canal=… ») :
   // jamais lues comme du texte du serveur.
-  for (const k of ['tableauxDeBord', 'donneesLibelles', 'resultatsOutils', 'auth', 'persistes', 'valeursContrat']) {
+  // (lot 3, étape 5 : la clé `valeursContrat` n'existe plus — plus de contrat ni d'avenant)
+  for (const k of ['tableauxDeBord', 'donneesLibelles', 'resultatsOutils', 'auth', 'persistes']) {
     for (const [nom, v] of Object.entries(captures[k] || {})) donnees(k, v, `/${seg(nom)}`);
   }
   for (const [nom, x] of Object.entries(captures.exports || {})) {
@@ -762,14 +764,17 @@ async function verifierHorsRestauration(capture) {
     }
   }
 
-  // Libellés écrits par le serveur (création à la volée, webhook) : jamais masqués, comparés à l'attendu exact.
+  // Libellés écrits par le serveur (création à la volée, puis validation admin d'une demande de supplément) : jamais
+  // masqués, comparés à l'attendu exact. Lot 3, étape 5 : le webhook d'avenant n'existe plus ; sa capture
+  // `webhook.avenant.composants` avait été remplacée à l'étape 4 par `validationSupplement.composants` (composants du
+  // compte B après la validation admin), que ce contrôle relit désormais à sa place.
   const attenduGerant = { libelle: vX.Nom('gerant'), libelle_pluriel: vX.Pl('gerant') };
   const libellesServeur = [];
   if (capture.meta.domaine === 'miroir') {
     const p = capture.captures.persistes || {};
     const lignes = [
       ...(p['creation.composantsAlaVolee'] || []).map((r, i) => ({ chemin: `/creation.composantsAlaVolee/${i}`, r })),
-      ...(p['webhook.avenant.composants'] || []).filter((r) => r.type_technique === 'gerant').map((r, i) => ({ chemin: `/webhook.avenant.composants/gerant/${i}`, r })),
+      ...(p['validationSupplement.composants'] || []).filter((r) => r.type_technique === 'gerant').map((r, i) => ({ chemin: `/validationSupplement.composants/gerant/${i}`, r })),
     ];
     if (!lignes.length) problemes.push('miroir : aucun composant gérant créé à la volée n\'a été capturé (non-vacuité)');
     for (const { chemin, r } of lignes) {
