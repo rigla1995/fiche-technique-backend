@@ -48,7 +48,7 @@ const adminSiteRoutes = require('./routes/adminSite');
 const bossRoutes = require('./routes/boss');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 
-const { authenticate, requireWriteAccess } = require('./middleware/auth');
+const { authenticate, requireWriteAccess, jetonPresent } = require('./middleware/auth');
 const { rendreMessages } = require('./middleware/rendreMessages');
 
 const app = express();
@@ -107,8 +107,9 @@ app.use('/api', (req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
   // Allow demandes creation even in read_only (so client can request to unblock account)
   if (req.path === '/abonnements/demandes' && req.method === 'POST') return next();
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return next();
+  // Sans aucun jeton : la route répondra 401 elle-même. Avec un jeton, où qu'il soit (en-tête ou adresse), la
+  // garde s'applique — même définition que authenticate (jetonPresent).
+  if (!jetonPresent(req)) return next();
   authenticate(req, res, () => requireWriteAccess(req, res, next));
 });
 
