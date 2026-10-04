@@ -27,14 +27,16 @@ const CHAMPS_IDENTITE = [
 const HORS_W1252 = /[^\x20-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/u;
 
 // Nettoyage AVANT le contrôle des caractères : un texte latin copié d'un PDF ou d'un Mac ne doit pas être refusé.
-// Accents décomposés recomposés (NFC), ligatures typographiques défaites, caractères invisibles retirés, tirets et
-// moins Unicode ramenés au trait d'union, espaces (insécables comprises) réduits à une seule.
+// Accents décomposés recomposés (NFC), ligatures typographiques défaites, caractères invisibles retirés (dont DEL et
+// les caractères de contrôle U+0080 à U+009F, que la table Windows-1252 laisserait passer), tirets et moins Unicode
+// ramenés au trait d'union, espaces (insécables comprises) réduits à une seule.
 const LIGATURES = { 'ﬀ': 'ff', 'ﬁ': 'fi', 'ﬂ': 'fl', 'ﬃ': 'ffi', 'ﬄ': 'ffl', 'ﬅ': 'st', 'ﬆ': 'st' };
 const texte = (v) => (v == null ? '' : String(v)
   .normalize('NFC')
   .replace(/[ﬀ-ﬆ]/g, (c) => LIGATURES[c])
   .replace(/[­​-‍⁠﻿]/g, '')
   .replace(/[‐-‒−]/g, '-')
+  .replace(/[\x7F-\x9F]/g, '')
   .replace(/\s+/g, ' ')
   .trim());
 

@@ -168,8 +168,8 @@
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Adresse",
-    "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
+    "type": "ajoute",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : libellé ou message de la saisie d'identité légale, lu par l'admin (routes /admin/clients, étapes 1-2) ET désormais par le client qui complète son adresse, sa ville et son représentant (PUT /api/entreprise/identite, requireClientOwner). Texte nouveau du lot 3, sans terme du lexique."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -183,8 +183,8 @@
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Ville",
-    "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
+    "type": "ajoute",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : libellé ou message de la saisie d'identité légale, lu par l'admin (routes /admin/clients, étapes 1-2) ET désormais par le client qui complète son adresse, sa ville et son représentant (PUT /api/entreprise/identite, requireClientOwner). Texte nouveau du lot 3, sans terme du lexique."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -204,8 +204,8 @@
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Représentant",
-    "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
+    "type": "ajoute",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : libellé ou message de la saisie d'identité légale, lu par l'admin (routes /admin/clients, étapes 1-2) ET désormais par le client qui complète son adresse, sa ville et son représentant (PUT /api/entreprise/identite, requireClientOwner). Texte nouveau du lot 3, sans terme du lexique."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -225,8 +225,8 @@
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "Qualité du représentant",
-    "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
+    "type": "ajoute",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : libellé ou message de la saisie d'identité légale, lu par l'admin (routes /admin/clients, étapes 1-2) ET désormais par le client qui complète son adresse, sa ville et son représentant (PUT /api/entreprise/identite, requireClientOwner). Texte nouveau du lot 3, sans terme du lexique."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -338,15 +338,15 @@
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "⟦·⟧ : ⟦·⟧ caractères au maximum",
-    "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
+    "type": "ajoute",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : libellé ou message de la saisie d'identité légale, lu par l'admin (routes /admin/clients, étapes 1-2) ET désormais par le client qui complète son adresse, sa ville et son représentant (PUT /api/entreprise/identite, requireClientOwner). Texte nouveau du lot 3, sans terme du lexique."
   },
   {
     "fichier": "src/utils/identite.js",
     "avant": null,
     "apres": "⟦·⟧ : caractères latins seulement (les lettres arabes et les émojis ne s'impriment pas sur les factures)",
-    "type": "admin",
-    "justification": "Lot 3, étapes 1-2 : libellé ou message de la saisie d'identité légale et de la création d'un client, lu seulement par l'admin — routes /admin/clients (POST, POST /identite/controle, PUT /:id et /:id/identite, GET /:id), garde requireSuperAdmin."
+    "type": "ajoute",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : libellé ou message de la saisie d'identité légale, lu par l'admin (routes /admin/clients, étapes 1-2) ET désormais par le client qui complète son adresse, sa ville et son représentant (PUT /api/entreprise/identite, requireClientOwner). Texte nouveau du lot 3, sans terme du lexique."
   },
   {
     "fichier": "src/utils/identite.js",
@@ -4558,5 +4558,90 @@
     "type": "non-repliable",
     "mode": "accords",
     "justification": "Signalement d'accord à tort : « activé » s'accorde avec « Le compte » (masculin fixe), pas avec le terme rendu par [[ce:gerant]]. Rendu miroir juste : « Le compte de cette animatrice est déjà activé ». Même cas que le message des acheteurs (B5.json)."
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": "Nom et email requis",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : route PUT /api/entreprise (upsertEntreprise) SUPPRIMÉE — sans appelant, elle écrasait l'adresse et acceptait un gérant (spec docs/lot-3-spec.md §4 et §9 bis) ; texte ou chemin supprimé avec elle."
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": null,
+    "apres": "adresse",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route)."
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": null,
+    "apres": "ville",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route)."
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": null,
+    "apres": "representantNom",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route)."
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": null,
+    "apres": "representantQualite",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route)."
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": null,
+    "apres": "string",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route)."
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": null,
+    "apres": "Requête invalide",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : message NOUVEAU de la route PUT /api/entreprise/identite (requireClientOwner), renvoyé au client si une valeur n'est pas un texte. Aucun terme du lexique."
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": null,
+    "apres": ", ",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route).",
+    "occurrences": 3
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": null,
+    "apres": "$⟦·⟧",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route)."
+  },
+  {
+    "fichier": "src/controllers/entrepriseController.js",
+    "avant": null,
+    "apres": "⟦·⟧ = EXCLUDED.⟦·⟧",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route)."
+  },
+  {
+    "fichier": "src/routes/entreprise.js",
+    "avant": "/",
+    "apres": null,
+    "type": "retire",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : route PUT /api/entreprise (upsertEntreprise) SUPPRIMÉE — sans appelant, elle écrasait l'adresse et acceptait un gérant (spec docs/lot-3-spec.md §4 et §9 bis) ; texte ou chemin supprimé avec elle."
+  },
+  {
+    "fichier": "src/routes/entreprise.js",
+    "avant": null,
+    "apres": "/identite",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route)."
   }
 ]

@@ -394,6 +394,7 @@ Fichier de ton lot : `scripts/vocab-allow/<lot>.json` (format : `fiche-technique
 | `reporte` (+ `lot`) | PLUS AUCUN emploi au serveur. Les textes fixes du contrat (`3`) ont été SUPPRIMÉS au lot 3, étape 5 (plus de contrat, d'avenant ni de résiliation) : les 18 entrées `reporte` de `B2.json` sont retirées. Plus de `2c` non plus : la description de `search_knowledge_base` passe par `voc` depuis le lot 2c (R5.5) |
 | `retire` | lot 3 : texte SUPPRIMÉ avec la fonction qui l'affichait, sur décision écrite du client (`apres: null` seulement ; la justification nomme la décision). Tout texte retiré avec les contrats, visible ou technique, sauf un code SQL (`discriminant`) : un texte visible n'est jamais `discriminant` (`vocab-allow/L3.json`) |
 | `remplace` | lot 3 : texte NOUVEAU et visible qui remplace un texte retiré, sur décision écrite du client (`avant: null` seulement) |
+| `ajoute` | lot 3, étape 6 : texte NOUVEAU et visible d'une fonction nouvelle validée par le client, qui ne remplace rien (`avant: null` seulement ; la justification nomme la fonction et sa route). Ex. : messages de `PUT /api/entreprise/identite` |
 | `fiscal` | facture acheteur, facture d'abonnement |
 | `faute-corrigee` | faute de l'existant corrigée (sous-titre « Transfert labo → activité » d'un transfert labo→labo) |
 | `provisoire` | en attente d'un besoin (`vocab-besoins/<lot>.json`) : doit finir à 0 |
