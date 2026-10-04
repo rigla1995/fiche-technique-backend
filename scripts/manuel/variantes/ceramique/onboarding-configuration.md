@@ -27,7 +27,7 @@ La progression est entièrement automatique : l'application détecte vos donnée
 :::
 
 :::attention
-Le nombre [[de:activite:pl]] et [[de:labo:pl]] est plafonné par votre abonnement (compteurs affichés en haut de la page). Une fois la limite atteinte, le bouton « ⚡ Ajouter [[nom:activite:pl]] » vous oriente vers une demande d'ajout de capacité — voir [Avenants & résiliation](#onboarding-avenants).
+Le nombre [[de:activite:pl]] et [[de:labo:pl]] est plafonné par votre abonnement (compteurs affichés en haut de la page). Une fois la limite atteinte, le bouton « ⚡ Ajouter [[nom:activite:pl]] » vous oriente vers une demande d'ajout de capacité — voir [Faire évoluer votre abonnement](#onboarding-avenants).
 :::
 
 ### Voir aussi

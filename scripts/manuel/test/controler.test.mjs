@@ -22,16 +22,19 @@ const { vocabDefaut } = require('../../../src/utils/vocab.js');
 
 const OUTIL = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'controler.mjs');
 const TEMOINS = ['acheteurs-carnet', 'lexique', 'historique-paiements'];
+// Témoins FIGÉS dans leur état du lot 2c (rendu par défaut = origine) : test/temoins-2c/. Les fichiers de balise/manuel/
+// peuvent être réécrits par une migration de maintenance (revisions.json), ces tests n'en dépendent pas.
+const TEMOINS_2C = path.join(path.dirname(fileURLToPath(import.meta.url)), 'temoins-2c');
 const { fiches } = C.lireOrigine();
 const origine = (slug) => fiches.find((f) => f.slug === slug);
 const lancer = (args) => spawnSync(process.execPath, [OUTIL, ...args], { encoding: 'utf8', cwd: C.RACINE });
 const VOC = V.vocabulairesEssai();
 
-/** Racine jetable avec les 3 témoins balisés de scripts/manuel/balise/manuel/. */
+/** Racine jetable avec les 3 témoins balisés du lot 2c (test/temoins-2c/). */
 function racineTemoins() {
   const r = fs.mkdtempSync(path.join(os.tmpdir(), 'controler-'));
   fs.mkdirSync(path.join(r, 'balise', 'manuel'), { recursive: true });
-  for (const s of TEMOINS) for (const x of ['.md', '.json']) fs.copyFileSync(path.join(C.CHEMINS.baliseManuel, s + x), path.join(r, 'balise', 'manuel', s + x));
+  for (const s of TEMOINS) for (const x of ['.md', '.json']) fs.copyFileSync(path.join(TEMOINS_2C, s + x), path.join(r, 'balise', 'manuel', s + x));
   return r;
 }
 const ecrireFiche = (r, slug, md, json) => {

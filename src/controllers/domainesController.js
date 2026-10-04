@@ -135,7 +135,7 @@ const validateComposant = (c, i) => {
   if (String(c.libelle).trim().length > 80) return `composants[${i}] (${code}) : libellé trop long (80 max)`;
   if (c.libellePluriel != null && String(c.libellePluriel).length > 80) return `composants[${i}] (${code}) : pluriel trop long (80 max)`;
   // Lot 2b §5.4 : `[`, `]` et `|` sont réservés aux balises du vocabulaire ; un libellé de composant est
-  // interpolé dans des textes rendus (guide de mise en route, contrat).
+  // interpolé dans des textes rendus (guide de mise en route).
   if (/[[\]|]/.test(String(c.libelle)) || (c.libellePluriel != null && /[[\]|]/.test(String(c.libellePluriel)))) {
     return `composants[${i}] (${code}) : caractères [ ] | interdits dans le libellé et le pluriel`;
   }

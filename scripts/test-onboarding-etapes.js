@@ -38,7 +38,7 @@ const check = (name, ok, detail = '') => {
     let e = await etat();
     check('compte vierge → à faire = capacités', e.aFaire === 'capacites');
     check('lot 1b : chaque étape porte une route (capacités → /client/activites)',
-      e.etapes.filter((x) => x.key !== 'contrat' && x.key !== 'activation').every((x) => typeof x.route === 'string' && x.route.startsWith('/client/'))
+      e.etapes.filter((x) => x.key !== 'activation').every((x) => typeof x.route === 'string' && x.route.startsWith('/client/'))
       && etape(e, 'capacites').route === '/client/activites' && etape(e, 'referentiel').route === '/client/referentiel/unites',
       e.etapes.map((x) => `${x.key}:${x.route}`).join(' | '));
     check('lot 1b : sans composant souscrit → composants = [] (repli par type technique)',

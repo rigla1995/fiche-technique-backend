@@ -46,16 +46,21 @@ neuve de la base : `node scripts/manuel/base-locale.js copie` puis `DB_NAME=fich
 - Ordre des clés (I9, spec §2.4 v2.2) : deux objets comparés gardent la même suite de clés COMMUNES. Une permutation
   est un écart de type `ordre-cles` (`avant` / `apres` = les deux suites), admis seulement par une entrée qui porte ce
   type. Une clé ajoutée ou retirée reste un écart de valeur (« ⟨absent⟩ »).
-- Aucun email ne part : `resend` est remplacé par un bouchon, DocuSeal et Gemini sont factices, tout autre hôte est refusé
+- Aucun email ne part : `resend` est remplacé par un bouchon, Gemini est factice, tout autre hôte est refusé
   (`scripts/lib/bouchons-test.js`, mode « capture ») : `fetch`, `http`/`https` `.request` et `.get`, et toute connexion
   TCP/TLS directe (garde sur `net.Socket.prototype.connect`). Le journal du bouchon est imprimé à la fin de chaque capture.
+  DocuSeal n'est PLUS simulé depuis le lot 3, étape 5 (plus de contrat, d'avenant ni de résiliation : plus aucun code
+  ne l'appelle) ; un appel vers son hôte serait refusé comme tout hôte externe, et la capture n'écrirait rien.
 - Environnement de capture : valeurs fixes posées AVANT dotenv. Les variables `PRESTATAIRE_*` et `FACTURE_*` sont LUES
-  (`docuseal-templates/generate.js:41-54`, PDF des contrats et factures) : leurs valeurs fixes empêchent la référence de
-  capturer l'identité légale réelle du poste ; ne jamais les retirer du bouchon. Les variables « retirées »
-  (`DOCUSEAL_PDF_FLOW`, `FACTURE_STRICT`, `GROQ_API_KEY`, `TELEGRAM_BOT_TOKEN`, `MESSENGER_*`) sont posées VIDES : une
-  variable supprimée serait rechargée depuis le `.env` du poste par `dotenv` (que `src/app.js` rappelle). Tous leurs
-  lecteurs testent une valeur : vide = absente. La capture s'arrête si l'une d'elles est non vide, avant ou après le
-  chargement de l'application.
+  (`docuseal-templates/generate.js:35-47`, PDF des FACTURES — les contrats n'existent plus) : leurs valeurs fixes
+  empêchent la référence de capturer l'identité légale réelle du poste ; ne jamais les retirer du bouchon
+  (`PRESTATAIRE_VILLE` et `PRESTATAIRE_SIGNATAIRE`, lues seulement par le bloc des signatures des contrats, en sont
+  sorties à l'étape 5). Les variables « retirées » (toutes les `DOCUSEAL_*` — URL, jeton, 3 modèles, secret de webhook,
+  flux PDF —, `FACTURE_STRICT`, `GROQ_API_KEY`, `TELEGRAM_BOT_TOKEN`, `MESSENGER_*`) sont posées VIDES : une
+  variable supprimée serait rechargée depuis le `.env` du poste par `dotenv` (que `src/app.js` rappelle). Leurs
+  lecteurs testent une valeur : vide = absente (les `DOCUSEAL_*` et `FACTURE_STRICT` n'ont plus aucun lecteur ; elles
+  restent posées vides pour qu'un `.env` de poste ne rallume rien si du code DocuSeal revenait). La capture s'arrête si
+  l'une d'elles est non vide, avant ou après le chargement de l'application.
 - Comptes éphémères `oracle-vocab-<domaine>-*@example.com`, supprimés par l'API admin ; domaine `oracle-miroir` créé
   puis supprimé ; base contrôlée avant / après. Puis `node scripts/check-invariant-config.js` doit rester à 0 écart.
 
@@ -268,6 +273,10 @@ principale. La 193 ne touche ni le manuel ni la base : les empreintes globales (
   « article » générique du §6.5 : en-tête de l'export « Ventes du labo », description de `get_config_vente`).
   Restent à typer après leur vague : l'« article » générique de `aiService.js:34`, `:49` (le prompt est UN texte : une
   exception par forme l'éteindrait en entier), et les libellés de contrat qui relèvent du lot 3.
+  **Lot 3, étape 5** : les exceptions des documents de contrat ont disparu avec eux (noms de champs DocuSeal, « Activité
+  Premium » et « Domaine d'activité » des contrats, « ARTICLE n », « PRESTATAIRE », et les 13 entrées de type `lot-3`) ;
+  le type `lot-3` n'existe plus (`check-invariant-vocab.js`). Restent 40 exceptions : `fiscal` 3, `homonyme` 13,
+  `non-repliable` 2, `code-api` 11, `locution` 5, `donnee` 6.
 
 ### Compteurs de jours relatifs masqués (03/10/2026)
 
@@ -318,3 +327,61 @@ Correction de la relecture (même jour, vers 17 h) : la fin du message de quota 
 pour en ajouter. », en texte fixe — la clé `supplement` du lexique désigne l'extra vendu avec un produit (« option » en
 céramique), pas un ajout à l'abonnement. Contrôle : 1 écart (`messages/laboQuota/body/message`), attendu ; référence
 RECAPTURÉE puis contrôle IDENTIQUE ; hotellerie, ceramique, miroir : code 0, aucune forme par défaut.
+
+### Lot 3, étape 5 — contrats retirés (04/10/2026)
+
+**Cause.** Décision du client : LabFlow est sans engagement, plus de contrat, d'avenant ni de résiliation. Le code
+DocuSeal devenu mort est supprimé (`docusealService`, `contractPdfService`, `webhookController` et sa route
+`POST /api/webhooks/docuseal`, `generateAvenantPdf` / `generateContratPdf`, `buildContrat` / `buildAvenant` /
+`buildResiliation` de `generate.js`, `sendDocusealSigningEmail`, `verifyDocusealSignature`) ; le manuel et la base de
+connaissances sont réécrits par la migration 198 (12 fiches, 1 entrée, 4 brouillons de variantes) ; l'outil IA
+`get_abonnement` ne lit plus `contrat_accepte_le`. Les colonnes en base restent.
+
+**Capture adaptée.** Retirés : les 4 emails fixes `emails.fixe.signature.*` ; les 8 PDF `pdf.contrat.identite|hotellerie.
+palier|sansPalier`, `pdf.avenant.flux`, `pdf.resiliation`, `pdf.legacy.avenant`, `pdf.legacy.contrat` ; la clé
+`valeursContrat` EN ENTIER (il n'y restait que `avenantExtraFields.*` ; une clé vide arrête la capture) ; domaine
+miroir : le webhook « contrat » et `persistes.webhook.contrat.statut`. DocuSeal n'est plus simulé (voir « Règles ») :
+plus de `journal.docuseal` ; les gardes de l'étape 4 restent sur ce qui se mesure encore (la demande de supplément
+n'envoie aucun email, son traitement admin ne produit aucun PDF). Gardés : les 4 comptes (A, A2, B, C) et leurs 4
+suppressions, les factures (`pdf.factureAbonnement`, `pdf.factureAppro.*`, `pdf.factureAcheteur` : ce sont elles qui
+prouvent que la charte commune de `generate.js` n'a pas bougé), la demande de supplément validée par l'admin.
+Contrôle : la clé `valeursContrat` est retirée de `check-invariant-vocab.js` ; le contrôle des libellés écrits par le
+serveur (miroir) relit `persistes.validationSupplement.composants` à la place de `webhook.avenant.composants` (clé
+renommée à l'étape 4, que le contrôle ne lisait plus).
+
+**Contrôle avant recapture.** Capture SANS `--reference` (20 h 57, la 198 s'applique à ce passage : « 12 fiche(s)
+réécrite(s) … base : 1 réécrite(s) … variantes : 4 mise(s) à jour »), comparée à la référence de l'étape 4 (celle de
+`git HEAD`, `d779340`) : 32 écarts de valeur et 69 refus du contrôle (3 comptes par clé, 65 empreintes du manuel,
+1 empreinte de la base), TOUS dus à l'étape 5, aucun inattendu :
+
+| Différence contre l'ancienne référence | Nombre |
+|---|---|
+| `emails/fixe.signature.contrat`, `.avenant.1`, `.avenant.2`, `.resiliation` : absents | 4 |
+| `pdf/contrat.identite.palier`, `.sansPalier`, `contrat.hotellerie.palier`, `.sansPalier`, `avenant.flux`, `resiliation`, `legacy.avenant`, `legacy.contrat` : absents | 8 |
+| `valeursContrat` : clé absente | 1 |
+| `outils/json/8/function/description` et `promptReel/corps/0/outils/8/description` : description de `get_abonnement` sans « , date d'acceptation du contrat » | 2 |
+| `resultatsOutils/get_abonnement/contrat_accepte_le` : `null` → absent | 1 |
+| `manuel/sections/<slug>/contenu` des 12 fiches réécrites (abonnement, assistant-ia, compte, faq, historique-paiements, lexique, onboarding-activation, onboarding-avenants, onboarding-configuration, onboarding-contrat, onboarding-suivi, support) | 12 |
+| `manuel/sections/onboarding-contrat/titre` (« Création de votre compte ») et `onboarding-avenants/titre` (« Faire évoluer votre abonnement ») | 2 |
+| `recherches/calcul du food cost/results/2/contenu` et `recherchesDomaine/fixe\|calcul [[du:food_cost]]/resultat/results/2/contenu` : le résultat cite le début de la fiche « lexique » réécrite (même texte que `manuel/sections/lexique/contenu`) ; mêmes résultats, même ordre | 2 |
+| `meta.empreintesManuel` : les 12 fiches, pour chaque lecteur qui les reçoit (12 × 5 lecteurs + 5 pour `gerant.B`) | 65 |
+| `meta.empreintesBase` : « Abonnement et capacité » | 1 |
+
+Comptes par clé : emails 32 → 28, pdf 18 → 10, valeursContrat 2 → clé retirée ; les 17 autres clés gardent leur compte
+(prompt 2, promptReel 2, outils 1, resultatsOutils 27, recherches 6, recherchesDomaine 56, contexte 3, guide 10,
+accueilMessenger 1, exports 29, rapportIA 4, tableauxDeBord 68, donneesLibelles 17, persistes 9, messages 20, auth 11,
+manuel 2). Aucun email, aucune facture, aucun message, aucun export, aucun tableau de bord ne change.
+`docusealSubmissionId` n'était capté nulle part (0 occurrence avant comme après).
+
+**Recapture.** Référence RECAPTURÉE le 04/10 vers 20 h 59 (`--reference`) ; la capture de 20 h 57 lui est IDENTIQUE,
+puis un nouveau passage du contrôle (21 h 00) : IDENTIQUE (0 écart ; 2 permutations entre ex aequo admises,
+`get_stock` et la feuille Stock du rapport, `ordre-libre.json`). Une première recapture de 17 h 50, faite sur une
+version antérieure de la 198, a été écartée : les textes du manuel ont été corrigés après relecture et la 198
+régénérée. L'ancienne référence reste dans l'historique git.
+
+**Hors restauration.** `exceptions-hors-restauration.json` : 73 → 40 exceptions. 32 ne couvraient que des documents de
+contrat (2 de `valeursContrat`, 16 `homonyme` et 1 `donnee` des PDF de contrat, les 13 `lot-3`) ; la 33ᵉ, « Activité
+Premium » sur tout PDF (`/textes/\d+$`), a été donnée « sans emploi » par le contrôle hotellerie puis retirée. Ensuite
+hotellerie, ceramique, miroir : code 0, aucune forme par défaut, aucune exception sans emploi (exceptions employées :
+27, 25, 35 ; textes lus : 7 007, 6 753, 6 504). Les comptes des familles `manuel` et `assistant` ne montent pas
+(0 forme ; liste avant inchangée, non relancée).

@@ -16,6 +16,8 @@ const C = require('../lib/commun.js');
 
 const OUTIL = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'generer-migrations.mjs');
 const TEMOINS = ['acheteurs-carnet', 'lexique', 'historique-paiements'];
+// Témoins FIGÉS dans leur état du lot 2c (test/temoins-2c/) : voir controler.test.mjs.
+const TEMOINS_2C = path.join(path.dirname(fileURLToPath(import.meta.url)), 'temoins-2c');
 const MIGRATIONS = path.join(C.RACINE, 'migrations');
 const ADMIS = path.join(C.RACINE, 'src', 'config', 'manuelSansBaliseAdmis.json');
 const lancer = (args) => spawnSync(process.execPath, [OUTIL, ...args], { encoding: 'utf8', cwd: C.RACINE });
@@ -29,7 +31,7 @@ const etatProtege = () => JSON.stringify({
 function racine({ variantes = false } = {}) {
   const r = fs.mkdtempSync(path.join(os.tmpdir(), 'generer-'));
   fs.mkdirSync(path.join(r, 'balise', 'manuel'), { recursive: true });
-  for (const s of TEMOINS) for (const x of ['.md', '.json']) fs.copyFileSync(path.join(C.CHEMINS.baliseManuel, s + x), path.join(r, 'balise', 'manuel', s + x));
+  for (const s of TEMOINS) for (const x of ['.md', '.json']) fs.copyFileSync(path.join(TEMOINS_2C, s + x), path.join(r, 'balise', 'manuel', s + x));
   if (variantes) {
     const o = fiches.find((f) => f.slug === 'lexique');
     const md = ['## Lexique de l\'établissement', '', '[[Le:labo]] prépare ; [[le:activite:pl]] servent les clients.', '',

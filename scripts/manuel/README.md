@@ -42,7 +42,10 @@ Ce qui fait foi :
 | `lots.json` | répartition des fichiers par lot (§9.2) ; **fait foi** | M0 (intégrateur) |
 | `prebaliser.mjs` | brouillon de balisage (§3.4) | M0 |
 | `controler.mjs` | contrôle par fiche, variantes, `--tout` (§3.5) | M0 |
-| `generer-migrations.mjs` | SQL de 194, 195, 196 et champs admis sans balise (§3.6) | M0 |
+| `generer-migrations.mjs` | SQL de 194, 195, 196 et champs admis sans balise (§3.6) | M0 ; **ne plus le lancer** (migrations déployées) |
+| `revisions.json` | révisions des textes APRÈS le lot 2c : une entrée par migration de maintenance (empreintes avant / après) | lot 3 (198) |
+| `generer-maintenance.mjs` | SQL d'une migration de maintenance, depuis `revisions.json` et les textes balisés courants | lot 3 (198) |
+| `essai-maintenance.js` | migration de maintenance appliquée deux fois puis annulée, textes relus (base locale) | lot 3 (198) |
 | `essai-migration.js` | migration appliquée puis annulée (§3.7) | M0 |
 | `retour-2c.js` | retour arrière (§4.5), remise à zéro locale (R2.8.4) | M0 |
 | `base-locale.js` | photo et copies de la base locale (§2.8) | étape O |
@@ -50,6 +53,7 @@ Ce qui fait foi :
 | `lib/vocabulaires.js` | vocabulaires résolus (R3.1.1), cohérence des lexiques | M0 |
 | `lib/exemples-guide.js`, `lib/exemples-guide.json` | exemples et tableaux du guide, rendus par le moteur | M0 |
 | `test/*.test.js`, `test/*.test.mjs` | tests des outils (`node --test`) | M0 |
+| `test/temoins-2c/` | les 3 fiches témoins FIGÉES dans leur état du lot 2c : les tests des outils du 2c ne dépendent plus de `balise/manuel/`, que les migrations de maintenance réécrivent | lot 3 |
 | `balise/manuel/` : 3 fiches témoins | `acheteurs-carnet`, `lexique`, `historique-paiements` (voir « Fiches témoins ») | M0, **reprises par L7, L1, L3** |
 | `balise/…`, `variantes/…`, `relectures/…`, `besoins/…` | travail des lots (GUIDE-BALISAGE §1, §15) | vagues |
 | `lecture-production.json` | lecture de production (§12.1), mise en forme par l'intégrateur ; exigée pour écrire dans `migrations/` | étape C |

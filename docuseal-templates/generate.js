@@ -1,17 +1,13 @@
 /**
- * Génère les 3 documents LabFlow (contrat / avenant / résiliation) en PDF.
+ * Module de charte des factures LabFlow (PDF, pdfkit) : facture d'abonnement, facture acheteur, facture
+ * d'approvisionnement. Logo vectoriel, mise en page conforme au thème de l'app, pied légal piloté par les
+ * variables d'environnement.
  *
- * NOUVELLE APPROCHE (« PDF rempli ») :
- *   - les VALEURS sont rendues directement dans le document (plus de cases de saisie) ;
- *   - notre signature est déjà apposée (cachet électronique du prestataire) ;
- *   - logo vectoriel LabFlow + mise en page conforme au thème de l'app.
+ * Chaque builder est DATA-DRIVEN : il reçoit un objet `data` et rend le PDF (fichier si outPath, Buffer sinon).
+ * Depuis le lot 3 (LabFlow est sans engagement), il n'y a plus de contrat, d'avenant ni de résiliation : le
+ * dossier garde son nom d'origine, auquel des services et des outils se réfèrent.
  *
- * Chaque builder est DATA-DRIVEN : il reçoit un objet `data` et peut donc être
- * appelé par le backend pour générer le document d'un client donné, puis envoyé à
- * DocuSeal via `createSubmissionFromPdf` (DocuSeal ne pose alors que la signature
- * du client). Ici, on génère un APERÇU avec des valeurs d'exemple pour validation.
- *
- * Usage : node docuseal-templates/generate.js
+ * Usage (aperçu avec des valeurs d'exemple) : node docuseal-templates/generate.js
  */
 require('dotenv').config();
 const fs = require('fs');
@@ -20,17 +16,15 @@ const PDFDocument = require('pdfkit');
 
 // ── Identité prestataire ────────────────────────────────────────────────────────
 // Renseignée par variables d'environnement (Coolify) ; les valeurs par défaut sont
-// des PLACEHOLDERS détectés par checkPrestatairePlaceholders (FACTURE_STRICT=1 en
-// prod pour refuser toute génération tant qu'ils subsistent). Nom, adresse et
-// matricule retombent sur les FACTURE_* déjà utilisées par les factures
-// (pdfService) : une seule source à configurer.
+// des valeurs d'EXEMPLE (aperçus locaux). Nom, adresse et matricule retombent sur les
+// FACTURE_* : une seule source à configurer.
 const envOr = (names, fallback) => {
   for (const n of names) if (process.env[n]) return process.env[n];
   return fallback;
 };
 // Variable OPTIONNELLE : DÉFINIE VIDE (« PRESTATAIRE_RC= ») = « aucune » — cas d'un
 // prestataire auto-entrepreneur, sans registre de commerce ni capital ; ABSENTE =
-// valeur d'exemple (aperçus locaux, signalée par checkPrestatairePlaceholders).
+// valeur d'exemple (aperçus locaux).
 const envOpt = (names, fallback) => {
   for (const n of names) if (n in process.env) return String(process.env[n]).trim();
   return fallback;
@@ -48,10 +42,8 @@ const PRESTATAIRE = {
   rc: envOpt(['PRESTATAIRE_RC'], 'B0123452024'),
   capital: envOpt(['PRESTATAIRE_CAPITAL'], '10 000 DT'),
   adresse: envOr(['PRESTATAIRE_ADRESSE', 'FACTURE_ADRESSE'], 'Avenue Habib Bourguiba, 1000 Tunis, Tunisie'),
-  ville: envOr(['PRESTATAIRE_VILLE'], 'Tunis'),
   email: envOr(['PRESTATAIRE_EMAIL'], 'contact@labflow-tn.com'),
   tel: envOr(['PRESTATAIRE_TEL'], '+216 71 000 000'),
-  signataire: envOr(['PRESTATAIRE_SIGNATAIRE'], 'La Direction'),
 };
 // Régime de l'auto-entrepreneur (loi n° 2020-33) : pas de matricule fiscal classique
 // mais un « identifiant unique » (7 chiffres + lettre), pas de RC ni de capital.
@@ -69,28 +61,6 @@ const prestataireLegalLine = () => [
   `${PRESTATAIRE_MF_SHORT} ${PRESTATAIRE.matricule}`,
   PRESTATAIRE.rc && `RC ${PRESTATAIRE.rc}`,
 ].filter(Boolean).join('  ·  ');
-
-// Taux de TVA affiché dans les clauses — même source que la facturation.
-// Les montants d'abonnement saisis dans l'app sont TTC (la facture en déduit le HT).
-const TVA_RATE = Number(process.env.FACTURE_TVA_RATE || 19);
-
-// Garde-fou : signale les mentions légales encore fictives. STRICT (génération refusée,
-// le backend se replie sur le flux template) si FACTURE_STRICT=1 ou par DÉFAUT en
-// production — un acte signé avec une identité fictive est juridiquement vicié.
-// FACTURE_STRICT=0 désactive explicitement le mode strict (déconseillé en prod).
-function checkPrestatairePlaceholders() {
-  // Une variable optionnelle DÉFINIE VIDE (RC, capital d'un auto-entrepreneur) n'est
-  // pas un placeholder : '' n'apparaît pas dans la liste ci-dessous.
-  const fictifs = ['1234567/A/M/000', 'B0123452024', 'Avenue Habib Bourguiba, 1000 Tunis, Tunisie', 'La Direction', '+216 71 000 000'];
-  const found = Object.entries(PRESTATAIRE).filter(([, v]) => fictifs.includes(v)).map(([k]) => k);
-  if (found.length) {
-    const strict = process.env.FACTURE_STRICT === '1'
-      || (process.env.NODE_ENV === 'production' && process.env.FACTURE_STRICT !== '0');
-    const msg = `[contrats] ⚠ mentions légales prestataire encore fictives : ${found.join(', ')} — à renseigner avant la prod.`;
-    if (strict) throw new Error(msg);
-    console.warn(msg);
-  }
-}
 
 // ── Palette de marque (gradient sky → indigo → violet) ────────────────────────
 const C = {
@@ -134,9 +104,8 @@ const BOTTOM_LIMIT = PAGE.h - 64; // limite avant footer
 // pdfTexte donne un équivalent lisible aux signes porteurs de sens, retire les signes décoratifs et
 // écrit « ? » pour tout le reste. Les parenthèses et guillemets vides ne sont retirés que si un signe
 // décoratif a été retiré de la chaîne (« Sauce () » reste tel quel).
-// En OPTION seulement : makeCtx(info, { pdfTexte: true }) — facture d'appro, contrat régénéré ou en
-// aperçu (option de contractPdfService.generate). Jamais pour un document à signer, ni pour la facture
-// acheteur, la facture d'abonnement ou la résiliation ; jamais sur une valeur envoyée à DocuSeal.
+// En OPTION seulement : makeCtx(info, { pdfTexte: true }) — facture d'appro. Jamais pour la facture
+// acheteur ni la facture d'abonnement.
 const HORS_POLICE = /[^\t\n\r\x20-\xFF\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178]/gu;
 // Table du front, écrite en points de code (U+…) : caractère → équivalent.
 const cp = (...points) => String.fromCodePoint(...points);
@@ -460,130 +429,6 @@ function partiesBlock(ctx, y, client, opts = {}) {
   return y + h + 14;
 }
 
-// ── Tableau ressource / quantité ──────────────────────────────────────────────
-// Chaque ligne : [label, qty, slotW?] — slotW élargit la case du mode template
-// pour les valeurs textuelles (« Activité Premium », « Palier jusqu'à 100 acheteurs »).
-function configTable(ctx, y, rows, qtyHeader = 'Quantité souscrite') {
-  const { fill, hline, txt, slot } = ctx;
-  // Garde de page (mode PDF rempli) : un domaine à N composants peut allonger le tableau
-  // (en-tête 22 pt + 24 pt par ligne). Le fond de template (templateMode) reste figé.
-  if (!ctx.templateMode && y + 22 + rows.length * 24 > BOTTOM_LIMIT) y = newPage(ctx);
-  fill(ML, y, CW, 22, C.indigoSoft); hline(y, '#dfe3ff'); hline(y + 22, '#dfe3ff');
-  txt('Ressource', ML + 10, y + 7, 7, true, C.indigo, { characterSpacing: 0.5 });
-  txt(qtyHeader, ML, y + 7, 7, true, C.indigo, { align: 'right', width: CW - 10, characterSpacing: 0.5 });
-  y += 22;
-  rows.forEach(([label, qty, slotW], i) => {
-    fill(ML, y, CW, 24, i % 2 === 0 ? '#fcfcff' : C.white);
-    hline(y + 24, C.hairSoft);
-    txt(label, ML + 10, y + 8, 9, false, C.ink);
-    if (ctx.templateMode) {
-      const w = slotW || 64;
-      slot(RX - 12 - w, y + 5, w, 14);   // champs « Nb activités / Nb labos / Nb gérants / Formule / Option Acheteurs »
-    } else {
-      txt(String(qty), ML, y + 7, 10, true, C.indigo, { align: 'right', width: CW - 12 });
-    }
-    y += 24;
-  });
-  return y + 12;
-}
-
-// Lignes du tableau de configuration en mode PDF REMPLI (contrat et avenant).
-// Lot 1a : si `config.composants` ([{ libelle, libellePluriel, nb }]) est fourni,
-// une ligne par composant (mots du domaine, pluriel si nb > 1) REMPLACE les 3 lignes
-// fixes activités/labos/gérants ; ligne « Domaine d'activité » si `domaineNom`.
-// Formule / Option Acheteurs inchangées. Le fond de template (templateMode) ne bouge pas.
-function configRowsFor(config) {
-  const rows = [];
-  if (config.domaineNom) rows.push(["Domaine d'activité", config.domaineNom]);
-  if (Array.isArray(config.composants) && config.composants.length) {
-    for (const c of config.composants) {
-      const n = Number(c.nb) || 0;
-      rows.push([n > 1 ? (c.libellePluriel || c.libelle) : c.libelle, n]);
-    }
-    if (config.formule) rows.push(["Formule d'activités", config.formule]);
-  } else {
-    rows.push(
-      ['Points de vente (activités)', config.activites],
-      ['Laboratoires de production', config.labos],
-      ['Comptes gérants', config.gerants],
-    );
-    if (config.formule) rows.splice(rows.length - 2, 0, ["Formule d'activités", config.formule]);
-  }
-  if (config.acheteurs) rows.push(['Option Acheteurs', config.acheteurs]);
-  return rows;
-}
-
-// ── Bloc tarification (mode TEMPLATE : cases fixes pour les champs Docuseal) ──
-// withOnboarding/withPromo pilotent les zones présentes (contrat = tout, avenant =
-// mensualité seule). Les champs vides à l'envoi laissent des cases discrètes.
-function pricingBlockTemplate(ctx, y, { withOnboarding, withPromo }) {
-  const { fill, hline, txt, slot } = ctx;
-  if (withOnboarding) {
-    fill(ML, y, CW, 30, C.panel); hline(y, C.hair); hline(y + 30, C.hair);
-    txt("Frais d'activation (onboarding) — payables une seule fois", ML + 10, y + 10, 8.5, false, C.body);
-    slot(RX - 12 - 96, y + 7, 96, 16);                       // champ « Montant onboarding »
-    y += 30;
-  }
-  const h = 46;
-  fill(ML, y, CW, h, '#eef2ff'); hline(y, '#c7d2fe'); hline(y + h, C.indigo);
-  ctx.gradientRule(ML, y, 3, h);
-  txt('Mensualité applicable', ML + 12, y + 10, 9.5, true, C.indigo);
-  slot(RX - 12 - 32 - 96, y + 7, 96, 16);                    // champ « Montant mensuel »
-  txt('/ mois', RX - 12 - 28, y + 11, 10, true, C.indigo);
-  txt('Facturation mensuelle récurrente, par avance', ML + 12, y + 28, 7.5, false, '#6366f1');
-  y += h + 10;
-
-  if (withPromo) {
-    const innerW = CW - 24;
-    const ph = 78;
-    fill(ML, y, CW, ph, C.violetSoft); hline(y, '#e9d5ff'); hline(y + ph, '#e9d5ff');
-    txt('CONDITIONS PARTICULIÈRES (LE CAS ÉCHÉANT)', ML + 12, y + 8, 6.8, true, C.violet, { characterSpacing: 1 });
-    slot(ML + 12, y + 19, innerW, 27);                        // champ « Détail promotion »
-    txt('Tarif de base mensuel :', ML + 12, y + 55, 8, false, '#5b21b6');
-    slot(ML + 104, y + 52, 72, 13);                           // champ « Mensualité après promo »
-    txt('Reprise du tarif de base :', ML + 208, y + 55, 8, false, '#5b21b6');
-    slot(ML + 308, y + 52, 96, 13);                           // champ « Reprise prix de base »
-    y += ph + 12;
-  }
-  return y;
-}
-
-// ── Bloc tarification ─────────────────────────────────────────────────────────
-function pricingBlock(ctx, y, { onboarding, mensuel, mensuelBase, promoDetail, withOnboarding, withPromo }) {
-  const { fill, hline, txt } = ctx;
-  if (ctx.templateMode) return pricingBlockTemplate(ctx, y, { withOnboarding, withPromo });
-  if (onboarding != null) {
-    fill(ML, y, CW, 30, C.panel); hline(y, C.hair); hline(y + 30, C.hair);
-    txt("Frais d'activation (onboarding) — payables une seule fois", ML + 10, y + 10, 8.5, false, C.body);
-    txt(onboarding, ML, y + 8, 11, true, C.ink, { align: 'right', width: CW - 12 });
-    y += 30;
-  }
-  // Mensualité (mise en avant, dégradé latéral)
-  const promo = mensuelBase && mensuelBase !== mensuel;
-  const h = promo ? 46 : 36;
-  fill(ML, y, CW, h, '#eef2ff'); hline(y, '#c7d2fe'); hline(y + h, C.indigo);
-  ctx.gradientRule(ML, y, 3, h);
-  txt('Mensualité applicable', ML + 12, y + 10, 9.5, true, C.indigo);
-  txt(`${mensuel} / mois`, ML, y + 8, 13, true, C.indigo, { align: 'right', width: CW - 12 });
-  if (promo) {
-    txt(`Tarif de base ${mensuelBase} — remise promotionnelle appliquée`, ML + 12, y + 28, 7.5, false, C.violet);
-  } else {
-    txt('Facturation mensuelle récurrente, par avance', ML + 12, y + 25, 7.5, false, '#6366f1');
-  }
-  y += h + (promoDetail ? 10 : 12);
-
-  if (promoDetail) {
-    const innerW = CW - 24;
-    const ph = ctx.measure(promoDetail, innerW, 8) + 22;
-    fill(ML, y, CW, ph, C.violetSoft); hline(y, '#e9d5ff'); hline(y + ph, '#e9d5ff');
-    txt('CONDITIONS PARTICULIÈRES', ML + 12, y + 8, 6.8, true, C.violet, { characterSpacing: 1 });
-    ctx.doc.fontSize(8).font('Helvetica').fillColor('#5b21b6')
-       .text(promoDetail, ML + 12, y + 20, { width: innerW, lineGap: 2.2 });
-    y += ph + 12;
-  }
-  return y;
-}
-
 // ── Clauses numérotées (gère le saut de page) ────────────────────────────────
 function clauses(ctx, y, items) {
   const { doc, txt } = ctx;
@@ -599,91 +444,6 @@ function clauses(ctx, y, items) {
     y += bodyH + 7;
   });
   return y;
-}
-
-// ── Bloc signatures : prestataire pré-signé (cachet) + client ────────────────
-function signatures(ctx, y, { client, date, previewMode = true }) {
-  const { doc, hline, txt, wrap, fitText, oblique, roundFill, slot } = ctx;
-  const tm = !!ctx.templateMode;
-  const h = 96, need = 14 + 25 + h + 32;
-  if (y > BOTTOM_LIMIT - need) { y = newPage(ctx); }
-
-  // Mention de clôture (équilibre le bas de page + valeur juridique)
-  if (tm) {
-    // « Fait à <ville>, le [champ Date du contrat], en deux exemplaires originaux. »
-    const pre = `Fait à ${PRESTATAIRE.ville}, le`;
-    const post = ', en deux exemplaires originaux.';
-    const slotW = 88;
-    doc.fontSize(8.5).font('Helvetica');
-    const total = doc.widthOfString(pre) + 6 + slotW + 2 + doc.widthOfString(post);
-    let x = ML + (CW - total) / 2;
-    txt(pre, x, y + 2, 8.5, false, C.muted);
-    x += doc.widthOfString(pre) + 6;
-    slot(x, y - 1, slotW, 13);                                // champ « Date du contrat »
-    txt(post, x + slotW + 2, y + 2, 8.5, false, C.muted);
-  } else {
-    txt(`Fait à ${PRESTATAIRE.ville}, le ${date}, en deux exemplaires originaux.`,
-        ML, y, 8.5, false, C.muted, { align: 'center', width: CW });
-  }
-  y += 14;
-
-  y = section(ctx, y, 'SIGNATURES');
-
-  const sw = (CW - 16) / 2;
-  const sx1 = ML, sx2 = ML + sw + 16;
-
-  // ── LE PRESTATAIRE (déjà signé) ──
-  roundFill(sx1, y, sw, h, 6, C.panel, C.hair);
-  txt('LE PRESTATAIRE', sx1 + 12, y + 12, 6.8, true, C.faint, { characterSpacing: 1 });
-  txt(fitText(PRESTATAIRE.raisonSociale, 9, sw - 50, true), sx1 + 12, y + 23, 9, true, C.ink);
-
-  // Cachet électronique : losange seul dans un encadré pointillé (coin haut-droit)
-  const stamp = 22, stX = sx1 + sw - stamp - 14, stY = y + 12;
-  doc.save().roundedRect(stX - 4, stY - 3, stamp + 8, stamp + 6, 5)
-     .lineWidth(0.8).dash(2, { space: 1.6 }).stroke('#c7d2fe').undash().restore();
-  drawLogo(ctx, stX, stY, stamp, 'dark', true);
-
-  // Signature stylisée (nom court de marque, toujours dans la carte) + filet
-  oblique(PRESTATAIRE.nom, sx1 + 12, y + 40, 16, C.indigo);
-  hline(y + 63, '#cbd5e1', sx1 + 12, sx1 + sw - 12, 0.8);
-  txt(fitText(`Pour ${PRESTATAIRE.nom} — ${PRESTATAIRE.signataire}`, 7.5, sw - 24), sx1 + 12, y + 67, 7.5, false, C.muted);
-  // pastille « signé » avec coche vectorielle — largeur ajustée au texte
-  const okLabel = tm ? 'Signé électroniquement le' : `Signé électroniquement le ${date}`;
-  doc.fontSize(7.5).font('Helvetica');
-  const okY = y + 78, pillW = Math.min(sw - 24, doc.widthOfString(okLabel) + 27 + (tm ? 66 : 0));
-  doc.save().roundedRect(sx1 + 12, okY, pillW, 15, 7.5).fill(C.okSoft).restore();
-  doc.save().lineWidth(1.3).strokeColor(C.okText)
-     .moveTo(sx1 + 19, okY + 7.5).lineTo(sx1 + 21.5, okY + 10).lineTo(sx1 + 26, okY + 5).stroke().restore();
-  txt(okLabel, sx1 + 31, okY + 4.3, 7.5, false, C.okText);
-  if (tm) slot(sx1 + 33 + doc.widthOfString(okLabel), okY + 1.5, 62, 12);   // champ « Date du contrat » (2e zone)
-
-  // ── LE CLIENT (à signer) ──
-  roundFill(sx2, y, sw, h, 6, C.white, C.hair);
-  txt('LE CLIENT', sx2 + 12, y + 12, 6.8, true, C.faint, { characterSpacing: 1 });
-  if (tm) {
-    slot(sx2 + 12, y + 21, sw - 24, 13);                                     // champ « Nom du client » (2e zone)
-  } else {
-    txt(fitText(client.nom, 9, sw - 24, true), sx2 + 12, y + 23, 9, true, C.ink);
-  }
-  txt('Lu et approuvé, bon pour accord', sx2 + 12, y + 36, 7.5, false, C.muted);
-  // zone de signature (≥ 40pt pour une image de signature manuscrite)
-  doc.save().roundedRect(sx2 + 12, y + 46, sw - 24, 38, 5)
-     .lineWidth(0.8).dash(3, { space: 2 }).stroke('#cbd5e1').undash().restore();
-  if (tm) {
-    // zone laissée vierge : l'admin y pose le champ « Signature » dans l'UI Docuseal
-  } else if (previewMode) {
-    txt('Signature électronique du client', sx2 + 12, y + 62, 7.5, false, '#cbd5e1', { align: 'center', width: sw - 24 });
-  } else {
-    // En production : balise détectée par DocuSeal (texte blanc, invisible)
-    txt('{{Signature;type=signature}}', sx2 + 16, y + 59, 7, false, C.white);
-  }
-  txt('Nom, qualité et date', sx2 + 12, y + 88, 7.5, false, C.faint);
-
-  // Mention de validité de la signature électronique (loi tunisienne n° 2000-83)
-  const noteH = wrap(
-    "Les parties reconnaissent la valeur juridique de la signature électronique au sens de la loi n° 2000-83 du 9 août 2000 ; le procédé en garantit l'identification du signataire et l'intégrité du document.",
-    ML, y + h + 8, 6.8, false, C.faint, CW, 1.5, { align: 'center' });
-  return y + h + 8 + noteH + 6;
 }
 
 // ── Footer (toutes les pages) — note et mention légale personnalisables ──
@@ -704,7 +464,7 @@ function stampFooters(ctx, label, note = 'Document confidentiel — usage strict
 }
 
 // outPath renseigné → écrit le fichier ; outPath null → résout avec le Buffer du PDF
-// (mode service backend : le document part en base64 vers DocuSeal, rien sur disque).
+// (mode service backend : rien sur disque).
 function finish(ctx, outPath) {
   return new Promise((resolve, reject) => {
     if (!outPath) {
@@ -724,226 +484,7 @@ function finish(ctx, outPath) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// 1) CONTRAT D'ABONNEMENT
-// ══════════════════════════════════════════════════════════════════════════════
-// options.pdfTexte : posée SEULEMENT pour le contrat régénéré et l'aperçu du wizard (contractPdfService.generate) ;
-// jamais pour le document envoyé en signature.
-async function buildContrat(outPath, data, options = {}) {
-  const previewMode = data.previewMode !== false;
-  const ctx = makeCtx({
-    Title: data.templateMode ? "Contrat d'abonnement LabFlow" : `Contrat d'abonnement — ${data.client.nom}`,
-    Author: PRESTATAIRE.raisonSociale,
-  }, { pdfTexte: options.pdfTexte === true });
-  ctx.templateMode = data.templateMode === true;
-  header(ctx, {
-    eyebrow: "CONTRAT D'ABONNEMENT",
-    title: "Contrat d'abonnement SaaS",
-    subtitle: "Plateforme LabFlow — gestion pour la restauration et les métiers de bouche",
-    ref: data.ref, date: data.date,
-  });
-  let y = TOPY;
-
-  y = section(ctx, y, 'ENTRE LES SOUSSIGNÉS');
-  y = partiesBlock(ctx, y, data.client);
-
-  y = section(ctx, y, 'ARTICLE 1 — OBJET DU CONTRAT');
-  y = calloutBox(ctx, y,
-    `${PRESTATAIRE.nom} met à la disposition du Client, sur abonnement, une plateforme logicielle en mode SaaS (Software as a Service) accessible par navigateur web, dédiée à la gestion des stocks, approvisionnements, pertes, inventaires, fiches techniques et ventes pour les métiers de la restauration. Le présent contrat définit les conditions de cette mise à disposition.`,
-    'neutral');
-
-  y = section(ctx, y, 'ARTICLE 2 — CONFIGURATION SOUSCRITE');
-  {
-    // Formule + option Acheteurs : lignes présentes dans les PDF remplis (si valeurs)
-    // ET dans le fond de template (cases pour les champs « Formule » / « Option
-    // Acheteurs » — cf CHAMPS.md ; champs optionnels, vides si non concernés).
-    const configRows = ctx.templateMode ? [
-      ['Points de vente (activités)', ''],
-      ["Formule d'activités", '', 150],
-      ['Laboratoires de production', ''],
-      ['Comptes gérants', ''],
-      ['Option Acheteurs', '', 170],
-    ] : configRowsFor(data.config);
-    y = configTable(ctx, y, configRows);
-  }
-
-  y = section(ctx, y, 'ARTICLE 3 — PRIX ET MODALITÉS DE PAIEMENT');
-  y = pricingBlock(ctx, y, { ...data.pricing, withOnboarding: true, withPromo: true });
-  y = clauses(ctx, y, [{
-    title: '', body:
-      `Le Client s'acquitte des frais d'activation à la souscription, puis de la mensualité par avance au début de chaque période mensuelle. En cas de promotion, le tarif promotionnel s'applique pour la durée indiquée ci-dessus, puis le tarif de base reprend automatiquement. Tout retard de paiement supérieur à 15 jours peut entraîner la suspension de l'accès au service. Les montants sont exprimés en dinars tunisiens (DT), toutes taxes comprises (TVA au taux en vigueur de ${TVA_RATE} % incluse) ; la facture conforme émise à chaque échéance en présente la ventilation (hors taxes, TVA, TTC).`,
-  }]);
-  y += 4;
-
-  y = section(ctx, y, 'ARTICLE 4 — CONDITIONS GÉNÉRALES');
-  y = clauses(ctx, y, [
-    { title: '4.1 Durée', body: "Le contrat est conclu pour une durée indéterminée à compter de l'activation du compte, renouvelable par tacite reconduction à chaque échéance mensuelle." },
-    { title: '4.2 Obligations du prestataire', body: `${PRESTATAIRE.nom} s'engage, au titre d'une obligation de moyens renforcée, à mettre tout en œuvre pour assurer la disponibilité du service en continu, sous réserve des opérations de maintenance planifiées et des cas de force majeure ; il assure la sauvegarde régulière des données et apporte un support technique au Client.` },
-    { title: '4.3 Obligations du client', body: "Le Client s'engage à utiliser le service conformément à sa destination, à fournir des informations exactes, à préserver la confidentialité de ses identifiants et à régler les sommes dues aux échéances convenues." },
-    { title: '4.4 Propriété des données et confidentialité', body: `Les données saisies par le Client restent sa propriété exclusive. ${PRESTATAIRE.nom} s'interdit toute exploitation à d'autres fins que l'exécution du service et est tenu à une obligation de confidentialité sur l'ensemble des informations du Client.` },
-    { title: '4.5 Protection des données à caractère personnel', body: `Pour les données à caractère personnel hébergées (personnel, clients, fournisseurs du Client), le Client agit en qualité de responsable du traitement et ${PRESTATAIRE.nom} en qualité de sous-traitant, agissant sur instruction du Client et conformément à la loi n° 2004-63 du 27 juillet 2004 relative à la protection des données personnelles. ${PRESTATAIRE.nom} met en œuvre les mesures de sécurité appropriées, astreint son personnel à la confidentialité, ne conserve les données que pour la durée du contrat et accomplit, le cas échéant, les formalités auprès de l'INPDP.` },
-    { title: '4.6 Réversibilité', body: `À la résiliation, le Client peut obtenir l'export de ses données dans un format exploitable. À défaut de demande, ${PRESTATAIRE.nom} conserve les données pendant 30 jours après la date d'effet, puis procède à leur suppression définitive.` },
-    { title: '4.7 Propriété intellectuelle', body: `La plateforme, son code, sa marque et ses contenus demeurent la propriété exclusive de ${PRESTATAIRE.nom}. L'abonnement confère un simple droit d'usage personnel et non exclusif, non cessible.` },
-    { title: '4.8 Responsabilité', body: `La responsabilité de ${PRESTATAIRE.nom} est limitée aux dommages directs et ne saurait excéder le montant des sommes versées par le Client au cours des trois derniers mois.` },
-    { title: '4.9 Force majeure', body: "Aucune des parties ne saurait être tenue responsable d'un manquement résultant d'un cas de force majeure au sens du droit tunisien (notamment panne d'hébergement, coupure réseau, catastrophe ou fait d'un tiers). Les obligations affectées sont suspendues pendant la durée de l'événement ; si celui-ci perdure au-delà de 30 jours, chaque partie peut résilier de plein droit, sans indemnité." },
-    { title: '4.10 Résiliation', body: "Chaque partie peut résilier le contrat moyennant un préavis de 30 jours notifié par email. Le non-paiement ou le manquement grave d'une partie autorise l'autre à résilier de plein droit." },
-    { title: '4.11 Droit applicable et litiges', body: "Le présent contrat est soumis au droit tunisien. À défaut de règlement amiable, tout litige relève de la compétence des tribunaux de Tunis." },
-  ]);
-  y += 6;
-
-  y = signatures(ctx, y, { client: data.client, date: data.date, previewMode });
-  stampFooters(ctx, "Contrat d'abonnement");
-  return finish(ctx, outPath);
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// 2) AVENANT AU CONTRAT
-// ══════════════════════════════════════════════════════════════════════════════
-async function buildAvenant(outPath, data) {
-  const previewMode = data.previewMode !== false;
-  const ctx = makeCtx({
-    Title: data.templateMode ? 'Avenant au contrat LabFlow' : `Avenant — ${data.client.nom}`,
-    Author: PRESTATAIRE.raisonSociale,
-  });
-  ctx.templateMode = data.templateMode === true;
-  header(ctx, {
-    eyebrow: 'AVENANT AU CONTRAT',
-    title: "Avenant au contrat d'abonnement",
-    subtitle: 'Modification de la configuration souscrite et de la tarification',
-    ref: data.ref, date: data.date,
-  });
-  let y = TOPY;
-
-  y = section(ctx, y, 'ENTRE LES SOUSSIGNÉS');
-  y = partiesBlock(ctx, y, data.client);
-
-  y = section(ctx, y, "ARTICLE 1 — OBJET DE L'AVENANT");
-  const refInitial = data.contratRef
-    ? `le contrat d'abonnement n° ${data.contratRef}${data.contratDate ? ` du ${data.contratDate}` : ''}`
-    : `le contrat d'abonnement en vigueur`;
-  y = calloutBox(ctx, y,
-    `Le présent avenant modifie ${refInitial} conclu entre ${PRESTATAIRE.nom} et le Client. Il prend effet à la date de signature ci-dessous et complète les termes du contrat initial sans s'y substituer. Seules les clauses expressément modifiées par le présent avenant sont concernées ; toutes les autres dispositions du contrat demeurent inchangées.`,
-    'neutral');
-  if (ctx.templateMode) {
-    // Ligne « Contrat visé » : champ « Contrat initial » (réf + date du contrat d'origine)
-    ctx.txt('Contrat visé :', ML, y + 2, 8.5, true, C.indigoDeep);
-    ctx.slot(ML + 62, y - 1, 210, 13);
-    y += 20;
-  }
-
-  if (data.ajout || ctx.templateMode) {
-    if (y + 60 > BOTTOM_LIMIT) y = newPage(ctx);
-    y = fillAddedBanner(ctx, y, data.ajout);
-  }
-
-  y = section(ctx, y, 'ARTICLE 2 — NOUVELLE CONFIGURATION');
-  {
-    // Mêmes lignes Formule / Option Acheteurs que le contrat (champs optionnels du template)
-    const configRows = ctx.templateMode ? [
-      ['Points de vente (activités)', ''],
-      ["Formule d'activités", '', 150],
-      ['Laboratoires de production', ''],
-      ['Comptes gérants', ''],
-      ['Option Acheteurs', '', 170],
-    ] : configRowsFor(data.config);
-    y = configTable(ctx, y, configRows, 'Nouvelle quantité');
-  }
-
-  y = section(ctx, y, 'ARTICLE 3 — NOUVELLE TARIFICATION');
-  y = pricingBlock(ctx, y, { mensuel: data.pricing.mensuel, mensuelBase: data.pricing.mensuelBase });   // template : mensualité seule
-  y = clauses(ctx, y, [{
-    title: '', body:
-      `La nouvelle mensualité s'applique à compter de la première échéance suivant la signature du présent avenant. Elle s'entend toutes taxes comprises (TVA au taux en vigueur de ${TVA_RATE} % incluse), la facture émise à chaque échéance en présentant la ventilation. Les frais d'activation déjà réglés ne sont pas dus à nouveau et les modalités de paiement du contrat initial restent applicables.`,
-  }]);
-  y += 4;
-
-  y = section(ctx, y, 'ARTICLE 4 — DISPOSITIONS FINALES');
-  y = clauses(ctx, y, [
-    { title: "4.1 Prise d'effet", body: "Le présent avenant entre en vigueur à sa date de signature électronique. Il fait partie intégrante du contrat d'abonnement initial dont il suit le sort." },
-    { title: '4.2 Droit applicable', body: "Le présent avenant est soumis au droit tunisien. Tout litige relève de la compétence des tribunaux de Tunis." },
-  ]);
-  y += 6;
-
-  y = signatures(ctx, y, { client: data.client, date: data.date, previewMode });
-  stampFooters(ctx, 'Avenant au contrat');
-  return finish(ctx, outPath);
-}
-
-// Bandeau « capacité ajoutée » (avenant) — hauteur dynamique, texte wrappé
-// (mode template : case pour le champ « Capacité ajoutée »)
-function fillAddedBanner(ctx, y, ajout) {
-  const { fill, hline, txt, wrap, measure, slot } = ctx;
-  const innerW = CW - 24;
-  const ajoutH = ctx.templateMode ? 17 : measure(ajout, innerW, 12, 1);
-  const h = 22 + ajoutH + 9;
-  fill(ML, y, CW, h, C.okSoft); hline(y, C.okLine); hline(y + h, C.okLine);
-  ctx.gradientRule(ML, y, 3, h);
-  txt('CAPACITÉ AJOUTÉE PAR CET AVENANT', ML + 12, y + 9, 6.8, true, C.okText, { characterSpacing: 1 });
-  if (ctx.templateMode) {
-    slot(ML + 12, y + 21, innerW, 17);
-  } else {
-    wrap(ajout, ML + 12, y + 22, 12, true, '#14532d', innerW, 1);
-  }
-  return y + h + 12;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// 3) RÉSILIATION DU CONTRAT
-// ══════════════════════════════════════════════════════════════════════════════
-async function buildResiliation(outPath, data) {
-  const previewMode = data.previewMode !== false;
-  const ctx = makeCtx({
-    Title: data.templateMode ? 'Résiliation de contrat LabFlow' : `Résiliation — ${data.client.nom}`,
-    Author: PRESTATAIRE.raisonSociale,
-  });
-  ctx.templateMode = data.templateMode === true;
-  header(ctx, {
-    eyebrow: 'RÉSILIATION DE CONTRAT',
-    title: "Résiliation du contrat d'abonnement",
-    subtitle: 'Constat de fin de la mise à disposition de la plateforme',
-    ref: data.ref, date: data.date,
-  });
-  let y = TOPY;
-
-  y = section(ctx, y, 'ENTRE LES SOUSSIGNÉS');
-  y = partiesBlock(ctx, y, data.client);
-
-  y = section(ctx, y, 'ARTICLE 1 — OBJET');
-  y = calloutBox(ctx, y,
-    `Le présent document constate la résiliation du contrat d'abonnement conclu entre ${PRESTATAIRE.nom} et le Client. Il met fin à la mise à disposition de la plateforme dans les conditions définies ci-après.`,
-    'danger');
-
-  y = section(ctx, y, "ARTICLE 2 — DATE D'EFFET ET PRÉAVIS");
-  const { fill, hline, txt } = ctx;
-  fill(ML, y, CW, 30, '#fff7ed'); hline(y, '#fed7aa'); hline(y + 30, '#fed7aa');
-  txt('Date de la demande de résiliation', ML + 10, y + 10, 8.5, false, '#9a3412');
-  if (ctx.templateMode) {
-    ctx.slot(RX - 12 - 100, y + 7, 100, 16);   // champ « Date du contrat »
-  } else {
-    txt(data.date, ML, y + 8, 11, true, '#9a3412', { align: 'right', width: CW - 12 });
-  }
-  y += 38;
-  y = clauses(ctx, y, [{
-    title: '', body:
-      "La résiliation prend effet à l'issue d'un préavis de 30 jours à compter de la date ci-dessus. Le service reste accessible et facturé jusqu'au terme de ce préavis ; aucune nouvelle mensualité n'est due au-delà.",
-  }]);
-  y += 4;
-
-  y = section(ctx, y, 'ARTICLE 3 — EFFETS ET DISPOSITIONS FINALES');
-  y = clauses(ctx, y, [
-    { title: '3.1 Effets de la résiliation', body: "Au terme du préavis, l'accès du Client et de ses gérants à la plateforme est désactivé. Les sommes échues avant la date d'effet restent dues." },
-    { title: '3.2 Sort des données', body: `Le Client peut demander l'export de ses données avant la date d'effet. À défaut, ${PRESTATAIRE.nom} conserve les données pendant 30 jours après la résiliation, puis procède à leur suppression définitive.` },
-    { title: '3.3 Solde de tout compte', body: "La résiliation ne donne lieu à aucun remboursement des sommes déjà réglées au titre des périodes échues ou en cours, sauf disposition contraire convenue entre les parties." },
-    { title: '3.4 Droit applicable', body: "La présente résiliation est soumise au droit tunisien. Tout litige relève de la compétence des tribunaux de Tunis." },
-  ]);
-  y += 6;
-
-  y = signatures(ctx, y, { client: data.client, date: data.date, previewMode });
-  stampFooters(ctx, 'Résiliation de contrat');
-  return finish(ctx, outPath);
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// 4) FACTURE D'ABONNEMENT — même charte que les contrats (émise au règlement)
+// FACTURE D'ABONNEMENT (émise au règlement)
 // ══════════════════════════════════════════════════════════════════════════════
 // data : { numero, dateFacture, periodeLabel, clientNom, clientEmail,
 //          montantHt, montantTva, montantTtc, tvaRate }
@@ -1311,35 +852,6 @@ async function buildFactureAppro(outPath, data) {
 // Données d'exemple (APERÇU) + génération
 // ══════════════════════════════════════════════════════════════════════════════
 const SAMPLE = {
-  contrat: {
-    ref: 'CTR-2026-00042',
-    date: '27 juin 2026',
-    client: {
-      nom: 'Restaurant Le Carthage', forme: 'SARL', mfrc: 'MF 9876543/B/M/000',
-      representant: 'M. Karim Ben Ali, gérant',
-      email: 'gerant@lecarthage.tn', tel: '+216 22 345 678', adresse: 'Rue de Marseille, 1000 Tunis',
-    },
-    config: { activites: 3, labos: 1, gerants: 2 },
-    pricing: {
-      onboarding: '600 DT', mensuel: '240 DT', mensuelBase: '300 DT',
-      promoDetail: "Offre de lancement : remise de 20 % sur la mensualité pendant 3 mois (240 DT/mois au lieu de 300 DT). Le tarif de base de 300 DT/mois reprend automatiquement à compter du 27 septembre 2026.",
-    },
-  },
-  avenant: {
-    ref: 'AVN-2026-00017',
-    date: '27 juin 2026',
-    contratRef: 'CTR-2026-00042',
-    contratDate: '12 mars 2026',
-    client: { nom: 'Restaurant Le Carthage', forme: 'SARL', mfrc: 'MF 9876543/B/M/000', representant: 'M. Karim Ben Ali, gérant', email: 'gerant@lecarthage.tn' },
-    ajout: '+1 activité   ·   +1 compte gérant',
-    config: { activites: 4, labos: 1, gerants: 3 },
-    pricing: { mensuel: '360 DT', mensuelBase: '360 DT' },
-  },
-  resiliation: {
-    ref: 'RES-2026-00009',
-    date: '27 juin 2026',
-    client: { nom: 'Restaurant Le Carthage', forme: 'SARL', mfrc: 'MF 9876543/B/M/000', representant: 'M. Karim Ben Ali, gérant', email: 'gerant@lecarthage.tn' },
-  },
   facture: {
     numero: 'LF-2026-00123', dateFacture: '2026-06-27', periodeLabel: 'juin 2026',
     clientNom: 'Restaurant Le Carthage', clientEmail: 'gerant@lecarthage.tn',
@@ -1359,43 +871,17 @@ const SAMPLE = {
   },
 };
 
-// CLI uniquement — ce module est aussi requis par le backend (contractPdfService)
-// et ne doit alors RIEN générer au chargement.
-//   node docuseal-templates/generate.js                        → aperçus (valeurs d'exemple)
-//   node docuseal-templates/generate.js --templates            → fonds de TEMPLATE Docuseal
-//     (zones de champs invisibles — fond net, à uploader dans l'UI ; flux Community)
-//   node docuseal-templates/generate.js --templates --guides   → *-template-guides.pdf
-//     (cases en pointillé visibles : plan de placement des champs, ne pas uploader)
+// CLI uniquement — ce module est aussi requis par le backend et ne doit alors RIEN générer au chargement.
+//   node docuseal-templates/generate.js   → aperçus (valeurs d'exemple)
 if (require.main === module) {
   (async () => {
     const dir = __dirname;
-    checkPrestatairePlaceholders();
-    if (process.argv.includes('--templates')) {
-      const tm = { templateMode: true, client: {}, config: {}, pricing: {} };
-      const suffix = SLOT_GUIDES ? '-template-guides.pdf' : '-template.pdf';
-      await buildContrat(path.join(dir, `contrat${suffix}`), tm);
-      await buildAvenant(path.join(dir, `avenant${suffix}`), tm);
-      await buildResiliation(path.join(dir, `resiliation${suffix}`), tm);
-      console.log(SLOT_GUIDES
-        ? '✅ Versions REPÈRES générées (cases visibles — pour placer les champs, ne pas uploader) :'
-        : '✅ Fonds de template Docuseal générés (à uploader dans l\'UI, voir CHAMPS.md) :');
-      console.log('   -', path.join(dir, `contrat${suffix}`));
-      console.log('   -', path.join(dir, `avenant${suffix}`));
-      console.log('   -', path.join(dir, `resiliation${suffix}`));
-      return;
-    }
-    await buildContrat(path.join(dir, 'contrat-labflow.pdf'), SAMPLE.contrat);
-    await buildAvenant(path.join(dir, 'avenant-labflow.pdf'), SAMPLE.avenant);
-    await buildResiliation(path.join(dir, 'resiliation-labflow.pdf'), SAMPLE.resiliation);
     await buildFacture(path.join(dir, 'facture-labflow.pdf'), SAMPLE.facture);
     await buildFactureAcheteur(path.join(dir, 'facture-acheteur-labflow.pdf'), SAMPLE.factureAcheteur);
     console.log('✅ Documents générés (aperçu avec valeurs d\'exemple) :');
-    console.log('   -', path.join(dir, 'contrat-labflow.pdf'));
-    console.log('   -', path.join(dir, 'avenant-labflow.pdf'));
-    console.log('   -', path.join(dir, 'resiliation-labflow.pdf'));
     console.log('   -', path.join(dir, 'facture-labflow.pdf'));
     console.log('   -', path.join(dir, 'facture-acheteur-labflow.pdf'));
   })();
 }
 
-module.exports = { buildContrat, buildAvenant, buildResiliation, buildFacture, buildFactureAcheteur, buildFactureAppro, checkPrestatairePlaceholders, PRESTATAIRE, LIBELLES_FACTURE_APPRO, pdfTexte, pdfTexteSur };
+module.exports = { buildFacture, buildFactureAcheteur, buildFactureAppro, PRESTATAIRE, LIBELLES_FACTURE_APPRO, pdfTexte, pdfTexteSur };
