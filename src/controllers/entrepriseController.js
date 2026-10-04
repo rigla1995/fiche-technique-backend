@@ -68,17 +68,17 @@ const getEntreprise = async (req, res) => {
 const CHAMPS_IDENTITE_CLIENT = ['adresse', 'ville', 'representantNom', 'representantQualite'];
 
 const updateIdentiteClient = async (req, res) => {
-  const corps = {};
-  for (const champ of CHAMPS_IDENTITE_CLIENT) {
-    if (!req.body || !Object.prototype.hasOwnProperty.call(req.body, champ)) continue;
-    const v = req.body[champ];
-    if (v != null && typeof v !== 'string') return res.status(400).json({ message: 'Requête invalide' });
-    corps[champ] = v;
-  }
-  const { valeurs, erreurs } = lireIdentite(corps);
-  if (erreurs.length) return res.status(400).json({ message: erreurs[0].message, erreurs });
-  const colonnes = Object.keys(valeurs);
   try {
+    const corps = {};
+    for (const champ of CHAMPS_IDENTITE_CLIENT) {
+      if (!req.body || !Object.prototype.hasOwnProperty.call(req.body, champ)) continue;
+      const v = req.body[champ];
+      if (v != null && typeof v !== 'string') return res.status(400).json({ message: 'Requête invalide' });
+      corps[champ] = v;
+    }
+    const { valeurs, erreurs } = lireIdentite(corps);
+    if (erreurs.length) return res.status(400).json({ message: erreurs[0].message, erreurs });
+    const colonnes = Object.keys(valeurs);
     if (colonnes.length) {
       // Ligne créée si absente (nom et email NOT NULL : copie du contact, comme à la création du compte).
       const u = await pool.query('SELECT nom, email FROM utilisateurs WHERE id = $1', [req.user.id]);
