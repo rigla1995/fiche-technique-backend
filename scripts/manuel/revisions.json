@@ -125,6 +125,32 @@
           "baseMd5": "a7d78a7979106b1cd0ed7451cfb11c1e"
         }
       ]
+    },
+    {
+      "numero": 200,
+      "nom": "200_manuel_mon_entreprise.sql",
+      "objet": "Lot 3, étape 9 : section « Mon entreprise » de la fiche Mon compte (identité légale, factures figées) ; factures de vente citées par la FAQ et par l'entrée « Timbre fiscal ».",
+      "manuel": [
+        {
+          "slug": "compte",
+          "md5Avant": "548544cb7ebd2701d4e80190a4c510ad",
+          "md5": "d5a48176e7678dacd5819b6f78d3637c"
+        },
+        {
+          "slug": "faq",
+          "md5Avant": "2671d371a67a970b43ac199953076878",
+          "md5": "b2d7b4ac28ca779adc05520acbcc4197"
+        }
+      ],
+      "base": [
+        {
+          "fichier": "timbre-fiscal",
+          "cle": "timbre fiscal",
+          "titre": "Timbre fiscal",
+          "md5Avant": "053930e5e30882cb6c5d39aaee0aecf1",
+          "md5": "ef92484d9e58ef2a753f3b583d828b09"
+        }
+      ]
     }
   ]
 }

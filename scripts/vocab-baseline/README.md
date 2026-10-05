@@ -434,3 +434,25 @@ Premier contrôle : 1 écart, attendu, aucun autre :
 **Recapture.** Référence RECAPTURÉE le 05/10 (`--reference`) : ce texte, et les permutations entre ex aequo déjà
 admises (`get_stock`, feuille Stock du rapport) ; contrôle suivant IDENTIQUE (0 écart).
 **Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut hors exceptions.
+
+### Lot 3, étape 9 — manuel « Mon entreprise » (05/10/2026)
+
+Migration 200 (`200_manuel_mon_entreprise.sql`, maintenance du manuel) : fiches `compte` (section « Mon entreprise »)
+et `faq` (« Comment retrouver une facture ? » cite les factures de vente) réécrites, entrée « Timbre fiscal » de la
+base de connaissances réécrite (factures de vente). Premier contrôle avec le texte final (14 h 52) : 2 écarts de valeur,
+13 empreintes et 3 différences d'ordre, toutes dues à ces trois textes, aucune autre :
+
+| Différence contre l'ancienne référence | Nombre |
+|---|---|
+| `manuel/sections/compte/contenu` et `manuel/sections/faq/contenu` | 2 |
+| `meta.empreintesManuel` : `compte` et `faq`, pour chacun des 6 lecteurs | 12 |
+| `meta.empreintesBase` : « Timbre fiscal » | 1 |
+| `recherchesDomaine/A\|B\|C\|Comment saisir mon premier approvisionnement ?/titres` : mêmes 4 résultats, « Mon compte » passe de la 3ᵉ à la 1ʳᵉ place (la fiche cite maintenant les factures d'approvisionnement) | 3 |
+
+Une version antérieure de l'entrée « Timbre fiscal » (« … factures de vente aux acheteurs ») faisait passer cette
+entrée en tête de la recherche fixe « inviter un acheteur » (ex aequo départagés par la base d'abord) : le mot
+« acheteurs » en a été retiré avant la recapture. Comptes par clé inchangés.
+**Recapture.** Référence RECAPTURÉE le 05/10 à 14 h 54 (`--reference`) : `derniereMigration` 199 → 200, ces textes,
+empreintes et ordres, et les permutations entre ex aequo déjà admises (`get_stock`, feuille Stock du rapport).
+Contrôle suivant IDENTIQUE (0 écart ; 2 permutations entre ex aequo admises).
+**Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut hors exceptions.
