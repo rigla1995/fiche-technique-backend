@@ -23,6 +23,17 @@ const PDFDocument = require('pdfkit');
 const RACINE = path.resolve(__dirname, '..');
 const REFERENCE = '5815e93'; // develop avant l'étape 8 du lot 3 (fusion de l'étape 6)
 
+// Correctif du 05/10/2026 (hors lot) : le signe moins de la ligne « Remise » de la facture de vente était le signe
+// mathématique U+2212, absent de la police standard (il s'imprimait « " ») ; c'est maintenant le tiret « – » (U+2013).
+// La référence est donc lue avec ce SEUL signe corrigé : tout le reste doit rester identique à l'octet.
+const MOINS_MATH = String.fromCodePoint(0x2212);
+const TIRET = String.fromCodePoint(0x2013);
+const corrigerSigneRemise = (source) => {
+  const morceaux = source.split(`\`${MOINS_MATH} \${fmt(remiseVal)}\``);
+  if (morceaux.length !== 2) throw new Error('référence : ligne « Remise » introuvable (signe U+2212 attendu une fois)');
+  return morceaux.join(`\`${TIRET} \${fmt(remiseVal)}\``);
+};
+
 // Charge la version de référence d'un fichier du dépôt (git show), compilée à côté du vrai fichier : ses
 // require relatifs et ses paquets se résolvent comme ceux du fichier courant. null si git est indisponible.
 const chargerReference = (relatif) => {
@@ -32,6 +43,7 @@ const chargerReference = (relatif) => {
   } catch {
     return null;
   }
+  if (relatif === 'docuseal-templates/generate.js') source = corrigerSigneRemise(source);
   const chemin = path.join(RACINE, path.dirname(relatif), `__reference_${path.basename(relatif)}`);
   const m = new Module(chemin, module);
   m.filename = chemin;
@@ -355,6 +367,18 @@ const donneesAvant = (f, vendeur) => ({
 });
 const FICHE = { vendeur_nom: 'Contact Essai', vendeur_adresse: '12 rue des Essais', vendeur_tel: '+216 20 000 001', vendeur_email: 'vendeur@example.com' };
 const VENDEUR_AVANT = { nom: 'Contact Essai', adresse: '12 rue des Essais', tel: '+216 20 000 001', email: 'vendeur@example.com' };
+
+test('facture de vente : le signe de la ligne « Remise » est dans la police (« – »), plus le signe U+2212', async () => {
+  const f = { ...LIGNE_FACTURE, vendeur_fige_le: null, ...FICHE };
+  const { textes } = await rendre(() => buildFactureAcheteurPdf(f, LIGNES_COMMANDE));
+  // 20 × 2.400 = 48.000 brut ; net 45.600 ; remise 2.400
+  assert.ok(textes.includes('Remise 5 %'), 'ligne de remise présente');
+  assert.ok(textes.includes(`${TIRET} 2.400 DT`), `montant de la remise précédé de « ${TIRET} » : ${JSON.stringify(textes.filter((t) => t.includes('2.400 DT')))}`);
+  assert.ok(!textes.some((t) => t.includes(MOINS_MATH)), 'plus aucun signe U+2212 (hors police) sur la facture');
+  // Sans remise : aucune ligne « Remise », donc aucun signe
+  const sans = await rendre(() => buildFactureAcheteurPdf({ ...f, remise_pct: 0 }, LIGNES_COMMANDE));
+  assert.ok(!sans.textes.some((t) => t.startsWith('Remise') || t.startsWith(TIRET)));
+});
 
 test('facture de vente SANS copie : IDENTIQUE à l\'octet à la référence, même si la fiche porte des mentions', { skip: sansGit }, async () => {
   const avant = await ref.buildFactureAcheteur(null, donneesAvant(LIGNE_FACTURE, VENDEUR_AVANT));

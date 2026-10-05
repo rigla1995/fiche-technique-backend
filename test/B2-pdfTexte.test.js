@@ -5,8 +5,9 @@
 //    une donnée hors Windows-1252 devient « ? » ; « () » et « « » » vides retirés SEULEMENT si un signe décoratif
 //    a été retiré (« Sauce () » inchangé) ; idempotent.
 // 2. Octets : les documents qui ne prennent PAS l'option sont identiques à l'octet à ceux de la référence
-//    (generate.js au commit du socle, 62288e4) : facture acheteur avec remise « − » et données hors Windows-1252,
-//    facture d'abonnement. La facture d'appro prend toujours l'option : identique tant que son texte est dans la
+//    (generate.js au commit du socle, 62288e4) : facture acheteur avec remise et données hors Windows-1252,
+//    facture d'abonnement. Seule exception, depuis le 05/10/2026 : le signe de la ligne « Remise » (voir
+//    corrigerSigneRemise). La facture d'appro prend toujours l'option : identique tant que son texte est dans la
 //    police, différente sinon.
 // Lot 3, étape 5 : buildContrat, buildAvenant et buildResiliation sont retirés de generate.js (plus de contrat,
 // d'avenant ni de résiliation) ; leurs 2 tests partent avec eux. Les 3 tests de facture « IDENTIQUE à l'octet »
@@ -20,6 +21,17 @@ const { execFileSync } = require('node:child_process');
 const RACINE = path.resolve(__dirname, '..');
 const REFERENCE = '62288e4'; // socle du lot 2b, avant le balayage B2
 
+// Correctif du 05/10/2026 (hors lot) : le signe moins de la ligne « Remise » de la facture de vente était le signe
+// mathématique U+2212, absent de la police standard (il s'imprimait « " ») ; c'est maintenant le tiret « – » (U+2013).
+// La référence est donc lue avec ce SEUL signe corrigé : tout le reste doit rester identique à l'octet.
+const MOINS_MATH = String.fromCodePoint(0x2212);
+const TIRET = String.fromCodePoint(0x2013);
+const corrigerSigneRemise = (source) => {
+  const morceaux = source.split(`\`${MOINS_MATH} \${fmt(remiseVal)}\``);
+  if (morceaux.length !== 2) throw new Error('référence : ligne « Remise » introuvable (signe U+2212 attendu une fois)');
+  return morceaux.join(`\`${TIRET} \${fmt(remiseVal)}\``);
+};
+
 // Charge la version de référence d'un fichier du dépôt (git show), compilée à côté du vrai fichier : ses
 // require relatifs et ses paquets se résolvent comme ceux du fichier courant. null si git est indisponible.
 const chargerReference = (relatif) => {
@@ -29,6 +41,7 @@ const chargerReference = (relatif) => {
   } catch {
     return null;
   }
+  if (relatif === 'docuseal-templates/generate.js') source = corrigerSigneRemise(source);
   const chemin = path.join(RACINE, path.dirname(relatif), `__reference_${path.basename(relatif)}`);
   const m = new Module(chemin, module);
   m.filename = chemin;
@@ -86,7 +99,7 @@ const factureAcheteur = {
   montantTtc: 263.42, notes: 'Livraison ✓ chaque mardi → 9h — bon n° BC-118 ()',
 };
 
-test('facture acheteur (remise « − », données hors Windows-1252) : IDENTIQUE à l\'octet à la référence', { skip: !ref && 'git indisponible' }, async () => {
+test('facture acheteur (remise, données hors Windows-1252) : IDENTIQUE à l\'octet à la référence, au signe de la remise près', { skip: !ref && 'git indisponible' }, async () => {
   const avant = await ref.buildFactureAcheteur(null, factureAcheteur);
   const apres = await generate.buildFactureAcheteur(null, factureAcheteur);
   assert.ok(Buffer.isBuffer(apres) && apres.length > 1000);
