@@ -268,3 +268,17 @@ la facture de vente inchangé) et écarts par rapport au texte ci-dessus :
 ## 10. Étape 9 — Clôture
 
 Fiche du manuel « Mon compte » (texte balisé, migration), mémoire et REPRISE à jour, bilan au client.
+
+**Réalisé (05/10/2026)** — migration de maintenance `200_manuel_mon_entreprise.sql` (texte balisé,
+`scripts/manuel/revisions.json`), serveur seul, aucun écran ne change :
+- fiche `compte` (« Mon compte ») : section « Mon entreprise » (réservée au propriétaire du compte ; champs renseignés
+  par l'équipe LabFlow d'après la patente, champs saisis par le client ; une facture de vente ou d'abonnement garde
+  l'identité de l'entreprise du jour de son émission ; les factures plus anciennes que la règle et les factures
+  d'approvisionnement reprennent les informations du moment ; bandeau tant que l'identité est incomplète) ; puces
+  « Ce que vous voyez » ajustées (le bouton du profil valide « ces deux cartes ») ;
+- à la demande du client : FAQ « Comment retrouver une facture ? » (factures de vente : bouton « Facture » de chaque
+  commande, portail) et entrée « Timbre fiscal » de la base de connaissances (factures de vente aussi) ;
+- fiches voisines relues (ventes et commandes, module, portail, carnet, historique des paiements, abonnement,
+  factures d'approvisionnement) : aucune phrase devenue fausse, non touchées ; mots-clés des fiches inchangés (jamais
+  écrits par une migration de maintenance) ; la page Profil a déjà son bouton « ? » vers `compte` ;
+- exceptions et écarts du lot 3 : 0 exception `lot-3`, 0 écart `reporte` lot 3, 0 `provisoire` (revérifié).

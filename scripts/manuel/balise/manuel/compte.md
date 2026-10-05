@@ -7,7 +7,8 @@ Cet écran regroupe vos informations personnelles et la sécurité de votre acc�
 - Un bandeau d'en-tête avec vos initiales, votre nom et votre adresse e-mail.
 - La carte **Informations personnelles** : nom (obligatoire), e-mail (obligatoire) et téléphone.
 - La carte **Sécurité — Changer le mot de passe** : mot de passe actuel, nouveau mot de passe et confirmation.
-- Le bouton **Enregistrer les modifications**, qui valide l'ensemble du formulaire en une fois.
+- Le bouton **Enregistrer les modifications**, qui valide ces deux cartes en une fois.
+- Pour le propriétaire du compte, au bas de la page : la carte **Mon entreprise**, avec son propre bouton (voir plus bas).
 
 Lorsque vous modifiez l'e-mail, une vérification s'effectue en direct : si l'adresse est déjà utilisée par un autre compte, le message « Cet email est déjà utilisé » s'affiche et l'enregistrement est refusé.
 
@@ -29,6 +30,21 @@ Lorsque vous modifiez l'e-mail, une vérification s'effectue en direct : si l'ad
 **Première connexion**
 
 À votre toute première connexion, un bandeau vous invite à définir un nouveau mot de passe avant d'accéder au reste de votre espace. Une fois ce mot de passe enregistré, vous êtes dirigé automatiquement vers la configuration de [[votre:activite:pl]] pour poursuivre le démarrage.
+
+### Mon entreprise
+
+Réservée au propriétaire du compte ([[le:gerant:pl]] ne la voient pas), cette carte porte l'identité de votre entreprise ; vos factures [[de:vente]] et d'abonnement en reprennent les mentions légales.
+
+- **Raison sociale** (ou nom du titulaire), **forme juridique**, **matricule fiscal**, et s'il y a lieu **nom commercial** et **identifiant RNE** : renseignés par l'équipe LabFlow d'après votre patente, en lecture seule. Une erreur ? Prévenez l'équipe LabFlow.
+- **Adresse**, **ville**, **représentant légal** et sa **fonction** : vous les saisissez vous-même, puis cliquez sur **Enregistrer mon entreprise**.
+
+:::regle
+Une facture [[de:vente]] ou d'abonnement garde l'identité de votre entreprise du jour de son émission (pour l'abonnement : quand la mensualité passe à « Payé ») : une modification ne vaut que pour les factures suivantes. Les factures plus anciennes que cette règle (5 octobre 2026) et les factures [[de:appro]] reprennent, elles, vos informations du moment ; l'écran vous prévient quand un changement d'adresse touche d'anciennes factures [[de:vente]].
+:::
+
+:::attention
+Tant que la raison sociale, le matricule fiscal, l'adresse ou la ville manquent, un bandeau le signale ici et sur les pages [[du:espace_acheteurs:Nom]] : une facture émise entre-temps restera sans toutes ses mentions légales.
+:::
 
 ### Points d'attention
 
