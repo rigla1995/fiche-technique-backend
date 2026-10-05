@@ -1647,19 +1647,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "-10.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.650",
-     "source": "Bloc chaud",
-     "type_appro": "manuel"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "10.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.650",
      "source": "Terrasse du Lac — Salon",
      "type_appro": "transfert"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "-10.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.650",
+     "source": "Bloc chaud",
+     "type_appro": "manuel"
     },
     {
      "ingredient": "Riz basmati",
@@ -4703,7 +4703,7 @@
        "Total brut HT",
        "39.300 DT",
        "Remise 5 %",
-       "− 1.965 DT",
+       "– 1.965 DT",
        "Total HT net",
        "37.335 DT",
        "TVA",
@@ -6628,13 +6628,13 @@
       ],
       [
        "Riz basmati",
-       "-10",
+       "10",
        "⟨date⟩",
        "2.65"
       ],
       [
        "Riz basmati",
-       "10",
+       "-10",
        "⟨date⟩",
        "2.65"
       ],
