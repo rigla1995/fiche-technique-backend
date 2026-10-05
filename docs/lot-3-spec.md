@@ -193,6 +193,42 @@ vérifiées par `B2-controleurs.test.js:128-136`.
 - Portail acheteur : vendeur = nom affiché (+ adresse, MF si présents). Bandeau « identité incomplète » sur les pages
   Acheteurs du client.
 
+**Réalisé (étape 8 du découpage en vigueur, 05/10/2026)** — décisions écrites du client du 05/10 (un seul envoi ;
+facture d'approvisionnement NON touchée, son besoin est reporté ; factures déjà émises NON figées ; côté acheteur de
+la facture de vente inchangé) et écarts par rapport au texte ci-dessus :
+- Migration `199_factures_identite_figee.sql` : colonnes `vendeur_*` (+ `vendeur_fige_le`) sur `factures_acheteur`,
+  `client_*` (+ `client_fige_le`) sur `paiements`, index partiel des factures de vente sans copie. AUCUNE reprise :
+  le §9 bis (« figer à la migration les factures existantes ») est écarté par le client.
+- La copie est posée à CHAQUE émission, que l'identité soit complète ou non (`src/utils/identiteFacture.js`,
+  `figerVendeurFacture` dans la transaction des 2 INSERT) : elle porte ce que la facture imprimait déjà (nom du
+  contact, adresse, téléphone, email) et les mentions légales présentes. Une facture émise avec une identité
+  incomplète le reste. Une facture SANS copie (d'avant la 199) lit la fiche comme avant et n'imprime aucune mention
+  légale : mêmes octets (`test/B2-pdfTexte.test.js`, `test/identiteFacture.test.js`).
+- PDF (`docuseal-templates/generate.js`) : bloc ÉMETTEUR = raison sociale (sinon nom du contact), « Nom commercial : »
+  s'il diffère, « forme · Matricule fiscal : » (« Identifiant unique : » pour un auto-entrepreneur), « RNE : »,
+  « adresse, ville », email · téléphone ; le pied de page porte aussi « MF … » / « ID … » et la ville. Rien n'est
+  imprimé deux fois : forme omise si la raison sociale se termine par elle, RNE omis s'il est le matricule, ville omise
+  si l'adresse se termine déjà par elle (mot entier). Le sous-titre de la facture de vente est borné à la largeur de la
+  page.
+- Facture d'abonnement : copie posée au PASSAGE à « payé », dans la transaction de l'enregistrement du paiement
+  (statut précédent lu sous verrou) ; la première copie est gardée ; ne sont pas repris un paiement déjà « payé »
+  réenregistré, ni un paiement déjà réglé une fois avant la 199 (date de règlement sans copie) repassé à « payé ».
+  Limite connue : une ligne jamais réglée mais portant une date de règlement (possible par l'API seulement, l'écran
+  admin n'envoie une date qu'avec « payé ») n'est pas figée à son premier passage à « payé ».
+- Portail : `vendeur` = nom affiché SEUL (ni adresse ni matricule : ils sont sur la facture).
+- `GET /api/entreprise` : champ ajouté `facturesNonFigees` (nombre de factures de vente du compte sans copie ; lecture
+  accessoire, 0 si elle échoue). « Mon entreprise » s'en sert pour prévenir, quand l'adresse change, que ces factures
+  suivront le changement ; la phrase « la ville n'y est pas encore imprimée » de l'étape 6 est retirée.
+- Bandeau « identité incomplète » : un seul point, `AcheteursGuard.tsx` (toutes les pages Acheteurs), avec un lien vers
+  « Mon entreprise » pour le client, sans lien pour un gérant.
+- Matricule des acheteurs (§1.3) : `matriculeAcheteur` (`src/utils/matriculeFiscal.js`) aux trois écritures
+  (création par lot, modification, import Excel) ; remis au format quand il en a la forme, jamais refusé (une saisie
+  non reconnue est gardée, bornée aux 50 caractères de la colonne : au-delà, la base rendait une erreur 500 pour la
+  fiche, le lot ou le fichier entier) ; pas de reprise des fiches existantes.
+- Contrôles : `test/identiteFacture.test.js` (27 tests), `scripts/test-factures-identite.js` (E2E, 100 contrôles).
+- Retour arrière : la migration reste ; l'ancien code relit la fiche pour toutes les factures (les copies posées
+  restent en base, inutilisées) ; les factures émises pendant un retour arrière ne seront jamais figées.
+
 ## 7. Étape 6 — Contrat et avenant : aperçus serveur
 
 - `contractPdfService.clientBlock` : raison sociale (repli contact), forme · MF · RNE, représentant, adresse + ville.

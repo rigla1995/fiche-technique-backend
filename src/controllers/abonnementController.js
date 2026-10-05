@@ -2,6 +2,7 @@ const pool = require('../config/database');
 const { premierDuMoisUTC, normaliserMoisUTC, finDePeriodeUTC, moisCouvertsUTC } = require('../utils/dateUtils');
 const { sendInviteEmail, sendFactureEmail } = require('../services/emailService');
 const { generateFacturePdf } = require('../services/pdfService');
+const { figerClientPaiement, clientFacture } = require('../utils/identiteFacture');
 const { vocabForClient } = require('../utils/vocabCompte');
 const { oublierConversationsIA } = require('../services/clientConfigService');
 // Moteur de tarification PUR (lot 1a) : les calculs vivent dans pricingEngine et
@@ -32,6 +33,8 @@ const FACTURE_TVA_RATE = Number(process.env.FACTURE_TVA_RATE || 19);
 
 // Construit les données de facture déterministes à partir d'une ligne de paiement.
 // Déterministe => la facture jointe à l'email et celle téléchargée sont identiques.
+// « Facturé à » (lot 3, étape 8) : l'identité du client copiée sur le paiement à son passage à « payé » si elle
+// existe (colonnes client_*), sinon le compte lu en direct (`client` : nom, email), comme avant.
 const buildFactureData = (paiement, client) => {
   const moisDate = new Date(paiement.mois);
   const year = moisDate.getFullYear();
@@ -47,8 +50,7 @@ const buildFactureData = (paiement, client) => {
     numero, periodeLabel, ttc, ht, tva, dateFacture,
     pdfParams: {
       numero, dateFacture, periodeLabel,
-      clientNom: client?.nom || 'Client',
-      clientEmail: client?.email || '',
+      ...clientFacture(paiement, client),
       montantHt: ht, montantTva: tva, montantTtc: ttc, tvaRate: FACTURE_TVA_RATE,
     },
   };
@@ -800,13 +802,6 @@ const upsertPaiement = async (req, res) => {
     // Normalize mois to first of month
     const moisStr = normaliserMoisUTC(mois);
 
-    // Statut précédent (pour n'envoyer la facture qu'au PASSAGE à « payé »)
-    const prevRes = await pool.query(
-      'SELECT statut FROM paiements WHERE abonnement_id = $1 AND mois = $2',
-      [aboId, moisStr]
-    );
-    const prevStatut = prevRes.rows[0]?.statut ?? null;
-
     // If no montant supplied, compute from config/tarif + promo
     let finalMontant = montant != null ? Number(montant) : null;
     if (finalMontant === null) {
@@ -828,18 +823,44 @@ const upsertPaiement = async (req, res) => {
     // Casts ::date explicites : deux paramètres inconnus dans un COALESCE sont sinon inférés
     // en text par Postgres → erreur 42804 contre la colonne date.
     const fallbackPayDate = statut === 'payé' ? new Date().toISOString().slice(0, 10) : null;
-    const result = await pool.query(
-      `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut, saisie_par, date_saisie, date_paiement, notes)
-       VALUES ($1, $2, $3, $4, $5, NOW(), COALESCE($6::date, $8::date), $7)
-       ON CONFLICT (abonnement_id, mois) DO UPDATE
-       SET statut = $4, montant_dt = COALESCE($3, paiements.montant_dt),
-           saisie_par = $5, date_saisie = NOW(),
-           date_paiement = COALESCE($6::date, paiements.date_paiement, $8::date),
-           notes = COALESCE($7, paiements.notes)
-       RETURNING *`,
-      [aboId, moisStr, finalMontant, statut, req.user.id, datePaiement || null, notes || null, fallbackPayDate]
-    );
-    const paiement = result.rows[0];
+    // Au PASSAGE à « payé », l'identité du client est copiée sur le paiement dans la même transaction : la facture
+    // ne suivra plus la fiche (lot 3, étape 8). Ne sont PAS repris : un paiement déjà « payé » qu'on enregistre de
+    // nouveau, et un paiement déjà réglé une fois avant la copie figée (il porte une date de règlement sans copie)
+    // qu'on repasse à « payé » après une correction — leur facture reste telle qu'elle était.
+    let paiement;
+    let prevStatut = null; // statut précédent (la facture ne part par email qu'au PASSAGE à « payé »)
+    const db = await pool.connect();
+    try {
+      await db.query('BEGIN');
+      const prevRes = await db.query(
+        'SELECT statut, date_paiement, client_fige_le FROM paiements WHERE abonnement_id = $1 AND mois = $2 FOR UPDATE',
+        [aboId, moisStr]
+      );
+      const prev = prevRes.rows[0] || null;
+      prevStatut = prev?.statut ?? null;
+      const factureDAvant = !!prev && prev.date_paiement != null && prev.client_fige_le == null;
+      const result = await db.query(
+        `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut, saisie_par, date_saisie, date_paiement, notes)
+         VALUES ($1, $2, $3, $4, $5, NOW(), COALESCE($6::date, $8::date), $7)
+         ON CONFLICT (abonnement_id, mois) DO UPDATE
+         SET statut = $4, montant_dt = COALESCE($3, paiements.montant_dt),
+             saisie_par = $5, date_saisie = NOW(),
+             date_paiement = COALESCE($6::date, paiements.date_paiement, $8::date),
+             notes = COALESCE($7, paiements.notes)
+         RETURNING *`,
+        [aboId, moisStr, finalMontant, statut, req.user.id, datePaiement || null, notes || null, fallbackPayDate]
+      );
+      paiement = result.rows[0];
+      if (statut === 'payé' && prevStatut !== 'payé' && !factureDAvant) {
+        paiement = (await figerClientPaiement(db, paiement.id)) || paiement;
+      }
+      await db.query('COMMIT');
+    } catch (e) {
+      await db.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally {
+      db.release();
+    }
 
     // Facture pro à la VALIDATION d'un paiement (passage à « payé »).
     // Best-effort : n'impacte pas la réponse ni l'enregistrement du paiement.
@@ -879,7 +900,9 @@ const getFactureForPaiement = async (paiementId, scopeClientId = null) => {
   if (scopeClientId != null) { params.push(scopeClientId); scopeCond = ' AND a.client_id = $2'; }
   const r = await pool.query(
     `SELECT p.id, p.mois, p.montant_dt, p.statut, p.date_paiement,
-            a.client_id, u.nom AS client_nom, u.email AS client_email
+            p.client_fige_le, p.client_nom, p.client_email, p.client_raison_sociale, p.client_forme,
+            p.client_matricule_fiscal, p.client_rne, p.client_adresse, p.client_ville,
+            a.client_id, u.nom AS compte_nom, u.email AS compte_email
        FROM paiements p
        JOIN abonnements a ON a.id = p.abonnement_id
        LEFT JOIN utilisateurs u ON u.id = a.client_id
@@ -889,10 +912,7 @@ const getFactureForPaiement = async (paiementId, scopeClientId = null) => {
   if (r.rows.length === 0) return { error: 404 };
   const row = r.rows[0];
   if (row.statut !== 'payé' || !(Number(row.montant_dt) > 0)) return { error: 400 };
-  const fac = buildFactureData(
-    { id: row.id, mois: row.mois, montant_dt: row.montant_dt, date_paiement: row.date_paiement },
-    { nom: row.client_nom, email: row.client_email }
-  );
+  const fac = buildFactureData(row, { nom: row.compte_nom, email: row.compte_email });
   const pdfBase64 = await generateFacturePdf(fac.pdfParams);
   return { numero: fac.numero, buffer: Buffer.from(pdfBase64, 'base64') };
 };

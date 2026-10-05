@@ -5,113 +5,113 @@
 # 494 unité(s), 38 fichier(s).
 
 src/controllers/abonnementController.js
-  l. 1577
+  l. 1597
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
-  l. 1975
+  l. 1995
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
 
 src/controllers/acheteurVentesController.js
-  l. 166
+  l. 167
     défaut : Article non proposable (article non commandable ou produit hors labo)
     miroir : Article non proposable (denrée non commandable ou invention hors usine)
-  l. 322
+  l. 323
     défaut : Acheteur requis
     miroir : Cliente requise
-  l. 323
+  l. 324
     défaut : Labo requis
     miroir : Usine requise
-  l. 353
+  l. 354
     défaut : Acheteur introuvable
     miroir : Cliente introuvable
-  l. 354
+  l. 355
     défaut : Cet acheteur est désactivé
     miroir : Cette cliente est désactivée
-  l. 355
+  l. 356
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 356
+  l. 357
     défaut : Labo hors de votre périmètre
     miroir : Usine hors de votre périmètre
-  l. 396
+  l. 397
     défaut : Ligne ⟦·⟧ : article sans offre active — configurez d'abord vos Tarifs Acheteurs
     miroir : Ligne ⟦·⟧ : article sans offre active — configurez d'abord vos Tarifs Abr-Clientes
-  l. 441
+  l. 442
     défaut : Stock labo insuffisant
     miroir : Armoire de l'usine insuffisante
-  l. 649
+  l. 651
     défaut : Labo requis pour expédier la commande
     miroir : Usine requise pour expédier la commande
-  l. 713
+  l. 715
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 714
+  l. 716
     défaut : Labo hors de votre périmètre
     miroir : Usine hors de votre périmètre
-  l. 780
+  l. 782
     défaut : Stock labo insuffisant
     miroir : Armoire de l'usine insuffisante
-  l. 855
+  l. 858
     défaut : Labo hors de votre périmètre
     miroir : Usine hors de votre périmètre
-  l. 906
+  l. 909
     défaut : Vous ne pouvez annuler que vos propres ventes
     miroir : Vous ne pouvez annuler que vos propres encaissements
-  l. 912
+  l. 915
     défaut : Labo hors de votre périmètre
     miroir : Usine hors de votre périmètre
-  l. 926
+  l. 929
     défaut : Commande annulée⟦? — le stock a été réintégré|⟧
     miroir : Commande annulée⟦? — l'armoire a été réintégrée|⟧
 
 src/controllers/acheteursController.js
-  l. 97
+  l. 98
     défaut : Aucun acheteur à créer
     miroir : Aucune cliente à créer
-  l. 136
+  l. 137
     défaut : Quota d'acheteurs ⟦?non configuré — demandez à l'administrateur d'augmenter votre|atteint (⟦·⟧/⟦·⟧) — demandez une augmentation de⟧ capacité
     miroir : Quota de clientes ⟦?non configuré — demandez à l'administrateur d'augmenter votre|atteint (⟦·⟧/⟦·⟧) — demandez une augmentation de⟧ capacité
-  l. 191
+  l. 192
     défaut : Acheteur introuvable
     miroir : Cliente introuvable
-  l. 200
+  l. 201
     défaut : Cet acheteur a un compte : l'email de connexion ne peut pas être modifié ici
     miroir : Cette cliente a un compte : l'email de connexion ne peut pas être modifié ici
-  l. 242
+  l. 244
     défaut : Acheteur introuvable
     miroir : Cliente introuvable
-  l. 246
+  l. 248
     défaut : Acheteur supprimé du carnet
     miroir : Cliente supprimée du carnet
-  l. 282
+  l. 284
     défaut : Acheteur supprimé — ses commandes et factures restent dans l'historique
     miroir : Cliente supprimée — ses commandes et factures restent dans l'historique
-  l. 290
+  l. 292
     défaut : Impossible de supprimer : cet acheteur est référencé par des données existantes. Désactivez-le plutôt.
     miroir : Impossible de supprimer : cette cliente est référencée par des données existantes. Désactivez-la plutôt.
-  l. 295
+  l. 297
     défaut : Opération concurrente sur cet acheteur — réessayez.
     miroir : Opération concurrente sur cette cliente — réessayez.
-  l. 320
+  l. 322
     défaut : Acheteur introuvable
     miroir : Cliente introuvable
-  l. 325
+  l. 327
     défaut : Renseignez un email sur la fiche avant d'inviter cet acheteur
     miroir : Renseignez un email sur la fiche avant d'inviter cette cliente
-  l. 329
+  l. 331
     défaut : Le compte de cet acheteur est déjà activé
     miroir : Le compte de cette cliente est déjà activé
-  l. 368
+  l. 370
     défaut : Acheteurs
     miroir : Abr-Clientes
-  l. 370
+  l. 372
     défaut : Modèle d'import — Carnet d'acheteurs
     miroir : Modèle d'import — Carnet de clientes
-  l. 371
+  l. 373
     défaut : Ajout dynamique des acheteurs B2B : une ligne = un acheteur
     miroir : Ajout dynamique des clientes B2B : une ligne = une cliente
-  l. 448
+  l. 450
     défaut : ⟦?Quota d'acheteurs non configuré — demandez à l'administrateur d'augmenter votre capacité|Ce fichier dépasse votre quota d'acheteurs : ⟦·⟧ existants + ⟦·⟧ à importer > ⟦·⟧ autorisés⟧
     miroir : ⟦?Quota de clientes non configuré — demandez à l'administrateur d'augmenter votre capacité|Ce fichier dépasse votre quota de clientes : ⟦·⟧ existantes + ⟦·⟧ à importer > ⟦·⟧ autorisées⟧
 
@@ -186,43 +186,43 @@ src/controllers/dashboardV2Controller.js
     miroir :  (abr-usine)
 
 src/controllers/entrepriseController.js
-  l. 177
+  l. 214
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 189
+  l. 226
     défaut : Une activité avec ce nom existe déjà
     miroir : Un local avec ce nom existe déjà
-  l. 245
+  l. 282
     défaut : Une activité avec ce nom existe déjà
     miroir : Un local avec ce nom existe déjà
-  l. 254
+  l. 291
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 287
+  l. 324
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 319
+  l. 356
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 321
+  l. 358
     défaut : Suppression impossible : des articles sont affectés à cette activité.
     miroir : Suppression impossible : des denrées sont affectées à ce local.
-  l. 328
+  l. 365
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 350
+  l. 387
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 420
+  l. 457
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 465
+  l. 502
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 623
+  l. 660
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 650
+  l. 687
     défaut : Activité introuvable
     miroir : Local introuvable
 
@@ -664,10 +664,10 @@ src/controllers/pertesController.js
     miroir : Historique des abandons — Abr-Usine
 
 src/controllers/portailController.js
-  l. 84
+  l. 86
     défaut : ⟦?⟦·⟧|Votre fournisseur⟧
     miroir : ⟦?⟦·⟧|Votre enseigne⟧
-  l. 211
+  l. 213
     défaut : ⟦?⟦·⟧|Acheteur⟧
     miroir : ⟦?⟦·⟧|Cliente⟧
 
@@ -985,31 +985,31 @@ src/controllers/ventesController.js
     miroir : Denrée introuvable
 
 src/middleware/auth.js
-  l. 111
+  l. 116
     défaut : Compte acheteur désactivé
     miroir : Compte cliente désactivé
-  l. 190
+  l. 195
     défaut : Action réservée au compte client (lecture seule pour les gérants)
     miroir : Action réservée au compte client (lecture seule pour les animatrices)
-  l. 197
+  l. 202
     défaut : Accès réservé aux gérants
     miroir : Accès réservé aux animatrices
-  l. 217
+  l. 222
     défaut : Module Vente non activé
     miroir : Module Abr-Encaissement non activé
-  l. 237
+  l. 242
     défaut : Module Acheteurs non activé
     miroir : Module Abr-Clientes non activé
-  l. 252
+  l. 257
     défaut : Espace Acheteurs non autorisé pour ce gérant
     miroir : Zone Clientes non autorisée pour cette animatrice
-  l. 279
+  l. 284
     défaut : L'Espace Produit est réservé à la formule Activité Premium
     miroir : La Zone Invention est réservée à la formule Activité Premium
-  l. 291
+  l. 296
     défaut : Accès réservé aux acheteurs
     miroir : Accès réservé aux clientes
-  l. 316
+  l. 321
     défaut : Accès non autorisé à cette activité
     miroir : Accès non autorisé à ce local
 

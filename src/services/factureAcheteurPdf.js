@@ -9,21 +9,19 @@
 // est identique au byte près, y compris après suppression de l'acheteur
 // (les lectures passent alors par le snapshot figé de la facture).
 const { buildFactureAcheteur } = require('../../docuseal-templates/generate');
+const { vendeurFacture } = require('../utils/identiteFacture');
 
 // f = ligne SQL (factures_acheteur + jointures vendeur/acheteur snapshot-aware),
 // lignes = commande_acheteur_lignes. Signature et données inchangées — seul le
 // moteur de rendu a changé.
+// Vendeur (lot 3, étape 8) : la copie figée à l'émission si la facture en porte une
+// (avec ses mentions légales), sinon la fiche lue en direct, comme avant.
 const buildFactureAcheteurPdf = (f, lignes) => {
   const remisePct = Number(f.remise_pct || 0);
   return buildFactureAcheteur(null, {
     numero: f.numero,
     dateFacture: f.date_facture,
-    vendeur: {
-      nom: f.vendeur_nom || 'Vendeur',
-      adresse: f.vendeur_adresse || null,
-      tel: f.vendeur_tel || null,
-      email: f.vendeur_email || null,
-    },
+    vendeur: vendeurFacture(f),
     acheteur: {
       nom: f.acheteur_nom || null,
       entreprise: f.acheteur_entreprise || null,

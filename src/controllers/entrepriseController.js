@@ -29,8 +29,18 @@ async function loadActiviteRow(id) {
 const getEntreprise = async (req, res) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
-    const [result, formuleRes] = await Promise.all([
+    const [result, anciennes, formuleRes] = await Promise.all([
       pool.query('SELECT * FROM profil_entreprise WHERE client_id = $1', [clientId]),
+      // Factures de vente émises avant la copie figée (migration 199) : elles lisent encore la fiche. Leur nombre
+      // — « Mon entreprise » le dit quand l'adresse change (lot 3, étape 8). Lecture accessoire : si elle échoue,
+      // la route répond quand même (0).
+      pool.query(
+        'SELECT COUNT(*)::int AS n FROM factures_acheteur WHERE client_id = $1 AND vendeur_fige_le IS NULL',
+        [clientId]
+      ).catch((e) => {
+        console.warn('[entreprise] factures non figées indisponibles:', e.message);
+        return { rows: [] };
+      }),
       pool.query(
         `SELECT ac.formule_activites
          FROM abonnements a JOIN abonnement_config ac ON ac.abonnement_id = a.id
@@ -53,7 +63,12 @@ const getEntreprise = async (req, res) => {
       console.warn('[entreprise] profil domaine indisponible:', e.message);
     }
     // La formule des activités gate l'Espace Produit côté front (basique = masqué)
-    res.json({ ...mapEntreprise(result.rows[0]), formule_activites: formuleRes.rows[0]?.formule_activites || null, domaine });
+    res.json({
+      ...mapEntreprise(result.rows[0]),
+      facturesNonFigees: anciennes.rows[0]?.n || 0,
+      formule_activites: formuleRes.rows[0]?.formule_activites || null,
+      domaine,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "198_manuel_sans_contrat.sql",
+  "derniereMigration": "199_factures_identite_figee.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -1647,19 +1647,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "10.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.650",
-     "source": "Terrasse du Lac — Salon",
-     "type_appro": "transfert"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "-10.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.650",
      "source": "Bloc chaud",
      "type_appro": "manuel"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "10.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.650",
+     "source": "Terrasse du Lac — Salon",
+     "type_appro": "transfert"
     },
     {
      "ingredient": "Riz basmati",
@@ -6628,13 +6628,13 @@
       ],
       [
        "Riz basmati",
-       "10",
+       "-10",
        "⟨date⟩",
        "2.65"
       ],
       [
        "Riz basmati",
-       "-10",
+       "10",
        "⟨date⟩",
        "2.65"
       ],
@@ -14545,6 +14545,7 @@
      "representantQualite": null
     },
     "identiteComplete": false,
+    "facturesNonFigees": 0,
     "formule_activites": "premium",
     "domaine": {
      "id": "⟨id⟩",
