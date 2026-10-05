@@ -420,3 +420,17 @@ les deux dernières corrections (ville en fin d'adresse, matricule d'acheteur bo
 ex aequo admises (`get_stock`, feuille Stock du rapport).
 **Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut, aucune exception sans emploi
 (textes lus : 7 015, 6 761, 6 512).
+
+### Correctif hors lot — signe de la ligne « Remise » de la facture de vente (05/10/2026)
+
+Demandé par le client avec son « étape 8 ok ». Le montant de la ligne « Remise » était précédé du signe mathématique
+U+2212, absent de la police standard des PDF (il s'imprimait « " ») ; c'est maintenant le tiret « – » (U+2013).
+Premier contrôle : 1 écart, attendu, aucun autre :
+
+| Écart | Nombre |
+|---|---|
+| `pdf/factureAcheteur/documents/0/textes/34` : « − 1.965 DT » → « – 1.965 DT » | 1 |
+
+**Recapture.** Référence RECAPTURÉE le 05/10 (`--reference`) : ce texte, et les permutations entre ex aequo déjà
+admises (`get_stock`, feuille Stock du rapport) ; contrôle suivant IDENTIQUE (0 écart).
+**Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut hors exceptions.

@@ -4808,5 +4808,12 @@
     "apres": null,
     "type": "deplacement",
     "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : texte inchangé, déplacé avec la construction de l'identité imprimée — replis « Vendeur » / « Client » vers src/utils/identiteFacture.js (vendeurFacture, clientFacture) ; libellé « Matricule fiscal » séparé de sa valeur dans docuseal-templates/generate.js (libellesMatricule). Le rendu d'une facture sans copie figée est identique à l'octet."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": "− ⟦·⟧",
+    "apres": "– ⟦·⟧",
+    "type": "faute-corrigee",
+    "justification": "Correctif hors lot du 05/10/2026, demandé par le client à la validation de l'étape 8 du lot 3 : sur la facture de vente, le montant de la ligne « Remise » était précédé du signe mathématique U+2212, absent de la police standard des PDF (Windows-1252) — il s'imprimait « \" ». Remplacé par le tiret « – » (U+2013), même équivalent que celui de pdfTexte. Aucun terme du lexique ; seul ce signe change sur la facture."
   }
 ]

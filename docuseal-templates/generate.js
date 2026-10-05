@@ -687,7 +687,9 @@ async function buildFactureAcheteur(outPath, data) {
     const remiseVal = brutHt - Number(data.montantHt || 0);
     const remiseLabel = remise.toFixed(Number.isInteger(remise) ? 0 : 2);
     totalRow('Total brut HT', fmt(brutHt));
-    totalRow(`Remise ${remiseLabel} %`, `− ${fmt(remiseVal)}`, { bg: C.dangerSoft, line: C.dangerLine, color: C.dangerText, valueColor: C.dangerText });
+    // Signe moins : le tiret demi-cadratin « – », présent dans la police standard (Windows-1252). Le signe
+    // mathématique U+2212 d'origine n'y est pas : il s'imprimait « " » sur la facture.
+    totalRow(`Remise ${remiseLabel} %`, `– ${fmt(remiseVal)}`, { bg: C.dangerSoft, line: C.dangerLine, color: C.dangerText, valueColor: C.dangerText });
     totalRow('Total HT net', fmt(data.montantHt));
   } else {
     totalRow('Total HT', fmt(data.montantHt));
