@@ -46,4 +46,16 @@ const controlerMatriculeFiscal = (brut) => {
   return { ok: true, valeur };
 };
 
-module.exports = { normaliserMatriculeFiscal, controlerMatriculeFiscal, MODELE_MATRICULE_FISCAL: MODELE };
+// Matricule d'un ACHETEUR (carnet d'un compte — lot 3, étape 8, spec §1.3) : remis au même format quand il en a
+// la forme, pour que ses factures n'en impriment pas deux ; JAMAIS refusé — une saisie qui ne ressemble à aucune
+// forme connue est gardée telle qu'elle a été tapée (rognée, et bornée à la taille de la colonne : au-delà de
+// 50 caractères la base refusait la fiche, le lot ou le fichier d'import entier par une erreur 500). Vide → null.
+const MAX_MATRICULE_ACHETEUR = 50; // acheteurs.matricule_fiscal VARCHAR(50)
+const matriculeAcheteur = (brut) => {
+  const saisi = String(brut || '').trim();
+  if (!saisi) return null;
+  const normalise = normaliserMatriculeFiscal(saisi);
+  return MODELE.test(normalise) ? normalise : saisi.slice(0, MAX_MATRICULE_ACHETEUR).trim();
+};
+
+module.exports = { normaliserMatriculeFiscal, controlerMatriculeFiscal, matriculeAcheteur, MODELE_MATRICULE_FISCAL: MODELE };

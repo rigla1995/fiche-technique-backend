@@ -2,6 +2,8 @@ const pool = require('../config/database');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
 const { vocabDefaut } = require('../utils/vocab');
+const { nomAffiche } = require('../utils/identite');
+const { VENDEUR_FACTURE_SQL } = require('../utils/identiteFacture');
 
 // Portail acheteur (rôle 'acheteur') : catalogue de commande + suivi.
 // Périmètre = le compte client parent (req.user.acheteurClientId), fiche = req.user.acheteurId.
@@ -22,7 +24,7 @@ const getCatalogue = async (req, res) => {
     const clientId = req.user.acheteurClientId;
     const acheteurId = req.user.acheteurId;
     const [vendeur, offres, histo] = await Promise.all([
-      pool.query(`SELECT nom, telephone, email FROM profil_entreprise WHERE client_id = $1`, [clientId]),
+      pool.query(`SELECT nom, nom_commercial, raison_sociale FROM profil_entreprise WHERE client_id = $1`, [clientId]),
       pool.query(
         `SELECT o.*,
                 CASE WHEN o.article_type = 'ingredient' THEN a.nom ELSE p.nom END AS nom,
@@ -81,7 +83,7 @@ const getCatalogue = async (req, res) => {
 
     const voc = req.voc ?? vocabDefaut;
     res.json({
-      vendeur: vendeur.rows[0]?.nom || voc.Votre('fournisseur'),
+      vendeur: nomAffiche(vendeur.rows[0]) || voc.Votre('fournisseur'),
       offres: offres.rows.map((o) => {
         const promoPct = promoDe(o);
         const h = histoMap.get(`${o.article_type}:${o.article_id}`);
@@ -326,7 +328,7 @@ const downloadMaFacture = async (req, res) => {
               CASE WHEN ach.id IS NULL THEN fa.acheteur_telephone ELSE ach.telephone END AS acheteur_tel,
               CASE WHEN ach.id IS NULL THEN fa.acheteur_email ELSE ach.email END AS acheteur_email,
               ca.date_commande, ca.notes,
-              pe.nom AS vendeur_nom, pe.adresse AS vendeur_adresse, pe.telephone AS vendeur_tel, pe.email AS vendeur_email
+              ${VENDEUR_FACTURE_SQL}
        FROM factures_acheteur fa
        LEFT JOIN acheteurs ach ON ach.id = fa.acheteur_id
        JOIN commandes_acheteur ca ON ca.id = fa.commande_id

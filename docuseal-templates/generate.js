@@ -55,6 +55,9 @@ const prestataireRcCapital = () => [
   PRESTATAIRE.rc && `RC : ${PRESTATAIRE.rc}`,
   PRESTATAIRE.capital && `Capital : ${PRESTATAIRE.capital}`,
 ].filter(Boolean).join('  ·  ');
+// Libellés [long, court] du matricule d'une partie imprimée sur une facture (vendeur, client) : même règle que
+// pour le prestataire — un auto-entrepreneur porte un « identifiant unique ».
+const libellesMatricule = (autoEntrepreneur) => (autoEntrepreneur ? ['Identifiant unique', 'ID'] : ['Matricule fiscal', 'MF']);
 // Pied de page légal : raison sociale · MF/ID · RC (si présent).
 const prestataireLegalLine = () => [
   PRESTATAIRE.raisonSociale,
@@ -353,11 +356,17 @@ function partiesBlock(ctx, y, client, opts = {}) {
   // opts.emetteur = { nom, matricule?, adresse?, email?, tel? } substitue un émetteur
   // arbitraire au PRESTATAIRE (ex. facture acheteur : émetteur = l'entreprise du client).
   const em = opts.emetteur || null;
+  // Mentions légales de l'émetteur (lot 3, étape 8 : nomCommercial, forme, matricule, autoEntrepreneur, rne, ville) :
+  // chaque ligne est omise quand sa valeur est vide — un émetteur sans mention sort à l'octet près comme avant.
+  const emId = em && [em.forme, em.matricule && `${libellesMatricule(em.autoEntrepreneur)[0]} : ${em.matricule}`].filter(Boolean).join('  ·  ');
+  const emAdresse = em && [em.adresse, em.ville].filter(Boolean).join(', ');
   const presLines = em ? [
     { t: labelPres, s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
     { t: em.nom || 'Émetteur', s: 10, b: true, c: C.ink, w: true, gap: 4 },
-    em.matricule && { t: `Matricule fiscal : ${em.matricule}`, s: 7.5, c: C.muted, w: true, gap: 2 },
-    em.adresse && { t: em.adresse, s: 7.5, c: C.muted, w: true, gap: 2 },
+    em.nomCommercial && { t: `Nom commercial : ${em.nomCommercial}`, s: 7.5, c: C.muted, w: true, gap: 2 },
+    emId && { t: emId, s: 7.5, c: C.muted, w: true, gap: 2 },
+    em.rne && { t: `RNE : ${em.rne}`, s: 7.5, c: C.muted, w: true, gap: 2 },
+    emAdresse && { t: emAdresse, s: 7.5, c: C.muted, w: true, gap: 2 },
     (em.email || em.tel) && { t: [em.email, em.tel].filter(Boolean).join('  ·  '), s: 7.5, c: C.muted, w: true, gap: 0 },
   ].filter(Boolean) : [
     { t: labelPres, s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
@@ -380,6 +389,7 @@ function partiesBlock(ctx, y, client, opts = {}) {
     { t: labelCli, s: 6.8, b: true, c: C.faint, sp: 1, lh: 12 },
     { t: client.nom, s: 10, b: true, c: C.ink, w: true, gap: 4 },
     idClient && { t: idClient, s: 7.5, c: C.muted, w: true, gap: 2 },
+    client.rne && { t: `RNE : ${client.rne}`, s: 7.5, c: C.muted, w: true, gap: 2 },
     client.representant && { t: `Représenté par ${client.representant}`, s: 7.5, c: C.muted, w: true, gap: 2 },
     client.email && { t: client.email, s: 7.5, c: C.muted, w: true, gap: 2 },
     client.tel && { t: client.tel, s: 7.5, c: C.muted, w: true, gap: 2 },
@@ -487,6 +497,7 @@ function finish(ctx, outPath) {
 // FACTURE D'ABONNEMENT (émise au règlement)
 // ══════════════════════════════════════════════════════════════════════════════
 // data : { numero, dateFacture, periodeLabel, clientNom, clientEmail,
+//          client?: { forme, matricule, autoEntrepreneur, rne, adresse, ville },   // copie figée au paiement
 //          montantHt, montantTva, montantTtc, tvaRate }
 // DÉTERMINISTE : CreationDate = date de facture (jamais l'horloge) → la copie
 // jointe à l'email et la copie re-téléchargée sont identiques au byte près.
@@ -510,8 +521,17 @@ async function buildFacture(outPath, data) {
   let y = TOPY;
 
   y = section(ctx, y, 'ÉMETTEUR ET CLIENT');
-  y = partiesBlock(ctx, y, { nom: data.clientNom || 'Client', email: data.clientEmail || undefined },
-    { labels: ['ÉMETTEUR', 'FACTURÉ À'], mention: false });
+  // data.client (lot 3, étape 8) : identité légale du client figée au paiement — { forme, matricule,
+  // autoEntrepreneur, rne, adresse, ville }. Absente : « Facturé à » d'avant (nom, email), à l'octet près.
+  const cli = data.client || {};
+  y = partiesBlock(ctx, y, {
+    nom: data.clientNom || 'Client',
+    forme: cli.forme || undefined,
+    mfrc: cli.matricule ? `${libellesMatricule(cli.autoEntrepreneur)[0]} : ${cli.matricule}` : undefined,
+    rne: cli.rne || undefined,
+    email: data.clientEmail || undefined,
+    adresse: [cli.adresse, cli.ville].filter(Boolean).join(', ') || undefined,
+  }, { labels: ['ÉMETTEUR', 'FACTURÉ À'], mention: false });
 
   y = section(ctx, y, 'OBJET');
   y = calloutBox(ctx, y,
@@ -572,7 +592,8 @@ async function buildFacture(outPath, data) {
 //    mais émise par l'ENTREPRISE DU CLIENT (profil_entreprise) à un acheteur B2B.
 // ══════════════════════════════════════════════════════════════════════════════
 // data : { numero, dateFacture,
-//          vendeur:  { nom, adresse, tel, email },
+//          vendeur:  { nom, adresse, tel, email,
+//                      nomCommercial?, forme?, matricule?, autoEntrepreneur?, rne?, ville? },   // copie figée à l'émission
 //          acheteur: { nom, entreprise, adresse, mf, tel, email },   // snapshot-aware
 //          lignes:   [{ designation, quantite, prixHt, tauxTva }],
 //          remisePct, montantHt, montantTva, timbreFiscal, montantTimbre,
@@ -600,7 +621,8 @@ async function buildFactureAcheteur(outPath, data) {
   header(ctx, {
     eyebrow: 'FACTURE',
     title: 'Facture de vente',
-    subtitle: `${vendeur.nom || 'Vendeur'} — vente professionnelle, émise via la plateforme LabFlow`,
+    // Borné à la largeur de la page : avec une copie figée, le nom est la raison sociale, parfois longue.
+    subtitle: fitText(`${vendeur.nom || 'Vendeur'} — vente professionnelle, émise via la plateforme LabFlow`, 9, CW),
     ref: data.numero, date: dateStr, dateLabel: 'Émise le',
   });
   let y = TOPY;
@@ -617,7 +639,11 @@ async function buildFactureAcheteur(outPath, data) {
     adresse: ach.adresse || undefined,
   }, {
     labels: ['ÉMETTEUR', 'FACTURÉ À'], mention: false,
-    emetteur: { nom: vendeur.nom || 'Vendeur', adresse: vendeur.adresse, email: vendeur.email, tel: vendeur.tel },
+    emetteur: {
+      nom: vendeur.nom || 'Vendeur', adresse: vendeur.adresse, email: vendeur.email, tel: vendeur.tel,
+      nomCommercial: vendeur.nomCommercial, forme: vendeur.forme, matricule: vendeur.matricule,
+      autoEntrepreneur: vendeur.autoEntrepreneur, rne: vendeur.rne, ville: vendeur.ville,
+    },
   });
 
   // Tableau multi-lignes : Désignation | Qté | PU HT | TVA | Total HT
@@ -713,7 +739,11 @@ async function buildFactureAcheteur(outPath, data) {
 
   stampFooters(ctx, `Facture ${data.numero}`,
     'Facture de vente — émise électroniquement via la plateforme LabFlow',
-    [vendeur.nom || 'Vendeur', vendeur.adresse].filter(Boolean).join('  ·  '));
+    [
+      vendeur.nom || 'Vendeur',
+      vendeur.matricule && `${libellesMatricule(vendeur.autoEntrepreneur)[1]} ${vendeur.matricule}`,
+      [vendeur.adresse, vendeur.ville].filter(Boolean).join(', '),
+    ].filter(Boolean).join('  ·  '));
   return finish(ctx, outPath);
 }
 

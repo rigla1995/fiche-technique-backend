@@ -401,3 +401,22 @@ Les clés existantes de `client.entreprise` gardent leur ordre et leur valeur ; 
 contrôle suivant IDENTIQUE (22 h 31), et de nouveau IDENTIQUE après les corrections des relectures (22 h 42).
 **Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut, aucune exception sans emploi
 (textes lus : 7 014, 6 760, 6 511).
+
+### Lot 3, étape 8 — factures : identité figée (05/10/2026)
+
+`GET /api/entreprise` renvoie en plus `facturesNonFigees` (nombre de factures de vente du compte sans copie figée).
+Premier contrôle (12 h 32) : 1 écart, attendu, aucun autre :
+
+| Écart | Nombre |
+|---|---|
+| `auth/client.entreprise/facturesNonFigees` : absent → `0` | 1 |
+
+Aucun PDF ne change : la facture de vente du compte de la capture est émise sans identité légale (copie figée sans
+mention : mêmes octets que l'ancienne présentation), la facture d'abonnement est rendue sans copie, les 3 factures
+d'approvisionnement ne sont pas touchées. Comptes par clé inchangés (pdf 10, emails 28, auth 11).
+**Recapture.** Référence RECAPTURÉE le 05/10 à 12 h 33 (`--reference`) : `derniereMigration` 198 → 199 et
+`"facturesNonFigees": 0` ajouté, rien d'autre ; contrôle suivant IDENTIQUE (12 h 34), et de nouveau IDENTIQUE après
+les deux dernières corrections (ville en fin d'adresse, matricule d'acheteur borné) : 0 écart, 2 permutations entre
+ex aequo admises (`get_stock`, feuille Stock du rapport).
+**Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut, aucune exception sans emploi
+(textes lus : 7 015, 6 761, 6 512).

@@ -4,6 +4,7 @@ const multer = require('multer');
 const { sendInviteEmail, generateInviteToken } = require('../services/emailService');
 const { vocabDefaut } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
+const { matriculeAcheteur } = require('../utils/matriculeFiscal');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -116,7 +117,7 @@ const create = async (req, res) => {
       entreprise: String(it.entreprise || '').trim() || null,
       telephone: String(it.telephone || '').trim() || null,
       adresse: String(it.adresse || '').trim() || null,
-      matriculeFiscal: String(it.matriculeFiscal || '').trim() || null,
+      matriculeFiscal: matriculeAcheteur(it.matriculeFiscal),
       notes: String(it.notes || '').trim() || null,
       creerCompte,
     });
@@ -208,7 +209,8 @@ const update = async (req, res) => {
        WHERE id=$9 AND client_id=$10
        RETURNING *`,
       [nom, val(req.body.entreprise, a.entreprise), email, val(req.body.telephone, a.telephone),
-       val(req.body.adresse, a.adresse), val(req.body.matriculeFiscal, a.matricule_fiscal),
+       val(req.body.adresse, a.adresse),
+       req.body.matriculeFiscal !== undefined ? matriculeAcheteur(req.body.matriculeFiscal) : a.matricule_fiscal,
        val(req.body.notes, a.notes), actif, id, clientId]
     );
     const u = r.rows[0].user_id
@@ -462,7 +464,7 @@ const importAcheteurs = [
             const r = await db.query(
               `INSERT INTO acheteurs (client_id, nom, entreprise, email, telephone, adresse, matricule_fiscal, created_by)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-              [clientId, v.nom, v.entreprise || null, v.email, v.telephone || null, v.adresse || null, v.matriculeFiscal || null, req.user.id]
+              [clientId, v.nom, v.entreprise || null, v.email, v.telephone || null, v.adresse || null, matriculeAcheteur(v.matriculeFiscal), req.user.id]
             );
             row = r.rows[0];
           } catch (e) {
