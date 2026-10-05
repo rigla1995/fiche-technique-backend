@@ -14,6 +14,8 @@ const CONTACT = { nom: 'Contact Test', email: 'contact@example.com' };
 const requetes = [];
 let ligne = null;        // ligne profil_entreprise du client 2 (null = absente)
 let enPanne = false;     // true : toute requête lève (base indisponible)
+let nonFigees = 0;       // nombre de factures de vente sans copie figée (étape 8)
+let panneFactures = false; // true : la lecture de ce nombre lève (la route doit répondre quand même)
 
 const fauxPool = {
   query: async (sql, params = []) => {
@@ -32,6 +34,11 @@ const fauxPool = {
     }
     if (texte === 'SELECT * FROM profil_entreprise WHERE client_id = $1') {
       return { rows: ligne && ligne.client_id === params[0] ? [{ ...ligne }] : [] };
+    }
+    // Lecture de getEntreprise ajoutée à l'étape 8 : factures de vente d'avant la copie figée.
+    if (texte === 'SELECT COUNT(*)::int AS n FROM factures_acheteur WHERE client_id = $1 AND vendeur_fige_le IS NULL') {
+      if (panneFactures) throw new Error('colonne absente');
+      return { rows: [{ n: nonFigees }] };
     }
     // Lectures de getEntreprise (formule du compte, domaine du compte) : aucun abonnement, aucun domaine.
     if (texte.startsWith('SELECT ac.formule_activites FROM abonnements a JOIN abonnement_config ac')) return { rows: [{ formule_activites: 'premium' }] };
@@ -276,8 +283,9 @@ test('GET /api/entreprise : identite (9 champs) et identiteComplete ajoutés, ch
   assert.deepEqual(Object.keys(res.corps), [
     'id', 'clientId', 'nom', 'email', 'telephone', 'adresse', 'memeActivite',
     'module_vente_actif', 'module_vente_activated_at', 'module_acheteurs_actif', 'module_acheteurs_activated_at', 'createdAt',
-    'identite', 'identiteComplete', 'formule_activites', 'domaine',
+    'identite', 'identiteComplete', 'facturesNonFigees', 'formule_activites', 'domaine',
   ]);
+  assert.equal(res.corps.facturesNonFigees, 0, 'aucune facture de vente sans copie figée');
   assert.equal(res.corps.id, 1);
   assert.equal(res.corps.clientId, 2);
   assert.equal(res.corps.nom, 'Contact Test');
@@ -299,6 +307,26 @@ test('GET /api/entreprise : identite (9 champs) et identiteComplete ajoutés, ch
   assert.equal(res.corps.clientId, 2);
   assert.equal(res.corps.identite.raisonSociale, 'Dar Yasmine SARL');
   assert.deepEqual(requetes.find((r) => r.texte === 'SELECT * FROM profil_entreprise WHERE client_id = $1').params, [2]);
+
+  // Étape 8 : des factures de vente d'avant la copie figée lisent encore la fiche — leur nombre, demandé pour le
+  // compte parent ; si cette lecture accessoire échoue, la route répond quand même (0).
+  nonFigees = 8;
+  res = await lire({ id: 7, role: 'gerant', gerant_parent_id: 2 });
+  assert.equal(res.corps.facturesNonFigees, 8);
+  assert.deepEqual(requetes.find((r) => r.texte.includes('FROM factures_acheteur')).params, [2]);
+  panneFactures = true;
+  const avertir = console.warn;
+  console.warn = () => {};
+  try {
+    res = await lire();
+  } finally {
+    console.warn = avertir;
+    panneFactures = false;
+    nonFigees = 0;
+  }
+  assert.equal(res.code, 200, 'lecture accessoire en panne : la route répond');
+  assert.equal(res.corps.facturesNonFigees, 0);
+  assert.equal(res.corps.identite.raisonSociale, 'Dar Yasmine SARL');
 
   // Aucune ligne : null (comme avant l'étape 6).
   raz(null);

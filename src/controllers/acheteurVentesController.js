@@ -3,6 +3,7 @@ const { computeStock } = require('../services/stockService');
 const { lockStockLabo, mapLockError } = require('../services/transfertService');
 const { gerantAllowsLabo } = require('../middleware/auth');
 const { buildFactureAcheteurPdf } = require('../services/factureAcheteurPdf');
+const { figerVendeurFacture, VENDEUR_FACTURE_SQL } = require('../utils/identiteFacture');
 
 const clientIdOf = (req) => req.user.gerant_parent_id || req.user.id;
 const num = (v) => (v === null || v === undefined ? null : Number(v));
@@ -471,6 +472,7 @@ const createVente = async (req, res) => {
         [clientId, acheteurId, a0.nom, a0.entreprise, a0.adresse, a0.matricule_fiscal, a0.telephone, a0.email,
          commande.id, numero, dateCommande, brutTtc, remisePct, montantHt, montantTva, timbreFiscal, montantTimbre, montantTtc, req.user.id]
       );
+      await figerVendeurFacture(db, fact.rows[0].id);
       await db.query('COMMIT');
       res.status(201).json({
         commande: { id: commande.id, statut, dateCommande, dateExpedition, dateLivraison, remisePct, acheteurNom: ach.rows[0].nom, laboNom: labo.rows[0].nom },
@@ -802,6 +804,7 @@ const expedierCommande = async (req, res) => {
       [clientId, cmd.acheteur_id, cmd.acheteur_nom, cmd.acheteur_entr, cmd.acheteur_adr, cmd.acheteur_mf, cmd.acheteur_tel, cmd.acheteur_email,
        cmd.id, numero, dateExpedition, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc, req.user.id]
     );
+    await figerVendeurFacture(db, fact.rows[0].id);
     await db.query(
       `UPDATE commandes_acheteur
        SET statut = $1, labo_id = $2, remise_pct = $3, date_expedition = $4, date_livraison = $5, traite_le = NOW(), traite_par = $6
@@ -945,7 +948,7 @@ const downloadFacturePdf = async (req, res) => {
               CASE WHEN ach.id IS NULL THEN fa.acheteur_telephone ELSE ach.telephone END AS acheteur_tel,
               CASE WHEN ach.id IS NULL THEN fa.acheteur_email ELSE ach.email END AS acheteur_email,
               ca.date_commande, ca.remise_pct AS cmd_remise, ca.notes, ca.labo_id AS cmd_labo_id,
-              pe.nom AS vendeur_nom, pe.adresse AS vendeur_adresse, pe.telephone AS vendeur_tel, pe.email AS vendeur_email
+              ${VENDEUR_FACTURE_SQL}
        FROM factures_acheteur fa
        LEFT JOIN acheteurs ach ON ach.id = fa.acheteur_id
        JOIN commandes_acheteur ca ON ca.id = fa.commande_id

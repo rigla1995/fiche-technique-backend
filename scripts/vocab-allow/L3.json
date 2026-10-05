@@ -1555,13 +1555,6 @@
   },
   {
     "fichier": "docuseal-templates/generate.js",
-    "avant": ", ",
-    "apres": null,
-    "type": "retire",
-    "justification": "Lot 3, étape 5 — code DocuSeal mort retiré (décision écrite du client du 04/10/2026, « sans engagement » : plus de contrat, d'avenant ni de résiliation) : texte ou chaîne des documents à signer (buildContrat, buildAvenant, buildResiliation ; tableau de configuration, bloc tarifaire, bloc des signatures, bandeau des champs ajoutés, contrôle des mentions fictives du prestataire, jeux d'exemple et mode --templates), supprimé avec le document qui l'affichait. Les trois factures gardent tous leurs textes (octets identiques, test/B2-pdfTexte.test.js)."
-  },
-  {
-    "fichier": "docuseal-templates/generate.js",
     "avant": "Quantité souscrite",
     "apres": null,
     "type": "retire",
@@ -4643,5 +4636,177 @@
     "apres": "/identite",
     "type": "discriminant",
     "justification": "Lot 3, étape 6 — « Mon entreprise » côté client (découpage validé par le client le 04/10/2026) : chaîne technique jamais affichée (nom de champ de la liste blanche, typeof, fragment SQL de l'INSERT … ON CONFLICT, chemin de route)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": "Matricule fiscal : ⟦·⟧",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : texte inchangé, déplacé avec la construction de l'identité imprimée — replis « Vendeur » / « Client » vers src/utils/identiteFacture.js (vendeurFacture, clientFacture) ; libellé « Matricule fiscal » séparé de sa valeur dans docuseal-templates/generate.js (libellesMatricule). Le rendu d'une facture sans copie figée est identique à l'octet."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "Matricule fiscal",
+    "type": "deplacement",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : texte inchangé, déplacé avec la construction de l'identité imprimée — replis « Vendeur » / « Client » vers src/utils/identiteFacture.js (vendeurFacture, clientFacture) ; libellé « Matricule fiscal » séparé de sa valeur dans docuseal-templates/generate.js (libellesMatricule). Le rendu d'une facture sans copie figée est identique à l'octet."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "Identifiant unique",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : mention légale NOUVELLE imprimée sur une facture émise avec une copie figée de l'identité (facture de vente : bloc ÉMETTEUR et pied ; facture d'abonnement : bloc FACTURÉ À). Vocabulaire légal, identique dans tous les domaines ; une facture sans copie ne l'imprime pas (octets inchangés, test/B2-pdfTexte.test.js)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "ID",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : mention légale NOUVELLE imprimée sur une facture émise avec une copie figée de l'identité (facture de vente : bloc ÉMETTEUR et pied ; facture d'abonnement : bloc FACTURÉ À). Vocabulaire légal, identique dans tous les domaines ; une facture sans copie ne l'imprime pas (octets inchangés, test/B2-pdfTexte.test.js)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "MF",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : mention légale NOUVELLE imprimée sur une facture émise avec une copie figée de l'identité (facture de vente : bloc ÉMETTEUR et pied ; facture d'abonnement : bloc FACTURÉ À). Vocabulaire légal, identique dans tous les domaines ; une facture sans copie ne l'imprime pas (octets inchangés, test/B2-pdfTexte.test.js)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "⟦?⟦·⟧ : ⟦·⟧|⟧",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : chaîne technique jamais lue comme un mot (séparateur entre deux mentions, gabarit sans mot, statut comparé « payé », code de forme juridique)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "  ·  ",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : chaîne technique jamais lue comme un mot (séparateur entre deux mentions, gabarit sans mot, statut comparé « payé », code de forme juridique)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "Nom commercial : ⟦·⟧",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : mention légale NOUVELLE imprimée sur une facture émise avec une copie figée de l'identité (facture de vente : bloc ÉMETTEUR et pied ; facture d'abonnement : bloc FACTURÉ À). Vocabulaire légal, identique dans tous les domaines ; une facture sans copie ne l'imprime pas (octets inchangés, test/B2-pdfTexte.test.js)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "RNE : ⟦·⟧",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : mention légale NOUVELLE imprimée sur une facture émise avec une copie figée de l'identité (facture de vente : bloc ÉMETTEUR et pied ; facture d'abonnement : bloc FACTURÉ À). Vocabulaire légal, identique dans tous les domaines ; une facture sans copie ne l'imprime pas (octets inchangés, test/B2-pdfTexte.test.js).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦? : ⟦·⟧|⟧",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : chaîne technique jamais lue comme un mot (séparateur entre deux mentions, gabarit sans mot, statut comparé « payé », code de forme juridique)."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": ", ",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : chaîne technique jamais lue comme un mot (séparateur entre deux mentions, gabarit sans mot, statut comparé « payé », code de forme juridique).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "payé",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : chaîne technique jamais lue comme un mot (séparateur entre deux mentions, gabarit sans mot, statut comparé « payé », code de forme juridique).",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/services/factureAcheteurPdf.js",
+    "avant": "⟦?⟦·⟧|Vendeur⟧",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : texte inchangé, déplacé avec la construction de l'identité imprimée — replis « Vendeur » / « Client » vers src/utils/identiteFacture.js (vendeurFacture, clientFacture) ; libellé « Matricule fiscal » séparé de sa valeur dans docuseal-templates/generate.js (libellesMatricule). Le rendu d'une facture sans copie figée est identique à l'octet."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "SARL",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : libellé d'une forme juridique imprimé sur une facture (mêmes textes que l'écran, src/utils/identiteLegale.ts du frontend). Vocabulaire légal, identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "SUARL",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : libellé d'une forme juridique imprimé sur une facture (mêmes textes que l'écran, src/utils/identiteLegale.ts du frontend). Vocabulaire légal, identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "SA",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : libellé d'une forme juridique imprimé sur une facture (mêmes textes que l'écran, src/utils/identiteLegale.ts du frontend). Vocabulaire légal, identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "SNC",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : libellé d'une forme juridique imprimé sur une facture (mêmes textes que l'écran, src/utils/identiteLegale.ts du frontend). Vocabulaire légal, identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "Entreprise individuelle",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : libellé d'une forme juridique imprimé sur une facture (mêmes textes que l'écran, src/utils/identiteLegale.ts du frontend). Vocabulaire légal, identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "Auto-entrepreneur",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : libellé d'une forme juridique imprimé sur une facture (mêmes textes que l'écran, src/utils/identiteLegale.ts du frontend). Vocabulaire légal, identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "Association",
+    "type": "ajoute",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : libellé d'une forme juridique imprimé sur une facture (mêmes textes que l'écran, src/utils/identiteLegale.ts du frontend). Vocabulaire légal, identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "AUTO_ENTREPRENEUR",
+    "type": "discriminant",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : chaîne technique jamais lue comme un mot (séparateur entre deux mentions, gabarit sans mot, statut comparé « payé », code de forme juridique)."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "⟦?⟦·⟧|Vendeur⟧",
+    "type": "deplacement",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : texte inchangé, déplacé avec la construction de l'identité imprimée — replis « Vendeur » / « Client » vers src/utils/identiteFacture.js (vendeurFacture, clientFacture) ; libellé « Matricule fiscal » séparé de sa valeur dans docuseal-templates/generate.js (libellesMatricule). Le rendu d'une facture sans copie figée est identique à l'octet."
+  },
+  {
+    "fichier": "src/utils/identiteFacture.js",
+    "avant": null,
+    "apres": "⟦?⟦·⟧|Client⟧",
+    "type": "deplacement",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : texte inchangé, déplacé avec la construction de l'identité imprimée — replis « Vendeur » / « Client » vers src/utils/identiteFacture.js (vendeurFacture, clientFacture) ; libellé « Matricule fiscal » séparé de sa valeur dans docuseal-templates/generate.js (libellesMatricule). Le rendu d'une facture sans copie figée est identique à l'octet.",
+    "occurrences": 2
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": "⟦?⟦·⟧|Client⟧",
+    "apres": null,
+    "type": "deplacement",
+    "justification": "Lot 3, étape 8 — factures : identité figée (découpage et décisions du client du 05/10/2026) : texte inchangé, déplacé avec la construction de l'identité imprimée — replis « Vendeur » / « Client » vers src/utils/identiteFacture.js (vendeurFacture, clientFacture) ; libellé « Matricule fiscal » séparé de sa valeur dans docuseal-templates/generate.js (libellesMatricule). Le rendu d'une facture sans copie figée est identique à l'octet."
   }
 ]
