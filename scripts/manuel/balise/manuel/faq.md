@@ -24,7 +24,7 @@ Vous continuez à consulter tous vos écrans, historiques et rapports, mais tout
 
 ### Comment retrouver une facture ?
 
-Les **factures [[de:appro]]** se trouvent dans l'écran [Factures](#factures) de chaque [[nom:activite]] ou [[nom:labo]] : elles sont générées à la validation et re-téléchargeables à tout moment. Les **paiements d'abonnement** se consultent dans l'[historique des paiements](#historique-paiements).
+Les **factures [[de:appro]]** se trouvent dans l'écran [Factures](#factures) de chaque [[nom:activite]] ou [[nom:labo]] : elles sont générées à la validation et re-téléchargeables à tout moment. Les **factures [[de:vente]]** s'ouvrent par le bouton **Facture** de chaque commande (voir [[[Pl:vente]] & commandes](#acheteurs-ventes)) ; avec un compte portail, [[votre:acheteur:pl]] les retrouvent aussi. Les **paiements d'abonnement** se consultent dans l'[historique des paiements](#historique-paiements).
 
 ### Pourquoi les montants sont-ils affichés en TTC alors que je saisis mes prix en HT ?
 

@@ -1,1 +1,1 @@
-Le timbre fiscal est une taxe fixe (1 DT en Tunisie) ajoutée au montant TTC d'une facture lorsqu'il s'applique. Il est suivi par LabFlow sur les factures [[de:appro]].
+Le timbre fiscal est une taxe fixe (1 DT en Tunisie) ajoutée au montant TTC d'une facture lorsqu'il s'applique. Il est suivi par LabFlow sur les factures [[de:appro]] et sur les factures [[de:vente]].
