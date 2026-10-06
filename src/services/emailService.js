@@ -94,7 +94,10 @@ const sendInviteEmail = async ({ to, nom, token, role, voc: vocRecu }) => {
 
 // Email de bienvenue envoyé DÈS la création du compte (lot 3, étape 3 : LabFlow est sans engagement, il n'y a plus
 // de contrat à signer ni de pièce jointe). Même sujet, même bouton, même délai de 48 h qu'avant.
-const sendWelcomeEmail = async ({ to, nom, token }) => {
+// `produit` (LabFlow Compta, étape S2b) : adresse et nom du produit du compte créé ; LabFlow par défaut, à l'identique.
+const sendWelcomeEmail = async ({ to, nom, token, produit }) => {
+  const APP_URL = urlEcrans(produit);
+  const APP_NAME = nomProduit(produit);
   const activateUrl = `${APP_URL}/invite/${token}`;
   const intro = `Nous avons le plaisir de vous accueillir sur <strong>${APP_NAME}</strong>. Votre espace est prêt.<br>
         Pour y accéder, il vous suffit d'activer votre compte et de définir votre mot de passe en cliquant ci-dessous.`;
@@ -319,7 +322,10 @@ const sendSupplementValideEmail = async ({
 };
 
 // Email professionnel envoyé au client à la validation d'un paiement, avec la facture PDF jointe.
-const sendFactureEmail = async ({ to, nom, numero, periodeLabel, montantTtc, dateReglement, pdfBase64 }) => {
+// `produit` (LabFlow Compta, étape S2b) : nom du produit et rubrique où retrouver ses factures ; LabFlow par défaut.
+const sendFactureEmail = async ({ to, nom, numero, periodeLabel, montantTtc, dateReglement, pdfBase64, produit }) => {
+  const APP_NAME = nomProduit(produit);
+  const rubrique = produitSur(produit) === 'compta' ? 'Abonnement et factures' : 'Historique paiements';
   const fmtDt = (n) => (n != null ? `${Number(n).toFixed(3)} DT` : '—');
   const dateStr = dateReglement
     ? new Date(dateReglement).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -365,7 +371,7 @@ const sendFactureEmail = async ({ to, nom, numero, periodeLabel, montantTtc, dat
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 20px;margin-bottom:24px;">
         <p style="margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:0.05em;">📎 Document joint</p>
         <p style="margin:0;font-size:0.9rem;color:#14532d;font-weight:600;">Facture ${numero} (PDF)</p>
-        <p style="margin:4px 0 0;font-size:0.8rem;color:#3f6212;">Retrouvez également toutes vos factures dans votre espace, rubrique « Historique paiements ».</p>
+        <p style="margin:4px 0 0;font-size:0.8rem;color:#3f6212;">Retrouvez également toutes vos factures dans votre espace, rubrique « ${rubrique} ».</p>
       </div>
 
       <p style="margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;">

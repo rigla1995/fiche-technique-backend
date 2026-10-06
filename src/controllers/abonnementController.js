@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const { premierDuMoisUTC, normaliserMoisUTC, finDePeriodeUTC, moisCouvertsUTC } = require('../utils/dateUtils');
-const { sendInviteEmail, sendFactureEmail } = require('../services/emailService');
+const { sendInviteEmail, sendWelcomeEmail, sendFactureEmail } = require('../services/emailService');
 const { generateFacturePdf } = require('../services/pdfService');
 const { figerClientPaiement, clientFacture } = require('../utils/identiteFacture');
 const { vocabForClient } = require('../utils/vocabCompte');
@@ -15,8 +15,10 @@ const {
   palierAcheteurs, computeBaseAcheteursFromConfig, computeMensuelTotalFromConfig,
   computeActiviteSupPrice,
   applyPromoMensualite, applyPromoOnboarding, applyPromoSupplement,
-  onboardingPriceFor,
+  onboardingPriceFor, lignesMensualite,
 } = require('../services/pricingEngine');
+// LabFlow Compta (étape S2b) : postes du cabinet / du module (pur), pour l'affichage du détail.
+const { postesCompta, estCabinet } = require('../compta/tarifsCompta');
 // Config par composant (lot 1a) : applyComposants = SEUL écrivain des compteurs nb_*.
 const {
   CompositionError, deriveCompteurs, validerComposition, normCompteurs, erreursIntroduites,
@@ -46,15 +48,27 @@ const buildFactureData = (paiement, client) => {
   // Date déterministe : date de règlement persistée, sinon repli sur le mois facturé
   // (toujours présent) — jamais l'horloge courante, pour que email == téléchargement.
   const dateFacture = paiement.date_paiement || paiement.mois;
+  // LabFlow Compta (S2b, D8) : produit de l'abonnement et postes figés sur la mensualité, seulement s'ils existent —
+  // une facture de LabFlow sans postes garde ses données, donc son PDF, à l'identique.
+  const compta = paiement.produit === 'compta';
+  const lignes = Array.isArray(paiement.lignes) && paiement.lignes.length ? paiement.lignes : null;
   return {
     numero, periodeLabel, ttc, ht, tva, dateFacture,
     pdfParams: {
       numero, dateFacture, periodeLabel,
       ...clientFacture(paiement, client),
       montantHt: ht, montantTva: tva, montantTtc: ttc, tvaRate: FACTURE_TVA_RATE,
+      ...(compta ? { produit: 'compta' } : {}),
+      ...(lignes ? { lignes } : {}),
     },
   };
 };
+
+// Configuration d'un abonnement lue AVEC le produit de l'abonnement (LabFlow Compta, S2b) : le moteur de prix y
+// reconnaît un cabinet. Même ligne que « SELECT * FROM abonnement_config », plus la colonne produit.
+const SQL_CONFIG_PRODUIT = `SELECT ac.*, a.produit
+     FROM abonnement_config ac
+     JOIN abonnements a ON a.id = ac.abonnement_id`;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -74,6 +88,8 @@ const mapAbonnement = (row) => ({
   suppressionCascadeDate: row.suppression_cascade_date,
   hasActivePromo: row.has_active_promo ?? false,
   inviteSent: row.invite_sent ?? false,
+  // LabFlow Compta (S2b) : présent seulement pour un cabinet comptable (absent = LabFlow : réponse d'avant, à l'identique).
+  ...(row.produit === 'compta' ? { produit: 'compta' } : {}),
   moduleVenteActif: row.module_vente_actif ?? false,
   moduleVenteActivatedAt: row.module_vente_activated_at ?? null,
   moduleAcheteursActif: row.module_acheteurs_actif ?? false,
@@ -156,6 +172,12 @@ const mapAbonnementConfig = (row) => row ? ({
   domaineId: row.domaine_id ?? null,
   domaineSlug: row.domaine_slug ?? null,
   domaineNom: row.domaine_nom ?? null,
+  // LabFlow Compta (S2b) : module chez un client (S2c) et gérants comptables (client : en plus ; cabinet : achetés) —
+  // présents seulement quand ils servent (absents = module inactif, 0 gérant : réponse d'avant, à l'identique).
+  ...(row.module_compta_actif || row.nb_gerants_compta > 0 || row.produit === 'compta' ? {
+    moduleComptaActif: row.module_compta_actif === true,
+    nbGerantsCompta: row.nb_gerants_compta || 0,
+  } : {}),
   // [{ composantId, code, libelle, libellePluriel, icone, typeTechnique, nb }]
   composants: Array.isArray(row.composants) ? row.composants : [],
   createdAt: row.created_at,
@@ -166,8 +188,9 @@ const mapAbonnementConfig = (row) => row ? ({
 // attendue par mapAbonnementConfig. null si le compte n'a pas de config.
 const loadConfigComplete = async (aboId, db = pool) => {
   const r = await db.query(
-    `SELECT ac.*, da.slug AS domaine_slug, da.nom AS domaine_nom
+    `SELECT ac.*, a.produit, da.slug AS domaine_slug, da.nom AS domaine_nom
        FROM abonnement_config ac
+       JOIN abonnements a ON a.id = ac.abonnement_id
        LEFT JOIN domaines_activite da ON da.id = ac.domaine_id
       WHERE ac.abonnement_id = $1`,
     [aboId]
@@ -436,6 +459,9 @@ const getAbonnement = async (req, res) => {
           prixLaboSup:     parseFloat(tarifs['labo_sup_mensuel'] ?? 160),
           prixGerantSup:   parseFloat(tarifs['gerant_sup_mensuel'] ?? 80),
         };
+        // LabFlow Compta (S2b) : postes du cabinet ou du module, s'il y en a.
+        const postes = postesCompta(config, tarifs);
+        if (postes.length) abo.pricing.compta = { postes };
       }
     }
 
@@ -676,7 +702,12 @@ const getMontantMois = async (req, res) => {
     let baseMensuel, baseGerant, baseLabo, baseAcheteurs;
     let hasGerant, hasLabo, hasAcheteurs;
 
-    if (config) {
+    if (config && estCabinet(config)) {
+      // LabFlow Compta (S2b) : un cabinet n'a que ses postes Compta, portés par la mensualité.
+      baseMensuel = computeMensuelTotalFromConfig(config, tarifs) || 0;
+      baseGerant = 0; baseLabo = 0; baseAcheteurs = 0;
+      hasGerant = false; hasLabo = false; hasAcheteurs = false;
+    } else if (config) {
       baseMensuel   = computeBaseMensuelFromConfig(config, tarifs) || 0;
       baseGerant    = computeBaseGerantFromConfig(config, tarifs) || 0;
       baseLabo      = computeBaseLaboFromConfig(config, tarifs) || 0;
@@ -764,6 +795,7 @@ const getMontantMois = async (req, res) => {
     }
 
     const isGratuit = promoMens?.type === 'free_months';
+    if (config && estCabinet(config)) breakdown.compta = { postes: postesCompta(config, tarifs) };
 
     res.json({
       moisStr,
@@ -795,27 +827,26 @@ const upsertPaiement = async (req, res) => {
   if (!allowed.includes(statut)) return res.status(400).json({ message: 'Statut invalide' });
 
   try {
-    const aboRes = await pool.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
+    const aboRes = await pool.query('SELECT id, produit FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
-    const { id: aboId } = aboRes.rows[0];
+    const { id: aboId, produit } = aboRes.rows[0];
 
     // Normalize mois to first of month
     const moisStr = normaliserMoisUTC(mois);
 
     // If no montant supplied, compute from config/tarif + promo
+    // LabFlow Compta (S2b, D8) : postes figés avec le montant calculé. L'écran admin envoie toujours le montant qu'il a
+    // lui-même calculé : les postes sont gardés quand le montant reçu égale le montant calculé, et retirés (NULL)
+    // seulement pour un montant saisi différent. Un compte sans poste Compta n'en a jamais (NULL, comme avant).
     let finalMontant = montant != null ? Number(montant) : null;
-    if (finalMontant === null) {
-      const configRes = await pool.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
-      let base;
-      if (configRes.rows.length > 0) {
-        const tarifs = tarifsFor(await loadTarifs(), configRes.rows[0].domaine_id);
-        base = computeMensuelTotalFromConfig(configRes.rows[0], tarifs) || 0;
-      } else {
-        base = 0;
-      }
-      const promo = await getActivePromo(aboId, moisStr);
-      finalMontant = applyPromoMensualite(base, promo);
-    }
+    let lignes = null;
+    const configRes = await pool.query(`${SQL_CONFIG_PRODUIT} WHERE ac.abonnement_id = $1`, [aboId]);
+    const cfgPaiement = configRes.rows[0] || null;
+    const tarifsPaiement = cfgPaiement ? tarifsFor(await loadTarifs(), cfgPaiement.domaine_id) : null;
+    const promoPaiement = await getActivePromo(aboId, moisStr);
+    const calcule = applyPromoMensualite(cfgPaiement ? (computeMensuelTotalFromConfig(cfgPaiement, tarifsPaiement) || 0) : 0, promoPaiement);
+    if (finalMontant === null) finalMontant = calcule;
+    if (cfgPaiement && Math.abs(finalMontant - calcule) < 0.005) lignes = lignesMensualite(cfgPaiement, tarifsPaiement, promoPaiement);
 
     // Date de règlement : si « payé » sans date explicite, on PERSISTE la date du jour une
     // seule fois (sinon la facture émise par email et celle re-téléchargée porteraient des
@@ -840,19 +871,23 @@ const upsertPaiement = async (req, res) => {
       prevStatut = prev?.statut ?? null;
       const factureDAvant = !!prev && prev.date_paiement != null && prev.client_fige_le == null;
       const result = await db.query(
-        `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut, saisie_par, date_saisie, date_paiement, notes)
-         VALUES ($1, $2, $3, $4, $5, NOW(), COALESCE($6::date, $8::date), $7)
+        `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut, saisie_par, date_saisie, date_paiement, notes, lignes)
+         VALUES ($1, $2, $3, $4, $5, NOW(), COALESCE($6::date, $8::date), $7, $9::jsonb)
          ON CONFLICT (abonnement_id, mois) DO UPDATE
          SET statut = $4, montant_dt = COALESCE($3, paiements.montant_dt),
              saisie_par = $5, date_saisie = NOW(),
              date_paiement = COALESCE($6::date, paiements.date_paiement, $8::date),
-             notes = COALESCE($7, paiements.notes)
+             notes = COALESCE($7, paiements.notes),
+             -- Une mensualité déjà réglée garde ses postes : sa facture est émise (D8).
+             lignes = CASE WHEN paiements.statut = 'payé' THEN paiements.lignes ELSE $9::jsonb END
          RETURNING *`,
-        [aboId, moisStr, finalMontant, statut, req.user.id, datePaiement || null, notes || null, fallbackPayDate]
+        [aboId, moisStr, finalMontant, statut, req.user.id, datePaiement || null, notes || null, fallbackPayDate,
+         lignes ? JSON.stringify(lignes) : null]
       );
-      paiement = result.rows[0];
+      paiement = { ...result.rows[0], produit };
       if (statut === 'payé' && prevStatut !== 'payé' && !factureDAvant) {
-        paiement = (await figerClientPaiement(db, paiement.id)) || paiement;
+        // Le produit (LabFlow Compta) suit la copie figée : la facture jointe à l'email = la facture téléchargée.
+        paiement = { ...((await figerClientPaiement(db, paiement.id)) || paiement), produit };
       }
       await db.query('COMMIT');
     } catch (e) {
@@ -876,6 +911,7 @@ const upsertPaiement = async (req, res) => {
               to: client.email, nom: client.nom || 'Client',
               numero: fac.numero, periodeLabel: fac.periodeLabel,
               montantTtc: fac.ttc, dateReglement: fac.dateFacture, pdfBase64,
+              ...(produit === 'compta' ? { produit } : {}),
             });
             console.log(`[facture] ${fac.numero} envoyée à ${client.email}`);
           }
@@ -902,6 +938,7 @@ const getFactureForPaiement = async (paiementId, scopeClientId = null) => {
     `SELECT p.id, p.mois, p.montant_dt, p.statut, p.date_paiement,
             p.client_fige_le, p.client_nom, p.client_email, p.client_raison_sociale, p.client_forme,
             p.client_matricule_fiscal, p.client_rne, p.client_adresse, p.client_ville,
+            p.lignes, a.produit,
             a.client_id, u.nom AS compte_nom, u.email AS compte_email
        FROM paiements p
        JOIN abonnements a ON a.id = p.abonnement_id
@@ -987,11 +1024,12 @@ const listPromotions = async (req, res) => {
 // règle historique : un changement de config/formule/domaine ne re-tarife pas le mois en cours).
 // L'insertion d'une promo passe fromMois = date_debut (mois courant inclus, comme avant).
 const recalcPaiementsEnAttente = async (db, aboId, { fromMois = null, toMois = null, inclureSaisiesManuelles = false } = {}) => {
-  const cfgRes = await db.query('SELECT * FROM abonnement_config WHERE abonnement_id = $1', [aboId]);
+  const cfgRes = await db.query(`${SQL_CONFIG_PRODUIT} WHERE ac.abonnement_id = $1`, [aboId]);
   const cfg = cfgRes.rows[0] || null;
   let base = 0;
+  let tarifs = null;
   if (cfg) {
-    const tarifs = tarifsFor(await loadTarifs(db), cfg.domaine_id);
+    tarifs = tarifsFor(await loadTarifs(db), cfg.domaine_id);
     base = computeMensuelTotalFromConfig(cfg, tarifs) || 0;
   }
   const params = [aboId, fromMois];
@@ -1019,14 +1057,18 @@ const recalcPaiementsEnAttente = async (db, aboId, { fromMois = null, toMois = n
     const promo = p.type ? { type: p.type, applies_to: p.applies_to, discount_mensualite: p.discount_mensualite, fixed_mensualite: p.fixed_mensualite } : null;
     const montant = applyPromoMensualite(base, promo);
     const statut = montant === 0 ? 'gratuit' : 'en_attente';
-    await db.query('UPDATE paiements SET montant_dt = $1, statut = $2 WHERE id = $3', [montant, statut, p.id]);
+    // LabFlow Compta (S2b, D8) : postes figés recalculés avec le montant (NULL sans poste Compta).
+    const lignes = tarifs ? lignesMensualite(cfg, tarifs, promo) : null;
+    await db.query('UPDATE paiements SET montant_dt = $1, statut = $2, lignes = $4::jsonb WHERE id = $3',
+      [montant, statut, p.id, lignes ? JSON.stringify(lignes) : null]);
     updated++;
   }
   return { base, updated };
 };
 
 // Core promo insertion logic — reusable from both the HTTP route and internal client creation
-const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, createdById) => {
+// `db` : pool (défaut) ou client d'une transaction (création d'un cabinet LabFlow Compta, S2b : tout ou rien).
+const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, createdById, db = pool) => {
   const {
     type, appliesTo,
     discountOnboarding, discountMensualite,
@@ -1060,7 +1102,7 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
     supplement_activite: ['supplement_activite'],
   };
   const conflictTypes = conflictMap[appliesTo] || [appliesTo];
-  const conflictRes = await pool.query(
+  const conflictRes = await db.query(
     `SELECT applies_to, date_fin FROM promotions
      WHERE abonnement_id = $1
        AND applies_to = ANY($2)
@@ -1080,7 +1122,7 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
     throw err;
   }
 
-  const result = await pool.query(
+  const result = await db.query(
     `INSERT INTO promotions
        (abonnement_id, type, applies_to,
         discount_onboarding, discount_mensualite,
@@ -1101,7 +1143,7 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
   const promo = result.rows[0];
 
   if (type === 'free_months' && ['onboarding', 'les_deux'].includes(appliesTo)) {
-    await pool.query(
+    await db.query(
       `UPDATE abonnements SET statut_onboarding = 'gratuit', updated_at = NOW() WHERE id = $1`,
       [aboId]
     );
@@ -1110,7 +1152,7 @@ const insertPromoForAbonnement = async (aboId, aboDateDebutStr, promoData, creat
   if (['mensualite', 'les_deux'].includes(appliesTo)) {
     // Paiements non réglés de la fenêtre de la promo : total résolu (grille du domaine)
     // × promo active ce mois-là (= la promo qui vient d'être insérée, sans chevauchement).
-    await recalcPaiementsEnAttente(pool, aboId, { fromMois: dateDebut, toMois: dateFin, inclureSaisiesManuelles: true });
+    await recalcPaiementsEnAttente(db, aboId, { fromMois: dateDebut, toMois: dateFin, inclureSaisiesManuelles: true });
   }
 
   return promo;
@@ -1301,11 +1343,12 @@ const syncPromoStatuts = async () => {
     );
     for (const promo of activeFreeMens.rows) {
       for (const moisStr of moisCouvertsUTC(promo.date_debut, promo.date_fin || today)) {
+        // LabFlow Compta (S2b) : un mois offert n'a pas de postes figés (lignes vidées).
         await pool.query(
           `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut)
            VALUES ($1, $2, 0, 'gratuit')
            ON CONFLICT (abonnement_id, mois) DO UPDATE
-             SET statut = 'gratuit', montant_dt = 0
+             SET statut = 'gratuit', montant_dt = 0, lignes = NULL
            WHERE paiements.statut NOT IN ('payé')`,
           [promo.abonnement_id, moisStr]
         );
@@ -1375,8 +1418,9 @@ const enforcerStatuts = async () => {
         AND NOT EXISTS (SELECT 1 FROM paiements p WHERE p.abonnement_id = a.id AND p.mois = $1)
     `, [thisMonth]);
     // Fetch all configs at once to avoid N+1
+    // Avec le produit de l'abonnement (LabFlow Compta, S2b) : un cabinet est tarifé sur ses postes Compta.
     const configRows = await pool.query(
-      'SELECT * FROM abonnement_config WHERE abonnement_id = ANY($1)',
+      `${SQL_CONFIG_PRODUIT} WHERE ac.abonnement_id = ANY($1)`,
       [missingAbo.rows.map(a => a.id)]
     );
     const configMap = new Map(configRows.rows.map(c => [c.abonnement_id, c]));
@@ -1396,13 +1440,15 @@ const enforcerStatuts = async () => {
 
     for (const abo of missingAbo.rows) {
       const cfg = configMap.get(abo.id) || null;
-      const base = cfg ? (computeMensuelTotalFromConfig(cfg, tarifsFor(t, cfg.domaine_id)) || 0) : 0;
+      const tarifsAbo = cfg ? tarifsFor(t, cfg.domaine_id) : null;
+      const base = cfg ? (computeMensuelTotalFromConfig(cfg, tarifsAbo) || 0) : 0;
       const promo = promoMap.get(abo.id) || null;
       const montant = applyPromoMensualite(base, promo);
       const statut = montant === 0 ? 'gratuit' : 'en_attente';
+      const lignes = cfg ? lignesMensualite(cfg, tarifsAbo, promo) : null;
       await pool.query(
-        `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut) VALUES ($1, $2, $3, $4)`,
-        [abo.id, thisMonth, montant, statut]
+        `INSERT INTO paiements (abonnement_id, mois, montant_dt, statut, lignes) VALUES ($1, $2, $3, $4, $5::jsonb)`,
+        [abo.id, thisMonth, montant, statut, lignes ? JSON.stringify(lignes) : null]
       );
     }
   } catch (err) {
@@ -1416,7 +1462,7 @@ const confirmInvite = async (req, res) => {
   const { clientId } = req.params;
   try {
     const userRes = await pool.query(
-      'SELECT id, nom, email, invite_token, invite_token_expires_at, activated_at FROM utilisateurs WHERE id = $1',
+      'SELECT id, nom, email, role, invite_token, invite_token_expires_at, activated_at FROM utilisateurs WHERE id = $1',
       [clientId]
     );
     if (userRes.rows.length === 0) return res.status(404).json({ message: 'Client introuvable' });
@@ -1431,7 +1477,10 @@ const confirmInvite = async (req, res) => {
       [newExpires, clientId]
     );
 
-    const emailResult = await sendInviteEmail({ to: u.email, nom: u.nom, token: u.invite_token, role: 'client', voc: await vocabForClient(clientId) });
+    // Un cabinet comptable reçoit l'email de LabFlow Compta, comme à sa création.
+    const emailResult = u.role === 'comptable'
+      ? await sendWelcomeEmail({ to: u.email, nom: u.nom, token: u.invite_token, produit: 'compta' })
+      : await sendInviteEmail({ to: u.email, nom: u.nom, token: u.invite_token, role: 'client', voc: await vocabForClient(clientId) });
 
     await pool.query(
       'UPDATE abonnements SET invite_sent = TRUE, updated_at = NOW() WHERE client_id = $1',
@@ -2114,6 +2163,8 @@ module.exports = {
   updateOnboarding, updateProlongation, updateNotes, updateMode, toggleModuleVente, toggleModuleAcheteurs,
   upsertPaiement,
   downloadFactureAdmin, downloadFactureClient,
+  // LabFlow Compta (S2b) : facture d'un paiement, téléchargée par le cabinet depuis compta.
+  getFactureForPaiement,
   getMontantMois,
   listPromotions, createPromotion, updatePromotion, deletePromotion, insertPromoForAbonnement,
   getAbonnementConfig, updateAbonnementConfig, getPricingPreview, getSupplementPricing, getClientSupplementPricing,

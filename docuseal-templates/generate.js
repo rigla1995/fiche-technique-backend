@@ -498,10 +498,15 @@ function finish(ctx, outPath) {
 // ══════════════════════════════════════════════════════════════════════════════
 // data : { numero, dateFacture, periodeLabel, clientNom, clientEmail,
 //          client?: { forme, matricule, autoEntrepreneur, rne, adresse, ville },   // copie figée au paiement
-//          montantHt, montantTva, montantTtc, tvaRate }
+//          montantHt, montantTva, montantTtc, tvaRate,
+//          produit?: 'compta',                          // LabFlow Compta (étape S2b) : libellés du produit
+//          lignes?: [{ libelle, montant }] }            // postes figés sur la mensualité (TTC, somme = montantTtc)
 // DÉTERMINISTE : CreationDate = date de facture (jamais l'horloge) → la copie
 // jointe à l'email et la copie re-téléchargée sont identiques au byte près.
+// Sans produit ni lignes : la facture d'avant, à l'octet près (test/B2-pdfTexte.test.js, identiteFacture).
 async function buildFacture(outPath, data) {
+  const compta = data.produit === 'compta';
+  const lignes = Array.isArray(data.lignes) && data.lignes.length ? data.lignes : null;
   const dateStr = new Date(data.dateFacture || 0)
     .toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   const fmt = (n) => `${Number(n || 0).toFixed(3)} DT`;
@@ -515,7 +520,7 @@ async function buildFacture(outPath, data) {
   header(ctx, {
     eyebrow: 'FACTURE',
     title: "Facture d'abonnement",
-    subtitle: 'Plateforme LabFlow — abonnement mensuel au service en ligne',
+    subtitle: compta ? 'LabFlow Compta — abonnement mensuel au service en ligne' : 'Plateforme LabFlow — abonnement mensuel au service en ligne',
     ref: data.numero, date: dateStr, dateLabel: 'Émise le',
   });
   let y = TOPY;
@@ -535,7 +540,9 @@ async function buildFacture(outPath, data) {
 
   y = section(ctx, y, 'OBJET');
   y = calloutBox(ctx, y,
-    `Abonnement mensuel à la plateforme ${PRESTATAIRE.nom} — période : ${data.periodeLabel}. La présente facture est émise au règlement de l'échéance et vaut reçu.`,
+    compta
+      ? `Abonnement mensuel à LabFlow Compta — période : ${data.periodeLabel}. La présente facture est émise au règlement de l'échéance et vaut reçu.`
+      : `Abonnement mensuel à la plateforme ${PRESTATAIRE.nom} — période : ${data.periodeLabel}. La présente facture est émise au règlement de l'échéance et vaut reçu.`,
     'neutral');
 
   y = section(ctx, y, 'DÉTAIL');
@@ -546,12 +553,35 @@ async function buildFacture(outPath, data) {
   txt(`TVA ${data.tvaRate} %`, ML, y + 7, 7, true, C.indigo, { align: 'right', width: cTva - ML });
   txt('Total TTC', ML, y + 7, 7, true, C.indigo, { align: 'right', width: cTtc - ML });
   y += 22;
-  fill(ML, y, CW, 26, '#fcfcff'); hline(y + 26, C.hairSoft);
-  txt(`Abonnement mensuel · ${data.periodeLabel}`, ML + 10, y + 9, 9, false, C.ink);
-  txt(fmt(data.montantHt), ML, y + 9, 8.5, false, C.body, { align: 'right', width: cHt - ML });
-  txt(fmt(data.montantTva), ML, y + 9, 8.5, false, C.body, { align: 'right', width: cTva - ML });
-  txt(fmt(data.montantTtc), ML, y + 9, 9, true, C.ink, { align: 'right', width: cTtc - ML });
-  y += 26 + 12;
+  if (lignes) {
+    // Une ligne par poste figé (LabFlow Compta, D8) : HT et TVA de chaque ligne tirés de son TTC ; la dernière ligne
+    // reçoit l'écart d'arrondi, pour que les lignes s'additionnent exactement aux totaux de la facture.
+    const r3 = (n) => Math.round(n * 1000) / 1000;
+    let resteHt = Number(data.montantHt || 0);
+    let resteTva = Number(data.montantTva || 0);
+    lignes.forEach((l, i) => {
+      const ttcL = r3(Number(l.montant || 0));
+      const derniere = i === lignes.length - 1;
+      const htL = derniere ? r3(resteHt) : r3(ttcL / (1 + Number(data.tvaRate || 0) / 100));
+      const tvaL = derniere ? r3(resteTva) : r3(ttcL - htL);
+      resteHt -= htL; resteTva -= tvaL;
+      fill(ML, y, CW, 26, i % 2 ? '#ffffff' : '#fcfcff'); hline(y + 26, C.hairSoft);
+      // Libellé seul (la période est dans l'objet) : il tient sur une ligne de la colonne Désignation.
+      txt(String(l.libelle || ''), ML + 10, y + 9, 9, false, C.ink, { width: cHt - ML - 90 });
+      txt(fmt(htL), ML, y + 9, 8.5, false, C.body, { align: 'right', width: cHt - ML });
+      txt(fmt(tvaL), ML, y + 9, 8.5, false, C.body, { align: 'right', width: cTva - ML });
+      txt(fmt(ttcL), ML, y + 9, 9, true, C.ink, { align: 'right', width: cTtc - ML });
+      y += 26;
+    });
+    y += 12;
+  } else {
+    fill(ML, y, CW, 26, '#fcfcff'); hline(y + 26, C.hairSoft);
+    txt(compta ? `LabFlow Compta — abonnement mensuel · ${data.periodeLabel}` : `Abonnement mensuel · ${data.periodeLabel}`, ML + 10, y + 9, 9, false, C.ink);
+    txt(fmt(data.montantHt), ML, y + 9, 8.5, false, C.body, { align: 'right', width: cHt - ML });
+    txt(fmt(data.montantTva), ML, y + 9, 8.5, false, C.body, { align: 'right', width: cTva - ML });
+    txt(fmt(data.montantTtc), ML, y + 9, 9, true, C.ink, { align: 'right', width: cTtc - ML });
+    y += 26 + 12;
+  }
 
   // Totaux — même langage visuel que le bloc tarification des contrats
   fill(ML, y, CW, 26, C.panel); hline(y, C.hair); hline(y + 26, C.hair);
@@ -583,7 +613,9 @@ async function buildFacture(outPath, data) {
      .text(`Montants exprimés en dinars tunisiens (DT), toutes taxes comprises — TVA ${data.tvaRate} % incluse (TTC = HT + TVA). Facture générée et émise électroniquement, valable sans signature ni cachet.`,
        ML, y, { width: CW, lineGap: 2 });
 
-  stampFooters(ctx, `Facture ${data.numero}`, 'Facture acquittée — émise électroniquement par la plateforme LabFlow');
+  stampFooters(ctx, `Facture ${data.numero}`, compta
+    ? 'Facture acquittée — émise électroniquement par LabFlow Compta'
+    : 'Facture acquittée — émise électroniquement par la plateforme LabFlow');
   return finish(ctx, outPath);
 }
 

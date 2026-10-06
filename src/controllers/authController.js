@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
-const { sendInviteEmail, generateInviteToken, sendPasswordResetEmail, produitSur } = require('../services/emailService');
+const { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, produitSur } = require('../services/emailService');
 const { encryptPassword } = require('../services/passwordCryptoService');
 const { invalidateAuthCache } = require('../middleware/auth');
 const { vocabDefaut, vocabDuProfil, vocabPourUtilisateur } = require('../utils/vocabCompte');
@@ -81,8 +81,10 @@ const login = async (req, res) => {
   const password = req.body.password || req.body.mot_de_passe;
 
   try {
+    // LabFlow Compta, S2b (SPEC-SOCLE D1) : adresse comparée sans la casse ; une adresse identique à la casse près
+    // passe en premier (bases qui auraient deux comptes ne différant que par la casse).
     const result = await pool.query(
-      'SELECT * FROM utilisateurs WHERE email = $1 AND actif = true',
+      'SELECT * FROM utilisateurs WHERE LOWER(email) = LOWER($1) AND actif = true ORDER BY (email = $1) DESC, id LIMIT 1',
       [email]
     );
 
@@ -204,7 +206,8 @@ const register = async (req, res) => {
   const { nom, email, mot_de_passe, telephone } = req.body;
 
   try {
-    const existing = await pool.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
+    // Sans la casse (migration 202 : index unique LOWER(email)).
+    const existing = await pool.query('SELECT id FROM utilisateurs WHERE LOWER(email) = LOWER($1)', [email]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ message: 'Cet email est déjà utilisé' });
     }
@@ -398,7 +401,7 @@ const updateProfile = async (req, res) => {
     }
 
     if (email && email !== user.email) {
-      const existing = await pool.query('SELECT id FROM utilisateurs WHERE email = $1 AND id != $2', [email, req.user.id]);
+      const existing = await pool.query('SELECT id FROM utilisateurs WHERE LOWER(email) = LOWER($1) AND id != $2', [email, req.user.id]);
       if (existing.rows.length > 0) {
         return res.status(409).json({ message: 'Cet email est déjà utilisé' });
       }
@@ -499,7 +502,9 @@ const resendInvite = async (req, res) => {
       'UPDATE utilisateurs SET invite_token = $1, invite_token_expires_at = $2, updated_at = NOW() WHERE id = $3',
       [token, expires, u.id]
     );
-    await sendInviteEmail({ to: u.email, nom: u.nom, token, role: u.role, voc: await vocabPourUtilisateur(u.id) });
+    // Un cabinet comptable reçoit l'email de LabFlow Compta (lien vers son adresse), comme à sa création.
+    if (u.role === 'comptable') await sendWelcomeEmail({ to: u.email, nom: u.nom, token, produit: 'compta' });
+    else await sendInviteEmail({ to: u.email, nom: u.nom, token, role: u.role, voc: await vocabPourUtilisateur(u.id) });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
