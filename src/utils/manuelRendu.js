@@ -13,9 +13,12 @@
 // d'origine pour un texte balisé (I10) ; `enrichirMotsCles` ne fait rien quand `voc.estDefaut` est vrai (R5.4).
 // I12 : aucune variante n'est lue pour un domaine sans écart (`slugVariantes` rend null, la jointure ne répond pas).
 // I8 : le slug du domaine est un paramètre `$1`, jamais un terme écrit dans le SQL.
+// LabFlow Compta (SPEC-SOCLE D15, étape S2a) : chaque fiche porte son produit (`manuel_sections.produit`, migration
+// 201) ; les fiches `compta` sont en vocabulaire comptable fixe, jamais balisées ni rendues dans les mots du compte.
 const crypto = require('crypto');
 const { LEXIQUE_DEFAUT, LEXIQUE_CLES } = require('../config/lexiqueDefaut');
 const { vocabDefaut, rendre, balisesInvalides } = require('./vocab');
+const { PRODUIT_DEFAUT, estProduit } = require('./produits');
 
 // ── Formes par défaut (motif de termesDans, frontend scripts/vocab-check.mjs) ─────────────────────────────────
 // Mot entier (une lettre, un chiffre ou « _ » ne peut ni précéder ni suivre), formes les plus longues d'abord ;
@@ -178,15 +181,18 @@ const COLONNES_RECHERCHE = `s.slug, COALESCE(d.titre, s.titre) AS titre, s.parti
  * texte commun ; ordre de lecture du manuel (`s.ordre, s.id`).
  *   slug    : `slugVariantes(voc, profil)` ; null (ou vide) → aucune jointure ne répond, texte commun ;
  *   gerant  : ajoute `AND s.visible_gerant = true` (comme listPublic pour un gérant) ;
- *   recherche : colonnes de la recherche de l'assistant seulement.
+ *   recherche : colonnes de la recherche de l'assistant seulement ;
+ *   produit : fiches de ce produit seulement (`labflow` par défaut, ou `compta`) ; valeur de la liste fermée
+ *             (src/utils/produits.js), écrite dans le texte — jamais une saisie ; hors liste → erreur.
  * → `{ text, values }`, prêt pour `pool.query(text, values)`.
  */
-function requeteManuel(slug, { gerant = false, recherche = false } = {}) {
+function requeteManuel(slug, { gerant = false, recherche = false, produit = PRODUIT_DEFAUT } = {}) {
+  if (!estProduit(produit)) throw new Error(`requeteManuel : manuel inconnu (${produit})`);
   const text = `SELECT ${recherche ? COLONNES_RECHERCHE : COLONNES_LECTURE}
   FROM manuel_sections s
   LEFT JOIN manuel_sections_domaine d
          ON d.section_id = s.id AND d.domaine_slug = $1 AND d.statut = 'valide'
- WHERE s.actif = true${gerant ? ' AND s.visible_gerant = true' : ''}
+ WHERE s.actif = true AND s.produit = '${produit}'${gerant ? ' AND s.visible_gerant = true' : ''}
  ORDER BY s.ordre, s.id`;
   return { text, values: [typeof slug === 'string' && slug ? slug : null] };
 }
@@ -321,7 +327,8 @@ function sansBalisesDesLignes(lignes, table, admis = ADMIS) {
 }
 
 /**
- * Avertissement au démarrage (R5.8), jamais bloquant : lit les fiches et entrées actives de `pool` et écrit
+ * Avertissement au démarrage (R5.8), jamais bloquant : lit les fiches actives de LabFlow (les fiches de LabFlow
+ * Compta ne sont jamais balisées) et les entrées actives de `pool`, et écrit
  *   - « [manuel] manuel non balisé (aucune balise en base) » quand aucune fiche ne porte de balise ;
  *   - sinon « [manuel] N fiche(s) sans balises : slug (champs), … » quand N > 0 ;
  *   - « [manuel] base de connaissances : N entrée(s) sans balises : titre (champs), … » quand N > 0 ;
@@ -333,7 +340,7 @@ async function controlerBalisesAuDemarrage(pool, admis = ADMIS) {
   try {
     const [manuel, base] = await Promise.all([
       pool.query(`SELECT slug, titre, partie, contenu, contenu_defaut
-                    FROM manuel_sections WHERE actif = true ORDER BY ordre, id`),
+                    FROM manuel_sections WHERE actif = true AND produit = 'labflow' ORDER BY ordre, id`),
       pool.query('SELECT id, titre, contenu FROM ai_knowledge_base WHERE actif = true ORDER BY id'),
     ]);
     const fiches = manuel.rows || [];
