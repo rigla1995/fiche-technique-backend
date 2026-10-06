@@ -1,6 +1,11 @@
 const pool = require('../config/database');
 // Grille tarifaire résolue par domaine (lot 1a) — ré-exportée par abonnementController
 const { loadTarifs, tarifsFor, recalcPaiementsEnAttente } = require('./abonnementController');
+// LabFlow Compta, étape S2c : demande d'activation du module Comptabilité (même fonction que la bascule admin),
+// signalée aux admins (cloche, temps réel).
+const moduleCompta = require('../compta/moduleClient');
+const { pushToAdmins } = require('../services/sseService');
+const { saveNotificationToAdmins } = require('./notificationController');
 
 const mapDemande = (row) => ({
   id: row.id,
@@ -22,10 +27,23 @@ const mapDemande = (row) => ({
 // POST /api/demandes — client creates a request
 const create = async (req, res) => {
   const { typeDemande, notes } = req.body;
-  const allowed = ['gerant_sup', 'labo_sup', 'activer_module_vente', 'activer_module_acheteurs', 'passer_formule_premium'];
+  const allowed = ['gerant_sup', 'labo_sup', 'activer_module_vente', 'activer_module_acheteurs', 'passer_formule_premium', 'activer_module_compta'];
   if (!allowed.includes(typeDemande)) return res.status(400).json({ message: 'Type invalide' });
 
   try {
+    // Module Comptabilité (S2c) : refusée si le module est déjà actif ou tant que son tarif vaut 0 ; le montant
+    // annoncé est le prix du module (grille générale, D7).
+    let compteModule = null;
+    let montantModule = null;
+    if (typeDemande === 'activer_module_compta') {
+      compteModule = await moduleCompta.compteDe(pool, req.user.id);
+      const etatModule = compteModule ? await moduleCompta.etat(pool, compteModule) : null;
+      if (!etatModule) return res.status(404).json({ message: 'Abonnement introuvable' });
+      if (etatModule.actif) return res.status(409).json({ message: 'Le module Comptabilité est déjà actif sur votre compte' });
+      if (!etatModule.disponible) return res.status(400).json({ message: 'Le module Comptabilité n\'est pas encore proposé' });
+      if (etatModule.demandeEnCours) return res.status(409).json({ message: 'Une demande identique est déjà en attente de validation' });
+      montantModule = etatModule.prixModule;
+    }
     // Une seule demande EN ATTENTE par type et par demandeur
     const pending = await pool.query(
       `SELECT 1 FROM demandes WHERE demandeur_id = $1 AND type_demande = $2 AND statut = 'en_attente' LIMIT 1`,
@@ -53,11 +71,20 @@ const create = async (req, res) => {
       if (montant === 0) montant = null; // même sémantique que l'ancien `|| null`
     }
 
+    if (montantModule != null) montant = montantModule;
+
     const result = await pool.query(
       `INSERT INTO demandes (demandeur_id, demandeur_type, type_demande, montant_mensuel_dt, notes_client)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [req.user.id, 'client', typeDemande, montant, notes || null]
     );
+    if (typeDemande === 'activer_module_compta') {
+      // La colonne notifications.demande_id vise support_demandes : la demande passe par ref_kind / ref_id.
+      const nom = (await pool.query('SELECT nom FROM utilisateurs WHERE id = $1', [compteModule])).rows[0]?.nom || 'Client';
+      const notif = { eventType: 'new_demande', type: typeDemande, clientNom: nom, refKind: 'demande', refId: result.rows[0].id };
+      pushToAdmins('new_demande', notif);
+      saveNotificationToAdmins(notif).catch(console.error);
+    }
     res.status(201).json(mapDemande(result.rows[0]));
   } catch (err) {
     console.error(err);
@@ -121,12 +148,32 @@ const traiter = async (req, res) => {
     await client.query('BEGIN');
 
     // Check demande exists and get its type
-    const demandeCheck = await client.query('SELECT type_demande, demandeur_id FROM demandes WHERE id = $1', [id]);
+    const demandeCheck = await client.query('SELECT type_demande, demandeur_id, statut FROM demandes WHERE id = $1 FOR UPDATE', [id]);
     if (demandeCheck.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Demande introuvable' });
     }
     const { type_demande, demandeur_id } = demandeCheck.rows[0];
+
+    // Module Comptabilité (S2c) : traitée une seule fois ; la validation active le module du compte du demandeur
+    // (compte parent pour un gérant), avec la même fonction que la bascule admin.
+    let moduleActive = null;
+    if (type_demande === 'activer_module_compta') {
+      if (demandeCheck.rows[0].statut !== 'en_attente') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ message: 'Cette demande a déjà été traitée' });
+      }
+      if (statut === 'validée') {
+        try {
+          const compte = await moduleCompta.compteDe(client, demandeur_id);
+          moduleActive = await moduleCompta.basculer(client, { clientId: compte, actif: true, auteurId: req.user.id });
+        } catch (e) {
+          await client.query('ROLLBACK');
+          if (e.statusCode) return res.status(e.statusCode).json({ message: e.message, ...(e.code ? { code: e.code } : {}) });
+          throw e;
+        }
+      }
+    }
 
     // If validating an activer_module_vente demande, upsert profil_entreprise and set module_vente_actif
     if (statut === 'validée' && type_demande === 'activer_module_vente') {
@@ -197,6 +244,7 @@ const traiter = async (req, res) => {
     if (aboIdPremium) {
       await recalcPaiementsEnAttente(pool, aboIdPremium).catch((e) => console.error('[demandes.traiter] recalc paiements:', e.message));
     }
+    if (moduleActive?.change) await moduleCompta.recalculer(moduleActive.abonnementId);
     res.json(mapDemande(result.rows[0]));
   } catch (err) {
     await client.query('ROLLBACK');

@@ -39,6 +39,44 @@ const estCabinet = (config) => valeur(config, 'produit', 'produit') === 'compta'
 const moduleActif = (config) => valeur(config, 'module_compta_actif', 'moduleComptaActif') === true;
 
 const libelleGerants = (nb) => `Gérant${nb > 1 ? 's' : ''} supplémentaire${nb > 1 ? 's' : ''} × ${nb}`;
+// Chez un client, « comptable » les distingue de ses gérants Stock / Vente (étape S2c).
+const libelleGerantsClient = (nb) => `Gérant${nb > 1 ? 's' : ''} comptable${nb > 1 ? 's' : ''} supplémentaire${nb > 1 ? 's' : ''} × ${nb}`;
+
+// Mois « AAAA-MM » d'un horodatage, à l'heure de Tunis.
+const FORMAT_MOIS_TUNIS = new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Tunis', year: 'numeric', month: '2-digit' });
+const moisTunis = (d) => {
+  const parties = Object.fromEntries(FORMAT_MOIS_TUNIS.formatToParts(d).map((p) => [p.type, p.value]));
+  return `${parties.year}-${parties.month}`;
+};
+
+// Mois d'une date : « AAAA-MM ». Une date de mensualité arrive en texte (« AAAA-MM-JJ ») ; un horodatage (objet ou
+// texte avec heure) est lu à l'heure de Tunis.
+const cleMois = (v) => {
+  if (!v) return null;
+  if (typeof v === 'string' && v.length <= 10) return v.slice(0, 7);
+  const d = v instanceof Date ? v : new Date(v);
+  return Number.isNaN(d.getTime()) ? null : moisTunis(d);
+};
+
+/**
+ * Configuration à appliquer à la mensualité d'un mois (étape S2c, PLAN-S2 §2.7 et §4) : le module d'un client est
+ * facturé du mois qui SUIT son activation jusqu'au mois de sa désactivation COMPRIS (la mensualité de ce mois était
+ * due, créée le 1er avec le module). Hors de cette période, il est retiré ; dedans, il est compté même si le module est
+ * désactivé aujourd'hui. Un cabinet, ou un client qui n'a jamais eu le module, garde sa configuration telle quelle.
+ */
+const configPourMois = (config, mois) => {
+  if (!config || estCabinet(config)) return config;
+  const actif = moduleActif(config);
+  const activation = cleMois(valeur(config, 'module_compta_active_le', 'moduleComptaActiveLe'));
+  const desactivation = cleMois(valeur(config, 'module_compta_desactive_le', 'moduleComptaDesactiveLe'));
+  const cle = cleMois(mois);
+  if (!cle || (!actif && !activation)) return config;
+  const compte = actif
+    ? (!activation || cle > activation)
+    : (!!desactivation && cle > activation && cle <= desactivation);
+  if (compte === actif) return config;
+  return { ...config, module_compta_actif: compte, moduleComptaActif: compte };
+};
 
 /**
  * Postes LabFlow Compta d'une configuration : [{ code, libelle, montant }] (montants en DT, 2 décimales), vide pour un
@@ -57,7 +95,7 @@ const postesCompta = (config, tarifs) => {
   if (!moduleActif(config)) return [];
   const postes = [{ code: 'compta_module', libelle: LIBELLE_MODULE, montant: arrondi(tarif(tarifs, 'compta_module_mensuel')) }];
   if (nbGerants > 0) {
-    postes.push({ code: 'compta_gerants_client', libelle: libelleGerants(nbGerants), montant: arrondi(nbGerants * tarif(tarifs, 'compta_gerant_client_mensuel')) });
+    postes.push({ code: 'compta_gerants_client', libelle: libelleGerantsClient(nbGerants), montant: arrondi(nbGerants * tarif(tarifs, 'compta_gerant_client_mensuel')) });
   }
   return postes;
 };
@@ -66,5 +104,5 @@ const totalPostes = (postes) => arrondi(postes.reduce((s, p) => s + p.montant, 0
 
 module.exports = {
   CLES_TARIFS_COMPTA, LIBELLE_CABINET, LIBELLE_MODULE, LIBELLE_ABONNEMENT_LABFLOW, LIBELLE_REMISE, LIBELLE_AJUSTEMENT,
-  estCabinet, moduleActif, postesCompta, totalPostes, tarif,
+  estCabinet, moduleActif, postesCompta, totalPostes, tarif, configPourMois, cleMois, moisTunis,
 };

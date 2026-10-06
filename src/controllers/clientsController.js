@@ -12,6 +12,7 @@ const { getProfil, getDomaineDefautId } = require('../services/domaineProfilServ
 const { oublierConversationsIA } = require('../services/clientConfigService');
 const { generateInviteToken, sendWelcomeEmail } = require('../services/emailService');
 const { lireIdentite, nomAffiche, identiteComplete, mapIdentite } = require('../utils/identite');
+const { journaliser } = require('../compta/journal');
 
 // Message d'un doublon refusé par la base (23505), selon la contrainte réelle (lot 3) : avant, toute collision
 // répondait « email déjà utilisé ». utilisateurs_email_key : vu en production le 04/10.
@@ -686,6 +687,17 @@ const remove = async (req, res) => {
     //   utilisateurs → abonnements → paiements/promotions/abonnement_config
     //   utilisateurs → unites/articles/produits/categories/familles/client_domaines/...
     //   utilisateurs → gérant child accounts (gerant_parent_id CASCADE)
+    // LabFlow Compta (S2c, D10) : la comptabilité du client (module Comptabilité) ne cascade pas (titulaire RESTRICT) :
+    // sans dossier à cette étape, elle est retirée avant le compte, avec ses accès ; le journal reste.
+    const espacesCompta = await dbClient.query(
+      `SELECT id FROM compta.espaces WHERE titulaire_id = $1 AND type = 'client_labflow'`,
+      [id]
+    );
+    for (const e of espacesCompta.rows) {
+      // Le compte va disparaître : le journal garde de quoi l'identifier.
+      await journaliser(dbClient, e.id, req.user?.id, 'espace_supprime', { titulaire: Number(id), espace: e.id, nom: check.rows[0].nom, email: check.rows[0].email });
+      await dbClient.query('DELETE FROM compta.espaces WHERE id = $1', [e.id]);
+    }
     await dbClient.query(
       "DELETE FROM utilisateurs WHERE id = $1 AND role = 'client'",
       [id]
