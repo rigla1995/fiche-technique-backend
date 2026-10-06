@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
-const { sendInviteEmail, generateInviteToken, sendPasswordResetEmail } = require('../services/emailService');
+const { sendInviteEmail, generateInviteToken, sendPasswordResetEmail, produitSur } = require('../services/emailService');
 const { encryptPassword } = require('../services/passwordCryptoService');
 const { invalidateAuthCache } = require('../middleware/auth');
 const { vocabDefaut, vocabDuProfil, vocabPourUtilisateur } = require('../utils/vocabCompte');
@@ -514,6 +514,9 @@ const resendInvite = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
   const email = String(req.body?.email || '').trim();
+  // Produit d'où vient la demande (LabFlow ou LabFlow Compta, SPEC-SOCLE D13) : liste fermée ; le lien de
+  // l'email ramène sur la même adresse.
+  const produit = produitSur(req.body?.produit);
   // Réponse identique ET immédiate quel que soit l'email : sans ça, l'attente de
   // l'envoi Resend (~centaines de ms) trahirait l'existence du compte (timing).
   res.json({ ok: true });
@@ -533,7 +536,7 @@ const forgotPassword = async (req, res) => {
       'UPDATE utilisateurs SET reset_token = $1, reset_token_expires_at = $2, updated_at = NOW() WHERE id = $3',
       [token, expires, u.id]
     );
-    await sendPasswordResetEmail({ to: u.email, nom: u.nom, token });
+    await sendPasswordResetEmail({ to: u.email, nom: u.nom, token, produit });
   })().catch((err) => console.error('forgotPassword:', err));
 };
 

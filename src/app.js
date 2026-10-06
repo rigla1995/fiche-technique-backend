@@ -46,6 +46,7 @@ const portailRoutes = require('./routes/portail');
 const publicSiteRoutes = require('./routes/publicSite');
 const adminSiteRoutes = require('./routes/adminSite');
 const bossRoutes = require('./routes/boss');
+const comptaRoutes = require('./compta/routes');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 
 const { authenticate, requireWriteAccess, jetonPresent } = require('./middleware/auth');
@@ -136,6 +137,8 @@ app.use('/api/rapports', rapportsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/boss', bossRoutes);
 app.use('/api/ai-assistant', aiAssistantRoutes);
+// LabFlow Compta (chantier Achats & Comptabilité) : routes à part, avec leurs propres gardes (SPEC-SOCLE §0, D3, D4).
+app.use('/api/compta', comptaRoutes);
 app.get('/api/messenger/webhook', verifyWebhook);
 app.post('/api/messenger/webhook', receiveWebhook);
 app.use('/api', ventesRoutes);

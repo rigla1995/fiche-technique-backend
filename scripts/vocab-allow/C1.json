@@ -1,0 +1,51 @@
+[
+  {
+    "fichier": "src/app.js",
+    "avant": null,
+    "apres": "/api/compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S1 (SPEC-SOCLE §0) : chemin de montage des routes de LabFlow Compta ; jamais affiché."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "labflow",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S1 (SPEC-SOCLE D13) : code du produit dans la liste fermée des produits (labflow, compta) ; jamais affiché."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S1 (SPEC-SOCLE D13) : code du produit dans la liste fermée des produits (labflow, compta) ; jamais affiché."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S1 (SPEC-SOCLE D13) : code du produit dans la liste fermée des produits (labflow, compta) ; jamais affiché."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S1 (SPEC-SOCLE D13) : code du produit dans la liste fermée des produits (labflow, compta) ; jamais affiché."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "⟦?⟦·⟧|labflow⟧",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S1 (SPEC-SOCLE D13) : produit contrôlé (valeur reçue ou « labflow » par défaut) ; jamais affiché."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "⟦·⟧⟦? Compta|⟧",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S1 (SPEC-SOCLE D13, découpage validé par le client le 06/10/2026) : nom du produit « LabFlow Compta » dans l'email de réinitialisation demandé depuis compta.labflow-tn.com. Nom de marque, aucun terme du lexique : identique dans tous les domaines."
+  }
+]
