@@ -32,6 +32,7 @@ const getRapportsStats = async (req, res) => {
           COUNT(*) FILTER (WHERE mode_compte = 'desactive') AS desactive,
           COUNT(*) FILTER (WHERE mode_compte = 'archive') AS archive
         FROM abonnements
+        WHERE produit = 'labflow'
       `),
 
       // Paiements current month breakdown

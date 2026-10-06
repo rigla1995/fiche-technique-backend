@@ -12,7 +12,8 @@ const { deriveCompteurs } = require('../src/services/configComposantsService');
 (async () => {
   const [cfgs, comps, baseRes, ovRes] = await Promise.all([
     pool.query(
-      `SELECT ac.*, a.client_id FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id ORDER BY ac.id`
+      // LabFlow Compta (S2b) : un cabinet n'a ni domaine ni composant, il est hors de ce contrôle.
+      `SELECT ac.*, a.client_id FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id WHERE a.produit = 'labflow' ORDER BY ac.id`
     ),
     pool.query(
       `SELECT acc.abonnement_id, acc.nb, dc.type_technique, dc.code, dc.domaine_id

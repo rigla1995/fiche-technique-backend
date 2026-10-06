@@ -47,6 +47,8 @@ const publicSiteRoutes = require('./routes/publicSite');
 const adminSiteRoutes = require('./routes/adminSite');
 const bossRoutes = require('./routes/boss');
 const comptaRoutes = require('./compta/routes');
+const comptaAdminRoutes = require('./compta/adminRoutes');
+const { perimetreComptable } = require('./compta/perimetre');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 
 const { authenticate, requireWriteAccess, jetonPresent } = require('./middleware/auth');
@@ -113,9 +115,12 @@ app.use('/api', (req, res, next) => {
   if (!jetonPresent(req)) return next();
   authenticate(req, res, () => requireWriteAccess(req, res, next));
 });
+// LabFlow Compta (SPEC-SOCLE D5) : le rôle « comptable » n'atteint sous /api que Compta, le manuel et les notifications.
+app.use('/api', perimetreComptable);
 
 app.use('/auth', authRoutes);
 app.use('/admin/site', adminSiteRoutes);
+app.use('/admin/comptables', comptaAdminRoutes);
 app.use('/admin', adminRoutes);
 
 // French routes

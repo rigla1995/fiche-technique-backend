@@ -181,5 +181,201 @@
     "apres": "Une fiche de LabFlow Compta n'a pas de variante par domaine",
     "type": "ajoute",
     "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : refus 400 de l'écran admin du manuel ; aucun terme du lexique, identique dans tous les domaines (espace admin)."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "⟦?Abonnement et factures|Historique paiements⟧",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : email de facture d'un cabinet : rubrique « Abonnement et factures » de LabFlow Compta ; l'email de LabFlow (« Historique paiements ») est inchangé. Aucun terme du lexique."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "src/services/emailService.js",
+    "avant": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.85rem;\">Facture de votre abonnement</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 8px;color:#111827;font-size:1.2rem;font-weight:700;\">Bonjour ⟦·⟧,</h2>\n      <p style=\"margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.7;\">\n        Nous vous confirmons la bonne réception de votre paiement. Vous trouverez ci-joint votre <strong>facture acquittée</strong> pour la période <strong>⟦·⟧</strong>. Nous vous remercions pour votre confiance.\n      </p>\n\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;\">\n        <table style=\"width:100%;border-collapse:collapse;font-size:0.9rem;\">\n          <tr>\n            <td style=\"padding:6px 0;color:#6b7280;\">N° de facture</td>\n            <td style=\"padding:6px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n          </tr>\n          <tr>\n            <td style=\"padding:6px 0;color:#6b7280;\">Période</td>\n            <td style=\"padding:6px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n          </tr>\n          <tr>\n            <td style=\"padding:6px 0;color:#6b7280;\">Réglée le</td>\n            <td style=\"padding:6px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n          </tr>\n          <tr>\n            <td style=\"padding:10px 0 2px;font-weight:800;color:#1e40af;\">Montant TTC</td>\n            <td style=\"padding:10px 0 2px;text-align:right;font-weight:900;color:#1e40af;font-size:1.05rem;\">⟦·⟧</td>\n          </tr>\n        </table>\n      </div>\n\n      <div style=\"background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 20px;margin-bottom:24px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:0.05em;\">📎 Document joint</p>\n        <p style=\"margin:0;font-size:0.9rem;color:#14532d;font-weight:600;\">Facture ⟦·⟧ (PDF)</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#3f6212;\">Retrouvez également toutes vos factures dans votre espace, rubrique « Historique paiements ».</p>\n      </div>\n\n      <p style=\"margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;\">\n        Pour toute question relative à cette facture, notre équipe reste à votre disposition.\n      </p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">⟦·⟧ · Facture ⟦·⟧</p>\n    </div>\n  </div>\n</body>\n</html>",
+    "apres": "\n<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head>\n<body style=\"margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;\">\n  <div style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.10);\">\n    <div style=\"background:linear-gradient(135deg,#1e1b4b 0%,#4338ca 100%);padding:36px 48px;border-bottom:4px solid #d97706\">\n      ⟦·⟧\n      <p style=\"margin:0;color:#c7d2fe;font-size:0.85rem;\">Facture de votre abonnement</p>\n    </div>\n    <div style=\"padding:40px 48px;\">\n      <h2 style=\"margin:0 0 8px;color:#111827;font-size:1.2rem;font-weight:700;\">Bonjour ⟦·⟧,</h2>\n      <p style=\"margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.7;\">\n        Nous vous confirmons la bonne réception de votre paiement. Vous trouverez ci-joint votre <strong>facture acquittée</strong> pour la période <strong>⟦·⟧</strong>. Nous vous remercions pour votre confiance.\n      </p>\n\n      <div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 22px;margin-bottom:24px;\">\n        <table style=\"width:100%;border-collapse:collapse;font-size:0.9rem;\">\n          <tr>\n            <td style=\"padding:6px 0;color:#6b7280;\">N° de facture</td>\n            <td style=\"padding:6px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n          </tr>\n          <tr>\n            <td style=\"padding:6px 0;color:#6b7280;\">Période</td>\n            <td style=\"padding:6px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n          </tr>\n          <tr>\n            <td style=\"padding:6px 0;color:#6b7280;\">Réglée le</td>\n            <td style=\"padding:6px 0;text-align:right;font-weight:700;color:#111827;\">⟦·⟧</td>\n          </tr>\n          <tr>\n            <td style=\"padding:10px 0 2px;font-weight:800;color:#1e40af;\">Montant TTC</td>\n            <td style=\"padding:10px 0 2px;text-align:right;font-weight:900;color:#1e40af;font-size:1.05rem;\">⟦·⟧</td>\n          </tr>\n        </table>\n      </div>\n\n      <div style=\"background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 20px;margin-bottom:24px;\">\n        <p style=\"margin:0 0 4px;font-size:0.78rem;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:0.05em;\">📎 Document joint</p>\n        <p style=\"margin:0;font-size:0.9rem;color:#14532d;font-weight:600;\">Facture ⟦·⟧ (PDF)</p>\n        <p style=\"margin:4px 0 0;font-size:0.8rem;color:#3f6212;\">Retrouvez également toutes vos factures dans votre espace, rubrique « ⟦·⟧ ».</p>\n      </div>\n\n      <p style=\"margin:0;color:#6b7280;font-size:0.82rem;line-height:1.6;\">\n        Pour toute question relative à cette facture, notre équipe reste à votre disposition.\n      </p>\n    </div>\n    <div style=\"padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;\">\n      <p style=\"margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;\">⟦·⟧ · Facture ⟦·⟧</p>\n    </div>\n  </div>\n</body>\n</html>",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : email de facture d'un cabinet : rubrique « Abonnement et factures » de LabFlow Compta ; l'email de LabFlow (« Historique paiements ») est inchangé. Aucun terme du lexique."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": "Plateforme LabFlow — abonnement mensuel au service en ligne",
+    "apres": "⟦?LabFlow Compta|Plateforme LabFlow⟧ — abonnement mensuel au service en ligne",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : facture d'abonnement d'un cabinet LabFlow Compta (D8) : libellés du produit et lignes des postes figés ; la facture de LabFlow (sans produit ni lignes) reste identique à l'octet (test/B2-pdfTexte.test.js, test/identiteFacture.test.js). Aucun terme du lexique, identique dans tous les domaines."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": "Abonnement mensuel à la plateforme ⟦·⟧ — période : ⟦·⟧. La présente facture est émise au règlement de l'échéance et vaut reçu.",
+    "apres": "Abonnement mensuel à ⟦?LabFlow Compta|la plateforme ⟦·⟧⟧ — période : ⟦·⟧. La présente facture est émise au règlement de l'échéance et vaut reçu.",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : facture d'abonnement d'un cabinet LabFlow Compta (D8) : libellés du produit et lignes des postes figés ; la facture de LabFlow (sans produit ni lignes) reste identique à l'octet (test/B2-pdfTexte.test.js, test/identiteFacture.test.js). Aucun terme du lexique, identique dans tous les domaines."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": null,
+    "apres": "#⟦?ffffff|fcfcff⟧",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : facture d'abonnement d'un cabinet LabFlow Compta (D8) : libellés du produit et lignes des postes figés ; la facture de LabFlow (sans produit ni lignes) reste identique à l'octet (test/B2-pdfTexte.test.js, test/identiteFacture.test.js). Aucun terme du lexique, identique dans tous les domaines."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": "Abonnement mensuel · ⟦·⟧",
+    "apres": "⟦?LabFlow Compta — abonnement|Abonnement⟧ mensuel · ⟦·⟧",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : facture d'abonnement d'un cabinet LabFlow Compta (D8) : libellés du produit et lignes des postes figés ; la facture de LabFlow (sans produit ni lignes) reste identique à l'octet (test/B2-pdfTexte.test.js, test/identiteFacture.test.js). Aucun terme du lexique, identique dans tous les domaines."
+  },
+  {
+    "fichier": "docuseal-templates/generate.js",
+    "avant": "Facture acquittée — émise électroniquement par la plateforme LabFlow",
+    "apres": "Facture acquittée — émise électroniquement par ⟦?LabFlow Compta|la plateforme LabFlow⟧",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : facture d'abonnement d'un cabinet LabFlow Compta (D8) : libellés du produit et lignes des postes figés ; la facture de LabFlow (sans produit ni lignes) reste identique à l'octet (test/B2-pdfTexte.test.js, test/identiteFacture.test.js). Aucun terme du lexique, identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/app.js",
+    "avant": null,
+    "apres": "/api",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : montage des routes (/api : garde du rôle « comptable », SPEC-SOCLE D5 ; routes admin des cabinets) ; jamais affiché."
+  },
+  {
+    "fichier": "src/app.js",
+    "avant": null,
+    "apres": "/admin/comptables",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : montage des routes (/admin/comptables : garde du rôle « comptable », SPEC-SOCLE D5 ; routes admin des cabinets) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "⟦?compta|⟦·⟧⟧",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "comptable",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du rôle « comptable » (D1, migration 202) comparé ou listé ; jamais affiché."
+  },
+  {
+    "fichier": "src/utils/vocabCompte.js",
+    "avant": null,
+    "apres": "comptable",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du rôle « comptable » (D1, migration 202) comparé ou listé ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/bossController.js",
+    "avant": null,
+    "apres": "comptable",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du rôle « comptable » (D1, migration 202) comparé ou listé ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/adminRapportsController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'labflow'",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit de l'abonnement (labflow / compta, migration 202) comparé ou transmis ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "payé",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : statut de paiement comparé dans la requête (une mensualité réglée garde ses postes figés, D8) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "comptable",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : rôle de la personne comparé (un cabinet reçoit l'invitation de LabFlow Compta) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit transmis au service d'email (adresse et nom de LabFlow Compta) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/authController.js",
+    "avant": null,
+    "apres": "comptable",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : rôle de la personne comparé au renvoi d'invitation (un cabinet reçoit l'invitation de LabFlow Compta) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/authController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : code du produit transmis au service d'email (adresse et nom de LabFlow Compta) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "utilisateurs_email_lower_key",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : nom de l'index unique d'adresse sans casse (migration 202) comparé au code d'erreur 23505 ; jamais affiché."
   }
 ]
