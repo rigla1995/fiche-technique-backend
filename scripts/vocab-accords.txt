@@ -1344,10 +1344,10 @@ src/services/configComposantsService.js
     miroir : Base abr-clientes
 
 src/services/emailService.js
-  l. 32
+  l. 41
     défaut : ⟦?gérant|⟦?acheteur|client⟧⟧
     miroir : ⟦?animatrice|⟦?cliente|client⟧⟧
-  l. 34
+  l. 43
     défaut : 
 <!DOCTYPE html>
 <html lang="fr">
@@ -1418,31 +1418,31 @@ src/services/emailService.js
   </div>
 </body>
 </html>
-  l. 219
+  l. 230
     défaut : ⟦?+⟦·⟧ ⟦activité|activités@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦local|locaux@>1⟧|⟧
-  l. 220
+  l. 231
     défaut : ⟦?+⟦·⟧ ⟦labo|labos@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦usine|usines@>1⟧|⟧
-  l. 221
+  l. 232
     défaut : ⟦?+⟦·⟧ ⟦gérant|gérants@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦animatrice|animatrices@>1⟧|⟧
-  l. 222
+  l. 233
     défaut : ⟦?Option Acheteurs : jusqu'à ⟦·⟧ acheteurs|⟧
     miroir : ⟦?Option Abr-Clientes : jusqu'à ⟦·⟧ clientes|⟧
-  l. 262
+  l. 273
     défaut : Activités
     miroir : Locaux
-  l. 263
+  l. 274
     défaut : Labos
     miroir : Usines
-  l. 264
+  l. 275
     défaut : Gérants
     miroir : Animatrices
-  l. 265
+  l. 276
     défaut : Option Acheteurs
     miroir : Option Abr-Clientes
-  l. 415
+  l. 426
     défaut : <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
       <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
         <div style="font-size:36px;margin-bottom:8px">⟦?📊|📄⟧</div>
@@ -1467,7 +1467,7 @@ src/services/emailService.js
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
       <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ⟦·⟧</p>
     </div>
-  l. 440
+  l. 451
     défaut : 
 <!DOCTYPE html>
 <html lang="fr">
