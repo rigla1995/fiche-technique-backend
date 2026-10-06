@@ -5,6 +5,12 @@
 // Grille par domaine : `resolveTarifs(base, overridesByDomaine, domaineId)` fusionne
 // la grille générale (tarifs_config) et les surcharges du domaine (tarifs_domaine).
 // Une surcharge à 0 est respectée (spread, jamais `||`).
+//
+// LabFlow Compta (étape S2b, SPEC-SOCLE D6-D8) : postes du cabinet ou du module, src/compta/tarifsCompta.js. Une
+// configuration sans poste Compta (tout compte LabFlow existant) donne exactement le même total qu'avant.
+const {
+  postesCompta, totalPostes, estCabinet, LIBELLE_ABONNEMENT_LABFLOW, LIBELLE_REMISE, LIBELLE_AJUSTEMENT,
+} = require('../compta/tarifsCompta');
 
 // Toutes les clés de tarifs_config surchargeables par domaine — SAUF
 // prix_base_activite (clé legacy, repli du prix Premium avant la refonte formules).
@@ -165,14 +171,35 @@ const computeBaseAcheteursFromConfig = (config, tarifs) => {
 
 // Mensuel TOTAL d'une config = activités (formule) + labos + gérants + option acheteurs.
 // Source unique — remplace les sommes dupliquées de l'ancien modèle.
+// LabFlow Compta : un cabinet (config lue avec `produit = 'compta'`) ne paie que ses postes Compta ; un client qui a le
+// module les ajoute à sa mensualité LabFlow.
 const computeMensuelTotalFromConfig = (config, tarifs) => {
   if (!config) return null;
-  return Math.round((
+  if (estCabinet(config)) return totalPostes(postesCompta(config, tarifs));
+  const labflow = Math.round((
     (computeBaseMensuelFromConfig(config, tarifs) || 0)
     + (computeBaseLaboFromConfig(config, tarifs) || 0)
     + (computeBaseGerantFromConfig(config, tarifs) || 0)
     + (computeBaseAcheteursFromConfig(config, tarifs) || 0)
   ) * 100) / 100;
+  const compta = postesCompta(config, tarifs);
+  return compta.length ? Math.round((labflow + totalPostes(compta)) * 100) / 100 : labflow;
+};
+
+// Postes FIGÉS sur une mensualité (D8, paiements.lignes) : null sans poste Compta (la facture reste celle d'avant, à
+// l'octet) ; sinon [{ libelle, montant }] — les postes Compta, précédés de « Abonnement LabFlow » pour un client qui a le
+// module, suivis d'une ligne « Remise » quand la promotion change le total : la somme des lignes égale le montant dû.
+const lignesMensualite = (config, tarifs, promo) => {
+  const compta = postesCompta(config, tarifs);
+  if (!compta.length) return null;
+  const total = computeMensuelTotalFromConfig(config, tarifs) || 0;
+  const lignes = compta.map(({ libelle, montant }) => ({ libelle, montant }));
+  if (!estCabinet(config)) {
+    lignes.unshift({ libelle: LIBELLE_ABONNEMENT_LABFLOW, montant: Math.round((total - totalPostes(compta)) * 100) / 100 });
+  }
+  const du = applyPromoMensualite(total, promo);
+  if (du !== total) lignes.push({ libelle: du < total ? LIBELLE_REMISE : LIBELLE_AJUSTEMENT, montant: Math.round((du - total) * 100) / 100 });
+  return lignes;
 };
 
 // Unit price for next supplement activité (tier n+1)
@@ -205,4 +232,5 @@ module.exports = {
   computeActiviteSupPrice,
   applyPromoMensualite, applyPromoOnboarding, applyPromoSupplement,
   onboardingPriceFor,
+  lignesMensualite,
 };

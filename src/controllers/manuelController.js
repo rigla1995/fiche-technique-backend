@@ -82,7 +82,8 @@ const refuserSiBalises = (res, corps, balisables, interdits) => {
 // seules fiches de LabFlow Compta, en vocabulaire comptable fixe : ni domaine, ni variante, ni filtre de
 // configuration. Sans paramètre, tout lecteur reçoit les seules fiches de LabFlow, comme avant l'étape.
 const listPublic = async (req, res) => {
-  const produit = req.query?.produit ?? PRODUIT_DEFAUT;
+  // Étape S2b : une personne de rôle « comptable » n'utilise que LabFlow Compta ; elle ne lit que ses fiches.
+  const produit = req.user?.role === 'comptable' ? 'compta' : (req.query?.produit ?? PRODUIT_DEFAUT);
   if (!estProduit(produit)) return res.status(400).json({ message: MSG_PRODUIT });
   const compta = produit === 'compta';
   try {

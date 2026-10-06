@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { listerAcces } = require('./accesController');
+const { listerAcces, exigerTitulaireCabinet, monCabinet, monAbonnement, telechargerFacture } = require('./accesController');
 
 /**
  * @openapi
@@ -18,5 +18,10 @@ const { listerAcces } = require('./accesController');
  *         description: "{ cabinets: [], maComptabilite: [], confiees: [] }"
  */
 router.get('/acces', authenticate, listerAcces);
+
+// Étape S2b : les pages du cabinet, pour son titulaire (rôle « comptable »).
+router.get('/cabinet', authenticate, exigerTitulaireCabinet, monCabinet);
+router.get('/abonnement', authenticate, exigerTitulaireCabinet, monAbonnement);
+router.get('/abonnement/paiements/:id/facture', authenticate, exigerTitulaireCabinet, telechargerFacture);
 
 module.exports = router;

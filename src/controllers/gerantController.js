@@ -133,7 +133,8 @@ const create = async (req, res) => {
     const montant = isGratuit ? 0 : (montantMensuel || 80);
 
     // Check email uniqueness
-    const emailCheck = await pool.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
+    // Sans la casse (migration 202 : index unique LOWER(email)) : sinon une variante de casse finirait en erreur serveur.
+    const emailCheck = await pool.query('SELECT id FROM utilisateurs WHERE LOWER(email) = LOWER($1)', [email]);
     if (emailCheck.rows.length > 0) return res.status(409).json({ message: 'Email déjà utilisé' });
 
     const inviteToken = generateInviteToken();

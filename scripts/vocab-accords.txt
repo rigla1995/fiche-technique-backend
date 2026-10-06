@@ -5,10 +5,10 @@
 # 494 unité(s), 38 fichier(s).
 
 src/controllers/abonnementController.js
-  l. 1597
+  l. 1646
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
-  l. 1995
+  l. 2044
     défaut : Quota acheteurs invalide (paliers de 1 à 100)
     miroir : Quota abr-clientes invalide (paliers de 1 à 100)
 
@@ -306,37 +306,37 @@ src/controllers/gerantController.js
   l. 117
     défaut : La base acheteurs n'est pas activée sur votre compte
     miroir : La base abr-clientes n'est pas activée sur votre compte
-  l. 215
+  l. 216
     défaut : Gérant introuvable
     miroir : Animatrice introuvable
-  l. 221
+  l. 222
     défaut : Au moins une activité ou un labo doit être ⟦?affectée|affecté⟧
     miroir : Au moins un local ou une usine doit être ⟦?affecté|affectée⟧
-  l. 221
+  l. 222
     défaut : m
     miroir : f
-  l. 226
+  l. 227
     défaut : Activité ou labo hors de votre périmètre
     miroir : Local ou usine hors de votre périmètre
-  l. 236
+  l. 237
     défaut : L'accès à la base acheteurs exige au moins un labo affecté
     miroir : L'accès à la base abr-clientes exige au moins une usine affectée
-  l. 243
+  l. 244
     défaut : La base acheteurs n'est pas activée sur votre compte
     miroir : La base abr-clientes n'est pas activée sur votre compte
-  l. 269
+  l. 270
     défaut : Gérant introuvable
     miroir : Animatrice introuvable
-  l. 300
+  l. 301
     défaut : Gérant introuvable
     miroir : Animatrice introuvable
-  l. 314
+  l. 315
     défaut : Gérant introuvable
     miroir : Animatrice introuvable
-  l. 320
+  l. 321
     défaut : Gérant introuvable
     miroir : Animatrice introuvable
-  l. 322
+  l. 323
     défaut : Le compte de ce gérant est déjà activé
     miroir : Le compte de cette animatrice est déjà activé
 
@@ -1418,31 +1418,31 @@ src/services/emailService.js
   </div>
 </body>
 </html>
-  l. 230
+  l. 233
     défaut : ⟦?+⟦·⟧ ⟦activité|activités@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦local|locaux@>1⟧|⟧
-  l. 231
+  l. 234
     défaut : ⟦?+⟦·⟧ ⟦labo|labos@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦usine|usines@>1⟧|⟧
-  l. 232
+  l. 235
     défaut : ⟦?+⟦·⟧ ⟦gérant|gérants@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦animatrice|animatrices@>1⟧|⟧
-  l. 233
+  l. 236
     défaut : ⟦?Option Acheteurs : jusqu'à ⟦·⟧ acheteurs|⟧
     miroir : ⟦?Option Abr-Clientes : jusqu'à ⟦·⟧ clientes|⟧
-  l. 273
+  l. 276
     défaut : Activités
     miroir : Locaux
-  l. 274
+  l. 277
     défaut : Labos
     miroir : Usines
-  l. 275
+  l. 278
     défaut : Gérants
     miroir : Animatrices
-  l. 276
+  l. 279
     défaut : Option Acheteurs
     miroir : Option Abr-Clientes
-  l. 426
+  l. 432
     défaut : <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
       <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
         <div style="font-size:36px;margin-bottom:8px">⟦?📊|📄⟧</div>
@@ -1467,7 +1467,7 @@ src/services/emailService.js
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
       <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ⟦·⟧</p>
     </div>
-  l. 451
+  l. 457
     défaut : 
 <!DOCTYPE html>
 <html lang="fr">

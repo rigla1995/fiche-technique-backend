@@ -19,7 +19,8 @@ const maskEmail = (e) => {
   return `${head}${'•'.repeat(Math.max(1, u.length - 2))}@${d}`;
 };
 
-const ROLE_ANNUAIRE = ['client', 'gerant', 'acheteur'];
+// LabFlow Compta (S2b) : + les titulaires de cabinets comptables.
+const ROLE_ANNUAIRE = ['client', 'gerant', 'acheteur', 'comptable'];
 const REVEAL_TTL_MS = 10 * 60 * 1000; // validité du code
 const REVEAL_WINDOW_SEC = 120;        // durée d'affichage du clair côté front
 

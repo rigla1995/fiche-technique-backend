@@ -16,7 +16,7 @@ const { lireIdentite, nomAffiche, identiteComplete, mapIdentite } = require('../
 // Message d'un doublon refusé par la base (23505), selon la contrainte réelle (lot 3) : avant, toute collision
 // répondait « email déjà utilisé ». utilisateurs_email_key : vu en production le 04/10.
 const messageDoublon = (err) => {
-  if (err?.constraint === 'utilisateurs_email_key') return 'Cet email est déjà utilisé';
+  if (err?.constraint === 'utilisateurs_email_key' || err?.constraint === 'utilisateurs_email_lower_key') return 'Cet email est déjà utilisé';
   if (err?.constraint === 'profil_entreprise_telephone_unique') return 'Ce numéro de téléphone est déjà utilisé';
   return 'Enregistrement impossible : une donnée qui doit être unique est déjà utilisée';
 };
@@ -714,4 +714,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { list, getById, updateIdentite, controlerIdentite, create, update, remove };
+module.exports = { list, getById, updateIdentite, controlerIdentite, create, update, remove, avertissementsMatricule };

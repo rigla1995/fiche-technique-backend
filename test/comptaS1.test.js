@@ -21,6 +21,8 @@ const fauxPool = {
       return { rows: String(params[0]).toLowerCase() === 'connu@exemple.tn' ? [{ id: 5, nom: 'Connu', email: 'connu@exemple.tn' }] : [] };
     }
     if (texte.startsWith('UPDATE utilisateurs SET reset_token')) return { rows: [], rowCount: 1 };
+    // Étape S2b : les accès sont lus dans compta.acces (aucun pour ce compte ; groupes remplis : test/comptaS2b.test.js).
+    if (texte.startsWith('SELECT e.id, e.type, e.nom, e.etat, a.role FROM compta.acces a')) return { rows: [] };
     throw new Error(`requête inattendue : ${texte.slice(0, 120)}`);
   },
 };
@@ -90,8 +92,8 @@ test('mot de passe oublié : même réponse pour une adresse inconnue, aucun ema
   assert.equal(envois.length, 0);
 });
 
-test('/api/compta/acces : trois groupes, vides à l\'étape S1', () => {
+test('/api/compta/acces : trois groupes, vides pour un compte sans accès', async () => {
   const res = reponse();
-  listerAcces({ user: { id: 5, role: 'client' } }, res);
+  await listerAcces({ user: { id: 5, role: 'client' } }, res);
   assert.deepEqual(res.corps, { cabinets: [], maComptabilite: [], confiees: [] });
 });

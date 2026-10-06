@@ -72,8 +72,9 @@ const vocabForClient = async (clientId) => {
 
 // req.voc : admin et boss d'après le RÔLE (un boss ex-client garde un abonnement, donc un
 // domaine) ; domaine nul → défaut, SANS requête (pas de repli sur le domaine « restauration »).
+// LabFlow Compta (S2b) : un « comptable » emploie le vocabulaire comptable fixe, jamais celui d'un domaine.
 const vocabPourRole = async (role, domaineId) => {
-  if (role === 'super_admin' || role === 'boss' || domaineId == null) return vocabDefaut;
+  if (role === 'super_admin' || role === 'boss' || role === 'comptable' || domaineId == null) return vocabDefaut;
   return vocabDuDomaine(domaineId);
 };
 
