@@ -6,6 +6,18 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { listerAcces, maComptabilite, exigerTitulaireCabinet, monCabinet, monAbonnement, telechargerFacture } = require('./accesController');
+const rateLimit = require('express-rate-limit');
+const { emettre: emettrePassage } = require('./passage');
+
+// Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
+const limiteEmission = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => `passage:${req.user.id}`,
+  message: { message: 'Trop de passages en peu de temps, réessayez dans une minute.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @openapi
@@ -26,5 +38,8 @@ router.get('/abonnement/paiements/:id/facture', authenticate, exigerTitulaireCab
 
 // Étape S2c : la comptabilité d'un client LabFlow qui a le module, pour son titulaire (vérifié sur compta.acces).
 router.get('/ma-comptabilite', authenticate, maComptabilite);
+
+// Étape S3a : code de passage vers l'autre adresse (app. ↔ compta.), échangé ensuite par POST /auth/passage.
+router.post('/passage', authenticate, limiteEmission, emettrePassage);
 
 module.exports = router;

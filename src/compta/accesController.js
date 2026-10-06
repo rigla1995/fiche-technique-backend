@@ -78,9 +78,24 @@ const maComptabilite = async (req, res) => {
 };
 
 // Les pages du cabinet (S2b) sont celles de son titulaire, une personne de rôle « comptable ».
-const exigerTitulaireCabinet = (req, res, next) => {
-  if (req.user?.role !== 'comptable') return res.status(403).json({ message: 'Page réservée au titulaire d\'un cabinet LabFlow Compta' });
-  next();
+// S3a : vérifié sur compta.acces (titulaire actif d'un cabinet ouvert), plus sur le seul rôle — un comptable invité par
+// un client ou un collaborateur de cabinet (S3b, S3c) a aussi le rôle « comptable » sans être titulaire.
+const exigerTitulaireCabinet = async (req, res, next) => {
+  try {
+    const r = await pool.query(
+      `SELECT 1 FROM compta.acces a JOIN compta.espaces e ON e.id = a.espace_id
+        WHERE a.personne_id = $1 AND a.role = 'titulaire' AND a.etat = 'actif' AND e.type = 'cabinet' AND e.etat = 'actif'
+        LIMIT 1`,
+      [req.user?.id]
+    );
+    if (req.user?.role !== 'comptable' || !r.rows.length) {
+      return res.status(403).json({ message: 'Page réservée au titulaire d\'un cabinet LabFlow Compta' });
+    }
+    next();
+  } catch (err) {
+    console.error('[compta.titulaire]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
 };
 
 // GET /api/compta/cabinet — identité (fiche profil_entreprise, celle des factures), contact, gérants prévus.
