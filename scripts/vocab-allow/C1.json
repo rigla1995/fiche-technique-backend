@@ -377,5 +377,173 @@
     "apres": "utilisateurs_email_lower_key",
     "type": "discriminant",
     "justification": "Chantier Achats & Comptabilité, étape S2b (cabinet comptable, découpage validé par le client le 06/10/2026) : nom de l'index unique d'adresse sans casse (migration 202) comparé au code d'erreur 23505 ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'en_attente'",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : statut de mensualité écrit en SQL (mois offert : le module d'un client reste dû, à plein tarif) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'en_attente'",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : statut de mensualité écrit en SQL (mois offert : le module d'un client reste dû, à plein tarif) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "payé",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : statut de mensualité comparé en SQL (une mensualité réglée n'est jamais réécrite) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'client_labflow'",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : type de la comptabilité d'un client (compta.espaces), retirée avant la suppression du compte (D10) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/clientsController.js",
+    "avant": null,
+    "apres": "espace_supprime",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : type d'événement du journal compta.evenements (D16) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "activer_module_compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : type de la demande d'activation du module Comptabilité (liste fermée, CHECK de la migration 202) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "activer_module_compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : type de la demande d'activation du module Comptabilité (liste fermée, CHECK de la migration 202) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "activer_module_compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : type de la demande d'activation du module Comptabilité (liste fermée, CHECK de la migration 202) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "activer_module_compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : type de la demande d'activation du module Comptabilité (liste fermée, CHECK de la migration 202) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "activer_module_compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : type de la demande d'activation du module Comptabilité (liste fermée, CHECK de la migration 202) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "Abonnement introuvable",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : message d'erreur de la demande du module (compte sans abonnement). Aucun terme du lexique (vocabulaire comptable fixe de LabFlow Compta) : identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "Le module Comptabilité est déjà actif sur votre compte",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : refus d'une demande du module déjà actif. Aucun terme du lexique (vocabulaire comptable fixe de LabFlow Compta) : identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "Le module Comptabilité n'est pas encore proposé",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : refus d'une demande tant que le tarif du module vaut 0 (décision du client du 06/10). Aucun terme du lexique (vocabulaire comptable fixe de LabFlow Compta) : identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "Une demande identique est déjà en attente de validation",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : même message que le refus générique d'une demande en double (même fichier), pour la demande du module. Aucun terme du lexique (vocabulaire comptable fixe de LabFlow Compta) : identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "⟦?⟦·⟧|Client⟧",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : nom du compte dans la notification envoyée aux seuls admins (pushToAdmins / saveNotificationToAdmins), repli « Client ». Aucun terme du lexique (vocabulaire comptable fixe de LabFlow Compta) : identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "new_demande",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : type d'événement temps réel et de notification (même valeur que les demandes de support) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "new_demande",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : type d'événement temps réel et de notification (même valeur que les demandes de support) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "demande",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : ref_kind de la notification (la colonne demande_id vise support_demandes) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "en_attente",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : statut de la demande comparé (une demande du module n'est traitée qu'une fois) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "validée",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : statut de la demande comparé (la validation active le module) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/demandeController.js",
+    "avant": null,
+    "apres": "Cette demande a déjà été traitée",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : refus d'une seconde validation, renvoyé par PUT /api/abonnements/admin/demandes/:id gardée par requireSuperAdmin (lu par un admin seulement). Aucun terme du lexique (vocabulaire comptable fixe de LabFlow Compta) : identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/routes/abonnements.js",
+    "avant": null,
+    "apres": "/client/:clientId/module-compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : chemin des routes admin du module (requireSuperAdmin) ; jamais affiché."
+  },
+  {
+    "fichier": "src/routes/abonnements.js",
+    "avant": null,
+    "apres": "/client/:clientId/module-compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : chemin des routes admin du module (requireSuperAdmin) ; jamais affiché."
+  },
+  {
+    "fichier": "src/routes/abonnements.js",
+    "avant": null,
+    "apres": "/module-compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : chemin de la route du client (état de son module) ; jamais affiché."
   }
 ]

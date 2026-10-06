@@ -5,23 +5,26 @@ const {
 } = require('../controllers/abonnementController');
 const { postesCompta } = require('./tarifsCompta');
 const { nomAffiche, mapIdentite } = require('../utils/identite');
+const moduleCompta = require('./moduleClient');
 
 // GET /api/compta/acces — les comptabilités de la personne, en trois groupes TOUJOURS distincts (CADRAGE §2) : son
 // cabinet ; sa comptabilité de client LabFlow (étape S2c) ; celles que des clients LabFlow lui ont confiées. Seuls les
-// accès actifs comptent. `lien` : page ouverte par la carte (le cabinet de son titulaire à cette étape).
+// accès actifs des comptabilités ouvertes comptent (S2c : une comptabilité fermée — module désactivé — n'apparaît
+// plus). `lien` : page ouverte par la carte (le cabinet ou la comptabilité de son titulaire à cette étape).
+const LIENS_TITULAIRE = { cabinet: '/cabinet', client_labflow: '/ma-comptabilite' };
 const listerAcces = async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT e.id, e.type, e.nom, e.etat, a.role
          FROM compta.acces a
          JOIN compta.espaces e ON e.id = a.espace_id
-        WHERE a.personne_id = $1 AND a.etat = 'actif'
+        WHERE a.personne_id = $1 AND a.etat = 'actif' AND e.etat = 'actif'
         ORDER BY e.nom, e.id`,
       [req.user.id]
     );
     const groupes = { cabinets: [], maComptabilite: [], confiees: [] };
     for (const x of r.rows) {
-      const carte = { id: x.id, nom: x.nom, etat: x.etat, role: x.role, lien: x.type === 'cabinet' && x.role === 'titulaire' ? '/cabinet' : null };
+      const carte = { id: x.id, nom: x.nom, etat: x.etat, role: x.role, lien: x.role === 'titulaire' ? LIENS_TITULAIRE[x.type] || null : null };
       if (x.type === 'cabinet') groupes.cabinets.push(carte);
       else if (x.role === 'titulaire') groupes.maComptabilite.push(carte);
       else groupes.confiees.push(carte);
@@ -29,6 +32,47 @@ const listerAcces = async (req, res) => {
     res.json(groupes);
   } catch (err) {
     console.error('[compta.acces]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// GET /api/compta/ma-comptabilite — la comptabilité du client LabFlow connecté (étape S2c) : son espace, le module
+// (facturé à partir de…, gérants comptables prévus) et l'accès de son comptable (à désigner à l'étape S3). Réservée au
+// TITULAIRE de l'espace, vérifié sur compta.acces (jamais une garde cliente, SPEC-SOCLE D3).
+const maComptabilite = async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT e.id, e.nom, e.etat, e.created_at
+         FROM compta.acces a
+         JOIN compta.espaces e ON e.id = a.espace_id
+        WHERE a.personne_id = $1 AND a.role = 'titulaire' AND a.etat = 'actif'
+          AND e.type = 'client_labflow' AND e.etat = 'actif'`,
+      [req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ code: 'MODULE_INACTIF', message: 'Le module Comptabilité n\'est pas activé sur ce compte' });
+    const espace = r.rows[0];
+    const acces = await pool.query(
+      `SELECT a.id, a.etat, a.obligatoire, a.niveau, a.nom_attendu, a.email_attendu, u.nom, u.email
+         FROM compta.acces a
+         LEFT JOIN utilisateurs u ON u.id = a.personne_id
+        WHERE a.espace_id = $1 AND a.role = 'gerant'
+        ORDER BY a.obligatoire DESC, a.id`,
+      [espace.id]
+    );
+    const module = await moduleCompta.etat(pool, req.user.id);
+    res.json({
+      espace: { id: espace.id, nom: espace.nom, etat: espace.etat, ouvertLe: espace.created_at },
+      module: module ? {
+        actif: module.actif, activeLe: module.activeLe, factureAPartirDe: module.factureAPartirDe,
+        nbGerants: module.nbGerants, postes: module.postes, totalMensuel: module.totalMensuel,
+      } : null,
+      comptables: acces.rows.map((x) => ({
+        id: x.id, etat: x.etat, obligatoire: x.obligatoire, niveau: x.niveau,
+        nom: x.nom || x.nom_attendu || null, email: x.email || x.email_attendu || null,
+      })),
+    });
+  } catch (err) {
+    console.error('[compta.ma-comptabilite]', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
@@ -153,4 +197,4 @@ const telechargerFacture = async (req, res) => {
   }
 };
 
-module.exports = { listerAcces, exigerTitulaireCabinet, monCabinet, monAbonnement, telechargerFacture };
+module.exports = { listerAcces, maComptabilite, exigerTitulaireCabinet, monCabinet, monAbonnement, telechargerFacture };

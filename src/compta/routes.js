@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { listerAcces, exigerTitulaireCabinet, monCabinet, monAbonnement, telechargerFacture } = require('./accesController');
+const { listerAcces, maComptabilite, exigerTitulaireCabinet, monCabinet, monAbonnement, telechargerFacture } = require('./accesController');
 
 /**
  * @openapi
@@ -23,5 +23,8 @@ router.get('/acces', authenticate, listerAcces);
 router.get('/cabinet', authenticate, exigerTitulaireCabinet, monCabinet);
 router.get('/abonnement', authenticate, exigerTitulaireCabinet, monAbonnement);
 router.get('/abonnement/paiements/:id/facture', authenticate, exigerTitulaireCabinet, telechargerFacture);
+
+// Étape S2c : la comptabilité d'un client LabFlow qui a le module, pour son titulaire (vérifié sur compta.acces).
+router.get('/ma-comptabilite', authenticate, maComptabilite);
 
 module.exports = router;

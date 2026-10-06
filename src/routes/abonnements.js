@@ -5,6 +5,8 @@ const ab = require('../controllers/abonnementController');
 const gerant = require('../controllers/gerantController');
 const demande = require('../controllers/demandeController');
 const support = require('../controllers/supportController');
+// LabFlow Compta, étape S2c : le module Comptabilité d'un client.
+const moduleCompta = require('../compta/moduleClient');
 
 /**
  * @openapi
@@ -254,6 +256,9 @@ router.put('/client/:clientId/mode', authenticate, requireSuperAdmin, ab.updateM
 router.put('/client/:clientId/notes', authenticate, requireSuperAdmin, ab.updateNotes);
 router.put('/client/:clientId/module-vente', authenticate, requireSuperAdmin, ab.toggleModuleVente);
 router.put('/client/:clientId/module-acheteurs', authenticate, requireSuperAdmin, ab.toggleModuleAcheteurs);
+router.get('/client/:clientId/module-compta', authenticate, requireSuperAdmin, moduleCompta.lireAdmin);
+router.put('/client/:clientId/module-compta', authenticate, requireSuperAdmin, moduleCompta.basculerAdmin);
+router.get('/module-compta', authenticate, requireClient, moduleCompta.lireClient);
 router.post('/client/:clientId/paiements', authenticate, requireSuperAdmin, ab.upsertPaiement);
 router.get('/paiements/:paiementId/facture', authenticate, requireSuperAdmin, ab.downloadFactureAdmin);
 router.get('/client/:clientId/montant-mois', authenticate, requireSuperAdmin, ab.getMontantMois);

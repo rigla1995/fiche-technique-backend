@@ -186,20 +186,38 @@ const computeMensuelTotalFromConfig = (config, tarifs) => {
   return compta.length ? Math.round((labflow + totalPostes(compta)) * 100) / 100 : labflow;
 };
 
+const arrondi2 = (n) => Math.round(n * 100) / 100;
+const ligneEcart = (avant, apres) => ({ libelle: apres < avant ? LIBELLE_REMISE : LIBELLE_AJUSTEMENT, montant: arrondi2(apres - avant) });
+
+// Mensualité DUE d'une configuration, promotion comprise. Le module d'un client est facturé à plein tarif, hors
+// promotion (décision du client du 06/10, étape S2c) : la promotion ne porte que sur sa partie Stock / Vente. Un cabinet
+// et un compte sans le module : promotion sur tout le total, comme avant.
+const mensualiteDue = (config, tarifs, promo) => {
+  const total = computeMensuelTotalFromConfig(config, tarifs) || 0;
+  if (!config || estCabinet(config)) return applyPromoMensualite(total, promo);
+  const compta = totalPostes(postesCompta(config, tarifs));
+  if (!compta) return applyPromoMensualite(total, promo);
+  return arrondi2(applyPromoMensualite(arrondi2(total - compta), promo) + compta);
+};
+
 // Postes FIGÉS sur une mensualité (D8, paiements.lignes) : null sans poste Compta (la facture reste celle d'avant, à
-// l'octet) ; sinon [{ libelle, montant }] — les postes Compta, précédés de « Abonnement LabFlow » pour un client qui a le
-// module, suivis d'une ligne « Remise » quand la promotion change le total : la somme des lignes égale le montant dû.
+// l'octet) ; sinon [{ libelle, montant }] dont la somme égale le montant dû (mensualiteDue) :
+// - cabinet : ses postes, puis « Remise » (ou « Ajustement ») quand la promotion change le total ;
+// - client qui a le module : « Abonnement LabFlow », sa « Remise » éventuelle, puis le module et ses gérants comptables.
 const lignesMensualite = (config, tarifs, promo) => {
   const compta = postesCompta(config, tarifs);
   if (!compta.length) return null;
   const total = computeMensuelTotalFromConfig(config, tarifs) || 0;
-  const lignes = compta.map(({ libelle, montant }) => ({ libelle, montant }));
-  if (!estCabinet(config)) {
-    lignes.unshift({ libelle: LIBELLE_ABONNEMENT_LABFLOW, montant: Math.round((total - totalPostes(compta)) * 100) / 100 });
+  const postes = compta.map(({ libelle, montant }) => ({ libelle, montant }));
+  if (estCabinet(config)) {
+    const du = applyPromoMensualite(total, promo);
+    return du !== total ? [...postes, ligneEcart(total, du)] : postes;
   }
-  const du = applyPromoMensualite(total, promo);
-  if (du !== total) lignes.push({ libelle: du < total ? LIBELLE_REMISE : LIBELLE_AJUSTEMENT, montant: Math.round((du - total) * 100) / 100 });
-  return lignes;
+  const labflow = arrondi2(total - totalPostes(compta));
+  const lignes = [{ libelle: LIBELLE_ABONNEMENT_LABFLOW, montant: labflow }];
+  const du = applyPromoMensualite(labflow, promo);
+  if (du !== labflow) lignes.push(ligneEcart(labflow, du));
+  return [...lignes, ...postes];
 };
 
 // Unit price for next supplement activité (tier n+1)
@@ -232,5 +250,5 @@ module.exports = {
   computeActiviteSupPrice,
   applyPromoMensualite, applyPromoOnboarding, applyPromoSupplement,
   onboardingPriceFor,
-  lignesMensualite,
+  lignesMensualite, mensualiteDue,
 };
