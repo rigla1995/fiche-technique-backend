@@ -47,5 +47,139 @@
     "apres": "⟦·⟧⟦? Compta|⟧",
     "type": "ajoute",
     "justification": "Chantier Achats & Comptabilité, étape S1 (SPEC-SOCLE D13, découpage validé par le client le 06/10/2026) : nom du produit « LabFlow Compta » dans l'email de réinitialisation demandé depuis compta.labflow-tn.com. Nom de marque, aucun terme du lexique : identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/utils/produits.js",
+    "avant": null,
+    "apres": "labflow",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code du produit (liste fermée labflow, compta de src/utils/produits.js) qui choisit les fiches du manuel ; jamais affiché."
+  },
+  {
+    "fichier": "src/utils/produits.js",
+    "avant": null,
+    "apres": "labflow",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code du produit (liste fermée labflow, compta de src/utils/produits.js) qui choisit les fiches du manuel ; jamais affiché."
+  },
+  {
+    "fichier": "src/utils/produits.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code du produit (liste fermée labflow, compta de src/utils/produits.js) qui choisit les fiches du manuel ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code du produit (liste fermée labflow, compta de src/utils/produits.js) qui choisit les fiches du manuel ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code du produit (liste fermée labflow, compta de src/utils/produits.js) qui choisit les fiches du manuel ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Manuel inconnu : labflow ou compta",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : réponse 400 de GET /api/manuel et des routes admin du manuel à un code de produit hors de la liste fermée ; aucun terme du lexique, identique dans tous les domaines, jamais affiché par les écrans."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "produit",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : nom de la colonne manuel_sections.produit (migration 201) dans la liste des champs modifiables par l'admin ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": "produit",
+    "apres": "produit",
+    "mode": "residuels",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : nom de la colonne manuel_sections.produit (migration 201) : le produit LabFlow ou LabFlow Compta, pas le « produit » du lexique ; jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "requeteManuel : manuel inconnu (⟦·⟧)",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : erreur de programmation levée par requeteManuel pour un code de produit hors de la liste fermée ; jamais renvoyée au client."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "⟦·⟧",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code du produit (liste fermée) écrit dans la requête du manuel ; jamais affiché."
+  },
+  {
+    "fichier": "src/utils/manuelRendu.js",
+    "avant": null,
+    "apres": "⟦sql⟧'labflow'",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : le contrôle des balises au démarrage ne lit que les fiches de LabFlow (celles de LabFlow Compta ne sont jamais balisées) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code du produit (liste fermée labflow, compta de src/utils/produits.js) qui choisit les fiches du manuel ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code du produit (liste fermée labflow, compta de src/utils/produits.js) qui choisit les fiches du manuel ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "manuel_sections_compta_sans_balise",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : nom de la contrainte de la migration 201 (une fiche de LabFlow Compta ne porte aucune balise), reconnu dans l'erreur PostgreSQL ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "23514",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code PostgreSQL d'une contrainte CHECK violée (check_violation) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "BALISE_INTERDITE",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code d'erreur de l'API (déjà employé par refuserBalises) pour une balise dans une fiche de LabFlow Compta ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Une fiche de LabFlow Compta est en vocabulaire comptable fixe : aucune balise de vocabulaire",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : refus 400 de l'écran admin du manuel ; aucun terme du lexique, identique dans tous les domaines (espace admin)."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "VARIANTE_COMPTA",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : code d'erreur de l'API : une fiche de LabFlow Compta n'a pas de variante par domaine ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/manuelController.js",
+    "avant": null,
+    "apres": "Une fiche de LabFlow Compta n'a pas de variante par domaine",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S2a (SPEC-SOCLE D15) : refus 400 de l'écran admin du manuel ; aucun terme du lexique, identique dans tous les domaines (espace admin)."
   }
 ]
