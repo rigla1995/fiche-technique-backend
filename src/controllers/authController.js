@@ -71,6 +71,100 @@ const loadDomaineForUser = async (utilisateur, tag, acheteurClientId = null) => 
   }
 };
 
+// Ouverture d'une session, après la vérification du mot de passe ou l'échange d'un code de passage entre LabFlow et
+// LabFlow Compta (SPEC-SOCLE D12, étape S3a) : compte bloqué refusé, jeton, puis le même profil que /auth/me.
+// Déplacé tel quel depuis login. `session` (passage seulement) : { iat, exp } de la session d'origine, repris tels quels —
+// un passage ne prolonge jamais une session et reste révoqué par un changement de mot de passe (password_changed_at).
+const repondreSession = async (res, utilisateur, session = null) => {
+  // Check if account is blocked (boss hérite du super_admin : jamais blocable)
+  if (utilisateur.role !== 'super_admin' && utilisateur.role !== 'boss') {
+    const aboClientId = utilisateur.role === 'gerant' ? utilisateur.gerant_parent_id : utilisateur.id;
+    if (aboClientId) {
+      const aboCheck = await pool.query(
+        'SELECT mode_compte FROM abonnements WHERE client_id = $1',
+        [aboClientId]
+      );
+      if (aboCheck.rows[0]?.mode_compte === 'bloque') {
+        return res.status(403).json({ message: 'account_blocked' });
+      }
+    }
+  }
+
+  const token = session
+    ? jwt.sign({ userId: utilisateur.id, role: utilisateur.role, iat: session.iat, exp: session.exp }, process.env.JWT_SECRET)
+    : jwt.sign(
+      { userId: utilisateur.id, role: utilisateur.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
+
+  const onboardingStep = utilisateur.role === 'gerant' ? 0 : (utilisateur.onboarding_step ?? 0);
+
+  // Affectations + accès acheteurs dès le LOGIN (comme /auth/me) : la sidebar et
+  // le guard de l'Espace Acheteurs en dépendent — le front ne rappelle /auth/me
+  // qu'au montage, pas après un login SPA. Même chargement (avec repli legacy)
+  // que le middleware authenticate.
+  let gerantFields = {};
+  if (utilisateur.role === 'gerant') {
+    const aff = await pool.query(
+      'SELECT activite_id, labo_id FROM gerant_affectations WHERE gerant_id = $1',
+      [utilisateur.id]
+    );
+    let gerantActiviteIds = aff.rows.filter((r) => r.activite_id != null).map((r) => Number(r.activite_id));
+    let gerantLaboIds = aff.rows.filter((r) => r.labo_id != null).map((r) => Number(r.labo_id));
+    if (gerantActiviteIds.length === 0 && gerantLaboIds.length === 0 && utilisateur.gerant_activite_id) {
+      if (utilisateur.gerant_activite_type === 'labo') gerantLaboIds = [Number(utilisateur.gerant_activite_id)];
+      else gerantActiviteIds = [Number(utilisateur.gerant_activite_id)];
+    }
+    gerantFields = {
+      gerantParentId: utilisateur.gerant_parent_id,
+      gerantActiviteId: utilisateur.gerant_activite_id,
+      gerantActiviteType: utilisateur.gerant_activite_type,
+      gerantActiviteIds,
+      gerantLaboIds,
+      gerantAccesAcheteurs: utilisateur.gerant_acces_acheteurs === true,
+    };
+  }
+
+  // Compteurs d'activités/labos dès le LOGIN (comme /auth/me) : la redirection
+  // d'accueil du front en dépend — sans eux, un client déjà configuré était
+  // envoyé vers « Mes Activités » au lieu du tableau de bord jusqu'au refresh.
+  let clientCounts = {};
+  if (utilisateur.role === 'client') {
+    const entRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [utilisateur.id]);
+    if (entRes.rows.length > 0) {
+      const c = await pool.query(
+        `SELECT (SELECT COUNT(*) FROM activites WHERE entreprise_id = $1) AS activites_count,
+                (SELECT COUNT(*) FROM labos WHERE entreprise_id = $1) AS labos_count`,
+        [entRes.rows[0].id]
+      );
+      clientCounts = {
+        activitesCount: parseInt(c.rows[0].activites_count) || 0,
+        labosCount: parseInt(c.rows[0].labos_count) || 0,
+      };
+    } else {
+      clientCounts = { activitesCount: 0, labosCount: 0 };
+    }
+  }
+
+  // Profil du domaine dès le LOGIN (comme /auth/me).
+  const domaine = await loadDomaineForUser(utilisateur, 'auth/login');
+
+  res.json({
+    token,
+    user: {
+      id: utilisateur.id,
+      name: utilisateur.nom,
+      email: utilisateur.email,
+      role: utilisateur.role,
+      onboardingStep,
+      ...gerantFields,
+      ...clientCounts,
+      domaine,
+    },
+  });
+};
+
 const login = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -106,91 +200,8 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    // Check if account is blocked (boss hérite du super_admin : jamais blocable)
-    if (utilisateur.role !== 'super_admin' && utilisateur.role !== 'boss') {
-      const aboClientId = utilisateur.role === 'gerant' ? utilisateur.gerant_parent_id : utilisateur.id;
-      if (aboClientId) {
-        const aboCheck = await pool.query(
-          'SELECT mode_compte FROM abonnements WHERE client_id = $1',
-          [aboClientId]
-        );
-        if (aboCheck.rows[0]?.mode_compte === 'bloque') {
-          return res.status(403).json({ message: 'account_blocked' });
-        }
-      }
-    }
-
-    const token = jwt.sign(
-      { userId: utilisateur.id, role: utilisateur.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-    );
-
-    const onboardingStep = utilisateur.role === 'gerant' ? 0 : (utilisateur.onboarding_step ?? 0);
-
-    // Affectations + accès acheteurs dès le LOGIN (comme /auth/me) : la sidebar et
-    // le guard de l'Espace Acheteurs en dépendent — le front ne rappelle /auth/me
-    // qu'au montage, pas après un login SPA. Même chargement (avec repli legacy)
-    // que le middleware authenticate.
-    let gerantFields = {};
-    if (utilisateur.role === 'gerant') {
-      const aff = await pool.query(
-        'SELECT activite_id, labo_id FROM gerant_affectations WHERE gerant_id = $1',
-        [utilisateur.id]
-      );
-      let gerantActiviteIds = aff.rows.filter((r) => r.activite_id != null).map((r) => Number(r.activite_id));
-      let gerantLaboIds = aff.rows.filter((r) => r.labo_id != null).map((r) => Number(r.labo_id));
-      if (gerantActiviteIds.length === 0 && gerantLaboIds.length === 0 && utilisateur.gerant_activite_id) {
-        if (utilisateur.gerant_activite_type === 'labo') gerantLaboIds = [Number(utilisateur.gerant_activite_id)];
-        else gerantActiviteIds = [Number(utilisateur.gerant_activite_id)];
-      }
-      gerantFields = {
-        gerantParentId: utilisateur.gerant_parent_id,
-        gerantActiviteId: utilisateur.gerant_activite_id,
-        gerantActiviteType: utilisateur.gerant_activite_type,
-        gerantActiviteIds,
-        gerantLaboIds,
-        gerantAccesAcheteurs: utilisateur.gerant_acces_acheteurs === true,
-      };
-    }
-
-    // Compteurs d'activités/labos dès le LOGIN (comme /auth/me) : la redirection
-    // d'accueil du front en dépend — sans eux, un client déjà configuré était
-    // envoyé vers « Mes Activités » au lieu du tableau de bord jusqu'au refresh.
-    let clientCounts = {};
-    if (utilisateur.role === 'client') {
-      const entRes = await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [utilisateur.id]);
-      if (entRes.rows.length > 0) {
-        const c = await pool.query(
-          `SELECT (SELECT COUNT(*) FROM activites WHERE entreprise_id = $1) AS activites_count,
-                  (SELECT COUNT(*) FROM labos WHERE entreprise_id = $1) AS labos_count`,
-          [entRes.rows[0].id]
-        );
-        clientCounts = {
-          activitesCount: parseInt(c.rows[0].activites_count) || 0,
-          labosCount: parseInt(c.rows[0].labos_count) || 0,
-        };
-      } else {
-        clientCounts = { activitesCount: 0, labosCount: 0 };
-      }
-    }
-
-    // Profil du domaine dès le LOGIN (comme /auth/me).
-    const domaine = await loadDomaineForUser(utilisateur, 'auth/login');
-
-    res.json({
-      token,
-      user: {
-        id: utilisateur.id,
-        name: utilisateur.nom,
-        email: utilisateur.email,
-        role: utilisateur.role,
-        onboardingStep,
-        ...gerantFields,
-        ...clientCounts,
-        domaine,
-      },
-    });
+    // await : une erreur de l'ouverture de session arrive dans le catch (réponse 500, jamais une requête sans réponse).
+    return await repondreSession(res, utilisateur);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -594,7 +605,7 @@ const resetPassword = async (req, res) => {
 };
 
 module.exports = {
-  login, register, me, updateProfile, advanceOnboarding,
+  login, repondreSession, register, me, updateProfile, advanceOnboarding,
   verifyInviteToken, acceptInvite, resendInvite,
   forgotPassword, verifyResetToken, resetPassword,
   lexiquePourCompte,

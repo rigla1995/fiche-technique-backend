@@ -5,6 +5,7 @@ const router = express.Router();
 const { login, register, me, updateProfile, advanceOnboarding, verifyInviteToken, acceptInvite, resendInvite, forgotPassword, verifyResetToken, resetPassword } = require('../controllers/authController');
 const { authenticate, requireSuperAdmin, requireClient } = require('../middleware/auth');
 const pool = require('../config/database');
+const { echanger: echangerPassage } = require('../compta/passage');
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -167,6 +168,19 @@ const forgotLimiter = rateLimit({
   legacyHeaders: false,
 });
 router.post('/forgot-password', forgotLimiter, forgotPassword);
+
+// LabFlow Compta, étape S3a (SPEC-SOCLE D12) : échange d'un code de passage (app. ↔ compta.) contre une session. Sans
+// session ; limite d'essais à part (un code de 256 bits ne se devine pas, et passer souvent d'un espace à l'autre ne
+// doit pas consommer les essais de connexion).
+const passageLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  skipSuccessfulRequests: true, // seuls les échecs comptent (un bureau entier partage une adresse IP)
+  message: { message: 'Trop de passages en peu de temps, réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.post('/passage', passageLimiter, echangerPassage);
 router.get('/reset/:token', verifyResetToken);
 router.post('/reset', resetPassword);
 
