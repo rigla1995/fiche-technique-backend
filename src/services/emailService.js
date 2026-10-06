@@ -7,6 +7,15 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 const APP_NAME = process.env.APP_NAME || 'LabFlow';
 
+// LabFlow Compta (chantier Achats & Comptabilité, étape S1, SPEC-SOCLE D13) : deux adresses d'écrans. Le produit
+// passé à un email est toujours contrôlé par `produitSur` (liste fermée), jamais déduit de l'en-tête d'une requête.
+// Sans APP_URL_COMPTA, les liens restent sur APP_URL (la page de réinitialisation existe sur les deux adresses).
+const APP_URL_COMPTA = process.env.APP_URL_COMPTA || APP_URL;
+const PRODUITS = ['labflow', 'compta'];
+const produitSur = (produit) => (PRODUITS.includes(produit) ? produit : 'labflow');
+const urlEcrans = (produit) => (produitSur(produit) === 'compta' ? APP_URL_COMPTA : APP_URL);
+const nomProduit = (produit) => (produitSur(produit) === 'compta' ? `${APP_NAME} Compta` : APP_NAME);
+
 // Logo de marque pour les en-têtes d'emails : image PNG hébergée (le même logo losange
 // que la page de connexion, rendu blanc sur fond sombre). Une image PNG s'affiche dans
 // tous les clients mail (contrairement au SVG/au dégradé CSS). Repli (images bloquées) :
@@ -142,8 +151,10 @@ const generateInviteToken = () => crypto.randomBytes(32).toString('hex');
 
 // Mot de passe oublié — même charte que le mail d'activation (en-tête indigo,
 // liseré ambre, CTA dégradé), lien court (1 h) vers /reset-password/<token>.
-const sendPasswordResetEmail = async ({ to, nom, token }) => {
-  const resetUrl = `${APP_URL}/reset-password/${token}`;
+// `produit` : adresse et nom du produit d'où vient la demande (LabFlow par défaut, ou LabFlow Compta).
+const sendPasswordResetEmail = async ({ to, nom, token, produit }) => {
+  const resetUrl = `${urlEcrans(produit)}/reset-password/${token}`;
+  const nomApp = nomProduit(produit);
 
   const html = `
 <!DOCTYPE html>
@@ -158,7 +169,7 @@ const sendPasswordResetEmail = async ({ to, nom, token }) => {
     <div style="padding:40px 48px;">
       <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour, ${nom}</h2>
       <p style="margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;">
-        Une demande de réinitialisation du mot de passe de votre compte <strong>${APP_NAME}</strong> vient d'être effectuée.<br>
+        Une demande de réinitialisation du mot de passe de votre compte <strong>${nomApp}</strong> vient d'être effectuée.<br>
         Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.
       </p>
       <div style="text-align:center;margin:0 0 28px;">
@@ -171,7 +182,7 @@ const sendPasswordResetEmail = async ({ to, nom, token }) => {
     </div>
     <div style="padding:20px 48px;background:#f9fafb;border-top:1px solid #e5e7eb;">
       <p style="margin:0;color:#9ca3af;font-size:0.75rem;text-align:center;">
-        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email &mdash; votre mot de passe reste inchangé. &mdash; ${APP_NAME}
+        Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet email &mdash; votre mot de passe reste inchangé. &mdash; ${nomApp}
       </p>
     </div>
   </div>
@@ -186,7 +197,7 @@ const sendPasswordResetEmail = async ({ to, nom, token }) => {
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: `${APP_NAME} — Réinitialisation de votre mot de passe`,
+    subject: `${nomApp} — Réinitialisation de votre mot de passe`,
     html,
   });
 
@@ -608,4 +619,4 @@ const sendDemandeAccesRefusEmail = async ({ to, nom }) => {
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, sendSupplementValideEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendBossRevealCode, sendDemandeAccesRefusEmail };
+module.exports = { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, sendSupplementValideEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendBossRevealCode, sendDemandeAccesRefusEmail, produitSur, urlEcrans };
