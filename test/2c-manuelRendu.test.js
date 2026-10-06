@@ -118,7 +118,8 @@ test('requeteManuel : colonnes et ordre de listPublic (I9), variante « valide �
   assert.deepEqual(values, ['hotellerie']);
   assert.match(t, /^SELECT s\.id, s\.slug, COALESCE\(d\.titre, s\.titre\) AS titre, s\.icone, s\.partie, s\.ordre, COALESCE\(d\.contenu, s\.contenu\) AS contenu, COALESCE\(d\.mots_cles, s\.mots_cles\) AS mots_cles, s\.ecran, s\.visible_gerant, s\.actif, s\.updated_at FROM manuel_sections s /);
   assert.match(t, /LEFT JOIN manuel_sections_domaine d ON d\.section_id = s\.id AND d\.domaine_slug = \$1 AND d\.statut = 'valide'/);
-  assert.match(t, /WHERE s\.actif = true ORDER BY s\.ordre, s\.id$/);
+  // LabFlow Compta, S2a : fiches du produit LabFlow par défaut (test/comptaS2a.test.js pour le produit « compta »).
+  assert.match(t, /WHERE s\.actif = true AND s\.produit = 'labflow' ORDER BY s\.ordre, s\.id$/);
   assert.doesNotMatch(t, /visible_gerant = true/);
   // Noms de sortie = colonnes de manuelController.listPublic, dans le même ordre.
   const sortie = t.slice(7, t.indexOf(' FROM ')).split(/,(?![^(]*\))/).map((c) => c.trim().split(/\s+AS\s+|\./).pop());
@@ -131,7 +132,7 @@ test('requeteManuel : slug nul ou vide → paramètre NULL (aucune jointure ne r
   assert.deepEqual(M.requeteManuel(null).values, [null]);
   assert.deepEqual(M.requeteManuel(undefined).values, [null]);
   assert.deepEqual(M.requeteManuel('').values, [null]);
-  assert.match(normaliser(M.requeteManuel(null, { gerant: true }).text), /WHERE s\.actif = true AND s\.visible_gerant = true ORDER BY s\.ordre, s\.id$/);
+  assert.match(normaliser(M.requeteManuel(null, { gerant: true }).text), /WHERE s\.actif = true AND s\.produit = 'labflow' AND s\.visible_gerant = true ORDER BY s\.ordre, s\.id$/);
   const r = normaliser(M.requeteManuel('hotellerie', { recherche: true }).text);
   assert.match(r, /^SELECT s\.slug, COALESCE\(d\.titre, s\.titre\) AS titre, s\.partie, COALESCE\(d\.contenu, s\.contenu\) AS contenu, COALESCE\(d\.mots_cles, s\.mots_cles\) AS mots_cles FROM manuel_sections s LEFT JOIN/);
   assert.match(r, /ORDER BY s\.ordre, s\.id$/);

@@ -9,6 +9,13 @@ const { getProfil, resolveLexique } = require('../services/domaineProfilService'
 const {
   requeteManuel, slugVariantes, rendreFiche, verifierBalises, refuserBalises, sansBalisesDesLignes, CHAMPS_BALISES,
 } = require('../utils/manuelRendu');
+const { PRODUIT_DEFAUT, estProduit } = require('../utils/produits');
+const MSG_PRODUIT = 'Manuel inconnu : labflow ou compta';
+// Une fiche de LabFlow Compta (vocabulaire comptable fixe) ne porte aucune balise ; la contrainte de la migration 201
+// le garantit en base, la création le contrôle avant d'écrire.
+const CONTRAINTE_COMPTA_SANS_BALISE = 'manuel_sections_compta_sans_balise';
+const REFUS_COMPTA_BALISE = { code: 'BALISE_INTERDITE', message: 'Une fiche de LabFlow Compta est en vocabulaire comptable fixe : aucune balise de vocabulaire' };
+const violeComptaSansBalise = (err) => err.code === '23514' && err.constraint === CONTRAINTE_COMPTA_SANS_BALISE;
 
 const parseId = (v) => {
   const n = Number(v);
@@ -71,18 +78,24 @@ const refuserSiBalises = (res, corps, balisables, interdits) => {
 // 2. requête commune (§5.2) et contexte de visibilité ; 3. filtre ; 4. rendu avec req.voc ; 5. mapSection.
 // Vocabulaire par défaut (admin, boss, restauration, café, boulangerie) : aucun profil lu, aucune variante,
 // rendu identité — la réponse est celle d'avant le lot, au caractère près (I1).
+// LabFlow Compta (SPEC-SOCLE D15, étape S2a) : `?produit=compta` (liste fermée, `labflow` par défaut) sert les
+// seules fiches de LabFlow Compta, en vocabulaire comptable fixe : ni domaine, ni variante, ni filtre de
+// configuration. Sans paramètre, tout lecteur reçoit les seules fiches de LabFlow, comme avant l'étape.
 const listPublic = async (req, res) => {
+  const produit = req.query?.produit ?? PRODUIT_DEFAUT;
+  if (!estProduit(produit)) return res.status(400).json({ message: MSG_PRODUIT });
+  const compta = produit === 'compta';
   try {
-    const voc = req.voc ?? vocabDefaut;
+    const voc = compta ? vocabDefaut : (req.voc ?? vocabDefaut);
     let profil = null;
     if (!voc.estDefaut) {
       try { profil = await getProfil(req.user.domaine_id); } catch (_) { profil = null; /* texte commun */ }
     }
     const gerant = req.user.role === 'gerant';
-    const { text, values } = requeteManuel(slugVariantes(voc, profil), { gerant });
+    const { text, values } = requeteManuel(slugVariantes(voc, profil), { gerant, produit });
     const [{ rows }, ctx] = await Promise.all([
       pool.query(text, values),
-      buildManuelContexte(req.user),
+      compta ? null : buildManuelContexte(req.user),
     ]);
     const composants = profil ? profil.composants : undefined;
     res.json(rows.filter((r) => manuelSectionVisible(r.slug, ctx)).map((r) => mapSection(rendreFiche(voc, r, composants))));
@@ -95,6 +108,8 @@ const listPublic = async (req, res) => {
 // GET /admin/manuel — toutes les sections (y compris inactives) + drapeau « modifié »
 // Lot 2c (R5.7.2) : + `sansBalises` (un champ porte une forme par défaut sans aucune balise) ; faux partout tant
 // qu'aucune fiche n'a de balise en base (manuel pas encore balisé). Texte BRUT (édition), jamais rendu.
+// LabFlow Compta (S2a) : + `produit` ; une fiche `compta` (vocabulaire comptable fixe, jamais balisée) n'est
+// jamais « sans balises ».
 const adminList = async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -102,19 +117,28 @@ const adminList = async (req, res) => {
          FROM manuel_sections
         ORDER BY ordre, id`
     );
-    const sans = sansBalisesDesLignes(rows, 'manuel_sections');
-    res.json(rows.map((r, i) => ({ ...mapSection(r), sansBalises: sans[i].length > 0 })));
+    const sans = sansBalisesDesLignes(rows.map((r) => (r.produit === 'compta' ? {} : r)), 'manuel_sections');
+    // Champs propres à l'admin en fin de fiche (lot 2c §10.2) : produit, modifie, sansBalises.
+    res.json(rows.map((r, i) => {
+      const { modifie, ...fiche } = mapSection(r);
+      return { ...fiche, produit: r.produit ?? PRODUIT_DEFAUT, modifie, sansBalises: sans[i].length > 0 };
+    }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
-// POST /admin/manuel
+// POST /admin/manuel — `produit` : `labflow` par défaut, ou `compta` (S2a).
 const create = async (req, res) => {
   const { slug, titre, icone, partie, ordre, contenu, motsCles, ecran, visibleGerant, actif } = req.body;
+  const produit = req.body.produit ?? PRODUIT_DEFAUT;
   if (!slug?.trim() || !titre?.trim() || !partie?.trim() || !contenu?.trim()) {
     return res.status(400).json({ message: 'Slug, titre, partie et contenu requis' });
+  }
+  if (!estProduit(produit)) return res.status(400).json({ message: MSG_PRODUIT });
+  if (produit === 'compta' && [titre, partie, contenu].some((t) => RE_CROCHETS.test(t))) {
+    return res.status(400).json(REFUS_COMPTA_BALISE);
   }
   if (refuserSiBalises(res, req.body, CHAMPS_BALISES.manuel_sections, INTERDITS_MANUEL)) return;
   if (!/^[a-z0-9-]+$/.test(slug.trim())) {
@@ -127,14 +151,15 @@ const create = async (req, res) => {
   if (long) return res.status(400).json({ message: long });
   try {
     const { rows } = await pool.query(
-      `INSERT INTO manuel_sections (slug, titre, icone, partie, ordre, contenu, contenu_defaut, mots_cles, ecran, visible_gerant, actif)
-       VALUES ($1, $2, $3, $4, COALESCE($5, 0), $6, $6, $7, $8, COALESCE($9, true), COALESCE($10, true))
+      `INSERT INTO manuel_sections (slug, titre, icone, partie, ordre, contenu, contenu_defaut, mots_cles, ecran, visible_gerant, actif, produit)
+       VALUES ($1, $2, $3, $4, COALESCE($5, 0), $6, $6, $7, $8, COALESCE($9, true), COALESCE($10, true), $11)
        RETURNING *`,
-      [slug.trim(), titre.trim(), icone || null, partie.trim(), ordre, contenu, motsCles || null, ecran || null, visibleGerant, actif]
+      [slug.trim(), titre.trim(), icone || null, partie.trim(), ordre, contenu, motsCles || null, ecran || null, visibleGerant, actif, produit]
     );
-    res.status(201).json(mapSection(rows[0]));
+    res.status(201).json({ ...mapSection(rows[0]), produit: rows[0].produit });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ message: 'Une section avec ce slug existe déjà' });
+    if (violeComptaSansBalise(err)) return res.status(400).json(REFUS_COMPTA_BALISE);
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -145,7 +170,9 @@ const update = async (req, res) => {
   const cols = {
     slug: 'slug', titre: 'titre', icone: 'icone', partie: 'partie', ordre: 'ordre',
     contenu: 'contenu', motsCles: 'mots_cles', ecran: 'ecran', visibleGerant: 'visible_gerant', actif: 'actif',
+    produit: 'produit',
   };
+  if (req.body.produit !== undefined && !estProduit(req.body.produit)) return res.status(400).json({ message: MSG_PRODUIT });
   if (refuserSiBalises(res, req.body, CHAMPS_BALISES.manuel_sections, INTERDITS_MANUEL)) return;
   if (req.body.slug !== undefined && !/^[a-z0-9-]+$/.test(String(req.body.slug).trim())) {
     return res.status(400).json({ message: 'Slug invalide : minuscules, chiffres et tirets uniquement' });
@@ -173,9 +200,10 @@ const update = async (req, res) => {
       vals
     );
     if (rows.length === 0) return res.status(404).json({ message: 'Section introuvable' });
-    res.json(mapSection(rows[0]));
+    res.json({ ...mapSection(rows[0]), produit: rows[0].produit });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ message: 'Une section avec ce slug existe déjà' });
+    if (violeComptaSansBalise(err)) return res.status(400).json(REFUS_COMPTA_BALISE);
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -286,11 +314,15 @@ const putVariante = async (req, res) => {
   if (long) return res.status(400).json({ message: long });
   try {
     const [section, domaine, existante] = await Promise.all([
-      pool.query('SELECT id FROM manuel_sections WHERE id = $1', [id]),
+      pool.query('SELECT id, produit FROM manuel_sections WHERE id = $1', [id]),
       pool.query('SELECT id, lexique FROM domaines_activite WHERE slug = $1', [domaineSlug]),
       pool.query('SELECT * FROM manuel_sections_domaine WHERE section_id = $1 AND domaine_slug = $2', [id, domaineSlug]),
     ]);
     if (section.rows.length === 0) return res.status(404).json({ message: 'Section introuvable' });
+    // LabFlow Compta (S2a) : vocabulaire comptable fixe, jamais de variante par domaine.
+    if (section.rows[0].produit === 'compta') {
+      return res.status(400).json({ code: 'VARIANTE_COMPTA', message: 'Une fiche de LabFlow Compta n\'a pas de variante par domaine' });
+    }
     const actuelle = existante.rows[0] || null;
     const dom = domaine.rows[0] || null;
     if (!actuelle) {

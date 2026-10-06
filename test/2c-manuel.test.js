@@ -102,7 +102,8 @@ const repondre = async (sql, params = []) => {
     B.fiches.push(f);
     return { rows: [{ ...f }] };
   }
-  if (t === 'SELECT id FROM manuel_sections WHERE id = $1') return { rows: B.fiches.filter((f) => f.id === params[0]).map((f) => ({ id: f.id })) };
+  // LabFlow Compta, S2a : la création d'une variante lit aussi le produit de la fiche (jamais de variante pour « compta »).
+  if (t === 'SELECT id, produit FROM manuel_sections WHERE id = $1') return { rows: B.fiches.filter((f) => f.id === params[0]).map((f) => ({ id: f.id, produit: f.produit ?? 'labflow' })) };
   if (t === 'SELECT id, lexique FROM domaines_activite WHERE slug = $1') return { rows: B.domaines.filter((d) => d.slug === params[0]).map((d) => ({ id: d.id, lexique: d.lexique })) };
   if (t === 'SELECT * FROM manuel_sections_domaine WHERE section_id = $1 AND domaine_slug = $2') {
     return { rows: B.variantes.filter((v) => v.section_id === params[0] && v.domaine_slug === params[1]).map(copie) };
@@ -145,7 +146,8 @@ const repondre = async (sql, params = []) => {
     return { rows: [copie(e)] };
   }
   // Démarrage (R5.8)
-  if (t === 'SELECT slug, titre, partie, contenu, contenu_defaut FROM manuel_sections WHERE actif = true ORDER BY ordre, id') {
+  // LabFlow Compta, S2a : le contrôle ne lit que les fiches de LabFlow (celles de LabFlow Compta ne sont jamais balisées).
+  if (t === 'SELECT slug, titre, partie, contenu, contenu_defaut FROM manuel_sections WHERE actif = true AND produit = \'labflow\' ORDER BY ordre, id') {
     return { rows: B.fiches.filter((f) => f.actif).sort(parOrdre).map((f) => garder(f, ['slug', 'titre', 'partie', 'contenu', 'contenu_defaut'])) };
   }
   if (t === 'SELECT id, titre, contenu FROM ai_knowledge_base WHERE actif = true ORDER BY id') {
