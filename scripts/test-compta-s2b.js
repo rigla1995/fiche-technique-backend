@@ -11,7 +11,8 @@ const pool = require('../src/config/database');
 const bcrypt = require('bcryptjs');
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const MDP = 'TestComptaS2b2026!';
+// Mot de passe des comptes temporaires : tiré au hasard à chaque essai (jamais écrit dans le dépôt).
+const MDP = `${require('crypto').randomBytes(12).toString('base64url')}Aa1!`;
 const results = [];
 const check = (name, ok, detail = '') => {
   results.push({ name, ok });
@@ -152,7 +153,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     check('D5 : notifications ouvertes', r.status === 200, String(r.status));
     r = await appel('GET', '/api/manuel?produit=labflow', jeton);
     check('manuel : les seules fiches de LabFlow Compta, même en demandant LabFlow',
-      r.status === 200 && r.body.length >= 3 && r.body.every((f) => ['compta-bienvenue', 'compta-cabinet', 'compta-abonnement'].includes(f.slug)), (r.body || []).map((f) => f.slug).join(', '));
+      r.status === 200 && r.body.length >= 3 && ['compta-bienvenue', 'compta-cabinet', 'compta-abonnement'].every((s) => r.body.some((f) => f.slug === s))
+      && r.body.every((f) => f.slug.startsWith('compta-')), (r.body || []).map((f) => f.slug).join(', '));
     r = await appel('GET', '/auth/me', jeton);
     check('/auth/me : rôle comptable', r.status === 200 && (r.body?.role === 'comptable' || r.body?.user?.role === 'comptable'));
     r = await appel('GET', '/api/compta/acces', jeton);

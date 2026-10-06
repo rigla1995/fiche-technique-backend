@@ -46,7 +46,7 @@ test('client avec le module (S2c) : mensualité LabFlow + module + gérants comp
   const labflow = computeMensuelTotalFromConfig(LABFLOW, TARIFS);
   assert.equal(computeMensuelTotalFromConfig(avecModule, TARIFS), Math.round((labflow + 60 + 20) * 100) / 100);
   const lignes = lignesMensualite(avecModule, TARIFS, null);
-  assert.deepEqual(lignes.map((l) => l.libelle), ['Abonnement LabFlow', 'Module Comptabilité', 'Gérant supplémentaire × 1']);
+  assert.deepEqual(lignes.map((l) => l.libelle), ['Abonnement LabFlow', 'Module Comptabilité', 'Gérant comptable supplémentaire × 1']);
   assert.equal(lignes[0].montant, labflow);
 });
 
