@@ -545,5 +545,33 @@
     "apres": "/module-compta",
     "type": "discriminant",
     "justification": "Chantier Achats & Comptabilité, étape S2c (module Comptabilité chez un client, découpage validé par le client le 06/10/2026) : chemin de la route du client (état de son module) ; jamais affiché."
+  },
+  {
+    "fichier": "src/app.js",
+    "avant": null,
+    "apres": "/compta/passage",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3a (passage entre LabFlow et LabFlow Compta, découpage validé par le client le 06/10/2026) : chemin de la route d'émission d'un code de passage, exemptée de la garde d'écriture globale (aucune donnée du compte écrite) ; jamais affiché."
+  },
+  {
+    "fichier": "src/app.js",
+    "avant": null,
+    "apres": "POST",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3a (passage entre LabFlow et LabFlow Compta, découpage validé par le client le 06/10/2026) : méthode comparée pour cette exemption ; jamais affiché."
+  },
+  {
+    "fichier": "src/routes/auth.js",
+    "avant": null,
+    "apres": "/passage",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3a (passage entre LabFlow et LabFlow Compta, découpage validé par le client le 06/10/2026) : chemin de la route d'échange d'un code de passage (SPEC-SOCLE D12) ; jamais affiché."
+  },
+  {
+    "fichier": "src/routes/auth.js",
+    "avant": null,
+    "apres": "Trop de passages en peu de temps, réessayez dans 15 minutes.",
+    "type": "ajoute",
+    "justification": "Chantier Achats & Comptabilité, étape S3a (passage entre LabFlow et LabFlow Compta, découpage validé par le client le 06/10/2026) : message de la limite d'essais propre à l'échange d'un code de passage (POST /auth/passage). Aucun terme du lexique : identique dans tous les domaines."
   }
 ]

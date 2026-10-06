@@ -110,6 +110,9 @@ app.use('/api', (req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
   // Allow demandes creation even in read_only (so client can request to unblock account)
   if (req.path === '/abonnements/demandes' && req.method === 'POST') return next();
+  // LabFlow Compta (S3a) : le code de passage vers l'autre adresse n'écrit aucune donnée du compte — un compte en
+  // lecture seule passe d'un espace à l'autre.
+  if (req.path === '/compta/passage' && req.method === 'POST') return next();
   // Sans aucun jeton : la route répondra 401 elle-même. Avec un jeton, où qu'il soit (en-tête ou adresse), la
   // garde s'applique — même définition que authenticate (jetonPresent).
   if (!jetonPresent(req)) return next();
