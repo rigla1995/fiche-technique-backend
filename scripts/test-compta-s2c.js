@@ -281,6 +281,11 @@ const somme = (l) => Math.round((l || []).reduce((s, x) => s + Number(x.montant)
     check('journal : module_gerants, module_desactive, espace_ferme, espace_rouvert', ['module_gerants', 'module_desactive', 'espace_ferme', 'espace_rouvert'].every((t) => ev.includes(t)), ev.join(', '));
 
     // ── Suppression du client ──
+    // S4b (D10) : le dossier « Mon entreprise » du client existe dès l'activation du module ; un client qui a un dossier
+    // ne se supprime pas (archivage du compte). Le scénario d'avant reprend une fois le dossier retiré en base.
+    r = await appel('DELETE', `/admin/clients/${clientId}`, adminTok);
+    check('suppression du client avec son dossier « Mon entreprise » : refusée (409 DOSSIERS_EN_PLACE)', r.status === 409 && r.body?.code === 'DOSSIERS_EN_PLACE', `${r.status} ${r.body?.code}`);
+    await pool.query(`DELETE FROM compta.dossiers d USING compta.espaces e WHERE e.id = d.espace_id AND e.titulaire_id = $1`, [clientId]);
     r = await appel('DELETE', `/admin/clients/${clientId}`, adminTok);
     check('suppression du client : 204 (comptabilité sans dossier retirée avant)', r.status === 204, `${r.status} ${r.body?.message || ''}`);
     const reste = (await pool.query(`SELECT (SELECT COUNT(*) FROM compta.espaces WHERE titulaire_id = $1)::int AS e, (SELECT COUNT(*) FROM utilisateurs WHERE id = $1)::int AS u`, [clientId])).rows[0];
