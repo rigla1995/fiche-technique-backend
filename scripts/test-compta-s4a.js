@@ -206,8 +206,11 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     check('un dossier archivé ne se modifie pas : 409 DOSSIER_ARCHIVE', r.status === 409 && r.body?.code === 'DOSSIER_ARCHIVE', `${r.status} ${r.body?.code}`);
     r = await appel('POST', `/api/compta/dossiers/${A.id}/archiver`, cabinet.tok);
     check('archiver deux fois : 409', r.status === 409, String(r.status));
+    // S4d : la liste ne rend les archivés que sur demande (`archives=1`) ; par défaut, A sort de la liste.
     r = await appel('GET', `/api/compta/espaces/${espaceId}/dossiers`, cabinet.tok);
-    check('liste : A reste visible, état « archive », classé après les actifs', r.body?.dossiers?.length === 4 && r.body.dossiers[3].id === A.id && r.body.dossiers[3].etat === 'archive', JSON.stringify(r.body?.dossiers?.map((d) => [d.nom, d.etat])));
+    check('liste par défaut : A archivé n\'y est plus (3 actifs), l\'en-tête compte 1 archivé', r.body?.dossiers?.length === 3 && r.body?.nbArchives === 1 && r.body?.nbActifs === 3, JSON.stringify(r.body?.dossiers?.map((d) => [d.nom, d.etat])));
+    r = await appel('GET', `/api/compta/espaces/${espaceId}/dossiers?archives=1`, cabinet.tok);
+    check('liste avec les archivés : A reste visible, état « archive », classé après les actifs', r.body?.dossiers?.length === 4 && r.body.dossiers[3].id === A.id && r.body.dossiers[3].etat === 'archive', JSON.stringify(r.body?.dossiers?.map((d) => [d.nom, d.etat])));
     r = await appel('POST', `/api/compta/dossiers/${A.id}/desarchiver`, cabinet.tok);
     check('désarchiver A (200, état « actif »)', r.status === 200 && r.body?.etat === 'actif', `${r.status} ${r.body?.message || ''}`);
     check('journal : dossier_desarchive', !!(await journal(espaceId, 'dossier_desarchive')));

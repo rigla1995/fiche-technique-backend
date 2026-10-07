@@ -203,16 +203,75 @@ const avertissementsMatriculeDossier = async (db, acces, mf, excludeId = null) =
 };
 
 // ── Lectures ────────────────────────────────────────────────────────────────────────────────────────────────────────
+// S4d « grands cabinets » (remarque du client du 07/10 : des centaines, voire des milliers de dossiers) : la liste se
+// lit PAR PAGES, avec la recherche côté serveur. Paramètres de GET /espaces/:espaceId/dossiers :
+//   q         nom, raison sociale, nom commercial ou matricule (100 caractères au plus ; % et _ sont pris au pied de la lettre)
+//   archives  1 : les archivés aussi (classés après les actifs) ; sinon les actifs seulement
+//   page      1 par défaut ; limite 25 par défaut (réponse du client du 07/10), 200 au plus
+//   ids       identifiants, séparés par des virgules (200 au plus : une page peut tous les rendre — relecture) : relire
+//             des dossiers précis (liste à cocher) ; vide = aucun ; paginés comme le reste
+//   matricule identifiant à 7 chiffres : les dossiers qui le portent (l'assistant prévient « déjà porté » avant de créer)
+// Les comptes rendus (actifs, archivés, résultats) portent sur les dossiers OUVERTS à la personne (SQL_VISIBLE).
+const LIMITE_DEFAUT = 25;
+const LIMITE_MAX = 200;
+const IDS_MAX = LIMITE_MAX;
+const PAGE_MAX = 100000;
+const RE_ENTIER = /^\d{1,6}$/;
+const lireParametresListe = (query = {}) => {
+  if (!query || typeof query !== 'object') throw erreur(400, 'Paramètres invalides');
+  const q = String(query.q ?? '').trim().slice(0, 100);
+  const archives = ['1', 'true', 'oui'].includes(String(query.archives ?? '').toLowerCase());
+  const page = query.page === undefined || query.page === '' ? 1 : (RE_ENTIER.test(String(query.page)) ? Number(query.page) : NaN);
+  if (!Number.isInteger(page) || page < 1 || page > PAGE_MAX) throw erreur(400, 'Page invalide');
+  const limite = query.limite === undefined || query.limite === '' ? LIMITE_DEFAUT : (RE_ENTIER.test(String(query.limite)) ? Number(query.limite) : NaN);
+  if (!Number.isInteger(limite) || limite < 1 || limite > LIMITE_MAX) throw erreur(400, `Limite : entier de 1 à ${LIMITE_MAX}`);
+  let ids = null;
+  if (query.ids !== undefined) {
+    const morceaux = [...new Set(String(query.ids).split(',').map((x) => x.trim()).filter(Boolean))];
+    if (morceaux.length > IDS_MAX || morceaux.some((x) => !idValide(x) || Number(x) < 1)) throw erreur(400, 'Identifiants invalides');
+    ids = morceaux.map(Number);
+  }
+  let matricule = null;
+  if (query.matricule !== undefined && String(query.matricule).trim() !== '') {
+    matricule = String(query.matricule).trim();
+    if (!/^\d{7}$/.test(matricule)) throw erreur(400, 'Matricule : les 7 chiffres de l\'identifiant');
+  }
+  return { q, archives, page, limite, ids, matricule };
+};
+// Motif ILIKE d'une recherche libre : % et _ échappés (le caractère d'échappement par défaut est la barre oblique inverse).
+const motifRecherche = (q) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+// Conditions de recherche ($4 motif ou '', $5 ids ou NULL, $6 matricule ou NULL) : paramètres TOUJOURS à ces rangs,
+// après ceux de paramsVisibles.
+const SQL_FILTRES = `($4::text = '' OR d.nom ILIKE $4 OR d.raison_sociale ILIKE $4 OR d.nom_commercial ILIKE $4 OR d.matricule_fiscal ILIKE $4)
+   AND ($5::int[] IS NULL OR d.id = ANY($5::int[]))
+   AND ($6::text IS NULL OR LEFT(d.matricule_fiscal, 7) = $6)`;
+const paramsFiltres = (acces, f) => [...paramsVisibles(acces), f.q ? motifRecherche(f.q) : '', f.ids, f.matricule];
+// La page est découpée AVANT la jointure de l'exercice (25 sondes et non une par dossier visible, relecture) ; l'index
+// (espace_id, etat, LOWER(nom), id) de la migration 211 sert le tri sans recherche.
 const SQL_LISTE = `
   SELECT d.id, d.nom, d.raison_sociale, d.nom_commercial, d.forme_juridique, d.matricule_fiscal, d.adresse, d.ville,
          d.etat, d.source, d.created_at,
          ex.debut AS exercice_debut, ex.fin AS exercice_fin
-    FROM compta.dossiers d
+    FROM (
+      SELECT d.id, d.nom, d.raison_sociale, d.nom_commercial, d.forme_juridique, d.matricule_fiscal, d.adresse, d.ville,
+             d.etat, d.source, d.created_at
+        FROM compta.dossiers d
+       WHERE d.espace_id = $1 AND ${SQL_VISIBLE} AND ${SQL_FILTRES} AND ($7::boolean OR d.etat = 'actif')
+       ORDER BY d.etat, LOWER(d.nom), d.id
+       LIMIT $8 OFFSET $9
+    ) d
     LEFT JOIN LATERAL (
       SELECT x.debut, x.fin FROM compta.exercices x WHERE x.dossier_id = d.id AND x.etat = 'ouvert' ORDER BY x.debut DESC LIMIT 1
     ) ex ON true
-   WHERE d.espace_id = $1 AND ${SQL_VISIBLE}
    ORDER BY d.etat, LOWER(d.nom), d.id`;
+// Comptes rendus en une requête : actifs et archivés ouverts à la personne (en-tête), résultats de la recherche (pagination).
+const SQL_COMPTES = `
+  SELECT COUNT(*) FILTER (WHERE d.etat = 'actif')::int AS actifs,
+         COUNT(*) FILTER (WHERE d.etat = 'archive')::int AS archives,
+         COUNT(*) FILTER (WHERE ${SQL_FILTRES})::int AS resultats,
+         COUNT(*) FILTER (WHERE ${SQL_FILTRES} AND d.etat = 'actif')::int AS resultats_actifs
+    FROM compta.dossiers d
+   WHERE d.espace_id = $1 AND ${SQL_VISIBLE}`;
 const presenterLigne = (d) => ({
   id: d.id,
   nom: d.nom,
@@ -228,15 +287,25 @@ const presenterLigne = (d) => ({
   creeLe: d.created_at,
 });
 const presenterEspace = (acces) => ({ id: acces.espace_id, nom: acces.nom, type: acces.type, role: acces.role, niveau: acces.niveau });
-const etatListe = async (db, acces) => {
-  const [r, mode] = await Promise.all([
-    db.query(SQL_LISTE, paramsVisibles(acces)),
+// Une page de la liste (S4d) : `dossiers` = la page ; `total` = résultats de la recherche (archivés compris si demandés) ;
+// `nbActifs` / `nbArchives` = tous les dossiers ouverts à la personne, pour l'en-tête.
+const etatListe = async (db, acces, filtres) => {
+  const params = paramsFiltres(acces, filtres);
+  const [r, c, mode] = await Promise.all([
+    db.query(SQL_LISTE, [...params, filtres.archives, filtres.limite, (filtres.page - 1) * filtres.limite]),
+    db.query(SQL_COMPTES, params),
     modeTitulaire(db, acces.espace_id),
   ]);
+  const comptes = c.rows[0];
   return {
     espace: presenterEspace(acces),
     droits: droits(acces),
     dossiers: r.rows.map(presenterLigne),
+    total: filtres.archives ? comptes.resultats : comptes.resultats_actifs,
+    page: filtres.page,
+    limite: filtres.limite,
+    nbActifs: comptes.actifs,
+    nbArchives: comptes.archives,
     etatAbonnement: etatAbonnement(mode),
   };
 };
@@ -354,11 +423,13 @@ const insererPeriodes = async (db, exerciceId, exercice) => {
 
 // ── Routes ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-// GET /api/compta/espaces/:espaceId/dossiers — les dossiers ouverts à la personne dans cette comptabilité.
+// GET /api/compta/espaces/:espaceId/dossiers — les dossiers ouverts à la personne dans cette comptabilité, par pages
+// (S4d : q, archives, page, limite, ids, matricule). Les paramètres sont contrôlés avant toute requête.
 const lister = async (req, res) => {
   try {
+    const filtres = lireParametresListe(req.query);
     const acces = await exigerAcces(pool, req.user, req.params.espaceId);
-    res.json(await etatListe(pool, acces));
+    res.json(await etatListe(pool, acces, filtres));
   } catch (err) {
     repondreErreur(res, err, '[compta.dossiers.lister]');
   }
@@ -565,5 +636,6 @@ const supprimer = async (req, res) => {
 module.exports = {
   PERSONNES, IMPOTS, TVA, MOIS_MAX, regimeParForme, lireRegime, lireExercice, periodesDe, nbMois, finDeMois, dateValide, anneeCivile, lireIdentiteDossier, droits,
   accesSurEspace, dossierMouvemente, creerExercice, identiteLabflow, lireIdentiteClient, SQL_IDENTITE_CLIENT,
+  LIMITE_DEFAUT, LIMITE_MAX, IDS_MAX, lireParametresListe, motifRecherche, SQL_LISTE, SQL_COMPTES,
   lister, creer, fiche, modifier, reprendreIdentite, archiver, desarchiver, supprimer,
 };

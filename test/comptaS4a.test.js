@@ -145,10 +145,10 @@ test('routes des dossiers : la comptabilité dans l\'adresse (D3), accès jugé 
   assert.ok(ctrl.includes('FOR UPDATE OF e'), 'comptabilité verrouillée pour une écriture');
   // Toute lecture passe par la liste de l'accès (tous_dossiers, sinon acces_dossiers — S4c) : une seule clause, partout.
   assert.ok(ctrl.includes('const SQL_VISIBLE = `($2::boolean OR EXISTS (SELECT 1 FROM compta.acces_dossiers ad WHERE ad.acces_id = $3 AND ad.dossier_id = d.id))`'));
-  // Liste, lecture d'un dossier, avertissement du matricule (relecture de S4a : jamais le nom d'un dossier fermé à la
-  // personne) — et aucune autre lecture de compta.dossiers hors de la clause.
-  assert.equal((ctrl.match(/\$\{SQL_VISIBLE\}/g) || []).length, 3, 'liste, lecture d\'un dossier, avertissement du matricule');
-  assert.equal((code.match(/FROM compta\.dossiers d\b/g) || []).length, 3, 'toute lecture de dossiers porte la clause');
+  // Liste (page), comptes rendus de la liste (S4d), lecture d'un dossier, avertissement du matricule (relecture de S4a :
+  // jamais le nom d'un dossier fermé à la personne) — et aucune autre lecture de compta.dossiers hors de la clause.
+  assert.equal((ctrl.match(/\$\{SQL_VISIBLE\}/g) || []).length, 4, 'liste, comptes rendus, lecture d\'un dossier, avertissement du matricule');
+  assert.equal((code.match(/FROM compta\.dossiers d\b/g) || []).length, 4, 'toute lecture de dossiers porte la clause');
   const cli = lire('src', 'controllers', 'clientsController.js');
   assert.ok(cli.includes('if (estRetenuParDossiers(err)) return res.status(409).json(refusClientAvecDossiers(null));'), 'course D10 : RESTRICT → 409');
   const d10 = require('../src/compta/d10');
