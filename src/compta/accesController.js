@@ -6,8 +6,8 @@ const {
 const { postesCompta } = require('./tarifsCompta');
 const { nomAffiche, mapIdentite } = require('../utils/identite');
 const moduleCompta = require('./moduleClient');
-const { etatAbonnement } = require('./garde');
-const { lireComptables } = require('./comptablesClient');
+const { etatAbonnement, modeTitulaire } = require('./garde');
+const { lireComptables, lireDossiersEspace } = require('./comptablesClient');
 
 // GET /api/compta/acces — les comptabilités de la personne, en trois groupes TOUJOURS distincts (CADRAGE §2) : son
 // cabinet ; sa comptabilité de client LabFlow (étape S2c) ; celles que des clients LabFlow lui ont confiées. Seuls les
@@ -62,7 +62,11 @@ const maComptabilite = async (req, res) => {
     if (!r.rows.length) return res.status(404).json({ code: 'MODULE_INACTIF', message: 'Le module Comptabilité n\'est pas activé sur ce compte' });
     const espace = r.rows[0];
     // S3b : même présentation que la page Gérants de LabFlow (nom saisi par le client, invitation en attente).
-    const [comptables, module] = await Promise.all([lireComptables(pool, espace.id), moduleCompta.etat(pool, req.user.id)]);
+    // S4c : les dossiers de la comptabilité, pour régler ceux de chaque accès depuis « Ma comptabilité » ; l'état de
+    // l'abonnement (D4), pour fermer « Régler » quand la comptabilité n'est pas modifiable (comme « + Dossier »).
+    const [comptables, module, dossiers, mode] = await Promise.all([
+      lireComptables(pool, espace.id), moduleCompta.etat(pool, req.user.id), lireDossiersEspace(pool, espace.id), modeTitulaire(pool, espace.id),
+    ]);
     res.json({
       espace: { id: espace.id, nom: espace.nom, etat: espace.etat, ouvertLe: espace.created_at },
       module: module ? {
@@ -70,6 +74,8 @@ const maComptabilite = async (req, res) => {
         nbGerants: module.nbGerants, postes: module.postes, totalMensuel: module.totalMensuel,
       } : null,
       comptables,
+      dossiers,
+      etatAbonnement: etatAbonnement(mode),
     });
   } catch (err) {
     console.error('[compta.ma-comptabilite]', err);

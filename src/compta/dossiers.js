@@ -3,7 +3,7 @@
 // identité (formulaire et lecture de la patente de LabFlow, D17), régime fiscal, exercice en cours et ses périodes
 // mensuelles. Routes (D3) : la comptabilité voyage dans l'adresse (/espaces/:espaceId/dossiers, /dossiers/:dossierId)
 // et chaque requête vérifie l'accès de la personne sur compta.acces — accès actif, comptabilité ouverte, dossier dans sa
-// liste (tous_dossiers, sinon compta.acces_dossiers : remplie à l'étape S4c), niveau suffisant. Réponses du client du
+// liste (tous_dossiers, sinon compta.acces_dossiers : écrite depuis l'étape S4c), niveau suffisant. Réponses du client du
 // 07/10 : le titulaire et un gérant de niveau Complet créent et modifient ; Saisie et Consultation lisent ; archiver,
 // désarchiver et supprimer = titulaire seul. Un dossier qui a une écriture ne se supprime jamais (D10 ; aucune écriture
 // n'existe avant l'étape de la saisie : dossierMouvemente). Écritures dans la transaction verrouillée (comptabilité)
@@ -299,7 +299,8 @@ const presenterFiche = async (db, acces, d) => {
 
 // ── Écritures ───────────────────────────────────────────────────────────────────────────────────────────────────────
 // Transaction sur une comptabilité, verrouillée, l'accès de la personne vérifié, garde par comptabilité comprise (D4).
-// `{ garde: false }` n'est employé par aucune route des dossiers (rien n'y est « toujours permis »).
+// Aucune route des dossiers n'est « toujours permise » : `{ garde: false }` n'y sert qu'à dansEspaceDuDossier, qui
+// applique la garde lui-même après avoir relu le dossier.
 const dansEspaceDossiers = async (user, espaceId, travail, { garde = true } = {}) => {
   if (!idValide(espaceId)) throw erreur(404, 'Comptabilité introuvable');
   const db = await pool.connect();
@@ -318,13 +319,19 @@ const dansEspaceDossiers = async (user, espaceId, travail, { garde = true } = {}
   }
 };
 // Même transaction à partir d'un dossier : sa comptabilité est lue, puis verrouillée, puis le dossier relu sous verrou
-// (un dossier d'une autre comptabilité, ou fermé à la personne, est « introuvable » : jamais 403).
-const dansEspaceDuDossier = async (user, dossierId, travail, options) => {
+// (un dossier d'une autre comptabilité, ou fermé à la personne, est « introuvable » : jamais 403). S4c (relecture) : le
+// dossier est relu AVANT la garde par comptabilité — en lecture seule, un gérant à liste restreinte ne doit pas apprendre
+// par un 403 qu'un dossier caché existe.
+const dansEspaceDuDossier = async (user, dossierId, travail, { garde = true } = {}) => {
   if (!idValide(dossierId)) throw erreur(404, 'Dossier introuvable');
   const e = await pool.query('SELECT espace_id FROM compta.dossiers WHERE id = $1', [dossierId]);
   if (!e.rows.length) throw erreur(404, 'Dossier introuvable');
   try {
-    return await dansEspaceDossiers(user, e.rows[0].espace_id, async (db, acces) => travail(db, acces, await dossierDe(db, acces, dossierId, true)), options);
+    return await dansEspaceDossiers(user, e.rows[0].espace_id, async (db, acces) => {
+      const d = await dossierDe(db, acces, dossierId, true);
+      if (garde) await exigerEcriture(db, acces.espace_id);
+      return travail(db, acces, d);
+    }, { garde: false });
   } catch (err) {
     if (err.statusCode === 404) throw erreur(404, 'Dossier introuvable');
     throw err;
@@ -377,8 +384,10 @@ const creer = async (req, res) => {
         params
       );
       const d = ins.rows[0];
+      // S4c : un dossier créé par un gérant qui n'a pas « tous les dossiers » lui est ouvert aussitôt (même transaction).
+      if (!acces.tous_dossiers) await db.query('INSERT INTO compta.acces_dossiers (acces_id, dossier_id) VALUES ($1, $2)', [acces.acces_id, d.id]);
       const ex = await creerExercice(db, d.id, exercice);
-      await journaliser(db, acces.espace_id, req.user.id, 'dossier_cree', { dossier: d.id, nom: d.nom, matricule: d.matricule_fiscal });
+      await journaliser(db, acces.espace_id, req.user.id, 'dossier_cree', { dossier: d.id, nom: d.nom, matricule: d.matricule_fiscal, ...(acces.tous_dossiers ? {} : { ouvertA: acces.acces_id }) });
       await journaliser(db, acces.espace_id, req.user.id, 'exercice_cree', { dossier: d.id, exercice: ex.id, debut: exercice.debut, fin: exercice.fin });
       return {
         fiche: await presenterFiche(db, acces, d),
@@ -541,7 +550,9 @@ const supprimer = async (req, res) => {
       // activation) : il s'archive.
       if (d.source === 'labflow') throw erreur(409, 'Le dossier « Mon entreprise » ne se supprime pas : archivez-le', 'DOSSIER_LABFLOW');
       if (await dossierMouvemente(db, d.id)) throw erreur(409, 'Ce dossier a des écritures : il ne peut pas être supprimé, archivez-le', 'DOSSIER_MOUVEMENTE');
-      await journaliser(db, acces.espace_id, req.user.id, 'dossier_supprime', { dossier: d.id, nom: d.nom, raisonSociale: d.raison_sociale, matricule: d.matricule_fiscal });
+      // S4c : les accès à liste qui avaient ce dossier le perdent (cascade) — le journal les nomme.
+      const ouvertA = (await db.query('SELECT acces_id FROM compta.acces_dossiers WHERE dossier_id = $1 ORDER BY acces_id', [d.id])).rows.map((x) => x.acces_id);
+      await journaliser(db, acces.espace_id, req.user.id, 'dossier_supprime', { dossier: d.id, nom: d.nom, raisonSociale: d.raison_sociale, matricule: d.matricule_fiscal, ...(ouvertA.length ? { ouvertA } : {}) });
       await db.query('DELETE FROM compta.dossiers WHERE id = $1', [d.id]);
       return {};
     });
