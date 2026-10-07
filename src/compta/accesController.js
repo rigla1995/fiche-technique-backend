@@ -108,7 +108,8 @@ const monCabinet = async (req, res) => {
               pe.raison_sociale, pe.nom_commercial, pe.forme_juridique, pe.matricule_fiscal, pe.rne, pe.adresse, pe.ville,
               pe.representant_nom, pe.representant_qualite,
               ac.nb_gerants_compta,
-              (SELECT COUNT(*)::int FROM compta.acces g WHERE g.espace_id = e.id AND g.role = 'gerant') AS gerants_en_place
+              (SELECT COUNT(*)::int FROM compta.acces g WHERE g.espace_id = e.id AND g.role = 'gerant') AS gerants_en_place,
+              (SELECT COUNT(*)::int FROM compta.dossiers d WHERE d.espace_id = e.id) AS nb_dossiers
          FROM compta.espaces e
          JOIN utilisateurs u ON u.id = e.titulaire_id
          LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
@@ -126,6 +127,8 @@ const monCabinet = async (req, res) => {
       contact: { nom: x.nom, email: x.email, telephone: x.telephone },
       nbGerants: x.nb_gerants_compta || 0,
       gerantsEnPlace: x.gerants_en_place || 0,
+      // S4a : dossiers du cabinet, archivés compris.
+      nbDossiers: x.nb_dossiers || 0,
     });
   } catch (err) {
     console.error('[compta.cabinet]', err);

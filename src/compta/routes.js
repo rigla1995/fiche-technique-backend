@@ -10,6 +10,7 @@ const rateLimit = require('express-rate-limit');
 const { emettre: emettrePassage } = require('./passage');
 const comptables = require('./comptablesClient');
 const gerants = require('./gerantsCabinet');
+const dossiers = require('./dossiers');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
 const limiteEmission = rateLimit({
@@ -87,6 +88,26 @@ router.post('/cabinet/gerants/:id/inviter', authenticate, exigerTitulaireCabinet
 router.post('/cabinet/demande-gerants', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.demander);
 // Le collaborateur : la page du cabinet (le titulaire gère son équipe : pas de « Quitter », réponse du client du 07/10).
 router.get('/cabinets/:espaceId', authenticate, gerants.membre);
+
+// Étape S4a : les dossiers d'une comptabilité (D3 : la comptabilité voyage dans l'adresse ; l'accès de la personne —
+// titulaire ou gérant, tous les dossiers ou sa liste — et son niveau sont jugés par le contrôleur sur compta.acces,
+// jamais le rôle seul). Limite de débit : un cabinet qui reprend sa clientèle ouvre beaucoup de dossiers à la suite —
+// 100 écritures par quart d'heure et par personne (aucun compte ni email créé).
+const limiteDossiers = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  keyGenerator: (req) => `dossiers:${req.user.id}`,
+  message: { message: 'Trop de modifications en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.get('/espaces/:espaceId/dossiers', authenticate, dossiers.lister);
+router.post('/espaces/:espaceId/dossiers', authenticate, limiteDossiers, dossiers.creer);
+router.get('/dossiers/:dossierId', authenticate, dossiers.fiche);
+router.put('/dossiers/:dossierId', authenticate, limiteDossiers, dossiers.modifier);
+router.post('/dossiers/:dossierId/archiver', authenticate, limiteDossiers, dossiers.archiver);
+router.post('/dossiers/:dossierId/desarchiver', authenticate, limiteDossiers, dossiers.desarchiver);
+router.delete('/dossiers/:dossierId', authenticate, limiteDossiers, dossiers.supprimer);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique
