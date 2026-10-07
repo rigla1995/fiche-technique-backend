@@ -215,6 +215,8 @@ const sendSupplementValideEmail = async ({
   to, nom, notesAdmin,
   // Ajouts validés
   nbActivitesAdded = 0, nbLabosAdded = 0, nbGerantsAdded = 0, acheteursCible = null,
+  // LabFlow Compta (S3b) : libellé de l'ajout de gérants comptables (src/compta/emails.js) ; le nouveau total le compte
+  libelleAjoutCompta = null,
   // Configuration après l'ajout
   nbActivites, nbLabos, nbGerants, nbAcheteurs = 0,
   // Détail du mensuel après l'ajout
@@ -234,6 +236,7 @@ const sendSupplementValideEmail = async ({
     nbLabosAdded > 0     && `+${nbLabosAdded} ${voc.nom('labo', nbLabosAdded > 1)}`,
     nbGerantsAdded > 0   && `+${nbGerantsAdded} ${voc.nom('gerant', nbGerantsAdded > 1)}`,
     acheteursCible       && `Option ${voc.Court('acheteur', true)} : jusqu'à ${acheteursCible} ${voc.nom('acheteur', true)}`,
+    libelleAjoutCompta,
   ].filter(Boolean).join(' · ');
 
   const ligne = (libelle, nb, cout) => `<tr style="border-bottom:1px solid #e2e8f0;">
@@ -625,4 +628,4 @@ const sendDemandeAccesRefusEmail = async ({ to, nom }) => {
   return { success: true, id: data?.id };
 };
 
-module.exports = { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, sendSupplementValideEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendBossRevealCode, sendDemandeAccesRefusEmail, produitSur, urlEcrans };
+module.exports = { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordResetEmail, sendSupplementValideEmail, sendFactureEmail, sendRapportEmail, sendRapportWithAttachment, sendMessengerInviteEmail, sendBossRevealCode, sendDemandeAccesRefusEmail, produitSur, urlEcrans, nomProduit, BRAND_LOGO };

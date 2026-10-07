@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "200_manuel_mon_entreprise.sql",
+  "derniereMigration": "206_manuel_gerants_comptabilite.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -506,7 +506,7 @@
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "fc0d6495557e49648e88b4c89237f002",
-    "gerants": "a88168d6374cad110b90107e8da207cb",
+    "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
     "rapports": "f6cae6228388f602bfdae697d25c2f5c",
@@ -562,7 +562,7 @@
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "fc0d6495557e49648e88b4c89237f002",
-    "gerants": "a88168d6374cad110b90107e8da207cb",
+    "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
     "rapports": "f6cae6228388f602bfdae697d25c2f5c",
@@ -663,7 +663,7 @@
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "fc0d6495557e49648e88b4c89237f002",
-    "gerants": "a88168d6374cad110b90107e8da207cb",
+    "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
     "rapports": "f6cae6228388f602bfdae697d25c2f5c",
@@ -724,7 +724,7 @@
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "fc0d6495557e49648e88b4c89237f002",
-    "gerants": "a88168d6374cad110b90107e8da207cb",
+    "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
     "rapports": "f6cae6228388f602bfdae697d25c2f5c",
@@ -786,7 +786,7 @@
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "fc0d6495557e49648e88b4c89237f002",
-    "gerants": "a88168d6374cad110b90107e8da207cb",
+    "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
     "rapports": "f6cae6228388f602bfdae697d25c2f5c",
@@ -1663,19 +1663,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "30.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.550",
-     "source": "Bloc chaud",
-     "type_appro": "transfert"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "-30.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.550",
      "source": "Réserve Nord / Est",
      "type_appro": "manuel"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "30.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.550",
+     "source": "Bloc chaud",
+     "type_appro": "transfert"
     },
     {
      "ingredient": "Drap 240x300",
@@ -6640,13 +6640,13 @@
       ],
       [
        "Riz basmati",
-       "30",
+       "-30",
        "⟨date⟩",
        "2.55"
       ],
       [
        "Riz basmati",
-       "-30",
+       "30",
        "⟨date⟩",
        "2.55"
       ],
@@ -15490,7 +15490,7 @@
      "icone": "👥",
      "partie": "Gestion",
      "ordre": 74,
-     "contenu": "## 👥 Comptes gérants\n\nCet écran vous permet de donner un accès LabFlow à vos collaborateurs : chaque **gérant** reçoit une invitation par email et ne voit que les activités et labos que vous lui affectez. Vous le trouvez dans le menu latéral, entrée **Gérants**.\n\n### Ce que vous voyez\n\nLe bandeau affiche le compteur **Gérants** (utilisés / inclus dans votre abonnement), le nombre de gérants **Actifs**, et le bouton **+ Nouveau gérant** — remplacé par la mention 🔒 *Limite atteinte* quand le quota est plein. Un bandeau jaune signale les **invitations en attente d'activation**.\n\nChaque gérant apparaît sous forme de carte avec :\n\n- ses initiales, son nom, son email et son téléphone ;\n- son statut : **● Actif** ou **○ Inactif**, plus **⏳ Invitation en attente** tant qu'il n'a pas activé son compte ;\n- un badge **Gratuit** ou le montant facturé (en DT/mois) ;\n- 📍 la liste de ses **affectations** (activités et labos) ;\n- les actions : **✉️ Renvoyer** l'invitation (si non activée), **⏸ Désactiver** / **▶ Activer**, **🗑** supprimer.\n\n### Actions pas à pas\n\n1. Cliquez **+ Nouveau gérant** et renseignez le **nom**, le **téléphone** et l'**email** (tous obligatoires). La disponibilité de l'adresse email est vérifiée en direct : une adresse déjà utilisée est refusée.\n2. Cochez les **activités et labos assignés** — au moins un est obligatoire. Le lien *✓ Tout* coche l'ensemble d'un clic.\n3. Validez avec **✓ Créer et envoyer l'invitation** : le gérant reçoit un email et active son compte en cliquant sur le lien puis en définissant son mot de passe.\n4. Tant que l'invitation n'est pas acceptée, le badge ⏳ reste affiché : utilisez **✉️ Renvoyer** si l'email s'est égaré.\n5. Pour suspendre temporairement un accès, cliquez **⏸ Désactiver** (réversible à tout moment avec ▶ Activer). Pour retirer définitivement l'accès, utilisez 🗑 (une confirmation est demandée).\n\n### Points d'attention\n\n:::regle\nTrois comptes gérants gratuits sont inclus. Au-delà, le formulaire vous prévient : chaque gérant supplémentaire est facturé 80 DT/mois et nécessite une validation de l'équipe LabFlow. Le nombre total reste plafonné par votre abonnement.\n:::\n\n:::attention\nLe gérant ne voit que son périmètre : il travaille sur le stock, les appros, les pertes, les inventaires (et les ventes si le module est actif) de ses activités et labos affectés, mais n'a pas accès à la gestion des activités, des gérants, de l'abonnement ni des paiements.\n:::\n\n:::astuce\nCréez un gérant par responsable de site plutôt qu'un compte partagé : les historiques gardent ainsi la trace de qui a fait quoi.\n:::\n\n### Voir aussi\n\n- [Les rôles dans LabFlow](#roles) — client vs gérant en détail\n- [Tableau de bord gérant](#dashboard-gerant) — ce que voit votre collaborateur\n- [Activités & labos](#activites) · [Mon abonnement](#abonnement)",
+     "contenu": "## 👥 Comptes gérants\n\nCet écran vous permet de donner un accès LabFlow à vos collaborateurs : chaque **gérant** reçoit une invitation par email et ne voit que les activités et labos que vous lui affectez. Vous le trouvez dans le menu latéral, entrée **Gérants**.\n\n### Ce que vous voyez\n\nLe bandeau affiche le compteur **Gérants** (utilisés / inclus dans votre abonnement), le nombre de gérants **Actifs**, et le bouton **+ Nouveau gérant** — remplacé par la mention 🔒 *Limite atteinte* quand le quota est plein. Un bandeau jaune signale les **invitations en attente d'activation**.\n\nChaque gérant apparaît sous forme de carte avec :\n\n- ses initiales, son nom, son email et son téléphone ;\n- son statut : **● Actif** ou **○ Inactif**, plus **⏳ Invitation en attente** tant qu'il n'a pas activé son compte ;\n- un badge **Gratuit** ou le montant facturé (en DT/mois) ;\n- 📍 la liste de ses **affectations** (activités et labos) ;\n- les actions : **✉️ Renvoyer** l'invitation (si non activée), **⏸ Désactiver** / **▶ Activer**, **🗑** supprimer.\n\n### Actions pas à pas\n\n1. Cliquez **+ Nouveau gérant** et renseignez le **nom**, le **téléphone** et l'**email** (tous obligatoires). La disponibilité de l'adresse email est vérifiée en direct : une adresse déjà utilisée est refusée.\n2. Cochez les **activités et labos assignés** — au moins un est obligatoire. Le lien *✓ Tout* coche l'ensemble d'un clic.\n3. Validez avec **✓ Créer et envoyer l'invitation** : le gérant reçoit un email et active son compte en cliquant sur le lien puis en définissant son mot de passe.\n4. Tant que l'invitation n'est pas acceptée, le badge ⏳ reste affiché : utilisez **✉️ Renvoyer** si l'email s'est égaré.\n5. Pour suspendre temporairement un accès, cliquez **⏸ Désactiver** (réversible à tout moment avec ▶ Activer). Pour retirer définitivement l'accès, utilisez 🗑 (une confirmation est demandée).\n\n### Gérants Comptabilité (module Comptabilité)\n\nSi votre compte a le **module Comptabilité**, la page montre aussi la partie **Gérants Comptabilité** : les personnes qui ont accès à votre comptabilité dans LabFlow Compta, et à elle seule (elles ne voient ni le stock ni les ventes). Le bouton **+ Nouveau gérant** vous demande alors d'abord le type : **Stock / Vente** ou **Comptabilité**.\n\n- **Votre comptable** : son accès est compris dans le module. Tant que vous ne l'avez pas désigné, il apparaît « À désigner » : cliquez **Désigner**, puis indiquez son nom, son adresse email et son niveau.\n- **Gérants comptables supplémentaires** : d'autres accès, dans la limite achetée. Limite atteinte : bouton **Demander des gérants comptables** ; l'équipe LabFlow valide votre demande, facturée à partir du mois suivant.\n- **Niveaux** : Consultation (tout lire, sans rien écrire), Saisie (saisir les pièces et les écritures, sans valider, clôturer ni configurer), Complet (tout).\n\nUne adresse inconnue reçoit une invitation à activer son compte LabFlow Compta (lien valable 48 heures, **✉️ Renvoyer** s'il s'est égaré) ; une adresse déjà connue reçoit l'accès tout de suite. **✏️ Modifier** change le nom, le niveau ou l'adresse (une autre adresse donne l'accès à une autre personne) ; **🗑 Retirer** reprend l'accès (celui de votre comptable redevient « À désigner »). Si votre comptable quitte l'accès de lui-même, vous êtes prévenu par la cloche et par email.\n\n### Points d'attention\n\n:::regle\nTrois comptes gérants gratuits sont inclus. Au-delà, le formulaire vous prévient : chaque gérant supplémentaire est facturé 80 DT/mois et nécessite une validation de l'équipe LabFlow. Le nombre total reste plafonné par votre abonnement.\n:::\n\n:::attention\nLe gérant ne voit que son périmètre : il travaille sur le stock, les appros, les pertes, les inventaires (et les ventes si le module est actif) de ses activités et labos affectés, mais n'a pas accès à la gestion des activités, des gérants, de l'abonnement ni des paiements.\n:::\n\n:::astuce\nCréez un gérant par responsable de site plutôt qu'un compte partagé : les historiques gardent ainsi la trace de qui a fait quoi.\n:::\n\n### Voir aussi\n\n- [Les rôles dans LabFlow](#roles) — client vs gérant en détail\n- [Tableau de bord gérant](#dashboard-gerant) — ce que voit votre collaborateur\n- [Activités & labos](#activites) · [Mon abonnement](#abonnement)",
      "motsCles": "gérants, collaborateurs, invitation, email, accès, affectation, activités, labos, désactiver, périmètre, délégation, mot de passe",
      "ecran": "/client/gerants",
      "visibleGerant": false,

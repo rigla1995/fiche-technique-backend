@@ -151,6 +151,18 @@
           "md5": "ef92484d9e58ef2a753f3b583d828b09"
         }
       ]
+    },
+    {
+      "numero": 206,
+      "nom": "206_manuel_gerants_comptabilite.sql",
+      "objet": "LabFlow Compta, étape S3b : partie « Gérants Comptabilité » de la fiche Gérants (comptable du client, gérants comptables supplémentaires, niveaux, demande d'ajout).",
+      "manuel": [
+        {
+          "slug": "gerants",
+          "md5Avant": "56bdd6d8969e4ead6ccbbb9dbbe0cd9a",
+          "md5": "f1f5d33751be10305286a88a3c97c8b3"
+        }
+      ]
     }
   ]
 }

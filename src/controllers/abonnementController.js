@@ -647,7 +647,7 @@ const updateMode = async (req, res) => {
   const allowed = ['actif', 'read_only', 'desactive', 'archive', 'bloque'];
   if (!allowed.includes(mode)) return res.status(400).json({ message: 'Mode invalide' });
   try {
-    const client = await pool.query('SELECT id FROM utilisateurs WHERE id = $1', [clientId]);
+    const client = await pool.query('SELECT id, role FROM utilisateurs WHERE id = $1', [clientId]);
     if (client.rows.length === 0) return res.status(404).json({ message: 'Client introuvable' });
 
     await pool.query(
@@ -655,7 +655,12 @@ const updateMode = async (req, res) => {
       [mode, clientId]
     );
 
-    if (mode === 'bloque') {
+    // LabFlow Compta (S3b, réponse du client du 06/10) : le mode d'un CABINET ne désactive jamais la personne — elle se
+    // connecte encore ; seul son cabinet suit ce mode (garde par comptabilité, src/compta/garde.js), les comptabilités que
+    // des clients lui ont confiées suivent l'abonnement de chaque client.
+    if (client.rows[0].role === 'comptable') {
+      // rien à changer sur la personne
+    } else if (mode === 'bloque') {
       // Block client and all their gérants
       await pool.query('UPDATE utilisateurs SET actif = false WHERE id = $1', [clientId]);
       await pool.query(

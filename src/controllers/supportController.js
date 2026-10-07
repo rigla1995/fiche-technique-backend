@@ -7,6 +7,9 @@ const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGera
 // Lot 1a : la capacité s'applique PAR COMPOSANT (applyComposants = seul écrivain des compteurs)
 const { applyComposants, invaliderProfilApresCommit, composantsDepuisCompteurs, validerComposition, erreursIntroduites } = require('../services/configComposantsService');
 const { getProfil } = require('../services/domaineProfilService');
+// LabFlow Compta, étape S3b : demande d'ajout de gérants comptables (support_demandes.nb_gerants_compta_supp, migration 205).
+const moduleCompta = require('../compta/moduleClient');
+const { libelleAjoutGerantsCompta } = require('../compta/emails');
 
 // Ajouts d'une demande de capacité → composants du domaine (1er composant actif de
 // chaque type, comme le backfill) en mode 'add' (la cible acheteurs REMPLACE le quota).
@@ -38,6 +41,8 @@ const mapDemande = (row) => ({
   nbActivitesSupp: row.nb_activites_supp,
   nbLabosSupp: row.nb_labos_supp,
   nbGerantsSupp: row.nb_gerants_supp,
+  // LabFlow Compta (S3b) : gérants comptables supplémentaires demandés (module Comptabilité)
+  nbGerantsComptaSupp: row.nb_gerants_compta_supp || 0,
   // Option Acheteurs : QUOTA TOTAL cible (borne de palier), pas un incrément
   nbAcheteursCible: row.nb_acheteurs_cible || null,
   // aide
@@ -104,8 +109,19 @@ const create = async (req, res) => {
       const { nbActivitesSupp, nbLabosSupp, nbGerantsSupp } = req.body;
       // Option Acheteurs : quota TOTAL cible (palier 10/20/50/100) — pas un incrément
       const nbAcheteursCible = req.body.nbAcheteursCible != null ? parseInt(req.body.nbAcheteursCible, 10) : null;
-      const total = (nbActivitesSupp || 0) + (nbLabosSupp || 0) + (nbGerantsSupp || 0) + (nbAcheteursCible ? 1 : 0);
+      // LabFlow Compta (S3b) : gérants comptables supplémentaires, seulement si le module Comptabilité est actif.
+      const nbGerantsComptaSupp = moduleCompta.nbGerantsDemandes(req.body.nbGerantsComptaSupp);
+      if (nbGerantsComptaSupp === null) return res.status(400).json({ message: moduleCompta.MSG_NB_DEMANDES });
+      const total = (nbActivitesSupp || 0) + (nbLabosSupp || 0) + (nbGerantsSupp || 0) + (nbAcheteursCible ? 1 : 0) + nbGerantsComptaSupp;
       if (total === 0) return res.status(400).json({ message: 'Indiquez au moins un supplément' });
+      if (nbGerantsComptaSupp > 0) {
+        try {
+          await moduleCompta.controlerDemandeGerants(pool, clientId, nbGerantsComptaSupp);
+        } catch (e) {
+          if (e.statusCode) return res.status(e.statusCode).json({ message: e.message });
+          throw e;
+        }
+      }
       if (nbAcheteursCible != null) {
         if (![10, 20, 50, 100].includes(nbAcheteursCible)) {
           return res.status(400).json({ message: 'Palier [[court:acheteur:pl]] invalide (10, 20, 50 ou 100)' });
@@ -155,9 +171,9 @@ const create = async (req, res) => {
         }
       }
       sql = `INSERT INTO support_demandes
-             (client_id, client_nom, type, nb_activites_supp, nb_labos_supp, nb_gerants_supp, nb_acheteurs_cible, created_by, created_by_nom)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`;
-      params = [clientId, clientNom, type, nbActivitesSupp || 0, nbLabosSupp || 0, nbGerantsSupp || 0, nbAcheteursCible, createdById, createdByNom];
+             (client_id, client_nom, type, nb_activites_supp, nb_labos_supp, nb_gerants_supp, nb_acheteurs_cible, created_by, created_by_nom, nb_gerants_compta_supp)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`;
+      params = [clientId, clientNom, type, nbActivitesSupp || 0, nbLabosSupp || 0, nbGerantsSupp || 0, nbAcheteursCible, createdById, createdByNom, nbGerantsComptaSupp];
     } else {
       const { description } = req.body;
       if (!description?.trim()) return res.status(400).json({ message: 'Description requise' });
@@ -288,16 +304,33 @@ const traiter = async (req, res) => {
         await db.query('ROLLBACK');
         return res.status(409).json({ message: erreursCompo[0].message, code: erreursCompo[0].code, erreurs: erreursCompo });
       }
+      // LabFlow Compta (S3b) : gérants comptables supplémentaires — le module doit être encore actif ; la limite
+      // augmente (facturée à partir du mois suivant, par le recalcul ci-dessous).
+      const nbCompta = demande.nb_gerants_compta_supp || 0;
+      if (nbCompta > 0) {
+        try {
+          await moduleCompta.ajouterGerantsDemandes(db, { cur, clientId: demande.client_id, n: nbCompta, auteurId: req.user.id, demandeId: Number(id) });
+        } catch (e) {
+          if (!e.statusCode) throw e;
+          await db.query('ROLLBACK');
+          return res.status(e.statusCode).json({ message: e.message });
+        }
+      }
       // Capacité appliquée PAR COMPOSANT (1er composant de chaque type ; la cible acheteurs REMPLACE le quota ;
       // formule premium par défaut si 1ère activité), puis paiements en attente recalculés : même transaction.
-      const applied = await appliquerSupplement(db, demande.client_id, {
-        addActivites: demande.nb_activites_supp || 0,
-        addLabos: demande.nb_labos_supp || 0,
-        addGerants: demande.nb_gerants_supp || 0,
-        setAcheteurs: demande.nb_acheteurs_cible || null,
-      });
-      resultatComposants = applied?.result ?? null;
-      if (applied?.aboId) await recalcPaiementsEnAttente(db, applied.aboId);
+      const autres = (demande.nb_activites_supp || 0) + (demande.nb_labos_supp || 0) + (demande.nb_gerants_supp || 0) + (demande.nb_acheteurs_cible ? 1 : 0);
+      if (autres > 0) {
+        const applied = await appliquerSupplement(db, demande.client_id, {
+          addActivites: demande.nb_activites_supp || 0,
+          addLabos: demande.nb_labos_supp || 0,
+          addGerants: demande.nb_gerants_supp || 0,
+          setAcheteurs: demande.nb_acheteurs_cible || null,
+        });
+        resultatComposants = applied?.result ?? null;
+        if (applied?.aboId) await recalcPaiementsEnAttente(db, applied.aboId);
+      } else {
+        await recalcPaiementsEnAttente(db, cur.abonnement_id);
+      }
       // Passage/activation de l'option Acheteurs : le module doit être actif côté profil
       if (demande.nb_acheteurs_cible) {
         await db.query(
@@ -353,6 +386,7 @@ const traiter = async (req, res) => {
           nb_activites: nbA - (demande.nb_activites_supp || 0),
           nb_labos:     nbL - (demande.nb_labos_supp     || 0),
           nb_gerants:   nbG - (demande.nb_gerants_supp   || 0),
+          nb_gerants_compta: (Number(cfg.nb_gerants_compta) || 0) - (demande.nb_gerants_compta_supp || 0),
           nb_acheteurs: acheteursAvant != null ? acheteursAvant : (parseInt(cfg.nb_acheteurs) || 0),
         };
         // Traitée par un admin : vocabulaire du compte DESTINATAIRE (I6)
@@ -365,6 +399,7 @@ const traiter = async (req, res) => {
           nbLabosAdded:     demande.nb_labos_supp     || 0,
           nbGerantsAdded:   demande.nb_gerants_supp   || 0,
           acheteursCible:   demande.nb_acheteurs_cible || null,
+          libelleAjoutCompta: libelleAjoutGerantsCompta(demande.nb_gerants_compta_supp || 0),
           nbActivites: nbA,
           nbLabos: nbL,
           nbGerants: nbG,

@@ -573,5 +573,33 @@
     "apres": "Trop de passages en peu de temps, réessayez dans 15 minutes.",
     "type": "ajoute",
     "justification": "Chantier Achats & Comptabilité, étape S3a (passage entre LabFlow et LabFlow Compta, découpage validé par le client le 06/10/2026) : message de la limite d'essais propre à l'échange d'un code de passage (POST /auth/passage). Aucun terme du lexique : identique dans tous les domaines."
+  },
+  {
+    "fichier": "src/app.js",
+    "avant": null,
+    "apres": "/compta",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3b (comptable du client, cadrage validé par le client le 07/10/2026) : préfixe des routes de LabFlow Compta, exemptées de la garde d'écriture globale : chaque écriture y applique la garde PAR COMPTABILITÉ (SPEC-SOCLE D4, src/compta/garde.js) ; jamais affiché."
+  },
+  {
+    "fichier": "src/app.js",
+    "avant": null,
+    "apres": "/compta/",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3b (comptable du client, cadrage validé par le client le 07/10/2026) : préfixe des routes de LabFlow Compta, exemptées de la garde d'écriture globale : chaque écriture y applique la garde PAR COMPTABILITÉ (SPEC-SOCLE D4, src/compta/garde.js) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/authController.js",
+    "avant": null,
+    "apres": "comptable",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3b (comptable du client, cadrage validé par le client le 07/10/2026) : rôle « comptable » exempté du refus de connexion d'un compte bloqué (réponse du client du 06/10 : un cabinet bloqué se connecte encore, seul son cabinet est bloqué) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/abonnementController.js",
+    "avant": null,
+    "apres": "comptable",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3b (comptable du client, cadrage validé par le client le 07/10/2026) : rôle « comptable » : le mode d'un cabinet ne désactive jamais la personne (réponse du client du 06/10 : un cabinet bloqué se connecte encore, seul son cabinet suit ce mode) ; jamais affiché."
   }
 ]

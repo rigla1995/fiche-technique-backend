@@ -8,6 +8,7 @@ const { authenticate } = require('../middleware/auth');
 const { listerAcces, maComptabilite, exigerTitulaireCabinet, monCabinet, monAbonnement, telechargerFacture } = require('./accesController');
 const rateLimit = require('express-rate-limit');
 const { emettre: emettrePassage } = require('./passage');
+const comptables = require('./comptablesClient');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
 const limiteEmission = rateLimit({
@@ -42,4 +43,31 @@ router.get('/ma-comptabilite', authenticate, maComptabilite);
 // Étape S3a : code de passage vers l'autre adresse (app. ↔ compta.), échangé ensuite par POST /auth/passage.
 router.post('/passage', authenticate, limiteEmission, emettrePassage);
 
+// Étape S3b : le comptable du client. Le titulaire (client LabFlow qui a le module) gère les accès comptables de sa
+// comptabilité ; chaque écriture passe par la garde PAR COMPTABILITÉ (garde.js, D4) dans le contrôleur.
+// Limite de débit (relecture de S3b) : chaque désignation peut créer un compte et envoyer un email ; 30 écritures par
+// quart d'heure et par personne suffisent largement à gérer ses comptables.
+const limiteComptables = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => `comptables:${req.user.id}`,
+  message: { message: 'Trop de modifications en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.get('/mes-comptables', authenticate, comptables.lister);
+router.post('/mes-comptables', authenticate, limiteComptables, comptables.ajouter);
+router.put('/mes-comptables/:id', authenticate, limiteComptables, comptables.modifier);
+router.delete('/mes-comptables/:id', authenticate, limiteComptables, comptables.retirer);
+router.post('/mes-comptables/:id/inviter', authenticate, limiteComptables, comptables.inviter);
+// La personne à qui une comptabilité est confiée : sa page, et quitter l'accès (jamais refusé par la garde).
+router.get('/confiees/:espaceId', authenticate, comptables.confiee);
+router.post('/confiees/:espaceId/quitter', authenticate, comptables.quitter);
+
+// Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
+// Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique
+// plus à /api/compta (D4).
+const ECRITURES_SANS_GARDE = ['POST /passage', 'POST /confiees/:espaceId/quitter'];
+
 module.exports = router;
+module.exports.ECRITURES_SANS_GARDE = ECRITURES_SANS_GARDE;
