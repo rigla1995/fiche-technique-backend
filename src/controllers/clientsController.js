@@ -13,6 +13,7 @@ const { oublierConversationsIA } = require('../services/clientConfigService');
 const { generateInviteToken, sendWelcomeEmail } = require('../services/emailService');
 const { lireIdentite, nomAffiche, identiteComplete, mapIdentite } = require('../utils/identite');
 const { journaliser } = require('../compta/journal');
+const { nbDossiersDuTitulaire, refusClientAvecDossiers, estRetenuParDossiers } = require('../compta/d10');
 
 // Message d'un doublon refusé par la base (23505), selon la contrainte réelle (lot 3) : avant, toute collision
 // répondait « email déjà utilisé ». utilisateurs_email_key : vu en production le 04/10.
@@ -615,6 +616,14 @@ const remove = async (req, res) => {
       return res.status(404).json({ message: 'Client introuvable' });
     }
 
+    // LabFlow Compta (S4a, D10) : un client qui a un dossier dans sa comptabilité ne se supprime pas (rien de comptable
+    // ne disparaît) ; archiver son compte (mode du compte) à la place. Jugé avant la moindre écriture.
+    const nbDossiers = await nbDossiersDuTitulaire(dbClient, id);
+    if (nbDossiers > 0) {
+      await dbClient.query('ROLLBACK');
+      return res.status(409).json(refusClientAvecDossiers(nbDossiers));
+    }
+
     // Collect all user IDs owned by this client (client + its gérants)
     const usersRes = await dbClient.query(
       "SELECT id FROM utilisateurs WHERE id = $1 OR gerant_parent_id = $1",
@@ -719,6 +728,8 @@ const remove = async (req, res) => {
     res.status(204).send();
   } catch (err) {
     await dbClient.query('ROLLBACK');
+    // LabFlow Compta (S4a, D10) : un dossier créé pendant la suppression retient la comptabilité (RESTRICT) — même refus.
+    if (estRetenuParDossiers(err)) return res.status(409).json(refusClientAvecDossiers(null));
     console.error('Client delete error:', err);
     res.status(500).json({ message: 'Erreur lors de la suppression du client' });
   } finally {

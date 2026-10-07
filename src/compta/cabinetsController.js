@@ -19,6 +19,7 @@ const { journaliser } = require('./journal');
 const { avertissementsMatricule } = require('../controllers/clientsController');
 const { jetonInvitation } = require('./comptablesClient');
 const { sendCabinetOuvertEmail } = require('./emails');
+const { nbDossiersDuTitulaire, refusCabinetAvecDossiers } = require('./d10');
 
 const NB_GERANTS_MAX = 50;
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -42,7 +43,8 @@ const COLONNES = `u.id, u.nom, u.email, u.telephone, u.actif, u.activated_at, u.
        a.id AS abonnement_id, a.mode_compte, a.invite_sent, a.statut_onboarding, a.montant_onboarding, a.date_debut,
        ac.nb_gerants_compta,
        e.id AS espace_id, e.nom AS espace_nom, e.etat AS espace_etat,
-       (SELECT COUNT(*)::int FROM compta.acces g WHERE g.espace_id = e.id AND g.role = 'gerant') AS gerants_en_place`;
+       (SELECT COUNT(*)::int FROM compta.acces g WHERE g.espace_id = e.id AND g.role = 'gerant') AS gerants_en_place,
+       (SELECT COUNT(*)::int FROM compta.dossiers d WHERE d.espace_id = e.id) AS nb_dossiers`;
 const SOURCE = `FROM utilisateurs u
        JOIN compta.espaces e ON e.titulaire_id = u.id AND e.type = 'cabinet'
        LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
@@ -64,6 +66,8 @@ const mapCabinet = (row, tarifs) => {
     nomAffiche: nomAffiche({ ...row, contact: row.nom }),
     identiteComplete: identiteComplete(row),
     espace: { id: row.espace_id, nom: row.espace_nom, etat: row.espace_etat },
+    // S4a : dossiers du cabinet (archivés compris) — un cabinet qui en a ne se supprime plus (D10).
+    nbDossiers: row.nb_dossiers || 0,
     abonnement: row.abonnement_id ? {
       id: row.abonnement_id,
       modeCompte: row.mode_compte,
@@ -448,14 +452,17 @@ const renvoyerInvitation = async (req, res) => {
   }
 };
 
-// DELETE /admin/comptables/:id — D10 : refusée dès qu'une comptabilité du cabinet contient un dossier (les dossiers
-// arrivent à l'étape S4) ; refusée aussi dès qu'une mensualité est réglée (sa facture a été émise : elle ne doit pas
-// disparaître) ; avant, un cabinet créé par erreur se supprime (espace, accès, compte ; le journal reste).
+// DELETE /admin/comptables/:id — D10 : refusée dès qu'une comptabilité du cabinet contient un dossier (S4a : rien de
+// comptable ne disparaît ; la contrainte RESTRICT de compta.dossiers le garantit aussi) ; refusée aussi dès qu'une
+// mensualité est réglée (sa facture a été émise : elle ne doit pas disparaître) ; avant, un cabinet créé par erreur se
+// supprime (espace, accès, compte ; le journal reste).
 const remove = async (req, res) => {
   const db = await pool.connect();
   try {
     const c = await cible(db, req.params.id);
     if (!c) return res.status(404).json({ message: 'Cabinet introuvable' });
+    const nbDossiers = await nbDossiersDuTitulaire(db, c.id);
+    if (nbDossiers > 0) return res.status(409).json(refusCabinetAvecDossiers(nbDossiers));
     const regle = await db.query(`SELECT 1 FROM paiements WHERE abonnement_id = $1 AND statut = 'payé' LIMIT 1`, [c.abonnement_id]);
     if (regle.rows.length) {
       return res.status(409).json({ message: 'Ce cabinet a des factures émises (mensualités réglées) : il ne peut pas être supprimé. Archivez-le plutôt (page Abonnements, mode du compte).' });
