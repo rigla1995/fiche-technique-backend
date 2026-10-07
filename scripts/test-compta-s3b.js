@@ -116,10 +116,16 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     let vu = r.body?.comptables?.find((c) => c.obligatoire);
     check('le titulaire voit « invitation en attente », renvoyable', vu?.invitationEnAttente === true && vu?.invitationRenvoyable === true && vu?.email === NOUVEAU && vu?.nom === 'Nouveau Comptable', JSON.stringify(vu));
     const jetonAvant = nouveau.invite_token;
+    const jetonDe = async () => (await pool.query('SELECT invite_token FROM utilisateurs WHERE id = $1', [nouveau.id])).rows[0]?.invite_token;
     r = await appel('POST', `/api/compta/mes-comptables/${obligatoire.id}/inviter`, clientTok);
-    const jetonApres = (await pool.query('SELECT invite_token FROM utilisateurs WHERE id = $1', [nouveau.id])).rows[0]?.invite_token;
-    check('renvoyer l\'invitation : nouveau jeton', r.status === 200 && jetonApres && jetonApres !== jetonAvant, String(r.status));
+    check('renvoyer l\'invitation encore valable : même lien (un tiers ne périme pas le lien)', r.status === 200 && (await jetonDe()) === jetonAvant, String(r.status));
+    await pool.query(`UPDATE utilisateurs SET invite_token_expires_at = NOW() + interval '1 hour' WHERE id = $1`, [nouveau.id]);
+    r = await appel('POST', `/api/compta/mes-comptables/${obligatoire.id}/inviter`, clientTok);
+    const jetonApres = await jetonDe();
+    check('renvoyer une invitation bientôt périmée : nouveau lien de 48 h', r.status === 200 && jetonApres && jetonApres !== jetonAvant, String(r.status));
     check('journal : invitation_renvoyee', !!(await journal(espaceId, 'invitation_renvoyee')));
+    r = await appel('PUT', `/api/compta/mes-comptables/${obligatoire.id}`, clientTok, { nom: 'X', email: '<x@evil.tn>' });
+    check('adresse avec chevrons : 400', r.status === 400, String(r.status));
 
     // ── Refus ──
     r = await appel('PUT', `/api/compta/mes-comptables/${obligatoire.id}`, clientTok, { nom: 'Moi', email: CLIENT.toUpperCase() });
@@ -229,6 +235,12 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     for (const email of ['test-g1-s3b@example.com', 'test-g2-s3b@example.com']) {
       r = await appel('POST', '/api/compta/mes-comptables', clientTok, { nom: email, email });
     }
+    // Accès supplémentaire vidé par la suppression de sa personne : il se retire (il ne bloque plus la limite).
+    await pool.query(`DELETE FROM utilisateurs WHERE email = 'test-g2-s3b@example.com'`);
+    const fantome = (await pool.query(`SELECT id FROM compta.acces WHERE espace_id = $1 AND NOT obligatoire AND personne_id IS NULL`, [espaceId])).rows[0];
+    r = await appel('DELETE', `/api/compta/mes-comptables/${fantome?.id}`, clientTok);
+    check('accès supplémentaire resté vide (personne supprimée) : il se retire', r.status === 200 && r.body?.supplementaires?.utilises === 1, `${r.status} ${r.body?.message || ''}`);
+    r = await appel('POST', '/api/compta/mes-comptables', clientTok, { nom: 'G2', email: 'test-g2-s3b@example.com' });
     r = await appel('PUT', `/api/abonnements/client/${clientId}/module-compta`, adminTok, { actif: true, nbGerantsCompta: 1 });
     check('l\'admin ne descend pas sous les gérants comptables en place : 409', r.status === 409 && r.body?.code === 'GERANTS_COMPTA_EN_PLACE', `${r.status} ${r.body?.message}`);
     r = await appel('PUT', `/api/abonnements/client/${clientId}/module-compta`, adminTok, { actif: true, nbGerantsCompta: 2 });

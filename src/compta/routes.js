@@ -45,11 +45,21 @@ router.post('/passage', authenticate, limiteEmission, emettrePassage);
 
 // Étape S3b : le comptable du client. Le titulaire (client LabFlow qui a le module) gère les accès comptables de sa
 // comptabilité ; chaque écriture passe par la garde PAR COMPTABILITÉ (garde.js, D4) dans le contrôleur.
+// Limite de débit (relecture de S3b) : chaque désignation peut créer un compte et envoyer un email ; 30 écritures par
+// quart d'heure et par personne suffisent largement à gérer ses comptables.
+const limiteComptables = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => `comptables:${req.user.id}`,
+  message: { message: 'Trop de modifications en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 router.get('/mes-comptables', authenticate, comptables.lister);
-router.post('/mes-comptables', authenticate, comptables.ajouter);
-router.put('/mes-comptables/:id', authenticate, comptables.modifier);
-router.delete('/mes-comptables/:id', authenticate, comptables.retirer);
-router.post('/mes-comptables/:id/inviter', authenticate, comptables.inviter);
+router.post('/mes-comptables', authenticate, limiteComptables, comptables.ajouter);
+router.put('/mes-comptables/:id', authenticate, limiteComptables, comptables.modifier);
+router.delete('/mes-comptables/:id', authenticate, limiteComptables, comptables.retirer);
+router.post('/mes-comptables/:id/inviter', authenticate, limiteComptables, comptables.inviter);
 // La personne à qui une comptabilité est confiée : sa page, et quitter l'accès (jamais refusé par la garde).
 router.get('/confiees/:espaceId', authenticate, comptables.confiee);
 router.post('/confiees/:espaceId/quitter', authenticate, comptables.quitter);

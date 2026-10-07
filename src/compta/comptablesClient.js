@@ -20,10 +20,14 @@ const { journaliser } = require('./journal');
 const { exigerEcriture, modeTitulaire, etatAbonnement } = require('./garde');
 
 const NIVEAUX = ['consultation', 'saisie', 'complet'];
-const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Adresse simple : ni espace, ni chevrons, virgules, guillemets ou parenthèses (relecture de S3b).
+const RE_EMAIL = /^[^\s@<>,;:"'()[\]\\]+@[^\s@<>,;:"'()[\]\\]+\.[^\s@<>,;:"'()[\]\\]+$/;
 // Adresses qui ne reçoivent jamais d'accès : l'équipe LabFlow et les acheteurs (portail de commande).
 const ROLES_REFUSES = ['super_admin', 'boss', 'acheteur'];
 const INVITATION_MS = 48 * 60 * 60 * 1000;
+// Une invitation encore valable plus de 24 h est renvoyée telle quelle (relecture de S3b : un tiers ne doit pas pouvoir
+// périmer sans fin le lien d'un compte non activé en le désignant ou en renvoyant l'invitation).
+const INVITATION_REUTILISABLE_MS = 24 * 60 * 60 * 1000;
 
 const erreur = (statusCode, message, code) => Object.assign(new Error(message), { statusCode, code });
 const idValide = (v) => /^\d{1,9}$/.test(String(v));
@@ -125,6 +129,19 @@ const etatTitulaire = async (db, espace) => {
 // ── Saisie ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 // { nom, email, niveau } d'une désignation. `partiel` : modification (champs absents gardés).
+// Jeton d'invitation d'un compte non activé : celui en cours s'il est valable encore plus de 24 h, sinon un nouveau (48 h).
+const jetonInvitation = async (db, personneId) => {
+  const r = await db.query('SELECT invite_token, invite_token_expires_at FROM utilisateurs WHERE id = $1', [personneId]);
+  const { invite_token: actuel, invite_token_expires_at: expire } = r.rows[0] || {};
+  if (actuel && expire && new Date(expire).getTime() - Date.now() > INVITATION_REUTILISABLE_MS) return actuel;
+  const jeton = generateInviteToken();
+  await db.query(
+    'UPDATE utilisateurs SET invite_token = $1, invite_token_expires_at = $2, updated_at = NOW() WHERE id = $3 AND activated_at IS NULL',
+    [jeton, new Date(Date.now() + INVITATION_MS), personneId]
+  );
+  return jeton;
+};
+
 const lireSaisie = (body, partiel = false) => {
   const out = {};
   if (body?.nom !== undefined || !partiel) {
@@ -174,13 +191,7 @@ const attribuer = async (db, { espace, accesId, nom, email, niveau }) => {
     );
     if (double.rows.length) throw erreur(409, 'Cette personne a déjà un accès à votre comptabilité', 'DEJA_ACCES');
     personneId = existant.id;
-    if (existant.role === 'comptable' && !existant.activated_at && !existant.a_mot_de_passe) {
-      jeton = generateInviteToken();
-      await db.query(
-        'UPDATE utilisateurs SET invite_token = $1, invite_token_expires_at = $2, updated_at = NOW() WHERE id = $3',
-        [jeton, new Date(Date.now() + INVITATION_MS), personneId]
-      );
-    }
+    if (existant.role === 'comptable' && !existant.activated_at && !existant.a_mot_de_passe) jeton = await jetonInvitation(db, personneId);
   } else {
     jeton = generateInviteToken();
     nouvelle = true;
@@ -190,14 +201,16 @@ const attribuer = async (db, { espace, accesId, nom, email, niveau }) => {
       [nom, email, jeton, new Date(Date.now() + INVITATION_MS)]
     )).rows[0].id;
   }
-  await db.query(
+  const maj = await db.query(
     `UPDATE compta.acces
         SET personne_id = $2, etat = 'actif', niveau = $3, nom_attendu = $4, email_attendu = $5,
             attribue_le = NOW(), updated_at = NOW()
       WHERE id = $1`,
     [accesId, personneId, niveau, nom, email]
   );
-  return { personneId, nom, email, nouvelle, jeton };
+  if (!maj.rowCount) throw erreur(404, 'Accès introuvable');
+  // L'email part à l'adresse enregistrée de la personne (une personne existante garde la sienne).
+  return { personneId, nom, email: existant ? existant.email : email, nouvelle, jeton };
 };
 
 // Email à la personne qui vient de recevoir l'accès (après le COMMIT ; un échec d'envoi ne défait rien).
@@ -217,6 +230,14 @@ const dansEspace = async (user, travail) => {
   const db = await pool.connect();
   try {
     await db.query('BEGIN');
+    // Ordre des verrous de moduleClient.basculer : configuration du compte, puis comptabilité (une désignation ne se
+    // croise pas avec une baisse de la limite par l'admin, sans interblocage).
+    if (user?.role === 'client') {
+      await db.query(
+        `SELECT 1 FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id WHERE a.client_id = $1 FOR UPDATE OF ac`,
+        [user.id]
+      );
+    }
     const espace = await exigerEspace(db, user, true);
     await exigerEcriture(db, espace.id);
     const resultat = await travail(db, espace);
@@ -256,10 +277,9 @@ const ajouter = async (req, res) => {
   try {
     const saisie = lireSaisie(req.body);
     const out = await dansEspace(req.user, async (db, espace) => {
-      const [limite, utilises] = await Promise.all([
-        limiteSupplementaires(db, espace.titulaire_id),
-        db.query(`SELECT COUNT(*)::int AS n FROM compta.acces WHERE espace_id = $1 AND role = 'gerant' AND NOT obligatoire`, [espace.id]),
-      ]);
+      // L'une après l'autre : un client de transaction ne mène qu'une requête à la fois.
+      const limite = await limiteSupplementaires(db, espace.titulaire_id);
+      const utilises = await db.query(`SELECT COUNT(*)::int AS n FROM compta.acces WHERE espace_id = $1 AND role = 'gerant' AND NOT obligatoire`, [espace.id]);
       if (utilises.rows[0].n >= limite) {
         throw erreur(409, limite > 0
           ? `Limite atteinte : ${limite} gérant${limite > 1 ? 's' : ''} comptable${limite > 1 ? 's' : ''} supplémentaire${limite > 1 ? 's' : ''}. Demandez-en davantage à l'équipe LabFlow.`
@@ -322,7 +342,9 @@ const retirer = async (req, res) => {
   try {
     const out = await dansEspace(req.user, async (db, espace) => {
       const acces = await accesDe(db, espace, req.params.id);
-      if (acces.personne_id == null) throw erreur(409, 'Aucune personne n\'a cet accès', 'ACCES_VIDE');
+      // Un accès supplémentaire resté vide (sa personne a été supprimée : ON DELETE SET NULL) se retire aussi ; l'accès
+      // obligatoire vide n'a rien à retirer.
+      if (acces.personne_id == null && acces.obligatoire) throw erreur(409, 'Aucune personne n\'a cet accès', 'ACCES_VIDE');
       await viderOuSupprimer(db, acces);
       await journaliser(db, espace.id, req.user.id, 'acces_retire', { acces: acces.id, personne: acces.personne_id, obligatoire: acces.obligatoire });
       return {};
@@ -351,11 +373,7 @@ const inviter = async (req, res) => {
       if (!presenterComptable(acces).invitationRenvoyable) {
         throw erreur(409, 'Le compte de cette personne n\'attend pas d\'invitation', 'INVITATION_INUTILE');
       }
-      const jeton = generateInviteToken();
-      await db.query(
-        'UPDATE utilisateurs SET invite_token = $1, invite_token_expires_at = $2, updated_at = NOW() WHERE id = $3 AND activated_at IS NULL',
-        [jeton, new Date(Date.now() + INVITATION_MS), acces.personne_id]
-      );
+      const jeton = await jetonInvitation(db, acces.personne_id);
       await journaliser(db, espace.id, req.user.id, 'invitation_renvoyee', { acces: acces.id, personne: acces.personne_id });
       return { attribution: { email: acces.email, nom: acces.nom_attendu || acces.nom, jeton } };
     });
@@ -379,7 +397,7 @@ const accesConfie = async (db, userId, espaceId, verrou = false) => {
        JOIN compta.espaces e ON e.id = a.espace_id
       WHERE a.personne_id = $1 AND a.espace_id = $2 AND a.role = 'gerant' AND a.etat = 'actif'
         AND e.type = 'client_labflow' AND e.etat = 'actif'
-      ${verrou ? 'FOR UPDATE OF a' : ''}`,
+      ${verrou ? 'FOR UPDATE OF e, a' : ''}`,
     [userId, espaceId]
   );
   return r.rows[0] || null;
