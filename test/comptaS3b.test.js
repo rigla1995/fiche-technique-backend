@@ -40,8 +40,9 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   const src = lire('src', 'compta', 'routes.js');
   const ecritures = [...src.matchAll(/router\.(post|put|patch|delete)\('([^']+)',[^\n]*?(\w+(?:\.\w+)?)\);/g)]
     .map(([, methode, chemin, gestionnaire]) => ({ cle: `${methode.toUpperCase()} ${chemin}`, gestionnaire }));
-  // S3b : 6 routes ; S3c : + 7 (gérants du cabinet et leur demande) ; S4a : + 5 (dossiers).
-  assert.equal(ecritures.length, 18, 'routes d\'écriture trouvées');
+  // S3b : 6 routes ; S3c : + 7 (gérants du cabinet et leur demande) ; S4a : + 5 (dossiers) ; S4b : + 1 (reprise de
+  // l'identité LabFlow).
+  assert.equal(ecritures.length, 19, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
