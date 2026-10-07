@@ -105,6 +105,8 @@ router.get('/espaces/:espaceId/dossiers', authenticate, dossiers.lister);
 router.post('/espaces/:espaceId/dossiers', authenticate, limiteDossiers, dossiers.creer);
 router.get('/dossiers/:dossierId', authenticate, dossiers.fiche);
 router.put('/dossiers/:dossierId', authenticate, limiteDossiers, dossiers.modifier);
+// S4b : le dossier « Mon entreprise » d'un client LabFlow reprend l'identité LabFlow du client à la demande.
+router.post('/dossiers/:dossierId/reprendre-identite', authenticate, limiteDossiers, dossiers.reprendreIdentite);
 router.post('/dossiers/:dossierId/archiver', authenticate, limiteDossiers, dossiers.archiver);
 router.post('/dossiers/:dossierId/desarchiver', authenticate, limiteDossiers, dossiers.desarchiver);
 router.delete('/dossiers/:dossierId', authenticate, limiteDossiers, dossiers.supprimer);

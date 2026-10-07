@@ -44,6 +44,8 @@ const login = async (email) => appel('POST', '/auth/login', null, { email, passw
     const ids = (await pool.query('SELECT id FROM utilisateurs WHERE email = ANY($1)', [[ADMIN, CLIENT, COMPTABLE]])).rows.map((r) => r.id);
     if (ids.length) {
       await pool.query(`DELETE FROM compta.evenements WHERE auteur_id = ANY($1) OR (details->>'titulaire')::int = ANY($1)`, [ids]);
+      // S4b : les dossiers (dont « Mon entreprise », créé d'office) retiennent leur comptabilité (RESTRICT).
+      await pool.query('DELETE FROM compta.dossiers WHERE espace_id IN (SELECT id FROM compta.espaces WHERE titulaire_id = ANY($1))', [ids]);
       await pool.query('DELETE FROM compta.espaces WHERE titulaire_id = ANY($1)', [ids]);
       await pool.query('DELETE FROM notifications WHERE user_id = ANY($1)', [ids]);
       await pool.query('DELETE FROM utilisateurs WHERE id = ANY($1)', [ids]);

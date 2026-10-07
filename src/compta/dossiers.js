@@ -106,6 +106,13 @@ const periodesDe = ({ debut, fin }) => {
   return periodes;
 };
 
+// Année civile en cours à Tunis (premier exercice proposé ; dossier « Mon entreprise » d'un client, S4b).
+const FORMAT_ANNEE_TUNIS = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Tunis', year: 'numeric' });
+const anneeCivile = (d = new Date()) => {
+  const a = FORMAT_ANNEE_TUNIS.format(d);
+  return { debut: `${a}-01-01`, fin: `${a}-12-31` };
+};
+
 // ── Identité (D17 : mêmes règles que le client et le cabinet) ───────────────────────────────────────────────────────
 // `partiel` (modification) : seuls les champs présents ; la raison sociale ne se vide jamais.
 const lireIdentiteDossier = (body = {}, partiel = false) => {
@@ -161,6 +168,25 @@ const paramsVisibles = (acces) => [acces.espace_id, acces.tous_dossiers, acces.a
 // Un dossier « mouvementé » a au moins une écriture (D10) : aucune table d'écritures n'existe avant l'étape de la saisie,
 // toujours faux ici. Seul endroit à compléter alors (supprimer un dossier, modifier son exercice).
 const dossierMouvemente = async (_db, _dossierId) => false;
+
+// ── Identité LabFlow d'un client (S4b : dossier « Mon entreprise », copie à la création puis reprise à la demande) ───
+const texteCourt = (v, max) => (v == null ? '' : String(v).replace(/\s+/g, ' ').trim().slice(0, max));
+// Ligne profil_entreprise (+ utilisateurs.nom en `contact`) → colonnes d'identité du dossier. Sans validation (LabFlow
+// a déjà contrôlé ce qu'il a enregistré ; une vieille adresse libre est seulement bornée). La raison sociale ne se vide
+// jamais : nom commercial, sinon nom du contact, sinon « Mon entreprise ».
+const identiteLabflow = (row = {}) => {
+  const v = {};
+  for (const { colonne, max } of CHAMPS_IDENTITE) v[colonne] = texteCourt(row[colonne], max) || null;
+  v.raison_sociale = v.raison_sociale || v.nom_commercial || texteCourt(row.contact, 255) || 'Mon entreprise';
+  return v;
+};
+const SQL_IDENTITE_CLIENT = `
+  SELECT u.nom AS contact, pe.raison_sociale, pe.nom_commercial, pe.forme_juridique, pe.matricule_fiscal, pe.rne, pe.adresse, pe.ville,
+         pe.representant_nom, pe.representant_qualite
+    FROM utilisateurs u
+    LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
+   WHERE u.id = $1`;
+const lireIdentiteClient = async (db, clientId) => identiteLabflow((await db.query(SQL_IDENTITE_CLIENT, [clientId])).rows[0] || {});
 
 // Avertissement « déjà porté » dans la même comptabilité (même identifiant à 7 chiffres), parmi les dossiers ouverts à la
 // personne (jamais le nom d'un dossier qu'elle ne voit pas) : jamais un refus (groupes, franchises). excludeId = le
@@ -387,6 +413,32 @@ const partie = (corps, cle, lire) => {
   return Object.keys(valeurs).length ? lu : null;
 };
 
+// Écrit les colonnes d'identité et de régime données (le nom suit l'identité) et journalise les champs réellement
+// changés, avec la valeur d'avant et celle d'après (D16). `identite` : colonnes → valeurs ; `regime` : clés de l'API.
+// → les changements (vide si rien n'a changé : alors aucune ligne de journal).
+const mettreAJour = async (db, acces, d, { identite = null, regime = null }, auteurId, details = {}) => {
+  const sets = [];
+  const params = [d.id];
+  const changements = {};
+  const poser = (colonne, valeur) => {
+    params.push(valeur);
+    sets.push(`${colonne} = $${params.length}`);
+    if ((d[colonne] ?? null) !== (valeur ?? null)) changements[colonne] = { avant: d[colonne] ?? null, apres: valeur ?? null };
+  };
+  if (identite) {
+    for (const [colonne, valeur] of Object.entries(identite)) poser(colonne, valeur);
+    poser('nom', nomAffiche({ ...d, ...identite }).slice(0, 255));
+  }
+  if (regime) {
+    for (const [cle, valeur] of Object.entries(regime)) poser(COLONNES_REGIME[cle], valeur);
+  }
+  // Rien ne change : ni écriture (updated_at reste juste), ni ligne de journal.
+  if (!Object.keys(changements).length) return changements;
+  await db.query(`UPDATE compta.dossiers SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $1`, params);
+  await journaliser(db, acces.espace_id, auteurId, 'dossier_modifie', { dossier: d.id, nom: nomAffiche({ ...d, ...(identite || {}) }).slice(0, 255), changements, ...details });
+  return changements;
+};
+
 // PUT /api/compta/dossiers/:dossierId — { identite?, regime?, exercice? } ; un dossier archivé ne se modifie pas.
 // L'exercice ouvert reçoit ses nouvelles dates et ses périodes sont refaites, tant qu'aucune écriture n'existe. Le
 // journal garde, pour chaque champ changé, la valeur d'avant et celle d'après (D16).
@@ -400,24 +452,7 @@ const modifier = async (req, res) => {
     const { fiche: f, avertissements } = await dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {
       if (!droits(acces).modifier) throw erreur(403, MSG_NIVEAU, 'NIVEAU_INSUFFISANT');
       if (d.etat === 'archive') throw erreur(409, 'Dossier archivé : désarchivez-le d\'abord', 'DOSSIER_ARCHIVE');
-      const sets = [];
-      const params = [d.id];
-      const changements = {};
-      const poser = (colonne, valeur) => {
-        params.push(valeur);
-        sets.push(`${colonne} = $${params.length}`);
-        if ((d[colonne] ?? null) !== (valeur ?? null)) changements[colonne] = { avant: d[colonne] ?? null, apres: valeur ?? null };
-      };
-      if (identite) {
-        for (const [colonne, valeur] of Object.entries(identite.valeurs)) poser(colonne, valeur);
-        poser('nom', nomAffiche({ ...d, ...identite.valeurs }).slice(0, 255));
-      }
-      if (regime) {
-        for (const [cle, valeur] of Object.entries(regime)) poser(COLONNES_REGIME[cle], valeur);
-      }
-      if (sets.length) {
-        await db.query(`UPDATE compta.dossiers SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $1`, params);
-      }
+      await mettreAJour(db, acces, d, { identite: identite ? identite.valeurs : null, regime }, req.user.id);
       if (exercice) {
         const courant = (await db.query(`SELECT id, debut, fin FROM compta.exercices WHERE dossier_id = $1 AND etat = 'ouvert' ORDER BY debut DESC LIMIT 1 FOR UPDATE`, [d.id])).rows[0];
         if (!courant) throw erreur(409, 'Aucun exercice ouvert', 'EXERCICE_CLOS');
@@ -429,9 +464,6 @@ const modifier = async (req, res) => {
         await journaliser(db, acces.espace_id, req.user.id, 'exercice_modifie', { dossier: d.id, exercice: courant.id, avant: { debut: courant.debut, fin: courant.fin }, apres: exercice });
       }
       const apres = (await db.query('SELECT * FROM compta.dossiers WHERE id = $1', [d.id])).rows[0];
-      if (Object.keys(changements).length) {
-        await journaliser(db, acces.espace_id, req.user.id, 'dossier_modifie', { dossier: d.id, nom: apres.nom, changements });
-      }
       return {
         fiche: await presenterFiche(db, acces, apres),
         avertissements: identite ? [...identite.avertissements, ...await avertissementsMatriculeDossier(db, acces, apres.matricule_fiscal, d.id)] : [],
@@ -440,6 +472,35 @@ const modifier = async (req, res) => {
     res.json({ ...f, avertissements });
   } catch (err) {
     repondreErreur(res, err, '[compta.dossiers.modifier]');
+  }
+};
+
+// POST /api/compta/dossiers/:dossierId/reprendre-identite — dossier « Mon entreprise » d'un client LabFlow (source
+// « labflow », S4b) : l'identité LabFlow du client (profil_entreprise, page « Mon entreprise » de LabFlow) est recopiée
+// dans le dossier, champ par champ (règle PLAN-S4 §4 : copie à la création, puis indépendante ; recopie à la demande).
+// Mêmes droits que la modification. `reprise` : nombre de champs changés (0 = identique).
+const reprendreIdentite = async (req, res) => {
+  try {
+    const { fiche: f, avertissements, reprise } = await dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {
+      if (!droits(acces).modifier) throw erreur(403, MSG_NIVEAU, 'NIVEAU_INSUFFISANT');
+      if (d.etat === 'archive') throw erreur(409, 'Dossier archivé : désarchivez-le d\'abord', 'DOSSIER_ARCHIVE');
+      if (d.source !== 'labflow' || !d.client_labflow_id || d.client_labflow_id !== acces.titulaire_id || acces.type !== 'client_labflow') {
+        throw erreur(409, 'Ce dossier n\'est pas celui d\'un client LabFlow : son identité ne se reprend pas', 'PAS_LABFLOW');
+      }
+      // Seuls les champs que LabFlow connaît sont recopiés : un champ vide dans LabFlow n'efface rien dans le dossier
+      // (ce qui n'a été saisi que dans le dossier reste).
+      const identite = Object.fromEntries(Object.entries(await lireIdentiteClient(db, d.client_labflow_id)).filter(([, v]) => v != null));
+      const changements = await mettreAJour(db, acces, d, { identite }, req.user.id, { reprise: 'labflow' });
+      const apres = (await db.query('SELECT * FROM compta.dossiers WHERE id = $1', [d.id])).rows[0];
+      return {
+        fiche: await presenterFiche(db, acces, apres),
+        avertissements: await avertissementsMatriculeDossier(db, acces, apres.matricule_fiscal, d.id),
+        reprise: Object.keys(changements).filter((c) => c !== 'nom').length,
+      };
+    });
+    res.json({ ...f, avertissements, reprise });
+  } catch (err) {
+    repondreErreur(res, err, '[compta.dossiers.reprendre]');
   }
 };
 
@@ -476,6 +537,9 @@ const supprimer = async (req, res) => {
   try {
     await dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {
       if (!droits(acces).supprimer) throw erreur(403, MSG_TITULAIRE, 'TITULAIRE_SEUL');
+      // S4b : le dossier « Mon entreprise » d'un client LabFlow ne se supprime jamais (il renaîtrait à la prochaine
+      // activation) : il s'archive.
+      if (d.source === 'labflow') throw erreur(409, 'Le dossier « Mon entreprise » ne se supprime pas : archivez-le', 'DOSSIER_LABFLOW');
       if (await dossierMouvemente(db, d.id)) throw erreur(409, 'Ce dossier a des écritures : il ne peut pas être supprimé, archivez-le', 'DOSSIER_MOUVEMENTE');
       await journaliser(db, acces.espace_id, req.user.id, 'dossier_supprime', { dossier: d.id, nom: d.nom, raisonSociale: d.raison_sociale, matricule: d.matricule_fiscal });
       await db.query('DELETE FROM compta.dossiers WHERE id = $1', [d.id]);
@@ -488,7 +552,7 @@ const supprimer = async (req, res) => {
 };
 
 module.exports = {
-  PERSONNES, IMPOTS, TVA, MOIS_MAX, regimeParForme, lireRegime, lireExercice, periodesDe, nbMois, finDeMois, dateValide, lireIdentiteDossier, droits,
-  accesSurEspace, dossierMouvemente,
-  lister, creer, fiche, modifier, archiver, desarchiver, supprimer,
+  PERSONNES, IMPOTS, TVA, MOIS_MAX, regimeParForme, lireRegime, lireExercice, periodesDe, nbMois, finDeMois, dateValide, anneeCivile, lireIdentiteDossier, droits,
+  accesSurEspace, dossierMouvemente, creerExercice, identiteLabflow, lireIdentiteClient, SQL_IDENTITE_CLIENT,
+  lister, creer, fiche, modifier, reprendreIdentite, archiver, desarchiver, supprimer,
 };
