@@ -125,6 +125,16 @@ const basculer = async (db, { clientId, actif, nbGerants, auteurId }) => {
   const nb = actif && nbGerants !== undefined ? nbGerants : (row.nb_gerants_compta || 0);
   if (nb == null) throw erreur(400, `Gérants comptables supplémentaires : entier de 0 à ${NB_GERANTS_MAX}`);
   if (actif && tarif(await grilleGenerale(db), 'compta_module_mensuel') <= 0) throw erreur(400, MSG_TARIF, 'TARIF_COMPTA_MANQUANT');
+  // S3b : la limite ne descend pas sous les gérants comptables supplémentaires que le client a déjà désignés.
+  if (actif && row.espace_id) {
+    const enPlace = (await db.query(
+      `SELECT COUNT(*)::int AS n FROM compta.acces WHERE espace_id = $1 AND role = 'gerant' AND NOT obligatoire`,
+      [row.espace_id]
+    )).rows[0].n;
+    if (nb < enPlace) {
+      throw erreur(409, `${enPlace} gérant${enPlace > 1 ? 's' : ''} comptable${enPlace > 1 ? 's' : ''} supplémentaire${enPlace > 1 ? 's sont' : ' est'} en place chez ce client : il doit d'abord en retirer pour descendre à ${nb}.`, 'GERANTS_COMPTA_EN_PLACE');
+    }
+  }
 
   const etaitActif = row.module_compta_actif === true;
   const change = etaitActif !== actif || (actif && (row.nb_gerants_compta || 0) !== nb);

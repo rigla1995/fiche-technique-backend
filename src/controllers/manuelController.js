@@ -92,7 +92,9 @@ const listPublic = async (req, res) => {
     if (!voc.estDefaut) {
       try { profil = await getProfil(req.user.domaine_id); } catch (_) { profil = null; /* texte commun */ }
     }
-    const gerant = req.user.role === 'gerant';
+    // « visible_gerant » est une notion de LabFlow (Stock / Vente) : un gérant à qui une comptabilité est confiée (S3b)
+    // lit toutes les fiches de LabFlow Compta.
+    const gerant = req.user.role === 'gerant' && !compta;
     const { text, values } = requeteManuel(slugVariantes(voc, profil), { gerant, produit });
     const [{ rows }, ctx] = await Promise.all([
       pool.query(text, values),

@@ -1,7 +1,36 @@
 {
   "slug": "gerants",
   "titre": "Comptes [[court:gerant:pl]]",
-  "exclusions": [],
+  "exclusions": [
+    {
+      "extrait": "Gérants Comptabilité",
+      "forme": "Gérants",
+      "type": "nom-fige",
+      "occurrences": 2,
+      "justification": "titre fixe de la partie Comptabilité de la page (vocabulaire comptable, src/compta/GerantsComptables.tsx ; LabFlow Compta S3b)"
+    },
+    {
+      "extrait": "Gérants comptables supplémentaires",
+      "forme": "Gérants",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "titre fixe de la carte des accès comptables (src/compta/GerantsComptables.tsx ; LabFlow Compta S3b)"
+    },
+    {
+      "extrait": "Demander des gérants comptables",
+      "forme": "gérants",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "bouton fixe de la partie Comptabilité (src/compta/GerantsComptables.tsx ; LabFlow Compta S3b)"
+    },
+    {
+      "extrait": "Stock / Vente",
+      "forme": "Stock",
+      "type": "nom-fige",
+      "occurrences": 1,
+      "justification": "nom de l'espace LabFlow face à LabFlow Compta, écrit tel quel à l'écran (bouton 📦 Stock / Vente, S3a)"
+    }
+  ],
   "baliseur": "L1",
   "relecteur": "L2"
 }
