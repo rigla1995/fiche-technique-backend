@@ -40,21 +40,38 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   const src = lire('src', 'compta', 'routes.js');
   const ecritures = [...src.matchAll(/router\.(post|put|patch|delete)\('([^']+)',[^\n]*?(\w+(?:\.\w+)?)\);/g)]
     .map(([, methode, chemin, gestionnaire]) => ({ cle: `${methode.toUpperCase()} ${chemin}`, gestionnaire }));
-  assert.equal(ecritures.length, 6, 'routes d\'écriture trouvées');
-  const ctrl = lire('src', 'compta', 'comptablesClient.js');
-  const corps = (nom) => {
+  // S3b : 6 routes ; S3c : + 7 (gérants du cabinet et leur demande).
+  assert.equal(ecritures.length, 13, 'routes d\'écriture trouvées');
+  // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
+  const CONTROLEURS = {
+    comptables: { fichier: 'comptablesClient.js', transaction: 'await dansEspace(req.user,' },
+    gerants: { fichier: 'gerantsCabinet.js', transaction: 'await dansCabinet(req.user,' },
+  };
+  const corps = (fichier, nom) => {
+    const ctrl = lire('src', 'compta', fichier);
     const debut = ctrl.indexOf(`const ${nom} = async (req, res) => {`);
     assert.ok(debut > 0, nom);
     return ctrl.slice(debut, ctrl.indexOf('\n};\n', debut));
   };
   for (const { cle, gestionnaire } of ecritures) {
     if (routes.ECRITURES_SANS_GARDE.includes(cle)) continue;
-    assert.match(gestionnaire, /^comptables\.\w+$/, `${cle} : gestionnaire de comptablesClient`);
-    assert.ok(corps(gestionnaire.split('.')[1]).includes('await dansEspace(req.user,'), `${cle} : écriture sous la garde`);
+    const [prefixe, nom] = gestionnaire.split('.');
+    const ctrl = CONTROLEURS[prefixe];
+    assert.ok(ctrl && nom, `${cle} : gestionnaire de comptablesClient ou gerantsCabinet`);
+    const texte = corps(ctrl.fichier, nom);
+    assert.ok(texte.includes(ctrl.transaction), `${cle} : écriture dans la transaction verrouillée`);
+    // S3c (réponse du client du 07/10) : seuls retirer et désactiver se passent de la garde, et elles sont listées.
+    assert.equal(texte.includes('{ garde: false }'), routes.ECRITURES_TOUJOURS_PERMISES.includes(cle), `${cle} : garde`);
   }
-  const dansEspace = ctrl.slice(ctrl.indexOf('const dansEspace = async'), ctrl.indexOf('\n};\n', ctrl.indexOf('const dansEspace = async')));
-  assert.ok(dansEspace.includes('const espace = await exigerEspace(db, user, true);\n    await exigerEcriture(db, espace.id);'), 'espace verrouillé puis garde');
+  for (const [fichier, ouverture] of [['comptablesClient.js', 'const espace = await exigerEspace(db, user, true);'], ['gerantsCabinet.js', 'const espace = await exigerCabinet(db, user, true);']]) {
+    const ctrl = lire('src', 'compta', fichier);
+    const debut = ctrl.indexOf(fichier === 'gerantsCabinet.js' ? 'const dansCabinet = async' : 'const dansEspace = async');
+    const transaction = ctrl.slice(debut, ctrl.indexOf('\n};\n', debut));
+    assert.ok(transaction.includes(`${ouverture}\n    if (garde) await exigerEcriture(db, espace.id);`), `${fichier} : espace verrouillé puis garde`);
+    assert.ok(transaction.includes('{ garde = true } = {}'), `${fichier} : garde par défaut`);
+  }
   assert.deepEqual(routes.ECRITURES_SANS_GARDE, ['POST /passage', 'POST /confiees/:espaceId/quitter']);
+  assert.deepEqual(routes.ECRITURES_TOUJOURS_PERMISES, ['DELETE /mes-comptables/:id', 'DELETE /cabinet/gerants/:id', 'POST /cabinet/gerants/:id/desactiver']);
   // La garde globale ne juge plus /api/compta (sinon un cabinet bloqué ne pourrait rien écrire, même chez ses clients).
   const app = lire('src', 'app.js');
   const exemption = app.indexOf("if (req.path === '/compta' || req.path.startsWith('/compta/')) return next();");

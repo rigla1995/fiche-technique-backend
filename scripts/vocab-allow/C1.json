@@ -601,5 +601,12 @@
     "apres": "comptable",
     "type": "discriminant",
     "justification": "Chantier Achats & Comptabilité, étape S3b (comptable du client, cadrage validé par le client le 07/10/2026) : rôle « comptable » : le mode d'un cabinet ne désactive jamais la personne (réponse du client du 06/10 : un cabinet bloqué se connecte encore, seul son cabinet suit ce mode) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'cabinet'",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3c (gérants du cabinet, cadrage validé par le client le 07/10/2026) : type d'espace (« cabinet ») dans la jointure qui donne à l'admin le nom du cabinet d'une demande de gérants ; valeur SQL jamais affichée."
   }
 ]

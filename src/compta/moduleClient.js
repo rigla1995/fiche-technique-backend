@@ -227,13 +227,19 @@ const controlerDemandeGerants = async (db, clientId, n) => {
 
 // À la validation par l'admin, dans sa transaction (`cur` : configuration verrouillée du compte) : le module doit être
 // encore actif ; la limite augmente (facturée à partir du mois suivant, par le recalcul de l'appelant) ; journal.
-const ajouterGerantsDemandes = async (db, { cur, clientId, n, auteurId, demandeId }) => {
-  if (cur.module_compta_actif !== true) throw erreur(409, 'Le module Comptabilité n\'est plus actif sur ce compte : refusez cette demande');
+// S3c : `cabinet` (abonnement LabFlow Compta, demande faite depuis « Mes gérants ») : les gérants achetés du cabinet
+// augmentent, sans module (règles de facturation du cabinet, S2b : mois suivant, promotions du cabinet).
+const ajouterGerantsDemandes = async (db, { cur, clientId, n, auteurId, demandeId, cabinet = false }) => {
+  if (!cabinet && cur.module_compta_actif !== true) throw erreur(409, 'Le module Comptabilité n\'est plus actif sur ce compte : refusez cette demande');
   const nbApres = (Number(cur.nb_gerants_compta) || 0) + n;
-  if (nbApres > NB_GERANTS_MAX) throw erreur(409, `Au plus ${NB_GERANTS_MAX} gérants comptables supplémentaires : refusez cette demande`);
+  if (nbApres > NB_GERANTS_MAX) {
+    throw erreur(409, cabinet
+      ? `Au plus ${NB_GERANTS_MAX} gérants pour un cabinet : refusez cette demande`
+      : `Au plus ${NB_GERANTS_MAX} gérants comptables supplémentaires : refusez cette demande`);
+  }
   await db.query('UPDATE abonnement_config SET nb_gerants_compta = $2, updated_at = NOW() WHERE abonnement_id = $1', [cur.abonnement_id, nbApres]);
-  const espace = await db.query(`SELECT id FROM compta.espaces WHERE type = 'client_labflow' AND titulaire_id = $1`, [clientId]);
-  await journaliser(db, espace.rows[0]?.id ?? null, auteurId, 'module_gerants', { titulaire: clientId, nbGerants: nbApres, demande: demandeId });
+  const espace = await db.query('SELECT id FROM compta.espaces WHERE type = $2 AND titulaire_id = $1', [clientId, cabinet ? 'cabinet' : 'client_labflow']);
+  await journaliser(db, espace.rows[0]?.id ?? null, auteurId, cabinet ? 'gerants_modifies' : 'module_gerants', { titulaire: clientId, nbGerants: nbApres, demande: demandeId });
 };
 
 // Après la transaction : les mensualités en attente des mois suivants suivent le module (best effort, comme les

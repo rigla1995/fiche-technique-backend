@@ -71,21 +71,22 @@ const limiteSupplementaires = async (db, titulaireId) => {
 };
 
 const SQL_COMPTABLES = `
-  SELECT a.id, a.obligatoire, a.niveau, a.nom_attendu, a.email_attendu, a.attribue_le, a.personne_id,
+  SELECT a.id, a.obligatoire, a.niveau, a.etat AS etat_acces, a.nom_attendu, a.email_attendu, a.attribue_le, a.personne_id,
          u.nom, u.email, u.role AS personne_role, u.activated_at, (u.mot_de_passe IS NOT NULL) AS a_mot_de_passe
     FROM compta.acces a
     LEFT JOIN utilisateurs u ON u.id = a.personne_id
    WHERE a.espace_id = $1 AND a.role = 'gerant'`;
 
 // Un accès comptable tel que le titulaire le voit : le nom qu'il a saisi (sinon celui de la personne), l'adresse de la
-// personne, l'état « invitation envoyée » tant que le compte n'est pas activé.
+// personne, l'état « invitation envoyée » tant que le compte n'est pas activé. « desactive » : un gérant de cabinet
+// désactivé par son titulaire (S3c) ; les accès d'un client ne le sont jamais.
 const presenterComptable = (x) => {
   const attribue = x.personne_id != null;
   const invitation = attribue && !x.activated_at && !x.a_mot_de_passe;
   return {
     id: x.id,
     obligatoire: x.obligatoire,
-    etat: attribue ? 'actif' : 'a_attribuer',
+    etat: !attribue ? 'a_attribuer' : x.etat_acces === 'desactive' ? 'desactive' : 'actif',
     niveau: x.niveau,
     nom: attribue ? (x.nom_attendu || x.nom || null) : null,
     email: attribue ? (x.email || x.email_attendu || null) : null,
@@ -162,13 +163,19 @@ const lireSaisie = (body, partiel = false) => {
   return out;
 };
 
+// Refus propres à la comptabilité d'un client ; le cabinet (S3c) a les siens (gerantsCabinet.js).
+const TEXTES_CLIENT = {
+  titulaire: 'Cette adresse est la vôtre : vous êtes déjà titulaire de cette comptabilité',
+  double: 'Cette personne a déjà un accès à votre comptabilité',
+};
+
 /**
  * Donne l'accès `accesId` (de l'espace verrouillé) à la personne de l'adresse `email`, dans la transaction `db`.
  * Personne inconnue → compte LabFlow Compta créé (rôle « comptable », adresse en minuscules, invitation 48 h) ;
  * personne connue → accès ajouté tout de suite (D14) ; compte LabFlow Compta jamais activé → nouvelle invitation.
  * Renvoie { personneId, nom, email, nouvelle, jeton } (jeton : invitation à envoyer après le COMMIT).
  */
-const attribuer = async (db, { espace, accesId, nom, email, niveau }) => {
+const attribuer = async (db, { espace, accesId, nom, email, niveau, textes = TEXTES_CLIENT }) => {
   const existant = (await db.query(
     `SELECT id, nom, email, role, actif, activated_at, (mot_de_passe IS NOT NULL) AS a_mot_de_passe
        FROM utilisateurs WHERE LOWER(email) = LOWER($1)
@@ -180,7 +187,7 @@ const attribuer = async (db, { espace, accesId, nom, email, niveau }) => {
   let nouvelle = false;
   if (existant) {
     if (existant.id === espace.titulaire_id) {
-      throw erreur(409, 'Cette adresse est la vôtre : vous êtes déjà titulaire de cette comptabilité', 'ADRESSE_TITULAIRE');
+      throw erreur(409, textes.titulaire, 'ADRESSE_TITULAIRE');
     }
     if (ROLES_REFUSES.includes(existant.role) || existant.actif !== true) {
       throw erreur(409, 'Cette adresse ne peut pas recevoir d\'accès à une comptabilité', 'ADRESSE_REFUSEE');
@@ -189,7 +196,7 @@ const attribuer = async (db, { espace, accesId, nom, email, niveau }) => {
       'SELECT 1 FROM compta.acces WHERE espace_id = $1 AND personne_id = $2 AND id <> $3',
       [espace.id, existant.id, accesId]
     );
-    if (double.rows.length) throw erreur(409, 'Cette personne a déjà un accès à votre comptabilité', 'DEJA_ACCES');
+    if (double.rows.length) throw erreur(409, textes.double, 'DEJA_ACCES');
     personneId = existant.id;
     if (existant.role === 'comptable' && !existant.activated_at && !existant.a_mot_de_passe) jeton = await jetonInvitation(db, personneId);
   } else {
@@ -225,8 +232,10 @@ const prevenir = async (attribution, espace) => {
 };
 
 // Transaction sur l'espace du titulaire, verrouillé (désignations, limite et unicité se suivent au lieu de se croiser),
-// garde par comptabilité comprise.
-const dansEspace = async (user, travail) => {
+// garde par comptabilité comprise. `{ garde: false }` (réponse du client du 07/10, S3c) : seulement pour RETIRER un
+// accès, permis quel que soit l'abonnement (couper l'accès d'une personne qui part est une mesure de sécurité) ;
+// routes.js les liste (ECRITURES_TOUJOURS_PERMISES).
+const dansEspace = async (user, travail, { garde = true } = {}) => {
   const db = await pool.connect();
   try {
     await db.query('BEGIN');
@@ -239,7 +248,7 @@ const dansEspace = async (user, travail) => {
       );
     }
     const espace = await exigerEspace(db, user, true);
-    await exigerEcriture(db, espace.id);
+    if (garde) await exigerEcriture(db, espace.id);
     const resultat = await travail(db, espace);
     await db.query('COMMIT');
     return { espace, ...resultat };
@@ -337,7 +346,8 @@ const modifier = async (req, res) => {
 };
 
 // DELETE /api/compta/mes-comptables/:id — retire la personne : l'accès obligatoire redevient « à attribuer » (jamais
-// supprimé) ; un accès supplémentaire est supprimé. Sans email (réponse du client du 07/10).
+// supprimé) ; un accès supplémentaire est supprimé. Sans email (réponse du client du 07/10). Permis même en lecture
+// seule (réponse du client du 07/10, S3c).
 const retirer = async (req, res) => {
   try {
     const out = await dansEspace(req.user, async (db, espace) => {
@@ -348,7 +358,7 @@ const retirer = async (req, res) => {
       await viderOuSupprimer(db, acces);
       await journaliser(db, espace.id, req.user.id, 'acces_retire', { acces: acces.id, personne: acces.personne_id, obligatoire: acces.obligatoire });
       return {};
-    });
+    }, { garde: false });
     res.json(await etatTitulaire(pool, out.espace));
   } catch (err) {
     repondreErreur(res, err, '[compta.comptables.retirer]');
@@ -477,6 +487,7 @@ const quitter = async (req, res) => {
 };
 
 module.exports = {
-  NIVEAUX, ROLES_REFUSES, lireSaisie, presenterComptable, lireComptables, attribuer, viderOuSupprimer,
+  NIVEAUX, ROLES_REFUSES, SQL_COMPTABLES, erreur, idValide, repondreErreur, lireSaisie, presenterComptable, lireComptables,
+  jetonInvitation, attribuer, viderOuSupprimer,
   lister, ajouter, modifier, retirer, inviter, confiee, quitter,
 };

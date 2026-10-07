@@ -9,6 +9,7 @@ const { listerAcces, maComptabilite, exigerTitulaireCabinet, monCabinet, monAbon
 const rateLimit = require('express-rate-limit');
 const { emettre: emettrePassage } = require('./passage');
 const comptables = require('./comptablesClient');
+const gerants = require('./gerantsCabinet');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
 const limiteEmission = rateLimit({
@@ -64,10 +65,28 @@ router.post('/mes-comptables/:id/inviter', authenticate, limiteComptables, compt
 router.get('/confiees/:espaceId', authenticate, comptables.confiee);
 router.post('/confiees/:espaceId/quitter', authenticate, comptables.quitter);
 
+// Étape S3c : les gérants du cabinet. Le titulaire (vérifié sur compta.acces) gère les accès de ses collaborateurs et
+// demande des gérants à l'équipe LabFlow ; chaque écriture passe par la garde PAR COMPTABILITÉ dans le contrôleur.
+router.get('/cabinet/gerants', authenticate, exigerTitulaireCabinet, gerants.lister);
+router.post('/cabinet/gerants', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.ajouter);
+router.put('/cabinet/gerants/:id', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.modifier);
+router.delete('/cabinet/gerants/:id', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.retirer);
+router.post('/cabinet/gerants/:id/desactiver', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.desactiver);
+router.post('/cabinet/gerants/:id/reactiver', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.reactiver);
+router.post('/cabinet/gerants/:id/inviter', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.inviter);
+router.post('/cabinet/demande-gerants', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.demander);
+// Le collaborateur : la page du cabinet (le titulaire gère son équipe : pas de « Quitter », réponse du client du 07/10).
+router.get('/cabinets/:espaceId', authenticate, gerants.membre);
+
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique
 // plus à /api/compta (D4).
 const ECRITURES_SANS_GARDE = ['POST /passage', 'POST /confiees/:espaceId/quitter'];
+// Écritures permises quel que soit l'abonnement (réponse du client du 07/10, S3c ; test/comptaS3c.test.js) : retirer ou
+// désactiver un accès — couper l'accès d'une personne qui part est une mesure de sécurité. Elles passent par la
+// transaction verrouillée de leur contrôleur, avec `{ garde: false }`.
+const ECRITURES_TOUJOURS_PERMISES = ['DELETE /mes-comptables/:id', 'DELETE /cabinet/gerants/:id', 'POST /cabinet/gerants/:id/desactiver'];
 
 module.exports = router;
 module.exports.ECRITURES_SANS_GARDE = ECRITURES_SANS_GARDE;
+module.exports.ECRITURES_TOUJOURS_PERMISES = ECRITURES_TOUJOURS_PERMISES;

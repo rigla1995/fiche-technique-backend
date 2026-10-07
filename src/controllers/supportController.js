@@ -10,6 +10,8 @@ const { getProfil } = require('../services/domaineProfilService');
 // LabFlow Compta, étape S3b : demande d'ajout de gérants comptables (support_demandes.nb_gerants_compta_supp, migration 205).
 const moduleCompta = require('../compta/moduleClient');
 const { libelleAjoutGerantsCompta } = require('../compta/emails');
+// LabFlow Compta, étape S3c : demande de gérants d'un cabinet (validation, email de LabFlow Compta).
+const gerantsCabinet = require('../compta/gerantsCabinet');
 
 // Ajouts d'une demande de capacité → composants du domaine (1er composant actif de
 // chaque type, comme le backfill) en mode 'add' (la cible acheteurs REMPLACE le quota).
@@ -43,6 +45,8 @@ const mapDemande = (row) => ({
   nbGerantsSupp: row.nb_gerants_supp,
   // LabFlow Compta (S3b) : gérants comptables supplémentaires demandés (module Comptabilité)
   nbGerantsComptaSupp: row.nb_gerants_compta_supp || 0,
+  // LabFlow Compta (S3c) : demande d'un cabinet (gérants du cabinet) — nom du cabinet, sinon null
+  cabinetNom: row.cabinet_nom || null,
   // Option Acheteurs : QUOTA TOTAL cible (borne de palier), pas un incrément
   nbAcheteursCible: row.nb_acheteurs_cible || null,
   // aide
@@ -215,11 +219,13 @@ const listAll = async (req, res) => {
       `SELECT sd.*,
               u.nom AS client_nom, u.email AS client_email,
               admin.nom AS traite_par_nom,
-              cb.nom AS created_by_nom_joined
+              cb.nom AS created_by_nom_joined,
+              ce.nom AS cabinet_nom
        FROM support_demandes sd
        LEFT JOIN utilisateurs u       ON u.id = sd.client_id
        LEFT JOIN utilisateurs admin   ON admin.id = sd.traite_par
        LEFT JOIN utilisateurs cb      ON cb.id = sd.created_by
+       LEFT JOIN compta.espaces ce    ON ce.titulaire_id = sd.client_id AND ce.type = 'cabinet'
        WHERE ${conditions.join(' AND ')}
        ORDER BY
          CASE sd.statut WHEN 'en_attente' THEN 0 WHEN 'validée' THEN 1 ELSE 2 END,
@@ -249,6 +255,8 @@ const traiter = async (req, res) => {
   let ligne;
   let resultatComposants = null;
   let acheteursAvant = null;
+  // LabFlow Compta (S3c) : demande d'un cabinet — son email de confirmation est celui de LabFlow Compta.
+  let estCabinet = false;
   try {
     await db.query('BEGIN');
     const up = await db.query(
@@ -305,11 +313,13 @@ const traiter = async (req, res) => {
         return res.status(409).json({ message: erreursCompo[0].message, code: erreursCompo[0].code, erreurs: erreursCompo });
       }
       // LabFlow Compta (S3b) : gérants comptables supplémentaires — le module doit être encore actif ; la limite
-      // augmente (facturée à partir du mois suivant, par le recalcul ci-dessous).
+      // augmente (facturée à partir du mois suivant, par le recalcul ci-dessous). S3c : la demande d'un cabinet
+      // (abonnement LabFlow Compta) augmente ses gérants achetés.
       const nbCompta = demande.nb_gerants_compta_supp || 0;
       if (nbCompta > 0) {
         try {
-          await moduleCompta.ajouterGerantsDemandes(db, { cur, clientId: demande.client_id, n: nbCompta, auteurId: req.user.id, demandeId: Number(id) });
+          estCabinet = await gerantsCabinet.estAbonnementCabinet(db, cur.abonnement_id);
+          await moduleCompta.ajouterGerantsDemandes(db, { cur, clientId: demande.client_id, n: nbCompta, auteurId: req.user.id, demandeId: Number(id), cabinet: estCabinet });
         } catch (e) {
           if (!e.statusCode) throw e;
           await db.query('ROLLBACK');
@@ -362,8 +372,16 @@ const traiter = async (req, res) => {
   pushTo(demande.client_id, 'demande_traitee', traiteePayload);
   saveNotification(demande.client_id, traiteePayload).catch(console.error);
 
+  // LabFlow Compta (S3c) : gérants d'un cabinet validés — email de LabFlow Compta (best effort).
+  if (statut === 'validée' && estCabinet && demande.client_email) {
+    gerantsCabinet.prevenirDemandeValidee({
+      clientId: demande.client_id, email: demande.client_email, nom: demande.client_nom_u || demande.client_nom,
+      nbAjoutes: demande.nb_gerants_compta_supp || 0, notesAdmin: notesAdmin || null,
+    }).catch((e) => console.error('[support.traiter] email du cabinet :', e.message));
+  }
+
   // Email de confirmation d'un supplément validé (sans PDF ni avenant), best effort.
-  if (statut === 'validée' && demande.type === 'supplement' && demande.client_email) {
+  if (statut === 'validée' && demande.type === 'supplement' && demande.client_email && !estCabinet) {
     const clientNom = demande.client_nom || demande.client_nom_u || 'Client';
     (async () => {
       try {

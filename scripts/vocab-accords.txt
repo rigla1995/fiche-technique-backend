@@ -910,13 +910,13 @@ src/controllers/stockController.js
     miroir : Local introuvable
 
 src/controllers/supportController.js
-  l. 127
+  l. 131
     défaut : Palier acheteurs invalide (10, 20, 50 ou 100)
     miroir : Palier abr-clientes invalide (10, 20, 50 ou 100)
-  l. 140
+  l. 144
     défaut : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ acheteurs)
     miroir : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ clientes)
-  l. 143
+  l. 147
     défaut : L'option Acheteurs nécessite au moins un labo (ajoutez-en un à la demande)
     miroir : L'option Abr-Clientes nécessite au moins une usine (ajoutez-en une à la demande)
 
