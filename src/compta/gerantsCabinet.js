@@ -200,7 +200,9 @@ const modifier = async (req, res) => {
     const saisie = lireSaisie(req.body, true);
     const out = await dansCabinet(req.user, async (db, espace) => {
       const acces = await gerantDe(db, espace, req.params.id);
-      if (acces.etat_acces === 'desactive') throw erreur(409, MSG_DESACTIVE, 'ACCES_DESACTIVE');
+      // Un accès désactivé se réactive d'abord ; resté sans personne (compte supprimé), il se désigne de nouveau
+      // (l'attribution le rend actif) — relecture de S3c.
+      if (acces.etat_acces === 'desactive' && acces.personne_id != null) throw erreur(409, MSG_DESACTIVE, 'ACCES_DESACTIVE');
       const adresseActuelle = acces.email ? acces.email.toLowerCase() : null;
       if (acces.personne_id == null || (saisie.email && saisie.email !== adresseActuelle)) {
         const complet = lireSaisie({ niveau: acces.niveau, ...req.body });

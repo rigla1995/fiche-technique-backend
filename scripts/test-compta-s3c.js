@@ -170,6 +170,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     check('lecture seule : demande de gérants refusée (403 READ_ONLY)', r.status === 403 && r.body?.code === 'READ_ONLY', `${r.status} ${r.body?.code}`);
     r = await appel('GET', '/api/compta/cabinet/gerants', cabTok);
     check('… la page se lit et le dit', r.status === 200 && r.body?.etatAbonnement === 'lecture_seule', JSON.stringify(r.body?.etatAbonnement));
+    r = await appel('POST', '/api/notifications/seen?produit=compta', cabTok);
+    check('… la cloche s\'éteint quand même (notifications hors de la garde d\'écriture)', r.status === 200, String(r.status));
     await mode(cabinetId, 'actif');
     r = await appel('POST', `/api/compta/cabinet/gerants/${accesId}/reactiver`, cabTok);
     check('réactiver : 200, tel quel (niveau Consultation)', r.status === 200 && r.body?.gerants?.[0]?.etat === 'actif' && r.body?.gerants?.[0]?.niveau === 'consultation', `${r.status} ${r.body?.message || ''}`);
@@ -246,6 +248,13 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     check('l\'admin ne descend pas sous les gérants en place, désactivés compris : 409', r.status === 409 && r.body?.code === 'GERANTS_EN_PLACE', `${r.status} ${r.body?.message}`);
     r = await appel('PUT', `/admin/comptables/${cabinetId}/gerants`, adminTok, { nbGerants: 3 });
     check('… mais jusqu\'à eux : 200, 3 en place', r.status === 200 && r.body?.abonnement?.gerantsEnPlace === 3, `${r.status} ${r.body?.message || ''}`);
+
+    // ── Accès désactivé resté sans personne (compte supprimé) : il se désigne de nouveau (relecture de S3c) ──
+    const g1 = (await pool.query('SELECT a.id FROM compta.acces a JOIN utilisateurs u ON u.id = a.personne_id WHERE a.espace_id = $1 AND u.email = $2', [espaceId, AUTRES[0]])).rows[0]?.id;
+    await appel('POST', `/api/compta/cabinet/gerants/${g1}/desactiver`, cabTok);
+    await pool.query('DELETE FROM utilisateurs WHERE email = $1', [AUTRES[0]]);
+    r = await appel('PUT', `/api/compta/cabinet/gerants/${g1}`, cabTok, { nom: 'Gérant Un', email: AUTRES[0], niveau: 'saisie' });
+    check('accès désactivé sans personne : se désigne de nouveau, actif', r.status === 200 && r.body?.gerants?.find((g) => g.id === g1)?.etat === 'actif', `${r.status} ${r.body?.message || ''}`);
 
     // ── Cabinet ouvert sur un compte LabFlow Compta existant (réponse du 07/10) ──
     r = await appel('GET', `/admin/comptables/adresse?email=${encodeURIComponent(COLLAB.toUpperCase())}`, adminTok);

@@ -165,8 +165,8 @@ const lirePromotions = (brut) => {
 // créé par la désignation d'un client (S3b) ou comme collaborateur d'un autre cabinet — tant que ce compte, actif, n'a ni
 // cabinet ni abonnement ni fiche d'identité ; la personne garde son mot de passe et ses comptabilités confiées. Toute autre
 // adresse connue reste refusée (une adresse = client OU cabinet, D6).
-// → { etat: 'libre' } | { etat: 'rattachable', personne } | { etat: 'prise' } ; `verrou` : ligne de la personne verrouillée.
-const etatAdresse = async (db, email, verrou = false) => {
+// → { etat: 'libre' } | { etat: 'rattachable', personne } | { etat: 'prise' }.
+const etatAdresse = async (db, email) => {
   const r = await db.query(
     `SELECT u.id, u.nom, u.email, u.role, u.actif, u.activated_at, (u.mot_de_passe IS NOT NULL) AS a_mot_de_passe,
             EXISTS (SELECT 1 FROM abonnements a WHERE a.client_id = u.id) AS a_abonnement,
@@ -174,8 +174,7 @@ const etatAdresse = async (db, email, verrou = false) => {
             EXISTS (SELECT 1 FROM profil_entreprise pe WHERE pe.client_id = u.id) AS a_profil
        FROM utilisateurs u
       WHERE LOWER(u.email) = LOWER($1)
-      ORDER BY u.id
-      ${verrou ? 'FOR UPDATE OF u' : ''}`,
+      ORDER BY u.id`,
     [email]
   );
   if (!r.rows.length) return { etat: 'libre' };
@@ -258,14 +257,19 @@ const create = async (req, res) => {
     try {
       await db.query('BEGIN');
       if (rattache) {
-        // Sous verrou : le compte est toujours rattachable (pas de cabinet ouvert entre-temps par une autre requête).
-        const encore = await etatAdresse(db, email, true);
+        // La ligne de la personne d'abord verrouillée, PUIS revérifiée par une autre instruction (relecture de S3c : en
+        // READ COMMITTED, une instruction voit les écritures validées avant SON début — une revérification faite dans
+        // l'instruction qui attend le verrou ne verrait pas le cabinet qu'une requête concurrente vient d'ouvrir).
+        await db.query('SELECT 1 FROM utilisateurs WHERE id = $1 FOR UPDATE', [rattache.id]);
+        const encore = await etatAdresse(db, email);
         if (encore.etat !== 'rattachable' || encore.personne.id !== rattache.id) {
           throw Object.assign(new Error('Cet email est déjà utilisé'), { statusCode: 409 });
         }
         id = rattache.id;
         await db.query('UPDATE utilisateurs SET nom = $2, telephone = $3, updated_at = NOW() WHERE id = $1', [id, nom, telephone]);
-        if (!rattache.activated_at && !rattache.a_mot_de_passe) jeton = await jetonInvitation(db, id);
+        // Activation lue sous le verrou : un compte jamais activé reçoit l'email d'activation, les autres « cabinet ouvert ».
+        if (!encore.personne.activated_at && !encore.personne.a_mot_de_passe) jeton = await jetonInvitation(db, id);
+        rattache.email = encore.personne.email;
       } else {
         id = (await db.query(
           `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, onboarding_step, invite_token, invite_token_expires_at)
@@ -338,7 +342,9 @@ const create = async (req, res) => {
   } catch (err) {
     if (err?.statusCode === 400 || err?.statusCode === 409) return res.status(err.statusCode).json({ message: err.message });
     if (err?.code === '23505') {
-      return res.status(409).json({ message: /email/.test(err.constraint || '') ? 'Cet email est déjà utilisé' : 'Une donnée qui doit être unique est déjà utilisée' });
+      // S3c : deux créations simultanées sur le même compte rattaché — la seconde bute sur la fiche ou le cabinet.
+      const memeCompte = /email|profil_entreprise_client_id_key|espaces_type_titulaire_id_key/.test(err.constraint || '');
+      return res.status(409).json({ message: memeCompte ? 'Cet email est déjà utilisé' : 'Une donnée qui doit être unique est déjà utilisée' });
     }
     console.error('[comptables.create]', err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -455,6 +461,9 @@ const remove = async (req, res) => {
       return res.status(409).json({ message: 'Ce cabinet a des factures émises (mensualités réglées) : il ne peut pas être supprimé. Archivez-le plutôt (page Abonnements, mode du compte).' });
     }
     await db.query('BEGIN');
+    // Ordre des verrous des écritures du titulaire (gerantsCabinet.dansCabinet) : configuration, puis cabinet — une
+    // suppression ne s'interbloque pas avec un retrait en cours (relecture de S3c).
+    await db.query('SELECT 1 FROM abonnement_config WHERE abonnement_id = $1 FOR UPDATE', [c.abonnement_id]);
     await journaliser(db, c.espace_id, req.user.id, 'cabinet_supprime', { titulaire: c.id, email: c.email });
     await db.query('DELETE FROM compta.espaces WHERE titulaire_id = $1', [c.id]);
     // S3c : une personne qui garde d'autres accès (comptabilités confiées, collaboratrice d'un autre cabinet — cabinet

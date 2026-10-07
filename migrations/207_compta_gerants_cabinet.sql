@@ -132,7 +132,7 @@ Les niveaux prendront effet avec les dossiers et la saisie.
 ### Points d'attention
 
 :::attention
-Les gérants ajoutés sont facturés à partir du mois qui suit la validation de votre demande. Tant que votre abonnement attend un paiement, vous ne pouvez ni ajouter, ni modifier, ni réactiver, ni demander des gérants ; désactiver et retirer restent toujours possibles.
+Les gérants ajoutés sont facturés à partir du mois qui suit la validation de votre demande. Tant que votre abonnement attend un paiement, ou s'il est bloqué ou suspendu, vous ne pouvez ni ajouter, ni modifier, ni réactiver, ni demander des gérants, ni renvoyer une invitation ; désactiver et retirer restent toujours possibles.
 :::
 
 :::astuce

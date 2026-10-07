@@ -26,7 +26,12 @@ test('routes du cabinet : réservées au titulaire (vérifié sur compta.acces) 
   const lignes = src.split('\n').filter((l) => /router\.\w+\('\/cabinet\//.test(l));
   assert.equal(lignes.length, 8, 'routes du titulaire trouvées');
   for (const l of lignes) assert.ok(l.includes('authenticate, exigerTitulaireCabinet,'), l);
-  for (const l of lignes.filter((x) => !/router\.get/.test(x))) assert.ok(l.includes('limiteComptables'), `${l} : limite de débit`);
+  // Limite de débit : retirer et désactiver ont leur propre compteur, plus large (relecture de S3c).
+  for (const l of lignes.filter((x) => !/router\.get/.test(x))) {
+    const retrait = /router\.delete|\/desactiver'/.test(l);
+    assert.ok(l.includes(retrait ? 'limiteRetraits' : 'limiteComptables'), `${l} : limite de débit`);
+  }
+  assert.ok(src.includes("router.delete('/mes-comptables/:id', authenticate, limiteRetraits, comptables.retirer);"));
   assert.ok(src.includes("router.get('/cabinets/:espaceId', authenticate, gerants.membre);"));
   assert.ok(!/router\.\w+\('\/cabinets\/:espaceId\/quitter'/.test(src), 'le titulaire gère son équipe : pas de « Quitter »');
 });
@@ -64,7 +69,8 @@ test('désactiver, retirer : sans garde ; ajouter, modifier, réactiver, renvoye
   for (const nom of ['ajouter', 'modifier', 'reactiver', 'inviter', 'demander']) assert.ok(!corps(nom).includes('garde: false'), nom);
   // Places : désactivés compris ; un accès désactivé se réactive avant d'être modifié ou réinvité.
   assert.ok(src.includes("WHERE espace_id = $1 AND role = 'gerant'`, [espaceId])).rows[0].n;"));
-  assert.ok(corps('modifier').includes("if (acces.etat_acces === 'desactive') throw erreur(409, MSG_DESACTIVE, 'ACCES_DESACTIVE');"));
+  // … sauf un accès resté sans personne (compte supprimé) : il se désigne de nouveau.
+  assert.ok(corps('modifier').includes("if (acces.etat_acces === 'desactive' && acces.personne_id != null) throw erreur(409, MSG_DESACTIVE, 'ACCES_DESACTIVE');"));
   assert.ok(corps('inviter').includes("if (acces.etat_acces === 'desactive') throw erreur(409, MSG_DESACTIVE, 'ACCES_DESACTIVE');"));
   // Côté client (S3b) : retirer son comptable est aussi permis quel que soit l'abonnement.
   const client = lire('src', 'compta', 'comptablesClient.js');
@@ -113,7 +119,15 @@ test('admin : la limite d\'un cabinet ne descend pas sous les gérants en place 
   assert.ok(maj.includes('if (nbGerants < enPlace) {'));
   // Rattachement : seulement un compte « comptable » actif, sans abonnement, espace ni fiche ; revérifié sous verrou.
   assert.ok(src.includes("const rattachable = r.rows.length === 1 && p.role === 'comptable' && p.actif === true && !p.a_abonnement && !p.a_espace && !p.a_profil;"));
-  assert.ok(src.includes('const encore = await etatAdresse(db, email, true);'));
+  // … ligne de la personne verrouillée PUIS revérifiée par une autre instruction (nouvel instantané, READ COMMITTED).
+  const verrou = src.indexOf("await db.query('SELECT 1 FROM utilisateurs WHERE id = $1 FOR UPDATE', [rattache.id]);");
+  assert.ok(verrou > 0 && verrou < src.indexOf('const encore = await etatAdresse(db, email);'));
+  assert.ok(src.includes('if (!encore.personne.activated_at && !encore.personne.a_mot_de_passe) jeton = await jetonInvitation(db, id);'));
+  // Suppression : configuration verrouillée avant le cabinet (ordre des verrous du titulaire).
+  const suppr = src.slice(src.indexOf('const remove = async'), src.indexOf('\n};\n', src.indexOf('const remove = async')));
+  assert.ok(suppr.indexOf('FOR UPDATE') < suppr.indexOf('DELETE FROM compta.espaces'));
+  // La cloche s'éteint aussi en lecture seule : les notifications sortent de la garde d'écriture globale.
+  assert.ok(lire('src', 'app.js').includes("if (req.path === '/notifications' || req.path.startsWith('/notifications/')) return next();"));
   // Suppression : une personne qui garde d'autres accès reste.
   assert.ok(src.includes("const autres = await db.query('SELECT 1 FROM compta.acces WHERE personne_id = $1 LIMIT 1', [c.id]);"));
   assert.ok(lire('src', 'compta', 'adminRoutes.js').includes("router.get('/adresse', c.verifierAdresse);"));

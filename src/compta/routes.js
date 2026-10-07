@@ -56,10 +56,20 @@ const limiteComptables = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+// S3c (relecture) : retirer ou désactiver un accès — toujours permis, sans compte ni email créé — a son propre compteur,
+// plus large : couper l'accès de plusieurs personnes ne doit pas attendre un quart d'heure.
+const limiteRetraits = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 150,
+  keyGenerator: (req) => `retraits:${req.user.id}`,
+  message: { message: 'Trop de modifications en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 router.get('/mes-comptables', authenticate, comptables.lister);
 router.post('/mes-comptables', authenticate, limiteComptables, comptables.ajouter);
 router.put('/mes-comptables/:id', authenticate, limiteComptables, comptables.modifier);
-router.delete('/mes-comptables/:id', authenticate, limiteComptables, comptables.retirer);
+router.delete('/mes-comptables/:id', authenticate, limiteRetraits, comptables.retirer);
 router.post('/mes-comptables/:id/inviter', authenticate, limiteComptables, comptables.inviter);
 // La personne à qui une comptabilité est confiée : sa page, et quitter l'accès (jamais refusé par la garde).
 router.get('/confiees/:espaceId', authenticate, comptables.confiee);
@@ -70,8 +80,8 @@ router.post('/confiees/:espaceId/quitter', authenticate, comptables.quitter);
 router.get('/cabinet/gerants', authenticate, exigerTitulaireCabinet, gerants.lister);
 router.post('/cabinet/gerants', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.ajouter);
 router.put('/cabinet/gerants/:id', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.modifier);
-router.delete('/cabinet/gerants/:id', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.retirer);
-router.post('/cabinet/gerants/:id/desactiver', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.desactiver);
+router.delete('/cabinet/gerants/:id', authenticate, exigerTitulaireCabinet, limiteRetraits, gerants.retirer);
+router.post('/cabinet/gerants/:id/desactiver', authenticate, exigerTitulaireCabinet, limiteRetraits, gerants.desactiver);
 router.post('/cabinet/gerants/:id/reactiver', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.reactiver);
 router.post('/cabinet/gerants/:id/inviter', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.inviter);
 router.post('/cabinet/demande-gerants', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.demander);
