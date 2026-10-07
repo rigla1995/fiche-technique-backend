@@ -115,6 +115,9 @@ app.use('/api', (req, res, next) => {
   // src/compta/routes.js porte sa garde, sauf celles qui n'écrivent dans aucune comptabilité (ECRITURES_SANS_GARDE :
   // le passage d'une adresse à l'autre, quitter un accès confié).
   if (req.path === '/compta' || req.path.startsWith('/compta/')) return next();
+  // LabFlow Compta, S3c (relecture) : marquer ses notifications vues ou les effacer n'est pas une écriture métier — la
+  // cloche s'éteint aussi pour un compte en lecture seule, bloqué ou suspendu (un cabinet bloqué se connecte encore).
+  if (req.path === '/notifications' || req.path.startsWith('/notifications/')) return next();
   // Sans aucun jeton : la route répondra 401 elle-même. Avec un jeton, où qu'il soit (en-tête ou adresse), la
   // garde s'applique — même définition que authenticate (jetonPresent).
   if (!jetonPresent(req)) return next();

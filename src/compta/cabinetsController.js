@@ -17,6 +17,8 @@ const { lireIdentite, nomAffiche, identiteComplete, mapIdentite } = require('../
 const { premierDuMoisUTC } = require('../utils/dateUtils');
 const { journaliser } = require('./journal');
 const { avertissementsMatricule } = require('../controllers/clientsController');
+const { jetonInvitation } = require('./comptablesClient');
+const { sendCabinetOuvertEmail } = require('./emails');
 
 const NB_GERANTS_MAX = 50;
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,7 +41,8 @@ const COLONNES = `u.id, u.nom, u.email, u.telephone, u.actif, u.activated_at, u.
        pe.ville, pe.representant_nom, pe.representant_qualite,
        a.id AS abonnement_id, a.mode_compte, a.invite_sent, a.statut_onboarding, a.montant_onboarding, a.date_debut,
        ac.nb_gerants_compta,
-       e.id AS espace_id, e.nom AS espace_nom, e.etat AS espace_etat`;
+       e.id AS espace_id, e.nom AS espace_nom, e.etat AS espace_etat,
+       (SELECT COUNT(*)::int FROM compta.acces g WHERE g.espace_id = e.id AND g.role = 'gerant') AS gerants_en_place`;
 const SOURCE = `FROM utilisateurs u
        JOIN compta.espaces e ON e.titulaire_id = u.id AND e.type = 'cabinet'
        LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
@@ -69,6 +72,8 @@ const mapCabinet = (row, tarifs) => {
       statutOnboarding: row.statut_onboarding,
       montantOnboarding: row.montant_onboarding != null ? Number(row.montant_onboarding) : null,
       nbGerants: row.nb_gerants_compta || 0,
+      // S3c : accès de collaborateurs en place (désactivés compris) — la limite ne descend pas en dessous.
+      gerantsEnPlace: row.gerants_en_place || 0,
       postes: postesCompta(config, tarifs),
       totalMensuel: computeMensuelTotalFromConfig(config, tarifs) || 0,
     } : null,
@@ -156,6 +161,42 @@ const lirePromotions = (brut) => {
   return { promotions };
 };
 
+// S3c (réponse du client du 07/10) : un cabinet peut s'ouvrir sur un compte LabFlow Compta qui existe déjà — par exemple
+// créé par la désignation d'un client (S3b) ou comme collaborateur d'un autre cabinet — tant que ce compte, actif, n'a ni
+// cabinet ni abonnement ni fiche d'identité ; la personne garde son mot de passe et ses comptabilités confiées. Toute autre
+// adresse connue reste refusée (une adresse = client OU cabinet, D6).
+// → { etat: 'libre' } | { etat: 'rattachable', personne } | { etat: 'prise' }.
+const etatAdresse = async (db, email) => {
+  const r = await db.query(
+    `SELECT u.id, u.nom, u.email, u.role, u.actif, u.activated_at, (u.mot_de_passe IS NOT NULL) AS a_mot_de_passe,
+            EXISTS (SELECT 1 FROM abonnements a WHERE a.client_id = u.id) AS a_abonnement,
+            EXISTS (SELECT 1 FROM compta.espaces e WHERE e.titulaire_id = u.id) AS a_espace,
+            EXISTS (SELECT 1 FROM profil_entreprise pe WHERE pe.client_id = u.id) AS a_profil
+       FROM utilisateurs u
+      WHERE LOWER(u.email) = LOWER($1)
+      ORDER BY u.id`,
+    [email]
+  );
+  if (!r.rows.length) return { etat: 'libre' };
+  const p = r.rows[0];
+  const rattachable = r.rows.length === 1 && p.role === 'comptable' && p.actif === true && !p.a_abonnement && !p.a_espace && !p.a_profil;
+  return rattachable ? { etat: 'rattachable', personne: p } : { etat: 'prise' };
+};
+
+// GET /admin/comptables/adresse?email=… — l'assistant « Nouveau comptable » signale une adresse déjà prise, ou un compte
+// LabFlow Compta auquel le cabinet sera rattaché.
+const verifierAdresse = async (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  if (!email || !RE_EMAIL.test(email) || email.length > 255) return res.status(400).json({ message: 'Adresse email invalide' });
+  try {
+    const a = await etatAdresse(pool, email);
+    res.json(a.etat === 'rattachable' ? { etat: a.etat, nom: a.personne.nom, active: !!(a.personne.activated_at || a.personne.a_mot_de_passe) } : { etat: a.etat });
+  } catch (err) {
+    console.error('[comptables.verifierAdresse]', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 // POST /admin/comptables — création d'un cabinet en UNE transaction ; email d'activation vers compta. ensuite.
 const create = async (req, res) => {
   const nom = String(req.body.name || req.body.nom || '').trim();
@@ -181,26 +222,32 @@ const create = async (req, res) => {
       ? Number(req.body.montantMiseEnRoute) : tarif(tarifs, 'compta_mise_en_route');
     if (!Number.isFinite(miseEnRoute) || miseEnRoute < 0) return res.status(400).json({ message: 'Frais de mise en route invalides' });
 
-    // Mêmes contrôles de doublons que la création d'un client : téléphone sur ses 8 derniers chiffres, email sans casse.
+    // S3c : une adresse connue n'est acceptée que pour un compte LabFlow Compta sans cabinet ni abonnement (rattaché).
+    const adresse = await etatAdresse(pool, email);
+    if (adresse.etat === 'prise') return res.status(409).json({ message: 'Cet email est déjà utilisé' });
+    const rattache = adresse.etat === 'rattachable' ? adresse.personne : null;
+
+    // Mêmes contrôles de doublons que la création d'un client : téléphone sur ses 8 derniers chiffres, email sans casse
+    // (la personne rattachée elle-même mise à part).
     if (telephone) {
       const tel8 = telephone.replace(/\D/g, '').slice(-8);
       const t = await pool.query(
         `SELECT u.nom AS porteur FROM utilisateurs u
-          WHERE RIGHT(regexp_replace(COALESCE(u.telephone, ''), '[^0-9]', '', 'g'), 8) = $1
+          WHERE RIGHT(regexp_replace(COALESCE(u.telephone, ''), '[^0-9]', '', 'g'), 8) = $1 AND u.id <> $2
          UNION ALL
          SELECT COALESCE(pe.nom_commercial, pe.raison_sociale, pe.nom) FROM profil_entreprise pe
            JOIN utilisateurs u2 ON u2.id = pe.client_id
           WHERE RIGHT(regexp_replace(COALESCE(pe.telephone, ''), '[^0-9]', '', 'g'), 8) = $1
-            AND RIGHT(regexp_replace(COALESCE(u2.telephone, ''), '[^0-9]', '', 'g'), 8) = $1
+            AND RIGHT(regexp_replace(COALESCE(u2.telephone, ''), '[^0-9]', '', 'g'), 8) = $1 AND u2.id <> $2
          LIMIT 1`,
-        [tel8]
+        [tel8, rattache?.id ?? 0]
       );
       if (t.rows.length) return res.status(409).json({ message: `Ce numéro de téléphone est déjà utilisé (compte « ${t.rows[0].porteur} »)` });
     }
-    const existant = await pool.query('SELECT id FROM utilisateurs WHERE LOWER(email) = LOWER($1)', [email]);
-    if (existant.rows.length) return res.status(409).json({ message: 'Cet email est déjà utilisé' });
 
-    const jeton = generateInviteToken();
+    // Jeton d'activation : compte neuf, ou compte rattaché jamais activé ; un compte rattaché déjà activé garde son mot de
+    // passe et reçoit l'email « votre cabinet est ouvert ».
+    let jeton = rattache ? null : generateInviteToken();
     const expire = new Date(Date.now() + 48 * 60 * 60 * 1000);
     const colonnesIdentite = Object.keys(identite.valeurs).filter((c) => c !== 'adresse');
     const nomEspace = nomAffiche({ ...identite.valeurs, contact: nom }) || nom;
@@ -209,11 +256,27 @@ const create = async (req, res) => {
     let id;
     try {
       await db.query('BEGIN');
-      id = (await db.query(
-        `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, onboarding_step, invite_token, invite_token_expires_at)
-         VALUES ($1, $2, NULL, $3, 'comptable', 0, $4, $5) RETURNING id`,
-        [nom, email, telephone, jeton, expire]
-      )).rows[0].id;
+      if (rattache) {
+        // La ligne de la personne d'abord verrouillée, PUIS revérifiée par une autre instruction (relecture de S3c : en
+        // READ COMMITTED, une instruction voit les écritures validées avant SON début — une revérification faite dans
+        // l'instruction qui attend le verrou ne verrait pas le cabinet qu'une requête concurrente vient d'ouvrir).
+        await db.query('SELECT 1 FROM utilisateurs WHERE id = $1 FOR UPDATE', [rattache.id]);
+        const encore = await etatAdresse(db, email);
+        if (encore.etat !== 'rattachable' || encore.personne.id !== rattache.id) {
+          throw Object.assign(new Error('Cet email est déjà utilisé'), { statusCode: 409 });
+        }
+        id = rattache.id;
+        await db.query('UPDATE utilisateurs SET nom = $2, telephone = $3, updated_at = NOW() WHERE id = $1', [id, nom, telephone]);
+        // Activation lue sous le verrou : un compte jamais activé reçoit l'email d'activation, les autres « cabinet ouvert ».
+        if (!encore.personne.activated_at && !encore.personne.a_mot_de_passe) jeton = await jetonInvitation(db, id);
+        rattache.email = encore.personne.email;
+      } else {
+        id = (await db.query(
+          `INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, role, onboarding_step, invite_token, invite_token_expires_at)
+           VALUES ($1, $2, NULL, $3, 'comptable', 0, $4, $5) RETURNING id`,
+          [nom, email, telephone, jeton, expire]
+        )).rows[0].id;
+      }
 
       // Une copie périmée d'une fiche peut porter exactement ce numéro (contrainte unique) : la copie reste alors vide.
       let telFiche = telephone;
@@ -255,7 +318,9 @@ const create = async (req, res) => {
         `INSERT INTO compta.acces (espace_id, personne_id, role, niveau, etat) VALUES ($1, $2, 'titulaire', 'complet', 'actif')`,
         [espaceId, id]
       );
-      await journaliser(db, espaceId, req.user.id, 'cabinet_cree', { titulaire: id, nbGerants, miseEnRoute, promotions: promotions.length });
+      await journaliser(db, espaceId, req.user.id, 'cabinet_cree', {
+        titulaire: id, nbGerants, miseEnRoute, promotions: promotions.length, ...(rattache ? { compteExistant: true } : {}),
+      });
       await db.query('COMMIT');
     } catch (err) {
       await db.query('ROLLBACK').catch(() => {});
@@ -264,9 +329,11 @@ const create = async (req, res) => {
       db.release();
     }
 
-    // Email d'activation (jeton de 48 h) vers compta. ; un échec n'empêche pas la création (« Renvoyer l'invitation »).
+    // Email d'activation (jeton de 48 h) vers compta., ou « votre cabinet est ouvert » pour un compte rattaché déjà
+    // activé ; un échec n'empêche pas la création (« Renvoyer l'invitation »).
     try {
-      await sendWelcomeEmail({ to: email, nom, token: jeton, produit: 'compta' });
+      if (jeton) await sendWelcomeEmail({ to: rattache?.email || email, nom, token: jeton, produit: 'compta' });
+      else await sendCabinetOuvertEmail({ to: rattache.email, nom, cabinetNom: nomEspace });
       await pool.query(`UPDATE abonnements SET invite_sent = TRUE WHERE client_id = $1`, [id]);
     } catch (e) {
       console.error('[comptables.create] email d\'activation :', e.message);
@@ -275,7 +342,9 @@ const create = async (req, res) => {
   } catch (err) {
     if (err?.statusCode === 400 || err?.statusCode === 409) return res.status(err.statusCode).json({ message: err.message });
     if (err?.code === '23505') {
-      return res.status(409).json({ message: /email/.test(err.constraint || '') ? 'Cet email est déjà utilisé' : 'Une donnée qui doit être unique est déjà utilisée' });
+      // S3c : deux créations simultanées sur le même compte rattaché — la seconde bute sur la fiche ou le cabinet.
+      const memeCompte = /email|profil_entreprise_client_id_key|espaces_type_titulaire_id_key/.test(err.constraint || '');
+      return res.status(409).json({ message: memeCompte ? 'Cet email est déjà utilisé' : 'Une donnée qui doit être unique est déjà utilisée' });
     }
     console.error('[comptables.create]', err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -323,7 +392,8 @@ const updateIdentite = async (req, res) => {
 };
 
 // PUT /admin/comptables/:id/gerants { nbGerants } — gérants achetés ; nouveau montant à partir du mois suivant (règle
-// de LabFlow : le mois en cours garde le montant fixé à sa création).
+// de LabFlow : le mois en cours garde le montant fixé à sa création). S3c : jamais sous les gérants en place (désactivés
+// compris) — la configuration est verrouillée d'abord, comme pour un ajout par le titulaire (ordre des verrous).
 const updateGerants = async (req, res) => {
   const nbGerants = nbGerantsDe(req.body?.nbGerants);
   if (nbGerants == null) return res.status(400).json({ message: `Nombre de gérants : entier de 0 à ${NB_GERANTS_MAX}` });
@@ -332,6 +402,18 @@ const updateGerants = async (req, res) => {
     const c = await cible(db, req.params.id);
     if (!c) return res.status(404).json({ message: 'Cabinet introuvable' });
     await db.query('BEGIN');
+    await db.query('SELECT 1 FROM abonnement_config WHERE abonnement_id = $1 FOR UPDATE', [c.abonnement_id]);
+    const enPlace = (await db.query(
+      `SELECT COUNT(*)::int AS n FROM compta.acces WHERE espace_id = $1 AND role = 'gerant'`,
+      [c.espace_id]
+    )).rows[0].n;
+    if (nbGerants < enPlace) {
+      await db.query('ROLLBACK');
+      return res.status(409).json({
+        code: 'GERANTS_EN_PLACE',
+        message: `${enPlace} gérant${enPlace > 1 ? 's sont' : ' est'} en place dans ce cabinet (désactivés compris) : le titulaire doit d'abord en retirer pour descendre à ${nbGerants}.`,
+      });
+    }
     await db.query('UPDATE abonnement_config SET nb_gerants_compta = $2, updated_at = NOW() WHERE abonnement_id = $1', [c.abonnement_id, nbGerants]);
     await recalcPaiementsEnAttente(db, c.abonnement_id);
     await journaliser(db, c.espace_id, req.user.id, 'gerants_modifies', { nbGerants });
@@ -379,9 +461,21 @@ const remove = async (req, res) => {
       return res.status(409).json({ message: 'Ce cabinet a des factures émises (mensualités réglées) : il ne peut pas être supprimé. Archivez-le plutôt (page Abonnements, mode du compte).' });
     }
     await db.query('BEGIN');
+    // Ordre des verrous des écritures du titulaire (gerantsCabinet.dansCabinet) : configuration, puis cabinet — une
+    // suppression ne s'interbloque pas avec un retrait en cours (relecture de S3c).
+    await db.query('SELECT 1 FROM abonnement_config WHERE abonnement_id = $1 FOR UPDATE', [c.abonnement_id]);
     await journaliser(db, c.espace_id, req.user.id, 'cabinet_supprime', { titulaire: c.id, email: c.email });
     await db.query('DELETE FROM compta.espaces WHERE titulaire_id = $1', [c.id]);
-    await db.query('DELETE FROM utilisateurs WHERE id = $1', [c.id]);
+    // S3c : une personne qui garde d'autres accès (comptabilités confiées, collaboratrice d'un autre cabinet — cabinet
+    // ouvert sur un compte existant) reste : seuls son cabinet, son abonnement et sa fiche d'identité disparaissent.
+    const autres = await db.query('SELECT 1 FROM compta.acces WHERE personne_id = $1 LIMIT 1', [c.id]);
+    if (autres.rows.length) {
+      await db.query(`DELETE FROM support_demandes WHERE client_id = $1 AND statut = 'en_attente'`, [c.id]);
+      await db.query('DELETE FROM abonnements WHERE client_id = $1', [c.id]);
+      await db.query('DELETE FROM profil_entreprise WHERE client_id = $1', [c.id]);
+    } else {
+      await db.query('DELETE FROM utilisateurs WHERE id = $1', [c.id]);
+    }
     await db.query('COMMIT');
     res.status(204).send();
   } catch (err) {
@@ -394,4 +488,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { list, get, apercuPrix, create, updateIdentite, updateGerants, renvoyerInvitation, remove, mapCabinet };
+module.exports = { list, get, apercuPrix, verifierAdresse, create, updateIdentite, updateGerants, renvoyerInvitation, remove, mapCabinet, etatAdresse };

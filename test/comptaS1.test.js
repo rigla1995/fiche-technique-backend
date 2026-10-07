@@ -22,8 +22,8 @@ const fauxPool = {
     }
     if (texte.startsWith('UPDATE utilisateurs SET reset_token')) return { rows: [], rowCount: 1 };
     // Étape S2b : les accès sont lus dans compta.acces (aucun pour ce compte ; groupes remplis : test/comptaS2b.test.js).
-    // S3b : + état de l'abonnement du titulaire (ab.mode_compte).
-    if (texte.startsWith('SELECT e.id, e.type, e.nom, e.etat, a.role, ab.mode_compte FROM compta.acces a')) return { rows: [] };
+    // S3b : + état de l'abonnement du titulaire (ab.mode_compte) ; S3c : + niveau de la personne (a.niveau).
+    if (texte.startsWith('SELECT e.id, e.type, e.nom, e.etat, a.role, a.niveau, ab.mode_compte FROM compta.acces a')) return { rows: [] };
     throw new Error(`requête inattendue : ${texte.slice(0, 120)}`);
   },
 };

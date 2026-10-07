@@ -601,5 +601,26 @@
     "apres": "comptable",
     "type": "discriminant",
     "justification": "Chantier Achats & Comptabilité, étape S3b (comptable du client, cadrage validé par le client le 07/10/2026) : rôle « comptable » : le mode d'un cabinet ne désactive jamais la personne (réponse du client du 06/10 : un cabinet bloqué se connecte encore, seul son cabinet suit ce mode) ; jamais affiché."
+  },
+  {
+    "fichier": "src/controllers/supportController.js",
+    "avant": null,
+    "apres": "⟦sql⟧'cabinet'",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3c (gérants du cabinet, cadrage validé par le client le 07/10/2026) : type d'espace (« cabinet ») dans la jointure qui donne à l'admin le nom du cabinet d'une demande de gérants ; valeur SQL jamais affichée."
+  },
+  {
+    "fichier": "src/app.js",
+    "avant": null,
+    "apres": "/notifications",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3c (gérants du cabinet, relecture du serveur) : chemin des routes des notifications, sorties de la garde d'écriture globale (marquer vues ou effacer ses notifications n'est pas une écriture métier) ; jamais affiché."
+  },
+  {
+    "fichier": "src/app.js",
+    "avant": null,
+    "apres": "/notifications/",
+    "type": "discriminant",
+    "justification": "Chantier Achats & Comptabilité, étape S3c (gérants du cabinet, relecture du serveur) : préfixe des routes des notifications (vues, effacement), sorties de la garde d'écriture globale ; jamais affiché."
   }
 ]
