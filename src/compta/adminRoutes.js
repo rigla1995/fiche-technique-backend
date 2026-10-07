@@ -20,6 +20,8 @@ router.use(authenticate, requireSuperAdmin);
 router.get('/', c.list);
 router.post('/', c.create);
 router.get('/apercu-prix', c.apercuPrix);
+// Étape S3c : adresse libre, déjà prise, ou compte LabFlow Compta auquel le cabinet sera rattaché.
+router.get('/adresse', c.verifierAdresse);
 router.get('/:id', c.get);
 router.put('/:id/identite', c.updateIdentite);
 router.put('/:id/gerants', c.updateGerants);

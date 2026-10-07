@@ -95,4 +95,87 @@ const sendComptablePartiEmail = async ({ to, nom, comptableNom, voc = vocabDefau
 // Libellé d'un ajout de gérants comptables (email « ajout de capacité validé », demandes).
 const libelleAjoutGerantsCompta = (n) => (n > 0 ? `+${n} gérant${n > 1 ? 's' : ''} comptable${n > 1 ? 's' : ''}` : null);
 
-module.exports = { echapper, sendAccesComptaEmail, sendComptablePartiEmail, libelleAjoutGerantsCompta };
+/**
+ * LabFlow Compta, étape S3c (SPEC-SOCLE D14) : le titulaire d'un cabinet ouvre un accès à `to`, son collaborateur.
+ * Avec `token` (personne nouvelle, ou compte LabFlow Compta jamais activé) : invitation à activer son compte (48 h) ;
+ * sans `token` (personne existante) : l'accès est déjà ouvert, l'email la prévient. `cabinetNom` : nom affiché du cabinet.
+ */
+const sendAccesCabinetEmail = async ({ to, nom, cabinetNom, token = null }) => {
+  const base = urlEcrans('compta');
+  const nomApp = nomProduit('compta');
+  const url = token ? `${base}/invite/${token}` : `${base}/login`;
+  const intro = `Le cabinet <strong>${echapper(cabinetNom)}</strong> vous a ouvert un accès sur <strong>${nomApp}</strong>.`;
+  const suite = token
+    ? 'Pour y accéder, activez votre compte et choisissez votre mot de passe en cliquant ci-dessous.'
+    : 'Connectez-vous avec votre adresse et votre mot de passe habituels : vous trouverez le cabinet dans le groupe <strong>Mon cabinet</strong> de votre accueil.';
+  const corps = `
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ${echapper(nom)},</h2>
+      <p style="margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;">${intro}<br>${suite}</p>
+      ${boutonEmail(url, token ? 'Activer mon compte' : `Ouvrir ${nomApp}`)}
+      ${token ? '<p style="margin:0 0 6px;color:#6b7280;font-size:0.8rem;">⏳ Ce lien d\'activation est valable <strong>48 heures</strong>.</p>' : ''}
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ${url}</p>`;
+  return envoyer({
+    to,
+    subject: `${nomApp} — Le cabinet ${String(cabinetNom || '').replace(/[\r\n]+/g, ' ').slice(0, 120)} vous ouvre un accès`,
+    html: cadreEmail('Un accès à un cabinet', corps, `Vous ne connaissez pas ce cabinet ? Ignorez cet email ou signalez-le à son titulaire. &mdash; ${nomApp}`),
+    trace: token ? `Acces cabinet (invitation) ${url}` : 'Acces cabinet (compte existant)',
+  });
+};
+
+/**
+ * LabFlow Compta, étape S3c : la demande de gérants d'un cabinet est validée par l'équipe LabFlow. `nbGerants` : gérants
+ * prévus après la validation ; `ancienMensuel`, `nouveauMensuel` : total mensuel avant et après (hors promotion), le
+ * nouveau montant s'appliquant à partir du mois suivant.
+ */
+const sendGerantsCabinetEmail = async ({ to, nom, nbAjoutes, nbGerants, ancienMensuel, nouveauMensuel, notesAdmin = null }) => {
+  const nomApp = nomProduit('compta');
+  const url = `${urlEcrans('compta')}/gerants`;
+  const dt = (v) => `${(Number(v) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 3 })} DT`;
+  const corps = `
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ${echapper(nom)},</h2>
+      <p style="margin:0 0 18px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Votre demande de <strong>${nbAjoutes} gérant${nbAjoutes > 1 ? 's' : ''}</strong> est validée : votre cabinet en compte
+        désormais <strong>${nbGerants}</strong>. Vous pouvez ouvrir leurs accès dès maintenant, page <strong>Mes gérants</strong>.
+      </p>
+      <p style="margin:0 0 28px;color:#374151;font-size:0.9rem;line-height:1.7;">
+        Total mensuel : ${dt(ancienMensuel)} → <strong>${dt(nouveauMensuel)}</strong>, à partir du mois suivant (hors promotion).
+      </p>
+      ${notesAdmin ? `<p style="margin:0 0 24px;color:#6b7280;font-size:0.85rem;font-style:italic;">${echapper(notesAdmin)}</p>` : ''}
+      ${boutonEmail(url, 'Ouvrir Mes gérants')}
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ${url}</p>`;
+  return envoyer({
+    to,
+    subject: `${nomApp} — Votre demande de gérants est validée`,
+    html: cadreEmail('Gérants de votre cabinet', corps, nomApp),
+    trace: 'Gerants cabinet valides',
+  });
+};
+
+/**
+ * LabFlow Compta, étape S3c (réponse du client du 07/10) : l'équipe LabFlow a ouvert un cabinet sur un compte LabFlow
+ * Compta déjà activé ; la personne garde son mot de passe et ses comptabilités confiées.
+ */
+const sendCabinetOuvertEmail = async ({ to, nom, cabinetNom }) => {
+  const nomApp = nomProduit('compta');
+  const url = `${urlEcrans('compta')}/login`;
+  const corps = `
+      <h2 style="margin:0 0 10px;color:#111827;font-size:1.2rem;font-weight:700;">Bonjour ${echapper(nom)},</h2>
+      <p style="margin:0 0 28px;color:#374151;font-size:0.95rem;line-height:1.7;">
+        Votre cabinet <strong>${echapper(cabinetNom)}</strong> est ouvert sur <strong>${nomApp}</strong>.<br>
+        Connectez-vous avec votre adresse et votre mot de passe habituels : il apparaît dans le groupe <strong>Mon cabinet</strong>
+        de votre accueil, à côté des comptabilités que vous avez déjà.
+      </p>
+      ${boutonEmail(url, `Ouvrir ${nomApp}`)}
+      <p style="margin:0;color:#9ca3af;font-size:0.75rem;word-break:break-all;">Lien direct : ${url}</p>`;
+  return envoyer({
+    to,
+    subject: `${nomApp} — Votre cabinet est ouvert`,
+    html: cadreEmail('Votre cabinet', corps, nomApp),
+    trace: 'Cabinet ouvert (compte existant)',
+  });
+};
+
+module.exports = {
+  echapper, sendAccesComptaEmail, sendComptablePartiEmail, libelleAjoutGerantsCompta,
+  sendAccesCabinetEmail, sendGerantsCabinetEmail, sendCabinetOuvertEmail,
+};

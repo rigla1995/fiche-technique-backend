@@ -13,14 +13,16 @@ const { lireComptables } = require('./comptablesClient');
 // cabinet ; sa comptabilité de client LabFlow (étape S2c) ; celles que des clients LabFlow lui ont confiées. Seuls les
 // accès actifs des comptabilités ouvertes comptent (S2c : une comptabilité fermée — module désactivé — n'apparaît
 // plus). `lien` : page ouverte par la carte (le cabinet ou la comptabilité de son titulaire ; S3b : la page
-// « Comptabilité de … » d'une comptabilité confiée). `etatAbonnement` (S3b, D4) : état de l'abonnement du titulaire
-// (actif, lecture_seule, bloque, suspendu) — un cabinet bloqué se connecte encore, sa carte le signale.
+// « Comptabilité de … » d'une comptabilité confiée ; S3c : la page « Cabinet … » d'un collaborateur). `etatAbonnement`
+// (S3b, D4) : état de l'abonnement du titulaire (actif, lecture_seule, bloque, suspendu) — un cabinet bloqué se connecte
+// encore, sa carte le signale. `niveau` (S3c) : celui de la personne (badge d'un collaborateur).
 const LIENS_TITULAIRE = { cabinet: '/cabinet', client_labflow: '/ma-comptabilite' };
-const lienCarte = (x) => (x.role === 'titulaire' ? LIENS_TITULAIRE[x.type] || null : x.type === 'client_labflow' ? `/confiee/${x.id}` : null);
+const LIENS_GERANT = { cabinet: (id) => `/cabinets/${id}`, client_labflow: (id) => `/confiee/${id}` };
+const lienCarte = (x) => (x.role === 'titulaire' ? LIENS_TITULAIRE[x.type] || null : LIENS_GERANT[x.type]?.(x.id) || null);
 const listerAcces = async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT e.id, e.type, e.nom, e.etat, a.role, ab.mode_compte
+      `SELECT e.id, e.type, e.nom, e.etat, a.role, a.niveau, ab.mode_compte
          FROM compta.acces a
          JOIN compta.espaces e ON e.id = a.espace_id
          LEFT JOIN LATERAL (
@@ -32,7 +34,7 @@ const listerAcces = async (req, res) => {
     );
     const groupes = { cabinets: [], maComptabilite: [], confiees: [] };
     for (const x of r.rows) {
-      const carte = { id: x.id, nom: x.nom, etat: x.etat, role: x.role, lien: lienCarte(x), etatAbonnement: etatAbonnement(x.mode_compte) };
+      const carte = { id: x.id, nom: x.nom, etat: x.etat, role: x.role, niveau: x.niveau, lien: lienCarte(x), etatAbonnement: etatAbonnement(x.mode_compte) };
       if (x.type === 'cabinet') groupes.cabinets.push(carte);
       else if (x.role === 'titulaire') groupes.maComptabilite.push(carte);
       else groupes.confiees.push(carte);
@@ -96,7 +98,8 @@ const exigerTitulaireCabinet = async (req, res, next) => {
   }
 };
 
-// GET /api/compta/cabinet — identité (fiche profil_entreprise, celle des factures), contact, gérants prévus.
+// GET /api/compta/cabinet — identité (fiche profil_entreprise, celle des factures), contact, gérants prévus et en place
+// (S3c : désactivés compris, ils gardent leur place).
 const monCabinet = async (req, res) => {
   try {
     const r = await pool.query(
@@ -104,7 +107,8 @@ const monCabinet = async (req, res) => {
               u.nom, u.email, u.telephone,
               pe.raison_sociale, pe.nom_commercial, pe.forme_juridique, pe.matricule_fiscal, pe.rne, pe.adresse, pe.ville,
               pe.representant_nom, pe.representant_qualite,
-              ac.nb_gerants_compta
+              ac.nb_gerants_compta,
+              (SELECT COUNT(*)::int FROM compta.acces g WHERE g.espace_id = e.id AND g.role = 'gerant') AS gerants_en_place
          FROM compta.espaces e
          JOIN utilisateurs u ON u.id = e.titulaire_id
          LEFT JOIN profil_entreprise pe ON pe.client_id = u.id
@@ -121,6 +125,7 @@ const monCabinet = async (req, res) => {
       identite: mapIdentite(x),
       contact: { nom: x.nom, email: x.email, telephone: x.telephone },
       nbGerants: x.nb_gerants_compta || 0,
+      gerantsEnPlace: x.gerants_en_place || 0,
     });
   } catch (err) {
     console.error('[compta.cabinet]', err);

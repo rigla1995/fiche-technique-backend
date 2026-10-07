@@ -9,6 +9,7 @@ const { listerAcces, maComptabilite, exigerTitulaireCabinet, monCabinet, monAbon
 const rateLimit = require('express-rate-limit');
 const { emettre: emettrePassage } = require('./passage');
 const comptables = require('./comptablesClient');
+const gerants = require('./gerantsCabinet');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
 const limiteEmission = rateLimit({
@@ -55,19 +56,47 @@ const limiteComptables = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+// S3c (relecture) : retirer ou désactiver un accès — toujours permis, sans compte ni email créé — a son propre compteur,
+// plus large : couper l'accès de plusieurs personnes ne doit pas attendre un quart d'heure.
+const limiteRetraits = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 150,
+  keyGenerator: (req) => `retraits:${req.user.id}`,
+  message: { message: 'Trop de modifications en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 router.get('/mes-comptables', authenticate, comptables.lister);
 router.post('/mes-comptables', authenticate, limiteComptables, comptables.ajouter);
 router.put('/mes-comptables/:id', authenticate, limiteComptables, comptables.modifier);
-router.delete('/mes-comptables/:id', authenticate, limiteComptables, comptables.retirer);
+router.delete('/mes-comptables/:id', authenticate, limiteRetraits, comptables.retirer);
 router.post('/mes-comptables/:id/inviter', authenticate, limiteComptables, comptables.inviter);
 // La personne à qui une comptabilité est confiée : sa page, et quitter l'accès (jamais refusé par la garde).
 router.get('/confiees/:espaceId', authenticate, comptables.confiee);
 router.post('/confiees/:espaceId/quitter', authenticate, comptables.quitter);
 
+// Étape S3c : les gérants du cabinet. Le titulaire (vérifié sur compta.acces) gère les accès de ses collaborateurs et
+// demande des gérants à l'équipe LabFlow ; chaque écriture passe par la garde PAR COMPTABILITÉ dans le contrôleur.
+router.get('/cabinet/gerants', authenticate, exigerTitulaireCabinet, gerants.lister);
+router.post('/cabinet/gerants', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.ajouter);
+router.put('/cabinet/gerants/:id', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.modifier);
+router.delete('/cabinet/gerants/:id', authenticate, exigerTitulaireCabinet, limiteRetraits, gerants.retirer);
+router.post('/cabinet/gerants/:id/desactiver', authenticate, exigerTitulaireCabinet, limiteRetraits, gerants.desactiver);
+router.post('/cabinet/gerants/:id/reactiver', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.reactiver);
+router.post('/cabinet/gerants/:id/inviter', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.inviter);
+router.post('/cabinet/demande-gerants', authenticate, exigerTitulaireCabinet, limiteComptables, gerants.demander);
+// Le collaborateur : la page du cabinet (le titulaire gère son équipe : pas de « Quitter », réponse du client du 07/10).
+router.get('/cabinets/:espaceId', authenticate, gerants.membre);
+
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique
 // plus à /api/compta (D4).
 const ECRITURES_SANS_GARDE = ['POST /passage', 'POST /confiees/:espaceId/quitter'];
+// Écritures permises quel que soit l'abonnement (réponse du client du 07/10, S3c ; test/comptaS3c.test.js) : retirer ou
+// désactiver un accès — couper l'accès d'une personne qui part est une mesure de sécurité. Elles passent par la
+// transaction verrouillée de leur contrôleur, avec `{ garde: false }`.
+const ECRITURES_TOUJOURS_PERMISES = ['DELETE /mes-comptables/:id', 'DELETE /cabinet/gerants/:id', 'POST /cabinet/gerants/:id/desactiver'];
 
 module.exports = router;
 module.exports.ECRITURES_SANS_GARDE = ECRITURES_SANS_GARDE;
+module.exports.ECRITURES_TOUJOURS_PERMISES = ECRITURES_TOUJOURS_PERMISES;

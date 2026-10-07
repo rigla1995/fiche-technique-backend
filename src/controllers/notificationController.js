@@ -1,4 +1,7 @@
 const pool = require('../config/database');
+// LabFlow Compta (étape S3c) : la cloche de LabFlow Compta (`?produit=compta`) ne lit et ne touche que ses
+// notifications ; filtre SQL (paramètre $2) ou null — src/compta/cloche.js.
+const { TYPES_COMPTA, filtreProduit } = require('../compta/cloche');
 
 // Types de notifications « file d'attente admin » : elles RESTENT affichées tant
 // que l'entité source n'est pas traitée, puis sont supprimées explicitement au
@@ -48,12 +51,14 @@ const cleanupExpired = async () => {
   return r.rowCount;
 };
 
+
 // GET /api/notifications — list for current user
 const list = async (req, res) => {
   try {
+    const filtre = filtreProduit(req);
     const result = await pool.query(
-      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`,
-      [req.user.id]
+      `SELECT * FROM notifications WHERE user_id = $1${filtre ? filtre.sql : ''} ORDER BY created_at DESC LIMIT 50`,
+      filtre ? [req.user.id, filtre.valeur] : [req.user.id]
     );
     res.json(result.rows.map((r) => ({
       id: r.id,
@@ -77,15 +82,17 @@ const list = async (req, res) => {
 // POST /api/notifications/seen — le destinataire vient d'ouvrir le panneau :
 //   • notifs informatives   → supprimées (règle « ouvertes = supprimées ») ;
 //   • notifs « file d'attente » → seulement marquées lues (restent jusqu'au traitement).
+// LabFlow Compta (S3c) : `?produit=compta` ne touche que les notifications de sa cloche (filtreProduit).
 const markSeen = async (req, res) => {
   try {
+    const filtre = filtreProduit(req);
     await pool.query(
-      `DELETE FROM notifications WHERE user_id = $1 AND event_type <> ALL($2::text[])`,
-      [req.user.id, PERSISTENT_EVENT_TYPES]
+      `DELETE FROM notifications WHERE user_id = $1 AND event_type <> ALL($${filtre ? 3 : 2}::text[])${filtre ? filtre.sql : ''}`,
+      filtre ? [req.user.id, filtre.valeur, PERSISTENT_EVENT_TYPES] : [req.user.id, PERSISTENT_EVENT_TYPES]
     );
     await pool.query(
-      `UPDATE notifications SET read_at = NOW() WHERE user_id = $1 AND read_at IS NULL`,
-      [req.user.id]
+      `UPDATE notifications SET read_at = NOW() WHERE user_id = $1 AND read_at IS NULL${filtre ? filtre.sql : ''}`,
+      filtre ? [req.user.id, filtre.valeur] : [req.user.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -94,15 +101,17 @@ const markSeen = async (req, res) => {
   }
 };
 
-// DELETE /api/notifications[?eventType=xxx] — clear all (or by eventType) for current user
+// DELETE /api/notifications[?eventType=xxx] — clear all (or by eventType) for current user.
+// LabFlow Compta (S3c) : `?produit=compta` n'efface que les notifications de sa cloche (filtreProduit, paramètre $2).
 const clearAll = async (req, res) => {
   try {
     const { eventType } = req.query;
-    if (eventType) {
-      await pool.query('DELETE FROM notifications WHERE user_id = $1 AND event_type = $2', [req.user.id, eventType]);
-    } else {
-      await pool.query('DELETE FROM notifications WHERE user_id = $1', [req.user.id]);
-    }
+    const filtre = filtreProduit(req);
+    const params = [req.user.id];
+    let sql = 'DELETE FROM notifications WHERE user_id = $1';
+    if (filtre) { sql += filtre.sql; params.push(filtre.valeur); }
+    if (eventType) { params.push(eventType); sql += ` AND event_type = $${params.length}`; }
+    await pool.query(sql, params);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -123,5 +132,5 @@ const deleteOne = async (req, res) => {
 
 module.exports = {
   saveNotification, saveNotificationToAdmins, deleteByRef, cleanupExpired,
-  list, markSeen, clearAll, deleteOne, PERSISTENT_EVENT_TYPES,
+  list, markSeen, clearAll, deleteOne, PERSISTENT_EVENT_TYPES, TYPES_COMPTA, filtreProduit,
 };
