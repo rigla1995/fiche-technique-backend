@@ -11,6 +11,9 @@
 // comptabilité (D4) : le mode de l'abonnement du cabinet ; désactiver et retirer restent permis en lecture seule ou
 // bloqué (réponse du client du 07/10), la demande de gérants non (comme tout ajout de capacité).
 // Règles du chantier : jamais « gerant_parent_id || id » ni les gardes clientes ; l'accès est vérifié sur compta.acces.
+// S4c (PLAN-S4 §1 ; réponse 2 du client du 07/10) : le titulaire fixe les dossiers de chaque collaborateur — « tous »
+// ou une liste à cocher (compta.acces.tous_dossiers, compta.acces_dossiers ; outils partagés de comptablesClient.js).
+// Un nouveau collaborateur ne voit aucun dossier tant que le titulaire n'a pas coché ; ceux en place gardent « tous ».
 const pool = require('../config/database');
 const { pushToAdmins } = require('../services/sseService');
 const { saveNotificationToAdmins } = require('../controllers/notificationController');
@@ -23,6 +26,7 @@ const { computeMensuelTotalFromConfig } = require('../controllers/abonnementCont
 const { NB_GERANTS_MAX, grilleGenerale } = require('./moduleClient');
 const {
   NIVEAUX, SQL_COMPTABLES, erreur, idValide, repondreErreur, lireSaisie, presenterComptable, jetonInvitation, attribuer,
+  lireDossiersEspace, ecrireDossiers, reglerDossiers, dossiersDe,
 } = require('./comptablesClient');
 
 const TEXTES_CABINET = {
@@ -82,12 +86,13 @@ const lireGerants = async (db, espaceId) =>
   (await db.query(`${SQL_COMPTABLES} ORDER BY a.id`, [espaceId])).rows.map(presenterComptable);
 
 const etatCabinet = async (db, espace) => {
-  const [gerants, limite, demande, mode, tarifs] = await Promise.all([
+  const [gerants, limite, demande, mode, tarifs, dossiers] = await Promise.all([
     lireGerants(db, espace.id),
     limiteGerants(db, espace.titulaire_id),
     demandeEnAttente(db, espace.titulaire_id),
     modeTitulaire(db, espace.id),
     grilleGenerale(db),
+    lireDossiersEspace(db, espace.id),
   ]);
   return {
     cabinet: { id: espace.id, nom: espace.nom },
@@ -98,6 +103,8 @@ const etatCabinet = async (db, espace) => {
     prixGerant: tarif(tarifs, 'compta_gerant_cabinet_mensuel'),
     nbGerantsMax: NB_GERANTS_MAX,
     etatAbonnement: etatAbonnement(mode),
+    // S4c : les dossiers du cabinet (archivés compris), pour la liste à cocher de chaque collaborateur.
+    dossiers,
   };
 };
 
@@ -163,10 +170,13 @@ const lister = async (req, res) => {
   }
 };
 
-// POST /api/compta/cabinet/gerants — { nom, email, niveau } : un collaborateur, dans la limite achetée.
+// POST /api/compta/cabinet/gerants — { nom, email, niveau, dossiers? } : un collaborateur, dans la limite achetée. S4c
+// (réponse 2 du client du 07/10) : sans `dossiers`, « Choisir » et liste vide — il ne voit rien tant que le titulaire
+// n'a pas coché.
 const ajouter = async (req, res) => {
   try {
     const saisie = lireSaisie(req.body);
+    const dossiers = saisie.dossiers ?? [];
     const out = await dansCabinet(req.user, async (db, espace) => {
       // L'une après l'autre : un client de transaction ne mène qu'une requête à la fois.
       const limite = await limiteGerants(db, espace.titulaire_id);
@@ -177,12 +187,13 @@ const ajouter = async (req, res) => {
       }
       const accesId = (await db.query(
         `INSERT INTO compta.acces (espace_id, personne_id, role, niveau, tous_dossiers, obligatoire, etat)
-         VALUES ($1, NULL, 'gerant', $2, true, false, 'a_attribuer') RETURNING id`,
-        [espace.id, saisie.niveau]
+         VALUES ($1, NULL, 'gerant', $2, $3, false, 'a_attribuer') RETURNING id`,
+        [espace.id, saisie.niveau, dossiers === 'tous']
       )).rows[0].id;
       const attribution = await attribuer(db, { espace, accesId, ...saisie, textes: TEXTES_CABINET });
+      if (dossiers !== 'tous' && dossiers.length) await ecrireDossiers(db, espace.id, accesId, dossiers);
       await journaliser(db, espace.id, req.user.id, 'acces_attribue', {
-        acces: accesId, personne: attribution.personneId, niveau: saisie.niveau, nouvelle: attribution.nouvelle,
+        acces: accesId, personne: attribution.personneId, niveau: saisie.niveau, nouvelle: attribution.nouvelle, dossiers,
       });
       return { attribution };
     });
@@ -193,31 +204,42 @@ const ajouter = async (req, res) => {
   }
 };
 
-// PUT /api/compta/cabinet/gerants/:id — { nom, email, niveau } : modifier le nom et le niveau, ou donner l'accès à une
-// autre adresse (la personne qui le perd n'est pas prévenue). Un accès désactivé se réactive d'abord.
+// PUT /api/compta/cabinet/gerants/:id — { nom, email, niveau, dossiers? } : modifier le nom, le niveau et (S4c) les
+// dossiers, ou donner l'accès à une autre adresse (la personne qui le perd n'est pas prévenue). Un accès désactivé se
+// réactive d'abord.
 const modifier = async (req, res) => {
   try {
     const saisie = lireSaisie(req.body, true);
+    if (!Object.keys(saisie).length) throw erreur(400, 'Rien à modifier');
     const out = await dansCabinet(req.user, async (db, espace) => {
       const acces = await gerantDe(db, espace, req.params.id);
       // Un accès désactivé se réactive d'abord ; resté sans personne (compte supprimé), il se désigne de nouveau
       // (l'attribution le rend actif) — relecture de S3c.
       if (acces.etat_acces === 'desactive' && acces.personne_id != null) throw erreur(409, MSG_DESACTIVE, 'ACCES_DESACTIVE');
+      // S4c : régler les dossiers d'un accès sans personne n'a pas de sens (relecture) — désigner d'abord.
+      if (acces.personne_id == null && saisie.nom === undefined && saisie.email === undefined) throw erreur(409, 'Désignez d\'abord une personne pour cet accès', 'ACCES_VIDE');
       const adresseActuelle = acces.email ? acces.email.toLowerCase() : null;
       if (acces.personne_id == null || (saisie.email && saisie.email !== adresseActuelle)) {
         const complet = lireSaisie({ niveau: acces.niveau, ...req.body });
         const attribution = await attribuer(db, { espace, accesId: acces.id, ...complet, textes: TEXTES_CABINET });
+        // S4c : le réglage suit l'accès (« Mes gérants » envoie toujours celui qu'il affiche) ; donné avec la
+        // désignation, il s'applique à la nouvelle personne.
+        const dossiers = saisie.dossiers ?? dossiersDe(acces);
         await journaliser(db, espace.id, req.user.id, acces.personne_id == null ? 'acces_attribue' : 'acces_reattribue', {
-          acces: acces.id, personne: attribution.personneId, precedente: acces.personne_id, niveau: complet.niveau, nouvelle: attribution.nouvelle,
+          acces: acces.id, personne: attribution.personneId, precedente: acces.personne_id, niveau: complet.niveau, nouvelle: attribution.nouvelle, dossiers,
         });
+        await reglerDossiers(db, espace, acces, dossiers, req.user.id, attribution.personneId);
         return { attribution };
       }
-      const niveau = saisie.niveau ?? acces.niveau;
-      const nom = saisie.nom ?? acces.nom_attendu ?? acces.nom;
-      await db.query('UPDATE compta.acces SET niveau = $2, nom_attendu = $3, updated_at = NOW() WHERE id = $1', [acces.id, niveau, nom]);
-      await journaliser(db, espace.id, req.user.id, 'acces_modifie', {
-        acces: acces.id, personne: acces.personne_id, avant: { niveau: acces.niveau, nom: acces.nom_attendu }, apres: { niveau, nom },
-      });
+      if (saisie.niveau !== undefined || saisie.nom !== undefined) {
+        const niveau = saisie.niveau ?? acces.niveau;
+        const nom = saisie.nom ?? acces.nom_attendu ?? acces.nom;
+        await db.query('UPDATE compta.acces SET niveau = $2, nom_attendu = $3, updated_at = NOW() WHERE id = $1', [acces.id, niveau, nom]);
+        await journaliser(db, espace.id, req.user.id, 'acces_modifie', {
+          acces: acces.id, personne: acces.personne_id, avant: { niveau: acces.niveau, nom: acces.nom_attendu }, apres: { niveau, nom },
+        });
+      }
+      await reglerDossiers(db, espace, acces, saisie.dossiers, req.user.id);
       return { attribution: null };
     });
     const emailEnvoye = out.attribution ? await prevenir(out.attribution, out.espace) : null;
@@ -365,7 +387,7 @@ const membre = async (req, res) => {
   try {
     if (!idValide(req.params.espaceId)) return res.status(404).json({ message: 'Cabinet introuvable' });
     const r = await pool.query(
-      `SELECT a.niveau, a.attribue_le, e.id AS espace_id, e.nom AS espace_nom, e.titulaire_id
+      `SELECT a.niveau, a.attribue_le, a.tous_dossiers, e.id AS espace_id, e.nom AS espace_nom, e.titulaire_id
          FROM compta.acces a
          JOIN compta.espaces e ON e.id = a.espace_id
         WHERE a.personne_id = $1 AND a.espace_id = $2 AND a.role = 'gerant' AND a.etat = 'actif'
@@ -391,7 +413,8 @@ const membre = async (req, res) => {
       cabinet: { id: acces.espace_id, nom: acces.espace_nom },
       identite: mapIdentite(x),
       titulaire: { nom: x.contact || null, email: x.email || null, telephone: x.telephone || null },
-      acces: { niveau: acces.niveau, membreDepuis: acces.attribue_le },
+      // S4c : « tous les dossiers » du cabinet, ou seulement ceux que le titulaire lui a ouverts (la liste les montre).
+      acces: { niveau: acces.niveau, membreDepuis: acces.attribue_le, tousDossiers: acces.tous_dossiers },
       etatAbonnement: etatAbonnement(mode),
     });
   } catch (err) {

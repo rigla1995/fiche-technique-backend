@@ -92,10 +92,12 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     const cabinet = await activer(CABINET);
     const espaceId = (await pool.query(`SELECT id FROM compta.espaces WHERE type = 'cabinet' AND titulaire_id = $1`, [cabinet.id])).rows[0]?.id;
     check('connexion du titulaire', !!cabinet.tok && !!espaceId);
-    r = await appel('POST', '/api/compta/cabinet/gerants', cabinet.tok, { nom: 'Collaborateur Saisie', email: SAISIE, niveau: 'saisie' });
+    // S4c : un collaborateur ajouté sans réglage ne voit aucun dossier ; ce scénario d'avant S4c (« les collaborateurs
+    // voient tous les dossiers ») les crée avec « tous », comme les collaborateurs déjà en place (réponse 2 du 07/10).
+    r = await appel('POST', '/api/compta/cabinet/gerants', cabinet.tok, { nom: 'Collaborateur Saisie', email: SAISIE, niveau: 'saisie', dossiers: 'tous' });
     check('collaborateur de niveau Saisie', r.status === 201, `${r.status} ${r.body?.message || ''}`);
     const accesSaisie = r.body?.gerants?.find((g) => g.email === SAISIE)?.id;
-    r = await appel('POST', '/api/compta/cabinet/gerants', cabinet.tok, { nom: 'Collaborateur Complet', email: COMPLET, niveau: 'complet' });
+    r = await appel('POST', '/api/compta/cabinet/gerants', cabinet.tok, { nom: 'Collaborateur Complet', email: COMPLET, niveau: 'complet', dossiers: 'tous' });
     check('collaborateur de niveau Complet', r.status === 201, `${r.status} ${r.body?.message || ''}`);
     const saisie = await activer(SAISIE);
     const complet = await activer(COMPLET);

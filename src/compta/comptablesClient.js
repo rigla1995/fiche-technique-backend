@@ -9,6 +9,10 @@
 // email à la personne qui perd l'accès ; quand un comptable quitte, le client est prévenu (cloche et email).
 // Règles du chantier : jamais « gerant_parent_id || id » ni les gardes clientes ; l'accès est vérifié sur compta.acces ;
 // chaque écriture du titulaire passe par la garde par comptabilité (garde.js, D4) ; quitter un accès n'est jamais refusé.
+// S4c (PLAN-S4 §1 ; réponses 2 et 4 du client du 07/10) : chaque accès voit « tous » les dossiers ou une liste à cocher
+// (lireDossiersSaisis, ecrireDossiers, reglerDossiers — partagés avec les gérants du cabinet, gerantsCabinet.js). Le
+// comptable obligatoire voit tout par défaut ; un gérant comptable supplémentaire ne voit rien tant que le client n'a
+// pas coché ses dossiers (page « Ma comptabilité » ; la page Gérants de LabFlow ne règle pas les dossiers).
 const pool = require('../config/database');
 const { generateInviteToken } = require('../services/emailService');
 const { sendAccesComptaEmail, sendComptablePartiEmail } = require('./emails');
@@ -70,8 +74,11 @@ const limiteSupplementaires = async (db, titulaireId) => {
   return Number(r.rows[0]?.nb_gerants_compta) || 0;
 };
 
+// S4c : `tous_dossiers` et `dossier_ids` (la liste, triée, vide quand « tous ») — le réglage des dossiers de l'accès.
 const SQL_COMPTABLES = `
   SELECT a.id, a.obligatoire, a.niveau, a.etat AS etat_acces, a.nom_attendu, a.email_attendu, a.attribue_le, a.personne_id,
+         a.tous_dossiers,
+         (SELECT COALESCE(array_agg(ad.dossier_id ORDER BY ad.dossier_id), '{}'::int[]) FROM compta.acces_dossiers ad WHERE ad.acces_id = a.id) AS dossier_ids,
          u.nom, u.email, u.role AS personne_role, u.activated_at, (u.mot_de_passe IS NOT NULL) AS a_mot_de_passe
     FROM compta.acces a
     LEFT JOIN utilisateurs u ON u.id = a.personne_id
@@ -94,11 +101,60 @@ const presenterComptable = (x) => {
     // Seul un compte LabFlow Compta jamais activé reçoit une nouvelle invitation (les autres ont la leur).
     invitationRenvoyable: invitation && x.personne_role === 'comptable',
     attribueLe: attribue ? x.attribue_le : null,
+    // S4c : « tous » ou la liste des identifiants des dossiers ouverts à l'accès.
+    dossiers: dossiersDe(x),
   };
 };
 
 const lireComptables = async (db, espaceId) =>
   (await db.query(`${SQL_COMPTABLES} ORDER BY a.obligatoire DESC, a.id`, [espaceId])).rows.map(presenterComptable);
+
+// ── Dossiers d'un accès (S4c, PLAN-S4 §1 ; réponses 2 et 4 du client du 07/10) ──────────────────────────────────────
+// Un accès voit « tous » les dossiers de la comptabilité (compta.acces.tous_dossiers : ceux d'aujourd'hui et ceux à
+// venir) ou seulement une liste (compta.acces_dossiers). Partout, la personne ne voit et ne touche que ses dossiers
+// (dossiers.js, SQL_VISIBLE). Un titulaire a toujours « tous ». Le réglage appartient à l'ACCÈS : une réattribution le
+// garde, sauf si la désignation en envoie un autre.
+const DOSSIERS_MAX = 1000;
+// Réglage lu dans un corps : 'tous', ou la liste des identifiants (entiers, distincts, triés). Les identifiants sont
+// contrôlés contre la comptabilité dans la transaction (ecrireDossiers), jamais ici.
+const lireDossiersSaisis = (v) => {
+  if (v === 'tous') return 'tous';
+  if (!Array.isArray(v)) throw erreur(400, 'Dossiers : « tous » ou la liste des dossiers choisis');
+  if (v.length > DOSSIERS_MAX) throw erreur(400, `Dossiers : au plus ${DOSSIERS_MAX} dossiers`);
+  const ids = [...new Set(v.map((x) => ((typeof x === 'number' || typeof x === 'string') && idValide(x) && Number(x) >= 1 ? Number(x) : NaN)))];
+  if (ids.some(Number.isNaN)) throw erreur(400, 'Dossiers : identifiant invalide');
+  return ids.sort((a, b) => a - b);
+};
+// Réglage d'une ligne SQL_COMPTABLES. Sans la colonne (accès lu autrement), l'accès vaut « tous » (règle d'avant S4c).
+const dossiersDe = (x) => (x.tous_dossiers === false ? (x.dossier_ids || []).map(Number) : 'tous');
+const memeDossiers = (a, b) => (a === 'tous' || b === 'tous' ? a === b : a.length === b.length && a.every((x, i) => x === b[i]));
+// Les dossiers de la comptabilité (archivés compris, classés après), pour la liste à cocher des écrans.
+const lireDossiersEspace = async (db, espaceId) =>
+  (await db.query('SELECT id, nom, matricule_fiscal, etat, source FROM compta.dossiers WHERE espace_id = $1 ORDER BY etat, LOWER(nom), id', [espaceId]))
+    .rows.map((d) => ({ id: d.id, nom: d.nom, matriculeFiscal: d.matricule_fiscal, etat: d.etat, source: d.source }));
+// Écrit le réglage de l'accès `accesId` (comptabilité verrouillée). Les dossiers choisis doivent être ceux de la
+// comptabilité : un dossier d'ailleurs, ou supprimé entre-temps, est refusé (409 : la page se relit).
+const ecrireDossiers = async (db, espaceId, accesId, dossiers) => {
+  if (dossiers !== 'tous' && dossiers.length) {
+    const n = (await db.query('SELECT COUNT(*)::int AS n FROM compta.dossiers WHERE espace_id = $1 AND id = ANY($2::int[])', [espaceId, dossiers])).rows[0].n;
+    if (n !== dossiers.length) throw erreur(409, 'Un des dossiers choisis n\'est pas (ou plus) dans cette comptabilité', 'DOSSIER_INCONNU');
+  }
+  await db.query('UPDATE compta.acces SET tous_dossiers = $2, updated_at = NOW() WHERE id = $1', [accesId, dossiers === 'tous']);
+  await db.query('DELETE FROM compta.acces_dossiers WHERE acces_id = $1', [accesId]);
+  if (dossiers !== 'tous' && dossiers.length) {
+    await db.query('INSERT INTO compta.acces_dossiers (acces_id, dossier_id) SELECT $1, unnest($2::int[])', [accesId, dossiers]);
+  }
+};
+// Applique le réglage `dossiers` à l'accès `acces` (ligne SQL_COMPTABLES) s'il est donné et s'il change, avec le journal
+// avant / après (D16). Rend le réglage en vigueur après coup. `personneId` : la personne de l'accès après coup (une
+// réattribution en change).
+const reglerDossiers = async (db, espace, acces, dossiers, auteurId, personneId = acces.personne_id) => {
+  const avant = dossiersDe(acces);
+  if (dossiers === undefined || memeDossiers(avant, dossiers)) return avant;
+  await ecrireDossiers(db, espace.id, acces.id, dossiers);
+  await journaliser(db, espace.id, auteurId, 'acces_dossiers_modifies', { acces: acces.id, personne: personneId, avant, apres: dossiers });
+  return dossiers;
+};
 
 // Demande d'ajout de gérants comptables encore en attente (une à la fois, comme les autres suppléments).
 const demandeEnAttente = async (db, titulaireId) => {
@@ -112,10 +168,11 @@ const demandeEnAttente = async (db, titulaireId) => {
 };
 
 const etatTitulaire = async (db, espace) => {
-  const [comptables, limite, demande] = await Promise.all([
+  const [comptables, limite, demande, dossiers] = await Promise.all([
     lireComptables(db, espace.id),
     limiteSupplementaires(db, espace.titulaire_id),
     demandeEnAttente(db, espace.titulaire_id),
+    lireDossiersEspace(db, espace.id),
   ]);
   const supplementaires = comptables.filter((c) => !c.obligatoire).length;
   return {
@@ -124,6 +181,8 @@ const etatTitulaire = async (db, espace) => {
     supplementaires: { utilises: supplementaires, limite },
     niveaux: NIVEAUX,
     demandeEnCours: demande,
+    // S4c : les dossiers de la comptabilité, pour la liste à cocher de chaque accès.
+    dossiers,
   };
 };
 
@@ -160,6 +219,9 @@ const lireSaisie = (body, partiel = false) => {
     if (!NIVEAUX.includes(niveau)) throw erreur(400, 'Niveau attendu : consultation, saisie ou complet');
     out.niveau = niveau;
   }
+  // S4c : le réglage des dossiers, seulement s'il est donné — absent (ou null), un NOUVEL accès reçoit le défaut de sa
+  // route (liste vide) et un accès existant garde le sien (la page Gérants de LabFlow ne l'envoie pas).
+  if (body?.dossiers != null) out.dossiers = lireDossiersSaisis(body.dossiers);
   return out;
 };
 
@@ -281,10 +343,12 @@ const lister = async (req, res) => {
   }
 };
 
-// POST /api/compta/mes-comptables — { nom, email, niveau } : un gérant comptable supplémentaire, dans la limite.
+// POST /api/compta/mes-comptables — { nom, email, niveau, dossiers? } : un gérant comptable supplémentaire, dans la
+// limite. S4c (réponse du client du 07/10) : sans `dossiers`, il ne voit aucun dossier tant que le client n'a pas coché.
 const ajouter = async (req, res) => {
   try {
     const saisie = lireSaisie(req.body);
+    const dossiers = saisie.dossiers ?? [];
     const out = await dansEspace(req.user, async (db, espace) => {
       // L'une après l'autre : un client de transaction ne mène qu'une requête à la fois.
       const limite = await limiteSupplementaires(db, espace.titulaire_id);
@@ -296,12 +360,13 @@ const ajouter = async (req, res) => {
       }
       const accesId = (await db.query(
         `INSERT INTO compta.acces (espace_id, personne_id, role, niveau, tous_dossiers, obligatoire, etat)
-         VALUES ($1, NULL, 'gerant', $2, true, false, 'a_attribuer') RETURNING id`,
-        [espace.id, saisie.niveau]
+         VALUES ($1, NULL, 'gerant', $2, $3, false, 'a_attribuer') RETURNING id`,
+        [espace.id, saisie.niveau, dossiers === 'tous']
       )).rows[0].id;
       const attribution = await attribuer(db, { espace, accesId, ...saisie });
+      if (dossiers !== 'tous' && dossiers.length) await ecrireDossiers(db, espace.id, accesId, dossiers);
       await journaliser(db, espace.id, req.user.id, 'acces_attribue', {
-        acces: accesId, personne: attribution.personneId, obligatoire: false, niveau: saisie.niveau, nouvelle: attribution.nouvelle,
+        acces: accesId, personne: attribution.personneId, obligatoire: false, niveau: saisie.niveau, nouvelle: attribution.nouvelle, dossiers,
       });
       return { accesId, attribution };
     });
@@ -312,30 +377,42 @@ const ajouter = async (req, res) => {
   }
 };
 
-// PUT /api/compta/mes-comptables/:id — { nom, email, niveau } : désigner (accès vide), réattribuer (autre adresse) ou
-// modifier le nom et le niveau. La personne qui perd l'accès n'est pas prévenue (réponse du client du 07/10).
+// PUT /api/compta/mes-comptables/:id — { nom, email, niveau, dossiers? } : désigner (accès vide), réattribuer (autre
+// adresse) ou modifier le nom, le niveau et (S4c) les dossiers — « Ma comptabilité » n'envoie que `dossiers`. La
+// personne qui perd l'accès n'est pas prévenue (réponse du client du 07/10).
 const modifier = async (req, res) => {
   try {
     const saisie = lireSaisie(req.body, true);
+    if (!Object.keys(saisie).length) throw erreur(400, 'Rien à modifier');
     const out = await dansEspace(req.user, async (db, espace) => {
       const acces = await accesDe(db, espace, req.params.id);
+      // S4c : régler les dossiers d'un accès sans personne n'a pas de sens (relecture) — désigner d'abord.
+      if (acces.personne_id == null && saisie.nom === undefined && saisie.email === undefined) throw erreur(409, 'Désignez d\'abord une personne pour cet accès', 'ACCES_VIDE');
       const adresseActuelle = acces.email ? acces.email.toLowerCase() : null;
       const changePersonne = acces.personne_id == null || (saisie.email && saisie.email !== adresseActuelle);
       if (changePersonne) {
         const complet = lireSaisie({ niveau: acces.niveau, ...req.body });
         const attribution = await attribuer(db, { espace, accesId: acces.id, ...complet });
+        // S4c : le réglage donné avec la désignation s'applique à la nouvelle personne. Sans réglage (page Gérants de
+        // LabFlow, qui ne montre pas les dossiers), l'accès OBLIGATOIRE revient à « tous » (réponse 4 : jamais un
+        // comptable désigné sur une liste restreinte à l'insu du client) ; un accès supplémentaire garde le sien.
+        const dossiers = saisie.dossiers ?? (acces.obligatoire ? 'tous' : dossiersDe(acces));
         await journaliser(db, espace.id, req.user.id, acces.personne_id == null ? 'acces_attribue' : 'acces_reattribue', {
           acces: acces.id, personne: attribution.personneId, precedente: acces.personne_id, obligatoire: acces.obligatoire,
-          niveau: complet.niveau, nouvelle: attribution.nouvelle,
+          niveau: complet.niveau, nouvelle: attribution.nouvelle, dossiers,
         });
+        await reglerDossiers(db, espace, acces, dossiers, req.user.id, attribution.personneId);
         return { attribution };
       }
-      const niveau = saisie.niveau ?? acces.niveau;
-      const nom = saisie.nom ?? acces.nom_attendu ?? acces.nom;
-      await db.query('UPDATE compta.acces SET niveau = $2, nom_attendu = $3, updated_at = NOW() WHERE id = $1', [acces.id, niveau, nom]);
-      await journaliser(db, espace.id, req.user.id, 'acces_modifie', {
-        acces: acces.id, personne: acces.personne_id, avant: { niveau: acces.niveau, nom: acces.nom_attendu }, apres: { niveau, nom },
-      });
+      if (saisie.niveau !== undefined || saisie.nom !== undefined) {
+        const niveau = saisie.niveau ?? acces.niveau;
+        const nom = saisie.nom ?? acces.nom_attendu ?? acces.nom;
+        await db.query('UPDATE compta.acces SET niveau = $2, nom_attendu = $3, updated_at = NOW() WHERE id = $1', [acces.id, niveau, nom]);
+        await journaliser(db, espace.id, req.user.id, 'acces_modifie', {
+          acces: acces.id, personne: acces.personne_id, avant: { niveau: acces.niveau, nom: acces.nom_attendu }, apres: { niveau, nom },
+        });
+      }
+      await reglerDossiers(db, espace, acces, saisie.dossiers, req.user.id);
       return { attribution: null };
     });
     const emailEnvoye = out.attribution ? await prevenir(out.attribution, out.espace) : null;
@@ -366,14 +443,18 @@ const retirer = async (req, res) => {
 };
 
 // L'accès obligatoire n'est jamais supprimé : il redevient « à attribuer » ; un accès supplémentaire disparaît.
-const viderOuSupprimer = (db, acces) => (acces.obligatoire
-  ? db.query(
+// S4c : l'accès obligatoire vidé revient à « tous les dossiers » (réponse 4) — la page Gérants de LabFlow, qui ne montre
+// pas les dossiers, ne désignera jamais le prochain comptable sur une liste restreinte à l'insu du client.
+const viderOuSupprimer = async (db, acces) => {
+  if (!acces.obligatoire) return db.query('DELETE FROM compta.acces WHERE id = $1', [acces.id]);
+  await db.query(
     `UPDATE compta.acces SET personne_id = NULL, etat = 'a_attribuer', nom_attendu = NULL, email_attendu = NULL,
-            attribue_le = NULL, updated_at = NOW()
+            attribue_le = NULL, tous_dossiers = true, updated_at = NOW()
       WHERE id = $1`,
     [acces.id]
-  )
-  : db.query('DELETE FROM compta.acces WHERE id = $1', [acces.id]));
+  );
+  return db.query('DELETE FROM compta.acces_dossiers WHERE acces_id = $1', [acces.id]);
+};
 
 // POST /api/compta/mes-comptables/:id/inviter — nouvelle invitation (48 h) pour un compte LabFlow Compta jamais activé.
 const inviter = async (req, res) => {
@@ -402,7 +483,7 @@ const inviter = async (req, res) => {
 const accesConfie = async (db, userId, espaceId, verrou = false) => {
   if (!idValide(espaceId)) return null;
   const r = await db.query(
-    `SELECT a.id, a.niveau, a.obligatoire, a.attribue_le, e.id AS espace_id, e.nom AS espace_nom, e.titulaire_id
+    `SELECT a.id, a.niveau, a.obligatoire, a.attribue_le, a.tous_dossiers, e.id AS espace_id, e.nom AS espace_nom, e.titulaire_id
        FROM compta.acces a
        JOIN compta.espaces e ON e.id = a.espace_id
       WHERE a.personne_id = $1 AND a.espace_id = $2 AND a.role = 'gerant' AND a.etat = 'actif'
@@ -436,7 +517,8 @@ const confiee = async (req, res) => {
       espace: { id: acces.espace_id, nom: acces.espace_nom },
       identite: mapIdentite(c),
       contact: { nom: c.contact || null, email: c.email || null, telephone: c.telephone || null },
-      acces: { niveau: acces.niveau, obligatoire: acces.obligatoire, confieeLe: acces.attribue_le },
+      // S4c : « tous les dossiers » du client, ou seulement ceux que le client lui a ouverts (la liste les montre).
+      acces: { niveau: acces.niveau, obligatoire: acces.obligatoire, confieeLe: acces.attribue_le, tousDossiers: acces.tous_dossiers },
       etatAbonnement: etatAbonnement(mode),
     });
   } catch (err) {
@@ -489,5 +571,6 @@ const quitter = async (req, res) => {
 module.exports = {
   NIVEAUX, ROLES_REFUSES, SQL_COMPTABLES, erreur, idValide, repondreErreur, lireSaisie, presenterComptable, lireComptables,
   jetonInvitation, attribuer, viderOuSupprimer,
+  DOSSIERS_MAX, lireDossiersSaisis, dossiersDe, memeDossiers, lireDossiersEspace, ecrireDossiers, reglerDossiers,
   lister, ajouter, modifier, retirer, inviter, confiee, quitter,
 };
