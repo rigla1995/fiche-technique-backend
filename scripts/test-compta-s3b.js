@@ -176,7 +176,10 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     await pool.query(`UPDATE abonnements SET mode_compte = 'actif' WHERE client_id = $1`, [clientId]);
 
     // ── Cabinet bloqué : il se connecte encore (réponse du client du 06/10) ──
-    await pool.query(`UPDATE abonnements SET mode_compte = 'bloque' WHERE client_id = $1`, [cabinetId]);
+    // Blocage par la vraie route de l'admin (relecture de S3b : elle désactivait aussi la personne).
+    r = await appel('PUT', `/api/abonnements/client/${cabinetId}/mode`, adminTok, { mode: 'bloque' });
+    check('l\'admin bloque le cabinet (route du mode) : la personne reste active', r.status === 200
+      && (await pool.query('SELECT actif FROM utilisateurs WHERE id = $1', [cabinetId])).rows[0]?.actif === true, String(r.status));
     r = await login(CABINET);
     check('cabinet bloqué : connexion permise', r.status === 200 && !!r.body?.token, `${r.status} ${r.body?.message || ''}`);
     cabTok = r.body?.token || cabTok;
@@ -226,6 +229,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     check('demande d\'ajout de 2 gérants comptables : 201', r.status === 201 && r.body?.nbGerantsComptaSupp === 2, `${r.status} ${r.body?.message || ''}`);
     r = await appel('GET', '/api/compta/mes-comptables', clientTok);
     check('… « demande en cours » sur la page du titulaire', r.body?.demandeEnCours === true);
+    r = await appel('POST', '/api/abonnements/support', clientTok, { type: 'supplement', nbGerantsComptaSupp: 1 });
+    check('une 2ᵉ demande de gérants comptables en attente : 409', r.status === 409, `${r.status} ${r.body?.message || ''}`);
     r = await appel('PUT', `/api/abonnements/admin/support/${demandeId}`, adminTok, { statut: 'validée' });
     const nb = (await pool.query('SELECT ac.nb_gerants_compta FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id WHERE a.client_id = $1', [clientId])).rows[0]?.nb_gerants_compta;
     check('validation par l\'admin : limite portée à 3', r.status === 200 && nb === 3, `${r.status} ${r.body?.message || ''} nb=${nb}`);

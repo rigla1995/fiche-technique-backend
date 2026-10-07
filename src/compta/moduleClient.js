@@ -217,6 +217,12 @@ const controlerDemandeGerants = async (db, clientId, n) => {
   );
   if (r.rows[0]?.module_compta_actif !== true) throw erreur(400, 'Le module Comptabilité n\'est pas activé sur votre compte');
   if ((Number(r.rows[0].nb_gerants_compta) || 0) + n > NB_GERANTS_MAX) throw erreur(400, `Au plus ${NB_GERANTS_MAX} gérants comptables supplémentaires`);
+  // Une demande à la fois (relecture de S3b : deux demandes validées l'une après l'autre s'additionneraient).
+  const enAttente = await db.query(
+    `SELECT 1 FROM support_demandes WHERE client_id = $1 AND statut = 'en_attente' AND nb_gerants_compta_supp > 0 LIMIT 1`,
+    [clientId]
+  );
+  if (enAttente.rows.length) throw erreur(409, 'Une demande de gérants comptables attend déjà la validation de l\'équipe LabFlow');
 };
 
 // À la validation par l'admin, dans sa transaction (`cur` : configuration verrouillée du compte) : le module doit être
