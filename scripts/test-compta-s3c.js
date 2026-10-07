@@ -51,6 +51,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     if (ids.length) {
       const espaces = (await pool.query('SELECT id FROM compta.espaces WHERE titulaire_id = ANY($1)', [ids])).rows.map((r) => r.id);
       await pool.query(`DELETE FROM compta.evenements WHERE auteur_id = ANY($1) OR (details->>'titulaire')::int = ANY($1) OR espace_id = ANY($2)`, [ids, espaces]);
+      // S4b : les dossiers (dont « Mon entreprise », créé d'office) retiennent leur comptabilité (RESTRICT).
+      await pool.query('DELETE FROM compta.dossiers WHERE espace_id IN (SELECT id FROM compta.espaces WHERE titulaire_id = ANY($1))', [ids]);
       await pool.query('DELETE FROM compta.espaces WHERE titulaire_id = ANY($1)', [ids]);
       await pool.query('DELETE FROM notifications WHERE user_id = ANY($1)', [ids]);
       await pool.query('DELETE FROM support_demandes WHERE client_id = ANY($1)', [ids]);

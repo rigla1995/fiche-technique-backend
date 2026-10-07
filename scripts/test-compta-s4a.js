@@ -271,7 +271,9 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     check('… le dossier existe toujours (rien de comptable ne disparaît)', !!(await pool.query('SELECT 1 FROM compta.dossiers WHERE id = $1', [F.id])).rows.length);
     r = await appel('PUT', `/api/abonnements/client/${client.id}/module-compta`, adminTok, { actif: true, nbGerantsCompta: 0 });
     r = await appel('GET', `/api/compta/espaces/${espaceClient}/dossiers`, client.tok);
-    check('module réactivé : la comptabilité rouvre avec son dossier', r.status === 200 && r.body?.dossiers?.length === 1, `${r.status} ${JSON.stringify(r.body?.dossiers?.map((d) => d.nom))}`);
+    // S4b : le dossier « Mon entreprise » du client (créé d'office à l'activation) s'ajoute à celui du comptable.
+    check('module réactivé : la comptabilité rouvre avec ses dossiers (celui du comptable et « Mon entreprise »)', r.status === 200 && r.body?.dossiers?.length === 2
+      && r.body.dossiers.some((d) => d.source === 'labflow'), `${r.status} ${JSON.stringify(r.body?.dossiers?.map((d) => d.nom))}`);
     r = await appel('DELETE', `/api/compta/dossiers/${F.id}`, client.tok);
     check('le client supprime ce dossier (204)', r.status === 204, String(r.status));
 

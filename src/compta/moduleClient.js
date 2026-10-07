@@ -12,6 +12,7 @@ const { loadTarifs, tarifsFor, recalcPaiementsEnAttente } = require('../controll
 const { postesCompta, totalPostes, tarif, moisTunis } = require('./tarifsCompta');
 const { nomAffiche } = require('../utils/identite');
 const { journaliser } = require('./journal');
+const { assurerDossierLabflow } = require('./dossierLabflow');
 
 const NB_GERANTS_MAX = 50;
 const MSG_TARIF = 'Le tarif « Module Comptabilité » vaut 0 DT : saisissez-le d\'abord (Tarifs → LabFlow Compta).';
@@ -180,6 +181,10 @@ const basculer = async (db, { clientId, actif, nbGerants, auteurId }) => {
     await db.query(`UPDATE compta.espaces SET etat = 'ferme', updated_at = NOW() WHERE id = $1`, [espaceId]);
     await journaliser(db, espaceId, auteurId, 'espace_ferme', { titulaire: clientId });
   }
+  // S4b (réponse 3 du client du 07/10) : le dossier « Mon entreprise » du client existe dès que sa comptabilité est
+  // ouverte — créé d'après son identité LabFlow une seule fois (jamais supprimé, seulement archivé : une réactivation ou
+  // un réglage des gérants le retrouve tel quel).
+  if (actif) await assurerDossierLabflow(db, { espaceId, clientId, auteurId });
   // Activation : une demande du client encore en attente (lui ou un de ses gérants) est réglée du même coup.
   if (actif && !etaitActif) {
     await db.query(
