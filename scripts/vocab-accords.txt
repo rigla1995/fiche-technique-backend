@@ -910,13 +910,13 @@ src/controllers/stockController.js
     miroir : Local introuvable
 
 src/controllers/supportController.js
-  l. 111
+  l. 127
     défaut : Palier acheteurs invalide (10, 20, 50 ou 100)
     miroir : Palier abr-clientes invalide (10, 20, 50 ou 100)
-  l. 124
+  l. 140
     défaut : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ acheteurs)
     miroir : Le palier demandé doit être supérieur au palier actuel (jusqu'à ⟦·⟧ clientes)
-  l. 127
+  l. 143
     défaut : L'option Acheteurs nécessite au moins un labo (ajoutez-en un à la demande)
     miroir : L'option Abr-Clientes nécessite au moins une usine (ajoutez-en une à la demande)
 
@@ -1418,31 +1418,31 @@ src/services/emailService.js
   </div>
 </body>
 </html>
-  l. 233
+  l. 235
     défaut : ⟦?+⟦·⟧ ⟦activité|activités@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦local|locaux@>1⟧|⟧
-  l. 234
+  l. 236
     défaut : ⟦?+⟦·⟧ ⟦labo|labos@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦usine|usines@>1⟧|⟧
-  l. 235
+  l. 237
     défaut : ⟦?+⟦·⟧ ⟦gérant|gérants@>1⟧|⟧
     miroir : ⟦?+⟦·⟧ ⟦animatrice|animatrices@>1⟧|⟧
-  l. 236
+  l. 238
     défaut : ⟦?Option Acheteurs : jusqu'à ⟦·⟧ acheteurs|⟧
     miroir : ⟦?Option Abr-Clientes : jusqu'à ⟦·⟧ clientes|⟧
-  l. 276
+  l. 279
     défaut : Activités
     miroir : Locaux
-  l. 277
+  l. 280
     défaut : Labos
     miroir : Usines
-  l. 278
+  l. 281
     défaut : Gérants
     miroir : Animatrices
-  l. 279
+  l. 282
     défaut : Option Acheteurs
     miroir : Option Abr-Clientes
-  l. 432
+  l. 435
     défaut : <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
       <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">
         <div style="font-size:36px;margin-bottom:8px">⟦?📊|📄⟧</div>
@@ -1467,7 +1467,7 @@ src/services/emailService.js
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0">
       <p style="font-size:11px;color:#94a3b8;text-align:center">Généré par l'assistant IA LabFlow · ⟦·⟧</p>
     </div>
-  l. 457
+  l. 460
     défaut : 
 <!DOCTYPE html>
 <html lang="fr">

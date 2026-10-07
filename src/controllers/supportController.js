@@ -8,9 +8,8 @@ const { computeBaseMensuelFromConfig, computeBaseLaboFromConfig, computeBaseGera
 const { applyComposants, invaliderProfilApresCommit, composantsDepuisCompteurs, validerComposition, erreursIntroduites } = require('../services/configComposantsService');
 const { getProfil } = require('../services/domaineProfilService');
 // LabFlow Compta, étape S3b : demande d'ajout de gérants comptables (support_demandes.nb_gerants_compta_supp, migration 205).
-const { NB_GERANTS_MAX } = require('../compta/moduleClient');
-const { postesCompta } = require('../compta/tarifsCompta');
-const { journaliser } = require('../compta/journal');
+const moduleCompta = require('../compta/moduleClient');
+const { libelleAjoutGerantsCompta } = require('../compta/emails');
 
 // Ajouts d'une demande de capacité → composants du domaine (1er composant actif de
 // chaque type, comme le backfill) en mode 'add' (la cible acheteurs REMPLACE le quota).
@@ -111,22 +110,16 @@ const create = async (req, res) => {
       // Option Acheteurs : quota TOTAL cible (palier 10/20/50/100) — pas un incrément
       const nbAcheteursCible = req.body.nbAcheteursCible != null ? parseInt(req.body.nbAcheteursCible, 10) : null;
       // LabFlow Compta (S3b) : gérants comptables supplémentaires, seulement si le module Comptabilité est actif.
-      const brutCompta = req.body.nbGerantsComptaSupp;
-      const nbGerantsComptaSupp = brutCompta === undefined || brutCompta === null || brutCompta === '' ? 0 : Number(brutCompta);
-      if (!Number.isInteger(nbGerantsComptaSupp) || nbGerantsComptaSupp < 0 || nbGerantsComptaSupp > NB_GERANTS_MAX) {
-        return res.status(400).json({ message: `Gérants comptables : entier de 0 à ${NB_GERANTS_MAX}` });
-      }
+      const nbGerantsComptaSupp = moduleCompta.nbGerantsDemandes(req.body.nbGerantsComptaSupp);
+      if (nbGerantsComptaSupp === null) return res.status(400).json({ message: moduleCompta.MSG_NB_DEMANDES });
       const total = (nbActivitesSupp || 0) + (nbLabosSupp || 0) + (nbGerantsSupp || 0) + (nbAcheteursCible ? 1 : 0) + nbGerantsComptaSupp;
       if (total === 0) return res.status(400).json({ message: 'Indiquez au moins un supplément' });
       if (nbGerantsComptaSupp > 0) {
-        const m = await pool.query(
-          `SELECT ac.module_compta_actif, ac.nb_gerants_compta FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id
-            WHERE a.client_id = $1 AND a.produit = 'labflow' ORDER BY a.id DESC LIMIT 1`,
-          [clientId]
-        );
-        if (m.rows[0]?.module_compta_actif !== true) return res.status(400).json({ message: "Le module Comptabilité n'est pas activé sur votre compte" });
-        if ((Number(m.rows[0].nb_gerants_compta) || 0) + nbGerantsComptaSupp > NB_GERANTS_MAX) {
-          return res.status(400).json({ message: `Au plus ${NB_GERANTS_MAX} gérants comptables supplémentaires` });
+        try {
+          await moduleCompta.controlerDemandeGerants(pool, clientId, nbGerantsComptaSupp);
+        } catch (e) {
+          if (e.statusCode) return res.status(e.statusCode).json({ message: e.message });
+          throw e;
         }
       }
       if (nbAcheteursCible != null) {
@@ -315,18 +308,13 @@ const traiter = async (req, res) => {
       // augmente (facturée à partir du mois suivant, par le recalcul ci-dessous).
       const nbCompta = demande.nb_gerants_compta_supp || 0;
       if (nbCompta > 0) {
-        if (cur.module_compta_actif !== true) {
+        try {
+          await moduleCompta.ajouterGerantsDemandes(db, { cur, clientId: demande.client_id, n: nbCompta, auteurId: req.user.id, demandeId: Number(id) });
+        } catch (e) {
+          if (!e.statusCode) throw e;
           await db.query('ROLLBACK');
-          return res.status(409).json({ message: "Le module Comptabilité n'est plus actif sur ce compte : refusez cette demande" });
+          return res.status(e.statusCode).json({ message: e.message });
         }
-        const nbApres = (Number(cur.nb_gerants_compta) || 0) + nbCompta;
-        if (nbApres > NB_GERANTS_MAX) {
-          await db.query('ROLLBACK');
-          return res.status(409).json({ message: `Au plus ${NB_GERANTS_MAX} gérants comptables supplémentaires : refusez cette demande` });
-        }
-        await db.query('UPDATE abonnement_config SET nb_gerants_compta = $2, updated_at = NOW() WHERE abonnement_id = $1', [cur.abonnement_id, nbApres]);
-        const espace = await db.query("SELECT id FROM compta.espaces WHERE type = 'client_labflow' AND titulaire_id = $1", [demande.client_id]);
-        await journaliser(db, espace.rows[0]?.id ?? null, req.user.id, 'module_gerants', { titulaire: demande.client_id, nbGerants: nbApres, demande: Number(id) });
       }
       // Capacité appliquée PAR COMPOSANT (1er composant de chaque type ; la cible acheteurs REMPLACE le quota ;
       // formule premium par défaut si 1ère activité), puis paiements en attente recalculés : même transaction.
@@ -411,8 +399,7 @@ const traiter = async (req, res) => {
           nbLabosAdded:     demande.nb_labos_supp     || 0,
           nbGerantsAdded:   demande.nb_gerants_supp   || 0,
           acheteursCible:   demande.nb_acheteurs_cible || null,
-          nbGerantsComptaAdded: demande.nb_gerants_compta_supp || 0,
-          lignesCompta: postesCompta(cfg, tarifs),
+          libelleAjoutCompta: libelleAjoutGerantsCompta(demande.nb_gerants_compta_supp || 0),
           nbActivites: nbA,
           nbLabos: nbL,
           nbGerants: nbG,

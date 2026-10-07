@@ -10,7 +10,8 @@
 // Règles du chantier : jamais « gerant_parent_id || id » ni les gardes clientes ; l'accès est vérifié sur compta.acces ;
 // chaque écriture du titulaire passe par la garde par comptabilité (garde.js, D4) ; quitter un accès n'est jamais refusé.
 const pool = require('../config/database');
-const { generateInviteToken, sendAccesComptaEmail, sendComptablePartiEmail } = require('../services/emailService');
+const { generateInviteToken } = require('../services/emailService');
+const { sendAccesComptaEmail, sendComptablePartiEmail } = require('./emails');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('../controllers/notificationController');
 const { vocabForClient } = require('../utils/vocabCompte');

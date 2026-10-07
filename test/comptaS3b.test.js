@@ -102,8 +102,9 @@ test('emails : invitation vers LabFlow Compta (48 h) ou accès ajouté ; comptab
   process.env.APP_URL_COMPTA = 'https://compta.exemple.tn';
   process.env.APP_URL = 'https://app.exemple.tn';
   delete require.cache[require.resolve('../src/services/emailService')];
+  delete require.cache[require.resolve('../src/compta/emails')];
   try {
-    const email = require('../src/services/emailService');
+    const email = require('../src/compta/emails');
     await email.sendAccesComptaEmail({ to: 'c@x.tn', nom: '<b>Ali</b>', clientNom: 'Café "Le Port" & Co', token: 'jeton' });
     await email.sendAccesComptaEmail({ to: 'c@x.tn', nom: 'Ali', clientNom: 'Café' });
     await email.sendComptablePartiEmail({ to: 'p@x.tn', nom: 'Patron', comptableNom: '<script>' });
@@ -124,6 +125,7 @@ test('emails : invitation vers LabFlow Compta (48 h) ou accès ajouté ; comptab
     delete process.env.APP_URL_COMPTA;
     delete process.env.APP_URL;
     delete require.cache[require.resolve('../src/services/emailService')];
+    delete require.cache[require.resolve('../src/compta/emails')];
   }
 });
 

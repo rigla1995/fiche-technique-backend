@@ -198,6 +198,38 @@ const basculer = async (db, { clientId, actif, nbGerants, auteurId }) => {
   return { abonnementId: row.abonnement_id, change };
 };
 
+// ── Demande d'ajout de gérants comptables (étape S3b, support_demandes.nb_gerants_compta_supp, migration 205) ────────
+
+// Nombre demandé : absent → 0 ; entier de 0 à NB_GERANTS_MAX ; sinon null (refus).
+const nbGerantsDemandes = (v) => {
+  if (v === undefined || v === null || v === '') return 0;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= NB_GERANTS_MAX ? n : null;
+};
+const MSG_NB_DEMANDES = `Gérants comptables : entier de 0 à ${NB_GERANTS_MAX}`;
+
+// À la création de la demande : le module doit être actif et la limite resterait sous le plafond. Lève { statusCode }.
+const controlerDemandeGerants = async (db, clientId, n) => {
+  const r = await db.query(
+    `SELECT ac.module_compta_actif, ac.nb_gerants_compta FROM abonnement_config ac JOIN abonnements a ON a.id = ac.abonnement_id
+      WHERE a.client_id = $1 AND a.produit = 'labflow' ORDER BY a.id DESC LIMIT 1`,
+    [clientId]
+  );
+  if (r.rows[0]?.module_compta_actif !== true) throw erreur(400, 'Le module Comptabilité n\'est pas activé sur votre compte');
+  if ((Number(r.rows[0].nb_gerants_compta) || 0) + n > NB_GERANTS_MAX) throw erreur(400, `Au plus ${NB_GERANTS_MAX} gérants comptables supplémentaires`);
+};
+
+// À la validation par l'admin, dans sa transaction (`cur` : configuration verrouillée du compte) : le module doit être
+// encore actif ; la limite augmente (facturée à partir du mois suivant, par le recalcul de l'appelant) ; journal.
+const ajouterGerantsDemandes = async (db, { cur, clientId, n, auteurId, demandeId }) => {
+  if (cur.module_compta_actif !== true) throw erreur(409, 'Le module Comptabilité n\'est plus actif sur ce compte : refusez cette demande');
+  const nbApres = (Number(cur.nb_gerants_compta) || 0) + n;
+  if (nbApres > NB_GERANTS_MAX) throw erreur(409, `Au plus ${NB_GERANTS_MAX} gérants comptables supplémentaires : refusez cette demande`);
+  await db.query('UPDATE abonnement_config SET nb_gerants_compta = $2, updated_at = NOW() WHERE abonnement_id = $1', [cur.abonnement_id, nbApres]);
+  const espace = await db.query(`SELECT id FROM compta.espaces WHERE type = 'client_labflow' AND titulaire_id = $1`, [clientId]);
+  await journaliser(db, espace.rows[0]?.id ?? null, auteurId, 'module_gerants', { titulaire: clientId, nbGerants: nbApres, demande: demandeId });
+};
+
 // Après la transaction : les mensualités en attente des mois suivants suivent le module (best effort, comme les
 // autres options).
 const recalculer = (abonnementId) =>
@@ -263,5 +295,6 @@ const lireClient = async (req, res) => {
 
 module.exports = {
   NB_GERANTS_MAX, MSG_TARIF, grilleGenerale, compteDe, lire, etat, basculer, recalculer, moisFacture,
+  nbGerantsDemandes, MSG_NB_DEMANDES, controlerDemandeGerants, ajouterGerantsDemandes,
   lireAdmin, basculerAdmin, lireClient,
 };
