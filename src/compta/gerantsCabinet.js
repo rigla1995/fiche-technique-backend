@@ -26,7 +26,7 @@ const { computeMensuelTotalFromConfig } = require('../controllers/abonnementCont
 const { NB_GERANTS_MAX, grilleGenerale } = require('./moduleClient');
 const {
   NIVEAUX, SQL_COMPTABLES, erreur, idValide, repondreErreur, lireSaisie, presenterComptable, jetonInvitation, attribuer,
-  lireDossiersEspace, ecrireDossiers, reglerDossiers, dossiersDe,
+  ecrireDossiers, reglerDossiers, dossiersDe,
 } = require('./comptablesClient');
 
 const TEXTES_CABINET = {
@@ -86,13 +86,12 @@ const lireGerants = async (db, espaceId) =>
   (await db.query(`${SQL_COMPTABLES} ORDER BY a.id`, [espaceId])).rows.map(presenterComptable);
 
 const etatCabinet = async (db, espace) => {
-  const [gerants, limite, demande, mode, tarifs, dossiers] = await Promise.all([
+  const [gerants, limite, demande, mode, tarifs] = await Promise.all([
     lireGerants(db, espace.id),
     limiteGerants(db, espace.titulaire_id),
     demandeEnAttente(db, espace.titulaire_id),
     modeTitulaire(db, espace.id),
     grilleGenerale(db),
-    lireDossiersEspace(db, espace.id),
   ]);
   return {
     cabinet: { id: espace.id, nom: espace.nom },
@@ -103,8 +102,6 @@ const etatCabinet = async (db, espace) => {
     prixGerant: tarif(tarifs, 'compta_gerant_cabinet_mensuel'),
     nbGerantsMax: NB_GERANTS_MAX,
     etatAbonnement: etatAbonnement(mode),
-    // S4c : les dossiers du cabinet (archivés compris), pour la liste à cocher de chaque collaborateur.
-    dossiers,
   };
 };
 
