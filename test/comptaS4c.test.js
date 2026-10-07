@@ -32,7 +32,7 @@ test('réglage lu : « tous » ou une liste d\'identifiants distincts, triés ; 
   for (const v of ['x', 'TOUS', null, undefined, {}, 5, [0], [-1], [1.5], ['a'], [{}], [null], [true], ['1;DROP'], Array.from({ length: comptables.DOSSIERS_MAX + 1 }, (_, i) => i + 1)]) {
     assert.throws(() => comptables.lireDossiersSaisis(v), (e) => e.statusCode === 400, JSON.stringify(v)?.slice(0, 40));
   }
-  assert.equal(comptables.DOSSIERS_MAX, 1000);
+  assert.equal(comptables.DOSSIERS_MAX, 5000, 'S4d : des milliers de dossiers par collaborateur');
 });
 
 test('présentation : « tous » sans la colonne ou quand elle est vraie ; la liste (nombres) sinon ; comparaison', () => {
@@ -54,7 +54,7 @@ test('saisie : les dossiers seulement s\'ils sont donnés (la page Gérants de L
   assert.deepEqual(comptables.lireSaisie({ nom: 'A', email: 'a@x.tn', niveau: 'saisie' }), { nom: 'A', email: 'a@x.tn', niveau: 'saisie' }, 'aucune clé dossiers ajoutée');
   assert.deepEqual(comptables.lireSaisie({ dossiers: [2] }, true), { dossiers: [2] });
   assert.deepEqual(comptables.lireSaisie({ niveau: 'saisie', dossiers: null }, true), { niveau: 'saisie' }, 'null vaut absent (pas de changement)');
-  assert.throws(() => comptables.lireDossiersSaisis(Array.from({ length: 1001 }, (_, i) => i + 1)), (e) => /au plus 1000/.test(e.message));
+  assert.throws(() => comptables.lireDossiersSaisis(Array.from({ length: comptables.DOSSIERS_MAX + 1 }, (_, i) => i + 1)), (e) => /au plus 5000/.test(e.message));
   assert.deepEqual(comptables.lireSaisie({ niveau: 'complet', dossiers: 'tous' }, true), { niveau: 'complet', dossiers: 'tous' });
   assert.throws(() => comptables.lireSaisie({ nom: 'A', email: 'a@x.tn', dossiers: 'x' }), (e) => e.statusCode === 400);
   // Modifier sans rien : 400 avant toute requête (« Ma comptabilité » n'envoie que `dossiers`, jamais un corps vide).
@@ -104,16 +104,14 @@ test('défauts et écritures : nouvel accès → liste vide ; réglage écrit da
   const vider = cc.slice(cc.indexOf('const viderOuSupprimer = async'), cc.indexOf('\n};\n', cc.indexOf('const viderOuSupprimer = async')));
   assert.ok(vider.includes('attribue_le = NULL, tous_dossiers = true, updated_at = NOW()'));
   assert.ok(vider.includes("return db.query('DELETE FROM compta.acces_dossiers WHERE acces_id = $1', [acces.id]);"));
-  // Catalogue des dossiers pour la liste à cocher : « Mes gérants », « Ma comptabilité » (deux lectures).
-  assert.ok(lire('src', 'compta', 'gerantsCabinet.js').includes('lireDossiersEspace(db, espace.id),'));
-  assert.ok(cc.includes('lireDossiersEspace(db, espace.id),'));
-  assert.ok(lire('src', 'compta', 'accesController.js').includes('lireDossiersEspace(pool, espace.id), modeTitulaire(pool, espace.id),'));
+  // S4d : le catalogue des dossiers ne voyage plus dans les réponses des accès (la liste à cocher le lit par pages).
+  for (const f of ['gerantsCabinet.js', 'comptablesClient.js', 'accesController.js']) assert.ok(!lire('src', 'compta', f).includes('lireDossiersEspace'), f);
   // Pages du collaborateur et du comptable : « tous » ou une sélection ; « Ma comptabilité » : l'état de l'abonnement
   // (« Régler » fermé quand la comptabilité n'est pas modifiable).
   assert.ok(lire('src', 'compta', 'gerantsCabinet.js').includes('membreDepuis: acces.attribue_le, tousDossiers: acces.tous_dossiers'));
   assert.ok(cc.includes('confieeLe: acces.attribue_le, tousDossiers: acces.tous_dossiers'));
   const maComptabilite = corpsDe(lire('src', 'compta', 'accesController.js'), 'maComptabilite');
-  assert.ok(maComptabilite.includes('modeTitulaire(pool, espace.id),') && maComptabilite.includes('etatAbonnement: etatAbonnement(mode),'));
+  assert.ok(maComptabilite.includes('modeTitulaire(pool, espace.id)') && maComptabilite.includes('etatAbonnement: etatAbonnement(mode),'));
 });
 
 test('un dossier créé par un gérant qui n\'a pas « tous » lui est ouvert dans la même transaction', () => {

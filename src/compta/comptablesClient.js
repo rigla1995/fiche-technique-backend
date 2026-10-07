@@ -75,10 +75,17 @@ const limiteSupplementaires = async (db, titulaireId) => {
 };
 
 // S4c : `tous_dossiers` et `dossier_ids` (la liste, triée, vide quand « tous ») — le réglage des dossiers de l'accès.
+// S4d : `dossier_noms`, les trois premiers noms (par nom, LIMIT 3 ci-dessous) des dossiers de la liste, pour la carte de
+// l'accès — le catalogue des dossiers ne voyage plus dans les réponses (il se lit par pages, dossiers.js). La liste des
+// identifiants de l'accès (`dossier_ids`, 5 000 au plus) voyage encore : c'est le réglage que le formulaire modifie.
+const NOMS_MAX = 3;
 const SQL_COMPTABLES = `
   SELECT a.id, a.obligatoire, a.niveau, a.etat AS etat_acces, a.nom_attendu, a.email_attendu, a.attribue_le, a.personne_id,
          a.tous_dossiers,
          (SELECT COALESCE(array_agg(ad.dossier_id ORDER BY ad.dossier_id), '{}'::int[]) FROM compta.acces_dossiers ad WHERE ad.acces_id = a.id) AS dossier_ids,
+         (SELECT COALESCE(array_agg(x.nom ORDER BY LOWER(x.nom), x.id), '{}'::text[])
+            FROM (SELECT d.nom, d.id FROM compta.acces_dossiers ad JOIN compta.dossiers d ON d.id = ad.dossier_id
+                   WHERE ad.acces_id = a.id ORDER BY LOWER(d.nom), d.id LIMIT 3) x) AS dossier_noms,
          u.nom, u.email, u.role AS personne_role, u.activated_at, (u.mot_de_passe IS NOT NULL) AS a_mot_de_passe
     FROM compta.acces a
     LEFT JOIN utilisateurs u ON u.id = a.personne_id
@@ -101,8 +108,10 @@ const presenterComptable = (x) => {
     // Seul un compte LabFlow Compta jamais activé reçoit une nouvelle invitation (les autres ont la leur).
     invitationRenvoyable: invitation && x.personne_role === 'comptable',
     attribueLe: attribue ? x.attribue_le : null,
-    // S4c : « tous » ou la liste des identifiants des dossiers ouverts à l'accès.
+    // S4c : « tous » ou la liste des identifiants des dossiers ouverts à l'accès ; S4d : les premiers noms de la liste.
     dossiers: dossiersDe(x),
+    dossiersNoms: x.tous_dossiers === false ? (x.dossier_noms || []) : [],
+    nbDossiers: x.tous_dossiers === false ? (x.dossier_ids || []).length : null,
   };
 };
 
@@ -114,7 +123,8 @@ const lireComptables = async (db, espaceId) =>
 // venir) ou seulement une liste (compta.acces_dossiers). Partout, la personne ne voit et ne touche que ses dossiers
 // (dossiers.js, SQL_VISIBLE). Un titulaire a toujours « tous ». Le réglage appartient à l'ACCÈS : une réattribution le
 // garde, sauf si la désignation en envoie un autre.
-const DOSSIERS_MAX = 1000;
+// S4d : un grand cabinet peut ouvrir des milliers de dossiers à un collaborateur (« tous » reste le réglage naturel).
+const DOSSIERS_MAX = 5000;
 // Réglage lu dans un corps : 'tous', ou la liste des identifiants (entiers, distincts, triés). Les identifiants sont
 // contrôlés contre la comptabilité dans la transaction (ecrireDossiers), jamais ici.
 const lireDossiersSaisis = (v) => {
@@ -128,10 +138,6 @@ const lireDossiersSaisis = (v) => {
 // Réglage d'une ligne SQL_COMPTABLES. Sans la colonne (accès lu autrement), l'accès vaut « tous » (règle d'avant S4c).
 const dossiersDe = (x) => (x.tous_dossiers === false ? (x.dossier_ids || []).map(Number) : 'tous');
 const memeDossiers = (a, b) => (a === 'tous' || b === 'tous' ? a === b : a.length === b.length && a.every((x, i) => x === b[i]));
-// Les dossiers de la comptabilité (archivés compris, classés après), pour la liste à cocher des écrans.
-const lireDossiersEspace = async (db, espaceId) =>
-  (await db.query('SELECT id, nom, matricule_fiscal, etat, source FROM compta.dossiers WHERE espace_id = $1 ORDER BY etat, LOWER(nom), id', [espaceId]))
-    .rows.map((d) => ({ id: d.id, nom: d.nom, matriculeFiscal: d.matricule_fiscal, etat: d.etat, source: d.source }));
 // Écrit le réglage de l'accès `accesId` (comptabilité verrouillée). Les dossiers choisis doivent être ceux de la
 // comptabilité : un dossier d'ailleurs, ou supprimé entre-temps, est refusé (409 : la page se relit).
 const ecrireDossiers = async (db, espaceId, accesId, dossiers) => {
@@ -168,11 +174,10 @@ const demandeEnAttente = async (db, titulaireId) => {
 };
 
 const etatTitulaire = async (db, espace) => {
-  const [comptables, limite, demande, dossiers] = await Promise.all([
+  const [comptables, limite, demande] = await Promise.all([
     lireComptables(db, espace.id),
     limiteSupplementaires(db, espace.titulaire_id),
     demandeEnAttente(db, espace.titulaire_id),
-    lireDossiersEspace(db, espace.id),
   ]);
   const supplementaires = comptables.filter((c) => !c.obligatoire).length;
   return {
@@ -181,8 +186,6 @@ const etatTitulaire = async (db, espace) => {
     supplementaires: { utilises: supplementaires, limite },
     niveaux: NIVEAUX,
     demandeEnCours: demande,
-    // S4c : les dossiers de la comptabilité, pour la liste à cocher de chaque accès.
-    dossiers,
   };
 };
 
@@ -571,6 +574,6 @@ const quitter = async (req, res) => {
 module.exports = {
   NIVEAUX, ROLES_REFUSES, SQL_COMPTABLES, erreur, idValide, repondreErreur, lireSaisie, presenterComptable, lireComptables,
   jetonInvitation, attribuer, viderOuSupprimer,
-  DOSSIERS_MAX, lireDossiersSaisis, dossiersDe, memeDossiers, lireDossiersEspace, ecrireDossiers, reglerDossiers,
+  DOSSIERS_MAX, NOMS_MAX, lireDossiersSaisis, dossiersDe, memeDossiers, ecrireDossiers, reglerDossiers,
   lister, ajouter, modifier, retirer, inviter, confiee, quitter,
 };

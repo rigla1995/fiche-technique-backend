@@ -120,8 +120,10 @@ const memes = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
     // ── « Mes gérants » : le réglage à l'ajout ──
     r = await appel('GET', '/api/compta/cabinet/gerants', cabinet.tok);
-    check('« Mes gérants » : les dossiers du cabinet (catalogue de 3, nom, matricule, état)', r.status === 200 && r.body?.dossiers?.length === 3 && r.body.dossiers[0].nom === 'Alpha Essai S4c'
-      && r.body.dossiers[0].matriculeFiscal === '1234567A/A/M/000' && r.body.dossiers[0].etat === 'actif' && r.body.dossiers[0].id === A.id, JSON.stringify(r.body?.dossiers));
+    const liste = await appel('GET', `/api/compta/espaces/${espaceId}/dossiers`, cabinet.tok);
+    // S4d : le catalogue ne voyage plus avec les accès ; la liste à cocher lit la liste paginée (nom, matricule, état).
+    check('« Mes gérants » sans catalogue ; la liste paginée rend les 3 dossiers (nom, matricule, état)', r.status === 200 && !('dossiers' in r.body) && liste.body?.total === 3 && liste.body.dossiers[0].nom === 'Alpha Essai S4c'
+      && liste.body.dossiers[0].matriculeFiscal === '1234567A/A/M/000' && liste.body.dossiers[0].etat === 'actif' && liste.body.dossiers[0].id === A.id, JSON.stringify(liste.body?.dossiers));
     r = await appel('POST', '/api/compta/cabinet/gerants', cabinet.tok, { nom: 'G1 Tous', email: G1, niveau: 'saisie', dossiers: 'tous' });
     const g1 = r.body?.gerants?.find((g) => g.email === G1);
     check('G1 ajouté avec « tous » (201)', r.status === 201 && g1?.dossiers === 'tous', `${r.status} ${JSON.stringify(g1?.dossiers)} ${r.body?.message || ''}`);
@@ -247,7 +249,8 @@ const memes = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     check('journal : dossier_supprime nomme l\'accès de G3 qui l\'avait (ouvertA)', memes(js?.details?.ouvertA, [g3.id]), JSON.stringify(js?.details));
     r = await appel('GET', '/api/compta/cabinet/gerants', cabinet.tok);
     g3b = r.body?.gerants?.find((g) => g.id === g3.id);
-    check('B supprimé : G3 revient à une liste vide, catalogue à 4', r.status === 200 && memes(g3b?.dossiers, []) && r.body?.dossiers?.length === 4 && (await lignesAcces(g3.id)).length === 0, JSON.stringify([g3b?.dossiers, r.body?.dossiers?.length]));
+    const apresB = (await appel('GET', `/api/compta/espaces/${espaceId}/dossiers?archives=1`, cabinet.tok)).body;
+    check('B supprimé : G3 revient à une liste vide, 4 dossiers restent', r.status === 200 && memes(g3b?.dossiers, []) && apresB?.total === 4 && (await lignesAcces(g3.id)).length === 0, JSON.stringify([g3b?.dossiers, apresB?.total]));
     await mode(cabinet.id, 'read_only');
     r = await appel('PUT', `/api/compta/cabinet/gerants/${g3.id}`, cabinet.tok, { dossiers: 'tous' });
     check('lecture seule : changer les dossiers est refusé (403 READ_ONLY)', r.status === 403 && r.body?.code === 'READ_ONLY', `${r.status} ${r.body?.code}`);
@@ -257,19 +260,20 @@ const memes = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     check('lecture seule : un dossier visible répond 403 READ_ONLY (G1, tous)', r.status === 403 && r.body?.code === 'READ_ONLY', `${r.status} ${r.body?.code}`);
     await mode(cabinet.id, 'actif');
     r = await appel('POST', `/api/compta/dossiers/${A.id}/archiver`, cabinet.tok);
-    r = await appel('GET', '/api/compta/cabinet/gerants', cabinet.tok);
-    check('un dossier archivé reste dans le catalogue, marqué archive, classé après', r.body?.dossiers?.find((d) => d.id === A.id)?.etat === 'archive' && r.body?.dossiers?.[r.body.dossiers.length - 1]?.id === A.id, JSON.stringify(r.body?.dossiers?.map((d) => [d.nom, d.etat])));
+    r = await appel('GET', `/api/compta/espaces/${espaceId}/dossiers?archives=1`, cabinet.tok);
+    check('un dossier archivé reste dans la liste (archivés demandés), marqué archive, classé après', r.body?.dossiers?.find((d) => d.id === A.id)?.etat === 'archive' && r.body?.dossiers?.[r.body.dossiers.length - 1]?.id === A.id, JSON.stringify(r.body?.dossiers?.map((d) => [d.nom, d.etat])));
     r = await appel('PUT', `/api/compta/cabinet/gerants/${g3.id}`, cabinet.tok, { dossiers: [A.id] });
-    r = await appel('GET', `/api/compta/espaces/${espaceId}/dossiers`, p3.tok);
-    check('… et s\'ouvre à un collaborateur (G3 voit A, archivé)', r.body?.dossiers?.length === 1 && r.body.dossiers[0].etat === 'archive', noms(r));
+    r = await appel('GET', `/api/compta/espaces/${espaceId}/dossiers?archives=1`, p3.tok);
+    check('… et s\'ouvre à un collaborateur (G3 voit A, archivé, avec les archivés demandés)', r.body?.dossiers?.length === 1 && r.body.dossiers[0].etat === 'archive' && r.body?.nbArchives === 1 && r.body?.nbActifs === 0, noms(r));
 
     // ── Côté client : « Ma comptabilité » ──
     r = await appel('GET', '/api/compta/ma-comptabilite', client.tok);
     const obligatoire = r.body?.comptables?.find((c) => c.obligatoire);
-    check('« Ma comptabilité » : catalogue des dossiers (« Mon entreprise », F) ; comptable obligatoire à désigner, « tous »', r.status === 200 && r.body?.dossiers?.length === 2 && r.body.dossiers.some((d) => d.source === 'labflow')
-      && obligatoire?.dossiers === 'tous', JSON.stringify([r.body?.dossiers?.map((d) => d.nom), obligatoire?.dossiers]));
+    const listeClient = (await appel('GET', `/api/compta/espaces/${espaceClient}/dossiers`, client.tok)).body;
+    check('« Ma comptabilité » : état de l\'abonnement, sans catalogue (la liste paginée rend « Mon entreprise » et F) ; comptable obligatoire à désigner, « tous »', r.status === 200 && r.body?.etatAbonnement === 'actif' && !('dossiers' in r.body)
+      && listeClient?.total === 2 && listeClient.dossiers.some((d) => d.source === 'labflow') && obligatoire?.dossiers === 'tous', JSON.stringify([listeClient?.dossiers?.map((d) => d.nom), obligatoire?.dossiers]));
     r = await appel('PUT', `/api/compta/mes-comptables/${obligatoire.id}`, client.tok, { nom: 'Comptable S4c', email: COMPTABLE, niveau: 'saisie' });
-    check('comptable désigné (depuis la page Gérants de LabFlow, sans réglage) : « tous » (réponse 4)', r.status === 200 && r.body?.comptables?.find((c) => c.obligatoire)?.dossiers === 'tous' && r.body?.dossiers?.length === 2, `${r.status} ${r.body?.message || ''}`);
+    check('comptable désigné (depuis la page Gérants de LabFlow, sans réglage) : « tous » (réponse 4)', r.status === 200 && r.body?.comptables?.find((c) => c.obligatoire)?.dossiers === 'tous' && !('dossiers' in r.body), `${r.status} ${r.body?.message || ''}`);
     const comptable = await activer(COMPTABLE);
     r = await appel('GET', `/api/compta/espaces/${espaceClient}/dossiers`, comptable.tok);
     check('le comptable voit les 2 dossiers du client', r.status === 200 && r.body?.dossiers?.length === 2, noms(r));
@@ -334,7 +338,8 @@ const memes = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     r = await appel('DELETE', `/api/compta/mes-comptables/${supp.id}`, client.tok);
     check('gérant comptable supplémentaire retiré : l\'accès disparaît (lignes en cascade)', r.status === 200 && (await pool.query('SELECT 1 FROM compta.acces_dossiers WHERE acces_id = $1', [supp.id])).rows.length === 0, String(r.status));
     r = await appel('GET', '/api/compta/mes-comptables', client.tok);
-    check('page Gérants de LabFlow (GET /mes-comptables) : inchangée pour l\'essentiel, dossiers en plus', r.status === 200 && r.body?.comptables?.length === 1 && r.body?.supplementaires?.utilises === 0 && Array.isArray(r.body?.dossiers), JSON.stringify(r.body?.supplementaires));
+    check('page Gérants de LabFlow (GET /mes-comptables) : inchangée pour l\'essentiel (réglage et premiers noms par accès, sans catalogue)', r.status === 200 && r.body?.comptables?.length === 1 && r.body?.supplementaires?.utilises === 0
+      && !('dossiers' in r.body) && Array.isArray(r.body?.comptables?.[0]?.dossiersNoms), JSON.stringify(r.body?.supplementaires));
     r = await appel('PUT', `/api/abonnements/client/${client.id}/module-compta`, adminTok, { actif: false });
     r = await appel('PUT', `/api/compta/mes-comptables/${obligatoire.id}`, client.tok, { dossiers: 'tous' });
     check('module désactivé : comptabilité fermée, réglage introuvable (404 MODULE_INACTIF)', r.status === 404 && r.body?.code === 'MODULE_INACTIF', `${r.status} ${r.body?.code}`);
