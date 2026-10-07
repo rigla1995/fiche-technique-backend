@@ -6,25 +6,33 @@ const {
 const { postesCompta } = require('./tarifsCompta');
 const { nomAffiche, mapIdentite } = require('../utils/identite');
 const moduleCompta = require('./moduleClient');
+const { etatAbonnement } = require('./garde');
+const { lireComptables } = require('./comptablesClient');
 
 // GET /api/compta/acces — les comptabilités de la personne, en trois groupes TOUJOURS distincts (CADRAGE §2) : son
 // cabinet ; sa comptabilité de client LabFlow (étape S2c) ; celles que des clients LabFlow lui ont confiées. Seuls les
 // accès actifs des comptabilités ouvertes comptent (S2c : une comptabilité fermée — module désactivé — n'apparaît
-// plus). `lien` : page ouverte par la carte (le cabinet ou la comptabilité de son titulaire à cette étape).
+// plus). `lien` : page ouverte par la carte (le cabinet ou la comptabilité de son titulaire ; S3b : la page
+// « Comptabilité de … » d'une comptabilité confiée). `etatAbonnement` (S3b, D4) : état de l'abonnement du titulaire
+// (actif, lecture_seule, bloque, suspendu) — un cabinet bloqué se connecte encore, sa carte le signale.
 const LIENS_TITULAIRE = { cabinet: '/cabinet', client_labflow: '/ma-comptabilite' };
+const lienCarte = (x) => (x.role === 'titulaire' ? LIENS_TITULAIRE[x.type] || null : x.type === 'client_labflow' ? `/confiee/${x.id}` : null);
 const listerAcces = async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT e.id, e.type, e.nom, e.etat, a.role
+      `SELECT e.id, e.type, e.nom, e.etat, a.role, ab.mode_compte
          FROM compta.acces a
          JOIN compta.espaces e ON e.id = a.espace_id
+         LEFT JOIN LATERAL (
+           SELECT x.mode_compte FROM abonnements x WHERE x.client_id = e.titulaire_id ORDER BY x.id DESC LIMIT 1
+         ) ab ON true
         WHERE a.personne_id = $1 AND a.etat = 'actif' AND e.etat = 'actif'
         ORDER BY e.nom, e.id`,
       [req.user.id]
     );
     const groupes = { cabinets: [], maComptabilite: [], confiees: [] };
     for (const x of r.rows) {
-      const carte = { id: x.id, nom: x.nom, etat: x.etat, role: x.role, lien: x.role === 'titulaire' ? LIENS_TITULAIRE[x.type] || null : null };
+      const carte = { id: x.id, nom: x.nom, etat: x.etat, role: x.role, lien: lienCarte(x), etatAbonnement: etatAbonnement(x.mode_compte) };
       if (x.type === 'cabinet') groupes.cabinets.push(carte);
       else if (x.role === 'titulaire') groupes.maComptabilite.push(carte);
       else groupes.confiees.push(carte);
@@ -51,25 +59,15 @@ const maComptabilite = async (req, res) => {
     );
     if (!r.rows.length) return res.status(404).json({ code: 'MODULE_INACTIF', message: 'Le module Comptabilité n\'est pas activé sur ce compte' });
     const espace = r.rows[0];
-    const acces = await pool.query(
-      `SELECT a.id, a.etat, a.obligatoire, a.niveau, a.nom_attendu, a.email_attendu, u.nom, u.email
-         FROM compta.acces a
-         LEFT JOIN utilisateurs u ON u.id = a.personne_id
-        WHERE a.espace_id = $1 AND a.role = 'gerant'
-        ORDER BY a.obligatoire DESC, a.id`,
-      [espace.id]
-    );
-    const module = await moduleCompta.etat(pool, req.user.id);
+    // S3b : même présentation que la page Gérants de LabFlow (nom saisi par le client, invitation en attente).
+    const [comptables, module] = await Promise.all([lireComptables(pool, espace.id), moduleCompta.etat(pool, req.user.id)]);
     res.json({
       espace: { id: espace.id, nom: espace.nom, etat: espace.etat, ouvertLe: espace.created_at },
       module: module ? {
         actif: module.actif, activeLe: module.activeLe, factureAPartirDe: module.factureAPartirDe,
         nbGerants: module.nbGerants, postes: module.postes, totalMensuel: module.totalMensuel,
       } : null,
-      comptables: acces.rows.map((x) => ({
-        id: x.id, etat: x.etat, obligatoire: x.obligatoire, niveau: x.niveau,
-        nom: x.nom || x.nom_attendu || null, email: x.email || x.email_attendu || null,
-      })),
+      comptables,
     });
   } catch (err) {
     console.error('[compta.ma-comptabilite]', err);

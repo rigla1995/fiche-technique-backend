@@ -110,9 +110,11 @@ app.use('/api', (req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
   // Allow demandes creation even in read_only (so client can request to unblock account)
   if (req.path === '/abonnements/demandes' && req.method === 'POST') return next();
-  // LabFlow Compta (S3a) : le code de passage vers l'autre adresse n'écrit aucune donnée du compte — un compte en
-  // lecture seule passe d'un espace à l'autre.
-  if (req.path === '/compta/passage' && req.method === 'POST') return next();
+  // LabFlow Compta (SPEC-SOCLE D4, étape S3b) : /api/compta juge l'écriture PAR COMPTABILITÉ — mode de l'abonnement du
+  // TITULAIRE de la comptabilité visée (src/compta/garde.js), jamais celui de la personne. Chaque route d'écriture de
+  // src/compta/routes.js porte sa garde, sauf celles qui n'écrivent dans aucune comptabilité (ECRITURES_SANS_GARDE :
+  // le passage d'une adresse à l'autre, quitter un accès confié).
+  if (req.path === '/compta' || req.path.startsWith('/compta/')) return next();
   // Sans aucun jeton : la route répondra 401 elle-même. Avec un jeton, où qu'il soit (en-tête ou adresse), la
   // garde s'applique — même définition que authenticate (jetonPresent).
   if (!jetonPresent(req)) return next();

@@ -77,7 +77,10 @@ const loadDomaineForUser = async (utilisateur, tag, acheteurClientId = null) => 
 // un passage ne prolonge jamais une session et reste révoqué par un changement de mot de passe (password_changed_at).
 const repondreSession = async (res, utilisateur, session = null) => {
   // Check if account is blocked (boss hérite du super_admin : jamais blocable)
-  if (utilisateur.role !== 'super_admin' && utilisateur.role !== 'boss') {
+  // LabFlow Compta (S3b, réponse du client du 06/10) : une personne « comptable » dont le cabinet est bloqué se connecte
+  // encore ; seul son cabinet est bloqué (garde par comptabilité, src/compta/garde.js), les comptabilités que des
+  // clients lui ont confiées suivent l'abonnement de chaque client.
+  if (utilisateur.role !== 'super_admin' && utilisateur.role !== 'boss' && utilisateur.role !== 'comptable') {
     const aboClientId = utilisateur.role === 'gerant' ? utilisateur.gerant_parent_id : utilisateur.id;
     if (aboClientId) {
       const aboCheck = await pool.query(

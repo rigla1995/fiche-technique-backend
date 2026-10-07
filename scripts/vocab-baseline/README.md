@@ -456,3 +456,16 @@ entrée en tête de la recherche fixe « inviter un acheteur » (ex aequo dépar
 empreintes et ordres, et les permutations entre ex aequo déjà admises (`get_stock`, feuille Stock du rapport).
 Contrôle suivant IDENTIQUE (0 écart ; 2 permutations entre ex aequo admises).
 **Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut hors exceptions.
+
+### LabFlow Compta, étape S3b — partie « Gérants Comptabilité » de la fiche Gérants (07/10/2026)
+
+Migration 206 (`206_manuel_gerants_comptabilite.sql`, maintenance du manuel) : fiche `gerants` complétée (comptable
+du client, gérants comptables supplémentaires, niveaux, demande d'ajout). Migration 205 : fiches de LabFlow Compta
+seulement (jamais servies au lecteur de restauration). Premier contrôle avec le texte final : 1 écart de valeur
+(`manuel/sections/gerants/contenu`) et l'empreinte `gerants` des lecteurs, aucune autre différence ; l'email
+« ajout de capacité validé » est resté identique à l'octet près (les lignes du module Comptabilité ne s'ajoutent qu'à un
+compte qui l'a).
+**Recapture.** Référence RECAPTURÉE le 07/10 (`--reference`, deux captures identiques) : `derniereMigration` 200 → 206,
+ce texte et ses empreintes, et les permutations entre ex aequo déjà admises (`get_stock`, feuille Stock du rapport).
+Contrôle suivant IDENTIQUE (0 écart).
+**Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut hors exceptions.

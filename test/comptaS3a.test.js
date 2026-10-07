@@ -48,9 +48,11 @@ test('connexion et passage ouvrent la session par la même fonction (réponse id
   assert.ok(src.includes("return res.status(403).json({ message: 'account_blocked' });"), 'compte bloqué toujours refusé');
 });
 
+// S3b (D4) : l'exemption du seul passage est devenue celle de tout /api/compta, dont chaque route d'écriture porte sa
+// garde par comptabilité (test/comptaS3b.test.js) ; le passage reste sans garde.
 test('garde d\'écriture : le passage est permis à un compte en lecture seule, la garde globale reste en place', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.js'), 'utf8').replace(/\r\n/g, '\n');
-  const exemption = app.indexOf("if (req.path === '/compta/passage' && req.method === 'POST') return next();");
+  const exemption = app.indexOf("if (req.path === '/compta' || req.path.startsWith('/compta/')) return next();");
   const garde = app.indexOf('if (!jetonPresent(req)) return next();\n  authenticate(req, res, () => requireWriteAccess(req, res, next));');
   assert.ok(exemption > 0 && garde > exemption, 'exemption avant la garde');
 });
