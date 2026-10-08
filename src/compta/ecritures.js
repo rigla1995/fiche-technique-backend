@@ -130,10 +130,12 @@ const lireLigne = (l, i) => {
     echeance: l.echeance == null || l.echeance === '' ? null : lireDate(l.echeance, `Ligne ${n}, échéance`),
   };
 };
-const lireLignes = (v) => {
+// S6c : `max` — la saisie admet 200 lignes ; l'écriture d'à-nouveaux d'une balance d'ouverture importée en admet autant que
+// le fichier (importEcritures.js : LIGNES_MAX_BALANCE).
+const lireLignes = (v, max = LIGNES_MAX) => {
   if (!Array.isArray(v)) throw erreur(400, 'Lignes : requête invalide');
   if (v.length < LIGNES_MIN) throw erreur(400, `Une écriture a au moins ${LIGNES_MIN} lignes`);
-  if (v.length > LIGNES_MAX) throw erreur(400, `${LIGNES_MAX} lignes au plus par écriture`);
+  if (v.length > max) throw erreur(400, `${max} lignes au plus par écriture`);
   return v.map(lireLigne);
 };
 const totaux = (lignes) => lignes.reduce((t, l) => ({ debit: t.debit + l.debit, credit: t.credit + l.credit }), { debit: 0n, credit: 0n });
@@ -141,7 +143,7 @@ const totaux = (lignes) => lignes.reduce((t, l) => ({ debit: t.debit + l.debit, 
 // (NC 01 §30), échéance jamais avant la date (ou la vraie date). Tout est contrôlé avant la moindre requête. S6b : la
 // vraie date (facultative) d'une opération d'une période close, enregistrée au premier jour de la période ouverte suivante
 // (NC 01 §61) ; elle précède toujours la date d'enregistrement.
-const lireEcriture = (corps) => {
+const lireEcriture = (corps, { lignesMax = LIGNES_MAX } = {}) => {
   if (!corps || typeof corps !== 'object') throw erreur(400, 'Écriture : requête invalide');
   const journalId = lireId(corps.journalId, 'Journal');
   if (!journalId) throw erreur(400, 'Choisissez le journal');
@@ -150,7 +152,7 @@ const lireEcriture = (corps) => {
   if (dateReelle && dateReelle >= date) throw erreur(400, `La vraie date de l'opération (${fmtDate(dateReelle)}) doit précéder la date d'enregistrement (${fmtDate(date)}) ; sinon, laissez-la vide`, 'DATE_REELLE');
   const reference = lireReference(corps.reference);
   const libelle = lireLibelle(corps.libelle);
-  const lignes = lireLignes(corps.lignes);
+  const lignes = lireLignes(corps.lignes, lignesMax);
   for (const l of lignes) if (l.echeance && l.echeance < (dateReelle || date)) throw erreur(400, `Ligne ${l.rang} : l'échéance (${fmtDate(l.echeance)}) précède la date de l'écriture`);
   const t = totaux(lignes);
   if (t.debit !== t.credit) {
@@ -369,6 +371,12 @@ const periodeDe = async (db, dossierId, date) => {
   if (p.etat !== 'ouverte') throw erreur(409, `La période du ${fmtDate(p.debut)} au ${fmtDate(p.fin)} est close : saisissez l'opération au premier jour de la période ouverte suivante, avec sa vraie date`, 'PERIODE_CLOSE');
   return { exercice: x, periode: p };
 };
+// S6c (relecture) : le journal de type « an » (à-nouveaux) ne reçoit que des écritures datées du premier jour de l'exercice —
+// à la saisie, à la modification, à la contre-passation et à l'import d'écritures ; le solde d'ouverture des livres (livres.js)
+// repose dessus, et « un seul à-nouveaux par exercice » (import d'une balance d'ouverture) ne se contourne pas par une autre voie.
+const exigerDateAN = (journal, exercice, date) => {
+  if (journal.type === 'an' && date !== exercice.debut) throw erreur(409, `Le journal ${journal.code} (à-nouveaux) ne reçoit que des écritures datées du premier jour de l'exercice (${fmtDate(exercice.debut)}) : la balance d'ouverture s'importe depuis la page Écritures`, 'AN_DATE');
+};
 // S6b (NC 01 §61, relecture) : la vraie date d'une opération enregistrée plus tard ne sert qu'à une opération d'une période
 // CLOSE (ou d'avant l'exercice ouvert) ; si la période de la vraie date est ouverte, l'écriture se date tout simplement à sa
 // vraie date — la chronologie ne s'altère pas sans raison.
@@ -406,13 +414,17 @@ const exigerTaxe = (x, ou) => {
 // Contrôle des lignes contre le dossier : comptes imputables, tiers obligatoire sur un collectif (du type de la nature)
 // et interdit ailleurs, codes de taxe actifs. `tiersToleres` : tiers désactivés que l'écriture portait déjà (une
 // modification ne bloque pas sur un fournisseur parti entre-temps). → { comptes, tiers, taxes } (cartes par identifiant).
-const resoudreLignes = async (db, d, lignes, tiersToleres = new Set()) => {
+// S6c : `controlerLignes` ne lève pas et rend chaque refus avec le rang de sa ligne (un import rapporte toutes les rangées
+// fausses d'un coup) ; `resoudreLignes` (la saisie) lève le premier.
+const controlerLignes = async (db, d, lignes, tiersToleres = new Set()) => {
   const [comptes, tiers, taxes] = await Promise.all([
     comptesDe(db, d.id, [...new Set(lignes.map((l) => l.compteId))]),
     tiersDe(db, d.id, [...new Set(lignes.map((l) => l.tiersId).filter(Boolean))]),
     taxesDe(db, d.id, [...new Set(lignes.map((l) => l.taxeId).filter(Boolean))]),
   ]);
+  const erreurs = [];
   for (const l of lignes) {
+    try {
     const ou = `Ligne ${l.rang}`;
     const k = exigerImputable(comptes.get(l.compteId), ou);
     if (NATURES_COLLECTIVES.includes(k.nature)) {
@@ -426,7 +438,16 @@ const resoudreLignes = async (db, d, lignes, tiersToleres = new Set()) => {
       throw erreur(400, `${ou} : un tiers ne se porte que sur un compte collectif (fournisseurs ou clients), pas sur ${k.numero}`, 'TIERS_INTERDIT');
     }
     if (l.taxeId) exigerTaxe(taxes.get(l.taxeId), ou);
+    } catch (e) {
+      if (!e.statusCode) throw e;
+      erreurs.push({ rang: l.rang, erreur: e });
+    }
   }
+  return { comptes, tiers, taxes, erreurs };
+};
+const resoudreLignes = async (db, d, lignes, tiersToleres = new Set()) => {
+  const { comptes, tiers, taxes, erreurs } = await controlerLignes(db, d, lignes, tiersToleres);
+  if (erreurs.length) throw erreurs[0].erreur;
   return { comptes, tiers, taxes };
 };
 // Les lignes telles que le journal des événements les garde (D16) : tout ce qu'il faut pour relire une écriture disparue.
@@ -622,6 +643,7 @@ const creer = async (req, res) => {
     const resultat = await ecritureEcritures(req, async (db, acces, d) => {
       const journal = await journalDe(db, d.id, e.journalId);
       const { exercice, periode } = await periodeDe(db, d.id, e.date);
+      exigerDateAN(journal, exercice, e.date);
       await controlerDateReelle(db, d.id, e.dateReelle);
       const cartes = await resoudreLignes(db, d, e.lignes);
       // Compteur du dossier (verrouillé par la transaction) : un brouillard supprimé ne rend pas son numéro.
@@ -651,6 +673,7 @@ const modifier = async (req, res) => {
       exigerBrouillard(avant);
       const journal = await journalDe(db, d.id, e.journalId);
       const { exercice, periode } = await periodeDe(db, d.id, e.date);
+      exigerDateAN(journal, exercice, e.date);
       await controlerDateReelle(db, d.id, e.dateReelle);
       const lignesAvant = (await lignesDe(db, [avant.id])).get(avant.id);
       // Un tiers désactivé depuis la saisie ne bloque pas la correction d'une écriture qui le portait déjà.
@@ -724,5 +747,7 @@ module.exports = {
   SQL_ECRITURES, SQL_FILTRES, SQL_LIGNES, SQL_UNE, presenterLigne, presenterEcriture, presenterTaxeCourte, presenterTiersCourt, resumeEcritures, resumePeriode, assietteRetenue, compteDuCode,
   // S6b (validation.js, periodes.js) : les outils de la transaction du dossier, réemployés tels quels.
   journalDe, periodeDe, exerciceOuvert, ecritureDe, exigerBrouillard, uneEcriture, lignesDe, insererLignes, resumeEnBase,
+  // S6c (livres.js, importEcritures.js) : le contrôle des lignes contre le dossier, la vraie date, le résumé D16, le motif de recherche.
+  resoudreLignes, controlerLignes, controlerDateReelle, exigerDateAN, resumeEcriture, motifRecherche, LIMITE_MAX, PAGE_MAX,
   lire, une, creer, modifier, supprimer, aideTaxe, aideRetenue,
 };

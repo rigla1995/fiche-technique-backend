@@ -45,8 +45,9 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   // (journaux : créer, modifier, désactiver, réactiver ; taxes : personnalisé, depuis le paquet, modifier, désactiver, réactiver) ;
   // S5c : + 8 (tiers : créer, modifier, désactiver, réactiver, supprimer, modèle des codes, import ; plan : import) ;
   // S6a : + 5 (écritures : créer, modifier, supprimer ; aides à la saisie : taxe, retenue — rien d'écrit, même porte) ;
-  // S6b : + 5 (valider une écriture, la contre-passer ; valider une période, la clore, la rouvrir).
-  assert.equal(ecritures.length, 51, 'routes d\'écriture trouvées');
+  // S6b : + 5 (valider une écriture, la contre-passer ; valider une période, la clore, la rouvrir) ;
+  // S6c : + 2 (import d'écritures, import d'une balance d'ouverture — tout ou rien, droit « configurer »).
+  assert.equal(ecritures.length, 53, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
@@ -68,6 +69,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     // pour rouvrir ; dossier non archivé).
     validation: { fichier: 'validation.js', transactions: ['await ecritureValidation(req,'] },
     periodes: { fichier: 'periodes.js', transactions: ['await ecritureValidation(req,'] },
+    // S6c : les deux imports (ecritureImport : droit « configurer », dossier non archivé, tout ou rien).
+    importEcritures: { fichier: 'importEcritures.js', transactions: ['await ecritureImport(req,'] },
   };
   const corps = (fichier, nom) => {
     const ctrl = lire('src', 'compta', fichier);

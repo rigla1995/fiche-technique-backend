@@ -14,7 +14,7 @@ const { erreur, idValide, repondreErreur } = require('./comptablesClient');
 const { droits, dateValide, dansEspaceDuDossier } = require('./dossiers');
 const {
   LIBELLE_MAX, numeroProvisoire, fmtDate, millimesDe, lireTexte, lireReference,
-  journalDe, periodeDe, ecritureDe, exigerBrouillard, uneEcriture, lignesDe, insererLignes, resumeEcritures, resumePeriode,
+  journalDe, periodeDe, exigerDateAN, ecritureDe, exigerBrouillard, uneEcriture, lignesDe, insererLignes, resumeEcritures, resumePeriode,
 } = require('./ecritures');
 
 const MSG_VALIDER = 'Seul le titulaire ou un gérant de niveau Complet peut valider, contre-passer ou clore';
@@ -190,6 +190,8 @@ const contrepasser = async (req, res) => {
       if (date < e.date) throw erreur(400, `La contre-passation (${fmtDate(date)}) ne peut pas précéder l'écriture d'origine (${fmtDate(e.date)})`, 'DATE_AVANT_ORIGINE');
       const journal = await journalDe(db, d.id, e.journal_id);
       const { exercice, periode } = await periodeDe(db, d.id, date);
+      // S6c : la contre-passation d'un à-nouveaux se date aussi du premier jour de l'exercice.
+      exigerDateAN(journal, exercice, date);
       const lignes = lignesInverses((await lignesDe(db, [e.id])).get(e.id));
       const libelle = c.libelle || libelleContrepassation(e);
       const reference = c.reference || e.reference;
