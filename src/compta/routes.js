@@ -16,6 +16,8 @@ const journaux = require('./journaux');
 const taxes = require('./taxes');
 const tiers = require('./tiers');
 const ecritures = require('./ecritures');
+const validation = require('./validation');
+const periodes = require('./periodes');
 const { televersement } = require('./importExcel');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
@@ -188,6 +190,29 @@ router.post('/dossiers/:dossierId/ecritures', authenticate, limiteEcritures, ecr
 router.get('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, ecritures.une);
 router.put('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, limiteEcritures, ecritures.modifier);
 router.delete('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, limiteEcritures, ecritures.supprimer);
+
+// Étape S6b : la validation (définitive : numéro continu par journal et par exercice), la contre-passation d'une écriture
+// validée, les périodes (page, centralisation, clore, rouvrir, journal général PDF). Lecture : tout accès au dossier ;
+// valider, valider la période, contre-passer, clore : titulaire ou Complet (droit « configurer ») ; rouvrir : titulaire
+// (droit « archiver ») — jugés par le contrôleur. Même limite de débit que la saisie (valider une période = une écriture).
+router.post('/dossiers/:dossierId/ecritures/:ecritureId/valider', authenticate, limiteEcritures, validation.valider);
+router.post('/dossiers/:dossierId/ecritures/:ecritureId/contrepasser', authenticate, limiteEcritures, validation.contrepasser);
+// Le journal général (PDF entier en mémoire : toutes les lignes d'une période) a sa propre limite : 30 par quart d'heure et
+// par personne (relecture de S6b).
+const limitePdf = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => `pdf:${req.user.id}`,
+  message: { message: 'Trop de journaux généraux demandés en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.get('/dossiers/:dossierId/periodes', authenticate, periodes.lire);
+router.get('/dossiers/:dossierId/periodes/:periodeId', authenticate, periodes.une);
+router.get('/dossiers/:dossierId/periodes/:periodeId/journal-general.pdf', authenticate, limitePdf, periodes.journalGeneral);
+router.post('/dossiers/:dossierId/periodes/:periodeId/valider', authenticate, limiteEcritures, validation.validerPeriode);
+router.post('/dossiers/:dossierId/periodes/:periodeId/clore', authenticate, limiteEcritures, periodes.clore);
+router.post('/dossiers/:dossierId/periodes/:periodeId/rouvrir', authenticate, limiteEcritures, periodes.rouvrir);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique

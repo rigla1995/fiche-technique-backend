@@ -168,9 +168,10 @@ test('présentations : écriture (numéro provisoire B-000012, total en texte, j
     id: 5, journal_id: 2, journal_code: 'AC', journal_libelle: 'Achats', journal_type: 'achats', date: '2026-03-15', date_reelle: null, numero_provisoire: 12, numero: null, reference: 'F-1', libelle: 'Facture', etat: 'brouillard',
     total_debit: '1191.000', total_credit: '1191.000', origine: 'saisie', origine_id: null, cree_par: 3, cree_par_nom: 'Leïla', created_at: 'c', updated_at: 'u', valide_par: null, valide_le: null, nb_lignes: 5,
   }, [{ id: 9, ecriture_id: 5, rang: 1, libelle: null, debit: '1000.000', credit: '0.000', echeance: null, compte_id: 1, compte_numero: '607', compte_libelle: 'Achats de marchandises', compte_nature: 'charges', tiers_id: null, taxe_id: 4, taxe_code: 'TVA19', taxe_libelle: 'TVA 19 %', taxe_type: 'tva' }]);
+  // S6b : l'écriture porte aussi l'auteur de sa validation, le numéro de son origine et sa contre-passation (nuls ici).
   assert.deepEqual(e, {
     id: 5, numeroProvisoire: 'B-000012', numero: null, date: '2026-03-15', dateReelle: null, journal: { id: 2, code: 'AC', libelle: 'Achats', type: 'achats' }, reference: 'F-1', libelle: 'Facture', etat: 'brouillard', etatLibelle: 'Brouillard',
-    total: '1191.000', origine: 'saisie', origineId: null, nbLignes: 5, creePar: 'Leïla', creeLe: 'c', modifieLe: 'u', valideLe: null,
+    total: '1191.000', origine: 'saisie', origineId: null, origineNumero: null, contrepasseePar: null, nbLignes: 5, creePar: 'Leïla', creeLe: 'c', modifieLe: 'u', validePar: null, valideLe: null,
     lignes: [{ id: 9, rang: 1, compte: { id: 1, numero: '607', libelle: 'Achats de marchandises', nature: 'charges' }, tiers: null, libelle: null, debit: '1000.000', credit: '0.000', taxe: { id: 4, code: 'TVA19', libelle: 'TVA 19 %', type: 'tva' }, echeance: null }],
   });
   assert.equal(ecritures.presenterEcriture({ id: 1, numero_provisoire: 1, journal_id: 1, etat: 'brouillard', total_debit: '1.000' }).lignes, undefined, 'la liste va sans les lignes');
