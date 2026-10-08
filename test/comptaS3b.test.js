@@ -44,8 +44,9 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   // l'identité LabFlow) ; S5a : + 5 (plan de comptes : subdiviser, modifier, désactiver, réactiver, supprimer) ; S5b : + 9
   // (journaux : créer, modifier, désactiver, réactiver ; taxes : personnalisé, depuis le paquet, modifier, désactiver, réactiver) ;
   // S5c : + 8 (tiers : créer, modifier, désactiver, réactiver, supprimer, modèle des codes, import ; plan : import) ;
-  // S6a : + 5 (écritures : créer, modifier, supprimer ; aides à la saisie : taxe, retenue — rien d'écrit, même porte).
-  assert.equal(ecritures.length, 46, 'routes d\'écriture trouvées');
+  // S6a : + 5 (écritures : créer, modifier, supprimer ; aides à la saisie : taxe, retenue — rien d'écrit, même porte) ;
+  // S6b : + 5 (valider une écriture, la contre-passer ; valider une période, la clore, la rouvrir).
+  assert.equal(ecritures.length, 51, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
@@ -63,6 +64,10 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     tiers: { fichier: 'tiers.js', transactions: ['await ecritureTiers(req,'] },
     // S6a : les écritures (ecritureEcritures : droit « saisir », dossier non archivé), aides comprises.
     ecritures: { fichier: 'ecritures.js', transactions: ['await ecritureEcritures(req,'] },
+    // S6b : la validation et la contre-passation, les périodes (ecritureValidation : droit « configurer », ou « archiver »
+    // pour rouvrir ; dossier non archivé).
+    validation: { fichier: 'validation.js', transactions: ['await ecritureValidation(req,'] },
+    periodes: { fichier: 'periodes.js', transactions: ['await ecritureValidation(req,'] },
   };
   const corps = (fichier, nom) => {
     const ctrl = lire('src', 'compta', fichier);
@@ -91,13 +96,15 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     // S5b : les journaux et les codes de taxe aussi.
     ['journaux.js', 'const ecritureJournaux = (req, travail) =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces).configurer) throw erreur(403, MSG_CONFIGURER, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
     ['taxes.js', 'const ecritureTaxes = (req, travail) =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces).configurer) throw erreur(403, MSG_CONFIGURER, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
+    // S6b : la validation, la contre-passation et les périodes aussi (droit « configurer », ou « archiver » pour rouvrir).
+    ['validation.js', 'const ecritureValidation = (req, travail, droit = \'configurer\') =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces)[droit]) throw erreur(403, MSG_PAR_DROIT[droit] || MSG_VALIDER, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
   ]) {
     const ctrl = lire('src', 'compta', fichier);
     const debut = ctrl.indexOf(fonction);
     assert.ok(debut > 0, fonction);
     const transaction = ctrl.slice(debut, ctrl.indexOf('\n};\n', debut));
     assert.ok(transaction.includes(ouverture), `${fichier} : espace verrouillé puis garde`);
-    const delegue = ['const dansEspaceDuDossier = async', 'const ecriturePlan = (req, travail) =>', 'const ecritureJournaux = (req, travail) =>', 'const ecritureTaxes = (req, travail) =>'].includes(fonction);
+    const delegue = ['const dansEspaceDuDossier = async', 'const ecriturePlan = (req, travail) =>', 'const ecritureJournaux = (req, travail) =>', 'const ecritureTaxes = (req, travail) =>', 'const ecritureValidation = (req, travail, droit = \'configurer\') =>'].includes(fonction);
     if (!delegue) assert.ok(transaction.includes('{ garde = true } = {}'), `${fichier} : garde par défaut`);
   }
   assert.deepEqual(routes.ECRITURES_SANS_GARDE, ['POST /passage', 'POST /confiees/:espaceId/quitter']);

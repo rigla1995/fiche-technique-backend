@@ -137,17 +137,21 @@ const lireLignes = (v) => {
   return v.map(lireLigne);
 };
 const totaux = (lignes) => lignes.reduce((t, l) => ({ debit: t.debit + l.debit, credit: t.credit + l.credit }), { debit: 0n, credit: 0n });
-// L'écriture lue dans le corps : { journalId, date, reference, libelle, lignes, total } ; partie double exigée (NC 01 §30),
-// échéance jamais avant la date. Tout est contrôlé avant la moindre requête.
+// L'écriture lue dans le corps : { journalId, date, dateReelle, reference, libelle, lignes, total } ; partie double exigée
+// (NC 01 §30), échéance jamais avant la date (ou la vraie date). Tout est contrôlé avant la moindre requête. S6b : la
+// vraie date (facultative) d'une opération d'une période close, enregistrée au premier jour de la période ouverte suivante
+// (NC 01 §61) ; elle précède toujours la date d'enregistrement.
 const lireEcriture = (corps) => {
   if (!corps || typeof corps !== 'object') throw erreur(400, 'Écriture : requête invalide');
   const journalId = lireId(corps.journalId, 'Journal');
   if (!journalId) throw erreur(400, 'Choisissez le journal');
   const date = lireDate(corps.date, 'Date');
+  const dateReelle = corps.dateReelle == null || corps.dateReelle === '' ? null : lireDate(corps.dateReelle, 'Vraie date de l\'opération');
+  if (dateReelle && dateReelle >= date) throw erreur(400, `La vraie date de l'opération (${fmtDate(dateReelle)}) doit précéder la date d'enregistrement (${fmtDate(date)}) ; sinon, laissez-la vide`, 'DATE_REELLE');
   const reference = lireReference(corps.reference);
   const libelle = lireLibelle(corps.libelle);
   const lignes = lireLignes(corps.lignes);
-  for (const l of lignes) if (l.echeance && l.echeance < date) throw erreur(400, `Ligne ${l.rang} : l'échéance (${fmtDate(l.echeance)}) précède la date de l'écriture`);
+  for (const l of lignes) if (l.echeance && l.echeance < (dateReelle || date)) throw erreur(400, `Ligne ${l.rang} : l'échéance (${fmtDate(l.echeance)}) précède la date de l'écriture`);
   const t = totaux(lignes);
   if (t.debit !== t.credit) {
     const ecart = t.debit > t.credit ? t.debit - t.credit : t.credit - t.debit;
@@ -156,7 +160,7 @@ const lireEcriture = (corps) => {
   if (t.debit > TOTAL_MAX) throw erreur(400, `Total de l'écriture trop grand (${fmtMillimes(TOTAL_MAX)} au plus)`, 'TOTAL_TROP_GRAND');
   // NC 01 §30 : une écriture touche au moins deux comptes (ou deux tiers d'un même collectif).
   if (new Set(lignes.map((l) => `${l.compteId}/${l.tiersId ?? ''}`)).size < 2) throw erreur(400, 'Une écriture touche au moins deux comptes (ou deux tiers)', 'COMPTES_IDENTIQUES');
-  return { journalId, date, reference, libelle, lignes, total: t.debit };
+  return { journalId, date, dateReelle, reference, libelle, lignes, total: t.debit };
 };
 
 // Paramètres de la liste : journal (identifiant, vide = tous), periode (identifiant, vide = toutes), etat (vide = toutes),
@@ -184,15 +188,21 @@ const lireFiltres = (query = {}) => {
 const motifRecherche = (q) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 // ── Lectures ────────────────────────────────────────────────────────────────────────────────────────────────────────
+// S6b : l'auteur de la validation, le numéro de l'écriture d'origine d'une contre-passation, et la contre-passation qui
+// annule l'écriture (une écriture ne se contre-passe qu'une fois ; index partiel origine_id de la migration 216).
 const SQL_ECRITURES = `
   SELECT e.id, e.exercice_id, e.periode_id, e.journal_id, j.code AS journal_code, j.libelle AS journal_libelle, j.type AS journal_type,
          e.date::text AS date, e.date_reelle::text AS date_reelle, e.numero_provisoire, e.numero, e.reference, e.libelle, e.etat,
-         e.total_debit::text AS total_debit, e.total_credit::text AS total_credit, e.origine, e.origine_id,
-         e.cree_par, u.nom AS cree_par_nom, e.created_at, e.updated_at, e.valide_par, e.valide_le,
-         (SELECT COUNT(*)::int FROM compta.lignes l WHERE l.ecriture_id = e.id) AS nb_lignes
+         e.total_debit::text AS total_debit, e.total_credit::text AS total_credit, e.origine, e.origine_id, o.numero AS origine_numero,
+         e.cree_par, u.nom AS cree_par_nom, e.created_at, e.updated_at, e.valide_par, v.nom AS valide_par_nom, e.valide_le,
+         (SELECT COUNT(*)::int FROM compta.lignes l WHERE l.ecriture_id = e.id) AS nb_lignes,
+         cp.id AS contrepassee_par_id, cp.numero AS contrepassee_par_numero
     FROM compta.ecritures e
     JOIN compta.journaux j ON j.id = e.journal_id
-    LEFT JOIN utilisateurs u ON u.id = e.cree_par`;
+    LEFT JOIN utilisateurs u ON u.id = e.cree_par
+    LEFT JOIN utilisateurs v ON v.id = e.valide_par
+    LEFT JOIN compta.ecritures o ON o.id = e.origine_id AND o.dossier_id = e.dossier_id
+    LEFT JOIN LATERAL (SELECT c.id, c.numero FROM compta.ecritures c WHERE c.origine_id = e.id AND c.dossier_id = e.dossier_id AND c.origine = 'contrepassation' ORDER BY c.id LIMIT 1) cp ON true`;
 // Conditions de la liste ($1 dossier, $2 journal ou NULL, $3 période ou NULL, $4 état ou '', $5 motif ou '', $6 montant ou NULL).
 const SQL_FILTRES = `e.dossier_id = $1 AND ($2::int IS NULL OR e.journal_id = $2) AND ($3::int IS NULL OR e.periode_id = $3) AND ($4::text = '' OR e.etat = $4)
    AND ($5::text = '' OR e.libelle ILIKE $5 OR e.reference ILIKE $5
@@ -238,10 +248,13 @@ const presenterEcriture = (e, lignes = null) => ({
   total: e.total_debit,
   origine: e.origine,
   origineId: e.origine_id,
+  origineNumero: e.origine_numero || null,
+  contrepasseePar: e.contrepassee_par_id ? { id: e.contrepassee_par_id, numero: e.contrepassee_par_numero } : null,
   nbLignes: e.nb_lignes,
   creePar: e.cree_par_nom || null,
   creeLe: e.created_at,
   modifieLe: e.updated_at,
+  validePar: e.valide_par_nom || null,
   valideLe: e.valide_le,
   ...(lignes ? { lignes: lignes.map(presenterLigne) } : {}),
 });
@@ -283,12 +296,27 @@ const choixTiers = async (db, dossierId) =>
       WHERE t.dossier_id = $1 AND t.actif ORDER BY t.type, t.code`,
     [dossierId]
   )).rows.map(presenterTiersCourt);
+// S6b : la période choisie dans les filtres, avec ce qu'elle contient encore en brouillard (« Valider la période »).
+const resumePeriode = async (db, dossierId, periodeId) => {
+  if (!periodeId) return null;
+  const p = (await db.query(
+    `SELECT p.id, p.debut::text AS debut, p.fin::text AS fin, p.etat,
+            COUNT(e.id) FILTER (WHERE e.etat = 'brouillard')::int AS nb_brouillard, COUNT(e.id) FILTER (WHERE e.etat = 'validee')::int AS nb_validees
+       FROM compta.periodes p
+       JOIN compta.exercices x ON x.id = p.exercice_id AND x.dossier_id = $1
+       LEFT JOIN compta.ecritures e ON e.periode_id = p.id AND e.dossier_id = $1
+      WHERE p.id = $2
+      GROUP BY p.id`,
+    [dossierId, periodeId]
+  )).rows[0];
+  return p ? { id: p.id, debut: p.debut, fin: p.fin, etat: p.etat, nbBrouillard: p.nb_brouillard, nbValidees: p.nb_validees } : null;
+};
 // L'état de la page : le dossier, les droits, l'exercice ouvert et ses périodes, les comptes rendus, la page demandée,
 // les choix de la saisie, les bornes, l'abonnement.
 const etatEcritures = async (db, acces, d, f) => {
   const motif = f.q ? motifRecherche(f.q) : '';
   const params = [d.id, f.journalId, f.periodeId, f.etat, motif, f.montant];
-  const [page, total, nb, exercice, journaux, comptes, taxes, tiers, mode] = await Promise.all([
+  const [page, total, nb, exercice, journaux, comptes, taxes, tiers, mode, periode] = await Promise.all([
     db.query(SQL_LISTE, [...params, f.limite, (f.page - 1) * f.limite]),
     db.query(`SELECT COUNT(*)::int AS n FROM compta.ecritures e WHERE ${SQL_FILTRES}`, params),
     resumeEcritures(db, d.id),
@@ -298,12 +326,14 @@ const etatEcritures = async (db, acces, d, f) => {
     choixTaxes(db, d.id),
     choixTiers(db, d.id),
     modeTitulaire(db, acces.espace_id),
+    resumePeriode(db, d.id, f.periodeId),
   ]);
   return {
     dossier: presenterDossier(acces, d),
     droits: droits(acces),
     exercice,
     nb,
+    periode,
     filtres: { journalId: f.journalId, periodeId: f.periodeId, etat: f.etat, q: f.q },
     ecritures: page.rows.map((e) => presenterEcriture(e)),
     total: total.rows[0].n,
@@ -338,6 +368,18 @@ const periodeDe = async (db, dossierId, date) => {
   if (!p) throw erreur(409, `Aucune période mensuelle pour le ${fmtDate(date)} : vérifiez l'exercice (fiche du dossier)`, 'PERIODE_ABSENTE');
   if (p.etat !== 'ouverte') throw erreur(409, `La période du ${fmtDate(p.debut)} au ${fmtDate(p.fin)} est close : saisissez l'opération au premier jour de la période ouverte suivante, avec sa vraie date`, 'PERIODE_CLOSE');
   return { exercice: x, periode: p };
+};
+// S6b (NC 01 §61, relecture) : la vraie date d'une opération enregistrée plus tard ne sert qu'à une opération d'une période
+// CLOSE (ou d'avant l'exercice ouvert) ; si la période de la vraie date est ouverte, l'écriture se date tout simplement à sa
+// vraie date — la chronologie ne s'altère pas sans raison.
+const controlerDateReelle = async (db, dossierId, dateReelle) => {
+  if (!dateReelle) return;
+  const p = (await db.query(
+    `SELECT p.etat, p.debut::text AS debut, p.fin::text AS fin FROM compta.periodes p JOIN compta.exercices x ON x.id = p.exercice_id
+      WHERE x.dossier_id = $1 AND x.etat = 'ouvert' AND $2::date BETWEEN p.debut AND p.fin`,
+    [dossierId, dateReelle]
+  )).rows[0];
+  if (p && p.etat === 'ouverte') throw erreur(400, `La période du ${fmtDate(p.debut)} au ${fmtDate(p.fin)} est ouverte : datez l'écriture à sa vraie date (${fmtDate(dateReelle)}) au lieu de la reporter`, 'DATE_REELLE_OUVERTE');
 };
 const comptesDe = async (db, dossierId, ids) => new Map(
   (await db.query(`SELECT k.id, k.numero, k.libelle, k.nature, k.actif, ${SQL_FEUILLE('k')} AS feuille FROM compta.comptes k WHERE k.dossier_id = $1 AND k.id = ANY($2)`, [dossierId, ids])).rows.map((k) => [k.id, k])
@@ -392,11 +434,11 @@ const resumeLignes = (lignes, { comptes, tiers, taxes }) => lignes.map((l) => ({
   rang: l.rang, compte: comptes.get(l.compteId).numero, tiers: l.tiersId ? tiers.get(l.tiersId).code : null, libelle: l.libelle,
   debit: texteMillimes(l.debit), credit: texteMillimes(l.credit), taxe: l.taxeId ? taxes.get(l.taxeId).code : null, echeance: l.echeance,
 }));
-const resumeEcriture = (e, journal, lignes, cartes) => ({ journal: journal.code, date: e.date, reference: e.reference, libelle: e.libelle, total: texteMillimes(e.total), lignes: resumeLignes(lignes, cartes) });
+const resumeEcriture = (e, journal, lignes, cartes) => ({ journal: journal.code, date: e.date, dateReelle: e.dateReelle ?? null, reference: e.reference, libelle: e.libelle, total: texteMillimes(e.total), lignes: resumeLignes(lignes, cartes) });
 // Ce qu'une écriture en base vaut pour le journal des événements (avant une modification, contenu d'une suppression) :
 // de quoi la rejouer seule (auteur et date de traitement compris). `lignes` : ses lignes déjà lues.
 const resumeEnBase = (e, lignes) => ({
-  journal: e.journal_code, date: e.date, reference: e.reference, libelle: e.libelle, total: e.total_debit,
+  journal: e.journal_code, date: e.date, dateReelle: e.date_reelle ?? null, reference: e.reference, libelle: e.libelle, total: e.total_debit,
   lignes: lignes.map((l) => ({ rang: l.rang, compte: l.compte_numero, tiers: l.tiers_code || null, libelle: l.libelle, debit: l.debit, credit: l.credit, taxe: l.taxe_code || null, echeance: l.echeance })),
   creePar: e.cree_par_nom || null, creeLe: e.created_at,
 });
@@ -580,13 +622,14 @@ const creer = async (req, res) => {
     const resultat = await ecritureEcritures(req, async (db, acces, d) => {
       const journal = await journalDe(db, d.id, e.journalId);
       const { exercice, periode } = await periodeDe(db, d.id, e.date);
+      await controlerDateReelle(db, d.id, e.dateReelle);
       const cartes = await resoudreLignes(db, d, e.lignes);
       // Compteur du dossier (verrouillé par la transaction) : un brouillard supprimé ne rend pas son numéro.
       const numero = (await db.query('UPDATE compta.dossiers SET prochain_provisoire = prochain_provisoire + 1 WHERE id = $1 RETURNING prochain_provisoire - 1 AS n', [d.id])).rows[0].n;
       const ins = await db.query(
-        `INSERT INTO compta.ecritures (dossier_id, exercice_id, periode_id, journal_id, date, numero_provisoire, reference, libelle, total_debit, total_credit, origine, cree_par)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, 'saisie', $10) RETURNING id`,
-        [d.id, exercice.id, periode.id, journal.id, e.date, numero, e.reference, e.libelle, texteMillimes(e.total), req.user.id]
+        `INSERT INTO compta.ecritures (dossier_id, exercice_id, periode_id, journal_id, date, date_reelle, numero_provisoire, reference, libelle, total_debit, total_credit, origine, cree_par)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, 'saisie', $11) RETURNING id`,
+        [d.id, exercice.id, periode.id, journal.id, e.date, e.dateReelle, numero, e.reference, e.libelle, texteMillimes(e.total), req.user.id]
       );
       await insererLignes(db, d, ins.rows[0].id, e.date, e.lignes);
       await journaliser(db, acces.espace_id, req.user.id, 'ecriture_creee', { dossier: d.id, ecriture: ins.rows[0].id, numeroProvisoire: numeroProvisoire(numero), ...resumeEcriture(e, journal, e.lignes, cartes) });
@@ -608,6 +651,7 @@ const modifier = async (req, res) => {
       exigerBrouillard(avant);
       const journal = await journalDe(db, d.id, e.journalId);
       const { exercice, periode } = await periodeDe(db, d.id, e.date);
+      await controlerDateReelle(db, d.id, e.dateReelle);
       const lignesAvant = (await lignesDe(db, [avant.id])).get(avant.id);
       // Un tiers désactivé depuis la saisie ne bloque pas la correction d'une écriture qui le portait déjà.
       const cartes = await resoudreLignes(db, d, e.lignes, new Set(lignesAvant.map((l) => l.tiers_id).filter(Boolean)));
@@ -617,8 +661,8 @@ const modifier = async (req, res) => {
       if (contenuComparable(contenuAvant) === contenuComparable(apres)) return { ecriture: await uneEcriture(db, d.id, avant.id), nb: await resumeEcritures(db, d.id) };
       await db.query('DELETE FROM compta.lignes WHERE ecriture_id = $1', [avant.id]);
       await db.query(
-        `UPDATE compta.ecritures SET exercice_id = $2, periode_id = $3, journal_id = $4, date = $5, reference = $6, libelle = $7, total_debit = $8, total_credit = $8, updated_at = NOW() WHERE id = $1`,
-        [avant.id, exercice.id, periode.id, journal.id, e.date, e.reference, e.libelle, texteMillimes(e.total)]
+        `UPDATE compta.ecritures SET exercice_id = $2, periode_id = $3, journal_id = $4, date = $5, date_reelle = $9, reference = $6, libelle = $7, total_debit = $8, total_credit = $8, updated_at = NOW() WHERE id = $1`,
+        [avant.id, exercice.id, periode.id, journal.id, e.date, e.reference, e.libelle, texteMillimes(e.total), e.dateReelle]
       );
       await insererLignes(db, d, avant.id, e.date, e.lignes);
       await journaliser(db, acces.espace_id, req.user.id, 'ecriture_modifiee', { dossier: d.id, ecriture: avant.id, numeroProvisoire: numeroProvisoire(avant.numero_provisoire), avant: contenuAvant, apres });
@@ -677,6 +721,8 @@ module.exports = {
   MSG_SAISIR, REFERENCE_MAX, LIBELLE_MAX, LIGNES_MIN, LIGNES_MAX, TOTAL_MAX, ETATS, ETATS_LIBELLES, NATURES_COLLECTIVES, NATURES_TVA, TYPES_HORS_TTC, TYPES_OPPOSES, TYPES_RETENUE, contenuComparable,
   lireMontant, texteMillimes, millimesDe, milliemesDe, calculTaxe, fmtMillimes, fmtDate, numeroProvisoire,
   lireTexte, lireReference, lireLibelle, lireLigne, lireLignes, lireEcriture, lireFiltres, lireAideTaxe, lireAideRetenue, totaux,
-  SQL_ECRITURES, SQL_FILTRES, SQL_LIGNES, presenterLigne, presenterEcriture, presenterTaxeCourte, presenterTiersCourt, resumeEcritures, assietteRetenue, compteDuCode,
+  SQL_ECRITURES, SQL_FILTRES, SQL_LIGNES, SQL_UNE, presenterLigne, presenterEcriture, presenterTaxeCourte, presenterTiersCourt, resumeEcritures, resumePeriode, assietteRetenue, compteDuCode,
+  // S6b (validation.js, periodes.js) : les outils de la transaction du dossier, réemployés tels quels.
+  journalDe, periodeDe, exerciceOuvert, ecritureDe, exigerBrouillard, uneEcriture, lignesDe, insererLignes, resumeEnBase,
   lire, une, creer, modifier, supprimer, aideTaxe, aideRetenue,
 };
