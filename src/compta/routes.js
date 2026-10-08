@@ -14,6 +14,8 @@ const dossiers = require('./dossiers');
 const plan = require('./planComptes');
 const journaux = require('./journaux');
 const taxes = require('./taxes');
+const tiers = require('./tiers');
+const { televersement } = require('./importExcel');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
 const limiteEmission = rateLimit({
@@ -147,6 +149,23 @@ router.post('/dossiers/:dossierId/taxes/paquet', authenticate, limitePlan, taxes
 router.put('/dossiers/:dossierId/taxes/:taxeId', authenticate, limitePlan, taxes.modifier);
 router.post('/dossiers/:dossierId/taxes/:taxeId/desactiver', authenticate, limitePlan, taxes.desactiver);
 router.post('/dossiers/:dossierId/taxes/:taxeId/reactiver', authenticate, limitePlan, taxes.reactiver);
+
+// Étape S5c : les tiers d'un dossier et les imports Excel (D18 : tout ou rien, importExcel.js). Lecture : tout accès au
+// dossier ; créer, modifier, désactiver, réactiver un tiers : titulaire, Complet ou Saisie (réponse 4 du 08/10) ;
+// supprimer, modèle des codes, import (tiers, plan) : titulaire ou Complet — jugé par le contrôleur. Même limite de
+// débit que le plan. Les adresses fixes (/modele, /modele-import, /import, /export) sont déclarées avant /:tiersId.
+router.get('/dossiers/:dossierId/plan/modele-import', authenticate, plan.modeleImport);
+router.post('/dossiers/:dossierId/plan/import', authenticate, limitePlan, televersement, plan.importer);
+router.get('/dossiers/:dossierId/tiers', authenticate, tiers.lire);
+router.get('/dossiers/:dossierId/tiers/modele-import', authenticate, tiers.modeleImport);
+router.get('/dossiers/:dossierId/tiers/export', authenticate, tiers.exporter);
+router.put('/dossiers/:dossierId/tiers/modele', authenticate, limitePlan, tiers.modele);
+router.post('/dossiers/:dossierId/tiers/import', authenticate, limitePlan, televersement, tiers.importer);
+router.post('/dossiers/:dossierId/tiers', authenticate, limitePlan, tiers.creer);
+router.put('/dossiers/:dossierId/tiers/:tiersId', authenticate, limitePlan, tiers.modifier);
+router.post('/dossiers/:dossierId/tiers/:tiersId/desactiver', authenticate, limitePlan, tiers.desactiver);
+router.post('/dossiers/:dossierId/tiers/:tiersId/reactiver', authenticate, limitePlan, tiers.reactiver);
+router.delete('/dossiers/:dossierId/tiers/:tiersId', authenticate, limitePlan, tiers.supprimer);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique

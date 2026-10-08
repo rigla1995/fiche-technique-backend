@@ -162,7 +162,7 @@ test('plan : lecteurs de saisie — numéro de 2 à 8 chiffres, libellé imprima
   // actuelle ne l'est pas (le formulaire peut renommer ou rétablir).
   const ctrl = lire('src', 'compta', 'planComptes.js');
   assert.ok(ctrl.includes("if (c.origine !== 'ajout' && (changements.nature || changements.explication)) throw erreur(409"), 'refus sur changement réel seulement');
-  assert.ok(ctrl.includes("if (await compteUtilise(db, c.id)) throw erreur(409") && (ctrl.match(/await compteUtilise\(db, c\.id\)/g) || []).length === 2, 'point d\'accroche journal / taxe / tiers sur désactiver et supprimer');
+  assert.ok(ctrl.includes("if (await compteUtilise(db, c.id)) throw erreur(409") && (ctrl.match(/await compteUtilise\(db, c\.id\)/g) || []).length === 3, 'point d\'accroche journal / taxe / tiers sur désactiver, supprimer et (S5c) la nature');
 });
 
 test('plan : arbre lu en une requête (sous-comptes comptés), présentation (feuille, renommé)', () => {
@@ -195,7 +195,7 @@ test('routes S5a : lecture et export pour tout accès, cinq écritures sous limi
   // Chaque écriture du plan : droits puis dossier non archivé, dans la transaction du dossier ; toutes rendent l'état du plan.
   const ctrl = lire('src', 'compta', 'planComptes.js');
   assert.ok(ctrl.includes("if (!droits(acces).configurer) throw erreur(403, MSG_CONFIGURER, 'NIVEAU_INSUFFISANT');\n  if (d.etat === 'archive') throw erreur(409, 'Dossier archivé : désarchivez-le d\\'abord', 'DOSSIER_ARCHIVE');"));
-  assert.equal((ctrl.match(/await ecriturePlan\(req, async \(db, acces, d\) => \{/g) || []).length, 5);
+  assert.equal((ctrl.match(/await ecriturePlan\(req, async \(db, acces, d\) => \{/g) || []).length, 6, 'cinq écritures S5a, plus l\'import du plan (S5c)');
   assert.ok(ctrl.includes("const compteDe = async (db, dossierId, compteId) => {") && ctrl.includes('FOR UPDATE'), 'compte relu sous verrou');
 });
 
