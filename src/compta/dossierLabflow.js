@@ -6,6 +6,7 @@
 // dossiers.reprendreIdentite). Une identité incomplète donne un dossier « à compléter », jamais un refus.
 const { journaliser } = require('./journal');
 const { regimeParForme, anneeCivile, creerExercice, lireIdentiteClient } = require('./dossiers');
+const { initialiserPlan } = require('./planInit');
 
 // Crée le dossier « Mon entreprise » de la comptabilité s'il n'existe pas encore (source « labflow »), avec son premier
 // exercice (année civile en cours) et ses périodes mensuelles ; journal. Dans la transaction de l'appelant.
@@ -21,7 +22,7 @@ const assurerDossierLabflow = async (db, { espaceId, clientId: clientBrut, auteu
     `INSERT INTO compta.dossiers (espace_id, nom, cree_par, personne, impot, tva, source, client_labflow_id,
                                   raison_sociale, nom_commercial, forme_juridique, matricule_fiscal, rne, adresse, ville, representant_nom, representant_qualite)
      VALUES ($1, $2, $3, $4, $5, 'reel', 'labflow', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-     RETURNING id, nom, matricule_fiscal`,
+     RETURNING id, nom, matricule_fiscal, pays`,
     [
       espaceId, (v.nom_commercial || v.raison_sociale).slice(0, 255), auteurId ?? null, regime.personne, regime.impot, clientId,
       v.raison_sociale, v.nom_commercial, v.forme_juridique, v.matricule_fiscal, v.rne, v.adresse, v.ville, v.representant_nom, v.representant_qualite,
@@ -32,6 +33,8 @@ const assurerDossierLabflow = async (db, { espaceId, clientId: clientBrut, auteu
   const ex = await creerExercice(db, d.id, exercice);
   await journaliser(db, espaceId, auteurId, 'dossier_cree', { dossier: d.id, nom: d.nom, matricule: d.matricule_fiscal, source: 'labflow', client: clientId });
   await journaliser(db, espaceId, auteurId, 'exercice_cree', { dossier: d.id, exercice: ex.id, debut: exercice.debut, fin: exercice.fin });
+  // S5a : le plan de comptes du dossier = copie du paquet de son pays (même transaction).
+  await initialiserPlan(db, { dossierId: d.id, espaceId, pays: d.pays, auteurId, nom: d.nom });
   return { id: d.id, cree: true };
 };
 

@@ -11,6 +11,7 @@ const { emettre: emettrePassage } = require('./passage');
 const comptables = require('./comptablesClient');
 const gerants = require('./gerantsCabinet');
 const dossiers = require('./dossiers');
+const plan = require('./planComptes');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
 const limiteEmission = rateLimit({
@@ -110,6 +111,25 @@ router.post('/dossiers/:dossierId/reprendre-identite', authenticate, limiteDossi
 router.post('/dossiers/:dossierId/archiver', authenticate, limiteDossiers, dossiers.archiver);
 router.post('/dossiers/:dossierId/desarchiver', authenticate, limiteDossiers, dossiers.desarchiver);
 router.delete('/dossiers/:dossierId', authenticate, limiteDossiers, dossiers.supprimer);
+
+// Étape S5a : le plan de comptes d'un dossier (lecture : tout accès au dossier ; écritures : Complet ou titulaire, jugé
+// par le contrôleur sur compta.acces). Limite de débit : adapter un plan, c'est des dizaines de subdivisions à la
+// suite — 300 écritures par quart d'heure et par personne (aucun compte ni email créé).
+const limitePlan = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  keyGenerator: (req) => `plan:${req.user.id}`,
+  message: { message: 'Trop de modifications en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.get('/dossiers/:dossierId/plan', authenticate, plan.lire);
+router.get('/dossiers/:dossierId/plan/export', authenticate, plan.exporter);
+router.post('/dossiers/:dossierId/plan/comptes', authenticate, limitePlan, plan.ajouter);
+router.put('/dossiers/:dossierId/plan/comptes/:compteId', authenticate, limitePlan, plan.modifier);
+router.post('/dossiers/:dossierId/plan/comptes/:compteId/desactiver', authenticate, limitePlan, plan.desactiver);
+router.post('/dossiers/:dossierId/plan/comptes/:compteId/reactiver', authenticate, limitePlan, plan.reactiver);
+router.delete('/dossiers/:dossierId/plan/comptes/:compteId', authenticate, limitePlan, plan.supprimer);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique

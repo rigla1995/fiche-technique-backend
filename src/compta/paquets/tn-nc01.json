@@ -1,0 +1,3122 @@
+{
+  "pays": "TN",
+  "version": "2026.1",
+  "libelle": "Tunisie — nomenclature des comptes de la norme comptable générale NC 01",
+  "source": "NC 01, 3e partie « Nomenclature des comptes et fonctionnement général des comptes », PDF officiel de l'OECT (https://oect.org.tn/wp-content/uploads/2023/01/NC_01.pdf), texte extrait pages 32-49",
+  "extraction": "Texte extrait du PDF (references/NC_01-OECT.txt, lignes 1395-2185) le 07/10/2026, relu contre le PDF le même jour. Libellés de la liste détaillée de chaque classe, « & » compris (la liste de tête de la classe abrège parfois « et » en « & ») ; apostrophes droites ; point final retiré ; appels de note retirés ; les mentions « à ventiler / même ventilation / à subdiviser » sont portées dans « note » ; parent = plus long préfixe existant ; nature = liste fermée de src/compta/paquets/index.js (classe 1 entière en « capitaux », dettes 16-18 comprises ; 43667 et les autres taxes sur le chiffre d'affaires en « etat »).",
+  "corrections": [
+    {
+      "numero": "63",
+      "avant": "Charges divers ordinaires",
+      "apres": "Charges diverses ordinaires"
+    },
+    {
+      "numero": "161",
+      "avant": "Emprunts obligataires (assorties de sûretés)",
+      "apres": "Emprunts obligataires (assortis de sûretés)"
+    },
+    {
+      "numero": "162",
+      "avant": "Emprunts auprès des établissements financiers (assorties de sûretés)",
+      "apres": "Emprunts auprès des établissements financiers (assortis de sûretés)"
+    },
+    {
+      "numero": "163",
+      "avant": "Emprunts auprès d'autres établissements financiers (assorties de sûretés)",
+      "apres": "Emprunts auprès d'autres établissements financiers (assortis de sûretés)"
+    },
+    {
+      "numero": "165",
+      "avant": "Emprunts non assorties de sûretés",
+      "apres": "Emprunts non assortis de sûretés"
+    },
+    {
+      "numero": "171",
+      "avant": "Comptes des liaison des établissements",
+      "apres": "Comptes de liaison des établissements"
+    },
+    {
+      "numero": "534",
+      "avant": "C.C.P",
+      "apres": "C.C.P."
+    },
+    {
+      "numero": "638",
+      "avant": "Charges divers ordinaires liés à une modification comptable à prendre en compte dans le résultat de l'exercice ou à une activité abandonnée",
+      "apres": "Charges diverses ordinaires liées à une modification comptable à prendre en compte dans le résultat de l'exercice ou à une activité abandonnée"
+    },
+    {
+      "numero": "649",
+      "avant": "Autres charges de personnelles et autres charges sociales",
+      "apres": "Autres charges de personnel et autres charges sociales"
+    },
+    {
+      "numero": "6495",
+      "avant": "Au très charges sociales",
+      "apres": "Autres charges sociales"
+    },
+    {
+      "numero": "6868",
+      "avant": "Dotations aux amortissements et aux provisions liées à une modification comptable inscrite dans le résultat de l'exercice ou à une activité abandonnée. (charges financières)",
+      "apres": "Dotations aux amortissements et aux provisions liées à une modification comptable inscrite dans le résultat de l'exercice ou à une activité abandonnée (charges financières)"
+    },
+    {
+      "numero": "7868",
+      "avant": "Reprises sur provisions (à inscrire dans les produits financiers) liées à une modification comptable inscrite aux résultats de ou à une activité abandonnée",
+      "apres": "Reprises sur provisions (à inscrire dans les produits financiers) liées à une modification comptable inscrite aux résultats ou à une activité abandonnée"
+    }
+  ],
+  "ajouts": [
+    {
+      "numero": "6031",
+      "libelle": "Variation des stocks de matières premières et fournitures",
+      "source": "NC 01, 3e partie, fonctionnement des comptes de la classe 6 (compte 603) et note [3] du compte 60"
+    },
+    {
+      "numero": "6032",
+      "libelle": "Variation des stocks des autres approvisionnements",
+      "source": "NC 01, 3e partie, fonctionnement des comptes de la classe 6 (compte 603) et note [3] du compte 60"
+    },
+    {
+      "numero": "6037",
+      "libelle": "Variation des stocks de marchandises",
+      "source": "NC 01, 3e partie, fonctionnement des comptes de la classe 6 (compte 603) et note [3] du compte 60"
+    }
+  ],
+  "comptes": [
+    {
+      "numero": "10",
+      "libelle": "Capital",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "101",
+      "libelle": "Capital social",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1011",
+      "libelle": "Capital souscrit - non appelé",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1012",
+      "libelle": "Capital souscrit - appelé, non versé",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1013",
+      "libelle": "Capital souscrit - appelé, versé",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "10131",
+      "libelle": "Capital non amorti",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "10132",
+      "libelle": "Capital amorti",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1018",
+      "libelle": "Capital souscrit soumis à une réglementation particulière",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "105",
+      "libelle": "Fonds de dotation",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "108",
+      "libelle": "Compte de l'exploitant",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "109",
+      "libelle": "Actionnaires, capital souscrit - non appelé",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "11",
+      "libelle": "Réserves et primes liées au capital",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "111",
+      "libelle": "Réserve légale",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "112",
+      "libelle": "Réserves statutaires",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "117",
+      "libelle": "Primes liées au capital",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1171",
+      "libelle": "Primes d'émission",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1172",
+      "libelle": "Primes de fusion",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1173",
+      "libelle": "Primes d'apport",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1174",
+      "libelle": "Primes de conversion d'obligation",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1178",
+      "libelle": "Autres compléments d'apport",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "118",
+      "libelle": "Autres réserves",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1181",
+      "libelle": "Réserves pour fonds social",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "119",
+      "libelle": "Avoirs des actionnaires",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "12",
+      "libelle": "Résultats reportés",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "121",
+      "libelle": "Résultats reportés",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "128",
+      "libelle": "Modifications comptables affectant les résultats reportés",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "13",
+      "libelle": "Résultat de l'exercice",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "131",
+      "libelle": "Résultat bénéficiaire",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "135",
+      "libelle": "Résultat déficitaire",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "14",
+      "libelle": "Autres capitaux propres",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "141",
+      "libelle": "Titres soumis à des réglementations particulières",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "142",
+      "libelle": "Réserves réglementées & réserves soumises à un régime fiscal particulier",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1421",
+      "libelle": "Réserves indisponibles",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "143",
+      "libelle": "Amortissements dérogatoires",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "144",
+      "libelle": "Réserve spéciale de réévaluation",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "145",
+      "libelle": "Subventions d'investissement",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1451",
+      "libelle": "Subventions d'investissement",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1458",
+      "libelle": "Autres subventions d'investissement",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1459",
+      "libelle": "Subventions d'investissement inscrites aux comptes de résultat",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "147",
+      "libelle": "Compte du concédant",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "15",
+      "libelle": "Provisions pour risques & charges",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "151",
+      "libelle": "Provisions pour risques",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1511",
+      "libelle": "Provisions pour litiges",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1512",
+      "libelle": "Provisions pour garanties données aux clients",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1513",
+      "libelle": "Provisions pour pertes sur marchés à achèvement futur",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1514",
+      "libelle": "Provisions pour amendes & pénalités",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1515",
+      "libelle": "Provisions pour pertes de change",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1518",
+      "libelle": "Autres provisions pour risques",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "152",
+      "libelle": "Provisions pour charges à répartir sur plusieurs exercices",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1522",
+      "libelle": "Provisions pour grosses réparations",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "153",
+      "libelle": "Provisions pour retraites et obligations similaires",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "154",
+      "libelle": "Provisions d'origine réglementaire",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "155",
+      "libelle": "Provisions pour impôts",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "156",
+      "libelle": "Provisions pour renouvellement des immobilisations",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "157",
+      "libelle": "Provisions pour amortissement",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "158",
+      "libelle": "Autres provisions pour charges",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "16",
+      "libelle": "Emprunts & dettes assimilées",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "161",
+      "libelle": "Emprunts obligataires (assortis de sûretés)",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1611",
+      "libelle": "Emprunts obligataires convertibles en actions",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1618",
+      "libelle": "Autres emprunts obligataires",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "162",
+      "libelle": "Emprunts auprès des établissements financiers (assortis de sûretés)",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1621",
+      "libelle": "Emprunts bancaires",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1626",
+      "libelle": "Refinancements acquis",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "163",
+      "libelle": "Emprunts auprès d'autres établissements financiers (assortis de sûretés)",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "164",
+      "libelle": "Emprunts et dettes assorties de conditions particulières",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1641",
+      "libelle": "Avances bloquées pour augmentation du capital",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1642",
+      "libelle": "Avances reçues et comptes courants des associés bloqués",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1644",
+      "libelle": "Avances conditionnées de l'Etat & organismes internationaux",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "165",
+      "libelle": "Emprunts non assortis de sûretés",
+      "nature": "capitaux",
+      "note": "à subdiviser selon l'ordre des comptes des emprunts"
+    },
+    {
+      "numero": "166",
+      "libelle": "Dettes rattachées à des participations",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1661",
+      "libelle": "Dettes rattachées à des participations (groupe)",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1662",
+      "libelle": "Dettes rattachées à des participations (hors groupe)",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1663",
+      "libelle": "Dettes rattachées à des sociétés en participation",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "167",
+      "libelle": "Dépôts & cautionnements reçus",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "168",
+      "libelle": "Autres emprunts et dettes",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1681",
+      "libelle": "Autres emprunts",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1685",
+      "libelle": "Crédit fournisseurs d'immobilisations",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "1688",
+      "libelle": "Autres dettes non courantes",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "17",
+      "libelle": "Comptes de liaison des établissements & succursales",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "171",
+      "libelle": "Comptes de liaison des établissements",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "176",
+      "libelle": "Biens & prestations de services échangés entre établissements (charges)",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "177",
+      "libelle": "Biens & prestations de services échangés entre établissements (produits)",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "18",
+      "libelle": "Autres passifs non courants",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "185",
+      "libelle": "Écarts de conversion",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "188",
+      "libelle": "Autres",
+      "nature": "capitaux"
+    },
+    {
+      "numero": "21",
+      "libelle": "Immobilisations incorporelles",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "211",
+      "libelle": "Investissements de recherche & de développement",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "212",
+      "libelle": "Concessions de marques, brevets, licences, marques, procédés & valeurs similaires",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "213",
+      "libelle": "Logiciels",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "214",
+      "libelle": "Fonds commercial",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "216",
+      "libelle": "Droit au bail",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "218",
+      "libelle": "Autres immobilisations incorporelles",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "22",
+      "libelle": "Immobilisations corporelles",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "221",
+      "libelle": "Terrains",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2213",
+      "libelle": "Terrains nus",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2214",
+      "libelle": "Terrains aménagés",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2215",
+      "libelle": "Terrains bâtis",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2216",
+      "libelle": "Agencements & aménagements des terrains",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "222",
+      "libelle": "Constructions",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2221",
+      "libelle": "Bâtiments",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2225",
+      "libelle": "Installations générales, agencements & aménagements des constructions",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2226",
+      "libelle": "Ouvrages d'infrastructure",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2227",
+      "libelle": "Constructions sur sol d'autrui",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "223",
+      "libelle": "Installations techniques, matériel et outillage industriels",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2231",
+      "libelle": "Installations techniques",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2234",
+      "libelle": "Matériel industriel",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2235",
+      "libelle": "Outillage industriel",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2237",
+      "libelle": "Agencements & aménagements du matériel & outillage industriels",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "224",
+      "libelle": "Matériel de transport",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2241",
+      "libelle": "Matériel de transport de biens",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2244",
+      "libelle": "Matériel de transport de personnes",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "228",
+      "libelle": "Autres immobilisations corporelles",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2281",
+      "libelle": "Installations générales, agencements et aménagements divers",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2282",
+      "libelle": "Équipement de bureau",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2286",
+      "libelle": "Emballages récupérables identifiables",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "23",
+      "libelle": "Immobilisations en cours",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "231",
+      "libelle": "Immobilisations incorporelles en cours",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "232",
+      "libelle": "Immobilisations corporelles en cours",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "237",
+      "libelle": "Avances & acomptes versés sur immobilisations incorporelles",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "238",
+      "libelle": "Avances & acomptes versés sur commandes d'immobilisations corporelles",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "24",
+      "libelle": "Immobilisations à statut juridique particulier",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "25",
+      "libelle": "Participations & créances liées à des participations",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "251",
+      "libelle": "Titres de participation",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2511",
+      "libelle": "Actions",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2518",
+      "libelle": "Autres titres",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "256",
+      "libelle": "Autres formes de participation",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "257",
+      "libelle": "Créances rattachées à des participations",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2571",
+      "libelle": "Créances rattachées à des participations (groupe)",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2574",
+      "libelle": "Créances rattachées à des participations (hors groupe)",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2575",
+      "libelle": "Versements représentatifs d'apports non capitalisés (appel de fonds)",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2576",
+      "libelle": "Avances consolidables",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2577",
+      "libelle": "Autres créances rattachées à des participations",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "258",
+      "libelle": "Créances rattachées à des sociétés en participation",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "259",
+      "libelle": "Versements restant à effectuer sur titres de participation non libérés",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "26",
+      "libelle": "Autres immobilisations financières",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "261",
+      "libelle": "Titres immobilisés (droit de propriété)",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2611",
+      "libelle": "Actions",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2618",
+      "libelle": "Autres titres",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "262",
+      "libelle": "Titres immobilisés (droit de créance)",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2621",
+      "libelle": "Obligations",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2622",
+      "libelle": "Bons",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "264",
+      "libelle": "Prêts",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2641",
+      "libelle": "Prêts participatifs",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2642",
+      "libelle": "Prêts aux associés",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2643",
+      "libelle": "Prêts au personnel",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2645",
+      "libelle": "Prêts assortis de sûretés",
+      "nature": "immobilisations",
+      "note": "à subdiviser"
+    },
+    {
+      "numero": "2648",
+      "libelle": "Autres prêts",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "265",
+      "libelle": "Dépôts et cautionnements versés",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2651",
+      "libelle": "Dépôts",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2655",
+      "libelle": "Cautionnements",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2656",
+      "libelle": "Dépôts bancaires non courants",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2658",
+      "libelle": "Autres",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "266",
+      "libelle": "Autres créances immobilisées",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2661",
+      "libelle": "Créances immobilisées",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2667",
+      "libelle": "Créances diverses",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "2668",
+      "libelle": "Autres créances non courantes",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "269",
+      "libelle": "Versements restant à effectuer sur titres immobilisés non libérés",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "27",
+      "libelle": "Autres actifs non courants",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "271",
+      "libelle": "Frais préliminaires",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "272",
+      "libelle": "Charges à répartir",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "273",
+      "libelle": "Frais d'émission et primes de remboursement des emprunts",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "275",
+      "libelle": "Écarts de conversion",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "278",
+      "libelle": "Autres",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "28",
+      "libelle": "Amortissements des immobilisations",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "281",
+      "libelle": "Amortissements des immobilisations incorporelles",
+      "nature": "immobilisations",
+      "note": "même ventilation que celle du compte 21"
+    },
+    {
+      "numero": "282",
+      "libelle": "Amortissements des immobilisations corporelles",
+      "nature": "immobilisations",
+      "note": "même ventilation que celle du compte 22"
+    },
+    {
+      "numero": "284",
+      "libelle": "Amortissements des immobilisations à statut juridique particulier",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "29",
+      "libelle": "Provisions pour dépréciation des immobilisations",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "291",
+      "libelle": "Provisions pour dépréciation des immobilisations incorporelles",
+      "nature": "immobilisations",
+      "note": "même ventilation que celle du compte 21"
+    },
+    {
+      "numero": "292",
+      "libelle": "Provisions pour dépréciation des immobilisations corporelles",
+      "nature": "immobilisations",
+      "note": "même ventilation que celle du compte 22"
+    },
+    {
+      "numero": "293",
+      "libelle": "Provisions pour dépréciation des immobilisations en cours",
+      "nature": "immobilisations",
+      "note": "même ventilation que celle du compte 23"
+    },
+    {
+      "numero": "294",
+      "libelle": "Provisions pour dépréciation des immobilisations à statut juridique particulier",
+      "nature": "immobilisations"
+    },
+    {
+      "numero": "295",
+      "libelle": "Provisions pour dépréciation des participations et des créances liées à des participations",
+      "nature": "immobilisations",
+      "note": "même ventilation que celle du compte 25"
+    },
+    {
+      "numero": "296",
+      "libelle": "Provisions pour dépréciation des autres immobilisations financières",
+      "nature": "immobilisations",
+      "note": "même ventilation que celle du compte 26"
+    },
+    {
+      "numero": "31",
+      "libelle": "Matières premières & fournitures liées",
+      "nature": "stocks"
+    },
+    {
+      "numero": "311",
+      "libelle": "Matières premières",
+      "nature": "stocks"
+    },
+    {
+      "numero": "313",
+      "libelle": "Fournitures",
+      "nature": "stocks"
+    },
+    {
+      "numero": "317",
+      "libelle": "Autres",
+      "nature": "stocks"
+    },
+    {
+      "numero": "32",
+      "libelle": "Autres approvisionnements",
+      "nature": "stocks"
+    },
+    {
+      "numero": "321",
+      "libelle": "Matières consommables",
+      "nature": "stocks"
+    },
+    {
+      "numero": "322",
+      "libelle": "Fournitures consommables",
+      "nature": "stocks"
+    },
+    {
+      "numero": "326",
+      "libelle": "Emballages",
+      "nature": "stocks"
+    },
+    {
+      "numero": "327",
+      "libelle": "Autres",
+      "nature": "stocks"
+    },
+    {
+      "numero": "33",
+      "libelle": "En-cours de production de biens",
+      "nature": "stocks"
+    },
+    {
+      "numero": "331",
+      "libelle": "Produits en cours",
+      "nature": "stocks"
+    },
+    {
+      "numero": "335",
+      "libelle": "Travaux en cours",
+      "nature": "stocks"
+    },
+    {
+      "numero": "34",
+      "libelle": "En-cours de production de services",
+      "nature": "stocks"
+    },
+    {
+      "numero": "341",
+      "libelle": "Études en cours",
+      "nature": "stocks"
+    },
+    {
+      "numero": "345",
+      "libelle": "Prestations de services en cours",
+      "nature": "stocks"
+    },
+    {
+      "numero": "35",
+      "libelle": "Stocks de produits",
+      "nature": "stocks"
+    },
+    {
+      "numero": "351",
+      "libelle": "Produits intermédiaires",
+      "nature": "stocks"
+    },
+    {
+      "numero": "355",
+      "libelle": "Produits finis",
+      "nature": "stocks"
+    },
+    {
+      "numero": "357",
+      "libelle": "Produits résiduels",
+      "nature": "stocks"
+    },
+    {
+      "numero": "37",
+      "libelle": "Stocks de marchandises",
+      "nature": "stocks"
+    },
+    {
+      "numero": "39",
+      "libelle": "Provisions pour dépréciation des stocks",
+      "nature": "stocks",
+      "note": "à ventiler selon la nomenclature de cette classe"
+    },
+    {
+      "numero": "40",
+      "libelle": "Fournisseurs & comptes rattachés",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "401",
+      "libelle": "Fournisseurs d'exploitation",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4011",
+      "libelle": "Fournisseurs - achats de biens ou de prestations de services",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4017",
+      "libelle": "Fournisseurs - retenues de garantie",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "403",
+      "libelle": "Fournisseurs d'exploitation - effets à payer",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "404",
+      "libelle": "Fournisseurs d'immobilisations",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4041",
+      "libelle": "Fournisseurs - achats d'immobilisations",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4047",
+      "libelle": "Fournisseurs d'immobilisations - retenues de garantie",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "405",
+      "libelle": "Fournisseurs d'immobilisations - effets à payer",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "408",
+      "libelle": "Fournisseurs - factures non parvenues",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4081",
+      "libelle": "Fournisseurs d'exploitation",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4084",
+      "libelle": "Fournisseurs d'immobilisations",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4088",
+      "libelle": "Fournisseurs - intérêts courus",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "409",
+      "libelle": "Fournisseurs débiteurs",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4091",
+      "libelle": "Fournisseurs - avances et acomptes versés sur commandes",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4096",
+      "libelle": "Fournisseurs - créances pour emballages et matériel à rendre",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4097",
+      "libelle": "Fournisseurs - autres avoirs",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "40971",
+      "libelle": "Fournisseurs d'exploitation",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "40974",
+      "libelle": "Fournisseurs d'immobilisations",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "4098",
+      "libelle": "Rabais, remises, ristournes à obtenir et autres avoirs non encore reçus",
+      "nature": "fournisseurs"
+    },
+    {
+      "numero": "41",
+      "libelle": "Clients & comptes rattachés",
+      "nature": "clients"
+    },
+    {
+      "numero": "411",
+      "libelle": "Clients",
+      "nature": "clients"
+    },
+    {
+      "numero": "4111",
+      "libelle": "Clients - ventes de biens ou de prestations de services",
+      "nature": "clients"
+    },
+    {
+      "numero": "4117",
+      "libelle": "Clients - retenues de garantie",
+      "nature": "clients"
+    },
+    {
+      "numero": "413",
+      "libelle": "Clients - effets à recevoir",
+      "nature": "clients"
+    },
+    {
+      "numero": "416",
+      "libelle": "Clients douteux ou litigieux",
+      "nature": "clients"
+    },
+    {
+      "numero": "417",
+      "libelle": "Créances sur travaux non encore facturables",
+      "nature": "clients"
+    },
+    {
+      "numero": "418",
+      "libelle": "Clients - produits non encore facturés (produits à recevoir)",
+      "nature": "clients"
+    },
+    {
+      "numero": "4181",
+      "libelle": "Factures à établir",
+      "nature": "clients"
+    },
+    {
+      "numero": "4188",
+      "libelle": "Intérêts courus",
+      "nature": "clients"
+    },
+    {
+      "numero": "419",
+      "libelle": "Clients créditeurs",
+      "nature": "clients"
+    },
+    {
+      "numero": "4191",
+      "libelle": "Clients - avances et acomptes reçus sur commandes",
+      "nature": "clients"
+    },
+    {
+      "numero": "4196",
+      "libelle": "Clients - dettes pour emballages et matériel consignés",
+      "nature": "clients"
+    },
+    {
+      "numero": "4197",
+      "libelle": "Clients - autres avoirs",
+      "nature": "clients"
+    },
+    {
+      "numero": "4198",
+      "libelle": "Rabais, remises, ristournes à accorder et autres avoirs à établir",
+      "nature": "clients"
+    },
+    {
+      "numero": "42",
+      "libelle": "Personnel et comptes rattachés",
+      "nature": "personnel"
+    },
+    {
+      "numero": "421",
+      "libelle": "Personnel - avances et acomptes",
+      "nature": "personnel"
+    },
+    {
+      "numero": "422",
+      "libelle": "Comités d'entreprises et autres organes représentatifs du personnel",
+      "nature": "personnel"
+    },
+    {
+      "numero": "423",
+      "libelle": "Personnel, œuvres sociales",
+      "nature": "personnel"
+    },
+    {
+      "numero": "425",
+      "libelle": "Personnel - rémunérations dues",
+      "nature": "personnel"
+    },
+    {
+      "numero": "426",
+      "libelle": "Personnel - dépôts",
+      "nature": "personnel"
+    },
+    {
+      "numero": "427",
+      "libelle": "Personnel - oppositions",
+      "nature": "personnel"
+    },
+    {
+      "numero": "428",
+      "libelle": "Personnel - charges à payer & produits à recevoir",
+      "nature": "personnel"
+    },
+    {
+      "numero": "4282",
+      "libelle": "Dettes provisionnées pour congés à payer",
+      "nature": "personnel"
+    },
+    {
+      "numero": "4286",
+      "libelle": "Autres charges à payer",
+      "nature": "personnel"
+    },
+    {
+      "numero": "4287",
+      "libelle": "Produits à recevoir",
+      "nature": "personnel"
+    },
+    {
+      "numero": "43",
+      "libelle": "Etat et collectivités publiques",
+      "nature": "etat"
+    },
+    {
+      "numero": "431",
+      "libelle": "Etat - subventions à recevoir",
+      "nature": "etat"
+    },
+    {
+      "numero": "432",
+      "libelle": "Etat, impôts et taxes retenus à la source",
+      "nature": "retenues_operees"
+    },
+    {
+      "numero": "433",
+      "libelle": "Opérations particulières avec l'Etat, les collectivités publiques, les organismes internationaux",
+      "nature": "etat"
+    },
+    {
+      "numero": "434",
+      "libelle": "Etat - impôts sur les bénéfices",
+      "nature": "etat"
+    },
+    {
+      "numero": "4341",
+      "libelle": "Retenue à la source",
+      "nature": "retenues_subies"
+    },
+    {
+      "numero": "4342",
+      "libelle": "Acomptes provisionnels",
+      "nature": "etat"
+    },
+    {
+      "numero": "4343",
+      "libelle": "Impôt à liquider",
+      "nature": "etat"
+    },
+    {
+      "numero": "4349",
+      "libelle": "Impôts différés",
+      "nature": "etat"
+    },
+    {
+      "numero": "435",
+      "libelle": "Obligations cautionnées",
+      "nature": "etat"
+    },
+    {
+      "numero": "436",
+      "libelle": "Etat - taxes sur le chiffre d'affaires",
+      "nature": "etat"
+    },
+    {
+      "numero": "4365",
+      "libelle": "Taxes sur le chiffre d'affaires à décaisser",
+      "nature": "tva_a_payer"
+    },
+    {
+      "numero": "43651",
+      "libelle": "TVA à payer",
+      "nature": "tva_a_payer"
+    },
+    {
+      "numero": "43658",
+      "libelle": "Autres taxes sur le chiffre d'affaires",
+      "nature": "etat"
+    },
+    {
+      "numero": "4366",
+      "libelle": "Taxes sur le chiffre d'affaires déductibles",
+      "nature": "tva_deductible"
+    },
+    {
+      "numero": "43662",
+      "libelle": "TVA sur immobilisations",
+      "nature": "tva_deductible"
+    },
+    {
+      "numero": "43663",
+      "libelle": "TVA transférée par d'autres entreprises",
+      "nature": "tva_deductible"
+    },
+    {
+      "numero": "43666",
+      "libelle": "TVA sur autres biens et services",
+      "nature": "tva_deductible"
+    },
+    {
+      "numero": "43667",
+      "libelle": "Crédit de TVA à reporter",
+      "nature": "etat"
+    },
+    {
+      "numero": "43668",
+      "libelle": "Autres taxes sur le chiffre d'affaires",
+      "nature": "etat"
+    },
+    {
+      "numero": "4367",
+      "libelle": "Taxes sur le chiffre d'affaires collectées par l'entreprise",
+      "nature": "tva_collectee"
+    },
+    {
+      "numero": "43671",
+      "libelle": "TVA collectée",
+      "nature": "tva_collectee"
+    },
+    {
+      "numero": "436711",
+      "libelle": "TVA collectée sur les débits",
+      "nature": "tva_collectee"
+    },
+    {
+      "numero": "436712",
+      "libelle": "TVA collectée sur les encaissements",
+      "nature": "tva_collectee"
+    },
+    {
+      "numero": "43678",
+      "libelle": "Autres taxes sur le chiffre d'affaires",
+      "nature": "etat"
+    },
+    {
+      "numero": "4368",
+      "libelle": "Taxes sur le chiffre d'affaires à régulariser ou en attente",
+      "nature": "etat"
+    },
+    {
+      "numero": "437",
+      "libelle": "Autres impôts, taxes et versements assimilés",
+      "nature": "etat"
+    },
+    {
+      "numero": "438",
+      "libelle": "Etat - charges à payer et produits à recevoir",
+      "nature": "etat"
+    },
+    {
+      "numero": "4382",
+      "libelle": "Charges fiscales sur congés à payer",
+      "nature": "etat"
+    },
+    {
+      "numero": "4386",
+      "libelle": "Autres charges à payer",
+      "nature": "etat"
+    },
+    {
+      "numero": "4387",
+      "libelle": "Produits à recevoir",
+      "nature": "etat"
+    },
+    {
+      "numero": "44",
+      "libelle": "Sociétés du groupe & associés",
+      "nature": "general"
+    },
+    {
+      "numero": "441",
+      "libelle": "Groupe",
+      "nature": "general"
+    },
+    {
+      "numero": "4411",
+      "libelle": "Créances et intérêts courus",
+      "nature": "general"
+    },
+    {
+      "numero": "4412",
+      "libelle": "Dettes et intérêts à payer",
+      "nature": "general"
+    },
+    {
+      "numero": "442",
+      "libelle": "Associés - comptes courants",
+      "nature": "general"
+    },
+    {
+      "numero": "4421",
+      "libelle": "Principal",
+      "nature": "general"
+    },
+    {
+      "numero": "4428",
+      "libelle": "Intérêts courus",
+      "nature": "general"
+    },
+    {
+      "numero": "446",
+      "libelle": "Associés - opérations sur le capital",
+      "nature": "general"
+    },
+    {
+      "numero": "447",
+      "libelle": "Associés - dividendes à payer",
+      "nature": "general"
+    },
+    {
+      "numero": "448",
+      "libelle": "Associés - opérations faites en commun",
+      "nature": "general"
+    },
+    {
+      "numero": "4481",
+      "libelle": "Opérations courantes",
+      "nature": "general"
+    },
+    {
+      "numero": "4488",
+      "libelle": "Intérêts courus",
+      "nature": "general"
+    },
+    {
+      "numero": "45",
+      "libelle": "Débiteurs divers et Créditeurs divers",
+      "nature": "general"
+    },
+    {
+      "numero": "452",
+      "libelle": "Créances sur cessions d'immobilisations",
+      "nature": "general"
+    },
+    {
+      "numero": "453",
+      "libelle": "Sécurité sociale et autres organismes sociaux",
+      "nature": "general"
+    },
+    {
+      "numero": "4531",
+      "libelle": "Organismes sociaux",
+      "nature": "general"
+    },
+    {
+      "numero": "45311",
+      "libelle": "CNSS",
+      "nature": "general"
+    },
+    {
+      "numero": "45318",
+      "libelle": "Autres",
+      "nature": "general"
+    },
+    {
+      "numero": "4538",
+      "libelle": "Organismes sociaux - charges à payer et produits à recevoir",
+      "nature": "general"
+    },
+    {
+      "numero": "45382",
+      "libelle": "Charges sociales sur congés à payer",
+      "nature": "general"
+    },
+    {
+      "numero": "45386",
+      "libelle": "Autres charges à payer",
+      "nature": "general"
+    },
+    {
+      "numero": "45387",
+      "libelle": "Produits à recevoir",
+      "nature": "general"
+    },
+    {
+      "numero": "454",
+      "libelle": "Dettes sur acquisitions de valeurs mobilières de placement",
+      "nature": "general"
+    },
+    {
+      "numero": "455",
+      "libelle": "Créances sur cessions de valeurs mobilières de placement",
+      "nature": "general"
+    },
+    {
+      "numero": "457",
+      "libelle": "Autres comptes débiteurs ou créditeurs",
+      "nature": "general"
+    },
+    {
+      "numero": "458",
+      "libelle": "Diverses charges à payer et produits à recevoir",
+      "nature": "general"
+    },
+    {
+      "numero": "4586",
+      "libelle": "Charges à payer",
+      "nature": "general"
+    },
+    {
+      "numero": "4587",
+      "libelle": "Produits à recevoir",
+      "nature": "general"
+    },
+    {
+      "numero": "46",
+      "libelle": "Comptes transitoires ou d'attente",
+      "nature": "general"
+    },
+    {
+      "numero": "461",
+      "libelle": "Compte d'attente",
+      "nature": "general"
+    },
+    {
+      "numero": "465",
+      "libelle": "Différence de conversion sur éléments courants",
+      "nature": "general"
+    },
+    {
+      "numero": "4651",
+      "libelle": "Différences de conversion actif",
+      "nature": "general"
+    },
+    {
+      "numero": "4652",
+      "libelle": "Différences de conversion passif",
+      "nature": "general"
+    },
+    {
+      "numero": "468",
+      "libelle": "Autres comptes transitoires",
+      "nature": "general"
+    },
+    {
+      "numero": "47",
+      "libelle": "Comptes de régularisation",
+      "nature": "general"
+    },
+    {
+      "numero": "471",
+      "libelle": "Charges constatées d'avance",
+      "nature": "general"
+    },
+    {
+      "numero": "472",
+      "libelle": "Produits constatés d'avance",
+      "nature": "general"
+    },
+    {
+      "numero": "478",
+      "libelle": "Comptes de répartition périodique de charges et produits",
+      "nature": "general"
+    },
+    {
+      "numero": "4786",
+      "libelle": "Charges",
+      "nature": "general"
+    },
+    {
+      "numero": "4787",
+      "libelle": "Produits",
+      "nature": "general"
+    },
+    {
+      "numero": "48",
+      "libelle": "Provisions courantes pour risques et charges",
+      "nature": "general"
+    },
+    {
+      "numero": "49",
+      "libelle": "Provisions pour dépréciation des comptes de tiers",
+      "nature": "general"
+    },
+    {
+      "numero": "491",
+      "libelle": "Provisions pour dépréciation des comptes clients",
+      "nature": "general"
+    },
+    {
+      "numero": "494",
+      "libelle": "Provisions pour dépréciation des comptes de groupe et associés",
+      "nature": "general"
+    },
+    {
+      "numero": "4941",
+      "libelle": "Comptes du groupe",
+      "nature": "general"
+    },
+    {
+      "numero": "4942",
+      "libelle": "Comptes courants des associés",
+      "nature": "general"
+    },
+    {
+      "numero": "4948",
+      "libelle": "Opérations faites en commun",
+      "nature": "general"
+    },
+    {
+      "numero": "495",
+      "libelle": "Provisions pour dépréciation des comptes de débiteurs divers",
+      "nature": "general"
+    },
+    {
+      "numero": "4952",
+      "libelle": "Créances sur cession d'immobilisation",
+      "nature": "general"
+    },
+    {
+      "numero": "4955",
+      "libelle": "Créances sur cession des valeurs mobilières de placement",
+      "nature": "general"
+    },
+    {
+      "numero": "4957",
+      "libelle": "Autres comptes débiteurs",
+      "nature": "general"
+    },
+    {
+      "numero": "50",
+      "libelle": "Emprunts et autres dettes financières courants",
+      "nature": "general"
+    },
+    {
+      "numero": "501",
+      "libelle": "Emprunts courants liés au cycle d'exploitation",
+      "nature": "general"
+    },
+    {
+      "numero": "505",
+      "libelle": "Échéances à moins d'un an sur emprunts non courants",
+      "nature": "general"
+    },
+    {
+      "numero": "506",
+      "libelle": "Concours bancaires courants",
+      "nature": "general"
+    },
+    {
+      "numero": "5061",
+      "libelle": "Crédit de mobilisation de créances commerciales",
+      "nature": "general"
+    },
+    {
+      "numero": "5063",
+      "libelle": "Mobilisation de créances nées à l'étranger",
+      "nature": "general"
+    },
+    {
+      "numero": "5067",
+      "libelle": "Autres concours bancaires",
+      "nature": "general"
+    },
+    {
+      "numero": "507",
+      "libelle": "Emprunts échus et impayés",
+      "nature": "general"
+    },
+    {
+      "numero": "508",
+      "libelle": "Intérêts courus",
+      "nature": "general",
+      "note": "à subdiviser selon la même ventilation que le compte 50"
+    },
+    {
+      "numero": "51",
+      "libelle": "Prêts et autres créances financières courants",
+      "nature": "general"
+    },
+    {
+      "numero": "511",
+      "libelle": "Prêts courants liés au cycle d'exploitation",
+      "nature": "general"
+    },
+    {
+      "numero": "516",
+      "libelle": "Échéances à moins d'un an sur prêts non courants",
+      "nature": "general"
+    },
+    {
+      "numero": "517",
+      "libelle": "Échéances à moins d'un an sur autres créances financières",
+      "nature": "general"
+    },
+    {
+      "numero": "518",
+      "libelle": "Intérêts courus",
+      "nature": "general"
+    },
+    {
+      "numero": "52",
+      "libelle": "Placements courants",
+      "nature": "general"
+    },
+    {
+      "numero": "523",
+      "libelle": "Actions",
+      "nature": "general"
+    },
+    {
+      "numero": "5231",
+      "libelle": "Titres cotés",
+      "nature": "general"
+    },
+    {
+      "numero": "5235",
+      "libelle": "Titres non cotés",
+      "nature": "general"
+    },
+    {
+      "numero": "524",
+      "libelle": "Autres titres conférant un droit de propriété",
+      "nature": "general"
+    },
+    {
+      "numero": "525",
+      "libelle": "Obligations et bons émis par la société et rachetés par elle",
+      "nature": "general"
+    },
+    {
+      "numero": "526",
+      "libelle": "Obligations",
+      "nature": "general"
+    },
+    {
+      "numero": "5261",
+      "libelle": "Titres cotés",
+      "nature": "general"
+    },
+    {
+      "numero": "5265",
+      "libelle": "Titres non cotés",
+      "nature": "general"
+    },
+    {
+      "numero": "5266",
+      "libelle": "Échéances à moins d'un an sur les obligations immobilisées",
+      "nature": "general"
+    },
+    {
+      "numero": "527",
+      "libelle": "Bons du trésor et bons de caisse à court terme",
+      "nature": "general"
+    },
+    {
+      "numero": "528",
+      "libelle": "Autres placements courants et créances assimilées",
+      "nature": "general"
+    },
+    {
+      "numero": "5281",
+      "libelle": "Autres valeurs mobilières",
+      "nature": "general"
+    },
+    {
+      "numero": "5288",
+      "libelle": "Intérêts courus sur obligations, bons et valeurs assimilées",
+      "nature": "general"
+    },
+    {
+      "numero": "529",
+      "libelle": "Versements restant à effectuer sur valeurs mobilières de placement non libérées",
+      "nature": "general"
+    },
+    {
+      "numero": "53",
+      "libelle": "Banques, établissements financiers et assimilés",
+      "nature": "general"
+    },
+    {
+      "numero": "531",
+      "libelle": "Valeurs à l'encaissement",
+      "nature": "general"
+    },
+    {
+      "numero": "5311",
+      "libelle": "Coupons échus à l'encaissement",
+      "nature": "general"
+    },
+    {
+      "numero": "5312",
+      "libelle": "Chèques à encaisser",
+      "nature": "general"
+    },
+    {
+      "numero": "5313",
+      "libelle": "Effets à l'encaissement",
+      "nature": "general"
+    },
+    {
+      "numero": "5314",
+      "libelle": "Effets à l'escompte",
+      "nature": "general"
+    },
+    {
+      "numero": "532",
+      "libelle": "Banques",
+      "nature": "banque"
+    },
+    {
+      "numero": "5321",
+      "libelle": "Comptes en dinars",
+      "nature": "banque"
+    },
+    {
+      "numero": "5324",
+      "libelle": "Comptes en devises",
+      "nature": "banque"
+    },
+    {
+      "numero": "534",
+      "libelle": "C.C.P.",
+      "nature": "banque"
+    },
+    {
+      "numero": "535",
+      "libelle": "Comptes au trésor",
+      "nature": "banque"
+    },
+    {
+      "numero": "537",
+      "libelle": "Autres organismes financiers",
+      "nature": "banque"
+    },
+    {
+      "numero": "54",
+      "libelle": "Caisse",
+      "nature": "caisse"
+    },
+    {
+      "numero": "541",
+      "libelle": "Caisse siège social",
+      "nature": "caisse"
+    },
+    {
+      "numero": "5411",
+      "libelle": "Caisse en dinars",
+      "nature": "caisse"
+    },
+    {
+      "numero": "5414",
+      "libelle": "Caisse en devises",
+      "nature": "caisse"
+    },
+    {
+      "numero": "542",
+      "libelle": "Caisses succursales",
+      "nature": "caisse"
+    },
+    {
+      "numero": "55",
+      "libelle": "Régies d'avances et accréditifs",
+      "nature": "caisse"
+    },
+    {
+      "numero": "58",
+      "libelle": "Virements internes",
+      "nature": "general"
+    },
+    {
+      "numero": "59",
+      "libelle": "Provisions pour dépréciation des comptes financiers",
+      "nature": "general",
+      "note": "même ventilation que les comptes de la classe 5"
+    },
+    {
+      "numero": "60",
+      "libelle": "Achats (sauf 603)",
+      "nature": "charges"
+    },
+    {
+      "numero": "601",
+      "libelle": "Achats stockés - Matières premières et fournitures liées",
+      "nature": "charges"
+    },
+    {
+      "numero": "602",
+      "libelle": "Achats stockés - Autres approvisionnements",
+      "nature": "charges"
+    },
+    {
+      "numero": "6021",
+      "libelle": "Matières consommables",
+      "nature": "charges"
+    },
+    {
+      "numero": "6022",
+      "libelle": "Fournitures consommables",
+      "nature": "charges"
+    },
+    {
+      "numero": "6026",
+      "libelle": "Emballages",
+      "nature": "charges"
+    },
+    {
+      "numero": "603",
+      "libelle": "Variation des stocks (approvisionnements et marchandises)",
+      "nature": "charges"
+    },
+    {
+      "numero": "6031",
+      "libelle": "Variation des stocks de matières premières et fournitures",
+      "nature": "charges"
+    },
+    {
+      "numero": "6032",
+      "libelle": "Variation des stocks des autres approvisionnements",
+      "nature": "charges"
+    },
+    {
+      "numero": "6037",
+      "libelle": "Variation des stocks de marchandises",
+      "nature": "charges"
+    },
+    {
+      "numero": "604",
+      "libelle": "Achats d'études et de prestations de services (y compris achat de sous-traitance de production)",
+      "nature": "charges"
+    },
+    {
+      "numero": "605",
+      "libelle": "Achats de matériel, équipements et travaux",
+      "nature": "charges"
+    },
+    {
+      "numero": "606",
+      "libelle": "Achats non stockés de matières et fournitures",
+      "nature": "charges"
+    },
+    {
+      "numero": "607",
+      "libelle": "Achats de marchandises",
+      "nature": "charges"
+    },
+    {
+      "numero": "608",
+      "libelle": "Achats liés à une modification comptable à prendre en compte dans le résultat de l'exercice ou à une activité abandonnée",
+      "nature": "charges"
+    },
+    {
+      "numero": "609",
+      "libelle": "Rabais, remises et ristournes obtenus sur achats",
+      "nature": "charges"
+    },
+    {
+      "numero": "6098",
+      "libelle": "Liés à une modification comptable à prendre en compte dans le résultat de l'exercice ou à une activité abandonnée",
+      "nature": "charges"
+    },
+    {
+      "numero": "61",
+      "libelle": "Services extérieurs",
+      "nature": "charges"
+    },
+    {
+      "numero": "611",
+      "libelle": "Sous-traitance générale",
+      "nature": "charges"
+    },
+    {
+      "numero": "612",
+      "libelle": "Redevances pour utilisation d'immobilisations concédées",
+      "nature": "charges"
+    },
+    {
+      "numero": "613",
+      "libelle": "Locations (y compris malis sur emballages)",
+      "nature": "charges"
+    },
+    {
+      "numero": "614",
+      "libelle": "Charges locatives et de copropriété",
+      "nature": "charges"
+    },
+    {
+      "numero": "615",
+      "libelle": "Entretien et réparations",
+      "nature": "charges"
+    },
+    {
+      "numero": "616",
+      "libelle": "Primes d'assurances",
+      "nature": "charges"
+    },
+    {
+      "numero": "617",
+      "libelle": "Études, recherches et divers services extérieurs",
+      "nature": "charges"
+    },
+    {
+      "numero": "618",
+      "libelle": "Autres charges liées à une modification comptable à prendre en compte dans le résultat de l'exercice ou à une activité abandonnée",
+      "nature": "charges"
+    },
+    {
+      "numero": "619",
+      "libelle": "Rabais, remises et ristournes obtenus sur services extérieurs",
+      "nature": "charges"
+    },
+    {
+      "numero": "62",
+      "libelle": "Autres services extérieurs",
+      "nature": "charges"
+    },
+    {
+      "numero": "621",
+      "libelle": "Personnel extérieur à l'entreprise",
+      "nature": "charges"
+    },
+    {
+      "numero": "622",
+      "libelle": "Rémunération d'intermédiaires et honoraires",
+      "nature": "charges"
+    },
+    {
+      "numero": "623",
+      "libelle": "Publicité, publications, relations publiques",
+      "nature": "charges"
+    },
+    {
+      "numero": "624",
+      "libelle": "Transports de biens et transports collectifs du personnel",
+      "nature": "charges"
+    },
+    {
+      "numero": "6241",
+      "libelle": "Transports sur achats",
+      "nature": "charges"
+    },
+    {
+      "numero": "6242",
+      "libelle": "Transports sur ventes",
+      "nature": "charges"
+    },
+    {
+      "numero": "6244",
+      "libelle": "Transports administratifs",
+      "nature": "charges"
+    },
+    {
+      "numero": "6247",
+      "libelle": "Transports collectifs du personnel",
+      "nature": "charges"
+    },
+    {
+      "numero": "6248",
+      "libelle": "Divers",
+      "nature": "charges"
+    },
+    {
+      "numero": "625",
+      "libelle": "Déplacements, missions et réceptions",
+      "nature": "charges"
+    },
+    {
+      "numero": "6251",
+      "libelle": "Voyages et déplacements",
+      "nature": "charges"
+    },
+    {
+      "numero": "6255",
+      "libelle": "Frais de déménagement",
+      "nature": "charges"
+    },
+    {
+      "numero": "6256",
+      "libelle": "Missions",
+      "nature": "charges"
+    },
+    {
+      "numero": "6257",
+      "libelle": "Réceptions",
+      "nature": "charges"
+    },
+    {
+      "numero": "626",
+      "libelle": "Frais postaux et frais de télécommunications",
+      "nature": "charges"
+    },
+    {
+      "numero": "627",
+      "libelle": "Services bancaires et assimilés",
+      "nature": "charges"
+    },
+    {
+      "numero": "6271",
+      "libelle": "Frais sur titres (achats, vente, garde)",
+      "nature": "charges"
+    },
+    {
+      "numero": "6272",
+      "libelle": "Commissions et frais sur émission d'emprunts",
+      "nature": "charges"
+    },
+    {
+      "numero": "6275",
+      "libelle": "Frais sur effets",
+      "nature": "charges"
+    },
+    {
+      "numero": "6276",
+      "libelle": "Location de coffres",
+      "nature": "charges"
+    },
+    {
+      "numero": "6278",
+      "libelle": "Autres frais et commissions sur prestations de services",
+      "nature": "charges"
+    },
+    {
+      "numero": "628",
+      "libelle": "Autres services extérieurs liés à une modification comptable à prendre en compte dans le résultat de l'exercice ou à une activité abandonnée",
+      "nature": "charges"
+    },
+    {
+      "numero": "629",
+      "libelle": "Rabais, remises et ristournes obtenus sur autres services extérieurs",
+      "nature": "charges"
+    },
+    {
+      "numero": "63",
+      "libelle": "Charges diverses ordinaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "631",
+      "libelle": "Redevances pour concessions de marques, brevets, licences, procédés, droits et valeurs similaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "633",
+      "libelle": "Jetons de présence",
+      "nature": "charges"
+    },
+    {
+      "numero": "634",
+      "libelle": "Pertes sur créances irrécouvrables",
+      "nature": "charges"
+    },
+    {
+      "numero": "6341",
+      "libelle": "Créances de l'exercice",
+      "nature": "charges"
+    },
+    {
+      "numero": "6344",
+      "libelle": "Créances des exercices antérieurs",
+      "nature": "charges"
+    },
+    {
+      "numero": "635",
+      "libelle": "Quotes-parts de résultat sur opérations faites en commun",
+      "nature": "charges"
+    },
+    {
+      "numero": "6351",
+      "libelle": "Quote-part de bénéfice transférée (comptabilité du gérant)",
+      "nature": "charges"
+    },
+    {
+      "numero": "6355",
+      "libelle": "Quote-part de perte supportée (comptabilité des associés non gérants)",
+      "nature": "charges"
+    },
+    {
+      "numero": "636",
+      "libelle": "Charges nettes sur cessions d'immobilisations et autres pertes sur éléments non récurrents ou exceptionnels",
+      "nature": "charges"
+    },
+    {
+      "numero": "637",
+      "libelle": "Réduction de valeur",
+      "nature": "charges"
+    },
+    {
+      "numero": "638",
+      "libelle": "Charges diverses ordinaires liées à une modification comptable à prendre en compte dans le résultat de l'exercice ou à une activité abandonnée",
+      "nature": "charges"
+    },
+    {
+      "numero": "64",
+      "libelle": "Charges de personnel",
+      "nature": "charges"
+    },
+    {
+      "numero": "640",
+      "libelle": "Salaires et compléments de salaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "6400",
+      "libelle": "Salaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "6401",
+      "libelle": "Heures supplémentaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "6402",
+      "libelle": "Primes",
+      "nature": "charges"
+    },
+    {
+      "numero": "6403",
+      "libelle": "Gratifications",
+      "nature": "charges"
+    },
+    {
+      "numero": "6404",
+      "libelle": "Avantages en nature",
+      "nature": "charges"
+    },
+    {
+      "numero": "6409",
+      "libelle": "Autres compléments de salaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "642",
+      "libelle": "Appointements et compléments d'appointements",
+      "nature": "charges"
+    },
+    {
+      "numero": "6420",
+      "libelle": "Appointements",
+      "nature": "charges"
+    },
+    {
+      "numero": "6421",
+      "libelle": "Heures supplémentaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "6422",
+      "libelle": "Primes",
+      "nature": "charges"
+    },
+    {
+      "numero": "6423",
+      "libelle": "Gratifications",
+      "nature": "charges"
+    },
+    {
+      "numero": "6424",
+      "libelle": "Avantages en nature",
+      "nature": "charges"
+    },
+    {
+      "numero": "6429",
+      "libelle": "Autres compléments d'appointements",
+      "nature": "charges"
+    },
+    {
+      "numero": "643",
+      "libelle": "Indemnités représentatives de frais",
+      "nature": "charges"
+    },
+    {
+      "numero": "644",
+      "libelle": "Commissions au personnel",
+      "nature": "charges"
+    },
+    {
+      "numero": "6440",
+      "libelle": "Commissions sur achats",
+      "nature": "charges"
+    },
+    {
+      "numero": "6441",
+      "libelle": "Commissions sur ventes",
+      "nature": "charges"
+    },
+    {
+      "numero": "645",
+      "libelle": "Rémunérations des administrateurs, gérants et associés",
+      "nature": "charges"
+    },
+    {
+      "numero": "646",
+      "libelle": "Charges connexes aux salaires, appointements, commissions et rémunérations",
+      "nature": "charges"
+    },
+    {
+      "numero": "6460",
+      "libelle": "Charges connexes aux salaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "64600",
+      "libelle": "Congés payés",
+      "nature": "charges"
+    },
+    {
+      "numero": "64602",
+      "libelle": "Indemnités de préavis et de licenciements (gratification de fin de service)",
+      "nature": "charges"
+    },
+    {
+      "numero": "64604",
+      "libelle": "Supplément familial",
+      "nature": "charges"
+    },
+    {
+      "numero": "6462",
+      "libelle": "Charges connexes aux appointements",
+      "nature": "charges"
+    },
+    {
+      "numero": "64620",
+      "libelle": "Congés payés",
+      "nature": "charges"
+    },
+    {
+      "numero": "64622",
+      "libelle": "Indemnités de préavis et de licenciement (gratification de fin de service)",
+      "nature": "charges"
+    },
+    {
+      "numero": "64624",
+      "libelle": "Supplément familial",
+      "nature": "charges"
+    },
+    {
+      "numero": "6464",
+      "libelle": "Charges connexes aux commissions",
+      "nature": "charges"
+    },
+    {
+      "numero": "64640",
+      "libelle": "Congés payés",
+      "nature": "charges"
+    },
+    {
+      "numero": "64642",
+      "libelle": "Indemnités de préavis et de licenciement (gratification de fin de service)",
+      "nature": "charges"
+    },
+    {
+      "numero": "64644",
+      "libelle": "Supplément familial",
+      "nature": "charges"
+    },
+    {
+      "numero": "6465",
+      "libelle": "Charges connexes aux rémunérations des administrateurs et gérants",
+      "nature": "charges"
+    },
+    {
+      "numero": "64650",
+      "libelle": "Congés payés",
+      "nature": "charges"
+    },
+    {
+      "numero": "64652",
+      "libelle": "Indemnités de préavis et de licenciement",
+      "nature": "charges"
+    },
+    {
+      "numero": "64654",
+      "libelle": "Supplément familial",
+      "nature": "charges"
+    },
+    {
+      "numero": "647",
+      "libelle": "Charges sociales légales",
+      "nature": "charges"
+    },
+    {
+      "numero": "6470",
+      "libelle": "Cotisations de sécurité sociale sur salaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "6472",
+      "libelle": "Cotisations de sécurité sociale sur appointements",
+      "nature": "charges"
+    },
+    {
+      "numero": "6474",
+      "libelle": "Cotisations de sécurité sociale sur commissions",
+      "nature": "charges"
+    },
+    {
+      "numero": "6475",
+      "libelle": "Cotisations de sécurité sociale sur rémunérations des administrateurs et gérants",
+      "nature": "charges"
+    },
+    {
+      "numero": "6476",
+      "libelle": "Prestations directes",
+      "nature": "charges"
+    },
+    {
+      "numero": "648",
+      "libelle": "Charges de personnel liées à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "charges"
+    },
+    {
+      "numero": "649",
+      "libelle": "Autres charges de personnel et autres charges sociales",
+      "nature": "charges"
+    },
+    {
+      "numero": "6490",
+      "libelle": "Autres charges de personnel",
+      "nature": "charges"
+    },
+    {
+      "numero": "6495",
+      "libelle": "Autres charges sociales",
+      "nature": "charges"
+    },
+    {
+      "numero": "65",
+      "libelle": "Charges financières",
+      "nature": "charges"
+    },
+    {
+      "numero": "651",
+      "libelle": "Charges d'intérêts",
+      "nature": "charges"
+    },
+    {
+      "numero": "6511",
+      "libelle": "Intérêts des emprunts et dettes",
+      "nature": "charges"
+    },
+    {
+      "numero": "65116",
+      "libelle": "Des emprunts et dettes assimilées",
+      "nature": "charges"
+    },
+    {
+      "numero": "65117",
+      "libelle": "Des dettes rattachées à des participations",
+      "nature": "charges"
+    },
+    {
+      "numero": "6515",
+      "libelle": "Intérêts des comptes courants et des dépôts créditeurs",
+      "nature": "charges"
+    },
+    {
+      "numero": "6516",
+      "libelle": "Intérêts bancaires et sur opérations de financement",
+      "nature": "charges"
+    },
+    {
+      "numero": "6517",
+      "libelle": "Intérêts des obligations cautionnées",
+      "nature": "charges"
+    },
+    {
+      "numero": "6518",
+      "libelle": "Intérêts des autres dettes (y compris les pénalités et intérêts de retard sur emprunts)",
+      "nature": "charges"
+    },
+    {
+      "numero": "653",
+      "libelle": "Pertes sur créances liées à des participations",
+      "nature": "charges"
+    },
+    {
+      "numero": "654",
+      "libelle": "Escomptes accordés",
+      "nature": "charges"
+    },
+    {
+      "numero": "655",
+      "libelle": "Pertes de change",
+      "nature": "charges"
+    },
+    {
+      "numero": "656",
+      "libelle": "Charges nettes sur cessions de valeurs mobilières",
+      "nature": "charges"
+    },
+    {
+      "numero": "657",
+      "libelle": "Autres charges financières",
+      "nature": "charges"
+    },
+    {
+      "numero": "658",
+      "libelle": "Charges financières liées à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "charges"
+    },
+    {
+      "numero": "66",
+      "libelle": "Impôts, taxes et versements assimilés",
+      "nature": "charges"
+    },
+    {
+      "numero": "661",
+      "libelle": "Impôts, taxes et versements assimilés sur rémunérations",
+      "nature": "charges"
+    },
+    {
+      "numero": "6611",
+      "libelle": "TFP",
+      "nature": "charges"
+    },
+    {
+      "numero": "6612",
+      "libelle": "FOPROLOS",
+      "nature": "charges"
+    },
+    {
+      "numero": "6618",
+      "libelle": "Autres",
+      "nature": "charges"
+    },
+    {
+      "numero": "665",
+      "libelle": "Autres impôts, taxes et versements assimilés",
+      "nature": "charges"
+    },
+    {
+      "numero": "6651",
+      "libelle": "Impôts et taxes divers (sauf impôts sur les bénéfices)",
+      "nature": "charges"
+    },
+    {
+      "numero": "6652",
+      "libelle": "Taxes sur le chiffre d'affaires non récupérables",
+      "nature": "charges"
+    },
+    {
+      "numero": "6654",
+      "libelle": "Droits d'enregistrement et de timbre",
+      "nature": "charges"
+    },
+    {
+      "numero": "6655",
+      "libelle": "Taxes sur les véhicules",
+      "nature": "charges"
+    },
+    {
+      "numero": "6658",
+      "libelle": "Autres droits",
+      "nature": "charges"
+    },
+    {
+      "numero": "668",
+      "libelle": "Impôts et taxes liés à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "charges"
+    },
+    {
+      "numero": "67",
+      "libelle": "Pertes extraordinaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "68",
+      "libelle": "Dotations aux amortissements et aux provisions",
+      "nature": "charges"
+    },
+    {
+      "numero": "681",
+      "libelle": "Dotations aux amortissements et aux provisions - charges ordinaires (autres que financières)",
+      "nature": "charges"
+    },
+    {
+      "numero": "6811",
+      "libelle": "Dotations aux amortissements des immobilisations incorporelles et corporelles",
+      "nature": "charges"
+    },
+    {
+      "numero": "68111",
+      "libelle": "Immobilisations incorporelles",
+      "nature": "charges"
+    },
+    {
+      "numero": "68112",
+      "libelle": "Immobilisations corporelles",
+      "nature": "charges"
+    },
+    {
+      "numero": "6812",
+      "libelle": "Dotations aux résorptions des charges reportées",
+      "nature": "charges"
+    },
+    {
+      "numero": "6815",
+      "libelle": "Dotations aux provisions pour risques et charges d'exploitation",
+      "nature": "charges"
+    },
+    {
+      "numero": "6816",
+      "libelle": "Dotations aux provisions pour dépréciation des immobilisations incorporelles et corporelles",
+      "nature": "charges"
+    },
+    {
+      "numero": "68161",
+      "libelle": "Immobilisations incorporelles",
+      "nature": "charges"
+    },
+    {
+      "numero": "68162",
+      "libelle": "Immobilisations corporelles",
+      "nature": "charges"
+    },
+    {
+      "numero": "6817",
+      "libelle": "Dotations aux provisions pour dépréciation des actifs courants (autres que les valeurs mobilières de placement et les équivalents de liquidités)",
+      "nature": "charges"
+    },
+    {
+      "numero": "68173",
+      "libelle": "Stocks et en-cours",
+      "nature": "charges"
+    },
+    {
+      "numero": "68174",
+      "libelle": "Créances",
+      "nature": "charges"
+    },
+    {
+      "numero": "6818",
+      "libelle": "Dotations aux amortissements et aux provisions liées à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "charges"
+    },
+    {
+      "numero": "686",
+      "libelle": "Dotations aux amortissements et aux provisions - charges financières",
+      "nature": "charges"
+    },
+    {
+      "numero": "6861",
+      "libelle": "Dotations aux amortissements des primes de remboursement des obligations",
+      "nature": "charges"
+    },
+    {
+      "numero": "6865",
+      "libelle": "Dotations aux provisions pour risques et charges financières",
+      "nature": "charges"
+    },
+    {
+      "numero": "6866",
+      "libelle": "Dotations aux provisions pour dépréciation des éléments financiers",
+      "nature": "charges"
+    },
+    {
+      "numero": "68662",
+      "libelle": "Immobilisations financières",
+      "nature": "charges"
+    },
+    {
+      "numero": "68665",
+      "libelle": "Placements et prêts courants",
+      "nature": "charges"
+    },
+    {
+      "numero": "6868",
+      "libelle": "Dotations aux amortissements et aux provisions liées à une modification comptable inscrite dans le résultat de l'exercice ou à une activité abandonnée (charges financières)",
+      "nature": "charges"
+    },
+    {
+      "numero": "69",
+      "libelle": "Impôts sur les bénéfices",
+      "nature": "charges"
+    },
+    {
+      "numero": "691",
+      "libelle": "Impôts sur les bénéfices calculés sur le résultat des activités ordinaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "695",
+      "libelle": "Autres impôts sur les bénéfices (régimes particuliers)",
+      "nature": "charges"
+    },
+    {
+      "numero": "697",
+      "libelle": "Impôts sur les bénéfices calculés sur les éléments extraordinaires",
+      "nature": "charges"
+    },
+    {
+      "numero": "70",
+      "libelle": "Ventes de produits fabriqués, prestations de services, marchandises",
+      "nature": "produits",
+      "note": "À ventiler en ventes aux tiers et ventes aux filiales et entreprises associées, en ventes en dinars et ventes en devises"
+    },
+    {
+      "numero": "701",
+      "libelle": "Ventes de produits finis",
+      "nature": "produits"
+    },
+    {
+      "numero": "7011",
+      "libelle": "Produits finis achevés",
+      "nature": "produits"
+    },
+    {
+      "numero": "7012",
+      "libelle": "Produits finis non achevés (contrat de longue durée)",
+      "nature": "produits"
+    },
+    {
+      "numero": "702",
+      "libelle": "Ventes de produits intermédiaires",
+      "nature": "produits"
+    },
+    {
+      "numero": "703",
+      "libelle": "Ventes de produits résiduels",
+      "nature": "produits"
+    },
+    {
+      "numero": "704",
+      "libelle": "Travaux",
+      "nature": "produits"
+    },
+    {
+      "numero": "705",
+      "libelle": "Études et prestations de services",
+      "nature": "produits"
+    },
+    {
+      "numero": "706",
+      "libelle": "Produits des activités annexes",
+      "nature": "produits"
+    },
+    {
+      "numero": "707",
+      "libelle": "Ventes de marchandises",
+      "nature": "produits"
+    },
+    {
+      "numero": "708",
+      "libelle": "Ventes liées à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "produits"
+    },
+    {
+      "numero": "709",
+      "libelle": "Rabais, remises et ristournes accordés par l'entreprise",
+      "nature": "produits"
+    },
+    {
+      "numero": "7091",
+      "libelle": "Sur ventes de produits finis",
+      "nature": "produits"
+    },
+    {
+      "numero": "7092",
+      "libelle": "Sur ventes de produits intermédiaires",
+      "nature": "produits"
+    },
+    {
+      "numero": "7094",
+      "libelle": "Sur travaux",
+      "nature": "produits"
+    },
+    {
+      "numero": "7095",
+      "libelle": "Sur études et prestations de services",
+      "nature": "produits"
+    },
+    {
+      "numero": "7096",
+      "libelle": "Sur activités annexes",
+      "nature": "produits"
+    },
+    {
+      "numero": "7097",
+      "libelle": "Sur ventes de marchandises",
+      "nature": "produits"
+    },
+    {
+      "numero": "7098",
+      "libelle": "Sur ventes liées à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "produits"
+    },
+    {
+      "numero": "71",
+      "libelle": "Production stockée (ou déstockage)",
+      "nature": "produits"
+    },
+    {
+      "numero": "713",
+      "libelle": "Variation des stocks (en-cours de production, produits)",
+      "nature": "produits"
+    },
+    {
+      "numero": "7133",
+      "libelle": "Variations des en-cours de production de biens",
+      "nature": "produits"
+    },
+    {
+      "numero": "7134",
+      "libelle": "Variation des en-cours de production de services",
+      "nature": "produits"
+    },
+    {
+      "numero": "7135",
+      "libelle": "Variation des stocks de produits",
+      "nature": "produits"
+    },
+    {
+      "numero": "72",
+      "libelle": "Production immobilisée",
+      "nature": "produits"
+    },
+    {
+      "numero": "721",
+      "libelle": "Immobilisations incorporelles",
+      "nature": "produits"
+    },
+    {
+      "numero": "722",
+      "libelle": "Immobilisations corporelles",
+      "nature": "produits"
+    },
+    {
+      "numero": "728",
+      "libelle": "Production immobilisée liée à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "produits"
+    },
+    {
+      "numero": "73",
+      "libelle": "Produits divers ordinaires",
+      "nature": "produits"
+    },
+    {
+      "numero": "731",
+      "libelle": "Redevances pour concessions, brevets, licences, marques, procédés, droits et valeurs similaires",
+      "nature": "produits"
+    },
+    {
+      "numero": "732",
+      "libelle": "Revenus des immeubles non affectés aux activités professionnelles",
+      "nature": "produits"
+    },
+    {
+      "numero": "733",
+      "libelle": "Jetons de présence et rémunérations d'administrateurs, gérants",
+      "nature": "produits"
+    },
+    {
+      "numero": "734",
+      "libelle": "Ristournes perçues des coopératives (provenant des excédents)",
+      "nature": "produits"
+    },
+    {
+      "numero": "735",
+      "libelle": "Quotes-parts de résultat sur opérations faites en commun",
+      "nature": "produits"
+    },
+    {
+      "numero": "736",
+      "libelle": "Produits nets sur cessions d'immobilisations et autres gains sur éléments non récurrents ou exceptionnels",
+      "nature": "produits"
+    },
+    {
+      "numero": "738",
+      "libelle": "Produits divers ordinaires liés à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "produits"
+    },
+    {
+      "numero": "739",
+      "libelle": "Quotes-parts des subventions d'investissement inscrites au résultat de l'exercice",
+      "nature": "produits"
+    },
+    {
+      "numero": "74",
+      "libelle": "Subventions d'exploitation et d'équilibre",
+      "nature": "produits"
+    },
+    {
+      "numero": "741",
+      "libelle": "Subventions d'exploitation",
+      "nature": "produits"
+    },
+    {
+      "numero": "745",
+      "libelle": "Subventions d'équilibre",
+      "nature": "produits"
+    },
+    {
+      "numero": "748",
+      "libelle": "Subventions liées à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "produits"
+    },
+    {
+      "numero": "75",
+      "libelle": "Produits financiers",
+      "nature": "produits"
+    },
+    {
+      "numero": "751",
+      "libelle": "Produits des participations",
+      "nature": "produits"
+    },
+    {
+      "numero": "752",
+      "libelle": "Produits des autres immobilisations financières",
+      "nature": "produits"
+    },
+    {
+      "numero": "753",
+      "libelle": "Revenus des autres créances",
+      "nature": "produits"
+    },
+    {
+      "numero": "754",
+      "libelle": "Revenus des valeurs mobilières de placement",
+      "nature": "produits"
+    },
+    {
+      "numero": "755",
+      "libelle": "Escomptes obtenus",
+      "nature": "produits"
+    },
+    {
+      "numero": "756",
+      "libelle": "Gains de change",
+      "nature": "produits"
+    },
+    {
+      "numero": "757",
+      "libelle": "Produits nets sur cessions de valeurs mobilières",
+      "nature": "produits"
+    },
+    {
+      "numero": "758",
+      "libelle": "Produits financiers liés à une modification comptable à imputer au résultat de l'exercice ou à une activité abandonnée",
+      "nature": "produits"
+    },
+    {
+      "numero": "77",
+      "libelle": "Gains extraordinaires",
+      "nature": "produits"
+    },
+    {
+      "numero": "78",
+      "libelle": "Reprises sur amortissements et provisions",
+      "nature": "produits"
+    },
+    {
+      "numero": "781",
+      "libelle": "Reprises sur amortissements et provisions (à inscrire dans les produits ordinaires)",
+      "nature": "produits"
+    },
+    {
+      "numero": "7811",
+      "libelle": "Reprises sur amortissements des immobilisations incorporelles et corporelles",
+      "nature": "produits"
+    },
+    {
+      "numero": "78111",
+      "libelle": "Immobilisations incorporelles",
+      "nature": "produits"
+    },
+    {
+      "numero": "78112",
+      "libelle": "Immobilisations corporelles",
+      "nature": "produits"
+    },
+    {
+      "numero": "7815",
+      "libelle": "Reprises sur provisions pour risques et charges d'exploitation",
+      "nature": "produits"
+    },
+    {
+      "numero": "7816",
+      "libelle": "Reprises sur provisions pour dépréciation des immobilisations incorporelles et corporelles",
+      "nature": "produits"
+    },
+    {
+      "numero": "78161",
+      "libelle": "Immobilisations incorporelles",
+      "nature": "produits"
+    },
+    {
+      "numero": "78162",
+      "libelle": "Immobilisations corporelles",
+      "nature": "produits"
+    },
+    {
+      "numero": "7817",
+      "libelle": "Reprises sur provisions pour dépréciation des actifs courants (autres que les valeurs mobilières de placement et les équivalents de liquidités)",
+      "nature": "produits"
+    },
+    {
+      "numero": "78173",
+      "libelle": "Stocks et en-cours",
+      "nature": "produits"
+    },
+    {
+      "numero": "78174",
+      "libelle": "Créances",
+      "nature": "produits"
+    },
+    {
+      "numero": "7818",
+      "libelle": "Reprises sur provisions liées à une modification comptable inscrite aux résultats ou à une activité abandonnée",
+      "nature": "produits"
+    },
+    {
+      "numero": "786",
+      "libelle": "Reprises sur provisions (à inscrire dans les produits financiers)",
+      "nature": "produits"
+    },
+    {
+      "numero": "7865",
+      "libelle": "Reprises sur provisions pour risque et charges financières",
+      "nature": "produits"
+    },
+    {
+      "numero": "7866",
+      "libelle": "Reprises sur provisions pour dépréciation des éléments financiers",
+      "nature": "produits"
+    },
+    {
+      "numero": "7868",
+      "libelle": "Reprises sur provisions (à inscrire dans les produits financiers) liées à une modification comptable inscrite aux résultats ou à une activité abandonnée",
+      "nature": "produits"
+    },
+    {
+      "numero": "79",
+      "libelle": "Transferts de charges",
+      "nature": "produits",
+      "note": "À ventiler en fonction des comptes où ont été imputées les charges à transférer"
+    }
+  ]
+}

@@ -13,6 +13,8 @@ const { CHAMPS_IDENTITE, lireIdentite, mapIdentite, nomAffiche, identiteComplete
 const { journaliser } = require('./journal');
 const { exigerEcriture, modeTitulaire, etatAbonnement } = require('./garde');
 const { erreur, idValide, repondreErreur } = require('./comptablesClient');
+// S5a : plan de comptes copié du paquet pays à la création ; résumé pour la fiche (planInit.js, sans dépendance ici).
+const { initialiserPlan, resumePlan } = require('./planInit');
 
 // ── Régime fiscal (listes fermées, SPEC-SOCLE §3.2) ─────────────────────────────────────────────────────────────────
 const PERSONNES = ['morale', 'physique'];
@@ -152,10 +154,10 @@ const exigerAcces = async (db, user, espaceId, verrou = false) => {
   return acces;
 };
 // Réponses du client du 07/10 (question 6) : Complet crée et modifie ; Saisie et Consultation lisent ; archiver,
-// désarchiver et supprimer = titulaire seul.
+// désarchiver et supprimer = titulaire seul. S5a : Complet (ou le titulaire) configure le dossier (plan de comptes).
 const droits = (acces) => {
   const complet = acces.role === 'titulaire' || acces.niveau === 'complet';
-  return { creer: complet, modifier: complet, archiver: acces.role === 'titulaire', supprimer: acces.role === 'titulaire' };
+  return { creer: complet, modifier: complet, configurer: complet, archiver: acces.role === 'titulaire', supprimer: acces.role === 'titulaire' };
 };
 const MSG_NIVEAU = 'Seul le titulaire ou un gérant de niveau Complet peut créer ou modifier un dossier';
 const MSG_TITULAIRE = 'Seul le titulaire peut archiver, désarchiver ou supprimer un dossier';
@@ -324,9 +326,10 @@ const dossierDe = async (db, acces, dossierId, verrou = false) => {
 const presenterRegime = (d) => ({
   personne: d.personne, impot: d.impot, tva: d.tva, exportateurTotal: d.exportateur_total, teledeclaration: d.teledeclaration, debutActivite: d.debut_activite,
 });
-// La fiche : identité, régime, exercice en cours (et ses périodes), qui y a accès, droits de la personne.
+// La fiche : identité, régime, exercice en cours (et ses périodes), qui y a accès, droits de la personne, et (S5a) le
+// résumé de sa configuration (plan de comptes : comptes actifs, ajoutés, désactivés, paquet d'origine).
 const presenterFiche = async (db, acces, d) => {
-  const [ex, personnes, mode] = await Promise.all([
+  const [ex, personnes, mode, plan] = await Promise.all([
     db.query('SELECT id, debut, fin, etat FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [d.id]),
     db.query(
       `SELECT a.role, a.niveau, COALESCE(a.nom_attendu, u.nom) AS nom, u.email
@@ -338,6 +341,7 @@ const presenterFiche = async (db, acces, d) => {
       [d.espace_id, d.id]
     ),
     modeTitulaire(db, d.espace_id),
+    resumePlan(db, d.id),
   ]);
   const courant = ex.rows.find((x) => x.etat === 'ouvert') || ex.rows[0] || null;
   const periodes = courant
@@ -359,6 +363,7 @@ const presenterFiche = async (db, acces, d) => {
     exercices: ex.rows.map((x) => ({ id: x.id, debut: x.debut, fin: x.fin, etat: x.etat })),
     acces: personnes.rows.map((p) => ({ role: p.role, niveau: p.niveau, nom: p.nom, email: p.email })),
     droits: droits(acces),
+    plan,
     mouvemente: await dossierMouvemente(db, d.id),
     creeLe: d.created_at,
     modifieLe: d.updated_at,
@@ -460,6 +465,8 @@ const creer = async (req, res) => {
       const ex = await creerExercice(db, d.id, exercice);
       await journaliser(db, acces.espace_id, req.user.id, 'dossier_cree', { dossier: d.id, nom: d.nom, matricule: d.matricule_fiscal, ...(acces.tous_dossiers ? {} : { ouvertA: acces.acces_id }) });
       await journaliser(db, acces.espace_id, req.user.id, 'exercice_cree', { dossier: d.id, exercice: ex.id, debut: exercice.debut, fin: exercice.fin });
+      // S5a : le plan de comptes du dossier = copie du paquet de son pays (même transaction).
+      await initialiserPlan(db, { dossierId: d.id, espaceId: acces.espace_id, pays: d.pays, auteurId: req.user.id, nom: d.nom });
       return {
         fiche: await presenterFiche(db, acces, d),
         avertissements: [...identite.avertissements, ...await avertissementsMatriculeDossier(db, acces, d.matricule_fiscal, d.id)],
@@ -637,5 +644,7 @@ module.exports = {
   PERSONNES, IMPOTS, TVA, MOIS_MAX, regimeParForme, lireRegime, lireExercice, periodesDe, nbMois, finDeMois, dateValide, anneeCivile, lireIdentiteDossier, droits,
   accesSurEspace, dossierMouvemente, creerExercice, identiteLabflow, lireIdentiteClient, SQL_IDENTITE_CLIENT,
   LIMITE_DEFAUT, LIMITE_MAX, IDS_MAX, lireParametresListe, motifRecherche, SQL_LISTE, SQL_COMPTES,
+  // S5a : la configuration du dossier (planComptes.js) réemploie les gardes et la transaction des dossiers.
+  dossierDe, presenterEspace, dansEspaceDuDossier,
   lister, creer, fiche, modifier, reprendreIdentite, archiver, desarchiver, supprimer,
 };
