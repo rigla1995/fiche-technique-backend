@@ -3,6 +3,9 @@
 // un fichier JSON versionné et relu (Tunisie : tn-nc01.json, nomenclature de la norme NC 01, 3ᵉ partie, tirée du PDF
 // officiel de l'OECT), chargé en base par une migration (212 : compta.ref_paquets, compta.ref_plans) dont les VALUES sont
 // produites par `sqlValeursPlan` — test/comptaS5a.test.js vérifie que la migration et le fichier disent la même chose.
+// S5b « Les journaux et les codes de taxe » (PLAN-S5 §5 ; réponses du client du 08/10) : le même fichier porte les
+// journaux par défaut, les sous-comptes proposés (créés dans le plan d'un dossier quand un code de taxe copié les vise)
+// et les codes de taxe — migration 213 (compta.ref_journaux, ref_sous_comptes, ref_taxes), VALUES produites ici aussi.
 // Ce module ne touche pas à la base : il lit, contrôle et transcrit.
 const PAQUETS = { TN: require('./tn-nc01.json') };
 
@@ -36,6 +39,62 @@ const RE_NUMERO = /^\d{2,8}$/;
 const LIBELLE_MAX = 255;
 const NOTE_MAX = 500;
 
+// ── S5b : journaux ──────────────────────────────────────────────────────────────────────────────────────────────────
+// Types de journal (CADRAGE §3 : achats, ventes, banque — un par compte bancaire —, caisse, opérations diverses,
+// à-nouveaux). Banque et caisse portent un compte de contrepartie de même nature ; un seul journal d'à-nouveaux par
+// dossier (réponse 4 du client du 08/10 : les autres types s'ajoutent librement).
+const TYPES_JOURNAUX_LIBELLES = {
+  achats: 'Achats',
+  ventes: 'Ventes',
+  banque: 'Banque',
+  caisse: 'Caisse',
+  od: 'Opérations diverses',
+  an: 'À-nouveaux',
+};
+const TYPES_JOURNAUX = Object.keys(TYPES_JOURNAUX_LIBELLES);
+const TYPES_AVEC_COMPTE = ['banque', 'caisse'];
+// Nature du compte de contrepartie exigée par type.
+const NATURE_PAR_TYPE = { banque: 'banque', caisse: 'caisse' };
+// Code d'un journal : 2 à 4 lettres majuscules ou chiffres, figé après création.
+const CODE_JOURNAL_MAX = 4;
+const RE_CODE_JOURNAL = /^[A-Z0-9]{2,4}$/;
+
+// ── S5b : codes de taxe ─────────────────────────────────────────────────────────────────────────────────────────────
+const TYPES_TAXES_LIBELLES = {
+  tva: 'TVA',
+  retenue: 'Retenue à la source',
+  retenue_tva: 'Retenue de TVA',
+  timbre: 'Droit de timbre',
+  fodec: 'FODEC',
+  avance: 'Avance',
+  autre: 'Autre taxe',
+};
+const TYPES_TAXES = Object.keys(TYPES_TAXES_LIBELLES);
+// Assiette : sur quoi le taux s'applique (recherche fiscale §3 : les retenues se calculent sur le TTC hors timbre ; la
+// retenue de TVA sur le montant de la TVA ; le timbre est un montant fixe par facture).
+const ASSIETTES_LIBELLES = {
+  ht: 'Montant hors taxes',
+  ttc: 'Montant TTC (hors timbre)',
+  tva: 'Montant de la TVA',
+  fixe: 'Montant fixe par facture',
+};
+const ASSIETTES = Object.keys(ASSIETTES_LIBELLES);
+// Quels dossiers reçoivent le code à l'initialisation (selon le régime enregistré en S4 : PLAN-S5 §1 ligne S5b).
+const COPIES_LIBELLES = {
+  tous: 'Tous les régimes',
+  assujetti: 'Régime réel de TVA',
+  exportateur: 'Exportateur total',
+  jamais: 'Sur demande',
+};
+const COPIES = Object.keys(COPIES_LIBELLES);
+// Code d'un code de taxe : 2 à 12 lettres majuscules, chiffres ou « _ ».
+const CODE_TAXE_MAX = 12;
+const RE_CODE_TAXE = /^[A-Z0-9_]{2,12}$/;
+// Taux (0 à 100 %, 3 décimales) et montant fixe (dinar à 3 décimales), toujours en texte (SPEC-SOCLE §0).
+const RE_TAUX = /^\d{1,3}\.\d{3}$/;
+const RE_MONTANT = /^\d{1,6}\.\d{3}$/;
+const RE_CODE_TEJ = /^[A-Z0-9_]{1,20}$/;
+
 // Le paquet d'un pays (le seul pour l'instant : TN), ou null.
 const paquetDe = (pays) => PAQUETS[String(pays || '').toUpperCase()] || null;
 
@@ -48,6 +107,18 @@ const parentParmi = (numero, numeros) => {
   return null;
 };
 
+// Libellé propre : non vide, pas trop long, espaces simples, pas de point final (sauf abréviation « C.C.P. »), de point
+// en milieu de libellé, d'appel de note ni d'apostrophe courbe.
+const defautsLibelle = (l, strict = true) => {
+  const d = [];
+  if (typeof l !== 'string' || !l.trim() || l.length > LIBELLE_MAX) d.push('libellé vide ou trop long');
+  else {
+    if (l !== l.replace(/\s+/g, ' ').trim()) d.push('espaces en trop dans le libellé');
+    if ((/\.$/.test(l) && !/\b[A-Z]\.[A-Z]\.[A-Z]\.$/.test(l)) || (strict && /\.\s/.test(l)) || /\[|\]|[’‘]/.test(l)) d.push('point, appel de note ou apostrophe courbe dans le libellé');
+  }
+  return d;
+};
+
 // Contrôle d'un paquet (test et outillage) : liste des défauts, vide si tout va bien.
 const controlerPaquet = (p) => {
   const defauts = [];
@@ -57,14 +128,13 @@ const controlerPaquet = (p) => {
   if (!p.libelle || !p.source) defauts.push('libellé et source obligatoires');
   if (!Array.isArray(p.comptes) || !p.comptes.length) return [...defauts, 'comptes : liste vide'];
   const numeros = new Set();
+  const parNumero = new Map();
   for (const c of p.comptes) {
     if (!RE_NUMERO.test(c.numero || '')) defauts.push(`${c.numero} : numéro de ${NUMERO_MIN} à ${NUMERO_MAX} chiffres`);
     if (numeros.has(c.numero)) defauts.push(`${c.numero} : en double`);
     numeros.add(c.numero);
-    if (typeof c.libelle !== 'string' || !c.libelle.trim() || c.libelle.length > LIBELLE_MAX) defauts.push(`${c.numero} : libellé vide ou trop long`);
-    if (c.libelle !== (c.libelle || '').replace(/\s+/g, ' ').trim()) defauts.push(`${c.numero} : espaces en trop dans le libellé`);
-    // Point final (sauf abréviation « C.C.P. »), point en milieu de libellé, appel de note, apostrophe courbe : refusés.
-    if ((/\.$/.test(c.libelle || '') && !/\b[A-Z]\.[A-Z]\.[A-Z]\.$/.test(c.libelle)) || /\.\s|\[|\]|[’‘]/.test(c.libelle || '')) defauts.push(`${c.numero} : point, appel de note ou apostrophe courbe dans le libellé`);
+    parNumero.set(c.numero, c);
+    for (const d of defautsLibelle(c.libelle)) defauts.push(`${c.numero} : ${d}`);
     if (!NATURES.includes(c.nature)) defauts.push(`${c.numero} : nature inconnue « ${c.nature} »`);
     if (c.note != null && (typeof c.note !== 'string' || !c.note.trim() || c.note.length > NOTE_MAX)) defauts.push(`${c.numero} : note vide ou trop longue`);
     const classe = Number((c.numero || '')[0]);
@@ -75,11 +145,72 @@ const controlerPaquet = (p) => {
   }
   const tries = [...numeros].sort();
   if (p.comptes.some((c, i) => c.numero !== tries[i])) defauts.push('comptes : à trier par numéro');
+
+  // S5b : journaux, sous-comptes proposés, codes de taxe (facultatifs dans un paquet ; contrôlés s'ils sont là).
+  const journaux = p.journaux || [];
+  const sousComptes = p.sousComptes || [];
+  const taxes = p.taxes || [];
+  if (!Array.isArray(journaux) || !Array.isArray(sousComptes) || !Array.isArray(taxes)) return [...defauts, 'journaux, sousComptes et taxes : listes attendues'];
+  const codesJournaux = new Set();
+  for (const j of journaux) {
+    const id = `journal ${j.code}`;
+    if (!RE_CODE_JOURNAL.test(j.code || '')) defauts.push(`${id} : code de 2 à ${CODE_JOURNAL_MAX} lettres majuscules ou chiffres`);
+    if (codesJournaux.has(j.code)) defauts.push(`${id} : en double`);
+    codesJournaux.add(j.code);
+    for (const d of defautsLibelle(j.libelle)) defauts.push(`${id} : ${d}`);
+    if (!TYPES_JOURNAUX.includes(j.type)) defauts.push(`${id} : type inconnu « ${j.type} »`);
+    if (TYPES_AVEC_COMPTE.includes(j.type)) {
+      const c = parNumero.get(j.compte);
+      if (!c) defauts.push(`${id} : compte de contrepartie absent du paquet`);
+      else if (c.nature !== NATURE_PAR_TYPE[j.type]) defauts.push(`${id} : compte ${j.compte} de nature ${c.nature}, ${NATURE_PAR_TYPE[j.type]} attendue`);
+    } else if (j.compte != null) defauts.push(`${id} : un journal ${j.type} n'a pas de compte de contrepartie`);
+  }
+  if (journaux.filter((j) => j.type === 'an').length > 1) defauts.push('journaux : un seul journal d\'à-nouveaux');
+  const numerosProposes = new Set();
+  for (const s of sousComptes) {
+    const id = `sous-compte ${s.numero}`;
+    if (!RE_NUMERO.test(s.numero || '')) defauts.push(`${id} : numéro de ${NUMERO_MIN} à ${NUMERO_MAX} chiffres`);
+    if (numeros.has(s.numero)) defauts.push(`${id} : déjà dans la nomenclature`);
+    if (numerosProposes.has(s.numero)) defauts.push(`${id} : en double`);
+    numerosProposes.add(s.numero);
+    if (!parentParmi(s.numero || '', numeros)) defauts.push(`${id} : aucun parent dans le paquet`);
+    for (const d of defautsLibelle(s.libelle)) defauts.push(`${id} : ${d}`);
+    if (!NATURES.includes(s.nature)) defauts.push(`${id} : nature inconnue « ${s.nature} »`);
+    if (typeof s.explication !== 'string' || !s.explication.trim() || s.explication.length > NOTE_MAX) defauts.push(`${id} : explication obligatoire (${NOTE_MAX} caractères au plus)`);
+  }
+  const codesTaxes = new Set();
+  const compteConnu = (n) => n == null || numeros.has(n) || numerosProposes.has(n);
+  for (const t of taxes) {
+    const id = `taxe ${t.code}`;
+    if (!RE_CODE_TAXE.test(t.code || '')) defauts.push(`${id} : code de 2 à ${CODE_TAXE_MAX} lettres majuscules, chiffres ou _`);
+    if (codesTaxes.has(t.code)) defauts.push(`${id} : en double`);
+    codesTaxes.add(t.code);
+    // Un libellé de taxe peut contenir une abréviation suivie d'un espace (« Art. 51 ») : contrôle non strict.
+    for (const d of defautsLibelle(t.libelle, false)) defauts.push(`${id} : ${d}`);
+    if (!TYPES_TAXES.includes(t.type)) defauts.push(`${id} : type inconnu « ${t.type} »`);
+    if (!ASSIETTES.includes(t.assiette)) defauts.push(`${id} : assiette inconnue « ${t.assiette} »`);
+    if (t.taux != null && !RE_TAUX.test(t.taux)) defauts.push(`${id} : taux « ${t.taux} » (texte à 3 décimales attendu)`);
+    if (t.taux != null && Number(t.taux) > 100) defauts.push(`${id} : taux supérieur à 100 %`);
+    if (t.montant != null && !RE_MONTANT.test(t.montant)) defauts.push(`${id} : montant « ${t.montant} » (texte à 3 décimales attendu)`);
+    if ((t.assiette === 'fixe') !== (t.montant != null)) defauts.push(`${id} : un montant fixe va avec l'assiette « fixe », et seulement elle`);
+    if (t.assiette === 'fixe' && t.taux != null) defauts.push(`${id} : un montant fixe n'a pas de taux`);
+    for (const [cle, n] of [['achat', t.achat], ['vente', t.vente], ['immobilisations', t.immobilisations]]) {
+      if (!compteConnu(n)) defauts.push(`${id} : compte ${cle} ${n} absent du paquet et des sous-comptes proposés`);
+    }
+    if (!COPIES.includes(t.copie)) defauts.push(`${id} : copie inconnue « ${t.copie} »`);
+    if (t.codeTej != null && !RE_CODE_TEJ.test(t.codeTej)) defauts.push(`${id} : code TEJ « ${t.codeTej} »`);
+    if (t.note != null && (typeof t.note !== 'string' || !t.note.trim() || t.note.length > NOTE_MAX)) defauts.push(`${id} : note vide ou trop longue`);
+  }
+  // Un sous-compte proposé doit servir à au moins un code (sinon il n'a pas lieu d'être).
+  for (const s of sousComptes) {
+    if (!taxes.some((t) => [t.achat, t.vente, t.immobilisations].includes(s.numero))) defauts.push(`sous-compte ${s.numero} : visé par aucun code de taxe`);
+  }
   return defauts;
 };
 
-// Transcription SQL d'une valeur texte (ou NULL).
+// Transcription SQL d'une valeur texte (ou NULL) et d'un nombre à 3 décimales transporté en texte (ou NULL).
 const sqlTexte = (v) => (v == null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
+const sqlNombre = (v) => (v == null ? 'NULL' : String(v));
 // Les lignes VALUES de compta.ref_plans pour la migration : (numero, libelle, nature, parent, note), une par ligne, dans
 // l'ordre du fichier. Le parent est le plus long préfixe présent dans le paquet (calculé ici, jamais saisi à la main).
 const sqlValeursPlan = (p) => {
@@ -88,5 +219,26 @@ const sqlValeursPlan = (p) => {
     .map((c) => `  (${sqlTexte(c.numero)}, ${sqlTexte(c.libelle)}, ${sqlTexte(c.nature)}, ${sqlTexte(parentParmi(c.numero, numeros))}, ${sqlTexte(c.note ?? null)})`)
     .join(',\n');
 };
+// S5b — compta.ref_journaux : (code, libelle, type, compte, ordre), l'ordre étant celui du fichier.
+const sqlValeursJournaux = (p) => (p.journaux || [])
+  .map((j, i) => `  (${sqlTexte(j.code)}, ${sqlTexte(j.libelle)}, ${sqlTexte(j.type)}, ${sqlTexte(j.compte ?? null)}, ${i + 1})`)
+  .join(',\n');
+// S5b — compta.ref_sous_comptes : (numero, libelle, nature, parent, explication), parent = plus long préfixe du paquet.
+const sqlValeursSousComptes = (p) => {
+  const numeros = new Set(p.comptes.map((c) => c.numero));
+  return (p.sousComptes || [])
+    .map((s) => `  (${sqlTexte(s.numero)}, ${sqlTexte(s.libelle)}, ${sqlTexte(s.nature)}, ${sqlTexte(parentParmi(s.numero, numeros))}, ${sqlTexte(s.explication)})`)
+    .join(',\n');
+};
+// S5b — compta.ref_taxes : (code, libelle, type, taux, montant, assiette, achat, vente, immobilisations, copie, code_tej,
+// note, ordre) ; taux et montant en littéraux numériques (NUMERIC), l'ordre étant celui du fichier.
+const sqlValeursTaxes = (p) => (p.taxes || [])
+  .map((t, i) => `  (${sqlTexte(t.code)}, ${sqlTexte(t.libelle)}, ${sqlTexte(t.type)}, ${sqlNombre(t.taux)}, ${sqlNombre(t.montant)}, ${sqlTexte(t.assiette)}, ${sqlTexte(t.achat ?? null)}, ${sqlTexte(t.vente ?? null)}, ${sqlTexte(t.immobilisations ?? null)}, ${sqlTexte(t.copie)}, ${sqlTexte(t.codeTej ?? null)}, ${sqlTexte(t.note ?? null)}, ${i + 1})`)
+  .join(',\n');
 
-module.exports = { PAQUETS, NATURES, NATURES_LIBELLES, NUMERO_MIN, NUMERO_MAX, RE_NUMERO, LIBELLE_MAX, NOTE_MAX, paquetDe, parentParmi, controlerPaquet, sqlTexte, sqlValeursPlan };
+module.exports = {
+  PAQUETS, NATURES, NATURES_LIBELLES, NUMERO_MIN, NUMERO_MAX, RE_NUMERO, LIBELLE_MAX, NOTE_MAX, paquetDe, parentParmi, controlerPaquet, sqlTexte, sqlValeursPlan,
+  TYPES_JOURNAUX, TYPES_JOURNAUX_LIBELLES, TYPES_AVEC_COMPTE, NATURE_PAR_TYPE, CODE_JOURNAL_MAX, RE_CODE_JOURNAL,
+  TYPES_TAXES, TYPES_TAXES_LIBELLES, ASSIETTES, ASSIETTES_LIBELLES, COPIES, COPIES_LIBELLES, CODE_TAXE_MAX, RE_CODE_TAXE, RE_TAUX, RE_MONTANT, RE_CODE_TEJ,
+  sqlNombre, sqlValeursJournaux, sqlValeursSousComptes, sqlValeursTaxes,
+};

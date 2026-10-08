@@ -7,6 +7,8 @@
  *   renommer et rétablir ; nature et explication d'un compte ajouté seulement ; désactiver du bas vers le haut, réactiver
  *   sous un parent actif ; supprimer un compte ajouté sans sous-compte, jamais un compte de la norme ; droits par niveau ;
  *   dossier archivé ; garde par comptabilité (lecture seule) ; export Excel ; journal ; suppression du dossier (cascade).
+ * Depuis S5b, un dossier neuf porte aussi les 3 sous-comptes proposés par les codes de taxe (4375, 4376, 43665, origine
+ * « ajout ») et le journal BQ porte 5321 (déplacé sur 5324 le temps de le désactiver) : comptes rendus adaptés.
  * Crée un super_admin, un cabinet (2 gérants achetés), deux collaborateurs et un client LabFlow (module Comptabilité)
  * temporaires ; règle les tarifs Compta le temps de l'essai, puis restaure et nettoie.
  * ⚠️ Backend de test : « node scripts/start-test-backend.js » (emails bouchonnés, réseau sortant bloqué). */
@@ -35,6 +37,9 @@ const appel = async (methode, chemin, jeton, corps) => {
 const login = async (email) => appel('POST', '/auth/login', null, { email, password: MDP });
 const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta_mise_en_route', 'compta_module_mensuel', 'compta_gerant_client_mensuel'];
 const NB_PAQUET = 604;
+// S5b : sous-comptes proposés, créés dans le plan de tout dossier neuf (origine « ajout », expliqués).
+const PROPOSES = ['4375', '4376', '43665'];
+const NB_PLAN = NB_PAQUET + PROPOSES.length;
 
 (async () => {
   const hash = await bcrypt.hash(MDP, 10);
@@ -113,27 +118,27 @@ const NB_PAQUET = 604;
     check(`paquet Tunisie en base : TN 2026.1, ${NB_PAQUET} comptes`, paquet?.version === '2026.1' && nbRef === NB_PAQUET, `${paquet?.version} ${nbRef}`);
     r = await appel('POST', `/api/compta/espaces/${espaceId}/dossiers`, cabinet.tok, { identite: IDENTITE_A, regime: REGIME, exercice: CIVIL });
     const A = r.body;
-    check(`dossier A créé : la fiche résume le plan (${NB_PAQUET} comptes actifs, 0 ajouté, paquet TN 2026.1)`, r.status === 201 && A?.plan?.nbActifs === NB_PAQUET && A?.plan?.nbAjoutes === 0 && A?.plan?.nbDesactives === 0
+    check(`dossier A créé : la fiche résume le plan (${NB_PLAN} comptes actifs, 3 ajoutés — les sous-comptes proposés de S5b —, paquet TN 2026.1)`, r.status === 201 && A?.plan?.nbActifs === NB_PLAN && A?.plan?.nbAjoutes === 3 && A?.plan?.nbDesactives === 0
       && A?.plan?.paquet?.pays === 'TN' && A?.plan?.paquet?.version === '2026.1' && A?.droits?.configurer === true, `${r.status} ${JSON.stringify(A?.plan)}`);
     let j = await journal(espaceId, 'plan_initialise');
     check('journal : plan_initialise (dossier, paquet, nombre de comptes)', !!j && j.details?.dossier === A?.id && j.details?.paquet === 'TN 2026.1' && j.details?.comptes === NB_PAQUET, JSON.stringify(j?.details));
     const integ = (await pool.query(
       `SELECT COUNT(*)::int AS n, COUNT(*) FILTER (WHERE parent_id IS NULL AND LENGTH(numero) > 2)::int AS orphelins,
-              COUNT(*) FILTER (WHERE origine <> 'paquet' OR NOT actif OR libelle_paquet IS DISTINCT FROM libelle)::int AS anormaux
-         FROM compta.comptes WHERE dossier_id = $1`, [A?.id])).rows[0];
-    check('base : tous les comptes copiés, chaque compte de plus de 2 chiffres a son parent', integ.n === NB_PAQUET && integ.orphelins === 0 && integ.anormaux === 0, JSON.stringify(integ));
+              COUNT(*) FILTER (WHERE (origine <> 'paquet' OR NOT actif OR libelle_paquet IS DISTINCT FROM libelle) AND NOT (numero = ANY($2)))::int AS anormaux
+         FROM compta.comptes WHERE dossier_id = $1`, [A?.id, PROPOSES])).rows[0];
+    check('base : tous les comptes copiés (plus les 3 sous-comptes proposés de S5b), chaque compte de plus de 2 chiffres a son parent', integ.n === NB_PLAN && integ.orphelins === 0 && integ.anormaux === 0, JSON.stringify(integ));
     const idPaquetDossier = (await pool.query('SELECT paquet_id FROM compta.dossiers WHERE id = $1', [A?.id])).rows[0]?.paquet_id;
     check('le dossier garde la version du paquet qui l\'a initialisé', idPaquetDossier === paquet?.id);
 
     // Le dossier « Mon entreprise » du client (créé à l'activation du module) a aussi son plan.
     const dossierClient = (await pool.query(`SELECT id FROM compta.dossiers WHERE espace_id = $1 AND source = 'labflow'`, [espaceClient])).rows[0];
     r = await appel('GET', `/api/compta/dossiers/${dossierClient?.id}/plan`, client.tok);
-    check(`« Mon entreprise » du client : plan de ${NB_PAQUET} comptes, le client configure (titulaire)`, r.status === 200 && r.body?.comptes?.length === NB_PAQUET && r.body?.droits?.configurer === true && r.body?.dossier?.source === 'labflow', `${r.status} ${r.body?.comptes?.length}`);
+    check(`« Mon entreprise » du client : plan de ${NB_PLAN} comptes, le client configure (titulaire)`, r.status === 200 && r.body?.comptes?.length === NB_PLAN && r.body?.droits?.configurer === true && r.body?.dossier?.source === 'labflow', `${r.status} ${r.body?.comptes?.length}`);
 
     // ── L'arbre, selon l'accès ──
     r = await appel('GET', `/api/compta/dossiers/${A.id}/plan`, cabinet.tok);
     let plan = r.body;
-    check('titulaire : l\'arbre complet (dossier, droits, paquet, natures, bornes 2-8, comptes rendus)', r.status === 200 && plan?.comptes?.length === NB_PAQUET && plan?.nb?.total === NB_PAQUET && plan?.nb?.actifs === NB_PAQUET
+    check('titulaire : l\'arbre complet (dossier, droits, paquet, natures, bornes 2-8, comptes rendus)', r.status === 200 && plan?.comptes?.length === NB_PLAN && plan?.nb?.total === NB_PLAN && plan?.nb?.actifs === NB_PLAN && plan?.nb?.ajoutes === 3
       && plan?.paquet?.version === '2026.1' && plan?.natures?.length === 17 && plan?.numero?.min === 2 && plan?.numero?.max === 8 && plan?.dossier?.id === A.id && plan?.dossier?.espace?.role === 'titulaire' && plan?.etatAbonnement === 'actif', `${r.status} ${JSON.stringify(plan?.nb)}`);
     const c532 = compte(plan, '532');
     const c5321 = compte(plan, '5321');
@@ -141,10 +146,10 @@ const NB_PAQUET = 604;
     check('… natures : 4011 fournisseurs, 4111 clients, 43666 TVA déductible, 43671 TVA collectée, 432 retenues opérées, 5411 caisse',
       compte(plan, '4011')?.nature === 'fournisseurs' && compte(plan, '4111')?.nature === 'clients' && compte(plan, '43666')?.nature === 'tva_deductible' && compte(plan, '43671')?.nature === 'tva_collectee' && compte(plan, '432')?.nature === 'retenues_operees' && compte(plan, '5411')?.nature === 'caisse');
     check('… libellés de la norme : 704 Travaux, 6031 (note [3]), 534 C.C.P., origine paquet, aucun renommé',
-      compte(plan, '704')?.libelle === 'Travaux' && compte(plan, '6031')?.libelle === 'Variation des stocks de matières premières et fournitures' && compte(plan, '534')?.libelle === 'C.C.P.' && plan.comptes.every((c) => c.origine === 'paquet' && !c.renomme && c.actif && c.libellePaquet === c.libelle));
+      compte(plan, '704')?.libelle === 'Travaux' && compte(plan, '6031')?.libelle === 'Variation des stocks de matières premières et fournitures' && compte(plan, '534')?.libelle === 'C.C.P.' && plan.comptes.every((c) => c.actif && (c.origine === 'ajout' ? PROPOSES.includes(c.numero) : c.origine === 'paquet' && !c.renomme && c.libellePaquet === c.libelle)));
     check('… note du 281 transmise', compte(plan, '281')?.note === 'même ventilation que celle du compte 21');
     r = await appel('GET', `/api/compta/dossiers/${A.id}/plan`, saisie.tok);
-    check('collaborateur Saisie : lit l\'arbre, ne configure pas', r.status === 200 && r.body?.droits?.configurer === false && r.body?.comptes?.length === NB_PAQUET, String(r.status));
+    check('collaborateur Saisie : lit l\'arbre, ne configure pas', r.status === 200 && r.body?.droits?.configurer === false && r.body?.comptes?.length === NB_PLAN, String(r.status));
     r = await appel('GET', `/api/compta/dossiers/${A.id}/plan`, client.tok);
     check('un client étranger au cabinet : 404', r.status === 404, String(r.status));
     r = await appel('GET', `/api/compta/dossiers/${A.id}/plan`, adminTok);
@@ -159,7 +164,7 @@ const NB_PAQUET = 604;
     plan = r.body;
     let c53211 = compte(plan, '53211');
     check('Complet subdivise 5321 en 53211 (201) : ajout, nature banque héritée, explication, parent 5321', r.status === 201 && c53211?.origine === 'ajout' && c53211?.nature === 'banque' && c53211?.explication === 'Compte bancaire principal' && c53211?.parentId === c5321.id && c53211?.classe === 5 && c53211?.feuille === true && c53211?.libellePaquet === null, `${r.status} ${JSON.stringify(r.body?.message || c53211)}`);
-    check('… 5321 n\'est plus une feuille ; comptes rendus : 1 ajouté', compte(plan, '5321')?.feuille === false && compte(plan, '5321')?.nbEnfantsActifs === 1 && plan?.nb?.ajoutes === 1 && plan?.nb?.total === NB_PAQUET + 1, JSON.stringify(plan?.nb));
+    check('… 5321 n\'est plus une feuille ; comptes rendus : 4 ajoutés (dont les 3 proposés)', compte(plan, '5321')?.feuille === false && compte(plan, '5321')?.nbEnfantsActifs === 1 && plan?.nb?.ajoutes === 4 && plan?.nb?.total === NB_PLAN + 1, JSON.stringify(plan?.nb));
     j = await journal(espaceId, 'compte_ajoute');
     check('journal : compte_ajoute (numéro, libellé, parent, nature, explication)', !!j && j.details?.numero === '53211' && j.details?.parent === '5321' && j.details?.nature === 'banque' && j.details?.explication === 'Compte bancaire principal' && j.auteur_id === complet.id, JSON.stringify(j?.details));
     r = await appel('POST', `/api/compta/dossiers/${A.id}/plan/comptes`, cabinet.tok, { parentId: c5321.id, numero: '53212', libelle: 'Amen Bank', nature: 'caisse' });
@@ -251,6 +256,11 @@ const NB_PAQUET = 604;
     check('désactiver deux fois : 409 DEJA_FAIT', r.status === 409 && r.body?.code === 'DEJA_FAIT', String(r.status));
     const c53212 = compte(plan, '53212');
     r = await appel('POST', `/api/compta/dossiers/${A.id}/plan/comptes/${c53212.id}/desactiver`, cabinet.tok);
+    // S5b : le journal BQ porte 5321 par défaut (un compte porté ne se désactive pas) : déplacé sur 5324 (devises).
+    r = await appel('GET', `/api/compta/dossiers/${A.id}/journaux`, cabinet.tok);
+    const bq = r.body?.journaux?.find((x) => x.code === 'BQ');
+    r = await appel('PUT', `/api/compta/dossiers/${A.id}/journaux/${bq?.id}`, cabinet.tok, { compteId: compte(plan, '5324')?.id });
+    check('S5b : le journal BQ (qui portait 5321) déplacé sur 5324 pour libérer 5321', r.status === 200, `${r.status} ${r.body?.message || ''}`);
     r = await appel('POST', `/api/compta/dossiers/${A.id}/plan/comptes/${c5321.id}/desactiver`, cabinet.tok);
     check('5321 se désactive une fois ses sous-comptes désactivés ; 532 redevient feuille ? non (5324 active)', r.status === 200 && compte(r.body, '5321')?.actif === false && compte(r.body, '532')?.nbEnfantsActifs === 1, `${r.status} ${r.body?.message || ''}`);
     r = await appel('POST', `/api/compta/dossiers/${A.id}/plan/comptes/${c53211.id}/reactiver`, cabinet.tok);
@@ -274,7 +284,7 @@ const NB_PAQUET = 604;
     check('supprimer 551 qui a un sous-compte : 409 SOUS_COMPTES', r.status === 409 && r.body?.code === 'SOUS_COMPTES' && /5519/.test(r.body?.message || ''), `${r.status} ${r.body?.message}`);
     const c5519 = compte(plan, '5519');
     r = await appel('DELETE', `/api/compta/dossiers/${A.id}/plan/comptes/${c5519.id}`, complet.tok);
-    check('supprimer 5519 (ajout sans sous-compte) : 200, parti, comptes rendus', r.status === 200 && !compte(r.body, '5519') && compte(r.body, '551')?.nbEnfants === 0 && r.body?.nb?.ajoutes === 3, `${r.status} ${JSON.stringify(r.body?.nb)}`);
+    check('supprimer 5519 (ajout sans sous-compte) : 200, parti, comptes rendus', r.status === 200 && !compte(r.body, '5519') && compte(r.body, '551')?.nbEnfants === 0 && r.body?.nb?.ajoutes === 6, `${r.status} ${JSON.stringify(r.body?.nb)}`);
     j = await journal(espaceId, 'compte_supprime');
     check('journal : compte_supprime (numéro, libellé, parent)', !!j && j.details?.numero === '5519' && j.details?.parent === '551', JSON.stringify(j?.details));
     r = await appel('DELETE', `/api/compta/dossiers/${A.id}/plan/comptes/${c5519.id}`, cabinet.tok);
@@ -305,8 +315,8 @@ const NB_PAQUET = 604;
 
     // ── La fiche et la suppression du dossier ──
     r = await appel('GET', `/api/compta/dossiers/${A.id}`, cabinet.tok);
-    // 53212 (Amen Bank) est resté désactivé dans le scénario : 607 comptes, 606 actifs, 3 ajoutés, 1 désactivé.
-    check('fiche A : résumé du plan à jour (3 ajoutés, 1 désactivé)', r.status === 200 && r.body?.plan?.nbActifs === NB_PAQUET + 2 && r.body?.plan?.nbAjoutes === 3 && r.body?.plan?.nbDesactives === 1, JSON.stringify(r.body?.plan));
+    // 53212 (Amen Bank) est resté désactivé dans le scénario : 610 comptes, 609 actifs, 6 ajoutés (3 proposés par S5b, 53211, 53212, 551), 1 désactivé.
+    check('fiche A : résumé du plan à jour (6 ajoutés dont les 3 proposés, 1 désactivé)', r.status === 200 && r.body?.plan?.nbActifs === NB_PLAN + 2 && r.body?.plan?.nbAjoutes === 6 && r.body?.plan?.nbDesactives === 1, JSON.stringify(r.body?.plan));
     r = await appel('POST', `/api/compta/espaces/${espaceId}/dossiers`, cabinet.tok, { identite: { raisonSociale: 'Chez Bis' }, regime: REGIME, exercice: CIVIL });
     const B = r.body;
     r = await appel('DELETE', `/api/compta/dossiers/${B.id}`, cabinet.tok);
