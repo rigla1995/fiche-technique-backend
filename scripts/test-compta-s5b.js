@@ -428,7 +428,7 @@ const NB_REF_TAXES = 31;
     r = await appel('GET', `/api/compta/dossiers/${A.id}/journaux`, cabinet.tok);
     check('A (qui avait déjà ses journaux) : intact après le rejeu (8 journaux, BQ sur 53211)', r.body?.journaux?.length === 8 && journalDe(r.body, 'BQ')?.compte?.numero === '53211', String(r.body?.journaux?.length));
     const manuel = (await pool.query(`SELECT slug, contenu_defaut FROM manuel_sections WHERE slug IN ('compta-journaux', 'compta-taxes', 'compta-dossier', 'compta-plan-comptes') AND produit = 'compta'`)).rows;
-    check('manuel : fiches « Journaux » et « Taxes » présentes, « Fiche du dossier » et « Plan de comptes » complétées', manuel.length === 4 && /## 📒 Journaux/.test(manuel.find((m) => m.slug === 'compta-journaux')?.contenu_defaut || '') && /ses \*\*journaux\*\*/.test(manuel.find((m) => m.slug === 'compta-dossier')?.contenu_defaut || '') && /porté par un journal ou un code de taxe/.test(manuel.find((m) => m.slug === 'compta-plan-comptes')?.contenu_defaut || ''), manuel.map((m) => m.slug).join(','));
+    check('manuel : fiches « Journaux » et « Taxes » présentes, « Fiche du dossier » et « Plan de comptes » complétées', manuel.length === 4 && /## 📒 Journaux/.test(manuel.find((m) => m.slug === 'compta-journaux')?.contenu_defaut || '') && /ses \*\*journaux\*\*/.test(manuel.find((m) => m.slug === 'compta-dossier')?.contenu_defaut || '') && /porté par un journal(, un code de taxe ou un tiers| ou un code de taxe)/.test(manuel.find((m) => m.slug === 'compta-plan-comptes')?.contenu_defaut || ''), manuel.map((m) => m.slug).join(','));
 
     // ── Suppression d'un dossier vide : journaux et taxes partent avec lui ──
     r = await appel('DELETE', `/api/compta/dossiers/${C.id}`, cabinet.tok);

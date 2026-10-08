@@ -7,15 +7,19 @@
 // écriture passe par la transaction verrouillée du dossier (dansEspaceDuDossier : comptabilité verrouillée, dossier
 // relu sous verrou, garde par comptabilité D4), puis par les droits et l'état du dossier (archivé : rien ne change).
 // « Sans mouvement » est toujours vrai avant la saisie : compteMouvemente est le seul endroit à compléter alors.
+// S5c « Les tiers et les imports » : un compte porté par un tiers (compte collectif) ne se désactive ni ne se supprime ;
+// import Excel du plan d'un autre logiciel en tout-ou-rien (D18 ; importExcel.js) : un numéro connu est renommé, un
+// numéro inconnu est ajouté sous son plus long préfixe (plan ou fichier), nature héritée sauf indication, expliqué.
 const ExcelJS = require('exceljs');
 const pool = require('../config/database');
 const { journaliser } = require('./journal');
 const { modeTitulaire, etatAbonnement } = require('./garde');
 const { erreur, idValide, repondreErreur } = require('./comptablesClient');
-const { NATURES, NATURES_LIBELLES, NUMERO_MIN, NUMERO_MAX, RE_NUMERO, LIBELLE_MAX, NOTE_MAX } = require('./paquets');
+const { NATURES, NATURES_LIBELLES, NUMERO_MIN, NUMERO_MAX, RE_NUMERO, LIBELLE_MAX, NOTE_MAX, parentParmi } = require('./paquets');
 const { accesSurEspace, dossierDe, droits, presenterEspace, dansEspaceDuDossier } = require('./dossiers');
 const { resumePlan } = require('./planInit');
 const { brandHeader, headerRow, dataRowStyle, brandFooter, finalize } = require('../services/excelBrandService');
+const { lireClasseur, modeleClasseur, envoyerClasseur, erreurImport, repondreImport, nomFichier, jourTunis } = require('./importExcel');
 
 const MSG_CONFIGURER = 'Seul le titulaire ou un gérant de niveau Complet peut modifier le plan de comptes';
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -57,14 +61,16 @@ const lireExplication = (v) => {
 // Un compte « mouvementé » a au moins une ligne d'écriture : aucune table d'écritures n'existe avant l'étape de la
 // saisie, toujours faux ici. Seul endroit à compléter alors (désactiver, supprimer).
 const compteMouvemente = async (_db, _compteId) => false;
-// Un compte « utilisé » est porté par un journal (S5b : compte de contrepartie) ou un code de taxe (S5b : compte à
-// l'achat, à la vente, sur immobilisations), actif ou non — un tiers s'y ajoutera en S5c (compte collectif). Il ne se
-// désactive ni ne se supprime : on change d'abord le compte du journal ou du code (pages Journaux et Taxes).
+// Un compte « utilisé » est porté par un journal (S5b : compte de contrepartie), un code de taxe (S5b : compte à l'achat,
+// à la vente, sur immobilisations) ou un tiers (S5c : compte collectif), actif ou non. Il ne se désactive ni ne se
+// supprime : on change d'abord le compte du journal, du code ou du tiers (pages Journaux, Taxes et Tiers).
 const compteUtilise = async (db, compteId) => {
   const r = await db.query(
     `SELECT 1 FROM compta.journaux WHERE compte_id = $1
      UNION ALL
      SELECT 1 FROM compta.taxes WHERE compte_achat_id = $1 OR compte_vente_id = $1 OR compte_immo_id = $1
+     UNION ALL
+     SELECT 1 FROM compta.tiers WHERE compte_id = $1
      LIMIT 1`,
     [compteId]
   );
@@ -220,6 +226,8 @@ const modifier = async (req, res) => {
       // Relecture : seul un CHANGEMENT réel de nature ou d'explication est refusé sur un compte de la norme (un formulaire
       // qui renvoie la nature actuelle peut renommer ou rétablir).
       if (c.origine !== 'ajout' && (changements.nature || changements.explication)) throw erreur(409, 'La nature et l\'explication d\'un compte de la norme ne se modifient pas', 'COMPTE_PAQUET');
+      // S5c : un compte porté (contrepartie d'un journal, compte d'un code, collectif d'un tiers) garde sa nature.
+      if (changements.nature && await compteUtilise(db, c.id)) throw erreur(409, `Le compte ${c.numero} est porté par un journal, un code de taxe ou un tiers : sa nature ne change plus`, 'COMPTE_UTILISE');
       if (!Object.keys(changements).length) return;
       await db.query(`UPDATE compta.comptes SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $1`, params);
       await journaliser(db, acces.espace_id, req.user.id, 'compte_modifie', { dossier: d.id, compte: c.id, numero: c.numero, changements });
@@ -240,7 +248,7 @@ const desactiver = async (req, res) => {
       const actifs = (await db.query('SELECT numero FROM compta.comptes WHERE parent_id = $1 AND actif ORDER BY numero LIMIT 4', [c.id])).rows.map((x) => x.numero);
       if (actifs.length) throw erreur(409, `Désactivez d'abord ses sous-comptes actifs (${actifs.slice(0, 3).join(', ')}${actifs.length > 3 ? '…' : ''})`, 'SOUS_COMPTES_ACTIFS');
       if (await compteMouvemente(db, c.id)) throw erreur(409, `Le compte ${c.numero} a des écritures : il ne se désactive pas`, 'COMPTE_MOUVEMENTE');
-      if (await compteUtilise(db, c.id)) throw erreur(409, `Le compte ${c.numero} est porté par un journal ou un code de taxe : il ne se désactive pas`, 'COMPTE_UTILISE');
+      if (await compteUtilise(db, c.id)) throw erreur(409, `Le compte ${c.numero} est porté par un journal, un code de taxe ou un tiers : il ne se désactive pas`, 'COMPTE_UTILISE');
       await db.query('UPDATE compta.comptes SET actif = false, updated_at = NOW() WHERE id = $1', [c.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'compte_desactive', { dossier: d.id, compte: c.id, numero: c.numero, libelle: c.libelle });
     });
@@ -279,7 +287,7 @@ const supprimer = async (req, res) => {
       const enfants = (await db.query('SELECT numero FROM compta.comptes WHERE parent_id = $1 ORDER BY numero LIMIT 4', [c.id])).rows.map((x) => x.numero);
       if (enfants.length) throw erreur(409, `Supprimez d'abord ses sous-comptes (${enfants.slice(0, 3).join(', ')}${enfants.length > 3 ? '…' : ''})`, 'SOUS_COMPTES');
       if (await compteMouvemente(db, c.id)) throw erreur(409, `Le compte ${c.numero} a des écritures : il ne se supprime pas`, 'COMPTE_MOUVEMENTE');
-      if (await compteUtilise(db, c.id)) throw erreur(409, `Le compte ${c.numero} est porté par un journal ou un code de taxe : il ne se supprime pas`, 'COMPTE_UTILISE');
+      if (await compteUtilise(db, c.id)) throw erreur(409, `Le compte ${c.numero} est porté par un journal, un code de taxe ou un tiers : il ne se supprime pas`, 'COMPTE_UTILISE');
       const parent = c.parent_id ? (await db.query('SELECT numero FROM compta.comptes WHERE id = $1', [c.parent_id])).rows[0] : null;
       await db.query('DELETE FROM compta.comptes WHERE id = $1', [c.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'compte_supprime', { dossier: d.id, compte: c.id, numero: c.numero, libelle: c.libelle, ...(parent ? { parent: parent.numero } : {}) });
@@ -327,8 +335,132 @@ const exporter = async (req, res) => {
   }
 };
 
+// ── Import Excel du plan (S5c ; D18 : tout ou rien) ─────────────────────────────────────────────────────────────────
+// Colonnes du modèle : Numéro, Libellé, Nature (facultative : libellé ou valeur de la liste ; sinon héritée du parent).
+const EN_TETES_IMPORT = ['Numéro', 'Libellé', 'Nature'];
+const EXEMPLE_IMPORT = ['Exemple : 53211', 'BIAT - compte courant', 'Banque'];
+const normaliserMot = (s) => texte(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[\s_-]+/g, ' ');
+const NATURES_PAR_MOT = new Map([...NATURES.map((n) => [normaliserMot(n), n]), ...NATURES.map((n) => [normaliserMot(NATURES_LIBELLES[n]), n])]);
+// Contrôle d'une ligne lue (textes), hors base : → { ligne, repere, numero?, libelle?, nature?, erreurs }.
+const controlerLigneImport = ({ ligne, cellules }, numerosFichier) => {
+  const [numero, libelle, nature] = cellules;
+  const r = { ligne, repere: [numero, libelle].filter(Boolean).join(' — '), erreurs: [] };
+  try { r.numero = lireNumero(numero); } catch (e) { r.erreurs.push(e.statusCode === 400 ? e.message : 'Numéro refusé'); }
+  if (r.numero) {
+    if (numerosFichier.has(r.numero)) r.erreurs.push(`Numéro ${r.numero} : en double dans le fichier`);
+    numerosFichier.add(r.numero);
+  }
+  try { r.libelle = lireLibelle(libelle); } catch (e) { r.erreurs.push(e.statusCode === 400 ? e.message : 'Libellé refusé'); }
+  const n = texte(nature);
+  if (n) {
+    const v = NATURES_PAR_MOT.get(normaliserMot(n));
+    if (!v) r.erreurs.push(`Nature « ${n} » inconnue (${NATURES.map((x) => NATURES_LIBELLES[x]).join(', ')})`);
+    else r.nature = v;
+  }
+  return r;
+};
+// Contrôle de toutes les lignes, puis des parents : un numéro inconnu du plan doit prolonger un compte du plan ou du
+// fichier (son plus long préfixe) ; un numéro à deux chiffres est une racine de classe (1 à 7).
+// → { valides: [{ ligne, numero, libelle, nature?, parent? }], fausses: [{ ligne, repere, erreurs }] }
+const controlerLignesImport = (lignes, numerosPlan) => {
+  const numerosFichier = new Set();
+  const valides = [];
+  const fausses = [];
+  for (const l of lignes) {
+    const r = controlerLigneImport(l, numerosFichier);
+    if (r.erreurs.length) fausses.push({ ligne: r.ligne, repere: r.repere, erreurs: r.erreurs });
+    else valides.push(r);
+  }
+  const tous = new Set([...numerosPlan, ...valides.map((v) => v.numero)]);
+  for (const v of valides) {
+    if (numerosPlan.has(v.numero)) continue;
+    if (v.numero.length > NUMERO_MIN) {
+      v.parent = parentParmi(v.numero, tous);
+      if (!v.parent) fausses.push({ ligne: v.ligne, repere: v.repere, erreurs: [`Numéro ${v.numero} : aucun compte parent, ni dans le plan ni dans le fichier`] });
+    } else if (!(Number(v.numero[0]) >= 1 && Number(v.numero[0]) <= 7)) {
+      fausses.push({ ligne: v.ligne, repere: v.repere, erreurs: [`Numéro ${v.numero} : classe hors 1 à 7`] });
+    }
+  }
+  const fautives = new Set(fausses.map((f) => f.ligne));
+  return { valides: valides.filter((v) => !fautives.has(v.ligne)), fausses: fausses.sort((a, b) => a.ligne - b.ligne) };
+};
+
+// GET /api/compta/dossiers/:dossierId/plan/modele-import — le modèle à la charte (lecture : tout niveau).
+const modeleImport = async (req, res) => {
+  try {
+    const { d } = await lectureDossier(req.user, req.params.dossierId);
+    const { wb } = modeleClasseur({
+      feuille: 'Plan de comptes',
+      titre: 'Modèle d\'import — plan de comptes',
+      sousTitre: d.nom,
+      meta: `Une ligne par compte sous les en-têtes ; la ligne d'exemple (grisée) est ignorée. Numéro de ${NUMERO_MIN} à ${NUMERO_MAX} chiffres : un numéro déjà dans le plan est renommé, un numéro inconnu est ajouté sous le compte dont il prolonge le numéro ; nature facultative, pour les comptes ajoutés seulement (Banque, Caisse, Fournisseurs… ; sinon celle du parent). Toutes les lignes sont contrôlées : rien n'est importé à la moindre erreur.`,
+      enTetes: EN_TETES_IMPORT,
+      largeurs: [14, 60, 28],
+      exemple: EXEMPLE_IMPORT,
+    });
+    await envoyerClasseur(res, wb, `modele-plan-de-comptes-${d.id}.xlsx`);
+  } catch (err) {
+    repondreErreur(res, err, '[compta.plan.modeleImport]');
+  }
+};
+
+// POST /api/compta/dossiers/:dossierId/plan/import — fichier « fichier » (multipart) ; titulaire ou Complet. Toutes les
+// lignes sont contrôlées ; à la moindre erreur, 400 avec le rapport ligne par ligne et rien d'écrit ; sinon, dans une
+// transaction : les numéros connus sont renommés (libellé différent), les inconnus ajoutés du plus court au plus long
+// (origine « ajout », explication « Importé d'un autre logiciel », actif si le parent l'est, les comptes qu'ils préfixent
+// passent sous eux), un événement de journal. Jamais de désactivation ni de suppression. → 201 { …plan, importation }.
+const importer = async (req, res) => {
+  try {
+    if (!req.file?.buffer) throw erreur(400, 'Fichier requis (classeur Excel .xlsx dans le champ « fichier »)', 'FICHIER_REQUIS');
+    // Accès, droit et état du dossier jugés AVANT d'analyser le classeur (relecture) ; la transaction les rejoue.
+    const garde = await lectureDossier(req.user, req.params.dossierId);
+    if (!droits(garde.acces).configurer) throw erreur(403, MSG_CONFIGURER, 'NIVEAU_INSUFFISANT');
+    if (garde.d.etat === 'archive') throw erreur(409, 'Dossier archivé : désarchivez-le d\'abord', 'DOSSIER_ARCHIVE');
+    const lignes = await lireClasseur(req.file.buffer, { enTetes: EN_TETES_IMPORT });
+    const fichier = nomFichier(req.file);
+    let importation = null;
+    const plan = await ecriturePlan(req, async (db, acces, d) => {
+      const parNumero = new Map((await db.query('SELECT id, numero, libelle, nature, actif FROM compta.comptes WHERE dossier_id = $1', [d.id])).rows.map((c) => [c.numero, c]));
+      const { valides, fausses } = controlerLignesImport(lignes, new Set(parNumero.keys()));
+      if (fausses.length) throw erreurImport(fausses, lignes.length);
+      const renommes = [];
+      const ajoutes = [];
+      let inchanges = 0;
+      for (const v of valides) {
+        const c = parNumero.get(v.numero);
+        if (!c) continue;
+        if (c.libelle === v.libelle) { inchanges += 1; continue; }
+        await db.query('UPDATE compta.comptes SET libelle = $2, updated_at = NOW() WHERE id = $1', [c.id, v.libelle]);
+        renommes.push({ numero: v.numero, avant: c.libelle, apres: v.libelle });
+      }
+      const explication = `Importé d'un autre logiciel le ${jourTunis()}`;
+      const nouveaux = valides.filter((v) => !parNumero.has(v.numero)).sort((a, b) => (a.numero < b.numero ? -1 : a.numero > b.numero ? 1 : 0));
+      for (const v of nouveaux) {
+        const parent = v.parent ? parNumero.get(v.parent) : null;
+        const nature = v.nature || (parent ? parent.nature : 'general');
+        const actif = parent ? parent.actif : true;
+        const ins = await db.query(
+          `INSERT INTO compta.comptes (dossier_id, numero, libelle, classe, parent_id, nature, origine, explication, actif, cree_par)
+           VALUES ($1, $2, $3, $4, $5, $6, 'ajout', $7, $8, $9) RETURNING id`,
+          [d.id, v.numero, v.libelle, Number(v.numero[0]), parent ? parent.id : null, nature, explication, actif, req.user.id]
+        );
+        const id = ins.rows[0].id;
+        // Même invariant que « Subdiviser » : les comptes existants que le nouveau numéro préfixe passent sous lui.
+        if (parent) await db.query('UPDATE compta.comptes SET parent_id = $3, updated_at = NOW() WHERE dossier_id = $1 AND parent_id = $2 AND id <> $3 AND LEFT(numero, LENGTH($4)) = $4', [d.id, parent.id, id, v.numero]);
+        parNumero.set(v.numero, { id, numero: v.numero, libelle: v.libelle, nature, actif });
+        ajoutes.push({ numero: v.numero, libelle: v.libelle, parent: v.parent || null, nature });
+      }
+      importation = { fichier, nbLignes: lignes.length, renommes: renommes.length, ajoutes: ajoutes.length, inchanges };
+      await journaliser(db, acces.espace_id, req.user.id, 'plan_importe', { dossier: d.id, ...importation, comptesRenommes: renommes, comptesAjoutes: ajoutes.map((a) => a.numero) });
+    });
+    res.status(201).json({ ...plan, importation });
+  } catch (err) {
+    repondreImport(res, err, '[compta.plan.importer]');
+  }
+};
+
 module.exports = {
   MSG_CONFIGURER, HORS_W1252, lireNumero, lireLibelle, lireNature, lireExplication, compteMouvemente, compteUtilise, SQL_COMPTES, presenterCompte, COLONNES_EXPORT,
-  lectureDossier, presenterDossier,
-  lire, ajouter, modifier, desactiver, reactiver, supprimer, exporter,
+  lectureDossier, presenterDossier, EN_TETES_IMPORT, EXEMPLE_IMPORT, controlerLigneImport, controlerLignesImport,
+  lire, ajouter, modifier, desactiver, reactiver, supprimer, exporter, modeleImport, importer,
 };

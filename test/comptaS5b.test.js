@@ -302,7 +302,7 @@ test('branchements : journaux et taxes naissent avec le dossier, la fiche les r�
   // S5a : compteUtilise devient réel (journaux et taxes), aux deux mêmes endroits (désactiver, supprimer).
   const ctrl = lire('src', 'compta', 'planComptes.js');
   assert.ok(ctrl.includes('SELECT 1 FROM compta.journaux WHERE compte_id = $1') && ctrl.includes('SELECT 1 FROM compta.taxes WHERE compte_achat_id = $1 OR compte_vente_id = $1 OR compte_immo_id = $1'));
-  assert.equal((ctrl.match(/await compteUtilise\(db, c\.id\)/g) || []).length, 2);
+  assert.equal((ctrl.match(/await compteUtilise\(db, c\.id\)/g) || []).length, 3, 'désactiver, supprimer et (S5c) changer la nature');
   assert.equal(typeof plan.lectureDossier, 'function');
   assert.equal(typeof plan.presenterDossier, 'function');
 });

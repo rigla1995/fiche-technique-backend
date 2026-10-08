@@ -95,6 +95,25 @@ const RE_TAUX = /^\d{1,3}\.\d{3}$/;
 const RE_MONTANT = /^\d{1,6}\.\d{3}$/;
 const RE_CODE_TEJ = /^[A-Z0-9_]{1,20}$/;
 
+// ── S5c : tiers ────────────────────────────────────────────────────────────────────────────────────────────────────
+// Fournisseurs et clients d'un dossier (PLAN-S5 §4 ; réponses 4 et 5 du client du 07/10, « ok pour les 4 » du 08/10) :
+// le compte collectif d'un tiers est de la nature de son type (fournisseurs, clients) ; code = préfixe (0 à 3 lettres ou
+// chiffres) + numéro (3 à 7 chiffres), 10 caractères au plus, réglable par dossier ; régime de TVA du tiers ; délai de
+// paiement en jours. Les comptes collectifs par défaut sont une DONNÉE du paquet (tiers.collectifs : 4011 / 4111).
+const TYPES_TIERS_LIBELLES = { fournisseur: 'Fournisseur', client: 'Client' };
+const TYPES_TIERS = Object.keys(TYPES_TIERS_LIBELLES);
+const NATURE_PAR_TYPE_TIERS = { fournisseur: 'fournisseurs', client: 'clients' };
+const REGIMES_TVA_TIERS_LIBELLES = { assujetti: 'Assujetti', non_assujetti: 'Non assujetti', exonere: 'Exonéré', suspension: 'En suspension de TVA' };
+const REGIMES_TVA_TIERS = Object.keys(REGIMES_TVA_TIERS_LIBELLES);
+const CODE_TIERS_MIN = 2;
+const CODE_TIERS_MAX = 10;
+const RE_CODE_TIERS = /^[A-Z0-9]{2,10}$/;
+const PREFIXE_TIERS_MAX = 3;
+const RE_PREFIXE_TIERS = /^[A-Z0-9]{0,3}$/;
+const CHIFFRES_TIERS_MIN = 3;
+const CHIFFRES_TIERS_MAX = 7;
+const DELAI_PAIEMENT_MAX = 365;
+
 // Le paquet d'un pays (le seul pour l'instant : TN), ou null.
 const paquetDe = (pays) => PAQUETS[String(pays || '').toUpperCase()] || null;
 
@@ -205,6 +224,16 @@ const controlerPaquet = (p) => {
   for (const s of sousComptes) {
     if (!taxes.some((t) => [t.achat, t.vente, t.immobilisations].includes(s.numero))) defauts.push(`sous-compte ${s.numero} : visé par aucun code de taxe`);
   }
+  // S5c : comptes collectifs par défaut des tiers (facultatifs dans un paquet ; contrôlés s'ils sont là) : un compte du
+  // paquet, de la nature du type (fournisseurs, clients).
+  if (p.tiers != null) {
+    const collectifs = (p.tiers && p.tiers.collectifs) || {};
+    for (const type of TYPES_TIERS) {
+      const c = parNumero.get(collectifs[type]);
+      if (!c) defauts.push(`tiers : compte collectif par défaut des ${type}s absent du paquet`);
+      else if (c.nature !== NATURE_PAR_TYPE_TIERS[type]) defauts.push(`tiers : compte collectif ${collectifs[type]} de nature ${c.nature}, ${NATURE_PAR_TYPE_TIERS[type]} attendue`);
+    }
+  }
   return defauts;
 };
 
@@ -241,4 +270,6 @@ module.exports = {
   TYPES_JOURNAUX, TYPES_JOURNAUX_LIBELLES, TYPES_AVEC_COMPTE, NATURE_PAR_TYPE, CODE_JOURNAL_MAX, RE_CODE_JOURNAL,
   TYPES_TAXES, TYPES_TAXES_LIBELLES, ASSIETTES, ASSIETTES_LIBELLES, COPIES, COPIES_LIBELLES, CODE_TAXE_MAX, RE_CODE_TAXE, RE_TAUX, RE_MONTANT, RE_CODE_TEJ,
   sqlNombre, sqlValeursJournaux, sqlValeursSousComptes, sqlValeursTaxes,
+  TYPES_TIERS, TYPES_TIERS_LIBELLES, NATURE_PAR_TYPE_TIERS, REGIMES_TVA_TIERS, REGIMES_TVA_TIERS_LIBELLES,
+  CODE_TIERS_MIN, CODE_TIERS_MAX, RE_CODE_TIERS, PREFIXE_TIERS_MAX, RE_PREFIXE_TIERS, CHIFFRES_TIERS_MIN, CHIFFRES_TIERS_MAX, DELAI_PAIEMENT_MAX,
 };
