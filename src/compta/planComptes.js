@@ -6,7 +6,7 @@
 // ajouté sans sous-compte, export Excel à la charte. Routes (D3) : /api/compta/dossiers/:dossierId/plan… ; chaque
 // écriture passe par la transaction verrouillée du dossier (dansEspaceDuDossier : comptabilité verrouillée, dossier
 // relu sous verrou, garde par comptabilité D4), puis par les droits et l'état du dossier (archivé : rien ne change).
-// « Sans mouvement » est toujours vrai avant la saisie : compteMouvemente est le seul endroit à compléter alors.
+// « Sans mouvement » : compteMouvemente lit compta.lignes depuis S6a (les écritures en brouillard comptent).
 // S5c « Les tiers et les imports » : un compte porté par un tiers (compte collectif) ne se désactive ni ne se supprime ;
 // import Excel du plan d'un autre logiciel en tout-ou-rien (D18 ; importExcel.js) : un numéro connu est renommé, un
 // numéro inconnu est ajouté sous son plus long préfixe (plan ou fichier), nature héritée sauf indication, expliqué.
@@ -58,9 +58,9 @@ const lireExplication = (v) => {
   return s || null;
 };
 
-// Un compte « mouvementé » a au moins une ligne d'écriture : aucune table d'écritures n'existe avant l'étape de la
-// saisie, toujours faux ici. Seul endroit à compléter alors (désactiver, supprimer).
-const compteMouvemente = async (_db, _compteId) => false;
+// Un compte « mouvementé » est porté par au moins une ligne d'écriture (S6a : compta.lignes, migration 215, brouillard
+// compris) : il ne se désactive ni ne se supprime plus.
+const compteMouvemente = async (db, compteId) => (await db.query('SELECT 1 FROM compta.lignes WHERE dossier_id = (SELECT dossier_id FROM compta.comptes WHERE id = $1) AND compte_id = $1 LIMIT 1', [compteId])).rows.length > 0;
 // Un compte « utilisé » est porté par un journal (S5b : compte de contrepartie), un code de taxe (S5b : compte à l'achat,
 // à la vente, sur immobilisations) ou un tiers (S5c : compte collectif), actif ou non. Il ne se désactive ni ne se
 // supprime : on change d'abord le compte du journal, du code ou du tiers (pages Journaux, Taxes et Tiers).

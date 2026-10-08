@@ -15,6 +15,7 @@ const plan = require('./planComptes');
 const journaux = require('./journaux');
 const taxes = require('./taxes');
 const tiers = require('./tiers');
+const ecritures = require('./ecritures');
 const { televersement } = require('./importExcel');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
@@ -166,6 +167,27 @@ router.put('/dossiers/:dossierId/tiers/:tiersId', authenticate, limitePlan, tier
 router.post('/dossiers/:dossierId/tiers/:tiersId/desactiver', authenticate, limitePlan, tiers.desactiver);
 router.post('/dossiers/:dossierId/tiers/:tiersId/reactiver', authenticate, limitePlan, tiers.reactiver);
 router.delete('/dossiers/:dossierId/tiers/:tiersId', authenticate, limitePlan, tiers.supprimer);
+
+// Étape S6a : les écritures en brouillard d'un dossier (lecture : tout accès au dossier ; saisir, modifier, supprimer et
+// les aides à la saisie : titulaire, Complet ou Saisie — droit « saisir », jugé par le contrôleur). Limite de débit : une
+// séance de saisie, c'est une écriture toutes les quelques secondes — 600 par quart d'heure et par personne (aucun compte
+// ni email créé) ; les aides (calcul d'une ligne, rien d'écrit) comptent avec. Les adresses fixes (/aide/…) sont
+// déclarées avant /:ecritureId.
+const limiteEcritures = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  keyGenerator: (req) => `ecritures:${req.user.id}`,
+  message: { message: 'Trop de modifications en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.get('/dossiers/:dossierId/ecritures', authenticate, ecritures.lire);
+router.post('/dossiers/:dossierId/ecritures/aide/taxe', authenticate, limiteEcritures, ecritures.aideTaxe);
+router.post('/dossiers/:dossierId/ecritures/aide/retenue', authenticate, limiteEcritures, ecritures.aideRetenue);
+router.post('/dossiers/:dossierId/ecritures', authenticate, limiteEcritures, ecritures.creer);
+router.get('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, ecritures.une);
+router.put('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, limiteEcritures, ecritures.modifier);
+router.delete('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, limiteEcritures, ecritures.supprimer);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique
