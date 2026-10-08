@@ -41,8 +41,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   const ecritures = [...src.matchAll(/router\.(post|put|patch|delete)\('([^']+)',[^\n]*?(\w+(?:\.\w+)?)\);/g)]
     .map(([, methode, chemin, gestionnaire]) => ({ cle: `${methode.toUpperCase()} ${chemin}`, gestionnaire }));
   // S3b : 6 routes ; S3c : + 7 (gérants du cabinet et leur demande) ; S4a : + 5 (dossiers) ; S4b : + 1 (reprise de
-  // l'identité LabFlow).
-  assert.equal(ecritures.length, 19, 'routes d\'écriture trouvées');
+  // l'identité LabFlow) ; S5a : + 5 (plan de comptes : subdiviser, modifier, désactiver, réactiver, supprimer).
+  assert.equal(ecritures.length, 24, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
@@ -50,6 +50,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     comptables: { fichier: 'comptablesClient.js', transactions: ['await dansEspace(req.user,'] },
     gerants: { fichier: 'gerantsCabinet.js', transactions: ['await dansCabinet(req.user,'] },
     dossiers: { fichier: 'dossiers.js', transactions: ['await dansEspaceDossiers(req.user,', 'await dansEspaceDuDossier(req.user,'] },
+    // S5a : chaque écriture du plan passe par ecriturePlan, qui délègue à la transaction du dossier (vérifié plus bas).
+    plan: { fichier: 'planComptes.js', transactions: ['await ecriturePlan(req,'] },
   };
   const corps = (fichier, nom) => {
     const ctrl = lire('src', 'compta', fichier);
@@ -73,13 +75,15 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     ['dossiers.js', 'const dansEspaceDossiers = async', 'const acces = await exigerAcces(db, user, espaceId, true);\n    if (garde) await exigerEcriture(db, acces.espace_id);'],
     // Les écritures qui partent d'un dossier délèguent à la même transaction (relecture de S4a).
     ['dossiers.js', 'const dansEspaceDuDossier = async', 'return await dansEspaceDossiers(user, e.rows[0].espace_id,'],
+    // S5a : les écritures du plan de comptes aussi, droits et dossier non archivé jugés dans la transaction.
+    ['planComptes.js', 'const ecriturePlan = (req, travail) =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces).configurer) throw erreur(403, MSG_CONFIGURER, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
   ]) {
     const ctrl = lire('src', 'compta', fichier);
     const debut = ctrl.indexOf(fonction);
     assert.ok(debut > 0, fonction);
     const transaction = ctrl.slice(debut, ctrl.indexOf('\n};\n', debut));
     assert.ok(transaction.includes(ouverture), `${fichier} : espace verrouillé puis garde`);
-    if (fonction !== 'const dansEspaceDuDossier = async') assert.ok(transaction.includes('{ garde = true } = {}'), `${fichier} : garde par défaut`);
+    if (fonction !== 'const dansEspaceDuDossier = async' && fonction !== 'const ecriturePlan = (req, travail) =>') assert.ok(transaction.includes('{ garde = true } = {}'), `${fichier} : garde par défaut`);
   }
   assert.deepEqual(routes.ECRITURES_SANS_GARDE, ['POST /passage', 'POST /confiees/:espaceId/quitter']);
   assert.deepEqual(routes.ECRITURES_TOUJOURS_PERMISES, ['DELETE /mes-comptables/:id', 'DELETE /cabinet/gerants/:id', 'POST /cabinet/gerants/:id/desactiver']);
