@@ -7,8 +7,8 @@
 // un nouveau code, par une nouvelle version du paquet), désactivation et réactivation ; jamais de suppression. Routes
 // (D3) : /api/compta/dossiers/:dossierId/taxes… ; chaque écriture passe par la transaction verrouillée du dossier
 // (dansEspaceDuDossier : comptabilité verrouillée, dossier relu sous verrou, garde par comptabilité D4), puis par les
-// droits et l'état du dossier. Taux et montants transportés en texte (SPEC-SOCLE §0). « Sans écriture » est toujours
-// vrai avant la saisie : taxeMouvementee est le seul endroit à compléter alors.
+// droits et l'état du dossier. Taux et montants transportés en texte (SPEC-SOCLE §0). « Sans écriture » :
+// taxeMouvementee lit compta.lignes depuis S6a (les écritures en brouillard comptent).
 const pool = require('../config/database');
 const { journaliser } = require('./journal');
 const { modeTitulaire, etatAbonnement } = require('./garde');
@@ -61,9 +61,9 @@ const lireTauxMontant = (assiette, corps) => (assiette === 'fixe'
   ? { taux: null, montant: lireMontant(corps.montant) }
   : { taux: lireTaux(corps.taux), montant: null });
 
-// Un code « mouvementé » est porté par au moins une ligne d'écriture : aucune table d'écritures n'existe avant l'étape de
-// la saisie, toujours faux ici. Seul endroit à compléter alors (désactiver, changer type / taux / montant / assiette).
-const taxeMouvementee = async (_db, _taxeId) => false;
+// Un code « mouvementé » est porté par au moins une ligne d'écriture (S6a : compta.lignes, migration 215, brouillard
+// compris) : il ne se désactive plus ; son type, son taux, son montant et son assiette ne changent plus.
+const taxeMouvementee = async (db, taxeId) => (await db.query('SELECT 1 FROM compta.lignes WHERE taxe_id = $1 LIMIT 1', [taxeId])).rows.length > 0;
 
 // ── Lectures ────────────────────────────────────────────────────────────────────────────────────────────────────────
 const colonnesCompte = (alias, prefixe) => `${alias}.numero AS ${prefixe}_numero, ${alias}.libelle AS ${prefixe}_libelle, ${alias}.nature AS ${prefixe}_nature, ${alias}.actif AS ${prefixe}_actif, ${SQL_FEUILLE(alias)} AS ${prefixe}_feuille`;

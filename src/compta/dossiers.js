@@ -5,8 +5,8 @@
 // et chaque requête vérifie l'accès de la personne sur compta.acces — accès actif, comptabilité ouverte, dossier dans sa
 // liste (tous_dossiers, sinon compta.acces_dossiers : écrite depuis l'étape S4c), niveau suffisant. Réponses du client du
 // 07/10 : le titulaire et un gérant de niveau Complet créent et modifient ; Saisie et Consultation lisent ; archiver,
-// désarchiver et supprimer = titulaire seul. Un dossier qui a une écriture ne se supprime jamais (D10 ; aucune écriture
-// n'existe avant l'étape de la saisie : dossierMouvemente). Écritures dans la transaction verrouillée (comptabilité)
+// désarchiver et supprimer = titulaire seul. Un dossier qui a une écriture ne se supprime jamais (D10 ; S6a :
+// dossierMouvemente lit compta.ecritures, migration 215). Écritures dans la transaction verrouillée (comptabilité)
 // puis garde par comptabilité (D4). Règles du chantier : jamais « gerant_parent_id || id » ni une garde cliente.
 const pool = require('../config/database');
 const { CHAMPS_IDENTITE, lireIdentite, mapIdentite, nomAffiche, identiteComplete } = require('../utils/identite');
@@ -157,10 +157,13 @@ const exigerAcces = async (db, user, espaceId, verrou = false) => {
 // Réponses du client du 07/10 (question 6) : Complet crée et modifie ; Saisie et Consultation lisent ; archiver,
 // désarchiver et supprimer = titulaire seul. S5a : Complet (ou le titulaire) configure le dossier (plan de comptes).
 // S5c (réponse 4 du 08/10) : Saisie crée et modifie aussi les TIERS (`tiers`) — un fournisseur nouveau arrive avec sa
-// facture — mais ni le modèle des codes, ni l'import, ni la suppression (`configurer`).
+// facture — mais ni le modèle des codes, ni l'import, ni la suppression (`configurer`). S6a (réponse 4 du 08/10) :
+// `saisir` (écritures en brouillard : créer, modifier, supprimer, aides) = titulaire, Complet ou Saisie ; valider,
+// contre-passer, clore (S6b) et importer (S6c) relèveront de `configurer`.
 const droits = (acces) => {
   const complet = acces.role === 'titulaire' || acces.niveau === 'complet';
-  return { creer: complet, modifier: complet, configurer: complet, tiers: complet || acces.niveau === 'saisie', archiver: acces.role === 'titulaire', supprimer: acces.role === 'titulaire' };
+  const saisir = complet || acces.niveau === 'saisie';
+  return { creer: complet, modifier: complet, configurer: complet, tiers: saisir, saisir, archiver: acces.role === 'titulaire', supprimer: acces.role === 'titulaire' };
 };
 const MSG_NIVEAU = 'Seul le titulaire ou un gérant de niveau Complet peut créer ou modifier un dossier';
 const MSG_TITULAIRE = 'Seul le titulaire peut archiver, désarchiver ou supprimer un dossier';
@@ -170,9 +173,9 @@ const MSG_TITULAIRE = 'Seul le titulaire peut archiver, désarchiver ou supprime
 const SQL_VISIBLE = `($2::boolean OR EXISTS (SELECT 1 FROM compta.acces_dossiers ad WHERE ad.acces_id = $3 AND ad.dossier_id = d.id))`;
 const paramsVisibles = (acces) => [acces.espace_id, acces.tous_dossiers, acces.acces_id];
 
-// Un dossier « mouvementé » a au moins une écriture (D10) : aucune table d'écritures n'existe avant l'étape de la saisie,
-// toujours faux ici. Seul endroit à compléter alors (supprimer un dossier, modifier son exercice).
-const dossierMouvemente = async (_db, _dossierId) => false;
+// Un dossier « mouvementé » a au moins une écriture (D10 ; S6a : compta.ecritures, migration 215, brouillard compris) : il
+// ne se supprime plus et les dates de son exercice ne changent plus.
+const dossierMouvemente = async (db, dossierId) => (await db.query('SELECT 1 FROM compta.ecritures WHERE dossier_id = $1 LIMIT 1', [dossierId])).rows.length > 0;
 
 // ── Identité LabFlow d'un client (S4b : dossier « Mon entreprise », copie à la création puis reprise à la demande) ───
 const texteCourt = (v, max) => (v == null ? '' : String(v).replace(/\s+/g, ' ').trim().slice(0, max));
@@ -331,7 +334,7 @@ const presenterRegime = (d) => ({
 });
 // La fiche : identité, régime, exercice en cours (et ses périodes), qui y a accès, droits de la personne, et le résumé
 // de sa configuration — (S5a) plan de comptes : comptes actifs, ajoutés, désactivés, paquet d'origine ; (S5b) journaux
-// et codes de taxe actifs ; (S5c) tiers actifs (fournisseurs, clients).
+// et codes de taxe actifs ; (S5c) tiers actifs (fournisseurs, clients) ; (S6a) écritures en brouillard et validées.
 const presenterFiche = async (db, acces, d) => {
   const [ex, personnes, mode, plan, configuration] = await Promise.all([
     db.query('SELECT id, debut, fin, etat FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [d.id]),
@@ -372,6 +375,7 @@ const presenterFiche = async (db, acces, d) => {
     journaux: configuration.journaux,
     taxes: configuration.taxes,
     tiers: configuration.tiers,
+    ecritures: configuration.ecritures,
     mouvemente: await dossierMouvemente(db, d.id),
     creeLe: d.created_at,
     modifieLe: d.updated_at,

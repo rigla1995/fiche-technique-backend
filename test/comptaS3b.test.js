@@ -43,8 +43,9 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   // S3b : 6 routes ; S3c : + 7 (gérants du cabinet et leur demande) ; S4a : + 5 (dossiers) ; S4b : + 1 (reprise de
   // l'identité LabFlow) ; S5a : + 5 (plan de comptes : subdiviser, modifier, désactiver, réactiver, supprimer) ; S5b : + 9
   // (journaux : créer, modifier, désactiver, réactiver ; taxes : personnalisé, depuis le paquet, modifier, désactiver, réactiver) ;
-  // S5c : + 8 (tiers : créer, modifier, désactiver, réactiver, supprimer, modèle des codes, import ; plan : import).
-  assert.equal(ecritures.length, 41, 'routes d\'écriture trouvées');
+  // S5c : + 8 (tiers : créer, modifier, désactiver, réactiver, supprimer, modèle des codes, import ; plan : import) ;
+  // S6a : + 5 (écritures : créer, modifier, supprimer ; aides à la saisie : taxe, retenue — rien d'écrit, même porte).
+  assert.equal(ecritures.length, 46, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
@@ -60,6 +61,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     // S5c : les tiers (ecritureTiers : droit « tiers » ou « configurer », dossier non archivé) ; l'import du plan passe
     // par ecriturePlan.
     tiers: { fichier: 'tiers.js', transactions: ['await ecritureTiers(req,'] },
+    // S6a : les écritures (ecritureEcritures : droit « saisir », dossier non archivé), aides comprises.
+    ecritures: { fichier: 'ecritures.js', transactions: ['await ecritureEcritures(req,'] },
   };
   const corps = (fichier, nom) => {
     const ctrl = lire('src', 'compta', fichier);

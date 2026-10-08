@@ -88,11 +88,12 @@ test('identité d\'un dossier (D17) : raison sociale obligatoire, matricule cont
 });
 
 test('droits (réponse du 07/10) : titulaire tout ; Complet crée et modifie ; Saisie et Consultation lisent', () => {
-  // S5c : `tiers` (créer et modifier des tiers) = Complet ou Saisie (réponse 4 du client du 08/10).
-  assert.deepEqual(dossiers.droits({ role: 'titulaire', niveau: 'complet' }), { creer: true, modifier: true, configurer: true, tiers: true, archiver: true, supprimer: true });
-  assert.deepEqual(dossiers.droits({ role: 'gerant', niveau: 'complet' }), { creer: true, modifier: true, configurer: true, tiers: true, archiver: false, supprimer: false });
+  // S5c : `tiers` (créer et modifier des tiers) = Complet ou Saisie (réponse 4 du client du 08/10) ; S6a : `saisir` (écritures
+  // en brouillard) = Complet ou Saisie aussi.
+  assert.deepEqual(dossiers.droits({ role: 'titulaire', niveau: 'complet' }), { creer: true, modifier: true, configurer: true, tiers: true, saisir: true, archiver: true, supprimer: true });
+  assert.deepEqual(dossiers.droits({ role: 'gerant', niveau: 'complet' }), { creer: true, modifier: true, configurer: true, tiers: true, saisir: true, archiver: false, supprimer: false });
   for (const niveau of ['saisie', 'consultation']) {
-    assert.deepEqual(dossiers.droits({ role: 'gerant', niveau }), { creer: false, modifier: false, configurer: false, tiers: niveau === 'saisie', archiver: false, supprimer: false }, niveau);
+    assert.deepEqual(dossiers.droits({ role: 'gerant', niveau }), { creer: false, modifier: false, configurer: false, tiers: niveau === 'saisie', saisir: niveau === 'saisie', archiver: false, supprimer: false }, niveau);
   }
   // D10 : un dossier mouvementé ne se supprime jamais ; aucune écriture n'existe avant l'étape de la saisie.
   assert.equal(dossiers.dossierMouvemente.constructor.name, 'AsyncFunction');
