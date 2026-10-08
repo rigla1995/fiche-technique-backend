@@ -12,6 +12,8 @@ const comptables = require('./comptablesClient');
 const gerants = require('./gerantsCabinet');
 const dossiers = require('./dossiers');
 const plan = require('./planComptes');
+const journaux = require('./journaux');
+const taxes = require('./taxes');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
 const limiteEmission = rateLimit({
@@ -130,6 +132,21 @@ router.put('/dossiers/:dossierId/plan/comptes/:compteId', authenticate, limitePl
 router.post('/dossiers/:dossierId/plan/comptes/:compteId/desactiver', authenticate, limitePlan, plan.desactiver);
 router.post('/dossiers/:dossierId/plan/comptes/:compteId/reactiver', authenticate, limitePlan, plan.reactiver);
 router.delete('/dossiers/:dossierId/plan/comptes/:compteId', authenticate, limitePlan, plan.supprimer);
+
+// Étape S5b : les journaux et les codes de taxe d'un dossier (lecture : tout accès au dossier ; écritures : Complet ou
+// titulaire, jugé par le contrôleur). Même limite de débit que le plan (la configuration d'un dossier se fait d'une
+// traite). Un journal ou un code ne se supprime pas : il se désactive.
+router.get('/dossiers/:dossierId/journaux', authenticate, journaux.lire);
+router.post('/dossiers/:dossierId/journaux', authenticate, limitePlan, journaux.creer);
+router.put('/dossiers/:dossierId/journaux/:journalId', authenticate, limitePlan, journaux.modifier);
+router.post('/dossiers/:dossierId/journaux/:journalId/desactiver', authenticate, limitePlan, journaux.desactiver);
+router.post('/dossiers/:dossierId/journaux/:journalId/reactiver', authenticate, limitePlan, journaux.reactiver);
+router.get('/dossiers/:dossierId/taxes', authenticate, taxes.lire);
+router.post('/dossiers/:dossierId/taxes', authenticate, limitePlan, taxes.ajouter);
+router.post('/dossiers/:dossierId/taxes/paquet', authenticate, limitePlan, taxes.ajouterDepuisPaquet);
+router.put('/dossiers/:dossierId/taxes/:taxeId', authenticate, limitePlan, taxes.modifier);
+router.post('/dossiers/:dossierId/taxes/:taxeId/desactiver', authenticate, limitePlan, taxes.desactiver);
+router.post('/dossiers/:dossierId/taxes/:taxeId/reactiver', authenticate, limitePlan, taxes.reactiver);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique

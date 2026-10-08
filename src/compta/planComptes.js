@@ -57,9 +57,19 @@ const lireExplication = (v) => {
 // Un compte « mouvementé » a au moins une ligne d'écriture : aucune table d'écritures n'existe avant l'étape de la
 // saisie, toujours faux ici. Seul endroit à compléter alors (désactiver, supprimer).
 const compteMouvemente = async (_db, _compteId) => false;
-// Un compte « utilisé » est porté par un journal (S5b), un code de taxe (S5b) ou un tiers (S5c) : rien de tel avant ces
-// étapes, toujours faux ici. Seul endroit à compléter alors (désactiver, supprimer : PLAN-S5 §2).
-const compteUtilise = async (_db, _compteId) => false;
+// Un compte « utilisé » est porté par un journal (S5b : compte de contrepartie) ou un code de taxe (S5b : compte à
+// l'achat, à la vente, sur immobilisations), actif ou non — un tiers s'y ajoutera en S5c (compte collectif). Il ne se
+// désactive ni ne se supprime : on change d'abord le compte du journal ou du code (pages Journaux et Taxes).
+const compteUtilise = async (db, compteId) => {
+  const r = await db.query(
+    `SELECT 1 FROM compta.journaux WHERE compte_id = $1
+     UNION ALL
+     SELECT 1 FROM compta.taxes WHERE compte_achat_id = $1 OR compte_vente_id = $1 OR compte_immo_id = $1
+     LIMIT 1`,
+    [compteId]
+  );
+  return r.rows.length > 0;
+};
 
 // ── Lectures ────────────────────────────────────────────────────────────────────────────────────────────────────────
 // L'arbre complet (600 à 1 000 comptes, chargé en une fois), avec le nombre de sous-comptes (tous, actifs) de chacun.
@@ -230,7 +240,7 @@ const desactiver = async (req, res) => {
       const actifs = (await db.query('SELECT numero FROM compta.comptes WHERE parent_id = $1 AND actif ORDER BY numero LIMIT 4', [c.id])).rows.map((x) => x.numero);
       if (actifs.length) throw erreur(409, `Désactivez d'abord ses sous-comptes actifs (${actifs.slice(0, 3).join(', ')}${actifs.length > 3 ? '…' : ''})`, 'SOUS_COMPTES_ACTIFS');
       if (await compteMouvemente(db, c.id)) throw erreur(409, `Le compte ${c.numero} a des écritures : il ne se désactive pas`, 'COMPTE_MOUVEMENTE');
-      if (await compteUtilise(db, c.id)) throw erreur(409, `Le compte ${c.numero} est porté par un journal, une taxe ou un tiers : il ne se désactive pas`, 'COMPTE_UTILISE');
+      if (await compteUtilise(db, c.id)) throw erreur(409, `Le compte ${c.numero} est porté par un journal ou un code de taxe : il ne se désactive pas`, 'COMPTE_UTILISE');
       await db.query('UPDATE compta.comptes SET actif = false, updated_at = NOW() WHERE id = $1', [c.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'compte_desactive', { dossier: d.id, compte: c.id, numero: c.numero, libelle: c.libelle });
     });
@@ -269,7 +279,7 @@ const supprimer = async (req, res) => {
       const enfants = (await db.query('SELECT numero FROM compta.comptes WHERE parent_id = $1 ORDER BY numero LIMIT 4', [c.id])).rows.map((x) => x.numero);
       if (enfants.length) throw erreur(409, `Supprimez d'abord ses sous-comptes (${enfants.slice(0, 3).join(', ')}${enfants.length > 3 ? '…' : ''})`, 'SOUS_COMPTES');
       if (await compteMouvemente(db, c.id)) throw erreur(409, `Le compte ${c.numero} a des écritures : il ne se supprime pas`, 'COMPTE_MOUVEMENTE');
-      if (await compteUtilise(db, c.id)) throw erreur(409, `Le compte ${c.numero} est porté par un journal, une taxe ou un tiers : il ne se supprime pas`, 'COMPTE_UTILISE');
+      if (await compteUtilise(db, c.id)) throw erreur(409, `Le compte ${c.numero} est porté par un journal ou un code de taxe : il ne se supprime pas`, 'COMPTE_UTILISE');
       const parent = c.parent_id ? (await db.query('SELECT numero FROM compta.comptes WHERE id = $1', [c.parent_id])).rows[0] : null;
       await db.query('DELETE FROM compta.comptes WHERE id = $1', [c.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'compte_supprime', { dossier: d.id, compte: c.id, numero: c.numero, libelle: c.libelle, ...(parent ? { parent: parent.numero } : {}) });
@@ -319,5 +329,6 @@ const exporter = async (req, res) => {
 
 module.exports = {
   MSG_CONFIGURER, HORS_W1252, lireNumero, lireLibelle, lireNature, lireExplication, compteMouvemente, compteUtilise, SQL_COMPTES, presenterCompte, COLONNES_EXPORT,
+  lectureDossier, presenterDossier,
   lire, ajouter, modifier, desactiver, reactiver, supprimer, exporter,
 };
