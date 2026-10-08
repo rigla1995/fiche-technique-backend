@@ -18,6 +18,8 @@ const tiers = require('./tiers');
 const ecritures = require('./ecritures');
 const validation = require('./validation');
 const periodes = require('./periodes');
+const livres = require('./livres');
+const importEcritures = require('./importEcritures');
 const { televersement } = require('./importExcel');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
@@ -187,6 +189,22 @@ router.get('/dossiers/:dossierId/ecritures', authenticate, ecritures.lire);
 router.post('/dossiers/:dossierId/ecritures/aide/taxe', authenticate, limiteEcritures, ecritures.aideTaxe);
 router.post('/dossiers/:dossierId/ecritures/aide/retenue', authenticate, limiteEcritures, ecritures.aideRetenue);
 router.post('/dossiers/:dossierId/ecritures', authenticate, limiteEcritures, ecritures.creer);
+// Étape S6c : les imports Excel d'écritures (en brouillard) et d'une balance d'ouverture (une écriture d'à-nouveaux) —
+// tout ou rien, titulaire ou Complet (droit « configurer », jugé par le contrôleur) ; les modèles se lisent à tout niveau.
+// Adresses fixes déclarées avant /:ecritureId. Un import analyse un classeur de 5 Mo et écrit jusqu'à mille écritures sous
+// le verrou de la comptabilité : 30 par quart d'heure et par personne (relecture de S6c), comme le journal général PDF.
+const limiteImports = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => `imports:${req.user.id}`,
+  message: { message: 'Trop d\'imports en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.get('/dossiers/:dossierId/ecritures/modele-import', authenticate, importEcritures.modeleEcritures);
+router.get('/dossiers/:dossierId/ecritures/modele-balance-ouverture', authenticate, importEcritures.modeleBalance);
+router.post('/dossiers/:dossierId/ecritures/import', authenticate, limiteImports, televersement, importEcritures.importerEcritures);
+router.post('/dossiers/:dossierId/ecritures/import-balance-ouverture', authenticate, limiteImports, televersement, importEcritures.importerBalance);
 router.get('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, ecritures.une);
 router.put('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, limiteEcritures, ecritures.modifier);
 router.delete('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, limiteEcritures, ecritures.supprimer);
@@ -213,6 +231,25 @@ router.get('/dossiers/:dossierId/periodes/:periodeId/journal-general.pdf', authe
 router.post('/dossiers/:dossierId/periodes/:periodeId/valider', authenticate, limiteEcritures, validation.validerPeriode);
 router.post('/dossiers/:dossierId/periodes/:periodeId/clore', authenticate, limiteEcritures, periodes.clore);
 router.post('/dossiers/:dossierId/periodes/:periodeId/rouvrir', authenticate, limiteEcritures, periodes.rouvrir);
+
+// Étape S6c : les livres (balance générale et auxiliaire, grand livre d'un compte ou d'un tiers, livre-journal), calculés
+// à la demande sur les écritures validées et en brouillard ; lecture : tout accès au dossier. Les exports Excel (jusqu'à
+// 50 000 lignes, classeur construit en mémoire) ont leur propre limite : 60 par quart d'heure et par personne.
+const limiteLivres = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  keyGenerator: (req) => `livres:${req.user.id}`,
+  message: { message: 'Trop d\'exports demandés en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.get('/dossiers/:dossierId/livres', authenticate, livres.lire);
+router.get('/dossiers/:dossierId/livres/balance', authenticate, livres.balance);
+router.get('/dossiers/:dossierId/livres/balance/export', authenticate, limiteLivres, livres.exporterBalance);
+router.get('/dossiers/:dossierId/livres/grand-livre', authenticate, livres.grandLivre);
+router.get('/dossiers/:dossierId/livres/grand-livre/export', authenticate, limiteLivres, livres.exporterGrandLivre);
+router.get('/dossiers/:dossierId/livres/journal', authenticate, livres.journal);
+router.get('/dossiers/:dossierId/livres/journal/export', authenticate, limiteLivres, livres.exporterJournal);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique
