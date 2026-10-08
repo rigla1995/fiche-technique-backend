@@ -6,7 +6,7 @@
 // (sans écriture) et réactivation (compte actif) ; jamais de suppression. Routes (D3) : /api/compta/dossiers/:dossierId/
 // journaux… ; chaque écriture passe par la transaction verrouillée du dossier (dansEspaceDuDossier : comptabilité
 // verrouillée, dossier relu sous verrou, garde par comptabilité D4), puis par les droits et l'état du dossier.
-// « Sans écriture » est toujours vrai avant la saisie : journalMouvemente est le seul endroit à compléter alors.
+// « Sans écriture » : journalMouvemente lit compta.ecritures depuis S6a (les écritures en brouillard comptent).
 const pool = require('../config/database');
 const { journaliser } = require('./journal');
 const { modeTitulaire, etatAbonnement } = require('./garde');
@@ -38,9 +38,9 @@ const lireCompteId = (v) => {
   return Number(v);
 };
 
-// Un journal « mouvementé » a au moins une écriture : aucune table d'écritures n'existe avant l'étape de la saisie,
-// toujours faux ici. Seul endroit à compléter alors (désactiver, changer le compte de contrepartie).
-const journalMouvemente = async (_db, _journalId) => false;
+// Un journal « mouvementé » porte au moins une écriture (S6a : compta.ecritures, migration 215, brouillard compris) : il
+// ne se désactive plus et son compte de contrepartie ne change plus.
+const journalMouvemente = async (db, journalId) => (await db.query('SELECT 1 FROM compta.ecritures WHERE journal_id = $1 LIMIT 1', [journalId])).rows.length > 0;
 
 // ── Lectures ────────────────────────────────────────────────────────────────────────────────────────────────────────
 const SQL_JOURNAUX = `

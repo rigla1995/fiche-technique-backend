@@ -10,8 +10,8 @@
 // compte individuel dans le plan. Routes (D3) : /api/compta/dossiers/:dossierId/tiers… ; chaque écriture passe par la
 // transaction verrouillée du dossier (dansEspaceDuDossier : comptabilité verrouillée, dossier relu sous verrou, garde par
 // comptabilité D4), puis par les droits (créer, modifier, désactiver, réactiver : titulaire, Complet ou Saisie ;
-// supprimer, modèle des codes, import : titulaire ou Complet) et l'état du dossier. « Sans écriture » est toujours vrai
-// avant la saisie : tiersMouvemente est le seul endroit à compléter alors.
+// supprimer, modèle des codes, import : titulaire ou Complet) et l'état du dossier. « Sans écriture » :
+// tiersMouvemente lit compta.lignes depuis S6a (les écritures en brouillard comptent).
 const ExcelJS = require('exceljs');
 const pool = require('../config/database');
 const { journaliser } = require('./journal');
@@ -177,9 +177,9 @@ const generateurCodes = (modele, type, codesPris) => () => {
 };
 const codesDuType = async (db, dossierId, type) => new Set((await db.query('SELECT code FROM compta.tiers WHERE dossier_id = $1 AND type = $2', [dossierId, type])).rows.map((x) => x.code));
 
-// Un tiers « mouvementé » est porté par au moins une ligne d'écriture : aucune table d'écritures n'existe avant l'étape de
-// la saisie, toujours faux ici. Seul endroit à compléter alors (changer le code, supprimer).
-const tiersMouvemente = async (_db, _tiersId) => false;
+// Un tiers « mouvementé » est porté par au moins une ligne d'écriture (S6a : compta.lignes, migration 215, brouillard
+// compris) : son code et son compte collectif ne changent plus, il ne se supprime plus (il se désactive).
+const tiersMouvemente = async (db, tiersId) => (await db.query('SELECT 1 FROM compta.lignes WHERE tiers_id = $1 LIMIT 1', [tiersId])).rows.length > 0;
 
 // ── Lectures ────────────────────────────────────────────────────────────────────────────────────────────────────────
 const SQL_SELECT = `
