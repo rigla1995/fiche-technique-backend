@@ -84,6 +84,13 @@
     }
   ],
   "configuration": "S5b (08/10/2026) : journaux par défaut, sous-comptes proposés (créés dans le plan du dossier quand un code de taxe copié les vise, origine « ajout », explication) et codes de taxe du paquet, d'après labflow-reprise/achats-compta/recherche-fiscale-tunisie.md §1 et §3 et PLAN-S5.md §5 ; « copie » : tous (tout régime), assujetti (régime réel de TVA), exportateur (exportateur total, en plus), jamais (ajoutable depuis la page Taxes). Taux et montants en texte à 3 décimales (SPEC-SOCLE §0) ; assiette : ht, ttc (hors timbre), tva (montant de la TVA), fixe (montant par facture). Code TEJ : code d'opération du cahier des charges TEJ v2.0 pour les certificats de retenue (hors S5).",
+  "tiers": {
+    "note": "S5c (08/10/2026) : comptes collectifs par défaut des tiers (nature fournisseurs / clients du plan), remplaçables tiers par tiers par tout compte actif de même nature (PLAN-S5 §4, réponse 5 du 07/10).",
+    "collectifs": {
+      "fournisseur": "4011",
+      "client": "4111"
+    }
+  },
   "journaux": [
     {
       "code": "AC",

@@ -144,13 +144,20 @@ const initialiserJournauxEtTaxes = async (db, opts) => {
   return { journaux: j.journaux, codes: t.codes };
 };
 
-// Résumé pour la fiche du dossier (carte « Configuration ») : journaux et codes de taxe actifs.
+// Résumé pour la fiche du dossier (carte « Configuration ») : journaux et codes de taxe actifs ; S5c : tiers (fournisseurs,
+// clients) actifs.
 const resumeConfiguration = async (db, dossierId) => {
-  const [j, t] = await Promise.all([
+  const [j, t, x] = await Promise.all([
     db.query('SELECT COUNT(*) FILTER (WHERE actif)::int AS actifs, COUNT(*)::int AS total FROM compta.journaux WHERE dossier_id = $1', [dossierId]),
     db.query('SELECT COUNT(*) FILTER (WHERE actif)::int AS actifs, COUNT(*)::int AS total FROM compta.taxes WHERE dossier_id = $1', [dossierId]),
+    db.query('SELECT type, COUNT(*) FILTER (WHERE actif)::int AS actifs, COUNT(*)::int AS total FROM compta.tiers WHERE dossier_id = $1 GROUP BY type', [dossierId]),
   ]);
-  return { journaux: { nbActifs: j.rows[0].actifs, nbTotal: j.rows[0].total }, taxes: { nbActifs: t.rows[0].actifs, nbTotal: t.rows[0].total } };
+  const tiersDe = (type) => { const r = x.rows.find((y) => y.type === type); return { nbActifs: r ? r.actifs : 0, nbTotal: r ? r.total : 0 }; };
+  return {
+    journaux: { nbActifs: j.rows[0].actifs, nbTotal: j.rows[0].total },
+    taxes: { nbActifs: t.rows[0].actifs, nbTotal: t.rows[0].total },
+    tiers: { fournisseurs: tiersDe('fournisseur'), clients: tiersDe('client') },
+  };
 };
 
 module.exports = {

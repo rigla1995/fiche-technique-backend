@@ -156,9 +156,11 @@ const exigerAcces = async (db, user, espaceId, verrou = false) => {
 };
 // Réponses du client du 07/10 (question 6) : Complet crée et modifie ; Saisie et Consultation lisent ; archiver,
 // désarchiver et supprimer = titulaire seul. S5a : Complet (ou le titulaire) configure le dossier (plan de comptes).
+// S5c (réponse 4 du 08/10) : Saisie crée et modifie aussi les TIERS (`tiers`) — un fournisseur nouveau arrive avec sa
+// facture — mais ni le modèle des codes, ni l'import, ni la suppression (`configurer`).
 const droits = (acces) => {
   const complet = acces.role === 'titulaire' || acces.niveau === 'complet';
-  return { creer: complet, modifier: complet, configurer: complet, archiver: acces.role === 'titulaire', supprimer: acces.role === 'titulaire' };
+  return { creer: complet, modifier: complet, configurer: complet, tiers: complet || acces.niveau === 'saisie', archiver: acces.role === 'titulaire', supprimer: acces.role === 'titulaire' };
 };
 const MSG_NIVEAU = 'Seul le titulaire ou un gérant de niveau Complet peut créer ou modifier un dossier';
 const MSG_TITULAIRE = 'Seul le titulaire peut archiver, désarchiver ou supprimer un dossier';
@@ -329,7 +331,7 @@ const presenterRegime = (d) => ({
 });
 // La fiche : identité, régime, exercice en cours (et ses périodes), qui y a accès, droits de la personne, et le résumé
 // de sa configuration — (S5a) plan de comptes : comptes actifs, ajoutés, désactivés, paquet d'origine ; (S5b) journaux
-// et codes de taxe actifs.
+// et codes de taxe actifs ; (S5c) tiers actifs (fournisseurs, clients).
 const presenterFiche = async (db, acces, d) => {
   const [ex, personnes, mode, plan, configuration] = await Promise.all([
     db.query('SELECT id, debut, fin, etat FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [d.id]),
@@ -369,6 +371,7 @@ const presenterFiche = async (db, acces, d) => {
     plan,
     journaux: configuration.journaux,
     taxes: configuration.taxes,
+    tiers: configuration.tiers,
     mouvemente: await dossierMouvemente(db, d.id),
     creeLe: d.created_at,
     modifieLe: d.updated_at,
