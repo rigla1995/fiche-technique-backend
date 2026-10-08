@@ -136,7 +136,7 @@ test('un dossier créé par un gérant qui n\'a pas « tous » lui est ouvert da
 test('aucune route nouvelle : le réglage voyage dans PUT …/gerants/:id et PUT /mes-comptables/:id', () => {
   const src = lire('src', 'compta', 'routes.js');
   assert.ok(!/dossiers'/.test(src.split('\n').filter((l) => /cabinet\/gerants|mes-comptables/.test(l)).join('\n')));
-  assert.equal(src.split('\n').filter((l) => /^router\.(post|put|patch|delete)\(/.test(l)).length, 19, 'toujours 19 routes d\'écriture (test S3b)');
+  assert.equal(src.split('\n').filter((l) => /^router\.(post|put|patch|delete)\(/.test(l)).length, 24, 'toujours 24 routes d\'écriture (test S3b ; S5a : + 5 du plan de comptes)');
 });
 
 test('migration 210 : manuel seul, quatre fiches gardées par empreinte, sans balise, en LF', () => {
