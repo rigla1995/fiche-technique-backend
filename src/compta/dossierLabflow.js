@@ -7,6 +7,7 @@
 const { journaliser } = require('./journal');
 const { regimeParForme, anneeCivile, creerExercice, lireIdentiteClient } = require('./dossiers');
 const { initialiserPlan } = require('./planInit');
+const { initialiserJournauxEtTaxes } = require('./configDossier');
 
 // Crée le dossier « Mon entreprise » de la comptabilité s'il n'existe pas encore (source « labflow »), avec son premier
 // exercice (année civile en cours) et ses périodes mensuelles ; journal. Dans la transaction de l'appelant.
@@ -35,6 +36,8 @@ const assurerDossierLabflow = async (db, { espaceId, clientId: clientBrut, auteu
   await journaliser(db, espaceId, auteurId, 'exercice_cree', { dossier: d.id, exercice: ex.id, debut: exercice.debut, fin: exercice.fin });
   // S5a : le plan de comptes du dossier = copie du paquet de son pays (même transaction).
   await initialiserPlan(db, { dossierId: d.id, espaceId, pays: d.pays, auteurId, nom: d.nom });
+  // S5b : ses journaux et ses codes de taxe (régime réel par défaut), même transaction.
+  await initialiserJournauxEtTaxes(db, { dossierId: d.id, espaceId, auteurId, nom: d.nom });
   return { id: d.id, cree: true };
 };
 

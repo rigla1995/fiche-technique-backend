@@ -15,6 +15,7 @@ const { exigerEcriture, modeTitulaire, etatAbonnement } = require('./garde');
 const { erreur, idValide, repondreErreur } = require('./comptablesClient');
 // S5a : plan de comptes copié du paquet pays à la création ; résumé pour la fiche (planInit.js, sans dépendance ici).
 const { initialiserPlan, resumePlan } = require('./planInit');
+const { initialiserJournauxEtTaxes, resumeConfiguration } = require('./configDossier');
 
 // ── Régime fiscal (listes fermées, SPEC-SOCLE §3.2) ─────────────────────────────────────────────────────────────────
 const PERSONNES = ['morale', 'physique'];
@@ -326,10 +327,11 @@ const dossierDe = async (db, acces, dossierId, verrou = false) => {
 const presenterRegime = (d) => ({
   personne: d.personne, impot: d.impot, tva: d.tva, exportateurTotal: d.exportateur_total, teledeclaration: d.teledeclaration, debutActivite: d.debut_activite,
 });
-// La fiche : identité, régime, exercice en cours (et ses périodes), qui y a accès, droits de la personne, et (S5a) le
-// résumé de sa configuration (plan de comptes : comptes actifs, ajoutés, désactivés, paquet d'origine).
+// La fiche : identité, régime, exercice en cours (et ses périodes), qui y a accès, droits de la personne, et le résumé
+// de sa configuration — (S5a) plan de comptes : comptes actifs, ajoutés, désactivés, paquet d'origine ; (S5b) journaux
+// et codes de taxe actifs.
 const presenterFiche = async (db, acces, d) => {
-  const [ex, personnes, mode, plan] = await Promise.all([
+  const [ex, personnes, mode, plan, configuration] = await Promise.all([
     db.query('SELECT id, debut, fin, etat FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [d.id]),
     db.query(
       `SELECT a.role, a.niveau, COALESCE(a.nom_attendu, u.nom) AS nom, u.email
@@ -342,6 +344,7 @@ const presenterFiche = async (db, acces, d) => {
     ),
     modeTitulaire(db, d.espace_id),
     resumePlan(db, d.id),
+    resumeConfiguration(db, d.id),
   ]);
   const courant = ex.rows.find((x) => x.etat === 'ouvert') || ex.rows[0] || null;
   const periodes = courant
@@ -364,6 +367,8 @@ const presenterFiche = async (db, acces, d) => {
     acces: personnes.rows.map((p) => ({ role: p.role, niveau: p.niveau, nom: p.nom, email: p.email })),
     droits: droits(acces),
     plan,
+    journaux: configuration.journaux,
+    taxes: configuration.taxes,
     mouvemente: await dossierMouvemente(db, d.id),
     creeLe: d.created_at,
     modifieLe: d.updated_at,
@@ -467,6 +472,8 @@ const creer = async (req, res) => {
       await journaliser(db, acces.espace_id, req.user.id, 'exercice_cree', { dossier: d.id, exercice: ex.id, debut: exercice.debut, fin: exercice.fin });
       // S5a : le plan de comptes du dossier = copie du paquet de son pays (même transaction).
       await initialiserPlan(db, { dossierId: d.id, espaceId: acces.espace_id, pays: d.pays, auteurId: req.user.id, nom: d.nom });
+      // S5b : ses journaux et ses codes de taxe (selon son régime), même transaction.
+      await initialiserJournauxEtTaxes(db, { dossierId: d.id, espaceId: acces.espace_id, auteurId: req.user.id, nom: d.nom });
       return {
         fiche: await presenterFiche(db, acces, d),
         avertissements: [...identite.avertissements, ...await avertissementsMatriculeDossier(db, acces, d.matricule_fiscal, d.id)],
