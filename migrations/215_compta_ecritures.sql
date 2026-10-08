@@ -189,7 +189,7 @@ Les codes de taxe sont les taxes qu'une ligne d'écriture pourra porter : TVA pa
 ### Points d'attention
 
 :::attention
-Les retenues à la source se calculent sur le montant TTC hors timbre, et le seuil de 1 000 D des retenues sur achats s'apprécie par paiement : ces règles s'appliquent à la saisie (page **Écritures**, bouton **Ajouter la retenue**). Le taux de la retenue sur achats (1,5 %, 1 % ou 0,5 %) dépend du régime du fournisseur : le code par défaut de chaque fournisseur se règle dans sa fiche (page **Tiers**, retenue par défaut).
+Les retenues à la source se calculent sur le montant TTC hors timbre, et le seuil de 1 000 D des retenues sur achats s'apprécie par paiement : à la saisie (page **Écritures**, bouton **Ajouter la retenue**), la retenue est calculée sur le TTC hors timbre ; le seuil reste à votre appréciation (retirez la ligne quand la retenue n'est pas due). Le taux de la retenue sur achats (1,5 %, 1 % ou 0,5 %) dépend du régime du fournisseur : le code par défaut de chaque fournisseur se règle dans sa fiche (page **Tiers**, retenue par défaut).
 :::
 
 :::astuce
@@ -249,17 +249,17 @@ Les écritures d'un dossier sont ses opérations comptables : chacune porte une 
 
 1. **Saisir une écriture** : **+ Écriture**. Choisissez le journal, la date (dans une période ouverte de l'exercice ouvert), la **référence de la pièce** (numéro de facture, de relevé… obligatoire, 80 caractères au plus), le libellé ; puis les **lignes** : le compte (recherche par numéro ou par mot du libellé ; seuls les comptes imputables, actifs et sans sous-compte actif, sont proposés), le tiers quand le compte est collectif (fournisseurs ou clients : obligatoire alors, choisi parmi les tiers actifs du même type), le libellé de la ligne (celui de l'écriture par défaut), le débit **ou** le crédit (en dinars, trois décimales au plus, la virgule est acceptée), le code de taxe (facultatif) et l'échéance (facultative ; proposée d'après le délai de paiement du tiers). Le pied affiche le total des débits, le total des crédits et l'écart : **Enregistrer** n'est possible qu'à écart nul. L'écriture reçoit un numéro provisoire et la date de traitement du serveur.
 2. **Ajouter la TVA** : sur une ligne hors taxes qui porte un code de TVA (TVA19…), ce bouton crée la ligne de taxe, calculée au millime près (le demi-millime arrondi vers le haut), sur le compte du code : à l'achat ou à la vente selon le journal, sur immobilisations quand le compte de la ligne en est une. Même chose pour un droit de timbre (montant fixe) ou le FODEC. La ligne créée reste modifiable.
-3. **Ajouter la retenue** : sur un journal d'achats ou de ventes, pour un tiers qui a une retenue par défaut (ou avec le code de retenue que vous choisissez), ce bouton crée la ligne de retenue à la source, calculée sur le **TTC hors timbre** (toutes les lignes sauf celles du tiers, du timbre, des retenues et des avances), au crédit du compte des retenues opérées à l'achat (432), au débit du compte des retenues subies à la vente (4341) ; la ligne du tiers passe au net. Le seuil de 1 000 D des retenues sur achats s'apprécie par paiement : retirez la ligne quand la retenue n'est pas due.
+3. **Ajouter la retenue** : sur un journal d'achats ou de ventes, pour un tiers qui a une retenue par défaut (ou avec le code que vous choisissez), ce bouton crée la ligne de retenue à la source, calculée sur le **TTC hors timbre** (toutes les lignes sauf celles du tiers, du timbre, des retenues et des avances), au crédit du compte des retenues opérées à l'achat (432), au débit du compte des retenues subies à la vente (4341) ; la ligne du tiers passe au net. Le même bouton sert aux **retenues de TVA** (RSTVA25, RSTVA100 : calculées sur les lignes de TVA, ajoutez la TVA d'abord) et aux **avances** (AV_FORF1, AV_ALC5 : sur le TTC hors timbre, du même côté que la pièce ; la ligne du tiers augmente). Le seuil de 1 000 D des retenues sur achats s'apprécie par paiement : retirez la ligne quand la retenue n'est pas due.
 4. **Modifier** / **Supprimer** une écriture en brouillard : depuis ses lignes. Le journal de la comptabilité garde la valeur d'avant et celle d'après, et le contenu d'une écriture supprimée.
 
 ### Points d'attention
 
 :::attention
-Une écriture refusée le dit : débits et crédits différents, moins de deux lignes, date hors de l'exercice ouvert ou dans une période close, journal désactivé, compte non imputable (désactivé ou avec des sous-comptes actifs), tiers manquant sur un compte collectif ou posé sur un autre compte, code de taxe désactivé, échéance avant la date de l'écriture.
+Une écriture refusée le dit : débits et crédits différents, moins de deux lignes ou un seul compte, date hors de l'exercice ouvert ou dans une période close, journal désactivé, compte non imputable (désactivé ou avec des sous-comptes actifs), tiers manquant sur un compte collectif ou posé sur un autre compte, code de taxe désactivé, échéance avant la date de l'écriture.
 :::
 
 :::attention
-Dès qu'une écriture existe, le dossier ne se supprime plus et les dates de son exercice ne changent plus ; un compte, un journal, un code de taxe ou un tiers porté par une écriture ne se désactive ni ne se supprime plus (le code d'un tiers et son compte collectif non plus). La date de traitement est celle du serveur, jamais modifiable (NC 01).
+Dès qu'une écriture existe, le dossier ne se supprime plus et les dates de son exercice ne changent plus ; un compte, un journal ou un code de taxe porté par une écriture ne se désactive ni ne se supprime plus ; un tiers porté par une écriture ne se supprime plus (il se désactive : ses écritures en brouillard restent modifiables), son code et son compte collectif ne changent plus. La date de traitement est celle du serveur, jamais modifiable (NC 01).
 :::
 
 :::astuce

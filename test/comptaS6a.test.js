@@ -61,6 +61,11 @@ test('calcul d\'une taxe : base × taux / 100 en entiers, arrondi au millime le 
   assert.equal(ecritures.calculTaxe(3n, '19.000'), 1n);
   assert.equal(ecritures.calculTaxe(-1190000n, '1.500'), -17850n, 'signe de la base conservé');
   assert.equal(ecritures.calculTaxe(0n, '19.000'), 0n);
+  // Relecture : un code sans taux (TVAEXO) ne fait jamais tomber le calcul (le refus 400 est pris avant).
+  assert.equal(ecritures.milliemesDe(null), 0n);
+  assert.equal(ecritures.milliemesDe(''), 0n);
+  assert.equal(ecritures.calculTaxe(1000000n, null), 0n);
+  assert.equal(ecritures.TOTAL_MAX, 999999999999999999n);
 });
 
 test('lecteurs de saisie : ligne (compte, débit OU crédit, tiers, code, échéance), lignes (2 à 200), écriture (partie double), textes latins', () => {
@@ -88,6 +93,10 @@ test('lecteurs de saisie : ligne (compte, débit OU crédit, tiers, code, éché
   const base = { journalId: 7, date: '2026-03-15', reference: 'P', libelle: 'L' };
   assert.throws(() => ecritures.lireEcriture({ ...base, lignes: [{ compteId: 1, debit: '1000' }, { compteId: 2, credit: '999.999' }] }), (e2) => est400(e2) && e2.code === 'DESEQUILIBRE' && /écart 0,001/.test(e2.message), 'déséquilibre d\'un millime');
   assert.throws(() => ecritures.lireEcriture({ ...base, lignes: [{ compteId: 1, debit: '1' }, { compteId: 2, credit: '1', echeance: '2026-03-14' }] }), (e2) => est400(e2) && /précède la date/.test(e2.message), 'échéance avant la date');
+  // Relecture : NC 01 §30, au moins deux comptes (deux tiers d'un même collectif comptent) ; total borné (NUMERIC 18,3).
+  assert.throws(() => ecritures.lireEcriture({ ...base, lignes: [{ compteId: 1, debit: '100' }, { compteId: 1, credit: '100' }] }), (e2) => est400(e2) && e2.code === 'COMPTES_IDENTIQUES', 'un seul compte');
+  assert.equal(ecritures.lireEcriture({ ...base, lignes: [{ compteId: 5, tiersId: 1, debit: '100' }, { compteId: 5, tiersId: 2, credit: '100' }] }).total, 100000n, 'deux tiers sur le même collectif');
+  assert.throws(() => ecritures.lireEcriture({ ...base, lignes: [{ compteId: 1, debit: '999999999999999.999' }, { compteId: 2, debit: '1' }, { compteId: 3, credit: '999999999999999.999' }, { compteId: 4, credit: '1' }] }), (e2) => est400(e2) && e2.code === 'TOTAL_TROP_GRAND', 'total hors NUMERIC(18,3)');
   for (const [corps, motif] of [
     [{ ...base, journalId: '', lignes: [{ compteId: 1, debit: '1' }, { compteId: 2, credit: '1' }] }, 'sans journal'], [{ ...base, date: '15/03/2026', lignes: [{ compteId: 1, debit: '1' }, { compteId: 2, credit: '1' }] }, 'date mal formée'],
     [{ ...base, reference: '', lignes: [{ compteId: 1, debit: '1' }, { compteId: 2, credit: '1' }] }, 'sans pièce'], [{ ...base, reference: 'x'.repeat(81), lignes: [{ compteId: 1, debit: '1' }, { compteId: 2, credit: '1' }] }, 'pièce trop longue'],
@@ -135,6 +144,15 @@ test('aides à la saisie : lecture des corps, assiette d\'une retenue (TTC hors 
   assert.equal(ecritures.assietteRetenue(vente, cartes, { type: 'ventes' }, 'ttc'), 1190000n, 'ventes : crédits − débits');
   const fodec = [{ compteId: 1, debit: 1000000n, credit: 0n, taxeId: 10 }, { compteId: 3, debit: 10000n, credit: 0n, taxeId: 13 }];
   assert.equal(ecritures.assietteRetenue(fodec, cartes, { type: 'achats' }, 'ttc'), 1010000n, 'le FODEC entre dans le TTC');
+  // Relecture : une retenue de TVA (assiette « tva ») se calcule sur les seules lignes de TVA.
+  assert.equal(ecritures.assietteRetenue(achat, cartes, { type: 'achats' }, 'tva'), 190000n, 'assiette tva : la TVA seule');
+  assert.equal(ecritures.assietteRetenue(vente, cartes, { type: 'ventes' }, 'tva'), 190000n);
+  assert.deepEqual(ecritures.TYPES_RETENUE, ['retenue', 'retenue_tva', 'avance'], '« Ajouter la retenue » sert aux retenues, retenues de TVA et avances');
+  assert.deepEqual(ecritures.NATURES_TVA, ['tva_deductible', 'tva_collectee', 'tva_a_payer']);
+  // Une modification sans changement se reconnaît (auteur et date de traitement à part).
+  const contenu = { journal: 'AC', date: '2026-03-15', reference: 'P', libelle: 'L', total: '1.000', lignes: [{ rang: 1, compte: '607', tiers: null, libelle: null, debit: '1.000', credit: '0.000', taxe: null, echeance: null }] };
+  assert.equal(ecritures.contenuComparable({ ...contenu, creePar: 'A', creeLe: 'x' }), ecritures.contenuComparable(contenu));
+  assert.notEqual(ecritures.contenuComparable({ ...contenu, libelle: 'M' }), ecritures.contenuComparable(contenu));
   // Compte du code : achats → achat (immobilisations si la ligne en est une et que le code en a un) ; ventes → vente ; OD → selon le côté.
   const x = { compte_achat_id: 21, compte_vente_id: 22, compte_immo_id: 23 };
   assert.deepEqual(ecritures.compteDuCode(x, { type: 'achats' }, { debit: 1n, credit: 0n }, { nature: 'charges' }), { id: 21, cote: 'à l\'achat' });
@@ -208,7 +226,8 @@ test('migration 215 : écritures et lignes (partie double, un seul côté, clés
   assert.ok(sql.includes("'LabFlow Compta', f.ordre, f.contenu, f.contenu, f.mots_cles, f.ecran, false, true, 'compta'") && sql.includes('ON CONFLICT (slug) DO NOTHING'));
   assert.ok(sql.includes("'/ecritures')"), 'écran de la fiche');
   const fiche = texteDe('215_compta_ecritures.sql', '$f215f$');
-  for (const mot of ['+ Écriture', 'B-000012', 'Ajouter la TVA', 'Ajouter la retenue', 'TTC hors timbre', 'partie double', 'écart nul', 'Afficher plus', 'Saisie', 'Consultation', 'numéro définitif', 'AC-2026-000001', 'Modifier', 'Supprimer', 'date de traitement']) assert.ok(fiche.includes(mot), mot);
+  for (const mot of ['+ Écriture', 'B-000012', 'Ajouter la TVA', 'Ajouter la retenue', 'TTC hors timbre', 'partie double', 'écart nul', 'Afficher plus', 'Saisie', 'Consultation', 'numéro définitif', 'AC-2026-000001', 'Modifier', 'Supprimer', 'date de traitement', 'retenues de TVA', 'avances', 'un seul compte', 'il se désactive']) assert.ok(fiche.includes(mot), mot);
+  assert.ok(texteDe('215_compta_ecritures.sql', '$f215d$').includes('le seuil reste à votre appréciation'), 'fiche Taxes : le seuil n\'est pas calculé');
   assert.ok(!/étape suivante\s*:/.test(sql.replace(/arrivent à l'étape suivante|à l'étape suivante, avec/g, '')), 'les fiches retouchées ne renvoient plus la saisie à une étape suivante');
 });
 
@@ -233,7 +252,12 @@ test('routes S6a : lecture pour tout accès, cinq écritures (aides comprises) s
   assert.equal((ctrl.match(/exigerBrouillard\(/g) || []).length, 2, 'modifier et supprimer exigent le brouillard (définition comprise)');
   assert.ok(ctrl.includes("UPDATE compta.dossiers SET prochain_provisoire = prochain_provisoire + 1 WHERE id = $1 RETURNING prochain_provisoire - 1 AS n"), 'numéro provisoire : compteur du dossier, sous son verrou, jamais réemployé');
   assert.ok(ctrl.includes("'ecriture_creee'") && ctrl.includes("'ecriture_modifiee'") && ctrl.includes("'ecriture_supprimee'"), 'journal D16');
-  assert.ok(ctrl.includes('avant: contenuAvant, apres:') && ctrl.includes('contenu }'), 'avant / après et contenu supprimé');
+  assert.ok(ctrl.includes('avant: contenuAvant, apres }') && ctrl.includes('contenu }'), 'avant / après et contenu supprimé');
+  assert.ok(ctrl.includes('if (contenuComparable(contenuAvant) === contenuComparable(apres)) return'), 'une modification sans changement n\'écrit rien');
+  assert.ok(ctrl.includes("creePar: e.cree_par_nom || null, creeLe: e.created_at"), 'le contenu journalisé porte l\'auteur et la date de traitement');
+  assert.ok(ctrl.includes("new Set(lignesAvant.map((l) => l.tiers_id).filter(Boolean))"), 'un tiers désactivé déjà porté est toléré en modification');
+  for (const code of ["'LIGNE_SANS_CODE'", "'TIERS_TYPE'", "'CODE_NON_RETENUE'", "'ASSIETTE_TVA'", "'COMPTES_IDENTIQUES'", "'TOTAL_TROP_GRAND'"]) assert.ok(ctrl.includes(code), `code de refus ${code}`);
+  assert.ok(ctrl.includes("if (x.assiette !== 'fixe' && x.taux == null) throw erreur(400"), 'code sans taux refusé avant le calcul');
   const code = ctrl.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
   assert.ok(!/parseFloat|Number\(.*(debit|credit|montant|taux)/.test(code), 'jamais de flottant sur un montant');
   assert.ok(!/gerant_parent_id|requireClient|requireEntreprise/.test(code), 'règles du chantier');
@@ -248,10 +272,10 @@ test('droit « saisir » (réponse 4 du 08/10), hooks « mouvementé » réels, 
   assert.equal(dossiers.droits({ role: 'gerant', niveau: 'consultation' }).saisir, false);
   for (const [fichier, fonction, requete] of [
     ['dossiers.js', 'const dossierMouvemente = async (db, dossierId) =>', "'SELECT 1 FROM compta.ecritures WHERE dossier_id = $1 LIMIT 1'"],
-    ['planComptes.js', 'const compteMouvemente = async (db, compteId) =>', "'SELECT 1 FROM compta.lignes WHERE compte_id = $1 LIMIT 1'"],
-    ['journaux.js', 'const journalMouvemente = async (db, journalId) =>', "'SELECT 1 FROM compta.ecritures WHERE journal_id = $1 LIMIT 1'"],
+    ['planComptes.js', 'const compteMouvemente = async (db, compteId) =>', "'SELECT 1 FROM compta.lignes WHERE dossier_id = (SELECT dossier_id FROM compta.comptes WHERE id = $1) AND compte_id = $1 LIMIT 1'"],
+    ['journaux.js', 'const journalMouvemente = async (db, journalId) =>', "'SELECT 1 FROM compta.ecritures WHERE dossier_id = (SELECT dossier_id FROM compta.journaux WHERE id = $1) AND journal_id = $1 LIMIT 1'"],
     ['taxes.js', 'const taxeMouvementee = async (db, taxeId) =>', "'SELECT 1 FROM compta.lignes WHERE taxe_id = $1 LIMIT 1'"],
-    ['tiers.js', 'const tiersMouvemente = async (db, tiersId) =>', "'SELECT 1 FROM compta.lignes WHERE tiers_id = $1 LIMIT 1'"],
+    ['tiers.js', 'const tiersMouvemente = async (db, tiersId) =>', "'SELECT 1 FROM compta.lignes WHERE dossier_id = (SELECT dossier_id FROM compta.tiers WHERE id = $1) AND tiers_id = $1 LIMIT 1'"],
   ]) {
     const src = lire('src', 'compta', fichier);
     const debut = src.indexOf(fonction);

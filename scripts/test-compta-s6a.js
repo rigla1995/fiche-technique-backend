@@ -122,7 +122,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     const planA = r.body;
     const K = Object.fromEntries(['607', '601', '6654', '6651', '43666', '436711', '4011', '4111', '5321', '5411', '432', '4341', '60', '707', '622'].map((n) => [n, compte(planA, n)]));
     r = await appel('GET', `/api/compta/dossiers/${A.id}/taxes`, cabinet.tok);
-    const X = Object.fromEntries(['TVA19', 'TIMBRE', 'RS_MAR15', 'RS_HON10', 'FODEC'].map((c) => [c, r.body?.taxes?.find((t) => t.code === c)]));
+    const X = Object.fromEntries(['TVA19', 'TIMBRE', 'RS_MAR15', 'RS_HON10', 'FODEC', 'TVAEXO', 'RSTVA25', 'RSTVA100', 'AV_FORF1'].map((c) => [c, r.body?.taxes?.find((t) => t.code === c)]));
+    const c43665 = compte(planA, '43665');
     r = await appel('GET', `/api/compta/dossiers/${A.id}/journaux`, cabinet.tok);
     const J = Object.fromEntries(['AC', 'VT', 'BQ', 'CA', 'OD', 'AN'].map((c) => [c, r.body?.journaux?.find((j) => j.code === c)]));
     check('plan, taxes et journaux de A lus', Object.values(K).every(Boolean) && Object.values(X).every(Boolean) && Object.values(J).every(Boolean), `${Object.entries(K).filter(([, v]) => !v).map(([k]) => k)} ${Object.entries(X).filter(([, v]) => !v).map(([k]) => k)}`);
@@ -190,6 +191,16 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     r = await ec('/aide/retenue', cabinet.tok, { journalId: J.AC.id, tiersId: F1.id, lignes: [{ compteId: K['4011'].id, tiersId: F1.id, credit: '1191' }] });
     r2 = await ec('/aide/taxe', client.tok, { journalId: J.AC.id, ligne: { compteId: K['607'].id, debit: '1000', taxeId: X.TVA19.id } });
     check('… assiette nulle (seule la ligne du tiers) : 400 ASSIETTE_NULLE ; personne étrangère : 404', r.status === 400 && r.body?.code === 'ASSIETTE_NULLE' && r2.status === 404, `${r.status} ${r.body?.code} ${r2.status}`);
+    // Relecture : code sans taux (TVAEXO), retenue de TVA (assiette « tva »), avance.
+    r = await ec('/aide/taxe', cabinet.tok, { journalId: J.AC.id, ligne: { compteId: K['607'].id, debit: '1000', taxeId: X.TVAEXO.id } });
+    r2 = await ec('/aide/taxe', cabinet.tok, { journalId: J.VT.id, ligne: { compteId: K['707'].id, credit: '1000', taxeId: X.RSTVA25.id } });
+    check('aide taxe : TVAEXO (sans taux) → 400 MONTANT_NUL, jamais 500 ; RSTVA25 posé sur la ligne HT → 400 ASSIETTE_TVA', r.status === 400 && r.body?.code === 'MONTANT_NUL' && r2.status === 400 && r2.body?.code === 'ASSIETTE_TVA', `${r.status} ${r.body?.code} ${r2.status} ${r2.body?.code}`);
+    r = await ec('/aide/taxe', cabinet.tok, { journalId: J.VT.id, ligne: { compteId: K['436711'].id, credit: '190', taxeId: X.RSTVA25.id } });
+    r2 = await ec('/aide/retenue', cabinet.tok, { journalId: J.VT.id, tiersId: C1.id, taxeId: X.RSTVA25.id, lignes: [{ compteId: K['4111'].id, tiersId: C1.id, debit: '1190' }, { compteId: K['707'].id, credit: '1000', taxeId: X.TVA19.id }, { compteId: K['436711'].id, credit: '190', taxeId: X.TVA19.id }] });
+    check('retenue de TVA RSTVA25 (vente) : sur la ligne de TVA → 43665 au débit de 47,500 ; par « Ajouter la retenue » → même ligne, assiette = la TVA 190,000', r.status === 200 && r.body?.ligne?.compteId === c43665?.id && r.body?.ligne?.debit === '47.500'
+      && r2.status === 200 && r2.body?.ligne?.compteId === c43665?.id && r2.body?.ligne?.debit === '47.500' && r2.body?.base === '190.000', `${r.status} ${JSON.stringify(r.body?.ligne)} ${r2.status} ${JSON.stringify(r2.body)}`);
+    r = await ec('/aide/retenue', cabinet.tok, { journalId: J.AC.id, tiersId: F1.id, taxeId: X.AV_FORF1.id, lignes: LIGNES_ACHAT });
+    check('avance AV_FORF1 (achat) par « Ajouter la retenue » : 1 % du TTC hors timbre, 4341 au débit de 11,900 (même côté que la pièce)', r.status === 200 && r.body?.ligne?.compteId === K['4341'].id && r.body?.ligne?.debit === '11.900' && r.body?.base === '1190.000', `${r.status} ${JSON.stringify(r.body)}`);
 
     // ── Saisir : achat avec TVA, timbre et retenue (Saisie) ; vente (titulaire) ; banque (Complet) ──
     const ACHAT = {
@@ -225,7 +236,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     r = await ec('', cabinet.tok, deux(d607, { compteId: K['5321'].id, credit: '99.999' }));
     check('déséquilibre d\'un millime : 400 DESEQUILIBRE', r.status === 400 && r.body?.code === 'DESEQUILIBRE' && /écart 0,001/.test(r.body?.message || ''), `${r.status} ${r.body?.message}`);
     r = await ec('', cabinet.tok, { ...base, lignes: [d607] });
-    check('une seule ligne : 400', r.status === 400, `${r.status} ${r.body?.message}`);
+    r2 = await ec('', cabinet.tok, deux(d607, { compteId: K['607'].id, credit: '100' }));
+    check('une seule ligne : 400 ; deux lignes sur le même compte : 400 COMPTES_IDENTIQUES (NC 01 §30)', r.status === 400 && r2.status === 400 && r2.body?.code === 'COMPTES_IDENTIQUES', `${r.status} ${r2.status} ${r2.body?.code}`);
     r = await ec('', cabinet.tok, { ...deux(d607, c5321), date: '2025-12-31' });
     r2 = await ec('', cabinet.tok, { ...deux(d607, c5321), date: '2027-01-01' });
     r3 = await ec('', cabinet.tok, { ...deux(d607, c5321), date: '16/03/2026' });
@@ -310,6 +322,21 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     check('modifier déséquilibré : 400 ; écriture inconnue : 404 ; personne étrangère : 404', r.status === 400 && r2.status === 404 && r3.status === 404, `${r.status} ${r2.status} ${r3.status}`);
     r = await appel('GET', `/api/compta/dossiers/${A.id}/ecritures/${E2.id}`, cabinet.tok);
     check('… B-000002 intacte après le refus (2 380,000)', r.body?.ecriture?.total === '2380.000', r.body?.ecriture?.total);
+    const nbModif = (await pool.query(`SELECT COUNT(*)::int AS n FROM compta.evenements WHERE espace_id = $1 AND type = 'ecriture_modifiee'`, [espaceId])).rows[0].n;
+    r = await appel('PUT', `/api/compta/dossiers/${A.id}/ecritures/${E2.id}`, cabinet.tok, { journalId: J.VT.id, date: '2026-03-21', reference: 'FV-2026-010', libelle: 'Facture Voyages Méditerranée (corrigée)', lignes: [{ compteId: K['4111'].id, tiersId: C1.id, debit: '2 380,000', echeance: '2026-05-05' }, { compteId: K['707'].id, credit: '2000', taxeId: X.TVA19.id }, { compteId: K['436711'].id, credit: '380', taxeId: X.TVA19.id }] });
+    check('même contenu renvoyé : 200 sans ligne de journal (rien ne change)', r.status === 200 && (await pool.query(`SELECT COUNT(*)::int AS n FROM compta.evenements WHERE espace_id = $1 AND type = 'ecriture_modifiee'`, [espaceId])).rows[0].n === nbModif, String(r.status));
+    // Un tiers désactivé après la saisie ne bloque pas la correction d'une écriture qui le portait ; il est refusé sur une ligne nouvelle.
+    r = await ec('', cabinet.tok, { journalId: J.AC.id, date: '2026-03-18', reference: 'F-BOUL-01', libelle: 'Pain', lignes: [{ compteId: K['607'].id, debit: '50' }, { compteId: K['4011'].id, tiersId: F2.id, credit: '50' }] });
+    const E5 = r.body?.ecriture;
+    r2 = await appel('POST', `/api/compta/dossiers/${A.id}/tiers/${F2.id}/desactiver`, cabinet.tok);
+    r3 = await appel('PUT', `/api/compta/dossiers/${A.id}/ecritures/${E5?.id}`, cabinet.tok, { journalId: J.AC.id, date: '2026-03-18', reference: 'F-BOUL-01', libelle: 'Pain (corrigé)', lignes: [{ compteId: K['607'].id, debit: '50' }, { compteId: K['4011'].id, tiersId: F2.id, credit: '50' }] });
+    check('F0002 désactivé après la saisie de B-000004 : la correction du libellé passe (200), le tiers désactivé est toléré sur sa ligne', r.status === 201 && r2.status === 200 && r3.status === 200 && r3.body?.ecriture?.libelle === 'Pain (corrigé)', `${r.status} ${r2.status} ${r3.status} ${r3.body?.message || ''}`);
+    r = await ec('', cabinet.tok, deux(d607, { compteId: K['4011'].id, tiersId: F2.id, credit: '100' }));
+    r2 = await ec('/aide/retenue', cabinet.tok, { journalId: J.AC.id, tiersId: F2.id, taxeId: X.RS_HON10.id, lignes: LIGNES_ACHAT });
+    check('… mais une écriture NOUVELLE avec F0002 est refusée (409 TIERS_DESACTIVE), l\'aide retenue aussi', r.status === 409 && r.body?.code === 'TIERS_DESACTIVE' && r2.status === 409 && r2.body?.code === 'TIERS_DESACTIVE', `${r.status} ${r.body?.code} ${r2.status} ${r2.body?.code}`);
+    r = await appel('DELETE', `/api/compta/dossiers/${A.id}/ecritures/${E5?.id}`, cabinet.tok);
+    r2 = await appel('POST', `/api/compta/dossiers/${A.id}/tiers/${F2.id}/reactiver`, cabinet.tok);
+    check('B-000004 supprimée, F0002 réactivé (il n\'a plus d\'écriture)', r.status === 200 && r2.status === 200, `${r.status} ${r2.status}`);
 
     // ── Les hooks « mouvementé » : compte, journal, code, tiers, dossier ──
     r = await appel('POST', `/api/compta/dossiers/${A.id}/plan/comptes/${K['607'].id}/desactiver`, cabinet.tok);
@@ -336,12 +363,12 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     check('Saisie supprime B-000003 : 200, 2 en brouillard', r.status === 200 && r.body?.supprime?.numeroProvisoire === 'B-000003' && r.body?.nb?.brouillard === 2, `${r.status} ${r.body?.message || ''}`);
     j = await journal(espaceId, 'ecriture_supprimee');
     const restesLignes = (await pool.query('SELECT COUNT(*)::int AS n FROM compta.lignes WHERE ecriture_id = $1', [E3.id])).rows[0].n;
-    check('journal : ecriture_supprimee avec tout le contenu (journal BQ, 2 lignes, tiers F0001) ; lignes parties avec elle', !!j && j.details?.numeroProvisoire === 'B-000003' && j.details?.contenu?.journal === 'BQ' && j.details?.contenu?.lignes?.length === 2 && j.details.contenu.lignes[0].tiers === 'F0001' && j.details.contenu.total === '1173.150' && restesLignes === 0 && j.auteur_id === saisie.id, JSON.stringify(j?.details));
+    check('journal : ecriture_supprimee avec tout le contenu (journal BQ, 2 lignes, tiers F0001) ; lignes parties avec elle', !!j && j.details?.numeroProvisoire === 'B-000003' && j.details?.contenu?.journal === 'BQ' && j.details?.contenu?.lignes?.length === 2 && j.details.contenu.lignes[0].tiers === 'F0001' && j.details.contenu.total === '1173.150' && j.details.contenu.creePar === 'Collaborateur Complet' && !!j.details.contenu.creeLe && restesLignes === 0 && j.auteur_id === saisie.id, JSON.stringify(j?.details));
     r = await appel('DELETE', `/api/compta/dossiers/${A.id}/ecritures/${E3.id}`, cabinet.tok);
     check('supprimer deux fois : 404', r.status === 404, String(r.status));
     r = await ec('', cabinet.tok, { journalId: J.BQ.id, date: '2026-03-31', reference: 'RLV-2026-03b', libelle: 'Règlement STB', lignes: [{ compteId: K['4011'].id, tiersId: F1.id, debit: '1173.150' }, { compteId: K['5321'].id, credit: '1173.150' }] });
     const E4 = r.body?.ecriture;
-    check('une nouvelle écriture reçoit B-000004 : un numéro provisoire ne se réemploie pas', r.status === 201 && E4?.numeroProvisoire === 'B-000004', `${r.status} ${E4?.numeroProvisoire}`);
+    check('une nouvelle écriture reçoit B-000005 : un numéro provisoire ne se réemploie pas (B-000003 et B-000004 supprimées)', r.status === 201 && E4?.numeroProvisoire === 'B-000005', `${r.status} ${E4?.numeroProvisoire}`);
 
     // ── Dossier archivé, comptabilité en lecture seule ──
     r = await appel('POST', `/api/compta/dossiers/${A.id}/archiver`, cabinet.tok);

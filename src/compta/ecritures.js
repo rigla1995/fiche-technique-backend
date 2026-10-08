@@ -59,11 +59,14 @@ const texteMillimes = (n) => {
 };
 // « 1234.500 » (texte NUMERIC lu en base) → 1234500n.
 const millimesDe = (t) => lireMontant(t, 'Montant');
-// Taux « 19.000 » → 19000n (millièmes de pour cent) ; jamais de flottant.
+// Taux « 19.000 » → 19000n (millièmes de pour cent) ; jamais de flottant ; sans taux (TVAEXO) → 0n.
 const milliemesDe = (taux) => {
+  if (taux == null || String(taux).trim() === '') return 0n;
   const [entiers, decimales = ''] = String(taux).trim().split('.');
-  return BigInt(entiers) * 1000n + BigInt(decimales.padEnd(3, '0').slice(0, 3));
+  return BigInt(entiers || '0') * 1000n + BigInt(decimales.padEnd(3, '0').slice(0, 3));
 };
+// Borne d'un total NUMERIC(18,3) : 15 chiffres entiers (une ligne y tient, une somme de lignes peut la dépasser).
+const TOTAL_MAX = 999999999999999999n;
 // base × taux / 100, arrondi au millime le plus proche (le demi-millime vers le haut) ; signe de la base conservé.
 const calculTaxe = (baseMillimes, taux) => {
   const b = baseMillimes < 0n ? -baseMillimes : baseMillimes;
@@ -150,6 +153,9 @@ const lireEcriture = (corps) => {
     const ecart = t.debit > t.credit ? t.debit - t.credit : t.credit - t.debit;
     throw erreur(400, `Écriture déséquilibrée : débits ${fmtMillimes(t.debit)} ≠ crédits ${fmtMillimes(t.credit)} (écart ${fmtMillimes(ecart)})`, 'DESEQUILIBRE');
   }
+  if (t.debit > TOTAL_MAX) throw erreur(400, `Total de l'écriture trop grand (${fmtMillimes(TOTAL_MAX)} au plus)`, 'TOTAL_TROP_GRAND');
+  // NC 01 §30 : une écriture touche au moins deux comptes (ou deux tiers d'un même collectif).
+  if (new Set(lignes.map((l) => `${l.compteId}/${l.tiersId ?? ''}`)).size < 2) throw erreur(400, 'Une écriture touche au moins deux comptes (ou deux tiers)', 'COMPTES_IDENTIQUES');
   return { journalId, date, reference, libelle, lignes, total: t.debit };
 };
 
@@ -356,8 +362,9 @@ const exigerTaxe = (x, ou) => {
   return x;
 };
 // Contrôle des lignes contre le dossier : comptes imputables, tiers obligatoire sur un collectif (du type de la nature)
-// et interdit ailleurs, codes de taxe actifs. → { comptes, tiers, taxes } (cartes par identifiant).
-const resoudreLignes = async (db, d, lignes) => {
+// et interdit ailleurs, codes de taxe actifs. `tiersToleres` : tiers désactivés que l'écriture portait déjà (une
+// modification ne bloque pas sur un fournisseur parti entre-temps). → { comptes, tiers, taxes } (cartes par identifiant).
+const resoudreLignes = async (db, d, lignes, tiersToleres = new Set()) => {
   const [comptes, tiers, taxes] = await Promise.all([
     comptesDe(db, d.id, [...new Set(lignes.map((l) => l.compteId))]),
     tiersDe(db, d.id, [...new Set(lignes.map((l) => l.tiersId).filter(Boolean))]),
@@ -371,8 +378,8 @@ const resoudreLignes = async (db, d, lignes) => {
       if (!l.tiersId) throw erreur(400, `${ou} : indiquez le ${TYPES_TIERS_LIBELLES[type].toLowerCase()} (le compte ${k.numero} est un compte collectif)`, 'TIERS_REQUIS');
       const t = tiers.get(l.tiersId);
       if (!t) throw erreur(404, `${ou} : tiers introuvable`);
-      if (t.type !== type) throw erreur(400, `${ou} : ${t.code} est un ${TYPES_TIERS_LIBELLES[t.type].toLowerCase()}, le compte ${k.numero} attend un ${TYPES_TIERS_LIBELLES[type].toLowerCase()}`);
-      if (!t.actif) throw erreur(409, `${ou} : le ${TYPES_TIERS_LIBELLES[t.type].toLowerCase()} ${t.code} est désactivé (page Tiers)`, 'TIERS_DESACTIVE');
+      if (t.type !== type) throw erreur(400, `${ou} : ${t.code} est un ${TYPES_TIERS_LIBELLES[t.type].toLowerCase()}, le compte ${k.numero} attend un ${TYPES_TIERS_LIBELLES[type].toLowerCase()}`, 'TIERS_TYPE');
+      if (!t.actif && !tiersToleres.has(t.id)) throw erreur(409, `${ou} : le ${TYPES_TIERS_LIBELLES[t.type].toLowerCase()} ${t.code} est désactivé (page Tiers)`, 'TIERS_DESACTIVE');
     } else if (l.tiersId) {
       throw erreur(400, `${ou} : un tiers ne se porte que sur un compte collectif (fournisseurs ou clients), pas sur ${k.numero}`, 'TIERS_INTERDIT');
     }
@@ -386,14 +393,16 @@ const resumeLignes = (lignes, { comptes, tiers, taxes }) => lignes.map((l) => ({
   debit: texteMillimes(l.debit), credit: texteMillimes(l.credit), taxe: l.taxeId ? taxes.get(l.taxeId).code : null, echeance: l.echeance,
 }));
 const resumeEcriture = (e, journal, lignes, cartes) => ({ journal: journal.code, date: e.date, reference: e.reference, libelle: e.libelle, total: texteMillimes(e.total), lignes: resumeLignes(lignes, cartes) });
-// Ce qu'une écriture en base vaut pour le journal des événements (avant une modification, contenu d'une suppression).
-const resumeEnBase = async (db, e) => {
-  const lignes = (await lignesDe(db, [e.id])).get(e.id);
-  return {
-    journal: e.journal_code, date: e.date, reference: e.reference, libelle: e.libelle, total: e.total_debit,
-    lignes: lignes.map((l) => ({ rang: l.rang, compte: l.compte_numero, tiers: l.tiers_code || null, libelle: l.libelle, debit: l.debit, credit: l.credit, taxe: l.taxe_code || null, echeance: l.echeance })),
-  };
-};
+// Ce qu'une écriture en base vaut pour le journal des événements (avant une modification, contenu d'une suppression) :
+// de quoi la rejouer seule (auteur et date de traitement compris). `lignes` : ses lignes déjà lues.
+const resumeEnBase = (e, lignes) => ({
+  journal: e.journal_code, date: e.date, reference: e.reference, libelle: e.libelle, total: e.total_debit,
+  lignes: lignes.map((l) => ({ rang: l.rang, compte: l.compte_numero, tiers: l.tiers_code || null, libelle: l.libelle, debit: l.debit, credit: l.credit, taxe: l.taxe_code || null, echeance: l.echeance })),
+  creePar: e.cree_par_nom || null, creeLe: e.created_at,
+});
+// Le contenu comparable d'une écriture (sans l'auteur ni la date de traitement) : une modification sans changement
+// n'écrit rien, ni en base ni au journal.
+const contenuComparable = ({ creePar: _a, creeLe: _b, ...reste }) => JSON.stringify(reste);
 const insererLignes = async (db, d, ecritureId, date, lignes) => {
   const valeurs = [];
   const params = [ecritureId, d.id, date];
@@ -431,12 +440,16 @@ const compteDuCode = (x, journal, ligne, compteBase) => {
   return achat ? { id: x.compte_achat_id, cote: 'à l\'achat' } : { id: x.compte_vente_id, cote: 'à la vente' };
 };
 // La ligne de taxe d'une ligne de base : { ligne (compteId, libelle, debit, credit, taxeId), compte, taxe, base }.
+// Assiette « ht » ou « fixe » : depuis la ligne hors taxes ; « tva » (retenue de TVA) : depuis une ligne de TVA ; « ttc »
+// (retenues, avances) : par « Ajouter la retenue », qui lit toute l'écriture.
 const ligneDeTaxe = async (db, d, journal, ligne) => {
-  if (!ligne.taxeId) throw erreur(400, 'Cette ligne ne porte pas de code de taxe');
+  if (!ligne.taxeId) throw erreur(400, 'Cette ligne ne porte pas de code de taxe', 'LIGNE_SANS_CODE');
   const [taxes, comptes] = await Promise.all([taxesDe(db, d.id, [ligne.taxeId]), comptesDe(db, d.id, [ligne.compteId])]);
   const x = exigerTaxe(taxes.get(ligne.taxeId), 'Code de taxe');
   const compteBase = exigerImputable(comptes.get(ligne.compteId), 'Ligne');
-  if (x.assiette === 'ttc') throw erreur(400, `Le code ${x.code} se calcule sur le TTC de l'écriture : employez « Ajouter la retenue »`, 'ASSIETTE_TTC');
+  if (x.assiette === 'ttc') throw erreur(400, `Le code ${x.code} se calcule sur le TTC de l'écriture : employez « Ajouter la retenue » avec ce code`, 'ASSIETTE_TTC');
+  if (x.assiette === 'tva' && !NATURES_TVA.includes(compteBase.nature)) throw erreur(400, `Le code ${x.code} se calcule sur la TVA : employez « Ajouter la retenue » avec ce code, ou posez-le sur la ligne de TVA`, 'ASSIETTE_TVA');
+  if (x.assiette !== 'fixe' && x.taux == null) throw erreur(400, `Le code ${x.code} n'a pas de taux : il ne donne aucune ligne de taxe`, 'MONTANT_NUL');
   const base = ligne.debit > 0n ? ligne.debit : ligne.credit;
   const montant = x.assiette === 'fixe' ? millimesDe(x.montant) : calculTaxe(base, x.taux);
   if (montant <= 0n) throw erreur(400, `Le code ${x.code} ne donne aucun montant (taux ${x.taux ?? '—'} %)`, 'MONTANT_NUL');
@@ -454,8 +467,8 @@ const ligneDeTaxe = async (db, d, journal, ligne) => {
   };
 };
 // L'assiette d'une retenue parmi les lignes de l'écriture : TTC hors timbre (toutes les lignes sauf celles d'un compte
-// collectif, du timbre, des retenues et des avances) ; hors taxes (assiette « ht ») : sans les lignes de TVA non plus.
-// Côté : achats = débits − crédits ; ventes = crédits − débits.
+// collectif, du timbre, des retenues et des avances) ; hors taxes (assiette « ht ») : sans les lignes de TVA non plus ;
+// « tva » (retenue de TVA) : les seules lignes de TVA. Côté : achats = débits − crédits ; ventes = crédits − débits.
 const assietteRetenue = (lignes, cartes, journal, assiette) => {
   let base = 0n;
   for (const l of lignes) {
@@ -464,10 +477,14 @@ const assietteRetenue = (lignes, cartes, journal, assiette) => {
     if (NATURES_COLLECTIVES.includes(k.nature)) continue;
     if (x && TYPES_HORS_TTC.includes(x.type)) continue;
     if (assiette === 'ht' && NATURES_TVA.includes(k.nature)) continue;
+    if (assiette === 'tva' && !NATURES_TVA.includes(k.nature)) continue;
     base += journal.type === 'achats' ? l.debit - l.credit : l.credit - l.debit;
   }
   return base;
 };
+// Codes que « Ajouter la retenue » calcule sur l'écriture entière : retenue à la source (TTC hors timbre, ou HT), retenue
+// de TVA (sur la TVA), avance (TTC hors timbre, du même côté que la pièce : elle s'ajoute à ce que le tiers doit).
+const TYPES_RETENUE = ['retenue', 'retenue_tva', 'avance'];
 // La ligne de retenue à la source : { ligne, compte, taxe, base } ; code = celui demandé, sinon la retenue par défaut du tiers.
 const ligneDeRetenue = async (db, d, journal, { tiersId, taxeId, lignes }) => {
   if (journal.type !== 'achats' && journal.type !== 'ventes') throw erreur(400, 'La retenue à la source se propose sur un journal d\'achats ou de ventes', 'JOURNAL_SANS_RETENUE');
@@ -476,22 +493,25 @@ const ligneDeRetenue = async (db, d, journal, { tiersId, taxeId, lignes }) => {
   if (tiersId) {
     t = (await tiersDe(db, d.id, [tiersId])).get(tiersId);
     if (!t) throw erreur(404, 'Tiers introuvable');
+    if (!t.actif) throw erreur(409, `Le ${TYPES_TIERS_LIBELLES[t.type].toLowerCase()} ${t.code} est désactivé (page Tiers)`, 'TIERS_DESACTIVE');
     if (!codeId) codeId = t.retenue_id;
   }
   if (!codeId) throw erreur(409, t ? `Le ${TYPES_TIERS_LIBELLES[t.type].toLowerCase()} ${t.code} n'a pas de retenue par défaut : choisissez le code de retenue` : 'Choisissez le code de retenue', 'RETENUE_ABSENTE');
   const x = exigerTaxe((await taxesDe(db, d.id, [codeId])).get(codeId), 'Code de retenue');
-  if (x.type !== 'retenue') throw erreur(400, `${x.code} n'est pas un code de retenue à la source`);
+  if (!TYPES_RETENUE.includes(x.type)) throw erreur(400, `${x.code} n'est pas un code de retenue à la source, de retenue de TVA ni d'avance : employez « Ajouter la TVA » sur la ligne qui le porte`, 'CODE_NON_RETENUE');
+  if (x.taux == null) throw erreur(400, `Le code ${x.code} n'a pas de taux`, 'MONTANT_NUL');
   const cartes = await resoudreLignes(db, d, lignes);
   const base = assietteRetenue(lignes, cartes, journal, x.assiette);
-  if (base <= 0n) throw erreur(400, 'Aucune assiette : saisissez d\'abord les lignes hors taxes et de TVA de la pièce', 'ASSIETTE_NULLE');
+  if (base <= 0n) throw erreur(400, x.assiette === 'tva' ? 'Aucune assiette : ajoutez d\'abord la ligne de TVA (« Ajouter la TVA »)' : 'Aucune assiette : saisissez d\'abord les lignes hors taxes et de TVA de la pièce', 'ASSIETTE_NULLE');
   const montant = calculTaxe(base, x.taux);
   if (montant <= 0n) throw erreur(400, `Le code ${x.code} ne donne aucun montant`, 'MONTANT_NUL');
-  const cible = journal.type === 'achats' ? { id: x.compte_achat_id, cote: 'à l\'achat (retenue opérée)' } : { id: x.compte_vente_id, cote: 'à la vente (retenue subie)' };
+  const cible = journal.type === 'achats' ? { id: x.compte_achat_id, cote: 'à l\'achat' } : { id: x.compte_vente_id, cote: 'à la vente' };
   if (!cible.id) throw erreur(409, `Le code ${x.code} n'a pas de compte ${cible.cote} : réglez-le (page Taxes)`, 'TAXE_SANS_COMPTE');
   const k = (await comptesDe(db, d.id, [cible.id])).get(cible.id);
   if (!k || !k.actif || !k.feuille) throw erreur(409, `Le compte ${k ? k.numero : '?'} du code ${x.code} est à préciser : désactivé ou avec des sous-comptes actifs (page Taxes)`, 'COMPTE_NON_IMPUTABLE');
-  // Achats : la retenue opérée est une dette envers l'État (crédit) ; ventes : la retenue subie, une créance (débit).
-  const auDebit = journal.type === 'ventes';
+  // Retenue : achats → la retenue opérée est une dette envers l'État (crédit) ; ventes → la retenue subie, une créance
+  // (débit). Avance : du même côté que la pièce (débit à l'achat : avance supportée ; crédit à la vente : avance facturée).
+  const auDebit = TYPES_OPPOSES.includes(x.type) ? journal.type === 'ventes' : journal.type === 'achats';
   return {
     ligne: { compteId: k.id, tiersId: null, libelle: null, debit: auDebit ? texteMillimes(montant) : '0.000', credit: auDebit ? '0.000' : texteMillimes(montant), taxeId: x.id, echeance: null },
     compte: presenterCompteCourt(k),
@@ -588,15 +608,20 @@ const modifier = async (req, res) => {
       exigerBrouillard(avant);
       const journal = await journalDe(db, d.id, e.journalId);
       const { exercice, periode } = await periodeDe(db, d.id, e.date);
-      const cartes = await resoudreLignes(db, d, e.lignes);
-      const contenuAvant = await resumeEnBase(db, avant);
+      const lignesAvant = (await lignesDe(db, [avant.id])).get(avant.id);
+      // Un tiers désactivé depuis la saisie ne bloque pas la correction d'une écriture qui le portait déjà.
+      const cartes = await resoudreLignes(db, d, e.lignes, new Set(lignesAvant.map((l) => l.tiers_id).filter(Boolean)));
+      const contenuAvant = resumeEnBase(avant, lignesAvant);
+      const apres = resumeEcriture(e, journal, e.lignes, cartes);
+      // Rien ne change : ni écriture ni ligne de journal.
+      if (contenuComparable(contenuAvant) === contenuComparable(apres)) return { ecriture: await uneEcriture(db, d.id, avant.id), nb: await resumeEcritures(db, d.id) };
       await db.query('DELETE FROM compta.lignes WHERE ecriture_id = $1', [avant.id]);
       await db.query(
         `UPDATE compta.ecritures SET exercice_id = $2, periode_id = $3, journal_id = $4, date = $5, reference = $6, libelle = $7, total_debit = $8, total_credit = $8, updated_at = NOW() WHERE id = $1`,
         [avant.id, exercice.id, periode.id, journal.id, e.date, e.reference, e.libelle, texteMillimes(e.total)]
       );
       await insererLignes(db, d, avant.id, e.date, e.lignes);
-      await journaliser(db, acces.espace_id, req.user.id, 'ecriture_modifiee', { dossier: d.id, ecriture: avant.id, numeroProvisoire: numeroProvisoire(avant.numero_provisoire), avant: contenuAvant, apres: resumeEcriture(e, journal, e.lignes, cartes) });
+      await journaliser(db, acces.espace_id, req.user.id, 'ecriture_modifiee', { dossier: d.id, ecriture: avant.id, numeroProvisoire: numeroProvisoire(avant.numero_provisoire), avant: contenuAvant, apres });
       return { ecriture: await uneEcriture(db, d.id, avant.id), nb: await resumeEcritures(db, d.id) };
     });
     res.json(resultat);
@@ -612,7 +637,7 @@ const supprimer = async (req, res) => {
     const resultat = await ecritureEcritures(req, async (db, acces, d) => {
       const e = await ecritureDe(db, d.id, req.params.ecritureId);
       exigerBrouillard(e);
-      const contenu = await resumeEnBase(db, e);
+      const contenu = resumeEnBase(e, (await lignesDe(db, [e.id])).get(e.id));
       await db.query('DELETE FROM compta.ecritures WHERE id = $1', [e.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'ecriture_supprimee', { dossier: d.id, ecriture: e.id, numeroProvisoire: numeroProvisoire(e.numero_provisoire), contenu });
       return { supprime: { id: e.id, numeroProvisoire: numeroProvisoire(e.numero_provisoire) }, nb: await resumeEcritures(db, d.id) };
@@ -649,7 +674,7 @@ const aideRetenue = async (req, res) => {
 };
 
 module.exports = {
-  MSG_SAISIR, REFERENCE_MAX, LIBELLE_MAX, LIGNES_MIN, LIGNES_MAX, ETATS, ETATS_LIBELLES, NATURES_COLLECTIVES, TYPES_HORS_TTC, TYPES_OPPOSES,
+  MSG_SAISIR, REFERENCE_MAX, LIBELLE_MAX, LIGNES_MIN, LIGNES_MAX, TOTAL_MAX, ETATS, ETATS_LIBELLES, NATURES_COLLECTIVES, NATURES_TVA, TYPES_HORS_TTC, TYPES_OPPOSES, TYPES_RETENUE, contenuComparable,
   lireMontant, texteMillimes, millimesDe, milliemesDe, calculTaxe, fmtMillimes, fmtDate, numeroProvisoire,
   lireTexte, lireReference, lireLibelle, lireLigne, lireLignes, lireEcriture, lireFiltres, lireAideTaxe, lireAideRetenue, totaux,
   SQL_ECRITURES, SQL_FILTRES, SQL_LIGNES, presenterLigne, presenterEcriture, presenterTaxeCourte, presenterTiersCourt, resumeEcritures, assietteRetenue, compteDuCode,

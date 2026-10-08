@@ -179,7 +179,7 @@ const codesDuType = async (db, dossierId, type) => new Set((await db.query('SELE
 
 // Un tiers « mouvementé » est porté par au moins une ligne d'écriture (S6a : compta.lignes, migration 215, brouillard
 // compris) : son code et son compte collectif ne changent plus, il ne se supprime plus (il se désactive).
-const tiersMouvemente = async (db, tiersId) => (await db.query('SELECT 1 FROM compta.lignes WHERE tiers_id = $1 LIMIT 1', [tiersId])).rows.length > 0;
+const tiersMouvemente = async (db, tiersId) => (await db.query('SELECT 1 FROM compta.lignes WHERE dossier_id = (SELECT dossier_id FROM compta.tiers WHERE id = $1) AND tiers_id = $1 LIMIT 1', [tiersId])).rows.length > 0;
 
 // ── Lectures ────────────────────────────────────────────────────────────────────────────────────────────────────────
 const SQL_SELECT = `

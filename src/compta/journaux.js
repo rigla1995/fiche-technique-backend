@@ -40,7 +40,7 @@ const lireCompteId = (v) => {
 
 // Un journal « mouvementé » porte au moins une écriture (S6a : compta.ecritures, migration 215, brouillard compris) : il
 // ne se désactive plus et son compte de contrepartie ne change plus.
-const journalMouvemente = async (db, journalId) => (await db.query('SELECT 1 FROM compta.ecritures WHERE journal_id = $1 LIMIT 1', [journalId])).rows.length > 0;
+const journalMouvemente = async (db, journalId) => (await db.query('SELECT 1 FROM compta.ecritures WHERE dossier_id = (SELECT dossier_id FROM compta.journaux WHERE id = $1) AND journal_id = $1 LIMIT 1', [journalId])).rows.length > 0;
 
 // ── Lectures ────────────────────────────────────────────────────────────────────────────────────────────────────────
 const SQL_JOURNAUX = `

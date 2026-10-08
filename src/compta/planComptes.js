@@ -60,7 +60,7 @@ const lireExplication = (v) => {
 
 // Un compte « mouvementé » est porté par au moins une ligne d'écriture (S6a : compta.lignes, migration 215, brouillard
 // compris) : il ne se désactive ni ne se supprime plus.
-const compteMouvemente = async (db, compteId) => (await db.query('SELECT 1 FROM compta.lignes WHERE compte_id = $1 LIMIT 1', [compteId])).rows.length > 0;
+const compteMouvemente = async (db, compteId) => (await db.query('SELECT 1 FROM compta.lignes WHERE dossier_id = (SELECT dossier_id FROM compta.comptes WHERE id = $1) AND compte_id = $1 LIMIT 1', [compteId])).rows.length > 0;
 // Un compte « utilisé » est porté par un journal (S5b : compte de contrepartie), un code de taxe (S5b : compte à l'achat,
 // à la vente, sur immobilisations) ou un tiers (S5c : compte collectif), actif ou non. Il ne se désactive ni ne se
 // supprime : on change d'abord le compte du journal, du code ou du tiers (pages Journaux, Taxes et Tiers).
