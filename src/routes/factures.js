@@ -30,8 +30,8 @@ router.get('/:id/lignes', authenticate, requireClient, getLignes);
 router.get('/:id/pdf', authenticate, requireClient, downloadPdf);
 router.get('/:id/pieces', authenticate, requireClient, pieces.lister);
 router.get('/:id/pieces/:pieceId/fichier', authenticate, requireClient, limiteLectures, pieces.fichier);
-router.post('/:id/pieces', authenticate, requireClient, limiteDepots, televersement, pieces.joindre);
-router.put('/:id/pieces/:pieceId', authenticate, requireClient, limiteDepots, televersement, pieces.remplacer);
+router.post('/:id/pieces', authenticate, requireClient, limiteDepots, pieces.controleAvantEnvoi, televersement, pieces.joindre);
+router.put('/:id/pieces/:pieceId', authenticate, requireClient, limiteDepots, pieces.controleAvantEnvoi, televersement, pieces.remplacer);
 router.delete('/:id/pieces/:pieceId', authenticate, requireClient, limiteDepots, pieces.supprimer);
 
 module.exports = router;

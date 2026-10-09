@@ -25,8 +25,11 @@ const config = () => {
     etat = {
       mode: 'r2',
       base: `https://${R2_ACCOUNT_ID.trim()}.r2.cloudflarestorage.com/${encodeURIComponent(R2_BUCKET.trim())}`,
+      // 2 nouvelles tentatives au plus (aws4fetch en fait 10 par défaut : plusieurs dizaines de secondes par fichier
+      // pendant un incident R2, la requête gardant ses fichiers en mémoire).
       client: new AwsClient({
         accessKeyId: R2_ACCESS_KEY_ID.trim(), secretAccessKey: R2_SECRET_ACCESS_KEY.trim(), service: 's3', region: 'auto',
+        retries: 2,
       }),
     };
   } else if (STOCKAGE_LOCAL) {
@@ -69,14 +72,17 @@ const cheminLocal = (cle) => {
 
 const urlR2 = (cle) => `${config().base}/${cle.split('/').map(encodeURIComponent).join('/')}`;
 
+// 30 s au plus par appel (tentatives comprises) ; le corps d'une réponse en erreur est lu et jeté (connexion libérée).
+const DELAI_MS = 30 * 1000;
 const appelR2 = async (methode, cle, options = {}) => {
   const { client } = config();
   let rep;
   try {
-    rep = await client.fetch(urlR2(cle), { method: methode, ...options });
+    rep = await client.fetch(urlR2(cle), { method: methode, signal: AbortSignal.timeout(DELAI_MS), ...options });
   } catch (err) {
     throw new StockageErreur(`stockage injoignable (${methode}) : ${err.message}`);
   }
+  if (!rep.ok) await rep.arrayBuffer().catch(() => null);
   return rep;
 };
 

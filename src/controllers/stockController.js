@@ -7,7 +7,7 @@ const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finali
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
 const { computeStockBulk } = require('../services/stockService');
-const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne } = require('../services/facturesAppro');
+const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures } = require('../services/facturesAppro');
 const stockage = require('../services/stockageFichiers');
 const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
@@ -662,14 +662,19 @@ const updateHistoriqueEntry = async (req, res) => {
       // must both succeed or both roll back (else the quantities silently desync).
       await withTransaction(async (client) => {
         // Étape F1 (factures fournisseur) : le TTC de la ligne suit son nouveau prix HT (même taux de TVA), et la facture
-        // de la ligne est recalculée (avant, ses montants restaient ceux de la saisie).
+        // de la ligne est recalculée (avant, ses montants restaient ceux de la saisie) — sous le verrou des factures du
+        // compte, comme tout ce qui écrit une facture d'appro.
+        if (entry.facture_id) await verrouillerFactures(client, req.user.gerant_parent_id || req.user.id);
         await client.query(
           `UPDATE stock_entreprise_daily SET quantite=$1, prix_unitaire=$2, fournisseur_id=$3, ref_facture=$4, updated_at=NOW(),
                   prix_unitaire_tva = CASE WHEN $2::numeric IS NULL THEN NULL ELSE ROUND($2::numeric * (1 + COALESCE(taux_tva, 0) / 100), 3) END
            WHERE id=$5`,
           [quantite ?? null, prixUnitaire ?? null, fournisseurId || null, refFacture || null, id]
         );
-        if (entry.facture_id) await recalculerFacture(client, entry.facture_id);
+        const factureActuelle = entry.facture_id
+          ? (await client.query('SELECT facture_id FROM stock_entreprise_daily WHERE id = $1', [id])).rows[0]?.facture_id
+          : null;
+        if (factureActuelle) await recalculerFacture(client, factureActuelle);
         // If transfert, adjust labo stock
         if (entry.type_appro === 'transfert') {
           const oldQty = parseFloat(entry.old_quantite) || 0;
@@ -719,12 +724,19 @@ const deleteHistoriqueEntry = async (req, res) => {
       const entry = check.rows[0];
       // Étape F1 (factures fournisseur) : la dernière ligne d'une facture qui a une pièce jointe emporte la facture et sa
       // pièce — à confirmer (?confirmerFacture=1) ; sinon la facture est recalculée, ou supprimée si elle est vide.
-      const garde = await gardeDerniereLigne(pool, { factureId: entry.facture_id, table: 'stock_entreprise_daily', confirme: req.query.confirmerFacture === '1' });
-      if (garde) return res.status(409).json(garde);
       // Atomic: deleting the stock row and restoring the labo stock must not desync.
       const retrait = await withTransaction(async (client) => {
+        // Sous le verrou des factures du compte : la facture de la ligne est relue (elle a pu changer) et la garde
+        // « dernière ligne » est jugée dans la même transaction que le retrait.
+        let factureId = null;
+        if (entry.facture_id) {
+          await verrouillerFactures(client, req.user.gerant_parent_id || req.user.id);
+          factureId = (await client.query('SELECT facture_id FROM stock_entreprise_daily WHERE id = $1', [id])).rows[0]?.facture_id ?? null;
+          const garde = await gardeDerniereLigne(client, { factureId, table: 'stock_entreprise_daily', confirme: req.query.confirmerFacture === '1' });
+          if (garde) return { garde };
+        }
         await client.query('DELETE FROM stock_entreprise_daily WHERE id=$1', [id]);
-        const apres = await apresRetraitDeLigne(client, { factureId: entry.facture_id, clientId: req.user.gerant_parent_id || req.user.id, auteurId: req.user.id });
+        const apres = await apresRetraitDeLigne(client, { factureId, clientId: req.user.gerant_parent_id || req.user.id, auteurId: req.user.id });
         // If transfert, restore labo stock
         if (entry.type_appro === 'transfert') {
           const qty = parseFloat(entry.quantite) || 0;
@@ -738,6 +750,7 @@ const deleteHistoriqueEntry = async (req, res) => {
         }
         return apres;
       });
+      if (retrait.garde) return res.status(409).json(retrait.garde);
       await stockage.supprimerSansErreur(retrait.clesAEffacer, 'facture supprimée avec sa dernière ligne');
       return res.json({ success: true, factureSupprimee: retrait.supprimee });
     }

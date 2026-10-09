@@ -168,6 +168,14 @@ const existe = (cle) => !!cle && fs.existsSync(fichierStocke(cle));
     check('2. confirmé → 201, lignes AJOUTÉES à la même facture (4), timbre gardé, TTC 2 × 12,650 + 1', r.status === 201 && r.body?.ajoutee === true && r.body?.factureId === f1 && r.body?.nbLignes === 4 && F.timbre_fiscal === true && approx(F.montant_ttc, 26.3),
       `${r.status} ${JSON.stringify(r.body)} ttc=${F.montant_ttc}`);
     check('2. journal : lignes_ajoutees', (await journal(f1, 'lignes_ajoutees')).length === 1);
+    {
+      const [x, y] = await Promise.all([1, 2].map(() => envoi('POST', '/api/appros/facture', tok, donnees({ refFacture: 'FA-CONC' }), [{ octets: PDF, nom: 'conc.pdf', type: 'application/pdf' }])));
+      const statuts = [x.status, y.status].sort().join(',');
+      const fc = (await pool.query("SELECT id FROM factures WHERE client_id = $1 AND ref_facture = 'FA-CONC'", [clientId])).rows;
+      const nl = fc.length ? (await lignesDe(fc[0].id)).length : 0;
+      const np = fc.length ? (await piecesDe(fc[0].id)).length : 0;
+      check('2. deux envois simultanés de la même facture : un 201, un 409 FACTURE_EXISTANTE, rien de doublé', statuts === '201,409' && fc.length === 1 && nl === 2 && np === 1, `${statuts} factures=${fc.length} lignes=${nl} pieces=${np}`);
+    }
 
     // ── 3. Contrôles d'appartenance et de périmètre ─────────────────────────────────────────────────────────────────
     r = await envoi('POST', '/api/appros/facture', tok, donnees({ refFacture: 'FA-X1', lignes: [{ articleId: etrangers.article, quantite: 1, prixUnitaire: 1 }] }));

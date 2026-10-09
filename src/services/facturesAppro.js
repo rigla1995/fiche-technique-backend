@@ -3,11 +3,25 @@
  *
  * Une facture d'appro n'a pas de lignes à elle : ce sont les lignes de stock (stock_entreprise_daily pour une activité,
  * stock_labo_daily pour un labo) qui portent son `facture_id`. Ses montants se RECALCULENT depuis ces lignes (au lieu
- * d'être additionnés appel après appel), timbre compris. */
+ * d'être additionnés appel après appel), timbre compris.
+ * Toute écriture qui touche une facture d'appro saisie (enregistrement, pièces, modification ou retrait d'une ligne)
+ * prend d'abord le verrou consultatif des factures du compte (`verrouillerFactures`) : jamais deux à la fois. */
 
-/** Normalisation d'un numéro de facture pour les comparaisons (même expression que l'index de la migration 221). */
+/** Verrou consultatif des écritures de factures d'un compte : pg_advisory_xact_lock(CLASSE_VERROU, compte). */
+const CLASSE_VERROU = 4221;
+const verrouillerFactures = (db, clientId) => db.query('SELECT pg_advisory_xact_lock($1, $2)', [CLASSE_VERROU, clientId]);
+
+/** Normalisation d'un numéro de facture pour les comparaisons (même expression que l'index de la migration 221) ; à
+ * appliquer aussi au paramètre comparé, en SQL : les deux côtés suivent alors les mêmes règles (espaces, majuscules). */
 const SQL_REF_NORMALISEE = (colonne) => `UPPER(REGEXP_REPLACE(${colonne}, '\\s', '', 'g'))`;
 const refNormalisee = (ref) => String(ref || '').replace(/\s/g, '').toUpperCase();
+
+/** Identifiant d'adresse : entier positif de 9 chiffres au plus (au-delà, ce n'est pas une ligne de la base) ; sinon null. */
+const idValide = (v) => (typeof v === 'string' && /^\d{1,9}$/.test(v) && Number(v) > 0 ? Number(v)
+  : (Number.isInteger(v) && v > 0 && v < 1e9 ? v : null));
+
+/** Un texte saisi par l'utilisateur, glissé dans un `message` rendu au bord : ses « [[ » ne sont jamais des balises. */
+const sansBalise = (s) => String(s ?? '').replace(/\[\[/g, '[ [').replace(/\]\]/g, '] ]');
 
 const clientDe = (req) => req.user.gerant_parent_id || req.user.id;
 
@@ -38,8 +52,8 @@ const clauseGerant = (req, params) => {
 
 /** La facture du compte (ou null), avec de quoi juger le périmètre d'un gérant. `verrou` : FOR UPDATE. */
 const factureDuCompte = async (db, factureId, clientId, verrou = false) => {
-  const id = Number(factureId);
-  if (!Number.isInteger(id) || id <= 0) return null;
+  const id = idValide(factureId);
+  if (!id) return null;
   const r = await db.query(
     `SELECT f.id, f.client_id, f.ref_facture, f.date_facture, f.fournisseur_id, f.activite_id, f.labo_id, f.type_source,
             f.timbre_fiscal, f.montant_ttc,
@@ -56,10 +70,9 @@ const gerantVoit = (req, f) => gerantAgitSur(req, f)
     && (req.user.gerantLaboIds || []).includes(Number(f.labo_emetteur_id)));
 
 /**
- * Montants d'une facture recalculés depuis ses lignes de stock (HT = Σ q × PU HT ; TVA = Σ q × PU HT × taux ;
- * TTC = Σ q × PU HT × (1 + taux) + timbre, soit HT + TVA + timbre sans arrondi intermédiaire — comme le récapitulatif
- * de la saisie et l'ancien calcul ; le PU TTC de la ligne, arrondi au millime, ne sert qu'à défaut de PU HT).
- * → nombre de lignes rattachées.
+ * Montants d'une facture recalculés depuis ses lignes de stock : HT = Σ q × PU HT et TVA = Σ q × PU HT × taux, chacun
+ * arrondi au millime ; TTC = HT + TVA + timbre (comme une facture : le TTC égale la somme des deux montants affichés) ;
+ * une ligne sans PU HT compte pour q × PU TTC. → nombre de lignes rattachées.
  */
 const recalculerFacture = async (db, factureId) => {
   const r = await db.query(
@@ -69,16 +82,14 @@ const recalculerFacture = async (db, factureId) => {
        SELECT quantite, prix_unitaire, taux_tva, prix_unitaire_tva FROM stock_labo_daily WHERE facture_id = $1
      ), t AS (
        SELECT COUNT(*)::int AS n,
-              COALESCE(SUM(COALESCE(quantite, 0) * COALESCE(prix_unitaire, 0)), 0) AS ht,
-              COALESCE(SUM(COALESCE(quantite, 0) * COALESCE(prix_unitaire, 0) * COALESCE(taux_tva, 0) / 100), 0) AS tva,
-              COALESCE(SUM(COALESCE(quantite, 0) * CASE WHEN prix_unitaire IS NOT NULL
-                             THEN prix_unitaire * (1 + COALESCE(taux_tva, 0) / 100)
-                             ELSE COALESCE(prix_unitaire_tva, 0) END), 0) AS ttc
+              ROUND(COALESCE(SUM(COALESCE(quantite, 0) * COALESCE(prix_unitaire, 0)), 0), 3) AS ht,
+              ROUND(COALESCE(SUM(COALESCE(quantite, 0) * COALESCE(prix_unitaire, 0) * COALESCE(taux_tva, 0) / 100), 0), 3) AS tva,
+              ROUND(COALESCE(SUM(CASE WHEN prix_unitaire IS NULL THEN COALESCE(quantite, 0) * COALESCE(prix_unitaire_tva, 0) ELSE 0 END), 0), 3) AS sans_ht
        FROM l
      )
      UPDATE factures f
-        SET montant_ht = ROUND(t.ht, 3), montant_tva = ROUND(t.tva, 3),
-            montant_ttc = ROUND(t.ttc + CASE WHEN f.timbre_fiscal THEN COALESCE(f.montant_timbre, 0) ELSE 0 END, 3)
+        SET montant_ht = t.ht, montant_tva = t.tva,
+            montant_ttc = t.ht + t.tva + t.sans_ht + CASE WHEN f.timbre_fiscal THEN COALESCE(f.montant_timbre, 0) ELSE 0 END
        FROM t
       WHERE f.id = $1
      RETURNING t.n`,
@@ -89,7 +100,8 @@ const recalculerFacture = async (db, factureId) => {
 
 /**
  * Après le retrait d'une ligne : recalcule la facture, ou la supprime (avec ses pièces) si c'était sa dernière ligne.
- * À appeler DANS la transaction du retrait. → { supprimee, clesAEffacer } ; les fichiers s'effacent après la validation.
+ * À appeler DANS la transaction du retrait, sous `verrouillerFactures`. → { supprimee, clesAEffacer } ; les fichiers
+ * s'effacent après la validation.
  */
 const apresRetraitDeLigne = async (db, { factureId, clientId, auteurId }) => {
   if (!factureId) return { supprimee: false, clesAEffacer: [] };
@@ -110,8 +122,9 @@ const apresRetraitDeLigne = async (db, { factureId, clientId, auteurId }) => {
 };
 
 /**
- * Avant de retirer la ligne `ligne` (avec son facture_id) : si c'est la dernière de sa facture et que la facture a des
- * pièces, la suppression doit être confirmée (409 DERNIERE_LIGNE_FACTURE) — sauf `confirme`. → réponse 409 ou null.
+ * Avant de retirer une ligne (dans la transaction du retrait, sous `verrouillerFactures`) : si c'est la dernière de sa
+ * facture et que la facture a des pièces, la suppression doit être confirmée (409 DERNIERE_LIGNE_FACTURE) — sauf
+ * `confirme`. → corps de la réponse 409, ou null.
  */
 const gardeDerniereLigne = async (db, { factureId, table, confirme }) => {
   if (!factureId || confirme) return null;
@@ -128,11 +141,11 @@ const gardeDerniereLigne = async (db, { factureId, table, confirme }) => {
     code: 'DERNIERE_LIGNE_FACTURE',
     refFacture: f.ref_facture,
     nbPieces: f.nb_pieces,
-    message: `C'est la dernière ligne de la facture ${f.ref_facture || ''} : la facture et sa pièce jointe seront supprimées.`,
+    message: `C'est la dernière ligne de la facture ${sansBalise(f.ref_facture || '')} : la facture et sa pièce jointe seront supprimées.`,
   };
 };
 
 module.exports = {
-  SQL_REF_NORMALISEE, refNormalisee, clientDe, gerantAgitSur, gerantVoit, clauseGerant, factureDuCompte,
-  recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne,
+  CLASSE_VERROU, verrouillerFactures, SQL_REF_NORMALISEE, refNormalisee, idValide, sansBalise, clientDe, gerantAgitSur,
+  gerantVoit, clauseGerant, factureDuCompte, recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne,
 };

@@ -11,7 +11,14 @@ const multer = require('multer');
 const stockage = require('./stockageFichiers');
 
 const OCTETS_MAX = 15 * 1024 * 1024;
+// Copie JPEG d'une photo HEIC : réduite par le navigateur (2 500 px), elle pèse bien moins.
+const APERCU_MAX = 5 * 1024 * 1024;
+// Envois de fichiers lus en même temps par ce serveur (tout est gardé en mémoire le temps de l'envoi) : au-delà, 503.
+const ENVOIS_SIMULTANES_MAX = 3;
+let envoisEnCours = 0;
 const PIECES_MAX = 5;
+// Corps d'un envoi : 5 fichiers + 5 copies + les données ; au-delà (taille annoncée), refus avant toute lecture.
+const CORPS_MAX = PIECES_MAX * (OCTETS_MAX + APERCU_MAX) + 1024 * 1024;
 const NOM_MAX = 200;
 
 const EXTENSIONS = {
@@ -75,16 +82,37 @@ const reponseMulter = (res, err) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(413).json({ code: 'FICHIER_TROP_GROS', message: 'Fichier trop volumineux : 15 Mo au plus par fichier.' });
   }
-  if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+  if (err.code === 'LIMIT_FILE_COUNT' || (err.code === 'LIMIT_UNEXPECTED_FILE' && ['pieces', 'apercus'].includes(err.field))) {
     return res.status(400).json({ code: 'TROP_DE_FICHIERS', message: `${PIECES_MAX} fichiers au plus par facture.` });
+  }
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({ code: 'CHAMP_INATTENDU', message: 'Envoi illisible : fichier dans un champ inattendu.' });
   }
   return res.status(400).json({ code: 'ENVOI_ILLISIBLE', message: 'Envoi illisible : réessayez.' });
 };
-/** Middleware : `req.files.pieces` (≤ 5) et `req.files.apercus` (≤ 5), en mémoire. */
-const televersement = (req, res, next) => upload.fields([
-  { name: 'pieces', maxCount: PIECES_MAX },
-  { name: 'apercus', maxCount: PIECES_MAX },
-])(req, res, (err) => (err ? reponseMulter(res, err) : next()));
+/**
+ * Middleware : `req.files.pieces` (≤ 5) et `req.files.apercus` (≤ 5), en mémoire. Un corps annoncé trop gros est refusé
+ * avant d'être lu (413) ; au-delà de 3 envois lus en même temps, 503 « réessayez » (la mémoire du serveur est partagée).
+ */
+const televersement = (req, res, next) => {
+  const annonce = Number(req.headers['content-length']);
+  if (Number.isFinite(annonce) && annonce > CORPS_MAX) {
+    return res.status(413).json({ code: 'ENVOI_TROP_GROS', message: 'Envoi trop volumineux : 5 fichiers de 15 Mo au plus.' });
+  }
+  if (envoisEnCours >= ENVOIS_SIMULTANES_MAX) {
+    res.setHeader('Retry-After', '5');
+    return res.status(503).json({ code: 'ENVOIS_SIMULTANES', message: 'Plusieurs envois de fichiers sont en cours : réessayez dans quelques secondes.' });
+  }
+  envoisEnCours += 1;
+  let libere = false;
+  const liberer = () => { if (!libere) { libere = true; envoisEnCours -= 1; } };
+  res.on('finish', liberer);
+  res.on('close', liberer);
+  return upload.fields([
+    { name: 'pieces', maxCount: PIECES_MAX },
+    { name: 'apercus', maxCount: PIECES_MAX },
+  ])(req, res, (err) => (err ? reponseMulter(res, err) : next()));
+};
 
 // ── Préparation ─────────────────────────────────────────────────────────────────────────────────────────────────────
 /**
@@ -114,6 +142,9 @@ const preparer = (fichiers = {}, apercuDe = []) => {
     }
     if (detecterType(f.buffer) !== 'image/jpeg') {
       throw new ErreurPiece(400, 'APERCU_ILLISIBLE', `La copie d'affichage de « ${cible.nom} » n'est pas une image JPEG.`);
+    }
+    if (f.buffer.length > APERCU_MAX) {
+      throw new ErreurPiece(413, 'APERCU_TROP_GROS', `La copie d'affichage de « ${cible.nom} » est trop lourde : 5 Mo au plus.`);
     }
     cible.apercu = f.buffer;
   });

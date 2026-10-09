@@ -22,10 +22,13 @@ const P = require('../services/piecesFacture');
 const F = require('../services/facturesAppro');
 
 const LIGNES_MAX = 300;
-const VALEUR_MAX = 9999999.999; // DECIMAL(10,3)
+const VALEUR_MAX = 9999999.999; // DECIMAL(10,3) : quantité, PU HT et PU TTC d'une ligne
+const LIGNE_MAX = 99999999.999; // montant d'une ligne : la facture (NUMERIC(12,3)) en additionne jusqu'à 300
+const FACTURE_MAX = 999999999.999; // NUMERIC(12,3)
 const REF_MAX = 100;
-// Verrou consultatif des écritures de factures d'un compte (classe, compte).
-const CLASSE_VERROU = 4221;
+const nombre = (v) => (typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN));
+// Quantités et prix au millime, comme les colonnes : 0,0004 n'est pas une quantité.
+const auMillime = (x) => (Number.isFinite(x) ? Math.round(x * 1000) / 1000 : NaN);
 
 class Refus extends Error {
   constructor(status, corps) { super(corps.message); this.status = status; this.corps = corps; }
@@ -40,7 +43,6 @@ const dateValide = (s) => {
   const demain = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
   return s >= '2000-01-01' && s <= demain;
 };
-const nombre = (v) => (typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN));
 
 /** Lit et contrôle `donnees`. → valeurs propres ; lève Refus (400). */
 const lireDonnees = (brut) => {
@@ -65,16 +67,22 @@ const lireDonnees = (brut) => {
   if (d.lignes.length > LIGNES_MAX) throw refus(400, 'TROP_DE_LIGNES', `${LIGNES_MAX} lignes au plus par facture.`);
   const lignes = d.lignes.map((l, i) => {
     const articleId = Number(l?.articleId);
-    const quantite = nombre(l?.quantite);
-    const prixUnitaire = nombre(l?.prixUnitaire);
+    const quantite = auMillime(nombre(l?.quantite));
+    const prixUnitaire = auMillime(nombre(l?.prixUnitaire));
     const tva = l?.tauxTva == null || l.tauxTva === '' ? 0 : nombre(l.tauxTva);
     const n = i + 1;
     if (!Number.isInteger(articleId) || articleId <= 0) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : [[nom:article]] invalide.`, { ligne: n });
     if (!(quantite > 0) || quantite > VALEUR_MAX) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : quantité invalide.`, { ligne: n });
     if (!(prixUnitaire > 0) || prixUnitaire > VALEUR_MAX) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : prix invalide.`, { ligne: n });
     if (!(tva >= 0) || tva > 100) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : taux de TVA invalide.`, { ligne: n });
+    if (prixUnitaire * (1 + tva / 100) > VALEUR_MAX || quantite * prixUnitaire * (1 + tva / 100) > LIGNE_MAX) {
+      throw refus(400, 'MONTANT_TROP_GRAND', `Ligne ${n} : montant trop grand.`, { ligne: n });
+    }
     return { articleId, quantite, prixUnitaire, tva };
   });
+  if (lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire * (1 + l.tva / 100), 0) > FACTURE_MAX) {
+    throw refus(400, 'MONTANT_TROP_GRAND', 'Montant de la facture trop grand.');
+  }
   return {
     type, cibleId, dateAppro: d.dateAppro, ref, fournisseurId, lignes,
     timbre: d.timbreFiscal === true, apercuDe: Array.isArray(d.apercuDe) ? d.apercuDe : [],
@@ -125,9 +133,9 @@ const controlerAppartenance = async (req, clientId, v) => {
   }
 };
 
-/** Factures du compte, même fournisseur, même numéro normalisé (saisies). */
-const facturesSemblables = async (req, clientId, v) => {
-  const r = await pool.query(
+/** Factures du compte, même fournisseur, même numéro normalisé (saisies) ; `db` : la transaction sous verrou, ou le pool. */
+const facturesSemblables = async (req, clientId, v, db = pool) => {
+  const r = await db.query(
     `SELECT f.id, f.date_facture, f.activite_id, f.labo_id, f.montant_ttc, a.nom AS activite_nom, l.nom AS labo_nom,
             (SELECT fl.labo_id FROM fournisseurs fl WHERE fl.id = f.fournisseur_id AND fl.is_labo = true) AS labo_emetteur_id,
             (f.ref_facture = $7 AND f.date_facture = $4::date AND f.activite_id IS NOT DISTINCT FROM $5::int AND f.labo_id IS NOT DISTINCT FROM $6::int) AS meme_facture
@@ -135,11 +143,11 @@ const facturesSemblables = async (req, clientId, v) => {
      LEFT JOIN activites a ON a.id = f.activite_id
      LEFT JOIN labos l ON l.id = f.labo_id
      WHERE f.client_id = $1 AND f.type_source = 'manuel' AND f.ref_facture IS NOT NULL
-       AND ${F.SQL_REF_NORMALISEE('f.ref_facture')} = $2
+       AND ${F.SQL_REF_NORMALISEE('f.ref_facture')} = ${F.SQL_REF_NORMALISEE('$2::text')}
        AND f.fournisseur_id IS NOT DISTINCT FROM $3::int
      ORDER BY f.date_facture DESC, f.id DESC
      LIMIT 5`,
-    [clientId, F.refNormalisee(v.ref), v.fournisseurId, v.dateAppro,
+    [clientId, v.ref, v.fournisseurId, v.dateAppro,
       v.type === 'activite' ? v.cibleId : null, v.type === 'labo' ? v.cibleId : null, v.ref]
   );
   return r.rows.map((x) => {
@@ -164,17 +172,22 @@ const creer = async (req, res) => {
       throw refus(503, 'STOCKAGE_ABSENT', 'Le stockage des factures n\'est pas encore configuré : enregistrez sans la pièce, vous la joindrez plus tard.');
     }
     await controlerAppartenance(req, clientId, v);
-    if (!v.confirmerDoublon) {
-      const semblables = await facturesSemblables(req, clientId, v);
+    const refuserSiDoublon = async (db) => {
+      if (v.confirmerDoublon) return;
+      const semblables = await facturesSemblables(req, clientId, v, db);
       if (semblables.length) {
-        throw refus(409, 'FACTURE_EXISTANTE', `Une facture n° ${v.ref} de ce [[nom:fournisseur]] existe déjà.`, { factures: semblables });
+        throw refus(409, 'FACTURE_EXISTANTE', `Une facture n° ${F.sansBalise(v.ref)} de ce [[nom:fournisseur]] existe déjà.`, { factures: semblables });
       }
-    }
+    };
+    // Avant les fichiers (rien à envoyer pour un refus), puis de nouveau sous le verrou : deux envois simultanés de la
+    // même facture ne passent pas tous les deux.
+    await refuserSiDoublon(pool);
     deposes = await P.deposerTout(clientId, prepares);
     const table = v.type === 'activite' ? 'stock_entreprise_daily' : 'stock_labo_daily';
     const colonne = v.type === 'activite' ? 'activite_id' : 'labo_id';
     const resultat = await withTransaction(async (db) => {
-      await db.query('SELECT pg_advisory_xact_lock($1, $2)', [CLASSE_VERROU, clientId]);
+      await F.verrouillerFactures(db, clientId);
+      await refuserSiDoublon(db);
       const existe = await db.query(
         `SELECT id, timbre_fiscal FROM factures
          WHERE client_id = $1 AND type_source = 'manuel' AND ref_facture = $2 AND date_facture = $3::date

@@ -170,3 +170,15 @@ test('stockage : absent sans réglage, local dans un dossier, clés fabriquées 
   }
   await stockage.supprimerSansErreur([null, 'clients/1/absent.pdf'], 'essai');
 });
+
+test('relecture : quantités et prix au millime, montants bornés, identifiants, texte saisi jamais balise', () => {
+  const code = (d) => { try { lireDonnees(d); return null; } catch (e) { return e.corps.code; } };
+  const v = lireDonnees(donnees({ lignes: [{ articleId: 5, quantite: '1.23456', prixUnitaire: '2.0004', tauxTva: 7 }] }));
+  assert.deepStrictEqual([v.lignes[0].quantite, v.lignes[0].prixUnitaire], [1.235, 2], 'arrondi au millime, comme les colonnes');
+  assert.strictEqual(code(donnees({ lignes: [{ articleId: 5, quantite: 0.0004, prixUnitaire: 1 }] })), 'LIGNE_INVALIDE', '0,0004 n\'est pas une quantité');
+  assert.strictEqual(code(donnees({ lignes: [{ articleId: 5, quantite: 1, prixUnitaire: 9000000, tauxTva: 19 }] })), 'MONTANT_TROP_GRAND', 'PU TTC au-delà de DECIMAL(10,3)');
+  assert.strictEqual(code(donnees({ lignes: [{ articleId: 5, quantite: 9999999, prixUnitaire: 9999 }] })), 'MONTANT_TROP_GRAND', 'montant de ligne');
+  assert.strictEqual(F.idValide('12'), 12);
+  for (const x of ['0', '-1', '1.5', '1e3', '9999999999', '', 'abc', null, undefined]) assert.strictEqual(F.idValide(x), null, String(x));
+  assert.strictEqual(F.sansBalise('FA [[nom:x]] 12'), 'FA [ [nom:x] ] 12');
+});
