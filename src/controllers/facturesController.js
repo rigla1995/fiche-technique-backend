@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { vocabDefaut } = require('../utils/vocab');
+const { clauseGerant, factureDuCompte, gerantVoit } = require('../services/facturesAppro');
 
 /**
  * GET /api/factures
@@ -73,7 +74,9 @@ const list = async (req, res) => {
     conds.push(`f.ref_facture ILIKE $${params.length}`);
   }
 
-  const where = conds.length > 0 ? ' AND ' + conds.join(' AND ') : '';
+  // Étape F1 (factures fournisseur) : un gérant ne lit que les factures de ses activités et labos (et les cessions
+  // émises par ses labos) — avant, il lisait celles de tout le compte.
+  const where = (conds.length > 0 ? ' AND ' + conds.join(' AND ') : '') + clauseGerant(req, params);
 
   const lim = Math.min(parseInt(limit) || 50, 200);
   const off = parseInt(offset) || 0;
@@ -97,6 +100,7 @@ const list = async (req, res) => {
          f.montant_ttc,
          f.notes,
          f.created_at,
+         (SELECT COUNT(*)::int FROM factures_pieces fp WHERE fp.facture_id = f.id) AS nb_pieces,
          CASE WHEN ${recuSql} THEN 'recue'
               WHEN ${emisSql} THEN 'emise'
               WHEN f.type_source = 'transfert' AND f.labo_id IS NOT NULL AND f.activite_id IS NULL THEN 'recue'
@@ -129,6 +133,8 @@ const list = async (req, res) => {
       montantTTC: parseFloat(r.montant_ttc),
       notes: r.notes,
       createdAt: r.created_at,
+      // Étape F1 : nombre de pièces jointes (vraie facture du fournisseur).
+      nbPieces: r.nb_pieces,
       // Lot 1b : facture interne de transfert, vue du labo courant (laboId) — 'recue' (labo
       // destinataire, activite_id NULL) | 'emise' (vers une activité, ou cession vers un labo enfant) ;
       // contrepartie = activité ou labo destinataire (émise) | labo source (reçue).
@@ -150,15 +156,11 @@ const getLignes = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Verify ownership
-    const check = await pool.query(
-      `SELECT id, activite_id, labo_id FROM factures WHERE id = $1 AND client_id = $2`,
-      [id, clientId]
-    );
-    if (check.rows.length === 0) {
+    // Verify ownership (étape F1 : et le périmètre du gérant)
+    const facture = await factureDuCompte(pool, id, clientId);
+    if (!facture || !gerantVoit(req, facture)) {
       return res.status(404).json({ message: 'Facture introuvable' });
     }
-    const facture = check.rows[0];
 
     let rows = [];
 
@@ -255,6 +257,9 @@ const downloadPdf = async (req, res) => {
     );
     if (f.rows.length === 0) return res.status(404).json({ message: 'Facture introuvable' });
     const facture = f.rows[0];
+    // Étape F1 : périmètre du gérant.
+    const acces = await factureDuCompte(pool, id, clientId);
+    if (!acces || !gerantVoit(req, acces)) return res.status(404).json({ message: 'Facture introuvable' });
 
     // Lignes de stock rattachées (mêmes requêtes que getLignes)
     let lignes = [];
