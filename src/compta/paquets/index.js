@@ -267,6 +267,27 @@ const controlerPaquet = (p) => {
     }
     if (!RE_MONTANT.test(f.seuilAchats || '')) defauts.push('fiscalité : seuil des achats « 1000.000 » attendu (texte à 3 décimales)');
     if (!parNumero.get((f.tva || {}).compteCredit)) defauts.push('fiscalité : compte du crédit de TVA absent du paquet');
+    // S7c : le compte de la TVA à payer (écriture de liquidation) et la déclaration mensuelle (échéances, TCL, lignes saisies
+    // à la main).
+    if (!parNumero.get((f.tva || {}).compteAPayer)) defauts.push('fiscalité : compte de la TVA à payer absent du paquet');
+    const dec = f.declaration || {};
+    for (const cle of ['physique', 'moraleTeledeclaration', 'morale']) {
+      const j = (dec.echeances || {})[cle];
+      if (!Number.isInteger(j) || j < 1 || j > 28) defauts.push(`déclaration : échéance « ${cle} » entre 1 et 28 attendue`);
+    }
+    const tcl = dec.tcl || {};
+    for (const cle of ['taux', 'tauxExport']) if (!RE_MONTANT.test(tcl[cle] || '')) defauts.push(`déclaration : TCL, ${cle} « 0.200 » attendu (texte à 3 décimales)`);
+    if (!['ht', 'ttc'].includes(tcl.assiette)) defauts.push('déclaration : TCL, assiette « ht » ou « ttc » attendue');
+    if (!(tcl.comptes || []).length) defauts.push('déclaration : TCL, comptes du chiffre d\'affaires absents');
+    for (const c of tcl.comptes || []) if (!/^\d{1,6}$/.test(c) || !parNumero.get(c)) defauts.push(`déclaration : TCL, compte ${c} absent du paquet`);
+    const cles = new Set();
+    for (const s of dec.saisies || []) {
+      if (!/^[a-z][a-z_]{1,19}$/.test(s.cle || '')) defauts.push(`déclaration : saisie « ${s.cle} » (2 à 20 minuscules ou _)`);
+      if (cles.has(s.cle)) defauts.push(`déclaration : saisie ${s.cle} en double`);
+      cles.add(s.cle);
+      for (const d of defautsLibelle(s.libelle, false)) defauts.push(`déclaration : saisie ${s.cle} : ${d}`);
+    }
+    if (!cles.size) defauts.push('déclaration : aucune ligne à saisir à la main');
     const tej = f.tej || {};
     if (!tej.versionSchema || !tej.source) defauts.push('fiscalité : version du schéma TEJ et source obligatoires');
     const codesTej = new Set();

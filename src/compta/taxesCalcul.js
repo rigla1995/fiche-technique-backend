@@ -60,7 +60,8 @@ const SQL_TVA_PAR_PERIODE = `
    GROUP BY e.periode_id, x.id
    ORDER BY e.periode_id, x.type, x.taux DESC NULLS LAST, x.id`;
 // Les lignes de TVA sans code de taxe ($1 dossier, $2 exercice, $3 brouillard compris), par période : liquidation,
-// régularisation, saisie sans code — elles ne comptent pas dans l'état (signalées).
+// régularisation, saisie sans code — elles ne comptent pas dans l'état (signalées). S7c : l'écriture de liquidation proposée
+// par la déclaration mensuelle (et sa contre-passation) n'est pas signalée.
 const SQL_TVA_SANS_CODE = `
   SELECT e.periode_id, COUNT(*)::int AS nb,
          ${somme('l.credit - l.debit', "k.nature = 'tva_collectee'")} AS collectee,
@@ -70,6 +71,7 @@ const SQL_TVA_SANS_CODE = `
     JOIN compta.journaux j ON j.id = e.journal_id
     JOIN compta.comptes k ON k.id = l.compte_id
    WHERE l.dossier_id = $1 AND e.exercice_id = $2 AND j.type <> 'an' AND l.taxe_id IS NULL AND k.nature IN ('tva_collectee', 'tva_deductible') AND ($3::boolean OR e.etat = 'validee')
+     AND NOT EXISTS (SELECT 1 FROM compta.declarations dc WHERE dc.dossier_id = l.dossier_id AND dc.ecriture_id IN (e.id, e.origine_id))
    GROUP BY e.periode_id`;
 // Le crédit de TVA à l'ouverture de l'exercice ($1 dossier, $2 exercice, $3 numéro du compte de crédit — et ses
 // sous-comptes —, $4 brouillard compris) : solde débiteur des à-nouveaux.

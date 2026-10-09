@@ -24,6 +24,7 @@ const lettrage = require('./lettrage');
 const echeancier = require('./echeancier');
 const taxesMois = require('./taxesMois');
 const certificats = require('./certificats');
+const declarations = require('./declarations');
 const { televersement } = require('./importExcel');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
@@ -293,6 +294,16 @@ router.post('/dossiers/:dossierId/certificats/:certificatId/annuler', authentica
 router.post('/dossiers/:dossierId/fichiers-tej', authenticate, limiteEcritures, certificats.produireFichier);
 router.post('/dossiers/:dossierId/fichiers-tej/:fichierId/retirer', authenticate, limiteEcritures, certificats.retirerFichier);
 router.get('/dossiers/:dossierId/fichiers-tej/:fichierId', authenticate, limiteDocuments, certificats.telechargerFichier);
+// S7c : la déclaration mensuelle d'une période — la page, l'export Excel et le PDF (lecture : tout niveau) ; préparer
+// (montants saisis à la main, TCL corrigée), proposer l'écriture de liquidation de la TVA, marquer comme déposée et retirer
+// la marque (titulaire, Complet ; même limite de débit que la saisie). Adresses fixes (/export, /pdf) déclarées à part.
+router.get('/dossiers/:dossierId/declaration', authenticate, declarations.lire);
+router.get('/dossiers/:dossierId/declaration/export', authenticate, limiteLivres, declarations.exporter);
+router.get('/dossiers/:dossierId/declaration/pdf', authenticate, limiteDocuments, declarations.pdf);
+router.put('/dossiers/:dossierId/declaration/:periodeId', authenticate, limiteEcritures, declarations.preparer);
+router.post('/dossiers/:dossierId/declaration/:periodeId/ecriture-tva', authenticate, limiteEcritures, declarations.proposerEcriture);
+router.post('/dossiers/:dossierId/declaration/:periodeId/marquer', authenticate, limiteEcritures, declarations.marquer);
+router.post('/dossiers/:dossierId/declaration/:periodeId/demarquer', authenticate, limiteEcritures, declarations.demarquer);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique
