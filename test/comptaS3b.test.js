@@ -46,8 +46,9 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   // S5c : + 8 (tiers : créer, modifier, désactiver, réactiver, supprimer, modèle des codes, import ; plan : import) ;
   // S6a : + 5 (écritures : créer, modifier, supprimer ; aides à la saisie : taxe, retenue — rien d'écrit, même porte) ;
   // S6b : + 5 (valider une écriture, la contre-passer ; valider une période, la clore, la rouvrir) ;
-  // S6c : + 2 (import d'écritures, import d'une balance d'ouverture — tout ou rien, droit « configurer »).
-  assert.equal(ecritures.length, 53, 'routes d\'écriture trouvées');
+  // S6c : + 2 (import d'écritures, import d'une balance d'ouverture — tout ou rien, droit « configurer ») ;
+  // S7a : + 2 (lettrer, délettrer — droit « saisir ») ; + 1 POST sans garde (la lettre de relance : un PDF, rien d'écrit).
+  assert.equal(ecritures.length, 56, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
@@ -71,6 +72,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     periodes: { fichier: 'periodes.js', transactions: ['await ecritureValidation(req,'] },
     // S6c : les deux imports (ecritureImport : droit « configurer », dossier non archivé, tout ou rien).
     importEcritures: { fichier: 'importEcritures.js', transactions: ['await ecritureImport(req,'] },
+    // S7a : le lettrage (ecritureLettrage : droit « saisir », dossier non archivé).
+    lettrage: { fichier: 'lettrage.js', transactions: ['await ecritureLettrage(req,'] },
   };
   const corps = (fichier, nom) => {
     const ctrl = lire('src', 'compta', fichier);
@@ -110,7 +113,7 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     const delegue = ['const dansEspaceDuDossier = async', 'const ecriturePlan = (req, travail) =>', 'const ecritureJournaux = (req, travail) =>', 'const ecritureTaxes = (req, travail) =>', 'const ecritureValidation = (req, travail, droit = \'configurer\') =>'].includes(fonction);
     if (!delegue) assert.ok(transaction.includes('{ garde = true } = {}'), `${fichier} : garde par défaut`);
   }
-  assert.deepEqual(routes.ECRITURES_SANS_GARDE, ['POST /passage', 'POST /confiees/:espaceId/quitter']);
+  assert.deepEqual(routes.ECRITURES_SANS_GARDE, ['POST /passage', 'POST /confiees/:espaceId/quitter', 'POST /dossiers/:dossierId/echeancier/tiers/:tiersId/relance.pdf']);
   assert.deepEqual(routes.ECRITURES_TOUJOURS_PERMISES, ['DELETE /mes-comptables/:id', 'DELETE /cabinet/gerants/:id', 'POST /cabinet/gerants/:id/desactiver']);
   // La garde globale ne juge plus /api/compta (sinon un cabinet bloqué ne pourrait rien écrire, même chez ses clients).
   const app = lire('src', 'app.js');

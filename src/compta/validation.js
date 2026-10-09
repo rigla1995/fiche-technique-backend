@@ -16,6 +16,7 @@ const {
   LIBELLE_MAX, numeroProvisoire, fmtDate, millimesDe, lireTexte, lireReference,
   journalDe, periodeDe, exigerDateAN, ecritureDe, exigerBrouillard, uneEcriture, lignesDe, insererLignes, resumeEcritures, resumePeriode,
 } = require('./ecritures');
+const { delettrerEcriture } = require('./lettrage');
 
 const MSG_VALIDER = 'Seul le titulaire ou un gérant de niveau Complet peut valider, contre-passer ou clore';
 const MSG_ROUVRIR = 'Seul le titulaire peut rouvrir une période';
@@ -177,8 +178,8 @@ const validerPeriode = async (req, res) => {
 // inverse d'une écriture validée (une seule fois) — même journal (actif), datée du jour ou de la date choisie (période
 // ouverte de l'exercice ouvert, jamais avant l'origine), libellée « Contre-passation de … », même pièce, lignes inverses,
 // origine « contrepassation » liée à l'origine, numéro provisoire suivant du dossier et validée aussitôt (numéro définitif
-// suivant de son journal dans l'exercice de sa date) ; journal D16 `ecriture_contrepassee`. → 201 { ecriture (l'inverse,
-// avec lignes), origine (relue : son lien), nb }.
+// suivant de son journal dans l'exercice de sa date) ; journal D16 `ecriture_contrepassee`. S7a : l'origine est délettrée
+// d'office. → 201 { ecriture (l'inverse, avec lignes), origine (relue : son lien), nb, delettrees (« F0001 AAA »…) }.
 const contrepasser = async (req, res) => {
   try {
     const c = lireContrepassation(req.body || {});
@@ -206,11 +207,16 @@ const contrepasser = async (req, res) => {
         [d.id, exercice.id, periode.id, journal.id, date, provisoire, numero, reference, libelle, e.total_debit, e.id, req.user.id]
       );
       await insererLignes(db, d, ins.rows[0].id, date, lignes);
+      // S7a (PLAN-S7 §4 « Lettrage ») : l'écriture contre-passée est délettrée d'office — chaque lettre qui portait l'une de
+      // ses lignes se défait en bloc (journal `lettrage_defait`, motif « contre-passation ») ; elle se relettre ensuite
+      // avec sa contre-passation (même pièce, même montant : « Proposer » les rapproche).
+      const delettrees = await delettrerEcriture(db, { espaceId: acces.espace_id, auteurId: req.user.id, dossierId: d.id }, e);
       await journaliser(db, acces.espace_id, req.user.id, 'ecriture_contrepassee', {
         dossier: d.id, ecriture: e.id, numero: e.numero, journal: journal.code, total: e.total_debit,
         contrepassation: { id: ins.rows[0].id, numeroProvisoire: numeroProvisoire(provisoire), numero, date, reference, libelle },
+        ...(delettrees.length ? { delettrees } : {}),
       });
-      return { ecriture: await uneEcriture(db, d.id, ins.rows[0].id), origine: await uneEcriture(db, d.id, e.id), nb: await resumeEcritures(db, d.id) };
+      return { ecriture: await uneEcriture(db, d.id, ins.rows[0].id), origine: await uneEcriture(db, d.id, e.id), nb: await resumeEcritures(db, d.id), delettrees };
     });
     res.status(201).json(resultat);
   } catch (err) {
