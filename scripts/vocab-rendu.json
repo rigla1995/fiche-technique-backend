@@ -34,5 +34,19 @@
     "nom": "rendre",
     "argument": 2,
     "justification": "Relais vers l'assistant : executeToolCall rend err.message avec son voc avant de le renvoyer au modèle ({ error: rendre(voc, err.message) }), spec lot 2b §3.2 E2 et §7.1. Point déjà reconnu par l'outil (2e argument de rendre) : l'entrée le déclare."
+  },
+  {
+    "fichier": "src/controllers/approFactureController.js",
+    "genre": "argument",
+    "nom": "refus",
+    "argument": 3,
+    "justification": "refus(status, code, message, extra) fabrique un Refus dont le corps { code, message, … } est renvoyé tel quel par res.status(…).json(err.corps) : le message est rendu au bord (étape F1 des factures fournisseur)."
+  },
+  {
+    "fichier": "src/controllers/piecesController.js",
+    "genre": "argument",
+    "nom": "refus",
+    "argument": 3,
+    "justification": "refus(status, code, message) fabrique un Refus : repondreErreur renvoie { code, message } en JSON, rendu au bord (étape F1 des factures fournisseur)."
   }
 ]
