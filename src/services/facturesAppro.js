@@ -57,7 +57,9 @@ const gerantVoit = (req, f) => gerantAgitSur(req, f)
 
 /**
  * Montants d'une facture recalculés depuis ses lignes de stock (HT = Σ q × PU HT ; TVA = Σ q × PU HT × taux ;
- * TTC = Σ q × PU TTC + timbre). → nombre de lignes rattachées.
+ * TTC = Σ q × PU HT × (1 + taux) + timbre, soit HT + TVA + timbre sans arrondi intermédiaire — comme le récapitulatif
+ * de la saisie et l'ancien calcul ; le PU TTC de la ligne, arrondi au millime, ne sert qu'à défaut de PU HT).
+ * → nombre de lignes rattachées.
  */
 const recalculerFacture = async (db, factureId) => {
   const r = await db.query(
@@ -69,7 +71,9 @@ const recalculerFacture = async (db, factureId) => {
        SELECT COUNT(*)::int AS n,
               COALESCE(SUM(COALESCE(quantite, 0) * COALESCE(prix_unitaire, 0)), 0) AS ht,
               COALESCE(SUM(COALESCE(quantite, 0) * COALESCE(prix_unitaire, 0) * COALESCE(taux_tva, 0) / 100), 0) AS tva,
-              COALESCE(SUM(COALESCE(quantite, 0) * COALESCE(prix_unitaire_tva, prix_unitaire, 0)), 0) AS ttc
+              COALESCE(SUM(COALESCE(quantite, 0) * CASE WHEN prix_unitaire IS NOT NULL
+                             THEN prix_unitaire * (1 + COALESCE(taux_tva, 0) / 100)
+                             ELSE COALESCE(prix_unitaire_tva, 0) END), 0) AS ttc
        FROM l
      )
      UPDATE factures f

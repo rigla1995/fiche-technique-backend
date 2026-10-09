@@ -152,6 +152,10 @@ const existe = (cle) => !!cle && fs.existsSync(fichierStocke(cle));
     check('1. montants de la facture recalculés : HT 10,750 · TVA 1,900 · TTC 13,650 (timbre 1 D)', approx(F.montant_ht, 10.75) && approx(F.montant_tva, 1.9) && approx(F.montant_ttc, 13.65) && F.timbre_fiscal === true && F.type_source === 'manuel',
       JSON.stringify([F.montant_ht, F.montant_tva, F.montant_ttc, F.timbre_fiscal]));
     check('1. journal : facture_creee', (await journal(f1, 'facture_creee')).length === 1);
+    r = await envoi('POST', '/api/appros/facture', tok, donnees({ refFacture: 'FA-ARR', lignes: [{ articleId: art1.id, quantite: 50, prixUnitaire: 1.54, tauxTva: 19 }, { articleId: art2.id, quantite: 15, prixUnitaire: 4.98, tauxTva: 19 }] }));
+    const fArr = await facture(r.body?.factureId);
+    // 50 × 1,54 × 1,19 + 15 × 4,98 × 1,19 = 180,523 (et non 50 × 1,833 + 15 × 5,926 = 180,540 avec le PU TTC arrondi)
+    check('1. TTC = HT + TVA + timbre sans arrondi intermédiaire (181,523, comme le récapitulatif de la saisie)', r.status === 201 && approx(fArr?.montant_ht, 151.7) && approx(fArr?.montant_tva, 28.823) && approx(fArr?.montant_ttc, 181.523), JSON.stringify([fArr?.montant_ht, fArr?.montant_tva, fArr?.montant_ttc]));
 
     // ── 2. Doublons ─────────────────────────────────────────────────────────────────────────────────────────────────
     r = await envoi('POST', '/api/appros/facture', tok, donnees());
