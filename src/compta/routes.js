@@ -22,6 +22,8 @@ const livres = require('./livres');
 const importEcritures = require('./importEcritures');
 const lettrage = require('./lettrage');
 const echeancier = require('./echeancier');
+const taxesMois = require('./taxesMois');
+const certificats = require('./certificats');
 const { televersement } = require('./importExcel');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
@@ -277,6 +279,20 @@ const limiteDocuments = rateLimit({
 });
 router.get('/dossiers/:dossierId/echeancier/tiers/:tiersId/releve.pdf', authenticate, limiteDocuments, echeancier.releve);
 router.post('/dossiers/:dossierId/echeancier/tiers/:tiersId/relance.pdf', authenticate, limiteDocuments, echeancier.relance);
+
+// Étape S7b : les taxes du mois (état de TVA, retenues à certifier, certificats, retenues subies, signalements ; lecture :
+// tout accès au dossier ; export sous la limite des livres ; PDF sous celle des documents) et les certificats de retenue
+// (produire, annuler, fichier XML de la plateforme TEJ : titulaire ou Complet — droit « configurer », jugé par le
+// contrôleur ; même limite de débit que la saisie). Adresses fixes (/export, /certificats.pdf) déclarées à part.
+router.get('/dossiers/:dossierId/taxes-mois', authenticate, taxesMois.lire);
+router.get('/dossiers/:dossierId/taxes-mois/export', authenticate, limiteLivres, taxesMois.exporter);
+router.get('/dossiers/:dossierId/taxes-mois/certificats.pdf', authenticate, limiteDocuments, taxesMois.lot);
+router.post('/dossiers/:dossierId/certificats', authenticate, limiteEcritures, certificats.produire);
+router.get('/dossiers/:dossierId/certificats/:certificatId/pdf', authenticate, limiteDocuments, certificats.pdf);
+router.post('/dossiers/:dossierId/certificats/:certificatId/annuler', authenticate, limiteEcritures, certificats.annuler);
+router.post('/dossiers/:dossierId/fichiers-tej', authenticate, limiteEcritures, certificats.produireFichier);
+router.post('/dossiers/:dossierId/fichiers-tej/:fichierId/retirer', authenticate, limiteEcritures, certificats.retirerFichier);
+router.get('/dossiers/:dossierId/fichiers-tej/:fichierId', authenticate, limiteDocuments, certificats.telechargerFichier);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique

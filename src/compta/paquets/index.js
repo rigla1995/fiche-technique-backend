@@ -113,6 +113,14 @@ const RE_PREFIXE_TIERS = /^[A-Z0-9]{0,3}$/;
 const CHIFFRES_TIERS_MIN = 3;
 const CHIFFRES_TIERS_MAX = 7;
 const DELAI_PAIEMENT_MAX = 365;
+// S7b : le régime fiscal d'un fournisseur (valeur d'une liste du paquet : fiscalite.regimesFiscaux) et l'identifiant de
+// secours d'un bénéficiaire sans matricule fiscal (cahier des charges TEJ v2.0 : IdTaxpayer = matricule fiscal, CIN,
+// passeport, carte de séjour ou autre identifiant ; les types 2 à 5 de la plateforme).
+const RE_REGIME_FISCAL = /^[a-z0-9_]{2,20}$/;
+const PERSONNES = ['morale', 'physique'];
+const TYPES_IDENTIFIANT_LIBELLES = { cin: 'Carte d\'identité nationale', passeport: 'Passeport', carte_sejour: 'Carte de séjour', autre: 'Autre identifiant (non-résident)' };
+const TYPES_IDENTIFIANT = Object.keys(TYPES_IDENTIFIANT_LIBELLES);
+const RE_CODE_OPERATION_TEJ = /^RS\d{1,2}_\d{6}$/;
 
 // Le paquet d'un pays (le seul pour l'instant : TN), ou null.
 const paquetDe = (pays) => PAQUETS[String(pays || '').toUpperCase()] || null;
@@ -234,8 +242,52 @@ const controlerPaquet = (p) => {
       else if (c.nature !== NATURE_PAR_TYPE_TIERS[type]) defauts.push(`tiers : compte collectif ${collectifs[type]} de nature ${c.nature}, ${NATURE_PAR_TYPE_TIERS[type]} attendue`);
     }
   }
+  // S7b : la fiscalité (facultative dans un paquet ; contrôlée si elle est là) : régimes fiscaux des fournisseurs et codes de
+  // retenue qu'ils proposent (des codes de retenue du paquet), familles, seuil des retenues sur achats, compte du crédit de
+  // TVA, codes d'opération TEJ (ceux des codes du paquet en font partie).
+  if (p.fiscalite != null) {
+    const f = p.fiscalite || {};
+    const retenue = (code) => taxes.find((t) => t.code === code && t.type === 'retenue');
+    const valeurs = new Set();
+    for (const r of f.regimesFiscaux || []) {
+      const id = `régime fiscal ${r.valeur}`;
+      if (!RE_REGIME_FISCAL.test(r.valeur || '')) defauts.push(`${id} : valeur de 2 à 20 minuscules, chiffres ou _`);
+      if (valeurs.has(r.valeur)) defauts.push(`${id} : en double`);
+      valeurs.add(r.valeur);
+      for (const d of defautsLibelle(r.libelle, false)) defauts.push(`${id} : ${d}`);
+      if (!PERSONNES.includes(r.personne)) defauts.push(`${id} : personne « ${r.personne} » (morale ou physique)`);
+      for (const cle of ['achats', 'honoraires']) if (!retenue(r[cle])) defauts.push(`${id} : retenue ${cle} « ${r[cle]} » absente des codes de retenue du paquet`);
+    }
+    if (!(f.regimesFiscaux || []).length) defauts.push('fiscalité : aucun régime fiscal');
+    for (const cle of ['achats', 'honoraires']) {
+      const codes = (f.familles || {})[cle] || [];
+      if (!codes.length) defauts.push(`fiscalité : famille ${cle} vide`);
+      for (const c of codes) if (!retenue(c)) defauts.push(`fiscalité : famille ${cle}, code ${c} absent des codes de retenue du paquet`);
+      for (const r of f.regimesFiscaux || []) if (r[cle] && !codes.includes(r[cle])) defauts.push(`régime fiscal ${r.valeur} : ${r[cle]} hors de la famille ${cle}`);
+    }
+    if (!RE_MONTANT.test(f.seuilAchats || '')) defauts.push('fiscalité : seuil des achats « 1000.000 » attendu (texte à 3 décimales)');
+    if (!parNumero.get((f.tva || {}).compteCredit)) defauts.push('fiscalité : compte du crédit de TVA absent du paquet');
+    const tej = f.tej || {};
+    if (!tej.versionSchema || !tej.source) defauts.push('fiscalité : version du schéma TEJ et source obligatoires');
+    const codesTej = new Set();
+    for (const o of tej.codesOperations || []) {
+      if (!RE_CODE_OPERATION_TEJ.test(o.code || '')) defauts.push(`code TEJ « ${o.code} » : forme RSn_00000n attendue`);
+      if (codesTej.has(o.code)) defauts.push(`code TEJ ${o.code} : en double`);
+      codesTej.add(o.code);
+      for (const d of defautsLibelle(o.libelle, false)) defauts.push(`code TEJ ${o.code} : ${d}`);
+    }
+    for (const t of taxes) if (t.type === 'retenue' && t.codeTej && !codesTej.has(t.codeTej)) defauts.push(`taxe ${t.code} : code TEJ ${t.codeTej} absent de la liste des codes d'opération`);
+    const codesTva = new Set((tej.codesTaxesAdditionnelles || []).map((o) => o.code));
+    if (!codesTva.size) defauts.push('fiscalité : codes des taxes additionnelles TEJ (retenues de TVA) absents');
+    for (const o of tej.codesTaxesAdditionnelles || []) for (const d of defautsLibelle(o.libelle, false)) defauts.push(`taxe additionnelle ${o.code} : ${d}`);
+    for (const t of taxes) if (t.type === 'retenue_tva' && t.codeTej && !codesTva.has(t.codeTej)) defauts.push(`taxe ${t.code} : code TEJ ${t.codeTej} absent des taxes additionnelles`);
+  }
   return defauts;
 };
+// S7b : la fiscalité d'un pays (régimes fiscaux, familles, seuil, crédit de TVA, TEJ), ou null.
+const fiscaliteDe = (pays) => paquetDe(pays)?.fiscalite || null;
+// Le régime fiscal d'un fournisseur (valeur de la liste du paquet), ou null.
+const regimeFiscalDe = (pays, valeur) => (valeur ? (fiscaliteDe(pays)?.regimesFiscaux || []).find((r) => r.valeur === valeur) || null : null);
 
 // Transcription SQL d'une valeur texte (ou NULL) et d'un nombre à 3 décimales transporté en texte (ou NULL).
 const sqlTexte = (v) => (v == null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
@@ -272,4 +324,5 @@ module.exports = {
   sqlNombre, sqlValeursJournaux, sqlValeursSousComptes, sqlValeursTaxes,
   TYPES_TIERS, TYPES_TIERS_LIBELLES, NATURE_PAR_TYPE_TIERS, REGIMES_TVA_TIERS, REGIMES_TVA_TIERS_LIBELLES,
   CODE_TIERS_MIN, CODE_TIERS_MAX, RE_CODE_TIERS, PREFIXE_TIERS_MAX, RE_PREFIXE_TIERS, CHIFFRES_TIERS_MIN, CHIFFRES_TIERS_MAX, DELAI_PAIEMENT_MAX,
+  RE_REGIME_FISCAL, PERSONNES, TYPES_IDENTIFIANT, TYPES_IDENTIFIANT_LIBELLES, RE_CODE_OPERATION_TEJ, fiscaliteDe, regimeFiscalDe,
 };

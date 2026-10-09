@@ -91,6 +91,72 @@
       "client": "4111"
     }
   },
+  "fiscalite": {
+    "note": "S7b (09/10/2026) : régime fiscal d'un fournisseur et retenue proposée d'après lui (recherche-fiscale-tunisie.md §3.1 et §3.6, règles 3 et 4 : achats de 1 000 D et plus — 1,5 % en général, 1 % pour une société à l'IS de 20 %, 0,5 % pour une société à l'IS de 10 % ou un revenu à déduction des 2/3 ; honoraires — 3 % pour une société ou une personne physique au réel, 10 % sinon), seuil des retenues sur achats par paiement, compte du crédit de TVA à reporter (état de TVA du mois), certificats de retenue au cahier des charges TEJ v2.0 (juin 2024 ; nouveau schéma XSD de septembre 2026 non publié : fichier à essayer sur la plateforme).",
+    "regimesFiscaux": [
+      { "valeur": "pm_is25", "libelle": "Personne morale à l'IS de 25 % ou plus", "personne": "morale", "achats": "RS_MAR15", "honoraires": "RS_HON3" },
+      { "valeur": "pm_is20", "libelle": "Personne morale à l'IS de 20 %", "personne": "morale", "achats": "RS_MAR1", "honoraires": "RS_HON3" },
+      { "valeur": "pm_is15", "libelle": "Personne morale à l'IS de 15 % (société nouvellement cotée)", "personne": "morale", "achats": "RS_MAR15", "honoraires": "RS_HON3", "note": "Non confirmé (recherche §3.6, point 2) : la LF 2025 réserve le 1 % à l'IS de 20 % ; 1,5 % retenu ici, à faire confirmer par un comptable" },
+      { "valeur": "pm_is10", "libelle": "Personne morale à l'IS de 10 %", "personne": "morale", "achats": "RS_MAR05", "honoraires": "RS_HON3" },
+      { "valeur": "pp_reel", "libelle": "Personne physique au régime réel (carte d'identification fiscale)", "personne": "physique", "achats": "RS_MAR15", "honoraires": "RS_HON3" },
+      { "valeur": "pp_deux_tiers", "libelle": "Personne physique à déduction des 2/3", "personne": "physique", "achats": "RS_MAR05", "honoraires": "RS_HON3" },
+      { "valeur": "pp_forfait", "libelle": "Personne physique au régime forfaitaire", "personne": "physique", "achats": "RS_MAR15", "honoraires": "RS_HON10" }
+    ],
+    "familles": {
+      "achats": ["RS_MAR15", "RS_MAR1", "RS_MAR05"],
+      "honoraires": ["RS_HON10", "RS_HON3"]
+    },
+    "seuilAchats": "1000.000",
+    "tva": {
+      "compteCredit": "43667"
+    },
+    "tej": {
+      "versionSchema": "1.0",
+      "codesTaxesAdditionnelles": [
+        { "code": "RSTVA25", "libelle": "Retenue de TVA de 25 % (État, collectivités et établissements publics)" },
+        { "code": "RSTVA100", "libelle": "Retenue de TVA de 100 % (prestataires non résidents)" }
+      ],
+      "source": "Cahier des charges techniques de la plateforme TEJ, certificats de retenue à la source, v2.0 (ministère des Finances, juin 2024), https://jibaya.tn/wp-content/uploads/2024/05/TEJ-CCT-RS-V2.0.pdf",
+      "codesOperations": [
+        { "code": "RS1_000001", "libelle": "Loyers d'hôtels (personnes morales, personnes physiques au réel)" },
+        { "code": "RS1_000002", "libelle": "Loyers servis à des résidents établis" },
+        { "code": "RS2_000001", "libelle": "Honoraires (BNC au forfait d'assiette), commissions, courtages" },
+        { "code": "RS2_000002", "libelle": "Honoraires servis aux BNC au régime réel" },
+        { "code": "RS2_000003", "libelle": "Rémunérations en contrepartie de la performance" },
+        { "code": "RS2_000004", "libelle": "Rémunérations des artistes et créateurs, droits d'auteur" },
+        { "code": "RS3_000001", "libelle": "Revenus de capitaux mobiliers servis aux résidents" },
+        { "code": "RS3_000003", "libelle": "Revenus de capitaux mobiliers servis aux non-résidents autres que banques" },
+        { "code": "RS3_000004", "libelle": "Revenus de capitaux mobiliers servis aux banques non établies" },
+        { "code": "RS3_000005", "libelle": "Revenus de capitaux mobiliers, régime fiscal privilégié" },
+        { "code": "RS4_000001", "libelle": "Cessions de valeurs mobilières, personnes morales non résidentes" },
+        { "code": "RS4_000002", "libelle": "Cessions de valeurs mobilières, personnes physiques non résidentes" },
+        { "code": "RS5_000001", "libelle": "Dividendes servis aux personnes physiques résidentes" },
+        { "code": "RS5_000002", "libelle": "Dividendes servis aux non-résidents" },
+        { "code": "RS5_000003", "libelle": "Dividendes, régime fiscal privilégié" },
+        { "code": "RS6_000001", "libelle": "Cession de fonds de commerce par des résidents" },
+        { "code": "RS6_000002", "libelle": "Cession d'immeubles et de droits sociaux par des résidents" },
+        { "code": "RS6_000003", "libelle": "Cession d'immeubles par des personnes physiques non résidentes" },
+        { "code": "RS6_000005", "libelle": "Cession d'immeubles par des personnes morales non résidentes" },
+        { "code": "RS7_000001", "libelle": "Achats de 1 000 D et plus (taux général)" },
+        { "code": "RS7_000002", "libelle": "Achats de 1 000 D et plus (société au taux réduit d'IS : 1 %)" },
+        { "code": "RS7_000003", "libelle": "Achats de 1 000 D et plus (IS de 10 %, déduction des 2/3)" },
+        { "code": "RS7_000004", "libelle": "Commissions des distributeurs agréés des télécommunications (personne physique)" },
+        { "code": "RS7_000005", "libelle": "Commissions des distributeurs agréés des télécommunications (personne morale)" },
+        { "code": "RS8_000001", "libelle": "Jetons de présence servis aux résidents" },
+        { "code": "RS8_000002", "libelle": "Jetons de présence servis aux non-résidents" },
+        { "code": "RS8_000003", "libelle": "Jetons de présence, régime fiscal privilégié" },
+        { "code": "RS9_000001", "libelle": "Rémunérations servies à des non-résidents non établis" },
+        { "code": "RS9_000002", "libelle": "Redevances servies à des non-résidents non établis" },
+        { "code": "RS9_000003", "libelle": "Rémunérations, régime fiscal privilégié" },
+        { "code": "RS9_000004", "libelle": "Non-résidents établis moins de 6 mois : travaux de construction" },
+        { "code": "RS9_000005", "libelle": "Non-résidents établis moins de 6 mois : opérations de montage" },
+        { "code": "RS9_000006", "libelle": "Non-résidents établis moins de 6 mois : autres services" },
+        { "code": "RS9_000007", "libelle": "Non-résidents établis sans déclaration d'existence" },
+        { "code": "RS9_000008", "libelle": "Non-résidents établis sans déclaration d'existence, régime privilégié" },
+        { "code": "RS11_000001", "libelle": "Jeux de pari et loteries" }
+      ]
+    }
+  },
   "journaux": [
     {
       "code": "AC",

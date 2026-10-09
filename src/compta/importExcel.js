@@ -74,7 +74,10 @@ const estLigneExemple = (row) => /^exemple\s*:/i.test(texteCellule(row.getCell(1
 
 // Lit un classeur téléversé : → [{ ligne (numéro Excel), cellules: [texte par colonne] }], lignes vides écartées.
 // Refus (400, code) : fichier illisible, classeur vide, en-têtes introuvables, aucune ligne, trop de lignes.
-const lireClasseur = async (buffer, { enTetes, max = LIGNES_MAX }) => {
+// S7b : `facultatifs` — des colonnes ajoutées après les obligatoires (un ancien modèle s'importe encore) : chacune est lue
+// si son en-tête est à sa place sur la ligne des en-têtes, sinon elle vaut '' ; les cellules rendues sont les obligatoires
+// puis les facultatives, dans l'ordre.
+const lireClasseur = async (buffer, { enTetes, facultatifs = [], max = LIGNES_MAX }) => {
   const wb = new ExcelJS.Workbook();
   try {
     await wb.xlsx.load(buffer);
@@ -85,10 +88,15 @@ const lireClasseur = async (buffer, { enTetes, max = LIGNES_MAX }) => {
   if (!ws || ws.rowCount === 0) throw erreur(400, 'Classeur vide', 'FICHIER_VIDE');
   const enTete = findHeaderRow(ws, enTetes);
   if (!enTete) throw erreur(400, `En-têtes introuvables : la première feuille doit porter sur une même ligne ${enTetes.map((h) => `« ${h} »`).join(', ')} — partez du modèle téléchargeable`, 'EN_TETES');
+  const ligneEnTetes = ws.getRow(enTete);
+  const presents = facultatifs.map((h, j) => String(ligneEnTetes.getCell(enTetes.length + j + 1).text || '').trim().toLowerCase() === h.toLowerCase());
   const lignes = [];
   ws.eachRow((row, n) => {
     if (n <= enTete || estLigneExemple(row)) return;
-    const cellules = enTetes.map((_, i) => texteCellule(row.getCell(i + 1)));
+    const cellules = [
+      ...enTetes.map((_, i) => texteCellule(row.getCell(i + 1))),
+      ...facultatifs.map((_, j) => (presents[j] ? texteCellule(row.getCell(enTetes.length + j + 1)) : '')),
+    ];
     if (cellules.every((c) => c === '')) return;
     lignes.push({ ligne: n, cellules });
   });
