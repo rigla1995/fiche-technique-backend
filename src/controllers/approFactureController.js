@@ -49,7 +49,7 @@ const lireDonnees = (brut) => {
   if (!d || typeof d !== 'object') throw refus(400, 'DONNEES_ILLISIBLES', 'Envoi illisible : réessayez.');
   const type = d.cible?.type;
   const cibleId = Number(d.cible?.id);
-  if (!['activite', 'labo'].includes(type) || !Number.isInteger(cibleId) || cibleId <= 0) {
+  if ((type !== 'activite' && type !== 'labo') || !Number.isInteger(cibleId) || cibleId <= 0) {
     throw refus(400, 'CIBLE_INVALIDE', 'Choisissez [[le:activite]] ou [[le:labo]].');
   }
   if (!dateValide(d.dateAppro)) throw refus(400, 'DATE_INVALIDE', 'Date [[du:appro:court]] invalide.');

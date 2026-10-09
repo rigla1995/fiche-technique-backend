@@ -136,7 +136,7 @@ const deposerTout = async (clientId, prepares) => {
     }
     return deposes;
   } catch (err) {
-    await effacerDeposes(deposes, 'dépôt interrompu');
+    await effacerDeposes(deposes, 'envoi interrompu');
     if (err.code === 'STOCKAGE_ABSENT') throw new ErreurPiece(503, 'STOCKAGE_ABSENT', 'Le stockage des factures n\'est pas encore configuré.');
     console.error('[pieces] dépôt :', err.message);
     throw new ErreurPiece(503, 'STOCKAGE_INDISPONIBLE', 'Le stockage des factures ne répond pas : réessayez dans un instant.');

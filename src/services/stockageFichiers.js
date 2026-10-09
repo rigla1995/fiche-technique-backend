@@ -95,7 +95,7 @@ const deposer = async (cle, octets, typeMime) => {
     body: octets,
     headers: { 'Content-Type': typeMime },
   });
-  if (!rep.ok) throw new StockageErreur(`dépôt refusé par le stockage (${rep.status})`);
+  if (!rep.ok) throw new StockageErreur(`envoi refusé par le stockage (${rep.status})`);
 };
 
 /** Relit le fichier `cle` (Buffer) ; null s'il n'existe pas. */

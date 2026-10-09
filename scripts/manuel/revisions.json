@@ -163,6 +163,28 @@
           "md5": "f1f5d33751be10305286a88a3c97c8b3"
         }
       ]
+    },
+    {
+      "numero": 222,
+      "nom": "222_manuel_factures_pieces.sql",
+      "objet": "Factures fournisseur, étape F1 : la vraie facture du fournisseur jointe à la saisie (zone « Facture du fournisseur »), enregistrement d'un seul coup, facture déjà saisie signalée ; écran Factures : Voir / Joindre / Remplacer / Supprimer, PDF fabriqué réservé aux transferts.",
+      "manuel": [
+        {
+          "slug": "factures",
+          "md5Avant": "da374cdb135cc62811f1dc616e52bd53",
+          "md5": "34347bc8b86e09962297387a79b055df"
+        },
+        {
+          "slug": "stock-activites",
+          "md5Avant": "ebac3dc335cb5cd178a4695c1437bfb1",
+          "md5": "6a2b8b7a412132629a5d2209420f10b1"
+        },
+        {
+          "slug": "stock-labo",
+          "md5Avant": "4ed5581be3f54811713c88fc2b2c85fa",
+          "md5": "b1d9d793dc669a8b2903981cedec3da3"
+        }
+      ]
     }
   ]
 }

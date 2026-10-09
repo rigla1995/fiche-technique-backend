@@ -469,3 +469,20 @@ compte qui l'a).
 ce texte et ses empreintes, et les permutations entre ex aequo déjà admises (`get_stock`, feuille Stock du rapport).
 Contrôle suivant IDENTIQUE (0 écart).
 **Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut hors exceptions.
+
+### Factures fournisseur, étape F1 — la facture devient une vraie pièce (09/10/2026)
+
+Migration 221 (pièces jointes, journal, index) et 222 (`222_manuel_factures_pieces.sql`, maintenance du manuel :
+fiches `factures`, `stock-activites`, `stock-labo`). Premier contrôle : 16 écarts, tous dus à l'étape :
+
+| Différence contre l'ancienne référence | Nombre |
+|---|---|
+| `manuel/sections/{factures,stock-activites,stock-labo}/contenu` | 3 |
+| `recherches` et `recherchesDomaine` : contenus des fiches `stock-labo` et `stock-activites` en résultat | 4 |
+| `recherchesDomaine/C\|Comment ajouter mes fournisseurs ?/titres/3` : « Factures d'appro » passe devant « Fournisseurs » (la fiche Factures cite maintenant la facture du fournisseur) | 1 |
+| `donneesLibelles/B.factures/*/nbPieces` : champ ajouté à `GET /api/factures` (nombre de pièces jointes, 0) | 8 |
+
+Hors restauration : seules les empreintes des trois fiches (3 problèmes par domaine, lecteur admin).
+**Recapture.** Référence RECAPTURÉE le 09/10 (`--reference`) : `derniereMigration` → 222, ces textes, empreintes,
+ordres et le champ `nbPieces`. Contrôle suivant IDENTIQUE (0 écart).
+**Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut hors exceptions.

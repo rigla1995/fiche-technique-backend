@@ -19,6 +19,7 @@ const CLASSE_VERROU = 4221;
 class Refus extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
 }
+const refus = (status, code, message) => new Refus(status, code, message);
 const repondreErreur = (res, err, contexte) => {
   if (err instanceof Refus || err instanceof P.ErreurPiece) return res.status(err.status).json({ code: err.code, message: err.message });
   console.error(`[pieces] ${contexte}`, err);
@@ -30,7 +31,7 @@ const factureAccessible = async (req, db, { ecriture = false, verrou = false } =
   const f = await F.factureDuCompte(db, req.params.id, F.clientDe(req), verrou);
   if (!f || !(ecriture ? F.gerantAgitSur(req, f) : F.gerantVoit(req, f))) throw new Refus(404, 'FACTURE_INTROUVABLE', 'Facture introuvable');
   if (ecriture && f.type_source !== 'manuel') {
-    throw new Refus(409, 'FACTURE_TRANSFERT', 'Une facture de [[nom:transfert]] est un document de LabFlow : elle ne reçoit pas de pièce.');
+    throw refus(409, 'FACTURE_TRANSFERT', 'Une facture de [[nom:transfert]] est un document de LabFlow : elle ne reçoit pas de pièce.');
   }
   return f;
 };
