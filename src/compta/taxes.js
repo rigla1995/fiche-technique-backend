@@ -61,6 +61,7 @@ const lireCompteId = (v) => {
 // S7b : le code d'opération TEJ d'un code de retenue (liste du paquet du pays) ou de retenue de TVA (taxe additionnelle) ;
 // vide = aucun ; les autres types n'en ont pas.
 const CODES_TEJ_TVA = ['RSTVA25', 'RSTVA100'];
+const codesTejTvaDe = (pays) => fiscaliteDe(pays)?.tej?.codesTaxesAdditionnelles || CODES_TEJ_TVA.map((code) => ({ code, libelle: code }));
 const lireCodeTej = (v, type, pays) => {
   if (v == null || v === '') return null;
   if (typeof v !== 'string') throw erreur(400, 'Code TEJ : requête invalide');
@@ -70,7 +71,8 @@ const lireCodeTej = (v, type, pays) => {
     return c;
   }
   if (type === 'retenue_tva') {
-    if (!CODES_TEJ_TVA.includes(c)) throw erreur(400, `Code TEJ d'une retenue de TVA : ${CODES_TEJ_TVA.join(' ou ')}`);
+    const codes = codesTejTvaDe(pays).map((o) => o.code);
+    if (!codes.includes(c)) throw erreur(400, `Code TEJ d'une retenue de TVA : ${codes.join(' ou ')}`);
     return c;
   }
   throw erreur(400, 'Seuls les codes de retenue et de retenue de TVA portent un code TEJ');
@@ -145,7 +147,7 @@ const etatTaxes = async (db, acces, d) => {
     code: { max: CODE_TAXE_MAX },
     // S7b : les codes d'opération TEJ que peut porter un code personnalisé (retenue ; retenue de TVA).
     codesTej: (fiscaliteDe(d.pays)?.tej?.codesOperations || []).map((o) => ({ code: o.code, libelle: o.libelle })),
-    codesTejTva: CODES_TEJ_TVA,
+    codesTejTva: codesTejTvaDe(d.pays),
     taxes: t.rows.map(presenterTaxe),
     paquet: paquet.rows[0] ? { pays: paquet.rows[0].pays, version: paquet.rows[0].version, libelle: paquet.rows[0].libelle, codes: reste.rows.map(presenterCodePaquet) } : null,
     comptes,

@@ -48,6 +48,7 @@ test('paquet Tunisie : fiscalité (7 régimes et leurs retenues, familles, seuil
   assert.equal(f.tej.versionSchema, '1.0');
   assert.equal(f.tej.codesOperations.length, 36);
   assert.ok(f.tej.codesOperations.every((o) => paquets.RE_CODE_OPERATION_TEJ.test(o.code)));
+  assert.deepEqual(f.tej.codesTaxesAdditionnelles.map((o) => o.code), ['RSTVA25', 'RSTVA100'], 'codes des retenues de TVA : donnée du paquet (relecture)');
   assert.equal(paquets.regimeFiscalDe('TN', 'pp_reel').libelle, 'Personne physique au régime réel (carte d\'identification fiscale)');
   assert.equal(paquets.regimeFiscalDe('TN', 'inconnu'), null);
   assert.equal(paquets.regimeFiscalDe('FR', 'pm_is25'), null);
@@ -104,6 +105,22 @@ test('opération d\'une pièce : TTC hors timbre, TVA, HT, retenue, net servi ; 
   assert.deepEqual(nr.rsTva, { code: 'RSTVA100', taux: '100.000', montant: '190.000' });
   assert.equal(nr.net, '982.150');
   assert.deepEqual(nr.lignes, [4, 6]);
+  // Relecture : la retenue se reconnaît par la NATURE du compte (sous-compte 4321 après un repointage du code), pas par le
+  // compte actuel du code.
+  const sous = calcul.operationDe(piece().map((l) => (l.id === 4 ? { ...l, compte_id: 31 } : l)));
+  assert.deepEqual([sous.rs, sous.lignes, sous.probleme], ['17.850', [4], null]);
+  assert.equal(calcul.operationDe(piece().map((l) => (l.id === 4 ? { ...l, nature: 'etat' } : l))).rs, '0.000', 'hors des comptes de retenues opérées : pas une retenue opérée');
+  // Deux règlements lettrés : la date du dernier, comptés ; un avoir (journal d'achats) n'est pas un règlement.
+  const deux = new Map([[70, [
+    { lettrage_id: 70, ecriture_id: 50, date: '2026-09-05', debit: '0.000', credit: '1173.150', journal_type: 'achats' },
+    { lettrage_id: 70, ecriture_id: 60, date: '2026-09-10', debit: '500.000', credit: '0.000', journal_type: 'banque' },
+    { lettrage_id: 70, ecriture_id: 61, date: '2026-11-15', debit: '573.150', credit: '0.000', journal_type: 'banque' },
+    { lettrage_id: 70, ecriture_id: 62, date: '2026-12-01', debit: '100.000', credit: '0.000', journal_type: 'achats' },
+  ]]]);
+  const echelonne = calcul.operationDe(piece(), deux);
+  assert.deepEqual([echelonne.dateProposee, echelonne.sourceDate, echelonne.nbReglements], ['2026-11-15', 'reglement', 2]);
+  const avoirSeul = new Map([[70, [{ lettrage_id: 70, ecriture_id: 62, date: '2026-12-01', debit: '1173.150', credit: '0.000', journal_type: 'achats' }]]]);
+  assert.deepEqual([calcul.operationDe(piece(), avoirSeul).sourceDate, calcul.operationDe(piece(), avoirSeul).nbReglements], ['facture', 0]);
 });
 
 test('opération : les problèmes qui empêchent le certificat (bénéficiaire, retenue de TVA seule, deux codes, code sans TEJ)', () => {
@@ -113,6 +130,22 @@ test('opération : les problèmes qui empêchent le certificat (bénéficiaire, 
   assert.equal(p(piece().filter((l) => l.id !== 4).concat([ligne({ id: 6, compte: 30, nature: 'retenues_operees', c: '190.000', taxe: RSTVA100 })])), 'RETENUE_TVA_SEULE');
   assert.equal(p(piece([ligne({ id: 7, compte: 30, nature: 'retenues_operees', c: '10.000', taxe: { ...RS15, id: 12, code: 'RS_HON10', tej: 'RS2_000001' } })])), 'PLUSIEURS_CODES');
   assert.equal(p(piece().map((l) => (l.id === 4 ? { ...l, code_tej: null } : l))), 'CODE_TEJ');
+  assert.match(calcul.operationDe(piece().map((l) => (l.id === 4 ? { ...l, code_tej: null, taxe_origine: 'ajout' } : l))).probleme.message, /page Taxes/);
+  assert.match(calcul.operationDe(piece().map((l) => (l.id === 4 ? { ...l, code_tej: null, taxe_origine: 'paquet' } : l))).probleme.message, /à déclarer à la main/);
+  assert.equal(p(piece([ligne({ id: 6, compte: 30, nature: 'retenues_operees', c: '190.000', taxe: { ...RSTVA100, tej: null } })])), 'CODE_TEJ', 'retenue de TVA sans code TEJ : jamais le code interne dans le fichier');
+  assert.equal(p(piece().map((l) => (l.id === 4 ? { ...l, taxe_taux: null } : l))), 'TAUX_RS', 'code à montant fixe');
+  assert.equal(p(piece().map((l) => (l.id === 4 ? { ...l, certifiee: true } : l))), 'DEJA_CERTIFIEE');
+  // Relecture : la retenue passée hors de la facture (règlement, OD) ne donne jamais un certificat à montants négatifs.
+  const banque = [
+    ligne({ id: 1, compte: 50, nature: 'fournisseurs', d: '1000.000', tiers: 7 }),
+    ligne({ id: 2, compte: 30, nature: 'retenues_operees', c: '15.000', taxe: RS15 }),
+    ligne({ id: 3, compte: 60, nature: 'banque', c: '985.000' }),
+  ];
+  assert.equal(p(banque), 'ASSIETTE', 'retenue passée au règlement');
+  assert.equal(calcul.operationDe(banque).ttc, '0.000', 'la banque n\'entre jamais dans le TTC');
+  assert.equal(p([ligne({ id: 1, compte: 50, nature: 'fournisseurs', d: '15.000', tiers: 7 }), ligne({ id: 2, compte: 30, nature: 'retenues_operees', c: '15.000', taxe: RS15 })]), 'ASSIETTE', 'reclassement en OD');
+  assert.equal(p(piece([ligne({ id: 9, compte: 61, nature: 'caisse', c: '1173.150' }), ligne({ id: 10, compte: 50, nature: 'fournisseurs', d: '1173.150', tiers: 7 })])), 'ASSIETTE', 'facture et règlement dans la même pièce');
+  assert.equal(p(piece().map((l) => (l.id === 4 ? { ...l, credit: '5000.000' } : l))), 'ASSIETTE', 'retenue supérieure au TTC');
   const deuxTaux = calcul.operationDe(piece([ligne({ id: 8, compte: 20, nature: 'tva_deductible', d: '7.000', taxe: { ...TVA19, id: 11, taux: '7.000' } })]));
   assert.equal(deuxTaux.plusieursTaux, true);
   assert.equal(deuxTaux.tauxTva, '19.000', 'le taux le plus lourd');
@@ -155,7 +188,10 @@ test('bénéficiaire exigé par la plateforme : matricule avec sa clé et catég
   assert.deepEqual(certificats.beneficiaireDe(T({ matricule_fiscal: null, id_type: 'cin', id_numero: '1234' }), 'TN').manque, ['numéro de CIN (8 chiffres)', 'date de naissance']);
   assert.deepEqual(certificats.beneficiaireDe(T({ matricule_fiscal: null, id_type: 'passeport', id_numero: 'K1', id_naissance: '1980-01-01' }), 'TN').manque, ['pays de l\'identifiant']);
   assert.deepEqual(certificats.beneficiaireDe(T({ matricule_fiscal: null, regime_fiscal: null, id_type: 'autre', id_numero: 'X', id_pays: 'FR' }), 'TN').manque, ['régime fiscal (personne morale ou physique)']);
-  assert.deepEqual(certificats.beneficiaireDe(T({ adresse: null, ville: null, email: 'pas-un-email', telephone: '' }), 'TN').manque, ['adresse', 'email', 'téléphone']);
+  assert.deepEqual(certificats.beneficiaireDe(T({ adresse: null, ville: null, email: null, telephone: '' }), 'TN').manque, ['adresse', 'email', 'téléphone']);
+  assert.deepEqual(certificats.beneficiaireDe(T({ email: 'pas-un-email' }), 'TN').manque, ['email valide (sans double tiret)']);
+  assert.deepEqual(certificats.beneficiaireDe(T({ email: 'a--b@essai.tn' }), 'TN').manque, ['email valide (sans double tiret)'], 'le double tiret est interdit par le cahier des charges');
+  assert.deepEqual(certificats.beneficiaireDe(T({ nom: 'شركة النور', adresse: 'شارع', ville: null }), 'TN').manque, ['nom en caractères latins', 'adresse en caractères latins']);
   assert.equal(certificats.beneficiaireDe(T({ resident: false }), 'TN').fige.resident, false);
   const d = certificats.declarantDe({ nom: 'A', raison_sociale: 'Hôtel A', matricule_fiscal: '1234567A/A/M/000', personne: 'physique', adresse: '5 rue', ville: 'Tunis' });
   assert.deepEqual([d.manque, d.fige.identifiant, d.fige.categorie, d.fige.nom], [[], '1234567A', 'PP', 'Hôtel A']);
@@ -201,6 +237,9 @@ test('fichier XML : nom MATRICULE-AAAA-MM-acte.xml, déclarant, référence, cer
   assert.ok(x.includes('<Passeport><TypeIdentifiant>3</TypeIdentifiant><Identifiant>K1234567</Identifiant><DateNaissance>12/05/1980</DateNaissance><Pays>FR</Pays><CategorieContribuable>PP</CategorieContribuable></Passeport>'));
   assert.ok(x.includes('<AutreIdentifiantFiscal><TypeIdentifiant>5</TypeIdentifiant><Identifiant>FR-998877</Identifiant><Pays>FR</Pays><CategorieContribuable>PM</CategorieContribuable></AutreIdentifiantFiscal></IdTaxpayer><Resident>0</Resident>'));
   assert.ok(x.includes('<MoisDepot>01</MoisDepot>'));
+  // Relecture : TVA sans code (taux inconnu) ⇒ TauxTVA, facultatif, est omis plutôt que « 0.00 ».
+  const sansTaux = certificats.construireXml({ declarant, annee: 2026, mois: 9, acte: 0, ajouts: [certificat({ operations: [{ ...certificat().operations[0], tauxTva: null }] })], annulations: [] }).contenu;
+  assert.ok(sansTaux.includes('<TauxRS>1.50</TauxRS><MontantTVA>190000</MontantTVA>') && !sansTaux.includes('<TauxTVA>'));
 });
 
 test('PDF : un certificat, un lot de plusieurs pages, un certificat annulé', async () => {
@@ -227,7 +266,10 @@ test('demandes : paiements (bénéficiaire, date passée, pièces sans doublon),
   assert.throws(() => certificats.lireMotif(''), (e) => est400(e) && e.code === 'MOTIF_REQUIS');
   assert.throws(() => certificats.lireMotif('x'.repeat(256)), est400);
   assert.throws(() => certificats.lireMotif('Erreur 🙏'), est400);
-  assert.deepEqual(certificats.lireMois({ annee: '2026', mois: '9' }), { annee: 2026, mois: 9 });
+  assert.throws(() => certificats.lirePaiements({ paiements: Array.from({ length: 11 }, (_, i) => ({ tiersId: 1, date: '2026-01-01', ecritures: Array.from({ length: 500 }, (_x, j) => i * 500 + j + 1) })) }, '2026-10-09'), est400, 'pas plus de pièces que la lecture n\'en charge');
+  assert.deepEqual(certificats.lireMois({ annee: '2026', mois: '9' }), { annee: 2026, mois: 9, attendu: null });
+  assert.deepEqual(certificats.lireMois({ annee: 2026, mois: 9, attendu: { acte: 1, nbAjouts: 2, nbAnnulations: 0 } }).attendu, { acte: 1, nbAjouts: 2, nbAnnulations: 0 });
+  for (const attendu of [{ acte: 2, nbAjouts: 0, nbAnnulations: 0 }, { acte: 0, nbAjouts: -1, nbAnnulations: 0 }, { acte: 0, nbAjouts: '1', nbAnnulations: 0 }]) assert.throws(() => certificats.lireMois({ annee: 2026, mois: 9, attendu }), est400, JSON.stringify(attendu));
   for (const c of [{}, { annee: 2026, mois: 13 }, { annee: 1999, mois: 1 }, { annee: 2026.5, mois: 1 }]) assert.throws(() => certificats.lireMois(c), (e) => est400(e) && e.code === 'MOIS_INVALIDE');
   assert.deepEqual(certificats.bornesDuMois(2026, 2), { debut: '2026-02-01', fin: '2026-02-28', mm: '02' });
   assert.deepEqual(certificats.bornesDuMois(2028, 2).fin, '2028-02-29');
@@ -299,7 +341,7 @@ test('codes TEJ : retenue (liste du paquet), retenue de TVA (RSTVA25, RSTVA100),
   for (const [v, type] of [['RS99_000001', 'retenue'], ['RS7_000001', 'retenue_tva'], ['RS7_000001', 'tva'], [3, 'retenue']]) assert.throws(() => taxes.lireCodeTej(v, type, 'TN'), est400, `${v} ${type}`);
   const src = lire('src', 'compta', 'taxes.js');
   assert.ok(src.includes("if (t.origine !== 'ajout') throw erreur(409, `Le code TEJ du code ${t.code} (paquet) ne se modifie pas`, 'TAXE_PAQUET');"));
-  assert.ok(src.includes("codesTejTva: CODES_TEJ_TVA,") && src.includes('code_tej)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, \'ajout\', $11, $12)'));
+  assert.ok(src.includes('codesTejTva: codesTejTvaDe(d.pays),') && src.includes("fiscaliteDe(pays)?.tej?.codesTaxesAdditionnelles") && src.includes('code_tej)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, \'ajout\', $11, $12)'));
 });
 
 test('retenue proposée d\'après le régime (saisie) : code « achats » du régime s\'il est actif, marqué ; sinon rien', () => {
@@ -322,7 +364,10 @@ test('requêtes : chaque paramètre employé ; retenues opérées (compte à l\'
     const n = Math.max(0, ...[...sql.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])));
     for (let i = 1; i <= n; i += 1) assert.ok(sql.includes(`$${i}`), `${nom} : $${i} employé`);
   }
-  assert.ok(calcul.SQL_ECRITURES_A_RETENUE.includes("x.type IN ('retenue', 'retenue_tva')") && calcul.SQL_ECRITURES_A_RETENUE.includes('l.compte_id = x.compte_achat_id') && calcul.SQL_ECRITURES_A_RETENUE.includes("e.origine <> 'contrepassation'") && calcul.SQL_ECRITURES_A_RETENUE.includes('cl.ligne_id = l.id AND cl.actif'));
+  assert.ok(calcul.SQL_ECRITURES_A_RETENUE.includes("x.type IN ('retenue', 'retenue_tva')") && calcul.SQL_ECRITURES_A_RETENUE.includes("k.nature = 'retenues_operees'") && calcul.SQL_ECRITURES_A_RETENUE.includes("e.origine <> 'contrepassation'") && calcul.SQL_ECRITURES_A_RETENUE.includes('cl.ligne_id = l.id AND cl.actif'));
+  assert.ok(!calcul.SQL_ECRITURES_A_RETENUE.includes('compte_achat_id') && calcul.SQL_NB_A_PRODUIRE.includes("k.nature = 'retenues_operees'"), 'jamais le compte ACTUEL du code (repointage)');
+  assert.ok(calcul.SQL_TVA_PAR_PERIODE.includes("x.type = 'retenue_tva' AND k.nature <> 'retenues_operees'") && calcul.SQL_LIGNES_DES_PIECES.includes('AS certifiee') && calcul.SQL_LIGNES_DES_LETTRES.includes('j.type AS journal_type'));
+  assert.ok(calcul.SQL_ECRITURES_A_RETENUE.includes('ORDER BY MAX(e.date) DESC, e.id DESC'), 'au-delà de la borne, les plus anciennes sortent');
   assert.ok(calcul.SQL_TVA_PAR_PERIODE.includes("j.type <> 'an'") && calcul.SQL_TVA_PAR_PERIODE.includes("x.type IN ('tva', 'retenue_tva')") && calcul.SQL_TVA_PAR_PERIODE.includes("($3::boolean OR e.etat = 'validee')"));
   assert.ok(calcul.SQL_CREDIT_OUVERTURE.includes("j.type = 'an'") && calcul.SQL_TVA_SANS_CODE.includes('l.taxe_id IS NULL'));
   assert.ok(taxesMois.SQL_SUBIES.includes("k.nature = 'retenues_subies'") && taxesMois.SQL_MANQUANTES.includes("xr.type = 'retenue'") && taxesMois.SQL_MANQUANTES.includes("j.type = 'achats'"));
@@ -334,7 +379,10 @@ test('requêtes : chaque paramètre employé ; retenues opérées (compte à l\'
   assert.ok(!/require\(/.test(lire('src', 'compta', 'taxesCalcul.js')), 'module sans dépendance (fiche du dossier sans cycle)');
   const cert = lire('src', 'compta', 'certificats.js');
   assert.ok(cert.includes("if (!droits(acces).configurer) throw erreur(403, MSG_CERTIFICATS, 'NIVEAU_INSUFFISANT');") && cert.includes("if (d.etat === 'archive')"));
-  assert.ok(cert.includes("'certificats_produits'") && cert.includes("'certificat_annule'") && cert.includes("'fichier_tej_produit'"), 'journal D16');
+  assert.ok(cert.includes("'certificats_produits'") && cert.includes("'certificat_annule'") && cert.includes("'fichier_tej_produit'") && cert.includes("'fichier_tej_retire'"), 'journal D16');
+  assert.ok(cert.includes("err && err.code === '23505' ? erreur(409,"), 'course perdue sur un index unique : 409, jamais 500');
+  assert.ok(cert.includes("'CERTIFICAT_CONTREPASSE'") && cert.includes("throw erreur(409, `Le fichier du mois a changé depuis l'affichage"), 'fichier : contrôles de dernière minute');
+  assert.ok(cert.includes("'PAS_LE_DERNIER'") && cert.includes("'DEJA_RETIRE'") && cert.includes('AND acte = 0 AND retire_le IS NULL'), 'retrait : le dernier fichier non retiré du mois ; un dépôt initial retiré se refait');
   assert.ok(cert.includes("SELECT COALESCE(MAX(numero), 0)::int + 1 AS n FROM compta.certificats WHERE dossier_id = $1 AND annee = $2"), 'numéro suivant sous le verrou du dossier');
   const mois = lire('src', 'compta', 'taxesMois.js');
   assert.ok(!mois.includes('dansEspaceDuDossier') && (mois.match(/await lectureDossier\(req\.user, req\.params\.dossierId\)/g) || []).length === 3, 'taxes du mois : lecture seule');
@@ -347,7 +395,7 @@ test('migration 219 : tiers complétés, fichiers TEJ (un dépôt initial par mo
   assert.ok(!fs.readFileSync(path.join(RACINE, 'migrations', '219_compta_taxes_certificats.sql'), 'utf8').includes('\r'), 'fins de ligne LF');
   for (const c of ['regime_fiscal VARCHAR(20)', 'resident BOOLEAN NOT NULL DEFAULT true', "id_type VARCHAR(12) CHECK (id_type IS NULL OR id_type IN ('cin', 'passeport', 'carte_sejour', 'autre'))", 'id_numero VARCHAR(30)', 'id_naissance DATE', "id_pays CHAR(2) CHECK (id_pays IS NULL OR id_pays ~ '^[A-Z]{2}$')"]) assert.ok(sql.includes(`ALTER TABLE compta.tiers ADD COLUMN IF NOT EXISTS ${c}`), c);
   assert.ok(sql.includes('CHECK ((id_type IS NULL) = (id_numero IS NULL)'));
-  assert.ok(sql.includes('CREATE TABLE IF NOT EXISTS compta.fichiers_tej (') && sql.includes('CREATE UNIQUE INDEX IF NOT EXISTS uq_compta_fichiers_tej_initial ON compta.fichiers_tej (dossier_id, annee, mois) WHERE acte = 0;'));
+  assert.ok(sql.includes('CREATE TABLE IF NOT EXISTS compta.fichiers_tej (') && sql.includes('CREATE UNIQUE INDEX IF NOT EXISTS uq_compta_fichiers_tej_initial ON compta.fichiers_tej (dossier_id, annee, mois) WHERE acte = 0 AND retire_le IS NULL;') && sql.includes('ADD COLUMN IF NOT EXISTS retire_le TIMESTAMPTZ') && sql.includes('ADD COLUMN IF NOT EXISTS motif_retrait VARCHAR(255)'));
   assert.ok(sql.includes('CREATE TABLE IF NOT EXISTS compta.certificats (') && sql.includes('UNIQUE (dossier_id, annee, numero)') && sql.includes('total_rs               NUMERIC(18,3) NOT NULL CHECK (total_rs > 0)') && sql.includes("CHECK ((etat = 'annule') = (annule_le IS NOT NULL))"));
   assert.ok(sql.indexOf('compta.fichiers_tej (') < sql.indexOf('compta.certificats ('), 'les fichiers avant les certificats (clés)');
   assert.ok(sql.includes('CREATE UNIQUE INDEX IF NOT EXISTS uq_compta_certificat_lignes_actives ON compta.certificat_lignes (ligne_id) WHERE actif;'));
@@ -376,7 +424,7 @@ test('migration 219 : tiers complétés, fichiers TEJ (un dépôt initial par mo
   assert.ok(sql.includes('ON CONFLICT (slug) DO NOTHING'));
 });
 
-test('routes : taxes du mois (lecture, export, lot PDF), certificats (produire, PDF, annuler), fichiers TEJ (produire, retélécharger) ; 3 écritures sous la limite de la saisie', () => {
+test('routes : taxes du mois (lecture, export, lot PDF), certificats (produire, PDF, annuler), fichiers TEJ (produire, retélécharger, retirer) ; 4 écritures sous la limite de la saisie', () => {
   const src = lire('src', 'compta', 'routes.js');
   for (const r of [
     "router.get('/dossiers/:dossierId/taxes-mois', authenticate, taxesMois.lire);",
@@ -387,9 +435,10 @@ test('routes : taxes du mois (lecture, export, lot PDF), certificats (produire, 
     "router.post('/dossiers/:dossierId/certificats/:certificatId/annuler', authenticate, limiteEcritures, certificats.annuler);",
     "router.post('/dossiers/:dossierId/fichiers-tej', authenticate, limiteEcritures, certificats.produireFichier);",
     "router.get('/dossiers/:dossierId/fichiers-tej/:fichierId', authenticate, limiteDocuments, certificats.telechargerFichier);",
+    "router.post('/dossiers/:dossierId/fichiers-tej/:fichierId/retirer', authenticate, limiteEcritures, certificats.retirerFichier);",
   ]) assert.ok(src.includes(r), r);
   assert.ok(src.indexOf('const limiteDocuments') < src.indexOf("taxesMois.lot);"), 'limite des documents déclarée avant');
-  assert.ok(!routes.ECRITURES_SANS_GARDE.some((r) => /certificats|fichiers-tej/.test(r)), 'les trois écritures passent par la garde');
+  assert.ok(!routes.ECRITURES_SANS_GARDE.some((r) => /certificats|fichiers-tej/.test(r)), 'les quatre écritures passent par la garde');
 });
 
 test('refus avant toute requête : certificat, fichier ou période invalides (404), demandes illisibles (400)', async () => {
@@ -401,6 +450,8 @@ test('refus avant toute requête : certificat, fichier ou période invalides (40
     [certificats.produire, { user, params: { dossierId: '1' }, body: { paiements: [] } }, 400],
     [certificats.produireFichier, { user, params: { dossierId: '1' }, body: { annee: 2026, mois: 0 } }, 400],
     [certificats.telechargerFichier, { user, params: { dossierId: '1', fichierId: 'abc' } }, 404],
+    [certificats.retirerFichier, { user, params: { dossierId: '1', fichierId: 'x1' }, body: { motif: 'Refusé' } }, 404],
+    [certificats.retirerFichier, { user, params: { dossierId: '1', fichierId: '3' }, body: { motif: '  ' } }, 400],
     [taxesMois.lire, { user, params: { dossierId: '1' }, query: { periode: 'x' } }, 404],
     [taxesMois.lot, { user, params: { dossierId: '1' }, query: { periode: '-2' } }, 404],
   ]) {
@@ -408,4 +459,24 @@ test('refus avant toute requête : certificat, fichier ou période invalides (40
     await fn(req, res);
     assert.equal(res.statut, statut, `${fn.name} ${JSON.stringify(req.params)} ${JSON.stringify(res.corps)}`);
   }
+});
+
+test('crédit de TVA de l\'exercice précédent : signalé quand les à-nouveaux du compte du crédit sont vides, jamais ajouté d\'office', async () => {
+  const ex1 = { id: 1, debut: '2026-01-01', fin: '2026-12-31', periodes: [{ id: 11, debut: '2026-12-01', fin: '2026-12-31', etat: 'close' }] };
+  const ex2 = { id: 2, debut: '2027-01-01', fin: '2027-12-31', periodes: [{ id: 21, debut: '2027-01-01', fin: '2027-01-31', etat: 'ouverte' }] };
+  const rangee = { periode_id: 11, taxe_id: 9, code: 'TVA19', libelle: 'TVA 19 %', type: 'tva', taux: '19.000', collectee: '100.000', deductible: '4100.000', deductible_immo: '0', retenue_subie: '0', non_recuperable: '0', base_vente: '0', base_achat: '0', nb_brouillard: 0 };
+  const base = (ouverture) => ({ query: async (sql, p) => {
+    if (sql === calcul.SQL_TVA_PAR_PERIODE) return { rows: p[1] === 1 ? [rangee] : [] };
+    if (sql === calcul.SQL_TVA_SANS_CODE) return { rows: [] };
+    if (sql === calcul.SQL_CREDIT_OUVERTURE) return { rows: [{ credit: p[1] === 2 ? ouverture : '0.000' }] };
+    throw new Error('requête inattendue');
+  } });
+  const d = { id: 5, pays: 'TN' };
+  const sans = await taxesMois.etatTvaDe(base('0.000'), d, ex2, ex2.periodes[0], true, [ex1, ex2]);
+  assert.deepEqual([sans.creditNonRepris, sans.creditReporte, sans.resultat], [{ montant: '4000.000', fin: '2026-12-31' }, '0.000', '0.000']);
+  const avec = await taxesMois.etatTvaDe(base('4000.000'), d, ex2, ex2.periodes[0], true, [ex1, ex2]);
+  assert.deepEqual([avec.creditNonRepris, avec.creditReporte], [null, '4000.000']);
+  assert.equal((await taxesMois.etatTvaDe(base('0.000'), d, ex1, ex1.periodes[0], true, [ex1, ex2])).creditNonRepris, null, 'premier exercice : rien à reprendre');
+  const src = lire('src', 'compta', 'taxesMois.js');
+  assert.ok(src.includes("code: 'CREDIT_NON_REPRIS', gravite: 'attention'") && src.includes("code: 'TVA_SANS_CODE', gravite: 'attention'") && src.includes("code: 'PLUSIEURS_REGLEMENTS'") && src.includes("code: 'DATE_FUTURE'"));
 });

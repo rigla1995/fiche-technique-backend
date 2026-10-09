@@ -10,8 +10,10 @@
  *   du règlement lettré ou de la facture ; bénéficiaire incomplet ; signalements : taux du régime, retenue manquante,
  *   brouillard) ; produire les certificats (droits, refus, numéros, contenu figé, journal) ; PDF un par un et lot ; fichier
  *   TEJ du mois (nom, structure, millimes, sans accent, empreinte, retéléchargé à l'identique ; rien à déposer) ;
- *   annuler, rectificatif (acte 1 : ajout et annulation) ; contre-passation signalée ; export Excel ; carte Taxes de la
- *   fiche ; dossier archivé ; lecture seule ; cloisonnement croisé ; rejeu de la migration 219 ; manuel.
+ *   annuler, rectificatif (acte 1 : ajout et annulation ; refusé si le fichier a changé depuis l'affichage) ; retrait d'un
+ *   fichier refusé par la plateforme (le dernier du mois, refait à l'identique ; dépôt initial retiré puis refait) ;
+ *   retenue passée sur un règlement bloquée ; contre-passation signalée, certificat contre-passé refusé dans un fichier ;
+ *   export Excel ; carte Taxes de la fiche ; dossier archivé ; lecture seule ; cloisonnement croisé ; rejeu de la migration 219 ; manuel.
  * Crée un super_admin, un cabinet (3 gérants achetés) et trois collaborateurs temporaires ; règle les tarifs Compta le
  * temps de l'essai, puis restaure et nettoie.
  * ⚠️ Backend de test : « node scripts/start-test-backend.js » (emails bouchonnés, réseau sortant bloqué). */
@@ -127,7 +129,7 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     const J = Object.fromEntries(['AC', 'VT', 'BQ'].map((c) => [c, r.body?.journaux?.find((j) => j.code === c)]));
     r = await appel('GET', `/api/compta/dossiers/${A.id}/taxes`, cabinet.tok);
     const X = Object.fromEntries((r.body?.taxes || []).map((t) => [t.code, t]));
-    check('comptes, journaux et codes de taxe de A ; la page Taxes offre les codes TEJ du paquet (36) et RSTVA25 / RSTVA100', Object.values(K).every(Boolean) && Object.values(J).every(Boolean) && !!X.TVA19 && !!X.RS_MAR15 && !!X.RS_MAR1 && !!X.RS_HON3 && !!X.TIMBRE && !!X.RSTVA25 && r.body?.codesTej?.length === 36 && r.body?.codesTejTva?.join(',') === 'RSTVA25,RSTVA100', JSON.stringify(Object.keys(K).filter((k) => !K[k])));
+    check('comptes, journaux et codes de taxe de A ; la page Taxes offre les codes TEJ du paquet (36) et RSTVA25 / RSTVA100', Object.values(K).every(Boolean) && Object.values(J).every(Boolean) && !!X.TVA19 && !!X.RS_MAR15 && !!X.RS_MAR1 && !!X.RS_HON3 && !!X.TIMBRE && !!X.RSTVA25 && r.body?.codesTej?.length === 36 && r.body?.codesTejTva?.map((o) => o.code).join(',') === 'RSTVA25,RSTVA100' && !!r.body?.codesTejTva?.[0]?.libelle, JSON.stringify(Object.keys(K).filter((k) => !K[k])));
 
     // ── Tiers : régime fiscal, résidence, identifiant de secours ──
     const TIERS = (jeton, corps) => appel('POST', `/api/compta/dossiers/${A.id}/tiers`, jeton, corps);
@@ -229,6 +231,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     E.f0918 = await ecrire(J.AC.id, '2026-09-18', 'F-0918', 'Gros achat sans retenue', [L('607', { d: '1500' }), L('4011', { tiers: T.F4, c: '1500' })]);
     // Vente au secteur public : 1 000 + 190 ; retenue 1,5 % subie (17,850, 4341) et retenue de TVA 25 % subie (47,500, 43665).
     E.v0925 = await ecrire(J.VT.id, '2026-09-25', 'FV-0925', 'Séjour Office National', [L('4111', { tiers: T.C1, d: '1124.650' }), L('4341', { d: '17.850', taxe: 'RS_MAR15' }), L('43665', { d: '47.500', taxe: 'RSTVA25' }), L('707', { c: '1000', taxe: 'TVA19' }), L('436711', { c: '190', taxe: 'TVA19' })]);
+    // Relecture : une retenue passée sur le règlement (banque) de l'Imprimerie : bloquée (ASSIETTE), jamais certifiée.
+    E.b0921 = await ecrire(J.BQ.id, '2026-09-21', 'RLV-0921', 'Règlement avec retenue', [L('4011', { tiers: T.F2, d: '1000' }), L('432', { c: '15', taxe: 'RS_MAR15' }), L('5321', { c: '985' })]);
     const P = Object.fromEntries((await appel('GET', `/api/compta/dossiers/${A.id}/periodes`, cabinet.tok)).body.exercice.periodes.map((p) => [String(p.debut).slice(5, 7), p]));
     for (const m of ['08', '09']) {
       r = await appel('POST', `/api/compta/dossiers/${A.id}/periodes/${P[m].id}/valider`, cabinet.tok);
@@ -263,6 +267,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     const a = (code) => sig.filter((s) => s.code === code);
     check('signalements : sous le seuil (STB 02/09 : 952 D TTC), taux du régime (F0002 : RS_MAR1 attendu), retenue manquante (F-0918, 1 500 D ; pas F-0912, sous le seuil), bénéficiaire incomplet (F0003), pièce en brouillard',
       a('SOUS_SEUIL').length === 1 && /952,000 D TTC/.test(a('SOUS_SEUIL')[0].message) && a('SOUS_SEUIL')[0].tiersId === T.F1.id && a('TAUX_REGIME').length === 1 && /RS_MAR1 attendu/.test(a('TAUX_REGIME')[0].message) && a('RETENUE_MANQUANTE').length === 1 && /F-0918|AC-2026/.test(a('RETENUE_MANQUANTE')[0].message) && a('BENEFICIAIRE_INCOMPLET').length === 1 && a('RETENUES_BROUILLARD').length === 1 && r.body?.retenues?.brouillard?.length === 1 && !a('DECLARANT_INCOMPLET').length, JSON.stringify(sig.map((s) => s.code)));
+    check('retenue passée sur un règlement (RLV-0921) : signalée bloquante (ASSIETTE), dans les pièces à problème, hors des paiements à certifier',
+      a('ASSIETTE').length === 1 && /facture d'achat/.test(a('ASSIETTE')[0].message) && (r.body?.retenues?.problemes || []).some((o) => o.ecritureId === E.b0921.id && o.probleme?.code === 'ASSIETTE') && !paiements.some((p) => p.operations.some((o) => o.ecritureId === E.b0921.id)), JSON.stringify(a('ASSIETTE')));
     check('retenues subies de septembre : la ligne 4341 de 17,850 (client C0001) ; fichier initial (acte 0) attendu, 0 certificat ; « à essayer sur TEJ »',
       r.body?.subies?.nb === 1 && r.body?.subies?.total === '17.850' && r.body?.subies?.lignes?.[0]?.tiers?.code === 'C0001' && r.body?.prochainFichier?.acte === 0 && r.body?.prochainFichier?.nbAjouts === 0 && r.body?.prochainFichier?.nom === '1234567A-2026-09-0.xml' && r.body?.certificats?.length === 0 && r.body?.tej?.aEssayer === true && r.body?.declarant?.complet === true, JSON.stringify({ s: r.body?.subies, p: r.body?.prochainFichier }));
     r2 = await TM('', consult.tok);
@@ -278,6 +284,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     r = await PROD(consult.tok, demande);
     r2 = await PROD(saisie.tok, demande);
     check('Consultation et Saisie ne produisent pas (403 NIVEAU_INSUFFISANT)', r.status === 403 && r2.status === 403 && r2.body?.code === 'NIVEAU_INSUFFISANT', `${r.status} ${r2.status}`);
+    r = await PROD(complet.tok, [{ tiersId: T.F2.id, date: '2026-09-21', ecritures: [E.b0921.id] }]);
+    check('produire la retenue passée sur un règlement : 409 ASSIETTE', r.status === 409 && r.body?.code === 'ASSIETTE', `${r.status} ${r.body?.code}`);
     r = await PROD(complet.tok, [{ tiersId: T.F3.id, date: '2026-09-15', ecritures: [E.h0915.id] }]);
     r2 = await PROD(complet.tok, [{ tiersId: T.F1.id, date: '2099-01-01', ecritures: [E.f0905.id] }]);
     r3 = await PROD(complet.tok, [{ tiersId: T.F1.id, date: '2026-09-28', ecritures: [E.f0928.id] }]);
@@ -332,12 +340,30 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     check('la pièce de l\'Imprimerie redevient à certifier (2026-000004, 12/09) ; F0003 complétée (email) : 2026-000005, identifié par sa CIN', r.status === 200 && r2.status === 201 && r2.body?.produits?.map((p) => p.reference).join(',') === '2026-000004,2026-000005', `${r.status} ${r2.status} ${JSON.stringify(r2.body?.produits || r2.body?.message)}`);
     r = await TM(`?periode=${P['09'].id}`, consult.tok);
     check('prochain fichier : rectificatif (acte 1), 2 ajouts, 1 annulation ; 2026-000003 marqué annulé avec son motif', r.body?.prochainFichier?.acte === 1 && r.body?.prochainFichier?.nbAjouts === 2 && r.body?.prochainFichier?.nbAnnulations === 1 && r.body?.certificats?.find((c) => c.reference === '2026-000003')?.annulation?.motif === 'Date erronée : paiement du 12/09' && r.body?.fichiers?.length === 1, JSON.stringify(r.body?.prochainFichier));
-    f = await FICHIER(complet.tok, { annee: 2026, mois: 9 });
+    r = await FICHIER(complet.tok, { annee: 2026, mois: 9, attendu: { acte: 0, nbAjouts: 2, nbAnnulations: 1 } });
+    check('fichier confirmé sur un état périmé (acte 0 attendu, rectificatif réel) : 409 PERIME, rien de produit', r.status === 409 && r.body?.code === 'PERIME' && (await pool.query('SELECT COUNT(*)::int AS n FROM compta.fichiers_tej WHERE dossier_id = $1', [A.id])).rows[0].n === 1, `${r.status} ${r.body?.code}`);
+    f = await FICHIER(complet.tok, { annee: 2026, mois: 9, attendu: { acte: 1, nbAjouts: 2, nbAnnulations: 1 } });
     const rect = f.buffer.toString('utf8');
     check('rectificatif 1234567A-2026-09-1.xml : acte 1, deux certificats ajoutés (dont la CIN 01234567 née le 12/05/1980, PP), l\'annulation de 2026-000003',
       f.status === 200 && /1234567A-2026-09-1\.xml/.test(f.disposition) && rect.includes('<ActeDepot>1</ActeDepot>') && (rect.match(/<AjouterCertificats>[\s\S]*<\/AjouterCertificats>/)?.[0].match(/<Certificat>/g) || []).length === 2
       && rect.includes('<CIN><TypeIdentifiant>2</TypeIdentifiant><Identifiant>01234567</Identifiant><DateNaissance>12/05/1980</DateNaissance><CategorieContribuable>PP</CategorieContribuable></CIN>') && rect.includes('<Operation IdTypeOperation="RS2_000002">')
       && rect.includes('<AnnulerCertificats>\n<Certificat><Ref_certif_chez_declarant>2026-000003</Ref_certif_chez_declarant></Certificat>\n</AnnulerCertificats>'), `${f.status} ${f.disposition} ${rect.slice(0, 300)}`);
+    // Retrait d'un fichier refusé par la plateforme (relecture) : le dernier du mois seulement ; refait à l'identique.
+    const RETIRER = (id, jeton, corps) => appel('POST', `/api/compta/dossiers/${A.id}/fichiers-tej/${id}/retirer`, jeton, corps);
+    const rectId = (await journal(espaceId, 'fichier_tej_produit'))?.details?.fichier;
+    r = await RETIRER(fichierId, complet.tok, { motif: 'Refusé' });
+    r2 = await RETIRER(rectId, saisie.tok, { motif: 'Refusé' });
+    r3 = await RETIRER(rectId, complet.tok, {});
+    check('retirer : le dépôt initial alors qu\'un rectificatif suit → 409 PAS_LE_DERNIER ; Saisie 403 ; sans motif 400', r.status === 409 && r.body?.code === 'PAS_LE_DERNIER' && r2.status === 403 && r3.status === 400 && r3.body?.code === 'MOTIF_REQUIS', `${r.status} ${r.body?.code} ${r2.status} ${r3.status}`);
+    r = await RETIRER(rectId, complet.tok, { motif: 'Refusé par TEJ : schéma' });
+    ev = await journal(espaceId, 'fichier_tej_retire');
+    r2 = await RETIRER(rectId, complet.tok, { motif: 'encore' });
+    r3 = await TM(`?periode=${P['09'].id}`, consult.tok);
+    check('Complet retire le rectificatif (2 certificats, 1 annulation rendus) ; une seconde fois 409 DEJA_RETIRE ; journal ; la page : de nouveau acte 1, 2 ajouts, 1 annulation, le fichier marqué retiré avec son motif',
+      r.status === 200 && r.body?.retire?.ajouts === 2 && r.body?.retire?.annulations === 1 && r2.status === 409 && r2.body?.code === 'DEJA_RETIRE' && ev?.details?.nom === '1234567A-2026-09-1.xml' && ev?.details?.motif === 'Refusé par TEJ : schéma'
+      && r3.body?.prochainFichier?.acte === 1 && r3.body?.prochainFichier?.nbAjouts === 2 && r3.body?.prochainFichier?.nbAnnulations === 1 && r3.body?.fichiers?.length === 2 && r3.body?.fichiers?.[1]?.retrait?.motif === 'Refusé par TEJ : schéma' && r3.body?.fichiers?.[0]?.retrait === null, `${r.status} ${JSON.stringify(r.body)} ${r2.status} ${JSON.stringify(r3.body?.prochainFichier)}`);
+    f = await FICHIER(complet.tok, { annee: 2026, mois: 9, attendu: { acte: 1, nbAjouts: 2, nbAnnulations: 1 } });
+    check('le rectificatif se refait à l\'identique (même nom, même contenu)', f.status === 200 && /1234567A-2026-09-1\.xml/.test(f.disposition) && f.buffer.toString('utf8') === rect, `${f.status} ${f.disposition}`);
     f = await telecharger(`/api/compta/dossiers/${A.id}/certificats/${produits[2].id}/pdf`, consult.tok);
     check('le certificat annulé se retélécharge (PDF marqué annulé)', f.status === 200 && f.buffer.slice(0, 5).toString() === '%PDF-', `${f.status}`);
 
@@ -345,10 +371,21 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     r = await appel('POST', `/api/compta/dossiers/${A.id}/ecritures/${E.f0905.id}/contrepasser`, cabinet.tok, { date: '2026-10-02' });
     r2 = await TM(`?periode=${P['09'].id}`, consult.tok);
     check('contre-passer F-0905 (certifiée) : le certificat 2026-000001 est signalé ; la pièce ne revient pas à certifier', r.status === 201 && (r2.body?.signalements || []).some((s) => s.code === 'CERTIFICAT_CONTREPASSE' && /2026-000001/.test(s.message)) && !(r2.body?.retenues?.paiements || []).some((p) => p.operations.some((o) => o.ecritureId === E.f0905.id)), `${r.status} ${JSON.stringify((r2.body?.signalements || []).map((s) => s.code))}`);
+    const rect2Id = (await journal(espaceId, 'fichier_tej_produit'))?.details?.fichier;
+    r = await RETIRER(rect2Id, complet.tok, { motif: 'Refusé' });
+    r2 = await RETIRER(fichierId, complet.tok, { motif: 'Dépôt initial refusé' });
+    r3 = await TM(`?periode=${P['09'].id}`, consult.tok);
+    r4 = await FICHIER(complet.tok, { annee: 2026, mois: 9 });
+    check('les deux fichiers retirés : de nouveau un dépôt initial (acte 0, 4 certificats, l\'annulé n\'est plus à déclarer) ; il refuse le certificat 2026-000001 dont la pièce est contre-passée (409 CERTIFICAT_CONTREPASSE)',
+      r.status === 200 && r2.status === 200 && r3.body?.prochainFichier?.acte === 0 && r3.body?.prochainFichier?.nbAjouts === 4 && r3.body?.prochainFichier?.nbAnnulations === 0 && r4.status === 409 && r4.body?.code === 'CERTIFICAT_CONTREPASSE' && /2026-000001/.test(r4.body?.message || ''), `${r.status} ${r2.status} ${JSON.stringify(r3.body?.prochainFichier)} ${r4.status} ${r4.body?.message}`);
+    r = await appel('POST', `/api/compta/dossiers/${A.id}/certificats/${produits[0].id}/annuler`, complet.tok, { motif: 'Facture contre-passée' });
+    f = await FICHIER(complet.tok, { annee: 2026, mois: 9, attendu: { acte: 0, nbAjouts: 3, nbAnnulations: 0 } });
+    const initial2 = f.buffer.toString('utf8');
+    check('2026-000001 annulé (jamais déposé) : le dépôt initial se refait (1234567A-2026-09-0.xml : 2026-000002, 000004, 000005 ; aucune annulation)', r.status === 200 && r.body?.annule?.depose === false && f.status === 200 && /1234567A-2026-09-0\.xml/.test(f.disposition) && (initial2.match(/<Certificat>/g) || []).length === 3 && !initial2.includes('2026-000001') && !initial2.includes('<AnnulerCertificats>'), `${r.status} ${f.status} ${f.disposition}`);
     f = await telecharger(`/api/compta/dossiers/${A.id}/taxes-mois/export?periode=${P['09'].id}`, consult.tok);
     check('export Excel : quatre feuilles (État de TVA, Retenues opérées, Retenues subies, Signalements)', f.status === 200 && /spreadsheetml/.test(f.type) && /taxes-Hotel-Essai-S7b-2026-09\.xlsx/.test(f.disposition) && (await feuilles(f.buffer)).join(',') === 'État de TVA,Retenues opérées,Retenues subies,Signalements', `${f.status} ${f.disposition}`);
     r = await appel('GET', `/api/compta/dossiers/${A.id}`, consult.tok);
-    check('fiche du dossier, carte Taxes : période d\'octobre, crédit à reporter 503,500 (693,500 de septembre moins la TVA de F-0905 contre-passée le 02/10), plus de pièce à certifier (F-0928 en brouillard exclue)', r.status === 200 && r.body?.fiscalite?.periode?.debut === '2026-10-01' && r.body?.fiscalite?.tva?.creditAReporter === '503.500' && r.body?.fiscalite?.aProduire === 0 && r.body?.fiscalite?.certificatsMois === 0, JSON.stringify(r.body?.fiscalite));
+    check('fiche du dossier, carte Taxes : période d\'octobre, crédit à reporter 503,500 (693,500 de septembre moins la TVA de F-0905 contre-passée le 02/10), une pièce à retenue sans certificat (RLV-0921, bloquée ; F-0928 en brouillard exclue)', r.status === 200 && r.body?.fiscalite?.periode?.debut === '2026-10-01' && r.body?.fiscalite?.tva?.creditAReporter === '503.500' && r.body?.fiscalite?.aProduire === 1 && r.body?.fiscalite?.certificatsMois === 0, JSON.stringify(r.body?.fiscalite));
 
     // ── Cloisonnement, archivé, lecture seule ──
     r = await appel('POST', `/api/compta/espaces/${espaceId}/dossiers`, cabinet.tok, { identite: { ...IDENTITE_A, raisonSociale: 'Dossier B S7b', matriculeFiscal: '' }, regime: REEL, exercice: CIVIL });
@@ -366,7 +403,8 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     await mode(cabinet.id, 'read_only');
     r = await appel('POST', `/api/compta/dossiers/${A.id}/certificats/${produits[1].id}/annuler`, cabinet.tok, { motif: 'x' });
     r2 = await telecharger(`/api/compta/dossiers/${A.id}/certificats/${produits[1].id}/pdf`, cabinet.tok);
-    check('comptabilité en lecture seule : annuler → 403 READ_ONLY ; le PDF se lit', r.status === 403 && r.body?.code === 'READ_ONLY' && r2.status === 200, `${r.status} ${r.body?.code} ${r2.status}`);
+    r3 = await RETIRER(fichierId, cabinet.tok, { motif: 'x' });
+    check('comptabilité en lecture seule : annuler, retirer un fichier → 403 READ_ONLY ; le PDF se lit', r.status === 403 && r.body?.code === 'READ_ONLY' && r3.status === 403 && r2.status === 200, `${r.status} ${r.body?.code} ${r2.status} ${r3.status}`);
     await mode(cabinet.id, 'actif');
 
     // ── Rejeu de la migration 219 ; manuel ──

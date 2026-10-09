@@ -66,15 +66,27 @@ const moisDe = (iso) => ({ annee: Number(iso.slice(0, 4)), mois: Number(iso.slic
 
 // ── État de TVA ─────────────────────────────────────────────────────────────────────────────────────────────────────
 // L'état de TVA de la période (et le report depuis le début de l'exercice).
-const etatTvaDe = async (db, d, exercice, periode, brouillard) => {
-  const compteCredit = fiscaliteDe(d.pays)?.tva?.compteCredit || null;
+const etatsDeLExercice = async (db, d, exercice, brouillard, compteCredit, jusqua = null) => {
   const [rangees, sansCode, ouverture] = await Promise.all([
     db.query(SQL_TVA_PAR_PERIODE, [d.id, exercice.id, brouillard]),
     db.query(SQL_TVA_SANS_CODE, [d.id, exercice.id, brouillard]),
     compteCredit ? db.query(SQL_CREDIT_OUVERTURE, [d.id, exercice.id, compteCredit, brouillard]) : { rows: [{ credit: '0.000' }] },
   ]);
-  const etats = etatsTva({ periodes: exercice.periodes, rangees: rangees.rows, sansCode: sansCode.rows, ouverture: ouverture.rows[0].credit, jusqua: periode.id });
-  return { ...etats[etats.length - 1], compteCredit, creditOuverture: ouverture.rows[0].credit };
+  return { etats: etatsTva({ periodes: exercice.periodes, rangees: rangees.rows, sansCode: sansCode.rows, ouverture: ouverture.rows[0].credit, jusqua }), ouverture: ouverture.rows[0].credit };
+};
+// Relecture : sans à-nouveaux sur le compte du crédit de TVA, le crédit calculé à la fin de l'exercice précédent n'est pas
+// repris (il n'est jamais ajouté d'office : une liquidation passée le compterait deux fois) — il est signalé (`creditNonRepris`).
+const etatTvaDe = async (db, d, exercice, periode, brouillard, exercices = []) => {
+  const compteCredit = fiscaliteDe(d.pays)?.tva?.compteCredit || null;
+  const { etats, ouverture } = await etatsDeLExercice(db, d, exercice, brouillard, compteCredit, periode.id);
+  let creditNonRepris = null;
+  const precedent = exercices.filter((x) => x.fin < exercice.debut).sort((a, b) => (a.fin < b.fin ? 1 : -1))[0];
+  if (precedent && precedent.periodes.length && millimes(ouverture) <= 0n) {
+    const avant = (await etatsDeLExercice(db, d, precedent, brouillard, compteCredit)).etats;
+    const dernier = avant[avant.length - 1];
+    if (dernier && millimes(dernier.creditAReporter) > 0n) creditNonRepris = { montant: dernier.creditAReporter, fin: dernier.fin };
+  }
+  return { ...etats[etats.length - 1], compteCredit, creditOuverture: ouverture, creditNonRepris };
 };
 
 // ── Retenues ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -157,7 +169,7 @@ const etatTaxesMois = async (db, acces, d, f) => {
   const { annee, mois } = moisDe(periode.debut);
   const fiscalite = fiscaliteDe(d.pays);
   const [tva, charge, certificats, fichiers, prochain, subies, subiesTotal, manquantes, contrepasses, mode] = await Promise.all([
-    etatTvaDe(db, d, exercice, periode, f.brouillard),
+    etatTvaDe(db, d, exercice, periode, f.brouillard, exercices),
     chargerOperations(db, d.id),
     certificatsDuMois(db, d.id, periode.debut, periode.fin),
     fichiersDuMois(db, d.id, annee, mois),
@@ -183,8 +195,10 @@ const etatTaxesMois = async (db, acces, d, f) => {
     for (const o of p.operations) {
       const ecart = ecartRegime(o, t, fiscalite, d.pays);
       if (ecart) avertissements.push({ code: 'TAUX_REGIME', message: `Pièce ${o.numero || o.reference} : ${o.code} appliqué, ${ecart.attendu} attendu (${ecart.regime})` });
+      if (o.nbReglements > 1) avertissements.push({ code: 'PLUSIEURS_REGLEMENTS', message: `Pièce ${o.numero || o.reference} réglée en ${o.nbReglements} fois : la date proposée est celle du dernier règlement, or la retenue se rattache à chaque paiement — vérifiez la date (ou passez une retenue par règlement)` });
       if (o.plusieursTaux) avertissements.push({ code: 'PLUSIEURS_TAUX', message: `Pièce ${o.numero || o.reference} : plusieurs taux de TVA, le principal (${o.tauxTva} %) est déclaré` });
     }
+    if (p.date > aujourdhuiTunis()) avertissements.push({ code: 'DATE_FUTURE', message: `Date proposée (${fmtDate(p.date)}) postérieure à aujourd'hui : corrigez-la avant de produire` });
     if (p.sourceDate === 'facture') avertissements.push({ code: 'NON_REGLE', message: 'Facture non lettrée avec un règlement : la date proposée est celle de la facture, corrigez-la si le paiement a eu lieu un autre jour' });
     const bloque = b.manque.length ? `Fiche du fournisseur à compléter pour la plateforme TEJ : ${texteManque(b.manque)}` : null;
     if (bloque) signalements.push({ code: 'BENEFICIAIRE_INCOMPLET', gravite: 'bloquant', message: `${t ? t.code : 'Bénéficiaire'} : ${bloque.charAt(0).toLowerCase()}${bloque.slice(1)}`, tiersId: p.tiersId });
@@ -199,7 +213,7 @@ const etatTaxesMois = async (db, acces, d, f) => {
   const brouillard = operations.filter((o) => o.etat !== 'validee' && dans(o.dateFacture)).map(presenterOperation);
   const problemes = operations.filter((o) => o.etat === 'validee' && o.probleme && dans(o.dateFacture)).map(presenterOperation);
   for (const o of problemes) signalements.push({ code: o.probleme.code, gravite: 'bloquant', message: `Pièce ${o.numero || o.reference} : ${o.probleme.message}` });
-  if (brouillard.length) signalements.push({ code: 'RETENUES_BROUILLARD', gravite: 'info', message: `${brouillard.length} pièce${brouillard.length > 1 ? 's' : ''} à retenue en brouillard : validez-les (page Écritures) pour produire leur certificat` });
+  if (brouillard.length) signalements.push({ code: 'RETENUES_BROUILLARD', gravite: 'info', message: brouillard.length > 1 ? `${brouillard.length} pièces à retenue en brouillard : validez-les (page Écritures) pour produire leur certificat` : '1 pièce à retenue en brouillard : validez-la (page Écritures) pour produire son certificat' });
   for (const m of manquantes.rows) {
     const regime = regimeFiscalDe(d.pays, m.regime_fiscal);
     const code = m.retenue_code || regime?.achats || null;
@@ -209,7 +223,8 @@ const etatTaxesMois = async (db, acces, d, f) => {
     signalements.push({ code: 'RETENUE_MANQUANTE', gravite: 'attention', message: `Pièce ${m.numero || m.reference} du ${fmtDate(m.date)} (${m.tiers_code}, ${fmtMillimes(ttc)} D TTC) : aucune retenue alors que ${code ? `${code} est attendu` : 'le fournisseur en a une'} — à vérifier (exclusions : abonnements, assurances, leasing…)`, ecritureId: m.id, tiersId: m.tiers_id });
   }
   for (const c of contrepasses.rows) signalements.push({ code: 'CERTIFICAT_CONTREPASSE', gravite: 'attention', message: `Certificat ${c.reference} : une de ses pièces a été contre-passée depuis — annulez-le s'il n'est plus juste`, certificatId: c.id });
-  if (tva.sansCode.nb) signalements.push({ code: 'TVA_SANS_CODE', gravite: 'info', message: `${tva.sansCode.nb} ligne${tva.sansCode.nb > 1 ? 's' : ''} de TVA sans code de taxe (liquidation, régularisation ?) : non comptée${tva.sansCode.nb > 1 ? 's' : ''} dans l'état` });
+  if (tva.sansCode.nb) signalements.push({ code: 'TVA_SANS_CODE', gravite: 'attention', message: `${tva.sansCode.nb} ligne${tva.sansCode.nb > 1 ? 's' : ''} de TVA sans code de taxe (collectée ${fmtMillimes(millimes(tva.sansCode.collectee))} D, déductible ${fmtMillimes(millimes(tva.sansCode.deductible))} D) : non comptée${tva.sansCode.nb > 1 ? 's' : ''} dans l'état — une liquidation ou une régularisation, sinon ajoutez le code de taxe (page Écritures)` });
+  if (tva.creditNonRepris) signalements.push({ code: 'CREDIT_NON_REPRIS', gravite: 'attention', message: `Crédit de TVA de l'exercice précédent non repris : ${fmtMillimes(millimes(tva.creditNonRepris.montant))} D calculés au ${fmtDate(tva.creditNonRepris.fin)}, aucun à-nouveau sur le compte ${tva.compteCredit || 'du crédit de TVA'} — passez-le en à-nouveaux, sinon la TVA à payer est surévaluée` });
   if (decl.manque.length) signalements.unshift({ code: 'DECLARANT_INCOMPLET', gravite: 'bloquant', message: `Identité du dossier à compléter pour la plateforme TEJ : ${texteManque(decl.manque)} (fiche du dossier)` });
   const parNature = new Map();
   const ajouterNature = (o, certifie) => {
@@ -232,7 +247,7 @@ const etatTaxesMois = async (db, acces, d, f) => {
     tva,
     retenues: {
       paiements, brouillard, problemes, borne,
-      autresMois: [...autres.entries()].sort().map(([m, nb]) => ({ mois: m, nb })),
+      autresMois: [...autres.entries()].sort().map(([m, nb]) => ({ mois: m, nb, periodeId: exercices.flatMap((x) => x.periodes).find((p) => p.debut.slice(0, 7) === m)?.id ?? null })),
       parNature: [...parNature.values()].map((n) => ({ ...n, rs: texte(n.rs), aProduire: texte(n.aProduire), certifie: texte(n.certifie) })),
     },
     certificats,
@@ -298,7 +313,7 @@ const exporter = (req, res) => avecGardeExport(res, '[compta.taxesMois.exporter]
   });
   const lignesRetenues = [
     ...e.retenues.paiements.flatMap((x) => x.operations.map((o) => ['À produire', '', fmtDate(x.date), x.tiers ? x.tiers.code : '', x.tiers ? x.tiers.nom : '', o.numero || o.numeroProvisoire, o.reference, fmtDate(o.dateFacture), o.code, o.codeTej, nombreExcel(o.ht), nombreExcel(o.tva), nombreExcel(o.ttc), Number(o.tauxRs), nombreExcel(o.rs), nombreExcel(o.net)])),
-    ...e.certificats.flatMap((c) => c.operations.map((o) => [c.etat === 'annule' ? 'Annulé' : (c.fichier ? `Déposé (${c.fichier.nom})` : 'Produit'), c.reference, fmtDate(c.datePaiement), c.tiers.code, c.tiers.nom, o.numero, o.reference, fmtDate(o.dateFacture), o.code, o.codeTej, nombreExcel(o.ht), nombreExcel(o.tva), nombreExcel(o.ttc), Number(o.tauxRs), nombreExcel(o.rs), nombreExcel(o.net)])),
+    ...e.certificats.flatMap((c) => c.operations.map((o) => [c.etat === 'annule' ? 'Annulé' : (c.fichier ? `Dans le fichier ${c.fichier.nom}` : 'Produit'), c.reference, fmtDate(c.datePaiement), c.tiers.code, c.tiers.nom, o.numero, o.reference, fmtDate(o.dateFacture), o.code, o.codeTej, nombreExcel(o.ht), nombreExcel(o.tva), nombreExcel(o.ttc), Number(o.tauxRs), nombreExcel(o.rs), nombreExcel(o.net)])),
   ];
   ajouterFeuille(wb, {
     feuille: 'Retenues opérées', titre: 'Retenues opérées et certificats', sousTitre: d.nom, metaTexte: `paiements ${meta}`,
@@ -330,5 +345,5 @@ const exporter = (req, res) => avecGardeExport(res, '[compta.taxesMois.exporter]
 module.exports = {
   SUBIES_MAX, MANQUANTES_MAX, lireParametres, periodeParDefaut, selection, ecartRegime,
   SQL_SUBIES, SQL_SUBIES_TOTAL, SQL_MANQUANTES, SQL_CERTIFICATS_CONTREPASSES,
-  etatTvaDe, etatTaxesMois, lire, lot, exporter,
+  etatsDeLExercice, etatTvaDe, etatTaxesMois, lire, lot, exporter,
 };

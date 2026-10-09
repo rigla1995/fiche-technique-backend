@@ -37,14 +37,19 @@ CREATE TABLE IF NOT EXISTS compta.fichiers_tej (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CHECK (nb_ajouts + nb_annulations > 0)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS uq_compta_fichiers_tej_initial ON compta.fichiers_tej (dossier_id, annee, mois) WHERE acte = 0;
+-- Un fichier REFUSÉ par la plateforme se retire (le dernier de son mois) : auteur, date, motif ; il reste lisible, ses
+-- certificats redeviennent « à mettre dans un fichier » et le dépôt initial se refait.
+ALTER TABLE compta.fichiers_tej ADD COLUMN IF NOT EXISTS retire_par INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL;
+ALTER TABLE compta.fichiers_tej ADD COLUMN IF NOT EXISTS retire_le TIMESTAMPTZ;
+ALTER TABLE compta.fichiers_tej ADD COLUMN IF NOT EXISTS motif_retrait VARCHAR(255);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_compta_fichiers_tej_initial ON compta.fichiers_tej (dossier_id, annee, mois) WHERE acte = 0 AND retire_le IS NULL;
 CREATE INDEX IF NOT EXISTS idx_compta_fichiers_tej_mois ON compta.fichiers_tej (dossier_id, annee, mois, id);
 
 -- 3) Les certificats de retenue : un bénéficiaire (tiers, sans action : un tiers mouvementé ne se supprime jamais) et une
 --    date de paiement ; numéro continu par dossier et par année de paiement (référence « 2026-000001 », celle du
 --    certificat chez le déclarant) ; d'où vient la date (règlement lettré, facture, saisie) ; bénéficiaire, déclarant et
 --    opérations FIGÉS (JSON : le certificat se reproduit à l'identique) ; totaux NUMERIC(18,3) ; état produit / annulé
---    (annulé : auteur, date, motif ; le numéro reste pris) ; fichier où il a été déposé, rectificatif qui porte son
+--    (annulé : auteur, date, motif ; le numéro reste pris) ; fichier qui le contient, rectificatif qui porte son
 --    annulation. CASCADE sur le dossier.
 CREATE TABLE IF NOT EXISTS compta.certificats (
   id                     SERIAL PRIMARY KEY,
@@ -203,21 +208,22 @@ La page **Taxes du mois** rassemble, pour une période (un mois de l'exercice), 
 ### Ce que vous voyez
 
 - **La période** : le mois en cours par défaut ; choisissez-en un autre dans la liste. La case **Brouillard compris** (cochée par défaut) fait entrer les écritures en brouillard dans l'état de TVA et dans les retenues subies ; les certificats, eux, ne se produisent que sur des écritures **validées**.
-- **L'état de TVA** : la TVA collectée par code (avec sa base hors taxes), la TVA déductible sur biens et services et sur immobilisations, les retenues de TVA subies (secteur public), le **crédit reporté** du mois précédent (au premier mois de l'exercice : les à-nouveaux du compte 43667), puis le résultat : **TVA à payer** ou **crédit à reporter** (il passe au mois suivant). La TVA est exigible aux débits : une facture compte dans la période de son écriture. Seules les lignes qui portent un code de taxe comptent ; une ligne de TVA sans code (liquidation, régularisation) est signalée.
-- **Retenues à certifier** : une rangée par **paiement** — un fournisseur et une date —, avec ses pièces : facture, nature et code TEJ, hors taxes, TVA, TTC (hors timbre), taux, retenue, net servi. La date proposée est celle du **règlement lettré** avec la facture (page **Lettrage**) ; sans règlement lettré, celle de la facture ; vous la corrigez avant de produire. Une rangée bloquée dit ce qui manque (fiche du fournisseur à compléter, pièce à plusieurs fournisseurs, code sans code TEJ…). Les paiements des autres mois et les pièces en brouillard sont comptés à part.
-- **Certificats du mois** : numéro (2026-000001…, sans trou par année de paiement), date du paiement, bénéficiaire, retenue, état : **produit**, **déposé** (dans quel fichier) ou **annulé**.
+- **L'état de TVA** : la TVA collectée par code (avec sa base hors taxes), la TVA déductible sur biens et services et sur immobilisations, les retenues de TVA subies (secteur public), le **crédit reporté** du mois précédent (au premier mois de l'exercice : les à-nouveaux du compte 43667), puis le résultat : **TVA à payer** ou **crédit à reporter** (il passe au mois suivant). La TVA est exigible aux débits : une facture compte dans la période de son écriture. Seules les lignes qui portent un code de taxe comptent ; une ligne de TVA sans code (liquidation, régularisation, saisie sans code) est signalée avec ses montants. Sans à-nouveau sur le compte 43667 alors que l'exercice précédent finissait en crédit, la page le signale aussi : le crédit n'est jamais ajouté d'office.
+- **Retenues à certifier** : une rangée par **paiement** — un fournisseur et une date —, avec ses pièces : facture, nature et code TEJ, hors taxes, TVA, TTC (hors timbre), taux, retenue, net servi. La date proposée est celle du **règlement lettré** avec la facture (page **Lettrage**) ; sans règlement lettré, celle de la facture ; vous la corrigez avant de produire. Une rangée bloquée dit ce qui manque (fiche du fournisseur à compléter, pièce à plusieurs fournisseurs, code sans code TEJ…). La retenue se saisit sur la **facture d'achat** : une retenue passée sur un règlement (banque, caisse) ou une opération diverse est bloquée. Une facture réglée en plusieurs fois propose la date du dernier règlement, et la page le signale. Les paiements des autres mois et les pièces en brouillard sont comptés à part.
+- **Certificats du mois** : numéro (2026-000001…, sans trou par année de paiement), date du paiement, bénéficiaire, retenue, état : **produit**, **dans le fichier …** (le fichier TEJ qui le contient) ou **annulé**.
 - **Fichier TEJ** : ce que contiendra le prochain fichier du mois — dépôt **initial** (acte 0) ou **rectificatif** (acte 1) — et les fichiers déjà produits, avec leur date.
 - **Retenues subies** : les lignes des comptes de retenues subies (4341) de la période, avec le client de la pièce : un crédit d'impôt, à rapprocher des certificats que vos clients vous remettent.
-- **Signalements** : rien n'est passé d'office ; la page signale une retenue sur achats sous le seuil de 1 000 D TTC par paiement, une retenue manquante (achat d'un fournisseur à retenue sans ligne de retenue), un taux qui ne suit pas le régime fiscal du fournisseur, un certificat dont une pièce a été contre-passée, une identité de dossier ou une fiche de fournisseur incomplète pour la plateforme.
+- **Signalements** : rien n'est passé d'office ; la page signale une retenue sur achats sous le seuil de 1 000 D TTC par paiement, une retenue manquante (achat d'un fournisseur à retenue sans ligne de retenue), un taux qui ne suit pas le régime fiscal du fournisseur, un certificat dont une pièce a été contre-passée (il n'entre pas dans un fichier tant qu'il n'est pas annulé), des lignes de TVA sans code, un crédit de TVA de l'exercice précédent non repris, une identité de dossier ou une fiche de fournisseur incomplète pour la plateforme.
 - **Qui peut quoi** : le titulaire et les gérants de niveau **Complet** produisent et annulent les certificats et produisent le fichier ; tout le monde lit la page, télécharge les certificats et les fichiers déjà produits et exporte ; un dossier archivé se lit seulement.
 
 ### Actions pas à pas
 
 1. **Produire les certificats** : cochez les paiements (tous ceux qui ne sont pas bloqués le sont d'office), corrigez une date si besoin, puis **Produire les certificats** ; une confirmation est demandée. Chaque paiement reçoit un certificat numéroté, avec ses pièces, son bénéficiaire et l'identité du dossier figés : il se retélécharge toujours à l'identique.
 2. **Certificat (PDF)** : le certificat classique — payeur, retenues effectuées, bénéficiaire, cachet et signature —, un par un ; **Certificats du mois (PDF)** : tous ceux du mois en un fichier.
-3. **Fichier TEJ (XML)** : le fichier du mois au format de la plateforme (MATRICULE-AAAA-MM-0.xml), avec les certificats pas encore déposés ; ensuite, les nouveaux certificats et les annulations du mois partent dans un **rectificatif** (acte 1). Déposez-le sur tej.finances.gov.tn. Chaque fichier produit se retélécharge à l'identique.
-4. **Annuler** un certificat : avec un motif ; il garde son numéro et se marque annulé ; ses pièces redeviennent à certifier (corrigez, puis produisez-en un nouveau). S'il a déjà été déposé, l'annulation part dans le rectificatif suivant.
-5. **Exporter (Excel)** : l'état de TVA, les retenues opérées (à produire et certifiées), les retenues subies et les signalements, à la charte LabFlow.
+3. **Fichier TEJ (XML)** : le fichier du mois au format de la plateforme (MATRICULE-AAAA-MM-0.xml), avec les certificats qui ne sont encore dans aucun fichier ; ensuite, les nouveaux certificats et les annulations du mois partent dans un **rectificatif** (acte 1). Déposez-le sur tej.finances.gov.tn. Chaque fichier produit se retélécharge à l'identique.
+4. **Annuler** un certificat : avec un motif ; il garde son numéro et se marque annulé ; ses pièces redeviennent à certifier (corrigez, puis produisez-en un nouveau). S'il est déjà dans un fichier, l'annulation part dans le fichier suivant (rectificatif).
+5. **Retirer** un fichier **refusé par la plateforme** : avec un motif ; le dernier fichier du mois seulement ; ses certificats redeviennent « à mettre dans un fichier » (un dépôt initial retiré se refait) ; le fichier reste téléchargeable, marqué retiré.
+6. **Exporter (Excel)** : l'état de TVA, les retenues opérées (à produire et certifiées), les retenues subies et les signalements, à la charte LabFlow.
 
 ### Points d'attention
 

@@ -48,8 +48,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   // S6b : + 5 (valider une écriture, la contre-passer ; valider une période, la clore, la rouvrir) ;
   // S6c : + 2 (import d'écritures, import d'une balance d'ouverture — tout ou rien, droit « configurer ») ;
   // S7a : + 2 (lettrer, délettrer — droit « saisir ») ; + 1 POST sans garde (la lettre de relance : un PDF, rien d'écrit).
-  // S7b : + 3 (produire des certificats, en annuler un, produire le fichier TEJ du mois — droit « configurer »).
-  assert.equal(ecritures.length, 59, 'routes d\'écriture trouvées');
+  // S7b : + 4 (produire des certificats, en annuler un, produire le fichier TEJ du mois, retirer un fichier refusé — droit « configurer »).
+  assert.equal(ecritures.length, 60, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).

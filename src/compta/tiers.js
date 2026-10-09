@@ -166,7 +166,8 @@ const lireIdentifiant = (v) => {
     if (typeof v.pays !== 'string' || !/^[A-Za-z]{2}$/.test(v.pays.trim())) throw erreur(400, 'Pays : code à deux lettres (TN, FR, DZ…)');
     pays = v.pays.trim().toUpperCase();
   }
-  return { id_type: type, id_numero: numero, id_naissance: lireNaissance(v.naissance), id_pays: pays };
+  // Relecture : un champ que le type n'emploie pas (pays d'une CIN, naissance d'un « autre identifiant ») n'est pas gardé.
+  return { id_type: type, id_numero: numero, id_naissance: type === 'autre' ? null : lireNaissance(v.naissance), id_pays: type === 'cin' ? null : pays };
 };
 // Les champs d'un tiers lus dans le corps : `partiel` (modification) : seuls les champs présents.
 // → { valeurs: { colonne: valeur }, compteId (undefined = absent), retenueId (undefined = absent), avertissements }

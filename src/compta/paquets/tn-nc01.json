@@ -112,6 +112,10 @@
     },
     "tej": {
       "versionSchema": "1.0",
+      "codesTaxesAdditionnelles": [
+        { "code": "RSTVA25", "libelle": "Retenue de TVA de 25 % (État, collectivités et établissements publics)" },
+        { "code": "RSTVA100", "libelle": "Retenue de TVA de 100 % (prestataires non résidents)" }
+      ],
       "source": "Cahier des charges techniques de la plateforme TEJ, certificats de retenue à la source, v2.0 (ministère des Finances, juin 2024), https://jibaya.tn/wp-content/uploads/2024/05/TEJ-CCT-RS-V2.0.pdf",
       "codesOperations": [
         { "code": "RS1_000001", "libelle": "Loyers d'hôtels (personnes morales, personnes physiques au réel)" },

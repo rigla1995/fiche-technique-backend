@@ -277,6 +277,10 @@ const controlerPaquet = (p) => {
       for (const d of defautsLibelle(o.libelle, false)) defauts.push(`code TEJ ${o.code} : ${d}`);
     }
     for (const t of taxes) if (t.type === 'retenue' && t.codeTej && !codesTej.has(t.codeTej)) defauts.push(`taxe ${t.code} : code TEJ ${t.codeTej} absent de la liste des codes d'opération`);
+    const codesTva = new Set((tej.codesTaxesAdditionnelles || []).map((o) => o.code));
+    if (!codesTva.size) defauts.push('fiscalité : codes des taxes additionnelles TEJ (retenues de TVA) absents');
+    for (const o of tej.codesTaxesAdditionnelles || []) for (const d of defautsLibelle(o.libelle, false)) defauts.push(`taxe additionnelle ${o.code} : ${d}`);
+    for (const t of taxes) if (t.type === 'retenue_tva' && t.codeTej && !codesTva.has(t.codeTej)) defauts.push(`taxe ${t.code} : code TEJ ${t.codeTej} absent des taxes additionnelles`);
   }
   return defauts;
 };

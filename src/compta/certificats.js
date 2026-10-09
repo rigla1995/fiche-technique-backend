@@ -86,9 +86,12 @@ const beneficiaireDe = (t, pays) => {
     manque.push(mf ? 'matricule fiscal avec sa lettre de clé (1234567A…)' : 'matricule fiscal ou, à défaut, CIN, passeport ou carte de séjour');
   }
   const adresse = [t.adresse, t.ville].filter(Boolean).join(', ');
-  if (!texteTej(t.nom)) manque.push('nom');
-  if (!texteTej(adresse)) manque.push('adresse');
-  if (!t.email || !RE_EMAIL_TEJ.test(t.email)) manque.push('email');
+  // Relecture : un nom ou une adresse écrits sans lettre latine (arabe) sont REMPLIS mais illisibles pour la plateforme ;
+  // le double tiret est interdit partout, l'email compris.
+  if (!texteTej(t.nom)) manque.push(String(t.nom || '').trim() ? 'nom en caractères latins' : 'nom');
+  if (!texteTej(adresse)) manque.push(adresse.trim() ? 'adresse en caractères latins' : 'adresse');
+  if (!t.email) manque.push('email');
+  else if (!RE_EMAIL_TEJ.test(t.email) || t.email.includes('--')) manque.push('email valide (sans double tiret)');
   if (!t.telephone || !texteTej(t.telephone)) manque.push('téléphone');
   return {
     manque,
@@ -164,15 +167,28 @@ const presenterCertificat = (c) => ({
 const certificatsDuMois = async (db, dossierId, debut, fin) =>
   (await db.query(`${SQL_CERTIFICAT} WHERE c.dossier_id = $1 AND c.date_paiement BETWEEN $2 AND $3 ORDER BY c.annee, c.numero`, [dossierId, debut, fin])).rows.map(presenterCertificat);
 const SQL_FICHIERS = `
-  SELECT f.id, f.annee, f.mois, f.acte, f.nom, f.empreinte, f.nb_ajouts, f.nb_annulations, f.created_at, u.nom AS produit_par_nom
-    FROM compta.fichiers_tej f LEFT JOIN utilisateurs u ON u.id = f.produit_par`;
-const presenterFichier = (f) => ({ id: f.id, annee: f.annee, mois: f.mois, acte: f.acte, nom: f.nom, empreinte: f.empreinte, nbAjouts: f.nb_ajouts, nbAnnulations: f.nb_annulations, produitLe: f.created_at, produitPar: f.produit_par_nom || null });
+  SELECT f.id, f.annee, f.mois, f.acte, f.nom, f.empreinte, f.nb_ajouts, f.nb_annulations, f.created_at, u.nom AS produit_par_nom,
+         f.retire_le, f.motif_retrait, ur.nom AS retire_par_nom
+    FROM compta.fichiers_tej f LEFT JOIN utilisateurs u ON u.id = f.produit_par LEFT JOIN utilisateurs ur ON ur.id = f.retire_par`;
+const presenterFichier = (f) => ({
+  id: f.id, annee: f.annee, mois: f.mois, acte: f.acte, nom: f.nom, empreinte: f.empreinte, nbAjouts: f.nb_ajouts, nbAnnulations: f.nb_annulations, produitLe: f.created_at, produitPar: f.produit_par_nom || null,
+  retrait: f.retire_le ? { le: f.retire_le, par: f.retire_par_nom || null, motif: f.motif_retrait } : null,
+});
 const fichiersDuMois = async (db, dossierId, annee, mois) =>
   (await db.query(`${SQL_FICHIERS} WHERE f.dossier_id = $1 AND f.annee = $2 AND f.mois = $3 ORDER BY f.id`, [dossierId, annee, mois])).rows.map(presenterFichier);
 // Ce que contiendrait le prochain fichier du mois : acte (0 tant qu'aucun dépôt initial n'est produit), certificats à
 // ajouter (produits, jamais déposés), à annuler (annulés après leur dépôt, pas encore dans un rectificatif).
 const SQL_A_AJOUTER = `${SQL_CERTIFICAT} WHERE c.dossier_id = $1 AND c.etat = 'produit' AND c.fichier_id IS NULL AND c.date_paiement BETWEEN $2 AND $3 ORDER BY c.annee, c.numero`;
 const SQL_A_ANNULER = `${SQL_CERTIFICAT} WHERE c.dossier_id = $1 AND c.etat = 'annule' AND c.fichier_id IS NOT NULL AND c.annulation_fichier_id IS NULL AND c.date_paiement BETWEEN $2 AND $3 ORDER BY c.annee, c.numero`;
+// Les certificats ($1 dossier, $2 identifiants) dont une pièce a été contre-passée depuis leur production.
+const SQL_AJOUTS_CONTREPASSES = `
+  SELECT DISTINCT c.reference
+    FROM compta.certificats c
+    JOIN compta.certificat_lignes cl ON cl.certificat_id = c.id AND cl.actif
+    JOIN compta.lignes l ON l.id = cl.ligne_id
+    JOIN compta.ecritures cp ON cp.origine_id = l.ecriture_id AND cp.origine = 'contrepassation' AND cp.dossier_id = c.dossier_id
+   WHERE c.dossier_id = $1 AND c.id = ANY($2)
+   ORDER BY c.reference`;
 const bornesDuMois = (annee, mois) => {
   const mm = String(mois).padStart(2, '0');
   const fin = new Date(Date.UTC(annee, mois, 0)).getUTCDate();
@@ -180,7 +196,8 @@ const bornesDuMois = (annee, mois) => {
 };
 const prochainFichier = async (db, dossierId, annee, mois) => {
   const { debut, fin } = bornesDuMois(annee, mois);
-  const initial = (await db.query('SELECT 1 FROM compta.fichiers_tej WHERE dossier_id = $1 AND annee = $2 AND mois = $3 AND acte = 0', [dossierId, annee, mois])).rows.length > 0;
+  // Un fichier retiré (refusé par la plateforme) ne compte plus : le dépôt initial se refait.
+  const initial = (await db.query('SELECT 1 FROM compta.fichiers_tej WHERE dossier_id = $1 AND annee = $2 AND mois = $3 AND acte = 0 AND retire_le IS NULL', [dossierId, annee, mois])).rows.length > 0;
   const ajouts = (await db.query(SQL_A_AJOUTER, [dossierId, debut, fin])).rows.map(presenterCertificat);
   const annulations = initial ? (await db.query(SQL_A_ANNULER, [dossierId, debut, fin])).rows.map(presenterCertificat) : [];
   return { acte: initial ? 1 : 0, ajouts, annulations };
@@ -201,7 +218,9 @@ const xmlCertificat = (c) => {
   const ops = c.operations.map((o) => [
     `<Operation IdTypeOperation="${echapperXml(o.codeTej)}">`,
     el('AnneeFacturation', String(o.anneeFacturation)), el('CNPC', '0'), el('P_Charge', '0'),
-    el('MontantHT', millimesEntiers(o.ht)), el('TauxRS', tauxTej(o.tauxRs)), el('TauxTVA', tauxTej(o.tauxTva)), el('MontantTVA', millimesEntiers(o.tva)),
+    el('MontantHT', millimesEntiers(o.ht)), el('TauxRS', tauxTej(o.tauxRs)),
+    // Relecture : taux de TVA inconnu (lignes de TVA sans code) ⇒ l'élément, facultatif, est omis plutôt que « 0.00 ».
+    o.tauxTva != null ? el('TauxTVA', tauxTej(o.tauxTva)) : '', el('MontantTVA', millimesEntiers(o.tva)),
     el('MontantTTC', millimesEntiers(o.ttc)), el('MontantRS', millimesEntiers(o.rs)),
     o.rsTva ? `<TaxeAdditionnelle Code="${echapperXml(o.rsTva.code)}" Taux="${tauxTej(o.rsTva.taux)}">${millimesEntiers(o.rsTva.montant)}</TaxeAdditionnelle>` : '',
     el('MontantNetServi', millimesEntiers(o.net)),
@@ -316,6 +335,8 @@ const lirePaiements = (corps, aujourdhui = aujourdhuiTunis()) => {
   if (!corps || typeof corps !== 'object' || !Array.isArray(corps.paiements) || !corps.paiements.length) throw erreur(400, 'Choisissez les paiements à certifier', 'PAIEMENTS_REQUIS');
   if (corps.paiements.length > PAIEMENTS_MAX) throw erreur(400, `${PAIEMENTS_MAX} certificats au plus à la fois`);
   const vues = new Set();
+  const total = corps.paiements.reduce((t, p) => t + (p && Array.isArray(p.ecritures) ? p.ecritures.length : 0), 0);
+  if (total > OPERATIONS_MAX) throw erreur(400, `${OPERATIONS_MAX} pièces au plus par production`);
   return corps.paiements.map((p, i) => {
     const n = `Paiement ${i + 1}`;
     if (!p || typeof p !== 'object') throw erreur(400, `${n} : requête invalide`);
@@ -342,11 +363,20 @@ const lireMotif = (v) => {
   if (HORS_W1252.test(s)) throw erreur(400, 'Motif : caractères latins seulement (il s\'imprime sur le certificat)');
   return s;
 };
+// { annee, mois, attendu? } — `attendu` : { acte, nbAjouts, nbAnnulations } montrés à la confirmation (relecture : le serveur
+// refuse en 409 si le fichier a changé entre-temps, par exemple après une production par une autre personne).
 const lireMois = (corps) => {
   const annee = Number(corps?.annee);
   const mois = Number(corps?.mois);
   if (!Number.isInteger(annee) || annee < 2000 || annee > 2099 || !Number.isInteger(mois) || mois < 1 || mois > 12) throw erreur(400, 'Mois du fichier invalide (année, mois)', 'MOIS_INVALIDE');
-  return { annee, mois };
+  const a = corps?.attendu;
+  let attendu = null;
+  if (a != null) {
+    const n = (v) => (Number.isInteger(v) && v >= 0 && v <= 100000 ? v : NaN);
+    attendu = { acte: n(a.acte), nbAjouts: n(a.nbAjouts), nbAnnulations: n(a.nbAnnulations) };
+    if (Object.values(attendu).some(Number.isNaN) || ![0, 1].includes(attendu.acte)) throw erreur(400, 'Fichier attendu : requête invalide');
+  }
+  return { annee, mois, attendu };
 };
 
 // ── Écritures ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -409,7 +439,7 @@ const produire = async (req, res) => {
     });
     res.status(201).json(resultat);
   } catch (err) {
-    repondreErreur(res, err, '[compta.certificats.produire]');
+    repondreErreur(res, err && err.code === '23505' ? erreur(409, 'Une pièce vient d\'être certifiée par ailleurs : relisez la page', 'PERIME') : err, '[compta.certificats.produire]');
   }
 };
 
@@ -439,12 +469,17 @@ const annuler = async (req, res) => {
 // la plateforme (à essayer d'abord : réponse 5 du 09/10).
 const produireFichier = async (req, res) => {
   try {
-    const { annee, mois } = lireMois(req.body || {});
+    const { annee, mois, attendu } = lireMois(req.body || {});
     const f = await ecritureCertificats(req, async (db, acces, d) => {
       const decl = declarantDe(d);
       if (decl.manque.length) throw erreur(409, `Identité du dossier à compléter pour la plateforme TEJ : ${texteManque(decl.manque)} (fiche du dossier)`, 'DECLARANT_INCOMPLET');
       const { acte, ajouts, annulations } = await prochainFichier(db, d.id, annee, mois);
       if (!ajouts.length && !annulations.length) throw erreur(409, `Rien à déposer pour ${String(mois).padStart(2, '0')}/${annee} : tous les certificats du mois sont déjà dans un fichier`, 'RIEN_A_DEPOSER');
+      if (ajouts.length) {
+        const cp = (await db.query(SQL_AJOUTS_CONTREPASSES, [d.id, ajouts.map((c) => c.id)])).rows.map((r) => r.reference);
+        if (cp.length) throw erreur(409, `${cp.length > 1 ? 'Les certificats' : 'Le certificat'} ${cp.join(', ')} ${cp.length > 1 ? 'portent' : 'porte'} une pièce contre-passée depuis : annulez-${cp.length > 1 ? 'les' : 'le'} avant de produire le fichier`, 'CERTIFICAT_CONTREPASSE');
+      }
+      if (attendu && (attendu.acte !== acte || attendu.nbAjouts !== ajouts.length || attendu.nbAnnulations !== annulations.length)) throw erreur(409, `Le fichier du mois a changé depuis l'affichage (${acte === 0 ? 'dépôt initial' : 'rectificatif'} : ${ajouts.length} certificat${ajouts.length > 1 ? 's' : ''}, ${annulations.length} annulation${annulations.length > 1 ? 's' : ''}) : relisez la page`, 'PERIME');
       const { nom, contenu } = construireXml({ declarant: decl.fige, annee, mois, acte, ajouts, annulations, versionSchema: fiscaliteDe(d.pays)?.tej?.versionSchema || '1.0' });
       const empreinte = crypto.createHash('sha256').update(contenu, 'utf8').digest('hex');
       const ins = await db.query(
@@ -468,6 +503,32 @@ const envoyerXml = (res, contenu, nom) => {
   res.setHeader('Content-Disposition', `attachment; filename="${nom}"`);
   res.setHeader('Content-Length', String(corps.length));
   res.send(corps);
+};
+
+// POST /api/compta/dossiers/:dossierId/fichiers-tej/:fichierId/retirer — { motif } : un fichier REFUSÉ par la plateforme
+// (« à essayer » : réponse 5 du 09/10) se retire — le DERNIER fichier non retiré de son mois seulement ; ses certificats
+// redeviennent « à mettre dans un fichier » (et ses annulations « à déclarer ») ; le fichier reste lisible, marqué retiré ;
+// un dépôt initial retiré se refait (acte 0). Journal `fichier_tej_retire`.
+const retirerFichier = async (req, res) => {
+  try {
+    if (!idValide(req.params.fichierId)) throw erreur(404, 'Fichier introuvable', 'FICHIER_INTROUVABLE');
+    const motif = lireMotif((req.body || {}).motif);
+    const resultat = await ecritureCertificats(req, async (db, acces, d) => {
+      const f = (await db.query('SELECT id, annee, mois, acte, nom, retire_le FROM compta.fichiers_tej WHERE dossier_id = $1 AND id = $2 FOR UPDATE', [d.id, req.params.fichierId])).rows[0];
+      if (!f) throw erreur(409, 'Fichier introuvable : relisez la page', 'FICHIER_INTROUVABLE');
+      if (f.retire_le) throw erreur(409, `Le fichier ${f.nom} est déjà retiré : relisez la page`, 'DEJA_RETIRE');
+      const suivant = (await db.query('SELECT nom FROM compta.fichiers_tej WHERE dossier_id = $1 AND annee = $2 AND mois = $3 AND id > $4 AND retire_le IS NULL ORDER BY id LIMIT 1', [d.id, f.annee, f.mois, f.id])).rows[0];
+      if (suivant) throw erreur(409, `Un fichier plus récent du mois existe (${suivant.nom}) : retirez d'abord celui-là`, 'PAS_LE_DERNIER');
+      const ajouts = (await db.query('UPDATE compta.certificats SET fichier_id = NULL WHERE dossier_id = $1 AND fichier_id = $2 RETURNING reference', [d.id, f.id])).rows.map((r) => r.reference);
+      const annulations = (await db.query('UPDATE compta.certificats SET annulation_fichier_id = NULL WHERE dossier_id = $1 AND annulation_fichier_id = $2 RETURNING reference', [d.id, f.id])).rows.map((r) => r.reference);
+      await db.query('UPDATE compta.fichiers_tej SET retire_par = $2, retire_le = NOW(), motif_retrait = $3 WHERE id = $1', [f.id, req.user.id, motif]);
+      await journaliser(db, acces.espace_id, req.user.id, 'fichier_tej_retire', { dossier: d.id, fichier: f.id, nom: f.nom, acte: f.acte, annee: f.annee, mois: f.mois, motif, ajouts, annulations });
+      return { retire: { id: f.id, nom: f.nom, acte: f.acte, ajouts: ajouts.length, annulations: annulations.length } };
+    });
+    res.json(resultat);
+  } catch (err) {
+    repondreErreur(res, err, '[compta.certificats.retirerFichier]');
+  }
 };
 
 // ── Lectures (routes) ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -500,7 +561,7 @@ const pdf = async (req, res) => {
 module.exports = {
   MSG_CERTIFICATS, OPERATIONS_MAX, PAIEMENTS_MAX, MOTIF_MAX, RE_EMAIL_TEJ, TYPES_TEJ,
   texteTej, tauxTej, dateTej, millimesEntiers, beneficiaireDe, declarantDe, texteManque, lirePaiements, lireMotif, lireMois,
-  SQL_TIERS, SQL_CERTIFICAT, SQL_FICHIERS, SQL_A_AJOUTER, SQL_A_ANNULER, chargerOperations, presenterCertificat, presenterFichier, certificatsDuMois, fichiersDuMois, prochainFichier, bornesDuMois,
+  SQL_TIERS, SQL_CERTIFICAT, SQL_FICHIERS, SQL_A_AJOUTER, SQL_A_ANNULER, SQL_AJOUTS_CONTREPASSES, chargerOperations, presenterCertificat, presenterFichier, certificatsDuMois, fichiersDuMois, prochainFichier, bornesDuMois,
   construireXml, xmlCertificat, construireCertificats, ecritureCertificats,
-  produire, annuler, produireFichier, telechargerFichier, pdf,
+  produire, annuler, produireFichier, retirerFichier, telechargerFichier, pdf,
 };

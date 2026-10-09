@@ -291,6 +291,7 @@ router.post('/dossiers/:dossierId/certificats', authenticate, limiteEcritures, c
 router.get('/dossiers/:dossierId/certificats/:certificatId/pdf', authenticate, limiteDocuments, certificats.pdf);
 router.post('/dossiers/:dossierId/certificats/:certificatId/annuler', authenticate, limiteEcritures, certificats.annuler);
 router.post('/dossiers/:dossierId/fichiers-tej', authenticate, limiteEcritures, certificats.produireFichier);
+router.post('/dossiers/:dossierId/fichiers-tej/:fichierId/retirer', authenticate, limiteEcritures, certificats.retirerFichier);
 router.get('/dossiers/:dossierId/fichiers-tej/:fichierId', authenticate, limiteDocuments, certificats.telechargerFichier);
 
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
