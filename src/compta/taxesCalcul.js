@@ -43,7 +43,7 @@ const somme = (expr, cond) => `COALESCE(SUM(${expr}) FILTER (WHERE ${cond}), 0):
 const SQL_COMPTES_DU_CODE = 'l.compte_id IN (COALESCE(x.compte_achat_id, 0), COALESCE(x.compte_vente_id, 0), COALESCE(x.compte_immo_id, 0))';
 const SQL_TVA_PAR_PERIODE = `
   SELECT e.periode_id, x.id AS taxe_id, x.code, x.libelle, x.type, x.taux::text AS taux,
-         ${somme('l.credit - l.debit', "k.nature = 'tva_collectee'")} AS collectee,
+         ${somme('l.credit - l.debit', "k.nature = 'tva_collectee' AND x.type = 'tva'")} AS collectee,
          ${somme('l.debit - l.credit', "k.nature = 'tva_deductible' AND x.type <> 'retenue_tva' AND NOT (x.type = 'tva' AND l.compte_id = x.compte_immo_id)")} AS deductible,
          ${somme('l.debit - l.credit', "k.nature = 'tva_deductible' AND x.type = 'tva' AND l.compte_id = x.compte_immo_id")} AS deductible_immo,
          ${somme('l.debit - l.credit', "x.type = 'retenue_tva' AND k.nature <> 'retenues_operees'")} AS retenue_subie,
@@ -61,7 +61,7 @@ const SQL_TVA_PAR_PERIODE = `
    ORDER BY e.periode_id, x.type, x.taux DESC NULLS LAST, x.id`;
 // Les lignes de TVA sans code de taxe ($1 dossier, $2 exercice, $3 brouillard compris), par période : liquidation,
 // régularisation, saisie sans code — elles ne comptent pas dans l'état (signalées). S7c : l'écriture de liquidation proposée
-// par la déclaration mensuelle (et sa contre-passation) n'est pas signalée.
+// par la déclaration mensuelle (marquée « liquidation_de ») et sa contre-passation ne sont pas signalées.
 const SQL_TVA_SANS_CODE = `
   SELECT e.periode_id, COUNT(*)::int AS nb,
          ${somme('l.credit - l.debit', "k.nature = 'tva_collectee'")} AS collectee,
@@ -71,7 +71,7 @@ const SQL_TVA_SANS_CODE = `
     JOIN compta.journaux j ON j.id = e.journal_id
     JOIN compta.comptes k ON k.id = l.compte_id
    WHERE l.dossier_id = $1 AND e.exercice_id = $2 AND j.type <> 'an' AND l.taxe_id IS NULL AND k.nature IN ('tva_collectee', 'tva_deductible') AND ($3::boolean OR e.etat = 'validee')
-     AND NOT EXISTS (SELECT 1 FROM compta.declarations dc WHERE dc.dossier_id = l.dossier_id AND dc.ecriture_id IN (e.id, e.origine_id))
+     AND e.liquidation_de IS NULL AND NOT EXISTS (SELECT 1 FROM compta.ecritures o WHERE o.id = e.origine_id AND o.liquidation_de IS NOT NULL)
    GROUP BY e.periode_id`;
 // Le crédit de TVA à l'ouverture de l'exercice ($1 dossier, $2 exercice, $3 numéro du compte de crédit — et ses
 // sous-comptes —, $4 brouillard compris) : solde débiteur des à-nouveaux.

@@ -9,7 +9,8 @@
 //   • TCL : taux du paquet (0,2 %, 0,1 % pour un exportateur total) sur le chiffre d'affaires du mois (comptes du paquet :
 //     70…), toutes taxes comprises si l'assiette du paquet l'est (TVA collectée du mois ajoutée) ; arrondi au millime.
 //   • LIQUIDATION DE LA TVA : chaque compte de TVA du mois (lignes codées, comme l'état de TVA) se solde ; le crédit reporté
-//     sort du compte du crédit ; le résultat va au compte de la TVA à payer, ou revient au compte du crédit (à reporter).
+//     sort du compte du crédit ; le résultat va au compte de la TVA à payer, ou revient au compte du crédit (à reporter) —
+//     une seule ligne nette sur le compte du crédit (relecture) ; sans solde de TVA dans le mois, rien à liquider.
 const { millimes, texte } = require('./taxesCalcul');
 
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -71,9 +72,16 @@ const lignesLiquidation = ({ comptes, collectee, deductible, retenuesSubies, cre
   const attendu = -(millimes(collectee) - millimes(deductible) - millimes(retenuesSubies));
   const report = millimes(creditReporte);
   const r = millimes(resultat);
-  if (report > 0n) lignes.push({ compteId: compteCredit.id, numero: compteCredit.numero, libelle: `Crédit de TVA reporté imputé ${m}`, debit: 0n, credit: report });
+  if (!lignes.length) return { lignes: [], total: 0n, ecart: somme !== attendu };
+  // Le compte du crédit : le crédit reporté en sort (crédit), le crédit à reporter y revient (débit) — en une ligne nette.
+  const net = (r < 0n ? -r : 0n) - report;
+  if (net !== 0n) {
+    const libelle = report > 0n && r < 0n
+      ? (net > 0n ? `Crédit de TVA à reporter ${m} (net du crédit reporté)` : `Crédit de TVA reporté imputé ${m} (net du crédit à reporter)`)
+      : r < 0n ? `Crédit de TVA à reporter ${m}` : `Crédit de TVA reporté imputé ${m}`;
+    lignes.push({ compteId: compteCredit.id, numero: compteCredit.numero, libelle, debit: net > 0n ? net : 0n, credit: net < 0n ? -net : 0n });
+  }
   if (r > 0n) lignes.push({ compteId: compteAPayer.id, numero: compteAPayer.numero, libelle: `TVA à payer ${m}`, debit: 0n, credit: r });
-  if (r < 0n) lignes.push({ compteId: compteCredit.id, numero: compteCredit.numero, libelle: `Crédit de TVA à reporter ${m}`, debit: -r, credit: 0n });
   const debit = lignes.reduce((t, l) => t + l.debit, 0n);
   const credit = lignes.reduce((t, l) => t + l.credit, 0n);
   return { lignes, total: debit, ecart: somme !== attendu || debit !== credit };

@@ -1,7 +1,8 @@
 -- LabFlow Compta, étape S7c « Déclaration mensuelle » (labflow-reprise/achats-compta/PLAN-S7.md §1 ligne S7c, §2 « S7c »,
 -- §4 ; réponses du client du 09/10 — « ok pour les 9 » ; question 7 : pas de vente à l'export pour l'instant).
 -- 1) Les déclarations mensuelles : une par période d'un dossier — montants saisis à la main (salaires…), TCL corrigée,
---    écriture de liquidation de la TVA proposée (brouillard), marque « déclarée le » avec l'état figé (lignes, total).
+--    écriture de liquidation de la TVA proposée (brouillard), marque « déclarée le » avec l'état figé (lignes, total) ;
+--    l'écriture de liquidation est marquée elle-même (compta.ecritures.liquidation_de).
 -- 2) Manuel : fiches « Fiche du dossier » et « Taxes du mois et certificats » complétées sous garde md5 des textes de la
 --    219 ; nouvelle fiche « Déclaration mensuelle » (1075, /declaration).
 -- Additive et rejouable (IF NOT EXISTS, ON CONFLICT DO NOTHING, gardes md5).
@@ -27,6 +28,10 @@ CREATE TABLE IF NOT EXISTS compta.declarations (
   CHECK ((declaree_le IS NULL) = (montants IS NULL))
 );
 CREATE INDEX IF NOT EXISTS idx_compta_declarations_ecriture ON compta.declarations (ecriture_id) WHERE ecriture_id IS NOT NULL;
+-- L'écriture de liquidation porte la période qu'elle liquide (elle et sa contre-passation restent hors des « lignes de TVA
+-- sans code » et des brouillards de la période, même après une nouvelle proposition).
+ALTER TABLE compta.ecritures ADD COLUMN IF NOT EXISTS liquidation_de INTEGER REFERENCES compta.periodes(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_compta_ecritures_liquidation ON compta.ecritures (liquidation_de) WHERE liquidation_de IS NOT NULL;
 
 -- 2) Manuel : fiches existantes, texte remplacé seulement s'il est encore celui de la migration 219 ; garde md5 du texte
 --    par défaut, sans \r ; le texte servi suit seulement s'il n'a pas été retouché dans l'admin. Idempotent : au 2e
@@ -126,14 +131,14 @@ La page **Déclaration mensuelle** prépare, pour une période (un mois de l'exe
 ### Actions pas à pas
 
 1. **Préparer** : saisissez les montants des lignes à la main (salaires…), corrigez la TCL si besoin (vide : le calcul), puis **Enregistrer**.
-2. **Proposer l'écriture de TVA** (après la fin du mois, sans écriture en brouillard dans la période) : une écriture en **brouillard** dans le journal des opérations diverses, datée du dernier jour du mois — ou, si la période est close, du premier jour de la période ouverte suivante avec sa vraie date. Vérifiez-la puis validez-la sur la page **Écritures** ; supprimée tant qu'elle est en brouillard, elle se propose de nouveau.
+2. **Proposer l'écriture de TVA** (après la fin du mois, sans écriture en brouillard dans la période) : une écriture en **brouillard** dans le journal des opérations diverses, datée du dernier jour du mois. Vérifiez-la puis validez-la sur la page **Écritures**, **avant de clore la période** ; supprimée tant qu'elle est en brouillard, elle se propose de nouveau. Si la période est déjà close, l'écriture se date du premier jour de la période ouverte suivante du même exercice, avec sa vraie date (en fin d'exercice : rouvrez la période).
 3. **Imprimer (PDF)** ou **Exporter (Excel)** : l'état à recopier sur le portail.
 4. **Marquer comme déclarée** : la date du dépôt sur le portail ; l'état est figé dans l'historique, sans effet comptable. Si les montants changent ensuite, la page le signale (une déclaration rectificative peut être nécessaire). **Retirer la marque** rend la déclaration de nouveau modifiable.
 
 ### Points d'attention
 
 :::attention
-LabFlow Compta prépare la déclaration, il ne la dépose pas : recopiez chaque ligne sur impots.finances.gov.tn et payez avant l'échéance. Clôturez la période (page **Périodes**) avant de déclarer : une écriture ajoutée ensuite changerait les montants.
+LabFlow Compta prépare la déclaration, il ne la dépose pas : recopiez chaque ligne sur impots.finances.gov.tn et payez avant l'échéance. Proposez et validez l'écriture de TVA, puis clôturez la période (page **Périodes**) avant de déclarer : une écriture ajoutée ensuite changerait les montants.
 :::
 
 :::attention

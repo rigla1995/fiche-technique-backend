@@ -68,7 +68,7 @@ test('TCL : taux du paquet sur le chiffre d\'affaires du mois, TVA collectée co
   assert.equal(calcul.tclDe({ ca: '1', tvaCollectee: '0', tcl: null }), null);
 });
 
-test('écriture de liquidation : chaque compte de TVA du mois soldé, crédit reporté imputé, TVA à payer (43651) ou crédit à reporter (43667) ; équilibrée ; écart refusé', () => {
+test('écriture de liquidation : chaque compte de TVA du mois soldé, crédit reporté et crédit à reporter en une ligne nette (43667), TVA à payer (43651) ; équilibrée ; écart refusé ; rien sans solde de TVA', () => {
   const comptes = [{ compte_id: 1, numero: '43662', nature: 'tva_deductible', solde: '50.000' }, { compte_id: 2, numero: '43665', nature: 'tva_deductible', subie: true, solde: '47.500' }, { compte_id: 3, numero: '43666', nature: 'tva_deductible', solde: '634.000' }, { compte_id: 4, numero: '436711', nature: 'tva_collectee', solde: '-190.000' }];
   const K = { compteCredit: { id: 9, numero: '43667' }, compteAPayer: { id: 8, numero: '43651' } };
   // Retenue de TVA subie au 43665 (nature déductible) : collectée 190, déductible 684 (dont immobilisations 50), subie 47,5,
@@ -77,9 +77,15 @@ test('écriture de liquidation : chaque compte de TVA du mois soldé, crédit re
   assert.equal(l.ecart, false);
   assert.deepEqual(l.lignes.map((x) => [x.numero, String(x.debit), String(x.credit), x.libelle]), [
     ['43662', '0', '50000', 'TVA déductible de septembre 2026'], ['43665', '0', '47500', 'Retenue de TVA subie de septembre 2026'], ['43666', '0', '634000', 'TVA déductible de septembre 2026'],
-    ['436711', '190000', '0', 'TVA collectée de septembre 2026'], ['43667', '0', '152000', 'Crédit de TVA reporté imputé de septembre 2026'], ['43667', '693500', '0', 'Crédit de TVA à reporter de septembre 2026'],
+    ['436711', '190000', '0', 'TVA collectée de septembre 2026'], ['43667', '541500', '0', 'Crédit de TVA à reporter de septembre 2026 (net du crédit reporté)'],
   ]);
-  assert.equal(l.total, 883500n);
+  assert.equal(l.total, 731500n);
+  // Crédit reporté 100, collectée 30 : 43667 au crédit de 70 net (une seule ligne).
+  l = calcul.lignesLiquidation({ comptes: [{ compte_id: 4, numero: '436711', nature: 'tva_collectee', solde: '-30.000' }], collectee: '30.000', deductible: '0', retenuesSubies: '0', creditReporte: '100.000', resultat: '-70.000', ...K, mois: '2026-10-31' });
+  assert.deepEqual([l.ecart, l.lignes.map((x) => `${x.numero}:${x.debit}:${x.credit}`).join(' ')], [false, '436711:30000:0 43667:0:30000']);
+  assert.equal(l.lignes[1].libelle, 'Crédit de TVA reporté imputé d\'octobre 2026 (net du crédit à reporter)');
+  // Crédit reporté seul, aucun mouvement de TVA : rien à liquider (le crédit reste au 43667).
+  assert.deepEqual(calcul.lignesLiquidation({ comptes: [], collectee: '0', deductible: '0', retenuesSubies: '0', creditReporte: '500.000', resultat: '-500.000', ...K, mois: '2026-10-31' }).lignes, []);
   // TVA à payer : collectée 1 000, déductible 300 → 700 au 43651.
   l = calcul.lignesLiquidation({ comptes: [{ compte_id: 4, numero: '436711', nature: 'tva_collectee', solde: '-1000.000' }, { compte_id: 3, numero: '43666', nature: 'tva_deductible', solde: '300.000' }], collectee: '1000.000', deductible: '300.000', retenuesSubies: '0', creditReporte: '0', resultat: '700.000', ...K, mois: '2026-10-31' });
   assert.deepEqual([l.ecart, l.lignes.map((x) => `${x.numero}:${x.debit}:${x.credit}`).join(' ')], [false, '436711:1000000:0 43666:0:300000 43651:0:700000']);
@@ -105,7 +111,7 @@ test('lignes de la déclaration (ordre du portail), total, comparaison avec l\'�
   lignes = declarations.lignesDe({ ...base, collectees: { ...base.collectees, fodec: { montant: '10.000', nb: 1 }, avance: { montant: '5.000', nb: 1 } }, declaration: { saisies: { tfp: '120.000' }, tcl: '50.000' } });
   assert.deepEqual(lignes.slice(3, 7).map((l) => l.cle), ['avances', 'timbre', 'fodec', 'tcl'], 'avances et FODEC seulement quand il y en a');
   assert.equal(lignes.find((l) => l.cle === 'tcl').montant, '50.000');
-  assert.ok(lignes.find((l) => l.cle === 'tcl').corrigee && /montant corrigé/.test(lignes.find((l) => l.cle === 'tcl').libelle));
+  assert.ok(lignes.find((l) => l.cle === 'tcl').corrigee && !/corrigé/.test(lignes.find((l) => l.cle === 'tcl').libelle), 'la pastille et les fichiers disent « corrigé »');
   assert.equal(lignes.find((l) => l.cle === 'saisie:tfp').montant, '120.000');
   assert.equal(calcul.memesLignes([{ cle: 'tva', montant: '700.000' }, { cle: 'tcl', montant: '0.000' }], [{ cle: 'tva', montant: '700' }]), true, 'les lignes à zéro ne comptent pas');
   assert.equal(calcul.memesLignes([{ cle: 'tva', montant: '700.000' }], [{ cle: 'tva', montant: '700.001' }]), false);
@@ -118,7 +124,9 @@ test('demandes : préparation (lignes du paquet, montants positifs, vide = rien 
   for (const corps of [{ saisies: { inconnue: '1' } }, { saisies: { tfp: '-1' } }, { saisies: { tfp: 'abc' } }, { saisies: [] }, { tcl: '1.2345' }, null]) assert.throws(() => declarations.lirePreparation(corps, def), est400, JSON.stringify(corps));
   const p = { fin: '2026-09-30' };
   assert.deepEqual(declarations.lireMarque({ date: '2026-10-18', attendu: '934.650' }, p, '2026-10-20'), { date: '2026-10-18', attendu: '934.650' });
-  for (const corps of [{ date: '2026-10-21' }, { date: '2026-09-30' }, { date: '18/10/2026' }, { date: '2026-02-30' }, {}]) assert.throws(() => declarations.lireMarque(corps, p, '2026-10-20'), (e) => est400(e) && e.code === 'DATE_DEPOT', JSON.stringify(corps));
+  assert.deepEqual(declarations.lireMarque({ date: '2026-10-18', attendu: '-2' }, p, '2026-10-20').attendu, '-2.000', 'un total négatif (avoirs) se confirme');
+  for (const corps of [{ date: '2026-10-18' }, { date: '2026-10-18', attendu: 'x' }, { date: '2026-10-18', attendu: null }]) assert.throws(() => declarations.lireMarque(corps, p, '2026-10-20'), (e) => est400(e) && e.code === 'ATTENDU', JSON.stringify(corps));
+  for (const corps of [{ date: '2026-10-21', attendu: '1' }, { date: '2026-09-30', attendu: '1' }, { date: '18/10/2026', attendu: '1' }, { date: '2026-02-30', attendu: '1' }, { attendu: '1' }]) assert.throws(() => declarations.lireMarque(corps, p, '2026-10-20'), (e) => est400(e) && e.code === 'DATE_DEPOT', JSON.stringify(corps));
   assert.deepEqual(declarations.lireParametres({ periode: '12' }), { periodeId: 12 });
   assert.throws(() => declarations.lireParametres({ periode: 'x' }), (e) => e.statusCode === 404);
   const ex = [{ id: 2, periodes: [{ id: 21, debut: '2027-01-01', fin: '2027-01-31' }] }, { id: 1, periodes: [{ id: 11, debut: '2026-09-01', fin: '2026-09-30' }, { id: 12, debut: '2026-10-01', fin: '2026-10-31' }, { id: 13, debut: '2026-11-01', fin: '2026-11-30' }] }];
@@ -135,16 +143,22 @@ test('requêtes : chaque paramètre employé ; écritures validées hors à-nouv
   }
   for (const nom of ['SQL_CA', 'SQL_TAXES_COLLECTEES', 'SQL_COMPTES_TVA']) assert.ok(declarations[nom].includes("e.etat = 'validee'") && declarations[nom].includes("j.type <> 'an'"), nom);
   assert.ok(declarations.SQL_TAXES_COLLECTEES.includes("k.nature NOT IN ('charges', 'stocks', 'immobilisations', 'retenues_subies')"));
-  assert.ok(declarations.SQL_COMPTES_TVA.includes("x.type = 'tva' AND k.nature = 'tva_deductible'") && declarations.SQL_COMPTES_TVA.includes("k.nature NOT IN ('tva_collectee', 'retenues_operees')"));
-  assert.ok(declarations.SQL_CA.includes('k.numero LIKE ANY ($3::text[])'));
-  assert.ok(taxesCalcul.SQL_TVA_SANS_CODE.includes('NOT EXISTS (SELECT 1 FROM compta.declarations dc WHERE dc.dossier_id = l.dossier_id AND dc.ecriture_id IN (e.id, e.origine_id))'));
+  assert.ok(declarations.SQL_COMPTES_TVA.includes("x.type = 'tva' AND k.nature = 'tva_deductible'") && declarations.SQL_COMPTES_TVA.includes("k.nature NOT IN ('tva_collectee', 'retenues_operees', 'fournisseurs', 'clients')") && declarations.SQL_COMPTES_TVA.includes('NOT EXISTS (SELECT 1 FROM compta.comptes f WHERE f.parent_id = k.id AND f.actif) AS feuille'), 'comptes collectifs exclus ; comptes imputables ?');
+  assert.ok(declarations.SQL_CA.includes('k.numero LIKE ANY ($3::text[])') && declarations.SQL_CA.includes("k.nature = 'tva_collectee' AND l.taxe_id IS NOT NULL") && declarations.SQL_CA.includes('AND EXISTS (SELECT 1 FROM compta.lignes l2'), 'TCL : TVA des seules pièces du chiffre d\'affaires');
+  assert.ok(taxesCalcul.SQL_TVA_SANS_CODE.includes('AND e.liquidation_de IS NULL AND NOT EXISTS (SELECT 1 FROM compta.ecritures o WHERE o.id = e.origine_id AND o.liquidation_de IS NOT NULL)'), 'la liquidation (et sa contre-passation) n\'est pas « TVA sans code »');
+  assert.ok(taxesCalcul.SQL_TVA_PAR_PERIODE.includes("\"k.nature = 'tva_collectee' AND x.type = 'tva'\"") || taxesCalcul.SQL_TVA_PAR_PERIODE.includes("k.nature = 'tva_collectee' AND x.type = 'tva'"), 'collectée : codes de TVA seuls (une retenue de TVA subie n\'est déduite qu\'une fois)');
+  assert.ok(declarations.SQL_BROUILLARD.includes('e.liquidation_de IS NULL') && declarations.SQL_PERIODE_OUVERTE_APRES.includes('AND x.id = $3'), 'liquidation dans l\'exercice de la période');
+  assert.ok(declarations.SQL_DECLARATIONS.includes("c.origine = 'contrepassation') AS ecriture_contrepassee"));
+  assert.deepEqual(declarations.NON_COMPTEES, ['DEJA_CERTIFIEE', 'RETENUE_NULLE'], 'les autres pièces bloquées sont déclarées (sans certificat possible)');
   const src = lire('src', 'compta', 'declarations.js');
   assert.ok(!/parseFloat|toFixed/.test(src) && !/parseFloat|toFixed/.test(lire('src', 'compta', 'declarationCalcul.js')), 'jamais de flottant sur un montant');
   assert.ok(!/require\(/.test(lire('src', 'compta', 'declarationCalcul.js').replace("require('./taxesCalcul')", '')), 'calcul sans dépendance hors taxesCalcul (fiche du dossier sans cycle)');
   assert.ok(src.includes("if (!droits(acces).configurer) throw erreur(403, MSG_DECLARATION, 'NIVEAU_INSUFFISANT');") && src.includes("if (d.etat === 'archive')"));
   for (const t of ["'declaration_preparee'", "'ecriture_creee'", "'ecriture_tva_proposee'", "'declaration_marquee'", "'declaration_demarquee'"]) assert.ok(src.includes(t), `journal D16 : ${t}`);
   assert.ok(src.includes("throw erreur(409, 'Période introuvable : relisez la page', 'PERIODE_INTROUVABLE')"), 'dans la transaction, jamais de 404');
-  assert.ok(src.includes("VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, 'saisie', $11) RETURNING id") && src.includes('prochain_provisoire = prochain_provisoire + 1'), 'l\'écriture proposée est un brouillard comme une saisie');
+  assert.ok(src.includes("VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, 'saisie', $11, $12) RETURNING id") && src.includes('total_credit, origine, cree_par, liquidation_de)') && src.includes('prochain_provisoire = prochain_provisoire + 1'), 'l\'écriture proposée est un brouillard comme une saisie, marquée « liquidation_de »');
+  assert.ok(src.includes("if (exercice.etat !== 'ouvert') liquidation.raison = 'EXERCICE_CLOS';") && src.includes("liquidation.raison = 'COMPTE_NON_IMPUTABLE';") && src.includes('const ecritureActive = ecriture && !ecriture.contrepassee ? ecriture : null;'));
+  for (const code of ['RETENUES_SANS_CERTIFICAT', 'RETENUES_EXCLUES', 'CERTIFICAT_CONTREPASSE', 'DATE_FACTURE', 'RETENUES_BROUILLARD', 'BORNE', 'REGIME_FORFAITAIRE', 'LIQUIDATION_CONTREPASSEE', 'LIQUIDATION_PERIMEE', 'MOIS_PRECEDENT_NON_LIQUIDE']) assert.ok(src.includes(`code: '${code}'`), code);
   assert.ok((src.match(/await lectureDossier\(req\.user, req\.params\.dossierId\)/g) || []).length === 3, 'trois lectures');
 });
 
@@ -155,6 +169,7 @@ test('migration 220 : déclarations (une par période, marque et état figé ens
   assert.ok(sql.includes('CREATE TABLE IF NOT EXISTS compta.declarations (') && sql.includes('UNIQUE (dossier_id, periode_id)') && sql.includes('CHECK ((declaree_le IS NULL) = (marquee_le IS NULL))') && sql.includes('CHECK ((declaree_le IS NULL) = (montants IS NULL))'));
   assert.ok(sql.includes('ecriture_id   INTEGER REFERENCES compta.ecritures(id) ON DELETE SET NULL') && sql.includes('tcl           NUMERIC(18,3) CHECK (tcl IS NULL OR tcl >= 0)'));
   assert.ok(!/DROP |DELETE FROM|TRUNCATE|UPDATE compta\./.test(sql), 'additive');
+  assert.ok(sql.includes('ALTER TABLE compta.ecritures ADD COLUMN IF NOT EXISTS liquidation_de INTEGER REFERENCES compta.periodes(id) ON DELETE SET NULL;'));
   assert.ok(!/\[\[/.test(sql), 'jamais de balise de vocabulaire dans une fiche Compta');
   const texteDe = (fichier, marque) => {
     const s = lire('migrations', fichier);

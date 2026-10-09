@@ -28,9 +28,12 @@ const { exercicesDe, ajouterFeuille, nombreExcel, avecGardeExport } = require('.
 const { envoyerClasseur, jourTunis } = require('./importExcel');
 const { MARGE, LARGEUR, COULEURS, creerDocument, envoyerPdf, nomPdf } = require('./pdf');
 const { millimes, texte, paiementsDe } = require('./taxesCalcul');
-const { etatTvaDe } = require('./taxesMois');
+const { etatTvaDe, SQL_CERTIFICATS_CONTREPASSES } = require('./taxesMois');
+const { SQL_FEUILLE } = require('./configDossier');
 const { chargerOperations, certificatsDuMois } = require('./certificats');
 const { libelleMois, deMois, echeanceDe, tclDe, lignesLiquidation, totalDe, memesLignes } = require('./declarationCalcul');
+// Le libellé d'une ligne dans les fichiers (PDF, Excel) : une TCL corrigée le dit.
+const libelleFichier = (l) => `${l.libelle}${l.corrigee ? ' (montant corrigé)' : ''}`;
 
 const MSG_DECLARATION = 'Seul le titulaire ou un gérant de niveau Complet peut préparer, proposer l\'écriture de TVA ou marquer une déclaration';
 
@@ -40,15 +43,17 @@ const SQL_PERIODE = `
   SELECT p.id, p.exercice_id, p.debut::text AS debut, p.fin::text AS fin, p.etat
     FROM compta.periodes p JOIN compta.exercices x ON x.id = p.exercice_id
    WHERE x.dossier_id = $1 AND p.id = $2`;
-// Le chiffre d'affaires hors taxes du mois ($1 dossier, $2 période, $3 motifs des comptes « 70% ») : écritures validées,
-// hors à-nouveaux.
+// Le chiffre d'affaires hors taxes du mois ($1 dossier, $2 période, $3 motifs des comptes « 70% ») et la TVA collectée
+// codée DES MÊMES PIÈCES (assiette TTC de la TCL ; relecture) : écritures validées, hors à-nouveaux.
 const SQL_CA = `
-  SELECT COALESCE(SUM(l.credit - l.debit), 0)::numeric(18,3)::text AS ca
+  SELECT COALESCE(SUM(l.credit - l.debit) FILTER (WHERE k.numero LIKE ANY ($3::text[])), 0)::numeric(18,3)::text AS ca,
+         COALESCE(SUM(l.credit - l.debit) FILTER (WHERE k.nature = 'tva_collectee' AND l.taxe_id IS NOT NULL), 0)::numeric(18,3)::text AS tva
     FROM compta.lignes l
     JOIN compta.ecritures e ON e.id = l.ecriture_id
     JOIN compta.journaux j ON j.id = e.journal_id
     JOIN compta.comptes k ON k.id = l.compte_id
-   WHERE l.dossier_id = $1 AND e.periode_id = $2 AND e.etat = 'validee' AND j.type <> 'an' AND k.numero LIKE ANY ($3::text[])`;
+   WHERE l.dossier_id = $1 AND e.periode_id = $2 AND e.etat = 'validee' AND j.type <> 'an'
+     AND EXISTS (SELECT 1 FROM compta.lignes l2 JOIN compta.comptes k2 ON k2.id = l2.compte_id WHERE l2.ecriture_id = e.id AND k2.numero LIKE ANY ($3::text[]))`;
 // Timbre, FODEC et avances COLLECTÉS du mois ($1 dossier, $2 période) : lignes de ces codes hors comptes de charges, de stocks,
 // d'immobilisations et de retenues subies (le côté achat), crédit − débit ; nombre de pièces.
 const SQL_TAXES_COLLECTEES = `
@@ -64,7 +69,7 @@ const SQL_TAXES_COLLECTEES = `
 // Les soldes des comptes de TVA du mois ($1 dossier, $2 période), lignes codées des écritures validées hors à-nouveaux, comme
 // l'état de TVA (collectée, déductible, retenue de TVA subie) : la liquidation les solde.
 const SQL_COMPTES_TVA = `
-  SELECT k.id AS compte_id, k.numero, k.nature, BOOL_AND(x.type = 'retenue_tva') AS subie, SUM(l.debit - l.credit)::numeric(18,3)::text AS solde
+  SELECT k.id AS compte_id, k.numero, k.nature, k.actif, ${SQL_FEUILLE('k')} AS feuille, BOOL_AND(x.type = 'retenue_tva') AS subie, SUM(l.debit - l.credit)::numeric(18,3)::text AS solde
     FROM compta.lignes l
     JOIN compta.ecritures e ON e.id = l.ecriture_id
     JOIN compta.journaux j ON j.id = e.journal_id
@@ -72,19 +77,20 @@ const SQL_COMPTES_TVA = `
     JOIN compta.taxes x ON x.id = l.taxe_id
    WHERE l.dossier_id = $1 AND e.periode_id = $2 AND e.etat = 'validee' AND j.type <> 'an'
      AND ((x.type IN ('tva', 'retenue_tva') AND k.nature = 'tva_collectee') OR (x.type = 'tva' AND k.nature = 'tva_deductible')
-          OR (x.type = 'retenue_tva' AND k.nature NOT IN ('tva_collectee', 'retenues_operees')))
-   GROUP BY k.id, k.numero, k.nature
+          OR (x.type = 'retenue_tva' AND k.nature NOT IN ('tva_collectee', 'retenues_operees', 'fournisseurs', 'clients')))
+   GROUP BY k.id
   HAVING SUM(l.debit - l.credit) <> 0
    ORDER BY k.numero`;
-// Écritures en brouillard de la période ($1 dossier, $2 période), hors l'écriture de liquidation proposée par une déclaration.
+// Écritures en brouillard de la période ($1 dossier, $2 période), hors écritures de liquidation proposées par une déclaration.
 const SQL_BROUILLARD = `
   SELECT COUNT(*)::int AS n FROM compta.ecritures e
-   WHERE e.dossier_id = $1 AND e.periode_id = $2 AND e.etat = 'brouillard'
-     AND NOT EXISTS (SELECT 1 FROM compta.declarations dc WHERE dc.dossier_id = e.dossier_id AND dc.ecriture_id = e.id)`;
+   WHERE e.dossier_id = $1 AND e.periode_id = $2 AND e.etat = 'brouillard' AND e.liquidation_de IS NULL`;
 // Les déclarations ($1 dossier, $2 périodes), avec leur écriture de liquidation et leurs auteurs.
 const SQL_DECLARATIONS = `
   SELECT dc.id, dc.periode_id, dc.saisies, dc.tcl::text AS tcl, dc.ecriture_id, e.numero AS ecriture_numero, e.numero_provisoire AS ecriture_provisoire,
-         e.etat AS ecriture_etat, e.date::text AS ecriture_date, dc.declaree_le::text AS declaree_le, dc.marquee_le, u.nom AS declaree_par_nom,
+         e.etat AS ecriture_etat, e.date::text AS ecriture_date, e.total_debit::text AS ecriture_total,
+         EXISTS (SELECT 1 FROM compta.ecritures c WHERE c.origine_id = e.id AND c.origine = 'contrepassation') AS ecriture_contrepassee,
+         dc.declaree_le::text AS declaree_le, dc.marquee_le, u.nom AS declaree_par_nom,
          dc.montants, dc.total::text AS total, dc.updated_at, um.nom AS modifie_par_nom
     FROM compta.declarations dc
     LEFT JOIN compta.ecritures e ON e.id = dc.ecriture_id
@@ -92,13 +98,16 @@ const SQL_DECLARATIONS = `
     LEFT JOIN utilisateurs um ON um.id = dc.modifie_par
    WHERE dc.dossier_id = $1 AND dc.periode_id = ANY($2)`;
 // Les comptes du dossier aux numéros donnés ($1 dossier, $2 numéros).
-const SQL_COMPTES_NUMEROS = 'SELECT id, numero, libelle FROM compta.comptes WHERE dossier_id = $1 AND numero = ANY($2)';
+const SQL_COMPTES_NUMEROS = `SELECT k.id, k.numero, k.libelle, k.actif, ${SQL_FEUILLE('k')} AS feuille FROM compta.comptes k WHERE k.dossier_id = $1 AND k.numero = ANY($2)`;
+// Le code et l'assiette des codes de retenue du dossier ($1 dossier) : la base d'une retenue sur le hors taxes.
+const SQL_ASSIETTES = `SELECT code, assiette FROM compta.taxes WHERE dossier_id = $1 AND type IN ('retenue', 'retenue_tva')`;
 // Le journal des opérations diverses du dossier ($1 dossier) : le premier actif.
 const SQL_JOURNAL_OD = `SELECT id FROM compta.journaux WHERE dossier_id = $1 AND type = 'od' AND actif ORDER BY code LIMIT 1`;
-// La première période ouverte d'un exercice ouvert après une date ($1 dossier, $2 date).
+// La première période ouverte après une date, DANS L'EXERCICE de la période déclarée ($1 dossier, $2 date, $3 exercice) :
+// une liquidation datée dans l'exercice suivant ferait reprendre en à-nouveaux un crédit déjà imputé (relecture de S7c).
 const SQL_PERIODE_OUVERTE_APRES = `
   SELECT p.debut::text AS debut FROM compta.periodes p JOIN compta.exercices x ON x.id = p.exercice_id
-   WHERE x.dossier_id = $1 AND x.etat = 'ouvert' AND p.etat = 'ouverte' AND p.debut > $2::date
+   WHERE x.dossier_id = $1 AND x.id = $3 AND x.etat = 'ouvert' AND p.etat = 'ouverte' AND p.debut > $2::date
    ORDER BY p.debut LIMIT 1`;
 
 // ── Sélection ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -132,43 +141,63 @@ const selection = async (db, d, periodeId) => {
 
 // ── Calcul ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 const regimeDe = (d) => ({ personne: d.personne, teledeclaration: !!d.teledeclaration });
-// Les retenues opérées des paiements du mois (écritures validées) : par nature (code TEJ, sinon code) — certifiées
-// (certificats produits du mois) et à certifier (paiements du mois sans certificat) — et retenues de TVA opérées par code ;
-// les pièces bloquées et en brouillard du mois, comptées à part (non déclarées ici).
+// Les retenues opérées des paiements du mois (écritures validées) : par nature (code TEJ, sinon code, et taux) — certifiées
+// (certificats produits du mois), à certifier (paiements du mois sans certificat) et SANS CERTIFICAT POSSIBLE (pièces
+// bloquées pour la plateforme mais dont la retenue est due : code sans code TEJ, montant fixe, retenue passée sur un
+// règlement… — relecture : la déclaration les porte) — et retenues de TVA opérées par code ; base selon l'assiette du code
+// (hors taxes ou TTC). À part : pièces exclues (une retenue déjà certifiée dans la pièce), brouillards, dates de facture,
+// certificats contre-passés, borne de lecture.
+const NON_COMPTEES = ['DEJA_CERTIFIEE', 'RETENUE_NULLE'];
 const retenuesDuMois = async (db, d, periode, fiscalite) => {
-  const [{ operations }, certificats] = await Promise.all([chargerOperations(db, d.id), certificatsDuMois(db, d.id, periode.debut, periode.fin)]);
+  const [{ operations, borne }, certificats, assiettes, contrepasses] = await Promise.all([
+    chargerOperations(db, d.id), certificatsDuMois(db, d.id, periode.debut, periode.fin), db.query(SQL_ASSIETTES, [d.id]),
+    db.query(SQL_CERTIFICATS_CONTREPASSES, [d.id, periode.debut, periode.fin]),
+  ]);
+  const assietteDe = new Map(assiettes.rows.map((x) => [x.code, x.assiette]));
   const dans = (iso) => iso >= periode.debut && iso <= periode.fin;
   const parNature = new Map();
   const parTva = new Map();
   const libellesTva = new Map((fiscalite?.tej?.codesTaxesAdditionnelles || []).map((o) => [o.code, o.libelle]));
-  const ajouter = (o, certifie) => {
-    const cle = o.codeTej || o.code;
-    if (!parNature.has(cle)) parNature.set(cle, { cle, codeTej: o.codeTej || null, code: o.code, libelle: o.libelleCode || o.code, taux: o.tauxRs, base: 0n, certifie: 0n, aCertifier: 0n, nb: 0 });
+  const ajouter = (o, etat) => {
+    const cle = `${o.codeTej || o.code || '?'}|${o.tauxRs ?? ''}`;
+    if (!parNature.has(cle)) parNature.set(cle, { cle, codeTej: o.codeTej || null, code: o.code, libelle: o.libelleCode || o.code, taux: o.tauxRs, base: 0n, certifie: 0n, aCertifier: 0n, nonCertifiable: 0n, nb: 0 });
     const n = parNature.get(cle);
-    n.nb += 1;
-    n.base += millimes(o.ttc);
-    if (certifie) n.certifie += millimes(o.rs); else n.aCertifier += millimes(o.rs);
+    const rs = millimes(o.rs);
+    if (rs > 0n) {
+      n.nb += 1;
+      n.base += millimes(assietteDe.get(o.code) === 'ht' ? o.ht : o.ttc);
+      n[etat] += rs;
+    }
     if (o.rsTva) {
       const c = o.rsTva.code || 'RSTVA';
       if (!parTva.has(c)) parTva.set(c, { code: c, libelle: libellesTva.get(c) || 'Retenue à la source de TVA', montant: 0n });
       parTva.get(c).montant += millimes(o.rsTva.montant);
     }
   };
-  for (const p of paiementsDe(operations).filter((x) => dans(x.date))) for (const o of p.operations) ajouter(o, false);
-  for (const c of certificats.filter((x) => x.etat === 'produit')) for (const o of c.operations) ajouter(o, true);
-  const natures = [...parNature.values()].sort((a, b) => String(a.cle).localeCompare(String(b.cle)))
-    .map((n) => ({ ...n, base: texte(n.base), certifie: texte(n.certifie), aCertifier: texte(n.aCertifier), montant: texte(n.certifie + n.aCertifier) }));
+  const paiements = paiementsDe(operations).filter((x) => dans(x.date));
+  for (const p of paiements) for (const o of p.operations) ajouter(o, 'aCertifier');
+  for (const c of certificats.filter((x) => x.etat === 'produit')) for (const o of c.operations) ajouter(o, 'certifie');
+  const aProbleme = operations.filter((o) => o.etat === 'validee' && o.probleme && dans(o.dateProposee));
+  const sansCertificat = aProbleme.filter((o) => !NON_COMPTEES.includes(o.probleme.code));
+  for (const o of sansCertificat) ajouter(o, 'nonCertifiable');
+  const natures = [...parNature.values()].filter((n) => n.nb > 0).sort((a, b) => String(a.cle).localeCompare(String(b.cle)))
+    .map((n) => ({ ...n, base: texte(n.base), certifie: texte(n.certifie), aCertifier: texte(n.aCertifier), nonCertifiable: texte(n.nonCertifiable), montant: texte(n.certifie + n.aCertifier + n.nonCertifiable) }));
   const tva = [...parTva.values()].map((t) => ({ ...t, montant: texte(t.montant) }));
+  const resume = (o) => ({ ecritureId: o.ecritureId, reference: o.numero || o.reference, message: o.probleme.message });
   return {
     natures, tva,
     total: texte(natures.reduce((t, n) => t + millimes(n.montant), 0n) + tva.reduce((t, x) => t + millimes(x.montant), 0n)),
-    bloquees: operations.filter((o) => o.etat === 'validee' && o.probleme && dans(o.dateProposee)).map((o) => ({ ecritureId: o.ecritureId, reference: o.numero || o.reference, message: o.probleme.message })),
+    sansCertificat: sansCertificat.map(resume),
+    exclues: aProbleme.filter((o) => NON_COMPTEES.includes(o.probleme.code)).map(resume),
     brouillard: operations.filter((o) => o.etat !== 'validee' && dans(o.dateFacture)).length,
+    dateFacture: paiements.filter((p) => p.sourceDate === 'facture').length,
+    contrepasses: contrepasses.rows.map((c) => c.reference),
+    borne,
   };
 };
 const presenterDeclaration = (r) => (r ? {
   id: r.id, saisies: r.saisies || {}, tcl: r.tcl,
-  ecriture: r.ecriture_id ? { id: r.ecriture_id, numero: r.ecriture_numero || null, numeroProvisoire: r.ecriture_provisoire != null ? numeroProvisoire(r.ecriture_provisoire) : null, etat: r.ecriture_etat, date: r.ecriture_date } : null,
+  ecriture: r.ecriture_id ? { id: r.ecriture_id, numero: r.ecriture_numero || null, numeroProvisoire: r.ecriture_provisoire != null ? numeroProvisoire(r.ecriture_provisoire) : null, etat: r.ecriture_etat, date: r.ecriture_date, total: r.ecriture_total, contrepassee: !!r.ecriture_contrepassee } : null,
   marque: r.declaree_le ? { date: r.declaree_le, le: r.marquee_le, par: r.declaree_par_nom || null, total: r.total, lignes: (r.montants || {}).lignes || [] } : null,
   modifieLe: r.updated_at, modifiePar: r.modifie_par_nom || null,
 } : null);
@@ -183,7 +212,7 @@ const lignesDe = ({ tva, retenues, collectees, tcl, declaration, saisiesDef }) =
   if (millimes(collectees.fodec.montant) !== 0n) lignes.push({ cle: 'fodec', rubrique: 'FODEC', libelle: 'FODEC collecté', montant: collectees.fodec.montant });
   if (tcl) {
     const corrigee = declaration && declaration.tcl != null;
-    lignes.push({ cle: 'tcl', rubrique: 'TCL', libelle: `TCL (${Number(tcl.taux).toLocaleString('fr-FR')} % du chiffre d'affaires ${tcl.assiette === 'ttc' ? 'brut TTC' : 'hors taxes'})${corrigee ? ' — montant corrigé' : ''}`, montant: corrigee ? texte(millimes(declaration.tcl)) : tcl.montant, corrigee });
+    lignes.push({ cle: 'tcl', rubrique: 'TCL', libelle: `TCL (${Number(tcl.taux).toLocaleString('fr-FR')} % du chiffre d'affaires ${tcl.assiette === 'ttc' ? 'brut TTC' : 'hors taxes'})`, montant: corrigee ? texte(millimes(declaration.tcl)) : tcl.montant, corrigee });
   }
   const saisies = (declaration && declaration.saisies) || {};
   for (const s of saisiesDef) lignes.push({ cle: `saisie:${s.cle}`, rubrique: 'Saisi à la main', libelle: s.libelle, montant: saisies[s.cle] != null ? texte(millimes(saisies[s.cle])) : '0.000', saisie: true });
@@ -191,7 +220,10 @@ const lignesDe = ({ tva, retenues, collectees, tcl, declaration, saisiesDef }) =
 };
 
 // L'état complet d'une déclaration (lecture et contrôles des écritures). `db` : pool ou client de la transaction.
-const etatDeclaration = async (db, d, sel, { avecHistorique = true } = {}) => {
+// `liquidationSeule` : la proposition de l'écriture de TVA (sous le verrou de la comptabilité) ne lit ni les retenues, ni le
+// chiffre d'affaires, ni les taxes collectées (relecture : calcul allégé).
+const RETENUES_VIDES = { natures: [], tva: [], total: '0.000', sansCertificat: [], exclues: [], brouillard: 0, dateFacture: 0, contrepasses: [], borne: false };
+const etatDeclaration = async (db, d, sel, { avecHistorique = true, liquidationSeule = false } = {}) => {
   const { exercices, exercice, periode } = sel;
   const fiscalite = fiscaliteDe(d.pays);
   const dec = fiscalite?.declaration || null;
@@ -201,9 +233,9 @@ const etatDeclaration = async (db, d, sel, { avecHistorique = true } = {}) => {
   const periodesExercice = exercice.periodes.map((p) => p.id);
   const [tva, retenues, ca, collectees, comptesTva, brouillard, rangees, comptes, journalOd] = await Promise.all([
     etatTvaDe(db, d, exercice, periode, false, exercices),
-    retenuesDuMois(db, d, periode, fiscalite),
-    prefixes.length ? db.query(SQL_CA, [d.id, periode.id, prefixes]) : { rows: [{ ca: '0.000' }] },
-    db.query(SQL_TAXES_COLLECTEES, [d.id, periode.id]),
+    liquidationSeule ? RETENUES_VIDES : retenuesDuMois(db, d, periode, fiscalite),
+    prefixes.length && !liquidationSeule ? db.query(SQL_CA, [d.id, periode.id, prefixes]) : { rows: [{ ca: '0.000', tva: '0.000' }] },
+    liquidationSeule ? { rows: [] } : db.query(SQL_TAXES_COLLECTEES, [d.id, periode.id]),
     db.query(SQL_COMPTES_TVA, [d.id, periode.id]),
     db.query(SQL_BROUILLARD, [d.id, periode.id]),
     db.query(SQL_DECLARATIONS, [d.id, periodesExercice]),
@@ -212,7 +244,7 @@ const etatDeclaration = async (db, d, sel, { avecHistorique = true } = {}) => {
   ]);
   const col = (type) => { const r = collectees.rows.find((x) => x.type === type); return { montant: r ? r.montant : '0.000', nb: r ? r.nb : 0 }; };
   const taxesCollectees = { timbre: col('timbre'), fodec: col('fodec'), avance: col('avance') };
-  const tcl = tclDe({ ca: ca.rows[0].ca, tvaCollectee: tva.collectee, tcl: dec?.tcl, exportateur: !!d.exportateur_total });
+  const tcl = tclDe({ ca: ca.rows[0].ca, tvaCollectee: ca.rows[0].tva, tcl: dec?.tcl, exportateur: !!d.exportateur_total });
   const ligneDec = rangees.rows.find((r) => r.periode_id === periode.id) || null;
   const declaration = presenterDeclaration(ligneDec);
   const saisiesDef = dec?.saisies || [];
@@ -225,9 +257,12 @@ const etatDeclaration = async (db, d, sel, { avecHistorique = true } = {}) => {
   const parNumero = new Map(comptes.rows.map((k) => [k.numero, k]));
   const kCredit = parNumero.get(fiscalite?.tva?.compteCredit);
   const kAPayer = parNumero.get(fiscalite?.tva?.compteAPayer);
-  let liquidation = { lignes: [], total: '0.000', date: null, dateReelle: null, possible: false, raison: null };
+  let liquidation = { lignes: [], total: '0.000', date: null, dateReelle: null, possible: false, raison: null, detail: null };
   const ecriture = declaration && declaration.ecriture;
-  if (ecriture) liquidation.raison = 'DEJA';
+  // Une liquidation contre-passée ne compte plus : une nouvelle se propose (relecture).
+  const ecritureActive = ecriture && !ecriture.contrepassee ? ecriture : null;
+  if (exercice.etat !== 'ouvert') liquidation.raison = 'EXERCICE_CLOS';
+  else if (ecritureActive) liquidation.raison = 'DEJA';
   else if (!finie) liquidation.raison = 'PERIODE_EN_COURS';
   else if (brouillard.rows[0].n) liquidation.raison = 'BROUILLARD';
   else if (!kCredit || !kAPayer) liquidation.raison = 'COMPTES';
@@ -238,11 +273,18 @@ const etatDeclaration = async (db, d, sel, { avecHistorique = true } = {}) => {
     liquidation.total = texte(l.total);
     if (!liquidation.raison && l.ecart) liquidation.raison = 'ECART';
     if (!liquidation.raison && !l.lignes.length) liquidation.raison = 'RIEN';
+    // Un compte désactivé ou subdivisé ne reçoit pas d'écriture : dit dès l'aperçu (relecture).
+    const parId = new Map([...comptesTva.rows.map((k) => [k.compte_id, k]), [kCredit.id, kCredit], [kAPayer.id, kAPayer]]);
+    const bloquants = [...new Set(l.lignes.map((x) => parId.get(x.compteId)).filter((k) => k && (!k.actif || !k.feuille)).map((k) => k.numero))];
+    if (!liquidation.raison && bloquants.length) {
+      liquidation.raison = 'COMPTE_NON_IMPUTABLE';
+      liquidation.detail = `Compte${bloquants.length > 1 ? 's' : ''} ${bloquants.join(', ')} désactivé${bloquants.length > 1 ? 's' : ''} ou subdivisé${bloquants.length > 1 ? 's' : ''} : reclassez le solde sur le sous-compte par une écriture, ou réactivez le compte (page Plan de comptes)`;
+    }
   }
   if (!liquidation.raison) {
     if (periode.etat === 'ouverte') liquidation = { ...liquidation, date: periode.fin, dateReelle: null };
     else {
-      const suivante = (await db.query(SQL_PERIODE_OUVERTE_APRES, [d.id, periode.fin])).rows[0];
+      const suivante = (await db.query(SQL_PERIODE_OUVERTE_APRES, [d.id, periode.fin, exercice.id])).rows[0];
       if (suivante) liquidation = { ...liquidation, date: suivante.debut, dateReelle: periode.fin };
       else liquidation.raison = 'PAS_DE_PERIODE_OUVERTE';
     }
@@ -253,9 +295,25 @@ const etatDeclaration = async (db, d, sel, { avecHistorique = true } = {}) => {
   const signalements = [];
   const marque = declaration && declaration.marque;
   if (!finie) signalements.push({ code: 'PERIODE_EN_COURS', gravite: 'info', message: `Le mois n'est pas fini (jusqu'au ${fmtDate(periode.fin)}) : les montants vont encore changer` });
-  else if (periode.etat === 'ouverte') signalements.push({ code: 'PERIODE_OUVERTE', gravite: 'attention', message: 'Période encore ouverte : clôturez-la (page Périodes) avant de déclarer, sinon une écriture ajoutée changera les montants' });
+  else if (periode.etat === 'ouverte') signalements.push({ code: 'PERIODE_OUVERTE', gravite: 'attention', message: 'Période encore ouverte : proposez et validez l\'écriture de TVA, puis clôturez la période (page Périodes) avant de déclarer — sinon une écriture ajoutée changera les montants' });
   if (brouillard.rows[0].n) signalements.push({ code: 'BROUILLARD', gravite: 'attention', message: `${brouillard.rows[0].n} écriture${brouillard.rows[0].n > 1 ? 's' : ''} en brouillard dans la période : non comptée${brouillard.rows[0].n > 1 ? 's' : ''} (validez-les ou supprimez-les, page Écritures)` });
-  if (retenues.bloquees.length) signalements.push({ code: 'RETENUES_BLOQUEES', gravite: 'attention', message: `${retenues.bloquees.length} pièce${retenues.bloquees.length > 1 ? 's' : ''} à retenue bloquée${retenues.bloquees.length > 1 ? 's' : ''} non comptée${retenues.bloquees.length > 1 ? 's' : ''} (${retenues.bloquees.slice(0, 5).map((b) => b.reference).join(', ')}${retenues.bloquees.length > 5 ? '…' : ''}) : à corriger, page Taxes du mois` });
+  const liste = (xs) => `${xs.slice(0, 5).map((b) => b.reference || b).join(', ')}${xs.length > 5 ? '…' : ''}`;
+  const pl = (n, un, des) => `${n} ${n > 1 ? des : un}`;
+  if (retenues.sansCertificat.length) signalements.push({ code: 'RETENUES_SANS_CERTIFICAT', gravite: 'attention', message: `${pl(retenues.sansCertificat.length, 'pièce à retenue comptée', 'pièces à retenue comptées')} sans certificat possible sur la plateforme (${liste(retenues.sansCertificat)}) : la déclaration les porte ; leur certificat s'établit à la main sur TEJ, ou corrigez la pièce (page Taxes du mois)` });
+  if (retenues.exclues.length) signalements.push({ code: 'RETENUES_EXCLUES', gravite: 'attention', message: `${pl(retenues.exclues.length, 'pièce à retenue non comptée', 'pièces à retenue non comptées')} (${liste(retenues.exclues)}) : une retenue de la pièce est déjà dans un certificat — annulez ce certificat pour certifier la pièce entière (page Taxes du mois)` });
+  if (retenues.contrepasses.length) signalements.push({ code: 'CERTIFICAT_CONTREPASSE', gravite: 'attention', message: `Certificat${retenues.contrepasses.length > 1 ? 's' : ''} ${liste(retenues.contrepasses)} : une pièce a été contre-passée depuis — sa retenue reste comptée tant que le certificat n'est pas annulé (page Taxes du mois)` });
+  if (retenues.dateFacture) signalements.push({ code: 'DATE_FACTURE', gravite: 'info', message: `${pl(retenues.dateFacture, 'paiement à retenue daté', 'paiements à retenue datés')} de la facture faute de règlement lettré : lettrer le règlement à une autre date le ferait changer de mois` });
+  if (retenues.brouillard) signalements.push({ code: 'RETENUES_BROUILLARD', gravite: 'info', message: `${pl(retenues.brouillard, 'pièce à retenue en brouillard', 'pièces à retenue en brouillard')} du mois : non comptée${retenues.brouillard > 1 ? 's' : ''} tant qu'elle${retenues.brouillard > 1 ? 's ne sont pas validées' : ' n\'est pas validée'}` });
+  if (retenues.borne) signalements.push({ code: 'BORNE', gravite: 'attention', message: 'Lecture bornée aux 5 000 pièces à retenue les plus récentes du dossier : un mois ancien peut être incomplet' });
+  if (d.tva === 'forfaitaire') signalements.push({ code: 'REGIME_FORFAITAIRE', gravite: 'attention', message: 'Dossier au régime forfaitaire : déclarations et TCL particulières (trimestre, part de l\'impôt) — cette page suit le régime réel, à valider par un comptable' });
+  if (ecriture && ecriture.contrepassee) signalements.push({ code: 'LIQUIDATION_CONTREPASSEE', gravite: 'info', message: `L'écriture de TVA ${ecriture.numero || ecriture.numeroProvisoire} a été contre-passée : proposez-en une nouvelle` });
+  if (ecritureActive && ecritureActive.total != null && millimes(ecritureActive.total) !== millimes(liquidation.total) && liquidation.lignes.length) signalements.push({ code: 'LIQUIDATION_PERIMEE', gravite: 'attention', message: `L'écriture de TVA ${ecritureActive.numero || ecritureActive.numeroProvisoire} (${fmtMillimes(millimes(ecritureActive.total))} D) ne correspond plus à la TVA du mois (${fmtMillimes(millimes(liquidation.total))} D) : supprimez-la (brouillard) ou contre-passez-la (validée), puis proposez-en une nouvelle` });
+  if (millimes(tva.creditReporte) > 0n && !liquidationSeule) {
+    const i = exercice.periodes.findIndex((p) => p.id === periode.id);
+    const precedente = i > 0 ? exercice.periodes[i - 1] : null;
+    const rp = precedente ? presenterDeclaration(rangees.rows.find((x) => x.periode_id === precedente.id)) : null;
+    if (precedente && !(rp && rp.ecriture && !rp.ecriture.contrepassee)) signalements.push({ code: 'MOIS_PRECEDENT_NON_LIQUIDE', gravite: 'info', message: `Le mois précédent (${libelleMois(precedente.fin)}) n'a pas d'écriture de TVA proposée : liquidez les mois dans l'ordre, le crédit reporté passe par le compte ${tva.compteCredit || 'du crédit de TVA'}` });
+  }
   if (tva.sansCode.nb) signalements.push({ code: 'TVA_SANS_CODE', gravite: 'attention', message: `${tva.sansCode.nb} ligne${tva.sansCode.nb > 1 ? 's' : ''} de TVA sans code de taxe dans la période (collectée ${fmtMillimes(millimes(tva.sansCode.collectee))} D, déductible ${fmtMillimes(millimes(tva.sansCode.deductible))} D) : non comptée${tva.sansCode.nb > 1 ? 's' : ''}` });
   if (tva.creditNonRepris) signalements.push({ code: 'CREDIT_NON_REPRIS', gravite: 'attention', message: `Crédit de TVA de l'exercice précédent non repris : ${fmtMillimes(millimes(tva.creditNonRepris.montant))} D calculés au ${fmtDate(tva.creditNonRepris.fin)}, aucun à-nouveau sur le compte ${tva.compteCredit || 'du crédit de TVA'}` });
   if (echeance && !marque && aujourdhui > echeance.date) signalements.push({ code: 'ECHEANCE_DEPASSEE', gravite: 'attention', message: `Échéance du ${fmtDate(echeance.date)} dépassée et déclaration non marquée comme déposée` });
@@ -279,7 +337,7 @@ const etatDeclaration = async (db, d, sel, { avecHistorique = true } = {}) => {
       creditReporte: tva.creditReporte, resultat: tva.resultat, aPayer: tva.aPayer, creditAReporter: tva.creditAReporter, compteCredit: tva.compteCredit,
       codes: tva.codes.filter((c) => c.type === 'tva' && [c.collectee, c.deductible, c.deductibleImmo, c.baseVente, c.baseAchat].some((v) => millimes(v) !== 0n)),
     },
-    retenues: { natures: retenues.natures, tva: retenues.tva, total: retenues.total, bloquees: retenues.bloquees, brouillard: retenues.brouillard },
+    retenues: { natures: retenues.natures, tva: retenues.tva, total: retenues.total, sansCertificat: retenues.sansCertificat, exclues: retenues.exclues, brouillard: retenues.brouillard },
     collectees: taxesCollectees, tcl,
     saisies: saisiesDef.map((s) => ({ cle: s.cle, libelle: s.libelle, montant: declaration && declaration.saisies[s.cle] != null ? texte(millimes(declaration.saisies[s.cle])) : null })),
     lignes, total, declaration, ecart, liquidation, historique, signalements,
@@ -305,7 +363,8 @@ const lire = async (req, res) => {
 
 const titreDe = (e) => `Déclaration mensuelle ${deMois(e.periode.fin)}`;
 const metaDe = (d, e) => `${d.raison_sociale || d.nom}${d.matricule_fiscal ? ` · matricule ${d.matricule_fiscal}` : ''} · du ${fmtDate(e.periode.debut)} au ${fmtDate(e.periode.fin)}${e.echeance ? ` · échéance le ${fmtDate(e.echeance.date)}` : ''} · écritures validées · ${jourTunis()}`;
-// GET …/declaration/export?periode= — l'état préparatoire à la charte (Excel ; trois feuilles), sous la garde des exports.
+// GET …/declaration/export?periode= — l'état préparatoire à la charte (Excel ; trois feuilles, une quatrième « Déclaré » pour
+// un mois marqué : l'état figé), sous la garde des exports.
 const exporter = (req, res) => avecGardeExport(res, '[compta.declarations.exporter]', async () => {
   const f = lireParametres(req.query);
   const { d } = await lectureDossier(req.user, req.params.dossierId);
@@ -315,7 +374,7 @@ const exporter = (req, res) => avecGardeExport(res, '[compta.declarations.export
   ajouterFeuille(wb, {
     feuille: 'Déclaration', titre: titreDe(e), sousTitre: d.nom, metaTexte: meta,
     enTetes: ['Rubrique', 'Ligne', 'Montant (D)'], largeurs: [28, 70, 18], montants: [3],
-    rangees: e.lignes.map((l) => [l.rubrique, l.libelle, nombreExcel(l.montant)]),
+    rangees: e.lignes.map((l) => [l.rubrique, libelleFichier(l), nombreExcel(l.montant)]),
     total: ['Total à payer', e.declaration?.marque ? `Déclarée le ${fmtDate(e.declaration.marque.date)}` : '', nombreExcel(e.total)],
   });
   const t = e.tva;
@@ -334,13 +393,22 @@ const exporter = (req, res) => avecGardeExport(res, '[compta.declarations.export
   });
   ajouterFeuille(wb, {
     feuille: 'Retenues', titre: 'Retenues à la source par nature (paiements du mois)', sousTitre: d.nom, metaTexte: meta,
-    enTetes: ['Code TEJ', 'Nature', 'Taux (%)', 'Pièces', 'Base TTC', 'Certifiées', 'À certifier', 'Retenue'], largeurs: [14, 50, 9, 9, 16, 16, 16, 16], montants: [5, 6, 7, 8],
+    enTetes: ['Code TEJ', 'Nature', 'Taux (%)', 'Pièces', 'Base', 'Certifiées', 'À certifier', 'Sans certificat', 'Retenue'], largeurs: [14, 50, 9, 9, 16, 16, 16, 16, 16], montants: [5, 6, 7, 8, 9],
     rangees: [
-      ...e.retenues.natures.map((n) => [n.codeTej || '', `${n.code} — ${n.libelle}`, n.taux != null ? Number(n.taux) : '', n.nb, nombreExcel(n.base), nombreExcel(n.certifie), nombreExcel(n.aCertifier), nombreExcel(n.montant)]),
-      ...e.retenues.tva.map((x) => [x.code, x.libelle, '', '', null, null, null, nombreExcel(x.montant)]),
+      ...e.retenues.natures.map((n) => [n.codeTej || '', `${n.code} — ${n.libelle}`, n.taux != null ? Number(n.taux) : '', n.nb, nombreExcel(n.base), nombreExcel(n.certifie), nombreExcel(n.aCertifier), nombreExcel(n.nonCertifiable), nombreExcel(n.montant)]),
+      ...e.retenues.tva.map((x) => [x.code, x.libelle, '', '', null, null, null, null, nombreExcel(x.montant)]),
     ],
-    total: ['Total', '', '', '', null, null, null, nombreExcel(e.retenues.total)],
+    total: ['Total', '', '', '', null, null, null, null, nombreExcel(e.retenues.total)],
   });
+  const marque = e.declaration?.marque;
+  if (marque) {
+    ajouterFeuille(wb, {
+      feuille: 'Déclaré', titre: `Déclaration déposée le ${fmtDate(marque.date)} (état figé)`, sousTitre: d.nom, metaTexte: `${meta}${e.ecart ? ' · les montants ont changé depuis' : ''}`,
+      enTetes: ['Rubrique', 'Ligne', 'Montant déclaré (D)'], largeurs: [28, 70, 18], montants: [3],
+      rangees: marque.lignes.map((l) => [l.rubrique, l.libelle, nombreExcel(l.montant)]),
+      total: ['Total déclaré', marque.par ? `Marquée par ${marque.par}` : '', nombreExcel(marque.total)],
+    });
+  }
   await envoyerClasseur(res, wb, nomPdf('declaration', d.nom, e.periode.debut.slice(0, 7)).replace(/\.pdf$/, '.xlsx'));
 });
 
@@ -357,13 +425,25 @@ const construirePdf = (d, e) => {
   const enTete = () => { p.rangee([{ t: 'Rubrique' }, { t: 'Ligne' }, { t: 'Montant (D)', aligner: 'right' }], COL, { taille: 8, gras: true, couleur: COULEURS.gris }); p.filet(p.y); };
   enTete();
   for (const l of e.lignes) {
-    const cellules = [{ t: l.rubrique }, { t: l.libelle }, { t: fmtMillimes(millimes(l.montant)), aligner: 'right' }];
+    const cellules = [{ t: l.rubrique }, { t: libelleFichier(l) }, { t: fmtMillimes(millimes(l.montant)), aligner: 'right' }];
     p.assurer(p.hauteurRangee(cellules, COL, 8.5), enTete);
     p.rangee(cellules, COL, { taille: 8.5 });
   }
   p.filet(p.y);
   p.rangee([{ t: 'Total à payer' }, { t: '' }, { t: fmtMillimes(millimes(e.total)), aligner: 'right' }], COL, { taille: 9.5, gras: true, fond: COULEURS.bande });
   p.y += 10;
+  // Un mois marqué dont les montants ont changé : les lignes déclarées (état figé), pour la déclaration rectificative.
+  if (e.declaration?.marque && e.ecart) {
+    const m = e.declaration.marque;
+    p.paragraphe(`Lignes déclarées le ${fmtDate(m.date)} (état figé ; les montants ont changé depuis)`, { taille: 10, gras: true, couleur: COULEURS.alerte });
+    for (const l of m.lignes) {
+      const c = [{ t: l.rubrique }, { t: l.libelle }, { t: fmtMillimes(millimes(l.montant)), aligner: 'right' }];
+      p.assurer(p.hauteurRangee(c, COL, 8.5), enTete);
+      p.rangee(c, COL, { taille: 8.5 });
+    }
+    p.rangee([{ t: 'Total déclaré' }, { t: '' }, { t: fmtMillimes(millimes(m.total)), aligner: 'right' }], COL, { taille: 9, gras: true, fond: COULEURS.bande });
+    p.y += 10;
+  }
   const t = e.tva;
   p.paragraphe('TVA du mois', { taille: 10, gras: true });
   const COLT = [LARGEUR - 120, 120];
@@ -375,14 +455,18 @@ const construirePdf = (d, e) => {
     p.y += 8;
     p.paragraphe('Retenues à la source par nature (paiements du mois)', { taille: 10, gras: true });
     const COLR = [80, LARGEUR - 320, 80, 80, 80];
-    const enTeteR = () => { p.rangee([{ t: 'Code TEJ' }, { t: 'Nature' }, { t: 'Base TTC', aligner: 'right' }, { t: 'À certifier', aligner: 'right' }, { t: 'Retenue', aligner: 'right' }], COLR, { taille: 8, gras: true, couleur: COULEURS.gris }); p.filet(p.y); };
+    const enTeteR = () => { p.rangee([{ t: 'Code TEJ' }, { t: 'Nature' }, { t: 'Base', aligner: 'right' }, { t: 'Sans certificat', aligner: 'right' }, { t: 'Retenue', aligner: 'right' }], COLR, { taille: 8, gras: true, couleur: COULEURS.gris }); p.filet(p.y); };
     enTeteR();
     for (const n of e.retenues.natures) {
-      const c = [{ t: n.codeTej || '' }, { t: `${n.code} — ${n.libelle}` }, { t: fmtMillimes(millimes(n.base)), aligner: 'right' }, { t: millimes(n.aCertifier) ? fmtMillimes(millimes(n.aCertifier)) : '', aligner: 'right' }, { t: fmtMillimes(millimes(n.montant)), aligner: 'right' }];
+      const c = [{ t: n.codeTej || '' }, { t: `${n.code} — ${n.libelle}` }, { t: fmtMillimes(millimes(n.base)), aligner: 'right' }, { t: millimes(n.aCertifier) + millimes(n.nonCertifiable) ? fmtMillimes(millimes(n.aCertifier) + millimes(n.nonCertifiable)) : '', aligner: 'right' }, { t: fmtMillimes(millimes(n.montant)), aligner: 'right' }];
       p.assurer(p.hauteurRangee(c, COLR, 8.5), enTeteR);
       p.rangee(c, COLR, { taille: 8.5 });
     }
-    for (const x of e.retenues.tva) p.rangee([{ t: x.code }, { t: x.libelle }, { t: '' }, { t: '' }, { t: fmtMillimes(millimes(x.montant)), aligner: 'right' }], COLR, { taille: 8.5 });
+    for (const x of e.retenues.tva) {
+      const c = [{ t: x.code }, { t: x.libelle }, { t: '' }, { t: '' }, { t: fmtMillimes(millimes(x.montant)), aligner: 'right' }];
+      p.assurer(p.hauteurRangee(c, COLR, 8.5), enTeteR);
+      p.rangee(c, COLR, { taille: 8.5 });
+    }
   }
   p.y += 10;
   for (const s of e.signalements.filter((x) => x.gravite !== 'info')) p.paragraphe(`À vérifier : ${s.message}.`, { taille: 8, couleur: COULEURS.alerte });
@@ -421,14 +505,16 @@ const lirePreparation = (corps, saisiesDef) => {
   return { saisies, tcl };
 };
 // { date, attendu } — date du dépôt sur le portail (AAAA-MM-JJ, après la fin de la période, jamais après aujourd'hui) ;
-// `attendu` : le total montré à la confirmation (409 s'il a changé).
+// `attendu` : le total montré à la confirmation, obligatoire, signé (409 s'il a changé).
 const lireMarque = (corps, periode, aujourdhui = aujourdhuiTunis()) => {
   if (!corps || typeof corps !== 'object') throw erreur(400, 'Requête invalide');
   if (!dateValide(corps.date)) throw erreur(400, 'Date du dépôt invalide (AAAA-MM-JJ)', 'DATE_DEPOT');
   if (corps.date > aujourdhui) throw erreur(400, `La date du dépôt (${fmtDate(corps.date)}) est postérieure à aujourd'hui`, 'DATE_DEPOT');
   if (periode && corps.date <= periode.fin) throw erreur(400, `La déclaration se dépose après la fin de la période (${fmtDate(periode.fin)})`, 'DATE_DEPOT');
-  const attendu = corps.attendu == null ? null : texteMillimes(lireMontant(corps.attendu, 'Total attendu'));
-  return { date: corps.date, attendu };
+  // Relecture : le total montré à la confirmation est obligatoire (un état périmé répond 409), et peut être négatif.
+  const a = typeof corps.attendu === 'string' || typeof corps.attendu === 'number' ? String(corps.attendu).replace(/\s/g, '').replace(',', '.') : '';
+  if (!/^-?\d{1,15}(\.\d{1,3})?$/.test(a)) throw erreur(400, 'Total attendu : requête invalide', 'ATTENDU');
+  return { date: corps.date, attendu: texte(millimes(a)) };
 };
 
 // ── Écritures ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -459,6 +545,8 @@ const preparer = async (req, res) => {
       const { saisies, tcl } = lirePreparation(req.body || {}, saisiesDef);
       if (ligne && ligne.declaree_le) throw erreur(409, `Déclaration marquée comme déposée le ${fmtDate(String(ligne.declaree_le).slice(0, 10))} : retirez la marque pour la modifier`, 'DECLAREE');
       const avant = ligne ? { saisies: ligne.saisies || {}, tcl: ligne.tcl } : { saisies: {}, tcl: null };
+      const memes = (x, y) => JSON.stringify(Object.entries(x).sort()) === JSON.stringify(Object.entries(y).sort());
+      if (memes(avant.saisies, saisies) && (avant.tcl == null ? null : texte(millimes(avant.tcl))) === tcl) return { prepare: { periodeId: periode.id, saisies, tcl }, inchange: true };
       await db.query(
         `INSERT INTO compta.declarations (dossier_id, periode_id, saisies, tcl, modifie_par) VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (dossier_id, periode_id) DO UPDATE SET saisies = EXCLUDED.saisies, tcl = EXCLUDED.tcl, modifie_par = EXCLUDED.modifie_par, updated_at = NOW()`,
@@ -481,17 +569,20 @@ const proposerEcriture = async (req, res) => {
   try {
     exigerPeriode(req);
     const resultat = await ecritureDeclaration(req, async (db, acces, d, periode) => {
-      const e = await etatDeclaration(db, d, await selectionDe(db, d, periode), { avecHistorique: false });
+      const e = await etatDeclaration(db, d, await selectionDe(db, d, periode), { avecHistorique: false, liquidationSeule: true });
       const l = e.liquidation;
+      const ex = e.declaration?.ecriture;
       const motifs = {
-        DEJA: `L'écriture de liquidation de cette période existe déjà (${e.declaration?.ecriture?.numero || e.declaration?.ecriture?.numeroProvisoire || ''}) : supprimez-la (brouillard) pour en proposer une autre`,
+        DEJA: `L'écriture de liquidation de cette période existe déjà (${ex?.numero || ex?.numeroProvisoire || ''}) : ${ex?.etat === 'validee' ? 'contre-passez-la (page Écritures)' : 'supprimez-la (brouillard)'} pour en proposer une autre`,
+        EXERCICE_CLOS: 'L\'exercice de cette période est clos : la liquidation se saisit à la main dans l\'exercice ouvert',
+        COMPTE_NON_IMPUTABLE: l.detail || 'Un compte de la liquidation n\'est pas imputable',
         PERIODE_EN_COURS: 'Le mois n\'est pas fini : la TVA se liquide après la fin de la période',
         BROUILLARD: 'La période porte des écritures en brouillard : validez-les ou supprimez-les d\'abord',
         COMPTES: 'Compte du crédit de TVA ou de la TVA à payer absent du plan du dossier',
         JOURNAL: 'Aucun journal des opérations diverses actif dans ce dossier (page Journaux)',
         ECART: 'Les comptes de TVA ne rejoignent pas l\'état de TVA de la période : vérifiez les codes de taxe des écritures',
         RIEN: 'Aucune TVA à liquider pour cette période',
-        PAS_DE_PERIODE_OUVERTE: 'La période est close et aucune période ouverte ne la suit : rouvrez-la ou ouvrez l\'exercice suivant',
+        PAS_DE_PERIODE_OUVERTE: 'La période est close et aucune période ouverte ne la suit dans son exercice : rouvrez-la (titulaire) pour dater l\'écriture du dernier jour du mois',
       };
       if (!l.possible) throw erreur(409, motifs[l.raison] || 'Écriture impossible', l.raison === 'DEJA' ? 'DEJA_PROPOSEE' : l.raison);
       const journal = await journalDe(db, d.id, (await db.query(SQL_JOURNAL_OD, [d.id])).rows[0].id);
@@ -503,9 +594,9 @@ const proposerEcriture = async (req, res) => {
       const ecr = { date: l.date, dateReelle: l.dateReelle, reference: `TVA-${periode.fin.slice(0, 7)}`, libelle: `Liquidation de la TVA ${deMois(periode.fin)}`, total };
       const numero = (await db.query('UPDATE compta.dossiers SET prochain_provisoire = prochain_provisoire + 1 WHERE id = $1 RETURNING prochain_provisoire - 1 AS n', [d.id])).rows[0].n;
       const ins = await db.query(
-        `INSERT INTO compta.ecritures (dossier_id, exercice_id, periode_id, journal_id, date, date_reelle, numero_provisoire, reference, libelle, total_debit, total_credit, origine, cree_par)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, 'saisie', $11) RETURNING id`,
-        [d.id, exercice.id, pEcriture.id, journal.id, ecr.date, ecr.dateReelle, numero, ecr.reference, ecr.libelle, texteMillimes(total), req.user.id]
+        `INSERT INTO compta.ecritures (dossier_id, exercice_id, periode_id, journal_id, date, date_reelle, numero_provisoire, reference, libelle, total_debit, total_credit, origine, cree_par, liquidation_de)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, 'saisie', $11, $12) RETURNING id`,
+        [d.id, exercice.id, pEcriture.id, journal.id, ecr.date, ecr.dateReelle, numero, ecr.reference, ecr.libelle, texteMillimes(total), req.user.id, periode.id]
       );
       const id = ins.rows[0].id;
       await insererLignes(db, d, id, ecr.date, lignes);
@@ -569,7 +660,7 @@ const demarquer = async (req, res) => {
 };
 
 module.exports = {
-  MSG_DECLARATION, SQL_PERIODE, SQL_CA, SQL_TAXES_COLLECTEES, SQL_COMPTES_TVA, SQL_BROUILLARD, SQL_DECLARATIONS, SQL_COMPTES_NUMEROS, SQL_JOURNAL_OD, SQL_PERIODE_OUVERTE_APRES,
+  MSG_DECLARATION, SQL_PERIODE, SQL_CA, SQL_TAXES_COLLECTEES, SQL_COMPTES_TVA, SQL_BROUILLARD, SQL_DECLARATIONS, SQL_COMPTES_NUMEROS, SQL_ASSIETTES, SQL_JOURNAL_OD, SQL_PERIODE_OUVERTE_APRES, NON_COMPTEES,
   lireParametres, periodeParDefaut, selection, lignesDe, lirePreparation, lireMarque, etatDeclaration, construirePdf,
   lire, exporter, pdf, preparer, proposerEcriture, marquer, demarquer,
 };

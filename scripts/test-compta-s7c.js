@@ -5,7 +5,7 @@
  *   total, échéance, TCL TTC, signalements, droits de lecture) ; préparer (lignes saisies à la main, TCL corrigée ; droits,
  *   refus) ; proposer l'écriture de liquidation (refus : brouillard, mois en cours ; brouillard dans le journal OD, lignes,
  *   une seule ; supprimée puis reproposée ; période close : premier jour de la période ouverte suivante avec sa vraie date ;
- *   pas « TVA sans code » sur la page Taxes du mois) ; marquer comme déclarée (droits, dates, total périmé, figé, refus de
+ *   pas « TVA sans code » sur la page Taxes du mois ; validée puis contre-passée : une nouvelle se propose) ; marquer comme déclarée (droits, dates, total périmé, figé, refus de
  *   préparer), écart signalé après une écriture ajoutée, retirer la marque ; export Excel, PDF ; carte de la fiche ;
  *   cloisonnement ; dossier archivé ; lecture seule ; rejeu de la migration 220 ; manuel.
  * Crée un super_admin, un cabinet (3 gérants achetés) et trois collaborateurs temporaires ; règle les tarifs Compta le
@@ -148,7 +148,7 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     const b = r.body;
     const ligne = (cle) => b?.lignes?.find((l) => l.cle === cle);
     check('septembre (Consultation) : TVA à payer 380 (570 − 190), retenue RS7_000001 17,850 (à certifier), timbre 2 pièces 2,000, TCL 0,2 % de 3 570 (3 000 + TVA 570) = 7,140, total 406,990 ; échéance 20/10/2026',
-      r.status === 200 && b?.tva?.collectee === '570.000' && b?.tva?.deductible === '190.000' && ligne('tva')?.montant === '380.000' && ligne('rs:RS7_000001')?.montant === '17.850' && b?.retenues?.natures?.[0]?.aCertifier === '17.850'
+      r.status === 200 && b?.tva?.collectee === '570.000' && b?.tva?.deductible === '190.000' && ligne('tva')?.montant === '380.000' && ligne('rs:RS7_000001|1.500')?.montant === '17.850' && b?.retenues?.natures?.[0]?.aCertifier === '17.850'
       && ligne('timbre')?.montant === '2.000' && /2 pièces/.test(ligne('timbre')?.libelle || '') && b?.tcl?.base === '3570.000' && ligne('tcl')?.montant === '7.140' && b?.total === '406.990' && b?.echeance?.date === '2026-10-20' && !ligne('fodec') && !ligne('avances'),
       `${r.status} ${JSON.stringify(b?.lignes)} ${b?.total} ${JSON.stringify(b?.echeance)} ${r.body?.message || ''}`);
     check('lignes saisies à la main (5, vides) ; signalements : période encore ouverte, TCL à valider ; aperçu de liquidation : 43666 au crédit 190, 436711 au débit 570, 43651 au crédit 380 ; Consultation ne peut rien écrire (droits)',
@@ -212,6 +212,19 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     const solde = (n) => (r2.body?.comptes || r2.body?.lignes || []).find((c) => c.numero === n);
     r3 = await appel('GET', `/api/compta/dossiers/${A.id}/taxes-mois?periode=${P['10'].id}`, consult.tok);
     check('validée : la balance reste cohérente ; octobre (Taxes du mois) sans « TVA sans code » pour la liquidation', r.status === 200 && r2.status === 200 && r2.body?.controles?.coherent === true && r3.status === 200 && !(r3.body?.signalements || []).some((s) => s.code === 'TVA_SANS_CODE'), `${r.status} ${r2.status} ${JSON.stringify(solde('43651'))} ${JSON.stringify((r3.body?.signalements || []).map((s) => s.code))}`);
+
+    // Relecture : une liquidation validée puis contre-passée se repropose ; ni elle ni sa contre-passation ne sont « TVA sans code ».
+    r = await appel('POST', `/api/compta/dossiers/${A.id}/ecritures/${liq2.id}/contrepasser`, cabinet.tok, { date: '2026-10-02' });
+    r2 = await DEC(`?periode=${P['09'].id}`, consult.tok);
+    r3 = await PROP(complet.tok);
+    const liq3 = r3.body?.ecriture;
+    r4 = await appel('GET', `/api/compta/dossiers/${A.id}/taxes-mois?periode=${P['10'].id}`, consult.tok);
+    check('liquidation validée puis contre-passée : signalée, une nouvelle se propose (01/10, vraie date 30/09) ; octobre sans « TVA sans code »',
+      r.status === 201 && r2.body?.liquidation?.possible === true && r2.body?.signalements?.some((s) => s.code === 'LIQUIDATION_CONTREPASSEE') && r3.status === 201 && liq3?.date === '2026-10-01' && liq3?.dateReelle === '2026-09-30' && liq3?.id !== liq2.id
+      && r4.status === 200 && !(r4.body?.signalements || []).some((s) => s.code === 'TVA_SANS_CODE'), `${r.status} ${r.body?.message || ''} ${r2.body?.liquidation?.raison} ${r3.status} ${r3.body?.message || ''} ${JSON.stringify((r4.body?.signalements || []).map((s) => s.code))}`);
+    r = await appel('POST', `/api/compta/dossiers/${A.id}/ecritures/${liq3.id}/valider`, cabinet.tok);
+    r2 = await DEC(`?periode=${P['09'].id}`, consult.tok);
+    check('la nouvelle liquidation validée : la déclaration la montre, plus rien à proposer (DEJA)', r.status === 200 && r2.body?.declaration?.ecriture?.id === liq3.id && r2.body?.declaration?.ecriture?.etat === 'validee' && r2.body?.liquidation?.raison === 'DEJA', `${r.status} ${JSON.stringify(r2.body?.declaration?.ecriture)} ${r2.body?.liquidation?.raison}`);
 
     // ── Marquer comme déclarée ──
     const MARQ = (jeton, corps, periodeId = P['09'].id) => appel('POST', `/api/compta/dossiers/${A.id}/declaration/${periodeId}/marquer`, jeton, corps);
