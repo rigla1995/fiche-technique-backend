@@ -108,7 +108,20 @@
     },
     "seuilAchats": "1000.000",
     "tva": {
-      "compteCredit": "43667"
+      "compteCredit": "43667",
+      "compteAPayer": "43651"
+    },
+    "declaration": {
+      "note": "S7c (09/10/2026) : état préparatoire de la déclaration mensuelle des impôts, à recopier sur impots.finances.gov.tn (aucun format de fichier officiel ; recherche-fiscale-tunisie.md §2). Échéance au mois suivant : le 15 pour une personne physique, le 20 pour une personne morale télédéclarante, le 28 sinon ; reportée au lundi quand elle tombe un samedi ou un dimanche (jours fériés non pris en compte ; report non confirmé sur texte). TCL : 0,2 % du chiffre d'affaires brut local, 0,1 % pour un exportateur total ; assiette prise toutes taxes comprises (« chiffre d'affaires brut » : non confirmé, à valider par un comptable) ; minimum (taxe sur les immeubles bâtis) et plafond annuel de 100 000 D non calculés : le montant se corrige sur la page.",
+      "echeances": { "physique": 15, "moraleTeledeclaration": 20, "morale": 28 },
+      "tcl": { "taux": "0.200", "tauxExport": "0.100", "comptes": ["70"], "assiette": "ttc" },
+      "saisies": [
+        { "cle": "rs_salaires", "libelle": "Retenues à la source sur salaires (IRPP)" },
+        { "cle": "css", "libelle": "Contribution sociale de solidarité retenue sur les salaires" },
+        { "cle": "tfp", "libelle": "Taxe de formation professionnelle (TFP)" },
+        { "cle": "foprolos", "libelle": "FOPROLOS" },
+        { "cle": "autres", "libelle": "Autres impôts et taxes (droits de consommation…)" }
+      ]
     },
     "tej": {
       "versionSchema": "1.0",

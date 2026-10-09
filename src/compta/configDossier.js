@@ -12,6 +12,7 @@ const { journaliser } = require('./journal');
 const { SQL_DU, SQL_ECHEANCE, sqlAgregatsAges, millimes, texteMillimesSigne, trancheesImputees, aujourdhuiTunis } = require('./echeances');
 // S7b (carte « Taxes ») : règles de l'état de TVA et des retenues (module sans dépendance) et fiscalité du paquet du pays.
 const { SQL_TVA_PAR_PERIODE, SQL_TVA_SANS_CODE, SQL_CREDIT_OUVERTURE, SQL_NB_A_PRODUIRE, etatsTva } = require('./taxesCalcul');
+const { echeanceDe } = require('./declarationCalcul');
 const { fiscaliteDe } = require('./paquets');
 
 // Les codes du paquet copiés dans un dossier selon son régime (PLAN-S5 §1 ligne S5b) : alias `r` = compta.ref_taxes,
@@ -166,13 +167,27 @@ const SQL_RESUME_TENUE = `
 // S7b (carte « Taxes ») : la période du jour dans l'exercice ouvert (sinon la dernière commencée, sinon la première), son
 // état de TVA (brouillard compris, report du crédit depuis le début de l'exercice), les pièces à retenue validées qui
 // attendent leur certificat, les certificats produits pour les paiements du mois.
+// S7c : la déclaration mensuelle à faire — la dernière période finie du dossier, son échéance, sa date de déclaration.
+const SQL_A_DECLARER = `
+  SELECT p.id, p.debut::text AS debut, p.fin::text AS fin, dc.declaree_le::text AS declaree_le
+    FROM compta.periodes p JOIN compta.exercices x ON x.id = p.exercice_id
+    LEFT JOIN compta.declarations dc ON dc.periode_id = p.id AND dc.dossier_id = x.dossier_id
+   WHERE x.dossier_id = $1 AND p.fin < $2::date
+   ORDER BY p.fin DESC LIMIT 1`;
+const declarationAFaire = async (db, d, dossierId, jour) => {
+  const p = (await db.query(SQL_A_DECLARER, [dossierId, jour])).rows[0];
+  if (!p) return null;
+  const e = echeanceDe({ personne: d.personne, teledeclaration: !!d.teledeclaration }, p.fin, fiscaliteDe(d.pays)?.declaration?.echeances);
+  return { periode: { id: p.id, debut: p.debut, fin: p.fin }, echeance: e ? e.date : null, declareeLe: p.declaree_le || null };
+};
 const resumeFiscalite = async (db, dossierId) => {
-  const d = (await db.query('SELECT pays FROM compta.dossiers WHERE id = $1', [dossierId])).rows[0];
+  const d = (await db.query('SELECT pays, personne, teledeclaration FROM compta.dossiers WHERE id = $1', [dossierId])).rows[0];
   const x = (await db.query(`SELECT id FROM compta.exercices WHERE dossier_id = $1 ORDER BY (etat = 'ouvert') DESC, debut DESC LIMIT 1`, [dossierId])).rows[0];
   const aProduire = (await db.query(SQL_NB_A_PRODUIRE, [dossierId])).rows[0].n;
-  if (!d || !x) return { periode: null, tva: null, aProduire, certificatsMois: 0 };
+  const declaration = d ? await declarationAFaire(db, d, dossierId, aujourdhuiTunis()) : null;
+  if (!d || !x) return { periode: null, tva: null, aProduire, certificatsMois: 0, declaration };
   const periodes = (await db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat FROM compta.periodes WHERE exercice_id = $1 ORDER BY debut', [x.id])).rows;
-  if (!periodes.length) return { periode: null, tva: null, aProduire, certificatsMois: 0 };
+  if (!periodes.length) return { periode: null, tva: null, aProduire, certificatsMois: 0, declaration };
   const jour = aujourdhuiTunis();
   const p = periodes.find((y) => jour >= y.debut && jour <= y.fin) || [...periodes].reverse().find((y) => y.debut <= jour) || periodes[0];
   const compteCredit = fiscaliteDe(d.pays)?.tva?.compteCredit || null;
@@ -184,7 +199,7 @@ const resumeFiscalite = async (db, dossierId) => {
   ]);
   const etats = etatsTva({ periodes, rangees: rangees.rows, sansCode: sansCode.rows, ouverture: ouverture.rows[0].credit, jusqua: p.id });
   const t = etats[etats.length - 1];
-  return { periode: { id: p.id, debut: p.debut, fin: p.fin, etat: p.etat }, tva: { aPayer: t.aPayer, creditAReporter: t.creditAReporter, nbBrouillard: t.nbBrouillard }, aProduire, certificatsMois: certificats.rows[0].n };
+  return { periode: { id: p.id, debut: p.debut, fin: p.fin, etat: p.etat }, tva: { aPayer: t.aPayer, creditAReporter: t.creditAReporter, nbBrouillard: t.nbBrouillard }, aProduire, certificatsMois: certificats.rows[0].n, declaration };
 };
 // Résumé pour la fiche du dossier (carte « Configuration ») : journaux et codes de taxe actifs ; S5c : tiers (fournisseurs,
 // clients) actifs ; S6a (carte « Tenue ») : écritures en brouillard et validées ; S7a : lettrage et échéancier ; S7b (carte
@@ -222,5 +237,5 @@ const resumeConfiguration = async (db, dossierId) => {
 
 module.exports = {
   SQL_COPIE, codeCopie, lireDossier, SQL_FEUILLE, choixComptes, presenterCompteCourt, compteDuDossier,
-  initialiserJournaux, assurerSousComptes, codesDuPaquet, copierCodes, initialiserTaxes, initialiserJournauxEtTaxes, resumeConfiguration, resumeFiscalite,
+  initialiserJournaux, assurerSousComptes, codesDuPaquet, copierCodes, initialiserTaxes, initialiserJournauxEtTaxes, resumeConfiguration, resumeFiscalite, SQL_A_DECLARER,
 };

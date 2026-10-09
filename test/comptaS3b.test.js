@@ -49,7 +49,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   // S6c : + 2 (import d'écritures, import d'une balance d'ouverture — tout ou rien, droit « configurer ») ;
   // S7a : + 2 (lettrer, délettrer — droit « saisir ») ; + 1 POST sans garde (la lettre de relance : un PDF, rien d'écrit).
   // S7b : + 4 (produire des certificats, en annuler un, produire le fichier TEJ du mois, retirer un fichier refusé — droit « configurer »).
-  assert.equal(ecritures.length, 60, 'routes d\'écriture trouvées');
+  // S7c : + 4 (préparer une déclaration, proposer l'écriture de TVA, marquer, retirer la marque — droit « configurer »).
+  assert.equal(ecritures.length, 64, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
@@ -77,6 +78,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     lettrage: { fichier: 'lettrage.js', transactions: ['await ecritureLettrage(req,'] },
     // S7b : les certificats de retenue et le fichier TEJ (ecritureCertificats : droit « configurer », dossier non archivé).
     certificats: { fichier: 'certificats.js', transactions: ['await ecritureCertificats(req,'] },
+    // S7c : la déclaration mensuelle (ecritureDeclaration : droit « configurer », dossier non archivé).
+    declarations: { fichier: 'declarations.js', transactions: ['await ecritureDeclaration(req,'] },
   };
   const corps = (fichier, nom) => {
     const ctrl = lire('src', 'compta', fichier);
