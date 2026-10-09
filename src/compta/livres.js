@@ -240,11 +240,13 @@ const SQL_GRAND_LIVRE = `
          e.id AS ecriture_id, e.numero, e.numero_provisoire, e.etat, e.reference, e.libelle AS ecriture_libelle, e.date_reelle::text AS date_reelle, e.origine,
          j.id AS journal_id, j.code AS journal_code, k.id AS compte_id, k.numero AS compte_numero, k.libelle AS compte_libelle,
          t.id AS tiers_id, t.type AS tiers_type, t.code AS tiers_code, t.nom AS tiers_nom, x.code AS taxe_code, l.echeance::text AS echeance,
+         lt.lettre,
          SUM(l.debit) OVER w::text AS cumul_debit, SUM(l.credit) OVER w::text AS cumul_credit
     ${SQL_DE}
     JOIN compta.comptes k ON k.id = l.compte_id
     LEFT JOIN compta.tiers t ON t.id = l.tiers_id
     LEFT JOIN compta.taxes x ON x.id = l.taxe_id
+    LEFT JOIN compta.lettrages lt ON lt.id = l.lettrage_id
    WHERE ${SQL_GL_OU} AND j.type <> 'an' AND l.date >= $3
   WINDOW w AS (ORDER BY l.date, e.numero NULLS LAST, e.numero_provisoire, l.rang ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
    ORDER BY l.date, e.numero NULLS LAST, e.numero_provisoire, l.rang
@@ -269,6 +271,8 @@ const presenterLigneLivre = (l, ouverture) => {
   const solde = ouverture + millimesDe(l.cumul_debit) - millimesDe(l.cumul_credit);
   return {
     id: l.id, date: l.date, rang: l.rang, libelle: l.libelle || l.ecriture_libelle, debit: l.debit, credit: l.credit, echeance: l.echeance, taxe: l.taxe_code || null,
+    // S7a : la lettre de la ligne (lettrage d'un tiers), ou null.
+    lettre: l.lettre ? l.lettre.trim() : null,
     ecriture: { id: l.ecriture_id, numero: l.numero, numeroProvisoire: numeroProvisoire(l.numero_provisoire), etat: l.etat, reference: l.reference, libelle: l.ecriture_libelle, dateReelle: l.date_reelle, origine: l.origine, journal: { id: l.journal_id, code: l.journal_code } },
     compte: { id: l.compte_id, numero: l.compte_numero, libelle: l.compte_libelle },
     tiers: l.tiers_id ? { id: l.tiers_id, type: l.tiers_type, code: l.tiers_code, nom: l.tiers_nom } : null,
@@ -403,10 +407,10 @@ const journal = async (req, res) => {
 // ── Exports Excel (charte : excelBrandService ; un onglet ; montants en nombres à trois décimales) ─────────────────
 const nomFichier = (prefixe, d, s) => `${prefixe}-${String(d.nom).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'dossier'}-${s.periode ? s.periode.debut.slice(0, 7) : s.exercice.debut.slice(0, 4)}.xlsx`;
 const meta = (s, suite) => `${libelleSelection(s)} · ${s.brouillard ? 'écritures validées et en brouillard' : 'écritures validées seulement'} · ${suite} · exporté le ${jourTunis()}`;
-// Un classeur : bandeau, en-têtes, rangées (tableaux de valeurs), ligne de total facultative, colonnes de montants au
-// format. `montants` : index (1-based) des colonnes de montants.
-const classeur = ({ feuille, titre, sousTitre, metaTexte, enTetes, largeurs, montants, rangees, total }) => {
-  const wb = new ExcelJS.Workbook();
+// Une feuille de classeur : bandeau, en-têtes, rangées (tableaux de valeurs), ligne de total facultative, colonnes de
+// montants au format. `montants` : index (1-based) des colonnes de montants. S7a : ajoutée à un classeur existant
+// (l'échéancier en a deux : balance âgée et détail).
+const ajouterFeuille = (wb, { feuille, titre, sousTitre, metaTexte, enTetes, largeurs, montants, rangees, total }) => {
   const ws = wb.addWorksheet(feuille);
   const n = enTetes.length;
   const enTete = brandHeader(wb, ws, { titre, sousTitre, meta: metaTexte, colCount: n });
@@ -427,6 +431,12 @@ const classeur = ({ feuille, titre, sousTitre, metaTexte, enTetes, largeurs, mon
   }
   brandFooter(ws, n);
   finalize(ws, { headerRowIdx: enTete, colCount: n, lastDataRow: ligne });
+  return ws;
+};
+// Un classeur d'une feuille.
+const classeur = (options) => {
+  const wb = new ExcelJS.Workbook();
+  ajouterFeuille(wb, options);
   return wb;
 };
 const exigerExportable = (nb) => {
@@ -471,14 +481,15 @@ const exporterGrandLivre = (req, res) => avecGardeExport(res, '[compta.livres.ex
       feuille: 'Grand livre',
       titre: `Grand livre — ${qui}`, sousTitre: d.nom,
       metaTexte: meta(s, `solde d'ouverture ${fmtMillimes(millimesDe(g.ouverture.debit) - millimesDe(g.ouverture.credit))} · ${g.total} ligne${g.total > 1 ? 's' : ''}${g.totaux.nbBrouillard ? ` · ${g.totaux.nbBrouillard} en brouillard` : ''}`),
-      enTetes: ['Date', 'Journal', 'Numéro', 'Pièce', 'Libellé', 'Compte', 'Tiers', 'Débit', 'Crédit', 'Solde débit', 'Solde crédit', 'État'],
-      largeurs: [12, 9, 17, 16, 40, 10, 12, 16, 16, 16, 16, 11],
+      // S7a : la lettre en dernière colonne (les colonnes de S6c gardent leur place).
+      enTetes: ['Date', 'Journal', 'Numéro', 'Pièce', 'Libellé', 'Compte', 'Tiers', 'Débit', 'Crédit', 'Solde débit', 'Solde crédit', 'État', 'Lettre'],
+      largeurs: [12, 9, 17, 16, 40, 10, 12, 16, 16, 16, 16, 11, 8],
       montants: [8, 9, 10, 11],
       rangees: [
-        ['', '', '', '', 'Solde d\'ouverture (à-nouveaux et mouvements antérieurs)', '', '', nombreExcel(g.ouverture.debit), nombreExcel(g.ouverture.credit), nombreExcel(g.ouverture.soldeDebit), nombreExcel(g.ouverture.soldeCredit), ''],
-        ...g.lignes.map((l) => [fmtDate(l.date), l.ecriture.journal.code, l.ecriture.numero || l.ecriture.numeroProvisoire, l.ecriture.reference, l.libelle, l.compte.numero, l.tiers ? l.tiers.code : '', millimesDe(l.debit) > 0n ? nombreExcel(l.debit) : null, millimesDe(l.credit) > 0n ? nombreExcel(l.credit) : null, nombreExcel(l.soldeDebit), nombreExcel(l.soldeCredit), l.ecriture.etat === 'validee' ? 'Validée' : 'Brouillard']),
+        ['', '', '', '', 'Solde d\'ouverture (à-nouveaux et mouvements antérieurs)', '', '', nombreExcel(g.ouverture.debit), nombreExcel(g.ouverture.credit), nombreExcel(g.ouverture.soldeDebit), nombreExcel(g.ouverture.soldeCredit), '', ''],
+        ...g.lignes.map((l) => [fmtDate(l.date), l.ecriture.journal.code, l.ecriture.numero || l.ecriture.numeroProvisoire, l.ecriture.reference, l.libelle, l.compte.numero, l.tiers ? l.tiers.code : '', millimesDe(l.debit) > 0n ? nombreExcel(l.debit) : null, millimesDe(l.credit) > 0n ? nombreExcel(l.credit) : null, nombreExcel(l.soldeDebit), nombreExcel(l.soldeCredit), l.ecriture.etat === 'validee' ? 'Validée' : 'Brouillard', l.lettre || '']),
       ],
-      total: ['Total', '', '', '', `Mouvements de la sélection (${g.total}) et solde`, '', '', nombreExcel(g.totaux.debit), nombreExcel(g.totaux.credit), nombreExcel(g.totaux.soldeDebit), nombreExcel(g.totaux.soldeCredit), ''],
+      total: ['Total', '', '', '', `Mouvements de la sélection (${g.total}) et solde`, '', '', nombreExcel(g.totaux.debit), nombreExcel(g.totaux.credit), nombreExcel(g.totaux.soldeDebit), nombreExcel(g.totaux.soldeCredit), '', ''],
     });
     await envoyerClasseur(res, wb, nomFichier(`grand-livre-${cible.compte ? cible.compte.numero : cible.tiers.code}`, d, s));
   }
@@ -514,5 +525,7 @@ module.exports = {
   LIMITE_GRAND_LIVRE, LIMITE_JOURNAL, EXPORT_MAX, EXPORTS_SIMULTANES, TYPES_BALANCE, FMT_MONTANT,
   exercicesDe, exerciceParDefaut, lireSelection, lirePage, lireTypeBalance, presenterSelection, libelleSelection, cotes, rangeeBalance, totauxBalance,
   SQL_BALANCE, SQL_BALANCE_AUX, SQL_COLLECTIFS, SQL_JOURNAUX, SQL_GRAND_LIVRE, SQL_GL_SOMMES, SQL_JOURNAL, balanceDe, grandLivreDe, livreJournalDe, journalDuDossier, lireCible, etatLivres, nomFichier,
+  // S7a (echeancier.js) : une feuille dans un classeur, la valeur Excel d'un montant, la garde des exports.
+  ajouterFeuille, classeur, nombreExcel, avecGardeExport,
   lire, balance, grandLivre, journal, exporterBalance, exporterGrandLivre, exporterJournal,
 };

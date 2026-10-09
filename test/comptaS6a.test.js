@@ -172,7 +172,8 @@ test('présentations : écriture (numéro provisoire B-000012, total en texte, j
   assert.deepEqual(e, {
     id: 5, numeroProvisoire: 'B-000012', numero: null, date: '2026-03-15', dateReelle: null, journal: { id: 2, code: 'AC', libelle: 'Achats', type: 'achats' }, reference: 'F-1', libelle: 'Facture', etat: 'brouillard', etatLibelle: 'Brouillard',
     total: '1191.000', origine: 'saisie', origineId: null, origineNumero: null, contrepasseePar: null, nbLignes: 5, creePar: 'Leïla', creeLe: 'c', modifieLe: 'u', validePar: null, valideLe: null,
-    lignes: [{ id: 9, rang: 1, compte: { id: 1, numero: '607', libelle: 'Achats de marchandises', nature: 'charges' }, tiers: null, libelle: null, debit: '1000.000', credit: '0.000', taxe: { id: 4, code: 'TVA19', libelle: 'TVA 19 %', type: 'tva' }, echeance: null }],
+    // S7a : chaque ligne porte sa lettre (lettrage d'un tiers), null sinon.
+    lignes: [{ id: 9, rang: 1, compte: { id: 1, numero: '607', libelle: 'Achats de marchandises', nature: 'charges' }, tiers: null, libelle: null, debit: '1000.000', credit: '0.000', taxe: { id: 4, code: 'TVA19', libelle: 'TVA 19 %', type: 'tva' }, echeance: null, lettre: null }],
   });
   assert.equal(ecritures.presenterEcriture({ id: 1, numero_provisoire: 1, journal_id: 1, etat: 'brouillard', total_debit: '1.000' }).lignes, undefined, 'la liste va sans les lignes');
   assert.deepEqual(ecritures.presenterLigne({ id: 2, rang: 5, libelle: 'x', debit: '0.000', credit: '1173.150', echeance: '2026-04-14', compte_id: 7, compte_numero: '4011', compte_libelle: 'F', compte_nature: 'fournisseurs', tiers_id: 3, tiers_type: 'fournisseur', tiers_code: 'F0001', tiers_nom: 'STB', taxe_id: null }).tiers, { id: 3, type: 'fournisseur', code: 'F0001', nom: 'STB' });
