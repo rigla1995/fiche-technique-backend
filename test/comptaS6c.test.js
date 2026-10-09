@@ -274,7 +274,7 @@ test('routes S6c : 2 imports (tout ou rien, droit « configurer », sous la limi
     "router.get('/dossiers/:dossierId/livres/journal/export', authenticate, limiteLivres, livres.exporterJournal);",
   ]) assert.ok(src.includes(r), r);
   assert.ok(src.includes("keyGenerator: (req) => `livres:${req.user.id}`") && src.includes('max: 60,'), 'exports : 60 par quart d\'heure et par personne');
-  assert.equal(lignes.filter((l) => /^router\.(post|put|patch|delete)\(/.test(l)).length, 56, '56 routes d\'écriture (51 + 2 imports ; S7a : + 2 du lettrage, + la relance en POST)');
+  assert.equal(lignes.filter((l) => /^router\.(post|put|patch|delete)\(/.test(l)).length, 60, '60 routes d\'écriture (51 + 2 imports ; S7a : + 2 du lettrage, + la relance en POST ; S7b : + 4 des certificats et des fichiers TEJ)');
   const code = lire('src', 'compta', 'importEcritures.js');
   assert.ok(code.includes("if (!droits(acces).configurer) throw erreur(403, MSG_IMPORTER, 'NIVEAU_INSUFFISANT');") && code.includes("if (d.etat === 'archive') throw erreur(409,"), 'droit configurer, dossier non archivé');
   assert.ok(code.includes('const ecritureImport = (req, travail) => dansEspaceDuDossier(req.user, req.params.dossierId,'), 'transaction verrouillée du dossier');

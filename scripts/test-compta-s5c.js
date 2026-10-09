@@ -392,10 +392,12 @@ const EN_TETES_PLAN = ['Numéro', 'Libellé', 'Nature'];
     // ── Export Excel des tiers ──
     dl = await telecharger(`/api/compta/dossiers/${A.id}/tiers/export?type=fournisseur`, saisie.tok);
     ws = dl.status === 200 ? await lireClasseur(dl.buffer) : null;
-    const enTeteExport = ws ? findHeaderRow(ws, [...EN_TETES_TIERS, 'État', 'Origine']) : null;
+    // S7b : six colonnes facultatives (régime fiscal, résidence, identifiant de secours) avant État et Origine.
+    const FACULTATIFS_S7B = ['Régime fiscal', 'Résident', 'Type d\'identifiant', 'Numéro d\'identifiant', 'Date de naissance', 'Pays de l\'identifiant'];
+    const enTeteExport = ws ? findHeaderRow(ws, [...EN_TETES_TIERS, ...FACULTATIFS_S7B, 'État', 'Origine']) : null;
     const nbExport = ws && enTeteExport ? ws.rowCount - enTeteExport - 1 : -1; // moins le pied de page
     check('export des fournisseurs : classeur à la charte, colonnes du modèle + État + Origine, 7 lignes, ALPHA1 en premier', dl.status === 200 && dl.type.includes('spreadsheetml') && /fournisseurs-/.test(dl.disposition) && enTeteExport !== null && nbExport >= 7
-      && String(ws.getRow(enTeteExport + 1).getCell(1).text) === 'ALPHA1' && String(ws.getRow(enTeteExport + 1).getCell(12).text) === 'Actif', `${dl.status} ${enTeteExport} ${nbExport}`);
+      && String(ws.getRow(enTeteExport + 1).getCell(1).text) === 'ALPHA1' && String(ws.getRow(enTeteExport + 1).getCell(18).text) === 'Actif', `${dl.status} ${enTeteExport} ${nbExport}`);
     dl = await telecharger(`/api/compta/dossiers/${A.id}/tiers/export?type=fournisseur`, client.tok);
     check('export par une personne étrangère : 404', dl.status === 404, String(dl.status));
 

@@ -11,7 +11,12 @@
 // transaction verrouillée du dossier (dansEspaceDuDossier : comptabilité verrouillée, dossier relu sous verrou, garde par
 // comptabilité D4), puis par les droits (créer, modifier, désactiver, réactiver : titulaire, Complet ou Saisie ;
 // supprimer, modèle des codes, import : titulaire ou Complet) et l'état du dossier. « Sans écriture » :
-// tiersMouvemente lit compta.lignes depuis S6a (les écritures en brouillard comptent).
+// tiersMouvemente lit compta.lignes depuis S6a (les écritures en brouillard comptent). S7b (PLAN-S7 §2 « S7b », §3 point 4 ;
+// migration 219) : le RÉGIME FISCAL d'un fournisseur (liste du paquet : personne morale à l'IS de 25, 20, 15 ou 10 %,
+// personne physique au réel, à déduction des 2/3, au forfait), qui propose sa retenue (achats, honoraires) et donne sa
+// catégorie (PM / PP) sur la plateforme TEJ ; sa RÉSIDENCE ; l'IDENTIFIANT DE SECOURS d'un bénéficiaire sans matricule
+// fiscal (CIN, passeport, carte de séjour, autre identifiant ; date de naissance, pays) — en saisie, à l'import (colonnes
+// facultatives après celles de S5c : un ancien modèle s'importe encore) et à l'export.
 const ExcelJS = require('exceljs');
 const pool = require('../config/database');
 const { journaliser } = require('./journal');
@@ -21,8 +26,9 @@ const { controlerMatriculeFiscal } = require('../utils/matriculeFiscal');
 const {
   TYPES_TIERS, TYPES_TIERS_LIBELLES, NATURE_PAR_TYPE_TIERS, REGIMES_TVA_TIERS, REGIMES_TVA_TIERS_LIBELLES, NATURES_LIBELLES,
   CODE_TIERS_MIN, CODE_TIERS_MAX, RE_CODE_TIERS, RE_PREFIXE_TIERS, PREFIXE_TIERS_MAX, CHIFFRES_TIERS_MIN, CHIFFRES_TIERS_MAX, DELAI_PAIEMENT_MAX, paquetDe,
+  RE_REGIME_FISCAL, TYPES_IDENTIFIANT, TYPES_IDENTIFIANT_LIBELLES, fiscaliteDe, regimeFiscalDe,
 } = require('./paquets');
-const { droits, dansEspaceDuDossier } = require('./dossiers');
+const { droits, dateValide, dansEspaceDuDossier } = require('./dossiers');
 const { lectureDossier, presenterDossier, HORS_W1252 } = require('./planComptes');
 const { SQL_FEUILLE, choixComptes, presenterCompteCourt, compteDuDossier } = require('./configDossier');
 const { brandHeader, headerRow, dataRowStyle, brandFooter, finalize } = require('../services/excelBrandService');
@@ -103,12 +109,76 @@ const lireId = (v, libelle) => {
   if (!idValide(v)) throw erreur(400, `${libelle} : requête invalide`);
   return Number(v);
 };
+// S7b : le régime fiscal (valeur d'une liste du paquet, vérifiée contre le pays du dossier dans la transaction ; vide =
+// non renseigné), la résidence (oui par défaut), l'identifiant de secours (type, numéro ; date de naissance et pays selon
+// le type — la plateforme TEJ les exige au certificat, la fiche les accepte incomplets).
+const lireRegimeFiscal = (v) => {
+  if (v == null || v === '') return null;
+  if (typeof v !== 'string' || !RE_REGIME_FISCAL.test(v.trim())) throw erreur(400, 'Régime fiscal inconnu');
+  return v.trim();
+};
+const exigerRegimeFiscal = (d, valeur) => {
+  if (valeur && !regimeFiscalDe(d.pays, valeur)) throw erreur(400, 'Régime fiscal inconnu pour ce pays');
+};
+const OUI = ['oui', 'o', '1', 'true', 'vrai', 'resident', 'resident en tunisie'];
+const NON = ['non', 'n', '0', 'false', 'faux', 'non resident'];
+const lireResident = (v) => {
+  if (v == null || v === '') return true;
+  if (typeof v === 'boolean') return v;
+  if (typeof v !== 'string' && typeof v !== 'number') throw erreur(400, 'Résident : requête invalide');
+  const m = normaliserMot(String(v));
+  if (OUI.includes(m)) return true;
+  if (NON.includes(m)) return false;
+  throw erreur(400, 'Résident : oui ou non');
+};
+const TYPES_IDENTIFIANT_PAR_MOT = new Map([
+  ...TYPES_IDENTIFIANT.map((t) => [normaliserMot(t), t]),
+  ...TYPES_IDENTIFIANT.map((t) => [normaliserMot(TYPES_IDENTIFIANT_LIBELLES[t]), t]),
+  ['carte d identite', 'cin'], ['carte d identite nationale', 'cin'], ['carte de sejour', 'carte_sejour'], ['autre', 'autre'], ['autre identifiant', 'autre'],
+]);
+const RE_NUMERO_IDENTIFIANT = /^[A-Z0-9][A-Z0-9 ./-]{0,29}$/;
+// Une date de naissance : « AAAA-MM-JJ » ou « JJ/MM/AAAA » (import) → AAAA-MM-JJ.
+const lireNaissance = (v) => {
+  if (v == null || v === '') return null;
+  if (typeof v !== 'string') throw erreur(400, 'Date de naissance : requête invalide');
+  const s = v.trim();
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
+  const iso = m ? `${m[3]}-${m[2]}-${m[1]}` : s;
+  if (!dateValide(iso) || iso < '1900-01-01' || iso > jourIso()) throw erreur(400, 'Date de naissance invalide (JJ/MM/AAAA)');
+  return iso;
+};
+const jourIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Tunis', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+// { type, numero, naissance, pays } ou null → les quatre colonnes (toutes nulles sans type).
+const lireIdentifiant = (v) => {
+  const vide = { id_type: null, id_numero: null, id_naissance: null, id_pays: null };
+  if (v == null || v === '') return vide;
+  if (typeof v !== 'object' || Array.isArray(v)) throw erreur(400, 'Identifiant : requête invalide');
+  if (v.type == null || v.type === '') return vide;
+  const type = typeof v.type === 'string' ? TYPES_IDENTIFIANT_PAR_MOT.get(normaliserMot(v.type)) : null;
+  if (!type) throw erreur(400, `Type d'identifiant inconnu (${TYPES_IDENTIFIANT.map((t) => TYPES_IDENTIFIANT_LIBELLES[t].toLowerCase()).join(', ')})`);
+  const brut = typeof v.numero === 'string' || typeof v.numero === 'number' ? texte(v.numero).toUpperCase() : '';
+  const numero = type === 'cin' ? brut.replace(/\s/g, '') : brut;
+  if (!numero) throw erreur(400, "Numéro d'identifiant obligatoire avec son type");
+  if (type === 'cin' && !/^\d{8}$/.test(numero)) throw erreur(400, 'Numéro de CIN : 8 chiffres');
+  if (!RE_NUMERO_IDENTIFIANT.test(numero)) throw erreur(400, "Numéro d'identifiant : 30 lettres, chiffres, espaces, points, barres ou tirets au plus");
+  let pays = null;
+  if (v.pays != null && v.pays !== '') {
+    if (typeof v.pays !== 'string' || !/^[A-Za-z]{2}$/.test(v.pays.trim())) throw erreur(400, 'Pays : code à deux lettres (TN, FR, DZ…)');
+    pays = v.pays.trim().toUpperCase();
+  }
+  // Relecture : un champ que le type n'emploie pas (pays d'une CIN, naissance d'un « autre identifiant ») n'est pas gardé.
+  return { id_type: type, id_numero: numero, id_naissance: type === 'autre' ? null : lireNaissance(v.naissance), id_pays: type === 'cin' ? null : pays };
+};
 // Les champs d'un tiers lus dans le corps : `partiel` (modification) : seuls les champs présents.
 // → { valeurs: { colonne: valeur }, compteId (undefined = absent), retenueId (undefined = absent), avertissements }
 const CHAMPS = [
   ['code', 'code', lireCode], ['nom', 'nom', lireNom], ['adresse', 'adresse', lireAdresse], ['ville', 'ville', lireVille],
   ['telephone', 'telephone', lireTelephone], ['email', 'email', lireEmail], ['regimeTva', 'regime_tva', lireRegimeTva], ['delaiPaiement', 'delai_paiement', lireDelai],
+  // S7b
+  ['regimeFiscal', 'regime_fiscal', lireRegimeFiscal], ['resident', 'resident', lireResident],
 ];
+// Le nom d'un champ dans le journal des événements (D16), quand il diffère de la colonne.
+const CLES_JOURNAL = { matricule_fiscal: 'matricule', regime_tva: 'regimeTva', delai_paiement: 'delaiPaiement', regime_fiscal: 'regimeFiscal', id_type: 'identifiantType', id_numero: 'identifiantNumero', id_naissance: 'identifiantNaissance', id_pays: 'identifiantPays' };
 const lireChamps = (corps, partiel = false) => {
   if (!corps || typeof corps !== 'object') throw erreur(400, 'Tiers : requête invalide');
   const valeurs = {};
@@ -122,6 +192,8 @@ const lireChamps = (corps, partiel = false) => {
     valeurs.matricule_fiscal = mf.valeur;
     if (mf.avertissement) avertissements.push(mf.avertissement);
   }
+  // S7b : l'identifiant de secours voyage d'un bloc (les quatre colonnes ensemble).
+  if (!partiel || hasOwn(corps, 'identifiant')) Object.assign(valeurs, lireIdentifiant(corps.identifiant));
   return {
     valeurs,
     compteId: partiel && !hasOwn(corps, 'compteId') ? undefined : lireId(corps.compteId, 'Compte collectif'),
@@ -184,6 +256,7 @@ const tiersMouvemente = async (db, tiersId) => (await db.query('SELECT 1 FROM co
 // ── Lectures ────────────────────────────────────────────────────────────────────────────────────────────────────────
 const SQL_SELECT = `
   SELECT t.id, t.type, t.code, t.nom, t.matricule_fiscal, t.adresse, t.ville, t.telephone, t.email, t.regime_tva, t.delai_paiement, t.origine, t.actif, t.created_at, t.updated_at,
+         t.regime_fiscal, t.resident, t.id_type, t.id_numero, t.id_naissance::text AS id_naissance, t.id_pays,
          t.compte_id, k.numero AS compte_numero, k.libelle AS compte_libelle, k.nature AS compte_nature, k.actif AS compte_actif, ${SQL_FEUILLE('k')} AS compte_feuille,
          t.retenue_id, x.code AS retenue_code, x.libelle AS retenue_libelle, x.taux::text AS retenue_taux, x.actif AS retenue_actif
     FROM compta.tiers t
@@ -198,7 +271,7 @@ const SQL_LISTE = `${SQL_SELECT}
 const SQL_UN = `${SQL_SELECT} WHERE t.dossier_id = $1 AND t.id = $2`;
 const motifRecherche = (q) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 const presenterRetenue = (x) => (x ? { id: x.id, code: x.code, libelle: x.libelle, taux: x.taux, actif: x.actif } : null);
-const presenterTiers = (t) => ({
+const presenterTiers = (t, pays = 'TN') => ({
   id: t.id,
   type: t.type,
   typeLibelle: TYPES_TIERS_LIBELLES[t.type] || t.type,
@@ -214,6 +287,12 @@ const presenterTiers = (t) => ({
   regimeTvaLibelle: REGIMES_TVA_TIERS_LIBELLES[t.regime_tva] || t.regime_tva,
   retenue: t.retenue_id ? presenterRetenue({ id: t.retenue_id, code: t.retenue_code, libelle: t.retenue_libelle, taux: t.retenue_taux, actif: t.retenue_actif }) : null,
   delaiPaiement: t.delai_paiement,
+  // S7b : régime fiscal (et sa personne : PM / PP), résidence, identifiant de secours.
+  regimeFiscal: t.regime_fiscal || null,
+  regimeFiscalLibelle: regimeFiscalDe(pays, t.regime_fiscal)?.libelle || null,
+  personne: regimeFiscalDe(pays, t.regime_fiscal)?.personne || null,
+  resident: t.resident !== false,
+  identifiant: t.id_type ? { type: t.id_type, typeLibelle: TYPES_IDENTIFIANT_LIBELLES[t.id_type] || t.id_type, numero: t.id_numero, naissance: t.id_naissance || null, pays: t.id_pays || null } : null,
   origine: t.origine,
   actif: t.actif,
   creeLe: t.created_at,
@@ -272,12 +351,15 @@ const etatTiers = async (db, acces, d, f) => {
     type: f.type,
     q: f.q,
     inactifs: f.inactifs,
-    tiers: page.rows.map(presenterTiers),
+    tiers: page.rows.map((t) => presenterTiers(t, d.pays)),
     total: total.rows[0].n,
     page: f.page,
     limite: f.limite,
     types: TYPES_TIERS.map((valeur) => ({ valeur, libelle: TYPES_TIERS_LIBELLES[valeur], nature: NATURE_PAR_TYPE_TIERS[valeur], natureLibelle: NATURES_LIBELLES[NATURE_PAR_TYPE_TIERS[valeur]], collectifDefaut: collectifDefautNumero(d, valeur) })),
     regimes: REGIMES_TVA_TIERS.map((valeur) => ({ valeur, libelle: REGIMES_TVA_TIERS_LIBELLES[valeur] })),
+    // S7b : les régimes fiscaux du paquet et les retenues qu'ils proposent (codes actifs du dossier), les familles de
+    // codes (achats, honoraires : la fenêtre propose le code de la même famille), les types d'identifiant de secours.
+    ...choixFiscaux(d, retenues),
     code: { min: CODE_TIERS_MIN, max: CODE_TIERS_MAX, prefixeMax: PREFIXE_TIERS_MAX, chiffresMin: CHIFFRES_TIERS_MIN, chiffresMax: CHIFFRES_TIERS_MAX },
     delaiMax: DELAI_PAIEMENT_MAX,
     collectifs,
@@ -293,7 +375,19 @@ const tiersDe = async (db, dossierId, tiersId) => {
   if (!r.rows.length) throw erreur(404, 'Tiers introuvable');
   return r.rows[0];
 };
-const lireTiers = async (db, dossierId, tiersId) => presenterTiers((await db.query(SQL_UN, [dossierId, tiersId])).rows[0]);
+// S7b : les régimes fiscaux d'un pays par mot (valeur ou libellé normalisés) → valeur (import).
+const regimesParMot = (pays) => new Map((fiscaliteDe(pays)?.regimesFiscaux || []).flatMap((r) => [[normaliserMot(r.valeur), r.valeur], [normaliserMot(r.libelle), r.valeur]]));
+const lireTiers = async (db, d, tiersId) => presenterTiers((await db.query(SQL_UN, [d.id, tiersId])).rows[0], d.pays);
+// S7b : les choix fiscaux de la fenêtre d'un tiers (paquet du pays du dossier, codes de retenue actifs du dossier).
+const choixFiscaux = (d, retenues) => {
+  const f = fiscaliteDe(d.pays);
+  const code = (c) => { const x = retenues.find((r) => r.code === c && r.actif); return x ? { id: x.id, code: x.code, taux: x.taux } : null; };
+  return {
+    regimesFiscaux: (f?.regimesFiscaux || []).map((r) => ({ valeur: r.valeur, libelle: r.libelle, personne: r.personne, note: r.note || null, retenues: { achats: code(r.achats), honoraires: code(r.honoraires) } })),
+    familles: { achats: f?.familles?.achats || [], honoraires: f?.familles?.honoraires || [] },
+    typesIdentifiant: TYPES_IDENTIFIANT.map((valeur) => ({ valeur, libelle: TYPES_IDENTIFIANT_LIBELLES[valeur] })),
+  };
+};
 // Le compte collectif par défaut d'un type : numéro donné par le paquet du pays (4011 / 4111 en Tunisie).
 const collectifDefautNumero = (d, type) => paquetDe(d.pays)?.tiers?.collectifs?.[type] || null;
 // Le compte collectif d'un tiers : choisi (un compte actif du dossier, de la nature du type) ou, sans choix, celui par
@@ -354,8 +448,8 @@ const lire = async (req, res) => {
 };
 
 // POST /api/compta/dossiers/:dossierId/tiers — { type, code?, nom, matriculeFiscal?, adresse?, ville?, telephone?, email?,
-// compteId?, regimeTva?, retenueId?, delaiPaiement? } : code généré s'il est vide ; compte collectif par défaut s'il n'est
-// pas choisi. → 201 { tiers, avertissements, nb, modele }.
+// compteId?, regimeTva?, retenueId?, delaiPaiement?, regimeFiscal?, resident?, identifiant? } : code généré s'il est vide ;
+// compte collectif par défaut s'il n'est pas choisi. → 201 { tiers, avertissements, nb, modele }.
 const creer = async (req, res) => {
   try {
     const corps = req.body || {};
@@ -367,13 +461,19 @@ const creer = async (req, res) => {
       if (valeurs.code && codes.has(code)) throw erreur(409, `Le ${minuscule(type)} ${code} existe déjà`, 'CODE_EXISTANT');
       const k = await compteCollectif(db, d, type, compteId);
       const x = await retenueDe(db, d.id, retenueId);
+      exigerRegimeFiscal(d, valeurs.regime_fiscal);
       const ins = await db.query(
-        `INSERT INTO compta.tiers (dossier_id, type, code, nom, matricule_fiscal, adresse, ville, telephone, email, compte_id, regime_tva, retenue_id, delai_paiement, origine, cree_par)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'saisi', $14) RETURNING id`,
-        [d.id, type, code, valeurs.nom, valeurs.matricule_fiscal, valeurs.adresse, valeurs.ville, valeurs.telephone, valeurs.email, k.id, valeurs.regime_tva, x ? x.id : null, valeurs.delai_paiement, req.user.id]
+        `INSERT INTO compta.tiers (dossier_id, type, code, nom, matricule_fiscal, adresse, ville, telephone, email, compte_id, regime_tva, retenue_id, delai_paiement, origine, cree_par,
+                                   regime_fiscal, resident, id_type, id_numero, id_naissance, id_pays)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'saisi', $14, $15, $16, $17, $18, $19, $20) RETURNING id`,
+        [d.id, type, code, valeurs.nom, valeurs.matricule_fiscal, valeurs.adresse, valeurs.ville, valeurs.telephone, valeurs.email, k.id, valeurs.regime_tva, x ? x.id : null, valeurs.delai_paiement, req.user.id,
+          valeurs.regime_fiscal, valeurs.resident, valeurs.id_type, valeurs.id_numero, valeurs.id_naissance, valeurs.id_pays]
       );
-      await journaliser(db, acces.espace_id, req.user.id, 'tiers_cree', { dossier: d.id, tiers: ins.rows[0].id, type, code, nom: valeurs.nom, ...(valeurs.matricule_fiscal ? { matricule: valeurs.matricule_fiscal } : {}), compte: k.numero, ...(x ? { retenue: x.code } : {}), ...(valeurs.code ? {} : { codeGenere: true }) });
-      return { tiers: await lireTiers(db, d.id, ins.rows[0].id), avertissements: [...avertissements, ...await avertissementsMatricule(db, d.id, valeurs.matricule_fiscal, ins.rows[0].id)], ...await resumeTiers(db, d) };
+      await journaliser(db, acces.espace_id, req.user.id, 'tiers_cree', {
+        dossier: d.id, tiers: ins.rows[0].id, type, code, nom: valeurs.nom, ...(valeurs.matricule_fiscal ? { matricule: valeurs.matricule_fiscal } : {}), compte: k.numero, ...(x ? { retenue: x.code } : {}), ...(valeurs.code ? {} : { codeGenere: true }),
+        ...(valeurs.regime_fiscal ? { regimeFiscal: valeurs.regime_fiscal } : {}), ...(valeurs.resident ? {} : { resident: false }), ...(valeurs.id_type ? { identifiant: `${valeurs.id_type} ${valeurs.id_numero}` } : {}),
+      });
+      return { tiers: await lireTiers(db, d, ins.rows[0].id), avertissements: [...avertissements, ...await avertissementsMatricule(db, d.id, valeurs.matricule_fiscal, ins.rows[0].id)], ...await resumeTiers(db, d) };
     });
     res.status(201).json(resultat);
   } catch (err) {
@@ -392,6 +492,7 @@ const modifier = async (req, res) => {
     if (!Object.keys(valeurs).length && compteId === undefined && retenueId === undefined) throw erreur(400, 'Rien à modifier');
     const resultat = await ecritureTiers(req, async (db, acces, d) => {
       const t = await tiersDe(db, d.id, req.params.tiersId);
+      if (hasOwn(valeurs, 'regime_fiscal')) exigerRegimeFiscal(d, valeurs.regime_fiscal);
       const sets = [];
       const params = [t.id];
       const changements = {};
@@ -405,7 +506,7 @@ const modifier = async (req, res) => {
           if (await tiersMouvemente(db, t.id)) throw erreur(409, `Le ${minuscule(t.type)} ${t.code} a des écritures : son code ne change plus`, 'TIERS_MOUVEMENTE');
           if ((await db.query('SELECT 1 FROM compta.tiers WHERE dossier_id = $1 AND type = $2 AND code = $3 AND id <> $4', [d.id, t.type, valeur, t.id])).rows.length) throw erreur(409, `Le ${minuscule(t.type)} ${valeur} existe déjà`, 'CODE_EXISTANT');
         }
-        poser(colonne, colonne === 'matricule_fiscal' ? 'matricule' : colonne === 'regime_tva' ? 'regimeTva' : colonne === 'delai_paiement' ? 'delaiPaiement' : colonne, valeur, t[colonne], valeur);
+        poser(colonne, CLES_JOURNAL[colonne] || colonne, valeur, t[colonne], valeur);
       }
       if (compteId !== undefined && compteId !== t.compte_id) {
         if (await tiersMouvemente(db, t.id)) throw erreur(409, `Le ${minuscule(t.type)} ${t.code} a des écritures : son compte collectif ne change plus`, 'TIERS_MOUVEMENTE');
@@ -423,7 +524,7 @@ const modifier = async (req, res) => {
         await journaliser(db, acces.espace_id, req.user.id, 'tiers_modifie', { dossier: d.id, tiers: t.id, type: t.type, code: changements.code ? changements.code.apres : t.code, changements });
       }
       const mf = hasOwn(valeurs, 'matricule_fiscal') ? valeurs.matricule_fiscal : t.matricule_fiscal;
-      return { tiers: await lireTiers(db, d.id, t.id), avertissements: [...avertissements, ...await avertissementsMatricule(db, d.id, mf, t.id)], ...await resumeTiers(db, d) };
+      return { tiers: await lireTiers(db, d, t.id), avertissements: [...avertissements, ...await avertissementsMatricule(db, d.id, mf, t.id)], ...await resumeTiers(db, d) };
     });
     res.json(resultat);
   } catch (err) {
@@ -439,7 +540,7 @@ const desactiver = async (req, res) => {
       if (!t.actif) throw erreur(409, `Le ${minuscule(t.type)} ${t.code} est déjà désactivé`, 'DEJA_FAIT');
       await db.query('UPDATE compta.tiers SET actif = false, updated_at = NOW() WHERE id = $1', [t.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'tiers_desactive', { dossier: d.id, tiers: t.id, type: t.type, code: t.code, nom: t.nom });
-      return { tiers: await lireTiers(db, d.id, t.id), avertissements: [], ...await resumeTiers(db, d) };
+      return { tiers: await lireTiers(db, d, t.id), avertissements: [], ...await resumeTiers(db, d) };
     });
     res.json(resultat);
   } catch (err) {
@@ -455,7 +556,7 @@ const reactiver = async (req, res) => {
       if (t.actif) throw erreur(409, `Le ${minuscule(t.type)} ${t.code} n'est pas désactivé`, 'DEJA_FAIT');
       await db.query('UPDATE compta.tiers SET actif = true, updated_at = NOW() WHERE id = $1', [t.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'tiers_reactive', { dossier: d.id, tiers: t.id, type: t.type, code: t.code, nom: t.nom });
-      return { tiers: await lireTiers(db, d.id, t.id), avertissements: [], ...await resumeTiers(db, d) };
+      return { tiers: await lireTiers(db, d, t.id), avertissements: [], ...await resumeTiers(db, d) };
     });
     res.json(resultat);
   } catch (err) {
@@ -507,15 +608,18 @@ const modele = async (req, res) => {
 // Colonnes du modèle, dans l'ordre (le code en première colonne : une ligne « Exemple : … » n'est jamais un tiers).
 const EN_TETES_IMPORT = ['Code', 'Nom', 'Matricule fiscal', 'Adresse', 'Ville', 'Téléphone', 'Email', 'Compte collectif', 'Régime de TVA', 'Retenue par défaut', 'Délai de paiement (jours)'];
 const LARGEURS_IMPORT = [12, 36, 20, 36, 16, 16, 28, 16, 18, 18, 14];
+// S7b : colonnes facultatives, après celles de S5c (un fichier fait sur l'ancien modèle s'importe toujours).
+const FACULTATIFS_IMPORT = ['Régime fiscal', 'Résident', 'Type d\'identifiant', 'Numéro d\'identifiant', 'Date de naissance', 'Pays de l\'identifiant'];
+const LARGEURS_FACULTATIFS = [34, 10, 20, 18, 14, 12];
 const EXEMPLE_IMPORT = {
-  fournisseur: ['Exemple : F0001', 'Société Essai SARL', '1234567A/A/M/000', '12 rue de la Liberté', 'Tunis', '71 000 000', 'contact@essai.tn', '4011', 'Assujetti', 'RS_MAR15', '30'],
-  client: ['Exemple : C0001', 'Hôtel Essai SA', '7654321B/A/M/000', '5 avenue de Carthage', 'Sousse', '73 000 000', 'compta@essai.tn', '4111', 'Assujetti', '', '45'],
+  fournisseur: ['Exemple : F0001', 'Société Essai SARL', '1234567A/A/M/000', '12 rue de la Liberté', 'Tunis', '71 000 000', 'contact@essai.tn', '4011', 'Assujetti', 'RS_MAR15', '30', 'Personne morale à l\'IS de 25 % ou plus', 'Oui', '', '', '', ''],
+  client: ['Exemple : C0001', 'Hôtel Essai SA', '7654321B/A/M/000', '5 avenue de Carthage', 'Sousse', '73 000 000', 'compta@essai.tn', '4111', 'Assujetti', '', '45', '', 'Oui', '', '', '', ''],
 };
 // Contrôle d'une ligne lue (textes), hors base : → { ligne, repere, valeurs, compteId, retenueId, erreurs, avertissements }.
 // `ctx` : { type, codesPris (dossier), codesFichier (lignes précédentes), collectifs: Map numéro → compte, retenues:
 // Map code → taxe, collectifDefaut (compte ou null), matricules: Map 7 chiffres → repère (dossier, puis fichier) }.
 const controlerLigne = ({ ligne, cellules }, ctx) => {
-  const [code, nom, matricule, adresse, ville, telephone, email, collectif, regime, retenue, delai] = cellules;
+  const [code, nom, matricule, adresse, ville, telephone, email, collectif, regime, retenue, delai, regimeFiscal = '', resident = '', idType = '', idNumero = '', idNaissance = '', idPays = ''] = cellules;
   const erreurs = [];
   const avertissements = [];
   const valeurs = {};
@@ -537,6 +641,16 @@ const controlerLigne = ({ ligne, cellules }, ctx) => {
   valeurs.email = essayer('Email', () => lireEmail(email));
   valeurs.regime_tva = essayer('Régime de TVA', () => lireRegimeTva(regime));
   valeurs.delai_paiement = essayer('Délai de paiement', () => lireDelai(delai));
+  // S7b : régime fiscal (sa valeur ou son libellé), résidence (oui / non), identifiant de secours.
+  const rf = texte(regimeFiscal);
+  valeurs.regime_fiscal = null;
+  if (rf) {
+    const v = (ctx.regimesFiscaux || new Map()).get(normaliserMot(rf));
+    if (v) valeurs.regime_fiscal = v;
+    else erreurs.push(`Régime fiscal « ${rf} » inconnu (voir la liste de la fenêtre d'un fournisseur)`);
+  }
+  valeurs.resident = essayer('Résident', () => lireResident(resident));
+  Object.assign(valeurs, essayer('Identifiant', () => lireIdentifiant({ type: idType, numero: idNumero, naissance: idNaissance, pays: idPays })) || {});
   let compteId = null;
   const numero = texte(collectif);
   if (numero) {
@@ -586,9 +700,9 @@ const modeleImport = async (req, res) => {
       feuille: `${TYPES_TIERS_LIBELLES[type]}s`,
       titre: `Modèle d'import — ${minuscule(type)}s`,
       sousTitre: d.nom,
-      meta: `Une ligne par ${minuscule(type)} sous les en-têtes ; la ligne d'exemple (grisée) est ignorée. Code vide = généré (modèle ${modeleDe(d).prefixes[type]}${'0'.repeat(modeleDe(d).chiffres - 1)}1) ; seul le nom est obligatoire ; compte collectif par son numéro (vide = ${collectifDefautNumero(d, type) || 'à indiquer'}) ; retenue par son code (page Taxes). Toutes les lignes sont contrôlées : rien n'est importé à la moindre erreur.`,
-      enTetes: EN_TETES_IMPORT,
-      largeurs: LARGEURS_IMPORT,
+      meta: `Une ligne par ${minuscule(type)} sous les en-têtes ; la ligne d'exemple (grisée) est ignorée. Code vide = généré (modèle ${modeleDe(d).prefixes[type]}${'0'.repeat(modeleDe(d).chiffres - 1)}1) ; seul le nom est obligatoire ; compte collectif par son numéro (vide = ${collectifDefautNumero(d, type) || 'à indiquer'}) ; retenue par son code (page Taxes) ; colonnes facultatives : régime fiscal (libellé de la liste de la page Tiers), résident (oui ou non), identifiant d'un bénéficiaire sans matricule (CIN, passeport, carte de séjour, autre ; numéro ; date de naissance JJ/MM/AAAA ; pays en deux lettres). Toutes les lignes sont contrôlées : rien n'est importé à la moindre erreur.`,
+      enTetes: [...EN_TETES_IMPORT, ...FACULTATIFS_IMPORT],
+      largeurs: [...LARGEURS_IMPORT, ...LARGEURS_FACULTATIFS],
       exemple: EXEMPLE_IMPORT[type],
     });
     await envoyerClasseur(res, wb, `modele-${minuscule(type)}s-${d.id}.xlsx`);
@@ -610,7 +724,7 @@ const importer = async (req, res) => {
     const garde = await lectureDossier(req.user, req.params.dossierId);
     if (!droits(garde.acces).configurer) throw erreur(403, MSG_CONFIGURER, 'NIVEAU_INSUFFISANT');
     if (garde.d.etat === 'archive') throw erreur(409, 'Dossier archivé : désarchivez-le d\'abord', 'DOSSIER_ARCHIVE');
-    const lignes = await lireClasseur(req.file.buffer, { enTetes: EN_TETES_IMPORT });
+    const lignes = await lireClasseur(req.file.buffer, { enTetes: EN_TETES_IMPORT, facultatifs: FACULTATIFS_IMPORT });
     const fichier = nomFichier(req.file);
     const resultat = await ecritureTiers(req, async (db, acces, d) => {
       const nature = NATURE_PAR_TYPE_TIERS[type];
@@ -627,6 +741,7 @@ const importer = async (req, res) => {
         type, codesPris: codes, codesFichier: new Set(), collectifs, collectifDefaut: defaut && defaut.actif ? defaut : null,
         retenues: new Map(taxes.rows.map((x) => [x.code, x])),
         matricules: new Map(),
+        regimesFiscaux: regimesParMot(d.pays),
       };
       for (const p of portes.rows) if (!ctx.matricules.has(p.cle)) ctx.matricules.set(p.cle, `le ${minuscule(p.type)} ${p.code}`);
       const { valides, fausses, avertissements } = controlerLignes(lignes, ctx);
@@ -647,9 +762,11 @@ const importer = async (req, res) => {
         const code = v.valeurs.code || generer();
         if (!v.valeurs.code) codesGeneres += 1;
         await db.query(
-          `INSERT INTO compta.tiers (dossier_id, type, code, nom, matricule_fiscal, adresse, ville, telephone, email, compte_id, regime_tva, retenue_id, delai_paiement, origine, cree_par)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'import', $14)`,
-          [d.id, type, code, v.valeurs.nom, v.valeurs.matricule_fiscal, v.valeurs.adresse, v.valeurs.ville, v.valeurs.telephone, v.valeurs.email, v.compteId, v.valeurs.regime_tva, v.retenueId, v.valeurs.delai_paiement, req.user.id]
+          `INSERT INTO compta.tiers (dossier_id, type, code, nom, matricule_fiscal, adresse, ville, telephone, email, compte_id, regime_tva, retenue_id, delai_paiement, origine, cree_par,
+                                     regime_fiscal, resident, id_type, id_numero, id_naissance, id_pays)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'import', $14, $15, $16, $17, $18, $19, $20)`,
+          [d.id, type, code, v.valeurs.nom, v.valeurs.matricule_fiscal, v.valeurs.adresse, v.valeurs.ville, v.valeurs.telephone, v.valeurs.email, v.compteId, v.valeurs.regime_tva, v.retenueId, v.valeurs.delai_paiement, req.user.id,
+            v.valeurs.regime_fiscal, v.valeurs.resident !== false, v.valeurs.id_type ?? null, v.valeurs.id_numero ?? null, v.valeurs.id_naissance ?? null, v.valeurs.id_pays ?? null]
         );
       }
       await journaliser(db, acces.espace_id, req.user.id, 'tiers_importes', { dossier: d.id, type, nombre: valides.length, codesGeneres, fichier });
@@ -664,12 +781,12 @@ const importer = async (req, res) => {
 // GET /api/compta/dossiers/:dossierId/tiers/export?type= — les tiers de l'onglet (actifs d'abord), classeur à la charte
 // (excelBrandService, règle du projet : un seul onglet, jamais de PDF), colonnes du modèle d'import plus l'état et
 // l'origine. Lecture : tout niveau.
-const COLONNES_EXPORT = [...EN_TETES_IMPORT, 'État', 'Origine'];
+const COLONNES_EXPORT = [...EN_TETES_IMPORT, ...FACULTATIFS_IMPORT, 'État', 'Origine'];
 const exporter = async (req, res) => {
   try {
     const type = req.query.type === undefined || req.query.type === '' ? 'fournisseur' : lireType(req.query.type);
     const { d } = await lectureDossier(req.user, req.params.dossierId);
-    const lignes = (await db_lignesExport(d.id, type)).map(presenterTiers);
+    const lignes = (await db_lignesExport(d.id, type)).map((t) => presenterTiers(t, d.pays));
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(`${TYPES_TIERS_LIBELLES[type]}s`);
     const n = COLONNES_EXPORT.length;
@@ -680,13 +797,15 @@ const exporter = async (req, res) => {
       meta: `${lignes.length} ${minuscule(type)}${lignes.length > 1 ? 's' : ''} (${actifs} actif${actifs > 1 ? 's' : ''}) · exporté le ${jourTunis()}`,
       colCount: n,
     });
-    headerRow(ws, enTete, COLONNES_EXPORT, { widths: [...LARGEURS_IMPORT, 12, 10] });
+    headerRow(ws, enTete, COLONNES_EXPORT, { widths: [...LARGEURS_IMPORT, ...LARGEURS_FACULTATIFS, 12, 10] });
     for (let c = 1; c <= n; c++) ws.getColumn(c).numFmt = '@';
     let ligne = enTete;
     lignes.forEach((t, i) => {
       ligne += 1;
       const row = ws.getRow(ligne);
-      row.values = [t.code, t.nom, t.matriculeFiscal || '', t.adresse || '', t.ville || '', t.telephone || '', t.email || '', t.compte ? t.compte.numero : '', t.regimeTvaLibelle, t.retenue ? t.retenue.code : '', String(t.delaiPaiement), t.actif ? 'Actif' : 'Désactivé', t.origine === 'import' ? 'Importé' : 'Saisi'];
+      row.values = [t.code, t.nom, t.matriculeFiscal || '', t.adresse || '', t.ville || '', t.telephone || '', t.email || '', t.compte ? t.compte.numero : '', t.regimeTvaLibelle, t.retenue ? t.retenue.code : '', String(t.delaiPaiement),
+        t.regimeFiscalLibelle || '', t.resident ? 'Oui' : 'Non', t.identifiant ? t.identifiant.typeLibelle : '', t.identifiant ? t.identifiant.numero : '', t.identifiant && t.identifiant.naissance ? `${t.identifiant.naissance.slice(8, 10)}/${t.identifiant.naissance.slice(5, 7)}/${t.identifiant.naissance.slice(0, 4)}` : '', t.identifiant && t.identifiant.pays ? t.identifiant.pays : '',
+        t.actif ? 'Actif' : 'Désactivé', t.origine === 'import' ? 'Importé' : 'Saisi'];
       dataRowStyle(row, { index: i, colCount: n });
     });
     brandFooter(ws, n);
@@ -699,8 +818,9 @@ const exporter = async (req, res) => {
 const db_lignesExport = async (dossierId, type) => (await pool.query(`${SQL_SELECT} WHERE t.dossier_id = $1 AND t.type = $2 ORDER BY t.actif DESC, t.code`, [dossierId, type])).rows;
 
 module.exports = {
-  MSG_TIERS, MSG_CONFIGURER, EN_TETES_IMPORT, COLONNES_EXPORT, EXEMPLE_IMPORT,
+  MSG_TIERS, MSG_CONFIGURER, EN_TETES_IMPORT, FACULTATIFS_IMPORT, COLONNES_EXPORT, EXEMPLE_IMPORT,
   lireType, lireTexte, lireNom, lireCode, lireMatricule, lireEmail, lireRegimeTva, lireDelai, lireChamps, lireModele, lireFiltres,
+  lireRegimeFiscal, lireResident, lireIdentifiant, lireNaissance, regimesParMot, choixFiscaux,
   modeleDe, prochainCode, generateurCodes, tiersMouvemente, SQL_SELECT, SQL_FILTRES, presenterTiers, controlerLigne, controlerLignes, collectifDefautNumero,
   lire, creer, modifier, desactiver, reactiver, supprimer, modele, modeleImport, importer, exporter,
 };

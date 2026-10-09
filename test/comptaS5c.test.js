@@ -114,7 +114,8 @@ test('tiers : lecteurs de saisie (code, nom, matricule, email, régime, délai, 
   // Tous les champs (création) : le code vide vaut « généré », le compte et la retenue absents valent null.
   const c = tiers.lireChamps({ code: '', nom: 'A', matriculeFiscal: '1234567A', adresse: '', ville: 'Tunis', telephone: '71 000 000', email: 'a@b.tn', regimeTva: 'exonere', delaiPaiement: '45' });
   assert.deepEqual(c, {
-    valeurs: { code: null, nom: 'A', adresse: null, ville: 'Tunis', telephone: '71 000 000', email: 'a@b.tn', regime_tva: 'exonere', delai_paiement: 45, matricule_fiscal: '1234567A' },
+    // S7b : régime fiscal (non renseigné), résident (oui par défaut), identifiant de secours (aucun).
+    valeurs: { code: null, nom: 'A', adresse: null, ville: 'Tunis', telephone: '71 000 000', email: 'a@b.tn', regime_tva: 'exonere', delai_paiement: 45, regime_fiscal: null, resident: true, matricule_fiscal: '1234567A', id_type: null, id_numero: null, id_naissance: null, id_pays: null },
     compteId: null, retenueId: null, avertissements: [],
   });
   assert.throws(() => tiers.lireChamps({ code: 'F1' }), est400, 'nom obligatoire');
@@ -162,7 +163,7 @@ test('tiers : présentation, SQL, contrôle des lignes d\'import (tout ou rien)'
     id: 7, type: 'fournisseur', typeLibelle: 'Fournisseur', code: 'F0001', nom: 'Essai', matriculeFiscal: '1234567A/A/M/000', adresse: null, ville: 'Tunis', telephone: null, email: null,
     compte: { id: 3, numero: '4011', libelle: 'Fournisseurs - achats', nature: 'fournisseurs', actif: true, feuille: true, imputable: true },
     regimeTva: 'assujetti', regimeTvaLibelle: 'Assujetti', retenue: { id: 9, code: 'RS_MAR15', libelle: 'Retenue achats', taux: '1.500', actif: false },
-    delaiPaiement: 30, origine: 'import', actif: true, creeLe: 'c', modifieLe: 'u',
+    delaiPaiement: 30, regimeFiscal: null, regimeFiscalLibelle: null, personne: null, resident: true, identifiant: null, origine: 'import', actif: true, creeLe: 'c', modifieLe: 'u',
   });
   assert.equal(tiers.presenterTiers({ id: 1, type: 'client', code: 'C0001', nom: 'x', regime_tva: 'exonere', delai_paiement: 0, origine: 'saisi', actif: false, compte_id: null, retenue_id: null }).retenue, null);
   assert.ok(tiers.SQL_FILTRES.includes('t.code ILIKE $3 OR t.nom ILIKE $3 OR t.matricule_fiscal ILIKE $3') && tiers.SQL_FILTRES.includes('($4::boolean OR t.actif)'));

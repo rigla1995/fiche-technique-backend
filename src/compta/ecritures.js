@@ -17,7 +17,7 @@ const pool = require('../config/database');
 const { journaliser } = require('./journal');
 const { modeTitulaire, etatAbonnement } = require('./garde');
 const { erreur, idValide, repondreErreur } = require('./comptablesClient');
-const { TYPES_TAXES, TYPES_TAXES_LIBELLES, ASSIETTES_LIBELLES, NATURE_PAR_TYPE_TIERS, TYPES_TIERS_LIBELLES } = require('./paquets');
+const { TYPES_TAXES, TYPES_TAXES_LIBELLES, ASSIETTES_LIBELLES, NATURE_PAR_TYPE_TIERS, TYPES_TIERS_LIBELLES, regimeFiscalDe } = require('./paquets');
 const { droits, dateValide, dansEspaceDuDossier } = require('./dossiers');
 const { lectureDossier, presenterDossier, HORS_W1252 } = require('./planComptes');
 const { SQL_FEUILLE, presenterCompteCourt } = require('./configDossier');
@@ -293,10 +293,19 @@ const choixTaxes = async (db, dossierId) =>
 const presenterTiersCourt = (t) => ({
   id: t.id, type: t.type, typeLibelle: TYPES_TIERS_LIBELLES[t.type] || t.type, code: t.code, nom: t.nom, compteId: t.compte_id, delaiPaiement: t.delai_paiement,
   retenue: t.retenue_id ? { id: t.retenue_id, code: t.retenue_code, taux: t.retenue_taux, actif: t.retenue_actif } : null,
+  regimeFiscal: t.regime_fiscal || null,
 });
+// S7b (PLAN-S7 §2 « S7b » : la retenue se propose d'après le régime) : un fournisseur sans retenue par défaut mais dont le
+// régime fiscal est connu se voit proposer le code « achats » de son régime (1,5 %, 1 % ou 0,5 %), s'il est actif dans le
+// dossier ; marqué « selonRegime » (jamais imposé : la saisie le montre, la personne choisit).
+const retenueSelonRegime = (pays, regimeFiscal, taxes) => {
+  const r = regimeFiscalDe(pays, regimeFiscal);
+  const x = r ? taxes.find((y) => y.code === r.achats && y.actif) : null;
+  return x ? { id: x.id, code: x.code, taux: x.taux, actif: true, selonRegime: true } : null;
+};
 const choixTiers = async (db, dossierId) =>
   (await db.query(
-    `SELECT t.id, t.type, t.code, t.nom, t.compte_id, t.delai_paiement, t.retenue_id, x.code AS retenue_code, x.taux::text AS retenue_taux, x.actif AS retenue_actif
+    `SELECT t.id, t.type, t.code, t.nom, t.compte_id, t.delai_paiement, t.retenue_id, t.regime_fiscal, x.code AS retenue_code, x.taux::text AS retenue_taux, x.actif AS retenue_actif
        FROM compta.tiers t LEFT JOIN compta.taxes x ON x.id = t.retenue_id
       WHERE t.dossier_id = $1 AND t.actif ORDER BY t.type, t.code`,
     [dossierId]
@@ -347,7 +356,7 @@ const etatEcritures = async (db, acces, d, f) => {
     journaux: journaux.map((j) => ({ id: j.id, code: j.code, libelle: j.libelle, type: j.type, actif: j.actif })),
     comptes,
     taxes,
-    tiers,
+    tiers: tiers.map((t) => (t.retenue || t.type !== 'fournisseur' ? t : { ...t, retenue: retenueSelonRegime(d.pays, t.regimeFiscal, taxes) })),
     etats: ETATS.map((valeur) => ({ valeur, libelle: ETATS_LIBELLES[valeur] })),
     bornes: { referenceMax: REFERENCE_MAX, libelleMax: LIBELLE_MAX, lignesMin: LIGNES_MIN, lignesMax: LIGNES_MAX },
     etatAbonnement: etatAbonnement(mode),
@@ -403,7 +412,7 @@ const exigerImputable = (k, ou) => {
   return k;
 };
 const tiersDe = async (db, dossierId, ids) => new Map(
-  (await db.query('SELECT id, type, code, nom, actif, compte_id, retenue_id, delai_paiement FROM compta.tiers WHERE dossier_id = $1 AND id = ANY($2)', [dossierId, ids])).rows.map((t) => [t.id, t])
+  (await db.query('SELECT id, type, code, nom, actif, compte_id, retenue_id, delai_paiement, regime_fiscal FROM compta.tiers WHERE dossier_id = $1 AND id = ANY($2)', [dossierId, ids])).rows.map((t) => [t.id, t])
 );
 const taxesDe = async (db, dossierId, ids) => new Map(
   (await db.query('SELECT id, code, libelle, type, taux::text AS taux, montant::text AS montant, assiette, actif, compte_achat_id, compte_vente_id, compte_immo_id FROM compta.taxes WHERE dossier_id = $1 AND id = ANY($2)', [dossierId, ids])).rows.map((x) => [x.id, x])
@@ -561,6 +570,11 @@ const ligneDeRetenue = async (db, d, journal, { tiersId, taxeId, lignes }) => {
     if (!t) throw erreur(404, 'Tiers introuvable');
     if (!t.actif) throw erreur(409, `Le ${TYPES_TIERS_LIBELLES[t.type].toLowerCase()} ${t.code} est désactivé (page Tiers)`, 'TIERS_DESACTIVE');
     if (!codeId) codeId = t.retenue_id;
+    // S7b : à défaut, la retenue « achats » de son régime fiscal (code actif du dossier).
+    if (!codeId && t.type === 'fournisseur' && t.regime_fiscal) {
+      const r = regimeFiscalDe(d.pays, t.regime_fiscal);
+      if (r) codeId = (await db.query('SELECT id FROM compta.taxes WHERE dossier_id = $1 AND code = $2 AND actif', [d.id, r.achats])).rows[0]?.id || null;
+    }
   }
   if (!codeId) throw erreur(409, t ? `Le ${TYPES_TIERS_LIBELLES[t.type].toLowerCase()} ${t.code} n'a pas de retenue par défaut : choisissez le code de retenue` : 'Choisissez le code de retenue', 'RETENUE_ABSENTE');
   const x = exigerTaxe((await taxesDe(db, d.id, [codeId])).get(codeId), 'Code de retenue');
@@ -747,7 +761,7 @@ module.exports = {
   MSG_SAISIR, REFERENCE_MAX, LIBELLE_MAX, LIGNES_MIN, LIGNES_MAX, TOTAL_MAX, ETATS, ETATS_LIBELLES, NATURES_COLLECTIVES, NATURES_TVA, TYPES_HORS_TTC, TYPES_OPPOSES, TYPES_RETENUE, contenuComparable,
   lireMontant, texteMillimes, millimesDe, milliemesDe, calculTaxe, fmtMillimes, fmtDate, numeroProvisoire,
   lireTexte, lireReference, lireLibelle, lireLigne, lireLignes, lireEcriture, lireFiltres, lireAideTaxe, lireAideRetenue, totaux,
-  SQL_ECRITURES, SQL_FILTRES, SQL_LIGNES, SQL_UNE, presenterLigne, presenterEcriture, presenterTaxeCourte, presenterTiersCourt, resumeEcritures, resumePeriode, assietteRetenue, compteDuCode,
+  SQL_ECRITURES, SQL_FILTRES, SQL_LIGNES, SQL_UNE, presenterLigne, presenterEcriture, presenterTaxeCourte, presenterTiersCourt, retenueSelonRegime, resumeEcritures, resumePeriode, assietteRetenue, compteDuCode,
   // S6b (validation.js, periodes.js) : les outils de la transaction du dossier, réemployés tels quels.
   journalDe, periodeDe, exerciceOuvert, ecritureDe, exigerBrouillard, uneEcriture, lignesDe, insererLignes, resumeEnBase,
   // S6c (livres.js, importEcritures.js) : le contrôle des lignes contre le dossier, la vraie date, le résumé D16, le motif de recherche.
