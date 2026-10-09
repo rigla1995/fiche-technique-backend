@@ -8,12 +8,14 @@
 // (D3) : /api/compta/dossiers/:dossierId/taxes… ; chaque écriture passe par la transaction verrouillée du dossier
 // (dansEspaceDuDossier : comptabilité verrouillée, dossier relu sous verrou, garde par comptabilité D4), puis par les
 // droits et l'état du dossier. Taux et montants transportés en texte (SPEC-SOCLE §0). « Sans écriture » :
-// taxeMouvementee lit compta.lignes depuis S6a (les écritures en brouillard comptent).
+// taxeMouvementee lit compta.lignes depuis S6a (les écritures en brouillard comptent). S7b (PLAN-S7 §3 point 3, §4
+// « Retenues ») : le CODE D'OPÉRATION TEJ d'un code personnalisé de retenue (liste du paquet) ou de retenue de TVA (RSTVA25,
+// RSTVA100) se choisit, à la création ou plus tard ; celui d'un code du paquet est figé — sans lui, pas de certificat.
 const pool = require('../config/database');
 const { journaliser } = require('./journal');
 const { modeTitulaire, etatAbonnement } = require('./garde');
 const { erreur, idValide, repondreErreur } = require('./comptablesClient');
-const { TYPES_TAXES, TYPES_TAXES_LIBELLES, ASSIETTES, ASSIETTES_LIBELLES, COPIES_LIBELLES, CODE_TAXE_MAX, RE_CODE_TAXE } = require('./paquets');
+const { TYPES_TAXES, TYPES_TAXES_LIBELLES, ASSIETTES, ASSIETTES_LIBELLES, COPIES_LIBELLES, CODE_TAXE_MAX, RE_CODE_TAXE, fiscaliteDe } = require('./paquets');
 const { droits, dansEspaceDuDossier } = require('./dossiers');
 const { lectureDossier, lireLibelle, presenterDossier } = require('./planComptes');
 const { SQL_FEUILLE, choixComptes, presenterCompteCourt, compteDuDossier, codesDuPaquet, copierCodes } = require('./configDossier');
@@ -55,6 +57,23 @@ const lireCompteId = (v) => {
   if (v == null || v === '') return null;
   if (!idValide(v)) throw erreur(400, 'Compte : requête invalide');
   return Number(v);
+};
+// S7b : le code d'opération TEJ d'un code de retenue (liste du paquet du pays) ou de retenue de TVA (taxe additionnelle) ;
+// vide = aucun ; les autres types n'en ont pas.
+const CODES_TEJ_TVA = ['RSTVA25', 'RSTVA100'];
+const lireCodeTej = (v, type, pays) => {
+  if (v == null || v === '') return null;
+  if (typeof v !== 'string') throw erreur(400, 'Code TEJ : requête invalide');
+  const c = v.trim().toUpperCase();
+  if (type === 'retenue') {
+    if (!(fiscaliteDe(pays)?.tej?.codesOperations || []).some((o) => o.code === c)) throw erreur(400, `Code TEJ « ${c} » inconnu (liste du cahier des charges TEJ)`);
+    return c;
+  }
+  if (type === 'retenue_tva') {
+    if (!CODES_TEJ_TVA.includes(c)) throw erreur(400, `Code TEJ d'une retenue de TVA : ${CODES_TEJ_TVA.join(' ou ')}`);
+    return c;
+  }
+  throw erreur(400, 'Seuls les codes de retenue et de retenue de TVA portent un code TEJ');
 };
 // Taux et montant selon l'assiette : un montant fixe par facture (et pas de taux) avec « fixe », un taux sinon.
 const lireTauxMontant = (assiette, corps) => (assiette === 'fixe'
@@ -124,6 +143,9 @@ const etatTaxes = async (db, acces, d) => {
     types: TYPES_TAXES.map((valeur) => ({ valeur, libelle: TYPES_TAXES_LIBELLES[valeur] })),
     assiettes: ASSIETTES.map((valeur) => ({ valeur, libelle: ASSIETTES_LIBELLES[valeur] })),
     code: { max: CODE_TAXE_MAX },
+    // S7b : les codes d'opération TEJ que peut porter un code personnalisé (retenue ; retenue de TVA).
+    codesTej: (fiscaliteDe(d.pays)?.tej?.codesOperations || []).map((o) => ({ code: o.code, libelle: o.libelle })),
+    codesTejTva: CODES_TEJ_TVA,
     taxes: t.rows.map(presenterTaxe),
     paquet: paquet.rows[0] ? { pays: paquet.rows[0].pays, version: paquet.rows[0].version, libelle: paquet.rows[0].libelle, codes: reste.rows.map(presenterCodePaquet) } : null,
     comptes,
@@ -199,17 +221,18 @@ const ajouter = async (req, res) => {
     const { taux, montant } = lireTauxMontant(assiette, corps);
     const ids = Object.fromEntries(COMPTES.map(([cle]) => [cle, lireCompteId(corps[cle])]));
     const etat = await ecritureTaxes(req, async (db, acces, d) => {
+      const codeTej = lireCodeTej(corps.codeTej, type, d.pays);
       if ((await db.query('SELECT 1 FROM compta.taxes WHERE dossier_id = $1 AND code = $2', [d.id, code])).rows.length) throw erreur(409, `Le code ${code} existe déjà`, 'CODE_EXISTANT');
       if (d.paquet_id && (await codesDuPaquet(db, d.paquet_id, [code])).length) throw erreur(409, `${code} est un code du paquet : ajoutez-le depuis le paquet`, 'CODE_PAQUET');
       const comptes = {};
       for (const [cle, , nom] of COMPTES) comptes[nom] = await compteRattache(db, d.id, ids[cle]);
       const ins = await db.query(
-        `INSERT INTO compta.taxes (dossier_id, code, libelle, type, taux, montant, assiette, compte_achat_id, compte_vente_id, compte_immo_id, origine, cree_par)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ajout', $11) RETURNING id`,
-        [d.id, code, libelle, type, taux, montant, assiette, comptes.achat?.id ?? null, comptes.vente?.id ?? null, comptes.immobilisations?.id ?? null, req.user.id]
+        `INSERT INTO compta.taxes (dossier_id, code, libelle, type, taux, montant, assiette, compte_achat_id, compte_vente_id, compte_immo_id, origine, cree_par, code_tej)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ajout', $11, $12) RETURNING id`,
+        [d.id, code, libelle, type, taux, montant, assiette, comptes.achat?.id ?? null, comptes.vente?.id ?? null, comptes.immobilisations?.id ?? null, req.user.id, codeTej]
       );
       await journaliser(db, acces.espace_id, req.user.id, 'taxe_ajoutee', {
-        dossier: d.id, taxe: ins.rows[0].id, code, libelle, type, taux, montant, assiette, origine: 'ajout',
+        dossier: d.id, taxe: ins.rows[0].id, code, libelle, type, taux, montant, assiette, origine: 'ajout', ...(codeTej ? { codeTej } : {}),
         comptes: Object.fromEntries(Object.entries(comptes).map(([k, v]) => [k, v ? v.numero : null])),
       });
     });
@@ -231,7 +254,8 @@ const modifier = async (req, res) => {
     const assietteDemandee = hasOwn(corps, 'assiette') ? lireAssiette(corps.assiette) : null;
     const ids = Object.fromEntries(COMPTES.filter(([cle]) => hasOwn(corps, cle)).map(([cle]) => [cle, lireCompteId(corps[cle])]));
     const touche = CHAMPS_FIGES.some((c) => hasOwn(corps, c));
-    if (libelle == null && !touche && !Object.keys(ids).length) throw erreur(400, 'Rien à modifier');
+    const codeTejDemande = hasOwn(corps, 'codeTej');
+    if (libelle == null && !touche && !Object.keys(ids).length && !codeTejDemande) throw erreur(400, 'Rien à modifier');
     const etat = await ecritureTaxes(req, async (db, acces, d) => {
       const t = await taxeDe(db, d.id, req.params.taxeId);
       const sets = [];
@@ -258,6 +282,17 @@ const modifier = async (req, res) => {
         const change = CHAMPS_FIGES.some((c) => changements[c]);
         if (change && t.origine !== 'ajout') throw erreur(409, 'Le type, le taux, le montant et l\'assiette d\'un code du paquet ne se modifient pas : ajoutez un code personnalisé', 'TAXE_PAQUET');
         if (change && await taxeMouvementee(db, t.id)) throw erreur(409, `Le code ${t.code} a des écritures : son type, son taux, son montant et son assiette ne changent plus`, 'TAXE_MOUVEMENTEE');
+      }
+      // S7b : le code TEJ (code personnalisé seulement ; vérifié contre le type final du code).
+      if (codeTejDemande) {
+        const codeTej = lireCodeTej(corps.codeTej, type || t.type, d.pays);
+        if (codeTej !== (t.code_tej || null)) {
+          if (t.origine !== 'ajout') throw erreur(409, `Le code TEJ du code ${t.code} (paquet) ne se modifie pas`, 'TAXE_PAQUET');
+          poser('code_tej', 'codeTej', codeTej, t.code_tej, codeTej);
+        }
+      } else if (type && type !== t.type && t.code_tej && t.origine === 'ajout') {
+        // Un code personnalisé qui change de type perd un code TEJ qui ne lui convient plus.
+        try { lireCodeTej(t.code_tej, type, d.pays); } catch (e) { poser('code_tej', 'codeTej', null, t.code_tej, null); }
       }
       for (const [cle, colonne, nom] of COMPTES) {
         if (!hasOwn(ids, cle) || ids[cle] === t[colonne]) continue;
@@ -309,6 +344,6 @@ const reactiver = async (req, res) => {
 };
 
 module.exports = {
-  MSG_CONFIGURER, CHAMPS_FIGES, lireCode, lireType, lireAssiette, lireTaux, lireMontant, lireCompteId, lireTauxMontant, taxeMouvementee, SQL_TAXES, SQL_PAQUET_RESTANT, presenterTaxe, presenterCodePaquet,
+  MSG_CONFIGURER, CHAMPS_FIGES, CODES_TEJ_TVA, lireCodeTej, lireCode, lireType, lireAssiette, lireTaux, lireMontant, lireCompteId, lireTauxMontant, taxeMouvementee, SQL_TAXES, SQL_PAQUET_RESTANT, presenterTaxe, presenterCodePaquet,
   lire, ajouterDepuisPaquet, ajouter, modifier, desactiver, reactiver,
 };

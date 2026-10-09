@@ -379,6 +379,8 @@ const presenterFiche = async (db, acces, d) => {
     mouvemente: await dossierMouvemente(db, d.id),
     // S7a : lettrage et échéancier (carte Tenue) — par type de tiers : lignes à lettrer, dû non lettré, part échue.
     tenue: configuration.tenue,
+    // S7b : taxes du mois (carte Taxes) — période du jour, TVA à payer ou crédit, certificats à produire et produits.
+    fiscalite: configuration.fiscalite,
     creeLe: d.created_at,
     modifieLe: d.updated_at,
     etatAbonnement: etatAbonnement(mode),
