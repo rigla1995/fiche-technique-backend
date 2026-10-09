@@ -377,6 +377,8 @@ const presenterFiche = async (db, acces, d) => {
     tiers: configuration.tiers,
     ecritures: configuration.ecritures,
     mouvemente: await dossierMouvemente(db, d.id),
+    // S7a : lettrage et échéancier (carte Tenue) — par type de tiers : lignes à lettrer, dû non lettré, part échue.
+    tenue: configuration.tenue,
     creeLe: d.created_at,
     modifieLe: d.updated_at,
     etatAbonnement: etatAbonnement(mode),

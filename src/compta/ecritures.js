@@ -218,11 +218,12 @@ const SQL_LIGNES = `
   SELECT l.id, l.ecriture_id, l.rang, l.libelle, l.debit::text AS debit, l.credit::text AS credit, l.echeance::text AS echeance,
          l.compte_id, k.numero AS compte_numero, k.libelle AS compte_libelle, k.nature AS compte_nature,
          l.tiers_id, t.type AS tiers_type, t.code AS tiers_code, t.nom AS tiers_nom,
-         l.taxe_id, x.code AS taxe_code, x.libelle AS taxe_libelle, x.type AS taxe_type
+         l.taxe_id, x.code AS taxe_code, x.libelle AS taxe_libelle, x.type AS taxe_type, lt.lettre
     FROM compta.lignes l
     JOIN compta.comptes k ON k.id = l.compte_id
     LEFT JOIN compta.tiers t ON t.id = l.tiers_id
     LEFT JOIN compta.taxes x ON x.id = l.taxe_id
+    LEFT JOIN compta.lettrages lt ON lt.id = l.lettrage_id
    WHERE l.ecriture_id = ANY($1)
    ORDER BY l.ecriture_id, l.rang`;
 const presenterLigne = (l) => ({
@@ -235,6 +236,8 @@ const presenterLigne = (l) => ({
   credit: l.credit,
   taxe: l.taxe_id ? { id: l.taxe_id, code: l.taxe_code, libelle: l.taxe_libelle, type: l.taxe_type } : null,
   echeance: l.echeance,
+  // S7a : la lettre de la ligne (lettrage d'un tiers, migration 218), ou null.
+  lettre: l.lettre ? l.lettre.trim() : null,
 });
 const presenterEcriture = (e, lignes = null) => ({
   id: e.id,

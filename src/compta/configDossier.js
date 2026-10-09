@@ -9,6 +9,7 @@
 // dossiers.js : appelé par dossiers.creer, dossierLabflow.assurerDossierLabflow, la fiche (resumeConfiguration), les
 // pages Journaux et Taxes (choix de comptes, copie d'un code du paquet).
 const { journaliser } = require('./journal');
+const { SQL_DU, SQL_ECHEANCE, sqlAgregatsAges, millimes, texteMillimesSigne, trancheesImputees, aujourdhuiTunis } = require('./echeances');
 
 // Les codes du paquet copiés dans un dossier selon son régime (PLAN-S5 §1 ligne S5b) : alias `r` = compta.ref_taxes,
 // `c` = le dossier (tva, exportateur_total). Même texte dans la migration 213 (test/comptaS5b.test.js).
@@ -144,21 +145,49 @@ const initialiserJournauxEtTaxes = async (db, opts) => {
   return { journaux: j.journaux, codes: t.codes };
 };
 
+// S7a (carte « Tenue » : lignes Lettrage et Échéancier) : par tiers, les lignes validées à lettrer, le dû non lettré
+// (brouillard compris, comme l'échéancier) et ses agrégats d'âge ; la part échue se calcule tiers par tiers après
+// imputation des règlements sur les échéances les plus anciennes (règles : echeances.js), puis se somme par type.
+const SQL_RESUME_TENUE = `
+  SELECT n.type, n.tiers_id, COUNT(*) FILTER (WHERE n.etat = 'validee')::int AS a_lettrer,
+         COALESCE(SUM(n.du), 0)::numeric(18,3)::text AS du,
+         ${sqlAgregatsAges('n')}
+    FROM (
+      SELECT t.type, l.tiers_id, e.etat, ${SQL_DU} AS du, ($2::date - ${SQL_ECHEANCE})::int AS retard
+        FROM compta.lignes l
+        JOIN compta.ecritures e ON e.id = l.ecriture_id
+        JOIN compta.tiers t ON t.id = l.tiers_id
+       WHERE l.dossier_id = $1 AND l.tiers_id IS NOT NULL AND l.lettrage_id IS NULL
+    ) n
+   GROUP BY n.type, n.tiers_id`;
 // Résumé pour la fiche du dossier (carte « Configuration ») : journaux et codes de taxe actifs ; S5c : tiers (fournisseurs,
-// clients) actifs ; S6a (carte « Tenue ») : écritures en brouillard et validées.
+// clients) actifs ; S6a (carte « Tenue ») : écritures en brouillard et validées ; S7a : lettrage et échéancier.
 const resumeConfiguration = async (db, dossierId) => {
-  const [j, t, x, e] = await Promise.all([
+  const [j, t, x, e, n] = await Promise.all([
     db.query('SELECT COUNT(*) FILTER (WHERE actif)::int AS actifs, COUNT(*)::int AS total FROM compta.journaux WHERE dossier_id = $1', [dossierId]),
     db.query('SELECT COUNT(*) FILTER (WHERE actif)::int AS actifs, COUNT(*)::int AS total FROM compta.taxes WHERE dossier_id = $1', [dossierId]),
     db.query('SELECT type, COUNT(*) FILTER (WHERE actif)::int AS actifs, COUNT(*)::int AS total FROM compta.tiers WHERE dossier_id = $1 GROUP BY type', [dossierId]),
     db.query(`SELECT COUNT(*) FILTER (WHERE etat = 'brouillard')::int AS brouillard, COUNT(*) FILTER (WHERE etat = 'validee')::int AS validees FROM compta.ecritures WHERE dossier_id = $1`, [dossierId]),
+    db.query(SQL_RESUME_TENUE, [dossierId, aujourdhuiTunis()]),
   ]);
   const tiersDe = (type) => { const r = x.rows.find((y) => y.type === type); return { nbActifs: r ? r.actifs : 0, nbTotal: r ? r.total : 0 }; };
+  const tenueDe = (type) => {
+    let aLettrer = 0;
+    let du = 0n;
+    let echu = 0n;
+    for (const r of n.rows.filter((y) => y.type === type)) {
+      aLettrer += r.a_lettrer;
+      du += millimes(r.du);
+      echu += trancheesImputees(r).echu;
+    }
+    return { aLettrer, du: texteMillimesSigne(du), echu: texteMillimesSigne(echu) };
+  };
   return {
     journaux: { nbActifs: j.rows[0].actifs, nbTotal: j.rows[0].total },
     taxes: { nbActifs: t.rows[0].actifs, nbTotal: t.rows[0].total },
     tiers: { fournisseurs: tiersDe('fournisseur'), clients: tiersDe('client') },
     ecritures: { nbBrouillard: e.rows[0].brouillard, nbValidees: e.rows[0].validees },
+    tenue: { fournisseurs: tenueDe('fournisseur'), clients: tenueDe('client') },
   };
 };
 

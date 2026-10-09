@@ -20,6 +20,8 @@ const validation = require('./validation');
 const periodes = require('./periodes');
 const livres = require('./livres');
 const importEcritures = require('./importEcritures');
+const lettrage = require('./lettrage');
+const echeancier = require('./echeancier');
 const { televersement } = require('./importExcel');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
@@ -216,12 +218,12 @@ router.delete('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, limite
 router.post('/dossiers/:dossierId/ecritures/:ecritureId/valider', authenticate, limiteEcritures, validation.valider);
 router.post('/dossiers/:dossierId/ecritures/:ecritureId/contrepasser', authenticate, limiteEcritures, validation.contrepasser);
 // Le journal général (PDF entier en mémoire : toutes les lignes d'une période) a sa propre limite : 30 par quart d'heure et
-// par personne (relecture de S6b).
+// par personne (relecture de S6b) ; S7a : les relevés et les relances ont la leur (limiteDocuments).
 const limitePdf = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
   keyGenerator: (req) => `pdf:${req.user.id}`,
-  message: { message: 'Trop de journaux généraux demandés en peu de temps, réessayez dans un quart d\'heure.' },
+  message: { message: 'Trop de documents PDF demandés en peu de temps, réessayez dans un quart d\'heure.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -251,10 +253,37 @@ router.get('/dossiers/:dossierId/livres/grand-livre/export', authenticate, limit
 router.get('/dossiers/:dossierId/livres/journal', authenticate, livres.journal);
 router.get('/dossiers/:dossierId/livres/journal/export', authenticate, limiteLivres, livres.exporterJournal);
 
+// Étape S7a : le lettrage des lignes d'un tiers (lecture : tout accès au dossier ; lettrer, délettrer : titulaire,
+// Complet ou Saisie — droit « saisir », jugé par le contrôleur ; même limite de débit que la saisie) et l'échéancier
+// (balance âgée, un tiers déplié ; relevé de compte et lettre de relance en PDF sous la limite des PDF ; export Excel sous
+// celle des livres). Adresses fixes (/tiers/…, /export) déclarées avant /:lettrageId. La lettre de relance se demande en
+// POST (relecture de S7a : son texte, 2 000 caractères, voyage dans le corps et non dans l'adresse) ; elle n'écrit rien.
+router.get('/dossiers/:dossierId/lettrage', authenticate, lettrage.lire);
+router.get('/dossiers/:dossierId/lettrage/tiers/:tiersId', authenticate, lettrage.unTiers);
+router.post('/dossiers/:dossierId/lettrage', authenticate, limiteEcritures, lettrage.lettrer);
+router.delete('/dossiers/:dossierId/lettrage/:lettrageId', authenticate, limiteEcritures, lettrage.delettrer);
+router.get('/dossiers/:dossierId/echeancier', authenticate, echeancier.lire);
+router.get('/dossiers/:dossierId/echeancier/export', authenticate, limiteLivres, echeancier.exporter);
+router.get('/dossiers/:dossierId/echeancier/tiers/:tiersId', authenticate, echeancier.unTiers);
+// Relevés et relances : leur propre limite (relecture de S7a : une tournée de relevés ne doit pas bloquer le journal
+// général) — 120 par quart d'heure et par personne.
+const limiteDocuments = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  keyGenerator: (req) => `documents:${req.user.id}`,
+  message: { message: 'Trop de relevés ou de relances demandés en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.get('/dossiers/:dossierId/echeancier/tiers/:tiersId/releve.pdf', authenticate, limiteDocuments, echeancier.releve);
+router.post('/dossiers/:dossierId/echeancier/tiers/:tiersId/relance.pdf', authenticate, limiteDocuments, echeancier.relance);
+
 // Routes d'écriture SANS garde par comptabilité (test/comptaS3b.test.js) : elles n'écrivent dans aucune comptabilité.
 // Toute autre écriture de ce routeur appelle exigerEcriture (garde.js) : la garde globale de src/app.js ne s'applique
 // plus à /api/compta (D4).
-const ECRITURES_SANS_GARDE = ['POST /passage', 'POST /confiees/:espaceId/quitter'];
+// S7a : la lettre de relance (un PDF construit à la demande, en POST pour son texte : rien n'est écrit, elle se lit comme
+// le relevé de compte, abonnement non actif compris).
+const ECRITURES_SANS_GARDE = ['POST /passage', 'POST /confiees/:espaceId/quitter', 'POST /dossiers/:dossierId/echeancier/tiers/:tiersId/relance.pdf'];
 // Écritures permises quel que soit l'abonnement (réponse du client du 07/10, S3c ; test/comptaS3c.test.js) : retirer ou
 // désactiver un accès — couper l'accès d'une personne qui part est une mesure de sécurité. Elles passent par la
 // transaction verrouillée de leur contrôleur, avec `{ garde: false }`.
