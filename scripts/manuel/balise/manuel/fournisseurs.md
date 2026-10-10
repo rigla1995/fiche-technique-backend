@@ -4,40 +4,44 @@ Un seul écran gère [[votre:fournisseur:pl]] : **[[Nom:fournisseur:pl]]** (menu
 
 ### Ce que vous voyez
 
-Le bandeau affiche le nombre total [[de:fournisseur:pl]]. La barre de filtres permet une recherche par nom, téléphone ou adresse, et porte les boutons **📥 Ajout Dynamique** et **+ [[Nouveau:fournisseur]]**. Le tableau principal présente :
+Le bandeau affiche le nombre total [[de:fournisseur:pl]]. La barre de filtres permet une recherche par nom, matricule fiscal, téléphone ou ville, et porte les boutons **📥 Ajout Dynamique** et **+ [[Nouveau:fournisseur]]**. Le tableau principal présente :
 
 | Colonne | Contenu |
 |---|---|
-| Nom | Nom [[du:fournisseur]] |
-| Téléphone | Numéro de téléphone |
-| Adresse | Adresse [[du:fournisseur]] |
+| Nom | Nom [[du:fournisseur]] ; dessous, sa raison sociale et son matricule fiscal s'ils sont renseignés |
+| Téléphone | Numéro de téléphone (et email) |
+| Adresse | Adresse et ville [[du:fournisseur]] |
 | [[Pl:activite]] [[acc:activite:liés:liées]] | Pastilles [[du:activite:pl]] où [[acc:fournisseur:il:elle]] est [[acc:fournisseur:proposé:proposée]] [[au:appro:court]] |
 | [[Court:labo:pl]] [[acc:labo:liés:liées]] | Pastilles 🏭 [[du:labo:pl]] où [[acc:fournisseur:il:elle]] est [[acc:fournisseur:proposé:proposée]] |
 | [[Court:appro:pl]] | Nombre [[de:appro:pl]] [[acc:appro:enregistré:enregistrée:pl]], détaillé par [[nom:activite]] |
-| Actions | ✏️ modifier · 🗑️ supprimer (uniquement [[acc:fournisseur:s'il:si elle]] n'a [[aucun:appro:court]]) |
+| Actions | ✏️ modifier · 🗑️ supprimer (uniquement [[acc:fournisseur:s'il:si elle]] ne figure dans [[aucun:appro:court]] ni dans aucune facture) |
 
 Le tableau est paginé par 10. Une section à part, **🏭 [[Pl:fournisseur]] [[Court:labo]] (auto-[[acc:fournisseur:gérés:gérées]])**, liste [[le:fournisseur:pl]] [[acc:fournisseur:créé:créée:pl]] automatiquement pour chaque [[nom:labo]] — c'est sous ce nom que les livraisons [[du:labo]] apparaissent dans [[le:appro:pl:court]] de [[votre:activite:pl]]. [[acc:fournisseur:Ils:Elles]] affichent leurs [[nom:activite:pl]] [[acc:activite:lié:liée:pl]] mais ne se modifient pas ici.
 
 ### Actions pas à pas
 
-1. **Créer [[un:fournisseur]]** : *+ [[Nouveau:fournisseur]]* → nom (obligatoire), téléphone, adresse. À la création, [[tous:activite:vos]] sont [[acc:activite:coché:cochée:pl]] par défaut : décochez [[acc:activite:ceux:celles]] qui ne travaillent pas avec [[acc:fournisseur:lui:elle]], et cochez [[le:labo:pl]] [[acc:labo:concerné:concernée:pl]].
+1. **Créer [[un:fournisseur]]** : *+ [[Nouveau:fournisseur]]* → nom (obligatoire), raison sociale, **matricule fiscal**, téléphone, email, adresse, ville. Le bouton **📄 Lire la patente** lit la carte d'identification fiscale ou l'extrait du RNE [[du:fournisseur]] (PDF ou photo) et remplit les champs vides, marqués « lu » — la lecture se fait sur cet ordinateur, rien n'est envoyé. Le matricule fiscal est contrôlé (forme 1234567A/A/M/000) et n'appartient qu'à [[un:fournisseur]] du compte : c'est par lui que les factures déposées reconnaissent [[le:fournisseur]]. À la création, [[tous:activite:vos]] sont [[acc:activite:coché:cochée:pl]] par défaut : décochez [[acc:activite:ceux:celles]] qui ne travaillent pas avec [[acc:fournisseur:lui:elle]], et cochez [[le:labo:pl]] [[acc:labo:concerné:concernée:pl]].
 2. **Modifier les affectations** : ✏️ sur la ligne, puis cochez/décochez [[nom:activite:pl]] et [[nom:labo:pl]] — c'est ici que vous choisissez [[le:fournisseur:pl]] [[acc:fournisseur:proposé:proposée:pl]] [[au:appro]] de chaque [[nom:labo]].
-3. **Supprimer** : le bouton 🗑️ n'apparaît que si [[le:fournisseur]] n'a servi à [[aucun:appro]] ; une confirmation est demandée.
+3. **Supprimer** : le bouton 🗑️ n'apparaît que si [[le:fournisseur]] ne figure dans [[aucun:appro]] — [[du:activite:pl]] comme [[du:labo:pl]] — ni dans aucune facture ; une confirmation est demandée.
 
 ### Ajout dynamique (import Excel)
 
 Le bouton **📥 Ajout Dynamique** importe [[votre:fournisseur:pl]] en masse :
 
-1. Téléchargez le **modèle Excel** (colonnes Nom / Téléphone / Adresse — seul le nom est obligatoire, 500 lignes maximum).
+1. Téléchargez le **modèle Excel** (colonnes Nom / Téléphone / Adresse / Ville / Matricule fiscal / Email — seul le nom est obligatoire, 500 lignes maximum ; l'ancien modèle à trois colonnes reste accepté).
 2. Remplissez-le, puis déposez le fichier dans la zone d'import.
 3. Chaque [[nom:fournisseur]] [[acc:fournisseur:importé:importée]] est **automatiquement [[acc:fournisseur:assigné:assignée]] à l'ensemble de [[votre:activite:pl]] et [[nom:labo:pl]]** : [[acc:fournisseur:il:elle]] est immédiatement [[acc:fournisseur:proposé:proposée]] partout [[au:appro]]. Ajustez ensuite les affectations [[nom:fournisseur]] par [[nom:fournisseur]] (✏️) si nécessaire.
 
-Le rapport d'import détaille chaque ligne : les noms déjà présents dans votre répertoire (ou en double dans le fichier) sont ignorés et signalés, le reste est créé.
+Le rapport d'import détaille chaque ligne : les noms déjà présents dans votre répertoire (ou en double dans le fichier), les matricules fiscaux invalides ou déjà présents sont ignorés et signalés, le reste est créé.
 
 ### Points d'attention
 
 :::attention
 [[Un:fournisseur]] n'est [[acc:fournisseur:proposé:proposée]] [[au:appro]] que [[acc:fournisseur:s'il:si elle]] est [[acc:fournisseur:affecté:affectée]] [[au:activite]] ou [[au:labo]] [[acc:labo:concerné:concernée]]. Si vous ne [[acc:fournisseur:le:la]] voyez pas dans la liste au moment d'une saisie, vérifiez ses affectations ici.
+:::
+
+:::astuce
+Renseignez le matricule fiscal de [[votre:fournisseur:pl]] : chaque facture déposée à la saisie [[du:appro:court]] reconnaît alors d'office son émetteur. Sinon, la première facture lue propose d'ajouter le matricule à la fiche.
 :::
 
 :::astuce

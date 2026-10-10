@@ -31,16 +31,26 @@ La couleur [[du:stock]] reflète le **seuil minimum** : 🔴 [[nom:stock]] [[acc
 Enregistrer [[un:appro]] :
 
 1. Sélectionnez [[le:activite]], puis renseignez le bloc [[Nom:appro]] : date, [[nom:fournisseur]] et n° de facture.
-2. Facultatif : glissez dans la zone **📎 Facture [[du:fournisseur]]** le PDF, le scan ou la photo de la facture reçue (sur un téléphone, touchez la zone pour prendre la photo). Une vignette s'affiche ; la croix ✕ retire un fichier avant l'envoi.
+2. Facultatif : glissez dans la zone **📎 Facture [[du:fournisseur]]** le PDF, le scan ou la photo de la facture reçue (sur un téléphone, touchez la zone pour prendre la photo). Une vignette s'affiche ; la croix ✕ retire un fichier avant l'envoi. LabFlow lit aussitôt la facture et remplit les champs vides du bloc (voir « La facture lue »).
 3. Ouvrez les catégories concernées et saisissez, ligne par ligne, la **quantité** et le **prix HT** unitaire (et le taux de TVA si vous le connaissez).
 4. Contrôlez l'**Aperçu saisie** flottant en bas à droite : il cumule les lignes et le total TTC.
-5. Cliquez sur **Enregistrer (N)** : une fenêtre récapitulative façon facture s'ouvre (lignes, Total HT, Total TTC, case **Timbre Fiscal** ajoutant 1,000 DT, cochée par défaut, et le nombre de fichiers joints). Confirmez : toutes les lignes et la facture jointe s'enregistrent ensemble — si l'une est refusée, rien n'est enregistré et le message dit pourquoi.
+5. Cliquez sur **Enregistrer (N)** : une fenêtre récapitulative façon facture s'ouvre (lignes, Total HT, Total TTC, case **Timbre Fiscal** cochée par défaut, de 1,000 DT — 1,500 ou 2,000 DT pour une facture de grande surface —, le nombre de fichiers joints et, si la facture a été lue, la comparaison avec son total). Confirmez : toutes les lignes et la facture jointe s'enregistrent ensemble — si l'une est refusée, rien n'est enregistré et le message dit pourquoi.
 6. Si une facture portant **le même numéro** existe déjà chez [[ce:fournisseur]], LabFlow l'affiche (date, lieu, montant) : vérifiez que vous ne la saisissez pas deux fois avant de choisir **Enregistrer quand même**.
 7. Si [[un:appro:court]] existe déjà à cette date pour [[un:article]], une confirmation supplémentaire affiche le cumul avant validation.
 
 Produire [[un:pt]] : saisissez la quantité sur sa ligne — l'indication **Max** montre le maximum réalisable avec [[le:stock]] [[de:ingredient:pl]], et le prix se calcule automatiquement depuis [[le:recette]] ([production [[de:pt:pl:court]]](#calc-production-pt)). Le bouton **⚙️ Personnaliser** permet d'ajuster les quantités [[de:ingredient:pl]] réellement consommées.
 
 Configurer un seuil : bouton **🔧 Seuil**, saisissez la valeur minimale (laisser vide pour désactiver), puis Enregistrer. Le seuil d'[[un:pt]] se règle aussi [[nom:activite]] par [[nom:activite]].
+
+### La facture lue
+
+Dès qu'une facture est déposée dans la zone **📎 Facture [[du:fournisseur]]**, LabFlow la **lit** : le panneau **🔎 Lu sur la facture** apparaît sous la zone. La lecture se fait sur cet appareil — rien n'est envoyé ailleurs — en quelques secondes pour un PDF, un peu plus pour un scan ou une photo. Elle donne :
+
+- **[[Nom:fournisseur]]** : [[acc:fournisseur:reconnu:reconnue]] par son **matricule fiscal** (✓, [[acc:fournisseur:choisi:choisie]] d'office dans le bloc) ; à défaut, [[un:fournisseur]] au nom voisin est [[acc:fournisseur:proposé:proposée]] (**Oui, c'est [[acc:fournisseur:lui:elle]]** lui ajoute le matricule lu) ; si [[aucun:fournisseur]] ne correspond, **Créer [[le:fournisseur]]…** ouvre une fiche pré-remplie d'après la facture, à relire avant de la créer — ou à rattacher à [[un:fournisseur]] déjà [[acc:fournisseur:enregistré:enregistrée]] sous un autre nom ;
+- le **n° de facture** et la **date**, recopiés dans les champs vides — une valeur saisie à la main n'est jamais remplacée ;
+- les **totaux** (HT, TVA, timbre, TTC) : la fenêtre récapitulative compare le total de votre saisie au TTC lu et règle le timbre (1, 1,5 ou 2 DT).
+
+Chaque champ rempli porte la pastille **lu — à relire** jusqu'à ce que vous le modifiiez. Rien n'est enregistré avant **Enregistrer**. Une facture écrite à la main, ou une photo trop floue, ne se lit pas : saisissez alors l'en-tête vous-même — la facture est jointe quand même.
 
 ### Points d'attention
 

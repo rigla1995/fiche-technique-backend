@@ -7,7 +7,7 @@ const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finali
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
 const { computeStockBulk } = require('../services/stockService');
-const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures } = require('../services/facturesAppro');
+const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte } = require('../services/facturesAppro');
 const stockage = require('../services/stockageFichiers');
 const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
@@ -393,6 +393,8 @@ const updateStockEntreprise = async (req, res) => {
       return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const clientId = req.user.gerant_parent_id || req.user.id;
+    // Étape F2 : le fournisseur cité doit être du compte.
+    if (!(await fournisseurDuCompte(pool, clientId, fournisseurId))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
     // Atomic: the stock row and its linked facture are written together (or not at all).
     await withTransaction(async (client) => {
       const insRes = await client.query(
@@ -654,6 +656,7 @@ const updateHistoriqueEntry = async (req, res) => {
       const entry = check.rows[0];
       if (req.user.role === 'gerant' && entry.created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
+      if (!(await fournisseurDuCompte(pool, req.user.gerant_parent_id || req.user.id, fournisseurId))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
       // Lot 1b §2.4 : une ligne générée par un transfert ne se modifie que via le transfert
       // (fin de l'ajustement heuristique du miroir labo).
       if (entry.type_appro === 'transfert' || entry.transfert_id != null)
