@@ -49,9 +49,20 @@ const dateValide = (s) => {
 
 /** Ce que la lecture de la facture déposée a proposé (étape F2), gardé tel quel sur la facture : champs connus seulement,
  * textes et nombres bornés. Une valeur absente ou d'un autre type devient null. */
+// Texte gardé en JSONB : sans caractère de contrôle (PostgreSQL refuse NUL) ni moitié de paire UTF-16 (refusée aussi),
+// coupé par caractère (une coupe au milieu d'un émoji en laisserait une moitié). Un texte lu sur un PDF peut porter tout cela.
+const CONTROLE = new RegExp(`[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`, 'g');
+const propre = (s) => Array.from(s.replace(CONTROLE, ' ')).filter((c) => {
+  const n = c.charCodeAt(0);
+  return c.length === 2 || n < 0xd800 || n > 0xdfff;
+}).join('');
 const lireLecture = (l) => {
   if (!l || typeof l !== 'object' || Array.isArray(l)) return null;
-  const txt = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
+  const txt = (v, max) => {
+    if (typeof v !== 'string') return null;
+    const s = Array.from(propre(v).trim()).slice(0, max).join('').trim();
+    return s || null;
+  };
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) < 1e10 ? v : null);
   const t = l.totaux && typeof l.totaux === 'object' ? l.totaux : {};
   const source = l.source === 'pdf' || l.source === 'ocr' ? l.source : null;
@@ -224,9 +235,12 @@ const creer = async (req, res) => {
       const ajoutee = existe.rows.length > 0;
       if (ajoutee) {
         factureId = existe.rows[0].id;
-        if (v.timbre && !existe.rows[0].timbre_fiscal) {
+        // Le timbre ne s'enlève jamais d'une facture qui l'a ; son montant suit la dernière saisie (1, 1,5 ou 2 D).
+        if (v.timbre) {
           await db.query('UPDATE factures SET timbre_fiscal = true, montant_timbre = $2 WHERE id = $1', [factureId, v.timbreMontant]);
         }
+        // Lecture de la facture déposée maintenant, si la facture n'en gardait pas encore.
+        if (v.lecture) await db.query('UPDATE factures SET lecture = $2 WHERE id = $1 AND lecture IS NULL', [factureId, JSON.stringify(v.lecture)]);
       } else {
         const ins = await db.query(
           `INSERT INTO factures (client_id, ref_facture, date_facture, fournisseur_id, activite_id, labo_id, type_source,
@@ -269,6 +283,8 @@ const creer = async (req, res) => {
     if (deposes.length) await P.effacerDeposes(deposes, 'facture non enregistrée');
     if (err instanceof Refus) return res.status(err.status).json(err.corps);
     if (err instanceof P.ErreurPiece) return res.status(err.status).json({ code: err.code, message: err.message });
+    // Fournisseur ou article supprimé pendant l'enregistrement (clé étrangère) : rien n'est écrit, on peut recommencer.
+    if (err?.code === '23503') return res.status(409).json({ code: 'DONNEE_DISPARUE', message: 'Une donnée de la saisie vient d\'être supprimée : rechargez la page, puis recommencez.' });
     console.error('[appro facture]', err);
     return res.status(500).json({ message: 'Erreur serveur' });
   }

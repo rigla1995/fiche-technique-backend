@@ -10,7 +10,7 @@ const { withTransaction } = require('../utils/db');
 const { computeStockBulk, computeStock } = require('../services/stockService');
 const unitesOp = require('../services/unitesOperationnellesService');
 const transfertService = require('../services/transfertService');
-const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures } = require('../services/facturesAppro');
+const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte } = require('../services/facturesAppro');
 const stockage = require('../services/stockageFichiers');
 const { TransfertError } = transfertService;
 const { checkQuota } = require('../services/quotaService');
@@ -763,6 +763,8 @@ const updateLaboStock = async (req, res) => {
   try {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
+    // Étape F2 : le fournisseur cité doit être du compte.
+    if (!(await fournisseurDuCompte(pool, req.user.gerant_parent_id || req.user.id, fournisseurId))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
 
     if (ingredientIdRaw < 0) {
       // Lot 1b §3.3 : un labo dont l'unité est production_active = false ne fabrique pas de PT.
@@ -1160,6 +1162,10 @@ const syncLaboFournisseurs = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
+    // Étape F2 : seulement des fournisseurs du compte.
+    for (const fid of fournisseurIds) {
+      if (!(await fournisseurDuCompte(pool, req.user.gerant_parent_id || req.user.id, fid))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
+    }
     await pool.query('DELETE FROM fournisseur_labos WHERE labo_id = $1', [laboId]);
     if (fournisseurIds.length > 0) {
       await pool.query(
@@ -1611,6 +1617,7 @@ const updateLaboHistoriqueEntry = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
+    if (!(await fournisseurDuCompte(pool, req.user.gerant_parent_id || req.user.id, fournisseurId))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
     const check = await pool.query(
       'SELECT id, created_by, type_appro, transfert_id, facture_id FROM stock_labo_daily WHERE id = $1 AND labo_id = $2',
       [entryId, laboId]

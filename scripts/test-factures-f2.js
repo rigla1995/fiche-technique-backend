@@ -66,6 +66,7 @@ const login = async (email) => (await appel('POST', '/auth/login', null, { email
 const ALPHABET_CLE = 'ABCDEFGHJKLMNPQRSTVWXYZ';
 const mf = (id, fin = '/A/M/000') => `${id}${ALPHABET_CLE[[...id].reduce((s, c, i) => s + Number(c) * (7 - i), 0) % 23]}${fin}`;
 const MF1 = mf('1384297'), MF2 = mf('0897514', '/B/M/000'), MF3 = mf('1559041'), MF4 = mf('1103587'), MF5 = mf('1720368', '/N/P/000');
+const MF6 = mf('0512946', '/A/M/001'), MF7 = mf('1876245', ''), MF_COMPTE = mf('1658423');
 
 (async () => {
   const hash = await bcrypt.hash(MDP, 10);
@@ -151,7 +152,27 @@ const MF1 = mf('1384297'), MF2 = mf('0897514', '/B/M/000'), MF3 = mf('1559041'),
     // ── 2. Modification, complément, rattachement ────────────────────────────────────────────────────────────────────
     r = await appel('PUT', `/api/entreprise/fournisseurs/${f1}`, tok, { nom: 'SMDA', matriculeFiscal: MF1, ville: 'La Charguia', activiteIds: [actA.id] });
     let F = await fiche(f1);
-    check('2. PUT avec son propre matricule → 200 ; champs absents du corps remis à vide (fiche entière)', r.status === 200 && F.ville === 'La Charguia' && F.email === null && F.matricule_fiscal === MF1, `${r.status} ${JSON.stringify(F)}`);
+    check('2. PUT avec son propre matricule → 200 ; identité absente du corps (email, raison sociale) GARDÉE', r.status === 200 && F.ville === 'La Charguia' && F.email === 'commandes@smda-exemple.tn' && F.raison_sociale?.startsWith('Société') && F.matricule_fiscal === MF1, `${r.status} ${JSON.stringify(F)}`);
+    r = await appel('PUT', `/api/entreprise/fournisseurs/${f1}`, tok, { nom: 'SMDA', adresse: 'Charguia II', activiteIds: [actA.id] });
+    F = await fiche(f1);
+    check('2. PUT d\'un ancien écran (sans aucun champ d\'identité) : le matricule reste', r.status === 200 && F.matricule_fiscal === MF1 && F.ville === 'La Charguia', `${r.status} ${JSON.stringify(F)}`);
+    r = await appel('PUT', `/api/entreprise/fournisseurs/${f1}`, tok, { nom: 'SMDA', email: null, activiteIds: [actA.id] });
+    F = await fiche(f1);
+    check('2. PUT avec email: null → effacé (un null explicite efface)', r.status === 200 && F.email === null && F.matricule_fiscal === MF1, `${r.status}`);
+    await appel('PATCH', `/api/entreprise/fournisseurs/${f1}/identite`, tok, { email: 'commandes@smda-exemple.tn' });
+    r = await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: `Avec NUL${String.fromCharCode(0)} dedans`, raisonSociale: `R${String.fromCharCode(0)}S` });
+    const fNul = r.body?.id;
+    check('2. texte avec caractère NUL → 201, caractère retiré (avant : erreur serveur)', r.status === 201 && r.body?.nom === 'Avec NUL dedans' && r.body?.raisonSociale === 'R S', `${r.status} ${JSON.stringify(r.body)}`);
+    if (fNul) await appel('DELETE', `/api/entreprise/fournisseurs/${fNul}`, tok);
+    r = await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: { toString: 1 } });
+    const r2b = await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: 'Grand id', activiteIds: [99999999999] });
+    check('2. nom objet → 400 CHAMP_INVALIDE ; identifiant d\'activité géant → 400 (avant : erreur serveur)', r.status === 400 && r.body?.code === 'CHAMP_INVALIDE' && r2b.status === 400 && r2b.body?.code === 'AFFECTATION_INVALIDE', `${r.status} ${r2b.status}`);
+    r = await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: 'Forme courte', matriculeFiscal: MF1.slice(0, 8) });
+    check('2. forme courte d\'un matricule déjà porté (1234567A contre 1234567A/A/M/000) → 409', r.status === 409 && r.body?.code === 'MATRICULE_EXISTANT' && r.body.fournisseur?.id === f1, `${r.status}`);
+    await pool.query('UPDATE profil_entreprise SET matricule_fiscal = $1 WHERE client_id = $2', [MF_COMPTE, clientId]);
+    r = await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: 'Moi-même', matriculeFiscal: MF_COMPTE.replace('/A/M/000', '/A/M/001') });
+    const r2c = await appel('PATCH', `/api/entreprise/fournisseurs/${f1}/identite`, tok, { matriculeFiscal: MF_COMPTE });
+    check('2. matricule de l\'entreprise du compte (même autre établissement) → 400 MATRICULE_DU_COMPTE, en création et en complément', r.status === 400 && r.body?.code === 'MATRICULE_DU_COMPTE' && r2c.status === 400 && r2c.body?.code === 'MATRICULE_DU_COMPTE', `${r.status} ${r2c.status}`);
     r = await appel('PUT', `/api/entreprise/fournisseurs/${f2}`, tok, { nom: 'Ben Salem', matriculeFiscal: MF1, activiteIds: [actA.id] });
     check('2. PUT avec le matricule d\'un autre → 409 MATRICULE_EXISTANT', r.status === 409 && r.body?.code === 'MATRICULE_EXISTANT' && r.body.fournisseur?.id === f1, `${r.status}`);
     r = await appel('PATCH', `/api/entreprise/fournisseurs/${f1}/identite`, tok, { email: 'compta@smda-exemple.tn' });
@@ -171,7 +192,7 @@ const MF1 = mf('1384297'), MF2 = mf('0897514', '/B/M/000'), MF3 = mf('1559041'),
     r = await appel('POST', `/api/entreprise/fournisseurs/${f1}/lier`, tok, { activiteId: actB.id });
     const apres = await appel('GET', `/api/entreprise/activites/${actB.id}/fournisseurs`, tok);
     const vu = (apres.body || []).find((f) => f.id === f1);
-    check('2. lier à l\'activité B → 200 ; proposé ensuite sur B, avec son matricule', !avantLien && r.status === 200 && vu?.matriculeFiscal === MF1 && vu?.raisonSociale === null, `${r.status} ${JSON.stringify(vu)}`);
+    check('2. lier à l\'activité B → 200 ; proposé ensuite sur B, avec son matricule', !avantLien && r.status === 200 && vu?.matriculeFiscal === MF1 && vu?.raisonSociale?.startsWith('Société'), `${r.status} ${JSON.stringify(vu)}`);
     r = await appel('POST', `/api/entreprise/fournisseurs/${f1}/lier`, tok, { laboId: labo.id });
     const lienLabo = (await pool.query('SELECT 1 FROM fournisseur_labos WHERE fournisseur_id = $1 AND labo_id = $2', [f1, labo.id])).rows.length;
     check('2. lier au labo → 200, rattaché', r.status === 200 && lienLabo === 1, `${r.status}`);
@@ -195,6 +216,22 @@ const MF1 = mf('1384297'), MF2 = mf('0897514', '/B/M/000'), MF3 = mf('1559041'),
     check('3. gérant, rattacher à une activité hors périmètre → 403', r.status === 403 && r.body?.code === 'HORS_PERIMETRE', `${r.status}`);
     r = await appel('PATCH', `/api/entreprise/fournisseurs/${fG}/identite`, gTok, { ville: 'Ariana' });
     check('3. gérant, compléter un fournisseur de son activité → 200', r.status === 200 && r.body?.ville === 'Ariana', `${r.status}`);
+    // L'écran renvoie la liste COMPLÈTE des affectations (activités A et B, labo) : le gérant (activité A) enregistre quand même.
+    r = await appel('PUT', `/api/entreprise/fournisseurs/${f2}`, gTok, { nom: 'Ben Salem Frères', matriculeFiscal: MF2, activiteIds: [actA.id, actB.id], laboIds: [labo.id] });
+    check('3. gérant, PUT avec la liste complète renvoyée par l\'écran (B et labo déjà rattachés) → 200', r.status === 200, `${r.status} ${JSON.stringify(r.body)}`);
+    r = await appel('PUT', `/api/entreprise/fournisseurs/${fG}`, gTok, { nom: 'Primeurs du gérant', matriculeFiscal: MF4, activiteIds: [actA.id, actB.id] });
+    check('3. gérant, AJOUTER une activité hors périmètre → 403', r.status === 403 && r.body?.code === 'HORS_PERIMETRE', `${r.status}`);
+    // Fournisseur du compte hors du périmètre du gérant : il ne s'en empare pas par son identifiant.
+    const horsG = (await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: 'Fournisseur de B', matriculeFiscal: MF6, activiteIds: [actB.id] })).body?.id;
+    r = await appel('POST', `/api/entreprise/fournisseurs/${horsG}/lier`, gTok, { activiteId: actA.id });
+    const r3b = await appel('POST', `/api/entreprise/fournisseurs/${horsG}/lier`, gTok, { activiteId: actA.id, matriculeFiscal: MF1 });
+    const r3c = await appel('POST', `/api/entreprise/fournisseurs/${horsG}/lier`, gTok, { activiteId: actA.id, matriculeFiscal: MF6.toLowerCase() });
+    check('3. gérant, lier un fournisseur hors périmètre : sans matricule → 404, mauvais matricule → 404, matricule lu juste → 200', r.status === 404 && r3b.status === 404 && r3c.status === 200, `${r.status} ${r3b.status} ${r3c.status}`);
+    // Fournisseur d'un autre compte : les anciennes routes de saisie le refusent désormais.
+    r = await appel('PUT', `/api/stock/entreprise/${actA.id}/${art1.id}`, tok, { quantite: 1, prixUnitaire: 1, fournisseurId: etrangers.fournisseur, refFacture: 'X-ETR' });
+    const r3d = await appel('PUT', `/api/labo/${labo.id}/stock/${art1.id}`, tok, { quantite: 1, prixUnitaire: 1, fournisseurId: etrangers.fournisseur, refFacture: 'X-ETR' });
+    const r3e = await appel('PUT', `/api/labo/${labo.id}/fournisseurs/sync`, tok, { fournisseurIds: [etrangers.fournisseur] });
+    check('3. fournisseur d\'un autre compte : saisie activité, saisie labo, liste du labo → 400 FOURNISSEUR_INCONNU', [r, r3d, r3e].every((x) => x.status === 400 && x.body?.code === 'FOURNISSEUR_INCONNU'), `${r.status} ${r3d.status} ${r3e.status}`);
 
     // ── 4. Liste et garde de suppression ──────────────────────────────────────────────────────────────────────────────
     r = await appel('GET', '/api/entreprise/fournisseurs', tok);
@@ -231,6 +268,9 @@ const MF1 = mf('1384297'), MF2 = mf('0897514', '/B/M/000'), MF3 = mf('1559041'),
       `${r.status} ${JSON.stringify(r.body)}`);
     r = await importer(tok, await classeur(['Nom', 'Téléphone', 'Adresse'], [['Ancien modèle', '71 000 000', 'Sfax']]));
     check('5. ancien modèle à 3 colonnes : toujours accepté', r.status === 200 && r.body?.processed === 1, `${r.status} ${JSON.stringify(r.body)}`);
+    r = await importer(tok, await classeur(['Nom', 'Téléphone', 'Adresse', 'E-mail', 'Matricule'], [['Colonnes dans le désordre', '', '', 'desordre@exemple.tn', MF7]]));
+    const desordre = (await pool.query(`SELECT * FROM fournisseurs WHERE nom = 'Colonnes dans le désordre'`)).rows[0];
+    check('5. colonnes ajoutées trouvées par leur titre (« E-mail », « Matricule », autre ordre)', r.status === 200 && desordre?.email === 'desordre@exemple.tn' && desordre?.matricule_fiscal === MF7, `${r.status} ${JSON.stringify(desordre)}`);
 
     // ── 6. Facture : montant du timbre, lecture gardée ──────────────────────────────────────────────────────────────
     const donnees = (m = {}) => ({
@@ -256,6 +296,13 @@ const MF1 = mf('1384297'), MF2 = mf('0897514', '/B/M/000'), MF3 = mf('1559041'),
     check('6. sans timbre : montant ignoré (0)', r.status === 201 && facSans?.timbre_fiscal === false && approx(facSans?.montant_timbre, 0) && approx(facSans?.montant_ttc, 95.2), `${r.status} ${facSans?.montant_timbre}`);
     r = await appel('DELETE', `/api/entreprise/fournisseurs/${f1}`, tok);
     check('6. fournisseur d\'une facture → DELETE 409', r.status === 409 && r.body?.code === 'FOURNISSEUR_UTILISE', `${r.status}`);
+    const nul = String.fromCharCode(0), demi = String.fromCharCode(0xd83d);
+    r = await envoi('/api/appros/facture', tok, donnees({ refFacture: 'T-PROPRE', lecture: { source: 'pdf', nom: `SOC${nul}IETE${demi}`, numero: `${'9'.repeat(99)}😀😀` } }));
+    const facPropre = (await pool.query('SELECT lecture FROM factures WHERE id = $1', [r.body?.factureId])).rows[0];
+    check('6. lecture avec caractère NUL et moitié d\'émoji → 201, texte nettoyé (avant : facture jamais enregistrée)', r.status === 201 && facPropre?.lecture?.nom === 'SOC IETE' && facPropre?.lecture?.numero?.length === 101, `${r.status} ${JSON.stringify(facPropre?.lecture)}`);
+    r = await envoi('/api/appros/facture', tok, donnees({ refFacture: 'T-DEF', confirmerDoublon: true, timbreMontant: 2, lecture: { source: 'ocr', numero: 'T-DEF' } }));
+    const facDef2 = (await pool.query('SELECT * FROM factures WHERE id = $1', [facDef.id])).rows[0];
+    check('6. lignes ajoutées à une facture : timbre porté à 2 D, lecture gardée (elle n\'en avait pas)', r.status === 201 && r.body?.ajoutee === true && approx(facDef2.montant_timbre, 2) && facDef2.lecture?.numero === 'T-DEF', `${r.status} ${facDef2.montant_timbre} ${JSON.stringify(facDef2.lecture)}`);
   } catch (err) {
     console.error(err);
     check('exécution sans exception', false, err.message);

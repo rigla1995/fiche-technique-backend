@@ -62,5 +62,8 @@ test('migration 223 : additive, matricule unique par compte, lecture sur la fact
   for (const c of ['raison_sociale', 'matricule_fiscal', 'email', 'ville']) assert.match(sql, new RegExp(`ADD COLUMN IF NOT EXISTS ${c}`));
   assert.match(sql, /CREATE UNIQUE INDEX IF NOT EXISTS ux_fournisseurs_matricule\s+ON fournisseurs \(entreprise_id, matricule_fiscal\)\s+WHERE matricule_fiscal IS NOT NULL/);
   assert.match(sql, /ALTER TABLE factures ADD COLUMN IF NOT EXISTS lecture JSONB/);
-  assert.doesNotMatch(sql, /\b(DROP|DELETE|UPDATE)\b/i, 'aucune donnée existante modifiée');
+  assert.doesNotMatch(sql.replace(/--.*$/gm, ''), /\b(DROP|DELETE|UPDATE)\b/i, 'aucune donnée existante modifiée');
+  for (const t of ['factures', 'stock_produits_transformes', 'stock_labo_pt_daily']) {
+    assert.match(sql, new RegExp(`CREATE INDEX IF NOT EXISTS \\w+ ON ${t} \\(fournisseur_id\\)`), `index des références : ${t}`);
+  }
 });

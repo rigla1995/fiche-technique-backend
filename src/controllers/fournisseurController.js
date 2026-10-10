@@ -4,7 +4,8 @@ const multer = require('multer');
 const { vocabDefaut } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
 const { withTransaction } = require('../utils/db');
-const { controlerMatriculeFiscal } = require('../utils/matriculeFiscal');
+const { controlerMatriculeFiscal, normaliserMatriculeFiscal } = require('../utils/matriculeFiscal');
+const { verrouillerFactures, sansBalise } = require('../services/facturesAppro');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 // Ajout dynamique (import Excel) — même gabarit que le carnet d'acheteurs. Étape F2 (factures fournisseur) : trois
@@ -22,14 +23,20 @@ const getEntrepriseId = async (clientId) => {
  * (obligatoire), téléphone, adresse, et l'identité légale — raison sociale, matricule fiscal (forme contrôlée et
  * normalisée comme pour le client ; unique par compte), email, ville. Lève { status, code, message }. */
 const LIMITES = { nom: 255, telephone: 50, adresse: 500, raisonSociale: 200, email: 200, ville: 100 };
-const LIBELLES = { nom: 'Nom', telephone: 'Téléphone', adresse: 'Adresse', raisonSociale: 'Raison sociale', email: 'Email', ville: 'Ville' };
+const LIBELLES = { nom: 'Nom', telephone: 'Téléphone', adresse: 'Adresse', raisonSociale: 'Raison sociale', email: 'Email', ville: 'Ville', matriculeFiscal: 'Matricule fiscal' };
+// Caractères de contrôle (NUL compris : PostgreSQL le refuse dans un texte) — un texte lu sur un PDF peut en porter.
+const CONTROLE = new RegExp(`[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`, 'g');
+// Champs de l'identité légale (F2) : absents du corps d'un PUT, ils restent tels quels (un ancien écran ne les efface pas).
+const CHAMPS_IDENTITE = ['raisonSociale', 'matriculeFiscal', 'email', 'ville'];
+const ID_MAX = 2147483647;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const erreur = (status, code, message, extra = {}) => Object.assign(new Error(message), { status, code, corps: { code, message, ...extra } });
 
 const champTexte = (body, cle) => {
   const v = body[cle];
   if (v == null) return null;
-  const s = String(v).replace(/\s+/g, ' ').trim();
+  if (typeof v !== 'string' && typeof v !== 'number') throw erreur(400, 'CHAMP_INVALIDE', `${LIBELLES[cle]} : valeur invalide.`);
+  const s = String(v).replace(CONTROLE, ' ').replace(/\s+/g, ' ').trim();
   if (s.length > LIMITES[cle]) throw erreur(400, 'TROP_LONG', `${LIBELLES[cle]} : ${LIMITES[cle]} caractères au plus.`);
   return s || null;
 };
@@ -46,7 +53,9 @@ const lireFiche = (body = {}, { partiel = false } = {}) => {
   }
   if (fiche.email && !EMAIL.test(fiche.email)) throw erreur(400, 'EMAIL_INVALIDE', 'Email invalide (exemple : contact@societe.tn).');
   if (!partiel || 'matriculeFiscal' in body) {
-    const mf = controlerMatriculeFiscal(body.matriculeFiscal);
+    const brut = body.matriculeFiscal;
+    if (brut != null && typeof brut !== 'string') throw erreur(400, 'CHAMP_INVALIDE', 'Matricule fiscal : valeur invalide.');
+    const mf = controlerMatriculeFiscal(brut == null ? brut : brut.replace(CONTROLE, ' '));
     if (!mf.ok) throw erreur(400, 'MATRICULE_INVALIDE', mf.erreur);
     fiche.matriculeFiscal = mf.valeur || null;
   }
@@ -55,16 +64,28 @@ const lireFiche = (body = {}, { partiel = false } = {}) => {
 
 const COLONNES = { nom: 'nom', telephone: 'telephone', adresse: 'adresse', raisonSociale: 'raison_sociale', email: 'email', ville: 'ville', matriculeFiscal: 'matricule_fiscal' };
 
-/** Un autre fournisseur du compte porte-t-il déjà ce matricule ? → 409 avec son nom (pour le choisir à la place). */
+const dejaPris = (f) => erreur(409, 'MATRICULE_EXISTANT', `Ce matricule fiscal est déjà celui de « ${sansBalise(f.nom)} ».`, { fournisseur: { id: f.id, nom: f.nom } });
+
+/** Un autre fournisseur du compte porte-t-il déjà ce matricule ? → 409 avec son nom (pour le choisir à la place). La forme
+ * courte (« 1234567A ») et la forme complète (« 1234567A/A/M/000 ») d'une même entreprise sont tenues pour le même. */
 const controlerMatriculeLibre = async (db, entrepriseId, matricule, saufId = null) => {
   if (!matricule) return;
+  // Le matricule du compte (imprimé sur ses factures comme destinataire) n'est jamais celui d'un fournisseur.
+  const compte = await db.query('SELECT matricule_fiscal FROM profil_entreprise WHERE id = $1', [entrepriseId]);
+  const propre = String(compte.rows[0]?.matricule_fiscal ?? '').replace(/[^0-9A-Z]/gi, '').slice(0, 7);
+  if (propre.length === 7 && matricule.slice(0, 7) === propre) {
+    throw erreur(400, 'MATRICULE_DU_COMPTE', 'Ce matricule fiscal est celui de votre entreprise : il ne peut pas servir à [[un:fournisseur]].');
+  }
   const r = await db.query(
-    'SELECT id, nom FROM fournisseurs WHERE entreprise_id = $1 AND matricule_fiscal = $2 AND ($3::int IS NULL OR id <> $3)',
+    `SELECT id, nom FROM fournisseurs
+     WHERE entreprise_id = $1 AND ($3::int IS NULL OR id <> $3)
+       AND (matricule_fiscal = $2
+            OR (length($2) = 8 AND left(matricule_fiscal, 8) = $2)
+            OR (length(matricule_fiscal) = 8 AND left($2, 8) = matricule_fiscal))
+     ORDER BY (matricule_fiscal = $2) DESC, id LIMIT 1`,
     [entrepriseId, matricule, saufId]
   );
-  if (r.rows.length) {
-    throw erreur(409, 'MATRICULE_EXISTANT', `Ce matricule fiscal est déjà celui de « ${r.rows[0].nom} ».`, { fournisseur: { id: r.rows[0].id, nom: r.rows[0].nom } });
-  }
+  if (r.rows.length) throw dejaPris(r.rows[0]);
 };
 
 // Course entre deux enregistrements du même matricule : l'index unique tranche, le message est le même.
@@ -72,7 +93,7 @@ const enConflit = async (err, entrepriseId, matricule) => {
   if (err?.code !== '23505' || !matricule) return err;
   const r = await pool.query('SELECT id, nom FROM fournisseurs WHERE entreprise_id = $1 AND matricule_fiscal = $2', [entrepriseId, matricule]);
   const f = r.rows[0];
-  return f ? erreur(409, 'MATRICULE_EXISTANT', `Ce matricule fiscal est déjà celui de « ${f.nom} ».`, { fournisseur: { id: f.id, nom: f.nom } }) : err;
+  return f ? dejaPris(f) : err;
 };
 
 const repondreErreur = (res, err) => {
@@ -100,14 +121,15 @@ const dansPerimetreGerant = async (req, fournisseurId) => {
   return r.rows.length > 0;
 };
 
-// Affectations demandées : activités et labos du compte ; pour un gérant, de son périmètre seulement.
-const lireAffectations = async (req, entrepriseId, activiteIds, laboIds) => {
+// Affectations demandées : activités et labos du compte ; pour un gérant, de son périmètre seulement — sauf celles que
+// le fournisseur a DÉJÀ (`dejaLies`) : l'écran renvoie la liste complète, le gérant ne fait que les garder.
+const lireAffectations = async (req, entrepriseId, activiteIds, laboIds, dejaLies = { acts: [], labs: [] }) => {
   const ids = (v) => (Array.isArray(v) ? [...new Set(v.map(Number))] : []);
   const acts = ids(activiteIds), labs = ids(laboIds);
-  if ([...acts, ...labs].some((id) => !Number.isInteger(id) || id <= 0)) throw erreur(400, 'AFFECTATION_INVALIDE', 'Affectation invalide');
+  if ([...acts, ...labs].some((id) => !Number.isInteger(id) || id <= 0 || id > ID_MAX)) throw erreur(400, 'AFFECTATION_INVALIDE', 'Affectation invalide');
   if (req.user.role === 'gerant') {
     const okA = req.user.gerantActiviteIds || [], okL = req.user.gerantLaboIds || [];
-    if (acts.some((id) => !okA.includes(id)) || labs.some((id) => !okL.includes(id))) {
+    if (acts.some((id) => !okA.includes(id) && !dejaLies.acts.includes(id)) || labs.some((id) => !okL.includes(id) && !dejaLies.labs.includes(id))) {
       throw erreur(403, 'HORS_PERIMETRE', 'Affectation hors de votre périmètre');
     }
   }
@@ -119,13 +141,19 @@ const lireAffectations = async (req, entrepriseId, activiteIds, laboIds) => {
   return { acts, labs };
 };
 
-// Un fournisseur est « utilisé » dès qu'une ligne de stock, une production ou une facture le cite.
+// Un fournisseur est « utilisé » dès qu'une ligne de stock, une production ou une facture DU COMPTE le cite (une
+// référence posée par un autre compte ne bloque pas sa suppression). `f` = l'alias de la table fournisseurs.
 const SQL_UTILISE = (col) => `(
-  EXISTS (SELECT 1 FROM stock_entreprise_daily u WHERE u.fournisseur_id = ${col})
-  OR EXISTS (SELECT 1 FROM stock_labo_daily u WHERE u.fournisseur_id = ${col})
-  OR EXISTS (SELECT 1 FROM stock_produits_transformes u WHERE u.fournisseur_id = ${col})
-  OR EXISTS (SELECT 1 FROM stock_labo_pt_daily u WHERE u.fournisseur_id = ${col})
-  OR EXISTS (SELECT 1 FROM factures u WHERE u.fournisseur_id = ${col}))`;
+  EXISTS (SELECT 1 FROM stock_entreprise_daily u JOIN activites a ON a.id = u.activite_id
+          WHERE u.fournisseur_id = ${col} AND a.entreprise_id = f.entreprise_id)
+  OR EXISTS (SELECT 1 FROM stock_labo_daily u JOIN labos l ON l.id = u.labo_id
+             WHERE u.fournisseur_id = ${col} AND l.entreprise_id = f.entreprise_id)
+  OR EXISTS (SELECT 1 FROM stock_produits_transformes u JOIN activites a ON a.id = u.activite_id
+             WHERE u.fournisseur_id = ${col} AND a.entreprise_id = f.entreprise_id)
+  OR EXISTS (SELECT 1 FROM stock_labo_pt_daily u JOIN labos l ON l.id = u.labo_id
+             WHERE u.fournisseur_id = ${col} AND l.entreprise_id = f.entreprise_id)
+  OR EXISTS (SELECT 1 FROM factures u JOIN profil_entreprise pe ON pe.client_id = u.client_id
+             WHERE u.fournisseur_id = ${col} AND pe.id = f.entreprise_id))`;
 
 const listFournisseurs = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
@@ -193,6 +221,7 @@ const listFournisseurs = async (req, res) => {
 
 const getFournisseursForActivite = async (req, res) => {
   const { activiteId } = req.params;
+  if (!/^\d{1,9}$/.test(String(activiteId))) return res.json([]);
   const clientId = req.user.gerant_parent_id || req.user.id;
   // Périmètre gérant : interdire l'accès à une activité non affectée
   if (req.user.role === 'gerant' && !(req.user.gerantActiviteIds || []).includes(Number(activiteId))) {
@@ -257,6 +286,15 @@ const createFournisseur = async (req, res) => {
   }
 };
 
+// Fournisseur du compte modifiable ici : ni celui d'un labo (géré par le labo), ni le fournisseur technique AUTO.
+const ficheModifiable = async (res, id, entrepriseId) => {
+  const check = await pool.query('SELECT * FROM fournisseurs WHERE id = $1 AND entreprise_id = $2', [id, entrepriseId]);
+  const f = check.rows[0];
+  if (!f || f.nom === 'AUTO') { res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' }); return null; }
+  if (f.is_labo) { res.status(403).json({ message: '[[Ce:fournisseur]] est [[acc:fournisseur:géré:gérée]] automatiquement par [[le:labo]].' }); return null; }
+  return f;
+};
+
 const updateFournisseur = async (req, res) => {
   const { id } = req.params;
   if (!/^\d{1,9}$/.test(String(id))) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
@@ -266,14 +304,17 @@ const updateFournisseur = async (req, res) => {
   try {
     fiche = lireFiche(req.body);
     entrepriseId = await getEntrepriseId(clientId);
-    const check = await pool.query(
-      'SELECT id, is_labo FROM fournisseurs WHERE id = $1 AND entreprise_id = $2',
-      [id, entrepriseId]
-    );
-    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
-    if (check.rows[0].is_labo) return res.status(403).json({ message: '[[Ce:fournisseur]] est [[acc:fournisseur:géré:gérée]] automatiquement par [[le:labo]].' });
+    const actuel = await ficheModifiable(res, id, entrepriseId);
+    if (!actuel) return;
     if (!(await dansPerimetreGerant(req, id))) return res.status(403).json({ message: 'Accès refusé' });
-    const { acts, labs } = await lireAffectations(req, entrepriseId, req.body.activiteIds, req.body.laboIds);
+    // Identité légale absente du corps : gardée telle quelle (un null explicite l'efface).
+    for (const cle of CHAMPS_IDENTITE) if (!(cle in req.body)) fiche[cle] = actuel[COLONNES[cle]] ?? null;
+    const [liesA, liesL] = await Promise.all([
+      pool.query('SELECT activite_id FROM fournisseur_activites WHERE fournisseur_id = $1', [id]),
+      pool.query('SELECT labo_id FROM fournisseur_labos WHERE fournisseur_id = $1', [id]),
+    ]);
+    const { acts, labs } = await lireAffectations(req, entrepriseId, req.body.activiteIds, req.body.laboIds,
+      { acts: liesA.rows.map((r) => r.activite_id), labs: liesL.rows.map((r) => r.labo_id) });
     await controlerMatriculeLibre(pool, entrepriseId, fiche.matriculeFiscal, Number(id));
 
     await withTransaction(async (db) => {
@@ -315,9 +356,7 @@ const completerFournisseur = async (req, res) => {
     const cles = Object.keys(fiche);
     if (!cles.length) return res.status(400).json({ code: 'RIEN_A_ECRIRE', message: 'Aucun champ à enregistrer.' });
     entrepriseId = await getEntrepriseId(clientId);
-    const check = await pool.query('SELECT id, is_labo FROM fournisseurs WHERE id = $1 AND entreprise_id = $2', [id, entrepriseId]);
-    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
-    if (check.rows[0].is_labo) return res.status(403).json({ message: '[[Ce:fournisseur]] est [[acc:fournisseur:géré:gérée]] automatiquement par [[le:labo]].' });
+    if (!(await ficheModifiable(res, id, entrepriseId))) return;
     if (!(await dansPerimetreGerant(req, id))) return res.status(403).json({ message: 'Accès refusé' });
     if ('matriculeFiscal' in fiche) await controlerMatriculeLibre(pool, entrepriseId, fiche.matriculeFiscal, Number(id));
     const sets = cles.map((c, i) => `${COLONNES[c]} = $${i + 2}`);
@@ -330,23 +369,28 @@ const completerFournisseur = async (req, res) => {
 
 /* POST /api/entreprise/fournisseurs/:id/lier — rattache un fournisseur du compte à une activité ou à un labo (étape F2 :
  * la facture déposée a reconnu un fournisseur qui n'était pas encore proposé à cet endroit). Corps : { activiteId } ou
- * { laboId }. Un gérant ne rattache qu'à ses activités et labos. */
+ * { laboId }, et le matricule lu sur la facture (`matriculeFiscal`). Un gérant ne rattache qu'à ses activités et labos,
+ * et seulement un fournisseur qu'il voit déjà, ou dont il présente le matricule enregistré (lu sur la facture) : il ne
+ * peut pas s'approprier un fournisseur du compte par son seul identifiant. */
 const lierFournisseur = async (req, res) => {
   const { id } = req.params;
   if (!/^\d{1,9}$/.test(String(id))) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const entrepriseId = await getEntrepriseId(clientId);
-    const check = await pool.query('SELECT * FROM fournisseurs WHERE id = $1 AND entreprise_id = $2', [id, entrepriseId]);
-    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
-    if (check.rows[0].is_labo || check.rows[0].nom === 'AUTO') return res.status(403).json({ message: '[[Ce:fournisseur]] est [[acc:fournisseur:géré:gérée]] automatiquement par [[le:labo]].' });
+    const f = await ficheModifiable(res, id, entrepriseId);
+    if (!f) return;
+    if (req.user.role === 'gerant' && !(await dansPerimetreGerant(req, id))) {
+      const presente = typeof req.body?.matriculeFiscal === 'string' ? normaliserMatriculeFiscal(req.body.matriculeFiscal) : '';
+      if (!f.matricule_fiscal || presente !== f.matricule_fiscal) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
+    }
     const activiteId = req.body?.activiteId != null ? [req.body.activiteId] : [];
     const laboId = req.body?.laboId != null ? [req.body.laboId] : [];
     if (activiteId.length + laboId.length !== 1) return res.status(400).json({ code: 'CIBLE_INVALIDE', message: 'Choisissez [[le:activite]] ou [[le:labo]].' });
     const { acts, labs } = await lireAffectations(req, entrepriseId, activiteId, laboId);
     if (acts.length) await pool.query('INSERT INTO fournisseur_activites (fournisseur_id, activite_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [id, acts[0]]);
     if (labs.length) await pool.query('INSERT INTO fournisseur_labos (fournisseur_id, labo_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [id, labs[0]]);
-    res.json(ficheApi(check.rows[0]));
+    res.json(ficheApi(f));
   } catch (err) {
     repondreErreur(res, err);
   }
@@ -358,22 +402,23 @@ const deleteFournisseur = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
   try {
     const entrepriseId = await getEntrepriseId(clientId);
-    const check = await pool.query(
-      `SELECT id, is_labo, ${SQL_UTILISE('$1::int')} AS utilise FROM fournisseurs WHERE id = $1 AND entreprise_id = $2`,
-      [id, entrepriseId]
-    );
-    if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
-    if (check.rows[0].is_labo) return res.status(403).json({ message: '[[Ce:fournisseur]] est [[acc:fournisseur:géré:gérée]] automatiquement par [[le:labo]].' });
+    if (!(await ficheModifiable(res, id, entrepriseId))) return;
     if (!(await dansPerimetreGerant(req, id))) return res.status(403).json({ message: 'Accès refusé' });
     // Garde du serveur (étape F2) : un fournisseur cité par des approvisionnements ou des factures ne se supprime pas.
-    if (check.rows[0].utilise) {
-      return res.status(409).json({ code: 'FOURNISSEUR_UTILISE', message: 'Suppression impossible : [[ce:fournisseur]] figure dans [[votre:appro:pl:court]] ou vos factures.' });
-    }
-    await pool.query('DELETE FROM fournisseurs WHERE id = $1', [id]);
+    // Sous le verrou des factures du compte, la fiche verrouillée (une ligne qui la cite attend), puis relue : une
+    // facture enregistrée pendant la suppression ne perd pas son fournisseur.
+    await withTransaction(async (db) => {
+      await verrouillerFactures(db, clientId);
+      await db.query('SELECT id FROM fournisseurs WHERE id = $1 FOR UPDATE', [id]);
+      const u = await db.query(`SELECT ${SQL_UTILISE('f.id')} AS utilise FROM fournisseurs f WHERE f.id = $1`, [id]);
+      if (u.rows[0]?.utilise) {
+        throw erreur(409, 'FOURNISSEUR_UTILISE', 'Suppression impossible : [[ce:fournisseur]] figure dans [[votre:appro:pl:court]] ou vos factures.');
+      }
+      await db.query('DELETE FROM fournisseurs WHERE id = $1', [id]);
+    });
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erreur serveur' });
+    repondreErreur(res, err);
   }
 };
 
@@ -424,15 +469,25 @@ const importFournisseurs = [
       // Les données commencent APRÈS la ligne d'en-têtes (bandeau de marque au-dessus),
       // et la ligne d'exemple grisée du modèle est ignorée. Ancien modèle (3 colonnes) : accepté.
       const { findHeaderRow, isExampleRow } = require('../services/excelBrandService');
-      const complet = findHeaderRow(ws, IMPORT_HEADERS);
-      const headerRowNum = complet ?? findHeaderRow(ws, IMPORT_HEADERS_ANCIENS) ?? 1;
+      const headerRowNum = findHeaderRow(ws, IMPORT_HEADERS_ANCIENS) ?? 1;
+      // Colonnes ajoutées par F2 (Ville, Matricule fiscal, Email) : cherchées par leur titre, dans n'importe quel ordre
+      // après les trois premières (« matricule », « e-mail » admis) ; absentes : ancien modèle.
+      const titre = (i) => String(ws.getRow(headerRowNum).getCell(i).text || '').trim().toLowerCase()
+        .normalize('NFD').replace(/[^a-z]/g, '');
+      const colonne = (...noms) => {
+        for (let i = 4; i <= Math.max(6, ws.getRow(headerRowNum).cellCount); i++) if (noms.includes(titre(i))) return i;
+        return null;
+      };
+      const cVille = colonne('ville');
+      const cMatricule = colonne('matriculefiscal', 'matricule', 'mf');
+      const cEmail = colonne('email', 'mail', 'courriel');
       const lignes = [];
       ws.eachRow((row, rowNumber) => {
         if (rowNumber <= headerRowNum || isExampleRow(row)) return;
-        const cell = (i) => String(row.getCell(i).text || '').trim();
+        const cell = (i) => (i ? String(row.getCell(i).text || '').trim() : '');
         lignes.push({
           row: rowNumber, nom: cell(1), telephone: cell(2), adresse: cell(3),
-          ville: complet ? cell(4) : '', matriculeFiscal: complet ? cell(5) : '', email: complet ? cell(6) : '',
+          ville: cell(cVille), matriculeFiscal: cell(cMatricule), email: cell(cEmail),
         });
       });
       const nonVides = lignes.filter((l) => l.nom || l.telephone || l.adresse || l.ville || l.matriculeFiscal || l.email);
@@ -443,6 +498,8 @@ const importFournisseurs = [
       const existants = await pool.query('SELECT LOWER(nom) AS nom, matricule_fiscal FROM fournisseurs WHERE entreprise_id = $1', [entrepriseId]);
       const dejaLa = new Set(existants.rows.map((r) => r.nom));
       const matriculesPris = new Set(existants.rows.map((r) => r.matricule_fiscal).filter(Boolean));
+      const compte = await pool.query('SELECT matricule_fiscal FROM profil_entreprise WHERE id = $1', [entrepriseId]);
+      const propre = String(compte.rows[0]?.matricule_fiscal ?? '').replace(/[^0-9A-Z]/gi, '').slice(0, 7);
       const vusFichier = new Set();
       const valides = [];
       const details = [];
@@ -457,6 +514,10 @@ const importFournisseurs = [
         const cle = fiche.nom.toLowerCase();
         if (dejaLa.has(cle)) { details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Existe déjà dans votre répertoire' }); continue; }
         if (vusFichier.has(cle)) { details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Nom en double dans le fichier' }); continue; }
+        if (fiche.matriculeFiscal && propre.length === 7 && fiche.matriculeFiscal.slice(0, 7) === propre) {
+          details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Matricule fiscal de votre propre entreprise' });
+          continue;
+        }
         if (fiche.matriculeFiscal && matriculesPris.has(fiche.matriculeFiscal)) {
           details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Matricule fiscal déjà présent (répertoire ou fichier)' });
           continue;
