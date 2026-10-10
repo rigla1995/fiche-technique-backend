@@ -707,6 +707,12 @@ const remove = async (req, res) => {
       await journaliser(dbClient, e.id, req.user?.id, 'espace_supprime', { titulaire: Number(id), espace: e.id, nom: check.rows[0].nom, email: check.rows[0].email });
       await dbClient.query('DELETE FROM compta.espaces WHERE id = $1', [e.id]);
     }
+    // Étape F1 (factures fournisseur) : les pièces jointes partent avec le compte (cascade) ; leurs fichiers sont
+    // effacés du stockage APRÈS la validation.
+    const clesPieces = (await dbClient.query(
+      'SELECT cle, apercu_cle FROM factures_pieces WHERE client_id = $1',
+      [id]
+    )).rows.flatMap((p) => [p.cle, p.apercu_cle]);
     await dbClient.query(
       "DELETE FROM utilisateurs WHERE id = $1 AND role = 'client'",
       [id]
@@ -724,6 +730,7 @@ const remove = async (req, res) => {
     );
 
     await dbClient.query('COMMIT');
+    await require('../services/stockageFichiers').supprimerSansErreur(clesPieces, `client ${id} supprimé`);
 
     res.status(204).send();
   } catch (err) {

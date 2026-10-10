@@ -57,6 +57,8 @@ const CLES_EXTERNES = [
   'RESEND_API_KEY', 'GROQ_API_KEY', 'GEMINI_API_KEY', 'TELEGRAM_BOT_TOKEN',
   'MESSENGER_PAGE_ACCESS_TOKEN', 'MESSENGER_APP_SECRET', 'MESSENGER_VERIFY_TOKEN',
   'DOCUSEAL_API_TOKEN', 'DOCUSEAL_URL', 'DOCUSEAL_WEBHOOK_SECRET',
+  // Étape F1 (factures fournisseur) : jamais le vrai compartiment R2 en essai ; le stockage local le remplace (plus bas).
+  'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET',
 ];
 
 // Valeurs du mode « capture » : fixes, pour des sorties identiques d'un passage à l'autre.
@@ -130,6 +132,10 @@ function installer({ capture = false, argv = process.argv } = {}) {
   }
   require('dotenv').config({ path: path.join(RACINE, '.env') });
   if (capture) controlerEnvCapture();
+  // Étape F1 : pièces jointes des factures dans un dossier du poste (vidé par l'essai qui le veut), sauf réglage contraire.
+  if (!capture && !process.env.STOCKAGE_LOCAL) {
+    process.env.STOCKAGE_LOCAL = path.join(require('os').tmpdir(), 'labflow-stockage-essai');
+  }
 
   // 2. Base de données locale seulement.
   const hoteBase = process.env.DB_HOST || 'localhost';

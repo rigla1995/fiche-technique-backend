@@ -40,6 +40,7 @@ const ventesRoutes = require('./routes/ventes');
 const referentielRoutes = require('./routes/referentiel');
 const gerantRoutes = require('./routes/gerant');
 const facturesRoutes = require('./routes/factures');
+const approsRoutes = require('./routes/appros');
 const manuelRoutes = require('./routes/manuel');
 const acheteursRoutes = require('./routes/acheteurs');
 const portailRoutes = require('./routes/portail');
@@ -158,13 +159,16 @@ app.use('/api', ventesRoutes);
 app.use('/api/referentiel', referentielRoutes);
 app.use('/api/gerant', gerantRoutes);
 app.use('/api/factures', facturesRoutes);
+app.use('/api/appros', approsRoutes);
 app.use('/api/acheteurs', acheteursRoutes);
 app.use('/api/portail', portailRoutes);
 app.use('/api/manuel', manuelRoutes);
 
 app.use('/api/products', produitsRoutes);
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+// `stockage` (étape F1, factures fournisseur) : « r2_ok » quand le compartiment R2 a répondu au démarrage, « local »
+// sur un poste d'essai, « absent » sans configuration — l'état est sondé une fois, jamais à chaque appel.
+app.get('/health', (req, res) => res.json({ status: 'ok', stockage: require('./services/stockageFichiers').etatSonde() }));
 
 app.use((req, res) => res.status(404).json({ message: 'Route introuvable' }));
 
@@ -197,6 +201,7 @@ migrate()
     const server = app.listen(PORT, () => {
       console.log(`Serveur démarré sur le port ${PORT}`);
       require('./utils/manuelRendu').controlerBalisesAuDemarrage(require('./config/database')).catch(() => {}); // lot 2c R5.8 : sans attendre, ne lève jamais
+      require('./services/stockageFichiers').sonder().catch(() => {}); // étape F1 : sans attendre, ne lève jamais
     });
     // Daily job at 01:00 to enforce subscription payment deadlines (no external dep)
     const { enforcerStatuts } = require('./controllers/abonnementController');
