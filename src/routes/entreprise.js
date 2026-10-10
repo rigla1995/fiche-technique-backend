@@ -8,7 +8,7 @@ const {
   getActiviteSelectedIngredients, getTypeSelectedIngredients,
   getActivitesArticlesConsommables,
 } = require('../controllers/entrepriseController');
-const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur, getFournisseursTemplate, importFournisseurs } = require('../controllers/fournisseurController');
+const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur, completerFournisseur, lierFournisseur, getFournisseursTemplate, importFournisseurs } = require('../controllers/fournisseurController');
 const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, getPrixEntreprisePerte, getDateRangeEntreprisePerte } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise, requireClientOwner } = require('../middleware/auth');
 const unitesOpCtrl = require('../controllers/unitesOperationnellesController');
@@ -378,6 +378,10 @@ router.get('/activites/:id/ingredients', authenticate, requireEntreprise, getAct
  *               nom: { type: string }
  *               adresse: { type: string, nullable: true }
  *               telephone: { type: string, nullable: true }
+ *               raisonSociale: { type: string, nullable: true }
+ *               matriculeFiscal: { type: string, nullable: true, description: "Forme contrôlée (1234567A/A/M/000) ; unique par compte" }
+ *               email: { type: string, nullable: true }
+ *               ville: { type: string, nullable: true }
  *               activiteIds: { type: array, items: { type: integer } }
  *               laboIds: { type: array, items: { type: integer } }
  *     responses:
@@ -402,6 +406,10 @@ router.get('/activites/:id/ingredients', authenticate, requireEntreprise, getAct
  *               nom: { type: string }
  *               adresse: { type: string, nullable: true }
  *               telephone: { type: string, nullable: true }
+ *               raisonSociale: { type: string, nullable: true }
+ *               matriculeFiscal: { type: string, nullable: true, description: "Forme contrôlée (1234567A/A/M/000) ; unique par compte" }
+ *               email: { type: string, nullable: true }
+ *               ville: { type: string, nullable: true }
  *               activiteIds: { type: array, items: { type: integer } }
  *               laboIds: { type: array, items: { type: integer } }
  *     responses:
@@ -418,6 +426,56 @@ router.get('/activites/:id/ingredients', authenticate, requireEntreprise, getAct
  *     responses:
  *       200:
  *         description: Fournisseur supprimé
+ *       409:
+ *         description: Fournisseur cité par des approvisionnements ou des factures (FOURNISSEUR_UTILISE)
+ *
+ * /api/entreprise/fournisseurs/{id}/identite:
+ *   patch:
+ *     tags: [Fournisseurs]
+ *     summary: Compléter la fiche avec ce qu'une facture a appris (seuls les champs envoyés sont écrits)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               matriculeFiscal: { type: string }
+ *               raisonSociale: { type: string }
+ *               email: { type: string }
+ *               ville: { type: string }
+ *               adresse: { type: string }
+ *               telephone: { type: string }
+ *     responses:
+ *       200:
+ *         description: Fiche après l'enregistrement
+ *       409:
+ *         description: Matricule fiscal déjà porté par un autre fournisseur du compte (MATRICULE_EXISTANT)
+ *
+ * /api/entreprise/fournisseurs/{id}/lier:
+ *   post:
+ *     tags: [Fournisseurs]
+ *     summary: Rattacher un fournisseur du compte à une activité ou à un labo
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               activiteId: { type: integer }
+ *               laboId: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Fiche du fournisseur rattaché
  *
  * /api/entreprise/activites/{activiteId}/fournisseurs:
  *   get:
@@ -444,6 +502,8 @@ router.post('/fournisseurs/import', authenticate, requireEntreprise, importFourn
 router.post('/fournisseurs', authenticate, requireEntreprise, createFournisseur);
 router.put('/fournisseurs/:id', authenticate, requireEntreprise, updateFournisseur);
 router.delete('/fournisseurs/:id', authenticate, requireEntreprise, deleteFournisseur);
+router.patch('/fournisseurs/:id/identite', authenticate, requireEntreprise, completerFournisseur);
+router.post('/fournisseurs/:id/lier', authenticate, requireEntreprise, lierFournisseur);
 router.get('/activites/:activiteId/fournisseurs', authenticate, requireEntreprise, getFournisseursForActivite);
 
 /**

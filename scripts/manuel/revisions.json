@@ -185,6 +185,28 @@
           "md5": "b1d9d793dc669a8b2903981cedec3da3"
         }
       ]
+    },
+    {
+      "numero": 224,
+      "nom": "224_manuel_fournisseur_reconnu.sql",
+      "objet": "Factures fournisseur, étape F2 : fiche fournisseur avec identité légale (matricule fiscal contrôlé et unique, raison sociale, email, ville, lecture de la patente), import Excel à six colonnes, suppression refusée pour un fournisseur cité ; saisie des appros : la facture déposée est lue (fournisseur reconnu par son matricule, numéro, date, totaux, timbre 1 / 1,5 / 2 DT).",
+      "manuel": [
+        {
+          "slug": "fournisseurs",
+          "md5Avant": "e36e008ec18d2c4d351cc66340276127",
+          "md5": "bd758bf05b1eedb83e5897294b2ffca2"
+        },
+        {
+          "slug": "stock-activites",
+          "md5Avant": "6a2b8b7a412132629a5d2209420f10b1",
+          "md5": "c500206fc47231943f059dcee8e3bff1"
+        },
+        {
+          "slug": "stock-labo",
+          "md5Avant": "b1d9d793dc669a8b2903981cedec3da3",
+          "md5": "dbac459c3abcc81b1965db08768a5cb7"
+        }
+      ]
     }
   ]
 }

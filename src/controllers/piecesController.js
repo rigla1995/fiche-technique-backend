@@ -30,7 +30,7 @@ const factureAccessible = async (req, db, { ecriture = false, verrou = false } =
   const f = await F.factureDuCompte(db, req.params.id, F.clientDe(req), verrou);
   if (!f || !(ecriture ? F.gerantAgitSur(req, f) : F.gerantVoit(req, f))) throw new Refus(404, 'FACTURE_INTROUVABLE', 'Facture introuvable');
   if (ecriture && f.type_source !== 'manuel') {
-    throw refus(409, 'FACTURE_TRANSFERT', 'Une facture de [[nom:transfert]] est un document de LabFlow : elle ne reçoit pas de pièce.');
+    throw refus(409, 'FACTURE_TRANSFERT', 'Cette facture est un document fabriqué par LabFlow : elle ne reçoit pas de pièce.');
   }
   return f;
 };

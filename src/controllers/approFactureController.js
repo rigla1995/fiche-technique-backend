@@ -5,6 +5,7 @@
  * PUT /api/labo/:l/stock/:i, gardées pour compatibilité) : toutes les lignes et les pièces jointes, ou rien.
  * Corps multipart : champ « donnees » (JSON), fichiers « pieces » (0 à 5) et « apercus » (copies JPEG des photos HEIC).
  *   donnees = { cible: { type: 'activite' | 'labo', id }, dateAppro, fournisseurId, refFacture, timbreFiscal,
+ *               timbreMontant (1, 1,5 ou 2 D — étape F2 ; 1 par défaut), lecture (en-tête lu, étape F2),
  *               lignes: [{ articleId, quantite, prixUnitaire, tauxTva }], apercuDe: [rang de l'original], confirmerDoublon }
  * Règles :
  *   • même réf., même jour, même fournisseur, même activité / labo qu'une facture saisie ⇒ les lignes s'ajoutent à cette
@@ -26,6 +27,8 @@ const VALEUR_MAX = 9999999.999; // DECIMAL(10,3) : quantité, PU HT et PU TTC d'
 const LIGNE_MAX = 99999999.999; // montant d'une ligne : la facture (NUMERIC(12,3)) en additionne jusqu'à 300
 const FACTURE_MAX = 999999999.999; // NUMERIC(12,3)
 const REF_MAX = 100;
+// Timbre fiscal d'une facture (LF 2026) : 1 D ; grandes surfaces 1,5 D (50 à 100 D) ou 2 D (au-delà).
+const TIMBRES = [1, 1.5, 2];
 const nombre = (v) => (typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN));
 // Quantités et prix au millime, comme les colonnes : 0,0004 n'est pas une quantité.
 const auMillime = (x) => (Number.isFinite(x) ? Math.round(x * 1000) / 1000 : NaN);
@@ -42,6 +45,24 @@ const dateValide = (s) => {
   // Pas de date à venir (un jour de marge pour le décalage horaire de Tunis), pas avant 2000.
   const demain = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
   return s >= '2000-01-01' && s <= demain;
+};
+
+/** Ce que la lecture de la facture déposée a proposé (étape F2), gardé tel quel sur la facture : champs connus seulement,
+ * textes et nombres bornés. Une valeur absente ou d'un autre type devient null. */
+const lireLecture = (l) => {
+  if (!l || typeof l !== 'object' || Array.isArray(l)) return null;
+  const txt = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) < 1e10 ? v : null);
+  const t = l.totaux && typeof l.totaux === 'object' ? l.totaux : {};
+  const source = l.source === 'pdf' || l.source === 'ocr' ? l.source : null;
+  if (!source) return null;
+  return {
+    source,
+    matricule: txt(l.matricule, 30), nom: txt(l.nom, 200), numero: txt(l.numero, 100), date: txt(l.date, 10),
+    totaux: { ht: num(t.ht), tva: num(t.tva), timbre: num(t.timbre), ttc: num(t.ttc), fodec: num(t.fodec), remise: num(t.remise) },
+    fournisseur: ['reconnu', 'propose', 'nouveau', 'choisi'].includes(l.fournisseur) ? l.fournisseur : null,
+    duree: num(l.duree),
+  };
 };
 
 /** Lit et contrôle `donnees`. → valeurs propres ; lève Refus (400). */
@@ -83,10 +104,14 @@ const lireDonnees = (brut) => {
   if (lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire * (1 + l.tva / 100), 0) > FACTURE_MAX) {
     throw refus(400, 'MONTANT_TROP_GRAND', 'Montant de la facture trop grand.');
   }
+  const timbre = d.timbreFiscal === true;
+  const timbreMontant = timbre ? (d.timbreMontant == null || d.timbreMontant === '' ? 1 : Number(d.timbreMontant)) : 0;
+  if (timbre && !TIMBRES.includes(timbreMontant)) throw refus(400, 'TIMBRE_INVALIDE', 'Timbre fiscal : 1, 1,5 ou 2 dinars.');
   return {
     type, cibleId, dateAppro: d.dateAppro, ref, fournisseurId, lignes,
-    timbre: d.timbreFiscal === true, apercuDe: Array.isArray(d.apercuDe) ? d.apercuDe : [],
+    timbre, timbreMontant, apercuDe: Array.isArray(d.apercuDe) ? d.apercuDe : [],
     confirmerDoublon: d.confirmerDoublon === true,
+    lecture: lireLecture(d.lecture),
   };
 };
 
@@ -176,7 +201,7 @@ const creer = async (req, res) => {
       if (v.confirmerDoublon) return;
       const semblables = await facturesSemblables(req, clientId, v, db);
       if (semblables.length) {
-        throw refus(409, 'FACTURE_EXISTANTE', `Une facture n° ${F.sansBalise(v.ref)} de ce [[nom:fournisseur]] existe déjà.`, { factures: semblables });
+        throw refus(409, 'FACTURE_EXISTANTE', `Une facture n° ${F.sansBalise(v.ref)} de [[ce:fournisseur]] existe déjà.`, { factures: semblables });
       }
     };
     // Avant les fichiers (rien à envoyer pour un refus), puis de nouveau sous le verrou : deux envois simultanés de la
@@ -200,15 +225,15 @@ const creer = async (req, res) => {
       if (ajoutee) {
         factureId = existe.rows[0].id;
         if (v.timbre && !existe.rows[0].timbre_fiscal) {
-          await db.query('UPDATE factures SET timbre_fiscal = true, montant_timbre = 1 WHERE id = $1', [factureId]);
+          await db.query('UPDATE factures SET timbre_fiscal = true, montant_timbre = $2 WHERE id = $1', [factureId, v.timbreMontant]);
         }
       } else {
         const ins = await db.query(
           `INSERT INTO factures (client_id, ref_facture, date_facture, fournisseur_id, activite_id, labo_id, type_source,
-                                 montant_ht, montant_tva, montant_ttc, timbre_fiscal, montant_timbre, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, 'manuel', 0, 0, 0, $7, $8, $9) RETURNING id`,
+                                 montant_ht, montant_tva, montant_ttc, timbre_fiscal, montant_timbre, created_by, lecture)
+           VALUES ($1, $2, $3, $4, $5, $6, 'manuel', 0, 0, 0, $7, $8, $9, $10) RETURNING id`,
           [clientId, v.ref, v.dateAppro, v.fournisseurId, v.type === 'activite' ? v.cibleId : null,
-            v.type === 'labo' ? v.cibleId : null, v.timbre, v.timbre ? 1 : 0, req.user.id]
+            v.type === 'labo' ? v.cibleId : null, v.timbre, v.timbreMontant, req.user.id, v.lecture ? JSON.stringify(v.lecture) : null]
         );
         factureId = ins.rows[0].id;
       }

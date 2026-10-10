@@ -486,3 +486,21 @@ Hors restauration : seules les empreintes des trois fiches (3 problèmes par dom
 **Recapture.** Référence RECAPTURÉE le 09/10 (`--reference`) : `derniereMigration` → 222, ces textes, empreintes,
 ordres et le champ `nbPieces`. Contrôle suivant IDENTIQUE (0 écart).
 **Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut hors exceptions.
+
+### Factures fournisseur, étape F2 — le fournisseur reconnu (10/10/2026)
+
+Migration 223 (identité légale des fournisseurs, `factures.lecture`) et 224 (`224_manuel_fournisseur_reconnu.sql`,
+maintenance du manuel : fiches `fournisseurs`, `stock-activites`, `stock-labo`). Premier contrôle : 44 écarts, tous
+dus à l'étape :
+
+| Différence contre l'ancienne référence | Nombre |
+|---|---|
+| `manuel/sections/{fournisseurs,stock-activites,stock-labo}/contenu` | 3 |
+| `recherches` et `recherchesDomaine` (« créer un labo », « transfert vers une activité ») : contenus des fiches réécrites en résultat | 28 |
+| `recherchesDomaine/{B,C}` « Comment ajouter / importer mes fournisseurs » : la fiche Fournisseurs (matricule, import à six colonnes) remonte en tête | 10 |
+| `exports/02.modeleFournisseurs` : modèle d'import à six colonnes (Ville, Matricule fiscal, Email) et sa notice | 3 |
+
+Hors restauration : seules les empreintes des trois fiches (lecteurs client, gérant, acheteur, admin).
+**Recapture.** Référence RECAPTURÉE le 10/10 (`--reference`) : `derniereMigration` → 224, ces textes, empreintes,
+rangs de recherche et le modèle d'import. Contrôle suivant IDENTIQUE (0 écart).
+**Hors restauration.** hotellerie, ceramique, miroir : code 0, aucune forme par défaut hors exceptions.
