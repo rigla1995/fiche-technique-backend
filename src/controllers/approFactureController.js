@@ -5,6 +5,7 @@
  * PUT /api/labo/:l/stock/:i, gardées pour compatibilité) : toutes les lignes et les pièces jointes, ou rien.
  * Corps multipart : champ « donnees » (JSON), fichiers « pieces » (0 à 5) et « apercus » (copies JPEG des photos HEIC).
  *   donnees = { cible: { type: 'activite' | 'labo', id }, dateAppro, fournisseurId, refFacture, timbreFiscal,
+ *               timbreMontant (1, 1,5 ou 2 D — étape F2 ; 1 par défaut), lecture (en-tête lu, étape F2),
  *               lignes: [{ articleId, quantite, prixUnitaire, tauxTva }], apercuDe: [rang de l'original], confirmerDoublon }
  * Règles :
  *   • même réf., même jour, même fournisseur, même activité / labo qu'une facture saisie ⇒ les lignes s'ajoutent à cette
@@ -26,6 +27,9 @@ const VALEUR_MAX = 9999999.999; // DECIMAL(10,3) : quantité, PU HT et PU TTC d'
 const LIGNE_MAX = 99999999.999; // montant d'une ligne : la facture (NUMERIC(12,3)) en additionne jusqu'à 300
 const FACTURE_MAX = 999999999.999; // NUMERIC(12,3)
 const REF_MAX = 100;
+const ID_MAX = 2147483647; // identifiants INTEGER : au-delà, la base refuse (erreur 500 avant)
+// Timbre fiscal d'une facture (LF 2026) : 1 D ; grandes surfaces 1,5 D (50 à 100 D) ou 2 D (au-delà).
+const TIMBRES = [1, 1.5, 2];
 const nombre = (v) => (typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN));
 // Quantités et prix au millime, comme les colonnes : 0,0004 n'est pas une quantité.
 const auMillime = (x) => (Number.isFinite(x) ? Math.round(x * 1000) / 1000 : NaN);
@@ -44,6 +48,35 @@ const dateValide = (s) => {
   return s >= '2000-01-01' && s <= demain;
 };
 
+/** Ce que la lecture de la facture déposée a proposé (étape F2), gardé tel quel sur la facture : champs connus seulement,
+ * textes et nombres bornés. Une valeur absente ou d'un autre type devient null. */
+// Texte gardé en JSONB : sans caractère de contrôle (PostgreSQL refuse NUL) ni moitié de paire UTF-16 (refusée aussi),
+// coupé par caractère (une coupe au milieu d'un émoji en laisserait une moitié). Un texte lu sur un PDF peut porter tout cela.
+const CONTROLE = new RegExp(`[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`, 'g');
+const propre = (s) => Array.from(s.replace(CONTROLE, ' ')).filter((c) => {
+  const n = c.charCodeAt(0);
+  return c.length === 2 || n < 0xd800 || n > 0xdfff;
+}).join('');
+const lireLecture = (l) => {
+  if (!l || typeof l !== 'object' || Array.isArray(l)) return null;
+  const txt = (v, max) => {
+    if (typeof v !== 'string') return null;
+    const s = Array.from(propre(v).trim()).slice(0, max).join('').trim();
+    return s || null;
+  };
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) < 1e10 ? v : null);
+  const t = l.totaux && typeof l.totaux === 'object' ? l.totaux : {};
+  const source = l.source === 'pdf' || l.source === 'ocr' ? l.source : null;
+  if (!source) return null;
+  return {
+    source,
+    matricule: txt(l.matricule, 30), nom: txt(l.nom, 200), numero: txt(l.numero, 100), date: txt(l.date, 10),
+    totaux: { ht: num(t.ht), tva: num(t.tva), timbre: num(t.timbre), ttc: num(t.ttc), fodec: num(t.fodec), remise: num(t.remise) },
+    fournisseur: ['reconnu', 'propose', 'nouveau', 'choisi'].includes(l.fournisseur) ? l.fournisseur : null,
+    duree: num(l.duree),
+  };
+};
+
 /** Lit et contrôle `donnees`. → valeurs propres ; lève Refus (400). */
 const lireDonnees = (brut) => {
   let d;
@@ -51,7 +84,7 @@ const lireDonnees = (brut) => {
   if (!d || typeof d !== 'object') throw refus(400, 'DONNEES_ILLISIBLES', 'Envoi illisible : réessayez.');
   const type = d.cible?.type;
   const cibleId = Number(d.cible?.id);
-  if ((type !== 'activite' && type !== 'labo') || !Number.isInteger(cibleId) || cibleId <= 0) {
+  if ((type !== 'activite' && type !== 'labo') || !Number.isInteger(cibleId) || cibleId <= 0 || cibleId > ID_MAX) {
     throw refus(400, 'CIBLE_INVALIDE', 'Choisissez [[le:activite]] ou [[le:labo]].');
   }
   if (!dateValide(d.dateAppro)) throw refus(400, 'DATE_INVALIDE', 'Date [[du:appro:court]] invalide.');
@@ -61,7 +94,7 @@ const lireDonnees = (brut) => {
   let fournisseurId = null;
   if (d.fournisseurId != null && d.fournisseurId !== '') {
     fournisseurId = Number(d.fournisseurId);
-    if (!Number.isInteger(fournisseurId) || fournisseurId <= 0) throw refus(400, 'FOURNISSEUR_INVALIDE', '[[Nom:fournisseur]] invalide.');
+    if (!Number.isInteger(fournisseurId) || fournisseurId <= 0 || fournisseurId > ID_MAX) throw refus(400, 'FOURNISSEUR_INVALIDE', '[[Nom:fournisseur]] invalide.');
   }
   if (!Array.isArray(d.lignes) || d.lignes.length === 0) throw refus(400, 'LIGNES_REQUISES', 'Aucune ligne à enregistrer.');
   if (d.lignes.length > LIGNES_MAX) throw refus(400, 'TROP_DE_LIGNES', `${LIGNES_MAX} lignes au plus par facture.`);
@@ -71,7 +104,7 @@ const lireDonnees = (brut) => {
     const prixUnitaire = auMillime(nombre(l?.prixUnitaire));
     const tva = l?.tauxTva == null || l.tauxTva === '' ? 0 : nombre(l.tauxTva);
     const n = i + 1;
-    if (!Number.isInteger(articleId) || articleId <= 0) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : [[nom:article]] invalide.`, { ligne: n });
+    if (!Number.isInteger(articleId) || articleId <= 0 || articleId > ID_MAX) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : [[nom:article]] invalide.`, { ligne: n });
     if (!(quantite > 0) || quantite > VALEUR_MAX) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : quantité invalide.`, { ligne: n });
     if (!(prixUnitaire > 0) || prixUnitaire > VALEUR_MAX) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : prix invalide.`, { ligne: n });
     if (!(tva >= 0) || tva > 100) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : taux de TVA invalide.`, { ligne: n });
@@ -83,10 +116,14 @@ const lireDonnees = (brut) => {
   if (lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire * (1 + l.tva / 100), 0) > FACTURE_MAX) {
     throw refus(400, 'MONTANT_TROP_GRAND', 'Montant de la facture trop grand.');
   }
+  const timbre = d.timbreFiscal === true;
+  const timbreMontant = timbre ? (d.timbreMontant == null || d.timbreMontant === '' ? 1 : Number(d.timbreMontant)) : 0;
+  if (timbre && !TIMBRES.includes(timbreMontant)) throw refus(400, 'TIMBRE_INVALIDE', 'Timbre fiscal : 1, 1,5 ou 2 dinars.');
   return {
     type, cibleId, dateAppro: d.dateAppro, ref, fournisseurId, lignes,
-    timbre: d.timbreFiscal === true, apercuDe: Array.isArray(d.apercuDe) ? d.apercuDe : [],
+    timbre, timbreMontant, apercuDe: Array.isArray(d.apercuDe) ? d.apercuDe : [],
     confirmerDoublon: d.confirmerDoublon === true,
+    lecture: lireLecture(d.lecture),
   };
 };
 
@@ -176,7 +213,7 @@ const creer = async (req, res) => {
       if (v.confirmerDoublon) return;
       const semblables = await facturesSemblables(req, clientId, v, db);
       if (semblables.length) {
-        throw refus(409, 'FACTURE_EXISTANTE', `Une facture n° ${F.sansBalise(v.ref)} de ce [[nom:fournisseur]] existe déjà.`, { factures: semblables });
+        throw refus(409, 'FACTURE_EXISTANTE', `Une facture n° ${F.sansBalise(v.ref)} de [[ce:fournisseur]] existe déjà.`, { factures: semblables });
       }
     };
     // Avant les fichiers (rien à envoyer pour un refus), puis de nouveau sous le verrou : deux envois simultanés de la
@@ -189,7 +226,7 @@ const creer = async (req, res) => {
       await F.verrouillerFactures(db, clientId);
       await refuserSiDoublon(db);
       const existe = await db.query(
-        `SELECT id, timbre_fiscal FROM factures
+        `SELECT id, timbre_fiscal, montant_timbre FROM factures
          WHERE client_id = $1 AND type_source = 'manuel' AND ref_facture = $2 AND date_facture = $3::date
            AND fournisseur_id IS NOT DISTINCT FROM $4::int AND ${colonne} = $5 AND ${colonne === 'activite_id' ? 'labo_id' : 'activite_id'} IS NULL
          ORDER BY id LIMIT 1 FOR UPDATE`,
@@ -199,16 +236,21 @@ const creer = async (req, res) => {
       const ajoutee = existe.rows.length > 0;
       if (ajoutee) {
         factureId = existe.rows[0].id;
-        if (v.timbre && !existe.rows[0].timbre_fiscal) {
-          await db.query('UPDATE factures SET timbre_fiscal = true, montant_timbre = 1 WHERE id = $1', [factureId]);
+        // Le timbre ne s'enlève jamais d'une facture qui l'a. Son montant n'est posé que s'il manquait, ou s'il vient de la
+        // facture lue (une confirmation laissée à 1 D par défaut ne remplace pas un timbre de 2 D).
+        const ancien = existe.rows[0];
+        if (v.timbre && (!ancien.timbre_fiscal || (v.lecture && Number(ancien.montant_timbre) !== v.timbreMontant))) {
+          await db.query('UPDATE factures SET timbre_fiscal = true, montant_timbre = $2 WHERE id = $1', [factureId, v.timbreMontant]);
         }
+        // Lecture de la facture déposée maintenant, si la facture n'en gardait pas encore.
+        if (v.lecture) await db.query('UPDATE factures SET lecture = $2 WHERE id = $1 AND lecture IS NULL', [factureId, JSON.stringify(v.lecture)]);
       } else {
         const ins = await db.query(
           `INSERT INTO factures (client_id, ref_facture, date_facture, fournisseur_id, activite_id, labo_id, type_source,
-                                 montant_ht, montant_tva, montant_ttc, timbre_fiscal, montant_timbre, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, 'manuel', 0, 0, 0, $7, $8, $9) RETURNING id`,
+                                 montant_ht, montant_tva, montant_ttc, timbre_fiscal, montant_timbre, created_by, lecture)
+           VALUES ($1, $2, $3, $4, $5, $6, 'manuel', 0, 0, 0, $7, $8, $9, $10) RETURNING id`,
           [clientId, v.ref, v.dateAppro, v.fournisseurId, v.type === 'activite' ? v.cibleId : null,
-            v.type === 'labo' ? v.cibleId : null, v.timbre, v.timbre ? 1 : 0, req.user.id]
+            v.type === 'labo' ? v.cibleId : null, v.timbre, v.timbreMontant, req.user.id, v.lecture ? JSON.stringify(v.lecture) : null]
         );
         factureId = ins.rows[0].id;
       }
@@ -244,6 +286,8 @@ const creer = async (req, res) => {
     if (deposes.length) await P.effacerDeposes(deposes, 'facture non enregistrée');
     if (err instanceof Refus) return res.status(err.status).json(err.corps);
     if (err instanceof P.ErreurPiece) return res.status(err.status).json({ code: err.code, message: err.message });
+    // Fournisseur ou article supprimé pendant l'enregistrement (clé étrangère) : rien n'est écrit, on peut recommencer.
+    if (err?.code === '23503') return res.status(409).json({ code: 'DONNEE_DISPARUE', message: 'Une donnée de la saisie vient d\'être supprimée : rechargez la page, puis recommencez.' });
     console.error('[appro facture]', err);
     return res.status(500).json({ message: 'Erreur serveur' });
   }

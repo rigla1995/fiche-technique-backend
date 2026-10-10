@@ -145,7 +145,22 @@ const gardeDerniereLigne = async (db, { factureId, table, confirme }) => {
   };
 };
 
+/** Un fournisseur cité par une écriture est-il du compte ? (absent : oui). Étape F2 : avant, les anciennes routes de saisie
+ * acceptaient l'identifiant d'un fournisseur d'un autre compte — qui ne pouvait plus, ensuite, supprimer sa fiche. */
+const fournisseurDuCompte = async (db, clientId, fournisseurId) => {
+  if (fournisseurId == null || fournisseurId === '') return true;
+  const id = idValide(fournisseurId);
+  if (!id) return false;
+  const r = await db.query(
+    `SELECT 1 FROM fournisseurs f LEFT JOIN profil_entreprise pe ON pe.id = f.entreprise_id
+     WHERE f.id = $1 AND (pe.client_id = $2 OR f.client_id = $2)`,
+    [id, clientId]
+  );
+  return r.rows.length > 0;
+};
+
 module.exports = {
+  fournisseurDuCompte,
   CLASSE_VERROU, verrouillerFactures, SQL_REF_NORMALISEE, refNormalisee, idValide, sansBalise, clientDe, gerantAgitSur,
   gerantVoit, clauseGerant, factureDuCompte, recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne,
 };

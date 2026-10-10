@@ -48,5 +48,12 @@
     "nom": "refus",
     "argument": 3,
     "justification": "refus(status, code, message) fabrique un Refus : repondreErreur renvoie { code, message } en JSON, rendu au bord (étape F1 des factures fournisseur)."
+  },
+  {
+    "fichier": "src/controllers/fournisseurController.js",
+    "genre": "argument",
+    "nom": "erreur",
+    "argument": 3,
+    "justification": "erreur(status, code, message) : le message devient corps.message, renvoyé tel quel par repondreErreur au bord (res.status().json(err.corps)) — étape F2 des factures fournisseur."
   }
 ]
