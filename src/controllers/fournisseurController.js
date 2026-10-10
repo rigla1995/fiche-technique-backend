@@ -64,6 +64,9 @@ const lireFiche = (body = {}, { partiel = false } = {}) => {
 
 const COLONNES = { nom: 'nom', telephone: 'telephone', adresse: 'adresse', raisonSociale: 'raison_sociale', email: 'email', ville: 'ville', matriculeFiscal: 'matricule_fiscal' };
 
+/** Même entreprise : matricules égaux, ou l'un est la forme courte (7 chiffres + clé) du début de l'autre. */
+const memeMatricule = (a, b) => Boolean(a && b) && (a === b || (a.length === 8 && b.startsWith(a)) || (b.length === 8 && a.startsWith(b)));
+
 const dejaPris = (f) => erreur(409, 'MATRICULE_EXISTANT', `Ce matricule fiscal est déjà celui de « ${sansBalise(f.nom)} ».`, { fournisseur: { id: f.id, nom: f.nom } });
 
 /** Un autre fournisseur du compte porte-t-il déjà ce matricule ? → 409 avec son nom (pour le choisir à la place). La forme
@@ -124,9 +127,13 @@ const dansPerimetreGerant = async (req, fournisseurId) => {
 // Affectations demandées : activités et labos du compte ; pour un gérant, de son périmètre seulement — sauf celles que
 // le fournisseur a DÉJÀ (`dejaLies`) : l'écran renvoie la liste complète, le gérant ne fait que les garder.
 const lireAffectations = async (req, entrepriseId, activiteIds, laboIds, dejaLies = { acts: [], labs: [] }) => {
+  // Identifiants : entiers ou chaînes de chiffres seulement (ni booléen, ni tableau, ni nombre géant).
+  const accepte = (x) => (Number.isInteger(x) || (typeof x === 'string' && /^\d{1,10}$/.test(x)));
+  if ([activiteIds, laboIds].some((v) => v != null && !Array.isArray(v))) throw erreur(400, 'AFFECTATION_INVALIDE', 'Affectation invalide');
+  if ([...(activiteIds || []), ...(laboIds || [])].some((x) => !accepte(x))) throw erreur(400, 'AFFECTATION_INVALIDE', 'Affectation invalide');
   const ids = (v) => (Array.isArray(v) ? [...new Set(v.map(Number))] : []);
   const acts = ids(activiteIds), labs = ids(laboIds);
-  if ([...acts, ...labs].some((id) => !Number.isInteger(id) || id <= 0 || id > ID_MAX)) throw erreur(400, 'AFFECTATION_INVALIDE', 'Affectation invalide');
+  if ([...acts, ...labs].some((id) => id <= 0 || id > ID_MAX)) throw erreur(400, 'AFFECTATION_INVALIDE', 'Affectation invalide');
   if (req.user.role === 'gerant') {
     const okA = req.user.gerantActiviteIds || [], okL = req.user.gerantLaboIds || [];
     if (acts.some((id) => !okA.includes(id) && !dejaLies.acts.includes(id)) || labs.some((id) => !okL.includes(id) && !dejaLies.labs.includes(id))) {
@@ -315,7 +322,8 @@ const updateFournisseur = async (req, res) => {
     ]);
     const { acts, labs } = await lireAffectations(req, entrepriseId, req.body.activiteIds, req.body.laboIds,
       { acts: liesA.rows.map((r) => r.activite_id), labs: liesL.rows.map((r) => r.labo_id) });
-    await controlerMatriculeLibre(pool, entrepriseId, fiche.matriculeFiscal, Number(id));
+    // Matricule inchangé : pas de nouveau contrôle (une règle plus récente ne doit pas bloquer un simple renommage).
+    if (fiche.matriculeFiscal !== (actuel.matricule_fiscal ?? null)) await controlerMatriculeLibre(pool, entrepriseId, fiche.matriculeFiscal, Number(id));
 
     await withTransaction(async (db) => {
       await db.query(
@@ -329,12 +337,16 @@ const updateFournisseur = async (req, res) => {
         `DELETE FROM fournisseur_activites WHERE fournisseur_id = $1 ${gerant ? 'AND activite_id = ANY($2::int[])' : ''}`,
         gerant ? [id, req.user.gerantActiviteIds || []] : [id]
       );
-      if (acts.length) await db.query('INSERT INTO fournisseur_activites (fournisseur_id, activite_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [id, acts]);
+      // Un gérant n'insère que dans son périmètre (les affectations hors périmètre qu'il renvoie sont déjà là, ou viennent
+      // d'être retirées par le client : il ne les remet pas).
+      const actsAEcrire = gerant ? acts.filter((a) => (req.user.gerantActiviteIds || []).includes(a)) : acts;
+      const labsAEcrire = gerant ? labs.filter((l) => (req.user.gerantLaboIds || []).includes(l)) : labs;
+      if (actsAEcrire.length) await db.query('INSERT INTO fournisseur_activites (fournisseur_id, activite_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [id, actsAEcrire]);
       await db.query(
         `DELETE FROM fournisseur_labos WHERE fournisseur_id = $1 ${gerant ? 'AND labo_id = ANY($2::int[])' : ''}`,
         gerant ? [id, req.user.gerantLaboIds || []] : [id]
       );
-      if (labs.length) await db.query('INSERT INTO fournisseur_labos (fournisseur_id, labo_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [id, labs]);
+      if (labsAEcrire.length) await db.query('INSERT INTO fournisseur_labos (fournisseur_id, labo_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [id, labsAEcrire]);
     });
     res.json({ success: true });
   } catch (err) {
@@ -382,7 +394,7 @@ const lierFournisseur = async (req, res) => {
     if (!f) return;
     if (req.user.role === 'gerant' && !(await dansPerimetreGerant(req, id))) {
       const presente = typeof req.body?.matriculeFiscal === 'string' ? normaliserMatriculeFiscal(req.body.matriculeFiscal) : '';
-      if (!f.matricule_fiscal || presente !== f.matricule_fiscal) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
+      if (!memeMatricule(presente, f.matricule_fiscal)) return res.status(404).json({ message: '[[Nom:fournisseur]] introuvable' });
     }
     const activiteId = req.body?.activiteId != null ? [req.body.activiteId] : [];
     const laboId = req.body?.laboId != null ? [req.body.laboId] : [];
@@ -497,7 +509,7 @@ const importFournisseurs = [
       // Doublons : dans le fichier ET contre le répertoire existant (nom insensible à la casse ; matricule)
       const existants = await pool.query('SELECT LOWER(nom) AS nom, matricule_fiscal FROM fournisseurs WHERE entreprise_id = $1', [entrepriseId]);
       const dejaLa = new Set(existants.rows.map((r) => r.nom));
-      const matriculesPris = new Set(existants.rows.map((r) => r.matricule_fiscal).filter(Boolean));
+      const matriculesPris = existants.rows.map((r) => r.matricule_fiscal).filter(Boolean);
       const compte = await pool.query('SELECT matricule_fiscal FROM profil_entreprise WHERE id = $1', [entrepriseId]);
       const propre = String(compte.rows[0]?.matricule_fiscal ?? '').replace(/[^0-9A-Z]/gi, '').slice(0, 7);
       const vusFichier = new Set();
@@ -518,12 +530,12 @@ const importFournisseurs = [
           details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Matricule fiscal de votre propre entreprise' });
           continue;
         }
-        if (fiche.matriculeFiscal && matriculesPris.has(fiche.matriculeFiscal)) {
+        if (fiche.matriculeFiscal && matriculesPris.some((m) => memeMatricule(m, fiche.matriculeFiscal))) {
           details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Matricule fiscal déjà présent (répertoire ou fichier)' });
           continue;
         }
         vusFichier.add(cle);
-        if (fiche.matriculeFiscal) matriculesPris.add(fiche.matriculeFiscal);
+        if (fiche.matriculeFiscal) matriculesPris.push(fiche.matriculeFiscal);
         valides.push({ row: l.row, ...fiche });
       }
       if (valides.length === 0) {

@@ -10,7 +10,7 @@ const { withTransaction } = require('../utils/db');
 const { computeStockBulk, computeStock } = require('../services/stockService');
 const unitesOp = require('../services/unitesOperationnellesService');
 const transfertService = require('../services/transfertService');
-const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte } = require('../services/facturesAppro');
+const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte, idValide } = require('../services/facturesAppro');
 const stockage = require('../services/stockageFichiers');
 const { TransfertError } = transfertService;
 const { checkQuota } = require('../services/quotaService');
@@ -1162,8 +1162,9 @@ const syncLaboFournisseurs = async (req, res) => {
     const ok = await checkLaboOwner(laboId, req.user.gerant_parent_id || req.user.id);
     if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
-    // Étape F2 : seulement des fournisseurs du compte.
-    for (const fid of fournisseurIds) {
+    // Étape F2 : seulement des fournisseurs du compte (identifiants valides : un null passait jusqu'à la base).
+    if (fournisseurIds.some((fid) => !idValide(fid))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
+    for (const fid of new Set(fournisseurIds.map(Number))) {
       if (!(await fournisseurDuCompte(pool, req.user.gerant_parent_id || req.user.id, fid))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
     }
     await pool.query('DELETE FROM fournisseur_labos WHERE labo_id = $1', [laboId]);

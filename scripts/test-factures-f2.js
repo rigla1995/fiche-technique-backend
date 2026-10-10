@@ -66,7 +66,7 @@ const login = async (email) => (await appel('POST', '/auth/login', null, { email
 const ALPHABET_CLE = 'ABCDEFGHJKLMNPQRSTVWXYZ';
 const mf = (id, fin = '/A/M/000') => `${id}${ALPHABET_CLE[[...id].reduce((s, c, i) => s + Number(c) * (7 - i), 0) % 23]}${fin}`;
 const MF1 = mf('1384297'), MF2 = mf('0897514', '/B/M/000'), MF3 = mf('1559041'), MF4 = mf('1103587'), MF5 = mf('1720368', '/N/P/000');
-const MF6 = mf('0512946', '/A/M/001'), MF7 = mf('1876245', ''), MF_COMPTE = mf('1658423');
+const MF6 = mf('0512946', '/A/M/001'), MF7 = mf('1876245', ''), MF8 = mf('0739812', '/A/M/003'), MF9 = mf('1290033'), MF_COMPTE = mf('1658423');
 
 (async () => {
   const hash = await bcrypt.hash(MDP, 10);
@@ -227,6 +227,19 @@ const MF6 = mf('0512946', '/A/M/001'), MF7 = mf('1876245', ''), MF_COMPTE = mf('
     const r3b = await appel('POST', `/api/entreprise/fournisseurs/${horsG}/lier`, gTok, { activiteId: actA.id, matriculeFiscal: MF1 });
     const r3c = await appel('POST', `/api/entreprise/fournisseurs/${horsG}/lier`, gTok, { activiteId: actA.id, matriculeFiscal: MF6.toLowerCase() });
     check('3. gérant, lier un fournisseur hors périmètre : sans matricule → 404, mauvais matricule → 404, matricule lu juste → 200', r.status === 404 && r3b.status === 404 && r3c.status === 200, `${r.status} ${r3b.status} ${r3c.status}`);
+    const horsG2 = (await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: 'Autre de B', matriculeFiscal: MF8, activiteIds: [actB.id] })).body?.id;
+    r = await appel('POST', `/api/entreprise/fournisseurs/${horsG2}/lier`, gTok, { activiteId: actA.id, matriculeFiscal: MF8.slice(0, 8) });
+    check('3. gérant, lier avec la forme courte du matricule enregistré en forme complète → 200', r.status === 200, `${r.status}`);
+    r = await appel('PUT', `/api/entreprise/fournisseurs/${f2}`, tok, { nom: 'Ben Salem', activiteIds: [true], laboIds: [] });
+    const r3f = await appel('PUT', `/api/labo/${labo.id}/fournisseurs/sync`, tok, { fournisseurIds: [null] });
+    check('3. affectation booléenne → 400 ; liste du labo avec null → 400 (avant : erreur serveur)', r.status === 400 && r.body?.code === 'AFFECTATION_INVALIDE' && r3f.status === 400, `${r.status} ${r3f.status}`);
+    // Deux fiches déjà en base avec la forme courte et la forme complète d'un même matricule (avant la règle) : un simple
+    // renommage de l'une ne doit pas être refusé.
+    const ent = (await pool.query('SELECT id FROM profil_entreprise WHERE client_id = $1', [clientId])).rows[0].id;
+    const court = (await pool.query(`INSERT INTO fournisseurs (entreprise_id, nom, matricule_fiscal) VALUES ($1, 'Court', $2) RETURNING id`, [ent, MF9.slice(0, 8)])).rows[0].id;
+    await pool.query(`INSERT INTO fournisseurs (entreprise_id, nom, matricule_fiscal) VALUES ($1, 'Complet', $2)`, [ent, MF9]);
+    r = await appel('PUT', `/api/entreprise/fournisseurs/${court}`, tok, { nom: 'Court renommé', matriculeFiscal: MF9.slice(0, 8), activiteIds: [] });
+    check('3. renommer une fiche dont le matricule ne change pas → 200, même si une autre porte sa forme complète', r.status === 200, `${r.status} ${JSON.stringify(r.body)}`);
     // Fournisseur d'un autre compte : les anciennes routes de saisie le refusent désormais.
     r = await appel('PUT', `/api/stock/entreprise/${actA.id}/${art1.id}`, tok, { quantite: 1, prixUnitaire: 1, fournisseurId: etrangers.fournisseur, refFacture: 'X-ETR' });
     const r3d = await appel('PUT', `/api/labo/${labo.id}/stock/${art1.id}`, tok, { quantite: 1, prixUnitaire: 1, fournisseurId: etrangers.fournisseur, refFacture: 'X-ETR' });
@@ -303,6 +316,9 @@ const MF6 = mf('0512946', '/A/M/001'), MF7 = mf('1876245', ''), MF_COMPTE = mf('
     r = await envoi('/api/appros/facture', tok, donnees({ refFacture: 'T-DEF', confirmerDoublon: true, timbreMontant: 2, lecture: { source: 'ocr', numero: 'T-DEF' } }));
     const facDef2 = (await pool.query('SELECT * FROM factures WHERE id = $1', [facDef.id])).rows[0];
     check('6. lignes ajoutées à une facture : timbre porté à 2 D, lecture gardée (elle n\'en avait pas)', r.status === 201 && r.body?.ajoutee === true && approx(facDef2.montant_timbre, 2) && facDef2.lecture?.numero === 'T-DEF', `${r.status} ${facDef2.montant_timbre} ${JSON.stringify(facDef2.lecture)}`);
+    r = await envoi('/api/appros/facture', tok, donnees({ refFacture: 'T-DEF', confirmerDoublon: true, timbreMontant: 1 }));
+    const facDef3 = (await pool.query('SELECT montant_timbre FROM factures WHERE id = $1', [facDef.id])).rows[0];
+    check('6. nouvelles lignes sans lecture, timbre laissé à 1 D par défaut : le timbre de 2 D est gardé', r.status === 201 && approx(facDef3.montant_timbre, 2), `${r.status} ${facDef3.montant_timbre}`);
   } catch (err) {
     console.error(err);
     check('exécution sans exception', false, err.message);

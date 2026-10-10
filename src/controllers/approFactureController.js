@@ -27,6 +27,7 @@ const VALEUR_MAX = 9999999.999; // DECIMAL(10,3) : quantité, PU HT et PU TTC d'
 const LIGNE_MAX = 99999999.999; // montant d'une ligne : la facture (NUMERIC(12,3)) en additionne jusqu'à 300
 const FACTURE_MAX = 999999999.999; // NUMERIC(12,3)
 const REF_MAX = 100;
+const ID_MAX = 2147483647; // identifiants INTEGER : au-delà, la base refuse (erreur 500 avant)
 // Timbre fiscal d'une facture (LF 2026) : 1 D ; grandes surfaces 1,5 D (50 à 100 D) ou 2 D (au-delà).
 const TIMBRES = [1, 1.5, 2];
 const nombre = (v) => (typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN));
@@ -83,7 +84,7 @@ const lireDonnees = (brut) => {
   if (!d || typeof d !== 'object') throw refus(400, 'DONNEES_ILLISIBLES', 'Envoi illisible : réessayez.');
   const type = d.cible?.type;
   const cibleId = Number(d.cible?.id);
-  if ((type !== 'activite' && type !== 'labo') || !Number.isInteger(cibleId) || cibleId <= 0) {
+  if ((type !== 'activite' && type !== 'labo') || !Number.isInteger(cibleId) || cibleId <= 0 || cibleId > ID_MAX) {
     throw refus(400, 'CIBLE_INVALIDE', 'Choisissez [[le:activite]] ou [[le:labo]].');
   }
   if (!dateValide(d.dateAppro)) throw refus(400, 'DATE_INVALIDE', 'Date [[du:appro:court]] invalide.');
@@ -93,7 +94,7 @@ const lireDonnees = (brut) => {
   let fournisseurId = null;
   if (d.fournisseurId != null && d.fournisseurId !== '') {
     fournisseurId = Number(d.fournisseurId);
-    if (!Number.isInteger(fournisseurId) || fournisseurId <= 0) throw refus(400, 'FOURNISSEUR_INVALIDE', '[[Nom:fournisseur]] invalide.');
+    if (!Number.isInteger(fournisseurId) || fournisseurId <= 0 || fournisseurId > ID_MAX) throw refus(400, 'FOURNISSEUR_INVALIDE', '[[Nom:fournisseur]] invalide.');
   }
   if (!Array.isArray(d.lignes) || d.lignes.length === 0) throw refus(400, 'LIGNES_REQUISES', 'Aucune ligne à enregistrer.');
   if (d.lignes.length > LIGNES_MAX) throw refus(400, 'TROP_DE_LIGNES', `${LIGNES_MAX} lignes au plus par facture.`);
@@ -103,7 +104,7 @@ const lireDonnees = (brut) => {
     const prixUnitaire = auMillime(nombre(l?.prixUnitaire));
     const tva = l?.tauxTva == null || l.tauxTva === '' ? 0 : nombre(l.tauxTva);
     const n = i + 1;
-    if (!Number.isInteger(articleId) || articleId <= 0) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : [[nom:article]] invalide.`, { ligne: n });
+    if (!Number.isInteger(articleId) || articleId <= 0 || articleId > ID_MAX) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : [[nom:article]] invalide.`, { ligne: n });
     if (!(quantite > 0) || quantite > VALEUR_MAX) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : quantité invalide.`, { ligne: n });
     if (!(prixUnitaire > 0) || prixUnitaire > VALEUR_MAX) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : prix invalide.`, { ligne: n });
     if (!(tva >= 0) || tva > 100) throw refus(400, 'LIGNE_INVALIDE', `Ligne ${n} : taux de TVA invalide.`, { ligne: n });
@@ -225,7 +226,7 @@ const creer = async (req, res) => {
       await F.verrouillerFactures(db, clientId);
       await refuserSiDoublon(db);
       const existe = await db.query(
-        `SELECT id, timbre_fiscal FROM factures
+        `SELECT id, timbre_fiscal, montant_timbre FROM factures
          WHERE client_id = $1 AND type_source = 'manuel' AND ref_facture = $2 AND date_facture = $3::date
            AND fournisseur_id IS NOT DISTINCT FROM $4::int AND ${colonne} = $5 AND ${colonne === 'activite_id' ? 'labo_id' : 'activite_id'} IS NULL
          ORDER BY id LIMIT 1 FOR UPDATE`,
@@ -235,8 +236,10 @@ const creer = async (req, res) => {
       const ajoutee = existe.rows.length > 0;
       if (ajoutee) {
         factureId = existe.rows[0].id;
-        // Le timbre ne s'enlève jamais d'une facture qui l'a ; son montant suit la dernière saisie (1, 1,5 ou 2 D).
-        if (v.timbre) {
+        // Le timbre ne s'enlève jamais d'une facture qui l'a. Son montant n'est posé que s'il manquait, ou s'il vient de la
+        // facture lue (une confirmation laissée à 1 D par défaut ne remplace pas un timbre de 2 D).
+        const ancien = existe.rows[0];
+        if (v.timbre && (!ancien.timbre_fiscal || (v.lecture && Number(ancien.montant_timbre) !== v.timbreMontant))) {
           await db.query('UPDATE factures SET timbre_fiscal = true, montant_timbre = $2 WHERE id = $1', [factureId, v.timbreMontant]);
         }
         // Lecture de la facture déposée maintenant, si la facture n'en gardait pas encore.
