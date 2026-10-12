@@ -52,7 +52,11 @@ const piecesDe = async (db, factureId) => (await db.query(SQL_PIECES, [factureId
 const lister = async (req, res) => {
   try {
     const f = await factureAccessible(req, pool);
-    res.json({ factureId: f.id, modifiable: f.type_source === 'manuel' && F.gerantAgitSur(req, f), pieces: await piecesDe(pool, f.id) });
+    // Étape F3 : la pièce d'une facture validée ne se change plus (`validee` : la fenêtre le dit).
+    res.json({
+      factureId: f.id, modifiable: f.type_source === 'manuel' && !f.validee_le && F.gerantAgitSur(req, f),
+      validee: Boolean(f.validee_le), pieces: await piecesDe(pool, f.id),
+    });
   } catch (err) { repondreErreur(res, err, 'liste'); }
 };
 

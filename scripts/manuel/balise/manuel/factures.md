@@ -8,6 +8,8 @@ En haut, des pastilles pour choisir [[le:activite]] 🏪 (ou [[le:labo]] 🏭). 
 
 Chaque facture est une carte repliée : [[nom:fournisseur]], référence, date, badge **[[acc:appro:Manuel:Manuelle]]**, **↗ [[Court:transfert]] [[acc:transfert:émis:émise]] → X** (cession vers [[un:activite]] ou [[un:labo]] [[acc:labo:rattaché:rattachée]]) ou **↙ [[Court:transfert]] [[acc:transfert:reçu:reçue]] ← X** (réception depuis [[le:labo]] qui vous alimente), et les montants **Total HT** et **Total TTC** en DT. À droite, le bouton de la facture [[du:fournisseur]] : **📎 Voir la facture** (avec le nombre de fichiers s'il y en a plusieurs) quand elle est jointe, **📎 Joindre la facture** (cadre orangé) sinon ; une facture interne [[de:transfert]] garde son document **📄 PDF** fabriqué par LabFlow. Un clic sur la carte déplie le détail ligne par ligne : [[nom:article]] (avec son unité), catégorie, quantité, prix HT à l'unité, taux de TVA, prix TTC à l'unité, totaux HT et TTC — suivi d'un sous-total par facture. Les colonnes TVA n'apparaissent que si la facture en comporte.
 
+Une facture **lue puis validée** (fenêtre « Vérifier la facture » de la saisie) porte le badge **🔒 Validée** : son détail montre les lignes telles qu'imprimées, chacune avec [[le:article]] et sa conversion (« 1 sac = 25 kg ») ou « hors [[nom:stock]] », la quantité entrée en [[nom:stock]] et son prix ; ses montants sont exactement ceux de la facture.
+
 Les boutons **Tout ouvrir / Tout fermer** déplient ou replient toutes les cartes de la page. En bas : le compteur de factures avec la pagination, le bouton **Charger plus**, et un bandeau **Total général HT / TTC** cumulant les factures chargées.
 
 ### Actions pas à pas
@@ -24,6 +26,11 @@ Gérer la facture [[du:fournisseur]] :
 3. Pour ajouter un fichier, glissez-le dans la zone **📎 Facture [[du:fournisseur]]** (5 fichiers au plus par facture), puis **Joindre**.
 4. **Remplacer** dépose un nouveau fichier à la place de l'ancien ; **Supprimer** retire un fichier. Dans les deux cas, l'ancien fichier est **effacé définitivement** (une confirmation le rappelle) ; les lignes de la facture ne changent pas.
 
+Supprimer une facture validée :
+
+1. Dépliez la carte **🔒 Validée**, puis **🗑️ Supprimer la facture**.
+2. Après confirmation, toute la facture part, définitivement : ses lignes, ce qu'elle a fait entrer en [[nom:stock]] et sa pièce jointe. Ce que LabFlow a appris de ses lignes est gardé ; vous pouvez la déposer de nouveau.
+
 ### Points d'attention
 
 :::regle
@@ -32,6 +39,10 @@ Les factures ne se saisissent pas ici : elles sont construites automatiquement �
 
 :::attention
 La pièce jointe est la vraie facture [[du:fournisseur]] : LabFlow ne fabrique plus de PDF pour [[votre:appro:pl]] [[acc:appro:saisi:saisie:pl]]. Une facture dont on supprime la **dernière ligne** (écran Historique) disparaît avec ses fichiers : LabFlow demande alors une confirmation. [[Un:gerant]] ne voit et ne gère que les factures [[du:activite:pl]] et [[du:labo:pl]] qui lui sont [[acc:labo:affecté:affectée:pl]] ; un compte en lecture seule consulte les fichiers sans pouvoir en ajouter ni en supprimer.
+:::
+
+:::regle
+Une facture validée ne se modifie plus et sa pièce ne se change plus : elle se supprime en entier. [[Un:gerant]] le fait pour [[le:activite:pl]] et [[le:labo:pl]] qui lui sont [[acc:labo:affecté:affectée:pl]]. Tant qu'elle existe, son n° est refusé chez [[le:fournisseur]] qui l'a émise.
 :::
 
 :::formule Total facture TTC

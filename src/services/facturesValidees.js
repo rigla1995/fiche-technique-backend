@@ -15,7 +15,7 @@ const millime = (x) => Math.round(x * 1000) / 1000;
  * garde sa virgule entre chiffres). MÊME RÈGLE que les écrans (factures/lecture/correspondre.ts) : la clé y est
  * calculée pour retrouver une correspondance, ici pour l'enregistrer. */
 const normaliserDesignation = (s) => String(s ?? '')
-  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .toLowerCase()
   .replace(/œ/g, 'oe').replace(/æ/g, 'ae')
   .replace(/(\d)[.,](\d)/g, '$1,$2')
@@ -26,7 +26,7 @@ const normaliserDesignation = (s) => String(s ?? '')
 
 /** Référence produit du fournisseur ramenée à sa forme comparable : lettres et chiffres seulement, en majuscules
  * (« EAU-15 », « eau 15 » et « EAU.15 » sont la même référence, lue ou imprimée différemment). */
-const normaliserReference = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '').toUpperCase();
+const normaliserReference = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '').toUpperCase();
 
 /** Clé d'apprentissage d'une ligne : sa référence produit, sinon sa désignation normalisée ; null si ni l'une ni l'autre. */
 const cleDeLigne = ({ reference, designation }) => {

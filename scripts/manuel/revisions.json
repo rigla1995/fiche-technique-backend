@@ -207,6 +207,33 @@
           "md5": "dbac459c3abcc81b1965db08768a5cb7"
         }
       ]
+    },
+    {
+      "numero": 226,
+      "nom": "226_manuel_lignes_correspondances.sql",
+      "objet": "Factures fournisseur, étape F3 : les lignes de la facture lues et vérifiées (fenêtre « Vérifier la facture » : article proposé, conversion, hors stock, totaux recalculés), facture validée non modifiable et supprimable en entier, cadenas dans les historiques, page « Correspondances » (corriger, oublier).",
+      "manuel": [
+        {
+          "slug": "factures",
+          "md5Avant": "34347bc8b86e09962297387a79b055df",
+          "md5": "9c75ed2b4dfc1aa7121a49166b56ea8f"
+        },
+        {
+          "slug": "fournisseurs",
+          "md5Avant": "bd758bf05b1eedb83e5897294b2ffca2",
+          "md5": "a1887eae939c919d24d42557bd3a01d0"
+        },
+        {
+          "slug": "stock-activites",
+          "md5Avant": "c500206fc47231943f059dcee8e3bff1",
+          "md5": "fd9335f22d390e534a8fdce304c3b1bd"
+        },
+        {
+          "slug": "stock-labo",
+          "md5Avant": "dbac459c3abcc81b1965db08768a5cb7",
+          "md5": "576eedd028b0bb0ee39156ade9c48b66"
+        }
+      ]
     }
   ]
 }
