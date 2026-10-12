@@ -53,6 +53,7 @@ async function upsertFacture(clientId, opts, db = pool) {
        AND (activite_id IS NOT DISTINCT FROM $5)
        AND (labo_id IS NOT DISTINCT FROM $6)
        AND type_source = $7
+       AND validee_le IS NULL
      LIMIT 1`,
     [clientId, refFacture || null, dateFact, fournisseurId, activiteId, laboId, typeSource]
   );

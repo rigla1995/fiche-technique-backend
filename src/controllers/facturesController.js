@@ -101,6 +101,7 @@ const list = async (req, res) => {
          f.notes,
          f.created_at,
          (SELECT COUNT(*)::int FROM factures_pieces fp WHERE fp.facture_id = f.id) AS nb_pieces,
+         f.validee_le, f.montant_fodec,
          CASE WHEN ${recuSql} THEN 'recue'
               WHEN ${emisSql} THEN 'emise'
               WHEN f.type_source = 'transfert' AND f.labo_id IS NOT NULL AND f.activite_id IS NULL THEN 'recue'
@@ -135,6 +136,10 @@ const list = async (req, res) => {
       createdAt: r.created_at,
       // Étape F1 : nombre de pièces jointes (vraie facture du fournisseur).
       nbPieces: r.nb_pieces,
+      // Étape F3 : facture lue puis validée — plus modifiable, supprimable en entier.
+      validee: r.validee_le != null,
+      valideeLe: r.validee_le,
+      montantFodec: r.montant_fodec != null ? parseFloat(r.montant_fodec) : null,
       // Lot 1b : facture interne de transfert, vue du labo courant (laboId) — 'recue' (labo
       // destinataire, activite_id NULL) | 'emise' (vers une activité, ou cession vers un labo enfant) ;
       // contrepartie = activité ou labo destinataire (émise) | labo source (reçue).

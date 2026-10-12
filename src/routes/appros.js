@@ -2,6 +2,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const { creer } = require('../controllers/approFactureController');
+const { valider } = require('../controllers/factureValideeController');
 const { televersement } = require('../services/piecesFacture');
 const { authenticate, requireEntreprise } = require('../middleware/auth');
 
@@ -17,5 +18,7 @@ const limiteFactures = rateLimit({
 });
 
 router.post('/facture', authenticate, requireEntreprise, limiteFactures, televersement, creer);
+// Étape F3 : la facture lue, vérifiée et validée (lignes, correspondances apprises), avec sa pièce — tout ou rien.
+router.post('/facture/validee', authenticate, requireEntreprise, limiteFactures, televersement, valider);
 
 module.exports = router;

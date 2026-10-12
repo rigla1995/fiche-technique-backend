@@ -32,6 +32,10 @@ const factureAccessible = async (req, db, { ecriture = false, verrou = false } =
   if (ecriture && f.type_source !== 'manuel') {
     throw refus(409, 'FACTURE_TRANSFERT', 'Cette facture est un document fabriqué par LabFlow : elle ne reçoit pas de pièce.');
   }
+  // Étape F3 : la pièce d'une facture validée est celle qui a été lue — elle ne se remplace ni ne se retire seule.
+  if (ecriture && f.validee_le) {
+    throw refus(409, 'FACTURE_VALIDEE', 'Cette facture a été lue puis validée : sa pièce ne se change plus. Pour la refaire, supprimez la facture entière.');
+  }
   return f;
 };
 

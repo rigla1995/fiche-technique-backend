@@ -77,8 +77,9 @@ const lireLecture = (l) => {
   };
 };
 
-/** Lit et contrôle `donnees`. → valeurs propres ; lève Refus (400). */
-const lireDonnees = (brut) => {
+/** Lit et contrôle l'en-tête de `donnees` (commun à la saisie à la main et à la facture validée, étape F3).
+ * → { d : l'objet reçu, v : valeurs propres } ; lève Refus (400). */
+const lireEnTete = (brut) => {
   let d;
   try { d = typeof brut === 'string' ? JSON.parse(brut) : brut; } catch (_) { d = null; }
   if (!d || typeof d !== 'object') throw refus(400, 'DONNEES_ILLISIBLES', 'Envoi illisible : réessayez.');
@@ -96,6 +97,23 @@ const lireDonnees = (brut) => {
     fournisseurId = Number(d.fournisseurId);
     if (!Number.isInteger(fournisseurId) || fournisseurId <= 0 || fournisseurId > ID_MAX) throw refus(400, 'FOURNISSEUR_INVALIDE', '[[Nom:fournisseur]] invalide.');
   }
+  const timbre = d.timbreFiscal === true;
+  const timbreMontant = timbre ? (d.timbreMontant == null || d.timbreMontant === '' ? 1 : Number(d.timbreMontant)) : 0;
+  if (timbre && !TIMBRES.includes(timbreMontant)) throw refus(400, 'TIMBRE_INVALIDE', 'Timbre fiscal : 1, 1,5 ou 2 dinars.');
+  return {
+    d,
+    v: {
+      type, cibleId, dateAppro: d.dateAppro, ref, fournisseurId,
+      timbre, timbreMontant, apercuDe: Array.isArray(d.apercuDe) ? d.apercuDe : [],
+      confirmerDoublon: d.confirmerDoublon === true,
+      lecture: lireLecture(d.lecture),
+    },
+  };
+};
+
+/** Lit et contrôle `donnees` d'une saisie à la main. → valeurs propres ; lève Refus (400). */
+const lireDonnees = (brut) => {
+  const { d, v } = lireEnTete(brut);
   if (!Array.isArray(d.lignes) || d.lignes.length === 0) throw refus(400, 'LIGNES_REQUISES', 'Aucune ligne à enregistrer.');
   if (d.lignes.length > LIGNES_MAX) throw refus(400, 'TROP_DE_LIGNES', `${LIGNES_MAX} lignes au plus par facture.`);
   const lignes = d.lignes.map((l, i) => {
@@ -116,15 +134,7 @@ const lireDonnees = (brut) => {
   if (lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire * (1 + l.tva / 100), 0) > FACTURE_MAX) {
     throw refus(400, 'MONTANT_TROP_GRAND', 'Montant de la facture trop grand.');
   }
-  const timbre = d.timbreFiscal === true;
-  const timbreMontant = timbre ? (d.timbreMontant == null || d.timbreMontant === '' ? 1 : Number(d.timbreMontant)) : 0;
-  if (timbre && !TIMBRES.includes(timbreMontant)) throw refus(400, 'TIMBRE_INVALIDE', 'Timbre fiscal : 1, 1,5 ou 2 dinars.');
-  return {
-    type, cibleId, dateAppro: d.dateAppro, ref, fournisseurId, lignes,
-    timbre, timbreMontant, apercuDe: Array.isArray(d.apercuDe) ? d.apercuDe : [],
-    confirmerDoublon: d.confirmerDoublon === true,
-    lecture: lireLecture(d.lecture),
-  };
+  return { ...v, lignes };
 };
 
 /** Contrôle que la cible, les articles et le fournisseur sont ceux du compte (et du gérant). Lève Refus. */
@@ -175,14 +185,15 @@ const facturesSemblables = async (req, clientId, v, db = pool) => {
   const r = await db.query(
     `SELECT f.id, f.date_facture, f.activite_id, f.labo_id, f.montant_ttc, a.nom AS activite_nom, l.nom AS labo_nom,
             (SELECT fl.labo_id FROM fournisseurs fl WHERE fl.id = f.fournisseur_id AND fl.is_labo = true) AS labo_emetteur_id,
-            (f.ref_facture = $7 AND f.date_facture = $4::date AND f.activite_id IS NOT DISTINCT FROM $5::int AND f.labo_id IS NOT DISTINCT FROM $6::int) AS meme_facture
+            (f.ref_facture = $7 AND f.date_facture = $4::date AND f.activite_id IS NOT DISTINCT FROM $5::int AND f.labo_id IS NOT DISTINCT FROM $6::int) AS meme_facture,
+            f.validee_le
      FROM factures f
      LEFT JOIN activites a ON a.id = f.activite_id
      LEFT JOIN labos l ON l.id = f.labo_id
      WHERE f.client_id = $1 AND f.type_source = 'manuel' AND f.ref_facture IS NOT NULL
        AND ${F.SQL_REF_NORMALISEE('f.ref_facture')} = ${F.SQL_REF_NORMALISEE('$2::text')}
        AND f.fournisseur_id IS NOT DISTINCT FROM $3::int
-     ORDER BY f.date_facture DESC, f.id DESC
+     ORDER BY (f.validee_le IS NOT NULL) DESC, f.date_facture DESC, f.id DESC
      LIMIT 5`,
     [clientId, v.ref, v.fournisseurId, v.dateAppro,
       v.type === 'activite' ? v.cibleId : null, v.type === 'labo' ? v.cibleId : null, v.ref]
@@ -195,8 +206,30 @@ const facturesSemblables = async (req, clientId, v, db = pool) => {
       lieuNom: visible ? (x.activite_nom || x.labo_nom || null) : null,
       montantTTC: visible ? parseFloat(x.montant_ttc) : null,
       memeFacture: x.meme_facture === true,
+      // Étape F3 : facture lue puis validée — elle ne se ressaisit pas (réponse 4 du client).
+      validee: x.validee_le != null,
     };
   });
+};
+
+/**
+ * Doublons d'un numéro de facture chez ce fournisseur : une facture VALIDÉE (étape F3) ne s'enregistre jamais deux fois
+ * (409 FACTURE_VALIDEE_EXISTANTE, sans confirmation possible) ; une facture saisie à la main donne un avertissement
+ * (409 FACTURE_EXISTANTE), levé par `confirmerDoublon`. Lève Refus.
+ */
+const refuserDoublons = async (req, clientId, v, db = pool) => {
+  const semblables = await facturesSemblables(req, clientId, v, db);
+  const validees = semblables.filter((x) => x.validee);
+  if (validees.length) {
+    const d = validees[0].dateFacture instanceof Date ? validees[0].dateFacture.toISOString() : String(validees[0].dateFacture);
+    const le = d.slice(0, 10).split('-').reverse().join('/');
+    throw refus(409, 'FACTURE_VALIDEE_EXISTANTE',
+      `La facture n° ${F.sansBalise(v.ref)} de [[ce:fournisseur]] (du ${le}) a déjà été validée : elle ne s'enregistre pas deux fois. Pour la refaire, supprimez-la d'abord depuis la page Factures.`,
+      { factures: validees });
+  }
+  if (!v.confirmerDoublon && semblables.length) {
+    throw refus(409, 'FACTURE_EXISTANTE', `Une facture n° ${F.sansBalise(v.ref)} de [[ce:fournisseur]] existe déjà.`, { factures: semblables });
+  }
 };
 
 const creer = async (req, res) => {
@@ -209,13 +242,7 @@ const creer = async (req, res) => {
       throw refus(503, 'STOCKAGE_ABSENT', 'Le stockage des factures n\'est pas encore configuré : enregistrez sans la pièce, vous la joindrez plus tard.');
     }
     await controlerAppartenance(req, clientId, v);
-    const refuserSiDoublon = async (db) => {
-      if (v.confirmerDoublon) return;
-      const semblables = await facturesSemblables(req, clientId, v, db);
-      if (semblables.length) {
-        throw refus(409, 'FACTURE_EXISTANTE', `Une facture n° ${F.sansBalise(v.ref)} de [[ce:fournisseur]] existe déjà.`, { factures: semblables });
-      }
-    };
+    const refuserSiDoublon = (db) => refuserDoublons(req, clientId, v, db);
     // Avant les fichiers (rien à envoyer pour un refus), puis de nouveau sous le verrou : deux envois simultanés de la
     // même facture ne passent pas tous les deux.
     await refuserSiDoublon(pool);
@@ -227,7 +254,7 @@ const creer = async (req, res) => {
       await refuserSiDoublon(db);
       const existe = await db.query(
         `SELECT id, timbre_fiscal, montant_timbre FROM factures
-         WHERE client_id = $1 AND type_source = 'manuel' AND ref_facture = $2 AND date_facture = $3::date
+         WHERE client_id = $1 AND type_source = 'manuel' AND validee_le IS NULL AND ref_facture = $2 AND date_facture = $3::date
            AND fournisseur_id IS NOT DISTINCT FROM $4::int AND ${colonne} = $5 AND ${colonne === 'activite_id' ? 'labo_id' : 'activite_id'} IS NULL
          ORDER BY id LIMIT 1 FOR UPDATE`,
         [clientId, v.ref, v.dateAppro, v.fournisseurId, v.cibleId]
@@ -293,4 +320,9 @@ const creer = async (req, res) => {
   }
 };
 
-module.exports = { creer, lireDonnees };
+module.exports = {
+  creer, lireDonnees,
+  // Réemployés par la facture validée (étape F3, factureValideeController.js).
+  Refus, refus, lireEnTete, controlerAppartenance, refuserDoublons, propre, nombre, auMillime,
+  ID_MAX, LIGNES_MAX, VALEUR_MAX, LIGNE_MAX, FACTURE_MAX,
+};
