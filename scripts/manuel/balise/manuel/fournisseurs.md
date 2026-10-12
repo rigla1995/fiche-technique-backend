@@ -36,12 +36,14 @@ Le rapport d'import détaille chaque ligne : les noms déjà présents dans votr
 
 ### Correspondances
 
-L'écran **🔗 Correspondances** (menu latéral, ou bouton en haut de cet écran) montre ce que LabFlow a appris des factures validées, [[nom:fournisseur]] par [[nom:fournisseur]] : chaque ligne de facture — reconnue par la référence que lui donne [[le:fournisseur]], sinon par sa désignation — mène à [[un:article]] et sa conversion (« 1 sac = 25 kg »), ou reste hors [[nom:stock]]. La colonne **Confirmée** dit sur combien de factures, la dernière fois et par qui.
+L'écran **🔗 Correspondances** (menu latéral, ou bouton en haut de cet écran) montre ce que LabFlow a appris des factures validées, [[nom:fournisseur]] par [[nom:fournisseur]] : chaque ligne de facture mène à [[un:article]] et sa conversion (« 1 sac = 25 kg »), ou reste hors [[nom:stock]]. La colonne **Confirmée** dit sur combien de factures, la dernière fois et par qui.
 
-- **✏️ Corriger** : choisissez [[le:article]] et la conversion justes, ou une nature hors [[nom:stock]] ; la prochaine facture en tiendra compte.
+La colonne **Code [[nom:fournisseur]]** montre le code que [[le:fournisseur]] imprime sur sa facture (colonne « Réf. » ou « Code », par exemple P310) : ce code reconnaît la ligne la fois suivante, même si la désignation est écrite autrement. Sans code, la ligne est reconnue par sa désignation. Un numéro d'un ou deux chiffres (n° de ligne) n'est jamais pris pour un code ; un même code avec une désignation sans rapport est seulement proposé, jamais reconnu d'office.
+
+- **✏️ Corriger** : cherchez [[le:article]] juste (tapez quelques lettres), sa conversion, ou une nature hors [[nom:stock]]. Avant d'enregistrer, une alerte rappelle que la correction vaut pour les **prochaines** factures.
 - **🗑️ Oublier** : la ligne ne sera plus reconnue, la prochaine facture la redemandera.
 
-Les factures déjà validées ne changent pas. [[Un:gerant]] voit les correspondances [[du:fournisseur:pl]] [[du:activite:pl]] et [[du:labo:pl]] qui lui sont [[acc:labo:affecté:affectée:pl]].
+**Les factures déjà validées ne changent pas** — ni leur [[nom:stock]], ni la facture, ni l'historique. Pour en refaire une, supprimez-la depuis l'écran [Factures [[de:appro:court]]](#factures), puis déposez-la de nouveau : elle suivra la correspondance corrigée. [[Un:gerant]] voit les correspondances [[du:fournisseur:pl]] [[du:activite:pl]] et [[du:labo:pl]] qui lui sont [[acc:labo:affecté:affectée:pl]].
 
 ### Points d'attention
 
