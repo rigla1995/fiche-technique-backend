@@ -1003,6 +1003,8 @@ const updateLaboStock = async (req, res) => {
     });
     res.json({ success: true });
   } catch (err) {
+    // Étape F3 : numéro d'une facture validée (upsertFacture) → 409 expliqué.
+    if (err?.status === 409 && err.corps) return res.status(409).json(err.corps);
     if (replyTransfertError(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -2231,6 +2233,11 @@ const deleteLabo = async (req, res) => {
     );
     if (used.rows.length > 0) {
       return res.status(409).json({ code: 'ARTICLES_AFFECTES', message: "Suppression impossible : [[un:article:pl]] sont [[acc:article:affecté:affectée:pl]] à [[ce:labo]]." });
+    }
+    // Étape F3 (factures fournisseur) : les lignes de stock d'une facture validée partiraient en cascade.
+    const validees = await pool.query('SELECT 1 FROM factures WHERE labo_id = $1 AND validee_le IS NOT NULL LIMIT 1', [laboId]);
+    if (validees.rows.length) {
+      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Suppression impossible : des factures validées sont rattachées à [[ce:labo]]. Supprimez-les d\'abord (page Factures).' });
     }
 
     // Unassign labo from activities

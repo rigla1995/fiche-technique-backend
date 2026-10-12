@@ -29,6 +29,8 @@ const VECTEURS = [
   ['Poulet, entier', 'ré-12', 'ref:RE12'],
   ['Eau minérale', 'EAU.15', 'ref:EAU15'],
   ['Tiret seul', ' - ', 'des:tiret seul'],
+  ['Numéro de ligne pris pour une réf.', '12', 'des:numero de ligne pris pour une ref'],
+  ['Code court', '160', 'ref:160'],
   ['', '', null],
 ];
 
@@ -69,7 +71,7 @@ test('repartir : ligne gratuite (montant 0) → prix de stock 0 ; conversion fra
 test('lireValidation : lignes d\'article et hors stock, pied, calcul ; champs rognés', () => {
   const v = lireValidation(donnees({ fodec: '0,9'.replace(',', '.'), remiseGlobale: 3 }));
   assert.strictEqual(v.lignes.length, 2);
-  assert.deepStrictEqual(v.lignes[0], { designation: 'Farine T45 sac 25 kg', reference: null, unite: 'sac', quantite: 2, montant: 83, prixUnitaire: 41.5, remise: 0, tauxTva: 7, articleId: 3, horsStock: null, conversion: 25 });
+  assert.deepStrictEqual(v.lignes[0], { designation: 'Farine T45 sac 25 kg', reference: null, unite: 'sac', designationLue: null, referenceLue: null, quantite: 2, montant: 83, prixUnitaire: 41.5, remise: 0, tauxTva: 7, articleId: 3, horsStock: null, conversion: 25 });
   assert.deepStrictEqual([v.lignes[1].articleId, v.lignes[1].horsStock, v.lignes[1].conversion], [null, 'transport', null]);
   assert.deepStrictEqual([v.fodec, v.remiseGlobale, v.timbreMontant], [0.9, 3, 1]);
   assert.strictEqual(v.calcul.ht, 90);
@@ -85,7 +87,8 @@ test('lireValidation : refus — fournisseur, lignes, désignation, choix, aucun
   refus(() => lireValidation(donnees({ lignes: [{ designation: 'X', quantite: 1, montant: 1, articleId: 3, conversion: 0 }] })), 'LIGNE_INVALIDE');
   refus(() => lireValidation(donnees({ lignes: [{ designation: 'X', quantite: 0, montant: 1, articleId: 3 }] })), 'LIGNE_INVALIDE');
   refus(() => lireValidation(donnees({ lignes: [{ designation: 'X', quantite: 1, montant: -1, articleId: 3 }] })), 'LIGNE_INVALIDE');
-  refus(() => lireValidation(donnees({ lignes: [{ designation: 'X', quantite: 1, montant: 1, articleId: 3, remise: 100 }] })), 'LIGNE_INVALIDE');
+  refus(() => lireValidation(donnees({ lignes: [{ designation: 'X', quantite: 1, montant: 1, articleId: 3, remise: 100.5 }] })), 'LIGNE_INVALIDE');
+  refus(() => lireValidation(donnees({ lignes: [{ designation: 'X', quantite: 1, montant: 1, articleId: 3, conversion: 1e-7 }] })), 'LIGNE_INVALIDE');
   refus(() => lireValidation(donnees({ remiseGlobale: 1000 })), 'PIED_INVALIDE');
   refus(() => lireValidation(donnees({ fodec: -1 })), 'PIED_INVALIDE');
   refus(() => lireValidation(donnees({ refFacture: '' })), 'REF_REQUISE');
@@ -94,4 +97,30 @@ test('lireValidation : refus — fournisseur, lignes, désignation, choix, aucun
 test('lireValidation : timbre absent = 0 (document hors taxe), conversion par défaut 1', () => {
   const v = lireValidation(donnees({ timbreFiscal: false, lignes: [{ designation: 'Poulet entier', quantite: 12.5, montant: 98.125, articleId: 3 }] }));
   assert.deepStrictEqual([v.timbre, v.timbreMontant, v.lignes[0].conversion, v.calcul.ttc], [false, 0, 1, 98.125]);
+});
+
+test('relecture : déconsigne négative (hors stock) admise, hors remise et FODEC ; négatif refusé sur un article', () => {
+  const v = lireValidation(donnees({ timbreFiscal: false, remiseGlobale: 10, lignes: [
+    { designation: 'Eau 1,5 L pack 6', quantite: 10, montant: 100, tauxTva: 0, articleId: 3, conversion: 6 },
+    { designation: 'Consigne casier', quantite: 5, montant: 30, tauxTva: 0, horsStock: 'consigne' },
+    { designation: 'Déconsigne casier', quantite: 4, prixUnitaire: -6, montant: -24, tauxTva: 0, horsStock: 'consigne' },
+  ] }));
+  // remise 10 répartie sur les seules lignes positives (100 et 30) ; la déconsigne garde -24
+  assert.deepStrictEqual(v.calcul.lignes.map((l) => Math.round(l.net * 1000) / 1000), [92.308, 27.692, -24]);
+  assert.deepStrictEqual([v.calcul.ht, v.calcul.ttc], [96, 96]);
+  refus(() => lireValidation(donnees({ lignes: [{ designation: 'X', quantite: 1, montant: -1, articleId: 3 }] })), 'LIGNE_INVALIDE');
+});
+
+test('relecture : remise 100 % (article offert) admise ; prix par g arrondi au millime refusé (valeur du stock faussée)', () => {
+  const offert = lireValidation(donnees({ lignes: [{ designation: 'Pain offert', quantite: 5, prixUnitaire: 0.2, remise: 100, montant: 0, articleId: 3 }] }));
+  assert.deepStrictEqual([offert.lignes[0].remise, offert.calcul.lignes[0].prixStock], [100, 0]);
+  refus(() => lireValidation(donnees({ lignes: [{ designation: 'Farine sac 25 kg', quantite: 2, montant: 83, articleId: 3, conversion: 25000 }] })), 'PRIX_TROP_PETIT');
+  const kg = lireValidation(donnees({ lignes: [{ designation: 'Farine sac 25 kg', quantite: 2, montant: 83, articleId: 3, conversion: 25 }] }));
+  assert.strictEqual(kg.calcul.lignes[0].prixStock, 1.66);
+});
+
+test('relecture : texte lu gardé pour la clé d\'apprentissage', () => {
+  const v = lireValidation(donnees({ lignes: [{ designation: 'Farine T45 (corrigée)', designationLue: 'FARlNE T45', referenceLue: 'F-45', quantite: 1, montant: 1, articleId: 3 }] }));
+  assert.deepStrictEqual([v.lignes[0].designationLue, v.lignes[0].referenceLue], ['FARlNE T45', 'F-45']);
+  assert.strictEqual(V.cleDeLigne({ reference: v.lignes[0].referenceLue, designation: v.lignes[0].designationLue }), 'ref:F45');
 });

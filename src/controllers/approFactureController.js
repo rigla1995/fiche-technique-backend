@@ -186,7 +186,7 @@ const facturesSemblables = async (req, clientId, v, db = pool) => {
     `SELECT f.id, f.date_facture, f.activite_id, f.labo_id, f.montant_ttc, a.nom AS activite_nom, l.nom AS labo_nom,
             (SELECT fl.labo_id FROM fournisseurs fl WHERE fl.id = f.fournisseur_id AND fl.is_labo = true) AS labo_emetteur_id,
             (f.ref_facture = $7 AND f.date_facture = $4::date AND f.activite_id IS NOT DISTINCT FROM $5::int AND f.labo_id IS NOT DISTINCT FROM $6::int) AS meme_facture,
-            f.validee_le
+            f.validee_le, (EXTRACT(YEAR FROM f.date_facture) = EXTRACT(YEAR FROM $4::date)) AS meme_annee
      FROM factures f
      LEFT JOIN activites a ON a.id = f.activite_id
      LEFT JOIN labos l ON l.id = f.labo_id
@@ -208,21 +208,25 @@ const facturesSemblables = async (req, clientId, v, db = pool) => {
       memeFacture: x.meme_facture === true,
       // Étape F3 : facture lue puis validée — elle ne se ressaisit pas (réponse 4 du client).
       validee: x.validee_le != null,
+      memeAnnee: x.meme_annee === true,
     };
   });
 };
 
 /**
- * Doublons d'un numéro de facture chez ce fournisseur : une facture VALIDÉE (étape F3) ne s'enregistre jamais deux fois
- * (409 FACTURE_VALIDEE_EXISTANTE, sans confirmation possible) ; une facture saisie à la main donne un avertissement
- * (409 FACTURE_EXISTANTE), levé par `confirmerDoublon`. Lève Refus.
+ * Doublons d'un numéro de facture chez ce fournisseur : une facture VALIDÉE (étape F3) de la même année ne s'enregistre
+ * jamais deux fois (409 FACTURE_VALIDEE_EXISTANTE, sans confirmation possible — un fournisseur qui repart à « 0001 » en
+ * janvier n'est pas bloqué) ; les autres donnent un avertissement (409 FACTURE_EXISTANTE), levé par `confirmerDoublon`.
+ * Lève Refus.
  */
+const jour = (d) => (d instanceof Date
+  ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  : String(d).slice(0, 10).split('-').reverse().join('/'));
 const refuserDoublons = async (req, clientId, v, db = pool) => {
   const semblables = await facturesSemblables(req, clientId, v, db);
-  const validees = semblables.filter((x) => x.validee);
+  const validees = semblables.filter((x) => x.validee && x.memeAnnee);
   if (validees.length) {
-    const d = validees[0].dateFacture instanceof Date ? validees[0].dateFacture.toISOString() : String(validees[0].dateFacture);
-    const le = d.slice(0, 10).split('-').reverse().join('/');
+    const le = jour(validees[0].dateFacture);
     throw refus(409, 'FACTURE_VALIDEE_EXISTANTE',
       `La facture n° ${F.sansBalise(v.ref)} de [[ce:fournisseur]] (du ${le}) a déjà été validée : elle ne s'enregistre pas deux fois. Pour la refaire, supprimez-la d'abord depuis la page Factures.`,
       { factures: validees });

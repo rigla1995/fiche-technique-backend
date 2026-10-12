@@ -45,28 +45,35 @@ const lireValidation = (brut) => {
     if (!designation) throw invalide('désignation manquante');
     const reference = texte(l?.reference, 60) || null;
     const unite = texte(l?.unite, 30) || null;
+    // Texte LU (avant correction) : la clé d'apprentissage se calcule dessus (une facture suivante est lue pareil).
+    const designationLue = texte(l?.designationLue, 300) || null;
+    const referenceLue = typeof l?.referenceLue === 'string' ? texte(l.referenceLue, 60) : null;
+    const estArticle = l?.articleId != null && l.articleId !== '';
     const quantite = A.auMillime(A.nombre(l?.quantite));
     if (!(quantite > 0) || quantite > A.VALEUR_MAX) throw invalide('quantité invalide');
+    // Montant et prix négatifs : seulement pour une ligne hors stock (déconsigne, retour d'emballages).
     const montant = A.auMillime(A.nombre(l?.montant));
-    if (!(montant >= 0) || montant > A.LIGNE_MAX) throw invalide('montant invalide');
+    if (!Number.isFinite(montant) || Math.abs(montant) > A.LIGNE_MAX || (estArticle && montant < 0)) throw invalide('montant invalide');
     let prixUnitaire = null;
     if (l?.prixUnitaire != null && l.prixUnitaire !== '') {
       prixUnitaire = A.auMillime(A.nombre(l.prixUnitaire));
-      if (!(prixUnitaire >= 0) || prixUnitaire > A.LIGNE_MAX) throw invalide('prix invalide');
+      if (!Number.isFinite(prixUnitaire) || Math.abs(prixUnitaire) > A.LIGNE_MAX || (estArticle && prixUnitaire < 0)) throw invalide('prix invalide');
     }
-    const remise = l?.remise == null || l.remise === '' ? 0 : A.nombre(l.remise);
-    if (!(remise >= 0) || remise >= 100) throw invalide('remise invalide');
-    const tauxTva = l?.tauxTva == null || l.tauxTva === '' ? 0 : A.nombre(l.tauxTva);
+    // Remise de 0 à 100 % (100 % : article offert), au millième comme la colonne.
+    const remise = l?.remise == null || l.remise === '' ? 0 : A.auMillime(A.nombre(l.remise));
+    if (!(remise >= 0) || remise > 100) throw invalide('remise invalide');
+    const tauxTva = l?.tauxTva == null || l.tauxTva === '' ? 0 : Math.round(A.nombre(l.tauxTva) * 100) / 100;
     if (!(tauxTva >= 0) || tauxTva > 100) throw invalide('taux de TVA invalide');
-    const base = { designation, reference, unite, quantite, montant, prixUnitaire, remise, tauxTva };
-    if (l?.articleId != null && l.articleId !== '') {
+    const base = { designation, reference, unite, designationLue, referenceLue, quantite, montant, prixUnitaire, remise, tauxTva };
+    if (estArticle) {
       const articleId = Number(l.articleId);
       if (!Number.isInteger(articleId) || articleId <= 0 || articleId > A.ID_MAX) throw invalide('[[nom:article]] invalide');
-      const conversion = l.conversion == null || l.conversion === '' ? 1 : A.nombre(l.conversion);
+      const brute = l.conversion == null || l.conversion === '' ? 1 : A.nombre(l.conversion);
+      const conversion = Math.round(brute * 1e6) / 1e6;
       if (!(conversion > 0) || conversion > CONVERSION_MAX) throw invalide('conversion invalide');
       const enStock = quantite * conversion;
       if (!(Math.round(enStock * 1000) / 1000 > 0) || enStock > A.VALEUR_MAX) throw invalide('quantité en stock invalide');
-      return { ...base, articleId, horsStock: null, conversion: Math.round(conversion * 1e6) / 1e6 };
+      return { ...base, articleId, horsStock: null, conversion };
     }
     if (!V.NATURES.includes(l?.horsStock)) throw invalide('choisissez [[un:article]] ou « hors stock »');
     return { ...base, articleId: null, horsStock: l.horsStock, conversion: null };
@@ -82,15 +89,26 @@ const lireValidation = (brut) => {
   };
   const fodec = pied('fodec', 'FODEC');
   const remiseGlobale = pied('remiseGlobale', 'Remise globale');
-  const totalLignes = lignes.reduce((s, l) => s + l.montant, 0);
+  const totalLignes = lignes.reduce((s, l) => s + Math.max(0, l.montant), 0);
   if (remiseGlobale > totalLignes + 0.0005) throw refus(400, 'PIED_INVALIDE', 'La remise globale dépasse le total des lignes.');
   const calcul = V.repartir(
     lignes.map((l) => ({ quantite: l.quantite, montant: l.montant, tauxTva: l.tauxTva, conversion: l.conversion, article: Boolean(l.articleId) })),
     { remiseGlobale, fodec, timbre: v.timbreMontant }
   );
-  if (calcul.ttc > A.FACTURE_MAX) throw refus(400, 'MONTANT_TROP_GRAND', 'Montant de la facture trop grand.');
+  if (Math.abs(calcul.ttc) > A.FACTURE_MAX || calcul.ht < 0) throw refus(400, 'MONTANT_INVALIDE', 'Montants de la facture invalides (total négatif ou trop grand).');
   calcul.lignes.forEach((c, i) => {
-    if (c.prixStock != null && c.prixStock > A.VALEUR_MAX) throw refus(400, 'MONTANT_TROP_GRAND', `Ligne ${i + 1} : prix en stock trop grand.`, { ligne: i + 1 });
+    const n = i + 1;
+    if (c.prixStock == null) return;
+    const l = lignes[i];
+    if (c.prixStock * (1 + l.tauxTva / 100) > A.VALEUR_MAX) throw refus(400, 'MONTANT_TROP_GRAND', `Ligne ${n} : prix en [[nom:stock]] trop grand.`, { ligne: n });
+    // Le prix d'une ligne de stock se garde au millime : pour une unité trop petite (g, ml), l'arrondi fausserait la
+    // valeur du stock — refusé plutôt qu'enregistré faux (une facture validée ne se corrige plus).
+    const ecart = Math.abs(c.quantiteStock * c.prixStock - c.cout);
+    if (ecart > Math.max(0.005, 0.005 * Math.abs(c.cout))) {
+      throw refus(400, 'PRIX_TROP_PETIT',
+        `Ligne ${n} : le prix par unité de [[nom:stock]] (${(c.cout / c.quantiteStock).toFixed(6).replace('.', ',')} DT) se garde au millime, ce qui fausserait la valeur [[du:stock]] de ${ecart.toFixed(3).replace('.', ',')} DT. Choisissez [[un:article]] dont l'unité est plus grande (kg plutôt que g, L plutôt que ml).`,
+        { ligne: n });
+    }
   });
   return { ...v, lignes, fodec, remiseGlobale, calcul };
 };
@@ -105,8 +123,28 @@ const valider = async (req, res) => {
     if (!stockage.disponible()) {
       throw refus(503, 'STOCKAGE_ABSENT', 'Le stockage des factures n\'est pas encore configuré : enregistrez la facture à la main.');
     }
-    const articles = v.lignes.filter((l) => l.articleId);
-    await A.controlerAppartenance(req, clientId, { ...v, lignes: articles });
+    const articles = v.lignes.map((l, i) => ({ ...l, rang: i + 1 })).filter((l) => l.articleId);
+    try {
+      await A.controlerAppartenance(req, clientId, { ...v, lignes: articles });
+    } catch (e) {
+      // Le n° de ligne d'un refus est celui de la facture (les lignes hors stock comprises), pas celui des seuls articles.
+      if (e instanceof A.Refus && e.corps.ligne && articles[e.corps.ligne - 1]) {
+        const rang = articles[e.corps.ligne - 1].rang;
+        e.corps.message = e.corps.message.replace(/^Ligne \d+/, `Ligne ${rang}`);
+        e.corps.ligne = rang;
+      }
+      throw e;
+    }
+    // Un gérant n'apprend que pour les fournisseurs rattachés au lieu de la saisie (ceux qu'il voit et gère).
+    if (req.user.role === 'gerant') {
+      const lien = await pool.query(
+        v.type === 'activite'
+          ? 'SELECT 1 FROM fournisseur_activites WHERE fournisseur_id = $1 AND activite_id = $2'
+          : 'SELECT 1 FROM fournisseur_labos WHERE fournisseur_id = $1 AND labo_id = $2',
+        [v.fournisseurId, v.cibleId]
+      );
+      if (!lien.rows.length) throw refus(403, 'FOURNISSEUR_HORS_PERIMETRE', '[[Le:fournisseur]] n\'est pas [[acc:fournisseur:rattaché:rattachée]] à ce lieu : rattachez-[[acc:fournisseur:le:la]] d\'abord.');
+    }
     await A.refuserDoublons(req, clientId, v, pool);
     deposes = await P.deposerTout(clientId, prepares);
     const enActivite = v.type === 'activite';
@@ -178,6 +216,8 @@ const valider = async (req, res) => {
       return res.status(409).json({ code: 'FACTURE_VALIDEE_EXISTANTE', message: 'Cette facture vient d\'être validée : elle ne s\'enregistre pas deux fois.' });
     }
     if (err?.code === '23503') return res.status(409).json({ code: 'DONNEE_DISPARUE', message: 'Une donnée de la saisie vient d\'être supprimée : rechargez la page, puis recommencez.' });
+    // Valeur hors des bornes d'une colonne (garde de dernier recours : les contrôles de l'envoi passent avant).
+    if (err?.code === '23514' || err?.code === '22003') return res.status(400).json({ code: 'VALEUR_INVALIDE', message: 'Une valeur de la facture est hors des limites admises : relisez les quantités, prix et conversions.' });
     console.error('[facture validée]', err);
     return res.status(500).json({ message: 'Erreur serveur' });
   }

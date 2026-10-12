@@ -6,7 +6,7 @@
  * consigne…) restent sur la facture seulement. Ses montants viennent de ces lignes, pas des lignes de stock (arrondies).
  * Elle ne se modifie plus et se supprime EN ENTIER (lignes de stock, lignes, pièces). Ce qui a été décidé pour chaque
  * ligne est APPRIS (`correspondances`, par compte et par fournisseur) : la prochaine facture se reconnaît seule.
- * Fonctions pures en tête (testées par test/factures-validees.test.js), puis les écritures en base. */
+ * Fonctions pures en tête (testées par test/facturesF3.test.js), puis les écritures en base. */
 
 const NATURES = ['transport', 'livraison', 'consigne', 'service', 'autre'];
 const millime = (x) => Math.round(x * 1000) / 1000;
@@ -28,10 +28,13 @@ const normaliserDesignation = (s) => String(s ?? '')
  * (« EAU-15 », « eau 15 » et « EAU.15 » sont la même référence, lue ou imprimée différemment). */
 const normaliserReference = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '').toUpperCase();
 
+/** Une référence d'un ou deux chiffres est un numéro de ligne, pas une référence produit : elle ne sert pas de clé. */
+const referenceUtile = (ref) => Boolean(ref) && !/^\d{1,2}$/.test(ref);
+
 /** Clé d'apprentissage d'une ligne : sa référence produit, sinon sa désignation normalisée ; null si ni l'une ni l'autre. */
 const cleDeLigne = ({ reference, designation }) => {
   const ref = normaliserReference(reference).slice(0, 60);
-  if (ref) return `ref:${ref}`;
+  if (referenceUtile(ref)) return `ref:${ref}`;
   const des = normaliserDesignation(designation).slice(0, 190);
   return des ? `des:${des}` : null;
 };
@@ -42,17 +45,20 @@ const cleDeLigne = ({ reference, designation }) => {
  *   remiseGlobale, fodec : montants du pied (≥ 0) ; timbre : montant du timbre (0 si aucun)
  * La remise globale baisse chaque ligne au prorata de son montant ; le FODEC s'ajoute au prorata du net ; la TVA se
  * calcule par taux sur (net + FODEC). Le timbre et les lignes hors stock restent sur la facture, hors coût des articles.
+ * Une ligne NÉGATIVE (déconsigne, retour d'emballages : hors stock seulement) compte dans le HT et la TVA, mais ne reçoit
+ * ni remise ni FODEC. MÊME CALCUL que les écrans (factures/lecture/correspondre.ts, totauxRecalcules).
  * → { lignes: [{ net, fodec, cout, quantiteStock, prixStock }], ht, fodec, tva, ttc, parTaux: [{ taux, base, montant }] }
  */
 const repartir = (lignes, { remiseGlobale = 0, fodec = 0, timbre = 0 } = {}) => {
   const brut = lignes.reduce((s, l) => s + l.montant, 0);
-  const remise = Math.min(Math.max(0, remiseGlobale || 0), brut);
-  const nets = lignes.map((l) => (brut > 0 ? l.montant - remise * (l.montant / brut) : 0));
-  const totalNet = nets.reduce((s, n) => s + n, 0);
+  const brutPositif = lignes.reduce((s, l) => s + Math.max(0, l.montant), 0);
+  const remise = Math.min(Math.max(0, remiseGlobale || 0), brutPositif);
+  const nets = lignes.map((l) => (l.montant > 0 && brutPositif > 0 ? l.montant - remise * (l.montant / brutPositif) : l.montant));
+  const totalNet = lignes.reduce((s, l, i) => s + (l.montant > 0 ? nets[i] : 0), 0);
   const f = Math.max(0, fodec || 0);
   const calc = lignes.map((l, i) => {
     const net = nets[i];
-    const partFodec = totalNet > 0 ? f * (net / totalNet) : 0;
+    const partFodec = l.montant > 0 && totalNet > 0 ? f * (net / totalNet) : 0;
     const cout = net + partFodec;
     if (!l.article) return { net, fodec: partFodec, cout, quantiteStock: null, prixStock: null };
     const quantiteStock = millime(l.quantite * l.conversion);
@@ -85,13 +91,15 @@ const estValidee = async (db, factureId) => {
 
 /**
  * Apprend les décisions d'une facture validée : une correspondance par clé (la dernière ligne d'une même clé l'emporte),
- * créée ou remplacée (« la dernière décision l'emporte ») ; `emplois` compte les factures qui l'ont confirmée.
+ * créée ou remplacée (« la dernière décision l'emporte ») ; `emplois` compte les factures qui ont confirmé la MÊME
+ * décision (une décision différente repart à 1). La clé se calcule sur le texte LU (référence, première rangée de la
+ * désignation), pas sur le texte corrigé : la facture suivante, lue de la même façon, la retrouve.
  * → nombre de correspondances écrites.
  */
 const apprendre = async (db, { clientId, fournisseurId, auteurId, lignes }) => {
   const parCle = new Map();
   for (const l of lignes) {
-    const cle = cleDeLigne(l);
+    const cle = cleDeLigne({ reference: l.referenceLue ?? l.reference, designation: l.designationLue ?? l.designation });
     if (cle) parCle.set(cle, l);
   }
   for (const [cle, l] of parCle) {
@@ -102,7 +110,11 @@ const apprendre = async (db, { clientId, fournisseurId, auteurId, lignes }) => {
        ON CONFLICT (client_id, fournisseur_id, cle) DO UPDATE
          SET designation = EXCLUDED.designation, reference = EXCLUDED.reference, unite_facture = EXCLUDED.unite_facture,
              article_id = EXCLUDED.article_id, nature_hors_stock = EXCLUDED.nature_hors_stock,
-             conversion = EXCLUDED.conversion, emplois = correspondances.emplois + 1, derniere_fois = NOW(),
+             conversion = EXCLUDED.conversion, derniere_fois = NOW(),
+             emplois = CASE WHEN correspondances.article_id IS NOT DISTINCT FROM EXCLUDED.article_id
+                              AND correspondances.nature_hors_stock IS NOT DISTINCT FROM EXCLUDED.nature_hors_stock
+                              AND correspondances.conversion = EXCLUDED.conversion
+                            THEN correspondances.emplois + 1 ELSE 1 END,
              auteur_id = EXCLUDED.auteur_id`,
       [clientId, fournisseurId, cle, l.designation.slice(0, 300), l.reference ? l.reference.slice(0, 60) : null,
         l.unite ? l.unite.slice(0, 30) : null, l.articleId ?? null, l.articleId ? null : l.horsStock,
@@ -135,6 +147,6 @@ const supprimerFactureValidee = async (db, { facture, clientId, auteurId }) => {
 };
 
 module.exports = {
-  NATURES, millime, normaliserDesignation, normaliserReference, cleDeLigne, repartir,
+  NATURES, millime, normaliserDesignation, normaliserReference, referenceUtile, cleDeLigne, repartir,
   MESSAGE_VALIDEE, refusValidee, estValidee, apprendre, supprimerFactureValidee,
 };

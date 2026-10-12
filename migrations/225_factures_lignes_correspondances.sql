@@ -20,10 +20,10 @@ ALTER TABLE factures ADD COLUMN IF NOT EXISTS validee_par    INTEGER REFERENCES 
 ALTER TABLE factures ADD COLUMN IF NOT EXISTS montant_fodec  NUMERIC(12,3);
 ALTER TABLE factures ADD COLUMN IF NOT EXISTS remise_globale NUMERIC(12,3);
 
--- Une facture validée par fournisseur et par numéro (majuscules et espaces ignorés) : la base refuse le doublon même si
--- deux validations arrivent ensemble.
+-- Une facture validée par fournisseur, par numéro (majuscules et espaces ignorés) et par année : la base refuse le
+-- doublon même si deux validations arrivent ensemble ; un fournisseur qui repart à « 0001 » en janvier n'est pas bloqué.
 CREATE UNIQUE INDEX IF NOT EXISTS ux_factures_validees_numero
-  ON factures (client_id, fournisseur_id, UPPER(REGEXP_REPLACE(ref_facture, '\s', '', 'g')))
+  ON factures (client_id, fournisseur_id, UPPER(REGEXP_REPLACE(ref_facture, '\s', '', 'g')), (EXTRACT(YEAR FROM date_facture)))
   WHERE validee_le IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS factures_lignes (
@@ -34,11 +34,13 @@ CREATE TABLE IF NOT EXISTS factures_lignes (
   designation        VARCHAR(300) NOT NULL,
   reference          VARCHAR(60),
   quantite           NUMERIC(14,3) NOT NULL CHECK (quantite > 0),
+
   unite              VARCHAR(30),
   prix_unitaire      NUMERIC(14,3),
-  remise             NUMERIC(6,3) NOT NULL DEFAULT 0 CHECK (remise >= 0 AND remise < 100),
+  remise             NUMERIC(6,3) NOT NULL DEFAULT 0 CHECK (remise >= 0 AND remise <= 100),
   taux_tva           NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (taux_tva >= 0 AND taux_tva <= 100),
-  montant_ht         NUMERIC(14,3) NOT NULL CHECK (montant_ht >= 0),
+  -- négatif seulement pour une ligne hors stock (déconsigne, retour d'emballages)
+  montant_ht         NUMERIC(14,3) NOT NULL CHECK (montant_ht >= 0 OR nature_hors_stock IS NOT NULL),
   article_id         INTEGER REFERENCES articles(id) ON DELETE SET NULL,
   nature_hors_stock  VARCHAR(20) CHECK (nature_hors_stock IN ('transport', 'livraison', 'consigne', 'service', 'autre')),
   conversion         NUMERIC(14,6) CHECK (conversion > 0),

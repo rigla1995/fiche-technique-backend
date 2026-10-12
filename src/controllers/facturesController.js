@@ -265,6 +265,9 @@ const downloadPdf = async (req, res) => {
     // Étape F1 : périmètre du gérant.
     const acces = await factureDuCompte(pool, id, clientId);
     if (!acces || !gerantVoit(req, acces)) return res.status(404).json({ message: 'Facture introuvable' });
+    // Étape F3 : une facture validée a sa pièce (la vraie facture) et ses lignes exactes ; un document fabriqué depuis
+    // les lignes de stock (prix convertis, sans lignes hors stock ni FODEC) la contredirait.
+    if (acces.validee_le) return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Facture validée : ouvrez sa pièce jointe (📎 Voir la facture).' });
 
     // Lignes de stock rattachées (mêmes requêtes que getLignes)
     let lignes = [];

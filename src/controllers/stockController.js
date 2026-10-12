@@ -432,6 +432,8 @@ const updateStockEntreprise = async (req, res) => {
     });
     res.json({ success: true });
   } catch (err) {
+    // Étape F3 : numéro d'une facture validée (upsertFacture) → 409 expliqué.
+    if (err?.status === 409 && err.corps) return res.status(409).json(err.corps);
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -1036,17 +1038,23 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
-    // Étape F3 : les lignes d'une facture validée ne partent qu'avec leur facture.
-    const validees = await pool.query(
-      `SELECT 1 FROM stock_entreprise_daily s JOIN factures fv ON fv.id = s.facture_id
-       WHERE s.activite_id = $1 AND s.ingredient_id = $2 AND fv.validee_le IS NOT NULL LIMIT 1`,
-      [activiteId, ingredientId]
-    );
-    if (validees.rows.length) {
+    // Étape F3 : les lignes d'une facture validée ne partent qu'avec leur facture — jugé sous le verrou des factures du
+    // compte, dans la même transaction que l'effacement (une validation ne peut pas s'intercaler).
+    const refus = await withTransaction(async (client) => {
+      await verrouillerFactures(client, req.user.gerant_parent_id || req.user.id);
+      const validees = await client.query(
+        `SELECT 1 FROM stock_entreprise_daily s JOIN factures fv ON fv.id = s.facture_id
+         WHERE s.activite_id = $1 AND s.ingredient_id = $2 AND fv.validee_le IS NOT NULL LIMIT 1`,
+        [activiteId, ingredientId]
+      );
+      if (validees.rows.length) return true;
+      await client.query('DELETE FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
+      await client.query('DELETE FROM inventaires WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
+      return false;
+    });
+    if (refus) {
       return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Cet historique contient des lignes de factures validées : supprimez d\'abord ces factures (page Factures).' });
     }
-    await pool.query('DELETE FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
-    await pool.query('DELETE FROM inventaires WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
     res.json({ success: true });
   } catch (err) {
     console.error(err);

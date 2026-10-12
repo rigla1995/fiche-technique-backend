@@ -170,17 +170,26 @@ const modifier = async (req, res) => {
       article = F.idValide(articleId);
       const ok = article && (await pool.query('SELECT 1 FROM articles WHERE id = $1 AND client_id = $2', [article, clientId])).rows.length;
       if (!ok) return res.status(400).json({ code: 'ARTICLE_INCONNU', message: '[[Nom:article]] introuvable.' });
-      conversion = req.body.conversion == null || req.body.conversion === '' ? 1 : Number(req.body.conversion);
+      conversion = req.body.conversion == null || req.body.conversion === '' ? 1 : Math.round(Number(req.body.conversion) * 1e6) / 1e6;
       if (!(conversion > 0) || conversion > 100000) return res.status(400).json({ code: 'CONVERSION_INVALIDE', message: 'Conversion invalide : un nombre positif.' });
     } else if (V.NATURES.includes(horsStock)) {
       nature = horsStock;
     } else {
       return res.status(400).json({ code: 'CHOIX_REQUIS', message: 'Choisissez [[un:article]] ou « hors stock ».' });
     }
+    // Corrigée à la main : plus aucune facture n'a encore confirmé cette décision (emplois = 0).
+    await pool.query(
+      `UPDATE correspondances SET article_id = $2, nature_hors_stock = $3, conversion = $4, auteur_id = $5, emplois = 0
+       WHERE id = $1`,
+      [co.id, article, nature, conversion, req.user.id]
+    );
     const r = await pool.query(
-      `UPDATE correspondances SET article_id = $2, nature_hors_stock = $3, conversion = $4, auteur_id = $5
-       WHERE id = $1 RETURNING *`,
-      [co.id, article, nature, Math.round(conversion * 1e6) / 1e6, req.user.id]
+      `SELECT co.*, fo.nom AS fournisseur_nom, a.nom AS article_nom, u.nom AS unite_stock, ut.nom AS auteur_nom
+       FROM correspondances co JOIN fournisseurs fo ON fo.id = co.fournisseur_id
+       LEFT JOIN articles a ON a.id = co.article_id LEFT JOIN unites u ON u.id = a.unite_id
+       LEFT JOIN utilisateurs ut ON ut.id = co.auteur_id
+       WHERE co.id = $1`,
+      [co.id]
     );
     return res.json(versApi(r.rows[0]));
   } catch (err) {

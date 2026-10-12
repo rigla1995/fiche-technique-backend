@@ -94,6 +94,7 @@ const existe = (cle) => !!cle && fs.existsSync(fichierStocke(cle));
     const kg = await unite('kg');
     const bouteille = await unite('bouteille');
     const litre = await unite('L');
+    const gramme = await unite('g');
     const fam = (await appel('POST', '/api/familles', tok, { name: 'Famille F3' })).body;
     const cat = (await appel('POST', '/api/categories', tok, { name: 'Catégorie F3', familleId: fam?.id })).body;
     const farine = (await appel('POST', '/api/articles', tok, { name: 'Farine F3', unitId: kg?.id, categorieId: cat?.id })).body;
@@ -240,14 +241,28 @@ const existe = (cle) => !!cle && fs.existsSync(fichierStocke(cle));
       lignes: [{ designation: 'Eau minérale 1,5L pack', reference: 'eau 15', quantite: 2, tauxTva: 7, montant: 7.2, articleId: eau.id, conversion: 12 }],
     }), piece());
     const coEau2 = (await pool.query(`SELECT conversion, emplois, designation FROM correspondances WHERE client_id = $1 AND fournisseur_id = $2 AND cle = 'ref:EAU15'`, [clientId, f1])).rows[0];
-    check('5. même référence lue autrement (« eau 15 ») : même correspondance, une confirmation de plus, nouvelle conversion gardée, désignation à jour',
-      r.status === 201 && coEau2?.emplois === coEau.emplois + 1 && approx(coEau2.conversion, 12) && coEau2.designation === 'Eau minérale 1,5L pack', `${r.status} ${JSON.stringify(coEau2)} avant ${coEau?.emplois}`);
+    check('5. même référence lue autrement (« eau 15 ») : même correspondance, décision changée (conversion 12) ⇒ compteur repart à 1, désignation à jour',
+      r.status === 201 && coEau2?.emplois === 1 && approx(coEau2.conversion, 12) && coEau2.designation === 'Eau minérale 1,5L pack', `${r.status} ${JSON.stringify(coEau2)} avant ${coEau?.emplois}`);
+    r = await envoi('POST', '/api/appros/facture/validee', tok, validation({
+      refFacture: 'FV-2026-00475',
+      lignes: [{ designation: 'Eau minérale 1,5L pack', reference: 'EAU15', quantite: 1, tauxTva: 7, montant: 3.6, articleId: eau.id, conversion: 12 }],
+    }), piece());
+    const coEau3 = (await pool.query(`SELECT emplois FROM correspondances WHERE client_id = $1 AND fournisseur_id = $2 AND cle = 'ref:EAU15'`, [clientId, f1])).rows[0];
+    check('5. même décision confirmée par une autre facture ⇒ 2', r.status === 201 && coEau3?.emplois === 2, `${r.status} ${JSON.stringify(coEau3)}`);
+    r = await envoi('POST', '/api/appros/facture/validee', tok, validation({
+      refFacture: 'FV-2026-00476',
+      lignes: [{ designation: 'Farine corrigée à la main', designationLue: 'FARlNE PATISSIERE LUE', quantite: 1, tauxTva: 7, montant: 41.5, articleId: farine.id, conversion: 25 }],
+    }), piece());
+    const coLue = (await pool.query(`SELECT designation FROM correspondances WHERE client_id = $1 AND fournisseur_id = $2 AND cle = 'des:farlne patissiere lue'`, [clientId, f1])).rows[0];
+    check('5. clé apprise sur le texte LU (la désignation corrigée est seulement affichée)', r.status === 201 && coLue?.designation === 'Farine corrigée à la main', `${r.status} ${JSON.stringify(coLue)}`);
 
     // ── 6. Gérant ──────────────────────────────────────────────────────────────────────────────────────────────────
     r = await envoi('POST', '/api/appros/facture/validee', gTok, validation({ refFacture: 'G-1' }), piece());
     const facG = r.body?.factureId;
     const r6b = await envoi('POST', '/api/appros/facture/validee', gTok, validation({ refFacture: 'G-2', cible: { type: 'activite', id: actB.id } }), piece());
     check('6. gérant de A : valide sur A → 201 ; sur B → 403', r.status === 201 && r6b.status === 403, `${r.status} ${r6b.status}`);
+    r = await envoi('POST', '/api/appros/facture/validee', gTok, validation({ refFacture: 'G-3', fournisseurId: f2 }), piece());
+    check('6. gérant de A : fournisseur non rattaché à A (Ben Salem) → 403 FOURNISSEUR_HORS_PERIMETRE (il n\'apprend pas pour lui)', r.status === 403 && r.body?.code === 'FOURNISSEUR_HORS_PERIMETRE', `${r.status} ${JSON.stringify(r.body)}`);
     r = await appel('GET', '/api/correspondances', gTok);
     const fournisseursVus = new Set((r.body || []).map((c) => c.fournisseurId));
     check('6. gérant : correspondances des fournisseurs de ses lieux seulement (SMDA oui, Ben Salem non)', r.status === 200 && fournisseursVus.has(f1) && !fournisseursVus.has(f2), JSON.stringify([...fournisseursVus]));
@@ -263,6 +278,16 @@ const existe = (cle) => !!cle && fs.existsSync(fichierStocke(cle));
     check('7. sans la pièce → 400 PIECE_REQUISE', r.status === 400 && r.body?.code === 'PIECE_REQUISE', `${r.status}`);
     r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'R-2', lignes: [{ designation: 'X', quantite: 1, montant: 1, articleId: etrangers.article }] }), piece());
     check('7. article d\'un autre compte → 400 ARTICLE_INCONNU', r.status === 400 && r.body?.code === 'ARTICLE_INCONNU', `${r.status} ${JSON.stringify(r.body)}`);
+    r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'R-5', lignes: [
+      { designation: 'Transport', quantite: 1, montant: 5, horsStock: 'transport' },
+      { designation: 'X', quantite: 1, montant: 1, articleId: etrangers.article },
+    ] }), piece());
+    check('7. n° de ligne du refus = rang dans la facture (ligne 2, pas 1)', r.status === 400 && r.body?.ligne === 2 && /^Ligne 2/.test(r.body.message), `${r.status} ${JSON.stringify(r.body)}`);
+    const sel = (await appel('POST', '/api/articles', tok, { name: 'Sel F3', unitId: gramme?.id })).body;
+    r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'R-6', lignes: [{ designation: 'Sel fin 1 kg', quantite: 1, montant: 0.45, articleId: sel.id, conversion: 1000 }] }), piece());
+    check('7. prix par g arrondi au millime (0,00045) → 400 PRIX_TROP_PETIT (la valeur du stock serait faussée)', r.status === 400 && r.body?.code === 'PRIX_TROP_PETIT', `${r.status} ${JSON.stringify(r.body)}`);
+    r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'R-7', lignes: [{ designation: 'X', quantite: 0.001, montant: 9000, tauxTva: 19, articleId: farine.id, conversion: 1 }] }), piece());
+    check('7. prix TTC hors des limites de la colonne → 400 (avant : erreur serveur)', r.status === 400, `${r.status} ${JSON.stringify(r.body)}`);
     r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'R-3', fournisseurId: etrangers.fournisseur }), piece());
     check('7. fournisseur d\'un autre compte → 400 FOURNISSEUR_INCONNU', r.status === 400 && r.body?.code === 'FOURNISSEUR_INCONNU', `${r.status}`);
     r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'R-4', fournisseurId: null }), piece());
@@ -290,7 +315,30 @@ const existe = (cle) => !!cle && fs.existsSync(fichierStocke(cle));
       r.status === 409 && r.body?.code === 'FACTURE_VALIDEE' && r8b.status === 409 && (r8c.body || []).filter((h) => h.refFacture === 'L-1').every((h) => h.factureValidee === true),
       `${r.status} ${r8b.status}`);
 
+    r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'D-1', timbreFiscal: false, lignes: [
+      { designation: 'Eau minérale pack', quantite: 2, montant: 7.2, tauxTva: 0, articleId: eau.id, conversion: 6 },
+      { designation: 'Déconsigne casier', quantite: 4, prixUnitaire: -6, montant: -24, tauxTva: 0, horsStock: 'consigne' },
+      { designation: 'Consigne casier', quantite: 5, prixUnitaire: 6, montant: 30, tauxTva: 0, horsStock: 'consigne' },
+    ] }), piece());
+    const FD = r.body?.factureId ? (await pool.query('SELECT montant_ht, montant_ttc FROM factures WHERE id = $1', [r.body.factureId])).rows[0] : null;
+    check('8. déconsigne (ligne hors stock négative) admise : HT 13,2', r.status === 201 && approx(FD?.montant_ht, 13.2) && approx(FD?.montant_ttc, 13.2), `${r.status} ${JSON.stringify(r.body)} ${JSON.stringify(FD)}`);
+
+    // ── 8 bis. Anciennes routes, PDF, année, suppression d'un lieu ──────────────────────────────────────────────────
+    r = await appel('PUT', `/api/stock/entreprise/${actA.id}/${farine.id}`, tok, { quantite: 1, prixUnitaire: 1, dateAppro: aujourdhui, fournisseurId: f1, refFacture: 'fv-2026-00437', tauxTva: 0 });
+    check('8. ancienne route article par article : n° d\'une facture validée → 409 FACTURE_VALIDEE_EXISTANTE', r.status === 409 && r.body?.code === 'FACTURE_VALIDEE_EXISTANTE', `${r.status} ${JSON.stringify(r.body)}`);
+    r = await appel('GET', `/api/factures/${fac1}/pdf`, tok);
+    check('8. PDF fabriqué d\'une facture validée → 409 (sa pièce fait foi)', r.status === 409 && r.body?.code === 'FACTURE_VALIDEE', `${r.status}`);
+    const anDernier = `${Number(aujourdhui.slice(0, 4)) - 1}-12-15`;
+    r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'FV-2026-00437', dateAppro: anDernier }), piece());
+    const rAnnee = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'FV-2026-00437', dateAppro: anDernier, confirmerDoublon: true }), piece());
+    check('8. même n° l\'année précédente : avertissement (409 FACTURE_EXISTANTE) puis 201 confirmé', r.status === 409 && r.body?.code === 'FACTURE_EXISTANTE' && rAnnee.status === 201, `${r.status} ${rAnnee.status}`);
+    for (const a of [farine, eau]) await appel('POST', `/api/entreprise/activites/${actB.id}/ingredients/${a.id}/select`, tok, {});
+    const selB = (await pool.query('SELECT COUNT(*)::int AS n FROM activite_ingredient_selections WHERE activite_id = $1', [actB.id])).rows[0].n;
+    r = await appel('DELETE', `/api/entreprise/activites/${actB.id}`, tok);
+    check('8. supprimer une activité qui porte une facture validée → 409 FACTURE_VALIDEE (ses lignes partiraient en cascade)', selB === 0 && r.status === 409 && r.body?.code === 'FACTURE_VALIDEE', `sel=${selB} ${r.status} ${JSON.stringify(r.body)}`);
+
     // ── 9. Suppression d'une facture validée ───────────────────────────────────────────────────────────────────────
+    const coAvant = (await pool.query('SELECT COUNT(*)::int AS n FROM correspondances WHERE client_id = $1 AND fournisseur_id = $2', [clientId, f1])).rows[0].n;
     const clesG = (await pool.query('SELECT cle FROM factures_pieces WHERE facture_id = $1', [facG])).rows.map((p) => p.cle);
     r = await appel('DELETE', `/api/factures/${facG}`, gTok);
     const resteG = (await pool.query('SELECT (SELECT COUNT(*)::int FROM factures WHERE id = $1) AS f, (SELECT COUNT(*)::int FROM stock_entreprise_daily WHERE facture_id = $1) AS s, (SELECT COUNT(*)::int FROM factures_lignes WHERE facture_id = $1) AS l', [facG])).rows[0];
@@ -299,7 +347,7 @@ const existe = (cle) => !!cle && fs.existsSync(fichierStocke(cle));
       r.status === 200 && resteG.f === 0 && resteG.s === 0 && resteG.l === 0 && clesG.length === 1 && !existe(clesG[0]) && journalG?.details?.motif === 'facture_validee_supprimee',
       `${r.status} ${JSON.stringify(resteG)}`);
     const coApres = (await pool.query('SELECT COUNT(*)::int AS n FROM correspondances WHERE client_id = $1 AND fournisseur_id = $2', [clientId, f1])).rows[0].n;
-    check('9. les correspondances apprises restent', coApres === 3, `n=${coApres}`);
+    check('9. les correspondances apprises restent', coApres === coAvant && coAvant >= 4, `n=${coApres} avant ${coAvant}`);
     r = await envoi('POST', '/api/appros/facture/validee', gTok, validation({ refFacture: 'G-1' }), piece());
     check('9. la facture supprimée se dépose de nouveau → 201', r.status === 201, `${r.status} ${JSON.stringify(r.body)}`);
     const facMain = (await pool.query(`SELECT id FROM factures WHERE client_id = $1 AND ref_facture = 'MAIN-1' AND validee_le IS NULL`, [clientId])).rows[0].id;
@@ -314,13 +362,13 @@ const existe = (cle) => !!cle && fs.existsSync(fichierStocke(cle));
     // ── 10. Page « Correspondances » ───────────────────────────────────────────────────────────────────────────────
     r = await appel('GET', `/api/correspondances?fournisseurId=${f1}`, tok);
     const coTransport = (r.body || []).find((c) => c.cle === 'des:frais de transport');
-    check('10. liste filtrée par fournisseur : nom du fournisseur, auteur', r.status === 200 && r.body.length === 3 && r.body.every((c) => c.fournisseurNom === 'SMDA F3') && !!coTransport?.auteurNom, `${r.status} ${JSON.stringify(r.body?.[0])}`);
+    check('10. liste filtrée par fournisseur : nom du fournisseur, auteur', r.status === 200 && r.body.length >= 4 && r.body.every((c) => c.fournisseurNom === 'SMDA F3') && !!coTransport?.auteurNom, `${r.status} ${JSON.stringify(r.body?.[0])}`);
     r = await appel('PATCH', `/api/correspondances/${coTransport.id}`, tok, { articleId: lait.id, conversion: 1 });
     const r10b = await appel('PATCH', `/api/correspondances/${coTransport.id}`, tok, { articleId: lait.id, conversion: 0 });
     const r10c = await appel('PATCH', `/api/correspondances/${coTransport.id}`, tok, { articleId: etrangers.article });
     const r10d = await appel('PATCH', `/api/correspondances/${coTransport.id}`, tok, {});
-    check('10. corriger : article → 200 ; conversion 0, article d\'un autre compte, rien → 400',
-      r.status === 200 && r.body.articleId === lait.id && r.body.horsStock === null && r10b.status === 400 && r10c.status === 400 && r10d.status === 400,
+    check('10. corriger : article → 200 (nom et unité de l\'article rendus, compteur à 0) ; conversion 0, article d\'un autre compte, rien → 400',
+      r.status === 200 && r.body.articleId === lait.id && r.body.articleNom === 'Lait F3' && r.body.uniteStock === 'L' && r.body.emplois === 0 && r.body.horsStock === null && r10b.status === 400 && r10c.status === 400 && r10d.status === 400,
       `${r.status} ${r10b.status} ${r10c.status} ${r10d.status}`);
     r = await appel('PATCH', `/api/correspondances/${coTransport.id}`, tok, { horsStock: 'livraison' });
     check('10. corriger : hors stock « livraison » → 200, article retiré', r.status === 200 && r.body.horsStock === 'livraison' && r.body.articleId === null, JSON.stringify(r.body));
