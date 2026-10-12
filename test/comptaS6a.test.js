@@ -171,7 +171,7 @@ test('présentations : écriture (numéro provisoire B-000012, total en texte, j
   // S6b : l'écriture porte aussi l'auteur de sa validation, le numéro de son origine et sa contre-passation (nuls ici).
   assert.deepEqual(e, {
     id: 5, numeroProvisoire: 'B-000012', numero: null, date: '2026-03-15', dateReelle: null, journal: { id: 2, code: 'AC', libelle: 'Achats', type: 'achats' }, reference: 'F-1', libelle: 'Facture', etat: 'brouillard', etatLibelle: 'Brouillard',
-    total: '1191.000', origine: 'saisie', origineId: null, origineNumero: null, contrepasseePar: null, nbLignes: 5, creePar: 'Leïla', creeLe: 'c', modifieLe: 'u', validePar: null, valideLe: null,
+    total: '1191.000', origine: 'saisie', origineId: null, origineNumero: null, factureId: null, contrepasseePar: null, nbLignes: 5, creePar: 'Leïla', creeLe: 'c', modifieLe: 'u', validePar: null, valideLe: null,
     // S7a : chaque ligne porte sa lettre (lettrage d'un tiers), null sinon.
     lignes: [{ id: 9, rang: 1, compte: { id: 1, numero: '607', libelle: 'Achats de marchandises', nature: 'charges' }, tiers: null, libelle: null, debit: '1000.000', credit: '0.000', taxe: { id: 4, code: 'TVA19', libelle: 'TVA 19 %', type: 'tva' }, echeance: null, lettre: null }],
   });

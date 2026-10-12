@@ -256,6 +256,28 @@
           "md5": "cbeb6ed4f9cf039d85db6aa0e58706fb"
         }
       ]
+    },
+    {
+      "numero": 229,
+      "nom": "229_manuel_vers_la_comptabilite.sql",
+      "objet": "Factures fournisseur, étape F4 « Vers la comptabilité » : avec le module LabFlow Compta, une facture validée ou saisie à la main avec sa pièce part en écriture d'achat en brouillard (case « Envoyer à la comptabilité », bouton de la page Factures, état « En comptabilité »), facture en comptabilité verrouillée, suppression (brouillard emporté, écriture validée : refus).",
+      "manuel": [
+        {
+          "slug": "factures",
+          "md5Avant": "9c75ed2b4dfc1aa7121a49166b56ea8f",
+          "md5": "a11af765a6116bf6fe24eb8a29bb899f"
+        },
+        {
+          "slug": "stock-activites",
+          "md5Avant": "9d00b895901f55f3f78fba94acf8ad95",
+          "md5": "9a2b2991c0c1f8bd18745339a3b3024c"
+        },
+        {
+          "slug": "stock-labo",
+          "md5Avant": "cbeb6ed4f9cf039d85db6aa0e58706fb",
+          "md5": "7034b13f6ab07642f0023332a3b5741f"
+        }
+      ]
     }
   ]
 }

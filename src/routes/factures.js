@@ -4,6 +4,7 @@ const router = express.Router();
 const { list, getLignes, downloadPdf } = require('../controllers/facturesController');
 const pieces = require('../controllers/piecesController');
 const validee = require('../controllers/factureValideeController');
+const compta = require('../controllers/factureComptaController');
 const { televersement } = require('../services/piecesFacture');
 const { authenticate, requireClient } = require('../middleware/auth');
 
@@ -27,6 +28,9 @@ const limiteLectures = rateLimit({
 });
 
 router.get('/', authenticate, requireClient, list);
+// Étape F4 : état du module LabFlow Compta (client et gérant) ; envoi d'une facture en comptabilité.
+router.get('/compta', authenticate, requireClient, compta.etatModule);
+router.post('/:id/compta', authenticate, requireClient, limiteDepots, compta.envoyer);
 router.get('/:id/lignes', authenticate, requireClient, getLignes);
 // Étape F3 : lignes d'une facture validée ; suppression d'une facture validée, en entier.
 router.get('/:id/lignes-validees', authenticate, requireClient, validee.lignesValidees);

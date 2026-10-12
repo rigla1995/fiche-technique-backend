@@ -10,6 +10,8 @@ Chaque facture est une carte repliée : [[nom:fournisseur]], référence, date, 
 
 Une facture **lue puis validée** (fenêtre « Vérifier la facture » de la saisie) porte le badge **🔒 Validée** : son détail montre les lignes telles qu'imprimées, chacune avec [[le:article]] et sa conversion (« 1 sac = 25 kg ») ou « hors [[nom:stock]] », la quantité entrée en [[nom:stock]] et son prix ; ses montants sont exactement ceux de la facture.
 
+Avec le module **LabFlow Compta**, une facture validée — ou saisie à la main avec sa pièce jointe — part dans votre comptabilité : LabFlow y prépare l'**écriture d'achat en brouillard** (journal des achats, pièce = n° de facture), que votre comptable vérifie puis valide. Sa carte porte alors **📒 En comptabilité : brouillard B-000012**, puis **validée AC-2026-000003**. Une facture qui n'y est pas encore porte le bouton **📒 Envoyer à la comptabilité**.
+
 Les boutons **Tout ouvrir / Tout fermer** déplient ou replient toutes les cartes de la page. En bas : le compteur de factures avec la pagination, le bouton **Charger plus**, et un bandeau **Total général HT / TTC** cumulant les factures chargées.
 
 ### Actions pas à pas
@@ -26,10 +28,15 @@ Gérer la facture [[du:fournisseur]] :
 3. Pour ajouter un fichier, glissez-le dans la zone **📎 Facture [[du:fournisseur]]** (5 fichiers au plus par facture), puis **Joindre**.
 4. **Remplacer** dépose un nouveau fichier à la place de l'ancien ; **Supprimer** retire un fichier. Dans les deux cas, l'ancien fichier est **effacé définitivement** (une confirmation le rappelle) ; les lignes de la facture ne changent pas.
 
+Envoyer une facture en comptabilité (module LabFlow Compta) :
+
+1. Cliquez sur **📒 Envoyer à la comptabilité** sur sa carte (facture validée, ou saisie à la main avec sa pièce jointe : sans pièce, joignez-la d'abord).
+2. LabFlow prépare l'écriture et affiche son numéro provisoire. Un refus dit pourquoi (date hors de l'exercice ouvert de la comptabilité, compte ou code de TVA à régler par votre comptable…) : la facture reste à envoyer, vous réessayez plus tard.
+
 Supprimer une facture validée :
 
 1. Dépliez la carte **🔒 Validée**, puis **🗑️ Supprimer la facture**.
-2. Après confirmation, toute la facture part, définitivement : ses lignes, ce qu'elle a fait entrer en [[nom:stock]] et sa pièce jointe. Ce que LabFlow a appris de ses lignes est gardé ; vous pouvez la déposer de nouveau.
+2. Après confirmation, toute la facture part, définitivement : ses lignes, ce qu'elle a fait entrer en [[nom:stock]] et sa pièce jointe. Ce que LabFlow a appris de ses lignes est gardé ; vous pouvez la déposer de nouveau. Si elle est en comptabilité, son écriture en brouillard part avec elle ; une écriture déjà **validée** par votre comptable empêche la suppression : si la facture est erronée, votre comptable contre-passe l'écriture dans LabFlow Compta, et [[le:stock]] se corrige par [[un:inventaire]].
 
 ### Points d'attention
 
@@ -43,6 +50,10 @@ La pièce jointe est la vraie facture [[du:fournisseur]] : LabFlow ne fabrique p
 
 :::regle
 Une facture validée ne se modifie plus et sa pièce ne se change plus : elle se supprime en entier. [[Un:gerant]] le fait pour [[le:activite:pl]] et [[le:labo:pl]] qui lui sont [[acc:labo:affecté:affectée:pl]]. Tant qu'elle existe, son n° est refusé chez [[le:fournisseur]] qui l'a émise.
+:::
+
+:::regle
+Une facture **en comptabilité** ne change plus : ni ses lignes (cadenas **📒🔒** dans l'écran Historique), ni ses pièces, ni de nouvelles lignes sous son n°. Pour la changer, son écriture doit d'abord être supprimée dans LabFlow Compta, ce qui n'est possible que tant qu'elle est en brouillard (voyez-le avec votre comptable) : la facture redevient alors « à envoyer ».
 :::
 
 :::formule Total facture TTC

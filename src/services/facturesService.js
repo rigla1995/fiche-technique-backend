@@ -73,11 +73,20 @@ async function upsertFacture(clientId, opts, db = pool) {
        AND (labo_id IS NOT DISTINCT FROM $6)
        AND type_source = $7
        AND validee_le IS NULL
-     LIMIT 1`,
+     LIMIT 1 FOR UPDATE`,
     [clientId, refFacture || null, dateFact, fournisseurId, activiteId, laboId, typeSource]
   );
 
   let factureId;
+
+  // Étape F4 : une facture déjà envoyée en comptabilité ne reçoit plus de lignes (son écriture ne les aurait pas). La
+  // facture trouvée est verrouillée (FOR UPDATE, comme à l'envoi) : un envoi simultané passe avant ou après, jamais entre.
+  if (findRes.rows.length > 0 && (await db.query('SELECT 1 FROM compta.ecritures WHERE facture_id = $1', [findRes.rows[0].id])).rows.length) {
+    const e = new Error('facture en comptabilité');
+    e.status = 409;
+    e.corps = { code: 'FACTURE_EN_COMPTA', message: 'Cette facture est déjà en comptabilité : ses lignes ne changent plus. Saisissez ces lignes sous un autre n° (ou, tant que son écriture est en brouillard, faites-la supprimer dans LabFlow Compta).' };
+    throw e;
+  }
 
   if (findRes.rows.length > 0) {
     // Update totals by adding the new line's amounts

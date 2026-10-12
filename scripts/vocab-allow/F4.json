@@ -1,0 +1,18 @@
+[
+  {
+    "fichier": "src/services/pontCompta.js",
+    "avant": "fournisseur",
+    "apres": "fournisseur",
+    "mode": "residuels",
+    "type": "homonyme",
+    "justification": "Étape F4 (factures → LabFlow Compta) : valeur technique de compta.tiers.type (« fournisseur » | « client », migration 214) dans les requêtes SQL et l'appel collectifDefautNumero(d, 'fournisseur') — un identifiant de la Compta, jamais affiché, sans rapport avec le vocabulaire du compte LabFlow."
+  },
+  {
+    "fichier": "src/services/pontCompta.js",
+    "avant": "fournisseurs",
+    "apres": "fournisseurs",
+    "mode": "residuels",
+    "type": "homonyme",
+    "justification": "Étape F4 : valeur technique de compta.comptes.nature (« fournisseurs » | « clients » : comptes collectifs, migration 212), comparée pour porter le tiers sur la ligne — un identifiant de la Compta, jamais affiché."
+  }
+]
