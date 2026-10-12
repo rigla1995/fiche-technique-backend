@@ -269,7 +269,7 @@ const creer = async (req, res) => {
       const ajoutee = existe.rows.length > 0;
       // Étape F4 : une facture déjà en comptabilité ne reçoit plus de lignes (son écriture ne les aurait pas).
       if (ajoutee && await Pont.enCompta(db, existe.rows[0].id)) {
-        throw refus(409, 'FACTURE_EN_COMPTA', `La facture n° ${F.sansBalise(v.ref)} du ${jour(v.dateAppro)} est déjà en comptabilité : ses lignes ne changent plus. Saisissez ces lignes sous un autre n°, ou supprimez d'abord son écriture en brouillard dans LabFlow Compta.`);
+        throw refus(409, 'FACTURE_EN_COMPTA', `La facture n° ${F.sansBalise(v.ref)} du ${jour(v.dateAppro)} est déjà en comptabilité : ses lignes ne changent plus. Saisissez ces lignes sous un autre n° (ou, tant que son écriture est en brouillard, faites-la supprimer dans LabFlow Compta).`);
       }
       if (ajoutee) {
         factureId = existe.rows[0].id;

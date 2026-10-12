@@ -1065,7 +1065,7 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
       return false;
     });
     if (refus) {
-      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Cet historique contient des lignes de factures validées ou envoyées en comptabilité : supprimez d\'abord ces factures (page Factures) ou leur écriture en brouillard (LabFlow Compta).' });
+      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Cet historique contient des lignes de factures validées ou envoyées en comptabilité : supprimez d\'abord ces factures (page Factures). Une facture dont l\'écriture est validée en comptabilité ne se supprime plus.' });
     }
     res.json({ success: true });
   } catch (err) {

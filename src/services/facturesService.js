@@ -84,7 +84,7 @@ async function upsertFacture(clientId, opts, db = pool) {
   if (findRes.rows.length > 0 && (await db.query('SELECT 1 FROM compta.ecritures WHERE facture_id = $1', [findRes.rows[0].id])).rows.length) {
     const e = new Error('facture en comptabilité');
     e.status = 409;
-    e.corps = { code: 'FACTURE_EN_COMPTA', message: 'Cette facture est déjà en comptabilité : ses lignes ne changent plus. Saisissez ces lignes sous un autre n°, ou supprimez d\'abord son écriture en brouillard dans LabFlow Compta.' };
+    e.corps = { code: 'FACTURE_EN_COMPTA', message: 'Cette facture est déjà en comptabilité : ses lignes ne changent plus. Saisissez ces lignes sous un autre n° (ou, tant que son écriture est en brouillard, faites-la supprimer dans LabFlow Compta).' };
     throw e;
   }
 

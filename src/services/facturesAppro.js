@@ -26,7 +26,7 @@ const sansBalise = (s) => String(s ?? '').replace(/\[\[/g, '[ [').replace(/\]\]/
 /** Étape F4 : une facture envoyée en comptabilité (une écriture la porte) ne change plus — ni ses lignes, ni ses montants,
  * ni ses pièces. Fragment SQL : la facture `col` (identifiant) porte une écriture. */
 const SQL_EN_COMPTA = (col) => `EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = ${col})`;
-const MESSAGE_EN_COMPTA = 'Cette ligne vient d\'une facture envoyée en comptabilité : elle ne se modifie plus. Pour la changer, supprimez d\'abord son écriture en brouillard dans LabFlow Compta (ou demandez-le à votre comptable).';
+const MESSAGE_EN_COMPTA = 'Cette ligne vient d\'une facture envoyée en comptabilité : elle ne se modifie plus. Pour la changer, son écriture doit d\'abord être supprimée dans LabFlow Compta — possible seulement tant qu\'elle est en brouillard (voyez-le avec votre comptable).';
 const refusEnCompta = { code: 'FACTURE_EN_COMPTA', message: MESSAGE_EN_COMPTA };
 /** Levée par `recalculerFacture` (sous le verrou des factures) : la facture est partie en comptabilité entre le contrôle
  * de l'appelant et sa transaction. L'appelant répond `status` avec `corps`. */

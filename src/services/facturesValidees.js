@@ -143,7 +143,6 @@ const supprimerFactureValidee = async (db, { facture, clientId, auteurId }) => {
       factureId: facture.id, ref: facture.ref_facture, date: facture.date_facture, motif: 'facture_validee_supprimee',
       lignes: n.rows[0].n, lignesStock: e.rowCount + l.rowCount, pieces: pieces.rows.map((p) => p.nom_origine),
       ...(ecriture?.supprimee ? { ecritureSupprimee: ecriture.supprimee } : {}),
-      ...(ecriture?.laissee ? { ecritureLaissee: ecriture.laissee } : {}),
     })]
   );
   await db.query('DELETE FROM factures WHERE id = $1', [facture.id]);

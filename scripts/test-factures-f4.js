@@ -11,7 +11,9 @@
  *   GET  /api/compta/dossiers/:id/ecritures/:eid/pieces[/:pid/fichier]   la pièce depuis l'écriture
  *   verrous : facture en comptabilité (lignes, pièces, ajout de lignes), suppression (brouillard emporté, validée refusée)
  *   relecture : écriture = TTC de la facture (saisie à la main, montants répartis ; ligne sans prix HT), garde sous verrou,
- *   dossier au forfait (TVA dans les achats), tiers reconnu par matricule fiscal, facture après l'exercice ouvert
+ *   dossier au forfait (TVA dans les achats), tiers reconnu par matricule fiscal, facture après l'exercice ouvert ;
+ *   contre-relecture : tiers désactivé de même matricule (refus), comptabilité figée (suppression refusée), recalcul
+ *   noté au journal, pièce jointe refusée sur une facture en comptabilité
  * Crée un super_admin + 1 client (1 activité, 1 labo, 1 gérant) temporaires, active le module Compta (tarifs remis en
  * l'état), puis nettoie. Données fictives. ⚠️ Serveur d'essai : « node scripts/start-test-backend.js » (BASE_URL). */
 require('./lib/bouchons-test').installer();
@@ -113,10 +115,11 @@ const CLES_TARIFS = ['compta_module_mensuel', 'compta_gerant_client_mensuel', 'c
     const f1 = (await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: 'SMDA F4', matriculeFiscal: '1384297X/A/M/000', activiteIds: [act.id], laboIds: [labo.id] })).body?.id;
     const f2 = (await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: 'IPS F4', matriculeFiscal: '1103587T/A/M/000', activiteIds: [act.id] })).body?.id;
     const f3 = (await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: 'Grossiste F4', matriculeFiscal: '9876543Z/A/M/000', activiteIds: [act.id] })).body?.id;
+    const f4 = (await appel('POST', '/api/entreprise/fournisseurs', tok, { nom: 'Ancien F4', matriculeFiscal: '5555555Q/A/M/000', activiteIds: [act.id] })).body?.id;
     r = await appel('POST', '/api/abonnements/gerants', tok, { nom: 'TEST-Gérant F4', telephone: '20778892', email: GERANT, activiteIds: [act.id] });
     await pool.query('UPDATE utilisateurs SET mot_de_passe = $1, activated_at = NOW(), invite_token = NULL WHERE id = $2', [hash, r.body?.id]);
     const gTok = await login(GERANT);
-    check('0. référentiel, activité, labo, 3 fournisseurs (matricule), gérant', !!farine?.id && !!soda?.id && !!barquette?.id && !!act?.id && !!labo?.id && !!f1 && !!f2 && !!f3 && !!gTok);
+    check('0. référentiel, activité, labo, 4 fournisseurs (matricule), gérant', !!farine?.id && !!soda?.id && !!barquette?.id && !!act?.id && !!labo?.id && !!f1 && !!f2 && !!f3 && !!f4 && !!gTok);
     r = await appel('GET', '/api/factures/compta', tok);
     const rg = await appel('GET', '/api/factures/compta', gTok);
     check('1. module actif : le client et le gérant le voient (la case s\'affiche)', r.body?.actif === true && rg.body?.actif === true, `${JSON.stringify(r.body)} ${JSON.stringify(rg.body)}`);
@@ -225,6 +228,7 @@ const CLES_TARIFS = ['compta_module_mensuel', 'compta_gerant_client_mensuel', 'c
     const main4 = r.body?.factureId;
     // Une ligne sans prix HT (ancienne saisie : prix TTC seul) ; les montants enregistrés ne sont plus à jour.
     await pool.query('UPDATE stock_entreprise_daily SET prix_unitaire = NULL, prix_unitaire_tva = 1.19 WHERE facture_id = $1 AND ingredient_id = $2', [main4, soda.id]);
+    await pool.query('UPDATE factures SET montant_ttc = 6.9 WHERE id = $1', [main4]);
     r = await appel('POST', `/api/factures/${main4}/compta`, tok);
     const e44 = await ecart(main4);
     const sansCode = (await pool.query(
@@ -234,6 +238,8 @@ const CLES_TARIFS = ['compta_module_mensuel', 'compta_gerant_client_mensuel', 'c
     // 3,2 HT + 0,224 TVA + 2,38 (TTC sans prix HT) + 1 timbre = 6,804 : la facture est recalculée (règle F1) avant l'envoi.
     check('4. ligne sans prix HT : TTC au compte, sans code de TVA ; facture recalculée, fournisseur = TTC (6,804)',
       r.status === 201 && e44.egal && approx(e44.ttc, 6.804) && sansCode.length === 1 && approx(sansCode[0].debit, 2.38) && sansCode[0].taxe_id == null, `${r.status} ${JSON.stringify(r.body)} ${JSON.stringify(e44)} ${JSON.stringify(sansCode)}`);
+    const jRecalc = (await pool.query("SELECT details->'recalcul' AS r FROM factures_journal WHERE facture_id = $1 AND action = 'envoi_compta'", [main4])).rows[0]?.r;
+    check('4. montants enregistrés périmés : recalculés à l\'envoi, écart noté au journal de la facture (6,900 → 6,804)', approx(jRecalc?.avant, 6.9) && approx(jRecalc?.apres, 6.804), JSON.stringify(jRecalc));
 
     // ── 5. Verrous d'une facture saisie à la main, en comptabilité ─────────────────────────────────────────────────
     const ligneMain = (await pool.query('SELECT id FROM stock_entreprise_daily WHERE facture_id = $1 ORDER BY id LIMIT 1', [main1])).rows[0].id;
@@ -256,7 +262,8 @@ const CLES_TARIFS = ['compta_module_mensuel', 'compta_gerant_client_mensuel', 'c
     const pid = (await pool.query('SELECT id FROM factures_pieces WHERE facture_id = $1 LIMIT 1', [main1])).rows[0].id;
     r = await appel('DELETE', `/api/factures/${main1}/pieces/${pid}`, tok);
     const r5r = await envoi('PUT', `/api/factures/${main1}/pieces/${pid}`, tok, {}, piece());
-    check('5. pièce : supprimer, remplacer → 409 FACTURE_EN_COMPTA', r.status === 409 && r.body?.code === 'FACTURE_EN_COMPTA' && r5r.status === 409 && r5r.body?.code === 'FACTURE_EN_COMPTA', `${r.status} ${r5r.status}`);
+    const r5j = await envoi('POST', `/api/factures/${main1}/pieces`, tok, {}, piece());
+    check('5. pièce : supprimer, remplacer, joindre → 409 FACTURE_EN_COMPTA', r.status === 409 && r.body?.code === 'FACTURE_EN_COMPTA' && r5r.status === 409 && r5r.body?.code === 'FACTURE_EN_COMPTA' && r5j.status === 409 && r5j.body?.code === 'FACTURE_EN_COMPTA', `${r.status} ${r5r.status} ${r5j.status}`);
     r = await appel('GET', `/api/factures/${main1}/pieces`, tok);
     check('5. liste des pièces : état compta', r.body?.compta?.etat === 'brouillard', JSON.stringify(r.body?.compta));
 
@@ -328,6 +335,11 @@ const CLES_TARIFS = ['compta_module_mensuel', 'compta_gerant_client_mensuel', 'c
     const evMF = (await pool.query(`SELECT 1 FROM compta.evenements WHERE espace_id = $1 AND type = 'tiers_modifie' AND details->>'origine' = 'labflow'`, [espaceId])).rows.length;
     check('7. tiers saisi par le comptable, même matricule écrit autrement : repris (F0900), relié au fournisseur, lien au journal',
       r.status === 201 && tMF?.fournisseur_id === f3 && lMF.length > 0 && lMF.every((c) => c === 'F0900') && evMF === 1, `${r.status} ${JSON.stringify(r.body?.comptaRefus)} ${JSON.stringify(tMF)} ${lMF} ev=${evMF}`);
+    await pool.query("INSERT INTO compta.tiers (dossier_id, type, code, nom, matricule_fiscal, compte_id, actif) VALUES ($1, 'fournisseur', 'F0901', 'ANCIEN (désactivé)', '5555555Q', $2, false)", [dossier.id, k4011b]);
+    const nbTiersAvant = (await pool.query('SELECT COUNT(*)::int AS n FROM compta.tiers WHERE dossier_id = $1', [dossier.id])).rows[0].n;
+    r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'FV-F4-DES', fournisseurId: f4, fodec: 0, remiseGlobale: 0, lignes: [validation().lignes[0]] }), piece());
+    const nbTiersApres = (await pool.query('SELECT COUNT(*)::int AS n FROM compta.tiers WHERE dossier_id = $1', [dossier.id])).rows[0].n;
+    check('7. matricule porté seulement par un tiers désactivé : envoi refusé TIERS_DESACTIVE (F0901), aucun tiers créé', r.status === 201 && r.body?.comptaRefus?.code === 'TIERS_DESACTIVE' && /F0901/.test(r.body?.comptaRefus?.message || '') && nbTiersApres === nbTiersAvant, `${r.status} ${JSON.stringify(r.body?.comptaRefus)} ${nbTiersAvant}→${nbTiersApres}`);
     // Une date future est refusée à la saisie : la facture est datée de janvier prochain en base (passage d'année).
     r = await envoi('POST', '/api/appros/facture/validee', tok, validation({ refFacture: 'FV-F4-APRES', envoyerCompta: false, fodec: 0, remiseGlobale: 0, lignes: [validation().lignes[0]] }), piece());
     await pool.query('UPDATE factures SET date_facture = $2::date WHERE id = $1', [r.body?.factureId, `${Number(annee) + 1}-01-10`]);
@@ -340,6 +352,11 @@ const CLES_TARIFS = ['compta_module_mensuel', 'compta_gerant_client_mensuel', 'c
     check('8. le comptable valide l\'écriture de la 2ᵉ facture', r.status === 200, `${r.status} ${JSON.stringify(r.body)}`);
     r = await appel('DELETE', `/api/factures/${fac2}`, tok);
     check('8. supprimer une facture dont l\'écriture est validée → 409 ECRITURE_VALIDEE (rien ne part)', r.status === 409 && r.body?.code === 'ECRITURE_VALIDEE' && (await pool.query('SELECT 1 FROM factures WHERE id = $1', [fac2])).rows.length === 1, `${r.status} ${JSON.stringify(r.body)}`);
+    await pool.query("UPDATE compta.dossiers SET etat = 'archive' WHERE id = $1", [dossier.id]);
+    r = await appel('DELETE', `/api/factures/${fac1}`, tok);
+    await pool.query("UPDATE compta.dossiers SET etat = 'actif' WHERE id = $1", [dossier.id]);
+    const figee = (await pool.query('SELECT (SELECT COUNT(*)::int FROM factures WHERE id = $1) AS f, (SELECT COUNT(*)::int FROM compta.ecritures WHERE id = $2) AS e', [fac1, ec1.id])).rows[0];
+    check('8. dossier archivé : supprimer la facture → 409 COMPTA_FIGEE, facture et brouillard restent', r.status === 409 && r.body?.code === 'COMPTA_FIGEE' && figee.f === 1 && figee.e === 1, `${r.status} ${JSON.stringify(r.body)} ${JSON.stringify(figee)}`);
     r = await appel('DELETE', `/api/factures/${fac1}`, tok);
     const reste = (await pool.query('SELECT 1 FROM compta.ecritures WHERE id = $1', [ec1.id])).rows.length;
     const evSup = (await pool.query(`SELECT jsonb_array_length(details->'contenu'->'lignes') AS n FROM compta.evenements WHERE espace_id = $1 AND type = 'ecriture_supprimee' AND (details->>'ecriture')::int = $2`, [espaceId, ec1.id])).rows;

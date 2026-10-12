@@ -82,7 +82,7 @@ Une facture validée ne se modifie plus et sa pièce ne se change plus : elle se
 :::
 
 :::regle
-Une facture **en comptabilité** ne change plus : ni ses lignes (cadenas **📒🔒** dans l'écran Historique), ni sa pièce, ni de nouvelles lignes sous son n°. Pour la changer, supprimez d'abord son écriture en brouillard dans LabFlow Compta (ou demandez-le à votre comptable) : elle redevient « à envoyer ».
+Une facture **en comptabilité** ne change plus : ni ses lignes (cadenas **📒🔒** dans l'écran Historique), ni ses pièces, ni de nouvelles lignes sous son n°. Pour la changer, son écriture doit d'abord être supprimée dans LabFlow Compta, ce qui n'est possible que tant qu'elle est en brouillard (voyez-le avec votre comptable) : la facture redevient alors « à envoyer ».
 :::
 
 :::formule Total facture TTC

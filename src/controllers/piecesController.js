@@ -40,7 +40,7 @@ const factureAccessible = async (req, db, { ecriture = false, verrou = false } =
   return f;
 };
 
-const MESSAGE_PIECE_EN_COMPTA = 'Cette facture est en comptabilité : sa pièce ne se change plus. Pour la changer, supprimez d\'abord son écriture en brouillard dans LabFlow Compta (ou demandez-le à votre comptable).';
+const MESSAGE_PIECE_EN_COMPTA = 'Cette facture est en comptabilité : ses pièces ne changent plus. Pour les changer, son écriture doit d\'abord être supprimée dans LabFlow Compta — possible seulement tant qu\'elle est en brouillard (voyez-le avec votre comptable).';
 const SQL_PIECES = `SELECT p.id, p.ordre, p.cle, p.type_mime, p.taille, p.nom_origine, p.apercu_cle, p.depose_le, u.nom AS depose_par_nom
                     FROM factures_pieces p LEFT JOIN utilisateurs u ON u.id = p.depose_par
                     WHERE p.facture_id = $1 ORDER BY p.ordre`;
@@ -118,11 +118,14 @@ const joindre = async (req, res) => {
     if (!stockage.disponible()) throw new Refus(503, 'STOCKAGE_ABSENT', 'Le stockage des factures n\'est pas encore configuré.');
     const deja = (await pool.query('SELECT COUNT(*)::int AS n FROM factures_pieces WHERE facture_id = $1', [f0.id])).rows[0].n;
     if (deja + prepares.length > P.PIECES_MAX) throw new Refus(409, 'TROP_DE_PIECES', `Cette facture a déjà ${deja} pièce(s) : ${P.PIECES_MAX} au plus.`);
+    // Étape F4 : une facture en comptabilité ne reçoit plus de pièce (contrôlé de nouveau sous le verrou).
+    if (await Pont.enCompta(pool, f0.id)) throw refus(409, 'FACTURE_EN_COMPTA', MESSAGE_PIECE_EN_COMPTA);
     deposes = await P.deposerTout(clientId, prepares);
     const pieces = await withTransaction(async (db) => {
       await F.verrouillerFactures(db, clientId);
       const f = await factureAccessible(req, db, { ecriture: true, verrou: true });
-      const etat = (await db.query('SELECT COUNT(*)::int AS n, COALESCE(MAX(ordre), 0)::int AS dernier FROM factures_pieces WHERE facture_id = $1', [f.id])).rows[0];
+      if (await Pont.enCompta(db, f.id)) throw refus(409, 'FACTURE_EN_COMPTA', MESSAGE_PIECE_EN_COMPTA);
+      const etat =(await db.query('SELECT COUNT(*)::int AS n, COALESCE(MAX(ordre), 0)::int AS dernier FROM factures_pieces WHERE facture_id = $1', [f.id])).rows[0];
       if (etat.n + deposes.length > P.PIECES_MAX) throw new Refus(409, 'TROP_DE_PIECES', `Cette facture a déjà ${etat.n} pièce(s) : ${P.PIECES_MAX} au plus.`);
       await P.inserer(db, { factureId: f.id, clientId, deposes, ordreDepart: etat.dernier + 1, auteurId: req.user.id });
       await P.journaliser(db, { clientId, factureId: f.id, action: 'piece_jointe', auteurId: req.user.id, details: { pieces: deposes.map(P.resumePiece) } });

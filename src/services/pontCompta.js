@@ -195,7 +195,7 @@ const dateDe = async (db, d, dateFacture) => {
   const p = (await db.query('SELECT etat FROM compta.periodes WHERE exercice_id = $1 AND $2::date BETWEEN debut AND fin', [ex.id, dateFacture])).rows[0];
   if (!p || p.etat === 'ouverte') return { date: dateFacture, dateReelle: null };
   const suivante = (await db.query(SQL_PERIODE_OUVERTE_APRES, [d.id, dateFacture, ex.id])).rows[0];
-  if (!suivante) throw refus(409, 'PAS_DE_PERIODE_OUVERTE', `La période de la facture (${E.fmtDate(dateFacture)}) est close et aucune période ouverte ne la suit : demandez à votre comptable d'en rouvrir une.`);
+  if (!suivante) throw refus(409, 'PAS_DE_PERIODE_OUVERTE', `La période de la facture (${E.fmtDate(dateFacture)}) est close et aucune période ouverte ne la suit dans son exercice (du ${E.fmtDate(ex.debut)} au ${E.fmtDate(ex.fin)}) : demandez à votre comptable d'en rouvrir une.`);
   return { date: suivante.debut, dateReelle: dateFacture };
 };
 
@@ -210,14 +210,16 @@ const identifiantMF = (brut) => {
 // Le fournisseur, tiers du dossier : déjà relié (actif de préférence), sinon un tiers actif de même matricule fiscal —
 // relié alors s'il ne l'était à aucun fournisseur (à la place d'un tiers relié mais désactivé), employé tel quel s'il
 // l'est à un autre (fournisseur en double dans LabFlow) —, sinon créé (code du modèle, collectif du paquet, origine
-// « labflow »). Chaque nouveau lien est au journal de la Compta. → { tiers, cree }.
+// « labflow »). Un tiers de même matricule seulement DÉSACTIVÉ : refus (jamais un second tiers du même matricule en
+// silence). Chaque nouveau lien est au journal de la Compta. → { tiers, cree }.
 const tiersDe = async (db, d, f, auteurId, espaceId) => {
   const SQL = 'SELECT id, code, nom, actif, compte_id, fournisseur_id, matricule_fiscal FROM compta.tiers WHERE dossier_id = $1 AND type = \'fournisseur\'';
   let t = (await db.query(`${SQL} AND fournisseur_id = $2 ORDER BY actif DESC, id LIMIT 1`, [d.id, f.fournisseur_id])).rows[0];
   const mf = f.fournisseur_mf ? identifiantMF(f.fournisseur_mf) : null;
   if ((!t || !t.actif) && mf) {
-    const memes = (await db.query(`${SQL} AND actif AND matricule_fiscal IS NOT NULL ORDER BY (fournisseur_id IS NULL) DESC, id`, [d.id])).rows;
-    const actif = memes.find((x) => identifiantMF(x.matricule_fiscal) === mf);
+    const memes = (await db.query(`${SQL} AND matricule_fiscal IS NOT NULL ORDER BY actif DESC, (fournisseur_id IS NULL) DESC, id`, [d.id])).rows
+      .filter((x) => identifiantMF(x.matricule_fiscal) === mf);
+    const actif = memes.find((x) => x.actif);
     if (actif && actif.fournisseur_id == null) {
       if (t) await db.query('UPDATE compta.tiers SET fournisseur_id = NULL WHERE id = $1', [t.id]);
       await db.query('UPDATE compta.tiers SET fournisseur_id = $2 WHERE id = $1', [actif.id, f.fournisseur_id]);
@@ -229,6 +231,8 @@ const tiersDe = async (db, d, f, auteurId, espaceId) => {
       t = { ...actif, fournisseur_id: f.fournisseur_id };
     } else if (actif) {
       t = actif;
+    } else if (!t && memes.length) {
+      t = memes[0];
     }
   }
   if (t) {
@@ -398,6 +402,7 @@ const envoyerFacture = async ({ clientId, factureId, auteurId }) => {
       // lignes, même fonction) ; pour une facture saisie, ses montants recalculés depuis ses lignes (règle F1), répartis.
       let metier;
       let tvaParTaux;
+      let recalcul = null;
       if (f.validee_le) {
         metier = await lignesValidees(db, f);
         const V = require('./facturesValidees');
@@ -407,8 +412,12 @@ const envoyerFacture = async ({ clientId, factureId, auteurId }) => {
         );
         tvaParTaux = new Map(calcul.parTaux.map((x) => [cleTaux(x.taux), enMillimes(x.montant)]));
       } else {
+        // Recalculée d'abord (règle F1) : un écart avec les montants enregistrés (ancienne saisie ligne par ligne) est
+        // noté au journal de la facture avec l'envoi.
+        const ttcAvant = f.montant_ttc;
         await F.recalculerFacture(db, f.id);
         f = (await db.query(SQL_F, [factureId, clientId])).rows[0];
+        if (enMillimes(ttcAvant) !== enMillimes(f.montant_ttc)) recalcul = { avant: ttcAvant, apres: f.montant_ttc };
         ({ lignes: metier, tvaParTaux } = await lignesSaisies(db, f));
       }
       if (!metier.length) throw refus(409, 'FACTURE_VIDE', 'Cette facture n\'a aucune ligne : rien à envoyer en comptabilité.');
@@ -449,7 +458,7 @@ const envoyerFacture = async ({ clientId, factureId, auteurId }) => {
       await journaliser(db, mod.espaceId, auteurId, 'ecriture_creee', { dossier: d.id, ecriture: ecritureId, numeroProvisoire: E.numeroProvisoire(n), origine: 'labflow', facture: f.id, ...E.resumeEcriture(ecr, journal, lignes, cartes) });
       await P.journaliser(db, {
         clientId, factureId: f.id, action: 'envoi_compta', auteurId,
-        details: { ecriture: ecritureId, numeroProvisoire: E.numeroProvisoire(n), date, ...(dateReelle ? { dateReelle } : {}), total: E.texteMillimes(total), tiers: tiers.code },
+        details: { ecriture: ecritureId, numeroProvisoire: E.numeroProvisoire(n), date, ...(dateReelle ? { dateReelle } : {}), total: E.texteMillimes(total), tiers: tiers.code, ...(recalcul ? { recalcul } : {}) },
       });
       return { compta: { ecritureId, etat: 'brouillard', numero: null, numeroProvisoire: E.numeroProvisoire(n), date, dateReelle, total: E.texteMillimes(total) }, deja: false };
     });
@@ -480,9 +489,9 @@ const envoyerSiDemande = async ({ demande, clientId, factureId, auteurId, voc })
 /**
  * Suppression d'une facture validée (question 18), dans la transaction `db` de l'appelant (sous `verrouillerFactures`) :
  * son écriture en brouillard part avec (journal de la Compta, contenu compris) ; une écriture VALIDÉE refuse la
- * suppression (la pièce d'une écriture validée reste). Comptabilité inactive ou en lecture seule, dossier archivé : la
- * Compta ne change pas, l'écriture y reste (détachée de la facture). Verrous dans l'ordre de la Compta : la comptabilité,
- * le dossier, l'écriture. → { supprimee: id } | { laissee: id } | null (aucune écriture).
+ * suppression (la pièce d'une écriture validée reste). Comptabilité inactive, suspendue ou en lecture seule, dossier
+ * archivé : la Compta ne s'écrit pas, et l'écriture ne doit pas y rester sans sa facture — la suppression est refusée.
+ * Verrous dans l'ordre de la Compta : la comptabilité, le dossier, l'écriture. → { supprimee: id } | null (aucune écriture).
  */
 const retirerAvecFacture = async (db, { factureId, auteurId }) => {
   const lien = (await db.query(
@@ -496,8 +505,12 @@ const retirerAvecFacture = async (db, { factureId, auteurId }) => {
   if (e.etat === 'validee') {
     throw refus(409, 'ECRITURE_VALIDEE', `Cette facture est en comptabilité et son écriture ${e.numero} est validée : la facture ne se supprime plus dans LabFlow. Si elle est erronée, votre comptable contre-passe l'écriture dans LabFlow Compta, et [[le:stock]] se corrige par [[un:inventaire]].`);
   }
-  const figee = espace.etat !== 'actif' || d.etat === 'archive' || Boolean(erreurEcriture(await modeTitulaire(db, espace.id)));
-  if (figee) return { laissee: e.id };
+  if (d.etat === 'archive') {
+    throw refus(409, 'COMPTA_FIGEE', 'Cette facture est en comptabilité et le dossier « Mon entreprise » est archivé : elle ne se supprime pas tant qu\'il n\'est pas désarchivé dans LabFlow Compta (son écriture en brouillard part avec elle).');
+  }
+  if (espace.etat !== 'actif' || erreurEcriture(await modeTitulaire(db, espace.id))) {
+    throw refus(409, 'COMPTA_FIGEE', 'Cette facture est en comptabilité, et la comptabilité est inactive, suspendue ou en lecture seule : elle ne se supprime pas tant que son écriture en brouillard ne peut pas partir avec elle.');
+  }
   const contenu = E.resumeEnBase(e, (await E.lignesDe(db, [e.id])).get(e.id));
   await db.query('DELETE FROM compta.ecritures WHERE id = $1', [e.id]);
   await journaliser(db, espace.id, auteurId, 'ecriture_supprimee', {
