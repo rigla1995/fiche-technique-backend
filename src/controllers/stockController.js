@@ -9,6 +9,7 @@ const { withTransaction } = require('../utils/db');
 const { computeStockBulk } = require('../services/stockService');
 const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte } = require('../services/facturesAppro');
 const { refusValidee } = require('../services/facturesValidees');
+const { refusEnCompta } = require('../services/pontCompta');
 const stockage = require('../services/stockageFichiers');
 const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
@@ -570,7 +571,8 @@ const getHistoriqueAppro = async (req, res) => {
                 sed.taux_tva, sed.prix_unitaire_tva,
                 i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
-                (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) as facture_validee
+                (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) as facture_validee,
+                EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = sed.facture_id) as facture_en_compta
          FROM stock_entreprise_daily sed
          JOIN articles i ON i.id = sed.ingredient_id
          JOIN unites u ON i.unite_id = u.id
@@ -650,7 +652,8 @@ const updateHistoriqueEntry = async (req, res) => {
       // Verify ownership
       const check = await pool.query(
         `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite as old_quantite, sed.type_appro, sed.date_appro, sed.created_by, sed.transfert_id, sed.facture_id,
-                (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) AS facture_validee
+                (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) AS facture_validee,
+                EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = sed.facture_id) AS facture_en_compta
          FROM stock_entreprise_daily sed
          JOIN activites a ON a.id = sed.activite_id
          JOIN profil_entreprise pe ON pe.id = a.entreprise_id
@@ -663,6 +666,8 @@ const updateHistoriqueEntry = async (req, res) => {
         return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
       // Étape F3 : une ligne d'une facture validée ne se modifie plus (la facture se supprime en entier).
       if (entry.facture_validee) return res.status(409).json(refusValidee);
+      // Étape F4 : une ligne d'une facture envoyée en comptabilité ne se modifie plus (son écriture la porte).
+      if (entry.facture_en_compta) return res.status(409).json(refusEnCompta);
       if (!(await fournisseurDuCompte(pool, req.user.gerant_parent_id || req.user.id, fournisseurId))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
       // Lot 1b §2.4 : une ligne générée par un transfert ne se modifie que via le transfert
       // (fin de l'ajustement heuristique du miroir labo).
@@ -717,7 +722,8 @@ const deleteHistoriqueEntry = async (req, res) => {
     if (isEntreprise === 'true') {
       const check = await pool.query(
         `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite, sed.type_appro, sed.date_appro, sed.created_by, sed.transfert_id, sed.facture_id,
-                (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) AS facture_validee
+                (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) AS facture_validee,
+                EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = sed.facture_id) AS facture_en_compta
          FROM stock_entreprise_daily sed
          JOIN activites a ON a.id = sed.activite_id
          JOIN profil_entreprise pe ON pe.id = a.entreprise_id
@@ -734,6 +740,7 @@ const deleteHistoriqueEntry = async (req, res) => {
         return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
       // Étape F3 : une facture validée se supprime en entier, jamais une ligne seule (question 14 du client).
       if (check.rows[0].facture_validee) return res.status(409).json(refusValidee);
+      if (check.rows[0].facture_en_compta) return res.status(409).json(refusEnCompta);
       const entry = check.rows[0];
       // Étape F1 (factures fournisseur) : la dernière ligne d'une facture qui a une pièce jointe emporte la facture et sa
       // pièce — à confirmer (?confirmerFacture=1) ; sinon la facture est recalculée, ou supprimée si elle est vide.
@@ -818,6 +825,8 @@ function mapHistoriqueEntry(r) {
     prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
     // Étape F3 : ligne d'une facture validée — ni modifiable ni supprimable seule (cadenas dans l'historique).
     factureValidee: r.facture_validee === true,
+    // Étape F4 : ligne d'une facture envoyée en comptabilité — verrouillée tant que son écriture existe.
+    factureEnCompta: r.facture_en_compta === true,
   };
 }
 
@@ -1044,7 +1053,7 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
       await verrouillerFactures(client, req.user.gerant_parent_id || req.user.id);
       const validees = await client.query(
         `SELECT 1 FROM stock_entreprise_daily s JOIN factures fv ON fv.id = s.facture_id
-         WHERE s.activite_id = $1 AND s.ingredient_id = $2 AND fv.validee_le IS NOT NULL LIMIT 1`,
+         WHERE s.activite_id = $1 AND s.ingredient_id = $2 AND (fv.validee_le IS NOT NULL OR EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = fv.id)) LIMIT 1`,
         [activiteId, ingredientId]
       );
       if (validees.rows.length) return true;
@@ -1053,7 +1062,7 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
       return false;
     });
     if (refus) {
-      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Cet historique contient des lignes de factures validées : supprimez d\'abord ces factures (page Factures).' });
+      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Cet historique contient des lignes de factures validées ou envoyées en comptabilité : supprimez d\'abord ces factures (page Factures) ou leur écriture en brouillard (LabFlow Compta).' });
     }
     res.json({ success: true });
   } catch (err) {

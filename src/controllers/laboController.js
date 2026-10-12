@@ -12,6 +12,7 @@ const unitesOp = require('../services/unitesOperationnellesService');
 const transfertService = require('../services/transfertService');
 const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte, idValide } = require('../services/facturesAppro');
 const { refusValidee } = require('../services/facturesValidees');
+const { refusEnCompta } = require('../services/pontCompta');
 const stockage = require('../services/stockageFichiers');
 const { TransfertError } = transfertService;
 const { checkQuota } = require('../services/quotaService');
@@ -1439,7 +1440,8 @@ const getLaboHistorique = async (req, res) => {
              f.nom as fournisseur_nom, f.id as fournisseur_id,
              NULL::int as activite_id, NULL::text as activite_nom,
              NULL::text as sens, NULL::text as contrepartie_nom, NULL::text as dest_type, NULL::int as labo_dest_id,
-             (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sld.facture_id) as facture_validee
+             (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sld.facture_id) as facture_validee,
+             EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = sld.facture_id) as facture_en_compta
       FROM stock_labo_daily sld
       JOIN articles i ON i.id = sld.ingredient_id
       JOIN unites u ON u.id = i.unite_id
@@ -1458,7 +1460,7 @@ const getLaboHistorique = async (req, res) => {
              f.nom as fournisseur_nom, f.id as fournisseur_id,
              NULL::int as activite_id, NULL::text as activite_nom,
              'entree'::text as sens, COALESCE(lsrc.nom, fl.nom) as contrepartie_nom, NULL::text as dest_type, NULL::int as labo_dest_id,
-             false as facture_validee
+             false as facture_validee, false as facture_en_compta
       FROM stock_labo_daily sld
       JOIN articles i ON i.id = sld.ingredient_id
       JOIN unites u ON u.id = i.unite_id
@@ -1479,7 +1481,7 @@ const getLaboHistorique = async (req, res) => {
              lt.activite_id, a.nom as activite_nom,
              'sortie'::text as sens, COALESCE(a.nom, ld.nom) as contrepartie_nom,
              CASE WHEN lt.labo_dest_id IS NOT NULL THEN 'labo' ELSE 'activite' END as dest_type, lt.labo_dest_id,
-             false as facture_validee
+             false as facture_validee, false as facture_en_compta
       FROM labo_transfers lt
       JOIN articles i ON i.id = lt.ingredient_id
       JOIN unites u ON u.id = i.unite_id
@@ -1501,7 +1503,7 @@ const getLaboHistorique = async (req, res) => {
              COALESCE(ach.nom, ca.acheteur_nom) as fournisseur_nom, NULL::int as fournisseur_id,
              NULL::int as activite_id, NULL::text as activite_nom,
              NULL::text as sens, NULL::text as contrepartie_nom, NULL::text as dest_type, NULL::int as labo_dest_id,
-             false as facture_validee
+             false as facture_validee, false as facture_en_compta
       FROM commande_acheteur_lignes cal
       JOIN commandes_acheteur ca ON ca.id = cal.commande_id
       LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
@@ -1555,6 +1557,8 @@ const getLaboHistorique = async (req, res) => {
       createdByNom: r.created_by_nom ?? null,
       // Étape F3 : ligne d'une facture validée — ni modifiable ni supprimable seule (cadenas dans l'historique).
       factureValidee: r.facture_validee === true,
+      // Étape F4 : ligne d'une facture envoyée en comptabilité — verrouillée tant que son écriture existe.
+      factureEnCompta: r.facture_en_compta === true,
     }));
 
     // Fabrications de produits transformés (table séparée stock_labo_pt_daily) — incluses
@@ -1630,7 +1634,8 @@ const updateLaboHistoriqueEntry = async (req, res) => {
     if (!(await fournisseurDuCompte(pool, req.user.gerant_parent_id || req.user.id, fournisseurId))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
     const check = await pool.query(
       `SELECT id, created_by, type_appro, transfert_id, facture_id,
-              (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = stock_labo_daily.facture_id) AS facture_validee
+              (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = stock_labo_daily.facture_id) AS facture_validee,
+              EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = stock_labo_daily.facture_id) AS facture_en_compta
        FROM stock_labo_daily WHERE id = $1 AND labo_id = $2`,
       [entryId, laboId]
     );
@@ -1639,6 +1644,7 @@ const updateLaboHistoriqueEntry = async (req, res) => {
       return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
     // Étape F3 : une ligne d'une facture validée ne se modifie plus (la facture se supprime en entier).
     if (check.rows[0].facture_validee) return res.status(409).json(refusValidee);
+    if (check.rows[0].facture_en_compta) return res.status(409).json(refusEnCompta);
     // Lot 1b §2.4 : une ligne générée par un transfert (entrée 'transfert' ou miroir lié) ne se
     // modifie que via le transfert lui-même.
     if (check.rows[0].type_appro === 'transfert' || check.rows[0].transfert_id != null)
@@ -1686,7 +1692,8 @@ const deleteLaboHistoriqueEntry = async (req, res) => {
 
     const checkDel = await pool.query(
       `SELECT created_by, type_appro, transfert_id, facture_id,
-              (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = stock_labo_daily.facture_id) AS facture_validee
+              (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = stock_labo_daily.facture_id) AS facture_validee,
+              EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = stock_labo_daily.facture_id) AS facture_en_compta
        FROM stock_labo_daily WHERE id = $1 AND labo_id = $2`,
       [entryId, laboId]
     );
@@ -1695,6 +1702,7 @@ const deleteLaboHistoriqueEntry = async (req, res) => {
       return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
     // Étape F3 : une facture validée se supprime en entier, jamais une ligne seule (question 14 du client).
     if (checkDel.rows[0].facture_validee) return res.status(409).json(refusValidee);
+    if (checkDel.rows[0].facture_en_compta) return res.status(409).json(refusEnCompta);
     if (checkDel.rows[0].type_appro === 'transfert' || checkDel.rows[0].transfert_id != null)
       return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez [[le:transfert]]' });
     // Étape F1 (factures fournisseur) : la dernière ligne d'une facture qui a une pièce jointe emporte la facture et sa
@@ -2235,9 +2243,9 @@ const deleteLabo = async (req, res) => {
       return res.status(409).json({ code: 'ARTICLES_AFFECTES', message: "Suppression impossible : [[un:article:pl]] sont [[acc:article:affecté:affectée:pl]] à [[ce:labo]]." });
     }
     // Étape F3 (factures fournisseur) : les lignes de stock d'une facture validée partiraient en cascade.
-    const validees = await pool.query('SELECT 1 FROM factures WHERE labo_id = $1 AND validee_le IS NOT NULL LIMIT 1', [laboId]);
+    const validees = await pool.query(`SELECT 1 FROM factures f WHERE f.labo_id = $1 AND (f.validee_le IS NOT NULL OR EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = f.id)) LIMIT 1`, [laboId]);
     if (validees.rows.length) {
-      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Suppression impossible : des factures validées sont rattachées à [[ce:labo]]. Supprimez-les d\'abord (page Factures).' });
+      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Suppression impossible : des factures validées ou envoyées en comptabilité sont rattachées à [[ce:labo]]. Supprimez-les d\'abord (page Factures).' });
     }
 
     // Unassign labo from activities

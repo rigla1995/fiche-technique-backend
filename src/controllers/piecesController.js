@@ -13,6 +13,7 @@ const { withTransaction } = require('../utils/db');
 const stockage = require('../services/stockageFichiers');
 const P = require('../services/piecesFacture');
 const F = require('../services/facturesAppro');
+const Pont = require('../services/pontCompta');
 
 
 class Refus extends Error {
@@ -39,6 +40,7 @@ const factureAccessible = async (req, db, { ecriture = false, verrou = false } =
   return f;
 };
 
+const MESSAGE_PIECE_EN_COMPTA = 'Cette facture est en comptabilité : sa pièce ne se change plus. Pour la changer, supprimez d\'abord son écriture en brouillard dans LabFlow Compta (ou demandez-le à votre comptable).';
 const SQL_PIECES = `SELECT p.id, p.ordre, p.cle, p.type_mime, p.taille, p.nom_origine, p.apercu_cle, p.depose_le, u.nom AS depose_par_nom
                     FROM factures_pieces p LEFT JOIN utilisateurs u ON u.id = p.depose_par
                     WHERE p.facture_id = $1 ORDER BY p.ordre`;
@@ -52,12 +54,36 @@ const piecesDe = async (db, factureId) => (await db.query(SQL_PIECES, [factureId
 const lister = async (req, res) => {
   try {
     const f = await factureAccessible(req, pool);
-    // Étape F3 : la pièce d'une facture validée ne se change plus (`validee` : la fenêtre le dit).
+    // Étape F3 : la pièce d'une facture validée ne se change plus (`validee` : la fenêtre le dit). Étape F4 : ni celle
+    // d'une facture en comptabilité (`compta` : l'état de son écriture) ; on peut encore en joindre une autre.
+    const compta = (await Pont.etatsCompta(pool, [f.id])).get(f.id) || null;
     res.json({
       factureId: f.id, modifiable: f.type_source === 'manuel' && !f.validee_le && F.gerantAgitSur(req, f),
-      validee: Boolean(f.validee_le), pieces: await piecesDe(pool, f.id),
+      validee: Boolean(f.validee_le), compta, pieces: await piecesDe(pool, f.id),
     });
   } catch (err) { repondreErreur(res, err, 'liste'); }
+};
+
+/** Envoie le fichier de la pièce `p` (ou sa copie JPEG avec ?apercu=1) : type fixé par le serveur, `nosniff`, jamais
+ * en cache. Lève Refus. Réemployé par la Compta (étape F4 : la pièce d'une écriture venue de LabFlow). */
+const servirPiece = async (req, res, p) => {
+  const apercu = req.query.apercu === '1' && p.apercu_cle;
+  if (!stockage.disponible()) throw new Refus(503, 'STOCKAGE_ABSENT', 'Le stockage des factures n\'est pas configuré.');
+  let octets;
+  try { octets = await stockage.lire(apercu ? p.apercu_cle : p.cle); } catch (e) {
+    console.error('[pieces] lecture :', e.message);
+    throw new Refus(503, 'STOCKAGE_INDISPONIBLE', 'Le stockage des factures ne répond pas : réessayez dans un instant.');
+  }
+  if (!octets) throw new Refus(404, 'FICHIER_ABSENT', 'Le fichier de cette pièce est introuvable dans le stockage.');
+  const type = apercu ? 'image/jpeg' : p.type_mime;
+  const nom = apercu ? p.nom_origine.replace(/\.[^.]*$/, '') + '.jpg' : p.nom_origine;
+  const ascii = nom.normalize('NFD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '') || 'facture';
+  res.setHeader('Content-Type', type);
+  res.setHeader('Content-Length', String(octets.length));
+  res.setHeader('Content-Disposition', `${req.query.telecharger === '1' ? 'attachment' : 'inline'}; filename="${ascii}"; filename*=UTF-8''${encode5987(nom)}`);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.end(octets);
 };
 
 const fichier = async (req, res) => {
@@ -66,26 +92,15 @@ const fichier = async (req, res) => {
     const r = await pool.query('SELECT cle, type_mime, nom_origine, apercu_cle FROM factures_pieces WHERE id = $1 AND facture_id = $2', [pieceId(req), f.id]);
     const p = r.rows[0];
     if (!p) throw new Refus(404, 'PIECE_INTROUVABLE', 'Pièce introuvable');
-    const apercu = req.query.apercu === '1' && p.apercu_cle;
-    if (!stockage.disponible()) throw new Refus(503, 'STOCKAGE_ABSENT', 'Le stockage des factures n\'est pas configuré.');
-    let octets;
-    try { octets = await stockage.lire(apercu ? p.apercu_cle : p.cle); } catch (e) {
-      console.error('[pieces] lecture :', e.message);
-      throw new Refus(503, 'STOCKAGE_INDISPONIBLE', 'Le stockage des factures ne répond pas : réessayez dans un instant.');
-    }
-    if (!octets) throw new Refus(404, 'FICHIER_ABSENT', 'Le fichier de cette pièce est introuvable dans le stockage.');
-    const type = apercu ? 'image/jpeg' : p.type_mime;
-    const nom = apercu ? p.nom_origine.replace(/\.[^.]*$/, '') + '.jpg' : p.nom_origine;
-    const ascii = nom.normalize('NFD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '') || 'facture';
-    res.setHeader('Content-Type', type);
-    res.setHeader('Content-Length', String(octets.length));
-    res.setHeader('Content-Disposition', `${req.query.telecharger === '1' ? 'attachment' : 'inline'}; filename="${ascii}"; filename*=UTF-8''${encode5987(nom)}`);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'private, no-store');
-    res.end(octets);
+    await servirPiece(req, res, p);
   } catch (err) { repondreErreur(res, err, 'fichier'); }
 };
 
+/** « Envoyer à la comptabilité » demandé avec le dépôt (étape F4). */
+const lireEnvoyerCompta = (brut) => {
+  if (brut == null || brut === '') return false;
+  try { return JSON.parse(brut)?.envoyerCompta === true; } catch (_) { return false; }
+};
 const lireApercuDe = (brut) => {
   if (brut == null || brut === '') return [];
   try { const d = JSON.parse(brut); return Array.isArray(d?.apercuDe) ? d.apercuDe : []; } catch (_) {
@@ -114,7 +129,9 @@ const joindre = async (req, res) => {
       return piecesDe(db, f.id);
     });
     deposes = [];
-    res.status(201).json({ factureId: f0.id, pieces });
+    // Étape F4 : l'envoi demandé, dans sa propre transaction (la pièce est jointe quoi qu'il arrive).
+    const envoi = await Pont.envoyerSiDemande({ demande: lireEnvoyerCompta(req.body?.donnees), clientId, factureId: f0.id, auteurId: req.user.id, voc: req.voc });
+    res.status(201).json({ factureId: f0.id, pieces, ...envoi });
   } catch (err) {
     if (deposes.length) await P.effacerDeposes(deposes, 'pièce non enregistrée');
     repondreErreur(res, err, 'joindre');
@@ -133,6 +150,7 @@ const remplacer = async (req, res) => {
     const { pieces, anciens } = await withTransaction(async (db) => {
       await F.verrouillerFactures(db, clientId);
       const f = await factureAccessible(req, db, { ecriture: true, verrou: true });
+      if (await Pont.enCompta(db, f.id)) throw refus(409, 'FACTURE_EN_COMPTA', MESSAGE_PIECE_EN_COMPTA);
       const avant = (await db.query('SELECT id, cle, apercu_cle, nom_origine, type_mime, taille, empreinte FROM factures_pieces WHERE id = $1 AND facture_id = $2 FOR UPDATE', [pieceId(req), f.id])).rows[0];
       if (!avant) throw new Refus(404, 'PIECE_INTROUVABLE', 'Pièce introuvable');
       const d = deposes[0];
@@ -160,6 +178,7 @@ const supprimer = async (req, res) => {
     const { pieces, retiree } = await withTransaction(async (db) => {
       await F.verrouillerFactures(db, clientId);
       const f = await factureAccessible(req, db, { ecriture: true, verrou: true });
+      if (await Pont.enCompta(db, f.id)) throw refus(409, 'FACTURE_EN_COMPTA', MESSAGE_PIECE_EN_COMPTA);
       const p = (await db.query('DELETE FROM factures_pieces WHERE id = $1 AND facture_id = $2 RETURNING id, ordre, cle, apercu_cle, nom_origine, type_mime, taille, empreinte', [pieceId(req), f.id])).rows[0];
       if (!p) throw new Refus(404, 'PIECE_INTROUVABLE', 'Pièce introuvable');
       await db.query('UPDATE factures_pieces SET ordre = ordre - 1 WHERE facture_id = $1 AND ordre > $2', [f.id, p.ordre]);
@@ -182,4 +201,4 @@ const controleAvantEnvoi = async (req, res, next) => {
   } catch (err) { repondreErreur(res, err, 'contrôle avant envoi'); }
 };
 
-module.exports = { lister, fichier, joindre, remplacer, supprimer, controleAvantEnvoi };
+module.exports = { lister, fichier, joindre, remplacer, supprimer, controleAvantEnvoi, servirPiece };

@@ -21,6 +21,7 @@ const { withTransaction } = require('../utils/db');
 const stockage = require('../services/stockageFichiers');
 const P = require('../services/piecesFacture');
 const F = require('../services/facturesAppro');
+const Pont = require('../services/pontCompta');
 
 const LIGNES_MAX = 300;
 const VALEUR_MAX = 9999999.999; // DECIMAL(10,3) : quantité, PU HT et PU TTC d'une ligne
@@ -134,7 +135,8 @@ const lireDonnees = (brut) => {
   if (lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire * (1 + l.tva / 100), 0) > FACTURE_MAX) {
     throw refus(400, 'MONTANT_TROP_GRAND', 'Montant de la facture trop grand.');
   }
-  return { ...v, lignes };
+  // Étape F4 : « Envoyer à la comptabilité » (cochée quand une pièce est jointe et que le module Compta est actif).
+  return { ...v, lignes, envoyerCompta: d.envoyerCompta === true };
 };
 
 /** Contrôle que la cible, les articles et le fournisseur sont ceux du compte (et du gérant). Lève Refus. */
@@ -265,6 +267,10 @@ const creer = async (req, res) => {
       );
       let factureId;
       const ajoutee = existe.rows.length > 0;
+      // Étape F4 : une facture déjà en comptabilité ne reçoit plus de lignes (son écriture ne les aurait pas).
+      if (ajoutee && await Pont.enCompta(db, existe.rows[0].id)) {
+        throw refus(409, 'FACTURE_EN_COMPTA', `La facture n° ${F.sansBalise(v.ref)} du ${jour(v.dateAppro)} est déjà en comptabilité : ses lignes ne changent plus. Saisissez ces lignes sous un autre n°, ou supprimez d'abord son écriture en brouillard dans LabFlow Compta.`);
+      }
       if (ajoutee) {
         factureId = existe.rows[0].id;
         // Le timbre ne s'enlève jamais d'une facture qui l'a. Son montant n'est posé que s'il manquait, ou s'il vient de la
@@ -312,7 +318,9 @@ const creer = async (req, res) => {
       return { factureId, ajoutee, nbLignes, nbPieces };
     });
     deposes = [];
-    return res.status(201).json(resultat);
+    // Étape F4 : l'envoi demandé, dans sa propre transaction (une facture sans pièce ne part pas : question 19).
+    const envoi = await Pont.envoyerSiDemande({ demande: v.envoyerCompta, clientId, factureId: resultat.factureId, auteurId: req.user.id, voc: req.voc });
+    return res.status(201).json({ ...resultat, ...envoi });
   } catch (err) {
     if (deposes.length) await P.effacerDeposes(deposes, 'facture non enregistrée');
     if (err instanceof Refus) return res.status(err.status).json(err.corps);

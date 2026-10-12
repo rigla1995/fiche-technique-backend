@@ -195,7 +195,7 @@ const motifRecherche = (q) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 const SQL_ECRITURES = `
   SELECT e.id, e.exercice_id, e.periode_id, e.journal_id, j.code AS journal_code, j.libelle AS journal_libelle, j.type AS journal_type,
          e.date::text AS date, e.date_reelle::text AS date_reelle, e.numero_provisoire, e.numero, e.reference, e.libelle, e.etat,
-         e.total_debit::text AS total_debit, e.total_credit::text AS total_credit, e.origine, e.origine_id, o.numero AS origine_numero,
+         e.total_debit::text AS total_debit, e.total_credit::text AS total_credit, e.origine, e.origine_id, o.numero AS origine_numero, e.facture_id,
          e.cree_par, u.nom AS cree_par_nom, e.created_at, e.updated_at, e.valide_par, v.nom AS valide_par_nom, e.valide_le,
          (SELECT COUNT(*)::int FROM compta.lignes l WHERE l.ecriture_id = e.id) AS nb_lignes,
          cp.id AS contrepassee_par_id, cp.numero AS contrepassee_par_numero
@@ -254,6 +254,8 @@ const presenterEcriture = (e, lignes = null) => ({
   origine: e.origine,
   origineId: e.origine_id,
   origineNumero: e.origine_numero || null,
+  // F4 (factures fournisseur) : la facture LabFlow d'une écriture d'achat venue du pont (pièce consultable).
+  factureId: e.facture_id || null,
   contrepasseePar: e.contrepassee_par_id ? { id: e.contrepassee_par_id, numero: e.contrepassee_par_numero } : null,
   nbLignes: e.nb_lignes,
   creePar: e.cree_par_nom || null,

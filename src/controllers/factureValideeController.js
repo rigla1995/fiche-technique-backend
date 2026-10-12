@@ -26,6 +26,7 @@ const P = require('../services/piecesFacture');
 const F = require('../services/facturesAppro');
 const V = require('../services/facturesValidees');
 const A = require('./approFactureController');
+const Pont = require('../services/pontCompta');
 
 const { refus } = A;
 const CONVERSION_MAX = 100000;
@@ -111,7 +112,8 @@ const lireValidation = (brut) => {
         { ligne: n });
     }
   });
-  return { ...v, lignes, fodec, remiseGlobale, calcul };
+  // Étape F4 : « Envoyer à la comptabilité » (cochée dans la fenêtre si le module Compta est actif).
+  return { ...v, lignes, fodec, remiseGlobale, calcul, envoyerCompta: d.envoyerCompta === true };
 };
 
 const valider = async (req, res) => {
@@ -208,7 +210,9 @@ const valider = async (req, res) => {
       return { factureId, nbLignes: v.lignes.length, nbStock, nbPieces: deposes.length, appris, montantTTC: c.ttc };
     });
     deposes = [];
-    return res.status(201).json(resultat);
+    // Étape F4 : l'envoi demandé, dans sa propre transaction — un refus laisse la facture validée, « à envoyer ».
+    const envoi = await Pont.envoyerSiDemande({ demande: v.envoyerCompta, clientId, factureId: resultat.factureId, auteurId: req.user.id, voc: req.voc });
+    return res.status(201).json({ ...resultat, ...envoi });
   } catch (err) {
     if (deposes.length) await P.effacerDeposes(deposes, 'facture validée non enregistrée');
     if (err instanceof A.Refus) return res.status(err.status).json(err.corps);
@@ -245,6 +249,7 @@ const supprimer = async (req, res) => {
     await stockage.supprimerSansErreur(r.clesAEffacer, 'facture validée supprimée');
     return res.json({ ok: true, lignesStock: r.nbStock });
   } catch (err) {
+    if (err instanceof Pont.RefusCompta) return res.status(err.status).json({ code: err.code, message: err.message });
     console.error('[facture validée, suppression]', err);
     return res.status(500).json({ message: 'Erreur serveur' });
   }

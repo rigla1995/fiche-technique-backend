@@ -25,6 +25,7 @@ const echeancier = require('./echeancier');
 const taxesMois = require('./taxesMois');
 const certificats = require('./certificats');
 const declarations = require('./declarations');
+const comptesAchat = require('./comptesAchat');
 const { televersement } = require('./importExcel');
 
 // Émission des codes de passage : 20 par minute et par personne (au-delà, ce n'est plus une navigation).
@@ -194,6 +195,9 @@ router.get('/dossiers/:dossierId/ecritures', authenticate, ecritures.lire);
 router.post('/dossiers/:dossierId/ecritures/aide/taxe', authenticate, limiteEcritures, ecritures.aideTaxe);
 router.post('/dossiers/:dossierId/ecritures/aide/retenue', authenticate, limiteEcritures, ecritures.aideRetenue);
 router.post('/dossiers/:dossierId/ecritures', authenticate, limiteEcritures, ecritures.creer);
+// F4 (factures fournisseur) : comptes d'achat du dossier « Mon entreprise » (catégories, articles, natures hors stock).
+router.get('/dossiers/:dossierId/comptes-achat', authenticate, comptesAchat.lire);
+router.put('/dossiers/:dossierId/comptes-achat', authenticate, limitePlan, comptesAchat.regler);
 // Étape S6c : les imports Excel d'écritures (en brouillard) et d'une balance d'ouverture (une écriture d'à-nouveaux) —
 // tout ou rien, titulaire ou Complet (droit « configurer », jugé par le contrôleur) ; les modèles se lisent à tout niveau.
 // Adresses fixes déclarées avant /:ecritureId. Un import analyse un classeur de 5 Mo et écrit jusqu'à mille écritures sous
@@ -211,6 +215,9 @@ router.get('/dossiers/:dossierId/ecritures/modele-balance-ouverture', authentica
 router.post('/dossiers/:dossierId/ecritures/import', authenticate, limiteImports, televersement, importEcritures.importerEcritures);
 router.post('/dossiers/:dossierId/ecritures/import-balance-ouverture', authenticate, limiteImports, televersement, importEcritures.importerBalance);
 router.get('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, ecritures.une);
+// F4 (factures fournisseur) : la facture LabFlow d'une écriture d'achat venue du pont, sans quitter la Compta.
+router.get('/dossiers/:dossierId/ecritures/:ecritureId/pieces', authenticate, comptesAchat.pieces);
+router.get('/dossiers/:dossierId/ecritures/:ecritureId/pieces/:pieceId/fichier', authenticate, comptesAchat.fichierPiece);
 router.put('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, limiteEcritures, ecritures.modifier);
 router.delete('/dossiers/:dossierId/ecritures/:ecritureId', authenticate, limiteEcritures, ecritures.supprimer);
 
