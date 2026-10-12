@@ -49,7 +49,7 @@ const etatComptesAchat = async (db, acces, d) => {
          FROM compta.comptes_articles r JOIN compta.comptes k ON k.id = r.compte_id WHERE r.dossier_id = $1`, [d.id]
     ),
     db.query(`SELECT k.id, k.numero, k.libelle, k.nature, k.actif, ${SQL_FEUILLE('k')} AS feuille FROM compta.comptes k WHERE k.dossier_id = $1 AND k.numero = ANY($2)`, [d.id, NUMEROS_DEFAUT]),
-    // Comptes proposés : charges (classe 6) et collectifs fournisseurs (la consigne).
+    // Comptes proposés : charges (classe 6) et comptes fournisseurs (la consigne seulement, contrôlé au réglage).
     db.query(
       `SELECT k.id, k.numero, k.libelle, k.nature, k.actif, ${SQL_FEUILLE('k')} AS feuille FROM compta.comptes k
         WHERE k.dossier_id = $1 AND k.actif AND (k.numero LIKE '6%' OR k.nature = 'fournisseurs') ORDER BY k.numero`, [d.id]
@@ -72,6 +72,8 @@ const etatComptesAchat = async (db, acces, d) => {
     })),
     articles: arts.rows.map((a) => ({ id: a.id, nom: a.nom, unite: a.unite, categorieId: a.categorie_id, compte: regle('article_id', a.id) })),
     natures: NATURES.map((valeur) => ({ valeur, libelle: LIBELLES_NATURES[valeur], defaut: defaut(COMPTES_NATURES[valeur]), compte: regle('nature_hors_stock', valeur) })),
+    // Un article sans catégorie : le compte des ingrédients.
+    sansCategorie: { defaut: defaut(compteParDefaut({})) },
     comptes: comptes.rows.filter((k) => k.feuille).map(presenterCompteCourt),
   };
 };
@@ -114,19 +116,27 @@ const regler = async (req, res) => {
     const corps = req.body || {};
     const resultat = await ecritureComptesAchat(req, async (db, acces, d) => {
       const cible = await lireCible(db, d, corps);
-      const avant = (await db.query(`SELECT r.id, k.numero FROM compta.comptes_articles r JOIN compta.comptes k ON k.id = r.compte_id WHERE r.dossier_id = $1 AND r.${cible.colonne} = $2 FOR UPDATE OF r`, [d.id, cible.valeur])).rows[0];
+      const avant = (await db.query(`SELECT r.id, r.compte_id, k.numero FROM compta.comptes_articles r JOIN compta.comptes k ON k.id = r.compte_id WHERE r.dossier_id = $1 AND r.${cible.colonne} = $2 FOR UPDATE OF r`, [d.id, cible.valeur])).rows[0];
       if (corps.compteId == null || corps.compteId === '') {
-        if (avant) await db.query('DELETE FROM compta.comptes_articles WHERE id = $1', [avant.id]);
-        await journaliser(db, acces.espace_id, req.user.id, 'compte_achat_regle', { dossier: d.id, cible: cible.libelle, avant: avant?.numero || null, apres: null });
+        // Déjà au compte par défaut : rien à écrire, ni en base ni au journal.
+        if (!avant) return;
+        await db.query('DELETE FROM compta.comptes_articles WHERE id = $1', [avant.id]);
+        await journaliser(db, acces.espace_id, req.user.id, 'compte_achat_regle', { dossier: d.id, cible: cible.libelle, avant: avant.numero, apres: null });
         return;
       }
       if (!idValide(corps.compteId)) throw erreur(404, 'Compte introuvable');
       const k = (await db.query(`SELECT k.id, k.numero, k.nature, k.actif, ${SQL_FEUILLE('k')} AS feuille FROM compta.comptes k WHERE k.dossier_id = $1 AND k.id = $2`, [d.id, corps.compteId])).rows[0];
       if (!k) throw erreur(404, 'Compte introuvable');
       if (!k.actif || !k.feuille) throw erreur(409, `Le compte ${k.numero} est désactivé ou a des sous-comptes : choisissez le compte à imputer`, 'COMPTE_NON_IMPUTABLE');
-      if (k.nature === 'clients' || (k.nature === 'fournisseurs' && cible.colonne !== 'nature_hors_stock')) {
-        throw erreur(400, `Le compte ${k.numero} est un compte collectif : il ne convient qu'à la consigne`, 'COMPTE_COLLECTIF');
+      // Un achat va en charges (classe 6) ; la consigne peut aussi aller au compte du fournisseur (4096, emballages à rendre).
+      const consigne = cible.colonne === 'nature_hors_stock' && cible.valeur === 'consigne';
+      if (!k.numero.startsWith('6') && !(consigne && k.nature === 'fournisseurs')) {
+        throw erreur(400, consigne
+          ? `Le compte ${k.numero} ne convient pas à la consigne : choisissez un compte de charges (classe 6) ou un compte fournisseurs (4096)`
+          : `Le compte ${k.numero} ne convient pas à un achat : choisissez un compte de charges (classe 6)`, 'COMPTE_INADAPTE');
       }
+      // Même compte qu'avant : rien à écrire, ni en base ni au journal.
+      if (avant && avant.compte_id === k.id) return;
       if (avant) await db.query('UPDATE compta.comptes_articles SET compte_id = $2, modifie_par = $3, updated_at = NOW() WHERE id = $1', [avant.id, k.id, req.user.id]);
       else await db.query(`INSERT INTO compta.comptes_articles (dossier_id, ${cible.colonne}, compte_id, modifie_par) VALUES ($1, $2, $3, $4)`, [d.id, cible.valeur, k.id, req.user.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'compte_achat_regle', { dossier: d.id, cible: cible.libelle, avant: avant?.numero || null, apres: k.numero });

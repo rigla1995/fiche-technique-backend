@@ -31,12 +31,12 @@ Gérer la facture [[du:fournisseur]] :
 Envoyer une facture en comptabilité (module LabFlow Compta) :
 
 1. Cliquez sur **📒 Envoyer à la comptabilité** sur sa carte (facture validée, ou saisie à la main avec sa pièce jointe : sans pièce, joignez-la d'abord).
-2. LabFlow prépare l'écriture et affiche son numéro provisoire. Un refus dit pourquoi (exercice à ouvrir, compte ou code de TVA à régler par votre comptable…) : la facture reste à envoyer, vous réessayez plus tard.
+2. LabFlow prépare l'écriture et affiche son numéro provisoire. Un refus dit pourquoi (date hors de l'exercice ouvert de la comptabilité, compte ou code de TVA à régler par votre comptable…) : la facture reste à envoyer, vous réessayez plus tard.
 
 Supprimer une facture validée :
 
 1. Dépliez la carte **🔒 Validée**, puis **🗑️ Supprimer la facture**.
-2. Après confirmation, toute la facture part, définitivement : ses lignes, ce qu'elle a fait entrer en [[nom:stock]] et sa pièce jointe. Ce que LabFlow a appris de ses lignes est gardé ; vous pouvez la déposer de nouveau. Si elle est en comptabilité, son écriture en brouillard part avec elle ; une écriture déjà **validée** par votre comptable empêche la suppression (demandez-lui de la contre-passer).
+2. Après confirmation, toute la facture part, définitivement : ses lignes, ce qu'elle a fait entrer en [[nom:stock]] et sa pièce jointe. Ce que LabFlow a appris de ses lignes est gardé ; vous pouvez la déposer de nouveau. Si elle est en comptabilité, son écriture en brouillard part avec elle ; une écriture déjà **validée** par votre comptable empêche la suppression : si la facture est erronée, votre comptable contre-passe l'écriture dans LabFlow Compta, et [[le:stock]] se corrige par [[un:inventaire]].
 
 ### Points d'attention
 

@@ -10,7 +10,7 @@ const { withTransaction } = require('../utils/db');
 const { computeStockBulk, computeStock } = require('../services/stockService');
 const unitesOp = require('../services/unitesOperationnellesService');
 const transfertService = require('../services/transfertService');
-const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte, idValide } = require('../services/facturesAppro');
+const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte, idValide, FactureEnCompta } = require('../services/facturesAppro');
 const { refusValidee } = require('../services/facturesValidees');
 const { refusEnCompta } = require('../services/pontCompta');
 const stockage = require('../services/stockageFichiers');
@@ -1678,6 +1678,8 @@ const updateLaboHistoriqueEntry = async (req, res) => {
     });
   } catch (err) {
     if (replyTransfertError(res, err)) return;
+    // Étape F4 : la facture est partie en comptabilité pendant la modification (garde de recalculerFacture).
+    if (err instanceof FactureEnCompta) return res.status(err.status).json(err.corps);
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -1728,6 +1730,7 @@ const deleteLaboHistoriqueEntry = async (req, res) => {
     res.json({ ok: true, factureSupprimee: retrait.supprimee });
   } catch (err) {
     if (replyTransfertError(res, err)) return;
+    if (err instanceof FactureEnCompta) return res.status(err.status).json(err.corps);
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }

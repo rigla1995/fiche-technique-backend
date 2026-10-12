@@ -551,7 +551,7 @@
     "historique": "2e8daefe6acfe0bd2f6be9adca69d524",
     "stock-labo": "037f2e5f2a9a86fb679ced70e6ae246b",
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
-    "factures": "71f7f5de227e3e284e6b013e828c7132",
+    "factures": "81dd6977c2fce5c90e6ccac0a41d2d97",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
     "configuration-vente": "0e256a7dee889382aa0feb0feae852fb",
     "charges": "9efe5d7fee8199ccb045647654027267",
@@ -604,7 +604,7 @@
     "historique": "2e8daefe6acfe0bd2f6be9adca69d524",
     "stock-labo": "037f2e5f2a9a86fb679ced70e6ae246b",
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
-    "factures": "71f7f5de227e3e284e6b013e828c7132",
+    "factures": "81dd6977c2fce5c90e6ccac0a41d2d97",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
     "configuration-vente": "0e256a7dee889382aa0feb0feae852fb",
     "saisie-ventes": "9aa32d0386ab4e3be90d2c4b9ee7ca22",
@@ -652,7 +652,7 @@
     "pertes": "ef219d1137869b414404ce589c8f5bca",
     "historique": "2e8daefe6acfe0bd2f6be9adca69d524",
     "stock-labo": "037f2e5f2a9a86fb679ced70e6ae246b",
-    "factures": "71f7f5de227e3e284e6b013e828c7132",
+    "factures": "81dd6977c2fce5c90e6ccac0a41d2d97",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
@@ -709,7 +709,7 @@
     "historique": "2e8daefe6acfe0bd2f6be9adca69d524",
     "stock-labo": "037f2e5f2a9a86fb679ced70e6ae246b",
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
-    "factures": "71f7f5de227e3e284e6b013e828c7132",
+    "factures": "81dd6977c2fce5c90e6ccac0a41d2d97",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
     "configuration-vente": "0e256a7dee889382aa0feb0feae852fb",
     "charges": "9efe5d7fee8199ccb045647654027267",
@@ -771,7 +771,7 @@
     "historique": "2e8daefe6acfe0bd2f6be9adca69d524",
     "stock-labo": "037f2e5f2a9a86fb679ced70e6ae246b",
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
-    "factures": "71f7f5de227e3e284e6b013e828c7132",
+    "factures": "81dd6977c2fce5c90e6ccac0a41d2d97",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
     "configuration-vente": "0e256a7dee889382aa0feb0feae852fb",
     "charges": "9efe5d7fee8199ccb045647654027267",
@@ -1647,19 +1647,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "-10.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.650",
-     "source": "Bloc chaud",
-     "type_appro": "manuel"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "10.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.650",
      "source": "Terrasse du Lac — Salon",
      "type_appro": "transfert"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "-10.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.650",
+     "source": "Bloc chaud",
+     "type_appro": "manuel"
     },
     {
      "ingredient": "Riz basmati",
@@ -6634,13 +6634,13 @@
       ],
       [
        "Riz basmati",
-       "-10",
+       "10",
        "⟨date⟩",
        "2.65"
       ],
       [
        "Riz basmati",
-       "10",
+       "-10",
        "⟨date⟩",
        "2.65"
       ],
@@ -15868,7 +15868,7 @@
      "icone": "🧾",
      "partie": "Stock & Appro",
      "ordre": 56,
-     "contenu": "## 🧾 Factures d'approvisionnement\n\nCes écrans regroupent vos approvisionnements par **facture fournisseur**, pour rapprocher vos achats des documents reçus et suivre vos décaissements. Il en existe deux, jumeaux : l'un pour les **activités** (menu Stock) et l'autre pour le **labo** (espace labo), qui présente les mêmes informations à l'échelle du laboratoire.\n\n### Ce que vous voyez\n\nEn haut, des pastilles pour choisir l'activité 🏪 (ou le labo 🏭). Puis la barre de filtres : période **Du / Au** (l'année en cours par défaut), **Fournisseur** et **Réf. Facture** (recherche partielle) — l'écran labo ajoute un filtre **Destination / Origine** pour isoler les factures liées à une activité ou à un labo (transferts émis ou reçus).\n\nChaque facture est une carte repliée : fournisseur, référence, date, badge **Manuel**, **↗ Transfert émis → X** (cession vers une activité ou un labo rattaché) ou **↙ Transfert reçu ← X** (réception depuis le labo qui vous alimente), et les montants **Total HT** et **Total TTC** en DT. À droite, le bouton de la facture du fournisseur : **📎 Voir la facture** (avec le nombre de fichiers s'il y en a plusieurs) quand elle est jointe, **📎 Joindre la facture** (cadre orangé) sinon ; une facture interne de transfert garde son document **📄 PDF** fabriqué par LabFlow. Un clic sur la carte déplie le détail ligne par ligne : article (avec son unité), catégorie, quantité, prix HT à l'unité, taux de TVA, prix TTC à l'unité, totaux HT et TTC — suivi d'un sous-total par facture. Les colonnes TVA n'apparaissent que si la facture en comporte.\n\nUne facture **lue puis validée** (fenêtre « Vérifier la facture » de la saisie) porte le badge **🔒 Validée** : son détail montre les lignes telles qu'imprimées, chacune avec l'article et sa conversion (« 1 sac = 25 kg ») ou « hors stock », la quantité entrée en stock et son prix ; ses montants sont exactement ceux de la facture.\n\nAvec le module **LabFlow Compta**, une facture validée — ou saisie à la main avec sa pièce jointe — part dans votre comptabilité : LabFlow y prépare l'**écriture d'achat en brouillard** (journal des achats, pièce = n° de facture), que votre comptable vérifie puis valide. Sa carte porte alors **📒 En comptabilité : brouillard B-000012**, puis **validée AC-2026-000003**. Une facture qui n'y est pas encore porte le bouton **📒 Envoyer à la comptabilité**.\n\nLes boutons **Tout ouvrir / Tout fermer** déplient ou replient toutes les cartes de la page. En bas : le compteur de factures avec la pagination, le bouton **Charger plus**, et un bandeau **Total général HT / TTC** cumulant les factures chargées.\n\n### Actions pas à pas\n\n1. Choisissez l'activité (ou le labo), puis la période.\n2. Filtrez par fournisseur, ou saisissez quelques caractères de la référence pour retrouver une livraison précise.\n3. Cliquez sur une carte pour vérifier les lignes (quantités, prix, TVA) face au document papier.\n4. Les factures se chargent par lots : utilisez **Charger plus** en bas de liste si la période est longue.\n\nGérer la facture du fournisseur :\n\n1. Cliquez sur **📎 Voir la facture** (ou **📎 Joindre la facture**) : une fenêtre liste les fichiers joints — nom, taille, date et auteur de l'ajout.\n2. **Ouvrir** affiche le fichier dans un nouvel onglet ; pour une photo HEIC, c'est sa copie lisible partout, et **Original** télécharge la photo d'origine.\n3. Pour ajouter un fichier, glissez-le dans la zone **📎 Facture du fournisseur** (5 fichiers au plus par facture), puis **Joindre**.\n4. **Remplacer** dépose un nouveau fichier à la place de l'ancien ; **Supprimer** retire un fichier. Dans les deux cas, l'ancien fichier est **effacé définitivement** (une confirmation le rappelle) ; les lignes de la facture ne changent pas.\n\nEnvoyer une facture en comptabilité (module LabFlow Compta) :\n\n1. Cliquez sur **📒 Envoyer à la comptabilité** sur sa carte (facture validée, ou saisie à la main avec sa pièce jointe : sans pièce, joignez-la d'abord).\n2. LabFlow prépare l'écriture et affiche son numéro provisoire. Un refus dit pourquoi (exercice à ouvrir, compte ou code de TVA à régler par votre comptable…) : la facture reste à envoyer, vous réessayez plus tard.\n\nSupprimer une facture validée :\n\n1. Dépliez la carte **🔒 Validée**, puis **🗑️ Supprimer la facture**.\n2. Après confirmation, toute la facture part, définitivement : ses lignes, ce qu'elle a fait entrer en stock et sa pièce jointe. Ce que LabFlow a appris de ses lignes est gardé ; vous pouvez la déposer de nouveau. Si elle est en comptabilité, son écriture en brouillard part avec elle ; une écriture déjà **validée** par votre comptable empêche la suppression (demandez-lui de la contre-passer).\n\n### Points d'attention\n\n:::regle\nLes factures ne se saisissent pas ici : elles sont construites automatiquement à partir de vos approvisionnements. C'est le **n° de facture saisi au moment de l'appro** qui relie les lignes entre elles — utilisez toujours la même référence pour une même livraison.\n:::\n\n:::attention\nLa pièce jointe est la vraie facture du fournisseur : LabFlow ne fabrique plus de PDF pour vos approvisionnements saisis. Une facture dont on supprime la **dernière ligne** (écran Historique) disparaît avec ses fichiers : LabFlow demande alors une confirmation. Un gérant ne voit et ne gère que les factures des activités et des labos qui lui sont affectés ; un compte en lecture seule consulte les fichiers sans pouvoir en ajouter ni en supprimer.\n:::\n\n:::regle\nUne facture validée ne se modifie plus et sa pièce ne se change plus : elle se supprime en entier. Un gérant le fait pour les activités et les labos qui lui sont affectés. Tant qu'elle existe, son n° est refusé chez le fournisseur qui l'a émise.\n:::\n\n:::regle\nUne facture **en comptabilité** ne change plus : ni ses lignes (cadenas **📒🔒** dans l'écran Historique), ni sa pièce, ni de nouvelles lignes sous son n°. Pour la changer, supprimez d'abord son écriture en brouillard dans LabFlow Compta (ou demandez-le à votre comptable) : elle redevient « à envoyer ».\n:::\n\n:::formule Total facture TTC\nTotal TTC = Σ ( quantité × prix HT × ( 1 + TVA ÷ 100 ) )\nnote: Calculé ligne par ligne, selon le taux de TVA propre à chaque article.\n:::\n\n:::astuce\nLes badges « ↗ Transfert émis » et « ↙ Transfert reçu » signalent une facture interne issue d'un transfert : côté destination (activité ou labo), le fournisseur affiché est alors le **labo source lui-même**. Le filtre Fournisseur de l'écran activités ne liste, lui, que vos fournisseurs externes.\n:::\n\n### Voir aussi\n\n- [HT et TTC dans LabFlow](#calc-ht-ttc) · [Fournisseurs](#fournisseurs)\n- [Transferts labo → activités](#transferts) · [Historique des approvisionnements](#historique)\n- [Stock des activités](#stock-activites) · [Stock Labo](#stock-labo)",
+     "contenu": "## 🧾 Factures d'approvisionnement\n\nCes écrans regroupent vos approvisionnements par **facture fournisseur**, pour rapprocher vos achats des documents reçus et suivre vos décaissements. Il en existe deux, jumeaux : l'un pour les **activités** (menu Stock) et l'autre pour le **labo** (espace labo), qui présente les mêmes informations à l'échelle du laboratoire.\n\n### Ce que vous voyez\n\nEn haut, des pastilles pour choisir l'activité 🏪 (ou le labo 🏭). Puis la barre de filtres : période **Du / Au** (l'année en cours par défaut), **Fournisseur** et **Réf. Facture** (recherche partielle) — l'écran labo ajoute un filtre **Destination / Origine** pour isoler les factures liées à une activité ou à un labo (transferts émis ou reçus).\n\nChaque facture est une carte repliée : fournisseur, référence, date, badge **Manuel**, **↗ Transfert émis → X** (cession vers une activité ou un labo rattaché) ou **↙ Transfert reçu ← X** (réception depuis le labo qui vous alimente), et les montants **Total HT** et **Total TTC** en DT. À droite, le bouton de la facture du fournisseur : **📎 Voir la facture** (avec le nombre de fichiers s'il y en a plusieurs) quand elle est jointe, **📎 Joindre la facture** (cadre orangé) sinon ; une facture interne de transfert garde son document **📄 PDF** fabriqué par LabFlow. Un clic sur la carte déplie le détail ligne par ligne : article (avec son unité), catégorie, quantité, prix HT à l'unité, taux de TVA, prix TTC à l'unité, totaux HT et TTC — suivi d'un sous-total par facture. Les colonnes TVA n'apparaissent que si la facture en comporte.\n\nUne facture **lue puis validée** (fenêtre « Vérifier la facture » de la saisie) porte le badge **🔒 Validée** : son détail montre les lignes telles qu'imprimées, chacune avec l'article et sa conversion (« 1 sac = 25 kg ») ou « hors stock », la quantité entrée en stock et son prix ; ses montants sont exactement ceux de la facture.\n\nAvec le module **LabFlow Compta**, une facture validée — ou saisie à la main avec sa pièce jointe — part dans votre comptabilité : LabFlow y prépare l'**écriture d'achat en brouillard** (journal des achats, pièce = n° de facture), que votre comptable vérifie puis valide. Sa carte porte alors **📒 En comptabilité : brouillard B-000012**, puis **validée AC-2026-000003**. Une facture qui n'y est pas encore porte le bouton **📒 Envoyer à la comptabilité**.\n\nLes boutons **Tout ouvrir / Tout fermer** déplient ou replient toutes les cartes de la page. En bas : le compteur de factures avec la pagination, le bouton **Charger plus**, et un bandeau **Total général HT / TTC** cumulant les factures chargées.\n\n### Actions pas à pas\n\n1. Choisissez l'activité (ou le labo), puis la période.\n2. Filtrez par fournisseur, ou saisissez quelques caractères de la référence pour retrouver une livraison précise.\n3. Cliquez sur une carte pour vérifier les lignes (quantités, prix, TVA) face au document papier.\n4. Les factures se chargent par lots : utilisez **Charger plus** en bas de liste si la période est longue.\n\nGérer la facture du fournisseur :\n\n1. Cliquez sur **📎 Voir la facture** (ou **📎 Joindre la facture**) : une fenêtre liste les fichiers joints — nom, taille, date et auteur de l'ajout.\n2. **Ouvrir** affiche le fichier dans un nouvel onglet ; pour une photo HEIC, c'est sa copie lisible partout, et **Original** télécharge la photo d'origine.\n3. Pour ajouter un fichier, glissez-le dans la zone **📎 Facture du fournisseur** (5 fichiers au plus par facture), puis **Joindre**.\n4. **Remplacer** dépose un nouveau fichier à la place de l'ancien ; **Supprimer** retire un fichier. Dans les deux cas, l'ancien fichier est **effacé définitivement** (une confirmation le rappelle) ; les lignes de la facture ne changent pas.\n\nEnvoyer une facture en comptabilité (module LabFlow Compta) :\n\n1. Cliquez sur **📒 Envoyer à la comptabilité** sur sa carte (facture validée, ou saisie à la main avec sa pièce jointe : sans pièce, joignez-la d'abord).\n2. LabFlow prépare l'écriture et affiche son numéro provisoire. Un refus dit pourquoi (date hors de l'exercice ouvert de la comptabilité, compte ou code de TVA à régler par votre comptable…) : la facture reste à envoyer, vous réessayez plus tard.\n\nSupprimer une facture validée :\n\n1. Dépliez la carte **🔒 Validée**, puis **🗑️ Supprimer la facture**.\n2. Après confirmation, toute la facture part, définitivement : ses lignes, ce qu'elle a fait entrer en stock et sa pièce jointe. Ce que LabFlow a appris de ses lignes est gardé ; vous pouvez la déposer de nouveau. Si elle est en comptabilité, son écriture en brouillard part avec elle ; une écriture déjà **validée** par votre comptable empêche la suppression : si la facture est erronée, votre comptable contre-passe l'écriture dans LabFlow Compta, et le stock se corrige par un inventaire.\n\n### Points d'attention\n\n:::regle\nLes factures ne se saisissent pas ici : elles sont construites automatiquement à partir de vos approvisionnements. C'est le **n° de facture saisi au moment de l'appro** qui relie les lignes entre elles — utilisez toujours la même référence pour une même livraison.\n:::\n\n:::attention\nLa pièce jointe est la vraie facture du fournisseur : LabFlow ne fabrique plus de PDF pour vos approvisionnements saisis. Une facture dont on supprime la **dernière ligne** (écran Historique) disparaît avec ses fichiers : LabFlow demande alors une confirmation. Un gérant ne voit et ne gère que les factures des activités et des labos qui lui sont affectés ; un compte en lecture seule consulte les fichiers sans pouvoir en ajouter ni en supprimer.\n:::\n\n:::regle\nUne facture validée ne se modifie plus et sa pièce ne se change plus : elle se supprime en entier. Un gérant le fait pour les activités et les labos qui lui sont affectés. Tant qu'elle existe, son n° est refusé chez le fournisseur qui l'a émise.\n:::\n\n:::regle\nUne facture **en comptabilité** ne change plus : ni ses lignes (cadenas **📒🔒** dans l'écran Historique), ni sa pièce, ni de nouvelles lignes sous son n°. Pour la changer, supprimez d'abord son écriture en brouillard dans LabFlow Compta (ou demandez-le à votre comptable) : elle redevient « à envoyer ».\n:::\n\n:::formule Total facture TTC\nTotal TTC = Σ ( quantité × prix HT × ( 1 + TVA ÷ 100 ) )\nnote: Calculé ligne par ligne, selon le taux de TVA propre à chaque article.\n:::\n\n:::astuce\nLes badges « ↗ Transfert émis » et « ↙ Transfert reçu » signalent une facture interne issue d'un transfert : côté destination (activité ou labo), le fournisseur affiché est alors le **labo source lui-même**. Le filtre Fournisseur de l'écran activités ne liste, lui, que vos fournisseurs externes.\n:::\n\n### Voir aussi\n\n- [HT et TTC dans LabFlow](#calc-ht-ttc) · [Fournisseurs](#fournisseurs)\n- [Transferts labo → activités](#transferts) · [Historique des approvisionnements](#historique)\n- [Stock des activités](#stock-activites) · [Stock Labo](#stock-labo)",
      "motsCles": "factures, fournisseur, approvisionnement, achats, tva, ht, ttc, décaissement, rapprochement, transfert, référence, labo",
      "ecran": "/client/stock/factures",
      "visibleGerant": true,

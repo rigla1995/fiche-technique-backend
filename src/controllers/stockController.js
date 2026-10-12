@@ -7,7 +7,7 @@ const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finali
 const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
 const { computeStockBulk } = require('../services/stockService');
-const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte } = require('../services/facturesAppro');
+const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte, FactureEnCompta } = require('../services/facturesAppro');
 const { refusValidee } = require('../services/facturesValidees');
 const { refusEnCompta } = require('../services/pontCompta');
 const stockage = require('../services/stockageFichiers');
@@ -709,6 +709,8 @@ const updateHistoriqueEntry = async (req, res) => {
     }
     res.json({ success: true });
   } catch (err) {
+    // Étape F4 : la facture est partie en comptabilité pendant la modification (garde de recalculerFacture).
+    if (err instanceof FactureEnCompta) return res.status(err.status).json(err.corps);
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -776,6 +778,7 @@ const deleteHistoriqueEntry = async (req, res) => {
     }
     res.json({ success: true });
   } catch (err) {
+    if (err instanceof FactureEnCompta) return res.status(err.status).json(err.corps);
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }

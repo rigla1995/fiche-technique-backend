@@ -23,6 +23,17 @@ const idValide = (v) => (typeof v === 'string' && /^\d{1,9}$/.test(v) && Number(
 /** Un texte saisi par l'utilisateur, glissé dans un `message` rendu au bord : ses « [[ » ne sont jamais des balises. */
 const sansBalise = (s) => String(s ?? '').replace(/\[\[/g, '[ [').replace(/\]\]/g, '] ]');
 
+/** Étape F4 : une facture envoyée en comptabilité (une écriture la porte) ne change plus — ni ses lignes, ni ses montants,
+ * ni ses pièces. Fragment SQL : la facture `col` (identifiant) porte une écriture. */
+const SQL_EN_COMPTA = (col) => `EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = ${col})`;
+const MESSAGE_EN_COMPTA = 'Cette ligne vient d\'une facture envoyée en comptabilité : elle ne se modifie plus. Pour la changer, supprimez d\'abord son écriture en brouillard dans LabFlow Compta (ou demandez-le à votre comptable).';
+const refusEnCompta = { code: 'FACTURE_EN_COMPTA', message: MESSAGE_EN_COMPTA };
+/** Levée par `recalculerFacture` (sous le verrou des factures) : la facture est partie en comptabilité entre le contrôle
+ * de l'appelant et sa transaction. L'appelant répond `status` avec `corps`. */
+class FactureEnCompta extends Error {
+  constructor() { super(MESSAGE_EN_COMPTA); this.status = 409; this.corps = refusEnCompta; }
+}
+
 const clientDe = (req) => req.user.gerant_parent_id || req.user.id;
 
 /** Le gérant agit sur une facture si elle est rattachée à l'une de ses activités ou de ses labos ; le client toujours. */
@@ -73,8 +84,11 @@ const gerantVoit = (req, f) => gerantAgitSur(req, f)
  * Montants d'une facture recalculés depuis ses lignes de stock : HT = Σ q × PU HT et TVA = Σ q × PU HT × taux, chacun
  * arrondi au millime ; TTC = HT + TVA + timbre (comme une facture : le TTC égale la somme des deux montants affichés) ;
  * une ligne sans PU HT compte pour q × PU TTC. → nombre de lignes rattachées.
+ * Étape F4 : une facture en comptabilité ne se recalcule plus (lève FactureEnCompta) ; appelée sous `verrouillerFactures`,
+ * comme l'envoi en comptabilité, la garde ne se contourne pas par deux requêtes simultanées.
  */
 const recalculerFacture = async (db, factureId) => {
+  if ((await db.query(`SELECT ${SQL_EN_COMPTA('$1::int')} AS x`, [factureId])).rows[0].x) throw new FactureEnCompta();
   const r = await db.query(
     `WITH l AS (
        SELECT quantite, prix_unitaire, taux_tva, prix_unitaire_tva FROM stock_entreprise_daily WHERE facture_id = $1
@@ -165,5 +179,6 @@ const fournisseurDuCompte = async (db, clientId, fournisseurId) => {
 module.exports = {
   fournisseurDuCompte,
   CLASSE_VERROU, verrouillerFactures, SQL_REF_NORMALISEE, refNormalisee, idValide, sansBalise, clientDe, gerantAgitSur,
+  SQL_EN_COMPTA, MESSAGE_EN_COMPTA, refusEnCompta, FactureEnCompta,
   gerantVoit, clauseGerant, factureDuCompte, recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne,
 };

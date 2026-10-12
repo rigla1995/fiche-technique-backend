@@ -104,3 +104,62 @@ test('texteCompta : caractères hors Windows-1252 retirés, longueur bornée', (
   assert.strictEqual(P.texteCompta('مخبزة Les Délices 🍞', 80), 'Les Délices');
   assert.strictEqual(P.texteCompta('x'.repeat(100), 80).length, 80);
 });
+
+test('ecritureDeFacture : TVA négative d\'un taux (retour au même taux) au crédit du compte de TVA', () => {
+  const { lignes } = P.ecritureDeFacture({
+    ...base,
+    lignes: [{ montant: 50000n, tauxTva: '19', compteId: 601 }, { montant: 30000n, tauxTva: '7', compteId: 601 }, { montant: -40000n, tauxTva: '7', compteId: 4096, tiersId: 5 }],
+  });
+  // TVA 19 % : 9,500 au débit ; TVA 7 % : (30 − 40) × 7 % = −0,700 au crédit ; fournisseur : 50 + 30 − 40 + 9,5 − 0,7 = 48,800.
+  assert.deepStrictEqual(lignes.map((l) => [l.compteId, l.taxeId, l.debit, l.credit]), [
+    [601, 19, 50000n, 0n],
+    [601, 7, 30000n, 0n],
+    [43666, 19, 9500n, 0n],
+    [4096, 7, 0n, 40000n],
+    [43666, 7, 0n, 700n],
+    [4011, null, 0n, 48800n],
+  ]);
+  assert.strictEqual(somme(lignes.map((l) => l.debit)), somme(lignes.map((l) => l.credit)));
+});
+
+test('ecritureDeFacture : écart avec le TTC de la facture refusé (ECART_TTC) ; égalité acceptée', () => {
+  const args = { ...base, lignes: [{ montant: 100000n, tauxTva: '19', compteId: 601 }], timbre: 1000n };
+  assert.doesNotThrow(() => P.ecritureDeFacture({ ...args, ttcAttendu: 120000n }));
+  assert.throws(() => P.ecritureDeFacture({ ...args, ttcAttendu: 120001n }), (e) => e.code === 'ECART_TTC' && /120,000/.test(e.message) && /120,001/.test(e.message));
+});
+
+test('ecritureDeFacture : TVA non récupérable (forfait, non assujetti) dans les lignes, au millime ; aucun code de TVA', () => {
+  const { lignes } = P.ecritureDeFacture({
+    ...base, tvaRecuperable: false, ttcAttendu: 136334n,
+    lignes: [{ montant: 33333n, tauxTva: '19', compteId: 601 }, { montant: 33334n, tauxTva: '19', compteId: 607 }, { montant: 50000n, tauxTva: '12', compteId: 601 }],
+    tvaParTaux: new Map([['19', 12667n], ['12', 6000n]]), timbre: 1000n,
+  });
+  // 19 % : 6,333 + 6,333 = 12,666 → 1 millime ajouté à la plus grande part (à égalité : la première) ; 12 % sans code : accepté (non
+  // récupérable). TTC : 116,667 + 18,667 + 1 = 136,334 ; les deux lignes du 601 (sans code) regroupées.
+  assert.deepStrictEqual(lignes.map((l) => [l.compteId, l.taxeId, l.debit, l.credit]), [
+    [601, null, 39667n + 56000n, 0n],
+    [607, null, 39667n, 0n],
+    [6654, 60, 1000n, 0n],
+    [4011, null, 0n, 136334n],
+  ]);
+  assert.ok(!lignes.some((l) => l.compteId === 43666), 'pas de TVA déductible');
+});
+
+test('ecritureDeFacture : ligne sans taux connu (prix TTC seul) sans code de TVA', () => {
+  const { lignes } = P.ecritureDeFacture({ ...base, lignes: [{ montant: 11900n, tauxTva: null, compteId: 601 }, { montant: 10000n, tauxTva: '19', compteId: 601 }] });
+  assert.deepStrictEqual(lignes.map((l) => [l.compteId, l.taxeId, l.debit, l.credit]), [[601, null, 11900n, 0n], [601, 19, 10000n, 0n], [43666, 19, 1900n, 0n], [4011, null, 0n, 23800n]]);
+});
+
+test('ajusterAuPlusGrand : l\'écart d\'arrondi va au plus grand montant (en valeur absolue)', () => {
+  assert.deepStrictEqual(P.ajusterAuPlusGrand([100n, -300n, 200n], 2n), [100n, -298n, 200n]);
+  assert.deepStrictEqual(P.ajusterAuPlusGrand([100n], 0n), [100n]);
+  assert.deepStrictEqual(P.ajusterAuPlusGrand([], 5n), []);
+});
+
+test('identifiantMF : les 7 chiffres du matricule fiscal, quelle que soit la forme', () => {
+  assert.strictEqual(P.identifiantMF('1234567A/A/M/000'), '1234567');
+  assert.strictEqual(P.identifiantMF('1234567 a'), '1234567');
+  assert.strictEqual(P.identifiantMF('MF : 1234567/A/M/000'), '1234567');
+  assert.strictEqual(P.identifiantMF('ABC'), 'ABC');
+  assert.strictEqual(P.identifiantMF(''), null);
+});

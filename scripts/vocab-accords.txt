@@ -2,7 +2,7 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 531 unité(s), 42 fichier(s).
+# 532 unité(s), 42 fichier(s).
 
 src/controllers/abonnementController.js
   l. 1694
@@ -582,121 +582,121 @@ src/controllers/laboController.js
   l. 1651
     défaut : Modifiez ou supprimez le transfert
     miroir : Modifiez ou supprimez l'expédition
-  l. 1691
+  l. 1693
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1707
+  l. 1709
     défaut : Modifiez ou supprimez le transfert
     miroir : Modifiez ou supprimez l'expédition
-  l. 1744
+  l. 1747
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1773
+  l. 1776
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1869
+  l. 1872
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1876
+  l. 1879
     défaut : Activité invalide
     miroir : Local invalide
-  l. 1910
+  l. 1913
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1923
+  l. 1926
     défaut : ⟦?⟦·⟧|Labo⟧
     miroir : ⟦?⟦·⟧|Usine⟧
-  l. 1969
+  l. 1972
     défaut : Hist Appro ⟦·⟧
     miroir : Hist Abr-Rentrée ⟦·⟧
-  l. 1972
+  l. 1975
     défaut : Ingrédient
     miroir : Provision
-  l. 1972
+  l. 1975
     défaut : Fournisseur
     miroir : Abr-Enseigne
-  l. 1978
+  l. 1981
     défaut : Historique des approvisionnements — Labo
     miroir : Historique des rentrées — Abr-Usine
-  l. 2002
+  l. 2005
     défaut : Prod. Transformé
     miroir : Élab. interne
-  l. 2003
+  l. 2006
     défaut : Transfert reçu
     miroir : Expédition reçue
-  l. 2004
+  l. 2007
     défaut : ⟦?PT|Manuel⟧
     miroir : ⟦?EI|Manuel⟧
-  l. 2051
+  l. 2054
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2077
+  l. 2080
     défaut : Stock PT insuffisant
     miroir : Armoire EI insuffisante
-  l. 2091
+  l. 2094
     défaut : Aucun approvisionnement enregistré pour cet ingrédient.
     miroir : Aucune rentrée enregistrée pour cette provision.
-  l. 2093
+  l. 2096
     défaut : La date de perte doit être >= au premier appro (⟦·⟧).
     miroir : La date d'abandon doit être >= à la première abr-rentrée (⟦·⟧).
-  l. 2111
+  l. 2114
     défaut : Stock insuffisant
     miroir : Armoire insuffisante
-  l. 2133
+  l. 2136
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2215
+  l. 2218
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2233
+  l. 2236
     défaut : Suppression impossible : ce labo ⟦?a des transferts enregistrés (source ou destinataire)|alimente d'autres labos — détachez-les d'abord⟧.
     miroir : Suppression impossible : cette usine ⟦?a des expéditions enregistrées (source ou destinataire)|alimente d'autres usines — détachez-les d'abord⟧.
-  l. 2243
+  l. 2246
     défaut : Suppression impossible : des articles sont affectés à ce labo.
     miroir : Suppression impossible : des denrées sont affectées à cette usine.
-  l. 2248
+  l. 2251
     défaut : Suppression impossible : des factures validées ou envoyées en comptabilité sont rattachées à ce labo. Supprimez-les d'abord (page Factures).
     miroir : Suppression impossible : des factures validées ou envoyées en comptabilité sont rattachées à cette usine. Supprimez-les d'abord (page Factures).
-  l. 2266
+  l. 2269
     défaut : Labo supprimé
     miroir : Usine supprimée
-  l. 2290
+  l. 2293
     défaut : Labo source introuvable
     miroir : Usine source introuvable
-  l. 2297
+  l. 2300
     défaut : Labo source introuvable
     miroir : Usine source introuvable
-  l. 2308
+  l. 2311
     défaut : Un labo avec ce nom existe déjà
     miroir : Une usine avec ce nom existe déjà
-  l. 2339
-    défaut : Labo introuvable
-    miroir : Usine introuvable
-  l. 2361
+  l. 2342
     défaut : Labo introuvable
     miroir : Usine introuvable
   l. 2364
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 2367
     défaut : ⟦?⟦·⟧|Labo⟧
     miroir : ⟦?⟦·⟧|Usine⟧
-  l. 2404
+  l. 2407
     défaut : Hist Transferts ⟦·⟧
     miroir : Hist Abr-Expéditions ⟦·⟧
-  l. 2407
+  l. 2410
     défaut : Ingrédient
     miroir : Provision
-  l. 2413
+  l. 2416
     défaut : Historique des transferts — Labo
     miroir : Historique des expéditions — Abr-Usine
-  l. 2434
+  l. 2437
     défaut : ⟦·⟧⟦? (labo)|⟧
     miroir : ⟦·⟧⟦? (abr-usine)|⟧
-  l. 2480
+  l. 2483
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2501
+  l. 2504
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2521
+  l. 2524
     défaut : Labo introuvable
     miroir : Usine introuvable
 
@@ -983,43 +983,43 @@ src/controllers/stockController.js
   l. 675
     défaut : Modifiez ou supprimez le transfert
     miroir : Modifiez ou supprimez l'expédition
-  l. 735
+  l. 737
     défaut : Cette entrée est liée à une vente et ne peut pas être supprimée.
     miroir : Cette entrée est liée à un encaissement et ne peut pas être supprimée.
-  l. 738
+  l. 740
     défaut : Modifiez ou supprimez le transfert
     miroir : Modifiez ou supprimez l'expédition
-  l. 858
+  l. 861
     défaut : Aucune activité
     miroir : Aucun local
-  l. 915
+  l. 918
     défaut : Historique Appro
     miroir : Historique Abr-Rentrée
-  l. 919
+  l. 922
     défaut : Ingrédient
     miroir : Provision
-  l. 929
+  l. 932
     défaut : Activité
     miroir : Abr-Local
-  l. 930
+  l. 933
     défaut : Fournisseur
     miroir : Abr-Enseigne
-  l. 934
+  l. 937
     défaut : Fournisseur
     miroir : Abr-Enseigne
-  l. 947
+  l. 950
     défaut : ⟦Activité : ⟦·⟧|⟦|Activités : ⟦·⟧@>1⟧@≠1⟧
     miroir : ⟦Abr-Local : ⟦·⟧|⟦|Abr-Locaux : ⟦·⟧@>1⟧@≠1⟧
-  l. 950
+  l. 953
     défaut : Historique des approvisionnements — Activités
     miroir : Historique des rentrées — Abr-Locaux
-  l. 969
+  l. 972
     défaut : ⟦?Prod. Transformé|⟦?Transfert|⟦?PT|Manuel⟧⟧⟧
     miroir : ⟦?Élab. interne|⟦?Expédition|⟦?EI|Manuel⟧⟧⟧
-  l. 1029
+  l. 1032
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 1049
+  l. 1052
     défaut : Activité introuvable
     miroir : Local introuvable
 
@@ -1900,9 +1900,12 @@ Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concr�
 - Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)
 
 src/services/pontCompta.js
-  l. 293
+  l. 378
     défaut : Choisissez le fournisseur de cette facture : la comptabilité en a besoin.
     miroir : Choisissez l'enseigne de cette facture : la comptabilité en a besoin.
+  l. 497
+    défaut : Cette facture est en comptabilité et son écriture ⟦·⟧ est validée : la facture ne se supprime plus dans LabFlow. Si elle est erronée, votre comptable contre-passe l'écriture dans LabFlow Compta, et le stock se corrige par un inventaire.
+    miroir : Cette facture est en comptabilité et son écriture ⟦·⟧ est validée : la facture ne se supprime plus dans LabFlow. Si elle est erronée, votre comptable contre-passe l'écriture dans LabFlow Compta, et l'armoire se corrige par une pesée.
 
 src/services/quotaService.js
   l. 11

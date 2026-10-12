@@ -69,13 +69,13 @@ Cette page présente un dossier : son identité, son régime fiscal, son exercic
 
 ### Comptes d'achat (client LabFlow)
 
-Quand le client LabFlow envoie une facture fournisseur à la comptabilité (case **Envoyer à la comptabilité**, ou bouton de sa page Factures), l'écriture d'achat arrive **en brouillard** dans le journal des achats du dossier « Mon entreprise » : pièce = n° de la facture, montants exacts de la facture (HT par compte et par code de TVA, remise répartie, FODEC, TVA déductible par taux, timbre), le fournisseur au crédit — devenu **tiers** du dossier, retrouvé par son matricule, sinon créé (F0001…). Vous la vérifiez puis la validez comme toute écriture (page **Écritures**).
+Quand le client LabFlow envoie une facture fournisseur à la comptabilité (case **Envoyer à la comptabilité**, ou bouton de sa page Factures), l'écriture d'achat arrive **en brouillard** dans le journal des achats du dossier « Mon entreprise » : pièce = n° de la facture, montants exacts de la facture (HT par compte et par code de TVA, remise répartie, FODEC, TVA déductible par taux, timbre), le fournisseur au crédit du TTC — devenu **tiers** du dossier, retrouvé par son matricule fiscal (les 7 chiffres de l'identifiant, quelle que soit sa forme), sinon créé (F0001…). Dossier au régime **forfaitaire** ou **non assujetti** : la TVA payée n'est pas déductible, elle s'ajoute aux comptes d'achat (aucune ligne de TVA déductible). Vous la vérifiez puis la validez comme toute écriture (page **Écritures**).
 
 La page **Comptes d'achat** règle le compte imputé, sans toucher aux écritures déjà faites :
 
 1. **Catégories** : le compte d'une catégorie vaut pour tous ses articles ; ouvrez une catégorie pour régler un **article** à part (son réglage l'emporte).
 2. **Frais hors stock** : transport, frais de livraison, consigne, prestation, autre frais.
-3. **Choisir le compte** ouvre la recherche d'un compte de charges (classe 6 ; un compte collectif fournisseurs ne convient qu'à la consigne) ; **Revenir au compte par défaut** efface le réglage.
+3. **Choisir le compte** ouvre la recherche d'un compte de charges (classe 6 ; pour la consigne, aussi un compte fournisseurs comme 4096) ; **Revenir au compte par défaut** efface le réglage.
 
 Sans réglage, le compte par défaut vient de la famille de l'article dans LabFlow : **601** pour les ingrédients (famille utilisée dans les recettes) et les articles sans famille, **607** pour ce qui est revendu en l'état (famille vendue, non utilisée dans les recettes), **6022** pour les fournitures (ni l'une ni l'autre) ; transport et livraison **6241**, consigne **4096**, prestation **604**, autre frais **606**. Le titulaire et le niveau **Complet** règlent ; les autres niveaux lisent.
 
