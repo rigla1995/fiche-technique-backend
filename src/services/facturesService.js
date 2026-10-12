@@ -43,6 +43,25 @@ async function upsertFacture(clientId, opts, db = pool) {
   // Determine the date (strip time if present)
   const dateFact = dateAppro ? dateAppro.slice(0, 10) : new Date().toISOString().slice(0, 10);
 
+  // Étape F3 (factures fournisseur) : le numéro d'une facture VALIDÉE (même fournisseur, même année) ne se ressaisit
+  // pas, même par les anciennes routes de saisie article par article. L'appelant renvoie `corps` avec `status`.
+  if (typeSource === 'manuel' && refFacture && fournisseurId) {
+    const validee = await db.query(
+      `SELECT 1 FROM factures
+       WHERE client_id = $1 AND fournisseur_id = $2 AND validee_le IS NOT NULL
+         AND UPPER(REGEXP_REPLACE(ref_facture, '\\s', '', 'g')) = UPPER(REGEXP_REPLACE($3::text, '\\s', '', 'g'))
+         AND EXTRACT(YEAR FROM date_facture) = EXTRACT(YEAR FROM $4::date)
+       LIMIT 1`,
+      [clientId, fournisseurId, refFacture, dateFact]
+    );
+    if (validee.rows.length) {
+      const e = new Error('facture validée existante');
+      e.status = 409;
+      e.corps = { code: 'FACTURE_VALIDEE_EXISTANTE', message: 'Cette facture a déjà été validée : elle ne se saisit pas une seconde fois.' };
+      throw e;
+    }
+  }
+
   // Try to find an existing facture matching the natural key
   const findRes = await db.query(
     `SELECT id, montant_ht, montant_tva, montant_ttc, timbre_fiscal, montant_timbre FROM factures
@@ -53,6 +72,7 @@ async function upsertFacture(clientId, opts, db = pool) {
        AND (activite_id IS NOT DISTINCT FROM $5)
        AND (labo_id IS NOT DISTINCT FROM $6)
        AND type_source = $7
+       AND validee_le IS NULL
      LIMIT 1`,
     [clientId, refFacture || null, dateFact, fournisseurId, activiteId, laboId, typeSource]
   );

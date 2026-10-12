@@ -8,6 +8,7 @@ const { upsertFacture } = require('../services/facturesService');
 const { withTransaction } = require('../utils/db');
 const { computeStockBulk } = require('../services/stockService');
 const { recalculerFacture, apresRetraitDeLigne, gardeDerniereLigne, verrouillerFactures, fournisseurDuCompte } = require('../services/facturesAppro');
+const { refusValidee } = require('../services/facturesValidees');
 const stockage = require('../services/stockageFichiers');
 const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
@@ -431,6 +432,8 @@ const updateStockEntreprise = async (req, res) => {
     });
     res.json({ success: true });
   } catch (err) {
+    // Étape F3 : numéro d'une facture validée (upsertFacture) → 409 expliqué.
+    if (err?.status === 409 && err.corps) return res.status(409).json(err.corps);
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -566,7 +569,8 @@ const getHistoriqueAppro = async (req, res) => {
                 sed.created_by, ub.nom as created_by_nom,
                 sed.taux_tva, sed.prix_unitaire_tva,
                 i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
-                COALESCE(c.nom, 'Sans catégorie') as categorie_nom
+                COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
+                (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) as facture_validee
          FROM stock_entreprise_daily sed
          JOIN articles i ON i.id = sed.ingredient_id
          JOIN unites u ON i.unite_id = u.id
@@ -645,7 +649,8 @@ const updateHistoriqueEntry = async (req, res) => {
     if (isEntreprise) {
       // Verify ownership
       const check = await pool.query(
-        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite as old_quantite, sed.type_appro, sed.date_appro, sed.created_by, sed.transfert_id, sed.facture_id
+        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite as old_quantite, sed.type_appro, sed.date_appro, sed.created_by, sed.transfert_id, sed.facture_id,
+                (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) AS facture_validee
          FROM stock_entreprise_daily sed
          JOIN activites a ON a.id = sed.activite_id
          JOIN profil_entreprise pe ON pe.id = a.entreprise_id
@@ -656,6 +661,8 @@ const updateHistoriqueEntry = async (req, res) => {
       const entry = check.rows[0];
       if (req.user.role === 'gerant' && entry.created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez modifier que vos propres enregistrements.' });
+      // Étape F3 : une ligne d'une facture validée ne se modifie plus (la facture se supprime en entier).
+      if (entry.facture_validee) return res.status(409).json(refusValidee);
       if (!(await fournisseurDuCompte(pool, req.user.gerant_parent_id || req.user.id, fournisseurId))) return res.status(400).json({ code: 'FOURNISSEUR_INCONNU', message: '[[Nom:fournisseur]] introuvable.' });
       // Lot 1b §2.4 : une ligne générée par un transfert ne se modifie que via le transfert
       // (fin de l'ajustement heuristique du miroir labo).
@@ -709,7 +716,8 @@ const deleteHistoriqueEntry = async (req, res) => {
   try {
     if (isEntreprise === 'true') {
       const check = await pool.query(
-        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite, sed.type_appro, sed.date_appro, sed.created_by, sed.transfert_id, sed.facture_id
+        `SELECT sed.id, sed.activite_id, sed.ingredient_id, sed.quantite, sed.type_appro, sed.date_appro, sed.created_by, sed.transfert_id, sed.facture_id,
+                (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) AS facture_validee
          FROM stock_entreprise_daily sed
          JOIN activites a ON a.id = sed.activite_id
          JOIN profil_entreprise pe ON pe.id = a.entreprise_id
@@ -724,6 +732,8 @@ const deleteHistoriqueEntry = async (req, res) => {
         return res.status(409).json({ code: 'LIGNE_DE_TRANSFERT', message: 'Modifiez ou supprimez [[le:transfert]]' });
       if (req.user.role === 'gerant' && check.rows[0].created_by !== req.user.id)
         return res.status(403).json({ message: 'Vous ne pouvez supprimer que vos propres enregistrements.' });
+      // Étape F3 : une facture validée se supprime en entier, jamais une ligne seule (question 14 du client).
+      if (check.rows[0].facture_validee) return res.status(409).json(refusValidee);
       const entry = check.rows[0];
       // Étape F1 (factures fournisseur) : la dernière ligne d'une facture qui a une pièce jointe emporte la facture et sa
       // pièce — à confirmer (?confirmerFacture=1) ; sinon la facture est recalculée, ou supprimée si elle est vide.
@@ -806,6 +816,8 @@ function mapHistoriqueEntry(r) {
     createdByNom: r.created_by_nom ?? null,
     tauxTva: r.taux_tva != null ? parseFloat(r.taux_tva) : null,
     prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
+    // Étape F3 : ligne d'une facture validée — ni modifiable ni supprimable seule (cadenas dans l'historique).
+    factureValidee: r.facture_validee === true,
   };
 }
 
@@ -1026,8 +1038,23 @@ const deleteEntrepriseIngredientHistory = async (req, res) => {
       [activiteId, req.user.gerant_parent_id || req.user.id]
     );
     if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
-    await pool.query('DELETE FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
-    await pool.query('DELETE FROM inventaires WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
+    // Étape F3 : les lignes d'une facture validée ne partent qu'avec leur facture — jugé sous le verrou des factures du
+    // compte, dans la même transaction que l'effacement (une validation ne peut pas s'intercaler).
+    const refus = await withTransaction(async (client) => {
+      await verrouillerFactures(client, req.user.gerant_parent_id || req.user.id);
+      const validees = await client.query(
+        `SELECT 1 FROM stock_entreprise_daily s JOIN factures fv ON fv.id = s.facture_id
+         WHERE s.activite_id = $1 AND s.ingredient_id = $2 AND fv.validee_le IS NOT NULL LIMIT 1`,
+        [activiteId, ingredientId]
+      );
+      if (validees.rows.length) return true;
+      await client.query('DELETE FROM stock_entreprise_daily WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
+      await client.query('DELETE FROM inventaires WHERE activite_id = $1 AND ingredient_id = $2', [activiteId, ingredientId]);
+      return false;
+    });
+    if (refus) {
+      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Cet historique contient des lignes de factures validées : supprimez d\'abord ces factures (page Factures).' });
+    }
     res.json({ success: true });
   } catch (err) {
     console.error(err);

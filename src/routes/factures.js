@@ -3,6 +3,7 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const { list, getLignes, downloadPdf } = require('../controllers/facturesController');
 const pieces = require('../controllers/piecesController');
+const validee = require('../controllers/factureValideeController');
 const { televersement } = require('../services/piecesFacture');
 const { authenticate, requireClient } = require('../middleware/auth');
 
@@ -27,6 +28,9 @@ const limiteLectures = rateLimit({
 
 router.get('/', authenticate, requireClient, list);
 router.get('/:id/lignes', authenticate, requireClient, getLignes);
+// Étape F3 : lignes d'une facture validée ; suppression d'une facture validée, en entier.
+router.get('/:id/lignes-validees', authenticate, requireClient, validee.lignesValidees);
+router.delete('/:id', authenticate, requireClient, limiteDepots, validee.supprimer);
 router.get('/:id/pdf', authenticate, requireClient, downloadPdf);
 router.get('/:id/pieces', authenticate, requireClient, pieces.lister);
 router.get('/:id/pieces/:pieceId/fichier', authenticate, requireClient, limiteLectures, pieces.fichier);

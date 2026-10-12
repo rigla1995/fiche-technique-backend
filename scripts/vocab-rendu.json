@@ -55,5 +55,19 @@
     "nom": "erreur",
     "argument": 3,
     "justification": "erreur(status, code, message) : le message devient corps.message, renvoyé tel quel par repondreErreur au bord (res.status().json(err.corps)) — étape F2 des factures fournisseur."
+  },
+  {
+    "fichier": "src/controllers/factureValideeController.js",
+    "genre": "argument",
+    "nom": "refus",
+    "argument": 3,
+    "justification": "refus(status, code, message, extra) est celui d'approFactureController (Refus) : le corps { code, message, … } est renvoyé tel quel par res.status(…).json(err.corps), rendu au bord (étape F3 des factures fournisseur)."
+  },
+  {
+    "fichier": "src/controllers/factureValideeController.js",
+    "genre": "argument",
+    "nom": "invalide",
+    "argument": 1,
+    "justification": "invalide(quoi) fabrique refus(400, 'LIGNE_INVALIDE', `Ligne n : ${quoi}.`) : le texte devient le message du Refus, rendu au bord (étape F3 des factures fournisseur)."
   }
 ]

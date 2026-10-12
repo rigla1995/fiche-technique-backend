@@ -34,6 +34,15 @@ Le bouton **📥 Ajout Dynamique** importe [[votre:fournisseur:pl]] en masse :
 
 Le rapport d'import détaille chaque ligne : les noms déjà présents dans votre répertoire (ou en double dans le fichier), les matricules fiscaux invalides ou déjà présents sont ignorés et signalés, le reste est créé.
 
+### Correspondances
+
+L'écran **🔗 Correspondances** (menu latéral, ou bouton en haut de cet écran) montre ce que LabFlow a appris des factures validées, [[nom:fournisseur]] par [[nom:fournisseur]] : chaque ligne de facture — reconnue par la référence que lui donne [[le:fournisseur]], sinon par sa désignation — mène à [[un:article]] et sa conversion (« 1 sac = 25 kg »), ou reste hors [[nom:stock]]. La colonne **Confirmée** dit sur combien de factures, la dernière fois et par qui.
+
+- **✏️ Corriger** : choisissez [[le:article]] et la conversion justes, ou une nature hors [[nom:stock]] ; la prochaine facture en tiendra compte.
+- **🗑️ Oublier** : la ligne ne sera plus reconnue, la prochaine facture la redemandera.
+
+Les factures déjà validées ne changent pas. [[Un:gerant]] voit les correspondances [[du:fournisseur:pl]] [[du:activite:pl]] et [[du:labo:pl]] qui lui sont [[acc:labo:affecté:affectée:pl]].
+
 ### Points d'attention
 
 :::attention

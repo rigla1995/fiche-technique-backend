@@ -47,7 +47,23 @@ Dès qu'une facture est déposée dans la zone **📎 Facture [[du:fournisseur]]
 
 Chaque champ rempli porte la pastille **lu — à relire** jusqu'à ce que vous le modifiiez. Rien n'est enregistré avant **Enregistrer**. Une facture écrite à la main, ou une photo trop floue, ne se lit pas : saisissez alors l'en-tête vous-même — la facture est jointe quand même.
 
+### Vérifier la facture et enregistrer
+
+Quand la facture est lue, le panneau annonce **📋 N lignes lues** et propose **Vérifier la facture et enregistrer →** (il faut d'abord [[le:fournisseur]] et le n° de facture dans le bloc). La fenêtre **Vérifier la facture** s'ouvre : à gauche la facture (pages, zoom ; cliquer une ligne l'encadre sur la page), à droite ses lignes.
+
+- Chaque ligne reprend ce qui est imprimé : désignation, réf., quantité, unité, prix HT, remise, TVA et montant HT, avec ✓ quand quantité × prix − remise = montant (⚠ sinon : relisez la ligne). Tout se corrige à la main.
+- LabFlow propose [[le:article]] et la **conversion** (« 1 sac = 25 kg », « 1 pack = 6 bouteilles ») : ligne **reconnue** (déjà validée chez [[ce:fournisseur]]), **proposée, à confirmer**, ou **à choisir**. Une ligne peut aussi rester **hors [[nom:stock]]** : transport, frais de livraison, consigne, prestation, autre frais — elle reste sur la facture sans entrer en [[nom:stock]].
+- [[Le:article:pl]] déjà [[acc:article:acheté:achetée:pl]] chez [[ce:fournisseur]] sont en tête de la liste ; **+ Créer [[le:article]]** [[acc:article:le:la]] crée depuis la ligne (nom, unité, catégorie). [[Un:article]] [[acc:article:choisi:choisie]] qui n'était pas encore dans la grille y est [[acc:article:ajouté:ajoutée]].
+- Sous chaque ligne : la quantité qui entre en [[nom:stock]] et son prix par unité ; ⚠ si ce prix s'écarte de plus de 30 % du dernier achat.
+- En pied : remise globale, FODEC et timbre, puis les totaux **lus** et **recalculés** (✓ ou ⚠). Un écart n'empêche pas d'enregistrer.
+
+**Valider et enregistrer** reste fermé tant qu'une ligne est à choisir ou qu'une proposition n'est pas confirmée (**✓ Confirmer**, ou **Confirmer les N propositions**). La validation enregistre tout d'un coup : [[le:appro:court]] (quantité × conversion, coût net de la remise globale, FODEC compris), la facture et sa pièce — et LabFlow **apprend** chaque ligne : la prochaine facture de [[ce:fournisseur]] se reconnaîtra seule (page [Correspondances](#fournisseurs)). **Fermer** abandonne tout : rien n'est enregistré.
+
 ### Points d'attention
+
+:::regle
+Une facture **validée** ne se modifie plus : ses lignes portent un 🔒 dans l'historique. Pour la corriger, supprimez-la en entier depuis l'écran [Factures [[de:appro:court]]](#factures), puis déposez-la de nouveau. Un même n° de facture ne s'enregistre jamais deux fois chez [[le:fournisseur]] qui l'a émise.
+:::
 
 :::astuce
 La facture jointe se retrouve sur l'écran [Factures [[de:appro:court]]](#factures) : **📎 Voir la facture** l'ouvre. Une facture oubliée se joint plus tard, depuis le même écran, avec **📎 Joindre la facture**.

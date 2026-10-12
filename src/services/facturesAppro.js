@@ -56,7 +56,7 @@ const factureDuCompte = async (db, factureId, clientId, verrou = false) => {
   if (!id) return null;
   const r = await db.query(
     `SELECT f.id, f.client_id, f.ref_facture, f.date_facture, f.fournisseur_id, f.activite_id, f.labo_id, f.type_source,
-            f.timbre_fiscal, f.montant_ttc,
+            f.timbre_fiscal, f.montant_ttc, f.validee_le,
             (SELECT fl.labo_id FROM fournisseurs fl WHERE fl.id = f.fournisseur_id AND fl.is_labo = true) AS labo_emetteur_id
      FROM factures f WHERE f.id = $1 AND f.client_id = $2${verrou ? ' FOR UPDATE OF f' : ''}`,
     [id, clientId]
@@ -86,13 +86,16 @@ const recalculerFacture = async (db, factureId) => {
               ROUND(COALESCE(SUM(COALESCE(quantite, 0) * COALESCE(prix_unitaire, 0) * COALESCE(taux_tva, 0) / 100), 0), 3) AS tva,
               ROUND(COALESCE(SUM(CASE WHEN prix_unitaire IS NULL THEN COALESCE(quantite, 0) * COALESCE(prix_unitaire_tva, 0) ELSE 0 END), 0), 3) AS sans_ht
        FROM l
+     ), maj AS (
+       -- Étape F3 : une facture validée garde les montants de ses lignes validées (exacts), jamais recalculés.
+       UPDATE factures f
+          SET montant_ht = t.ht, montant_tva = t.tva,
+              montant_ttc = t.ht + t.tva + t.sans_ht + CASE WHEN f.timbre_fiscal THEN COALESCE(f.montant_timbre, 0) ELSE 0 END
+         FROM t
+        WHERE f.id = $1 AND f.validee_le IS NULL
+       RETURNING f.id
      )
-     UPDATE factures f
-        SET montant_ht = t.ht, montant_tva = t.tva,
-            montant_ttc = t.ht + t.tva + t.sans_ht + CASE WHEN f.timbre_fiscal THEN COALESCE(f.montant_timbre, 0) ELSE 0 END
-       FROM t
-      WHERE f.id = $1
-     RETURNING t.n`,
+     SELECT t.n FROM t WHERE EXISTS (SELECT 1 FROM factures WHERE id = $1)`,
     [factureId]
   );
   return r.rows[0] ? r.rows[0].n : 0;
