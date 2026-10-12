@@ -119,6 +119,17 @@ test('relecture : remise 100 % (article offert) admise ; prix par g arrondi au m
   assert.strictEqual(kg.calcul.lignes[0].prixStock, 1.66);
 });
 
+test('contre-relecture : petit article à la pièce admis (écart d\'arrondi ≤ 2 %), prix de quelques millimes refusé', () => {
+  // 1 000 gobelets à 0,0425 → 0,043 au millime : 0,5 DT sur 42,5 (1,2 %), admis ; 1 000 serviettes et FODEC : 1 %.
+  const gobelets = lireValidation(donnees({ timbreFiscal: false, lignes: [{ designation: 'Gobelets carton 20 cl', quantite: 1000, prixUnitaire: 0.0425, montant: 42.5, tauxTva: 19, articleId: 3 }] }));
+  assert.strictEqual(gobelets.calcul.lignes[0].prixStock, 0.043);
+  const serviettes = lireValidation(donnees({ timbreFiscal: false, fodec: 0.42, lignes: [{ designation: 'Serviettes', quantite: 1000, montant: 42, tauxTva: 19, articleId: 3 }] }));
+  assert.strictEqual(serviettes.calcul.lignes[0].prixStock, 0.042);
+  // 1 000 cure-dents à 0,012 → 4 % d'écart : refusé, avec le conseil « paquet ou carton plutôt que pièce ».
+  assert.throws(() => lireValidation(donnees({ lignes: [{ designation: 'Cure-dents', quantite: 1000, montant: 12.5, articleId: 3 }] })),
+    (e) => e.corps?.code === 'PRIX_TROP_PETIT' && /paquet ou carton plutôt que pièce/.test(e.corps.message));
+});
+
 test('relecture : texte lu gardé pour la clé d\'apprentissage', () => {
   const v = lireValidation(donnees({ lignes: [{ designation: 'Farine T45 (corrigée)', designationLue: 'FARlNE T45', referenceLue: 'F-45', quantite: 1, montant: 1, articleId: 3 }] }));
   assert.deepStrictEqual([v.lignes[0].designationLue, v.lignes[0].referenceLue], ['FARlNE T45', 'F-45']);

@@ -92,8 +92,8 @@ const estValidee = async (db, factureId) => {
 /**
  * Apprend les décisions d'une facture validée : une correspondance par clé (la dernière ligne d'une même clé l'emporte),
  * créée ou remplacée (« la dernière décision l'emporte ») ; `emplois` compte les factures qui ont confirmé la MÊME
- * décision (une décision différente repart à 1). La clé se calcule sur le texte LU (référence, première rangée de la
- * désignation), pas sur le texte corrigé : la facture suivante, lue de la même façon, la retrouve.
+ * décision (une décision différente repart à 1). La clé se calcule sur le texte LU (référence, désignation sans ses
+ * rangées de lot ou de date), pas sur le texte corrigé : la facture suivante, lue de la même façon, la retrouve.
  * → nombre de correspondances écrites.
  */
 const apprendre = async (db, { clientId, fournisseurId, auteurId, lignes }) => {

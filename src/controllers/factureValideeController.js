@@ -72,14 +72,14 @@ const lireValidation = (brut) => {
       const conversion = Math.round(brute * 1e6) / 1e6;
       if (!(conversion > 0) || conversion > CONVERSION_MAX) throw invalide('conversion invalide');
       const enStock = quantite * conversion;
-      if (!(Math.round(enStock * 1000) / 1000 > 0) || enStock > A.VALEUR_MAX) throw invalide('quantité en stock invalide');
+      if (!(Math.round(enStock * 1000) / 1000 > 0) || enStock > A.VALEUR_MAX) throw invalide('quantité en [[nom:stock]] invalide');
       return { ...base, articleId, horsStock: null, conversion };
     }
-    if (!V.NATURES.includes(l?.horsStock)) throw invalide('choisissez [[un:article]] ou « hors stock »');
+    if (!V.NATURES.includes(l?.horsStock)) throw invalide('choisissez [[un:article]] ou « hors [[nom:stock]] »');
     return { ...base, articleId: null, horsStock: l.horsStock, conversion: null };
   });
   if (!lignes.some((l) => l.articleId)) {
-    throw refus(400, 'AUCUN_ARTICLE', 'Aucune ligne n\'est rattachée à [[un:article]] : rien n\'entrerait en stock.');
+    throw refus(400, 'AUCUN_ARTICLE', 'Aucune ligne n\'est rattachée à [[un:article]] : rien n\'entrerait en [[nom:stock]].');
   }
   const pied = (cle, libelle) => {
     if (d[cle] == null || d[cle] === '') return 0;
@@ -101,12 +101,13 @@ const lireValidation = (brut) => {
     if (c.prixStock == null) return;
     const l = lignes[i];
     if (c.prixStock * (1 + l.tauxTva / 100) > A.VALEUR_MAX) throw refus(400, 'MONTANT_TROP_GRAND', `Ligne ${n} : prix en [[nom:stock]] trop grand.`, { ligne: n });
-    // Le prix d'une ligne de stock se garde au millime : pour une unité trop petite (g, ml), l'arrondi fausserait la
-    // valeur du stock — refusé plutôt qu'enregistré faux (une facture validée ne se corrige plus).
+    // Le prix d'une ligne de stock se garde au millime : pour une unité trop petite (g, ml, pièce à quelques millimes),
+    // l'arrondi fausserait la valeur du stock — au-delà de 2 % (un prix d'au moins 25 millimes passe toujours : 1 000
+    // gobelets à 0,0425), refusé plutôt qu'enregistré faux (une facture validée ne se corrige plus).
     const ecart = Math.abs(c.quantiteStock * c.prixStock - c.cout);
-    if (ecart > Math.max(0.005, 0.005 * Math.abs(c.cout))) {
+    if (ecart > Math.max(0.005, 0.02 * Math.abs(c.cout))) {
       throw refus(400, 'PRIX_TROP_PETIT',
-        `Ligne ${n} : le prix par unité de [[nom:stock]] (${(c.cout / c.quantiteStock).toFixed(6).replace('.', ',')} DT) se garde au millime, ce qui fausserait la valeur [[du:stock]] de ${ecart.toFixed(3).replace('.', ',')} DT. Choisissez [[un:article]] dont l'unité est plus grande (kg plutôt que g, L plutôt que ml).`,
+        `Ligne ${n} : le prix par unité [[de:stock]] (${(c.cout / c.quantiteStock).toFixed(6).replace('.', ',')} DT) se garde au millime, ce qui fausserait la valeur [[du:stock]] de ${ecart.toFixed(3).replace('.', ',')} DT. Choisissez [[un:article]] dont l'unité est plus grande (kg plutôt que g, L plutôt que ml, paquet ou carton plutôt que pièce).`,
         { ligne: n });
     }
   });

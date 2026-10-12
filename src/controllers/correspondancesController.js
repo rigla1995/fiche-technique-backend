@@ -175,7 +175,7 @@ const modifier = async (req, res) => {
     } else if (V.NATURES.includes(horsStock)) {
       nature = horsStock;
     } else {
-      return res.status(400).json({ code: 'CHOIX_REQUIS', message: 'Choisissez [[un:article]] ou « hors stock ».' });
+      return res.status(400).json({ code: 'CHOIX_REQUIS', message: 'Choisissez [[un:article]] ou « hors [[nom:stock]] ».' });
     }
     // Corrigée à la main : plus aucune facture n'a encore confirmé cette décision (emplois = 0).
     await pool.query(

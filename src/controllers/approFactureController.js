@@ -228,7 +228,7 @@ const refuserDoublons = async (req, clientId, v, db = pool) => {
   if (validees.length) {
     const le = jour(validees[0].dateFacture);
     throw refus(409, 'FACTURE_VALIDEE_EXISTANTE',
-      `La facture n° ${F.sansBalise(v.ref)} de [[ce:fournisseur]] (du ${le}) a déjà été validée : elle ne s'enregistre pas deux fois. Pour la refaire, supprimez-la d'abord depuis la page Factures.`,
+      `La facture n° ${F.sansBalise(v.ref)} de [[ce:fournisseur]] (du ${le}) a déjà été validée : une facture ne s'enregistre pas deux fois. Pour la refaire, supprimez d'abord la facture validée depuis la page Factures.`,
       { factures: validees });
   }
   if (!v.confirmerDoublon && semblables.length) {
