@@ -25,7 +25,7 @@ Approvisionner [[un:article:pl]] :
 1. Renseignez la date, [[le:fournisseur]] et le n° de facture dans le bloc [[Nom:appro]].
 2. Facultatif : glissez dans la zone **📎 Facture [[du:fournisseur]]** le PDF, le scan ou la photo de la facture reçue (sur un téléphone, touchez la zone pour prendre la photo). Une vignette s'affiche ; la croix ✕ retire un fichier avant l'envoi. LabFlow lit aussitôt la facture et remplit les champs vides du bloc (voir « La facture lue »).
 3. Saisissez quantité et prix HT (TVA facultative) sur chaque ligne concernée.
-4. Cliquez sur **Enregistrer** : une fenêtre récapitule la facture, avec une case **Timbre Fiscal** (cochée par défaut, 1,000 DT — 1,500 ou 2,000 DT pour une facture de grande surface), le nombre de fichiers joints et, si la facture a été lue, la comparaison avec son total ; confirmez. Toutes les lignes et la facture jointe s'enregistrent ensemble ; une facture du même numéro déjà saisie chez [[ce:fournisseur]] est signalée avant l'enregistrement.
+4. Cliquez sur **Enregistrer** : une fenêtre récapitule la facture, avec une case **Timbre Fiscal** (cochée par défaut, 1,000 DT — 1,500 ou 2,000 DT pour une facture de grande surface), le nombre de fichiers joints et, si la facture a été lue, la comparaison avec son total ; confirmez. Toutes les lignes et la facture jointe s'enregistrent ensemble ; une facture du même numéro déjà saisie chez [[ce:fournisseur]] est signalée avant l'enregistrement. Avec le module **LabFlow Compta** et une pièce jointe, la case **Envoyer à la comptabilité** (cochée) fait partir la facture dans votre comptabilité.
 
 Produire [[un:pt:court]] ([[nom:labo:pl]] de production uniquement — [[un:labo]] [[acc:labo:configuré:configurée]] sans production, tel un économat, n'affiche pas [[de:pt:pl:court]]) :
 
@@ -57,7 +57,7 @@ Quand la facture est lue, le panneau annonce **📋 N lignes lues** et propose *
 - Sous chaque ligne : la quantité qui entre en [[nom:stock]] et son prix par unité ; ⚠ si ce prix s'écarte de plus de 30 % du dernier achat.
 - En pied : remise globale, FODEC et timbre, puis les totaux **lus** et **recalculés** (✓ ou ⚠). Un écart n'empêche pas d'enregistrer.
 
-**Valider et enregistrer** reste fermé tant qu'une ligne est à choisir ou qu'une proposition n'est pas confirmée (**✓ Confirmer**, ou **Confirmer les N propositions**). La validation enregistre tout d'un coup : [[le:appro:court]] (quantité × conversion, coût net de la remise globale, FODEC compris), la facture et sa pièce — et LabFlow **apprend** chaque ligne : la prochaine facture de [[ce:fournisseur]] se reconnaîtra seule (page [Correspondances](#fournisseurs)). **Fermer** abandonne tout : rien n'est enregistré.
+**Valider et enregistrer** reste fermé tant qu'une ligne est à choisir ou qu'une proposition n'est pas confirmée (**✓ Confirmer**, ou **Confirmer les N propositions**). La validation enregistre tout d'un coup : [[le:appro:court]] (quantité × conversion, coût net de la remise globale, FODEC compris), la facture et sa pièce — et LabFlow **apprend** chaque ligne : la prochaine facture de [[ce:fournisseur]] se reconnaîtra seule (page [Correspondances](#fournisseurs)). **Fermer** abandonne tout : rien n'est enregistré. Avec le module **LabFlow Compta**, la case **Envoyer à la comptabilité** (cochée) fait partir la facture validée dans votre comptabilité : l'écriture d'achat y est préparée en brouillard, votre comptable la valide (page [Factures](#factures)).
 
 ### Points d'attention
 

@@ -149,9 +149,9 @@ const pieces = async (req, res) => {
   try {
     const factureId = await factureDe(req);
     const r = factureId
-      ? await pool.query('SELECT id, ordre, type_mime, nom_origine, taille FROM factures_pieces WHERE facture_id = $1 ORDER BY ordre', [factureId])
+      ? await pool.query('SELECT id, ordre, type_mime, nom_origine, taille, apercu_cle IS NOT NULL AS avec_apercu FROM factures_pieces WHERE facture_id = $1 ORDER BY ordre', [factureId])
       : { rows: [] };
-    res.json({ factureId, pieces: r.rows.map((p) => ({ id: p.id, ordre: p.ordre, type: p.type_mime, nom: p.nom_origine, taille: p.taille })) });
+    res.json({ factureId, pieces: r.rows.map((p) => ({ id: p.id, ordre: p.ordre, type: p.type_mime, nom: p.nom_origine, taille: p.taille, avecApercu: p.avec_apercu === true })) });
   } catch (err) {
     repondreErreur(res, err, '[compta.comptesAchat.pieces]');
   }
