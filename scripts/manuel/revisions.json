@@ -234,6 +234,28 @@
           "md5": "576eedd028b0bb0ee39156ade9c48b66"
         }
       ]
+    },
+    {
+      "numero": 227,
+      "nom": "227_manuel_code_fournisseur.sql",
+      "objet": "Factures fournisseur, retours du client sur F3 : le code fournisseur (référence imprimée par le fournisseur) expliqué et montré en colonne dans Correspondances ; choix de l'article par recherche (comptes de centaines d'articles) ; une correction de correspondance ne change ni les factures déjà validées, ni leur stock, ni l'historique (alerte avant d'enregistrer).",
+      "manuel": [
+        {
+          "slug": "fournisseurs",
+          "md5Avant": "a1887eae939c919d24d42557bd3a01d0",
+          "md5": "239112c79eb4a9c756d9a11169762274"
+        },
+        {
+          "slug": "stock-activites",
+          "md5Avant": "fd9335f22d390e534a8fdce304c3b1bd",
+          "md5": "9d00b895901f55f3f78fba94acf8ad95"
+        },
+        {
+          "slug": "stock-labo",
+          "md5Avant": "576eedd028b0bb0ee39156ade9c48b66",
+          "md5": "cbeb6ed4f9cf039d85db6aa0e58706fb"
+        }
+      ]
     }
   ]
 }
