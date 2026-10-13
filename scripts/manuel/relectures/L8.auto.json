@@ -167,5 +167,13 @@
     "texte": "fiche de coût de revient",
     "decision": "accepté",
     "raison": "l'origine écrit la forme courte (« FT Stock ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:fiche_technique]] rend le nom complet, comme la carte de l'écran (voc.Court) ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
+  },
+  {
+    "fiche": "calc-production-pt",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "fiche de préparation",
+    "decision": "accepté",
+    "raison": "P1 (migration 237) : la quantité produite se lit en recettes entières (« 1 recette = 4,6 kg »), répétition voulue ; le terme du domaine est seulement plus long, français correct"
   }
 ]

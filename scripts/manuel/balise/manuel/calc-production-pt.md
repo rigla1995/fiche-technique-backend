@@ -11,7 +11,7 @@ Quand vous enregistrez la production d'[[un:pt]] — [[au:labo]] pour [[le:produ
 
 ### Les paramètres qui influencent le résultat
 
-- **La quantité produite.**
+- **La quantité produite**, dans l'unité finale [[du:produit]] (kg, pièce…) : la saisie rappelle ce que donne [[un:recette]] [[acc:recette:entier:entière]] (« 1 [[nom:recette]] = 4,6 kg ») ; [[le:recette]] étant [[acc:recette:enregistré:enregistrée]] pour 1 unité, 9,2 kg déduisent [[le:portion:pl]] de deux [[nom:recette:pl]].
 - **[[Le:portion:pl]] [[du:recette]]**, ou [[le:portion:pl]] [[acc:portion:personnalisé:personnalisée:pl]] [[acc:portion:saisi:saisie:pl]] pour cette production.
 - **Le PMP TTC de chaque [[nom:ingredient]]** au moment de la production.
 - **Le coût [[de:recette]] de chaque sous-produit** consommé.

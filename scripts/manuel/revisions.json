@@ -317,6 +317,23 @@
           "md5": "70aba10425bd240ce6ab3d9817eaf172"
         }
       ]
+    },
+    {
+      "numero": 237,
+      "nom": "237_manuel_produits_unite.sql",
+      "objet": "Unité des produits utilisables (P1) : unité finale et quantité produite dans l’assistant, recette saisie pour la quantité produite et enregistrée pour 1 unité, stock et production comptés dans cette unité.",
+      "manuel": [
+        {
+          "slug": "produits-utilisables",
+          "md5Avant": "d457a11b36912584e50d652405b1aac7",
+          "md5": "388103400f5b2dbc5d04a864b57e3ee5"
+        },
+        {
+          "slug": "calc-production-pt",
+          "md5Avant": "ac96af6f46e37f8bc6979c510aa1d8ad",
+          "md5": "fd643664bae5329916576a9696a3b446"
+        }
+      ]
     }
   ]
 }

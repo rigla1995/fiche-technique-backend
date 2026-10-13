@@ -6,6 +6,7 @@
 
 - Une barre de filtres : **📍 [[Nom:activite]]**, **🔍 Nom**, bouton **Réinitialiser**, **Exporter XLS** et **+ [[Nom:produit_utilisable]]**.
 - Des **cartes [[nom:produit]]** (9 par page) avec : le nom, le bouton **👁 Voir composition** (résumé « N [[nom:article:pl]] · N sous-produits »), les actions (**Fiche tech.**, **Modifier**, **Supprimer**) et **deux blocs de pastilles** : [[det:activite:le:pl]]**[[Pl:activite]]** et [[det:labo:le:pl]]**[[Pl:labo]]** où [[le:produit]] est [[acc:produit:géré:gérée]].
+- La pastille **📏** de l'unité finale, par exemple « 📏 kg · [[nom:recette]] 4,6 kg ».
 - Un badge **⇄ [[Nom:transfert]] uniquement** sur [[le:produit:pl]] [[acc:produit:fabriqué:fabriquée:pl]] [[au:labo]] : [[acc:produit:il:elle:pl]] ne peuvent être [[acc:produit:approvisionné:approvisionnée:pl]] en [[nom:activite]] que par [[nom:transfert]].
 
 ### Les deux modes [[de:appro]]
@@ -19,15 +20,23 @@
 
 En mode limité, si [[aucun:activite]] n'est [[acc:activite:coché:cochée]], [[le:produit]] reste [[au:labo]] (non [[acc:produit:distribué:distribuée]]). [[Le:article:pl]] [[acc:article:proposé:proposée:pl]] pour [[le:recette]] correspondent toujours au périmètre choisi.
 
+### L'unité finale
+
+Chaque [[court:produit_utilisable]] a une **unité finale** (kg, L, pièce… une unité [[du:referentiel]], menu **[[Nom:referentiel]] → Unités**) et la **quantité que donne [[son:recette]]**. Vous saisissez les quantités [[du:recette]] comme vous [[acc:recette:le:la]] faites — 2 kg de concentré de tomate, de l'eau, de l'ail… pour **4,6 kg** de sauce — et LabFlow l'enregistre **pour 1 kg** (0,435 kg de concentré pour 1 kg de sauce).
+
+Ensuite, tout se compte dans cette unité : [[le:stock]], la production, [[le:transfert:pl]], [[le:perte:pl]], [[le:inventaire:pl]], les seuils et le coût (« pour 1 kg »). À la production, l'écran rappelle « 1 [[nom:recette]] = 4,6 kg ».
+
 ### Actions pas à pas
 
 **Créer [[un:produit_utilisable]]**
 
 1. Cliquez sur **+ [[Nom:produit_utilisable]]** : le même assistant en 5 étapes que pour les vendables s'ouvre (Affectation, Identité, [[Pl:article]], [[Titre:produit_utilisable:pl]], Récap).
 2. À l'étape Affectation, choisissez le mode [[de:appro]] (voir tableau ci-dessus).
-3. À l'étape Identité, saisissez le nom et la référence éventuelle — **aucune catégorie n'est demandée** pour [[un:produit_utilisable:court]].
-4. Composez [[le:recette]] : [[nom:article:pl]] avec [[nom:portion:pl]], et éventuellement d'autres [[nom:produit_utilisable:pl]] comme sous-composants (au moins 2 composants au total).
-5. Vérifiez le récapitulatif puis validez.
+3. À l'étape Identité, saisissez le nom, la référence éventuelle, l'**unité finale** et la **quantité produite** (par exemple kg et 4,6) — **aucune catégorie n'est demandée** pour [[un:produit_utilisable:court]].
+4. Composez [[le:recette]] **pour cette quantité** : [[nom:article:pl]] avec leurs quantités, et éventuellement d'autres [[nom:produit_utilisable:pl]] comme sous-composants, chacun dans son unité (au moins 2 composants au total).
+5. Vérifiez le récapitulatif : chaque quantité y est aussi ramenée à 1 kg, c'est ce qui est enregistré. Puis validez.
+
+À la modification, l'assistant montre de nouveau [[le:recette]] pour la quantité produite ; vous pouvez changer cette quantité.
 
 **Ajuster les affectations** : cliquez sur les pastilles **[[Pl:activite]]** ou **[[Pl:labo]]** sous la carte pour activer ou retirer [[le:produit]] en un clic.
 
@@ -41,6 +50,10 @@ note: Calcul récursif — le coût de chaque sous-produit provient lui-même de
 :::
 
 ### Points d'attention
+
+:::regle
+L'unité finale ne change plus dès le premier mouvement [[de:stock]] (production, [[nom:transfert]], [[nom:perte]], [[nom:inventaire]]) : ce qui est en [[nom:stock]] est compté dans cette unité. La quantité produite, elle, peut changer. [[Un:produit_utilisable:court]] [[acc:produit_utilisable:créé:créée]] avant l'arrivée de l'unité reste [[acc:produit_utilisable:compté:comptée]] **[[au:recette]]** (1 unité = 1 [[nom:recette]]) ; vous pouvez lui donner une unité tant qu'[[acc:produit_utilisable:il:elle]] n'a aucun mouvement, et [[le:recette:pl]] qui l'utilisent sont alors [[acc:recette:convertis:converties:pl]] (0,2 [[nom:recette]] → 0,92 kg).
+:::
 
 :::attention
 La suppression d'[[un:produit_utilisable:court]] ayant un historique déclenche une **suppression en cascade** : la fenêtre de confirmation détaille le nombre [[de:appro:pl]] [[acc:appro:supprimé:supprimée:pl]], ainsi que [[le:stock]], [[le:inventaire:pl]] et [[le:perte:pl]] concernés. L'action est irréversible.

@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
-const { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
+const { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, ptCategorieSql, ptTypeSql, uniteProduitSql } = require('../utils/stockUtils');
 const { nomFichierSur, ongletSur } = require('../utils/excelNoms');
 const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
@@ -474,7 +474,7 @@ const getLaboStock = async (req, res) => {
 
     // ── PT products for this labo ──────────────────────────────────────────────
     const ptResult = await pool.query(`
-      SELECT p.id as produit_id, p.nom, p.type, p.origine,
+      SELECT p.id as produit_id, p.nom, p.type, p.origine, ${uniteProduitSql('p')} AS unite_pt, p.quantite_produite,
         a.id as activite_id, a.nom as activite_nom,
         lps.seuil_min,
         COALESCE(SUM(slpt.quantite) FILTER (WHERE date_trunc('year', slpt.date_appro) = date_trunc('year', CURRENT_DATE)), 0) as total_quantite,
@@ -696,7 +696,9 @@ const getLaboStock = async (req, res) => {
         type: row.type || 'vendable',
         origine: row.origine || 'activite',
         nom: row.nom,
-        unite: 'unité',
+        unite: row.unite_pt,
+        // P1 : quantité que produit une recette (production : « 1 recette = 4,6 kg ») ; null = produit d'avant.
+        quantiteProduite: row.quantite_produite != null ? parseFloat(row.quantite_produite) : null,
         categorie: ptCategorie(row.type, row.origine),
         prixPartiel: row.prix_partiel === true,
         activite: row.activite_nom || null,
@@ -1279,7 +1281,7 @@ const getTransferHistory = async (req, res) => {
       result = await pool.query(
         `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note, lt.ref_facture, lt.created_at,
                 lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
-                p.id as produit_id, p.nom as produit_nom, p.type, p.origine,
+                p.id as produit_id, p.nom as produit_nom, p.type, p.origine, ${uniteProduitSql('p')} AS unite_pt,
                 ${destCols}
          FROM labo_transfers lt
          JOIN produits p ON p.id = lt.produit_id
@@ -1301,7 +1303,7 @@ const getTransferHistory = async (req, res) => {
         prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
         ingredientId: -(r.produit_id),
         ingredientNom: r.produit_nom,
-        uniteNom: 'unité',
+        uniteNom: r.unite_pt,
         categorieNom: ptCategorie(r.type, r.origine),
         ...mapDest(r),
       })));
@@ -1315,7 +1317,7 @@ const getTransferHistory = async (req, res) => {
               lt.created_by, ub.nom as created_by_nom,
               lt.ingredient_id, lt.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
-              COALESCE(u.nom, 'unité') as unite_nom,
+              COALESCE(u.nom, ${uniteProduitSql('p')}) as unite_nom,
               ${destCols},
               COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
        FROM labo_transfers lt
@@ -1497,7 +1499,7 @@ const getLaboHistorique = async (req, res) => {
              COALESCE(ca.date_expedition, ca.date_commande) as date_appro, -cal.quantite_unites as quantite, cal.cout_unitaire_ttc as prix_unitaire,
              fa.numero as ref_facture, 'vente'::text as type_appro, ca.created_at as updated_at, ca.created_by,
              cal.taux_tva, cal.cout_unitaire_ttc as prix_unitaire_tva,
-             cal.designation as ingredient_nom, COALESCE(u.nom, 'unité') as unite_nom,
+             cal.designation as ingredient_nom, COALESCE(u.nom, ${uniteProduitSql('p')}) as unite_nom,
              CASE WHEN cal.article_type = 'produit' THEN ${ptCategorieSql('p')}
                   ELSE COALESCE(c.nom, 'Sans catégorie') END as categorie_nom,
              COALESCE(ach.nom, ca.acheteur_nom) as fournisseur_nom, NULL::int as fournisseur_id,
@@ -1574,7 +1576,7 @@ const getLaboHistorique = async (req, res) => {
       if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND slpt.produit_id = $${ptParams.length}`; }
       if (ptType) ptWhere += ` AND ${ptTypeSql('p', ptType)}`;
       const ptRes = await pool.query(
-        `SELECT slpt.id, slpt.produit_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire, slpt.updated_at, p.nom as produit_nom, p.type, p.origine,
+        `SELECT slpt.id, slpt.produit_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire, slpt.updated_at, p.nom as produit_nom, p.type, p.origine, ${uniteProduitSql('p')} AS unite_pt,
                 slpt.taux_tva, slpt.prix_unitaire_tva, slpt.ref_facture, slpt.fournisseur_id, f.nom AS fournisseur_nom, slpt.type_appro
          FROM stock_labo_pt_daily slpt
          JOIN produits p ON p.id = slpt.produit_id
@@ -1590,7 +1592,7 @@ const getLaboHistorique = async (req, res) => {
         id: spt.id,
         ingredientId: -(spt.produit_id),
         ingredientNom: spt.produit_nom,
-        uniteNom: 'unité',
+        uniteNom: spt.unite_pt,
         categorieNom: ptCategorie(spt.type, spt.origine),
         dateAppro: isoDate(spt.date_appro),
         quantite: spt.quantite !== null ? parseFloat(spt.quantite) : null,
@@ -1956,7 +1958,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       const ptRes = await pool.query(
         `SELECT slpt.id, -(slpt.produit_id) as ingredient_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire,
                 slpt.ref_facture, 'produit_transforme'::text as type_appro, slpt.taux_tva, slpt.prix_unitaire_tva,
-                p.nom as ingredient_nom, 'unité'::text as unite_nom, ${ptCategorieSql('p')} as categorie_nom,
+                p.nom as ingredient_nom, ${uniteProduitSql('p')} as unite_nom, ${ptCategorieSql('p')} as categorie_nom,
                 f.nom as fournisseur_nom, NULL::text as created_by_nom
          FROM stock_labo_pt_daily slpt JOIN produits p ON p.id = slpt.produit_id
          LEFT JOIN fournisseurs f ON f.id = slpt.fournisseur_id
@@ -2153,7 +2155,7 @@ const getLaboPTRecipe = async (req, res) => {
       // Sous-PT de composition : nécessaires au contrôle de stock dynamique du front
       // (mêmes chiffres que la garde 422 d'updateLaboStock).
       pool.query(
-        `SELECT psp.sous_produit_id, psp.portion AS portion_standard, p.nom,
+        `SELECT psp.sous_produit_id, psp.portion AS portion_standard, p.nom, ${uniteProduitSql('p')} AS unite_pt,
                 (SELECT slpt.prix_unitaire FROM stock_labo_pt_daily slpt
                   WHERE slpt.labo_id = $2 AND slpt.produit_id = psp.sous_produit_id
                     AND slpt.quantite > 0 AND slpt.prix_unitaire IS NOT NULL
@@ -2187,7 +2189,7 @@ const getLaboPTRecipe = async (req, res) => {
         type: 'sous_pt',
         sousProduitId: row.sous_produit_id,
         nom: row.nom,
-        unite: 'unité',
+        unite: row.unite_pt,
         categorie: 'Sous-produit',
         categorieId: null,
         portionStandard: parseFloat(row.portion_standard),
@@ -2381,7 +2383,7 @@ const exportLaboTransferExcel = async (req, res) => {
 
     const result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
-              lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, COALESCE(u.nom, 'unité') AS unite_nom,
+              lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, COALESCE(u.nom, ${uniteProduitSql('p')}) AS unite_nom,
               COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) AS categorie_nom,
               lt.activite_id, a.nom AS activite_nom,
               CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom ELSE a.nom END AS dest_nom,

@@ -2,7 +2,7 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 545 unité(s), 42 fichier(s).
+# 556 unité(s), 43 fichier(s).
 
 src/controllers/abonnementController.js
   l. 1694
@@ -295,36 +295,39 @@ src/controllers/exportController.js
     défaut : ⟦?⟦·⟧|⟦?Activité : ⟦·⟧|⟧⟧
     miroir : ⟦?⟦·⟧|⟦?Abr-Local : ⟦·⟧|⟧⟧
   l. 30
+    défaut : Pour 1 ⟦·⟧ (recette pour ⟦·⟧ ⟦·⟧)
+    miroir : Pour 1 ⟦·⟧ (assemblage pour ⟦·⟧ ⟦·⟧)
+  l. 35
     défaut : Fiche technique — ⟦·⟧
     miroir : État technique — ⟦·⟧
-  l. 35
+  l. 40
     défaut : Portion
     miroir : Abr-Échantillon
-  l. 104
+  l. 109
     défaut : INGRÉDIENTS
     miroir : MATIÈRES
-  l. 127
-    défaut : ↳ ⟦·⟧ (portion : ⟦·⟧)
-    miroir : ↳ ⟦·⟧ (abr-échantillon : ⟦·⟧)
-  l. 146
+  l. 132
+    défaut : ↳ ⟦·⟧ (portion : ⟦·⟧⟦? ⟦·⟧|⟧)
+    miroir : ↳ ⟦·⟧ (abr-échantillon : ⟦·⟧⟦? ⟦·⟧|⟧)
+  l. 151
     défaut : PRODUITS UTILISABLES
     miroir : INVENTIONS UTILES
-  l. 175
+  l. 180
     défaut : Coût ingrédients :
     miroir : Coût matières :
-  l. 176
+  l. 181
     défaut : Coût produits utilisables :
     miroir : Coût inventions utiles :
-  l. 213
+  l. 218
     défaut : Labo : ⟦·⟧
     miroir : Abr-Usine : ⟦·⟧
-  l. 225
+  l. 230
     défaut : Stock
     miroir : Armoire
-  l. 245
+  l. 250
     défaut : FT
     miroir : ET
-  l. 288
+  l. 293
     défaut : FT
     miroir : ET
 
@@ -558,172 +561,172 @@ src/controllers/laboController.js
   l. 364
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 767
+  l. 769
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 769
+  l. 771
     défaut : Fournisseur introuvable.
     miroir : Enseigne introuvable.
-  l. 775
+  l. 777
     défaut : La production de produits transformés est désactivée pour ce labo.
     miroir : La production d'élaborations internes est désactivée pour cette usine.
-  l. 898
+  l. 900
     défaut : Stock insuffisant pour "⟦·⟧" (recette) : disponible ⟦·⟧, nécessaire ⟦·⟧
     miroir : Armoire insuffisante pour "⟦·⟧" (abr-assemblage) : disponible ⟦·⟧, nécessaire ⟦·⟧
-  l. 910
+  l. 912
     défaut : Stock insuffisant pour le sous-produit "⟦·⟧" (recette) : disponible ⟦·⟧, nécessaire ⟦·⟧
     miroir : Armoire insuffisante pour le sous-produit "⟦·⟧" (abr-assemblage) : disponible ⟦·⟧, nécessaire ⟦·⟧
-  l. 1020
+  l. 1022
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1138
+  l. 1140
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1167
+  l. 1169
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1170
-    défaut : Fournisseur introuvable.
-    miroir : Enseigne introuvable.
   l. 1172
     défaut : Fournisseur introuvable.
     miroir : Enseigne introuvable.
-  l. 1205
+  l. 1174
+    défaut : Fournisseur introuvable.
+    miroir : Enseigne introuvable.
+  l. 1207
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1207
+  l. 1209
     défaut : Labo hors de votre périmètre
     miroir : Usine hors de votre périmètre
-  l. 1234
+  l. 1236
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1365
-    défaut : Labo introuvable
-    miroir : Usine introuvable
-  l. 1632
+  l. 1367
     défaut : Labo introuvable
     miroir : Usine introuvable
   l. 1634
+    défaut : Labo introuvable
+    miroir : Usine introuvable
+  l. 1636
     défaut : Fournisseur introuvable.
     miroir : Enseigne introuvable.
-  l. 1651
+  l. 1653
     défaut : Modifiez ou supprimez le transfert
     miroir : Modifiez ou supprimez l'expédition
-  l. 1693
+  l. 1695
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1709
+  l. 1711
     défaut : Modifiez ou supprimez le transfert
     miroir : Modifiez ou supprimez l'expédition
-  l. 1747
+  l. 1749
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1776
+  l. 1778
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1872
+  l. 1874
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1879
+  l. 1881
     défaut : Activité invalide
     miroir : Local invalide
-  l. 1913
+  l. 1915
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 1926
+  l. 1928
     défaut : ⟦?⟦·⟧|Labo⟧
     miroir : ⟦?⟦·⟧|Usine⟧
-  l. 1972
+  l. 1974
     défaut : Hist Appro ⟦·⟧
     miroir : Hist Abr-Rentrée ⟦·⟧
-  l. 1975
+  l. 1977
     défaut : Ingrédient
     miroir : Provision
-  l. 1975
+  l. 1977
     défaut : Fournisseur
     miroir : Abr-Enseigne
-  l. 1981
+  l. 1983
     défaut : Historique des approvisionnements — Labo
     miroir : Historique des rentrées — Abr-Usine
-  l. 2005
+  l. 2007
     défaut : Prod. Transformé
     miroir : Élab. interne
-  l. 2006
+  l. 2008
     défaut : Transfert reçu
     miroir : Expédition reçue
-  l. 2007
+  l. 2009
     défaut : ⟦?PT|Manuel⟧
     miroir : ⟦?EI|Manuel⟧
-  l. 2054
+  l. 2056
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2080
+  l. 2082
     défaut : Stock PT insuffisant
     miroir : Armoire EI insuffisante
-  l. 2094
+  l. 2096
     défaut : Aucun approvisionnement enregistré pour cet ingrédient.
     miroir : Aucune rentrée enregistrée pour cette provision.
-  l. 2096
+  l. 2098
     défaut : La date de perte doit être >= au premier appro (⟦·⟧).
     miroir : La date d'abandon doit être >= à la première abr-rentrée (⟦·⟧).
-  l. 2114
+  l. 2116
     défaut : Stock insuffisant
     miroir : Armoire insuffisante
-  l. 2136
+  l. 2138
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2218
+  l. 2220
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2236
+  l. 2238
     défaut : Suppression impossible : ce labo ⟦?a des transferts enregistrés (source ou destinataire)|alimente d'autres labos — détachez-les d'abord⟧.
     miroir : Suppression impossible : cette usine ⟦?a des expéditions enregistrées (source ou destinataire)|alimente d'autres usines — détachez-les d'abord⟧.
-  l. 2246
+  l. 2248
     défaut : Suppression impossible : des articles sont affectés à ce labo.
     miroir : Suppression impossible : des denrées sont affectées à cette usine.
-  l. 2251
+  l. 2253
     défaut : Suppression impossible : des factures validées ou envoyées en comptabilité sont rattachées à ce labo. Supprimez-les d'abord (page Factures).
     miroir : Suppression impossible : des factures validées ou envoyées en comptabilité sont rattachées à cette usine. Supprimez-les d'abord (page Factures).
-  l. 2269
+  l. 2271
     défaut : Labo supprimé
     miroir : Usine supprimée
-  l. 2293
+  l. 2295
     défaut : Labo source introuvable
     miroir : Usine source introuvable
-  l. 2300
+  l. 2302
     défaut : Labo source introuvable
     miroir : Usine source introuvable
-  l. 2311
+  l. 2313
     défaut : Un labo avec ce nom existe déjà
     miroir : Une usine avec ce nom existe déjà
-  l. 2342
+  l. 2344
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2364
+  l. 2366
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2367
+  l. 2369
     défaut : ⟦?⟦·⟧|Labo⟧
     miroir : ⟦?⟦·⟧|Usine⟧
-  l. 2407
+  l. 2409
     défaut : Hist Transferts ⟦·⟧
     miroir : Hist Abr-Expéditions ⟦·⟧
-  l. 2410
+  l. 2412
     défaut : Ingrédient
     miroir : Provision
-  l. 2416
+  l. 2418
     défaut : Historique des transferts — Labo
     miroir : Historique des expéditions — Abr-Usine
-  l. 2437
+  l. 2439
     défaut : ⟦·⟧⟦? (labo)|⟧
     miroir : ⟦·⟧⟦? (abr-usine)|⟧
-  l. 2483
+  l. 2485
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2504
+  l. 2506
     défaut : Labo introuvable
     miroir : Usine introuvable
-  l. 2524
+  l. 2526
     défaut : Labo introuvable
     miroir : Usine introuvable
 
@@ -854,106 +857,121 @@ src/controllers/produitTransformeController.js
     miroir : Usine introuvable ou accès refusé
 
 src/controllers/produitsController.js
-  l. 12
+  l. 17
     défaut : Un supplément doit contenir ⟦exactement 1 élément (un article ou un produit utilisable|entre 1 et ⟦·⟧ éléments (articles ou produits utilisables@≠1⟧).
     miroir : Une option doit contenir ⟦exactement 1 élément (une denrée ou une invention utile|entre 1 et ⟦·⟧ éléments (denrées ou inventions utiles@≠1⟧).
-  l. 101
+  l. 114
     défaut : Accès non autorisé à cette activité
     miroir : Accès non autorisé à ce local
-  l. 104
+  l. 117
     défaut : Accès non autorisé à ce labo
     miroir : Accès non autorisé à cette usine
-  l. 198
+  l. 213
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 307
+  l. 326
     défaut : La catégorie de produit est obligatoire pour un produit vendable ou un supplément
     miroir : La catégorie d'invention est obligatoire pour une invention vendue ou une option
-  l. 489
+  l. 528
     défaut : La catégorie de produit est obligatoire pour un produit vendable ou un supplément
     miroir : La catégorie d'invention est obligatoire pour une invention vendue ou une option
-  l. 517
+  l. 564
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 673
+  l. 570
+    défaut : L'unité finale ne concerne que les produits utilisables.
+    miroir : L'unité finale ne concerne que les inventions utiles.
+  l. 574
+    défaut : Choisissez l'unité finale du produit utilisable et la quantité obtenue avec la recette.
+    miroir : Choisissez l'unité finale de l'invention utile et la quantité obtenue avec l'assemblage.
+  l. 589
+    défaut : Ce produit utilisable a déjà des mouvements de stock, comptés dans son unité d'origine : son unité ne change plus. Pour compter dans une autre unité, créez un produit utilisable à part.
+    miroir : Cette invention utile a déjà des mouvements d'armoire, comptés dans son unité d'origine : son unité ne change plus. Pour compter dans une autre unité, créez une invention utile à part.
+  l. 614
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 678
+  l. 770
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 775
     défaut : Ce produit est utilisé comme sous-produit et ne peut pas être supprimé
     miroir : Cette invention est utilisée comme sous-produit et ne peut pas être supprimée
-  l. 703
+  l. 800
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 711
+  l. 808
     défaut : Ingrédient invalide
     miroir : Matière invalide
-  l. 738
-    défaut : Produit introuvable
-    miroir : Invention introuvable
-  l. 746
-    défaut : Ingrédient non trouvé dans ce produit
-    miroir : Matière non trouvée dans cette invention
-  l. 766
-    défaut : Un produit ne peut pas être son propre sous-produit
-    miroir : Une invention ne peut pas être son propre sous-produit
-  l. 777
-    défaut : Produit introuvable
-    miroir : Invention introuvable
-  l. 806
-    défaut : Produit introuvable
-    miroir : Invention introuvable
-  l. 814
-    défaut : Sous-produit non trouvé dans ce produit
-    miroir : Sous-produit non trouvé dans cette invention
   l. 835
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 1105
+  l. 843
+    défaut : Ingrédient non trouvé dans ce produit
+    miroir : Matière non trouvée dans cette invention
+  l. 863
+    défaut : Un produit ne peut pas être son propre sous-produit
+    miroir : Une invention ne peut pas être son propre sous-produit
+  l. 874
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 1181
+  l. 903
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 1334
+  l. 911
+    défaut : Sous-produit non trouvé dans ce produit
+    miroir : Sous-produit non trouvé dans cette invention
+  l. 929
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 1452
+  l. 1203
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 1525
+  l. 1283
     défaut : Produit introuvable
     miroir : Invention introuvable
-  l. 1598
+  l. 1441
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 1559
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 1632
+    défaut : Produit introuvable
+    miroir : Invention introuvable
+  l. 1706
     défaut : Produit
     miroir : Abr-Invention
-  l. 1598
+  l. 1706
     défaut : Activités
     miroir : Abr-Locaux
-  l. 1598
+  l. 1706
     défaut : Articles
     miroir : Abr-Denrées
-  l. 1598
+  l. 1706
     défaut : Produits util.
     miroir : Inv. utiles
-  l. 1603
+  l. 1711
     défaut : Liste des produits
     miroir : Liste des inventions
-  l. 1605
+  l. 1713
     défaut : Exporté le ⟦·⟧ · ⟦·⟧ ⟦produit|produits@≠1⟧
     miroir : Exporté le ⟦·⟧ · ⟦·⟧ ⟦invention|inventions@≠1⟧
-  l. 1616
+  l. 1724
     défaut : ⟦?Supplément vendable|Produit ⟦?vendable|utilisable⟧⟧
     miroir : ⟦?Option vendable|Invention ⟦?vendue|utile⟧⟧
-  l. 1662
+  l. 1731
+    défaut : 1 ⟦?⟦·⟧ (recette : ⟦·⟧ ⟦·⟧)|recette⟧
+    miroir : 1 ⟦?⟦·⟧ (assemblage : ⟦·⟧ ⟦·⟧)|assemblage⟧
+  l. 1773
     défaut : ⟦·⟧  —  ⟦·⟧ ⟦produit|produits@≠1⟧
     miroir : ⟦·⟧  —  ⟦·⟧ ⟦invention|inventions@≠1⟧
-  l. 1678
+  l. 1789
     défaut : Total : ⟦·⟧ ⟦produit|produits@≠1⟧
     miroir : Total : ⟦·⟧ ⟦invention|inventions@≠1⟧
-  l. 1691
+  l. 1802
     défaut : ⟦?Suppléments vendables|Produits ⟦?vendables|utilisables⟧⟧
     miroir : ⟦?Options vendables|Inventions ⟦?vendues|utiles⟧⟧
-  l. 1697
+  l. 1808
     défaut : ⟦?Suppléments|Produits⟧ vendables
     miroir : ⟦?Options vendables|Inventions vendues⟧
 
@@ -1001,64 +1019,64 @@ src/controllers/stockController.js
   l. 30
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 395
+  l. 397
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 399
+  l. 401
     défaut : Fournisseur introuvable.
     miroir : Enseigne introuvable.
-  l. 454
+  l. 456
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 481
+  l. 483
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 525
+  l. 527
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 671
+  l. 673
     défaut : Fournisseur introuvable.
     miroir : Enseigne introuvable.
-  l. 675
+  l. 677
     défaut : Modifiez ou supprimez le transfert
     miroir : Modifiez ou supprimez l'expédition
-  l. 737
+  l. 739
     défaut : Cette entrée est liée à une vente et ne peut pas être supprimée.
     miroir : Cette entrée est liée à un encaissement et ne peut pas être supprimée.
-  l. 740
+  l. 742
     défaut : Modifiez ou supprimez le transfert
     miroir : Modifiez ou supprimez l'expédition
-  l. 861
+  l. 863
     défaut : Aucune activité
     miroir : Aucun local
-  l. 918
+  l. 920
     défaut : Historique Appro
     miroir : Historique Abr-Rentrée
-  l. 922
+  l. 924
     défaut : Ingrédient
     miroir : Provision
-  l. 932
+  l. 934
     défaut : Activité
     miroir : Abr-Local
-  l. 933
+  l. 935
     défaut : Fournisseur
     miroir : Abr-Enseigne
-  l. 937
+  l. 939
     défaut : Fournisseur
     miroir : Abr-Enseigne
-  l. 950
+  l. 952
     défaut : ⟦Activité : ⟦·⟧|⟦|Activités : ⟦·⟧@>1⟧@≠1⟧
     miroir : ⟦Abr-Local : ⟦·⟧|⟦|Abr-Locaux : ⟦·⟧@>1⟧@≠1⟧
-  l. 953
+  l. 955
     défaut : Historique des approvisionnements — Activités
     miroir : Historique des rentrées — Abr-Locaux
-  l. 972
+  l. 974
     défaut : ⟦?Prod. Transformé|⟦?Transfert|⟦?PT|Manuel⟧⟧⟧
     miroir : ⟦?Élab. interne|⟦?Expédition|⟦?EI|Manuel⟧⟧⟧
-  l. 1032
+  l. 1034
     défaut : Activité introuvable
     miroir : Local introuvable
-  l. 1052
+  l. 1054
     défaut : Activité introuvable
     miroir : Local introuvable
 
@@ -1074,9 +1092,12 @@ src/controllers/supportController.js
     miroir : L'option Abr-Clientes nécessite au moins une usine (ajoutez-en une à la demande)
 
 src/controllers/unitesController.js
-  l. 126
+  l. 129
     défaut : Cette unité est assignée à ⟦·⟧ ⟦article|articles@>1⟧ — supprimez-les ou changez leur unité avant
     miroir : Cette unité est assignée à ⟦·⟧ ⟦denrée|denrées@>1⟧ — supprimez-les ou changez leur unité avant
+  l. 139
+    défaut : Suppression impossible : ⟦·⟧ ⟦produit|produits@>1⟧ ⟦utilisable|utilisables@>1⟧ ⟦est|sont@>1⟧ ⟦compté|comptés@>1⟧ dans cette unité
+    miroir : Suppression impossible : ⟦·⟧ ⟦invention|inventions@>1⟧ ⟦utile|utiles@>1⟧ ⟦est|sont@>1⟧ ⟦comptée|comptées@>1⟧ dans cette unité
 
 src/controllers/ventesController.js
   l. 47
@@ -2064,3 +2085,17 @@ src/services/unitesOperationnellesService.js
   l. 26
     défaut : Seul un labo peut alimenter une unité.
     miroir : Seule une usine peut alimenter une unité.
+
+src/utils/uniteProduit.js
+  l. 28
+    défaut : Choisissez l'unité finale du produit utilisable.
+    miroir : Choisissez l'unité finale de l'invention utile.
+  l. 29
+    défaut : Indiquez la quantité obtenue avec la recette (plus de 0).
+    miroir : Indiquez la quantité obtenue avec l'assemblage (plus de 0).
+  l. 31
+    défaut : Indiquez la quantité obtenue avec la recette (plus de 0).
+    miroir : Indiquez la quantité obtenue avec l'assemblage (plus de 0).
+  l. 52
+    défaut : Une quantité de la recette est trop petite pour 1 unité.
+    miroir : Une quantité de l'assemblage est trop petite pour 1 unité.
