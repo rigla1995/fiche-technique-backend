@@ -51,7 +51,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   // S7b : + 4 (produire des certificats, en annuler un, produire le fichier TEJ du mois, retirer un fichier refusé — droit « configurer »).
   // S7c : + 4 (préparer une déclaration, proposer l'écriture de TVA, marquer, retirer la marque — droit « configurer »).
   // F4 (factures fournisseur) : + 1 (régler un compte d'achat — droit « configurer »).
-  assert.equal(ecritures.length, 65, 'routes d\'écriture trouvées');
+  // X1 : + 1 (ouvrir l'exercice suivant — droit « configurer »).
+  assert.equal(ecritures.length, 66, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
@@ -83,6 +84,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     declarations: { fichier: 'declarations.js', transactions: ['await ecritureDeclaration(req,'] },
     // F4 (factures fournisseur) : les comptes d'achat (ecritureComptesAchat : droit « configurer », dossier non archivé).
     comptesAchat: { fichier: 'comptesAchat.js', transactions: ['await ecritureComptesAchat(req,'] },
+    // X1 : l'ouverture de l'exercice suivant (transaction du dossier ; droit « configurer », dossier non archivé).
+    exercices: { fichier: 'exercices.js', transactions: ['await dansEspaceDuDossier(req.user,'] },
   };
   const corps = (fichier, nom) => {
     const ctrl = lire('src', 'compta', fichier);

@@ -14,6 +14,7 @@ const { withTransaction } = require('../utils/db');
 const M = require('../compta/moduleClient');
 const { exigerEcriture, erreurEcriture, modeTitulaire } = require('../compta/garde');
 const E = require('../compta/ecritures');
+const X = require('../compta/exercices');
 const T = require('../compta/tiers');
 const { journaliser } = require('../compta/journal');
 const { SQL_COMPTES_NUMEROS, SQL_PERIODE_OUVERTE_APRES } = require('../compta/declarations');
@@ -178,12 +179,15 @@ const { SQL_EN_COMPTA, MESSAGE_EN_COMPTA, refusEnCompta } = F;
 
 // Date de l'écriture : la date de la facture, dans l'exercice ouvert qui la contient ; période close ⇒ 1er jour de la
 // période ouverte suivante (vraie date = date de la facture, NC 01 §61) ; facture d'avant le premier exercice ouvert ⇒
-// 1re période ouverte de cet exercice ; facture d'après le dernier : refus (l'exercice qui la contiendra n'existe pas).
-const dateDe = async (db, d, dateFacture) => {
+// 1re période ouverte de cet exercice ; facture d'après le dernier : X1 — elle ouvre l'exercice suivant quand les règles le
+// permettent (date passée, dans l'exercice proposé, deux exercices ouverts au plus : exercices.ouvrirSiBesoin), sinon refus.
+// `ouverture` : { espaceId, auteurId, origine } (transaction verrouillée de l'envoi).
+const dateDe = async (db, d, dateFacture, ouverture = null) => {
   const ouverts = (await db.query(`SELECT id, debut::text AS debut, fin::text AS fin FROM compta.exercices WHERE dossier_id = $1 AND etat = 'ouvert' ORDER BY debut`, [d.id])).rows;
   if (!ouverts.length) throw refus(409, 'EXERCICE_CLOS', 'Aucun exercice ouvert dans la comptabilité : la facture ne peut pas y être enregistrée. Voyez-le avec votre comptable.');
   const dernier = ouverts[ouverts.length - 1];
   if (dateFacture > dernier.fin) {
+    if (await X.ouvrirSiBesoin(db, d.id, dateFacture, ouverture)) return { date: dateFacture, dateReelle: null };
     throw refus(409, 'DATE_APRES_EXERCICE', `La facture du ${E.fmtDate(dateFacture)} est après l'exercice ouvert de la comptabilité (du ${E.fmtDate(dernier.debut)} au ${E.fmtDate(dernier.fin)}) : elle ne peut pas encore y être enregistrée. Voyez-le avec votre comptable.`);
   }
   const ex = ouverts.find((x) => dateFacture >= x.debut && dateFacture <= x.fin) || ouverts[0];
@@ -393,7 +397,7 @@ const envoyerFacture = async ({ clientId, factureId, auteurId }) => {
       const j = (await db.query(`SELECT id FROM compta.journaux WHERE dossier_id = $1 AND type = 'achats' AND actif ORDER BY (code = 'AC') DESC, code LIMIT 1`, [d.id])).rows[0];
       if (!j) throw refus(409, 'JOURNAL_ABSENT', 'Aucun journal des achats actif dans la comptabilité : demandez à votre comptable de le réactiver (page Journaux).');
       const journal = await E.journalDe(db, d.id, j.id);
-      const { date, dateReelle } = await dateDe(db, d, f.date_facture);
+      const { date, dateReelle } = await dateDe(db, d, f.date_facture, { espaceId: mod.espaceId, auteurId, origine: 'labflow' });
       const { exercice, periode } = await E.periodeDe(db, d.id, date);
       E.exigerDateAN(journal, exercice, date);
       await E.controlerDateReelle(db, d.id, dateReelle);
@@ -523,4 +527,6 @@ const retirerAvecFacture = async (db, { factureId, auteurId }) => {
 module.exports = {
   RefusCompta, COMPTES_NATURES, LIBELLES_NATURES, compteParDefaut, enMillimes, repartirProrata, ajusterAuPlusGrand, texteCompta, ecritureDeFacture, identifiantMF,
   moduleActif, etatsCompta, enCompta, SQL_EN_COMPTA, MESSAGE_EN_COMPTA, refusEnCompta, envoyerFacture, envoyerSiDemande, retirerAvecFacture,
+  // X1 (essai) : la date de l'écriture d'une facture, ouverture de l'exercice suivant comprise.
+  dateDe,
 };

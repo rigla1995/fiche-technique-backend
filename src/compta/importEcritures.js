@@ -12,6 +12,7 @@
 // 2) Balance d'ouverture : une rangée par compte (et par tiers sur un collectif) ; une seule écriture d'à-nouveaux dans le
 //    journal de type « an », datée du premier jour de l'exercice ouvert, en brouillard, autant de lignes que le fichier
 //    (LIGNES_MAX_BALANCE) ; refusée si l'exercice a déjà des à-nouveaux. Journal D16 : ecritures_importees, balance_importee.
+//    X1 : seulement dans le PREMIER exercice du dossier (ensuite, les à-nouveaux viennent de la clôture du précédent).
 const pool = require('../config/database');
 const { journaliser } = require('./journal');
 const { erreur, repondreErreur } = require('./comptablesClient');
@@ -19,7 +20,7 @@ const { NATURE_PAR_TYPE_TIERS } = require('./paquets');
 const { droits, dateValide, dansEspaceDuDossier } = require('./dossiers');
 const { lectureDossier } = require('./planComptes');
 const {
-  lireMontant, fmtDate, texteMillimes, numeroProvisoire, lireEcriture, journalDe, periodeDe, exigerDateAN, resoudreLignes, controlerLignes, insererLignes, uneEcriture, resumeEcritures, resumeEcriture, exerciceOuvert,
+  lireMontant, fmtDate, texteMillimes, numeroProvisoire, lireEcriture, journalDe, periodeDe, exigerDateAN, resoudreLignes, controlerLignes, insererLignes, uneEcriture, resumeEcritures, resumeEcriture, premierExercice,
 } = require('./ecritures');
 const { LIGNES_MAX: LIGNES_FICHIER_MAX, lireClasseur, modeleClasseur, envoyerClasseur, erreurImport, repondreImport, nomFichier } = require('./importExcel');
 
@@ -267,7 +268,8 @@ const importerEcritures = async (req, res) => {
         let periode = null;
         try {
           journal = await journalDe(db, d.id, g.ecriture.journalId);
-          if (!periodes.has(g.ecriture.date)) periodes.set(g.ecriture.date, await periodeDe(db, d.id, g.ecriture.date));
+          // X1 : une écriture datée de la nouvelle année ouvre l'exercice suivant (annulé avec tout le reste si l'import échoue).
+          if (!periodes.has(g.ecriture.date)) periodes.set(g.ecriture.date, await periodeDe(db, d.id, g.ecriture.date, { espaceId: acces.espace_id, auteurId: req.user.id, origine: 'import' }));
           periode = periodes.get(g.ecriture.date);
           exigerDateAN(journal, periode.exercice, g.ecriture.date);
         } catch (e) {
@@ -312,12 +314,13 @@ const importerEcritures = async (req, res) => {
 const modeleBalance = async (req, res) => {
   try {
     const { d } = await lectureDossier(req.user, req.params.dossierId);
-    const x = await exerciceOuvert(pool, d.id);
+    // X1 : la balance d'ouverture va dans le premier exercice du dossier.
+    const x = await premierExercice(pool, d.id);
     const { wb } = modeleClasseur({
       feuille: 'Balance d\'ouverture',
       titre: 'Modèle d\'import — balance d\'ouverture',
       sousTitre: d.nom,
-      meta: `Une rangée par compte (et par tiers sur un compte collectif : fournisseurs, clients), solde au débit OU au crédit, en dinars (virgule acceptée) ; compte par son numéro (comptes imputables du plan), tiers par son code. Le total des débits doit égaler le total des crédits. L'import crée UNE écriture d'à-nouveaux (journal AN) au premier jour de l'exercice ouvert${x ? ` (${fmtDate(x.debut)})` : ''}, en brouillard : vous la relisez, puis la validez.`,
+      meta: `Une rangée par compte (et par tiers sur un compte collectif : fournisseurs, clients), solde au débit OU au crédit, en dinars (virgule acceptée) ; compte par son numéro (comptes imputables du plan), tiers par son code. Le total des débits doit égaler le total des crédits. L'import crée UNE écriture d'à-nouveaux (journal AN) au premier jour du premier exercice du dossier${x ? ` (${fmtDate(x.debut)})` : ''}, en brouillard : vous la relisez, puis la validez.`,
       enTetes: EN_TETES_BALANCE,
       largeurs: LARGEURS_BALANCE,
       exemple: EXEMPLE_BALANCE,
@@ -339,8 +342,10 @@ const importerBalance = async (req, res) => {
     const lignes = await lireClasseur(req.file.buffer, { enTetes: EN_TETES_BALANCE, max: LIGNES_MAX_BALANCE });
     const fichier = nomFichier(req.file);
     const resultat = await ecritureImport(req, async (db, acces, d) => {
-      const x = await exerciceOuvert(db, d.id);
-      if (!x) throw erreur(409, 'Aucun exercice ouvert dans ce dossier', 'EXERCICE_CLOS');
+      // X1 (PLAN-EXERCICES §3) : seulement dans le PREMIER exercice du dossier ; ensuite, les à-nouveaux viennent de la clôture.
+      const x = await premierExercice(db, d.id);
+      if (!x) throw erreur(409, 'Aucun exercice dans ce dossier', 'EXERCICE_ABSENT');
+      if (x.etat !== 'ouvert') throw erreur(409, `Le premier exercice du dossier (du ${fmtDate(x.debut)} au ${fmtDate(x.fin)}) est clos : la balance d'ouverture ne s'importe plus, les à-nouveaux viennent de la clôture`, 'EXERCICE_CLOS');
       const an = (await db.query(`SELECT id, code, actif FROM compta.journaux WHERE dossier_id = $1 AND type = 'an' ORDER BY id LIMIT 1`, [d.id])).rows[0];
       if (!an) throw erreur(409, 'Ce dossier n\'a pas de journal d\'à-nouveaux : créez-le (page Journaux, type À-nouveaux)', 'JOURNAL_AN_ABSENT');
       const journal = await journalDe(db, d.id, an.id);

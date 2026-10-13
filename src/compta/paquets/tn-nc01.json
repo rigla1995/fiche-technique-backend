@@ -91,6 +91,11 @@
       "client": "4111"
     }
   },
+  "cloture": {
+    "note": "X1 (13/10/2026) : comptes du résultat de l'exercice (NC 01, 3e partie, compte 13) — le résultat d'un exercice non encore clos est repris en provisoire dans l'exercice suivant (balance, grand livre) au compte du résultat bénéficiaire ou déficitaire ; la clôture (étape X2) y soldera les comptes de charges et de produits.",
+    "beneficiaire": "131",
+    "deficitaire": "135"
+  },
   "fiscalite": {
     "note": "S7b (09/10/2026) : régime fiscal d'un fournisseur et retenue proposée d'après lui (recherche-fiscale-tunisie.md §3.1 et §3.6, règles 3 et 4 : achats de 1 000 D et plus — 1,5 % en général, 1 % pour une société à l'IS de 20 %, 0,5 % pour une société à l'IS de 10 % ou un revenu à déduction des 2/3 ; honoraires — 3 % pour une société ou une personne physique au réel, 10 % sinon), seuil des retenues sur achats par paiement, compte du crédit de TVA à reporter (état de TVA du mois), certificats de retenue au cahier des charges TEJ v2.0 (juin 2024 ; nouveau schéma XSD de septembre 2026 non publié : fichier à essayer sur la plateforme).",
     "regimesFiscaux": [
