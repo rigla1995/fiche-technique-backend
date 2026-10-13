@@ -110,8 +110,9 @@ test('lecteurs de saisie : ligne (compte, débit OU crédit, tiers, code, éché
 });
 
 test('filtres de la liste : journal, période, état, recherche (un montant est aussi cherché comme montant), pages', () => {
-  assert.deepEqual(ecritures.lireFiltres({}), { journalId: null, periodeId: null, etat: '', q: '', montant: null, page: 1, limite: 25 });
-  assert.deepEqual(ecritures.lireFiltres({ journal: '3', periode: '12', etat: 'brouillard', q: ' facture ', page: '2', limite: '50' }), { journalId: 3, periodeId: 12, etat: 'brouillard', q: 'facture', montant: null, page: 2, limite: 50 });
+  // X1 : + exercice (vide = celui de la période demandée, sinon celui du jour).
+  assert.deepEqual(ecritures.lireFiltres({}), { journalId: null, periodeId: null, exerciceId: null, etat: '', q: '', montant: null, page: 1, limite: 25 });
+  assert.deepEqual(ecritures.lireFiltres({ journal: '3', periode: '12', exercice: '4', etat: 'brouillard', q: ' facture ', page: '2', limite: '50' }), { journalId: 3, periodeId: 12, exerciceId: 4, etat: 'brouillard', q: 'facture', montant: null, page: 2, limite: 50 });
   assert.deepEqual(ecritures.lireFiltres({ q: '1 191,000' }).montant, '1191.000', 'un montant en texte français');
   assert.equal(ecritures.lireFiltres({ q: '17.85' }).montant, '17.850');
   assert.equal(ecritures.lireFiltres({ q: 'F-2026-001' }).montant, null, 'une référence n\'est pas un montant');
@@ -165,12 +166,13 @@ test('aides à la saisie : lecture des corps, assiette d\'une retenue (TTC hors 
 
 test('présentations : écriture (numéro provisoire B-000012, total en texte, journal), ligne (compte, tiers, code), tiers et taxe courts', () => {
   const e = ecritures.presenterEcriture({
-    id: 5, journal_id: 2, journal_code: 'AC', journal_libelle: 'Achats', journal_type: 'achats', date: '2026-03-15', date_reelle: null, numero_provisoire: 12, numero: null, reference: 'F-1', libelle: 'Facture', etat: 'brouillard',
+    id: 5, exercice_id: 3, journal_id: 2, journal_code: 'AC', journal_libelle: 'Achats', journal_type: 'achats', date: '2026-03-15', date_reelle: null, numero_provisoire: 12, numero: null, reference: 'F-1', libelle: 'Facture', etat: 'brouillard',
     total_debit: '1191.000', total_credit: '1191.000', origine: 'saisie', origine_id: null, cree_par: 3, cree_par_nom: 'Leïla', created_at: 'c', updated_at: 'u', valide_par: null, valide_le: null, nb_lignes: 5,
   }, [{ id: 9, ecriture_id: 5, rang: 1, libelle: null, debit: '1000.000', credit: '0.000', echeance: null, compte_id: 1, compte_numero: '607', compte_libelle: 'Achats de marchandises', compte_nature: 'charges', tiers_id: null, taxe_id: 4, taxe_code: 'TVA19', taxe_libelle: 'TVA 19 %', taxe_type: 'tva' }]);
   // S6b : l'écriture porte aussi l'auteur de sa validation, le numéro de son origine et sa contre-passation (nuls ici).
   assert.deepEqual(e, {
-    id: 5, numeroProvisoire: 'B-000012', numero: null, date: '2026-03-15', dateReelle: null, journal: { id: 2, code: 'AC', libelle: 'Achats', type: 'achats' }, reference: 'F-1', libelle: 'Facture', etat: 'brouillard', etatLibelle: 'Brouillard',
+    // X1 : + l'exercice de l'écriture.
+    id: 5, numeroProvisoire: 'B-000012', numero: null, date: '2026-03-15', dateReelle: null, exerciceId: 3, journal: { id: 2, code: 'AC', libelle: 'Achats', type: 'achats' }, reference: 'F-1', libelle: 'Facture', etat: 'brouillard', etatLibelle: 'Brouillard',
     total: '1191.000', origine: 'saisie', origineId: null, origineNumero: null, factureId: null, contrepasseePar: null, nbLignes: 5, creePar: 'Leïla', creeLe: 'c', modifieLe: 'u', validePar: null, valideLe: null,
     // S7a : chaque ligne porte sa lettre (lettrage d'un tiers), null sinon.
     lignes: [{ id: 9, rang: 1, compte: { id: 1, numero: '607', libelle: 'Achats de marchandises', nature: 'charges' }, tiers: null, libelle: null, debit: '1000.000', credit: '0.000', taxe: { id: 4, code: 'TVA19', libelle: 'TVA 19 %', type: 'tva' }, echeance: null, lettre: null }],

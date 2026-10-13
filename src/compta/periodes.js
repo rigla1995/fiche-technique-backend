@@ -10,8 +10,9 @@
 const pool = require('../config/database');
 const { journaliser } = require('./journal');
 const { modeTitulaire, etatAbonnement } = require('./garde');
-const { erreur, repondreErreur } = require('./comptablesClient');
+const { erreur, idValide, repondreErreur } = require('./comptablesClient');
 const { droits } = require('./dossiers');
+const XC = require('./exercicesCalcul');
 const { lectureDossier, presenterDossier } = require('./planComptes');
 const { SQL_LIGNES, fmtDate, fmtMillimes, millimesDe, texteMillimes, resumeEcritures } = require('./ecritures');
 const { ecritureValidation, periodeDuDossier, libellePeriode, exigerExerciceOuvert } = require('./validation');
@@ -36,20 +37,25 @@ const presenterPeriode = (p) => ({
   id: p.id, debut: p.debut, fin: p.fin, etat: p.etat, nbBrouillard: p.nb_brouillard, nbValidees: p.nb_validees, totalValidees: p.total_validees,
   closPar: p.clos_par_nom || null, closLe: p.clos_le, rouvertPar: p.rouvert_par_nom || null, rouvertLe: p.rouvert_le,
 });
-// L'état de la page : le dossier, les droits, l'exercice en cours (l'ouvert, sinon le plus récent) et ses périodes, tous
-// les exercices, les comptes rendus, l'abonnement.
-const etatPeriodes = async (db, acces, d) => {
+// L'état de la page : le dossier, les droits, l'exercice affiché et ses périodes, tous les exercices, les comptes rendus,
+// l'abonnement. X1 : deux exercices peuvent être ouverts — `exerciceId` : celui demandé (404 s'il n'est pas du dossier),
+// sinon celui du jour (sinon le plus récent des ouverts, sinon le plus récent).
+const etatPeriodes = async (db, acces, d, exerciceId = null) => {
   const [ex, nb, mode] = await Promise.all([
-    db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [d.id]),
+    db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat, millesime FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [d.id]),
     resumeEcritures(db, d.id),
     modeTitulaire(db, acces.espace_id),
   ]);
-  const courant = ex.rows.find((x) => x.etat === 'ouvert') || ex.rows[0] || null;
+  let courant;
+  if (exerciceId != null) {
+    courant = ex.rows.find((x) => x.id === Number(exerciceId));
+    if (!courant) throw erreur(404, 'Exercice introuvable');
+  } else courant = XC.exerciceParDefaut(ex.rows);
   const periodes = courant ? (await db.query(SQL_PERIODES, [courant.id, d.id, null])).rows.map(presenterPeriode) : [];
   return {
     dossier: presenterDossier(acces, d),
     droits: droits(acces),
-    exercice: courant ? { id: courant.id, debut: courant.debut, fin: courant.fin, etat: courant.etat, periodes } : null,
+    exercice: courant ? { id: courant.id, debut: courant.debut, fin: courant.fin, etat: courant.etat, millesime: courant.millesime, periodes } : null,
     exercices: ex.rows,
     nb,
     etatAbonnement: etatAbonnement(mode),
@@ -83,11 +89,13 @@ const centralisationDe = async (db, dossierId, periodeId) => {
   };
 };
 
-// GET /api/compta/dossiers/:dossierId/periodes — la page (lecture : tout niveau).
+// GET /api/compta/dossiers/:dossierId/periodes?exercice= — la page (lecture : tout niveau) ; X1 : l'exercice choisi.
 const lire = async (req, res) => {
   try {
+    const x = req.query?.exercice;
+    if (x !== undefined && x !== '' && !idValide(x)) throw erreur(404, 'Exercice introuvable');
     const { acces, d } = await lectureDossier(req.user, req.params.dossierId);
-    res.json(await etatPeriodes(pool, acces, d));
+    res.json(await etatPeriodes(pool, acces, d, x === undefined || x === '' ? null : Number(x)));
   } catch (err) {
     repondreErreur(res, err, '[compta.periodes.lire]');
   }
@@ -117,7 +125,8 @@ const clore = async (req, res) => {
       if (c.brouillard > 0) throw erreur(409, `${c.brouillard} écriture${c.brouillard > 1 ? 's' : ''} en brouillard dans la période ${libellePeriode(p)} : validez-les (ou supprimez-les) avant de clore`, 'BROUILLARD_RESTANT');
       await db.query(`UPDATE compta.periodes SET etat = 'close', clos_par = $2, clos_le = NOW(), rouvert_par = NULL, rouvert_le = NULL WHERE id = $1`, [p.id, req.user.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'periode_close', { dossier: d.id, periode: p.id, debut: p.debut, fin: p.fin, nbEcritures: c.validees });
-      return etatPeriodes(db, acces, d);
+      // X1 : la page rendue reste sur l'exercice de la période.
+      return etatPeriodes(db, acces, d, p.exercice_id);
     });
     res.json(etat);
   } catch (err) {
@@ -136,7 +145,7 @@ const rouvrir = async (req, res) => {
       if (p.etat !== 'close') throw erreur(409, `La période ${libellePeriode(p)} n'est pas close`, 'DEJA_FAIT');
       await db.query(`UPDATE compta.periodes SET etat = 'ouverte', rouvert_par = $2, rouvert_le = NOW() WHERE id = $1`, [p.id, req.user.id]);
       await journaliser(db, acces.espace_id, req.user.id, 'periode_rouverte', { dossier: d.id, periode: p.id, debut: p.debut, fin: p.fin, closeLe: p.clos_le, closePar: p.clos_par });
-      return etatPeriodes(db, acces, d);
+      return etatPeriodes(db, acces, d, p.exercice_id);
     }, 'archiver');
     res.json(etat);
   } catch (err) {

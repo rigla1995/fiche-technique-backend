@@ -1939,10 +1939,10 @@ Règles : concentre-toi sur la PREMIÈRE étape « À FAIRE » ; explique concr�
 - Termine par « ➡️ **Prochaine étape :** … » (la suite logique de sa mise en route)
 
 src/services/pontCompta.js
-  l. 382
+  l. 386
     défaut : Choisissez le fournisseur de cette facture : la comptabilité en a besoin.
     miroir : Choisissez l'enseigne de cette facture : la comptabilité en a besoin.
-  l. 506
+  l. 510
     défaut : Cette facture est en comptabilité et son écriture ⟦·⟧ est validée : la facture ne se supprime plus dans LabFlow. Si elle est erronée, votre comptable contre-passe l'écriture dans LabFlow Compta, et le stock se corrige par un inventaire.
     miroir : Cette facture est en comptabilité et son écriture ⟦·⟧ est validée : la facture ne se supprime plus dans LabFlow. Si elle est erronée, votre comptable contre-passe l'écriture dans LabFlow Compta, et l'armoire se corrige par une pesée.
 

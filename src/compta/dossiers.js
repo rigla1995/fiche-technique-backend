@@ -16,6 +16,8 @@ const { erreur, idValide, repondreErreur } = require('./comptablesClient');
 // S5a : plan de comptes copié du paquet pays à la création ; résumé pour la fiche (planInit.js, sans dépendance ici).
 const { initialiserPlan, resumePlan } = require('./planInit');
 const { initialiserJournauxEtTaxes, resumeConfiguration } = require('./configDossier');
+// X1 : l'exercice par défaut, l'exercice suivant (règles pures, sans dépendance).
+const XC = require('./exercicesCalcul');
 
 // ── Régime fiscal (listes fermées, SPEC-SOCLE §3.2) ─────────────────────────────────────────────────────────────────
 const PERSONNES = ['morale', 'physique'];
@@ -335,9 +337,12 @@ const presenterRegime = (d) => ({
 // La fiche : identité, régime, exercice en cours (et ses périodes), qui y a accès, droits de la personne, et le résumé
 // de sa configuration — (S5a) plan de comptes : comptes actifs, ajoutés, désactivés, paquet d'origine ; (S5b) journaux
 // et codes de taxe actifs ; (S5c) tiers actifs (fournisseurs, clients) ; (S6a) écritures en brouillard et validées.
+// X1 : deux exercices peuvent être ouverts — l'exercice « en cours » est celui du jour (sinon le plus récent des ouverts) ;
+// `exercicesOuverts` les donne tous avec leurs périodes ; `suivant` : l'exercice suivant, s'il peut s'ouvrir (bouton de la
+// fiche) et la fenêtre de son ouverture automatique.
 const presenterFiche = async (db, acces, d) => {
   const [ex, personnes, mode, plan, configuration] = await Promise.all([
-    db.query('SELECT id, debut, fin, etat FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [d.id]),
+    db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat, millesime FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [d.id]),
     db.query(
       `SELECT a.role, a.niveau, COALESCE(a.nom_attendu, u.nom) AS nom, u.email
          FROM compta.acces a
@@ -351,10 +356,14 @@ const presenterFiche = async (db, acces, d) => {
     resumePlan(db, d.id),
     resumeConfiguration(db, d.id),
   ]);
-  const courant = ex.rows.find((x) => x.etat === 'ouvert') || ex.rows[0] || null;
-  const periodes = courant
-    ? (await db.query('SELECT debut, fin, etat FROM compta.periodes WHERE exercice_id = $1 ORDER BY debut', [courant.id])).rows
+  const courant = XC.exerciceParDefaut(ex.rows);
+  const ouverts = XC.croissants(ex.rows.filter((x) => x.etat === 'ouvert'));
+  const ids = [...new Set([...(courant ? [courant.id] : []), ...ouverts.map((x) => x.id)])];
+  const toutes = ids.length
+    ? (await db.query('SELECT exercice_id, debut::text AS debut, fin::text AS fin, etat FROM compta.periodes WHERE exercice_id = ANY($1) ORDER BY debut', [ids])).rows
     : [];
+  const periodesDe = (x) => toutes.filter((p) => p.exercice_id === x.id).map((p) => ({ debut: p.debut, fin: p.fin, etat: p.etat }));
+  const periodes = courant ? periodesDe(courant) : [];
   return {
     id: d.id,
     espace: presenterEspace(acces),
@@ -367,8 +376,10 @@ const presenterFiche = async (db, acces, d) => {
     pays: d.pays,
     devise: d.devise,
     decimales: d.decimales,
-    exercice: courant ? { id: courant.id, debut: courant.debut, fin: courant.fin, etat: courant.etat, periodes } : null,
-    exercices: ex.rows.map((x) => ({ id: x.id, debut: x.debut, fin: x.fin, etat: x.etat })),
+    exercice: courant ? { id: courant.id, debut: courant.debut, fin: courant.fin, etat: courant.etat, millesime: courant.millesime, periodes } : null,
+    exercices: ex.rows.map((x) => ({ id: x.id, debut: x.debut, fin: x.fin, etat: x.etat, millesime: x.millesime })),
+    exercicesOuverts: ouverts.map((x) => ({ id: x.id, debut: x.debut, fin: x.fin, etat: x.etat, millesime: x.millesime, periodes: periodesDe(x) })),
+    suivant: XC.presenterSuivant(ex.rows),
     acces: personnes.rows.map((p) => ({ role: p.role, niveau: p.niveau, nom: p.nom, email: p.email })),
     droits: droits(acces),
     plan,
@@ -429,9 +440,12 @@ const dansEspaceDuDossier = async (user, dossierId, travail, { garde = true } = 
 };
 
 const COLONNES_IDENTITE = CHAMPS_IDENTITE.map((c) => c.colonne);
-// Premier exercice d'un dossier et ses périodes (toutes ouvertes).
+// Premier exercice d'un dossier et ses périodes (toutes ouvertes) ; X1 : millésime = l'année de son début.
 const creerExercice = async (db, dossierId, { debut, fin }) => {
-  const ex = (await db.query('INSERT INTO compta.exercices (dossier_id, debut, fin) VALUES ($1, $2, $3) RETURNING id', [dossierId, debut, fin])).rows[0];
+  const ex = (await db.query(
+    `INSERT INTO compta.exercices (dossier_id, debut, fin, millesime, ouverture) VALUES ($1, $2, $3, $4, 'creation') RETURNING id`,
+    [dossierId, debut, fin, Number(debut.slice(0, 4))]
+  )).rows[0];
   await insererPeriodes(db, ex.id, { debut, fin });
   return ex;
 };
@@ -562,8 +576,11 @@ const modifier = async (req, res) => {
         const courant = (await db.query(`SELECT id, debut, fin FROM compta.exercices WHERE dossier_id = $1 AND etat = 'ouvert' ORDER BY debut DESC LIMIT 1 FOR UPDATE`, [d.id])).rows[0];
         if (!courant) throw erreur(409, 'Aucun exercice ouvert', 'EXERCICE_CLOS');
         if (await dossierMouvemente(db, d.id)) throw erreur(409, 'Ce dossier a des écritures : les dates de l\'exercice ne changent plus', 'DOSSIER_MOUVEMENTE');
+        // X1 : seul le premier exercice d'un dossier change de dates (l'exercice suivant commence le lendemain du précédent).
+        const nb = (await db.query('SELECT COUNT(*)::int AS n FROM compta.exercices WHERE dossier_id = $1', [d.id])).rows[0].n;
+        if (nb > 1) throw erreur(409, 'Ce dossier a déjà ouvert son exercice suivant : les dates des exercices ne changent plus', 'PLUSIEURS_EXERCICES');
         await db.query('DELETE FROM compta.periodes WHERE exercice_id = $1', [courant.id]);
-        await db.query('UPDATE compta.exercices SET debut = $2, fin = $3 WHERE id = $1', [courant.id, exercice.debut, exercice.fin]);
+        await db.query('UPDATE compta.exercices SET debut = $2, fin = $3, millesime = $4 WHERE id = $1', [courant.id, exercice.debut, exercice.fin, Number(exercice.debut.slice(0, 4))]);
         await insererPeriodes(db, courant.id, exercice);
         await db.query('UPDATE compta.dossiers SET updated_at = NOW() WHERE id = $1', [d.id]);
         await journaliser(db, acces.espace_id, req.user.id, 'exercice_modifie', { dossier: d.id, exercice: courant.id, avant: { debut: courant.debut, fin: courant.fin }, apres: exercice });
@@ -664,5 +681,7 @@ module.exports = {
   LIMITE_DEFAUT, LIMITE_MAX, IDS_MAX, lireParametresListe, motifRecherche, SQL_LISTE, SQL_COMPTES,
   // S5a : la configuration du dossier (planComptes.js) réemploie les gardes et la transaction des dossiers.
   dossierDe, presenterEspace, dansEspaceDuDossier,
+  // X1 (exercices.js) : la fiche rendue après l'ouverture de l'exercice suivant, et ses périodes.
+  presenterFiche, insererPeriodes,
   lister, creer, fiche, modifier, reprendreIdentite, archiver, desarchiver, supprimer,
 };

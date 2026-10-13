@@ -239,9 +239,10 @@ const CLES = ['compta_cabinet_mensuel', 'compta_gerant_cabinet_mensuel', 'compta
     r2 = await ec('', cabinet.tok, deux(d607, { compteId: K['607'].id, credit: '100' }));
     check('une seule ligne : 400 ; deux lignes sur le même compte : 400 COMPTES_IDENTIQUES (NC 01 §30)', r.status === 400 && r2.status === 400 && r2.body?.code === 'COMPTES_IDENTIQUES', `${r.status} ${r2.status} ${r2.body?.code}`);
     r = await ec('', cabinet.tok, { ...deux(d607, c5321), date: '2025-12-31' });
-    r2 = await ec('', cabinet.tok, { ...deux(d607, c5321), date: '2027-01-01' });
+    // X1 : une date de 2027 déjà passée ouvrirait l'exercice suivant ; 2028 reste hors de tout exercice possible.
+    r2 = await ec('', cabinet.tok, { ...deux(d607, c5321), date: '2028-01-01' });
     r3 = await ec('', cabinet.tok, { ...deux(d607, c5321), date: '16/03/2026' });
-    check('date hors de l\'exercice ouvert (31/12/2025, 01/01/2027) : 409 DATE_HORS_EXERCICE ; date mal formée : 400', r.status === 409 && r.body?.code === 'DATE_HORS_EXERCICE' && /du 01\/01\/2026 au 31\/12\/2026/.test(r.body?.message || '') && r2.status === 409 && r3.status === 400, `${r.status} ${r.body?.message} ${r2.status} ${r3.status}`);
+    check('date hors de l\'exercice ouvert (31/12/2025, 01/01/2028) : 409 DATE_HORS_EXERCICE ; date mal formée : 400', r.status === 409 && r.body?.code === 'DATE_HORS_EXERCICE' && /du 01\/01\/2026 au 31\/12\/2026/.test(r.body?.message || '') && r2.status === 409 && r3.status === 400, `${r.status} ${r.body?.message} ${r2.status} ${r3.status}`);
     r = await ec('', cabinet.tok, deux({ compteId: K['60'].id, debit: '100' }, c5321));
     check('compte 60 (sous-comptes actifs) : 409 COMPTE_NON_IMPUTABLE', r.status === 409 && r.body?.code === 'COMPTE_NON_IMPUTABLE' && /sous-comptes actifs/.test(r.body?.message || ''), `${r.status} ${r.body?.message}`);
     r = await appel('POST', `/api/compta/dossiers/${A.id}/plan/comptes/${K['601'].id}/desactiver`, cabinet.tok);

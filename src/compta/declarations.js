@@ -315,7 +315,9 @@ const etatDeclaration = async (db, d, sel, { avecHistorique = true, liquidationS
     if (precedente && !(rp && rp.ecriture && !rp.ecriture.contrepassee)) signalements.push({ code: 'MOIS_PRECEDENT_NON_LIQUIDE', gravite: 'info', message: `Le mois précédent (${libelleMois(precedente.fin)}) n'a pas d'écriture de TVA proposée : liquidez les mois dans l'ordre, le crédit reporté passe par le compte ${tva.compteCredit || 'du crédit de TVA'}` });
   }
   if (tva.sansCode.nb) signalements.push({ code: 'TVA_SANS_CODE', gravite: 'attention', message: `${tva.sansCode.nb} ligne${tva.sansCode.nb > 1 ? 's' : ''} de TVA sans code de taxe dans la période (collectée ${fmtMillimes(millimes(tva.sansCode.collectee))} D, déductible ${fmtMillimes(millimes(tva.sansCode.deductible))} D) : non comptée${tva.sansCode.nb > 1 ? 's' : ''}` });
-  if (tva.creditNonRepris) signalements.push({ code: 'CREDIT_NON_REPRIS', gravite: 'attention', message: `Crédit de TVA de l'exercice précédent non repris : ${fmtMillimes(millimes(tva.creditNonRepris.montant))} D calculés au ${fmtDate(tva.creditNonRepris.fin)}, aucun à-nouveau sur le compte ${tva.compteCredit || 'du crédit de TVA'}` });
+  if (tva.creditNonRepris) signalements.push({ code: 'CREDIT_NON_REPRIS', gravite: 'attention', message: tva.creditProvisoire
+    ? `Crédit de TVA de l'exercice ${tva.creditProvisoire.millesime} non repris : ${fmtMillimes(millimes(tva.creditNonRepris.montant))} D calculés au ${fmtDate(tva.creditNonRepris.fin)}, mais le compte ${tva.compteCredit || 'du crédit de TVA'} n'en porte rien à la fin de l'exercice — passez l'écriture de TVA de son dernier mois`
+    : `Crédit de TVA de l'exercice précédent non repris : ${fmtMillimes(millimes(tva.creditNonRepris.montant))} D calculés au ${fmtDate(tva.creditNonRepris.fin)}, aucun à-nouveau sur le compte ${tva.compteCredit || 'du crédit de TVA'}` });
   if (echeance && !marque && aujourdhui > echeance.date) signalements.push({ code: 'ECHEANCE_DEPASSEE', gravite: 'attention', message: `Échéance du ${fmtDate(echeance.date)} dépassée et déclaration non marquée comme déposée` });
   const ecart = !!marque && !memesLignes(marque.lignes, lignes);
   if (ecart) signalements.push({ code: 'ECART_DECLARATION', gravite: 'attention', message: `Les montants ont changé depuis la déclaration du ${fmtDate(marque.date)} (total déclaré ${fmtMillimes(millimes(marque.total))} D, recalculé ${fmtMillimes(millimes(total))} D) : une déclaration rectificative peut être nécessaire` });
@@ -335,6 +337,8 @@ const etatDeclaration = async (db, d, sel, { avecHistorique = true, liquidationS
     tva: {
       collectee: tva.collectee, deductibleBs: tva.deductibleBs, deductibleImmo: tva.deductibleImmo, deductible: tva.deductible, retenuesSubies: tva.retenuesSubies,
       creditReporte: tva.creditReporte, resultat: tva.resultat, aPayer: tva.aPayer, creditAReporter: tva.creditAReporter, compteCredit: tva.compteCredit,
+      // X1 : crédit d'ouverture repris de l'exercice précédent non clos (provisoire), ou null.
+      creditProvisoire: tva.creditProvisoire || null,
       codes: tva.codes.filter((c) => c.type === 'tva' && [c.collectee, c.deductible, c.deductibleImmo, c.baseVente, c.baseAchat].some((v) => millimes(v) !== 0n)),
     },
     retenues: { natures: retenues.natures, tva: retenues.tva, total: retenues.total, sansCertificat: retenues.sansCertificat, exclues: retenues.exclues, brouillard: retenues.brouillard },

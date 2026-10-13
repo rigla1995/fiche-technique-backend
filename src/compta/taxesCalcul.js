@@ -82,6 +82,31 @@ const SQL_CREDIT_OUVERTURE = `
     JOIN compta.journaux j ON j.id = e.journal_id
     JOIN compta.comptes k ON k.id = l.compte_id
    WHERE l.dossier_id = $1 AND e.exercice_id = $2 AND j.type = 'an' AND LEFT(k.numero, LENGTH($3::text)) = $3::text AND ($4::boolean OR e.etat = 'validee')`;
+// X1 (PLAN-EXERCICES §2 ligne X1, réponse 2 du 13/10) : tant que l'exercice précédent n'est pas clos, le crédit à l'ouverture
+// est PROVISOIRE — le solde débiteur de fin du compte de crédit dans le précédent (à-nouveaux compris : ce que ses
+// à-nouveaux de clôture reprendront), calculé, rien n'est écrit. L'exercice précédent ($1 dossier, $2 début de l'exercice).
+const SQL_EXERCICE_PRECEDENT = `
+  SELECT id, debut::text AS debut, fin::text AS fin, etat, millesime FROM compta.exercices
+   WHERE dossier_id = $1 AND fin < $2::date ORDER BY fin DESC LIMIT 1`;
+// Le solde de fin du compte de crédit ($1 dossier, $2 exercice, $3 numéro du compte et de ses sous-comptes, $4 brouillard).
+const SQL_CREDIT_FIN = `
+  SELECT COALESCE(SUM(l.debit - l.credit), 0)::numeric(18,3)::text AS credit
+    FROM compta.lignes l
+    JOIN compta.ecritures e ON e.id = l.ecriture_id
+    JOIN compta.comptes k ON k.id = l.compte_id
+   WHERE l.dossier_id = $1 AND e.exercice_id = $2 AND LEFT(k.numero, LENGTH($3::text)) = $3::text AND ($4::boolean OR e.etat = 'validee')`;
+// Le crédit de TVA à l'ouverture d'un exercice (`db` : pool ou transaction de l'appelant — aucune dépendance ici) :
+// → { credit (texte), provisoire: null | { id, debut, fin, millesime } (l'exercice précédent non clos d'où il vient) }.
+const creditOuverture = async (db, dossierId, exercice, compteCredit, brouillard) => {
+  if (!compteCredit) return { credit: '0.000', provisoire: null };
+  const p = (await db.query(SQL_EXERCICE_PRECEDENT, [dossierId, exercice.debut])).rows[0];
+  if (p && p.etat === 'ouvert') {
+    const r = (await db.query(SQL_CREDIT_FIN, [dossierId, p.id, compteCredit, brouillard])).rows[0];
+    return { credit: r.credit, provisoire: { id: p.id, debut: p.debut, fin: p.fin, millesime: p.millesime } };
+  }
+  const r = (await db.query(SQL_CREDIT_OUVERTURE, [dossierId, exercice.id, compteCredit, brouillard])).rows[0];
+  return { credit: r.credit, provisoire: null };
+};
 
 // L'état de TVA de chaque période d'un exercice, de la première à `jusqua` (identifiant, null = toutes), avec le report du
 // crédit d'un mois sur l'autre. `periodes` : celles de l'exercice dans l'ordre ; `rangees` : SQL_TVA_PAR_PERIODE ;
@@ -287,6 +312,7 @@ const sousLeSeuil = (paiement, famille, seuil) => {
 module.exports = {
   NATURES_TVA, TYPES_HORS_TTC, NATURES_BASE_ACHAT, millimes, texte, zero,
   SQL_TVA_PAR_PERIODE, SQL_TVA_SANS_CODE, SQL_CREDIT_OUVERTURE, etatsTva,
+  SQL_EXERCICE_PRECEDENT, SQL_CREDIT_FIN, creditOuverture,
   SQL_EXCLUSIONS_CP, SQL_ECRITURES_A_RETENUE, SQL_LIGNES_DES_PIECES, SQL_LIGNES_DES_LETTRES, SQL_NB_A_PRODUIRE,
   operationDe, paiementsDe, totauxDe, sousLeSeuil,
 };

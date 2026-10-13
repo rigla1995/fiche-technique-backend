@@ -40,7 +40,7 @@ const ecritureValidation = (req, travail, droit = 'configurer') => dansEspaceDuD
 // ── Périodes (lues dans la transaction du dossier) ──────────────────────────────────────────────────────────────────
 const SQL_PERIODE = `
   SELECT p.id, p.debut::text AS debut, p.fin::text AS fin, p.etat, p.clos_par, p.clos_le, p.rouvert_par, p.rouvert_le,
-         x.id AS exercice_id, x.debut::text AS exercice_debut, x.fin::text AS exercice_fin, x.etat AS exercice_etat
+         x.id AS exercice_id, x.debut::text AS exercice_debut, x.fin::text AS exercice_fin, x.etat AS exercice_etat, x.millesime AS exercice_millesime
     FROM compta.periodes p
     JOIN compta.exercices x ON x.id = p.exercice_id
    WHERE x.dossier_id = $1 AND p.id = $2`;
@@ -61,7 +61,9 @@ const exigerPeriodeOuverte = (p) => {
 };
 
 // ── Numéros définitifs ──────────────────────────────────────────────────────────────────────────────────────────────
-const numeroDefinitif = (code, exerciceDebut, n) => `${code}-${String(exerciceDebut).slice(0, 4)}-${String(n).padStart(NUMERO_CHIFFRES, '0')}`;
+// X1 : l'année du numéro est le MILLÉSIME de l'exercice (unique dans le dossier, migration 234) — l'année de son début,
+// sinon celle de sa fin : deux exercices qui commencent la même année n'ont jamais la même série.
+const numeroDefinitif = (code, millesime, n) => `${code}-${String(millesime).slice(0, 4)}-${String(n).padStart(NUMERO_CHIFFRES, '0')}`;
 // Le rang d'un numéro (ses chiffres de fin) ; 0 sans numéro.
 const rangDe = (numero) => {
   const m = RE_NUMERO_FIN.exec(numero || '');
@@ -75,10 +77,10 @@ const prochainRang = async (db, dossierId, journalId, exerciceId) => {
   return rangDe(r.rows[0].dernier) + 1;
 };
 // Pose le numéro définitif d'une écriture en brouillard : état validée, auteur et heure de la validation (NOW() du
-// serveur, jamais modifiable). `e` : l'écriture (journal_code, numero_provisoire) ; `p` : sa période (exercice_debut).
+// serveur, jamais modifiable). `e` : l'écriture (journal_code, numero_provisoire) ; `p` : sa période (exercice_millesime).
 const poserNumero = async (db, e, p, rang, auteurId) => {
-  if (rang > NUMERO_MAX) throw erreur(409, `La série ${e.journal_code}-${String(p.exercice_debut).slice(0, 4)} est pleine (${NUMERO_MAX} écritures) : ouvrez un autre journal`, 'SERIE_PLEINE');
-  const numero = numeroDefinitif(e.journal_code, p.exercice_debut, rang);
+  if (rang > NUMERO_MAX) throw erreur(409, `La série ${e.journal_code}-${p.exercice_millesime} est pleine (${NUMERO_MAX} écritures) : ouvrez un autre journal`, 'SERIE_PLEINE');
+  const numero = numeroDefinitif(e.journal_code, p.exercice_millesime, rang);
   await db.query(`UPDATE compta.ecritures SET etat = 'validee', numero = $2, valide_par = $3, valide_le = NOW(), updated_at = NOW() WHERE id = $1`, [e.id, numero, auteurId]);
   return numero;
 };
@@ -151,8 +153,8 @@ const validerPeriode = async (req, res) => {
         if (!rangs.has(e.journal_id)) rangs.set(e.journal_id, await prochainRang(db, d.id, e.journal_id, p.exercice_id));
         const rang = rangs.get(e.journal_id);
         rangs.set(e.journal_id, rang + 1);
-        if (rang > NUMERO_MAX) throw erreur(409, `La série ${e.journal_code}-${String(p.exercice_debut).slice(0, 4)} est pleine (${NUMERO_MAX} écritures) : ouvrez un autre journal`, 'SERIE_PLEINE');
-        const numero = numeroDefinitif(e.journal_code, p.exercice_debut, rang);
+        if (rang > NUMERO_MAX) throw erreur(409, `La série ${e.journal_code}-${p.exercice_millesime} est pleine (${NUMERO_MAX} écritures) : ouvrez un autre journal`, 'SERIE_PLEINE');
+        const numero = numeroDefinitif(e.journal_code, p.exercice_millesime, rang);
         numeros.push({ id: e.id, numeroProvisoire: numeroProvisoire(e.numero_provisoire), numero });
         const s = series[e.journal_code] || (series[e.journal_code] = { de: numero, a: numero, nombre: 0 });
         s.a = numero;
@@ -190,15 +192,16 @@ const contrepasser = async (req, res) => {
       const date = c.date || aujourdhuiTunis();
       if (date < e.date) throw erreur(400, `La contre-passation (${fmtDate(date)}) ne peut pas précéder l'écriture d'origine (${fmtDate(e.date)})`, 'DATE_AVANT_ORIGINE');
       const journal = await journalDe(db, d.id, e.journal_id);
-      const { exercice, periode } = await periodeDe(db, d.id, date);
-      // S6c : la contre-passation d'un à-nouveaux se date aussi du premier jour de l'exercice.
+      // X1 : une contre-passation datée de la nouvelle année ouvre l'exercice suivant, comme toute écriture.
+      const { exercice, periode } = await periodeDe(db, d.id, date, { espaceId: acces.espace_id, auteurId: req.user.id, origine: 'contrepassation' });
+      // S6c : la contre-passation d'un à-nouveaux se date aussi du premier jour de l'exercice (X1 : du premier exercice).
       exigerDateAN(journal, exercice, date);
       const lignes = lignesInverses((await lignesDe(db, [e.id])).get(e.id));
       const libelle = c.libelle || libelleContrepassation(e);
       const reference = c.reference || e.reference;
       const rang = await prochainRang(db, d.id, journal.id, exercice.id);
-      if (rang > NUMERO_MAX) throw erreur(409, `La série ${journal.code}-${String(exercice.debut).slice(0, 4)} est pleine (${NUMERO_MAX} écritures) : ouvrez un autre journal`, 'SERIE_PLEINE');
-      const numero = numeroDefinitif(journal.code, exercice.debut, rang);
+      if (rang > NUMERO_MAX) throw erreur(409, `La série ${journal.code}-${exercice.millesime} est pleine (${NUMERO_MAX} écritures) : ouvrez un autre journal`, 'SERIE_PLEINE');
+      const numero = numeroDefinitif(journal.code, exercice.millesime, rang);
       // Compteur provisoire du dossier (verrouillé par la transaction), comme toute écriture.
       const provisoire = (await db.query('UPDATE compta.dossiers SET prochain_provisoire = prochain_provisoire + 1 WHERE id = $1 RETURNING prochain_provisoire - 1 AS n', [d.id])).rows[0].n;
       const ins = await db.query(
