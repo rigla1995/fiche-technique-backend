@@ -8,7 +8,7 @@ const {
   getActiviteSelectedIngredients, getTypeSelectedIngredients,
   getActivitesArticlesConsommables,
 } = require('../controllers/entrepriseController');
-const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur, completerFournisseur, lierFournisseur, getFournisseursTemplate, importFournisseurs } = require('../controllers/fournisseurController');
+const { listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur, completerFournisseur, lierFournisseur, getFournisseursTemplate, exportFournisseurs, importFournisseurs } = require('../controllers/fournisseurController');
 const { createPerte, listPertes, listEntreprisePertes, updateEntreprisePerte, deleteEntreprisePerte, exportEntreprisePertes, getPrixEntreprisePerte, getDateRangeEntreprisePerte } = require('../controllers/pertesController');
 const { authenticate, requireEntreprise, requireClientOwner } = require('../middleware/auth');
 const unitesOpCtrl = require('../controllers/unitesOperationnellesController');
@@ -498,6 +498,8 @@ router.put('/activites/:id/ingredients/:ingredientId/price', authenticate, requi
 router.get('/fournisseurs', authenticate, requireEntreprise, listFournisseurs);
 // Ajout dynamique (import Excel) — déclaré AVANT les routes à :id
 router.get('/fournisseurs/template', authenticate, requireEntreprise, getFournisseursTemplate);
+// Le répertoire dans le modèle d'import (réimportable par l'Ajout Dynamique).
+router.get('/fournisseurs/export', authenticate, requireEntreprise, exportFournisseurs);
 router.post('/fournisseurs/import', authenticate, requireEntreprise, importFournisseurs);
 router.post('/fournisseurs', authenticate, requireEntreprise, createFournisseur);
 router.put('/fournisseurs/:id', authenticate, requireEntreprise, updateFournisseur);

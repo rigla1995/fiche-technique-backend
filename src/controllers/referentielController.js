@@ -51,6 +51,45 @@ const getTemplate = async (req, res) => {
   }
 };
 
+// GET /api/referentiel/export — le référentiel du compte DANS le modèle d'import (mêmes en-têtes) : une ligne par
+// article, avec son unité, sa catégorie et la famille de sa catégorie. Réimporté par l'Ajout Dynamique (dans ce compte
+// ou un autre), il crée ce qui manque ; un article déjà présent n'est pas modifié.
+const exportReferentiel = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const { brandModeleRempli, jourExport } = require('../services/excelBrandService');
+    const voc = req.voc ?? vocabDefaut;
+    const r = await pool.query(
+      `SELECT a.nom, u.nom AS unite, c.nom AS categorie, f.nom AS famille
+       FROM articles a
+       LEFT JOIN unites u ON u.id = a.unite_id
+       LEFT JOIN categories c ON c.id = a.categorie_id
+       LEFT JOIN familles f ON f.id = c.famille_id
+       WHERE a.client_id = $1
+       ORDER BY COALESCE(f.nom, 'zzz'), COALESCE(c.nom, 'zzz'), a.nom`,
+      [clientId]
+    );
+    const jour = jourExport();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(ongletSur(wb, voc.Court('referentiel')));
+    brandModeleRempli(wb, ws, {
+      titre: `${voc.Court('referentiel')} — export du ${jour.fr}`,
+      sousTitre: `${r.rows.length} ligne${r.rows.length > 1 ? 's' : ''} : une ligne = ${voc.un('article')}, au format du modèle d'import`,
+      meta: `Réimportable par l'Ajout Dynamique (${MAX_ROWS} lignes au plus par fichier) : ce qui manque est créé, ${voc.un('article')} déjà ${voc.acc('article', 'présent', 'présente')} n'est pas ${voc.acc('article', 'modifié', 'modifiée')}.`,
+      headers: enTetes(voc),
+      widths: [32, 16, 24, 24],
+      lignes: r.rows.map((x) => [x.nom, x.unite, x.categorie, x.famille]),
+    });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="referentiel_${jour.iso}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('[referentiel, export]', err);
+    if (!res.headersSent) res.status(500).json({ message: "Erreur lors de l'export" });
+  }
+};
+
 // Returns all activités + labos with assigned flag for one article
 const getArticleAssignments = async (req, res) => {
   const clientId = req.user.gerant_parent_id || req.user.id;
@@ -290,4 +329,4 @@ const importReferentiel = [
   },
 ];
 
-module.exports = { getTemplate, importReferentiel, getArticleAssignments };
+module.exports = { getTemplate, exportReferentiel, importReferentiel, getArticleAssignments };
