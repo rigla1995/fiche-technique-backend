@@ -168,6 +168,29 @@ function brandTemplate(wb, ws, { titre, sousTitre = '', meta = '', headers, widt
   return headerIdx;
 }
 
+// Le même modèle, REMPLI des données du compte (export « dans le modèle ») : bandeau et en-têtes identiques, une
+// ligne par donnée à la place de l'exemple — le fichier se réimporte tel quel par l'Ajout Dynamique. Pas de pied de
+// page : l'import le lirait comme une ligne. Cellule vide : null.
+function brandModeleRempli(wb, ws, { titre, sousTitre = '', meta = '', headers, widths, lignes, formats = [] }) {
+  const colCount = headers.length;
+  const headerIdx = brandHeader(wb, ws, { titre, sousTitre, meta, colCount });
+  headerRow(ws, headerIdx, headers, { widths });
+  lignes.forEach((valeurs, i) => {
+    const row = ws.getRow(headerIdx + 1 + i);
+    row.values = valeurs.map((v) => (v === undefined || v === '' ? null : v));
+    dataRowStyle(row, { index: i, colCount });
+    formats.forEach((f, c) => { if (f) row.getCell(c + 1).numFmt = f; });
+  });
+  finalize(ws, { headerRowIdx: headerIdx, colCount, lastDataRow: headerIdx + lignes.length });
+  return headerIdx;
+}
+
+// Date du jour à Tunis : « 13/10/2026 » pour le bandeau, « 2026-10-13 » pour le nom du fichier.
+function jourExport() {
+  const iso = new Date().toLocaleDateString('sv-SE', { timeZone: 'Africa/Tunis' });
+  return { iso, fr: `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` };
+}
+
 // Ligne (1-based) dont les cellules correspondent EXACTEMENT aux en-têtes
 // attendus ; null si introuvable dans les 15 premières lignes (ancien modèle).
 function findHeaderRow(ws, headers) {
@@ -187,4 +210,4 @@ function isExampleRow(row) {
   return String(row.getCell(1).text || '').trim().toLowerCase().startsWith('exemple');
 }
 
-module.exports = { BRAND, FMT_DT, FMT_QTE, BORDER, fill, brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, brandTemplate, findHeaderRow, isExampleRow };
+module.exports = { BRAND, FMT_DT, FMT_QTE, BORDER, fill, brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, brandTemplate, brandModeleRempli, jourExport, findHeaderRow, isExampleRow };

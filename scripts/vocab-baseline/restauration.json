@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "232_manuel_photos_mieux_lues.sql",
+  "derniereMigration": "233_manuel_exports_modeles.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -495,8 +495,8 @@
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
     "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "517b8de5099d8b64bae46d2c94a341c9",
-    "referentiel-import": "d333cb88fe6abddea2722b2567b0a786",
+    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
+    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
     "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "d14c13cc831492a0756887bb678fbc72",
@@ -505,7 +505,7 @@
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
-    "fournisseurs": "f031a43a9d519b3392cbceacd3dc56f2",
+    "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
@@ -538,8 +538,8 @@
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
     "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "517b8de5099d8b64bae46d2c94a341c9",
-    "referentiel-import": "d333cb88fe6abddea2722b2567b0a786",
+    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
+    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
     "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "d14c13cc831492a0756887bb678fbc72",
@@ -561,7 +561,7 @@
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
-    "fournisseurs": "f031a43a9d519b3392cbceacd3dc56f2",
+    "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
@@ -591,8 +591,8 @@
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
     "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "517b8de5099d8b64bae46d2c94a341c9",
-    "referentiel-import": "d333cb88fe6abddea2722b2567b0a786",
+    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
+    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
     "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "d14c13cc831492a0756887bb678fbc72",
@@ -610,7 +610,7 @@
     "saisie-ventes": "9aa32d0386ab4e3be90d2c4b9ee7ca22",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
-    "fournisseurs": "f031a43a9d519b3392cbceacd3dc56f2",
+    "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "calc-cout-recette": "f48aa25fb9f30f0734ca346ddee2b068",
     "calc-valeur-stock": "c77a8c107d8fc075bc713d61ad549e79",
     "calc-pmp": "2897304194bab88c46033c3d2504cc2f",
@@ -641,8 +641,8 @@
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
     "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "517b8de5099d8b64bae46d2c94a341c9",
-    "referentiel-import": "d333cb88fe6abddea2722b2567b0a786",
+    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
+    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
     "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "d14c13cc831492a0756887bb678fbc72",
@@ -662,7 +662,7 @@
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
-    "fournisseurs": "f031a43a9d519b3392cbceacd3dc56f2",
+    "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
@@ -696,8 +696,8 @@
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
     "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "517b8de5099d8b64bae46d2c94a341c9",
-    "referentiel-import": "d333cb88fe6abddea2722b2567b0a786",
+    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
+    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
     "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "d14c13cc831492a0756887bb678fbc72",
@@ -723,7 +723,7 @@
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
-    "fournisseurs": "f031a43a9d519b3392cbceacd3dc56f2",
+    "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
@@ -758,8 +758,8 @@
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
     "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "517b8de5099d8b64bae46d2c94a341c9",
-    "referentiel-import": "d333cb88fe6abddea2722b2567b0a786",
+    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
+    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
     "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "d14c13cc831492a0756887bb678fbc72",
@@ -785,7 +785,7 @@
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
     "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
-    "fournisseurs": "f031a43a9d519b3392cbceacd3dc56f2",
+    "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
     "abonnement": "5ba0ac215d48d23dc0da09fc36992cd2",
     "historique-paiements": "b22463af1b770eb9a29647f42c65253e",
@@ -1647,14 +1647,6 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "-10.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.650",
-     "source": "Bloc chaud",
-     "type_appro": "manuel"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "10.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.650",
@@ -1663,10 +1655,10 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "-30.000",
+     "quantite": "-10.000",
      "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.550",
-     "source": "Réserve Nord / Est",
+     "prix_unitaire": "2.650",
+     "source": "Bloc chaud",
      "type_appro": "manuel"
     },
     {
@@ -1676,6 +1668,14 @@
      "prix_unitaire": "2.550",
      "source": "Bloc chaud",
      "type_appro": "transfert"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "-30.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.550",
+     "source": "Réserve Nord / Est",
+     "type_appro": "manuel"
     },
     {
      "ingredient": "Drap 240x300",
@@ -2560,15 +2560,10 @@
     "titres": [
      "Manuel — Référentiel › Familles",
      "Manuel — Lexique › Les 3 catégories de PT",
-     "Manuel — Espace Produit › Produits Utilisables",
-     "Produits vendables et utilisables"
+     "Manuel — Référentiel › Articles",
+     "Manuel — Espace Produit › Produits Utilisables"
     ],
-    "base": [
-     {
-      "titre": "Produits vendables et utilisables",
-      "contenu": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué puis intégré dans d'autres produits ; il est mis en stock et géré comme un ingrédient. Les produits transformés se répartissent en trois catégories : Utilisables, Vendables et Composés Valorisés."
-     }
-    ]
+    "base": []
    },
    "A|Comment créer mes unités ?": {
     "titres": [
@@ -2751,15 +2746,10 @@
     "titres": [
      "Manuel — Référentiel › Familles",
      "Manuel — Lexique › Les 3 catégories de PT",
-     "Manuel — Espace Produit › Produits Utilisables",
-     "Produits vendables et utilisables"
+     "Manuel — Référentiel › Articles",
+     "Manuel — Espace Produit › Produits Utilisables"
     ],
-    "base": [
-     {
-      "titre": "Produits vendables et utilisables",
-      "contenu": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué puis intégré dans d'autres produits ; il est mis en stock et géré comme un ingrédient. Les produits transformés se répartissent en trois catégories : Utilisables, Vendables et Composés Valorisés."
-     }
-    ]
+    "base": []
    },
    "B|Comment créer mes unités ?": {
     "titres": [
@@ -2924,15 +2914,10 @@
     "titres": [
      "Manuel — Référentiel › Familles",
      "Manuel — Lexique › Les 3 catégories de PT",
-     "Manuel — Espace Produit › Produits Utilisables",
-     "Produits vendables et utilisables"
+     "Manuel — Référentiel › Articles",
+     "Manuel — Espace Produit › Produits Utilisables"
     ],
-    "base": [
-     {
-      "titre": "Produits vendables et utilisables",
-      "contenu": "Un produit VENDABLE est vendu au client final (a un prix de vente) ; il peut en option être géré en stock. Un produit UTILISABLE (sous-produit) est fabriqué puis intégré dans d'autres produits ; il est mis en stock et géré comme un ingrédient. Les produits transformés se répartissent en trois catégories : Utilisables, Vendables et Composés Valorisés."
-     }
-    ]
+    "base": []
    },
    "C|Comment créer mes unités ?": {
     "titres": [
@@ -6634,25 +6619,25 @@
       ],
       [
        "Riz basmati",
-       "-10",
-       "⟨date⟩",
-       "2.65"
-      ],
-      [
-       "Riz basmati",
        "10",
        "⟨date⟩",
        "2.65"
       ],
       [
        "Riz basmati",
-       "-30",
+       "-10",
+       "⟨date⟩",
+       "2.65"
+      ],
+      [
+       "Riz basmati",
+       "30",
        "⟨date⟩",
        "2.55"
       ],
       [
        "Riz basmati",
-       "30",
+       "-30",
        "⟨date⟩",
        "2.55"
       ],
@@ -15406,7 +15391,7 @@
      "icone": "🧂",
      "partie": "Référentiel",
      "ordre": 33,
-     "contenu": "## 🧂 Articles\n\nLes articles sont vos matières premières et ingrédients : c'est le cœur du référentiel, utilisé pour le stock, les approvisionnements et les fiches techniques. Vous les gérez depuis le menu **Référentiel → Articles**.\n\n### Ce que vous voyez\n\n- Un bandeau d'en-tête avec le **nombre total d'articles**.\n- Une barre de filtres : champ **Recherche**, liste **Famille**, liste **Catégorie** (elle se limite aux catégories de la famille choisie), compteur de résultats (ex. « 12 articles sur 87 » quand un filtre est actif) et bouton **Réinitialiser**.\n- Deux boutons d'action : **+ Ajout multiple** et **+ Nouvel article**.\n- Une liste **groupée par famille puis par catégorie** : chaque famille forme une carte avec son nombre de catégories ; chaque catégorie se déplie d'un clic sur la flèche ▶ et affiche son nombre d'articles (les articles non classés apparaissent sous « Sans catégorie »). Chaque ligne d'article affiche son nom, un badge avec son **unité**, et les boutons **✏️ Modifier** et corbeille 🗑️.\n\n### Actions pas à pas\n\nCréer un article (assistant en deux étapes) :\n\n1. Cliquez sur **+ Nouvel article**.\n2. Étape **Informations** : saisissez le **nom**, choisissez l'**unité** et la **catégorie** (présentée sous la forme Famille › Catégorie). Si aucune catégorie n'existe, un message vous invite à en créer d'abord dans le référentiel. Cliquez sur **Suivant →**.\n3. Étape **Affectation** : cochez les activités 📍 et/ou labos 🏭 où l'article sera utilisé — **au moins un est requis**. Le bouton **Tout sélectionner** coche tout d'un coup et un compteur suit votre sélection.\n4. Cliquez sur **Créer l'article**. Le bouton **← Retour** permet de revenir à l'étape 1.\n\nCréer plusieurs articles d'un coup :\n\n1. Cliquez sur **+ Ajout multiple**.\n2. Remplissez chaque ligne : **Nom**, **Unité**, **Catégorie**, puis cliquez sur **+ Affecter** pour cocher les activités 📍 et labos 🏭 de la ligne (le bouton affiche ensuite le nombre d'affectations).\n3. Ajoutez des lignes avec **+ Ajouter une ligne**, puis cliquez sur **Créer**. Chaque ligne doit être complète (affectation comprise) pour valider.\n\nModifier un article et ses affectations :\n\n1. Cliquez sur **✏️ Modifier** : ajustez le nom, l'unité, la catégorie (ou « Sans catégorie »), puis **Enregistrer**.\n2. Dans la section **Affectations** de la même fenêtre, cliquez sur une activité ou un labo pour l'ajouter ou le retirer : chaque clic est **enregistré immédiatement**, sans passer par Enregistrer.\n\nSupprimer un article :\n\n1. Cliquez sur la corbeille 🗑️ puis confirmez avec **Supprimer**. Les stocks et historiques liés sont conservés.\n\n### Points d'attention\n\n:::attention\nLa corbeille est **grisée** si l'article a des approvisionnements enregistrés : la suppression est bloquée.\n:::\n\n:::attention\nUn article non affecté à une activité ou un labo n'y apparaît ni en stock, ni en approvisionnement, ni dans les fiches techniques. L'affectation est la clé qui rend l'article utilisable sur le terrain.\n:::\n\n:::astuce\nPour un gros volume d'articles, préférez l'[Ajout dynamique](#referentiel-import) par fichier Excel, puis affinez les affectations depuis la fiche de chaque article.\n:::\n\n### Voir aussi\n\n- [Unités](#referentiel-unites) et [Catégories](#referentiel-categories) — à préparer avant de créer vos articles\n- [Stock des activités](#stock-activites) et [Fiches techniques](#fiches-techniques) — où vos articles sont utilisés",
+     "contenu": "## 🧂 Articles\n\nLes articles sont vos matières premières et ingrédients : c'est le cœur du référentiel, utilisé pour le stock, les approvisionnements et les fiches techniques. Vous les gérez depuis le menu **Référentiel → Articles**.\n\n### Ce que vous voyez\n\n- Un bandeau d'en-tête avec le **nombre total d'articles**.\n- Une barre de filtres : champ **Recherche**, liste **Famille**, liste **Catégorie** (elle se limite aux catégories de la famille choisie), compteur de résultats (ex. « 12 articles sur 87 » quand un filtre est actif) et bouton **Réinitialiser**.\n- Deux boutons d'action : **+ Ajout multiple** et **+ Nouvel article**, et le bouton **Exporter (modèle Excel)** : tout votre référentiel, unités, catégories et familles comprises, dans le fichier du modèle d'import — les filtres ne s'y appliquent pas.\n- Une liste **groupée par famille puis par catégorie** : chaque famille forme une carte avec son nombre de catégories ; chaque catégorie se déplie d'un clic sur la flèche ▶ et affiche son nombre d'articles (les articles non classés apparaissent sous « Sans catégorie »). Chaque ligne d'article affiche son nom, un badge avec son **unité**, et les boutons **✏️ Modifier** et corbeille 🗑️.\n\n### Actions pas à pas\n\nCréer un article (assistant en deux étapes) :\n\n1. Cliquez sur **+ Nouvel article**.\n2. Étape **Informations** : saisissez le **nom**, choisissez l'**unité** et la **catégorie** (présentée sous la forme Famille › Catégorie). Si aucune catégorie n'existe, un message vous invite à en créer d'abord dans le référentiel. Cliquez sur **Suivant →**.\n3. Étape **Affectation** : cochez les activités 📍 et/ou labos 🏭 où l'article sera utilisé — **au moins un est requis**. Le bouton **Tout sélectionner** coche tout d'un coup et un compteur suit votre sélection.\n4. Cliquez sur **Créer l'article**. Le bouton **← Retour** permet de revenir à l'étape 1.\n\nCréer plusieurs articles d'un coup :\n\n1. Cliquez sur **+ Ajout multiple**.\n2. Remplissez chaque ligne : **Nom**, **Unité**, **Catégorie**, puis cliquez sur **+ Affecter** pour cocher les activités 📍 et labos 🏭 de la ligne (le bouton affiche ensuite le nombre d'affectations).\n3. Ajoutez des lignes avec **+ Ajouter une ligne**, puis cliquez sur **Créer**. Chaque ligne doit être complète (affectation comprise) pour valider.\n\nModifier un article et ses affectations :\n\n1. Cliquez sur **✏️ Modifier** : ajustez le nom, l'unité, la catégorie (ou « Sans catégorie »), puis **Enregistrer**.\n2. Dans la section **Affectations** de la même fenêtre, cliquez sur une activité ou un labo pour l'ajouter ou le retirer : chaque clic est **enregistré immédiatement**, sans passer par Enregistrer.\n\nSupprimer un article :\n\n1. Cliquez sur la corbeille 🗑️ puis confirmez avec **Supprimer**. Les stocks et historiques liés sont conservés.\n\n### Points d'attention\n\n:::attention\nLa corbeille est **grisée** si l'article a des approvisionnements enregistrés : la suppression est bloquée.\n:::\n\n:::attention\nUn article non affecté à une activité ou un labo n'y apparaît ni en stock, ni en approvisionnement, ni dans les fiches techniques. L'affectation est la clé qui rend l'article utilisable sur le terrain.\n:::\n\n:::astuce\nPour un gros volume d'articles, préférez l'[Ajout dynamique](#referentiel-import) par fichier Excel, puis affinez les affectations depuis la fiche de chaque article. Le fichier exporté se réimporte tel quel par l'Ajout dynamique, par exemple dans un autre compte.\n:::\n\n### Voir aussi\n\n- [Unités](#referentiel-unites) et [Catégories](#referentiel-categories) — à préparer avant de créer vos articles\n- [Stock des activités](#stock-activites) et [Fiches techniques](#fiches-techniques) — où vos articles sont utilisés",
      "motsCles": "articles, ingrédients, matières premières, unité, catégorie, affectation, activités, labo, ajout multiple, assistant, référentiel",
      "ecran": "/client/referentiel/articles",
      "visibleGerant": true,
@@ -15420,7 +15405,7 @@
      "icone": "📥",
      "partie": "Référentiel",
      "ordre": 34,
-     "contenu": "## 📥 Ajout dynamique (import Excel)\n\nL'Ajout Dynamique permet d'importer en masse vos articles — et en même temps leurs unités, catégories et familles — depuis un fichier Excel. Vous y accédez depuis le menu **Référentiel → Ajout Dynamique**. C'est le moyen le plus rapide de constituer votre référentiel au démarrage.\n\n### Ce que vous voyez\n\nL'écran se présente en étapes numérotées :\n\n- **1️⃣ Téléchargez le modèle** : bouton **📄 Télécharger modele_referentiel.xlsx**, un fichier Excel avec les colonnes **Article / Unité / Catégorie / Famille**.\n- **2️⃣ Uploadez votre fichier rempli** : une zone où **glisser-déposer** le fichier (ou cliquer pour le sélectionner), avec une limite de **1 000 lignes par fichier**. Une fois le fichier choisi, son nom et sa taille s'affichent, avec les boutons **Changer de fichier** et **🚀 Lancer l'import**.\n- **Le bilan d'import** : un récapitulatif « Import terminé » avec le nombre de lignes traitées, des compteurs par type (**Articles**, **Auto-affectés**, **Catégories**, **Familles**, **Unités**, **Erreurs**) et un tableau détaillé ligne par ligne : **Ligne / Article / Créé / Existant / Affectation / Statut**.\n\n### Actions pas à pas\n\n1. Cliquez sur **📄 Télécharger modele_referentiel.xlsx** et ouvrez le fichier dans Excel.\n2. Remplissez **une ligne par article** : nom de l'article, unité, catégorie et famille. Les unités, catégories et familles qui n'existent pas encore dans votre référentiel seront **créées automatiquement**.\n3. Glissez le fichier rempli dans la zone d'import (format Excel .xlsx) puis cliquez sur **🚀 Lancer l'import**.\n4. Lisez le bilan : la colonne **Créé** liste les éléments ajoutés par la ligne, la colonne **Existant** ceux qui ont été reconnus et réutilisés. Les lignes en erreur sont surlignées ; survolez le symbole ❌ pour lire la cause exacte.\n5. Corrigez si besoin les lignes en erreur dans votre fichier, puis cliquez sur **Importer un autre fichier** pour relancer.\n\nLes articles importés sont **automatiquement affectés** à vos activités et labos : ils sont immédiatement utilisables en stock et en approvisionnement. Si un article existait déjà mais n'était affecté nulle part, il est assigné automatiquement et signalé par le badge **🔗 auto** dans la colonne Affectation.\n\n### Points d'attention\n\n:::attention\nRespectez l'orthographe des unités, familles et catégories déjà présentes dans votre référentiel : toute variante d'écriture (accent, pluriel…) peut créer un doublon. Seules les différences de majuscules/minuscules et les espaces en début ou fin de nom sont tolérées pour les articles, unités et familles.\n:::\n\n:::attention\nLe fichier doit être au format Excel (.xlsx) et ne pas dépasser **1 000 lignes**. Au-delà, découpez votre catalogue en plusieurs fichiers.\n:::\n\n:::astuce\nAprès un import, ajustez finement quelles activités et quels labos utilisent chaque article depuis sa fiche ([Articles](#referentiel-articles)).\n:::\n\n### Voir aussi\n\n- [Articles](#referentiel-articles) — création manuelle à l'unité ou en série\n- [Articles](#referentiel-articles) — ajuster les affectations après import\n- [Unités](#referentiel-unites), [Familles](#referentiel-familles), [Catégories](#referentiel-categories)\n- [Bien démarrer](#demarrage)",
+     "contenu": "## 📥 Ajout dynamique (import Excel)\n\nL'Ajout Dynamique permet d'importer en masse vos articles — et en même temps leurs unités, catégories et familles — depuis un fichier Excel. Vous y accédez depuis le menu **Référentiel → Ajout Dynamique**. C'est le moyen le plus rapide de constituer votre référentiel au démarrage.\n\n### Ce que vous voyez\n\nL'écran se présente en étapes numérotées :\n\n- **1️⃣ Téléchargez le modèle** : bouton **📄 Télécharger modele_referentiel.xlsx**, un fichier Excel avec les colonnes **Article / Unité / Catégorie / Famille**.\n- **2️⃣ Uploadez votre fichier rempli** : une zone où **glisser-déposer** le fichier (ou cliquer pour le sélectionner), avec une limite de **1 000 lignes par fichier**. Une fois le fichier choisi, son nom et sa taille s'affichent, avec les boutons **Changer de fichier** et **🚀 Lancer l'import**.\n- **Le bilan d'import** : un récapitulatif « Import terminé » avec le nombre de lignes traitées, des compteurs par type (**Articles**, **Auto-affectés**, **Catégories**, **Familles**, **Unités**, **Erreurs**) et un tableau détaillé ligne par ligne : **Ligne / Article / Créé / Existant / Affectation / Statut**.\n\n### Actions pas à pas\n\n1. Cliquez sur **📄 Télécharger modele_referentiel.xlsx** et ouvrez le fichier dans Excel.\n2. Remplissez **une ligne par article** : nom de l'article, unité, catégorie et famille. Les unités, catégories et familles qui n'existent pas encore dans votre référentiel seront **créées automatiquement**.\n3. Glissez le fichier rempli dans la zone d'import (format Excel .xlsx) puis cliquez sur **🚀 Lancer l'import**.\n4. Lisez le bilan : la colonne **Créé** liste les éléments ajoutés par la ligne, la colonne **Existant** ceux qui ont été reconnus et réutilisés. Les lignes en erreur sont surlignées ; survolez le symbole ❌ pour lire la cause exacte.\n5. Corrigez si besoin les lignes en erreur dans votre fichier, puis cliquez sur **Importer un autre fichier** pour relancer.\n\nLes articles importés sont **automatiquement affectés** à vos activités et labos : ils sont immédiatement utilisables en stock et en approvisionnement. Si un article existait déjà mais n'était affecté nulle part, il est assigné automatiquement et signalé par le badge **🔗 auto** dans la colonne Affectation.\n\n### Points d'attention\n\n:::attention\nRespectez l'orthographe des unités, familles et catégories déjà présentes dans votre référentiel : toute variante d'écriture (accent, pluriel…) peut créer un doublon. Seules les différences de majuscules/minuscules et les espaces en début ou fin de nom sont tolérées pour les articles, unités et familles.\n:::\n\n:::attention\nLe fichier doit être au format Excel (.xlsx) et ne pas dépasser **1 000 lignes**. Au-delà, découpez votre catalogue en plusieurs fichiers.\n\nLe fichier obtenu par **Exporter (modèle Excel)** (écran [Articles](#referentiel-articles)) est déjà au format du modèle : il se réimporte tel quel. Ce qui manque est créé ; un article déjà présent n'est pas modifié (ni son unité, ni sa catégorie).\n:::\n\n:::astuce\nAprès un import, ajustez finement quelles activités et quels labos utilisent chaque article depuis sa fiche ([Articles](#referentiel-articles)).\n:::\n\n### Voir aussi\n\n- [Articles](#referentiel-articles) — création manuelle à l'unité ou en série\n- [Articles](#referentiel-articles) — ajuster les affectations après import\n- [Unités](#referentiel-unites), [Familles](#referentiel-familles), [Catégories](#referentiel-categories)\n- [Bien démarrer](#demarrage)",
      "motsCles": "import, excel, ajout dynamique, masse, modèle, fichier, xlsx, doublons, auto-affectation, erreurs, référentiel",
      "ecran": "/client/referentiel/import",
      "visibleGerant": true,
@@ -15546,7 +15531,7 @@
      "icone": "🚚",
      "partie": "Gestion",
      "ordre": 73,
-     "contenu": "## 🚚 Fournisseurs\n\nUn seul écran gère vos fournisseurs : **Fournisseurs** (menu latéral 🚚) — le répertoire général du compte et ses affectations aux activités **et aux labos**.\n\n### Ce que vous voyez\n\nLe bandeau affiche le nombre total de fournisseurs. La barre de filtres permet une recherche par nom, matricule fiscal, téléphone ou ville, et porte les boutons **📥 Ajout Dynamique** et **+ Nouveau fournisseur**. Le tableau principal présente :\n\n| Colonne | Contenu |\n|---|---|\n| Nom | Nom du fournisseur ; dessous, sa raison sociale et son matricule fiscal s'ils sont renseignés |\n| Téléphone | Numéro de téléphone (et email) |\n| Adresse | Adresse et ville du fournisseur |\n| Activités liées | Pastilles des activités où il est proposé à l'appro |\n| Labos liés | Pastilles 🏭 des labos où il est proposé |\n| Appros | Nombre d'approvisionnements enregistrés, détaillé par activité |\n| Actions | ✏️ modifier · 🗑️ supprimer (uniquement s'il ne figure dans aucun appro ni dans aucune facture) |\n\nLe tableau est paginé par 10. Une section à part, **🏭 Fournisseurs Labo (auto-gérés)**, liste les fournisseurs créés automatiquement pour chaque labo — c'est sous ce nom que les livraisons du labo apparaissent dans les appros de vos activités. Ils affichent leurs activités liées mais ne se modifient pas ici.\n\n### Actions pas à pas\n\n1. **Créer un fournisseur** : *+ Nouveau fournisseur* → nom (obligatoire), raison sociale, **matricule fiscal**, téléphone, email, adresse, ville. Le bouton **📄 Lire la patente** lit la carte d'identification fiscale ou l'extrait du RNE du fournisseur (PDF ou photo) et remplit les champs vides, marqués « lu » — la lecture se fait sur cet ordinateur, rien n'est envoyé. Le matricule fiscal est contrôlé (forme 1234567A/A/M/⟨id⟩) et n'appartient qu'à un fournisseur du compte : c'est par lui que les factures déposées reconnaissent le fournisseur. À la création, toutes vos activités sont cochées par défaut : décochez celles qui ne travaillent pas avec lui, et cochez les labos concernés.\n2. **Modifier les affectations** : ✏️ sur la ligne, puis cochez/décochez activités et labos — c'est ici que vous choisissez les fournisseurs proposés à l'approvisionnement de chaque labo.\n3. **Supprimer** : le bouton 🗑️ n'apparaît que si le fournisseur ne figure dans aucun approvisionnement — des activités comme des labos — ni dans aucune facture ; une confirmation est demandée.\n\n### Ajout dynamique (import Excel)\n\nLe bouton **📥 Ajout Dynamique** importe vos fournisseurs en masse :\n\n1. Téléchargez le **modèle Excel** (colonnes Nom / Téléphone / Adresse / Ville / Matricule fiscal / Email — seul le nom est obligatoire, 500 lignes maximum ; l'ancien modèle à trois colonnes reste accepté).\n2. Remplissez-le, puis déposez le fichier dans la zone d'import.\n3. Chaque fournisseur importé est **automatiquement assigné à l'ensemble de vos activités et labos** : il est immédiatement proposé partout à l'approvisionnement. Ajustez ensuite les affectations fournisseur par fournisseur (✏️) si nécessaire.\n\nLe rapport d'import détaille chaque ligne : les noms déjà présents dans votre répertoire (ou en double dans le fichier), les matricules fiscaux invalides ou déjà présents sont ignorés et signalés, le reste est créé.\n\n### Correspondances\n\nL'écran **🔗 Correspondances** (menu latéral, ou bouton en haut de cet écran) montre ce que LabFlow a appris des factures validées, fournisseur par fournisseur : chaque ligne de facture mène à un article et sa conversion (« 1 sac = 25 kg »), ou reste hors stock. La colonne **Confirmée** dit sur combien de factures, la dernière fois et par qui.\n\nLa colonne **Code fournisseur** montre le code que le fournisseur imprime sur sa facture (colonne « Réf. » ou « Code », par exemple P310) : ce code reconnaît la ligne la fois suivante, même si la désignation est écrite autrement. Sans code, la ligne est reconnue par sa désignation. Un numéro d'un ou deux chiffres (n° de ligne) n'est jamais pris pour un code ; un même code avec une désignation sans rapport est seulement proposé, jamais reconnu d'office.\n\n- **✏️ Corriger** : cherchez l'article juste (tapez quelques lettres), sa conversion, ou une nature hors stock. Avant d'enregistrer, une alerte rappelle que la correction vaut pour les **prochaines** factures.\n- **🗑️ Oublier** : la ligne ne sera plus reconnue, la prochaine facture la redemandera.\n\n**Les factures déjà validées ne changent pas** — ni leur stock, ni la facture, ni l'historique. Pour en refaire une, supprimez-la depuis l'écran [Factures d'appro](#factures), puis déposez-la de nouveau : elle suivra la correspondance corrigée. Un gérant voit les correspondances des fournisseurs des activités et des labos qui lui sont affectés.\n\n### Points d'attention\n\n:::attention\nUn fournisseur n'est proposé à l'approvisionnement que s'il est affecté à l'activité ou au labo concerné. Si vous ne le voyez pas dans la liste au moment d'une saisie, vérifiez ses affectations ici.\n:::\n\n:::astuce\nRenseignez le matricule fiscal de vos fournisseurs : chaque facture déposée à la saisie de l'appro reconnaît alors d'office son émetteur. Sinon, la première facture lue propose d'ajouter le matricule à la fiche.\n:::\n\n:::astuce\nRenseignez le téléphone : il s'affiche dans les listes et facilite les commandes. La colonne Appros vous montre d'un coup d'œil quels fournisseurs sont réellement actifs.\n:::\n\n### Voir aussi\n\n- [Stock des activités](#stock-activites) et [Stock du labo](#stock-labo) — où l'on choisit le fournisseur à l'appro\n- [Factures d'approvisionnement](#factures)\n- [Historique des mouvements](#historique) · [Transferts](#transferts)",
+     "contenu": "## 🚚 Fournisseurs\n\nUn seul écran gère vos fournisseurs : **Fournisseurs** (menu latéral 🚚) — le répertoire général du compte et ses affectations aux activités **et aux labos**.\n\n### Ce que vous voyez\n\nLe bandeau affiche le nombre total de fournisseurs. La barre de filtres permet une recherche par nom, matricule fiscal, téléphone ou ville, et porte les boutons **Exporter (modèle Excel)**, **📥 Ajout Dynamique** et **+ Nouveau fournisseur**. Le tableau principal présente :\n\n| Colonne | Contenu |\n|---|---|\n| Nom | Nom du fournisseur ; dessous, sa raison sociale et son matricule fiscal s'ils sont renseignés |\n| Téléphone | Numéro de téléphone (et email) |\n| Adresse | Adresse et ville du fournisseur |\n| Activités liées | Pastilles des activités où il est proposé à l'appro |\n| Labos liés | Pastilles 🏭 des labos où il est proposé |\n| Appros | Nombre d'approvisionnements enregistrés, détaillé par activité |\n| Actions | ✏️ modifier · 🗑️ supprimer (uniquement s'il ne figure dans aucun appro ni dans aucune facture) |\n\nLe tableau est paginé par 10. Une section à part, **🏭 Fournisseurs Labo (auto-gérés)**, liste les fournisseurs créés automatiquement pour chaque labo — c'est sous ce nom que les livraisons du labo apparaissent dans les appros de vos activités. Ils affichent leurs activités liées mais ne se modifient pas ici.\n\n### Actions pas à pas\n\n1. **Créer un fournisseur** : *+ Nouveau fournisseur* → nom (obligatoire), raison sociale, **matricule fiscal**, téléphone, email, adresse, ville. Le bouton **📄 Lire la patente** lit la carte d'identification fiscale ou l'extrait du RNE du fournisseur (PDF ou photo) et remplit les champs vides, marqués « lu » — la lecture se fait sur cet ordinateur, rien n'est envoyé. Le matricule fiscal est contrôlé (forme 1234567A/A/M/⟨id⟩) et n'appartient qu'à un fournisseur du compte : c'est par lui que les factures déposées reconnaissent le fournisseur. À la création, toutes vos activités sont cochées par défaut : décochez celles qui ne travaillent pas avec lui, et cochez les labos concernés.\n2. **Modifier les affectations** : ✏️ sur la ligne, puis cochez/décochez activités et labos — c'est ici que vous choisissez les fournisseurs proposés à l'approvisionnement de chaque labo.\n3. **Supprimer** : le bouton 🗑️ n'apparaît que si le fournisseur ne figure dans aucun approvisionnement — des activités comme des labos — ni dans aucune facture ; une confirmation est demandée.\n\n### Ajout dynamique (import Excel)\n\nLe bouton **📥 Ajout Dynamique** importe vos fournisseurs en masse :\n\n1. Téléchargez le **modèle Excel** (colonnes Nom / Téléphone / Adresse / Ville / Matricule fiscal / Email — seul le nom est obligatoire, 500 lignes maximum ; l'ancien modèle à trois colonnes reste accepté).\n2. Remplissez-le, puis déposez le fichier dans la zone d'import.\n3. Chaque fournisseur importé est **automatiquement assigné à l'ensemble de vos activités et labos** : il est immédiatement proposé partout à l'approvisionnement. Ajustez ensuite les affectations fournisseur par fournisseur (✏️) si nécessaire.\n\nLe rapport d'import détaille chaque ligne : les noms déjà présents dans votre répertoire (ou en double dans le fichier), les matricules fiscaux invalides ou déjà présents sont ignorés et signalés, le reste est créé.\n\n**Exporter (modèle Excel)** télécharge tout votre répertoire (sans les labos internes) dans ce même modèle : il se réimporte tel quel, par exemple dans un autre compte. Un gérant n'exporte que les fournisseurs de ses activités et labos.\n\n### Correspondances\n\nL'écran **🔗 Correspondances** (menu latéral, ou bouton en haut de cet écran) montre ce que LabFlow a appris des factures validées, fournisseur par fournisseur : chaque ligne de facture mène à un article et sa conversion (« 1 sac = 25 kg »), ou reste hors stock. La colonne **Confirmée** dit sur combien de factures, la dernière fois et par qui.\n\nLa colonne **Code fournisseur** montre le code que le fournisseur imprime sur sa facture (colonne « Réf. » ou « Code », par exemple P310) : ce code reconnaît la ligne la fois suivante, même si la désignation est écrite autrement. Sans code, la ligne est reconnue par sa désignation. Un numéro d'un ou deux chiffres (n° de ligne) n'est jamais pris pour un code ; un même code avec une désignation sans rapport est seulement proposé, jamais reconnu d'office.\n\n- **✏️ Corriger** : cherchez l'article juste (tapez quelques lettres), sa conversion, ou une nature hors stock. Avant d'enregistrer, une alerte rappelle que la correction vaut pour les **prochaines** factures.\n- **🗑️ Oublier** : la ligne ne sera plus reconnue, la prochaine facture la redemandera.\n- **Exporter (Excel)** : toutes les correspondances dans un fichier Excel (fournisseur, matricule, code, désignation, unité facturée, article et conversion, ou nature hors stock). Ce fichier se consulte : les correspondances s'apprennent des factures, elles ne s'importent pas.\n\n**Les factures déjà validées ne changent pas** — ni leur stock, ni la facture, ni l'historique. Pour en refaire une, supprimez-la depuis l'écran [Factures d'appro](#factures), puis déposez-la de nouveau : elle suivra la correspondance corrigée. Un gérant voit les correspondances des fournisseurs des activités et des labos qui lui sont affectés.\n\n### Points d'attention\n\n:::attention\nUn fournisseur n'est proposé à l'approvisionnement que s'il est affecté à l'activité ou au labo concerné. Si vous ne le voyez pas dans la liste au moment d'une saisie, vérifiez ses affectations ici.\n:::\n\n:::astuce\nRenseignez le matricule fiscal de vos fournisseurs : chaque facture déposée à la saisie de l'appro reconnaît alors d'office son émetteur. Sinon, la première facture lue propose d'ajouter le matricule à la fiche.\n:::\n\n:::astuce\nRenseignez le téléphone : il s'affiche dans les listes et facilite les commandes. La colonne Appros vous montre d'un coup d'œil quels fournisseurs sont réellement actifs.\n:::\n\n### Voir aussi\n\n- [Stock des activités](#stock-activites) et [Stock du labo](#stock-labo) — où l'on choisit le fournisseur à l'appro\n- [Factures d'approvisionnement](#factures)\n- [Historique des mouvements](#historique) · [Transferts](#transferts)",
      "motsCles": "fournisseurs, achats, approvisionnement, affectation, activités, labo, téléphone, adresse, traçabilité, appros, coordonnées",
      "ecran": "/client/fournisseurs",
      "visibleGerant": true,

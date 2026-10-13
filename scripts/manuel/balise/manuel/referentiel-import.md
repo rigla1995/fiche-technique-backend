@@ -28,6 +28,8 @@ Respectez l'orthographe des unités, familles et catégories déjà présentes d
 
 :::attention
 Le fichier doit être au format Excel (.xlsx) et ne pas dépasser **1 000 lignes**. Au-delà, découpez votre catalogue en plusieurs fichiers.
+
+Le fichier obtenu par **Exporter (modèle Excel)** (écran [[[Nom:article:pl]]](#referentiel-articles)) est déjà au format du modèle : il se réimporte tel quel. Ce qui manque est créé ; [[un:article]] déjà [[acc:article:présent:présente]] n'est pas [[acc:article:modifié:modifiée]] (ni son unité, ni sa catégorie).
 :::
 
 :::astuce

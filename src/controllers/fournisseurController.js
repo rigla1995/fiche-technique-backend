@@ -459,6 +459,52 @@ const getFournisseursTemplate = async (req, res) => {
   }
 };
 
+// GET /api/entreprise/fournisseurs/export — le répertoire DANS le modèle d'import (mêmes en-têtes), une ligne par
+// fournisseur (sans les labos internes) ; le gérant n'exporte que ceux de ses activités et labos. Réimporté par l'Ajout
+// Dynamique (dans ce compte ou un autre), un nom ou un matricule déjà présent est signalé et ignoré.
+const exportFournisseurs = async (req, res) => {
+  const clientId = req.user.gerant_parent_id || req.user.id;
+  try {
+    const { brandModeleRempli, jourExport } = require('../services/excelBrandService');
+    const voc = req.voc ?? vocabDefaut;
+    const entrepriseId = await getEntrepriseId(clientId);
+    const params = [entrepriseId ?? -1];
+    let gerantClause = '';
+    if (req.user.role === 'gerant') {
+      const a = req.user.gerantActiviteIds || [];
+      const l = req.user.gerantLaboIds || [];
+      params.push(a.length ? a : [-1], l.length ? l : [-1]);
+      gerantClause = ` AND (EXISTS (SELECT 1 FROM fournisseur_activites fa WHERE fa.fournisseur_id = f.id AND fa.activite_id = ANY($2::int[]))
+                        OR EXISTS (SELECT 1 FROM fournisseur_labos fl WHERE fl.fournisseur_id = f.id AND fl.labo_id = ANY($3::int[])))`;
+    }
+    const r = await pool.query(
+      `SELECT f.nom, f.telephone, f.adresse, f.ville, f.matricule_fiscal, f.email
+       FROM fournisseurs f
+       WHERE f.entreprise_id = $1 AND f.nom != 'AUTO' AND COALESCE(f.is_labo, false) = false${gerantClause}
+       ORDER BY f.nom`,
+      params
+    );
+    const jour = jourExport();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(ongletSur(wb, voc.Court('fournisseur', true)));
+    brandModeleRempli(wb, ws, {
+      titre: `${voc.Court('fournisseur', true)} — export du ${jour.fr}`,
+      sousTitre: `${r.rows.length} ligne${r.rows.length > 1 ? 's' : ''} : une ligne = ${voc.un('fournisseur')}, au format du modèle d'import`,
+      meta: `Réimportable par l'Ajout Dynamique (${IMPORT_MAX_ROWS} lignes au plus par fichier) : ${voc.un('fournisseur')} déjà ${voc.acc('fournisseur', 'présent', 'présente')} (même nom ou même matricule) est ${voc.acc('fournisseur', 'signalé', 'signalée')} et ${voc.acc('fournisseur', 'ignoré', 'ignorée')}.`,
+      headers: IMPORT_HEADERS,
+      widths: [32, 18, 38, 18, 22, 30],
+      lignes: r.rows.map((x) => [x.nom, x.telephone, x.adresse, x.ville, x.matricule_fiscal, x.email]),
+    });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="fournisseurs_${jour.iso}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('[fournisseurs, export]', err);
+    if (!res.headersSent) res.status(500).json({ message: "Erreur lors de l'export" });
+  }
+};
+
 // POST /api/entreprise/fournisseurs/import — ajout dynamique (Excel).
 // Chaque fournisseur importé est assigné à l'ENSEMBLE des activités et labos
 // (périmètre du gérant s'il importe en tant que gérant) ; les affectations
@@ -618,5 +664,5 @@ const importFournisseurs = [
 
 module.exports = {
   listFournisseurs, getFournisseursForActivite, createFournisseur, updateFournisseur, deleteFournisseur,
-  completerFournisseur, lierFournisseur, getFournisseursTemplate, importFournisseurs, lireFiche,
+  completerFournisseur, lierFournisseur, getFournisseursTemplate, exportFournisseurs, importFournisseurs, lireFiche,
 };

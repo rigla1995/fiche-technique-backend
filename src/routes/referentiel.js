@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getTemplate, importReferentiel, getArticleAssignments } = require('../controllers/referentielController');
+const { getTemplate, exportReferentiel, importReferentiel, getArticleAssignments } = require('../controllers/referentielController');
 const { authenticate, requireClient } = require('../middleware/auth');
 
 /**
@@ -84,6 +84,8 @@ const { authenticate, requireClient } = require('../middleware/auth');
  *                       assigned: { type: boolean }
  */
 router.get('/template', authenticate, requireClient, getTemplate);
+// Le référentiel du compte dans le modèle d'import (réimportable par l'Ajout Dynamique).
+router.get('/export', authenticate, requireClient, exportReferentiel);
 router.post('/import', authenticate, requireClient, importReferentiel);
 router.get('/articles/:id/assignments', authenticate, requireClient, getArticleAssignments);
 

@@ -295,6 +295,28 @@
           "md5": "2d6e4e4bf7b98f44c96a112b2086dd3c"
         }
       ]
+    },
+    {
+      "numero": 233,
+      "nom": "233_manuel_exports_modeles.sql",
+      "objet": "Exports « dans le modèle » : Articles (référentiel) et Fournisseurs exportés au format du modèle d'import, réimportables tels quels par l'Ajout dynamique ; Correspondances exportées en Excel (consultation).",
+      "manuel": [
+        {
+          "slug": "referentiel-articles",
+          "md5Avant": "d48fbbcca81c0548e771737c071ff81c",
+          "md5": "2cb236df04fdacb85f68a5656a5b2cae"
+        },
+        {
+          "slug": "referentiel-import",
+          "md5Avant": "d7c3c554a14c327a602e515661a0934a",
+          "md5": "9ce5d9905270675b509286b18ea2f207"
+        },
+        {
+          "slug": "fournisseurs",
+          "md5Avant": "239112c79eb4a9c756d9a11169762274",
+          "md5": "70aba10425bd240ce6ab3d9817eaf172"
+        }
+      ]
     }
   ]
 }
