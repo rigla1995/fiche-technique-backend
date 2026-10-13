@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { ptCategorie, ptCategorieSql } = require('../utils/stockUtils');
+const { ptCategorie, ptCategorieSql, uniteProduitSql } = require('../utils/stockUtils');
 const { nomFichierSur, ongletSur } = require('../utils/excelNoms');
 const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const ExcelJS = require('exceljs');
@@ -82,7 +82,7 @@ const getLaboInventaireStock = async (req, res) => {
 
     // PT products assigned to this labo via labo_pt_selections
     const ptRes = await pool.query(
-      `SELECT lps.produit_id, p.nom, p.type, p.origine FROM labo_pt_selections lps
+      `SELECT lps.produit_id, p.nom, p.type, p.origine, ${uniteProduitSql('p')} AS unite_pt FROM labo_pt_selections lps
        JOIN produits p ON p.id = lps.produit_id
        WHERE lps.labo_id = $1 ORDER BY p.nom`,
       [laboId]
@@ -246,7 +246,7 @@ const getLaboInventaireStock = async (req, res) => {
       produitId: r.produit_id,
       isPT: true,
       nom: r.nom,
-      unite: 'unité',
+      unite: r.unite_pt,
       categorie: ptCategorie(r.type, r.origine),
       seuilMin: null,
       totalStock: totalStockPTMap[r.produit_id] ?? null,
@@ -414,7 +414,7 @@ const getActiviteInventaireStock = async (req, res) => {
 
     // PT products assigned to this activité's stock
     const ptRes = await pool.query(
-      `SELECT p.id AS produit_id, p.nom, p.type, p.origine FROM produits p
+      `SELECT p.id AS produit_id, p.nom, p.type, p.origine, ${uniteProduitSql('p')} AS unite_pt FROM produits p
        JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
        ORDER BY p.nom`,
       [activiteId]
@@ -565,7 +565,7 @@ const getActiviteInventaireStock = async (req, res) => {
       produitId: r.produit_id,
       isPT: true,
       nom: r.nom,
-      unite: 'unité',
+      unite: r.unite_pt,
       categorie: ptCategorie(r.type, r.origine),
       seuilMin: null,
       totalStock: totalStockPTActMap[r.produit_id] ?? null,
@@ -705,7 +705,7 @@ const getLaboInventaireHistorique = async (req, res) => {
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note, inv.created_at, inv.updated_at, inv.created_by,
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
-              COALESCE(u.nom, 'unité') as unite_nom,
+              COALESCE(u.nom, ${uniteProduitSql('p')}) as unite_nom,
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom,
               l.nom as labo_nom, ub.nom as created_by_nom
        FROM inventaires inv
@@ -775,7 +775,7 @@ const getActiviteInventaireHistorique = async (req, res) => {
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note, inv.created_at, inv.updated_at, inv.created_by,
               inv.ingredient_id, inv.produit_id,
               COALESCE(i.nom, p.nom) as ingredient_nom,
-              COALESCE(u.nom, 'unité') as unite_nom,
+              COALESCE(u.nom, ${uniteProduitSql('p')}) as unite_nom,
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom,
               a.nom as activite_nom, ub.nom as created_by_nom
        FROM inventaires inv
@@ -883,7 +883,7 @@ const exportLaboInventaireExcel = async (req, res) => {
     const result = await pool.query(
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
               COALESCE(i.nom, p.nom) as ingredient_nom,
-              COALESCE(u.nom, 'unité') as unite_nom,
+              COALESCE(u.nom, ${uniteProduitSql('p')}) as unite_nom,
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id
@@ -974,7 +974,7 @@ const exportActiviteInventaireExcel = async (req, res) => {
     const result = await pool.query(
       `SELECT inv.id, inv.date_inventaire, inv.quantite_reelle, inv.note,
               COALESCE(i.nom, p.nom) as ingredient_nom,
-              COALESCE(u.nom, 'unité') as unite_nom,
+              COALESCE(u.nom, ${uniteProduitSql('p')}) as unite_nom,
               COALESCE(c.nom, CASE WHEN inv.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = inv.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
        FROM inventaires inv
        LEFT JOIN articles i ON i.id = inv.ingredient_id

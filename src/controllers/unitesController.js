@@ -12,6 +12,8 @@ const mapUnite = (row) => ({
   clientName: row.client_nom,
   hasAppros: row.has_appros === true,
   nbArticles: row.nb_articles != null ? parseInt(row.nb_articles, 10) : 0,
+  // P1 : produits utilisables comptés dans cette unité (une unité utilisée ne se supprime pas).
+  nbProduits: row.nb_produits != null ? parseInt(row.nb_produits, 10) : 0,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -39,7 +41,8 @@ const list = async (req, res) => {
                  AND (EXISTS (SELECT 1 FROM stock_entreprise_daily   WHERE ingredient_id = a.id) OR
                       EXISTS (SELECT 1 FROM stock_labo_daily         WHERE ingredient_id = a.id))
                ) AS has_appros,
-               (SELECT COUNT(*)::int FROM articles a2 WHERE a2.unite_id = u.id AND a2.client_id = $1) AS nb_articles
+               (SELECT COUNT(*)::int FROM articles a2 WHERE a2.unite_id = u.id AND a2.client_id = $1) AS nb_articles,
+               (SELECT COUNT(*)::int FROM produits p2 WHERE p2.unite_id = u.id AND p2.client_id = $1) AS nb_produits
                FROM unites u WHERE u.client_id = $1 ORDER BY u.nom`;
       params = [req.user.gerant_parent_id || req.user.id];
     }
@@ -124,6 +127,16 @@ const remove = async (req, res) => {
       if (lies.rows[0].n > 0) {
         return res.status(409).json({
           message: `Cette unité est assignée à ${lies.rows[0].n} ${lies.rows[0].n > 1 ? '[[nom:article:pl]]' : '[[nom:article]]'} — supprimez-les ou changez leur unité avant`,
+        });
+      }
+      // P1 : ni à des produits utilisables (leur stock est compté dans cette unité).
+      const produits = await pool.query(
+        'SELECT COUNT(*)::int AS n FROM produits WHERE unite_id = $1 AND client_id = $2',
+        [id, clientId]
+      );
+      if (produits.rows[0].n > 0) {
+        return res.status(409).json({
+          message: `Suppression impossible : ${produits.rows[0].n} ${produits.rows[0].n > 1 ? '[[nom:produit_utilisable:pl]] sont [[acc:produit_utilisable:comptés:comptées]]' : '[[nom:produit_utilisable]] est [[acc:produit_utilisable:compté:comptée]]'} dans cette unité`,
         });
       }
     }

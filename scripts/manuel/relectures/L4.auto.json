@@ -327,5 +327,13 @@
     "texte": "Fiche de coût de revient",
     "decision": "accepté",
     "raison": "l'origine écrit la forme courte (« FT Stock, FT Manuel ») ; le lexique de production d'usine n'a pas de forme courte : [[Court:fiche_technique]] rend le nom complet, comme les deux modes de l'écran (voc.Court) ; le terme revient dans la phrase, le sens reste clair ; aucune balise ne l'évite sans casser I10 (étape C, A16.13 ; spec §10.3, formes courtes)"
+  },
+  {
+    "fiche": "produits-utilisables",
+    "point": 7,
+    "domaine": "hotellerie",
+    "texte": "fiche de préparation",
+    "decision": "accepté",
+    "raison": "P1 (migration 237) : « compté à la recette (1 unité = 1 recette) » définit l’unité d’un produit d’avant par la recette, répétition voulue ; le terme du domaine est seulement plus long, français correct"
   }
 ]

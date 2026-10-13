@@ -77,4 +77,11 @@ function ptTypeSql(alias, ptType) {
   return '1=1';
 }
 
-module.exports = { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, ptCategorieSql, ptTypeSql };
+// Unité d'un produit transformé (P1, migration 236) : celle choisie à la création (kg, pièce…) ; « unité » pour un
+// produit sans unité (les produits d'avant, comptés à la recette : 1 unité = 1 recette). `alias` = alias de produits.
+const UNITE_PT_DEFAUT = 'unité';
+function uniteProduitSql(alias) {
+  return `COALESCE((SELECT u_pt.nom FROM unites u_pt WHERE u_pt.id = ${alias}.unite_id), '${UNITE_PT_DEFAUT}')`;
+}
+
+module.exports = { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, ptCategorieSql, ptTypeSql, UNITE_PT_DEFAUT, uniteProduitSql };

@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
-const { computeStockCourant, computeStockPTCourant, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
+const { computeStockCourant, computeStockPTCourant, ptCategorieSql, ptTypeSql, uniteProduitSql } = require('../utils/stockUtils');
 const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finalize, FMT_DT, FMT_QTE } = require('../services/excelBrandService');
 const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
@@ -193,7 +193,7 @@ async function fetchActivitePtPertes(entrepriseId, { activiteId, activiteIds, da
   if (typePerte && typesPerte.includes(typePerte)) { params.push(typePerte); wheres.push(`p.type_perte = $${params.length}`); }
   const r = await pool.query(
     `SELECT p.id, p.activite_id, a.nom AS activite_nom, -(p.produit_id) AS ingredient_id, p.produit_id,
-            pr.nom AS ingredient_nom, 'unité'::text AS unite_nom, ${ptCategorieSql('pr')} AS categorie_nom,
+            pr.nom AS ingredient_nom, ${uniteProduitSql('pr')} AS unite_nom, ${ptCategorieSql('pr')} AS categorie_nom,
             p.quantite, p.prix_unitaire, p.type_perte, p.date_perte, p.created_at, p.created_by, ub.nom AS created_by_nom
      FROM pertes p
      JOIN activites a ON a.id = p.activite_id
@@ -600,7 +600,7 @@ async function fetchLaboPtPertes(laboId, { dateDebut, dateFin, typePerte, ptProd
   if (ptType) wheres.push(ptTypeSql('p', ptType));
   const r = await pool.query(
     `SELECT lp.id, -(lp.produit_id) AS ingredient_id, lp.produit_id,
-            p.nom AS ingredient_nom, 'unité'::text AS unite_nom, ${ptCategorieSql('p')} AS categorie_nom,
+            p.nom AS ingredient_nom, ${uniteProduitSql('p')} AS unite_nom, ${ptCategorieSql('p')} AS categorie_nom,
             lp.quantite, lp.prix_unitaire, lp.type_perte, lp.date_perte, lp.created_at, lp.created_by
      FROM labo_pertes lp JOIN produits p ON p.id = lp.produit_id
      WHERE ${wheres.join(' AND ')}
@@ -679,7 +679,7 @@ const listLaboPertes = async (req, res) => {
         laboId: Number(laboId),
         ingredientId: r.ingredient_id,
         ingredientNom: r.ingredient_nom,
-        uniteNom: 'unité',
+        uniteNom: r.unite_nom,
         categorieNom: r.categorie_nom,
         quantite: parseFloat(r.quantite),
         prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,

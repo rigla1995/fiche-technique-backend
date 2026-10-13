@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { ptCategorie, ptCategorieSql, ptTypeSql } = require('../utils/stockUtils');
+const { ptCategorie, ptCategorieSql, ptTypeSql, uniteProduitSql } = require('../utils/stockUtils');
 const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
 const { isoDate, todayStr } = require('../utils/dateUtils');
@@ -97,7 +97,7 @@ const getStockEntreprise = async (req, res) => {
     }
 
     const ptRes = await pool.query(`
-      SELECT p.id as produit_id, p.nom, p.type, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min_pt, p.origine,
+      SELECT p.id as produit_id, p.nom, p.type, COALESCE(pas.seuil_min, p.seuil_min_pt) AS seuil_min_pt, p.origine, ${uniteProduitSql('p')} AS unite_pt, p.quantite_produite,
              last_spt.date_appro   as last_date_appro,
              last_spt.prix_calcule as last_prix_calcule,
              -- Prix partiel : au moins un composant de la recette sans prix (article via la
@@ -309,7 +309,9 @@ const getStockEntreprise = async (req, res) => {
         // Le front bloque alors la saisie de quantité et affiche un indicateur (garde-fou aligné sur saveStockPT).
         origine: r.origine || 'activite',
         nom: r.nom,
-        unite: 'unité',
+        unite: r.unite_pt,
+        // P1 : quantité que produit une recette (production : « 1 recette = 4,6 kg ») ; null = produit d'avant.
+        quantiteProduite: r.quantite_produite != null ? parseFloat(r.quantite_produite) : null,
         categorie: ptCategorie(r.type, r.origine),
         prixPartiel: r.prix_partiel === true,
         prixUnitaire: ptPrix,
@@ -596,7 +598,7 @@ const getHistoriqueAppro = async (req, res) => {
         if (ptProduitId) { ptParams.push(ptProduitId); ptWhere += ` AND spt.produit_id = $${ptParams.length}`; }
         if (ptType) ptWhere += ` AND ${ptTypeSql('p', ptType)}`;
         const ptResult = await pool.query(
-          `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at, p.nom as produit_nom, p.id as produit_id, p.type, p.origine,
+          `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule, spt.created_at, p.nom as produit_nom, p.id as produit_id, p.type, p.origine, ${uniteProduitSql('p')} AS unite_pt,
                   spt.ref_facture, spt.fournisseur_id, f.nom AS fournisseur_nom
            FROM stock_produits_transformes spt
            JOIN produits p ON p.id = spt.produit_id
@@ -618,7 +620,7 @@ const getHistoriqueAppro = async (req, res) => {
           updatedAt: spt.created_at,
           ingredientId: -(spt.produit_id),
           ingredientNom: spt.produit_nom,
-          uniteNom: 'unité',
+          uniteNom: spt.unite_pt,
           categorieNom: ptCategorie(spt.type, spt.origine),
         }));
         if (ptOnly === 'true') {
@@ -900,7 +902,7 @@ const exportHistoriqueExcel = async (req, res) => {
                 f.nom AS fournisseur_nom, spt.ref_facture,
                 p.nom AS ingredient_nom,
                 ${ptCategorieSql('p')} AS categorie_nom,
-                'unité' AS unite_nom,
+                ${uniteProduitSql('p')} AS unite_nom,
                 spt.taux_tva, spt.prix_calcule AS prix_unitaire_tva, NULL AS created_by_nom
          FROM stock_produits_transformes spt
          JOIN produits p ON p.id = spt.produit_id
