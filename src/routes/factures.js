@@ -5,6 +5,7 @@ const { list, getLignes, downloadPdf } = require('../controllers/facturesControl
 const pieces = require('../controllers/piecesController');
 const validee = require('../controllers/factureValideeController');
 const compta = require('../controllers/factureComptaController');
+const miseEnPage = require('../controllers/miseEnPageController');
 const { televersement } = require('../services/piecesFacture');
 const { authenticate, requireClient } = require('../middleware/auth');
 
@@ -27,7 +28,19 @@ const limiteLectures = rateLimit({
   legacyHeaders: false,
 });
 
+// Étape F5 : une demande par facture lue (et par relecture) — 120 par quart d'heure et par personne.
+const limiteMisesEnPage = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  keyGenerator: (req) => `mises-en-page:${req.user.id}`,
+  message: { message: 'Trop de lectures de factures en peu de temps, réessayez dans un quart d\'heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 router.get('/', authenticate, requireClient, list);
+// Étape F5 : la mise en page apprise d'un fournisseur (partagée entre les comptes, par matricule fiscal).
+router.get('/mise-en-page', authenticate, requireClient, limiteMisesEnPage, miseEnPage.lire);
 // Étape F4 : état du module LabFlow Compta (client et gérant) ; envoi d'une facture en comptabilité.
 router.get('/compta', authenticate, requireClient, compta.etatModule);
 router.post('/:id/compta', authenticate, requireClient, limiteDepots, compta.envoyer);

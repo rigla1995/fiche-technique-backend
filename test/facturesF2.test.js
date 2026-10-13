@@ -48,7 +48,9 @@ test('lireDonnees : lecture gardée — champs connus seulement, bornés ; sourc
     source: 'pdf', matricule: '1384297X/A/M/000', nom: 'N'.repeat(500), numero: 'F-1', date: aujourdhui, fournisseur: 'reconnu', duree: 0.4,
     totaux: { ht: 2, tva: 0.38, timbre: 1, ttc: 3.38, fodec: null, remise: 'x', autre: 5 }, injection: '<script>',
   } }));
-  assert.deepStrictEqual(Object.keys(v.lecture).sort(), ['date', 'duree', 'fournisseur', 'matricule', 'nom', 'numero', 'source', 'totaux']);
+  // Étape F5 : + la mise en page vue (contrôlée ; ici absente → null).
+  assert.deepStrictEqual(Object.keys(v.lecture).sort(), ['date', 'duree', 'fournisseur', 'matricule', 'miseEnPage', 'nom', 'numero', 'source', 'totaux']);
+  assert.strictEqual(v.lecture.miseEnPage, null);
   assert.strictEqual(v.lecture.nom.length, 200);
   assert.deepStrictEqual(v.lecture.totaux, { ht: 2, tva: 0.38, timbre: 1, ttc: 3.38, fodec: null, remise: null });
   assert.strictEqual(lireDonnees(donnees({ lecture: { source: 'scanner' } })).lecture, null);

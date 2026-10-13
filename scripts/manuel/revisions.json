@@ -278,6 +278,23 @@
           "md5": "7034b13f6ab07642f0023332a3b5741f"
         }
       ]
+    },
+    {
+      "numero": 232,
+      "nom": "232_manuel_photos_mieux_lues.sql",
+      "objet": "Factures fournisseur, étape F5 « Scans et photos mieux lus » : photo préparée avant la lecture (feuille repérée et remise d'équerre, photo couchée tournée, ombre effacée), plusieurs photos ou pages lues comme une facture, page en double signalée ; dans « Vérifier la facture » : Recadrer, Pivoter, mise en page connue (apprise par compte, partagée quand deux comptes l'ont vue).",
+      "manuel": [
+        {
+          "slug": "stock-activites",
+          "md5Avant": "9a2b2991c0c1f8bd18745339a3b3024c",
+          "md5": "02df6bf713a37187e561db30b3dc71bf"
+        },
+        {
+          "slug": "stock-labo",
+          "md5Avant": "7034b13f6ab07642f0023332a3b5741f",
+          "md5": "2d6e4e4bf7b98f44c96a112b2086dd3c"
+        }
+      ]
     }
   ]
 }
