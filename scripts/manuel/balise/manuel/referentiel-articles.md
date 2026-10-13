@@ -6,7 +6,7 @@
 
 - Un bandeau d'en-tête avec le **nombre total [[de:article:pl]]**.
 - Une barre de filtres : champ **Recherche**, liste **Famille**, liste **Catégorie** (elle se limite aux catégories de la famille choisie), compteur de résultats (ex. « 12 [[nom:article:pl]] sur 87 » quand un filtre est actif) et bouton **Réinitialiser**.
-- Deux boutons d'action : **+ Ajout multiple** et **+ [[Nouveau:article]]**.
+- Deux boutons d'action : **+ Ajout multiple** et **+ [[Nouveau:article]]**, et le bouton **Exporter (modèle Excel)** : tout [[votre:referentiel]], unités, catégories et familles comprises, dans le fichier du modèle d'import — les filtres ne s'y appliquent pas.
 - Une liste **groupée par famille puis par catégorie** : chaque famille forme une carte avec son nombre de catégories ; chaque catégorie se déplie d'un clic sur la flèche ▶ et affiche son nombre [[de:article:pl]] ([[le:article:pl]] non [[acc:article:classé:classée:pl]] apparaissent sous « Sans catégorie »). Chaque ligne [[de:article]] affiche son nom, un badge avec son **unité**, et les boutons **✏️ Modifier** et corbeille 🗑️.
 
 ### Actions pas à pas
@@ -44,7 +44,7 @@ La corbeille est **grisée** si [[le:article]] a [[un:appro:pl]] [[acc:appro:enr
 :::
 
 :::astuce
-Pour un gros volume [[de:article:pl]], préférez l'[Ajout dynamique](#referentiel-import) par fichier Excel, puis affinez les affectations depuis la fiche de chaque [[nom:article]].
+Pour un gros volume [[de:article:pl]], préférez l'[Ajout dynamique](#referentiel-import) par fichier Excel, puis affinez les affectations depuis la fiche de chaque [[nom:article]]. Le fichier exporté se réimporte tel quel par l'Ajout dynamique, par exemple dans un autre compte.
 :::
 
 ### Voir aussi

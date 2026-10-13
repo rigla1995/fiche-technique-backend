@@ -2,7 +2,7 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 532 unité(s), 42 fichier(s).
+# 545 unité(s), 42 fichier(s).
 
 src/controllers/abonnementController.js
   l. 1694
@@ -190,6 +190,21 @@ src/controllers/correspondancesController.js
   l. 178
     défaut : Choisissez un article ou « hors stock ».
     miroir : Choisissez une denrée ou « hors armoire ».
+  l. 245
+    défaut : ⟦·⟧ ⟦ligne|lignes@>1⟧ : une ligne de facture du fournisseur → votre article et sa conversion
+    miroir : ⟦·⟧ ⟦ligne|lignes@>1⟧ : une ligne de facture de l'enseigne → votre denrée et sa conversion
+  l. 248
+    défaut : Fournisseur
+    miroir : Enseigne
+  l. 248
+    défaut : Code fournisseur
+    miroir : Code enseigne
+  l. 249
+    défaut : Article LabFlow
+    miroir : Denrée LabFlow
+  l. 249
+    défaut : Hors stock
+    miroir : Hors armoire
 
 src/controllers/dashboardController.js
   l. 168
@@ -382,6 +397,18 @@ src/controllers/fournisseurController.js
   l. 446
     défaut : Ajout dynamique des fournisseurs : une ligne = un fournisseur
     miroir : Ajout dynamique des enseignes : une ligne = une enseigne
+  l. 489
+    défaut : Fournisseurs
+    miroir : Abr-Enseignes
+  l. 491
+    défaut : Fournisseurs — export du ⟦·⟧
+    miroir : Abr-Enseignes — export du ⟦·⟧
+  l. 492
+    défaut : ⟦·⟧ ⟦ligne|lignes@>1⟧ : une ligne = un fournisseur, au format du modèle d'import
+    miroir : ⟦·⟧ ⟦ligne|lignes@>1⟧ : une ligne = une enseigne, au format du modèle d'import
+  l. 493
+    défaut : Réimportable par l'Ajout Dynamique (⟦·⟧ lignes au plus par fichier) : un fournisseur déjà présent (même nom ou même matricule) est signalé et ignoré.
+    miroir : Réimportable par l'Ajout Dynamique (⟦·⟧ lignes au plus par fichier) : une enseigne déjà présente (même nom ou même matricule) est signalée et ignorée.
 
 src/controllers/gerantController.js
   l. 95
@@ -957,6 +984,18 @@ src/controllers/referentielController.js
   l. 42
     défaut : Food
     miroir : Famille A
+  l. 74
+    défaut : Référentiel
+    miroir : Abr-Encyclopédie
+  l. 76
+    défaut : Référentiel — export du ⟦·⟧
+    miroir : Abr-Encyclopédie — export du ⟦·⟧
+  l. 77
+    défaut : ⟦·⟧ ⟦ligne|lignes@>1⟧ : une ligne = un article, au format du modèle d'import
+    miroir : ⟦·⟧ ⟦ligne|lignes@>1⟧ : une ligne = une denrée, au format du modèle d'import
+  l. 78
+    défaut : Réimportable par l'Ajout Dynamique (⟦·⟧ lignes au plus par fichier) : ce qui manque est créé, un article déjà présent n'est pas modifié.
+    miroir : Réimportable par l'Ajout Dynamique (⟦·⟧ lignes au plus par fichier) : ce qui manque est créé, une denrée déjà présente n'est pas modifiée.
 
 src/controllers/stockController.js
   l. 30

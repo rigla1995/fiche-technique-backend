@@ -211,4 +211,60 @@ const oublier = async (req, res) => {
   }
 };
 
-module.exports = { contexte, lister, modifier, oublier };
+/** Libellés des frais hors stock (les mêmes que l'écran et le pont vers la Compta). */
+const LIBELLES_NATURES = { transport: 'Transport', livraison: 'Frais de livraison', consigne: 'Consigne', service: 'Prestation', autre: 'Autre frais' };
+
+// GET /api/correspondances/export — les correspondances du compte (et du périmètre du gérant) dans un fichier de la
+// charte des modèles d'import : une ligne par correspondance, du fournisseur à l'article et sa conversion. Lecture
+// seule : les correspondances s'apprennent des factures validées (pas d'import).
+const exporter = async (req, res) => {
+  const clientId = F.clientDe(req);
+  try {
+    const ExcelJS = require('exceljs');
+    const { brandModeleRempli, jourExport } = require('../services/excelBrandService');
+    const { ongletSur } = require('../utils/excelNoms');
+    const { vocabDefaut } = require('../utils/vocab');
+    const voc = req.voc ?? vocabDefaut;
+    const params = [clientId];
+    const r = await pool.query(
+      `SELECT co.designation, co.reference, co.unite_facture, co.nature_hors_stock, co.conversion, co.emplois, co.derniere_fois,
+              fo.nom AS fournisseur_nom, fo.matricule_fiscal, a.nom AS article_nom, u.nom AS unite_stock
+       FROM correspondances co
+       JOIN fournisseurs fo ON fo.id = co.fournisseur_id
+       LEFT JOIN articles a ON a.id = co.article_id
+       LEFT JOIN unites u ON u.id = a.unite_id
+       WHERE co.client_id = $1${clauseGerant(req, params)}
+       ORDER BY fo.nom, co.designation`,
+      params
+    );
+    const jour = jourExport();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(ongletSur(wb, 'Correspondances'));
+    brandModeleRempli(wb, ws, {
+      titre: `Correspondances — export du ${jour.fr}`,
+      sousTitre: `${r.rows.length} ligne${r.rows.length > 1 ? 's' : ''} : une ligne de facture ${voc.du('fournisseur')} → ${voc.votre('article')} et sa conversion`,
+      meta: 'Apprises de vos factures validées ; elles se corrigent dans LabFlow (page Correspondances). Conversion : 1 unité facturée = tant d\'unités LabFlow.',
+      headers: [
+        voc.Nom('fournisseur'), 'Matricule fiscal', `Code ${voc.nom('fournisseur')}`, 'Désignation sur la facture', 'Unité facturée',
+        `${voc.Nom('article')} LabFlow`, 'Unité LabFlow', 'Conversion', `Hors ${voc.nom('stock')}`, 'Factures confirmées', 'Dernière facture',
+      ],
+      widths: [26, 18, 16, 36, 13, 30, 13, 12, 18, 12, 14],
+      lignes: r.rows.map((x) => [
+        x.fournisseur_nom, x.matricule_fiscal, x.reference, x.designation, x.unite_facture,
+        x.article_nom, x.unite_stock, x.nature_hors_stock ? null : n(x.conversion),
+        x.nature_hors_stock ? (LIBELLES_NATURES[x.nature_hors_stock] ?? x.nature_hors_stock) : null,
+        x.emplois, x.derniere_fois ? new Date(x.derniere_fois) : null,
+      ]),
+      formats: [null, null, null, null, null, null, null, null, null, null, 'dd/mm/yyyy'],
+    });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="correspondances_${jour.iso}.xlsx"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('[correspondances, export]', err);
+    if (!res.headersSent) res.status(500).json({ message: "Erreur lors de l'export" });
+  }
+};
+
+module.exports = { contexte, lister, modifier, oublier, exporter };

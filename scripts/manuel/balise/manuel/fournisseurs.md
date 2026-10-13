@@ -4,7 +4,7 @@ Un seul écran gère [[votre:fournisseur:pl]] : **[[Nom:fournisseur:pl]]** (menu
 
 ### Ce que vous voyez
 
-Le bandeau affiche le nombre total [[de:fournisseur:pl]]. La barre de filtres permet une recherche par nom, matricule fiscal, téléphone ou ville, et porte les boutons **📥 Ajout Dynamique** et **+ [[Nouveau:fournisseur]]**. Le tableau principal présente :
+Le bandeau affiche le nombre total [[de:fournisseur:pl]]. La barre de filtres permet une recherche par nom, matricule fiscal, téléphone ou ville, et porte les boutons **Exporter (modèle Excel)**, **📥 Ajout Dynamique** et **+ [[Nouveau:fournisseur]]**. Le tableau principal présente :
 
 | Colonne | Contenu |
 |---|---|
@@ -34,6 +34,8 @@ Le bouton **📥 Ajout Dynamique** importe [[votre:fournisseur:pl]] en masse :
 
 Le rapport d'import détaille chaque ligne : les noms déjà présents dans votre répertoire (ou en double dans le fichier), les matricules fiscaux invalides ou déjà présents sont ignorés et signalés, le reste est créé.
 
+**Exporter (modèle Excel)** télécharge tout votre répertoire (sans les [[nom:labo:pl]] internes) dans ce même modèle : il se réimporte tel quel, par exemple dans un autre compte. [[Un:gerant]] n'exporte que [[le:fournisseur:pl]] de ses [[nom:activite:pl]] et [[nom:labo:pl]].
+
 ### Correspondances
 
 L'écran **🔗 Correspondances** (menu latéral, ou bouton en haut de cet écran) montre ce que LabFlow a appris des factures validées, [[nom:fournisseur]] par [[nom:fournisseur]] : chaque ligne de facture mène à [[un:article]] et sa conversion (« 1 sac = 25 kg »), ou reste hors [[nom:stock]]. La colonne **Confirmée** dit sur combien de factures, la dernière fois et par qui.
@@ -42,6 +44,7 @@ La colonne **Code [[nom:fournisseur]]** montre le code que [[le:fournisseur]] im
 
 - **✏️ Corriger** : cherchez [[le:article]] juste (tapez quelques lettres), sa conversion, ou une nature hors [[nom:stock]]. Avant d'enregistrer, une alerte rappelle que la correction vaut pour les **prochaines** factures.
 - **🗑️ Oublier** : la ligne ne sera plus reconnue, la prochaine facture la redemandera.
+- **Exporter (Excel)** : toutes les correspondances dans un fichier Excel ([[nom:fournisseur]], matricule, code, désignation, unité facturée, [[nom:article]] et conversion, ou nature hors [[nom:stock]]). Ce fichier se consulte : les correspondances s'apprennent des factures, elles ne s'importent pas.
 
 **Les factures déjà validées ne changent pas** — ni leur [[nom:stock]], ni la facture, ni l'historique. Pour en refaire une, supprimez-la depuis l'écran [Factures [[de:appro:court]]](#factures), puis déposez-la de nouveau : elle suivra la correspondance corrigée. [[Un:gerant]] voit les correspondances [[du:fournisseur:pl]] [[du:activite:pl]] et [[du:labo:pl]] qui lui sont [[acc:labo:affecté:affectée:pl]].
 
