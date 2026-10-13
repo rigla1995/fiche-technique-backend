@@ -52,9 +52,14 @@ Dès qu'une facture est déposée dans la zone **📎 Facture [[du:fournisseur]]
 
 Chaque champ rempli porte la pastille **lu — à relire** jusqu'à ce que vous le modifiiez. Rien n'est enregistré avant **Enregistrer**. Une facture écrite à la main, ou une photo trop floue, ne se lit pas : saisissez alors l'en-tête vous-même — la facture est jointe quand même.
 
+Une **photo** est préparée avant d'être lue : la feuille est repérée sur la table et remise d'équerre, une photo couchée est tournée, l'ombre est effacée. Plusieurs photos — ou les pages d'un PDF scanné, 5 au plus — se lisent comme les pages d'une même facture ; une page déposée deux fois est signalée.
+
 ### Vérifier la facture et enregistrer
 
 Quand la facture est lue, le panneau annonce **📋 N lignes lues** et propose **Vérifier la facture et enregistrer →** (il faut d'abord [[le:fournisseur]] et le n° de facture dans le bloc). La fenêtre **Vérifier la facture** s'ouvre : à gauche la facture (pages, zoom ; cliquer une ligne l'encadre sur la page), à droite ses lignes.
+
+- Sur une photo : **✂️ Recadrer** — placez les quatre coins sur les bords de la facture, puis **✓ Relire ce cadre** ; **↻ Pivoter** tourne la page d'un quart de tour et la relit. Les lignes sont alors relues (les choix déjà faits sur les lignes sont perdus : LabFlow le demande avant).
+- **📐 mise en page connue** : après une première facture lue et validée de [[ce:fournisseur]] (son matricule fiscal sur sa fiche), LabFlow connaît la place de ses colonnes et s'en sert pour lire une photo difficile. Cette mise en page — la place des colonnes, rien de vos montants — sert aussi aux autres comptes LabFlow, dès que deux comptes au moins ont vu la même.
 
 - Chaque ligne reprend ce qui est imprimé : désignation, **code [[nom:fournisseur]]** (colonne « Réf. » ou « Code » de sa facture, par exemple P310 : ce code reconnaît la ligne la fois suivante), quantité, unité, prix HT, remise, TVA et montant HT, avec ✓ quand quantité × prix − remise = montant (⚠ sinon : relisez la ligne). Tout se corrige à la main.
 - LabFlow propose [[le:article]] et la **conversion** (« 1 sac = 25 kg », « 1 pack = 6 bouteilles ») : ligne **reconnue** (déjà validée chez [[ce:fournisseur]]), **proposée, à confirmer**, ou **à choisir**. Une ligne peut aussi rester **hors [[nom:stock]]** : transport, frais de livraison, consigne, prestation, autre frais — elle reste sur la facture sans entrer en [[nom:stock]].
