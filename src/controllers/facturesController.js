@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { vocabDefaut } = require('../utils/vocab');
 const { clauseGerant, factureDuCompte, gerantVoit } = require('../services/facturesAppro');
+const Pont = require('../services/pontCompta');
 
 /**
  * GET /api/factures
@@ -118,6 +119,7 @@ const list = async (req, res) => {
       params
     );
 
+    const etatsCompta = await Pont.etatsCompta(pool, result.rows.map((r) => r.id));
     res.json(result.rows.map((r) => ({
       id: r.id,
       refFacture: r.ref_facture,
@@ -140,6 +142,8 @@ const list = async (req, res) => {
       validee: r.validee_le != null,
       valideeLe: r.validee_le,
       montantFodec: r.montant_fodec != null ? parseFloat(r.montant_fodec) : null,
+      // Étape F4 : l'écriture d'achat de la facture dans LabFlow Compta (brouillard ou validée), sinon null.
+      compta: etatsCompta.get(r.id) || null,
       // Lot 1b : facture interne de transfert, vue du labo courant (laboId) — 'recue' (labo
       // destinataire, activite_id NULL) | 'emise' (vers une activité, ou cession vers un labo enfant) ;
       // contrepartie = activité ou labo destinataire (émise) | labo source (reçue).

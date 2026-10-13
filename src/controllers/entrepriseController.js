@@ -358,9 +358,9 @@ const deleteActivite = async (req, res) => {
       return res.status(409).json({ message: 'Suppression impossible : [[un:article:pl]] sont [[acc:article:affectés:affectées]] à [[ce:activite]].' });
     }
     // Étape F3 (factures fournisseur) : les lignes de stock d'une facture validée partiraient en cascade.
-    const validees = await pool.query('SELECT 1 FROM factures WHERE activite_id = $1 AND validee_le IS NOT NULL LIMIT 1', [id]);
+    const validees = await pool.query(`SELECT 1 FROM factures f WHERE f.activite_id = $1 AND (f.validee_le IS NOT NULL OR EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = f.id)) LIMIT 1`, [id]);
     if (validees.rows.length) {
-      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Suppression impossible : des factures validées sont rattachées à [[ce:activite]]. Supprimez-les d\'abord (page Factures).' });
+      return res.status(409).json({ code: 'FACTURE_VALIDEE', message: 'Suppression impossible : des factures validées ou envoyées en comptabilité sont rattachées à [[ce:activite]]. Supprimez-les d\'abord (page Factures).' });
     }
 
     const result = await pool.query(

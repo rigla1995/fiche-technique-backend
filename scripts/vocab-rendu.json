@@ -69,5 +69,12 @@
     "nom": "invalide",
     "argument": 1,
     "justification": "invalide(quoi) fabrique refus(400, 'LIGNE_INVALIDE', `Ligne n : ${quoi}.`) : le texte devient le message du Refus, rendu au bord (étape F3 des factures fournisseur)."
+  },
+  {
+    "fichier": "src/services/pontCompta.js",
+    "genre": "argument",
+    "nom": "refus",
+    "argument": 3,
+    "justification": "refus(status, code, message) fabrique un RefusCompta : son message est renvoyé en { code, message } par POST /api/factures/:id/compta et la suppression d'une facture (rendu au bord), ou rendu par rendre(voc, …) dans envoyerSiDemande (« comptaRefus », que le bord ne lit pas) — étape F4 des factures fournisseur."
   }
 ]

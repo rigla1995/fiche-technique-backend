@@ -131,6 +131,8 @@ const apprendre = async (db, { clientId, fournisseurId, auteurId, lignes }) => {
  * → { clesAEffacer, nbStock }.
  */
 const supprimerFactureValidee = async (db, { facture, clientId, auteurId }) => {
+  // Étape F4 (question 18) : son écriture en brouillard part avec ; une écriture validée refuse la suppression.
+  const ecriture = await require('./pontCompta').retirerAvecFacture(db, { factureId: facture.id, auteurId });
   const e = await db.query('DELETE FROM stock_entreprise_daily WHERE facture_id = $1 RETURNING id', [facture.id]);
   const l = await db.query('DELETE FROM stock_labo_daily WHERE facture_id = $1 RETURNING id', [facture.id]);
   const pieces = await db.query('SELECT cle, apercu_cle, nom_origine FROM factures_pieces WHERE facture_id = $1', [facture.id]);
@@ -140,6 +142,7 @@ const supprimerFactureValidee = async (db, { facture, clientId, auteurId }) => {
     [clientId, auteurId, JSON.stringify({
       factureId: facture.id, ref: facture.ref_facture, date: facture.date_facture, motif: 'facture_validee_supprimee',
       lignes: n.rows[0].n, lignesStock: e.rowCount + l.rowCount, pieces: pieces.rows.map((p) => p.nom_origine),
+      ...(ecriture?.supprimee ? { ecritureSupprimee: ecriture.supprimee } : {}),
     })]
   );
   await db.query('DELETE FROM factures WHERE id = $1', [facture.id]);
