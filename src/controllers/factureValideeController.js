@@ -205,13 +205,22 @@ const valider = async (req, res) => {
       await P.inserer(db, { factureId, clientId, deposes, ordreDepart: 1, auteurId: req.user.id });
       const appris = await V.apprendre(db, { clientId, fournisseurId: v.fournisseurId, auteurId: req.user.id, lignes: v.lignes });
       // Étape F5 : la mise en page du tableau vue par la lecture (titre des colonnes lu, lignes gardées), apprise pour ce
-      // compte si le matricule lu sur la facture est celui de la fiche du fournisseur.
-      const miseEnPage = v.lecture?.miseEnPage
-        ? await MEP.apprendre(db, {
-          fournisseurId: v.fournisseurId, clientId, auteurId: req.user.id, factureId, miseEnPage: v.lecture.miseEnPage,
-          source: v.lecture.source, matriculeLu: v.lecture.matricule,
-        })
-        : false;
+      // compte si le matricule lu sur la facture est celui de la fiche du fournisseur. Un échec n'empêche jamais la
+      // validation (SAVEPOINT : une erreur SQL avorterait toute la transaction — contre-relecture).
+      let miseEnPage = false;
+      if (v.lecture?.miseEnPage) {
+        await db.query('SAVEPOINT mise_en_page');
+        try {
+          miseEnPage = await MEP.apprendre(db, {
+            fournisseurId: v.fournisseurId, clientId, auteurId: req.user.id, factureId, miseEnPage: v.lecture.miseEnPage,
+            source: v.lecture.source, matriculeLu: v.lecture.matricule,
+          });
+          await db.query('RELEASE SAVEPOINT mise_en_page');
+        } catch (e) {
+          await db.query('ROLLBACK TO SAVEPOINT mise_en_page');
+          console.warn('[factures] mise en page non apprise :', e?.code || e?.message);
+        }
+      }
       await P.journaliser(db, {
         clientId, factureId, action: 'facture_validee', auteurId: req.user.id,
         details: { ref: v.ref, lignes: v.lignes.length, lignesStock: nbStock, appris, ttc: c.ttc, pieces: deposes.map(P.resumePiece), ...(miseEnPage ? { miseEnPage: true } : {}) },
