@@ -22,6 +22,7 @@ const stockage = require('../services/stockageFichiers');
 const P = require('../services/piecesFacture');
 const F = require('../services/facturesAppro');
 const Pont = require('../services/pontCompta');
+const MEP = require('../services/misesEnPage');
 
 const LIGNES_MAX = 300;
 const VALEUR_MAX = 9999999.999; // DECIMAL(10,3) : quantité, PU HT et PU TTC d'une ligne
@@ -75,6 +76,8 @@ const lireLecture = (l) => {
     totaux: { ht: num(t.ht), tva: num(t.tva), timbre: num(t.timbre), ttc: num(t.ttc), fodec: num(t.fodec), remise: num(t.remise) },
     fournisseur: ['reconnu', 'propose', 'nouveau', 'choisi'].includes(l.fournisseur) ? l.fournisseur : null,
     duree: num(l.duree),
+    // Étape F5 : la mise en page du tableau vue par la lecture (contrôlée ; apprise à la validation d'une facture lue).
+    miseEnPage: MEP.lireMiseEnPage(l.miseEnPage),
   };
 };
 

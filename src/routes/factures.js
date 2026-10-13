@@ -5,6 +5,7 @@ const { list, getLignes, downloadPdf } = require('../controllers/facturesControl
 const pieces = require('../controllers/piecesController');
 const validee = require('../controllers/factureValideeController');
 const compta = require('../controllers/factureComptaController');
+const miseEnPage = require('../controllers/miseEnPageController');
 const { televersement } = require('../services/piecesFacture');
 const { authenticate, requireClient } = require('../middleware/auth');
 
@@ -28,6 +29,8 @@ const limiteLectures = rateLimit({
 });
 
 router.get('/', authenticate, requireClient, list);
+// Étape F5 : la mise en page apprise d'un fournisseur (partagée entre les comptes, par matricule fiscal).
+router.get('/mise-en-page', authenticate, requireClient, limiteLectures, miseEnPage.lire);
 // Étape F4 : état du module LabFlow Compta (client et gérant) ; envoi d'une facture en comptabilité.
 router.get('/compta', authenticate, requireClient, compta.etatModule);
 router.post('/:id/compta', authenticate, requireClient, limiteDepots, compta.envoyer);

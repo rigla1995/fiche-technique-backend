@@ -27,6 +27,7 @@ const F = require('../services/facturesAppro');
 const V = require('../services/facturesValidees');
 const A = require('./approFactureController');
 const Pont = require('../services/pontCompta');
+const MEP = require('../services/misesEnPage');
 
 const { refus } = A;
 const CONVERSION_MAX = 100000;
@@ -203,9 +204,13 @@ const valider = async (req, res) => {
       );
       await P.inserer(db, { factureId, clientId, deposes, ordreDepart: 1, auteurId: req.user.id });
       const appris = await V.apprendre(db, { clientId, fournisseurId: v.fournisseurId, auteurId: req.user.id, lignes: v.lignes });
+      // Étape F5 : la mise en page du tableau vue par la lecture (titre des colonnes lu, lignes gardées), partagée.
+      const miseEnPage = v.lecture?.miseEnPage
+        ? await MEP.apprendre(db, { fournisseurId: v.fournisseurId, clientId, auteurId: req.user.id, miseEnPage: v.lecture.miseEnPage, source: v.lecture.source })
+        : false;
       await P.journaliser(db, {
         clientId, factureId, action: 'facture_validee', auteurId: req.user.id,
-        details: { ref: v.ref, lignes: v.lignes.length, lignesStock: nbStock, appris, ttc: c.ttc, pieces: deposes.map(P.resumePiece) },
+        details: { ref: v.ref, lignes: v.lignes.length, lignesStock: nbStock, appris, ttc: c.ttc, pieces: deposes.map(P.resumePiece), ...(miseEnPage ? { miseEnPage: true } : {}) },
       });
       return { factureId, nbLignes: v.lignes.length, nbStock, nbPieces: deposes.length, appris, montantTTC: c.ttc };
     });
