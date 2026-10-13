@@ -242,6 +242,14 @@ const controlerPaquet = (p) => {
       else if (c.nature !== NATURE_PAR_TYPE_TIERS[type]) defauts.push(`tiers : compte collectif ${collectifs[type]} de nature ${c.nature}, ${NATURE_PAR_TYPE_TIERS[type]} attendue`);
     }
   }
+  // X1 : les comptes du résultat (facultatifs ; contrôlés s'ils sont là) : des comptes de capitaux du paquet.
+  if (p.cloture != null) {
+    for (const cle of ['beneficiaire', 'deficitaire']) {
+      const c = parNumero.get((p.cloture || {})[cle]);
+      if (!c) defauts.push(`clôture : compte du résultat ${cle} absent du paquet`);
+      else if (c.nature !== 'capitaux') defauts.push(`clôture : compte ${c.numero} de nature ${c.nature}, capitaux attendue`);
+    }
+  }
   // S7b : la fiscalité (facultative dans un paquet ; contrôlée si elle est là) : régimes fiscaux des fournisseurs et codes de
   // retenue qu'ils proposent (des codes de retenue du paquet), familles, seuil des retenues sur achats, compte du crédit de
   // TVA, codes d'opération TEJ (ceux des codes du paquet en font partie).
@@ -307,6 +315,8 @@ const controlerPaquet = (p) => {
 };
 // S7b : la fiscalité d'un pays (régimes fiscaux, familles, seuil, crédit de TVA, TEJ), ou null.
 const fiscaliteDe = (pays) => paquetDe(pays)?.fiscalite || null;
+// X1 : les comptes du résultat d'un pays ({ beneficiaire, deficitaire }), ou null.
+const clotureDe = (pays) => paquetDe(pays)?.cloture || null;
 // Le régime fiscal d'un fournisseur (valeur de la liste du paquet), ou null.
 const regimeFiscalDe = (pays, valeur) => (valeur ? (fiscaliteDe(pays)?.regimesFiscaux || []).find((r) => r.valeur === valeur) || null : null);
 
@@ -346,4 +356,5 @@ module.exports = {
   TYPES_TIERS, TYPES_TIERS_LIBELLES, NATURE_PAR_TYPE_TIERS, REGIMES_TVA_TIERS, REGIMES_TVA_TIERS_LIBELLES,
   CODE_TIERS_MIN, CODE_TIERS_MAX, RE_CODE_TIERS, PREFIXE_TIERS_MAX, RE_PREFIXE_TIERS, CHIFFRES_TIERS_MIN, CHIFFRES_TIERS_MAX, DELAI_PAIEMENT_MAX,
   RE_REGIME_FISCAL, PERSONNES, TYPES_IDENTIFIANT, TYPES_IDENTIFIANT_LIBELLES, RE_CODE_OPERATION_TEJ, fiscaliteDe, regimeFiscalDe,
+  clotureDe,
 };

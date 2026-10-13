@@ -16,7 +16,10 @@ const ExcelJS = require('exceljs');
 const pool = require('../config/database');
 const { modeTitulaire, etatAbonnement } = require('./garde');
 const { erreur, idValide, repondreErreur } = require('./comptablesClient');
-const { NATURE_PAR_TYPE_TIERS, TYPES_TIERS_LIBELLES, TYPES_JOURNAUX_LIBELLES } = require('./paquets');
+const { NATURE_PAR_TYPE_TIERS, TYPES_TIERS_LIBELLES, TYPES_JOURNAUX_LIBELLES, clotureDe } = require('./paquets');
+// X1 : les exercices du dossier, l'exercice précédent non clos (exercices.js), l'exercice par défaut (règles pures).
+const X = require('./exercices');
+const XC = require('./exercicesCalcul');
 const { droits } = require('./dossiers');
 const { lectureDossier, presenterDossier } = require('./planComptes');
 const { SQL_FEUILLE, presenterCompteCourt } = require('./configDossier');
@@ -55,15 +58,11 @@ const FMT_MONTANT = '#,##0.000';
 const nombreExcel = (texte) => (texte == null || texte === '' ? null : Number(texte));
 
 // ── Sélection (exercice, période, brouillard) ───────────────────────────────────────────────────────────────────────
-// Les exercices du dossier avec leurs périodes (du plus récent au plus ancien).
-const exercicesDe = async (db, dossierId) => {
-  const ex = (await db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [dossierId])).rows;
-  if (!ex.length) return [];
-  const periodes = (await db.query('SELECT id, exercice_id, debut::text AS debut, fin::text AS fin, etat FROM compta.periodes WHERE exercice_id = ANY($1) ORDER BY debut', [ex.map((x) => x.id)])).rows;
-  return ex.map((x) => ({ id: x.id, debut: x.debut, fin: x.fin, etat: x.etat, periodes: periodes.filter((p) => p.exercice_id === x.id).map((p) => ({ id: p.id, debut: p.debut, fin: p.fin, etat: p.etat })) }));
-};
-const exerciceParDefaut = (exercices) => exercices.find((x) => x.etat === 'ouvert') || exercices[0] || null;
-// Paramètres communs : exercice (identifiant, vide = l'ouvert sinon le plus récent), periode (identifiant, vide =
+// Les exercices du dossier avec leurs périodes (du plus récent au plus ancien) ; X1 : avec leur millésime (exercices.js).
+const exercicesDe = X.exercicesDuDossier;
+// X1 : l'exercice du jour, sinon le plus récent des ouverts, sinon le plus récent (deux exercices peuvent être ouverts).
+const exerciceParDefaut = (exercices, aujourdhui) => XC.exerciceParDefaut(exercices, aujourdhui);
+// Paramètres communs : exercice (identifiant, vide = celui du jour, sinon le plus récent des ouverts), periode (identifiant, vide =
 // l'exercice entier), brouillard (« 0 » = écritures validées seulement ; sinon compris). → { exercice, periode, de, a,
 // brouillard } ; 404 si l'exercice ou la période n'est pas du dossier, 409 sans exercice.
 const lireSelection = (query, exercices) => {
@@ -93,7 +92,7 @@ const lirePage = (query, limiteDefaut) => {
   return { page, limite };
 };
 const presenterSelection = (s) => ({
-  exercice: { id: s.exercice.id, debut: s.exercice.debut, fin: s.exercice.fin, etat: s.exercice.etat },
+  exercice: { id: s.exercice.id, debut: s.exercice.debut, fin: s.exercice.fin, etat: s.exercice.etat, millesime: s.exercice.millesime },
   periode: s.periode ? { id: s.periode.id, debut: s.periode.debut, fin: s.periode.fin, etat: s.periode.etat } : null,
   de: s.de, a: s.a, brouillard: s.brouillard,
 });
@@ -102,25 +101,34 @@ const libelleSelection = (s) => (s.periode ? `du ${fmtDate(s.periode.debut)} au 
 // ── Soldes en millimes ──────────────────────────────────────────────────────────────────────────────────────────────
 // Un solde signé (débit − crédit) présenté des deux côtés : { solde (signé, texte), soldeDebit, soldeCredit }.
 const cotes = (n) => ({ solde: texteMillimes(n), soldeDebit: texteMillimes(n > 0n ? n : 0n), soldeCredit: texteMillimes(n < 0n ? -n : 0n) });
-// Une rangée de balance (texte NUMERIC lu en base) → ouverture, mouvements, solde final, en texte.
-const rangeeBalance = (r) => {
-  const ouvD = millimesDe(r.ouverture_debit);
-  const ouvC = millimesDe(r.ouverture_credit);
+// Une rangée de balance (texte NUMERIC lu en base) → ouverture, mouvements, solde final, en texte. X1 : `prov` — le report
+// PROVISOIRE de l'exercice précédent non clos ({ d, c } en millimes : débit, crédit), ajouté à l'ouverture et dit à part
+// (`ouverture.provisoire`, signé) ; il n'entre pas dans le total des lignes (contrôles NC 01 : rien n'est écrit).
+const SANS_REPORT = { d: 0n, c: 0n };
+const rangeeBalance = (r, prov = SANS_REPORT) => {
+  const ouvD = millimesDe(r.ouverture_debit) + prov.d;
+  const ouvC = millimesDe(r.ouverture_credit) + prov.c;
   const mvD = millimesDe(r.debit);
   const mvC = millimesDe(r.credit);
+  const avecReport = prov.d !== 0n || prov.c !== 0n;
   return {
-    ouverture: { debit: r.ouverture_debit, credit: r.ouverture_credit, ...cotes(ouvD - ouvC) },
+    ouverture: { debit: avecReport ? texteMillimes(ouvD) : r.ouverture_debit, credit: avecReport ? texteMillimes(ouvC) : r.ouverture_credit, ...cotes(ouvD - ouvC), ...(avecReport ? { provisoire: texteMillimes(prov.d - prov.c) } : {}) },
     // `nbBrouillard` : toutes les lignes comprises (ouverture et mouvements) ; `mouvements.nbBrouillard` : les seuls mouvements.
     mouvements: { debit: r.debit, credit: r.credit, nbLignes: r.nb_lignes, nbBrouillard: r.nb_brouillard_mouvements },
     ...cotes(ouvD + mvD - ouvC - mvC),
     nbBrouillard: r.nb_brouillard,
-    _m: { ouvD, ouvC, mvD, mvC },
+    _m: { ouvD, ouvC, mvD, mvC, provD: prov.d, provC: prov.c },
   };
 };
+// Un solde signé (débit − crédit) en report { d, c }, posé de son côté.
+const reportDe = (solde) => (solde > 0n ? { d: solde, c: 0n } : { d: 0n, c: -solde });
+// Une rangée sans ligne dans la sélection (compte ou tiers qui n'a qu'un report provisoire).
+const RANGEE_VIDE = { ouverture_debit: '0.000', ouverture_credit: '0.000', debit: '0.000', credit: '0.000', nb_lignes: 0, nb_brouillard: 0, nb_brouillard_mouvements: 0 };
 const totauxBalance = (rangees) => {
-  const t = { ouvD: 0n, ouvC: 0n, mvD: 0n, mvC: 0n, sD: 0n, sC: 0n, oD: 0n, oC: 0n, nbLignes: 0, nbBrouillard: 0, nbBrouillardMouvements: 0 };
+  const t = { ouvD: 0n, ouvC: 0n, mvD: 0n, mvC: 0n, sD: 0n, sC: 0n, oD: 0n, oC: 0n, pD: 0n, pC: 0n, nbLignes: 0, nbBrouillard: 0, nbBrouillardMouvements: 0 };
   for (const r of rangees) {
     t.ouvD += r._m.ouvD; t.ouvC += r._m.ouvC; t.mvD += r._m.mvD; t.mvC += r._m.mvC;
+    t.pD += r._m.provD || 0n; t.pC += r._m.provC || 0n;
     const o = r._m.ouvD - r._m.ouvC;
     t.oD += o > 0n ? o : 0n; t.oC += o < 0n ? -o : 0n;
     const s = r._m.ouvD + r._m.mvD - r._m.ouvC - r._m.mvC;
@@ -131,11 +139,83 @@ const totauxBalance = (rangees) => {
     ouverture: { debit: texteMillimes(t.ouvD), credit: texteMillimes(t.ouvC), soldeDebit: texteMillimes(t.oD), soldeCredit: texteMillimes(t.oC) },
     mouvements: { debit: texteMillimes(t.mvD), credit: texteMillimes(t.mvC), nbLignes: t.nbLignes, nbBrouillard: t.nbBrouillardMouvements },
     soldeDebit: texteMillimes(t.sD), soldeCredit: texteMillimes(t.sC),
-    // Le total des lignes comprises (à-nouveaux et mouvements) : égal des deux côtés par la partie double.
-    lignes: { debit: texteMillimes(t.ouvD + t.mvD), credit: texteMillimes(t.ouvC + t.mvC) },
+    // Le total des lignes comprises (à-nouveaux et mouvements) : égal des deux côtés par la partie double. X1 : sans le
+    // report provisoire (aucune ligne ne le porte), dit à part dans `provisoire` (égal des deux côtés lui aussi).
+    lignes: { debit: texteMillimes(t.ouvD - t.pD + t.mvD), credit: texteMillimes(t.ouvC - t.pC + t.mvC) },
+    ...(t.pD !== 0n || t.pC !== 0n ? { provisoire: { debit: texteMillimes(t.pD), credit: texteMillimes(t.pC) } } : {}),
     nbBrouillard: t.nbBrouillard,
   };
 };
+
+// ── Report provisoire (X1) ──────────────────────────────────────────────────────────────────────────────────────────
+// PLAN-EXERCICES §2 ligne X1, réponse 2 du client du 13/10 : tant que l'exercice précédent n'est pas clos, la balance et le
+// grand livre de l'exercice suivant partent de ses soldes de fin — calculés à la lecture et marqués « provisoires », rien
+// n'est écrit (la clôture, étape X2, passera les vrais à-nouveaux). Comptes de bilan : leur solde de fin (à-nouveaux du
+// précédent compris) ; comptes de gestion (charges, produits) : rien — leur solde forme le RÉSULTAT du précédent, porté au
+// compte du résultat (131 bénéficiaire, 135 déficitaire : paquet du pays, « cloture »). Brouillard compris ou non, comme la
+// sélection. Le report est équilibré (partie double du précédent).
+const NATURES_GESTION = ['charges', 'produits'];
+// Les soldes de fin d'un exercice ($1 dossier, $2 exercice, $3 brouillard compris), par compte.
+const SQL_SOLDES_FIN = `
+  SELECT k.id, k.numero, k.libelle, k.nature, SUM(l.debit - l.credit)::numeric(18,3)::text AS solde
+    FROM compta.lignes l
+    JOIN compta.ecritures e ON e.id = l.ecriture_id
+    JOIN compta.comptes k ON k.id = l.compte_id
+   WHERE l.dossier_id = $1 AND e.exercice_id = $2 AND ($3::boolean OR e.etat = 'validee')
+   GROUP BY k.id`;
+// Les soldes de fin par tiers ($4 : type du tiers), et ceux d'un compte et / ou d'un tiers ($4 compte, $5 tiers : grand
+// livre) hors comptes de gestion.
+const SQL_SOLDES_FIN_TIERS = `
+  SELECT t.id, t.type, t.code, t.nom, t.actif, SUM(l.debit - l.credit)::numeric(18,3)::text AS solde
+    FROM compta.lignes l
+    JOIN compta.ecritures e ON e.id = l.ecriture_id
+    JOIN compta.tiers t ON t.id = l.tiers_id
+   WHERE l.dossier_id = $1 AND e.exercice_id = $2 AND ($3::boolean OR e.etat = 'validee') AND t.type = $4
+   GROUP BY t.id`;
+const SQL_SOLDE_FIN_CIBLE = `
+  SELECT COALESCE(SUM(l.debit - l.credit), 0)::numeric(18,3)::text AS solde
+    FROM compta.lignes l
+    JOIN compta.ecritures e ON e.id = l.ecriture_id
+    JOIN compta.comptes k ON k.id = l.compte_id
+   WHERE l.dossier_id = $1 AND e.exercice_id = $2 AND ($3::boolean OR e.etat = 'validee')
+     AND ($4::int IS NULL OR l.compte_id = $4) AND ($5::int IS NULL OR l.tiers_id = $5) AND k.nature <> ALL($6::text[])`;
+// « -12.500 » → -12500n (millimesDe ne lit que les montants positifs).
+const signe = (t) => (String(t).startsWith('-') ? -millimesDe(String(t).slice(1)) : millimesDe(t));
+const presenterPrecedent = (p) => ({ id: p.id, debut: p.debut, fin: p.fin, millesime: p.millesime });
+// Le compte du résultat du dossier : 131 (bénéfice) ou 135 (perte) du paquet, à défaut leur compte parent (13) ; à défaut,
+// une rangée sans compte (identifiant null).
+const compteResultatDe = async (db, d, benefice) => {
+  const c = clotureDe(d.pays) || { beneficiaire: '131', deficitaire: '135' };
+  const numero = benefice ? c.beneficiaire : c.deficitaire;
+  const k = (await db.query('SELECT id, numero, libelle, nature FROM compta.comptes WHERE dossier_id = $1 AND numero = ANY($2) ORDER BY LENGTH(numero) DESC LIMIT 1', [d.id, [numero, numero.slice(0, 2)]])).rows[0];
+  return k ? { id: k.id, numero: k.numero, libelle: k.libelle, nature: k.nature } : { id: null, numero: numero.slice(0, 2), libelle: 'Résultat de l\'exercice', nature: 'capitaux' };
+};
+// Le report provisoire par compte pour la sélection `s`, ou null (pas d'exercice précédent, ou précédent clos) :
+// { precedent, comptes: Map(id → { compte, solde }), resultat (signé débit − crédit : négatif = bénéfice), compteResultat }.
+const reportComptes = async (db, d, s) => {
+  const p = await X.precedentOuvert(db, d.id, s.exercice);
+  if (!p) return null;
+  const comptes = new Map();
+  let resultat = 0n;
+  for (const r of (await db.query(SQL_SOLDES_FIN, [d.id, p.id, s.brouillard])).rows) {
+    const solde = signe(r.solde);
+    if (NATURES_GESTION.includes(r.nature)) resultat += solde;
+    else if (solde !== 0n) comptes.set(r.id, { compte: { id: r.id, numero: r.numero, libelle: r.libelle, nature: r.nature }, solde });
+  }
+  let compteResultat = null;
+  if (resultat !== 0n) {
+    compteResultat = await compteResultatDe(db, d, resultat < 0n);
+    const cle = compteResultat.id ?? 'resultat';
+    comptes.set(cle, { compte: compteResultat, solde: (comptes.get(cle)?.solde || 0n) + resultat });
+  }
+  return { precedent: p, comptes, resultat, compteResultat };
+};
+// Ce que les écrans disent du report : l'exercice précédent, son résultat (positif = bénéfice) et le compte qui le porte.
+const presenterReport = (rep) => (rep ? {
+  precedent: presenterPrecedent(rep.precedent),
+  resultat: texteMillimes(-rep.resultat),
+  compteResultat: rep.compteResultat ? rep.compteResultat.numero : null,
+} : null);
 const sansInterne = ({ _m, ...r }) => r;
 
 // ── Balance ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -210,22 +290,43 @@ const controlesDe = async (db, dossierId, s, totaux) => {
     coherent: journaux.debit === journaux.credit && journaux.debit === totaux.lignes.debit && totaux.lignes.debit === totaux.lignes.credit && millimesDe(ecritures.total) === jd,
   };
 };
-// La balance d'un dossier sur une sélection : → { type, selection, rangees, totaux, controles }.
+// La balance d'un dossier sur une sélection : → { type, selection, rangees, totaux, controles, provisoire }. X1 : les
+// comptes (ou les tiers) qui n'ont qu'un report provisoire ont leur rangée ; `provisoire` : null, ou ce qui a été reporté.
+const parNumero = (a, b) => (a.compte.numero < b.compte.numero ? -1 : a.compte.numero > b.compte.numero ? 1 : 0);
+const parCode = (a, b) => (a.tiers.code < b.tiers.code ? -1 : a.tiers.code > b.tiers.code ? 1 : 0);
 const balanceDe = async (db, d, s, type) => {
   const params = [d.id, s.exercice.id, s.de, s.a, s.brouillard];
+  const report = await reportComptes(db, d, s);
   if (type === 'generale') {
-    const rows = (await db.query(SQL_BALANCE, params)).rows.map((r) => ({ compte: { id: r.id, numero: r.numero, libelle: r.libelle, nature: r.nature }, ...rangeeBalance(r) }));
+    const lues = (await db.query(SQL_BALANCE, params)).rows;
+    const vus = new Set(lues.map((r) => r.id));
+    const rows = lues.map((r) => ({ compte: { id: r.id, numero: r.numero, libelle: r.libelle, nature: r.nature }, ...rangeeBalance(r, report?.comptes.has(r.id) ? reportDe(report.comptes.get(r.id).solde) : SANS_REPORT) }));
+    for (const [cle, x] of report ? report.comptes : []) if (!vus.has(cle)) rows.push({ compte: x.compte, ...rangeeBalance(RANGEE_VIDE, reportDe(x.solde)) });
+    rows.sort(parNumero);
     const totaux = totauxBalance(rows);
-    return { type, selection: presenterSelection(s), rangees: rows.map(sansInterne), totaux, controles: await controlesDe(db, d.id, s, totaux) };
+    return { type, selection: presenterSelection(s), rangees: rows.map(sansInterne), totaux, controles: await controlesDe(db, d.id, s, totaux), provisoire: presenterReport(report) };
   }
   const typeTiers = TYPE_TIERS_PAR_BALANCE[type];
   const nature = NATURE_PAR_TYPE_TIERS[typeTiers];
-  const [aux, col] = await Promise.all([db.query(SQL_BALANCE_AUX, [...params, typeTiers]), db.query(SQL_COLLECTIFS, [...params, nature])]);
-  const rows = aux.rows.map((r) => ({ tiers: { id: r.id, type: r.type, typeLibelle: TYPES_TIERS_LIBELLES[r.type] || r.type, code: r.code, nom: r.nom, actif: r.actif }, ...rangeeBalance(r) }));
+  const [aux, col, finTiers] = await Promise.all([
+    db.query(SQL_BALANCE_AUX, [...params, typeTiers]),
+    db.query(SQL_COLLECTIFS, [...params, nature]),
+    report ? db.query(SQL_SOLDES_FIN_TIERS, [d.id, report.precedent.id, s.brouillard, typeTiers]) : { rows: [] },
+  ]);
+  // Le report par tiers ; celui des collectifs = la somme des reports des tiers, chacun de son côté (une ligne sur un
+  // collectif porte toujours son tiers : les deux balances restent égales).
+  const reportTiers = new Map(finTiers.rows.map((t) => [t.id, { tiers: t, solde: signe(t.solde) }]).filter(([, x]) => x.solde !== 0n));
+  const reportCollectifs = { d: 0n, c: 0n };
+  for (const x of reportTiers.values()) { const r = reportDe(x.solde); reportCollectifs.d += r.d; reportCollectifs.c += r.c; }
+  const presenterTiers = (r) => ({ id: r.id, type: r.type, typeLibelle: TYPES_TIERS_LIBELLES[r.type] || r.type, code: r.code, nom: r.nom, actif: r.actif });
+  const vus = new Set(aux.rows.map((r) => r.id));
+  const rows = aux.rows.map((r) => ({ tiers: presenterTiers(r), ...rangeeBalance(r, reportTiers.has(r.id) ? reportDe(reportTiers.get(r.id).solde) : SANS_REPORT) }));
+  for (const [id, x] of reportTiers) if (!vus.has(id)) rows.push({ tiers: presenterTiers(x.tiers), ...rangeeBalance(RANGEE_VIDE, reportDe(x.solde)) });
+  rows.sort(parCode);
   const totaux = totauxBalance(rows);
-  const collectifs = sansInterne(rangeeBalance(col.rows[0]));
+  const collectifs = sansInterne(rangeeBalance(col.rows[0], reportCollectifs));
   return {
-    type, selection: presenterSelection(s), rangees: rows.map(sansInterne), totaux,
+    type, selection: presenterSelection(s), rangees: rows.map(sansInterne), totaux, provisoire: presenterReport(report),
     // Balance auxiliaire = comptes collectifs de la nature (une ligne sur un collectif porte toujours son tiers).
     controles: { collectifs, nature, coherent: collectifs.solde === cotes(millimesDe(totaux.ouverture.debit) + millimesDe(totaux.mouvements.debit) - millimesDe(totaux.ouverture.credit) - millimesDe(totaux.mouvements.credit)).solde && collectifs.ouverture.debit === totaux.ouverture.debit && collectifs.mouvements.debit === totaux.mouvements.debit && collectifs.mouvements.credit === totaux.mouvements.credit },
   };
@@ -279,14 +380,33 @@ const presenterLigneLivre = (l, ouverture) => {
     ...cotes(solde),
   };
 };
-// Le grand livre d'un compte ou d'un tiers : → { compte, tiers, selection, ouverture, lignes (page), total, page, limite, totaux }.
-// `sommes` : la rangée de SQL_GL_SOMMES déjà lue (export), sinon lue ici.
-const grandLivreDe = async (db, d, s, cible, { page, limite }, sommes = null) => {
+// X1 : le report provisoire d'une cible du grand livre (signé débit − crédit) et ce qu'en disent les écrans, ou null :
+// un tiers (ou un compte et un tiers) — ses lignes de fin du précédent hors gestion ; un compte seul — son report de la
+// balance (le compte du résultat y reçoit le résultat du précédent).
+const reportCible = async (db, d, s, cible) => {
+  if (cible.tiersId) {
+    const p = await X.precedentOuvert(db, d.id, s.exercice);
+    if (!p) return null;
+    const r = (await db.query(SQL_SOLDE_FIN_CIBLE, [d.id, p.id, s.brouillard, cible.compteId, cible.tiersId, NATURES_GESTION])).rows[0];
+    return { solde: signe(r.solde), presente: { precedent: presenterPrecedent(p), resultat: null, compteResultat: null } };
+  }
+  const rep = await reportComptes(db, d, s);
+  if (!rep) return null;
+  return { solde: rep.comptes.get(cible.compteId)?.solde || 0n, presente: presenterReport(rep) };
+};
+// Le grand livre d'un compte ou d'un tiers : → { compte, tiers, selection, ouverture, lignes (page), total, page, limite, totaux,
+// provisoire }. `sommes` : la rangée de SQL_GL_SOMMES déjà lue (export), sinon lue ici ; `report` : reportCible déjà lu.
+const grandLivreDe = async (db, d, s, cible, { page, limite }, sommes = null, report = undefined) => {
   const params = [d.id, s.exercice.id, s.de, s.a, s.brouillard, cible.compteId, cible.tiersId];
-  const [sommesLues, lignes] = await Promise.all([sommes ? Promise.resolve({ rows: [sommes] }) : db.query(SQL_GL_SOMMES, params), db.query(SQL_GRAND_LIVRE, [...params, limite, (page - 1) * limite])]);
-  const r = rangeeBalance(sommesLues.rows[0]);
+  const [sommesLues, lignes, rep] = await Promise.all([
+    sommes ? Promise.resolve({ rows: [sommes] }) : db.query(SQL_GL_SOMMES, params),
+    db.query(SQL_GRAND_LIVRE, [...params, limite, (page - 1) * limite]),
+    report === undefined ? reportCible(db, d, s, cible) : Promise.resolve(report),
+  ]);
+  const r = rangeeBalance(sommesLues.rows[0], rep && rep.solde !== 0n ? reportDe(rep.solde) : SANS_REPORT);
   const ouverture = r._m.ouvD - r._m.ouvC;
   return {
+    provisoire: rep ? rep.presente : null,
     compte: cible.compte, tiers: cible.tiers, selection: presenterSelection(s),
     // Le brouillard de l'ouverture (à-nouveaux, mouvements antérieurs) se dit sur sa rangée ; celui des mouvements, au pied.
     ouverture: { ...r.ouverture, nbBrouillard: r.nbBrouillard - r.mouvements.nbBrouillard },
@@ -455,7 +575,7 @@ const exporterBalance = (req, res) => avecGardeExport(res, '[compta.livres.expor
     const wb = classeur({
       feuille: generale ? 'Balance' : `Balance ${type}`,
       titre, sousTitre: d.nom,
-      metaTexte: meta(s, `${b.rangees.length} ${generale ? 'compte' : 'tiers'}${b.rangees.length > 1 && generale ? 's' : ''}${b.totaux.nbBrouillard ? ` · ${b.totaux.nbBrouillard} ligne${b.totaux.nbBrouillard > 1 ? 's' : ''} en brouillard comprise${b.totaux.nbBrouillard > 1 ? 's' : ''}` : ''}`),
+      metaTexte: meta(s, `${b.rangees.length} ${generale ? 'compte' : 'tiers'}${b.rangees.length > 1 && generale ? 's' : ''}${b.totaux.nbBrouillard ? ` · ${b.totaux.nbBrouillard} ligne${b.totaux.nbBrouillard > 1 ? 's' : ''} en brouillard comprise${b.totaux.nbBrouillard > 1 ? 's' : ''}` : ''}${b.provisoire ? ` · soldes d'ouverture PROVISOIRES : exercice ${b.provisoire.precedent.millesime} non clos` : ''}`),
       enTetes: [...premieres, 'Ouverture débit', 'Ouverture crédit', 'Mouvements débit', 'Mouvements crédit', 'Solde débit', 'Solde crédit', 'En brouillard'],
       largeurs: [14, 44, 18, 18, 18, 18, 18, 18, 13],
       montants: [3, 4, 5, 6, 7, 8],
@@ -486,7 +606,7 @@ const exporterGrandLivre = (req, res) => avecGardeExport(res, '[compta.livres.ex
       largeurs: [12, 9, 17, 16, 40, 10, 12, 16, 16, 16, 16, 11, 8],
       montants: [8, 9, 10, 11],
       rangees: [
-        ['', '', '', '', 'Solde d\'ouverture (à-nouveaux et mouvements antérieurs)', '', '', nombreExcel(g.ouverture.debit), nombreExcel(g.ouverture.credit), nombreExcel(g.ouverture.soldeDebit), nombreExcel(g.ouverture.soldeCredit), '', ''],
+        ['', '', '', '', g.provisoire ? `Solde d'ouverture — provisoire : exercice ${g.provisoire.precedent.millesime} non clos (soldes de fin repris, rien n'est écrit)` : 'Solde d\'ouverture (à-nouveaux et mouvements antérieurs)', '', '', nombreExcel(g.ouverture.debit), nombreExcel(g.ouverture.credit), nombreExcel(g.ouverture.soldeDebit), nombreExcel(g.ouverture.soldeCredit), '', ''],
         ...g.lignes.map((l) => [fmtDate(l.date), l.ecriture.journal.code, l.ecriture.numero || l.ecriture.numeroProvisoire, l.ecriture.reference, l.libelle, l.compte.numero, l.tiers ? l.tiers.code : '', millimesDe(l.debit) > 0n ? nombreExcel(l.debit) : null, millimesDe(l.credit) > 0n ? nombreExcel(l.credit) : null, nombreExcel(l.soldeDebit), nombreExcel(l.soldeCredit), l.ecriture.etat === 'validee' ? 'Validée' : 'Brouillard', l.lettre || '']),
       ],
       total: ['Total', '', '', '', `Mouvements de la sélection (${g.total}) et solde`, '', '', nombreExcel(g.totaux.debit), nombreExcel(g.totaux.credit), nombreExcel(g.totaux.soldeDebit), nombreExcel(g.totaux.soldeCredit), '', ''],
@@ -524,6 +644,8 @@ const exporterJournal = (req, res) => avecGardeExport(res, '[compta.livres.expor
 module.exports = {
   LIMITE_GRAND_LIVRE, LIMITE_JOURNAL, EXPORT_MAX, EXPORTS_SIMULTANES, TYPES_BALANCE, FMT_MONTANT,
   exercicesDe, exerciceParDefaut, lireSelection, lirePage, lireTypeBalance, presenterSelection, libelleSelection, cotes, rangeeBalance, totauxBalance,
+  // X1 : le report provisoire de l'exercice précédent non clos.
+  NATURES_GESTION, SANS_REPORT, reportDe, reportComptes, reportCible, presenterReport, SQL_SOLDES_FIN, SQL_SOLDES_FIN_TIERS, SQL_SOLDE_FIN_CIBLE,
   SQL_BALANCE, SQL_BALANCE_AUX, SQL_COLLECTIFS, SQL_JOURNAUX, SQL_GRAND_LIVRE, SQL_GL_SOMMES, SQL_JOURNAL, balanceDe, grandLivreDe, livreJournalDe, journalDuDossier, lireCible, etatLivres, nomFichier,
   // S7a (echeancier.js) : une feuille dans un classeur, la valeur Excel d'un montant, la garde des exports.
   ajouterFeuille, classeur, nombreExcel, avecGardeExport,

@@ -465,18 +465,27 @@ test('crédit de TVA de l\'exercice précédent : signalé quand les à-nouveaux
   const ex1 = { id: 1, debut: '2026-01-01', fin: '2026-12-31', periodes: [{ id: 11, debut: '2026-12-01', fin: '2026-12-31', etat: 'close' }] };
   const ex2 = { id: 2, debut: '2027-01-01', fin: '2027-12-31', periodes: [{ id: 21, debut: '2027-01-01', fin: '2027-01-31', etat: 'ouverte' }] };
   const rangee = { periode_id: 11, taxe_id: 9, code: 'TVA19', libelle: 'TVA 19 %', type: 'tva', taux: '19.000', collectee: '100.000', deductible: '4100.000', deductible_immo: '0', retenue_subie: '0', non_recuperable: '0', base_vente: '0', base_achat: '0', nb_brouillard: 0 };
-  const base = (ouverture) => ({ query: async (sql, p) => {
+  // X1 : l'exercice précédent est lu (SQL_EXERCICE_PRECEDENT) ; clos : à-nouveaux ; encore ouvert : solde de fin du compte
+  // de crédit (SQL_CREDIT_FIN), provisoire.
+  const base = (ouverture, etatPrecedent = 'clos', creditFin = '0.000') => ({ query: async (sql, p) => {
     if (sql === calcul.SQL_TVA_PAR_PERIODE) return { rows: p[1] === 1 ? [rangee] : [] };
     if (sql === calcul.SQL_TVA_SANS_CODE) return { rows: [] };
+    if (sql === calcul.SQL_EXERCICE_PRECEDENT) return { rows: p[1] === '2027-01-01' ? [{ id: 1, debut: '2026-01-01', fin: '2026-12-31', etat: etatPrecedent, millesime: 2026 }] : [] };
     if (sql === calcul.SQL_CREDIT_OUVERTURE) return { rows: [{ credit: p[1] === 2 ? ouverture : '0.000' }] };
+    if (sql === calcul.SQL_CREDIT_FIN) return { rows: [{ credit: p[1] === 1 ? creditFin : '0.000' }] };
     throw new Error('requête inattendue');
   } });
   const d = { id: 5, pays: 'TN' };
   const sans = await taxesMois.etatTvaDe(base('0.000'), d, ex2, ex2.periodes[0], true, [ex1, ex2]);
-  assert.deepEqual([sans.creditNonRepris, sans.creditReporte, sans.resultat], [{ montant: '4000.000', fin: '2026-12-31' }, '0.000', '0.000']);
+  assert.deepEqual([sans.creditNonRepris, sans.creditReporte, sans.resultat, sans.creditProvisoire], [{ montant: '4000.000', fin: '2026-12-31' }, '0.000', '0.000', null]);
   const avec = await taxesMois.etatTvaDe(base('4000.000'), d, ex2, ex2.periodes[0], true, [ex1, ex2]);
   assert.deepEqual([avec.creditNonRepris, avec.creditReporte], [null, '4000.000']);
   assert.equal((await taxesMois.etatTvaDe(base('0.000'), d, ex1, ex1.periodes[0], true, [ex1, ex2])).creditNonRepris, null, 'premier exercice : rien à reprendre');
+  // X1 : 2026 non clos — le crédit de fin du compte 43667 est repris en provisoire (rien n'est écrit) ; sans liquidation, signalé.
+  const prov = await taxesMois.etatTvaDe(base('0.000', 'ouvert', '4000.000'), d, ex2, ex2.periodes[0], true, [ex1, ex2]);
+  assert.deepEqual([prov.creditNonRepris, prov.creditReporte, prov.creditOuverture, prov.creditProvisoire], [null, '4000.000', '4000.000', { millesime: 2026, fin: '2026-12-31' }]);
+  const nonLiquide = await taxesMois.etatTvaDe(base('0.000', 'ouvert', '0.000'), d, ex2, ex2.periodes[0], true, [ex1, ex2]);
+  assert.deepEqual([nonLiquide.creditNonRepris, nonLiquide.creditReporte, nonLiquide.creditProvisoire?.millesime], [{ montant: '4000.000', fin: '2026-12-31' }, '0.000', 2026]);
   const src = lire('src', 'compta', 'taxesMois.js');
   assert.ok(src.includes("code: 'CREDIT_NON_REPRIS', gravite: 'attention'") && src.includes("code: 'TVA_SANS_CODE', gravite: 'attention'") && src.includes("code: 'PLUSIEURS_REGLEMENTS'") && src.includes("code: 'DATE_FUTURE'"));
 });

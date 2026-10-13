@@ -11,6 +11,7 @@ const { emettre: emettrePassage } = require('./passage');
 const comptables = require('./comptablesClient');
 const gerants = require('./gerantsCabinet');
 const dossiers = require('./dossiers');
+const exercices = require('./exercices');
 const plan = require('./planComptes');
 const journaux = require('./journaux');
 const taxes = require('./taxes');
@@ -126,6 +127,9 @@ router.post('/dossiers/:dossierId/reprendre-identite', authenticate, limiteDossi
 router.post('/dossiers/:dossierId/archiver', authenticate, limiteDossiers, dossiers.archiver);
 router.post('/dossiers/:dossierId/desarchiver', authenticate, limiteDossiers, dossiers.desarchiver);
 router.delete('/dossiers/:dossierId', authenticate, limiteDossiers, dossiers.supprimer);
+// Étape X1 : ouvrir l'exercice suivant à la main (titulaire ou Complet ; deux exercices ouverts au plus). Il s'ouvre aussi
+// de lui-même à la première écriture datée de la nouvelle année (saisie, import, contre-passation, facture de LabFlow).
+router.post('/dossiers/:dossierId/exercices/suivant', authenticate, limiteDossiers, exercices.ouvrir);
 
 // Étape S5a : le plan de comptes d'un dossier (lecture : tout accès au dossier ; écritures : Complet ou titulaire, jugé
 // par le contrôleur sur compta.acces). Limite de débit : adapter un plan, c'est des dizaines de subdivisions à la

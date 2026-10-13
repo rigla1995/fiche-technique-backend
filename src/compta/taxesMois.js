@@ -24,9 +24,10 @@ const { lectureDossier, presenterDossier } = require('./planComptes');
 const { fmtDate, fmtMillimes, numeroProvisoire } = require('./ecritures');
 const { aujourdhuiTunis } = require('./echeances');
 const { exercicesDe, ajouterFeuille, nombreExcel, avecGardeExport } = require('./livres');
+const XC = require('./exercicesCalcul');
 const { envoyerClasseur, jourTunis } = require('./importExcel');
 const { envoyerPdf, nomPdf } = require('./pdf');
-const { millimes, texte, SQL_TVA_PAR_PERIODE, SQL_TVA_SANS_CODE, SQL_CREDIT_OUVERTURE, SQL_EXCLUSIONS_CP, etatsTva, paiementsDe, sousLeSeuil } = require('./taxesCalcul');
+const { millimes, texte, SQL_TVA_PAR_PERIODE, SQL_TVA_SANS_CODE, SQL_EXCLUSIONS_CP, etatsTva, paiementsDe, sousLeSeuil, creditOuverture } = require('./taxesCalcul');
 const {
   chargerOperations, beneficiaireDe, declarantDe, texteManque, certificatsDuMois, fichiersDuMois, prochainFichier, construireCertificats, presenterCertificat, SQL_CERTIFICAT,
 } = require('./certificats');
@@ -43,8 +44,9 @@ const lireParametres = (query = {}) => {
   if (periode != null && !idValide(periode)) throw erreur(404, 'Période introuvable');
   return { periodeId: periode == null ? null : Number(periode), brouillard: !(query.brouillard === '0' || query.brouillard === 'false') };
 };
+// X1 : deux exercices peuvent être ouverts — la période du jour se cherche dans tous (l'exercice par défaut : celui du jour).
 const periodeParDefaut = (exercices, aujourdhui = aujourdhuiTunis()) => {
-  const x = exercices.find((e) => e.etat === 'ouvert') || exercices[0];
+  const x = XC.exerciceParDefaut(exercices, aujourdhui);
   if (!x || !x.periodes.length) return null;
   return { exercice: x, periode: x.periodes.find((p) => aujourdhui >= p.debut && aujourdhui <= p.fin) || [...x.periodes].reverse().find((p) => p.debut <= aujourdhui) || x.periodes[0] };
 };
@@ -66,19 +68,21 @@ const moisDe = (iso) => ({ annee: Number(iso.slice(0, 4)), mois: Number(iso.slic
 
 // ── État de TVA ─────────────────────────────────────────────────────────────────────────────────────────────────────
 // L'état de TVA de la période (et le report depuis le début de l'exercice).
+// X1 : crédit à l'ouverture provisoire (solde de fin du compte de crédit) tant que l'exercice précédent n'est pas clos.
 const etatsDeLExercice = async (db, d, exercice, brouillard, compteCredit, jusqua = null) => {
   const [rangees, sansCode, ouverture] = await Promise.all([
     db.query(SQL_TVA_PAR_PERIODE, [d.id, exercice.id, brouillard]),
     db.query(SQL_TVA_SANS_CODE, [d.id, exercice.id, brouillard]),
-    compteCredit ? db.query(SQL_CREDIT_OUVERTURE, [d.id, exercice.id, compteCredit, brouillard]) : { rows: [{ credit: '0.000' }] },
+    creditOuverture(db, d.id, exercice, compteCredit, brouillard),
   ]);
-  return { etats: etatsTva({ periodes: exercice.periodes, rangees: rangees.rows, sansCode: sansCode.rows, ouverture: ouverture.rows[0].credit, jusqua }), ouverture: ouverture.rows[0].credit };
+  return { etats: etatsTva({ periodes: exercice.periodes, rangees: rangees.rows, sansCode: sansCode.rows, ouverture: ouverture.credit, jusqua }), ouverture: ouverture.credit, provisoire: ouverture.provisoire };
 };
 // Relecture : sans à-nouveaux sur le compte du crédit de TVA, le crédit calculé à la fin de l'exercice précédent n'est pas
 // repris (il n'est jamais ajouté d'office : une liquidation passée le compterait deux fois) — il est signalé (`creditNonRepris`).
+// X1 : l'exercice précédent non clos donne un crédit d'ouverture PROVISOIRE (`creditProvisoire` : l'exercice d'où il vient).
 const etatTvaDe = async (db, d, exercice, periode, brouillard, exercices = []) => {
   const compteCredit = fiscaliteDe(d.pays)?.tva?.compteCredit || null;
-  const { etats, ouverture } = await etatsDeLExercice(db, d, exercice, brouillard, compteCredit, periode.id);
+  const { etats, ouverture, provisoire } = await etatsDeLExercice(db, d, exercice, brouillard, compteCredit, periode.id);
   let creditNonRepris = null;
   const precedent = exercices.filter((x) => x.fin < exercice.debut).sort((a, b) => (a.fin < b.fin ? 1 : -1))[0];
   if (precedent && precedent.periodes.length && millimes(ouverture) <= 0n) {
@@ -86,7 +90,7 @@ const etatTvaDe = async (db, d, exercice, periode, brouillard, exercices = []) =
     const dernier = avant[avant.length - 1];
     if (dernier && millimes(dernier.creditAReporter) > 0n) creditNonRepris = { montant: dernier.creditAReporter, fin: dernier.fin };
   }
-  return { ...etats[etats.length - 1], compteCredit, creditOuverture: ouverture, creditNonRepris };
+  return { ...etats[etats.length - 1], compteCredit, creditOuverture: ouverture, creditNonRepris, creditProvisoire: provisoire ? { millesime: provisoire.millesime, fin: provisoire.fin } : null };
 };
 
 // ── Retenues ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -224,7 +228,10 @@ const etatTaxesMois = async (db, acces, d, f) => {
   }
   for (const c of contrepasses.rows) signalements.push({ code: 'CERTIFICAT_CONTREPASSE', gravite: 'attention', message: `Certificat ${c.reference} : une de ses pièces a été contre-passée depuis — annulez-le s'il n'est plus juste`, certificatId: c.id });
   if (tva.sansCode.nb) signalements.push({ code: 'TVA_SANS_CODE', gravite: 'attention', message: `${tva.sansCode.nb} ligne${tva.sansCode.nb > 1 ? 's' : ''} de TVA sans code de taxe (collectée ${fmtMillimes(millimes(tva.sansCode.collectee))} D, déductible ${fmtMillimes(millimes(tva.sansCode.deductible))} D) : non comptée${tva.sansCode.nb > 1 ? 's' : ''} dans l'état — une liquidation ou une régularisation, sinon ajoutez le code de taxe (page Écritures)` });
-  if (tva.creditNonRepris) signalements.push({ code: 'CREDIT_NON_REPRIS', gravite: 'attention', message: `Crédit de TVA de l'exercice précédent non repris : ${fmtMillimes(millimes(tva.creditNonRepris.montant))} D calculés au ${fmtDate(tva.creditNonRepris.fin)}, aucun à-nouveau sur le compte ${tva.compteCredit || 'du crédit de TVA'} — passez-le en à-nouveaux, sinon la TVA à payer est surévaluée` });
+  // X1 : précédent non clos — le crédit se reprend du compte de crédit à sa fin, donc de sa dernière liquidation.
+  if (tva.creditNonRepris) signalements.push({ code: 'CREDIT_NON_REPRIS', gravite: 'attention', message: tva.creditProvisoire
+    ? `Crédit de TVA de l'exercice ${tva.creditProvisoire.millesime} non repris : ${fmtMillimes(millimes(tva.creditNonRepris.montant))} D calculés au ${fmtDate(tva.creditNonRepris.fin)}, mais le compte ${tva.compteCredit || 'du crédit de TVA'} n'en porte rien à la fin de l'exercice — passez l'écriture de TVA de son dernier mois (page Déclaration), sinon la TVA à payer est surévaluée`
+    : `Crédit de TVA de l'exercice précédent non repris : ${fmtMillimes(millimes(tva.creditNonRepris.montant))} D calculés au ${fmtDate(tva.creditNonRepris.fin)}, aucun à-nouveau sur le compte ${tva.compteCredit || 'du crédit de TVA'} — passez-le en à-nouveaux, sinon la TVA à payer est surévaluée` });
   if (decl.manque.length) signalements.unshift({ code: 'DECLARANT_INCOMPLET', gravite: 'bloquant', message: `Identité du dossier à compléter pour la plateforme TEJ : ${texteManque(decl.manque)} (fiche du dossier)` });
   const parNature = new Map();
   const ajouterNature = (o, certifie) => {

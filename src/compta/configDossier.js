@@ -11,7 +11,8 @@
 const { journaliser } = require('./journal');
 const { SQL_DU, SQL_ECHEANCE, sqlAgregatsAges, millimes, texteMillimesSigne, trancheesImputees, aujourdhuiTunis } = require('./echeances');
 // S7b (carte « Taxes ») : règles de l'état de TVA et des retenues (module sans dépendance) et fiscalité du paquet du pays.
-const { SQL_TVA_PAR_PERIODE, SQL_TVA_SANS_CODE, SQL_CREDIT_OUVERTURE, SQL_NB_A_PRODUIRE, etatsTva } = require('./taxesCalcul');
+const { SQL_TVA_PAR_PERIODE, SQL_TVA_SANS_CODE, SQL_NB_A_PRODUIRE, etatsTva, creditOuverture } = require('./taxesCalcul');
+const XC = require('./exercicesCalcul');
 const { echeanceDe } = require('./declarationCalcul');
 const { fiscaliteDe } = require('./paquets');
 
@@ -182,7 +183,8 @@ const declarationAFaire = async (db, d, dossierId, jour) => {
 };
 const resumeFiscalite = async (db, dossierId) => {
   const d = (await db.query('SELECT pays, personne, teledeclaration FROM compta.dossiers WHERE id = $1', [dossierId])).rows[0];
-  const x = (await db.query(`SELECT id FROM compta.exercices WHERE dossier_id = $1 ORDER BY (etat = 'ouvert') DESC, debut DESC LIMIT 1`, [dossierId])).rows[0];
+  // X1 : deux exercices peuvent être ouverts — celui du jour, sinon le plus récent des ouverts, sinon le plus récent.
+  const x = XC.exerciceParDefaut((await db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat FROM compta.exercices WHERE dossier_id = $1', [dossierId])).rows);
   const aProduire = (await db.query(SQL_NB_A_PRODUIRE, [dossierId])).rows[0].n;
   const declaration = d ? await declarationAFaire(db, d, dossierId, aujourdhuiTunis()) : null;
   if (!d || !x) return { periode: null, tva: null, aProduire, certificatsMois: 0, declaration };
@@ -194,10 +196,11 @@ const resumeFiscalite = async (db, dossierId) => {
   const [rangees, sansCode, ouverture, certificats] = await Promise.all([
     db.query(SQL_TVA_PAR_PERIODE, [dossierId, x.id, true]),
     db.query(SQL_TVA_SANS_CODE, [dossierId, x.id, true]),
-    compteCredit ? db.query(SQL_CREDIT_OUVERTURE, [dossierId, x.id, compteCredit, true]) : { rows: [{ credit: '0.000' }] },
+    // X1 : crédit d'ouverture provisoire tant que l'exercice précédent n'est pas clos.
+    creditOuverture(db, dossierId, x, compteCredit, true),
     db.query(`SELECT COUNT(*)::int AS n FROM compta.certificats WHERE dossier_id = $1 AND etat = 'produit' AND date_paiement BETWEEN $2 AND $3`, [dossierId, p.debut, p.fin]),
   ]);
-  const etats = etatsTva({ periodes, rangees: rangees.rows, sansCode: sansCode.rows, ouverture: ouverture.rows[0].credit, jusqua: p.id });
+  const etats = etatsTva({ periodes, rangees: rangees.rows, sansCode: sansCode.rows, ouverture: ouverture.credit, jusqua: p.id });
   const t = etats[etats.length - 1];
   return { periode: { id: p.id, debut: p.debut, fin: p.fin, etat: p.etat }, tva: { aPayer: t.aPayer, creditAReporter: t.creditAReporter, nbBrouillard: t.nbBrouillard }, aProduire, certificatsMois: certificats.rows[0].n, declaration };
 };

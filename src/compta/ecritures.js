@@ -21,6 +21,9 @@ const { TYPES_TAXES, TYPES_TAXES_LIBELLES, ASSIETTES_LIBELLES, NATURE_PAR_TYPE_T
 const { droits, dateValide, dansEspaceDuDossier } = require('./dossiers');
 const { lectureDossier, presenterDossier, HORS_W1252 } = require('./planComptes');
 const { SQL_FEUILLE, presenterCompteCourt } = require('./configDossier');
+// X1 : les exercices du dossier, l'ouverture automatique de l'exercice suivant (exercices.js), leurs règles pures.
+const X = require('./exercices');
+const XC = require('./exercicesCalcul');
 
 const MSG_SAISIR = 'Seul le titulaire ou un gérant de niveau Complet ou Saisie peut saisir des écritures';
 const REFERENCE_MAX = 80;
@@ -166,7 +169,8 @@ const lireEcriture = (corps, { lignesMax = LIGNES_MAX } = {}) => {
 };
 
 // Paramètres de la liste : journal (identifiant, vide = tous), periode (identifiant, vide = toutes), etat (vide = toutes),
-// q (100 caractères au plus : libellé, pièce ou montant), page / limite (25 par défaut, 200 au plus).
+// q (100 caractères au plus : libellé, pièce ou montant), page / limite (25 par défaut, 200 au plus) ; X1 : exercice
+// (identifiant ; vide = celui de la période demandée, sinon l'exercice du jour).
 const LIMITE_DEFAUT = 25;
 const LIMITE_MAX = 200;
 const PAGE_MAX = 100000;
@@ -175,6 +179,7 @@ const lireFiltres = (query = {}) => {
   if (!query || typeof query !== 'object') throw erreur(400, 'Paramètres invalides');
   const journalId = lireId(query.journal, 'Journal');
   const periodeId = lireId(query.periode, 'Période');
+  const exerciceId = lireId(query.exercice, 'Exercice');
   const etat = query.etat === undefined || query.etat === '' ? '' : String(query.etat);
   if (etat && !ETATS.includes(etat)) throw erreur(400, 'État inconnu (brouillard, validee)');
   const q = String(query.q ?? '').trim().slice(0, 100);
@@ -185,7 +190,7 @@ const lireFiltres = (query = {}) => {
   // Une recherche qui a la forme d'un montant cherche aussi ce montant (total de l'écriture ou l'une de ses lignes).
   const brut = q.replace(/\s/g, '').replace(',', '.');
   const montant = q && RE_MONTANT.test(brut) ? texteMillimes(lireMontant(brut, 'Montant')) : null;
-  return { journalId, periodeId, etat, q, montant, page, limite };
+  return { journalId, periodeId, exerciceId, etat, q, montant, page, limite };
 };
 const motifRecherche = (q) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
@@ -205,14 +210,16 @@ const SQL_ECRITURES = `
     LEFT JOIN utilisateurs v ON v.id = e.valide_par
     LEFT JOIN compta.ecritures o ON o.id = e.origine_id AND o.dossier_id = e.dossier_id
     LEFT JOIN LATERAL (SELECT c.id, c.numero FROM compta.ecritures c WHERE c.origine_id = e.id AND c.dossier_id = e.dossier_id AND c.origine = 'contrepassation' ORDER BY c.id LIMIT 1) cp ON true`;
-// Conditions de la liste ($1 dossier, $2 journal ou NULL, $3 période ou NULL, $4 état ou '', $5 motif ou '', $6 montant ou NULL).
+// Conditions de la liste ($1 dossier, $2 journal ou NULL, $3 période ou NULL, $4 état ou '', $5 motif ou '', $6 montant ou NULL,
+// $7 exercice ou NULL — X1).
 const SQL_FILTRES = `e.dossier_id = $1 AND ($2::int IS NULL OR e.journal_id = $2) AND ($3::int IS NULL OR e.periode_id = $3) AND ($4::text = '' OR e.etat = $4)
    AND ($5::text = '' OR e.libelle ILIKE $5 OR e.reference ILIKE $5
-        OR ($6::numeric IS NOT NULL AND (e.total_debit = $6::numeric OR EXISTS (SELECT 1 FROM compta.lignes l WHERE l.ecriture_id = e.id AND (l.debit = $6::numeric OR l.credit = $6::numeric)))))`;
+        OR ($6::numeric IS NOT NULL AND (e.total_debit = $6::numeric OR EXISTS (SELECT 1 FROM compta.lignes l WHERE l.ecriture_id = e.id AND (l.debit = $6::numeric OR l.credit = $6::numeric)))))
+   AND ($7::int IS NULL OR e.exercice_id = $7)`;
 const SQL_LISTE = `${SQL_ECRITURES}
    WHERE ${SQL_FILTRES}
    ORDER BY e.date DESC, e.id DESC
-   LIMIT $7 OFFSET $8`;
+   LIMIT $8 OFFSET $9`;
 const SQL_UNE = `${SQL_ECRITURES} WHERE e.dossier_id = $1 AND e.id = $2`;
 const SQL_LIGNES = `
   SELECT l.id, l.ecriture_id, l.rang, l.libelle, l.debit::text AS debit, l.credit::text AS credit, l.echeance::text AS echeance,
@@ -245,6 +252,8 @@ const presenterEcriture = (e, lignes = null) => ({
   numero: e.numero,
   date: e.date,
   dateReelle: e.date_reelle,
+  // X1 : l'exercice de l'écriture (la page suit l'exercice d'une écriture qui vient d'ouvrir l'exercice suivant).
+  exerciceId: e.exercice_id,
   journal: { id: e.journal_id, code: e.journal_code, libelle: e.journal_libelle, type: e.journal_type },
   reference: e.reference,
   libelle: e.libelle,
@@ -278,10 +287,32 @@ const resumeEcritures = async (db, dossierId) => {
 };
 // L'exercice ouvert (le plus récent) et ses périodes, ou null.
 const exerciceOuvert = async (db, dossierId) => {
-  const x = (await db.query(`SELECT id, debut::text AS debut, fin::text AS fin, etat FROM compta.exercices WHERE dossier_id = $1 AND etat = 'ouvert' ORDER BY debut DESC LIMIT 1`, [dossierId])).rows[0];
+  const x = (await db.query(`SELECT id, debut::text AS debut, fin::text AS fin, etat, millesime FROM compta.exercices WHERE dossier_id = $1 AND etat = 'ouvert' ORDER BY debut DESC LIMIT 1`, [dossierId])).rows[0];
   if (!x) return null;
   const periodes = (await db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat FROM compta.periodes WHERE exercice_id = $1 ORDER BY debut', [x.id])).rows;
-  return { id: x.id, debut: x.debut, fin: x.fin, etat: x.etat, periodes };
+  return { id: x.id, debut: x.debut, fin: x.fin, etat: x.etat, millesime: x.millesime, periodes };
+};
+// X1 : le PREMIER exercice du dossier et ses périodes, ou null — la balance d'ouverture importée ne va que là (ensuite, les
+// à-nouveaux viennent de la clôture de l'exercice précédent).
+const premierExercice = async (db, dossierId) => {
+  const x = (await db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat, millesime FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut LIMIT 1', [dossierId])).rows[0];
+  if (!x) return null;
+  const periodes = (await db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat FROM compta.periodes WHERE exercice_id = $1 ORDER BY debut', [x.id])).rows;
+  return { id: x.id, debut: x.debut, fin: x.fin, etat: x.etat, millesime: x.millesime, periodes };
+};
+// X1 : l'exercice affiché par la page Écritures — celui demandé (404 s'il n'est pas du dossier), sinon celui de la période
+// demandée, sinon celui du jour (sinon le plus récent des ouverts). `exercices` : exercicesDuDossier.
+const exerciceChoisi = (exercices, f) => {
+  if (f.exerciceId) {
+    const x = exercices.find((y) => y.id === f.exerciceId);
+    if (!x) throw erreur(404, 'Exercice introuvable');
+    return x;
+  }
+  if (f.periodeId) {
+    const x = exercices.find((y) => y.periodes.some((p) => p.id === f.periodeId));
+    if (x) return x;
+  }
+  return XC.exerciceParDefaut(exercices);
 };
 // Les choix de la saisie : journaux (tous, l'état dit lesquels sont proposés), comptes imputables (actifs, feuilles), codes
 // de taxe actifs, tiers actifs (avec leur retenue par défaut et leur délai).
@@ -327,16 +358,19 @@ const resumePeriode = async (db, dossierId, periodeId) => {
   )).rows[0];
   return p ? { id: p.id, debut: p.debut, fin: p.fin, etat: p.etat, nbBrouillard: p.nb_brouillard, nbValidees: p.nb_validees } : null;
 };
-// L'état de la page : le dossier, les droits, l'exercice ouvert et ses périodes, les comptes rendus, la page demandée,
-// les choix de la saisie, les bornes, l'abonnement.
+// L'état de la page : le dossier, les droits, l'exercice affiché et ses périodes, les comptes rendus, la page demandée,
+// les choix de la saisie, les bornes, l'abonnement. X1 : la liste se limite à l'exercice affiché ; `exercices` : tous ceux
+// du dossier avec leurs périodes (choix de l'exercice ; dates admises à la saisie : les périodes des exercices ouverts) ;
+// `suivant` : l'exercice suivant et la fenêtre de son ouverture automatique.
 const etatEcritures = async (db, acces, d, f) => {
+  const exercices = await X.exercicesDuDossier(db, d.id);
+  const choisi = exerciceChoisi(exercices, f);
   const motif = f.q ? motifRecherche(f.q) : '';
-  const params = [d.id, f.journalId, f.periodeId, f.etat, motif, f.montant];
-  const [page, total, nb, exercice, journaux, comptes, taxes, tiers, mode, periode] = await Promise.all([
+  const params = [d.id, f.journalId, f.periodeId, f.etat, motif, f.montant, choisi ? choisi.id : null];
+  const [page, total, nb, journaux, comptes, taxes, tiers, mode, periode] = await Promise.all([
     db.query(SQL_LISTE, [...params, f.limite, (f.page - 1) * f.limite]),
     db.query(`SELECT COUNT(*)::int AS n FROM compta.ecritures e WHERE ${SQL_FILTRES}`, params),
     resumeEcritures(db, d.id),
-    exerciceOuvert(db, d.id),
     choixJournaux(db, d.id),
     choixComptesImputables(db, d.id),
     choixTaxes(db, d.id),
@@ -347,10 +381,12 @@ const etatEcritures = async (db, acces, d, f) => {
   return {
     dossier: presenterDossier(acces, d),
     droits: droits(acces),
-    exercice,
+    exercice: choisi,
+    exercices,
+    suivant: XC.presenterSuivant(exercices),
     nb,
     periode,
-    filtres: { journalId: f.journalId, periodeId: f.periodeId, etat: f.etat, q: f.q },
+    filtres: { journalId: f.journalId, periodeId: f.periodeId, exerciceId: choisi ? choisi.id : null, etat: f.etat, q: f.q },
     ecritures: page.rows.map((e) => presenterEcriture(e)),
     total: total.rows[0].n,
     page: f.page,
@@ -374,12 +410,26 @@ const journalDe = async (db, dossierId, journalId) => {
   return j;
 };
 // L'exercice ouvert et la période ouverte qui contiennent la date (chronologie : une écriture se date dans une période
-// ouverte de l'exercice ouvert ; NC 01 §57 à §61).
-const periodeDe = async (db, dossierId, date) => {
-  const ouverts = (await db.query(`SELECT id, debut::text AS debut, fin::text AS fin FROM compta.exercices WHERE dossier_id = $1 AND etat = 'ouvert' ORDER BY debut DESC`, [dossierId])).rows;
-  if (!ouverts.length) throw erreur(409, 'Aucun exercice ouvert dans ce dossier', 'EXERCICE_CLOS');
-  const x = ouverts.find((e) => date >= e.debut && date <= e.fin);
-  if (!x) throw erreur(409, `La date ${fmtDate(date)} est hors de l'exercice ouvert (du ${fmtDate(ouverts[0].debut)} au ${fmtDate(ouverts[0].fin)})`, 'DATE_HORS_EXERCICE');
+// ouverte d'un exercice ouvert ; NC 01 §57 à §61). X1 : deux exercices peuvent être ouverts ; `ouverture` ({ espaceId,
+// auteurId, origine }, dans la transaction verrouillée du dossier) : une date après le dernier exercice ouvre l'exercice
+// suivant quand les règles le permettent (exercices.ouvrirSiBesoin) ; null : jamais. L'exercice rendu dit s'il est le
+// premier du dossier (`premier` : le journal d'à-nouveaux n'y est saisissable que là) et porte son millésime.
+const SQL_OUVERTS = `
+  SELECT x.id, x.debut::text AS debut, x.fin::text AS fin, x.millesime,
+         NOT EXISTS (SELECT 1 FROM compta.exercices y WHERE y.dossier_id = x.dossier_id AND y.debut < x.debut) AS premier
+    FROM compta.exercices x
+   WHERE x.dossier_id = $1 AND x.etat = 'ouvert'
+   ORDER BY x.debut`;
+const periodeDe = async (db, dossierId, date, ouverture = null) => {
+  const ouverts = (await db.query(SQL_OUVERTS, [dossierId])).rows;
+  let x = ouverts.find((e) => date >= e.debut && date <= e.fin);
+  if (!x) x = await X.ouvrirSiBesoin(db, dossierId, date, ouverture);
+  if (!ouverts.length && !x) throw erreur(409, 'Aucun exercice ouvert dans ce dossier', 'EXERCICE_CLOS');
+  if (!x) {
+    const lesquels = ouverts.length > 1 ? `des exercices ouverts (${ouverts.map((e) => `du ${fmtDate(e.debut)} au ${fmtDate(e.fin)}`).join(' et ')})` : `de l'exercice ouvert (du ${fmtDate(ouverts[0].debut)} au ${fmtDate(ouverts[0].fin)})`;
+    const raison = ouverture ? X.raisonSansOuverture(await X.exercicesSeuls(db, dossierId), date) : '';
+    throw erreur(409, `La date ${fmtDate(date)} est hors ${lesquels}${raison}`, 'DATE_HORS_EXERCICE');
+  }
   const p = (await db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat FROM compta.periodes WHERE exercice_id = $1 AND $2::date BETWEEN debut AND fin', [x.id, date])).rows[0];
   if (!p) throw erreur(409, `Aucune période mensuelle pour le ${fmtDate(date)} : vérifiez l'exercice (fiche du dossier)`, 'PERIODE_ABSENTE');
   if (p.etat !== 'ouverte') throw erreur(409, `La période du ${fmtDate(p.debut)} au ${fmtDate(p.fin)} est close : saisissez l'opération au premier jour de la période ouverte suivante, avec sa vraie date`, 'PERIODE_CLOSE');
@@ -388,8 +438,12 @@ const periodeDe = async (db, dossierId, date) => {
 // S6c (relecture) : le journal de type « an » (à-nouveaux) ne reçoit que des écritures datées du premier jour de l'exercice —
 // à la saisie, à la modification, à la contre-passation et à l'import d'écritures ; le solde d'ouverture des livres (livres.js)
 // repose dessus, et « un seul à-nouveaux par exercice » (import d'une balance d'ouverture) ne se contourne pas par une autre voie.
+// X1 (PLAN-EXERCICES §3) : seulement dans le PREMIER exercice du dossier — ensuite, les à-nouveaux viennent de la clôture de
+// l'exercice précédent (étape X2) ; une saisie les doublerait (`exercice.premier` : rendu par periodeDe).
 const exigerDateAN = (journal, exercice, date) => {
-  if (journal.type === 'an' && date !== exercice.debut) throw erreur(409, `Le journal ${journal.code} (à-nouveaux) ne reçoit que des écritures datées du premier jour de l'exercice (${fmtDate(exercice.debut)}) : la balance d'ouverture s'importe depuis la page Écritures`, 'AN_DATE');
+  if (journal.type !== 'an') return;
+  if (exercice.premier === false) throw erreur(409, `Le journal ${journal.code} (à-nouveaux) ne reçoit des écritures que dans le premier exercice du dossier : les à-nouveaux de l'exercice ${exercice.millesime || String(exercice.debut).slice(0, 4)} viendront de la clôture de l'exercice précédent`, 'AN_EXERCICE_SUIVANT');
+  if (date !== exercice.debut) throw erreur(409, `Le journal ${journal.code} (à-nouveaux) ne reçoit que des écritures datées du premier jour de l'exercice (${fmtDate(exercice.debut)}) : la balance d'ouverture s'importe depuis la page Écritures`, 'AN_DATE');
 };
 // S6b (NC 01 §61, relecture) : la vraie date d'une opération enregistrée plus tard ne sert qu'à une opération d'une période
 // CLOSE (ou d'avant l'exercice ouvert) ; si la période de la vraie date est ouverte, l'écriture se date tout simplement à sa
@@ -661,7 +715,8 @@ const creer = async (req, res) => {
     const e = lireEcriture(req.body || {});
     const resultat = await ecritureEcritures(req, async (db, acces, d) => {
       const journal = await journalDe(db, d.id, e.journalId);
-      const { exercice, periode } = await periodeDe(db, d.id, e.date);
+      // X1 : la première écriture datée de la nouvelle année ouvre l'exercice suivant.
+      const { exercice, periode } = await periodeDe(db, d.id, e.date, { espaceId: acces.espace_id, auteurId: req.user.id, origine: 'saisie' });
       exigerDateAN(journal, exercice, e.date);
       await controlerDateReelle(db, d.id, e.dateReelle);
       const cartes = await resoudreLignes(db, d, e.lignes);
@@ -691,7 +746,7 @@ const modifier = async (req, res) => {
       const avant = await ecritureDe(db, d.id, req.params.ecritureId);
       exigerBrouillard(avant);
       const journal = await journalDe(db, d.id, e.journalId);
-      const { exercice, periode } = await periodeDe(db, d.id, e.date);
+      const { exercice, periode } = await periodeDe(db, d.id, e.date, { espaceId: acces.espace_id, auteurId: req.user.id, origine: 'saisie' });
       exigerDateAN(journal, exercice, e.date);
       await controlerDateReelle(db, d.id, e.dateReelle);
       const lignesAvant = (await lignesDe(db, [avant.id])).get(avant.id);
@@ -766,6 +821,8 @@ module.exports = {
   SQL_ECRITURES, SQL_FILTRES, SQL_LIGNES, SQL_UNE, presenterLigne, presenterEcriture, presenterTaxeCourte, presenterTiersCourt, retenueSelonRegime, resumeEcritures, resumePeriode, assietteRetenue, compteDuCode,
   // S6b (validation.js, periodes.js) : les outils de la transaction du dossier, réemployés tels quels.
   journalDe, periodeDe, exerciceOuvert, ecritureDe, exigerBrouillard, uneEcriture, lignesDe, insererLignes, resumeEnBase,
+  // X1 : le premier exercice (balance d'ouverture importée), l'exercice affiché par la page.
+  premierExercice, exerciceChoisi, SQL_OUVERTS,
   // S6c (livres.js, importEcritures.js) : le contrôle des lignes contre le dossier, la vraie date, le résumé D16, le motif de recherche.
   resoudreLignes, controlerLignes, controlerDateReelle, exigerDateAN, resumeEcriture, motifRecherche, LIMITE_MAX, PAGE_MAX,
   lire, une, creer, modifier, supprimer, aideTaxe, aideRetenue,
