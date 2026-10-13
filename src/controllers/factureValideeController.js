@@ -204,9 +204,13 @@ const valider = async (req, res) => {
       );
       await P.inserer(db, { factureId, clientId, deposes, ordreDepart: 1, auteurId: req.user.id });
       const appris = await V.apprendre(db, { clientId, fournisseurId: v.fournisseurId, auteurId: req.user.id, lignes: v.lignes });
-      // Étape F5 : la mise en page du tableau vue par la lecture (titre des colonnes lu, lignes gardées), partagée.
+      // Étape F5 : la mise en page du tableau vue par la lecture (titre des colonnes lu, lignes gardées), apprise pour ce
+      // compte si le matricule lu sur la facture est celui de la fiche du fournisseur.
       const miseEnPage = v.lecture?.miseEnPage
-        ? await MEP.apprendre(db, { fournisseurId: v.fournisseurId, clientId, auteurId: req.user.id, miseEnPage: v.lecture.miseEnPage, source: v.lecture.source })
+        ? await MEP.apprendre(db, {
+          fournisseurId: v.fournisseurId, clientId, auteurId: req.user.id, factureId, miseEnPage: v.lecture.miseEnPage,
+          source: v.lecture.source, matriculeLu: v.lecture.matricule,
+        })
         : false;
       await P.journaliser(db, {
         clientId, factureId, action: 'facture_validee', auteurId: req.user.id,
