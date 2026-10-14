@@ -13,6 +13,7 @@ const gerants = require('./gerantsCabinet');
 const dossiers = require('./dossiers');
 const exercices = require('./exercices');
 const cloture = require('./cloture');
+const etats = require('./etats');
 const plan = require('./planComptes');
 const journaux = require('./journaux');
 const taxes = require('./taxes');
@@ -297,6 +298,11 @@ const limiteDocuments = rateLimit({
 });
 router.get('/dossiers/:dossierId/echeancier/tiers/:tiersId/releve.pdf', authenticate, limiteDocuments, echeancier.releve);
 router.post('/dossiers/:dossierId/echeancier/tiers/:tiersId/relance.pdf', authenticate, limiteDocuments, echeancier.relance);
+
+// Étape E1 : les états financiers d'un exercice (bilan, état de résultat ; NC 01 annexes 1 et 3), calculés à la demande sur
+// les soldes des comptes — lecture : tout accès au dossier ; le PDF sous la limite des documents. Rien n'est écrit.
+router.get('/dossiers/:dossierId/etats', authenticate, etats.lire);
+router.get('/dossiers/:dossierId/etats.pdf', authenticate, limiteDocuments, etats.pdf);
 
 // Étape S7b : les taxes du mois (état de TVA, retenues à certifier, certificats, retenues subies, signalements ; lecture :
 // tout accès au dossier ; export sous la limite des livres ; PDF sous celle des documents) et les certificats de retenue
