@@ -1145,31 +1145,31 @@ src/controllers/ventesController.js
   l. 1391
     défaut : ⟦?Confirmée|⟦·⟧⟧
     miroir : ⟦?Confirmé|⟦·⟧⟧
-  l. 1468
+  l. 1469
     défaut : Produit / Supplément
     miroir : Abr-Invention / Abr-Option
-  l. 1476
+  l. 1477
     défaut : ⟦?Produit Valorisé|⟦?Supplément|Produit⟧⟧
     miroir : ⟦?Invention Valorisée|Abr-⟦?Option|Invention⟧⟧
-  l. 1588
+  l. 1589
     défaut : Ventes Labo
     miroir : Encaissements Abr-Usine
-  l. 1593
+  l. 1594
     défaut : Ventes du labo — Transferts valorisés
     miroir : Encaissements de l'usine — Expéditions valorisées
-  l. 1594
+  l. 1595
     défaut : Val. transfert
     miroir : Val. abr-expédition
-  l. 1594
+  l. 1595
     défaut : Val. appro
     miroir : Val. abr-rentrée
-  l. 1607
+  l. 1608
     défaut : ⟦·⟧⟦? (labo)|⟧
     miroir : ⟦·⟧⟦? (abr-usine)|⟧
-  l. 1705
+  l. 1706
     défaut : Produits composés (labo)
     miroir : Inventions composées (abr-usine)
-  l. 1774
+  l. 1775
     défaut : Article introuvable
     miroir : Denrée introuvable
 

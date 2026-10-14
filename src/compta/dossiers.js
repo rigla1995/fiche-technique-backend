@@ -342,7 +342,12 @@ const presenterRegime = (d) => ({
 // fiche) et la fenêtre de son ouverture automatique.
 const presenterFiche = async (db, acces, d) => {
   const [ex, personnes, mode, plan, configuration] = await Promise.all([
-    db.query('SELECT id, debut::text AS debut, fin::text AS fin, etat, millesime FROM compta.exercices WHERE dossier_id = $1 ORDER BY debut DESC', [d.id]),
+    db.query(
+      `SELECT x.id, x.debut::text AS debut, x.fin::text AS fin, x.etat, x.millesime, x.clos_le, u.nom AS clos_par_nom, x.resultat::text AS resultat, x.ecriture_affectation_id
+         FROM compta.exercices x LEFT JOIN utilisateurs u ON u.id = x.clos_par
+        WHERE x.dossier_id = $1 ORDER BY x.debut DESC`,
+      [d.id]
+    ),
     db.query(
       `SELECT a.role, a.niveau, COALESCE(a.nom_attendu, u.nom) AS nom, u.email
          FROM compta.acces a
@@ -358,6 +363,14 @@ const presenterFiche = async (db, acces, d) => {
   ]);
   const courant = XC.exerciceParDefaut(ex.rows);
   const ouverts = XC.croissants(ex.rows.filter((x) => x.etat === 'ouvert'));
+  // X2 : un exercice ouvert et FINI se clôture (titulaire : assistant « Clôturer l'exercice ») ; un exercice clos dit qui,
+  // quand, son résultat et si l'affectation du résultat est préparée.
+  const aujourdhui = XC.aujourdhuiTunis();
+  const presenterExercice = (x) => ({
+    id: x.id, debut: x.debut, fin: x.fin, etat: x.etat, millesime: x.millesime,
+    cloturable: x.etat === 'ouvert' && x.fin < aujourdhui,
+    clos: x.etat === 'clos' ? { le: x.clos_le, par: x.clos_par_nom || null, resultat: x.resultat, affectee: x.ecriture_affectation_id != null } : null,
+  });
   const ids = [...new Set([...(courant ? [courant.id] : []), ...ouverts.map((x) => x.id)])];
   const toutes = ids.length
     ? (await db.query('SELECT exercice_id, debut::text AS debut, fin::text AS fin, etat FROM compta.periodes WHERE exercice_id = ANY($1) ORDER BY debut', [ids])).rows
@@ -377,8 +390,8 @@ const presenterFiche = async (db, acces, d) => {
     devise: d.devise,
     decimales: d.decimales,
     exercice: courant ? { id: courant.id, debut: courant.debut, fin: courant.fin, etat: courant.etat, millesime: courant.millesime, periodes } : null,
-    exercices: ex.rows.map((x) => ({ id: x.id, debut: x.debut, fin: x.fin, etat: x.etat, millesime: x.millesime })),
-    exercicesOuverts: ouverts.map((x) => ({ id: x.id, debut: x.debut, fin: x.fin, etat: x.etat, millesime: x.millesime, periodes: periodesDe(x) })),
+    exercices: ex.rows.map(presenterExercice),
+    exercicesOuverts: ouverts.map((x) => ({ ...presenterExercice(x), periodes: periodesDe(x) })),
     suivant: XC.presenterSuivant(ex.rows),
     acces: personnes.rows.map((p) => ({ role: p.role, niveau: p.niveau, nom: p.nom, email: p.email })),
     droits: droits(acces),

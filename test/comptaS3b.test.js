@@ -52,7 +52,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   // S7c : + 4 (préparer une déclaration, proposer l'écriture de TVA, marquer, retirer la marque — droit « configurer »).
   // F4 (factures fournisseur) : + 1 (régler un compte d'achat — droit « configurer »).
   // X1 : + 1 (ouvrir l'exercice suivant — droit « configurer »).
-  assert.equal(ecritures.length, 66, 'routes d\'écriture trouvées');
+  // X2 : + 2 (clôturer l'exercice — titulaire ; préparer l'affectation du résultat — droit « configurer »).
+  assert.equal(ecritures.length, 68, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
@@ -86,6 +87,9 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     comptesAchat: { fichier: 'comptesAchat.js', transactions: ['await ecritureComptesAchat(req,'] },
     // X1 : l'ouverture de l'exercice suivant (transaction du dossier ; droit « configurer », dossier non archivé).
     exercices: { fichier: 'exercices.js', transactions: ['await dansEspaceDuDossier(req.user,'] },
+    // X2 : la clôture de l'exercice et l'affectation du résultat (transaction : droit « archiver » — titulaire — ou
+    // « configurer », dossier non archivé).
+    cloture: { fichier: 'cloture.js', transactions: ['await transaction(req,'] },
   };
   const corps = (fichier, nom) => {
     const ctrl = lire('src', 'compta', fichier);
@@ -118,13 +122,15 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     ['validation.js', 'const ecritureValidation = (req, travail, droit = \'configurer\') =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces)[droit]) throw erreur(403, MSG_PAR_DROIT[droit] || MSG_VALIDER, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
     // F4 : les comptes d'achat aussi.
     ['comptesAchat.js', 'const ecritureComptesAchat = (req, travail) =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces).configurer) throw erreur(403, MSG_CONFIGURER, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
+    // X2 : la clôture (droit « archiver » : titulaire seul) et l'affectation du résultat (droit « configurer ») aussi.
+    ['cloture.js', 'const transaction = (req, droit, message, travail) =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces)[droit]) throw erreur(403, message, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
   ]) {
     const ctrl = lire('src', 'compta', fichier);
     const debut = ctrl.indexOf(fonction);
     assert.ok(debut > 0, fonction);
     const transaction = ctrl.slice(debut, ctrl.indexOf('\n};\n', debut));
     assert.ok(transaction.includes(ouverture), `${fichier} : espace verrouillé puis garde`);
-    const delegue = ['const dansEspaceDuDossier = async', 'const ecriturePlan = (req, travail) =>', 'const ecritureJournaux = (req, travail) =>', 'const ecritureTaxes = (req, travail) =>', 'const ecritureValidation = (req, travail, droit = \'configurer\') =>', 'const ecritureComptesAchat = (req, travail) =>'].includes(fonction);
+    const delegue = ['const dansEspaceDuDossier = async', 'const ecriturePlan = (req, travail) =>', 'const ecritureJournaux = (req, travail) =>', 'const ecritureTaxes = (req, travail) =>', 'const ecritureValidation = (req, travail, droit = \'configurer\') =>', 'const ecritureComptesAchat = (req, travail) =>', 'const transaction = (req, droit, message, travail) =>'].includes(fonction);
     if (!delegue) assert.ok(transaction.includes('{ garde = true } = {}'), `${fichier} : garde par défaut`);
   }
   assert.deepEqual(routes.ECRITURES_SANS_GARDE, ['POST /passage', 'POST /confiees/:espaceId/quitter', 'POST /dossiers/:dossierId/echeancier/tiers/:tiersId/relance.pdf']);

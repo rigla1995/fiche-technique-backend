@@ -157,8 +157,9 @@ test('requêtes : chaque paramètre employé ; lignes non lettrées seulement ; 
     for (let i = 1; i <= n; i += 1) assert.ok(sql.includes(`$${i}`), `${nom} : $${i} employé`);
   }
   assert.ok(lettrage.SQL_NON_LETTREES.includes('l.lettrage_id IS NULL') && lettrage.SQL_NON_LETTREES.includes('ORDER BY l.date, e.numero NULLS LAST, e.numero_provisoire, l.rang') && lettrage.SQL_NON_LETTREES.includes('LIMIT $3'));
-  assert.ok(lettrage.SQL_TIERS.includes("COUNT(*) FILTER (WHERE l.lettrage_id IS NULL AND e.etat = 'validee')::int AS nb_a_lettrer"));
-  assert.ok(echeancier.SQL_NON_LETTREES.includes("l.lettrage_id IS NULL AND t.type = $3 AND ($4::boolean OR e.etat = 'validee') AND ($5::int IS NULL OR l.tiers_id = $5)"));
+  // X2 : les à-nouveaux de la clôture (origine « cloture ») ne se lettrent pas et ne comptent pas dans l'échéancier.
+  assert.ok(lettrage.SQL_TIERS.includes("COUNT(*) FILTER (WHERE l.lettrage_id IS NULL AND e.etat = 'validee' AND e.origine <> 'cloture')::int AS nb_a_lettrer"));
+  assert.ok(echeancier.SQL_NON_LETTREES.includes("l.lettrage_id IS NULL AND e.origine <> 'cloture' AND t.type = $3 AND ($4::boolean OR e.etat = 'validee') AND ($5::int IS NULL OR l.tiers_id = $5)"));
   assert.ok(echeancier.SQL_NON_LETTREES.includes(`${echeances.SQL_DU} AS du, ${echeances.SQL_ECHEANCE} AS echeance, ($2::date - ${echeances.SQL_ECHEANCE})::int AS retard`));
   assert.ok(echeancier.SQL_BALANCE_AGEE.includes(echeances.sqlAgregatsAges('n')) && echeancier.SQL_BALANCE_AGEE.includes('AS nonechu') && echeancier.SQL_BALANCE_AGEE.includes('AS plus90') && echeancier.SQL_BALANCE_AGEE.includes('AS credits'));
   assert.ok(lettrage.SQL_LIGNES_DES_LETTRES.includes('LIMIT $3') && lettrage.LIGNES_DES_LETTRES_MAX === 2000, 'lignes des lettres bornées (relecture)');
