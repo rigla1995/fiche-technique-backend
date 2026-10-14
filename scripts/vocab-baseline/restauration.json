@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "237_manuel_produits_unite.sql",
+  "derniereMigration": "239_manuel_prestataires_conditions.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -503,7 +503,7 @@
     "articles-valorises": "758bb2ba83ec23db95aec58dc7bf0416",
     "fiches-techniques": "16a9960f8d0b4ddeb14723f1c5602aed",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
-    "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
+    "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
@@ -553,13 +553,13 @@
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
     "factures": "0cb985cf80069e8b472dd8f746c834a3",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
-    "configuration-vente": "0e256a7dee889382aa0feb0feae852fb",
+    "configuration-vente": "5c0cbafab9c5f1432583743f0ba13176",
     "charges": "9efe5d7fee8199ccb045647654027267",
-    "saisie-ventes": "9aa32d0386ab4e3be90d2c4b9ee7ca22",
+    "saisie-ventes": "61184b5c69d85f89058abdb19e8b609d",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "rapports-vente": "bf1b1542c1ca0bbeb423041e612f139f",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
-    "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
+    "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
@@ -606,8 +606,8 @@
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
     "factures": "0cb985cf80069e8b472dd8f746c834a3",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
-    "configuration-vente": "0e256a7dee889382aa0feb0feae852fb",
-    "saisie-ventes": "9aa32d0386ab4e3be90d2c4b9ee7ca22",
+    "configuration-vente": "5c0cbafab9c5f1432583743f0ba13176",
+    "saisie-ventes": "61184b5c69d85f89058abdb19e8b609d",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
@@ -660,7 +660,7 @@
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
     "acheteurs-ventes": "e104803208c87078ecbe6bcb6244bdc7",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
-    "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
+    "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
@@ -711,9 +711,9 @@
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
     "factures": "0cb985cf80069e8b472dd8f746c834a3",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
-    "configuration-vente": "0e256a7dee889382aa0feb0feae852fb",
+    "configuration-vente": "5c0cbafab9c5f1432583743f0ba13176",
     "charges": "9efe5d7fee8199ccb045647654027267",
-    "saisie-ventes": "9aa32d0386ab4e3be90d2c4b9ee7ca22",
+    "saisie-ventes": "61184b5c69d85f89058abdb19e8b609d",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "rapports-vente": "bf1b1542c1ca0bbeb423041e612f139f",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
@@ -721,7 +721,7 @@
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
     "acheteurs-ventes": "e104803208c87078ecbe6bcb6244bdc7",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
-    "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
+    "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
@@ -773,9 +773,9 @@
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
     "factures": "0cb985cf80069e8b472dd8f746c834a3",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
-    "configuration-vente": "0e256a7dee889382aa0feb0feae852fb",
+    "configuration-vente": "5c0cbafab9c5f1432583743f0ba13176",
     "charges": "9efe5d7fee8199ccb045647654027267",
-    "saisie-ventes": "9aa32d0386ab4e3be90d2c4b9ee7ca22",
+    "saisie-ventes": "61184b5c69d85f89058abdb19e8b609d",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "rapports-vente": "bf1b1542c1ca0bbeb423041e612f139f",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
@@ -783,7 +783,7 @@
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
     "acheteurs-ventes": "e104803208c87078ecbe6bcb6244bdc7",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
-    "dashboard": "7b2fa715f6a89ce1994591aeab2ba949",
+    "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
@@ -2015,7 +2015,7 @@
       "ca_ttc": "93.00000"
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "nb_ventes": "1",
       "ca_ttc": "54.00000"
      }
@@ -2049,7 +2049,7 @@
     "panier_moyen": 54,
     "par_canal": [
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "nb_ventes": "1",
       "ca_ttc": "54.00000"
      }
@@ -2071,7 +2071,7 @@
       "ca_ttc": "93.00000"
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "nb_ventes": "1",
       "ca_ttc": "54.00000"
      }
@@ -2093,7 +2093,7 @@
       "ca_ttc": "93.00000"
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "nb_ventes": "1",
       "ca_ttc": "54.00000"
      }
@@ -2115,7 +2115,7 @@
       "ca_ttc": "93.00000"
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "nb_ventes": "1",
       "ca_ttc": "54.00000"
      }
@@ -2137,7 +2137,7 @@
       "ca_ttc": "93.00000"
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "nb_ventes": "1",
       "ca_ttc": "54.00000"
      }
@@ -2159,7 +2159,7 @@
       "ca_ttc": "93.00000"
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "nb_ventes": "1",
       "ca_ttc": "54.00000"
      }
@@ -2192,7 +2192,7 @@
       "ca_ttc": "93.00000"
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "nb_ventes": "1",
       "ca_ttc": "54.00000"
      }
@@ -2209,7 +2209,7 @@
     "panier_moyen": 54,
     "par_canal": [
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "nb_ventes": "1",
       "ca_ttc": "54.00000"
      }
@@ -2230,7 +2230,12 @@
     }
    ],
    "get_config_vente": {
-    "prestataires_livraison": [],
+    "prestataires_livraison": [
+     {
+      "activite": "Terrasse du Lac — Salon",
+      "nom": "Glovo"
+     }
+    ],
     "charges_fixes": [
      {
       "activite": "Terrasse du Lac — Salon",
@@ -2260,7 +2265,12 @@
     ]
    },
    "get_config_vente activite_id=id": {
-    "prestataires_livraison": [],
+    "prestataires_livraison": [
+     {
+      "activite": "Terrasse du Lac — Salon",
+      "nom": "Glovo"
+     }
+    ],
     "charges_fixes": [
      {
       "activite": "Terrasse du Lac — Salon",
@@ -2367,7 +2377,7 @@
      },
      {
       "titre": "Manuel — Gestion › Tableau de bord",
-      "contenu": "## 📊 Le Tableau de bord\n\nLe tableau de bord est votre poste de pilotage : ventes, marges, achats, stocks, pertes et labo, réunis sur une seule page. Tous les montants sont exprimés en **TTC**. Vous y accédez depuis le menu latéral, entrée **Tableau de bord**.\n\n### Les cinq onglets\n\n- **Vue d'ensemble** — les indicateurs clés de la période avec leur évolution par rapport à la période précédente, les alertes (stock sous seuil, food cost élevé — au-delà du **seuil de coût matière de votre domaine**, 40 % par défaut —, inventaire ancien) et la courbe d'évolution du CA et des marges.\n- **Ventes & marges** — l'analyse fine de votre rentabilité : marges par canal de vente, par catégorie de produits, par type (produits, suppléments, valorisés), meilleures et plus faibles marges, et le détail triable produit par produit.\n- **Achats & stock** — vos achats par catégorie et par fournisseur, les réceptions en provenance du labo, la valeur du stock par catégorie, les alertes de seuil détaillées et les derniers inventaires.\n- **Pertes** — les pertes **consolidées de vos activités et de vos labos** : par type (les types de perte de votre domaine : avarie/déchet par défaut), par site, par catégorie, articles les plus perdus, et leur poids par rapport au CA.\n- **Labo** — la production de produits transformés, les transferts émis vers chaque activité, les cessions internes vers les labos rattachés, le stock, les pertes et les ventes du labo. (Cet onglet n'apparaît que si vous avez un labo.)\n\n### Les filtres\n\nChaque filtre est **multi-sélection** : cochez une ou plusieurs valeurs (activités, types de vente, prestataires, catégories de produits ou d'articles, familles, fournisseurs…). Sans coche, tout est pris en compte. Les filtres proposés s'adaptent à l'onglet affiché.\n\n1. Choisissez la **période** : mois en cours, 7 ou 30 jours, mois dernier, trimestre, année, ou des dates personnalisées.\n2. Combinez les filtres, par exemple : *marges des catégories « Pâtisseries » et « Boissons » vendues via prestataire sur le trimestre*.\n3. Le bouton **✕ Réinitialiser** efface tous les filtres. Vos choix sont conservés (et l'adresse de la page peut être partagée telle quelle).\n\n### La marge à trois étages\n\n:::formule Du CA à la marge nette\nMarge brute = CA − coût matière\nMarge après commissions = marge brute − commissions prestataires\nMarge nette estimée = marge après commissions − prorata des charges fixes\nnote: commissions = taux configuré par activité et prestataire ; charges = charges fixes annuelles ramenées à la période.\n:::\n\n- Le **coût matière** de chaque vente est figé au moment de la vente (voir [Coût de revient d'une recette](#calc-cout-recette)) ; le badge de coût matière d'un produit passe au vert, à l'orange puis au rouge selon le seuil de votre domaine (40 % par défaut : orange dès seuil − 10 points, rouge au-delà du seuil).\n- La **cascade** de l'onglet Ventes & marges visualise chaque étage, du CA jusqu'à la marge nette.\n\n:::astuce\nChaque indicateur affiche son évolution (▲/▼) par rapport à la période précédente de même durée. Le bouton **📥 Exporter (Excel)** télécharge les données de l'onglet affiché, filtres compris.\n:::\n\n:::attention\nLa marge nette est une **estimation** : elle répartit vos charges fixes annuelles au prorata de la période, indépendamment des filtres de catégories ou de canaux.\n:::\n\n### Voir aussi\n\n- [Comprendre la valeur du stock](#calc-valeur-stock)\n- [Les prix et le PV](#calc-prix)\n- [Saisie des ventes](#saisie-ventes)"
+      "contenu": "## 📊 Le Tableau de bord\n\nLe tableau de bord est votre poste de pilotage : ventes, marges, achats, stocks, pertes et labo, réunis sur une seule page. Tous les montants sont exprimés en **TTC**. Vous y accédez depuis le menu latéral, entrée **Tableau de bord**.\n\n### Les cinq onglets\n\n- **Vue d'ensemble** — les indicateurs clés de la période avec leur évolution par rapport à la période précédente (dont le **Net prestataires** : leur CA moins les commissions et la TVA sur les commissions), les alertes (stock sous seuil, food cost élevé — au-delà du **seuil de coût matière de votre domaine**, 40 % par défaut —, inventaire ancien) et la courbe d'évolution du CA et des marges.\n- **Ventes & marges** — l'analyse fine de votre rentabilité : marges par canal de vente, par catégorie de produits, par type (produits, suppléments, valorisés), meilleures et plus faibles marges, et le détail triable produit par produit.\n- **Achats & stock** — vos achats par catégorie et par fournisseur, les réceptions en provenance du labo, la valeur du stock par catégorie, les alertes de seuil détaillées et les derniers inventaires.\n- **Pertes** — les pertes **consolidées de vos activités et de vos labos** : par type (les types de perte de votre domaine : avarie/déchet par défaut), par site, par catégorie, articles les plus perdus, et leur poids par rapport au CA.\n- **Labo** — la production de produits transformés, les transferts émis vers chaque activité, les cessions internes vers les labos rattachés, le stock, les pertes et les ventes du labo. (Cet onglet n'apparaît que si vous avez un labo.)\n\n### Les filtres\n\nChaque filtre est **multi-sélection** : cochez une ou plusieurs valeurs (activités, types de vente, prestataires, modes de paiement, catégories de produits ou d'articles, familles, fournisseurs…). Sans coche, tout est pris en compte. Les filtres proposés s'adaptent à l'onglet affiché. Le filtre **Mode de paiement** retient les ventes par prestataire dont le mode (Espèces, Virement…) était celui-là le jour de la saisie.\n\n1. Choisissez la **période** : mois en cours, 7 ou 30 jours, mois dernier, trimestre, année, ou des dates personnalisées.\n2. Combinez les filtres, par exemple : *marges des catégories « Pâtisseries » et « Boissons » vendues via prestataire sur le trimestre*.\n3. Le bouton **✕ Réinitialiser** efface tous les filtres. Vos choix sont conservés (et l'adresse de la page peut être partagée telle quelle).\n\n### La marge à trois étages\n\n:::formule Du CA à la marge nette\nMarge brute = CA − coût matière\nMarge après commissions = marge brute − commissions prestataires − TVA sur ces commissions\nMarge nette estimée = marge après commissions − prorata des charges fixes\nnote: commission et TVA aux taux figés sur chaque vente le jour de sa saisie (conditions du prestataire pour l'activité) ; charges = charges fixes annuelles ramenées à la période.\n:::\n\n:::formule Net prestataires\nNet prestataires = CA des ventes par prestataire − commissions − TVA sur les commissions\nnote: la carte de la vue d'ensemble et de l'onglet Ventes & marges ; le tableau par canal donne la commission, la TVA et le net de chaque prestataire. Filtrez par prestataire ou par mode de paiement pour suivre un canal.\n:::\n\n- Le **coût matière** de chaque vente est figé au moment de la vente (voir [Coût de revient d'une recette](#calc-cout-recette)) ; le badge de coût matière d'un produit passe au vert, à l'orange puis au rouge selon le seuil de votre domaine (40 % par défaut : orange dès seuil − 10 points, rouge au-delà du seuil).\n- La **cascade** de l'onglet Ventes & marges visualise chaque étage, du CA jusqu'à la marge nette.\n\n:::astuce\nChaque indicateur affiche son évolution (▲/▼) par rapport à la période précédente de même durée. Le bouton **📥 Exporter (Excel)** télécharge les données de l'onglet affiché, filtres compris.\n:::\n\n:::attention\nLa marge nette est une **estimation** : elle répartit vos charges fixes annuelles au prorata de la période, indépendamment des filtres de catégories ou de canaux.\n:::\n\n### Voir aussi\n\n- [Comprendre la valeur du stock](#calc-valeur-stock)\n- [Les prix et le PV](#calc-prix)\n- [Saisie des ventes](#saisie-ventes)"
      }
     ]
    },
@@ -2510,7 +2520,7 @@
       },
       {
        "titre": "Manuel — Gestion › Tableau de bord",
-       "contenu": "## 📊 Le Tableau de bord\n\nLe tableau de bord est votre poste de pilotage : ventes, marges, achats, stocks, pertes et labo, réunis sur une seule page. Tous les montants sont exprimés en **TTC**. Vous y accédez depuis le menu latéral, entrée **Tableau de bord**.\n\n### Les cinq onglets\n\n- **Vue d'ensemble** — les indicateurs clés de la période avec leur évolution par rapport à la période précédente, les alertes (stock sous seuil, food cost élevé — au-delà du **seuil de coût matière de votre domaine**, 40 % par défaut —, inventaire ancien) et la courbe d'évolution du CA et des marges.\n- **Ventes & marges** — l'analyse fine de votre rentabilité : marges par canal de vente, par catégorie de produits, par type (produits, suppléments, valorisés), meilleures et plus faibles marges, et le détail triable produit par produit.\n- **Achats & stock** — vos achats par catégorie et par fournisseur, les réceptions en provenance du labo, la valeur du stock par catégorie, les alertes de seuil détaillées et les derniers inventaires.\n- **Pertes** — les pertes **consolidées de vos activités et de vos labos** : par type (les types de perte de votre domaine : avarie/déchet par défaut), par site, par catégorie, articles les plus perdus, et leur poids par rapport au CA.\n- **Labo** — la production de produits transformés, les transferts émis vers chaque activité, les cessions internes vers les labos rattachés, le stock, les pertes et les ventes du labo. (Cet onglet n'apparaît que si vous avez un labo.)\n\n### Les filtres\n\nChaque filtre est **multi-sélection** : cochez une ou plusieurs valeurs (activités, types de vente, prestataires, catégories de produits ou d'articles, familles, fournisseurs…). Sans coche, tout est pris en compte. Les filtres proposés s'adaptent à l'onglet affiché.\n\n1. Choisissez la **période** : mois en cours, 7 ou 30 jours, mois dernier, trimestre, année, ou des dates personnalisées.\n2. Combinez les filtres, par exemple : *marges des catégories « Pâtisseries » et « Boissons » vendues via prestataire sur le trimestre*.\n3. Le bouton **✕ Réinitialiser** efface tous les filtres. Vos choix sont conservés (et l'adresse de la page peut être partagée telle quelle).\n\n### La marge à trois étages\n\n:::formule Du CA à la marge nette\nMarge brute = CA − coût matière\nMarge après commissions = marge brute − commissions prestataires\nMarge nette estimée = marge après commissions − prorata des charges fixes\nnote: commissions = taux configuré par activité et prestataire ; charges = charges fixes annuelles ramenées à la période.\n:::\n\n- Le **coût matière** de chaque vente est figé au moment de la vente (voir [Coût de revient d'une recette](#calc-cout-recette)) ; le badge de coût matière d'un produit passe au vert, à l'orange puis au rouge selon le seuil de votre domaine (40 % par défaut : orange dès seuil − 10 points, rouge au-delà du seuil).\n- La **cascade** de l'onglet Ventes & marges visualise chaque étage, du CA jusqu'à la marge nette.\n\n:::astuce\nChaque indicateur affiche son évolution (▲/▼) par rapport à la période précédente de même durée. Le bouton **📥 Exporter (Excel)** télécharge les données de l'onglet affiché, filtres compris.\n:::\n\n:::attention\nLa marge nette est une **estimation** : elle répartit vos charges fixes annuelles au prorata de la période, indépendamment des filtres de catégories ou de canaux.\n:::\n\n### Voir aussi\n\n- [Comprendre la valeur du stock](#calc-valeur-stock)\n- [Les prix et le PV](#calc-prix)\n- [Saisie des ventes](#saisie-ventes)"
+       "contenu": "## 📊 Le Tableau de bord\n\nLe tableau de bord est votre poste de pilotage : ventes, marges, achats, stocks, pertes et labo, réunis sur une seule page. Tous les montants sont exprimés en **TTC**. Vous y accédez depuis le menu latéral, entrée **Tableau de bord**.\n\n### Les cinq onglets\n\n- **Vue d'ensemble** — les indicateurs clés de la période avec leur évolution par rapport à la période précédente (dont le **Net prestataires** : leur CA moins les commissions et la TVA sur les commissions), les alertes (stock sous seuil, food cost élevé — au-delà du **seuil de coût matière de votre domaine**, 40 % par défaut —, inventaire ancien) et la courbe d'évolution du CA et des marges.\n- **Ventes & marges** — l'analyse fine de votre rentabilité : marges par canal de vente, par catégorie de produits, par type (produits, suppléments, valorisés), meilleures et plus faibles marges, et le détail triable produit par produit.\n- **Achats & stock** — vos achats par catégorie et par fournisseur, les réceptions en provenance du labo, la valeur du stock par catégorie, les alertes de seuil détaillées et les derniers inventaires.\n- **Pertes** — les pertes **consolidées de vos activités et de vos labos** : par type (les types de perte de votre domaine : avarie/déchet par défaut), par site, par catégorie, articles les plus perdus, et leur poids par rapport au CA.\n- **Labo** — la production de produits transformés, les transferts émis vers chaque activité, les cessions internes vers les labos rattachés, le stock, les pertes et les ventes du labo. (Cet onglet n'apparaît que si vous avez un labo.)\n\n### Les filtres\n\nChaque filtre est **multi-sélection** : cochez une ou plusieurs valeurs (activités, types de vente, prestataires, modes de paiement, catégories de produits ou d'articles, familles, fournisseurs…). Sans coche, tout est pris en compte. Les filtres proposés s'adaptent à l'onglet affiché. Le filtre **Mode de paiement** retient les ventes par prestataire dont le mode (Espèces, Virement…) était celui-là le jour de la saisie.\n\n1. Choisissez la **période** : mois en cours, 7 ou 30 jours, mois dernier, trimestre, année, ou des dates personnalisées.\n2. Combinez les filtres, par exemple : *marges des catégories « Pâtisseries » et « Boissons » vendues via prestataire sur le trimestre*.\n3. Le bouton **✕ Réinitialiser** efface tous les filtres. Vos choix sont conservés (et l'adresse de la page peut être partagée telle quelle).\n\n### La marge à trois étages\n\n:::formule Du CA à la marge nette\nMarge brute = CA − coût matière\nMarge après commissions = marge brute − commissions prestataires − TVA sur ces commissions\nMarge nette estimée = marge après commissions − prorata des charges fixes\nnote: commission et TVA aux taux figés sur chaque vente le jour de sa saisie (conditions du prestataire pour l'activité) ; charges = charges fixes annuelles ramenées à la période.\n:::\n\n:::formule Net prestataires\nNet prestataires = CA des ventes par prestataire − commissions − TVA sur les commissions\nnote: la carte de la vue d'ensemble et de l'onglet Ventes & marges ; le tableau par canal donne la commission, la TVA et le net de chaque prestataire. Filtrez par prestataire ou par mode de paiement pour suivre un canal.\n:::\n\n- Le **coût matière** de chaque vente est figé au moment de la vente (voir [Coût de revient d'une recette](#calc-cout-recette)) ; le badge de coût matière d'un produit passe au vert, à l'orange puis au rouge selon le seuil de votre domaine (40 % par défaut : orange dès seuil − 10 points, rouge au-delà du seuil).\n- La **cascade** de l'onglet Ventes & marges visualise chaque étage, du CA jusqu'à la marge nette.\n\n:::astuce\nChaque indicateur affiche son évolution (▲/▼) par rapport à la période précédente de même durée. Le bouton **📥 Exporter (Excel)** télécharge les données de l'onglet affiché, filtres compris.\n:::\n\n:::attention\nLa marge nette est une **estimation** : elle répartit vos charges fixes annuelles au prorata de la période, indépendamment des filtres de catégories ou de canaux.\n:::\n\n### Voir aussi\n\n- [Comprendre la valeur du stock](#calc-valeur-stock)\n- [Les prix et le PV](#calc-prix)\n- [Saisie des ventes](#saisie-ventes)"
       }
      ]
     }
@@ -6373,7 +6383,11 @@
         "Type",
         "Prestataire",
         "CA (DT)",
+        "Commission (DT)",
+        "TVA commission (DT)",
+        "Net (DT)",
         "Marge (DT)",
+        "Mode de paiement",
         "Statut"
        ],
        [
@@ -6381,15 +6395,23 @@
         "Directe",
         "",
         "18",
+        "0",
+        "0",
+        "18",
         "-124.8",
+        "",
         "Confirmée"
        ],
        [
         "⟨date⟩",
         "Prestataire",
-        "",
+        "Glovo",
         "54",
+        "10.8",
+        "2.052",
+        "41.148",
         "53.14",
+        "Espèces",
         "Confirmée"
        ],
        [
@@ -6397,7 +6419,11 @@
         "Directe",
         "",
         "75",
+        "0",
+        "0",
+        "75",
         "73.71",
+        "",
         "Confirmée"
        ],
        [
@@ -6405,7 +6431,10 @@
         "",
         "",
         "147",
-        "2.049999999999997"
+        "10.8",
+        "2.052",
+        "134.148",
+        "2.05"
        ],
        [
         "Généré par LabFlow · labflow-tn.com"
@@ -6812,14 +6841,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -6829,6 +6861,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -6853,7 +6886,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      },
      {
       "bucket": "⟨date⟩",
@@ -6875,14 +6908,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -6892,6 +6928,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -6916,7 +6953,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      },
      {
       "bucket": "⟨date⟩",
@@ -6938,14 +6975,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -6955,6 +6995,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -6979,7 +7020,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      },
      {
       "bucket": "⟨date⟩",
@@ -7001,14 +7042,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -7018,6 +7062,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7042,7 +7087,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      },
      {
       "bucket": "⟨date⟩",
@@ -7064,14 +7109,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -7081,6 +7129,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7105,7 +7154,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      },
      {
       "bucket": "⟨date⟩",
@@ -7127,14 +7176,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -7144,6 +7196,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7168,7 +7221,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      },
      {
       "bucket": "⟨date⟩",
@@ -7190,14 +7243,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -7207,6 +7263,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7231,7 +7288,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      },
      {
       "bucket": "⟨date⟩",
@@ -7253,14 +7310,17 @@
     "kpis": {
      "ca": 54,
      "cout_matiere": 0.86,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 53.14,
-     "marge_apres_com": 53.14,
-     "marge_nette": -222.014,
+     "marge_apres_com": 40.288,
+     "marge_nette": -234.866,
      "food_cost_pct": 2,
      "taux_marge_pct": 98,
-     "taux_marge_nette_pct": -411,
+     "taux_marge_nette_pct": -435,
      "nb_ventes": 1,
      "panier_moyen": 54,
      "pertes": 23.015,
@@ -7270,6 +7330,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7288,7 +7349,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      }
     ]
    },
@@ -7302,25 +7363,29 @@
      "coutMatierePct": 40
     },
     "kpis": {
-     "ca": 147,
-     "cout_matiere": 144.95,
-     "commissions": 0,
+     "ca": 54,
+     "cout_matiere": 0.86,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
-     "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
-     "food_cost_pct": 99,
-     "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
-     "nb_ventes": 3,
-     "panier_moyen": 49,
+     "marge_brute": 53.14,
+     "marge_apres_com": 40.288,
+     "marge_nette": -234.866,
+     "food_cost_pct": 2,
+     "taux_marge_pct": 98,
+     "taux_marge_nette_pct": -435,
+     "nb_ventes": 1,
+     "panier_moyen": 54,
      "pertes": 23.015,
-     "pertes_pct_ca": 15.7,
+     "pertes_pct_ca": 42.6,
      "deltas": {
       "ca": null,
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7337,21 +7402,9 @@
     "evolution": [
      {
       "bucket": "⟨date⟩",
-      "ca": 75,
-      "marge": 73.71,
-      "marge_apres_com": 73.71
-     },
-     {
-      "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
-     },
-     {
-      "bucket": "⟨date⟩",
-      "ca": 18,
-      "marge": -124.8,
-      "marge_apres_com": -124.8
+      "marge_apres_com": 40.288
      }
     ]
    },
@@ -7367,14 +7420,17 @@
     "kpis": {
      "ca": 129,
      "cout_matiere": 2.15,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 126.85,
-     "marge_apres_com": 126.85,
-     "marge_nette": -148.304,
+     "marge_apres_com": 113.998,
+     "marge_nette": -161.156,
      "food_cost_pct": 2,
      "taux_marge_pct": 98,
-     "taux_marge_nette_pct": -115,
+     "taux_marge_nette_pct": -125,
      "nb_ventes": 2,
      "panier_moyen": 64.5,
      "pertes": 23.015,
@@ -7384,6 +7440,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7408,7 +7465,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      }
     ]
    },
@@ -7424,14 +7481,17 @@
     "kpis": {
      "ca": 129,
      "cout_matiere": 2.15,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 126.85,
-     "marge_apres_com": 126.85,
-     "marge_nette": -148.304,
+     "marge_apres_com": 113.998,
+     "marge_nette": -161.156,
      "food_cost_pct": 2,
      "taux_marge_pct": 98,
-     "taux_marge_nette_pct": -115,
+     "taux_marge_nette_pct": -125,
      "nb_ventes": 2,
      "panier_moyen": 64.5,
      "pertes": 23.015,
@@ -7441,6 +7501,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7465,7 +7526,7 @@
       "bucket": "⟨date⟩",
       "ca": 54,
       "marge": 53.14,
-      "marge_apres_com": 53.14
+      "marge_apres_com": 40.288
      }
     ]
    },
@@ -7481,14 +7542,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -7498,6 +7562,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7507,9 +7572,9 @@
     "waterfall": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -273.104
+     "marge_nette": -285.956
     },
     "par_canal": [
      {
@@ -7517,19 +7582,23 @@
       "ca": 93,
       "cout": 144.09,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 93,
       "qte": 7,
       "marge_brute": -51.09,
       "marge_apres_com": -51.09,
       "food_cost_pct": 155
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -7538,10 +7607,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -7549,6 +7620,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7560,10 +7633,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -7571,6 +7646,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7583,10 +7660,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -7596,6 +7675,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7610,6 +7691,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7621,10 +7704,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      }
@@ -7635,10 +7720,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -7648,6 +7735,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7668,14 +7757,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -7685,6 +7777,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7694,9 +7787,9 @@
     "waterfall": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -273.104
+     "marge_nette": -285.956
     },
     "par_canal": [
      {
@@ -7704,19 +7797,23 @@
       "ca": 93,
       "cout": 144.09,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 93,
       "qte": 7,
       "marge_brute": -51.09,
       "marge_apres_com": -51.09,
       "food_cost_pct": 155
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -7725,10 +7822,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -7736,6 +7835,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7747,10 +7848,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -7758,6 +7861,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7770,10 +7875,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -7783,6 +7890,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7797,6 +7906,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7808,10 +7919,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      }
@@ -7822,10 +7935,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -7835,6 +7950,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7855,14 +7972,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -7872,6 +7992,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -7881,9 +8002,9 @@
     "waterfall": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -273.104
+     "marge_nette": -285.956
     },
     "par_canal": [
      {
@@ -7891,19 +8012,23 @@
       "ca": 93,
       "cout": 144.09,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 93,
       "qte": 7,
       "marge_brute": -51.09,
       "marge_apres_com": -51.09,
       "food_cost_pct": 155
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -7912,10 +8037,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -7923,6 +8050,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7934,10 +8063,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -7945,6 +8076,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7957,10 +8090,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -7970,6 +8105,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7984,6 +8121,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -7995,10 +8134,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      }
@@ -8009,10 +8150,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -8022,6 +8165,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8042,14 +8187,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -8059,6 +8207,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -8068,9 +8217,9 @@
     "waterfall": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -273.104
+     "marge_nette": -285.956
     },
     "par_canal": [
      {
@@ -8078,19 +8227,23 @@
       "ca": 93,
       "cout": 144.09,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 93,
       "qte": 7,
       "marge_brute": -51.09,
       "marge_apres_com": -51.09,
       "food_cost_pct": 155
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -8099,10 +8252,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -8110,6 +8265,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8121,10 +8278,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -8132,6 +8291,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8144,10 +8305,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -8157,6 +8320,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8171,6 +8336,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8182,10 +8349,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      }
@@ -8196,10 +8365,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -8209,6 +8380,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8229,14 +8402,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -8246,6 +8422,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -8255,9 +8432,9 @@
     "waterfall": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -273.104
+     "marge_nette": -285.956
     },
     "par_canal": [
      {
@@ -8265,19 +8442,23 @@
       "ca": 93,
       "cout": 144.09,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 93,
       "qte": 7,
       "marge_brute": -51.09,
       "marge_apres_com": -51.09,
       "food_cost_pct": 155
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -8286,10 +8467,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -8297,6 +8480,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8308,10 +8493,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -8319,6 +8506,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8331,10 +8520,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -8344,6 +8535,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8358,6 +8551,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8369,10 +8564,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      }
@@ -8383,10 +8580,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -8396,6 +8595,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8416,14 +8617,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -8433,6 +8637,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -8442,9 +8647,9 @@
     "waterfall": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -273.104
+     "marge_nette": -285.956
     },
     "par_canal": [
      {
@@ -8452,19 +8657,23 @@
       "ca": 93,
       "cout": 144.09,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 93,
       "qte": 7,
       "marge_brute": -51.09,
       "marge_apres_com": -51.09,
       "food_cost_pct": 155
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -8473,10 +8682,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -8484,6 +8695,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8495,10 +8708,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -8506,6 +8721,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8518,10 +8735,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -8531,6 +8750,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8545,6 +8766,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8556,10 +8779,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      }
@@ -8570,10 +8795,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -8583,6 +8810,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8603,14 +8832,17 @@
     "kpis": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
+     "marge_apres_com": -10.802,
+     "marge_nette": -285.956,
      "food_cost_pct": 99,
      "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
+     "taux_marge_nette_pct": -195,
      "nb_ventes": 3,
      "panier_moyen": 49,
      "pertes": 23.015,
@@ -8620,6 +8852,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -8629,9 +8862,9 @@
     "waterfall": {
      "ca": 147,
      "cout_matiere": 144.95,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -273.104
+     "marge_nette": -285.956
     },
     "par_canal": [
      {
@@ -8639,19 +8872,23 @@
       "ca": 93,
       "cout": 144.09,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 93,
       "qte": 7,
       "marge_brute": -51.09,
       "marge_apres_com": -51.09,
       "food_cost_pct": 155
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -8660,10 +8897,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -8671,6 +8910,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8682,10 +8923,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      },
      {
@@ -8693,6 +8936,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8705,10 +8950,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -8718,6 +8965,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8732,6 +8981,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8743,10 +8994,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      }
@@ -8757,10 +9010,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 87.8
      },
@@ -8770,6 +9025,8 @@
       "ca": 18,
       "cout": 142.8,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 18,
       "qte": 4,
       "marge_brute": -124.8,
       "marge_apres_com": -124.8,
@@ -8790,14 +9047,17 @@
     "kpis": {
      "ca": 54,
      "cout_matiere": 0.86,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 53.14,
-     "marge_apres_com": 53.14,
-     "marge_nette": -222.014,
+     "marge_apres_com": 40.288,
+     "marge_nette": -234.866,
      "food_cost_pct": 2,
      "taux_marge_pct": 98,
-     "taux_marge_nette_pct": -411,
+     "taux_marge_nette_pct": -435,
      "nb_ventes": 1,
      "panier_moyen": 54,
      "pertes": 23.015,
@@ -8807,6 +9067,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -8816,19 +9077,21 @@
     "waterfall": {
      "ca": 54,
      "cout_matiere": 0.86,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -222.014
+     "marge_nette": -234.866
     },
     "par_canal": [
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -8837,10 +9100,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -8849,10 +9114,12 @@
       "type": "produit",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -8862,10 +9129,12 @@
       "type": "produit",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2,
       "part_ca_pct": 100
      }
@@ -8876,10 +9145,12 @@
       "type": "produit",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2,
       "part_ca_pct": 100
      }
@@ -8890,10 +9161,12 @@
       "type": "produit",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2,
       "part_ca_pct": 100
      }
@@ -8909,25 +9182,29 @@
      "coutMatierePct": 40
     },
     "kpis": {
-     "ca": 147,
-     "cout_matiere": 144.95,
-     "commissions": 0,
+     "ca": 54,
+     "cout_matiere": 0.86,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
-     "marge_brute": 2.05,
-     "marge_apres_com": 2.05,
-     "marge_nette": -273.104,
-     "food_cost_pct": 99,
-     "taux_marge_pct": 1,
-     "taux_marge_nette_pct": -186,
-     "nb_ventes": 3,
-     "panier_moyen": 49,
+     "marge_brute": 53.14,
+     "marge_apres_com": 40.288,
+     "marge_nette": -234.866,
+     "food_cost_pct": 2,
+     "taux_marge_pct": 98,
+     "taux_marge_nette_pct": -435,
+     "nb_ventes": 1,
+     "panier_moyen": 54,
      "pertes": 23.015,
-     "pertes_pct_ca": 15.7,
+     "pertes_pct_ca": 42.6,
      "deltas": {
       "ca": null,
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -8935,154 +9212,100 @@
      }
     },
     "waterfall": {
-     "ca": 147,
-     "cout_matiere": 144.95,
-     "commissions": 0,
+     "ca": 54,
+     "cout_matiere": 0.86,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -273.104
+     "marge_nette": -234.866
     },
     "par_canal": [
      {
-      "canal": "Direct",
-      "ca": 93,
-      "cout": 144.09,
-      "commissions": 0,
-      "qte": 7,
-      "marge_brute": -51.09,
-      "marge_apres_com": -51.09,
-      "food_cost_pct": 155
-     },
-     {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
     "par_categorie": [
      {
       "categorie": "P. Vendable / Créations maison",
-      "ca": 129,
-      "cout": 2.15,
-      "commissions": 0,
-      "qte": 5,
-      "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "ca": 54,
+      "cout": 0.86,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
+      "qte": 2,
+      "marge_brute": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
-     },
-     {
-      "categorie": "Sans catégorie",
-      "ca": 18,
-      "cout": 142.8,
-      "commissions": 0,
-      "qte": 4,
-      "marge_brute": -124.8,
-      "marge_apres_com": -124.8,
-      "food_cost_pct": 793
      }
     ],
     "par_type": [
      {
       "type": "produit",
-      "ca": 129,
-      "cout": 2.15,
-      "commissions": 0,
-      "qte": 5,
-      "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "ca": 54,
+      "cout": 0.86,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
+      "qte": 2,
+      "marge_brute": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
-     },
-     {
-      "type": "valorise",
-      "ca": 18,
-      "cout": 142.8,
-      "commissions": 0,
-      "qte": 4,
-      "marge_brute": -124.8,
-      "marge_apres_com": -124.8,
-      "food_cost_pct": 793
      }
     ],
     "top_marge": [
      {
       "nom": "Assiette du jour",
       "type": "produit",
-      "ca": 129,
-      "cout": 2.15,
-      "commissions": 0,
-      "qte": 5,
-      "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "ca": 54,
+      "cout": 0.86,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
+      "qte": 2,
+      "marge_brute": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2,
-      "part_ca_pct": 87.8
-     },
-     {
-      "nom": "Café moulu",
-      "type": "valorise",
-      "ca": 18,
-      "cout": 142.8,
-      "commissions": 0,
-      "qte": 4,
-      "marge_brute": -124.8,
-      "marge_apres_com": -124.8,
-      "food_cost_pct": 793,
-      "part_ca_pct": 12.2
+      "part_ca_pct": 100
      }
     ],
     "flop_marge": [
      {
-      "nom": "Café moulu",
-      "type": "valorise",
-      "ca": 18,
-      "cout": 142.8,
-      "commissions": 0,
-      "qte": 4,
-      "marge_brute": -124.8,
-      "marge_apres_com": -124.8,
-      "food_cost_pct": 793,
-      "part_ca_pct": 12.2
-     },
-     {
       "nom": "Assiette du jour",
       "type": "produit",
-      "ca": 129,
-      "cout": 2.15,
-      "commissions": 0,
-      "qte": 5,
-      "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "ca": 54,
+      "cout": 0.86,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
+      "qte": 2,
+      "marge_brute": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2,
-      "part_ca_pct": 87.8
+      "part_ca_pct": 100
      }
     ],
     "produits": [
      {
       "nom": "Assiette du jour",
       "type": "produit",
-      "ca": 129,
-      "cout": 2.15,
-      "commissions": 0,
-      "qte": 5,
-      "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "ca": 54,
+      "cout": 0.86,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
+      "qte": 2,
+      "marge_brute": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2,
-      "part_ca_pct": 87.8
-     },
-     {
-      "nom": "Café moulu",
-      "type": "valorise",
-      "ca": 18,
-      "cout": 142.8,
-      "commissions": 0,
-      "qte": 4,
-      "marge_brute": -124.8,
-      "marge_apres_com": -124.8,
-      "food_cost_pct": 793,
-      "part_ca_pct": 12.2
+      "part_ca_pct": 100
      }
     ]
    },
@@ -9098,14 +9321,17 @@
     "kpis": {
      "ca": 129,
      "cout_matiere": 2.15,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 126.85,
-     "marge_apres_com": 126.85,
-     "marge_nette": -148.304,
+     "marge_apres_com": 113.998,
+     "marge_nette": -161.156,
      "food_cost_pct": 2,
      "taux_marge_pct": 98,
-     "taux_marge_nette_pct": -115,
+     "taux_marge_nette_pct": -125,
      "nb_ventes": 2,
      "panier_moyen": 64.5,
      "pertes": 23.015,
@@ -9115,6 +9341,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -9124,9 +9351,9 @@
     "waterfall": {
      "ca": 129,
      "cout_matiere": 2.15,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -148.304
+     "marge_nette": -161.156
     },
     "par_canal": [
      {
@@ -9134,19 +9361,23 @@
       "ca": 75,
       "cout": 1.29,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 75,
       "qte": 3,
       "marge_brute": 73.71,
       "marge_apres_com": 73.71,
       "food_cost_pct": 2
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -9155,10 +9386,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      }
     ],
@@ -9167,10 +9400,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      }
     ],
@@ -9180,10 +9415,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 100
      }
@@ -9194,10 +9431,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 100
      }
@@ -9208,10 +9447,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 100
      }
@@ -9229,14 +9470,17 @@
     "kpis": {
      "ca": 129,
      "cout_matiere": 2.15,
-     "commissions": 0,
+     "commissions": 10.8,
+     "tva_commissions": 2.052,
+     "ca_prestataires": 54,
+     "net_prestataires": 41.148,
      "charges": 275.154,
      "marge_brute": 126.85,
-     "marge_apres_com": 126.85,
-     "marge_nette": -148.304,
+     "marge_apres_com": 113.998,
+     "marge_nette": -161.156,
      "food_cost_pct": 2,
      "taux_marge_pct": 98,
-     "taux_marge_nette_pct": -115,
+     "taux_marge_nette_pct": -125,
      "nb_ventes": 2,
      "panier_moyen": 64.5,
      "pertes": 23.015,
@@ -9246,6 +9490,7 @@
       "marge_brute": null,
       "marge_apres_com": null,
       "marge_nette": null,
+      "net_prestataires": null,
       "pertes": null,
       "nb_ventes": null,
       "panier_moyen": null,
@@ -9255,9 +9500,9 @@
     "waterfall": {
      "ca": 129,
      "cout_matiere": 2.15,
-     "commissions": 0,
+     "commissions": 12.852,
      "charges": 275.154,
-     "marge_nette": -148.304
+     "marge_nette": -161.156
     },
     "par_canal": [
      {
@@ -9265,19 +9510,23 @@
       "ca": 75,
       "cout": 1.29,
       "commissions": 0,
+      "tva_commissions": 0,
+      "net": 75,
       "qte": 3,
       "marge_brute": 73.71,
       "marge_apres_com": 73.71,
       "food_cost_pct": 2
      },
      {
-      "canal": "Prestataire",
+      "canal": "Glovo",
       "ca": 54,
       "cout": 0.86,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 41.148,
       "qte": 2,
       "marge_brute": 53.14,
-      "marge_apres_com": 53.14,
+      "marge_apres_com": 40.288,
       "food_cost_pct": 2
      }
     ],
@@ -9286,10 +9535,12 @@
       "categorie": "P. Vendable / Créations maison",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      }
     ],
@@ -9298,10 +9549,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2
      }
     ],
@@ -9311,10 +9564,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 100
      }
@@ -9325,10 +9580,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 100
      }
@@ -9339,10 +9596,12 @@
       "type": "produit",
       "ca": 129,
       "cout": 2.15,
-      "commissions": 0,
+      "commissions": 10.8,
+      "tva_commissions": 2.052,
+      "net": 116.148,
       "qte": 5,
       "marge_brute": 126.85,
-      "marge_apres_com": 126.85,
+      "marge_apres_com": 113.998,
       "food_cost_pct": 2,
       "part_ca_pct": 100
      }
@@ -10629,7 +10888,7 @@
     },
     "kpis": {
      "total": 23.015,
-     "pct_ca": 15.7
+     "pct_ca": 42.6
     },
     "grain": "day",
     "par_type": [
@@ -11519,7 +11778,22 @@
       "nom": "Réserve Nord / Est"
      }
     ],
-    "prestataires": [],
+    "prestataires": [
+     {
+      "id": "⟨uuid⟩",
+      "nom": "Glovo"
+     }
+    ],
+    "modes_paiement": [
+     {
+      "id": "⟨id⟩",
+      "nom": "Espèces"
+     },
+     {
+      "id": "⟨id⟩",
+      "nom": "Virement"
+     }
+    ],
     "categories_produit": [
      {
       "id": "⟨id⟩",
@@ -11677,7 +11951,7 @@
        "total": 93
       },
       {
-       "canal": "Prestataire",
+       "canal": "Glovo",
        "total": 54
       }
      ],
@@ -11765,7 +12039,7 @@
        "total": 93
       },
       {
-       "canal": "Prestataire",
+       "canal": "Glovo",
        "total": 54
       }
      ]
@@ -13074,6 +13348,10 @@
       "created_at": "⟨date⟩",
       "prestataire_id": null,
       "prestataire_nom": null,
+      "taux_commission": null,
+      "taux_tva_commission": null,
+      "mode_paiement_id": null,
+      "mode_paiement": null,
       "created_by": "⟨id⟩",
       "created_by_nom": "Riad Zitouna Essai",
       "total_ca": 18,
@@ -13087,7 +13365,10 @@
         "article_type": "ingredient",
         "is_supplement": false
        }
-      ]
+      ],
+      "commission": 0,
+      "tva_commission": 0,
+      "net": 18
      },
      {
       "id": "⟨uuid⟩",
@@ -13096,8 +13377,12 @@
       "statut": "confirmee",
       "notes": null,
       "created_at": "⟨date⟩",
-      "prestataire_id": null,
-      "prestataire_nom": null,
+      "prestataire_id": "⟨uuid⟩",
+      "prestataire_nom": "Glovo",
+      "taux_commission": 20,
+      "taux_tva_commission": 19,
+      "mode_paiement_id": "⟨id⟩",
+      "mode_paiement": "Espèces",
       "created_by": "⟨id⟩",
       "created_by_nom": "Riad Zitouna Essai",
       "total_ca": 54,
@@ -13111,7 +13396,10 @@
         "article_type": "produit",
         "is_supplement": false
        }
-      ]
+      ],
+      "commission": 10.8,
+      "tva_commission": 2.052,
+      "net": 41.148
      },
      {
       "id": "⟨uuid⟩",
@@ -13122,6 +13410,10 @@
       "created_at": "⟨date⟩",
       "prestataire_id": null,
       "prestataire_nom": null,
+      "taux_commission": null,
+      "taux_tva_commission": null,
+      "mode_paiement_id": null,
+      "mode_paiement": null,
       "created_by": "⟨id⟩",
       "created_by_nom": "Riad Zitouna Essai",
       "total_ca": 75,
@@ -13135,7 +13427,10 @@
         "article_type": "produit",
         "is_supplement": false
        }
-      ]
+      ],
+      "commission": 0,
+      "tva_commission": 0,
+      "net": 75
      }
     ]
    },
@@ -15505,7 +15800,7 @@
      "icone": "📊",
      "partie": "Gestion",
      "ordre": 70,
-     "contenu": "## 📊 Le Tableau de bord\n\nLe tableau de bord est votre poste de pilotage : ventes, marges, achats, stocks, pertes et labo, réunis sur une seule page. Tous les montants sont exprimés en **TTC**. Vous y accédez depuis le menu latéral, entrée **Tableau de bord**.\n\n### Les cinq onglets\n\n- **Vue d'ensemble** — les indicateurs clés de la période avec leur évolution par rapport à la période précédente, les alertes (stock sous seuil, food cost élevé — au-delà du **seuil de coût matière de votre domaine**, 40 % par défaut —, inventaire ancien) et la courbe d'évolution du CA et des marges.\n- **Ventes & marges** — l'analyse fine de votre rentabilité : marges par canal de vente, par catégorie de produits, par type (produits, suppléments, valorisés), meilleures et plus faibles marges, et le détail triable produit par produit.\n- **Achats & stock** — vos achats par catégorie et par fournisseur, les réceptions en provenance du labo, la valeur du stock par catégorie, les alertes de seuil détaillées et les derniers inventaires.\n- **Pertes** — les pertes **consolidées de vos activités et de vos labos** : par type (les types de perte de votre domaine : avarie/déchet par défaut), par site, par catégorie, articles les plus perdus, et leur poids par rapport au CA.\n- **Labo** — la production de produits transformés, les transferts émis vers chaque activité, les cessions internes vers les labos rattachés, le stock, les pertes et les ventes du labo. (Cet onglet n'apparaît que si vous avez un labo.)\n\n### Les filtres\n\nChaque filtre est **multi-sélection** : cochez une ou plusieurs valeurs (activités, types de vente, prestataires, catégories de produits ou d'articles, familles, fournisseurs…). Sans coche, tout est pris en compte. Les filtres proposés s'adaptent à l'onglet affiché.\n\n1. Choisissez la **période** : mois en cours, 7 ou 30 jours, mois dernier, trimestre, année, ou des dates personnalisées.\n2. Combinez les filtres, par exemple : *marges des catégories « Pâtisseries » et « Boissons » vendues via prestataire sur le trimestre*.\n3. Le bouton **✕ Réinitialiser** efface tous les filtres. Vos choix sont conservés (et l'adresse de la page peut être partagée telle quelle).\n\n### La marge à trois étages\n\n:::formule Du CA à la marge nette\nMarge brute = CA − coût matière\nMarge après commissions = marge brute − commissions prestataires\nMarge nette estimée = marge après commissions − prorata des charges fixes\nnote: commissions = taux configuré par activité et prestataire ; charges = charges fixes annuelles ramenées à la période.\n:::\n\n- Le **coût matière** de chaque vente est figé au moment de la vente (voir [Coût de revient d'une recette](#calc-cout-recette)) ; le badge de coût matière d'un produit passe au vert, à l'orange puis au rouge selon le seuil de votre domaine (40 % par défaut : orange dès seuil − 10 points, rouge au-delà du seuil).\n- La **cascade** de l'onglet Ventes & marges visualise chaque étage, du CA jusqu'à la marge nette.\n\n:::astuce\nChaque indicateur affiche son évolution (▲/▼) par rapport à la période précédente de même durée. Le bouton **📥 Exporter (Excel)** télécharge les données de l'onglet affiché, filtres compris.\n:::\n\n:::attention\nLa marge nette est une **estimation** : elle répartit vos charges fixes annuelles au prorata de la période, indépendamment des filtres de catégories ou de canaux.\n:::\n\n### Voir aussi\n\n- [Comprendre la valeur du stock](#calc-valeur-stock)\n- [Les prix et le PV](#calc-prix)\n- [Saisie des ventes](#saisie-ventes)",
+     "contenu": "## 📊 Le Tableau de bord\n\nLe tableau de bord est votre poste de pilotage : ventes, marges, achats, stocks, pertes et labo, réunis sur une seule page. Tous les montants sont exprimés en **TTC**. Vous y accédez depuis le menu latéral, entrée **Tableau de bord**.\n\n### Les cinq onglets\n\n- **Vue d'ensemble** — les indicateurs clés de la période avec leur évolution par rapport à la période précédente (dont le **Net prestataires** : leur CA moins les commissions et la TVA sur les commissions), les alertes (stock sous seuil, food cost élevé — au-delà du **seuil de coût matière de votre domaine**, 40 % par défaut —, inventaire ancien) et la courbe d'évolution du CA et des marges.\n- **Ventes & marges** — l'analyse fine de votre rentabilité : marges par canal de vente, par catégorie de produits, par type (produits, suppléments, valorisés), meilleures et plus faibles marges, et le détail triable produit par produit.\n- **Achats & stock** — vos achats par catégorie et par fournisseur, les réceptions en provenance du labo, la valeur du stock par catégorie, les alertes de seuil détaillées et les derniers inventaires.\n- **Pertes** — les pertes **consolidées de vos activités et de vos labos** : par type (les types de perte de votre domaine : avarie/déchet par défaut), par site, par catégorie, articles les plus perdus, et leur poids par rapport au CA.\n- **Labo** — la production de produits transformés, les transferts émis vers chaque activité, les cessions internes vers les labos rattachés, le stock, les pertes et les ventes du labo. (Cet onglet n'apparaît que si vous avez un labo.)\n\n### Les filtres\n\nChaque filtre est **multi-sélection** : cochez une ou plusieurs valeurs (activités, types de vente, prestataires, modes de paiement, catégories de produits ou d'articles, familles, fournisseurs…). Sans coche, tout est pris en compte. Les filtres proposés s'adaptent à l'onglet affiché. Le filtre **Mode de paiement** retient les ventes par prestataire dont le mode (Espèces, Virement…) était celui-là le jour de la saisie.\n\n1. Choisissez la **période** : mois en cours, 7 ou 30 jours, mois dernier, trimestre, année, ou des dates personnalisées.\n2. Combinez les filtres, par exemple : *marges des catégories « Pâtisseries » et « Boissons » vendues via prestataire sur le trimestre*.\n3. Le bouton **✕ Réinitialiser** efface tous les filtres. Vos choix sont conservés (et l'adresse de la page peut être partagée telle quelle).\n\n### La marge à trois étages\n\n:::formule Du CA à la marge nette\nMarge brute = CA − coût matière\nMarge après commissions = marge brute − commissions prestataires − TVA sur ces commissions\nMarge nette estimée = marge après commissions − prorata des charges fixes\nnote: commission et TVA aux taux figés sur chaque vente le jour de sa saisie (conditions du prestataire pour l'activité) ; charges = charges fixes annuelles ramenées à la période.\n:::\n\n:::formule Net prestataires\nNet prestataires = CA des ventes par prestataire − commissions − TVA sur les commissions\nnote: la carte de la vue d'ensemble et de l'onglet Ventes & marges ; le tableau par canal donne la commission, la TVA et le net de chaque prestataire. Filtrez par prestataire ou par mode de paiement pour suivre un canal.\n:::\n\n- Le **coût matière** de chaque vente est figé au moment de la vente (voir [Coût de revient d'une recette](#calc-cout-recette)) ; le badge de coût matière d'un produit passe au vert, à l'orange puis au rouge selon le seuil de votre domaine (40 % par défaut : orange dès seuil − 10 points, rouge au-delà du seuil).\n- La **cascade** de l'onglet Ventes & marges visualise chaque étage, du CA jusqu'à la marge nette.\n\n:::astuce\nChaque indicateur affiche son évolution (▲/▼) par rapport à la période précédente de même durée. Le bouton **📥 Exporter (Excel)** télécharge les données de l'onglet affiché, filtres compris.\n:::\n\n:::attention\nLa marge nette est une **estimation** : elle répartit vos charges fixes annuelles au prorata de la période, indépendamment des filtres de catégories ou de canaux.\n:::\n\n### Voir aussi\n\n- [Comprendre la valeur du stock](#calc-valeur-stock)\n- [Les prix et le PV](#calc-prix)\n- [Saisie des ventes](#saisie-ventes)",
      "motsCles": "tableau de bord, dashboard, kpi, filtres, marge, marge nette, commissions, charges, food cost, export excel, comparaison, cascade, onglets",
      "ecran": "/client/dashboard",
      "visibleGerant": true,
@@ -15883,7 +16178,7 @@
      "icone": "💲",
      "partie": "Espace Vente",
      "ordre": 60,
-     "contenu": "## 💲 Configuration Vente\n\nCet écran est le point de départ de l'Espace Vente : vous y choisissez les articles proposés à la vente et fixez leurs prix, pour la vente directe au comptoir comme pour chaque prestataire de livraison. Vous le trouvez dans le menu **Espace Vente → Configuration Vente**.\n\n### Activer le module Vente\n\nL'Espace Vente est une option de votre abonnement. Tant qu'il n'est pas activé, un écran « Module Vente non activé » s'affiche à la place :\n\n1. Cliquez sur **🚀 Demander l'activation**.\n2. Un message « Demande envoyée — en attente de validation » confirme l'envoi ; l'activation est réalisée par l'administrateur sous 24 h.\n3. Suivez le statut de votre demande dans [Mon Abonnement](#abonnement).\n\n### Ce que vous voyez\n\n- Un **sélecteur d'activité** : chaque activité a sa propre configuration de prix.\n- Deux raccourcis dans l'en-tête : **🛵 Prestataires** et **🏗️ Charges**.\n- Quatre onglets : **🛍️ Vente Produits**, **🧂 Ventes Suppléments** et **💎 Ventes Valorisées** (chacun avec son compteur d'articles), plus **📋 Historique config**.\n- Dans chaque onglet de saisie, un tableau groupé par **catégorie de produit** avec les colonnes *Produit*, *Vendable* (case à cocher), *🏪 Prix direct*, puis une colonne *🛵* par prestataire actif.\n- Une barre d'outils : recherche par nom, filtre par prestataire, bouton **✕ Réinitialiser**, compteur d'articles et bouton **💾 Enregistrer** affichant le nombre de modifications en attente.\n\n### Actions pas à pas\n\nRendre un article vendable et fixer son prix :\n\n1. Cochez la case **Vendable** : l'article entre au catalogue de vente, encore inactif.\n2. Saisissez son **prix direct** en DT, puis cliquez sur **💾 Enregistrer**.\n3. Cochez à nouveau **Vendable** pour l'activer : tant qu'aucun prix supérieur à 0 n'est enregistré, la case reste bloquée.\n4. Une fois l'article actif, saisissez si besoin un **prix dédié par prestataire**, puis enregistrez.\n\nGérer les canaux prestataires (bouton **🛵 Prestataires**) :\n\n1. Sélectionnez l'activité concernée.\n2. Activez ou désactivez chaque prestataire de livraison avec l'interrupteur ; le nombre de prestataires actifs s'affiche dans l'en-tête.\n3. La liste des prestataires disponibles est gérée par l'administrateur : si elle est vide, contactez le [support](#support).\n\nConsulter l'onglet **📋 Historique config** : chaque enregistrement de prix y est tracé (produit, type, prix enregistré, date, auteur). Vous pouvez filtrer par nom, type et période, actualiser la liste, supprimer une entrée, et exporter en Excel avec **Exporter XLS** — en cochant des lignes au préalable, seules celles-ci sont exportées.\n\n### Points d'attention\n\n:::attention\nLe prix de chaque prestataire est **saisi manuellement**, article par article : il n'y a ni commission ni calcul automatique. Un prix prestataire non renseigné empêche de valoriser correctement les ventes passées par ce canal.\n:::\n\n:::attention\nSans prestataire actif pour l'activité, les colonnes prestataires n'apparaissent pas : un bandeau vous propose alors de configurer les prestataires.\n:::\n\n:::astuce\nLe bouton 💾 Enregistrer affiche le nombre de prix modifiés non sauvegardés : enregistrez avant de changer d'onglet ou d'activité pour ne rien perdre.\n:::\n\n### Voir aussi\n\n- [Saisie des ventes](#saisie-ventes) — utiliser ces prix au quotidien\n- [Produits vendables](#produits-vendables) et [Articles valorisés](#articles-valorises) — créer les articles à vendre\n- [Charges](#charges) — compléter votre configuration de rentabilité\n- [Comprendre les prix](#calc-prix) et [HT / TTC](#calc-ht-ttc)",
+     "contenu": "## 💲 Configuration Vente\n\nCet écran est le point de départ de l'Espace Vente : vous y choisissez les articles proposés à la vente et fixez leurs prix, pour la vente directe au comptoir comme pour chaque prestataire de livraison. Vous le trouvez dans le menu **Espace Vente → Configuration Vente**.\n\n### Activer le module Vente\n\nL'Espace Vente est une option de votre abonnement. Tant qu'il n'est pas activé, un écran « Module Vente non activé » s'affiche à la place :\n\n1. Cliquez sur **🚀 Demander l'activation**.\n2. Un message « Demande envoyée — en attente de validation » confirme l'envoi ; l'activation est réalisée par l'administrateur sous 24 h.\n3. Suivez le statut de votre demande dans [Mon Abonnement](#abonnement).\n\n### Ce que vous voyez\n\n- Un **sélecteur d'activité** : chaque activité a sa propre configuration de prix.\n- Deux raccourcis dans l'en-tête : **🛵 Prestataires** et **🏗️ Charges**.\n- Quatre onglets : **🛍️ Vente Produits**, **🧂 Ventes Suppléments** et **💎 Ventes Valorisées** (chacun avec son compteur d'articles), plus **📋 Historique config**.\n- Dans chaque onglet de saisie, un tableau groupé par **catégorie de produit** avec les colonnes *Produit*, *Vendable* (case à cocher), *🏪 Prix direct*, puis une colonne *🛵* par prestataire actif.\n- Une barre d'outils : recherche par nom, filtre par prestataire, bouton **✕ Réinitialiser**, compteur d'articles et bouton **💾 Enregistrer** affichant le nombre de modifications en attente.\n\n### Actions pas à pas\n\nRendre un article vendable et fixer son prix :\n\n1. Cochez la case **Vendable** : l'article entre au catalogue de vente, encore inactif.\n2. Saisissez son **prix direct** en DT, puis cliquez sur **💾 Enregistrer**.\n3. Cochez à nouveau **Vendable** pour l'activer : tant qu'aucun prix supérieur à 0 n'est enregistré, la case reste bloquée.\n4. Une fois l'article actif, saisissez si besoin un **prix dédié par prestataire**, puis enregistrez.\n\nGérer les canaux prestataires (bouton **🛵 Prestataires**) :\n\n1. Sélectionnez l'activité concernée.\n2. Activez chaque prestataire de livraison avec l'interrupteur : une fenêtre demande ses **conditions** — la **commission** (%), la **TVA** (%) sur cette commission et le **mode de paiement** (Espèces, Virement… liste tenue par l'administrateur). Un exemple sur 100 DT montre le net obtenu.\n3. Les conditions s'affichent sous le nom du prestataire ; **✏️ Modifier les conditions** les change pour les ventes à venir. Les ventes déjà enregistrées gardent les conditions du jour de leur saisie.\n4. Désactiver un prestataire **efface ses conditions et ses prix** pour l'activité : une confirmation le rappelle, avec le nombre de prix concernés.\n5. La liste des prestataires disponibles et celle des modes de paiement sont gérées par l'administrateur : si elles sont vides, contactez le [support](#support).\n\nUn prestataire activé avant l'arrivée des conditions porte la mention **⚠ Conditions à renseigner** : tant qu'elles manquent, la saisie des ventes sur ce canal est refusée.\n\nConsulter l'onglet **📋 Historique config** : chaque enregistrement de prix y est tracé (produit, type, prix enregistré, date, auteur). Vous pouvez filtrer par nom, type et période, actualiser la liste, supprimer une entrée, et exporter en Excel avec **Exporter XLS** — en cochant des lignes au préalable, seules celles-ci sont exportées.\n\n### Points d'attention\n\n:::attention\nLe prix de chaque prestataire est **saisi manuellement**, article par article : la commission ne calcule aucun prix. Elle sert, avec la TVA, au **chiffre net** du prestataire dans le [tableau de bord](#dashboard) : net = prix de vente − commission − TVA sur la commission. Un prix prestataire non renseigné empêche de valoriser correctement les ventes passées par ce canal.\n:::\n\n:::attention\nSans prestataire actif pour l'activité, les colonnes prestataires n'apparaissent pas : un bandeau vous propose alors de configurer les prestataires.\n:::\n\n:::astuce\nLe bouton 💾 Enregistrer affiche le nombre de prix modifiés non sauvegardés : enregistrez avant de changer d'onglet ou d'activité pour ne rien perdre.\n:::\n\n### Voir aussi\n\n- [Saisie des ventes](#saisie-ventes) — utiliser ces prix au quotidien\n- [Produits vendables](#produits-vendables) et [Articles valorisés](#articles-valorises) — créer les articles à vendre\n- [Charges](#charges) — compléter votre configuration de rentabilité\n- [Comprendre les prix](#calc-prix) et [HT / TTC](#calc-ht-ttc)",
      "motsCles": "configuration vente, prix de vente, prix direct, prestataire, livraison, vendable, activation module, canaux, tarifs, historique des prix, catalogue vente, supplément",
      "ecran": "/client/ventes/configuration",
      "visibleGerant": true,
@@ -15911,7 +16206,7 @@
      "icone": "🛒",
      "partie": "Espace Vente",
      "ordre": 62,
-     "contenu": "## 🛒 Saisie des ventes\n\nCet écran vous permet d'enregistrer les ventes quotidiennes de chaque activité — en vente directe au comptoir comme via vos prestataires de livraison — puis d'en consulter l'historique complet. Vous le trouvez dans le menu **Espace Vente → Ventes Activités**.\n\n### Ce que vous voyez\n\n- Un **sélecteur d'activité** et deux raccourcis : **⚙️ Configuration** et **📊 Rapport**.\n- Quatre onglets : **📝 Saisie des ventes produits**, **🧂 Saisie des ventes suppléments**, **💎 Saisie des ventes valorisées** et **📋 Historique**.\n- Dans chaque onglet de saisie, un tableau groupé par **catégorie** avec les colonnes *Article* (et son unité), *Prix vente*, *🏪 Qté directe*, puis une colonne *🛵* par prestataire actif.\n- Une barre d'outils : recherche par nom, champ **Date de vente** et bouton **✓ Confirmer les ventes**.\n- En bas du tableau, le **CA total** de votre saisie, mis à jour en direct.\n\n### Actions pas à pas\n\nEnregistrer les ventes d'une journée :\n\n1. Choisissez l'activité, puis l'onglet correspondant au type d'article (produits, suppléments ou valorisés).\n2. Vérifiez la **date de vente** : la date du jour est proposée par défaut, modifiable pour une saisie a posteriori.\n3. Saisissez les quantités vendues dans la colonne **🏪 Qté directe** et/ou dans la colonne de chaque prestataire.\n4. Contrôlez le **CA total** en bas de tableau.\n5. Cliquez sur **✓ Confirmer les ventes** : une fenêtre rappelle que la vente déduira directement le stock de l'activité ; validez avec **✓ Confirmer**.\n\nConsulter et gérer l'historique (onglet 📋) :\n\n1. Filtrez par période (**Du / Au**), **type de vente** (directe ou prestataire), **type de produit** (produit, supplément, valorisé) et **prestataire**.\n2. Chaque ligne détaille l'article, son badge de type, le canal (🏪 Directe ou 🛵 nom du prestataire), la quantité, le CA avec le prix unitaire appliqué, et l'auteur de la saisie.\n3. Cliquez sur **Exporter XLS** pour télécharger l'historique en Excel ; cochez d'abord des lignes pour n'exporter que celles-ci.\n4. Le bouton **Annuler** d'une ligne supprime la vente et **réintègre les quantités en stock** (une confirmation est demandée).\n\n### Calculs\n\n:::formule Chiffre d'affaires d'une ligne\nCA = quantité vendue × prix de vente du canal\nnote: prix direct pour la vente au comptoir, prix prestataire configuré pour chaque prestataire.\n:::\n\nÀ la confirmation, les quantités vendues sont déduites du stock de l'activité : les articles valorisés directement, les produits et suppléments via la décomposition de leur fiche technique (articles et sous-produits transformés) ; un produit préparé au labo est, lui, déduit tel quel du stock de produits transformés de l'activité. La marge dégagée est ensuite analysée dans le [rapport de vente](#rapports-vente).\n\n### Points d'attention\n\n:::attention\nConfigurez le **prix prestataire** de chaque article avant de saisir des quantités sur ce canal : une quantité saisie sans prix configuré est valorisée à 0 DT dans le chiffre d'affaires.\n:::\n\n:::attention\nLa confirmation déduit immédiatement le stock. En cas d'erreur, utilisez le bouton **Annuler** dans l'historique : la vente est supprimée et le stock réintégré. Un gérant ne peut annuler que les ventes qu'il a lui-même saisies.\n:::\n\n:::astuce\nSeuls les articles **activés** en Configuration Vente apparaissent dans les tableaux de saisie. Si un tableau est vide, un lien vous mène directement à l'écran de configuration des prix.\n:::\n\n### Voir aussi\n\n- [Configuration Vente](#configuration-vente) — activer les articles et fixer les prix\n- [Ventes Labo](#ventes-labo) — le pendant côté laboratoire\n- [Rapports de vente](#rapports-vente) — analyser CA et marges\n- [Stock des activités](#stock-activites) et [Fiches techniques](#fiches-techniques) — comprendre le déstockage",
+     "contenu": "## 🛒 Saisie des ventes\n\nCet écran vous permet d'enregistrer les ventes quotidiennes de chaque activité — en vente directe au comptoir comme via vos prestataires de livraison — puis d'en consulter l'historique complet. Vous le trouvez dans le menu **Espace Vente → Ventes Activités**.\n\n### Ce que vous voyez\n\n- Un **sélecteur d'activité** et deux raccourcis : **⚙️ Configuration** et **📊 Rapport**.\n- Quatre onglets : **📝 Saisie des ventes produits**, **🧂 Saisie des ventes suppléments**, **💎 Saisie des ventes valorisées** et **📋 Historique**.\n- Dans chaque onglet de saisie, un tableau groupé par **catégorie** avec les colonnes *Article* (et son unité), *Prix vente*, *🏪 Qté directe*, puis une colonne *🛵* par prestataire actif.\n- Une barre d'outils : recherche par nom, champ **Date de vente** et bouton **✓ Confirmer les ventes**.\n- En bas du tableau, le **CA total** de votre saisie, mis à jour en direct.\n\n### Actions pas à pas\n\nEnregistrer les ventes d'une journée :\n\n1. Choisissez l'activité, puis l'onglet correspondant au type d'article (produits, suppléments ou valorisés).\n2. Vérifiez la **date de vente** : la date du jour est proposée par défaut, modifiable pour une saisie a posteriori.\n3. Saisissez les quantités vendues dans la colonne **🏪 Qté directe** et/ou dans la colonne de chaque prestataire.\n4. Contrôlez le **CA total** en bas de tableau.\n5. Cliquez sur **✓ Confirmer les ventes** : une fenêtre rappelle que la vente déduira directement le stock de l'activité ; validez avec **✓ Confirmer**.\n\nConsulter et gérer l'historique (onglet 📋) :\n\n1. Filtrez par période (**Du / Au**), **type de vente** (directe ou prestataire), **type de produit** (produit, supplément, valorisé) et **prestataire**.\n2. Chaque ligne détaille l'article, son badge de type, le canal (🏪 Directe ou 🛵 nom du prestataire, avec la commission, la TVA et le mode de paiement figés le jour de la saisie), la quantité, le CA avec le prix unitaire appliqué, et l'auteur de la saisie.\n3. Cliquez sur **Exporter XLS** pour télécharger l'historique en Excel (CA, commission, TVA sur la commission, net, mode de paiement) ; cochez d'abord des lignes pour n'exporter que celles-ci.\n4. Le bouton **Annuler** d'une ligne supprime la vente et **réintègre les quantités en stock** (une confirmation est demandée).\n\n### Calculs\n\n:::formule Chiffre d'affaires d'une ligne\nCA = quantité vendue × prix de vente du canal\nnote: prix direct pour la vente au comptoir, prix prestataire configuré pour chaque prestataire.\n:::\n\n:::formule Chiffre net d'une vente par prestataire\nNet = CA − commission − TVA sur la commission\nnote: aux taux du prestataire le jour de la saisie (30 DT à 25 % et TVA 19 % : commission 7,500, TVA 1,425, net 21,075). Changer les conditions ensuite ne touche pas les ventes passées.\n:::\n\nÀ la confirmation, les quantités vendues sont déduites du stock de l'activité : les articles valorisés directement, les produits et suppléments via la décomposition de leur fiche technique (articles et sous-produits transformés) ; un produit préparé au labo est, lui, déduit tel quel du stock de produits transformés de l'activité. La marge dégagée est ensuite analysée dans le [rapport de vente](#rapports-vente).\n\n### Points d'attention\n\n:::attention\nConfigurez le **prix prestataire** de chaque article avant de saisir des quantités sur ce canal : une quantité saisie sans prix configuré est valorisée à 0 DT dans le chiffre d'affaires. Un prestataire dont les **conditions** (commission, TVA, mode de paiement) ne sont pas renseignées refuse la saisie : renseignez-les d'abord dans Config Prestataires.\n:::\n\n:::attention\nLa confirmation déduit immédiatement le stock. En cas d'erreur, utilisez le bouton **Annuler** dans l'historique : la vente est supprimée et le stock réintégré. Un gérant ne peut annuler que les ventes qu'il a lui-même saisies.\n:::\n\n:::astuce\nSeuls les articles **activés** en Configuration Vente apparaissent dans les tableaux de saisie. Si un tableau est vide, un lien vous mène directement à l'écran de configuration des prix.\n:::\n\n### Voir aussi\n\n- [Configuration Vente](#configuration-vente) — activer les articles et fixer les prix\n- [Ventes Labo](#ventes-labo) — le pendant côté laboratoire\n- [Rapports de vente](#rapports-vente) — analyser CA et marges\n- [Stock des activités](#stock-activites) et [Fiches techniques](#fiches-techniques) — comprendre le déstockage",
      "motsCles": "ventes, saisie, quantités, vente directe, prestataire, chiffre d affaires, déstockage, historique, annulation, export excel, suppléments, valorisés",
      "ecran": "/client/ventes",
      "visibleGerant": true,

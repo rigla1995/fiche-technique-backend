@@ -13,9 +13,11 @@ const { vocabDefaut } = require('../utils/vocab');
 //   catArticles, familles, fournisseurs, typesPerte (avarie|dechet),
 //   sources (client|portail — type de vente de l'onglet Acheteurs B2B)
 // Tout en TTC. Marge à 3 étages : brute (CA − coût matière figé par ligne),
-// après commissions (taux prestataire par activité), nette estimée
-// (− prorata des charges fixes ANNUELLES sur la période).
+// après commissions (commission et TVA sur la commission, aux taux FIGÉS sur chaque vente — P2, migration 238),
+// nette estimée (− prorata des charges fixes ANNUELLES sur la période). Chiffre net des prestataires = CA par
+// prestataire − commissions − TVA sur les commissions ; filtre modesPaiement (ids, figés sur la vente).
 // ─────────────────────────────────────────────────────────────────────────────
+const { SQL_COMMISSION_LIGNE, SQL_TVA_COMMISSION_LIGNE } = require('../utils/conditionsPrestataire');
 
 const num = (v) => (v == null ? 0 : parseFloat(v));
 const r3 = (v) => Math.round(v * 1000) / 1000;
@@ -90,12 +92,14 @@ const VENTE_FROM = `
    JOIN vente_lignes vl ON vl.vente_id = v.id
    LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
    LEFT JOIN articles art ON vl.article_type = 'ingredient' AND art.id = vl.article_id
-   LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
-   LEFT JOIN activite_prestataires ap ON ap.activite_id = v.activite_id AND ap.prestataire_id = v.prestataire_id`;
+   LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id`;
 
 const L_CA = 'vl.quantite * vl.prix_unitaire';
 const L_COUT = 'vl.quantite * COALESCE(vl.cout_unitaire, 0)';
-const L_COMMISSION = `CASE WHEN v.type_vente = 'prestataire' THEN vl.quantite * vl.prix_unitaire * COALESCE(ap.taux_commission, 0) / 100 ELSE 0 END`;
+// Commission et TVA sur la commission aux taux figés sur la vente (jamais ceux du prestataire aujourd'hui).
+const L_COMMISSION = SQL_COMMISSION_LIGNE;
+const L_TVA_COM = SQL_TVA_COMMISSION_LIGNE;
+const L_CA_PRESTATAIRE = `CASE WHEN v.type_vente = 'prestataire' THEN ${L_CA} ELSE 0 END`;
 const L_TYPE = `CASE WHEN vl.article_type = 'ingredient' OR p.origine = 'labo' THEN 'valorise' WHEN COALESCE(p.is_supplement, FALSE) THEN 'supplement' ELSE 'produit' END`;
 const L_NOM = `COALESCE(p.nom, art.nom, '—')`;
 const lCanal = (n) => `CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, $${n}) END`;
@@ -114,6 +118,9 @@ const buildVenteFilters = (req, actIds, from, to) => {
   if (canaux.length === 1) { params.push(canaux[0]); cond.push(`v.type_vente = $${params.length}`); }
   const prests = parseStrList(req.query.prestataires).filter(isUuid);
   if (prests.length) { params.push(prests); cond.push(`v.prestataire_id = ANY($${params.length}::uuid[])`); }
+  // P2 : mode de paiement figé sur la vente (ventes par prestataire seulement).
+  const modes = parseIntList(req.query.modesPaiement);
+  if (modes.length) { params.push(modes); cond.push(`v.mode_paiement_id = ANY($${params.length}::int[])`); }
   const cats = parseIntList(req.query.catProduits);
   if (cats.length) { params.push(cats); cond.push(`${L_CAT_ID} = ANY($${params.length}::int[])`); }
   const types = parseStrList(req.query.typesProduit).filter((t) => ['produit', 'supplement', 'valorise'].includes(t));
@@ -123,16 +130,20 @@ const buildVenteFilters = (req, actIds, from, to) => {
 
 // Agrégat ventes (CA, coût matière, commissions, nb) sur une période.
 const venteAgg = async (req, actIds, from, to) => {
-  if (actIds.length === 0) return { ca: 0, cout: 0, commission: 0, nb: 0 };
+  if (actIds.length === 0) return { ca: 0, cout: 0, commission: 0, tvaCommission: 0, caPrestataires: 0, nb: 0 };
   const { where, params } = buildVenteFilters(req, actIds, from, to);
   const r = await pool.query(
     `SELECT COALESCE(SUM(${L_CA}),0) AS ca, COALESCE(SUM(${L_COUT}),0) AS cout,
-            COALESCE(SUM(${L_COMMISSION}),0) AS commission, COUNT(DISTINCT v.id) AS nb
+            COALESCE(SUM(${L_COMMISSION}),0) AS commission, COALESCE(SUM(${L_TVA_COM}),0) AS tva_commission,
+            COALESCE(SUM(${L_CA_PRESTATAIRE}),0) AS ca_prestataires, COUNT(DISTINCT v.id) AS nb
      ${VENTE_FROM} WHERE ${where}`,
     params
   );
   const row = r.rows[0];
-  return { ca: num(row.ca), cout: num(row.cout), commission: num(row.commission), nb: parseInt(row.nb, 10) || 0 };
+  return {
+    ca: num(row.ca), cout: num(row.cout), commission: num(row.commission), tvaCommission: num(row.tva_commission),
+    caPrestataires: num(row.ca_prestataires), nb: parseInt(row.nb, 10) || 0,
+  };
 };
 
 // Charges fixes ANNUELLES des activités du périmètre → prorata sur la période.
@@ -181,10 +192,12 @@ const margesKpis = async (req, ctx, from, to) => {
   ]);
   const build = (v, ch, pertes) => {
     const margeBrute = v.ca - v.cout;
-    const margeApresCom = margeBrute - v.commission;
+    // P2 : la TVA sur les commissions est, comme elles, retirée de la marge et du net des prestataires.
+    const margeApresCom = margeBrute - v.commission - v.tvaCommission;
     const margeNette = margeApresCom - ch;
     return {
-      ca: r3(v.ca), cout_matiere: r3(v.cout), commissions: r3(v.commission),
+      ca: r3(v.ca), cout_matiere: r3(v.cout), commissions: r3(v.commission), tva_commissions: r3(v.tvaCommission),
+      ca_prestataires: r3(v.caPrestataires), net_prestataires: r3(v.caPrestataires - v.commission - v.tvaCommission),
       charges: r3(ch), marge_brute: r3(margeBrute), marge_apres_com: r3(margeApresCom),
       marge_nette: r3(margeNette),
       food_cost_pct: v.ca > 0 ? Math.round((v.cout / v.ca) * 100) : null,
@@ -204,6 +217,7 @@ const margesKpis = async (req, ctx, from, to) => {
     marge_apres_com: deltaPct(kpis.marge_apres_com, kprev.marge_apres_com),
     // Un delta en % n'a de sens que sur une base strictement positive.
     marge_nette: deltaPct(kpis.marge_nette, kprev.marge_nette),
+    net_prestataires: deltaPct(kpis.net_prestataires, kprev.net_prestataires),
     pertes: deltaPct(kpis.pertes, kprev.pertes),
     nb_ventes: deltaPct(kpis.nb_ventes, kprev.nb_ventes),
     panier_moyen: deltaPct(kpis.panier_moyen, kprev.panier_moyen),
@@ -284,7 +298,7 @@ const tabOverview = async (req, ctx, from, to) => {
           `SELECT to_char(date_trunc('${grain}', v.date_vente), 'YYYY-MM-DD') AS bucket,
                   COALESCE(SUM(${L_CA}),0) AS ca,
                   COALESCE(SUM(${L_CA} - ${L_COUT}),0) AS marge,
-                  COALESCE(SUM(${L_COMMISSION}),0) AS commission
+                  COALESCE(SUM(${L_COMMISSION} + ${L_TVA_COM}),0) AS commission
            ${VENTE_FROM} WHERE ${where} GROUP BY 1 ORDER BY 1`,
           params
         )
@@ -346,12 +360,13 @@ const tabVentes = async (req, ctx, from, to) => {
   const { where, params } = buildVenteFilters(req, ctx.actIds, from, to);
   const voc = req.voc ?? vocabDefaut;
   const pCanal = [...params, voc.Nom('prestataire')];
-  const sums = `SUM(${L_CA}) AS ca, SUM(${L_COUT}) AS cout, SUM(${L_COMMISSION}) AS commission, SUM(vl.quantite) AS qte`;
+  const sums = `SUM(${L_CA}) AS ca, SUM(${L_COUT}) AS cout, SUM(${L_COMMISSION}) AS commission, SUM(${L_TVA_COM}) AS tva_commission, SUM(vl.quantite) AS qte`;
+  // P2 : la TVA sur la commission et le net (CA − commission − TVA), par canal, catégorie, type et produit.
   const mapRow = (r) => {
-    const ca = num(r.ca); const cout = num(r.cout); const com = num(r.commission);
+    const ca = num(r.ca); const cout = num(r.cout); const com = num(r.commission); const tva = num(r.tva_commission);
     return {
-      ca: r3(ca), cout: r3(cout), commissions: r3(com), qte: r3(num(r.qte)),
-      marge_brute: r3(ca - cout), marge_apres_com: r3(ca - cout - com),
+      ca: r3(ca), cout: r3(cout), commissions: r3(com), tva_commissions: r3(tva), net: r3(ca - com - tva), qte: r3(num(r.qte)),
+      marge_brute: r3(ca - cout), marge_apres_com: r3(ca - cout - com - tva),
       food_cost_pct: ca > 0 ? Math.round((cout / ca) * 100) : null,
     };
   };
@@ -362,9 +377,9 @@ const tabVentes = async (req, ctx, from, to) => {
       // types différents (« Burger » vendable vs valorisé) restent distinctes,
       // et le libellé porte le type pour les différencier à l'écran.
       `SELECT cpn.nom AS categorie_nom, cpn.type_produit AS categorie_type,
-              SUM(t.ca) AS ca, SUM(t.cout) AS cout, SUM(t.commission) AS commission, SUM(t.qte) AS qte
+              SUM(t.ca) AS ca, SUM(t.cout) AS cout, SUM(t.commission) AS commission, SUM(t.tva_commission) AS tva_commission, SUM(t.qte) AS qte
        FROM (
-         SELECT ${L_CAT_ID} AS cat_id, ${L_CA} AS ca, ${L_COUT} AS cout, ${L_COMMISSION} AS commission, vl.quantite AS qte
+         SELECT ${L_CAT_ID} AS cat_id, ${L_CA} AS ca, ${L_COUT} AS cout, ${L_COMMISSION} AS commission, ${L_TVA_COM} AS tva_commission, vl.quantite AS qte
          ${VENTE_FROM} WHERE ${where}
        ) t
        LEFT JOIN categories_produit cpn ON cpn.id = t.cat_id
@@ -396,7 +411,8 @@ const tabVentes = async (req, ctx, from, to) => {
   return {
     kpis,
     waterfall: {
-      ca: kpis.ca, cout_matiere: kpis.cout_matiere, commissions: kpis.commissions,
+      // La marche « commissions » de la cascade porte la commission ET sa TVA (la cascade reste exacte jusqu'à la nette).
+      ca: kpis.ca, cout_matiere: kpis.cout_matiere, commissions: r3(kpis.commissions + kpis.tva_commissions),
       charges: kpis.charges, marge_nette: kpis.marge_nette,
     },
     par_canal: canalRes.rows.map((r) => ({ canal: r.canal, ...mapRow(r) })),
@@ -890,7 +906,7 @@ const tabAcheteurs = async (req, ctx, from, to) => {
 
 // Options des filtres (listes déroulantes) — dérivées des données du compte.
 const tabFiltres = async (req, ctx) => {
-  const [acts, labs, prests, catsP, catsA, fams, fourn] = await Promise.all([
+  const [acts, labs, prests, catsP, catsA, fams, fourn, modes] = await Promise.all([
     pool.query(`SELECT id, nom FROM activites WHERE id = ANY($1::int[]) ORDER BY nom`, [ctx.actIds.length ? ctx.actIds : [-1]]),
     pool.query(`SELECT id, nom FROM labos WHERE id = ANY($1::int[]) ORDER BY nom`, [ctx.laboIds.length ? ctx.laboIds : [-1]]),
     ctx.actIds.length
@@ -932,6 +948,13 @@ const tabFiltres = async (req, ctx) => {
           [ctx.actIds]
         )
       : { rows: [] },
+    // P2 : modes de paiement actifs, plus ceux que des ventes du périmètre citent encore (figés).
+    pool.query(
+      `SELECT mp.id, mp.libelle AS nom FROM modes_paiement mp
+       WHERE mp.actif = true OR EXISTS (SELECT 1 FROM ventes v WHERE v.mode_paiement_id = mp.id AND v.activite_id = ANY($1::int[]))
+       ORDER BY mp.ordre, mp.libelle`,
+      [ctx.actIds.length ? ctx.actIds : [-1]]
+    ),
   ]);
   // Formule d'activités du compte (basique | premium | null si compte dépôt)
   const formuleRes = await pool.query(
@@ -944,6 +967,7 @@ const tabFiltres = async (req, ctx) => {
     activites: acts.rows,
     labos: labs.rows,
     prestataires: prests.rows,
+    modes_paiement: modes.rows,
     categories_produit: catsP.rows,
     categories_articles: catsA.rows,
     familles: fams.rows,

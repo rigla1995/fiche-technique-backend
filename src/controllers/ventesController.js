@@ -6,6 +6,8 @@ const { brandHeader, headerRow, dataRowStyle, totalRowStyle, brandFooter, finali
 const { gerantAllowsLabo } = require('../middleware/auth');
 const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
+// P2 : conditions des prestataires (commission, TVA, mode de paiement), figées sur chaque vente ; chiffre net.
+const CP = require('../utils/conditionsPrestataire');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -140,47 +142,71 @@ const listActivitePrestataires = async (req, res) => {
     const whereVal = activiteId || laboId;
     const r = await pool.query(
       `SELECT ap.id, ap.activite_id, ap.labo_id, ap.prestataire_id, ap.taux_commission, ap.actif,
+              ap.taux_tva, ap.mode_paiement_id, mp.libelle AS mode_paiement_libelle, ap.conditions_le,
               pl.nom as prestataire_nom, pl.logo_url
        FROM activite_prestataires ap
        JOIN prestataires_livraison pl ON pl.id = ap.prestataire_id
+       LEFT JOIN modes_paiement mp ON mp.id = ap.mode_paiement_id
        WHERE ${whereCol} = $1
        ORDER BY pl.nom`,
       [whereVal]
     );
-    res.json(r.rows.map(row => ({ ...row, taux_commission: parseFloat(row.taux_commission) })));
+    res.json(r.rows.map(row => ({
+      ...row, taux_commission: parseFloat(row.taux_commission), taux_tva: parseFloat(row.taux_tva ?? 0),
+      // P2 : un prestataire activé avant la migration 238 n'a pas encore ses conditions (mode de paiement vide).
+      conditions_renseignees: row.mode_paiement_id != null,
+    })));
   } catch (e) {
     if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
 
+// P2 : le mode de paiement choisi doit exister et être actif (liste de l'admin).
+async function exigerModePaiement(modePaiementId) {
+  const r = await pool.query('SELECT libelle FROM modes_paiement WHERE id = $1 AND actif = true', [modePaiementId]);
+  if (!r.rows.length) throw Object.assign(new Error('Mode de paiement inconnu ou désactivé.'), { status: 400, code: 'MODE_PAIEMENT_INCONNU' });
+  return r.rows[0].libelle;
+}
+
+const presenterLien = (row, libelle) => ({
+  ...row, taux_commission: parseFloat(row.taux_commission), taux_tva: parseFloat(row.taux_tva ?? 0),
+  mode_paiement_libelle: libelle ?? null, conditions_renseignees: row.mode_paiement_id != null,
+});
+
+// Activation d'un prestataire pour une activité, AVEC ses conditions (P2) : commission %, TVA % sur la commission et
+// mode de paiement, tous trois exigés. Réactiver un lien existant remplace ses conditions.
 const addActivitePrestataire = async (req, res) => {
   try {
-    const { activite_id, prestataire_id, taux_commission = 0 } = req.body;
+    const { activite_id, prestataire_id } = req.body;
     if (!activite_id || !prestataire_id) {
       return res.status(400).json({ message: 'activite_id et prestataire_id requis' });
     }
     const cid = clientId(req);
     await assertActiviteOwner(activite_id, cid);
+    const conditions = CP.lireConditions(req.body);
+    const libelle = await exigerModePaiement(conditions.modePaiementId);
     const r = await pool.query(
-      `INSERT INTO activite_prestataires (activite_id, prestataire_id, taux_commission, created_by)
-       VALUES ($1,$2,$3,$4)
+      `INSERT INTO activite_prestataires (activite_id, prestataire_id, taux_commission, taux_tva, mode_paiement_id, conditions_le, conditions_par, created_by)
+       VALUES ($1, $2, $3, $4, $5, NOW(), $6, $6)
        ON CONFLICT (activite_id, prestataire_id) DO UPDATE
-         SET taux_commission = EXCLUDED.taux_commission, actif = true
+         SET taux_commission = EXCLUDED.taux_commission, taux_tva = EXCLUDED.taux_tva, mode_paiement_id = EXCLUDED.mode_paiement_id,
+             conditions_le = NOW(), conditions_par = EXCLUDED.conditions_par, actif = true
        RETURNING *`,
-      [activite_id, prestataire_id, taux_commission, req.user.id]
+      [activite_id, prestataire_id, conditions.tauxCommission, conditions.tauxTva, conditions.modePaiementId, req.user.id]
     );
-    res.status(201).json(r.rows[0]);
+    res.status(201).json(presenterLien(r.rows[0], libelle));
   } catch (e) {
     if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
   }
 };
 
+// Modification des conditions (une ou plusieurs) ou de l'état actif. Les ventes déjà saisies gardent leurs conditions.
 const updateActivitePrestataire = async (req, res) => {
   try {
     const { id } = req.params;
-    const { taux_commission, actif } = req.body;
+    const { actif } = req.body;
     const cid = clientId(req);
     const existing = await pool.query(
       `SELECT ap.id, ap.activite_id, ap.labo_id FROM activite_prestataires ap WHERE ap.id = $1`,
@@ -190,14 +216,25 @@ const updateActivitePrestataire = async (req, res) => {
     const row = existing.rows[0];
     if (row.activite_id) await assertActiviteOwner(row.activite_id, cid);
     else if (row.labo_id) await assertLaboOwner(row.labo_id, cid);
+    const conditions = CP.lireConditions(req.body, { complet: false });
+    if (conditions.modePaiementId !== undefined) await exigerModePaiement(conditions.modePaiementId);
+    const touche = conditions.tauxCommission !== undefined || conditions.tauxTva !== undefined || conditions.modePaiementId !== undefined;
     const r = await pool.query(
       `UPDATE activite_prestataires SET
         taux_commission = COALESCE($1, taux_commission),
-        actif = COALESCE($2, actif)
-       WHERE id = $3 RETURNING *`,
-      [taux_commission, actif, id]
+        taux_tva = COALESCE($2, taux_tva),
+        mode_paiement_id = COALESCE($3, mode_paiement_id),
+        conditions_le = CASE WHEN $4::boolean THEN NOW() ELSE conditions_le END,
+        conditions_par = CASE WHEN $4::boolean THEN $5 ELSE conditions_par END,
+        actif = COALESCE($6, actif)
+       WHERE id = $7 RETURNING *`,
+      [conditions.tauxCommission ?? null, conditions.tauxTva ?? null, conditions.modePaiementId ?? null, touche, req.user.id,
+        typeof actif === 'boolean' ? actif : null, id]
     );
-    res.json(r.rows[0]);
+    const lib = r.rows[0].mode_paiement_id
+      ? (await pool.query('SELECT libelle FROM modes_paiement WHERE id = $1', [r.rows[0].mode_paiement_id])).rows[0]?.libelle
+      : null;
+    res.json(presenterLien(r.rows[0], lib));
   } catch (e) {
     if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
@@ -216,8 +253,11 @@ const removeActivitePrestataire = async (req, res) => {
     const row = existing.rows[0];
     if (row.activite_id) await assertActiviteOwner(row.activite_id, cid);
     else if (row.labo_id) await assertLaboOwner(row.labo_id, cid);
+    // P2 (question 5) : désactiver efface les conditions ET les prix prestataire de l'activité (cascade) ; l'écran
+    // prévient avant. Le nombre de prix effacés est rendu pour le message.
+    const prix = await pool.query('SELECT COUNT(*)::int AS n FROM article_prix_prestataire WHERE activite_prestataire_id = $1', [id]);
     await pool.query('DELETE FROM activite_prestataires WHERE id = $1', [id]);
-    res.json({ success: true });
+    res.json({ success: true, prix_effaces: prix.rows[0].n });
   } catch (e) {
     if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
@@ -232,14 +272,19 @@ const listPrestatairesClient = async (req, res) => {
       const cid = clientId(req);
       await assertActiviteOwner(activiteId, cid);
       const r = await pool.query(
-        `SELECT pl.id, pl.nom, pl.logo_url, ap.taux_commission, ap.id as activite_prestataire_id
+        `SELECT pl.id, pl.nom, pl.logo_url, ap.taux_commission, ap.taux_tva, ap.mode_paiement_id, mp.libelle AS mode_paiement_libelle,
+                ap.id as activite_prestataire_id
          FROM activite_prestataires ap
          JOIN prestataires_livraison pl ON pl.id = ap.prestataire_id
+         LEFT JOIN modes_paiement mp ON mp.id = ap.mode_paiement_id
          WHERE ap.activite_id = $1 AND ap.actif = true AND pl.actif = true
          ORDER BY pl.nom`,
         [activiteId]
       );
-      return res.json(r.rows.map(row => ({ ...row, taux_commission: parseFloat(row.taux_commission) })));
+      return res.json(r.rows.map(row => ({
+        ...row, taux_commission: parseFloat(row.taux_commission), taux_tva: parseFloat(row.taux_tva ?? 0),
+        conditions_renseignees: row.mode_paiement_id != null,
+      })));
     }
     // Fallback: return all active prestataires
     const r = await pool.query('SELECT * FROM prestataires_livraison WHERE actif = true ORDER BY nom');
@@ -429,10 +474,20 @@ const getPrixHistoriqueConfig = async (req, res) => {
   }
 };
 
+// La ligne `alias` (activite_id ou labo_id) est-elle du compte `$n` ? Contrôles de propriétaire des articles vendables
+// et des prix prestataire (P2 ; avant : aucun).
+const sqlDuCompte = (alias, n) =>
+  `EXISTS (SELECT 1 FROM activites a JOIN profil_entreprise pe ON pe.id = a.entreprise_id WHERE a.id = ${alias}.activite_id AND pe.client_id = ${n})
+   OR EXISTS (SELECT 1 FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id WHERE l.id = ${alias}.labo_id AND pe.client_id = ${n})`;
+
 const deleteArticleVendable = async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM activite_articles_vendables WHERE id = $1', [id]);
+    const r = await pool.query(
+      `DELETE FROM activite_articles_vendables av WHERE av.id = $1 AND (${sqlDuCompte('av', '$2')}) RETURNING av.id`,
+      [id, clientId(req)]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: '[[Nom:article]] vendable introuvable' });
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -489,6 +544,18 @@ const upsertArticlePrixPrestataire = async (req, res) => {
     if (!article_vendable_id || !activite_prestataire_id) {
       return res.status(400).json({ message: 'article_vendable_id et activite_prestataire_id requis' });
     }
+    if (prix_vente != null && !(Number.isFinite(Number(prix_vente)) && Number(prix_vente) >= 0)) {
+      return res.status(400).json({ message: 'prix_vente invalide' });
+    }
+    // P2 : le lien prestataire doit être du compte et l'article vendable de la même activité (ou du même labo).
+    const lien = await pool.query(
+      `SELECT ap.id FROM activite_prestataires ap
+         JOIN activite_articles_vendables av ON av.id = $2
+          AND ((ap.activite_id IS NOT NULL AND av.activite_id = ap.activite_id) OR (ap.labo_id IS NOT NULL AND av.labo_id = ap.labo_id))
+        WHERE ap.id = $1 AND (${sqlDuCompte('ap', '$3')})`,
+      [activite_prestataire_id, article_vendable_id, clientId(req)]
+    );
+    if (!lien.rows.length) return res.status(404).json({ message: '[[Nom:prestataire]] ou [[nom:article]] vendable introuvable' });
     const r = await pool.query(
       `INSERT INTO article_prix_prestataire (article_vendable_id, activite_prestataire_id, prix_vente, updated_at, created_by)
        VALUES ($1,$2,$3, NOW(), $4)
@@ -550,6 +617,18 @@ const upsertChargesFixes = async (req, res) => {
 
 // ─── Client — Ventes ─────────────────────────────────────────────────────────
 
+// P2 : les conditions figées sur une vente et le chiffre net du prestataire (vente directe : taux null, net = CA).
+const presenterConditionsVente = (row, ca) => {
+  if (row.type_vente !== 'prestataire') return { taux_commission: null, taux_tva_commission: null, mode_paiement: null, commission: 0, tva_commission: 0, net: ca };
+  const { commission, tva, net } = CP.netPrestataire(ca, row.taux_commission, row.taux_tva_commission);
+  return {
+    taux_commission: row.taux_commission != null ? parseFloat(row.taux_commission) : null,
+    taux_tva_commission: row.taux_tva_commission != null ? parseFloat(row.taux_tva_commission) : null,
+    mode_paiement: row.mode_paiement ?? null,
+    commission, tva_commission: tva, net,
+  };
+};
+
 const listVentes = async (req, res) => {
   try {
     const { activiteId, laboId, from, to } = req.query;
@@ -568,6 +647,7 @@ const listVentes = async (req, res) => {
     const r = await pool.query(
       `SELECT v.id, v.date_vente, v.type_vente, v.statut, v.notes, v.created_at,
               v.prestataire_id, pl.nom as prestataire_nom,
+              v.taux_commission, v.taux_tva_commission, v.mode_paiement_id, mp.libelle AS mode_paiement,
               v.created_by, ub.nom as created_by_nom,
               COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) as total_ca,
               COALESCE(SUM(vl.quantite * (vl.prix_unitaire - COALESCE(vl.cout_unitaire,0))), 0) as total_marge,
@@ -584,12 +664,13 @@ const listVentes = async (req, res) => {
               ) as lignes
        FROM ventes v
        LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
+       LEFT JOIN modes_paiement mp ON mp.id = v.mode_paiement_id
        LEFT JOIN utilisateurs ub ON ub.id = v.created_by
        LEFT JOIN vente_lignes vl ON vl.vente_id = v.id
        LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
        LEFT JOIN articles a ON vl.article_type = 'ingredient' AND a.id = vl.article_id
        WHERE ${whereCol} = $1 AND v.statut != 'annulee'${where}
-       GROUP BY v.id, pl.nom, ub.nom
+       GROUP BY v.id, pl.nom, mp.libelle, ub.nom
        ORDER BY v.date_vente DESC, v.created_at DESC
        LIMIT 2000`,
       params
@@ -602,6 +683,7 @@ const listVentes = async (req, res) => {
       total_marge: parseFloat(row.total_marge),
       total_quantite: parseFloat(row.total_quantite),
       lignes: row.lignes || [],
+      ...presenterConditionsVente(row, parseFloat(row.total_ca)),
     })));
   } catch (e) {
     if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
@@ -613,9 +695,10 @@ const getVente = async (req, res) => {
   try {
     const { id } = req.params;
     const vRes = await pool.query(
-      `SELECT v.*, pl.nom as prestataire_nom
+      `SELECT v.*, pl.nom as prestataire_nom, mp.libelle AS mode_paiement
        FROM ventes v
        LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
+       LEFT JOIN modes_paiement mp ON mp.id = v.mode_paiement_id
        WHERE v.id = $1`,
       [id]
     );
@@ -643,15 +726,19 @@ const getVente = async (req, res) => {
       [id]
     );
 
+    const lignes = lignesRes.rows.map(l => ({
+      ...l,
+      quantite: parseFloat(l.quantite),
+      prix_unitaire: parseFloat(l.prix_unitaire),
+      cout_unitaire: l.cout_unitaire != null ? parseFloat(l.cout_unitaire) : null,
+    }));
+    const totalCa = Math.round(lignes.reduce((s, l) => s + l.quantite * l.prix_unitaire, 0) * 1000) / 1000;
     res.json({
       ...vente,
       date_vente: isoDate(vente.date_vente),
-      lignes: lignesRes.rows.map(l => ({
-        ...l,
-        quantite: parseFloat(l.quantite),
-        prix_unitaire: parseFloat(l.prix_unitaire),
-        cout_unitaire: l.cout_unitaire != null ? parseFloat(l.cout_unitaire) : null,
-      })),
+      lignes,
+      total_ca: totalCa,
+      ...presenterConditionsVente(vente, totalCa),
     });
   } catch (e) {
     if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
@@ -671,6 +758,23 @@ const createVente = async (req, res) => {
     else await assertActiviteOwner(activite_id, cid);
     if (activite_id) await assertActiviteVenteActive(activite_id);
 
+    // P2 : une vente par prestataire FIGE les conditions du prestataire pour cette activité (commission, TVA sur la
+    // commission, mode de paiement). Prestataire non activé ici, ou conditions pas encore renseignées : refus.
+    let conditions = { taux_commission: null, taux_tva_commission: null, mode_paiement_id: null };
+    if (type_vente === 'prestataire') {
+      if (!prestataire_id) return res.status(400).json({ code: 'PRESTATAIRE_REQUIS', message: 'Choisissez [[le:prestataire]] de [[ce:vente]].' });
+      const lien = await pool.query(
+        `SELECT taux_commission, taux_tva, mode_paiement_id FROM activite_prestataires
+          WHERE prestataire_id = $1 AND actif = true AND ${activite_id ? 'activite_id = $2' : 'labo_id = $2'}`,
+        [prestataire_id, activite_id || labo_id]
+      );
+      if (!lien.rows.length) return res.status(400).json({ code: 'PRESTATAIRE_NON_ACTIVE', message: "[[Ce:prestataire]] n'est pas [[acc:prestataire:activé:activée]] pour [[ce:activite]]." });
+      if (lien.rows[0].mode_paiement_id == null) {
+        return res.status(400).json({ code: 'CONDITIONS_MANQUANTES', message: 'Renseignez d\'abord la commission, la TVA et le mode de paiement [[du:prestataire]] (Config [[Court:prestataire:pl]]).' });
+      }
+      conditions = { taux_commission: lien.rows[0].taux_commission, taux_tva_commission: lien.rows[0].taux_tva, mode_paiement_id: lien.rows[0].mode_paiement_id };
+    }
+
     // Check module_vente_actif for stock deduction
     let moduleVenteActif = false;
     if (activite_id) {
@@ -685,11 +789,13 @@ const createVente = async (req, res) => {
     await client.query('BEGIN');
 
     const vRes = await client.query(
-      `INSERT INTO ventes (activite_id, labo_id, date_vente, type_vente, prestataire_id, statut, notes, created_by)
-       VALUES ($1, $2, $3, $4, $5, 'confirmee', $6, $7) RETURNING *`,
+      `INSERT INTO ventes (activite_id, labo_id, date_vente, type_vente, prestataire_id, statut, notes, created_by,
+                           taux_commission, taux_tva_commission, mode_paiement_id)
+       VALUES ($1, $2, $3, $4, $5, 'confirmee', $6, $7, $8, $9, $10) RETURNING *`,
       [activite_id || null, labo_id || null,
        date_vente || new Date().toISOString().slice(0, 10), type_vente,
-       prestataire_id || null, notes || null, req.user.id]
+       prestataire_id || null, notes || null, req.user.id,
+       conditions.taux_commission, conditions.taux_tva_commission, conditions.mode_paiement_id]
     );
     const vente = vRes.rows[0];
 
@@ -1237,22 +1343,30 @@ const exportVentesExcel = async (req, res) => {
       where += ` AND (vl.id IS NULL OR (vl.article_type = 'produit' AND COALESCE(p.is_supplement, FALSE) = FALSE))`;
     }
 
+    // P2 : filtre par mode de paiement (figé sur la vente).
+    const modePaiementId = Number(req.query.modePaiementId);
+    if (Number.isInteger(modePaiementId) && modePaiementId > 0) { params.push(modePaiementId); where += ` AND v.mode_paiement_id = $${params.length}`; }
+
     const r = await pool.query(
       `SELECT v.id, v.date_vente, v.type_vente, pl.nom as prestataire_nom, v.statut,
+              v.taux_commission, v.taux_tva_commission, mp.libelle AS mode_paiement,
               COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) as total_ca,
               COALESCE(SUM(vl.quantite * (vl.prix_unitaire - COALESCE(vl.cout_unitaire,0))), 0) as total_marge
        FROM ventes v
        LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
+       LEFT JOIN modes_paiement mp ON mp.id = v.mode_paiement_id
        LEFT JOIN vente_lignes vl ON vl.vente_id = v.id
        LEFT JOIN produits p ON vl.article_type = 'produit' AND p.id = vl.article_id
        WHERE v.activite_id = $1 AND v.statut != 'annulee'${where}
-       GROUP BY v.id, pl.nom
+       GROUP BY v.id, pl.nom, mp.libelle
        ORDER BY v.date_vente DESC, v.created_at DESC`,
       params
     );
 
     const fmtD = (d) => d ? d.split('-').reverse().join('/') : '—';
-    const COLS = 6;
+    // P2 : la commission, sa TVA et le net du prestataire (conditions figées sur la vente), le mode de paiement.
+    const COLS = 10;
+    const MONTANTS = [4, 5, 6, 7, 8];
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'LabFlow';
@@ -1262,36 +1376,37 @@ const exportVentesExcel = async (req, res) => {
     const meta = `Exporté le ${new Date().toLocaleDateString('fr-FR')} · ${periode} · ${r.rows.length} ${voc.nomS('vente')}`
       + (selectedSet.size > 0 ? ` · ${selectedSet.size} ${voc.acc('vente', 'sélectionné(s)', 'sélectionnée(s)')} (${voc.acc('vente', 'surlignés', 'surlignées')})` : '');
     const headerIdx = brandHeader(wb, ws, { titre: `Historique ${voc.du('vente', true)} — ${voc.Court('activite', true)}`, meta, colCount: COLS });
-    headerRow(ws, headerIdx, ['Date', 'Type', voc.Court('prestataire'), 'CA (DT)', `${voc.Court('marge')} (DT)`, 'Statut'],
-      { widths: [13, 14, 22, 15, 15, 14] });
+    headerRow(ws, headerIdx, ['Date', 'Type', voc.Court('prestataire'), 'CA (DT)', 'Commission (DT)', 'TVA commission (DT)', 'Net (DT)', `${voc.Court('marge')} (DT)`, 'Mode de paiement', 'Statut'],
+      { widths: [13, 14, 22, 15, 16, 18, 15, 15, 18, 14] });
 
     // Data rows
-    let totalCA = 0; let totalMarge = 0;
+    const totaux = { ca: 0, commission: 0, tva: 0, net: 0, marge: 0 };
     r.rows.forEach((row, i) => {
       const ca = parseFloat(row.total_ca);
       const marge = parseFloat(row.total_marge);
-      totalCA += ca; totalMarge += marge;
+      const cond = presenterConditionsVente(row, ca);
+      totaux.ca += ca; totaux.commission += cond.commission; totaux.tva += cond.tva_commission; totaux.net += cond.net; totaux.marge += marge;
       const dateStr = isoDate(row.date_vente)?.split('-').reverse().join('/') ?? '';
       const typeLabel = row.type_vente === 'directe' ? voc.acc('vente', 'Direct', 'Directe') : voc.Court('prestataire');
       const statutLabel = row.statut === 'confirmee' ? voc.acc('vente', 'Confirmé', 'Confirmée') : row.statut;
-      const dataRow = ws.addRow([dateStr, typeLabel, row.prestataire_nom || '', ca, marge, statutLabel]);
+      const dataRow = ws.addRow([dateStr, typeLabel, row.prestataire_nom || '', ca, cond.commission, cond.tva_commission, cond.net, marge, cond.mode_paiement || '', statutLabel]);
       dataRowStyle(dataRow, { index: i, selected: selectedSet.has(String(row.id)), colCount: COLS });
       for (let c = 1; c <= COLS; c++) {
-        dataRow.getCell(c).alignment = { vertical: 'middle', horizontal: c >= 4 && c <= 5 ? 'right' : (c === 6 ? 'center' : 'left') };
+        dataRow.getCell(c).alignment = { vertical: 'middle', horizontal: MONTANTS.includes(c) ? 'right' : (c === COLS ? 'center' : 'left') };
       }
-      dataRow.getCell(4).numFmt = FMT_DT;
-      dataRow.getCell(5).numFmt = FMT_DT;
+      for (const c of MONTANTS) dataRow.getCell(c).numFmt = FMT_DT;
     });
     const lastDataRow = headerIdx + r.rows.length;
 
     // Total row
-    const totalRow = ws.addRow(['TOTAL', '', '', totalCA, totalMarge, '']);
+    const r3 = (x) => Math.round(x * 1000) / 1000;
+    const totalRow = ws.addRow(['TOTAL', '', '', r3(totaux.ca), r3(totaux.commission), r3(totaux.tva), r3(totaux.net), r3(totaux.marge), '', '']);
     totalRowStyle(totalRow, { colCount: COLS });
     totalRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-    totalRow.getCell(4).alignment = { horizontal: 'right', vertical: 'middle' };
-    totalRow.getCell(5).alignment = { horizontal: 'right', vertical: 'middle' };
-    totalRow.getCell(4).numFmt = FMT_DT;
-    totalRow.getCell(5).numFmt = FMT_DT;
+    for (const c of MONTANTS) {
+      totalRow.getCell(c).alignment = { horizontal: 'right', vertical: 'middle' };
+      totalRow.getCell(c).numFmt = FMT_DT;
+    }
 
     brandFooter(ws, COLS);
     finalize(ws, { headerRowIdx: headerIdx, colCount: COLS, lastDataRow });

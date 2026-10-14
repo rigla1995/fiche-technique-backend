@@ -30,15 +30,19 @@ Rendre un article vendable et fixer son prix :
 Gérer les canaux [[nom:prestataire:pl]] (bouton **🛵 [[Pl:prestataire]]**) :
 
 1. Sélectionnez [[le:activite]] [[acc:activite:concerné:concernée]].
-2. Activez ou désactivez chaque [[nom:prestataire]] de livraison avec l'interrupteur ; le nombre [[de:prestataire:pl]] [[acc:prestataire:actif:active:pl]] s'affiche dans l'en-tête.
-3. La liste [[du:prestataire:pl]] disponibles est gérée par l'administrateur : si elle est vide, contactez le [support](#support).
+2. Activez chaque [[nom:prestataire]] de livraison avec l'interrupteur : une fenêtre demande ses **conditions** — la **commission** (%), la **TVA** (%) sur cette commission et le **mode de paiement** (Espèces, Virement… liste tenue par l'administrateur). Un exemple sur 100 DT montre le net obtenu.
+3. Les conditions s'affichent sous le nom [[du:prestataire]] ; **✏️ Modifier les conditions** les change pour [[le:vente:pl]] à venir. [[Le:vente:pl]] déjà [[acc:vente:enregistrés:enregistrées]] gardent les conditions du jour de leur saisie.
+4. Désactiver [[un:prestataire]] **efface ses conditions et ses prix** pour [[le:activite]] : une confirmation le rappelle, avec le nombre de prix concernés.
+5. La liste [[du:prestataire:pl]] disponibles et celle des modes de paiement sont gérées par l'administrateur : si elles sont vides, contactez le [support](#support).
+
+[[Un:prestataire]] [[acc:prestataire:activé:activée]] avant l'arrivée des conditions porte la mention **⚠ Conditions à renseigner** : tant qu'elles manquent, la saisie [[du:vente:pl]] sur ce canal est refusée.
 
 Consulter l'onglet **📋 Historique config** : chaque enregistrement de prix y est tracé ([[nom:produit]], type, prix enregistré, date, auteur). Vous pouvez filtrer par nom, type et période, actualiser la liste, supprimer une entrée, et exporter en Excel avec **Exporter XLS** — en cochant des lignes au préalable, seules celles-ci sont exportées.
 
 ### Points d'attention
 
 :::attention
-Le prix de chaque [[nom:prestataire]] est **saisi manuellement**, article par article : il n'y a ni commission ni calcul automatique. Un prix [[nom:prestataire]] non renseigné empêche de valoriser correctement [[le:vente:pl]] [[acc:vente:passé:passée:pl]] par ce canal.
+Le prix de chaque [[nom:prestataire]] est **saisi manuellement**, article par article : la commission ne calcule aucun prix. Elle sert, avec la TVA, au **chiffre net** [[du:prestataire]] dans le [tableau de bord](#dashboard) : net = prix [[de:vente]] − commission − TVA sur la commission. Un prix [[nom:prestataire]] non renseigné empêche de valoriser correctement [[le:vente:pl]] [[acc:vente:passé:passée:pl]] par ce canal.
 :::
 
 :::attention

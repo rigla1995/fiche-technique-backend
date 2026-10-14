@@ -469,11 +469,13 @@ async function main() {
 
   // Prestataires (globaux, SQL — pas d'unique sur nom : chercher avant de créer)
   const prestIds = {};
+  // P2 (migration 238) : l'activation d'un prestataire porte ses conditions (commission, TVA sur la commission, mode de paiement).
+  const modeVirement = (await pool.query(`SELECT id FROM modes_paiement WHERE code = 'virement'`)).rows[0]?.id;
   for (const [nom, commission, actId] of [['Jibli Express', 22, restoId], ['Wassalni Food', 18, salonId]]) {
     let pr = await pool.query(`SELECT id FROM prestataires_livraison WHERE nom = $1 LIMIT 1`, [nom]);
     const pid = pr.rows.length ? pr.rows[0].id : (await pool.query(`INSERT INTO prestataires_livraison (nom, actif) VALUES ($1, true) RETURNING id`, [nom])).rows[0].id;
     prestIds[nom] = pid;
-    const link = await api('POST', '/api/activite-prestataires', { activite_id: actId, prestataire_id: pid, taux_commission: commission });
+    const link = await api('POST', '/api/activite-prestataires', { activite_id: actId, prestataire_id: pid, taux_commission: commission, taux_tva: 19, mode_paiement_id: modeVirement });
     // prix prestataire ≈ prix direct +15 % sur 3 produits phares de l'activité
     const phares = actId === restoId
       ? [['Couscous au poulet fermier', 21], ['Ojja merguez', 18], ['Salade méchouia', 10]]
