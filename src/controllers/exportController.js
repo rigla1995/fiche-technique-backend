@@ -24,6 +24,11 @@ function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInf
     metaParts.push(pricingLabel ? `Type : ${ftMode} (${pricingLabel})` : `Type : ${ftMode}`);
     if (ftDate) metaParts.push(`Prix au ${ftDate}`);
   }
+  // P1 : la fiche d'un produit utilisable qui a une unité est pour 1 unité (quantités et coût), formule pour N unités.
+  if (coutData.unite) {
+    const q = Number(coutData.quantite_produite).toLocaleString('fr-FR', { maximumFractionDigits: 3 });
+    metaParts.push(`Pour 1 ${coutData.unite} (${voc.nom('recette')} pour ${q} ${coutData.unite})`);
+  }
   metaParts.push(`${countFtLines(coutData)} ligne(s)`);
 
   const headerIdx = brandHeader(wb, sheet, {
@@ -124,7 +129,7 @@ function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInf
   const renderSousProduit = (sp, depth = 0) => {
     sheet.mergeCells(rowIndex, 1, rowIndex, FT_COLS - 1);
     const labelCell = sheet.getCell(rowIndex, 1);
-    labelCell.value = `↳ ${sp.nom} (${voc.court('portion')} : ${sp.portion})`;
+    labelCell.value = `↳ ${sp.nom} (${voc.court('portion')} : ${sp.portion}${sp.details?.unite ? ` ${sp.details.unite}` : ''})`;
     labelCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: BRAND.indigoInk } };
     labelCell.fill = fill(BRAND.indigoSoft);
     labelCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 + depth * 2 };
@@ -177,7 +182,7 @@ function fillFtWorksheet(wb, sheet, coutData, ftMode, ftDate, actId, activityInf
 
   sheet.mergeCells(rowIndex, 1, rowIndex, FT_COLS - 1);
   const totalRow = sheet.getRow(rowIndex);
-  totalRow.getCell(1).value = 'COÛT TOTAL :';
+  totalRow.getCell(1).value = coutData.unite ? `COÛT TOTAL (1 ${coutData.unite}) :` : 'COÛT TOTAL :';
   totalRow.getCell(FT_COLS).value = coutData.cout_total;
   totalRowStyle(totalRow, { colCount: FT_COLS });
   totalRow.getCell(1).alignment = rightAlign;

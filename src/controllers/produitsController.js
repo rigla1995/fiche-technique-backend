@@ -2,6 +2,11 @@ const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { vocabDefaut } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
+const UP = require('../utils/uniteProduit');
+const { uniteProduitSql, UNITE_PT_DEFAUT } = require('../utils/stockUtils');
+// Le produit dont on calcule le coût, avec le nom de son unité (P1).
+const SQL_PRODUIT_COUT = `SELECT p.*, (SELECT u.nom FROM unites u WHERE u.id = p.unite_id) AS unite_nom
+  FROM produits p WHERE p.id = $1 AND p.client_id = $2`;
 // Lot 1b §5 — règle « supplément » paramétrée par domaine (regles.supplement_max_composants, défaut 1).
 const { getReglesForClient } = require('../services/domaineProfilService');
 const getSupplementMaxComposants = async (req) => {
@@ -28,6 +33,11 @@ const mapProduit = (row) => ({
   isSupplement: !!row.is_supplement,
   categorieProduitId: row.categorie_produit_id || null,
   categorieProduitName: row.categorie_produit_nom || null,
+  // P1 : unité finale et quantité produite par la recette (null : produit d'avant, compté à la recette). La recette et
+  // le coût sont pour 1 unité.
+  uniteId: row.unite_id || null,
+  uniteNom: row.unite_id ? (row.unite_nom || null) : null,
+  quantiteProduite: row.quantite_produite != null ? parseFloat(row.quantite_produite) : null,
   totalCost: row.total_cost !== undefined && row.total_cost !== null ? parseFloat(row.total_cost) : null,
   ingredientsCount: row.ingredients_count !== undefined ? parseInt(row.ingredients_count) : undefined,
   subProductsCount: row.sub_products_count !== undefined ? parseInt(row.sub_products_count) : undefined,
@@ -38,6 +48,8 @@ const mapProduit = (row) => ({
 
 const mapCout = (data) => ({
   product: data.produit,
+  unit: data.unite ?? null,
+  quantiteProduite: data.quantite_produite ?? null,
   ingredients: data.ingredients.map((i) => ({
     name: i.nom,
     portion: i.portion,
@@ -48,6 +60,7 @@ const mapCout = (data) => ({
   subProducts: data.sous_produits.map((sp) => ({
     name: sp.nom,
     portion: sp.portion,
+    unit: sp.unite,
     unitCost: sp.cout_unitaire,
     cost: sp.cout,
     details: mapCout(sp.details),
@@ -174,7 +187,8 @@ const list = async (req, res) => {
         (SELECT JSON_AGG(JSON_BUILD_OBJECT('id', l.id, 'nom', l.nom) ORDER BY l.nom)
          FROM labo_pt_selections lps JOIN labos l ON l.id = lps.labo_id
          WHERE lps.produit_id = p.id) AS labos_list,
-        (SELECT cp.nom FROM categories_produit cp WHERE cp.id = p.categorie_produit_id) AS categorie_produit_nom
+        (SELECT cp.nom FROM categories_produit cp WHERE cp.id = p.categorie_produit_id) AS categorie_produit_nom,
+        (SELECT u.nom FROM unites u WHERE u.id = p.unite_id) AS unite_nom
        FROM produits p
        WHERE p.client_id = $1${whereExtra}
        ORDER BY p.created_at DESC`,
@@ -191,12 +205,15 @@ const getById = async (req, res) => {
   const { id } = req.params;
   try {
     const produit = await pool.query(
-      'SELECT * FROM produits WHERE id = $1 AND client_id = $2',
+      `SELECT p.*, (SELECT u.nom FROM unites u WHERE u.id = p.unite_id) AS unite_nom
+         FROM produits p WHERE p.id = $1 AND p.client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
     );
     if (produit.rows.length === 0) {
       return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     }
+    // P1 : l'unité d'un produit utilisable ne change plus dès son premier mouvement de stock (l'écran la grise).
+    const uniteFigee = produit.rows[0].type === 'utilisable' ? await UP.aDesMouvements(pool, id) : false;
 
     const ingredients = await pool.query(
       `SELECT pi.id, pi.ingredient_id, pi.portion, pi.unite_id,
@@ -213,7 +230,7 @@ const getById = async (req, res) => {
 
     const sousProduits = await pool.query(
       `SELECT psp.id, psp.sous_produit_id, psp.portion,
-              p.nom as sous_produit_nom,
+              p.nom as sous_produit_nom, ${uniteProduitSql('p')} AS sous_produit_unite,
               ROUND(
                 COALESCE((
                   SELECT SUM(pi2.portion * 0)
@@ -241,6 +258,7 @@ const getById = async (req, res) => {
 
     res.json({
       ...mapProduit(produit.rows[0]),
+      uniteFigee,
       refProduit: produit.rows[0].ref_produit || null,
       laboIds: laboSel.rows.map((r) => r.labo_id),
       labos: laboSel.rows.map((r) => ({ id: r.labo_id, nom: r.nom })),
@@ -263,6 +281,7 @@ const getById = async (req, res) => {
           subProductId: r.sous_produit_id,
           portion,
           subProductName: r.sous_produit_nom,
+          unitName: r.sous_produit_unite,
           unitCost,
           totalLineCost: parseFloat((portion * unitCost).toFixed(3)),
         };
@@ -285,8 +304,8 @@ const create = async (req, res) => {
   const refProduit = req.body.refProduit || req.body.ref_produit || null;
   const type = req.body.type === 'utilisable' ? 'utilisable' : 'vendable';
   const isSupplement = req.body.isSupplement === true || req.body.isSupplement === 'true';
-  const ingredients = req.body.ingredients || [];
-  const subProducts = req.body.subProducts || [];
+  let ingredients = req.body.ingredients || [];
+  let subProducts = req.body.subProducts || [];
   const activiteId = req.body.activiteId || null;
   const categorieProduitId = req.body.categorieProduitId || req.body.categorie_produit_id || null;
 
@@ -319,6 +338,24 @@ const create = async (req, res) => {
   // Activité principale (mono, legacy) : la 1ʳᵉ activité choisie pour l'origine activité ; null pour l'origine labo.
   const activitePrincipale = origine === 'activite' ? (activiteIds[0] || activiteId || null) : null;
 
+  // P1 : un produit utilisable naît avec son unité finale et la quantité que produit sa recette (l'assistant les exige) ;
+  // l'écran envoie la recette pour 1 unité (quantités arrondies ici à 6 décimales). Sans unité (anciens écrans pendant
+  // une mise en ligne, scripts), le produit est compté à la recette, comme avant.
+  let unite;
+  try {
+    unite = type === 'utilisable' ? UP.lireUniteProduit(req.body) : { uniteId: null, quantiteProduite: null };
+    ingredients = UP.portionsArrondies(ingredients);
+    subProducts = UP.portionsArrondies(subProducts);
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
+    throw e;
+  }
+  const clientUnite = req.user.gerant_parent_id || req.user.id;
+  if (unite.uniteId != null) {
+    const u = await pool.query('SELECT 1 FROM unites WHERE id = $1 AND (client_id IS NULL OR client_id = $2)', [unite.uniteId, clientUnite]);
+    if (!u.rows.length) return res.status(400).json({ code: 'UNITE_INCONNUE', message: 'Unité inconnue.' });
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -328,8 +365,10 @@ const create = async (req, res) => {
     const clientId = req.user.gerant_parent_id || req.user.id;
     const catId = type === 'utilisable' ? null : categorieProduitId;
     const result = await client.query(
-      'INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id, categorie_produit_id, origine, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activitePrincipale, catId, origine, req.user.id]
+      `INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id, categorie_produit_id, origine, created_by, unite_id, quantite_produite)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING *, (SELECT u.nom FROM unites u WHERE u.id = $12) AS unite_nom`,
+      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activitePrincipale, catId, origine, req.user.id, unite.uniteId, unite.quantiteProduite]
     );
     const produitId = result.rows[0].id;
 
@@ -472,8 +511,8 @@ const update = async (req, res) => {
   const categorieProduitId = req.body.categorieProduitId !== undefined ? req.body.categorieProduitId
     : req.body.categorie_produit_id !== undefined ? req.body.categorie_produit_id : undefined;
   const categorieProvided = categorieProduitId !== undefined;
-  const ingredients = req.body.ingredients;
-  const subProducts = req.body.subProducts;
+  let ingredients = req.body.ingredients;
+  let subProducts = req.body.subProducts;
   const origine = req.body.origine === 'labo' ? 'labo' : req.body.origine === 'activite' ? 'activite' : undefined;
   // Vendable géré en STOCK : tri-state (undefined = ne pas toucher au circuit de stock).
   const stockActif = req.body.stockActif !== undefined
@@ -498,9 +537,66 @@ const update = async (req, res) => {
     }
   }
 
+  // P1 : unité finale et quantité produite (quand l'écran en parle) ; recette pour 1 unité, arrondie à 6 décimales.
+  let unite;
+  try {
+    unite = UP.lireUniteProduit(req.body);
+    if (Array.isArray(ingredients)) ingredients = UP.portionsArrondies(ingredients);
+    if (Array.isArray(subProducts)) subProducts = UP.portionsArrondies(subProducts);
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
+    throw e;
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // P1 : l'unité d'un produit utilisable. Elle ne s'efface pas une fois posée ; elle ne change plus dès le premier
+    // mouvement de stock ; quand elle change, les recettes qui utilisent le produit sont converties (même matière).
+    if (unite.fournie) {
+      const avant = await client.query(
+        'SELECT type, unite_id, quantite_produite FROM produits WHERE id = $1 AND client_id = $2 FOR UPDATE',
+        [id, req.user.gerant_parent_id || req.user.id]
+      );
+      if (!avant.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
+      }
+      const a = avant.rows[0];
+      const typeFinal = type || a.type;
+      if (typeFinal !== 'utilisable' && unite.uniteId != null) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ code: 'UNITE_PU_SEULEMENT', message: "L'unité finale ne concerne que [[le:produit_utilisable:pl]]." });
+      }
+      if (typeFinal === 'utilisable' && a.unite_id != null && unite.uniteId == null) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ code: 'UNITE_REQUISE', message: "Choisissez l'unité finale [[du:produit_utilisable]] et la quantité obtenue avec [[le:recette]]." });
+      }
+      if (unite.uniteId != null) {
+        const u = await client.query('SELECT 1 FROM unites WHERE id = $1 AND (client_id IS NULL OR client_id = $2)', [unite.uniteId, req.user.gerant_parent_id || req.user.id]);
+        if (!u.rows.length) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ code: 'UNITE_INCONNUE', message: 'Unité inconnue.' });
+        }
+      }
+      const facteur = UP.facteurConversion(
+        { uniteId: a.unite_id, quantiteProduite: a.quantite_produite },
+        { uniteId: unite.uniteId, quantiteProduite: unite.quantiteProduite }
+      );
+      if (facteur != null && await UP.aDesMouvements(client, id)) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ code: 'UNITE_FIGEE', message: "[[Ce:produit_utilisable]] a déjà des mouvements [[de:stock]], comptés dans son unité d'origine : son unité ne change plus. Pour compter dans une autre unité, créez [[un:produit_utilisable]] à part." });
+      }
+      if (facteur != null) {
+        await client.query(
+          `UPDATE produit_sous_produits SET portion = GREATEST(ROUND(portion * $2::numeric, ${UP.DECIMALES}), 0.000001)::float8::numeric
+            WHERE sous_produit_id = $1`,
+          [id, facteur]
+        );
+      }
+      await client.query('UPDATE produits SET unite_id = $2, quantite_produite = $3 WHERE id = $1', [id, unite.uniteId, unite.quantiteProduite]);
+    }
 
     const result = await client.query(
       `UPDATE produits SET nom = COALESCE($1, nom), description = COALESCE($2, description),
@@ -509,7 +605,8 @@ const update = async (req, res) => {
        is_supplement = COALESCE($7, is_supplement),
        categorie_produit_id = CASE WHEN $8::boolean THEN $9 ELSE categorie_produit_id END,
        origine = COALESCE($10, origine),
-       updated_at = NOW() WHERE id = $5 AND client_id = $6 RETURNING *`,
+       updated_at = NOW() WHERE id = $5 AND client_id = $6
+       RETURNING *, (SELECT u.nom FROM unites u WHERE u.id = produits.unite_id) AS unite_nom`,
       [nom, description, refProduit !== undefined ? refProduit : null, type || null, id, req.user.gerant_parent_id || req.user.id, isSupplement !== undefined ? isSupplement : null, categorieProvided, categorieProvided ? (categorieProduitId || null) : null, origine || null]
     );
     if (result.rows.length === 0) {
@@ -827,10 +924,7 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
   }
   visited.add(produitId);
 
-  const produit = await pool.query(
-    'SELECT * FROM produits WHERE id = $1 AND client_id = $2',
-    [produitId, clientId]
-  );
+  const produit = await pool.query(SQL_PRODUIT_COUT, [produitId, clientId]);
   if (produit.rows.length === 0) {
     throw Object.assign(new Error('[[Nom:produit]] introuvable'), { code: 'PRODUIT_INTROUVABLE' });
   }
@@ -892,6 +986,7 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
     return {
       nom: sp.sous_produit_nom,
       portion: parseFloat(sp.portion),
+      unite: detailSp.unite || UNITE_PT_DEFAUT,
       cout_unitaire: detailSp.cout_total,
       cout: parseFloat(coutSp.toFixed(3)),
       details: detailSp,
@@ -902,6 +997,9 @@ async function calculerCout(produitId, clientId, visited = new Set()) {
 
   return {
     produit: produit.rows[0].nom,
+    // P1 : la recette et le coût sont pour 1 unité (null : produit d'avant, pour 1 recette).
+    unite: produit.rows[0].unite_id ? produit.rows[0].unite_nom : null,
+    quantite_produite: produit.rows[0].quantite_produite != null ? parseFloat(produit.rows[0].quantite_produite) : null,
     ingredients: lignesIngredients,
     sous_produits: lignesSousProduits,
     cout_ingredients: parseFloat(coutIngredients.toFixed(3)),
@@ -1101,7 +1199,7 @@ async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = 
   if (visited.has(produitId)) throw Object.assign(new Error('Référence circulaire détectée dans les sous-produits'), { code: 'REFERENCE_CIRCULAIRE' });
   visited.add(produitId);
 
-  const produit = await pool.query('SELECT * FROM produits WHERE id = $1 AND client_id = $2', [produitId, clientId]);
+  const produit = await pool.query(SQL_PRODUIT_COUT, [produitId, clientId]);
   if (produit.rows.length === 0) throw Object.assign(new Error('[[Nom:produit]] introuvable'), { code: 'PRODUIT_INTROUVABLE' });
 
   const ingredients = await pool.query(
@@ -1151,6 +1249,7 @@ async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = 
     return {
       nom: sp.sous_produit_nom,
       portion: parseFloat(sp.portion),
+      unite: detailSp.unite || UNITE_PT_DEFAUT,
       cout_unitaire: detailSp.cout_total,
       cout: parseFloat(coutSp.toFixed(3)),
       details: detailSp,
@@ -1160,6 +1259,9 @@ async function calculerCoutAvecPrixMap(produitId, clientId, priceMap, visited = 
   const coutTotal = coutIngredients + coutSousProduits;
   return {
     produit: produit.rows[0].nom,
+    // P1 : la recette et le coût sont pour 1 unité (null : produit d'avant, pour 1 recette).
+    unite: produit.rows[0].unite_id ? produit.rows[0].unite_nom : null,
+    quantite_produite: produit.rows[0].quantite_produite != null ? parseFloat(produit.rows[0].quantite_produite) : null,
     ingredients: lignesIngredients,
     sous_produits: lignesSousProduits,
     cout_ingredients: parseFloat(coutIngredients.toFixed(3)),
@@ -1206,6 +1308,7 @@ const getFtContextes = async (req, res) => {
     const mapSousProduits = (sps) => sps.map((sp) => ({
       nom: sp.nom,
       portion: sp.portion,
+      unite: sp.unite,
       ingredients: (sp.details?.ingredients || []).map((i) => ({ nom: i.nom, portion: i.portion, unite: i.unite })),
       sousProduits: mapSousProduits(sp.details?.sous_produits || []),
     }));
@@ -1216,6 +1319,10 @@ const getFtContextes = async (req, res) => {
       activites: acts.rows,
       labos: labs.rows,
       recette: {
+        // P1 : composition pour 1 unité du produit (null : produit d'avant, pour 1 recette) ; formule saisie pour
+        // quantiteProduite unités.
+        unite: recette.unite,
+        quantiteProduite: recette.quantite_produite,
         ingredients: recette.ingredients.map((i) => ({ nom: i.nom, portion: i.portion, unite: i.unite, categorie: i.categorie })),
         sousProduits: mapSousProduits(recette.sous_produits),
       },
@@ -1574,7 +1681,8 @@ const exportListExcel = async (req, res) => {
       else if (isSupplFilter === 'false') whereExtra += ' AND p.is_supplement = FALSE';
 
       const { rows } = await pool.query(
-        `SELECT p.id, p.nom, p.type, p.is_supplement, p.ref_produit,
+        `SELECT p.id, p.nom, p.type, p.is_supplement, p.ref_produit, p.unite_id, p.quantite_produite,
+          (SELECT u.nom FROM unites u WHERE u.id = p.unite_id) AS unite_nom,
           (SELECT COUNT(*) FROM produit_ingredients WHERE produit_id = p.id) AS ingredients_count,
           (SELECT COUNT(*) FROM produit_sous_produits WHERE produit_id = p.id) AS sub_products_count,
           ${costSubquery()},
@@ -1595,8 +1703,8 @@ const exportListExcel = async (req, res) => {
     };
 
     const buildSheet = (ws, rows, sheetLabel) => {
-      const labels = [voc.Court('produit'), 'Type', voc.Court('activite', true), 'Référence', 'Coût estimé (DT)', voc.Court('article', true), ...(isVendable ? [voc.Pl('produit_utilisable_abr')] : [])];
-      const widths = [36, 22, 32, 18, 18, 12, ...(isVendable ? [14] : [])];
+      const labels = [voc.Court('produit'), 'Type', voc.Court('activite', true), 'Référence', 'Coût estimé (DT)', voc.Court('article', true), ...(isVendable ? [voc.Pl('produit_utilisable_abr')] : ['Coût pour'])];
+      const widths = [36, 22, 32, 18, 18, 12, ...(isVendable ? [14] : [26])];
       const colCount = labels.length;
 
       const headerIdx = brandHeader(wb, ws, {
@@ -1619,7 +1727,10 @@ const exportListExcel = async (req, res) => {
           product.nom, typeLabel, activitesStr, product.ref_produit || '',
           product.total_cost !== null ? parseFloat(product.total_cost) : 0,
           parseInt(product.ingredients_count),
-          ...(isVendable ? [parseInt(product.sub_products_count)] : []),
+          // P1 : le coût d'un produit utilisable est celui de 1 unité (« 1 kg (recette : 4,6 kg) ») ; produit d'avant : 1 recette.
+          ...(isVendable ? [parseInt(product.sub_products_count)] : [product.unite_id
+            ? `1 ${product.unite_nom} (${voc.nom('recette')} : ${Number(product.quantite_produite).toLocaleString('fr-FR', { maximumFractionDigits: 3 })} ${product.unite_nom})`
+            : `1 ${voc.nom('recette')}`]),
         ];
         dataRow.height = 17;
         dataRowStyle(dataRow, { index: altIdx, colCount });
@@ -1722,7 +1833,7 @@ const getUtilisablesPerimetre = async (req, res) => {
     let rows;
     if (origine === 'labo') {
       ({ rows } = await pool.query(
-        `SELECT DISTINCT p.id, p.nom AS name
+        `SELECT DISTINCT p.id, p.nom AS name, ${uniteProduitSql('p')} AS unite
          FROM produits p
          JOIN labo_pt_selections lps ON lps.produit_id = p.id
          JOIN labos l ON l.id = lps.labo_id
@@ -1733,7 +1844,7 @@ const getUtilisablesPerimetre = async (req, res) => {
       ));
     } else {
       ({ rows } = await pool.query(
-        `SELECT DISTINCT p.id, p.nom AS name
+        `SELECT DISTINCT p.id, p.nom AS name, ${uniteProduitSql('p')} AS unite
          FROM produits p
          WHERE p.client_id = $1 AND p.type = 'utilisable' AND (
            EXISTS (SELECT 1 FROM produit_activite_stock pas WHERE pas.produit_id = p.id AND pas.activite_id = ANY($2::int[]))
@@ -1747,7 +1858,7 @@ const getUtilisablesPerimetre = async (req, res) => {
         [clientId, ids]
       ));
     }
-    res.json(rows.map((r) => ({ id: r.id, name: r.name })));
+    res.json(rows.map((r) => ({ id: r.id, name: r.name, unite: r.unite })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

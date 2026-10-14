@@ -13,7 +13,9 @@ const fauxPool = {
   query: async (sql, params = []) => {
     const texte = String(sql).replace(/\s+/g, ' ').trim();
     const id = Number(params[0]);
+    // P1 : le calcul du coût lit aussi le nom de l'unité du produit (SQL_PRODUIT_COUT).
     if (texte.startsWith('SELECT * FROM produits WHERE id = $1 AND client_id = $2')
+      || (texte.startsWith('SELECT p.*, (SELECT u.nom FROM unites u WHERE u.id = p.unite_id) AS unite_nom') && texte.endsWith('FROM produits p WHERE p.id = $1 AND p.client_id = $2'))
       || texte.startsWith('SELECT id, nom, origine FROM produits WHERE id = $1')) {
       return { rows: PRODUITS.has(id) ? [{ id, nom: `Produit ${id}`, origine: 'activite' }] : [] };
     }

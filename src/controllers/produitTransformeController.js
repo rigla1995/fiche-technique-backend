@@ -1,6 +1,6 @@
 const pool = require('../config/database');
 const { withTransaction } = require('../utils/db');
-const { buildAutoRef, computeStockCourant, computeStockPTCourant } = require('../utils/stockUtils');
+const { buildAutoRef, computeStockCourant, computeStockPTCourant, uniteProduitSql } = require('../utils/stockUtils');
 
 // ─── toggleStockIngredient ────────────────────────────────────────────────────
 // POST /api/produits/:id/toggle-stock-ingredient
@@ -478,7 +478,7 @@ const getPTRecipe = async (req, res) => {
         // en a besoin pour afficher les manques AVANT d'enregistrer (mêmes chiffres que
         // la garde 422 de saveStockPT).
         pool.query(
-          `SELECT psp.sous_produit_id, psp.portion AS portion_standard, p.nom,
+          `SELECT psp.sous_produit_id, psp.portion AS portion_standard, p.nom, ${uniteProduitSql('p')} AS unite_pt,
                   (SELECT spt.prix_calcule FROM stock_produits_transformes spt
                     WHERE spt.produit_id = psp.sous_produit_id AND spt.activite_id = $2
                       AND spt.quantite > 0 AND spt.prix_calcule IS NOT NULL
@@ -515,7 +515,7 @@ const getPTRecipe = async (req, res) => {
         type: 'sous_pt',
         sousProduitId: r.sous_produit_id,
         nom: r.nom,
-        unite: 'unité',
+        unite: r.unite_pt,
         categorie: 'Sous-produit',
         categorieId: null,
         portionStandard: parseFloat(r.portion_standard),

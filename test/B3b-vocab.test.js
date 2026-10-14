@@ -33,7 +33,9 @@ const fauxPool = {
     const texte = String(sql).replace(/\s+/g, ' ').trim();
     const id = Number(params[0]);
     if (texte.startsWith('SELECT p.id, p.nom, p.type, p.is_supplement')) return { rows: LISTE };
-    if (texte.startsWith('SELECT * FROM produits WHERE id = $1 AND client_id = $2')) return { rows: PRODUITS[id] ? [{ id, nom: PRODUITS[id] }] : [] };
+    // P1 : le calcul du coût lit aussi le nom de l'unité du produit (SQL_PRODUIT_COUT).
+    if (texte.startsWith('SELECT * FROM produits WHERE id = $1 AND client_id = $2')
+      || texte.endsWith('FROM produits p WHERE p.id = $1 AND p.client_id = $2')) return { rows: PRODUITS[id] ? [{ id, nom: PRODUITS[id] }] : [] };
     if (texte.includes('FROM produit_ingredients pi')) return { rows: ING[id] || [] };
     if (texte.includes('FROM produit_sous_produits psp')) return { rows: SOUS[id] || [] };
     if (texte.startsWith('SELECT nom FROM activites WHERE id = $1')) return { rows: [{ nom: 'Terrasse' }] };
@@ -195,8 +197,9 @@ test('Liste des produits : restauration identique à l\'existant (onglets, titre
   assert.match(t, /Total : 3 produits/);
   const u = await telecharger(produits.exportListExcel, reqListe(vocabDefaut, { type: 'utilisable' }));
   assert.deepEqual(u.feuilles.map((f) => f.nom), ['Produits utilisables']);
-  assert.match(u.feuilles[0].texte, /Produit \| Type \| Activités \| Référence \| Coût estimé \(DT\) \| Articles$/m);
-  assert.match(u.feuilles[0].texte, /Burger \| Produit vendable/);
+  // P1 : la liste des produits utilisables dit pour quoi le coût est donné (1 unité, ou 1 recette pour un produit d'avant).
+  assert.match(u.feuilles[0].texte, /Produit \| Type \| Activités \| Référence \| Coût estimé \(DT\) \| Articles \| Coût pour$/m);
+  assert.match(u.feuilles[0].texte, /Burger \| Produit vendable \| Terrasse \| B1 \| 4\.5 \| 3 \| 1 recette$/m);
 });
 
 test('Liste des produits : vocabulaire du compte (Céramique, miroir)', async () => {
