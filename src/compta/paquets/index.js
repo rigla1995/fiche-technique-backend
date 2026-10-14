@@ -249,6 +249,11 @@ const controlerPaquet = (p) => {
       if (!c) defauts.push(`clôture : compte du résultat ${cle} absent du paquet`);
       else if (c.nature !== 'capitaux') defauts.push(`clôture : compte ${c.numero} de nature ${c.nature}, capitaux attendue`);
     }
+    // X2 : les comptes d'affectation du résultat (réserves, report, dividendes, exploitant) et leur usage.
+    for (const a of (p.cloture || {}).affectation || []) {
+      if (!parNumero.get(a.numero)) defauts.push(`clôture : compte d'affectation ${a.numero} absent du paquet`);
+      if (!['benefice', 'tous'].includes(a.usage || 'tous')) defauts.push(`clôture : usage « ${a.usage} » du compte d'affectation ${a.numero} inconnu`);
+    }
   }
   // S7b : la fiscalité (facultative dans un paquet ; contrôlée si elle est là) : régimes fiscaux des fournisseurs et codes de
   // retenue qu'ils proposent (des codes de retenue du paquet), familles, seuil des retenues sur achats, compte du crédit de

@@ -228,7 +228,7 @@ const contrepasser = async (req, res) => {
 };
 
 module.exports = {
-  MSG_VALIDER, MSG_ROUVRIR, NUMERO_CHIFFRES, NUMERO_MAX, numeroDefinitif, rangDe, lireContrepassation, libelleContrepassation, lignesInverses,
+  MSG_VALIDER, MSG_ROUVRIR, NUMERO_CHIFFRES, NUMERO_MAX, numeroDefinitif, rangDe, prochainRang, lireContrepassation, libelleContrepassation, lignesInverses,
   SQL_PERIODE, periodeDuDossier, libellePeriode, exigerExerciceOuvert, exigerPeriodeOuverte, ecritureValidation,
   valider, validerPeriode, contrepasser,
 };
