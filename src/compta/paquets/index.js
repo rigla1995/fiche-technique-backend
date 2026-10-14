@@ -255,6 +255,61 @@ const controlerPaquet = (p) => {
       if (!['benefice', 'tous'].includes(a.usage || 'tous')) defauts.push(`clôture : usage « ${a.usage} » du compte d'affectation ${a.numero} inconnu`);
     }
   }
+  // E1 : les états financiers (facultatifs ; contrôlés s'ils sont là) : bilan (deux côtés, groupes → rubriques → postes) et
+  // état de résultat (lignes, totaux) ; codes uniques ; chaque préfixe couvre au moins un compte du paquet ; chaque compte de
+  // classe 6 ou 7 du paquet a sa ligne ; chaque compte des classes 1 à 5 a un poste (au sens de son solde habituel).
+  if (p.etats != null) {
+    const e = p.etats || {};
+    const codes = new Set();
+    const prefixes = [];
+    const code = (c, id) => {
+      if (!c || typeof c !== 'string') defauts.push(`états : ${id} sans code`);
+      else if (codes.has(c)) defauts.push(`états : code « ${c} » en double`);
+      codes.add(c);
+    };
+    const couvert = (prefixe) => p.comptes.some((c) => c.numero.startsWith(prefixe));
+    const prefixesDe = (liste, id) => {
+      if (!Array.isArray(liste) || !liste.length) { defauts.push(`états : ${id} sans préfixe de compte`); return; }
+      for (const x of liste) {
+        if (!/^\d{1,8}$/.test(String(x))) defauts.push(`états : ${id} : préfixe « ${x} » invalide`);
+        else if (!couvert(x)) defauts.push(`états : ${id} : préfixe ${x} sans compte dans le paquet`);
+        prefixes.push(String(x));
+      }
+    };
+    const bilan = e.bilan || {};
+    for (const cote of ['actifs', 'passifs']) {
+      if (!Array.isArray(bilan[cote])) { defauts.push(`états : bilan sans côté ${cote}`); continue; }
+      for (const g of bilan[cote]) {
+        code(g.code, `groupe ${g.libelle || '?'}`);
+        for (const r of g.rubriques || []) {
+          code(r.code, `rubrique ${r.libelle || g.libelle || '?'}`);
+          for (const po of r.postes || []) {
+            code(po.code, `poste ${po.libelle || '?'}`);
+            for (const d of defautsLibelle(po.libelle, false)) defauts.push(`états : poste ${po.code} : ${d}`);
+            if (po.calcul) { if (!['sousTotal', 'resultat'].includes(po.calcul)) defauts.push(`états : poste ${po.code} : calcul « ${po.calcul} » inconnu`); continue; }
+            prefixesDe(po.comptes, `poste ${po.code}`);
+            if (po.sens != null && !['debit', 'credit'].includes(po.sens)) defauts.push(`états : poste ${po.code} : sens « ${po.sens} » inconnu`);
+            if (po.moins) prefixesDe(po.moins.comptes, `poste ${po.code}, moins`);
+          }
+        }
+      }
+    }
+    if (!bilan.totalActifs || !bilan.totalPassifs) defauts.push('états : libellés des totaux du bilan absents');
+    if (![...codes].includes('resultatExercice') || !bilan.passifs?.some((g) => g.rubriques?.some((r) => r.postes?.some((po) => po.calcul === 'resultat')))) defauts.push('états : poste du résultat de l\'exercice (calcul « resultat ») absent des capitaux propres');
+    if (!Array.isArray(e.resultat)) defauts.push('états : état de résultat absent');
+    else {
+      for (const l of e.resultat) {
+        if (l.titre) continue;
+        code(l.code, `ligne ${l.libelle || '?'}`);
+        if (l.calcul === 'total') { for (const de of l.de || []) if (!codes.has(de)) defauts.push(`états : total ${l.code} : ligne « ${de} » inconnue ou postérieure`); continue; }
+        if (l.calcul) { defauts.push(`états : ligne ${l.code} : calcul « ${l.calcul} » inconnu`); continue; }
+        prefixesDe(l.comptes, `ligne ${l.code}`);
+      }
+      if (!e.resultat.some((l) => l.code === 'resultatNet' && l.calcul === 'total')) defauts.push('états : ligne « resultatNet » (total) absente');
+    }
+    // Couverture : tout compte du paquet suit un préfixe (classes 6 et 7 : une ligne ; 1 à 5 : un poste).
+    for (const c of p.comptes) if (!prefixes.some((x) => c.numero.startsWith(x))) defauts.push(`états : compte ${c.numero} sans poste ni ligne`);
+  }
   // S7b : la fiscalité (facultative dans un paquet ; contrôlée si elle est là) : régimes fiscaux des fournisseurs et codes de
   // retenue qu'ils proposent (des codes de retenue du paquet), familles, seuil des retenues sur achats, compte du crédit de
   // TVA, codes d'opération TEJ (ceux des codes du paquet en font partie).
@@ -322,6 +377,8 @@ const controlerPaquet = (p) => {
 const fiscaliteDe = (pays) => paquetDe(pays)?.fiscalite || null;
 // X1 : les comptes du résultat d'un pays ({ beneficiaire, deficitaire }), ou null.
 const clotureDe = (pays) => paquetDe(pays)?.cloture || null;
+// E1 : le modèle des états financiers d'un pays (bilan, état de résultat : postes et préfixes de comptes), ou null.
+const etatsDe = (pays) => paquetDe(pays)?.etats || null;
 // Le régime fiscal d'un fournisseur (valeur de la liste du paquet), ou null.
 const regimeFiscalDe = (pays, valeur) => (valeur ? (fiscaliteDe(pays)?.regimesFiscaux || []).find((r) => r.valeur === valeur) || null : null);
 
@@ -361,5 +418,5 @@ module.exports = {
   TYPES_TIERS, TYPES_TIERS_LIBELLES, NATURE_PAR_TYPE_TIERS, REGIMES_TVA_TIERS, REGIMES_TVA_TIERS_LIBELLES,
   CODE_TIERS_MIN, CODE_TIERS_MAX, RE_CODE_TIERS, PREFIXE_TIERS_MAX, RE_PREFIXE_TIERS, CHIFFRES_TIERS_MIN, CHIFFRES_TIERS_MAX, DELAI_PAIEMENT_MAX,
   RE_REGIME_FISCAL, PERSONNES, TYPES_IDENTIFIANT, TYPES_IDENTIFIANT_LIBELLES, RE_CODE_OPERATION_TEJ, fiscaliteDe, regimeFiscalDe,
-  clotureDe,
+  clotureDe, etatsDe,
 };
