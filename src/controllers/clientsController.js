@@ -634,10 +634,14 @@ const remove = async (req, res) => {
 
     // SET NULL on created_by columns that have no ON DELETE action.
     // Use SAVEPOINT per table so a missing table/column doesn't abort the transaction.
+    // Les tables de la configuration de vente (migrations 171 et 238) aussi : leur « SET NULL » à la suppression de
+    // l'utilisateur tomberait dans la même instruction que la cascade des activités, et PostgreSQL refuse la mise à jour
+    // d'une ligne dont l'activité vient d'être effacée (P2 : activite_prestataires.conditions_par).
     const auditTables = [
       'stock_entreprise_daily', 'stock_labo_daily',
       'pertes', 'labo_transfers', 'inventaires', 'ventes',
       'acheteurs', 'commandes_acheteur', 'acheteur_offre_prix_historique',
+      'activite_articles_vendables', 'activite_prestataires', 'article_prix_prestataire',
     ];
     for (const t of auditTables) {
       await dbClient.query('SAVEPOINT sp_audit');
@@ -650,6 +654,16 @@ const remove = async (req, res) => {
       } catch (_) {
         await dbClient.query('ROLLBACK TO SAVEPOINT sp_audit');
       }
+    }
+    await dbClient.query('SAVEPOINT sp_audit');
+    try {
+      await dbClient.query(
+        `UPDATE activite_prestataires SET conditions_par = NULL WHERE conditions_par IN (${uPlaceholders})`,
+        userIds
+      );
+      await dbClient.query('RELEASE SAVEPOINT sp_audit');
+    } catch (_) {
+      await dbClient.query('ROLLBACK TO SAVEPOINT sp_audit');
     }
     // commandes_acheteur.traite_par référence aussi utilisateurs sans ON DELETE
     await dbClient.query('SAVEPOINT sp_audit');
