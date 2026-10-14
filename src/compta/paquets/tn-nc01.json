@@ -105,6 +105,84 @@
       { "numero": "108", "usage": "tous" }
     ]
   },
+  "etats": {
+    "note": "E1 (14/10/2026) : états financiers de la NC 01, 1re partie — bilan (annexe 1, §38) et état de résultat (annexe 3, présentation autorisée par nature, §51 à §54) ; PLAN-ETATS-FINANCIERS.md §3 et §5, réponses du client du 14/10 (« ok pour les 5 »). Chaque poste porte les PRÉFIXES de compte qu'il regroupe (un sous-compte suit son compte ; le plus long préfixe l'emporte) ; « sens » (debit, credit) : un même compte va à l'actif s'il est débiteur et au passif s'il est créditeur, compte par compte (pas de compensation, §21) ; « moins » : amortissements et provisions déduits sous leur poste. Le résultat de l'exercice (capitaux propres) = produits − charges, jamais le solde du 13 (résultat de l'exercice précédent non affecté : résultats reportés). Postes à zéro sur les deux exercices non présentés (§21). Montants de l'état de résultat : produits en plus, charges en moins (crédit − débit).",
+    "bilan": {
+      "actifs": [
+        { "code": "actifsNonCourants", "libelle": "Actifs non courants", "total": "Total des actifs non courants", "rubriques": [
+          { "code": "actifsImmobilises", "libelle": "Actifs immobilisés", "total": "Total des actifs immobilisés", "postes": [
+            { "code": "immobilisationsIncorporelles", "libelle": "Immobilisations incorporelles", "comptes": ["21", "231", "237"], "moins": { "libelle": "Moins : amortissements", "comptes": ["281", "291"] } },
+            { "code": "immobilisationsCorporelles", "libelle": "Immobilisations corporelles", "comptes": ["22", "23", "24"], "moins": { "libelle": "Moins : amortissements", "comptes": ["28", "29"] } },
+            { "code": "immobilisationsFinancieres", "libelle": "Immobilisations financières", "comptes": ["25", "26"], "moins": { "libelle": "Moins : provisions", "comptes": ["295", "296"] } }
+          ] },
+          { "code": "autresActifsNonCourantsRubrique", "libelle": null, "total": null, "postes": [
+            { "code": "autresActifsNonCourants", "libelle": "Autres actifs non courants", "comptes": ["27"] }
+          ] }
+        ] },
+        { "code": "actifsCourants", "libelle": "Actifs courants", "total": "Total des actifs courants", "rubriques": [
+          { "code": "actifsCourantsRubrique", "libelle": null, "total": null, "postes": [
+            { "code": "stocks", "libelle": "Stocks", "comptes": ["3"], "moins": { "libelle": "Moins : provisions", "comptes": ["39"] } },
+            { "code": "clients", "libelle": "Clients et comptes rattachés", "comptes": ["41"], "sens": "debit", "moins": { "libelle": "Moins : provisions", "comptes": ["491"] } },
+            { "code": "autresActifsCourants", "libelle": "Autres actifs courants", "comptes": ["40", "42", "43", "44", "45", "46", "47", "58"], "sens": "debit", "moins": { "libelle": "Moins : provisions", "comptes": ["49"] } },
+            { "code": "placements", "libelle": "Placements et autres actifs financiers", "comptes": ["51", "52"], "moins": { "libelle": "Moins : provisions", "comptes": ["59"] } },
+            { "code": "liquidites", "libelle": "Liquidités et équivalents de liquidités", "comptes": ["53", "54", "55"], "sens": "debit" }
+          ] }
+        ] }
+      ],
+      "totalActifs": "Total des actifs",
+      "passifs": [
+        { "code": "capitauxPropres", "libelle": "Capitaux propres", "total": "Total des capitaux propres avant affectation", "rubriques": [
+          { "code": "capitauxPropresRubrique", "libelle": null, "total": null, "postes": [
+            { "code": "capital", "libelle": "Capital social", "comptes": ["10"] },
+            { "code": "reserves", "libelle": "Réserves", "comptes": ["11"] },
+            { "code": "autresCapitauxPropres", "libelle": "Autres capitaux propres", "comptes": ["14"] },
+            { "code": "resultatsReportes", "libelle": "Résultats reportés", "comptes": ["12", "13"] },
+            { "code": "totalAvantResultat", "libelle": "Total des capitaux propres avant résultat de l'exercice", "calcul": "sousTotal" },
+            { "code": "resultatExercice", "libelle": "Résultat de l'exercice", "calcul": "resultat" }
+          ] }
+        ] },
+        { "code": "passifs", "libelle": "Passifs", "total": "Total des passifs", "rubriques": [
+          { "code": "passifsNonCourants", "libelle": "Passifs non courants", "total": "Total des passifs non courants", "postes": [
+            { "code": "emprunts", "libelle": "Emprunts", "comptes": ["16"] },
+            { "code": "autresPassifsFinanciers", "libelle": "Autres passifs financiers", "comptes": ["17", "18"] },
+            { "code": "provisions", "libelle": "Provisions", "comptes": ["15"] }
+          ] },
+          { "code": "passifsCourants", "libelle": "Passifs courants", "total": "Total des passifs courants", "postes": [
+            { "code": "fournisseurs", "libelle": "Fournisseurs et comptes rattachés", "comptes": ["40"], "sens": "credit" },
+            { "code": "autresPassifsCourants", "libelle": "Autres passifs courants", "comptes": ["41", "42", "43", "44", "45", "46", "47", "48", "58"], "sens": "credit" },
+            { "code": "concoursBancaires", "libelle": "Concours bancaires et autres passifs financiers", "comptes": ["50", "53", "54", "55"], "sens": "credit" }
+          ] }
+        ] }
+      ],
+      "totalPassifs": "Total des capitaux propres et des passifs"
+    },
+    "resultat": [
+      { "titre": "Produits d'exploitation" },
+      { "code": "revenus", "libelle": "Revenus", "comptes": ["70"] },
+      { "code": "autresProduitsExploitation", "libelle": "Autres produits d'exploitation", "comptes": ["73", "74", "78", "79"] },
+      { "code": "productionImmobilisee", "libelle": "Production immobilisée", "comptes": ["72"] },
+      { "code": "totalProduitsExploitation", "libelle": "Total des produits d'exploitation", "calcul": "total", "de": ["revenus", "autresProduitsExploitation", "productionImmobilisee"] },
+      { "titre": "Charges d'exploitation" },
+      { "code": "variationStocks", "libelle": "Variation des stocks des produits finis et des encours (en + ou −)", "comptes": ["71"] },
+      { "code": "achatsMarchandises", "libelle": "Achats de marchandises consommés", "comptes": ["607", "6037"] },
+      { "code": "achatsApprovisionnements", "libelle": "Achats d'approvisionnements consommés", "comptes": ["60"] },
+      { "code": "chargesPersonnel", "libelle": "Charges de personnel", "comptes": ["64"] },
+      { "code": "dotations", "libelle": "Dotations aux amortissements et aux provisions", "comptes": ["68"] },
+      { "code": "autresChargesExploitation", "libelle": "Autres charges d'exploitation", "comptes": ["61", "62", "63", "66"] },
+      { "code": "totalChargesExploitation", "libelle": "Total des charges d'exploitation", "calcul": "total", "de": ["variationStocks", "achatsMarchandises", "achatsApprovisionnements", "chargesPersonnel", "dotations", "autresChargesExploitation"] },
+      { "code": "resultatExploitation", "libelle": "Résultat d'exploitation", "calcul": "total", "de": ["totalProduitsExploitation", "totalChargesExploitation"] },
+      { "titre": "Résultat des activités ordinaires" },
+      { "code": "chargesFinancieres", "libelle": "Charges financières nettes", "comptes": ["65", "686"] },
+      { "code": "produitsPlacements", "libelle": "Produits des placements", "comptes": ["75", "786"] },
+      { "code": "autresGains", "libelle": "Autres gains ordinaires", "comptes": ["736"] },
+      { "code": "autresPertes", "libelle": "Autres pertes ordinaires", "comptes": ["636"] },
+      { "code": "resultatOrdinaireAvantImpot", "libelle": "Résultat des activités ordinaires avant impôt", "calcul": "total", "de": ["resultatExploitation", "chargesFinancieres", "produitsPlacements", "autresGains", "autresPertes"] },
+      { "code": "impot", "libelle": "Impôt sur les bénéfices", "comptes": ["69"] },
+      { "code": "resultatOrdinaireApresImpot", "libelle": "Résultat des activités ordinaires après impôt", "calcul": "total", "de": ["resultatOrdinaireAvantImpot", "impot"] },
+      { "code": "extraordinaires", "libelle": "Éléments extraordinaires (gains / pertes)", "comptes": ["77", "67", "697"] },
+      { "code": "resultatNet", "libelle": "Résultat net de l'exercice", "calcul": "total", "de": ["resultatOrdinaireApresImpot", "extraordinaires"] }
+    ]
+  },
   "fiscalite": {
     "note": "S7b (09/10/2026) : régime fiscal d'un fournisseur et retenue proposée d'après lui (recherche-fiscale-tunisie.md §3.1 et §3.6, règles 3 et 4 : achats de 1 000 D et plus — 1,5 % en général, 1 % pour une société à l'IS de 20 %, 0,5 % pour une société à l'IS de 10 % ou un revenu à déduction des 2/3 ; honoraires — 3 % pour une société ou une personne physique au réel, 10 % sinon), seuil des retenues sur achats par paiement, compte du crédit de TVA à reporter (état de TVA du mois), certificats de retenue au cahier des charges TEJ v2.0 (juin 2024 ; nouveau schéma XSD de septembre 2026 non publié : fichier à essayer sur la plateforme).",
     "regimesFiscaux": [
