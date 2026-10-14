@@ -162,7 +162,7 @@ const SQL_RESUME_TENUE = `
         FROM compta.lignes l
         JOIN compta.ecritures e ON e.id = l.ecriture_id
         JOIN compta.tiers t ON t.id = l.tiers_id
-       WHERE l.dossier_id = $1 AND l.tiers_id IS NOT NULL AND l.lettrage_id IS NULL
+       WHERE l.dossier_id = $1 AND l.tiers_id IS NOT NULL AND l.lettrage_id IS NULL AND e.origine <> 'cloture'
     ) n
    GROUP BY n.type, n.tiers_id`;
 // S7b (carte « Taxes ») : la période du jour dans l'exercice ouvert (sinon la dernière commencée, sinon la première), son

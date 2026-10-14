@@ -102,7 +102,7 @@ const SQL_LIGNE = `
 const ORDRE_LIGNES = 'ORDER BY l.date, e.numero NULLS LAST, e.numero_provisoire, l.rang';
 // Les lignes non lettrées d'un tiers ($1 dossier, $2 tiers), les plus anciennes d'abord, bornées ($3).
 const SQL_NON_LETTREES = `${SQL_LIGNE}
-   WHERE l.dossier_id = $1 AND l.tiers_id = $2 AND l.lettrage_id IS NULL
+   WHERE l.dossier_id = $1 AND l.tiers_id = $2 AND l.lettrage_id IS NULL AND e.origine <> 'cloture'
    ${ORDRE_LIGNES}
    LIMIT $3`;
 // Leurs comptes rendus (toutes, pas seulement celles montrées) : nombre, à lettrer (validées), en brouillard, totaux.
@@ -110,7 +110,7 @@ const SQL_SOMMES_NON_LETTREES = `
   SELECT COUNT(*)::int AS nb, COUNT(*) FILTER (WHERE e.etat = 'validee')::int AS nb_validees, COUNT(*) FILTER (WHERE e.etat = 'brouillard')::int AS nb_brouillard,
          COALESCE(SUM(l.debit), 0)::numeric(18,3)::text AS debit, COALESCE(SUM(l.credit), 0)::numeric(18,3)::text AS credit
     FROM compta.lignes l JOIN compta.ecritures e ON e.id = l.ecriture_id
-   WHERE l.dossier_id = $1 AND l.tiers_id = $2 AND l.lettrage_id IS NULL`;
+   WHERE l.dossier_id = $1 AND l.tiers_id = $2 AND l.lettrage_id IS NULL AND e.origine <> 'cloture'`;
 // Les lettres d'un tiers ($1 dossier, $2 tiers), les plus récentes d'abord, bornées ($3), et leur nombre.
 const SQL_LETTRES = `
   SELECT lt.id, lt.lettre, lt.montant::text AS montant, lt.nb_lignes, lt.created_at, u.nom AS cree_par_nom, k.id AS compte_id, k.numero AS compte_numero
@@ -129,8 +129,8 @@ const SQL_LIGNES_DES_LETTRES = `${SQL_LIGNE}
 // Les tiers mouvementés du dossier ($1), avec leurs lignes à lettrer (validées non lettrées), en brouillard et lettrées.
 const SQL_TIERS = `
   SELECT t.id, t.type, t.code, t.nom, t.actif, t.compte_id, t.delai_paiement,
-         COUNT(*) FILTER (WHERE l.lettrage_id IS NULL AND e.etat = 'validee')::int AS nb_a_lettrer,
-         COUNT(*) FILTER (WHERE l.lettrage_id IS NULL AND e.etat = 'brouillard')::int AS nb_brouillard,
+         COUNT(*) FILTER (WHERE l.lettrage_id IS NULL AND e.etat = 'validee' AND e.origine <> 'cloture')::int AS nb_a_lettrer,
+         COUNT(*) FILTER (WHERE l.lettrage_id IS NULL AND e.etat = 'brouillard' AND e.origine <> 'cloture')::int AS nb_brouillard,
          COUNT(*) FILTER (WHERE l.lettrage_id IS NOT NULL)::int AS nb_lettrees
     FROM compta.tiers t
     JOIN compta.lignes l ON l.tiers_id = t.id AND l.dossier_id = $1
@@ -342,6 +342,8 @@ const lettrer = async (req, res) => {
         if (l.tiers_id !== t.id) throw erreur(400, `La ligne de l'écriture ${qui} n'est pas du ${(TYPES_TIERS_LIBELLES[t.type] || 'tiers').toLowerCase()} ${t.code}`, 'TIERS_DIFFERENT');
         if (l.etat !== 'validee') throw erreur(409, `L'écriture ${qui} est en brouillard : validez-la d'abord (seules les lignes d'écritures validées se lettrent)`, 'LIGNE_BROUILLARD');
         if (l.lettrage_id) throw erreur(409, `La ligne de l'écriture ${qui} est déjà lettrée : relisez la page`, 'DEJA_LETTREE');
+        // X2 (PLAN-EXERCICES §3) : les à-nouveaux de la clôture reprennent les soldes ; les factures restent les pièces à lettrer.
+        if (l.origine === 'cloture') throw erreur(409, `La ligne de l'écriture ${qui} vient de la clôture de l'exercice (à-nouveaux) : elle ne se lettre pas, lettrez les factures et les règlements eux-mêmes`, 'LIGNE_CLOTURE');
         return l;
       }));
       const montants = groupes.map(montantDuGroupe);

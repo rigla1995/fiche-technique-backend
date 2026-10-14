@@ -73,7 +73,7 @@ const SQL_NON_LETTREES = `
     FROM compta.lignes l
     JOIN compta.ecritures e ON e.id = l.ecriture_id
     JOIN compta.tiers t ON t.id = l.tiers_id
-   WHERE l.dossier_id = $1 AND l.tiers_id IS NOT NULL AND l.lettrage_id IS NULL AND t.type = $3 AND ($4::boolean OR e.etat = 'validee') AND ($5::int IS NULL OR l.tiers_id = $5)`;
+   WHERE l.dossier_id = $1 AND l.tiers_id IS NOT NULL AND l.lettrage_id IS NULL AND e.origine <> 'cloture' AND t.type = $3 AND ($4::boolean OR e.etat = 'validee') AND ($5::int IS NULL OR l.tiers_id = $5)`;
 // La balance âgée : par tiers, le dû non lettré, ses factures par tranche de retard ($2 - échéance) et ses règlements et
 // avoirs non lettrés (« credits »), imputés ensuite sur les tranches les plus anciennes (echeances.js : trancheesImputees).
 const SQL_BALANCE_AGEE = `
