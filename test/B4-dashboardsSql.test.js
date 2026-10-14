@@ -118,8 +118,9 @@ test('v2 ventes : préfixes de catégorie identiques par défaut, termes du doma
   const defaut = await appeler(getDashboardV2, { tab: 'ventes', from: '2026-09-01', to: '2026-09-30' });
   assert.deepEqual(defaut.corps.par_categorie.map((c) => c.categorie),
     ['P. Vendable / Burgers', 'Supplément / Sauces', 'P. Valorisé / Jus', 'Divers', 'Sans catégorie']);
+  // P2 : la TVA sur la commission et le net (CA − commission − TVA) s'ajoutent à chaque ligne.
   assert.deepEqual(Object.keys(defaut.corps.par_categorie[0]),
-    ['categorie', 'ca', 'cout', 'commissions', 'qte', 'marge_brute', 'marge_apres_com', 'food_cost_pct']);
+    ['categorie', 'ca', 'cout', 'commissions', 'tva_commissions', 'net', 'qte', 'marge_brute', 'marge_apres_com', 'food_cost_pct']);
   const hot = await appeler(getDashboardV2, { tab: 'ventes', from: '2026-09-01', to: '2026-09-30' }, hotellerie);
   assert.deepEqual(hot.corps.par_categorie.map((c) => c.categorie),
     ['Prestation vendue / Burgers', 'Supplément / Sauces', 'Prestation catalogue / Jus', 'Divers', 'Sans catégorie']);

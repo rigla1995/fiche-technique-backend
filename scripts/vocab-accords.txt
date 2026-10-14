@@ -2,7 +2,7 @@
 # Chaque unité qui contient un appel voc ou une balise, rendue avec le lexique par défaut puis avec le
 # lexique MIROIR (scripts/vocab-lexiques-test.json : genre et élision inversés, autres mots).
 # À relire en revue : un accord faux dans une ligne « miroir » est un accord resté écrit en dur.
-# 556 unité(s), 43 fichier(s).
+# 562 unité(s), 44 fichier(s).
 
 src/controllers/abonnementController.js
   l. 1694
@@ -224,25 +224,25 @@ src/controllers/dashboardController.js
     miroir : Agence
 
 src/controllers/dashboardV2Controller.js
-  l. 348
+  l. 362
     défaut : Prestataire
     miroir : Agence
-  l. 381
+  l. 396
     défaut : P. Vendable / 
     miroir : Inv. vendue / 
-  l. 382
+  l. 397
     défaut : Supplément / 
     miroir : Option / 
-  l. 383
+  l. 398
     défaut : P. Valorisé / 
     miroir : Inv. valorisée / 
-  l. 528
+  l. 544
     défaut : Activité
     miroir : Abr-Local
-  l. 528
+  l. 544
     défaut : Labo
     miroir : Abr-Usine
-  l. 690
+  l. 706
     défaut :  (labo)
     miroir :  (abr-usine)
 
@@ -1100,61 +1100,76 @@ src/controllers/unitesController.js
     miroir : Suppression impossible : ⟦·⟧ ⟦invention|inventions@>1⟧ ⟦utile|utiles@>1⟧ ⟦est|sont@>1⟧ ⟦comptée|comptées@>1⟧ dans cette unité
 
 src/controllers/ventesController.js
-  l. 47
+  l. 49
     défaut : Labo hors de votre périmètre
     miroir : Usine hors de votre périmètre
-  l. 55
+  l. 57
     défaut : La vente est désactivée pour cette activité.
     miroir : L'encaissement est désactivé pour ce local.
-  l. 911
+  l. 490
+    défaut : Article vendable introuvable
+    miroir : Denrée vendable introuvable
+  l. 558
+    défaut : Prestataire ou article vendable introuvable
+    miroir : Agence ou denrée vendable introuvable
+  l. 765
+    défaut : Choisissez le prestataire de cette vente.
+    miroir : Choisissez l'agence de cet encaissement.
+  l. 771
+    défaut : Ce prestataire n'est pas activé pour cette activité.
+    miroir : Cette agence n'est pas activée pour ce local.
+  l. 773
+    défaut : Renseignez d'abord la commission, la TVA et le mode de paiement du prestataire (Config Prestataires).
+    miroir : Renseignez d'abord la commission, la TVA et le mode de paiement de l'agence (Config Abr-Agences).
+  l. 1017
     défaut : Vous ne pouvez supprimer que les ventes que vous avez saisies
     miroir : Vous ne pouvez supprimer que les encaissements que vous avez saisis
-  l. 1259
+  l. 1373
     défaut : Historique Ventes
     miroir : Historique Abr-Encaissements
-  l. 1262
+  l. 1376
     défaut : Exporté le ⟦·⟧ · ⟦·⟧ · ⟦·⟧ vente(s)⟦? · ⟦·⟧ sélectionnée(s) (surlignées)|⟧
     miroir : Exporté le ⟦·⟧ · ⟦·⟧ · ⟦·⟧ encaissement(s)⟦? · ⟦·⟧ sélectionné(s) (surlignés)|⟧
-  l. 1264
+  l. 1378
     défaut : Historique des ventes — Activités
     miroir : Historique des encaissements — Abr-Locaux
-  l. 1265
+  l. 1379
     défaut : Prestataire
     miroir : Abr-Agence
-  l. 1265
+  l. 1379
     défaut : Marge (DT)
     miroir : Abr-Écart (DT)
-  l. 1275
+  l. 1390
     défaut : ⟦?Directe|Prestataire⟧
     miroir : ⟦?Direct|Abr-Agence⟧
-  l. 1276
+  l. 1391
     défaut : ⟦?Confirmée|⟦·⟧⟧
     miroir : ⟦?Confirmé|⟦·⟧⟧
-  l. 1354
+  l. 1468
     défaut : Produit / Supplément
     miroir : Abr-Invention / Abr-Option
-  l. 1362
+  l. 1476
     défaut : ⟦?Produit Valorisé|⟦?Supplément|Produit⟧⟧
     miroir : ⟦?Invention Valorisée|Abr-⟦?Option|Invention⟧⟧
-  l. 1474
+  l. 1588
     défaut : Ventes Labo
     miroir : Encaissements Abr-Usine
-  l. 1479
+  l. 1593
     défaut : Ventes du labo — Transferts valorisés
     miroir : Encaissements de l'usine — Expéditions valorisées
-  l. 1480
+  l. 1594
     défaut : Val. transfert
     miroir : Val. abr-expédition
-  l. 1480
+  l. 1594
     défaut : Val. appro
     miroir : Val. abr-rentrée
-  l. 1493
+  l. 1607
     défaut : ⟦·⟧⟦? (labo)|⟧
     miroir : ⟦·⟧⟦? (abr-usine)|⟧
-  l. 1591
+  l. 1705
     défaut : Produits composés (labo)
     miroir : Inventions composées (abr-usine)
-  l. 1660
+  l. 1774
     défaut : Article introuvable
     miroir : Denrée introuvable
 
@@ -2085,6 +2100,11 @@ src/services/unitesOperationnellesService.js
   l. 26
     défaut : Seul un labo peut alimenter une unité.
     miroir : Seule une usine peut alimenter une unité.
+
+src/utils/conditionsPrestataire.js
+  l. 19
+    défaut : Renseignez la commission, la TVA et le mode de paiement du prestataire.
+    miroir : Renseignez la commission, la TVA et le mode de paiement de l'agence.
 
 src/utils/uniteProduit.js
   l. 28

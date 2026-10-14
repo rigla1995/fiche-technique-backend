@@ -4,7 +4,7 @@ Le tableau de bord est votre poste de pilotage : [[nom:vente:pl]], [[nom:marge:p
 
 ### Les cinq onglets
 
-- **Vue d'ensemble** — les indicateurs clés de la période avec leur évolution par rapport à la période précédente, les alertes ([[nom:stock]] sous seuil, [[nom:food_cost]] [[acc:food_cost:élevé:élevée]] — au-delà du **seuil [[de:cout_matiere]] de votre domaine**, 40 % par défaut —, [[nom:inventaire]] [[acc:inventaire:ancien:ancienne]]) et la courbe d'évolution du CA et [[du:marge:pl]].
+- **Vue d'ensemble** — les indicateurs clés de la période avec leur évolution par rapport à la période précédente (dont le **Net [[nom:prestataire:pl]]** : leur CA moins les commissions et la TVA sur les commissions), les alertes ([[nom:stock]] sous seuil, [[nom:food_cost]] [[acc:food_cost:élevé:élevée]] — au-delà du **seuil [[de:cout_matiere]] de votre domaine**, 40 % par défaut —, [[nom:inventaire]] [[acc:inventaire:ancien:ancienne]]) et la courbe d'évolution du CA et [[du:marge:pl]].
 - **[[Nom:vente:pl]] & [[nom:marge:pl]]** — l'analyse fine de votre rentabilité : [[nom:marge:pl]] par canal de vente, par catégorie [[de:produit:pl]], par type ([[nom:produit:pl]], [[nom:supplement:pl]], valorisés), [[acc:marge:meilleurs:meilleures]] et plus faibles [[nom:marge:pl]], et le détail triable [[nom:produit]] par [[nom:produit]].
 - **Achats & [[nom:stock]]** — vos achats par catégorie et par [[nom:fournisseur]], les réceptions en provenance [[du:labo]], la valeur [[du:stock]] par catégorie, les alertes de seuil détaillées et les [[acc:inventaire:derniers:dernières]] [[nom:inventaire:pl]].
 - **[[Nom:perte:pl]]** — [[le:perte:pl]] **[[acc:perte:consolidé:consolidée:pl]] de [[votre:activite:pl]] et de [[votre:labo:pl]]** : par type (les types [[de:perte]] de votre domaine : avarie/déchet par défaut), par site, par catégorie, [[nom:article:pl]] les plus [[acc:article:perdu:perdue:pl]], et leur poids par rapport au CA.
@@ -12,7 +12,7 @@ Le tableau de bord est votre poste de pilotage : [[nom:vente:pl]], [[nom:marge:p
 
 ### Les filtres
 
-Chaque filtre est **multi-sélection** : cochez une ou plusieurs valeurs ([[nom:activite:pl]], types de vente, [[nom:prestataire:pl]], catégories [[de:produit:pl]] ou [[de:article:pl]], familles, [[nom:fournisseur:pl]]…). Sans coche, tout est pris en compte. Les filtres proposés s'adaptent à l'onglet affiché.
+Chaque filtre est **multi-sélection** : cochez une ou plusieurs valeurs ([[nom:activite:pl]], types de vente, [[nom:prestataire:pl]], modes de paiement, catégories [[de:produit:pl]] ou [[de:article:pl]], familles, [[nom:fournisseur:pl]]…). Sans coche, tout est pris en compte. Les filtres proposés s'adaptent à l'onglet affiché. Le filtre **Mode de paiement** retient [[le:vente:pl]] par [[nom:prestataire]] dont le mode (Espèces, Virement…) était celui-là le jour de la saisie.
 
 1. Choisissez la **période** : mois en cours, 7 ou 30 jours, mois dernier, trimestre, année, ou des dates personnalisées.
 2. Combinez les filtres, par exemple : *[[nom:marge:pl]] des catégories « Pâtisseries » et « Boissons » vendues via [[nom:prestataire]] sur le trimestre*.
@@ -22,9 +22,14 @@ Chaque filtre est **multi-sélection** : cochez une ou plusieurs valeurs ([[nom:
 
 :::formule Du CA [[au:marge]] [[acc:marge:net:nette]]
 [[Nom:marge]] [[acc:marge:brut:brute]] = CA − [[nom:cout_matiere]]
-[[Nom:marge]] après commissions = [[nom:marge]] [[acc:marge:brut:brute]] − commissions [[nom:prestataire:pl]]
+[[Nom:marge]] après commissions = [[nom:marge]] [[acc:marge:brut:brute]] − commissions [[nom:prestataire:pl]] − TVA sur ces commissions
 [[Nom:marge]] [[acc:marge:net estimé:nette estimée]] = [[nom:marge]] après commissions − prorata des charges fixes
-note: commissions = taux configuré par [[nom:activite]] et [[nom:prestataire]] ; charges = charges fixes annuelles ramenées à la période.
+note: commission et TVA aux taux figés sur chaque [[nom:vente]] le jour de sa saisie (conditions [[du:prestataire]] pour [[le:activite]]) ; charges = charges fixes annuelles ramenées à la période.
+:::
+
+:::formule Net [[nom:prestataire:pl]]
+Net [[nom:prestataire:pl]] = CA [[du:vente:pl]] par [[nom:prestataire]] − commissions − TVA sur les commissions
+note: la carte de la vue d'ensemble et de l'onglet [[Nom:vente:pl]] & [[nom:marge:pl]] ; le tableau par canal donne la commission, la TVA et le net de chaque [[nom:prestataire]]. Filtrez par [[nom:prestataire]] ou par mode de paiement pour suivre un canal.
 :::
 
 - [[Det:cout_matiere:le]]**[[nom:cout_matiere]]** de chaque [[nom:vente]] est [[acc:cout_matiere:figé:figée]] au moment [[du:vente]] (voir [Coût de revient d'[[un:recette]]](#calc-cout-recette)) ; le badge [[de:cout_matiere]] d'[[un:produit]] passe au vert, à l'orange puis au rouge selon le seuil de votre domaine (40 % par défaut : orange dès seuil − 10 points, rouge au-delà du seuil).

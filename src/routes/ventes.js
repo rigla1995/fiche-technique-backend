@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, requireSuperAdmin, requireEntreprise, requireClient } = require('../middleware/auth');
 const c = require('../controllers/ventesController');
+const mp = require('../controllers/modesPaiementController');
 
 // ── Admin routes ─────────────────────────────────────────────────────────────
 
@@ -89,6 +90,11 @@ router.delete('/admin/prestataires/:id', authenticate, requireSuperAdmin, c.dele
  */
 router.put('/admin/entreprises/:entrepriseId/module-vente', authenticate, requireSuperAdmin, c.toggleModuleVente);
 
+// ── Admin — Modes de paiement des prestataires (P2, migration 238) : ajout, renommage, désactivation ───────────────
+router.get('/admin/modes-paiement', authenticate, requireSuperAdmin, mp.lister);
+router.post('/admin/modes-paiement', authenticate, requireSuperAdmin, mp.creer);
+router.put('/admin/modes-paiement/:id', authenticate, requireSuperAdmin, mp.modifier);
+
 // ── Client — Prestataires par activité ───────────────────────────────────────
 
 /**
@@ -106,6 +112,8 @@ router.put('/admin/entreprises/:entrepriseId/module-vente', authenticate, requir
  *       200: { description: Liste des prestataires }
  */
 router.get('/prestataires', authenticate, requireEntreprise, c.listPrestatairesClient);
+// Les modes de paiement actifs, proposés à l'activation d'un prestataire (P2).
+router.get('/modes-paiement', authenticate, requireEntreprise, mp.listerActifs);
 
 /**
  * @swagger

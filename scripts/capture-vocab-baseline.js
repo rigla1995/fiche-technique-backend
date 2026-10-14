@@ -712,7 +712,14 @@ async function principal() {
   exiger(await BA.post('/api/articles-vendables', { activite_id: A1.id, article_type: 'produit', article_id: compose.id, prix_vente: 25, portion: 1, actif: true }), [200, 201], 'prix produit composé');
   exiger(await BA.post('/api/articles-vendables', { activite_id: A1.id, article_type: 'ingredient', article_id: art.cafe, prix_vente: 4.5, portion: 0.02, actif: true }), [200, 201], 'prix article valorisé');
   exiger(await BA.post('/api/ventes', { activite_id: A1.id, date_vente: D(12), type_vente: 'directe', prestataire_id: null, lignes: [{ article_type: 'produit', article_id: compose.id, quantite: 3, prix_unitaire: 25 }] }), [200, 201], 'vente directe');
-  exiger(await BA.post('/api/ventes', { activite_id: A1.id, date_vente: D(13), type_vente: 'prestataire', prestataire_id: null, lignes: [{ article_type: 'produit', article_id: compose.id, quantite: 2, prix_unitaire: 27 }] }), [200, 201], 'vente prestataire sans prestataire');
+  // P2 (migration 238) : une vente par prestataire nomme son prestataire et fige ses conditions ; le prestataire (Glovo,
+  // de la migration 079, sinon le premier) est activé pour l'activité avec commission, TVA et mode de paiement (le
+  // premier mode actif de la liste de l'admin).
+  const prestas = exiger(await BA.get('/api/prestataires'), 200, 'prestataires');
+  const presta = prestas.find((p) => p.nom === 'Glovo') || prestas[0];
+  const modes = exiger(await BA.get('/api/modes-paiement'), 200, 'modes de paiement');
+  exiger(await BA.post('/api/activite-prestataires', { activite_id: A1.id, prestataire_id: presta.id, taux_commission: 20, taux_tva: 19, mode_paiement_id: modes[0].id }), 201, 'activation prestataire');
+  exiger(await BA.post('/api/ventes', { activite_id: A1.id, date_vente: D(13), type_vente: 'prestataire', prestataire_id: presta.id, lignes: [{ article_type: 'produit', article_id: compose.id, quantite: 2, prix_unitaire: 27 }] }), [200, 201], 'vente prestataire');
   // Article valorisé vendu seul, à une autre date : deux déductions du même jour seraient ex aequo
   // dans les listes triées par date seule (get_stock, feuille Stock du rapport).
   exiger(await BA.post('/api/ventes', { activite_id: A1.id, date_vente: D(22), type_vente: 'directe', prestataire_id: null, lignes: [{ article_type: 'ingredient', article_id: art.cafe, quantite: 4, prix_unitaire: 4.5 }] }), [200, 201], 'vente article valorisé');

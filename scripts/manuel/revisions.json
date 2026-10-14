@@ -334,6 +334,28 @@
           "md5": "fd643664bae5329916576a9696a3b446"
         }
       ]
+    },
+    {
+      "numero": 239,
+      "nom": "239_manuel_prestataires_conditions.sql",
+      "objet": "Conditions des prestataires et chiffre net (P2) : commission, TVA sur la commission et mode de paiement saisis à l’activation, figés sur chaque vente ; net des prestataires et filtre par mode de paiement au tableau de bord.",
+      "manuel": [
+        {
+          "slug": "configuration-vente",
+          "md5Avant": "0fc9974b2af0b1b6fdd36c054d0d9e27",
+          "md5": "1fead35456e67d9b2dbe1893001ccb8e"
+        },
+        {
+          "slug": "saisie-ventes",
+          "md5Avant": "f1c9a4ae36dfd65f8d5a5bd982b62256",
+          "md5": "a629d8ffe5c6ce331d2158b5385fc0c8"
+        },
+        {
+          "slug": "dashboard",
+          "md5Avant": "09d3ea4edca2fff295ae78c62ca373e7",
+          "md5": "f90632650659b2e502f0a68ac03379e3"
+        }
+      ]
     }
   ]
 }
