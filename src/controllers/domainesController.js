@@ -164,7 +164,7 @@ const validateRegles = (regles) => {
   for (const [k, v] of Object.entries(regles)) {
     if (!REGLES_CLES.includes(k)) return `regles : clé inconnue « ${k} » (${REGLES_CLES.join(', ')})`;
     if (v == null) continue;
-    if (['acheteurs_requiert_labo', 'depot_exige_acheteurs', 'espace_produit_verrou_basique_sans_labo', 'b2b_depuis_activite'].includes(k) && typeof v !== 'boolean') return `regles.${k} : booléen attendu`;
+    if (['acheteurs_requiert_labo', 'depot_exige_acheteurs', 'espace_produit_verrou_basique_sans_labo', 'b2b_depuis_activite', 'prestataires'].includes(k) && typeof v !== 'boolean') return `regles.${k} : booléen attendu`;
     if (['seuil_cout_matiere_pct', 'supplement_max_composants'].includes(k) && !(Number.isFinite(Number(v)) && Number(v) >= 0)) return `regles.${k} : nombre ≥ 0 attendu`;
     if (k === 'formules' && !(Array.isArray(v) && v.every((x) => typeof x === 'string' && x.trim()))) return `regles.${k} : liste de textes attendue`;
     if (k === 'formules' && !v.every((x) => ['basique', 'premium'].includes(x))) return 'regles.formules : valeurs autorisées basique, premium';

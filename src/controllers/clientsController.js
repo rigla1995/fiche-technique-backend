@@ -398,6 +398,8 @@ const create = async (req, res) => {
     const montantOnboarding = montantOnboardingConfig;
 
     const aboId = await createAbonnement(user.id, montantOnboarding, config);
+    // D1 : interrupteur des prestataires de livraison du compte (actif par défaut ; l'admin le décoche à la création).
+    if (req.body.prestatairesActifs === false) await pool.query('UPDATE abonnement_config SET prestataires_actifs = false WHERE abonnement_id = $1', [aboId]);
     // Détail réel écrit en base (nom du domaine) pour la réponse
     const cfgComplete = config ? await loadConfigComplete(aboId).catch(() => null) : null;
 

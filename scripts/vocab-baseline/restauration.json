@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "239_manuel_prestataires_conditions.sql",
+  "derniereMigration": "245_prestataires_par_domaine.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -1663,19 +1663,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "30.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.550",
-     "source": "Bloc chaud",
-     "type_appro": "transfert"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "-30.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.550",
      "source": "Réserve Nord / Est",
      "type_appro": "manuel"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "30.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.550",
+     "source": "Bloc chaud",
+     "type_appro": "transfert"
     },
     {
      "ingredient": "Drap 240x300",
@@ -14283,9 +14283,11 @@
         ],
         "supplement_max_composants": 1,
         "b2b_depuis_activite": false,
+        "prestataires": true,
         "unites_seed": [],
         "prestataires_seed": []
-       }
+       },
+       "prestataires": true
       }
      }
     }
@@ -14392,9 +14394,11 @@
       ],
       "supplement_max_composants": 1,
       "b2b_depuis_activite": false,
+      "prestataires": true,
       "unites_seed": [],
       "prestataires_seed": []
-     }
+     },
+     "prestataires": true
     }
    },
    "client.domaines": [
@@ -14489,6 +14493,7 @@
       ],
       "supplement_max_composants": 1,
       "b2b_depuis_activite": false,
+      "prestataires": true,
       "unites_seed": [],
       "prestataires_seed": []
      }
@@ -14604,9 +14609,11 @@
         ],
         "supplement_max_composants": 1,
         "b2b_depuis_activite": false,
+        "prestataires": true,
         "unites_seed": [],
         "prestataires_seed": []
-       }
+       },
+       "prestataires": true
       }
      }
     }
@@ -14713,9 +14720,11 @@
       ],
       "supplement_max_composants": 1,
       "b2b_depuis_activite": false,
+      "prestataires": true,
       "unites_seed": [],
       "prestataires_seed": []
-     }
+     },
+     "prestataires": true
     },
     "gerantParentId": "⟨id⟩",
     "gerantActiviteId": "⟨id⟩",
@@ -14821,6 +14830,7 @@
       ],
       "supplement_max_composants": 1,
       "b2b_depuis_activite": false,
+      "prestataires": true,
       "unites_seed": [],
       "prestataires_seed": []
      }
@@ -14989,9 +14999,11 @@
       ],
       "supplement_max_composants": 1,
       "b2b_depuis_activite": false,
+      "prestataires": true,
       "unites_seed": [],
       "prestataires_seed": []
-     }
+     },
+     "prestataires": true
     }
    },
    "client.abonnement": {
@@ -15066,6 +15078,7 @@
      "domaineId": "⟨id⟩",
      "domaineSlug": "restauration",
      "domaineNom": "Restauration",
+     "prestatairesActifs": true,
      "composants": [
       {
        "composantId": "⟨id⟩",
@@ -15132,6 +15145,7 @@
      "activePromoOnboarding": null,
      "configBreakdown": {
       "formuleActivites": "premium",
+      "prestatairesActifs": true,
       "activite": {
        "nb": 2,
        "total": 280
