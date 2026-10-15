@@ -200,7 +200,7 @@ test('sélection : exercice du jour par défaut, identifiant du dossier seulemen
   assert.throws(() => etats.lireSelection({ exercice: '9' }, X), /Exercice introuvable/);
   assert.throws(() => etats.lireSelection({ exercice: 'abc' }, X), /Exercice introuvable/);
   assert.throws(() => etats.lireSelection({}, []), /Aucun exercice/);
-  assert.equal(etats.SQL_SOLDES.includes("($3::boolean OR e.etat = 'validee') AND ($4::int IS NULL OR e.id <> $4)"), true, 'brouillard sur demande, écriture de résultat exclue');
+  assert.equal(etats.SQL_MOUVEMENTS.includes("($3::boolean OR e.etat = 'validee') AND ($4::int IS NULL OR e.id <> $4)"), true, 'brouillard sur demande, écriture de résultat exclue');
 });
 
 test('routes E1 : la page et le PDF en lecture (tout accès), le PDF sous la limite des documents ; aucune écriture', () => {
@@ -208,9 +208,9 @@ test('routes E1 : la page et le PDF en lecture (tout accès), le PDF sous la lim
   assert.ok(src.includes("const etats = require('./etats');"));
   assert.ok(src.includes("router.get('/dossiers/:dossierId/etats', authenticate, etats.lire);"));
   assert.ok(src.includes("router.get('/dossiers/:dossierId/etats.pdf', authenticate, limiteDocuments, etats.pdf);"));
-  assert.equal((src.match(/etats\.(lire|pdf)\)/g) || []).length, 2, 'deux routes, toutes en GET');
+  assert.equal((src.match(/etats\.(lire|pdf)\)/g) || []).length, 2, 'deux routes de lecture en GET');
   const ctrl = lire('src', 'compta', 'etats.js');
-  assert.ok(!/INSERT|UPDATE|DELETE/.test(ctrl), 'rien n\'est écrit');
+  assert.ok(!/INSERT INTO compta\.(ecritures|lignes|exercices)|UPDATE compta\.(ecritures|lignes|exercices)|DELETE/.test(ctrl), 'la lecture des états n\'écrit rien (E2 : seules les notes s\'écrivent)');
   assert.ok(ctrl.includes('reportComptes(db, d, { exercice: x, brouillard })'), 'report provisoire de X1 comme à la balance');
   assert.ok(ctrl.includes("x.etat === 'clos' ? x.ecriture_resultat_id : null"), 'écriture de résultat exclue');
 });

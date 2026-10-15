@@ -309,6 +309,59 @@ const controlerPaquet = (p) => {
     }
     // Couverture : tout compte du paquet suit un préfixe (classes 6 et 7 : une ligne ; 1 à 5 : un poste).
     for (const c of p.comptes) if (!prefixes.some((x) => c.numero.startsWith(x))) defauts.push(`états : compte ${c.numero} sans poste ni ligne`);
+    // E2 : l'état des flux de trésorerie (facultatif) — trésorerie, lignes à parts (comptes, mode, sens), totaux ; chaque
+    // compte des classes 1 à 5 du paquet rencontre à son plus long préfixe une partition exacte (fluxCalcul.js).
+    const prefixesFlux = [];
+    const prefixesVers = (liste, id, cible) => {
+      if (!Array.isArray(liste) || !liste.length) { defauts.push(`états : ${id} sans préfixe de compte`); return; }
+      for (const x of liste) {
+        if (!/^\d{1,8}$/.test(String(x))) defauts.push(`états : ${id} : préfixe « ${x} » invalide`);
+        else if (!couvert(x)) defauts.push(`états : ${id} : préfixe ${x} sans compte dans le paquet`);
+        cible.push(String(x));
+      }
+    };
+    if (e.flux != null) {
+      const f = e.flux || {};
+      const { MODES, indexerFlux, partitionValide } = require('../fluxCalcul');
+      const { candidats } = require('../etatsCalcul');
+      if (!f.tresorerie || !f.tresorerie.libelle) defauts.push('états : flux : trésorerie sans libellé');
+      prefixesVers(f.tresorerie && f.tresorerie.comptes, 'flux, trésorerie', prefixesFlux);
+      const codesFlux = new Set();
+      for (const l of f.lignes || []) {
+        if (l.titre) continue;
+        if (!l.code || codesFlux.has(l.code)) defauts.push(`états : flux : ligne « ${l.code || l.libelle || '?'} » sans code ou en double`);
+        codesFlux.add(l.code);
+        for (const d of defautsLibelle(l.libelle, false)) defauts.push(`états : flux : ligne ${l.code} : ${d}`);
+        if (l.calcul === 'total') { for (const de of l.de || []) if (!codesFlux.has(de)) defauts.push(`états : flux : total ${l.code} : ligne « ${de} » inconnue ou postérieure`); continue; }
+        if (l.calcul) { if (!['resultat', 'tresorerieDebut', 'tresorerieFin'].includes(l.calcul)) defauts.push(`états : flux : ligne ${l.code} : calcul « ${l.calcul} » inconnu`); continue; }
+        if (!Array.isArray(l.parts) || !l.parts.length) { defauts.push(`états : flux : ligne ${l.code} sans part`); continue; }
+        for (const part of l.parts) {
+          if (!MODES.includes(part.mode)) defauts.push(`états : flux : ligne ${l.code} : mode « ${part.mode} » inconnu`);
+          if (part.sens != null && !['debit', 'credit'].includes(part.sens)) defauts.push(`états : flux : ligne ${l.code} : sens « ${part.sens} » inconnu`);
+          prefixesVers(part.comptes, `flux, ligne ${l.code}`, prefixesFlux);
+        }
+      }
+      for (const code of ['resultatNet', 'variationTresorerie', 'tresorerieDebut', 'tresorerieFin']) if (!codesFlux.has(code)) defauts.push(`états : flux : ligne « ${code} » absente`);
+      const entrees = indexerFlux(f);
+      for (const c of p.comptes) if (!['6', '7'].includes(c.numero[0]) && !partitionValide(candidats(entrees, c.numero))) defauts.push(`états : flux : compte ${c.numero} sans ligne de flux exacte`);
+    }
+    // E2 : les soldes intermédiaires de gestion (facultatifs) — lignes à comptes et totaux, comme l'état de résultat ; chaque
+    // compte de classe 6 ou 7 du paquet a sa ligne.
+    if (e.sig != null) {
+      const codesSig = new Set();
+      const prefixesSig = [];
+      for (const l of e.sig || []) {
+        if (l.titre) continue;
+        if (!l.code || codesSig.has(l.code)) defauts.push(`états : soldes intermédiaires : ligne « ${l.code || l.libelle || '?'} » sans code ou en double`);
+        codesSig.add(l.code);
+        for (const d of defautsLibelle(l.libelle, false)) defauts.push(`états : soldes intermédiaires : ligne ${l.code} : ${d}`);
+        if (l.calcul === 'total') { for (const de of l.de || []) if (!codesSig.has(de)) defauts.push(`états : soldes intermédiaires : total ${l.code} : ligne « ${de} » inconnue ou postérieure`); continue; }
+        if (l.calcul) { defauts.push(`états : soldes intermédiaires : ligne ${l.code} : calcul « ${l.calcul} » inconnu`); continue; }
+        prefixesVers(l.comptes, `soldes intermédiaires, ligne ${l.code}`, prefixesSig);
+      }
+      if (!codesSig.has('resultatNet')) defauts.push('états : soldes intermédiaires : ligne « resultatNet » absente');
+      for (const c of p.comptes) if (['6', '7'].includes(c.numero[0]) && !prefixesSig.some((x) => c.numero.startsWith(x))) defauts.push(`états : soldes intermédiaires : compte ${c.numero} sans ligne`);
+    }
   }
   // S7b : la fiscalité (facultative dans un paquet ; contrôlée si elle est là) : régimes fiscaux des fournisseurs et codes de
   // retenue qu'ils proposent (des codes de retenue du paquet), familles, seuil des retenues sur achats, compte du crédit de
