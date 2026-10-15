@@ -175,6 +175,8 @@ const mapAbonnementConfig = (row) => row ? ({
   domaineId: row.domaine_id ?? null,
   domaineSlug: row.domaine_slug ?? null,
   domaineNom: row.domaine_nom ?? null,
+  // D1 : prestataires de livraison du compte (interrupteur de l'admin ; la règle du domaine reste prioritaire).
+  prestatairesActifs: row.prestataires_actifs !== false,
   // LabFlow Compta (S2b) : module chez un client (S2c) et gérants comptables (client : en plus ; cabinet : achetés) —
   // présents seulement quand ils servent (absents = module inactif, 0 gérant : réponse d'avant, à l'identique).
   ...(row.module_compta_actif || row.nb_gerants_compta > 0 || row.produit === 'compta' ? {
@@ -458,6 +460,7 @@ const getAbonnement = async (req, res) => {
         const acheteursCost = computeBaseAcheteursFromConfig(config, tarifs) || 0;
         abo.pricing.configBreakdown = {
           formuleActivites: config.formule_activites || null,
+          prestatairesActifs: config.prestataires_actifs !== false,
           activite:  { nb: nbA, total: activiteCost },
           labo:      { nb: nbL, total: laboCost },
           gerant:    { nb: nbG, total: gerantCost },
@@ -1688,6 +1691,10 @@ const updateAbonnementConfig = async (req, res) => {
     return res.status(400).json({ message: 'Formule invalide (basique ou premium)' });
   }
   const formuleIn = req.body.formuleActivites !== undefined ? req.body.formuleActivites : null;
+  // D1 : interrupteur des prestataires de livraison du compte (booléen ; préservé s'il est absent du payload).
+  if (req.body.prestatairesActifs !== undefined && typeof req.body.prestatairesActifs !== 'boolean') {
+    return res.status(400).json({ message: 'prestatairesActifs : booléen attendu' });
+  }
   // Option Acheteurs (ancien payload) : quota ≤ 100 (le reste des règles = validerComposition)
   const nAch = legacy && nbAcheteurs != null ? parseInt(nbAcheteurs, 10) : null;
   if (nAch !== null && (!Number.isFinite(nAch) || nAch < 0 || nAch > 100)) {
@@ -1711,6 +1718,9 @@ const updateAbonnementConfig = async (req, res) => {
     const aboRes = await db.query('SELECT id FROM abonnements WHERE client_id = $1', [clientId]);
     if (aboRes.rows.length === 0) return res.status(404).json({ message: 'Abonnement introuvable' });
     const aboId = aboRes.rows[0].id;
+    if (req.body.prestatairesActifs !== undefined) {
+      await db.query('UPDATE abonnement_config SET prestataires_actifs = $2, updated_at = NOW() WHERE abonnement_id = $1', [aboId, req.body.prestatairesActifs]);
+    }
     if (domaineExplicite) {
       if (domaineIdEff == null) {
         domaineIdEff = await getDomaineDefautId();

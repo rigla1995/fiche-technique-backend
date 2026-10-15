@@ -50,7 +50,7 @@ const loadDomaineForUser = async (utilisateur, tag, acheteurClientId = null) => 
   const role = utilisateur.role;
   if (role !== 'client' && role !== 'gerant' && role !== 'acheteur') return null;
   try {
-    const { getProfilForClient } = require('../services/domaineProfilService');
+    const { getProfilForClient, prestatairesActifsPourClient } = require('../services/domaineProfilService');
     if (role === 'acheteur') {
       let vendeurId = acheteurClientId;
       if (vendeurId == null) {
@@ -63,7 +63,8 @@ const loadDomaineForUser = async (utilisateur, tag, acheteurClientId = null) => 
     }
     const p = await getProfilForClient(utilisateur.id);
     return p && p.id != null
-      ? { id: p.id, slug: p.slug, nom: p.nom, lexique: lexiquePourCompte(p), composants: p.composants, regles: p.regles }
+      // D1 : prestataires de livraison proposés au compte (règle du domaine × interrupteur de l'admin).
+      ? { id: p.id, slug: p.slug, nom: p.nom, lexique: lexiquePourCompte(p), composants: p.composants, regles: p.regles, prestataires: await prestatairesActifsPourClient(utilisateur.id) }
       : null;
   } catch (e) {
     console.warn(`[${tag}] profil domaine indisponible:`, e.message);

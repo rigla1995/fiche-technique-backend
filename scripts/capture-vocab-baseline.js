@@ -474,7 +474,7 @@ const etatBase = async () => {
 };
 
 // ── Nettoyage ────────────────────────────────────────────────────────────────────────────────
-const ctx = { clients: [], adminId: null, adminTok: null, miroirId: null, notifMaxId: 0 };
+const ctx = { clients: [], adminId: null, adminTok: null, miroirId: null, notifMaxId: 0, reglesAvant: null };
 const supprimerClient = async (id) => {
   const r = await fetch(`${BASE}/admin/clients/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${ctx.adminTok}` } });
   return r.status;
@@ -584,6 +584,14 @@ async function principal() {
     dom = doms.find((d) => d.slug === DOMAINE);
   }
   if (!dom) throw new Error(`domaine ${DOMAINE} absent de la base locale`);
+  // D1 (migration 245) : l'hôtellerie et l'industrie n'ont plus de prestataires de livraison (règle du domaine). L'oracle
+  // rétablit la règle le temps du passage, pour capter aussi les textes « prestataire » dans le vocabulaire du domaine ;
+  // elle est remise telle quelle au nettoyage (la base est contrôlée avant/après).
+  if (dom.regles && dom.regles.prestataires === false) {
+    ctx.reglesAvant = { id: dom.id, regles: dom.regles };
+    exiger(await A.put(`/api/domaines/${dom.id}`, { regles: { ...dom.regles, prestataires: true } }), 200, 'PUT règle prestataires (oracle)');
+    dom = exiger(await A.get('/api/domaines'), 200, 'GET /api/domaines').find((d) => d.id === dom.id);
+  }
   const voc = await vocabDuDomaine(dom.id);
   meta.domaineNom = dom.nom;
   meta.lexique = dom.lexique;
@@ -1244,6 +1252,10 @@ async function nettoyer() {
     if (ctx.miroirId) {
       const r = await fetch(`${BASE}/api/domaines/${ctx.miroirId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${ctx.adminTok}` } });
       bilan.domaineMiroir = r.status;
+    }
+    if (ctx.reglesAvant) {
+      const r = await fetch(`${BASE}/api/domaines/${ctx.reglesAvant.id}`, { method: 'PUT', headers: { Authorization: `Bearer ${ctx.adminTok}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ regles: ctx.reglesAvant.regles }) });
+      bilan.reglePrestataires = r.status;
     }
     await purgerOracle();
     // Notifications écrites pour les admins pendant le passage (comptes de l'oracle)
