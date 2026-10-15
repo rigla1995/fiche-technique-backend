@@ -130,7 +130,7 @@ const SCENARIOS = [
       { nom: 'Semoule moyenne', unite: 'kg', famille: 'Matières premières', categorie: 'Épicerie', prixHT: 1.7, tva: 7, fournisseur: 'Comptoir Ben Miled & Cie', appro: { cuisine: 30, resto: 10 } },
       { nom: "Huile d'olive", unite: 'L', famille: 'Matières premières', categorie: 'Épicerie', prixHT: 27, tva: 7, fournisseur: 'Comptoir Ben Miled & Cie', appro: { cuisine: 12, resto: 6 } },
       { nom: 'Concentré de tomate', unite: 'kg', famille: 'Matières premières', categorie: 'Épicerie', prixHT: 5.5, tva: 7, fournisseur: 'Comptoir Ben Miled & Cie', appro: { cuisine: 8 } },
-      { nom: 'Pois chiches', unite: 'kg', famille: 'Matières premières', categorie: 'Épicerie', prixHT: 4.5, tva: 7, fournisseur: 'Comptoir Ben Miled & Cie', appro: { cuisine: 6 } },
+      { nom: 'Pois chiches', unite: 'kg', famille: 'Matières premières', categorie: 'Épicerie', prixHT: 4.5, tva: 7, fournisseur: 'Comptoir Ben Miled & Cie', appro: { cuisine: 6, resto: 4 } },
       { nom: 'Farine pâtissière', unite: 'kg', famille: 'Matières premières', categorie: 'Épicerie', prixHT: 1.9, tva: 7, fournisseur: 'Comptoir Ben Miled & Cie', appro: { cuisine: 40 } },
       { nom: 'Sucre', unite: 'kg', famille: 'Matières premières', categorie: 'Épicerie', prixHT: 1.6, tva: 7, fournisseur: 'Comptoir Ben Miled & Cie', appro: { cuisine: 20, resto: 5, salon: 8 } },
       { nom: 'Café en grains', unite: 'kg', famille: 'Matières premières', categorie: 'Épicerie', prixHT: 36, tva: 19, fournisseur: 'Comptoir Ben Miled & Cie', appro: { resto: 4, salon: 8 } },
@@ -139,10 +139,10 @@ const SCENARIOS = [
       { nom: 'Poulet fermier', unite: 'kg', famille: 'Matières premières', categorie: 'Viandes & volailles', prixHT: 9.8, tva: 7, fournisseur: 'Ferme Belhadj & Fils', appro: { resto: 30 } },
       { nom: 'Épaule de bœuf', unite: 'kg', famille: 'Matières premières', categorie: 'Viandes & volailles', prixHT: 39, tva: 7, fournisseur: 'Ferme Belhadj & Fils', appro: { resto: 10 } },
       { nom: 'Œufs frais', unite: 'pièce', famille: 'Matières premières', categorie: 'Crèmerie', prixHT: 0.42, tva: 7, fournisseur: 'Ferme Belhadj & Fils', appro: { cuisine: 240, resto: 120 } },
-      { nom: 'Tomates', unite: 'kg', famille: 'Matières premières', categorie: 'Fruits & légumes', prixHT: 1.8, tva: 7, fournisseur: 'Primeurs du Cap Bon', appro: { cuisine: 60, resto: 25 } },
+      { nom: 'Tomates', unite: 'kg', famille: 'Matières premières', categorie: 'Fruits & légumes', prixHT: 1.8, tva: 7, fournisseur: 'Primeurs du Cap Bon', appro: { cuisine: 90, resto: 25 } },
       { nom: 'Oignons', unite: 'kg', famille: 'Matières premières', categorie: 'Fruits & légumes', prixHT: 1.3, tva: 7, fournisseur: 'Primeurs du Cap Bon', appro: { cuisine: 15, resto: 12 } },
       { nom: 'Poivrons', unite: 'kg', famille: 'Matières premières', categorie: 'Fruits & légumes', prixHT: 2.4, tva: 7, fournisseur: 'Primeurs du Cap Bon', appro: { resto: 18 } },
-      { nom: 'Citrons', unite: 'kg', famille: 'Matières premières', categorie: 'Fruits & légumes', prixHT: 3.2, tva: 7, fournisseur: 'Primeurs du Cap Bon', appro: { resto: 6, salon: 6 } },
+      { nom: 'Citrons', unite: 'kg', famille: 'Matières premières', categorie: 'Fruits & légumes', prixHT: 3.2, tva: 7, fournisseur: 'Primeurs du Cap Bon', appro: { resto: 8, salon: 10 } },
       { nom: 'Oranges à jus', unite: 'kg', famille: 'Matières premières', categorie: 'Fruits & légumes', prixHT: 1.9, tva: 7, fournisseur: 'Primeurs du Cap Bon', appro: { resto: 30, salon: 30 } },
       { nom: 'Menthe fraîche', unite: 'botte', famille: 'Matières premières', categorie: 'Fruits & légumes', prixHT: 0.8, tva: 7, fournisseur: 'Primeurs du Cap Bon', appro: { resto: 20, salon: 20 } },
       { nom: 'Lait demi-écrémé', unite: 'L', famille: 'Matières premières', categorie: 'Crèmerie', prixHT: 1.45, tva: 7, fournisseur: 'Laiterie El Fejja', appro: { cuisine: 40, resto: 20, salon: 40 } },
@@ -210,17 +210,17 @@ const SCENARIOS = [
       { nom: 'Café en grains', unite: 'kg', famille: 'Denrées', categorie: 'Épicerie', prixHT: 36, tva: 19, fournisseur: 'Grossiste Sahel Distribution', appro: { economat: 14 } },
       { nom: 'Sucre', unite: 'kg', famille: 'Denrées', categorie: 'Épicerie', prixHT: 1.6, tva: 7, fournisseur: 'Grossiste Sahel Distribution', appro: { cuisine: 15, economat: 10 } },
       { nom: 'Farine', unite: 'kg', famille: 'Denrées', categorie: 'Épicerie', prixHT: 1.7, tva: 7, fournisseur: 'Grossiste Sahel Distribution', appro: { cuisine: 35 } },
-      { nom: 'Filet de daurade', unite: 'kg', famille: 'Denrées', categorie: 'Viandes & poissons', prixHT: 32, tva: 7, fournisseur: 'Pêcherie Bou Jaafar', appro: { cuisine: 18 } },
-      { nom: 'Crevettes', unite: 'kg', famille: 'Denrées', categorie: 'Viandes & poissons', prixHT: 48, tva: 7, fournisseur: 'Pêcherie Bou Jaafar', appro: { cuisine: 8 } },
-      { nom: 'Poulet', unite: 'kg', famille: 'Denrées', categorie: 'Viandes & poissons', prixHT: 9.8, tva: 7, fournisseur: 'Grossiste Sahel Distribution', appro: { cuisine: 40 } },
-      { nom: 'Tomates', unite: 'kg', famille: 'Denrées', categorie: 'Fruits & légumes', prixHT: 1.8, tva: 7, fournisseur: 'Fruits & Légumes du Sahel', appro: { cuisine: 50 } },
+      { nom: 'Filet de daurade', unite: 'kg', famille: 'Denrées', categorie: 'Viandes & poissons', prixHT: 32, tva: 7, fournisseur: 'Pêcherie Bou Jaafar', appro: { cuisine: 36 } },
+      { nom: 'Crevettes', unite: 'kg', famille: 'Denrées', categorie: 'Viandes & poissons', prixHT: 48, tva: 7, fournisseur: 'Pêcherie Bou Jaafar', appro: { cuisine: 14 } },
+      { nom: 'Poulet', unite: 'kg', famille: 'Denrées', categorie: 'Viandes & poissons', prixHT: 9.8, tva: 7, fournisseur: 'Grossiste Sahel Distribution', appro: { cuisine: 55 } },
+      { nom: 'Tomates', unite: 'kg', famille: 'Denrées', categorie: 'Fruits & légumes', prixHT: 1.8, tva: 7, fournisseur: 'Fruits & Légumes du Sahel', appro: { cuisine: 70 } },
       { nom: 'Salade', unite: 'pièce', famille: 'Denrées', categorie: 'Fruits & légumes', prixHT: 1.2, tva: 7, fournisseur: 'Fruits & Légumes du Sahel', appro: { cuisine: 60 } },
       { nom: 'Citrons', unite: 'kg', famille: 'Denrées', categorie: 'Fruits & légumes', prixHT: 3.2, tva: 7, fournisseur: 'Fruits & Légumes du Sahel', appro: { cuisine: 10, economat: 10 } },
-      { nom: 'Oranges à jus', unite: 'kg', famille: 'Denrées', categorie: 'Fruits & légumes', prixHT: 1.9, tva: 7, fournisseur: 'Fruits & Légumes du Sahel', appro: { economat: 60, cuisine: 40 } },
+      { nom: 'Oranges à jus', unite: 'kg', famille: 'Denrées', categorie: 'Fruits & légumes', prixHT: 1.9, tva: 7, fournisseur: 'Fruits & Légumes du Sahel', appro: { economat: 80, cuisine: 60 } },
       { nom: 'Menthe fraîche', unite: 'botte', famille: 'Denrées', categorie: 'Fruits & légumes', prixHT: 0.8, tva: 7, fournisseur: 'Fruits & Légumes du Sahel', appro: { economat: 30 } },
-      { nom: 'Lait', unite: 'L', famille: 'Denrées', categorie: 'Crèmerie', prixHT: 1.45, tva: 7, fournisseur: 'Grossiste Sahel Distribution', appro: { cuisine: 50, economat: 40 } },
-      { nom: 'Œufs', unite: 'pièce', famille: 'Denrées', categorie: 'Crèmerie', prixHT: 0.42, tva: 7, fournisseur: 'Grossiste Sahel Distribution', appro: { cuisine: 360 } },
-      { nom: 'Eau minérale 1 L', unite: 'bouteille', famille: 'Boissons revendables', categorie: 'Boissons', prixHT: 0.75, tva: 19, fournisseur: 'Grossiste Sahel Distribution', appro: { economat: 300, room: 80 }, valorise: true, prixVenteTTC: 3 },
+      { nom: 'Lait', unite: 'L', famille: 'Denrées', categorie: 'Crèmerie', prixHT: 1.45, tva: 7, fournisseur: 'Grossiste Sahel Distribution', appro: { cuisine: 80, economat: 40 } },
+      { nom: 'Œufs', unite: 'pièce', famille: 'Denrées', categorie: 'Crèmerie', prixHT: 0.42, tva: 7, fournisseur: 'Grossiste Sahel Distribution', appro: { cuisine: 480 } },
+      { nom: 'Eau minérale 1 L', unite: 'bouteille', famille: 'Boissons revendables', categorie: 'Boissons', prixHT: 0.75, tva: 19, fournisseur: 'Grossiste Sahel Distribution', appro: { economat: 320, room: 100 }, valorise: true, prixVenteTTC: 3 },
       { nom: 'Soda 33 cl', unite: 'pièce', famille: 'Boissons revendables', categorie: 'Boissons', prixHT: 1.45, tva: 19, fournisseur: 'Grossiste Sahel Distribution', appro: { economat: 240 }, valorise: true, prixVenteTTC: 4.5 },
       { nom: 'Jus de fruits 1 L', unite: 'bouteille', famille: 'Boissons revendables', categorie: 'Boissons', prixHT: 3.2, tva: 19, fournisseur: 'Grossiste Sahel Distribution', appro: { economat: 80 }, valorise: true, prixVenteTTC: 9 },
       { nom: 'Gel douche chambre', unite: 'pièce', famille: 'Fournitures', categorie: 'Entretien & accueil', prixHT: 0.9, tva: 19, fournisseur: 'Hygiène Pro Tunisie', appro: { economat: 400 } },
@@ -230,7 +230,7 @@ const SCENARIOS = [
     categoriesProduit: { 'Plats': 'vendable', 'Petit-déjeuner & room service': 'vendable', 'Cocktails & boissons': 'vendable', 'Minibar & boissons': 'valorise' },
     utilisables: [
       { nom: 'Sauce tomate', labo: 'cuisine', unite: 'kg', prodHebdo: 40, ingredients: [['Tomates', 0.9], ["Huile d'olive", 0.06]] },
-      { nom: 'Pâte à crêpes', labo: 'cuisine', unite: 'L', prodHebdo: 30, ingredients: [['Farine', 0.3], ['Œufs', 2], ['Lait', 0.6], ['Sucre', 0.03]] },
+      { nom: 'Pâte à crêpes', labo: 'cuisine', unite: 'L', prodHebdo: 45, ingredients: [['Farine', 0.3], ['Œufs', 2], ['Lait', 0.6], ['Sucre', 0.03]] },
     ],
     // Les plats sont produits par la cuisine centrale et livrés au restaurant et au room service (une activité n'a qu'un
     // site de rattachement) ; le bar prépare ses boissons avec ce que l'économat lui livre.
@@ -246,7 +246,7 @@ const SCENARIOS = [
     ],
     // L'économat ne produit pas : il reçoit et livre (boissons et fournitures) au bar et au housekeeping, qui lui sont
     // rattachés ; le room service (rattaché à la cuisine) reçoit son eau par facture.
-    livraisonsEconomat: { bar: [['art:Eau minérale 1 L', 100], ['art:Soda 33 cl', 80], ['art:Jus de fruits 1 L', 20], ['art:Oranges à jus', 30], ['art:Citrons', 5], ['art:Menthe fraîche', 15], ['art:Café en grains', 6], ['art:Sucre', 4], ['art:Lait', 20]], housekeeping: [['art:Gel douche chambre', 120], ['art:Papier toilette', 180], ['art:Détergent sols 5 L', 6]] },
+    livraisonsEconomat: { bar: [['art:Eau minérale 1 L', 140], ['art:Soda 33 cl', 120], ['art:Jus de fruits 1 L', 20], ['art:Oranges à jus', 45], ['art:Citrons', 5], ['art:Menthe fraîche', 15], ['art:Café en grains', 6], ['art:Sucre', 4], ['art:Lait', 20]], housekeeping: [['art:Gel douche chambre', 120], ['art:Papier toilette', 180], ['art:Détergent sols 5 L', 6]] },
     ventes: {
       resto: [['Daurade grillée', 6, 14], ['Pâtes aux crevettes', 5, 12], ['Poulet au riz', 8, 16], ['Crêpes au miel', 4, 10]],
       bar: [['Cocktail du jour', 10, 25], ["Jus d'orange pressé", 8, 20], ['Café', 25, 50], ['art:Eau minérale 1 L', 20, 40], ['art:Soda 33 cl', 15, 35]],
@@ -279,21 +279,21 @@ const SCENARIOS = [
       { nom: 'Emballages Carthage', matriculeFiscal: '1899001Z/A/M/000', adresse: 'Zone industrielle Mégrine, 2033 Ben Arous', telephone: '+216 71 428 517' },
     ],
     articles: [
-      { nom: 'Argile rouge', unite: 'kg', famille: 'Matières premières', categorie: 'Terres & argiles', prixHT: 0.35, tva: 19, fournisseur: 'Argiles du Cap Bon', appro: { usine: 4000 } },
-      { nom: 'Kaolin', unite: 'kg', famille: 'Matières premières', categorie: 'Terres & argiles', prixHT: 1.2, tva: 19, fournisseur: 'Argiles du Cap Bon', appro: { usine: 800 } },
-      { nom: 'Feldspath', unite: 'kg', famille: 'Matières premières', categorie: 'Terres & argiles', prixHT: 0.9, tva: 19, fournisseur: 'Argiles du Cap Bon', appro: { usine: 500 } },
-      { nom: 'Émail transparent', unite: 'kg', famille: 'Matières premières', categorie: 'Émaux & pigments', prixHT: 6.5, tva: 19, fournisseur: 'Céramik Chimie', appro: { usine: 330 } },
-      { nom: 'Pigment bleu de cobalt', unite: 'kg', famille: 'Matières premières', categorie: 'Émaux & pigments', prixHT: 95, tva: 19, fournisseur: 'Céramik Chimie', appro: { usine: 12 } },
+      { nom: 'Argile rouge', unite: 'kg', famille: 'Matières premières', categorie: 'Terres & argiles', prixHT: 0.35, tva: 19, fournisseur: 'Argiles du Cap Bon', appro: { usine: 6000 } },
+      { nom: 'Kaolin', unite: 'kg', famille: 'Matières premières', categorie: 'Terres & argiles', prixHT: 1.2, tva: 19, fournisseur: 'Argiles du Cap Bon', appro: { usine: 1100 } },
+      { nom: 'Feldspath', unite: 'kg', famille: 'Matières premières', categorie: 'Terres & argiles', prixHT: 0.9, tva: 19, fournisseur: 'Argiles du Cap Bon', appro: { usine: 700 } },
+      { nom: 'Émail transparent', unite: 'kg', famille: 'Matières premières', categorie: 'Émaux & pigments', prixHT: 6.5, tva: 19, fournisseur: 'Céramik Chimie', appro: { usine: 480 } },
+      { nom: 'Pigment bleu de cobalt', unite: 'kg', famille: 'Matières premières', categorie: 'Émaux & pigments', prixHT: 95, tva: 19, fournisseur: 'Céramik Chimie', appro: { usine: 20 } },
       { nom: 'Pigment jaune', unite: 'kg', famille: 'Matières premières', categorie: 'Émaux & pigments', prixHT: 62, tva: 19, fournisseur: 'Céramik Chimie', appro: { usine: 8 } },
-      { nom: 'Gaz propane (four)', unite: 'kg', famille: 'Matières premières', categorie: 'Énergie & consommables', prixHT: 1.1, tva: 19, fournisseur: 'Gaz & Énergie du Nord', appro: { usine: 1500 } },
+      { nom: 'Gaz propane (four)', unite: 'kg', famille: 'Matières premières', categorie: 'Énergie & consommables', prixHT: 1.1, tva: 19, fournisseur: 'Gaz & Énergie du Nord', appro: { usine: 2200 } },
       { nom: 'Plâtre à moules', unite: 'sac', famille: 'Matières premières', categorie: 'Énergie & consommables', prixHT: 9, tva: 19, fournisseur: 'Céramik Chimie', appro: { usine: 20 } },
       { nom: 'Carton de 6 assiettes', unite: 'pièce', famille: 'Emballages', categorie: 'Emballages', prixHT: 1.4, tva: 19, fournisseur: 'Emballages Carthage', appro: { usine: 300, showroom: 60 } },
       { nom: 'Papier bulle', unite: 'm²', famille: 'Emballages', categorie: 'Emballages', prixHT: 0.6, tva: 19, fournisseur: 'Emballages Carthage', appro: { usine: 400, showroom: 50 } },
     ],
     categoriesProduit: { 'Art de la table': 'vendable', 'Carrelage': 'vendable', 'Décoration': 'vendable' },
     utilisables: [
-      { nom: 'Pâte céramique préparée', labo: 'usine', unite: 'kg', prodHebdo: 4500, ingredients: [['Argile rouge', 0.8], ['Kaolin', 0.15], ['Feldspath', 0.08]] },
-      { nom: 'Émail bleu de Nabeul', labo: 'usine', unite: 'kg', prodHebdo: 200, ingredients: [['Émail transparent', 0.95], ['Pigment bleu de cobalt', 0.05]] },
+      { nom: 'Pâte céramique préparée', labo: 'usine', unite: 'kg', prodHebdo: 5200, ingredients: [['Argile rouge', 0.8], ['Kaolin', 0.15], ['Feldspath', 0.08]] },
+      { nom: 'Émail bleu de Nabeul', labo: 'usine', unite: 'kg', prodHebdo: 260, ingredients: [['Émail transparent', 0.95], ['Pigment bleu de cobalt', 0.05]] },
       { nom: 'Émail jaune safran', labo: 'usine', unite: 'kg', prodHebdo: 70, ingredients: [['Émail transparent', 0.95], ['Pigment jaune', 0.06]] },
     ],
     vendables: [
@@ -364,6 +364,7 @@ const batir = async (sc, adminTok, resume) => {
   // Le module Compta tout de suite (dossier « Mon entreprise » créé d'office) : le pont n'écrit que s'il est actif.
   await api('PUT', `/api/abonnements/client/${clientId}/module-compta`, { actif: true, nbGerantsCompta: 0 }, adminTok);
   console.log(`1. Compte ${clientId} créé et activé, identité posée, module Compta activé.`);
+  console.log(`   → connexion : ${email}  /  ${motDePasse}   (notez-le : affiché ici et dans le récapitulatif final)`);
 
   // 2. Les sites (labos puis activités), avec le composant du domaine.
   const profil = await api('GET', '/api/entreprise', undefined, tok);
@@ -422,7 +423,7 @@ const batir = async (sc, adminTok, resume) => {
   const gerantMdp = mdp();
   await api('POST', '/api/abonnements/gerants', { nom: sc.gerant.nom, telephone: sc.gerant.telephone, email: gerantEmail, activiteIds: [sites[sc.gerant.siteCle].id] }, tok);
   await activer(gerantEmail, gerantMdp);
-  console.log(`4. Gérant ${sc.gerant.nom} (${sites[sc.gerant.siteCle].nom}).`);
+  console.log(`4. Gérant ${sc.gerant.nom} (${sites[sc.gerant.siteCle].nom}) → connexion : ${gerantEmail}  /  ${gerantMdp}`);
 
   // 5. Les produits : catégories, préparations (utilisables), produits vendables (labo ou activité).
   const catProd = {};
@@ -638,7 +639,8 @@ const batir = async (sc, adminTok, resume) => {
 };
 
 // ─── Main ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-(async () => {
+module.exports = { SCENARIOS, DEBUT, FIN };
+if (require.main === module) (async () => {
   const args = process.argv.slice(2);
   let adminId = null;
   const resume = [];
@@ -659,15 +661,25 @@ const batir = async (sc, adminTok, resume) => {
       [ADMIN_EMAIL, await bcrypt.hash(adminMdp, 10)]
     )).rows[0].id;
     const adminTok = await login(ADMIN_EMAIL, adminMdp);
-    for (const sc of SCENARIOS) await batir(sc, adminTok, resume);
+    const echecs = [];
+    for (const sc of SCENARIOS) {
+      try {
+        await batir(sc, adminTok, resume);
+      } catch (err) {
+        echecs.push(`${sc.identite.nomCommercial} : ${err.message}`);
+        console.error(`❌ ${sc.identite.nomCommercial} — ${err.message}\n   (compte laissé en l'état ; relancez avec --refaire après correction)`);
+      }
+    }
     console.log('\n══════════════════════════════════════════════════════════════════════');
-    console.log('  ✅ Trois comptes de test prêts (données fictives). Mots de passe affichés UNE FOIS :');
+    console.log(`  ${echecs.length ? '⚠️' : '✅'} ${resume.length} compte(s) de test prêt(s) sur ${SCENARIOS.length} (données fictives). Mots de passe :`);
     for (const r of resume) {
       console.log(`  • ${r.compte} (${r.domaine}) — client ${r.clientId}, dossier Compta ${r.dossierCompta}`);
       console.log(`      ${r.email}  /  ${r.motDePasse}`);
       console.log(`      gérant : ${r.gerant}  /  ${r.gerantMdp}`);
     }
+    for (const e of echecs) console.log(`  ✗ ${e}`);
     console.log('══════════════════════════════════════════════════════════════════════');
+    if (echecs.length) process.exitCode = 1;
   } catch (err) {
     console.error('❌', err.message);
     process.exitCode = 1;
