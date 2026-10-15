@@ -773,19 +773,19 @@ async function principal() {
   exiger(await CA.post('/api/acheteurs/offres', { articleType: 'produit', articleId: ptC.id, prixUnitaireHt: 9.5, tauxTva: 7, actif: true }), 200, 'offre PT');
   exiger(await CA.post('/api/acheteurs/offres', { articleType: 'ingredient', articleId: semoule, prixUnitaireHt: 2.4, tauxTva: 7, actif: true }), 200, 'offre article');
   // Acheteur 1 : création avec compte → invitation (acheteursController create)
-  const fAch1 = await fenetre(async () => CA.post('/api/acheteurs', { acheteurs: [{ nom: N.acheteur1, entreprise: N.acheteur1Ent, email: EMAIL('acheteur1'), telephone: '+216 22 000 401', creerCompte: true }] }));
+  const fAch1 = await fenetre(async () => CA.post('/api/acheteurs', { acheteurs: [{ type: 'b2b', nom: N.acheteur1, entreprise: N.acheteur1Ent, email: EMAIL('acheteur1'), telephone: '+216 22 000 401', adresse: N.adresse, matriculeFiscal: '1234567/A/M/000', creerCompte: true }] }));
   const ach1 = exiger(fAch1.resultat, 201, 'acheteur 1').acheteurs[0];
   C.emails['site.creationAcheteur'] = emailsDe(fAch1);
   // Acheteur 2 : fiche sans compte, puis « inviter » (acheteursController inviter)
-  const ach2 = exiger(await CA.post('/api/acheteurs', { acheteurs: [{ nom: N.acheteur2, entreprise: N.acheteur2Ent, email: EMAIL('acheteur2'), telephone: '+216 22 000 402' }] }), 201, 'acheteur 2').acheteurs[0];
+  const ach2 = exiger(await CA.post('/api/acheteurs', { acheteurs: [{ type: 'b2b', nom: N.acheteur2, entreprise: N.acheteur2Ent, email: EMAIL('acheteur2'), telephone: '+216 22 000 402', adresse: N.adresse, matriculeFiscal: '7654321/B/M/000' }] }), 201, 'acheteur 2').acheteurs[0];
   const fInviter = await fenetre(async () => CA.post(`/api/acheteurs/${ach2.id}/inviter`, {}));
   C.messages['C.inviterAcheteur'] = { status: fInviter.resultat.status, body: fInviter.resultat.body };
   C.emails['site.inviterAcheteur'] = emailsDe(fInviter);
   // Acheteur 3 : import Excel avec création de compte (acheteursController import)
   const wbImp = new ExcelJS.Workbook();
   const wsImp = wbImp.addWorksheet('Import');
-  wsImp.addRow(['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal']);
-  wsImp.addRow([N.acheteur3, N.acheteur3Ent, EMAIL('acheteur3'), '+216 22 000 403', N.adresse, '1111111/A/M/000']);
+  wsImp.addRow(['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal', 'Type', 'RNE']);
+  wsImp.addRow([N.acheteur3, N.acheteur3Ent, EMAIL('acheteur3'), '+216 22 000 403', N.adresse, '1111111/A/M/000', 'Professionnel', '']);
   const fdImp = new FormData();
   fdImp.append('file', new Blob([await wbImp.xlsx.writeBuffer()]), 'acheteurs.xlsx');
   fdImp.append('creerComptes', 'true');

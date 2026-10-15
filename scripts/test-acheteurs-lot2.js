@@ -65,7 +65,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
 
   r = await fetch(`${BASE}/api/acheteurs`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ nom: 'TEST-L2-Grossiste' }),
+    body: JSON.stringify({ type: 'b2c', telephone: '98111226', nom: 'TEST-L2-Grossiste' }),
   });
   const achBody = await r.json();
   const acheteurId = achBody.acheteurs?.[0]?.id;

@@ -626,7 +626,7 @@ async function buildFacture(outPath, data) {
 // data : { numero, dateFacture,
 //          vendeur:  { nom, adresse, tel, email,
 //                      nomCommercial?, forme?, matricule?, autoEntrepreneur?, rne?, ville? },   // copie figée à l'émission
-//          acheteur: { nom, entreprise, adresse, mf, tel, email },   // snapshot-aware
+//          acheteur: { nom, entreprise, adresse, mf, tel, email, type?, rne? },   // snapshot-aware ; type D2 : 'b2b' | 'b2c'
 //          lignes:   [{ designation, quantite, prixHt, tauxTva }],
 //          remisePct, montantHt, montantTva, timbreFiscal, montantTimbre,
 //          montantTtc, notes }
@@ -646,7 +646,7 @@ async function buildFactureAcheteur(outPath, data) {
   const ctx = makeCtx({
     Title: `Facture ${data.numero}`,
     Author: vendeur.nom || 'Vendeur',
-    Subject: 'Vente aux acheteurs professionnels',
+    Subject: data.acheteur && data.acheteur.type === 'b2c' ? 'Vente à un particulier' : 'Vente aux acheteurs professionnels',
     CreationDate: data.dateFacture ? new Date(data.dateFacture) : new Date(0),
   });
   const { fill, hline, txt, doc, fitText } = ctx;
@@ -660,12 +660,19 @@ async function buildFactureAcheteur(outPath, data) {
   let y = TOPY;
 
   y = section(ctx, y, 'ÉMETTEUR ET CLIENT');
-  const achNom = ach.entreprise
+  // D2 (15/10/2026) : acheteur typé — professionnel (B2B) : raison sociale — contact, MF, RNE (s'il diffère du matricule
+  // aux séparateurs près) ; particulier (B2C) : nom, « Particulier », téléphone, jamais de matricule. Sans type (facture
+  // d'avant la migration 246) : présentation inchangée, à l'octet près.
+  const particulier = ach.type === 'b2c';
+  const achNom = ach.entreprise && !particulier
     ? [ach.entreprise, ach.nom].filter(Boolean).join(' — ')
     : (ach.nom || 'Acheteur');
+  const sansSeparateur = (v) => String(v || '').toUpperCase().replace(/[\s.\-_/]/g, '');
   y = partiesBlock(ctx, y, {
     nom: achNom,
-    mfrc: ach.mf ? `MF ${ach.mf}` : undefined,
+    forme: particulier ? 'Particulier' : undefined,
+    mfrc: !particulier && ach.mf ? `MF ${ach.mf}` : undefined,
+    rne: ach.type === 'b2b' && ach.rne && sansSeparateur(ach.rne) !== sansSeparateur(ach.mf) ? ach.rne : undefined,
     email: ach.email || undefined,
     tel: ach.tel || undefined,
     adresse: ach.adresse || undefined,
