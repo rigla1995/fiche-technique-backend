@@ -18,7 +18,10 @@
  *   • en local : BASE_URL=http://localhost:3000 node scripts/seed-comptes-test.js
  * Options : --refaire (efface les trois comptes puis les recrée), --nettoyer (efface seulement).
  * Réglages (variables d'environnement) : SEED_EMAIL (boîte qui reçoit les comptes, par alias « +… » : défaut
- * m.khelil.prof@gmail.com), SEED_DEBUT / SEED_FIN (période du flux LabFlow, défaut 2026-07-06 → 2026-10-10).
+ * m.khelil.prof@gmail.com), SEED_DEBUT / SEED_FIN (période du flux LabFlow, défaut 2026-07-06 → 2026-10-10),
+ * SEED_COMPTES (lesquels : resto, hotel, usine — séparés par des virgules ; défaut les trois ; --refaire et --nettoyer
+ * ne touchent qu'à ceux-là). Le domaine de chaque compte est retrouvé par son slug, sinon par son nom (en prod,
+ * l'industrie s'appelle « Industrie », slug usine) ; un composant renommé est retrouvé par son type.
  * Les comptes sont créés par l'API d'administration (l'email d'activation part donc vers l'alias), puis activés ici :
  * les mots de passe, tirés au sort, sont AFFICHÉS À LA FIN et nulle part ailleurs. Un super_admin temporaire sert le
  * temps du script et est supprimé à la fin.
@@ -34,7 +37,10 @@ const DEBUT = process.env.SEED_DEBUT || '2026-07-06';
 const FIN = process.env.SEED_FIN || '2026-10-10';
 const ANNEE = DEBUT.slice(0, 4);
 const ADMIN_EMAIL = 'seed-admin-temporaire@labflow.local';
+const COMPTES = (process.env.SEED_COMPTES || 'resto,hotel,usine').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
 const alias = (suffixe) => BOITE.replace('@', `+${suffixe}@`);
+// Le type technique attendu d'un composant du domaine, par code (pour retrouver un composant renommé).
+const TYPE_PAR_CODE = { usine: 'labo', entrepot: 'labo', atelier: 'labo', cuisine: 'labo', economat: 'labo', labo: 'labo', showroom: 'activite', restaurant: 'activite', bar: 'activite', room_service: 'activite', housekeeping: 'activite', spa: 'activite', activite: 'activite', revendeur: 'acheteurs', client_pro: 'acheteurs', acheteurs: 'acheteurs', responsable: 'gerant', gerant: 'gerant' };
 const mdp = () => `${crypto.randomBytes(9).toString('base64url')}Aa1!`;
 
 // ─── Outils ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -107,7 +113,7 @@ const activer = async (email, password) => {
 //   transferts?: { cle: quantité hebdo }, composition: [[nom, q, 'art' | 'sous']] }.
 const SCENARIOS = [
   {
-    cle: 'resto', domaine: 'restauration', suffixe: 'test-resto', tvaVentes: 7,
+    cle: 'resto', domaine: ['restauration'], domaineNom: 'restau%', suffixe: 'test-resto', tvaVentes: 7,
     contact: { nom: 'Leïla Mansour', telephone: '+216 71 884 210' },
     identite: { raisonSociale: 'Le Patio des Oliviers SARL', nomCommercial: 'Le Patio des Oliviers', formeJuridique: 'SARL', matriculeFiscal: '1457821K/A/M/000', adresse: '14 rue des Oliviers, Mutuelleville', ville: '1082 Tunis', representantNom: 'Leïla Mansour', representantQualite: 'Gérante' },
     composants: [{ code: 'activite', nb: 2 }, { code: 'labo', nb: 1 }, { code: 'gerant', nb: 1 }],
@@ -181,7 +187,7 @@ const SCENARIOS = [
     },
   },
   {
-    cle: 'hotel', domaine: 'hotellerie', suffixe: 'test-hotel', tvaVentes: 7,
+    cle: 'hotel', domaine: ['hotellerie'], domaineNom: 'h_tel%', suffixe: 'test-hotel', tvaVentes: 7,
     contact: { nom: 'Sofiane Trabelsi', telephone: '+216 73 240 150' },
     identite: { raisonSociale: "Société Hôtelière des Dunes d'Or SA", nomCommercial: "Hôtel Les Dunes d'Or", formeJuridique: 'SA', matriculeFiscal: '0998877Q/A/M/000', adresse: 'Zone touristique, route de la Corniche', ville: '4089 Sousse', representantNom: 'Sofiane Trabelsi', representantQualite: 'Directeur général' },
     composants: [{ code: 'restaurant', nb: 1 }, { code: 'bar', nb: 1 }, { code: 'room_service', nb: 1 }, { code: 'housekeeping', nb: 1 }, { code: 'cuisine', nb: 1 }, { code: 'economat', nb: 1 }, { code: 'responsable', nb: 1 }],
@@ -260,7 +266,7 @@ const SCENARIOS = [
     },
   },
   {
-    cle: 'usine', domaine: 'ceramique', suffixe: 'test-usine', tvaVentes: 19,
+    cle: 'usine', domaine: ['ceramique', 'usine', 'industrie'], domaineNom: 'industrie%', suffixe: 'test-usine', tvaVentes: 19,
     contact: { nom: 'Hichem Bouslama', telephone: '+216 72 285 640' },
     identite: { raisonSociale: 'Céramiques de Nabeul SA', nomCommercial: 'Céramiques de Nabeul', formeJuridique: 'SA', matriculeFiscal: '0556677V/A/M/000', adresse: 'Zone industrielle, route de Tunis', ville: '8000 Nabeul', representantNom: 'Hichem Bouslama', representantQualite: 'Directeur général' },
     composants: [{ code: 'usine', nb: 1 }, { code: 'showroom', nb: 1 }, { code: 'revendeur', nb: 10 }, { code: 'responsable', nb: 1 }],
@@ -327,8 +333,9 @@ const SCENARIOS = [
 
 // ─── Nettoyage ──────────────────────────────────────────────────────────────────────────────────────────────────────
 const emailsDe = (sc) => [alias(sc.suffixe), alias(sc.gerant.suffixe), ...(sc.acheteurs || []).map((_, i) => alias(`${sc.suffixe}-revendeur${i + 1}`))];
+const CHOISIS = SCENARIOS.filter((sc) => COMPTES.includes(sc.cle));
 const nettoyer = async () => {
-  const emails = [ADMIN_EMAIL, ...SCENARIOS.flatMap(emailsDe)].map((e) => e.toLowerCase());
+  const emails = [ADMIN_EMAIL, ...CHOISIS.flatMap(emailsDe)].map((e) => e.toLowerCase());
   const ids = (await pool.query('SELECT id FROM utilisateurs WHERE LOWER(email) = ANY($1)', [emails])).rows.map((r) => r.id);
   if (!ids.length) { console.log('Rien à effacer.'); return; }
   const espaces = (await pool.query('SELECT id FROM compta.espaces WHERE titulaire_id = ANY($1)', [ids])).rows.map((r) => r.id);
@@ -351,12 +358,28 @@ const nettoyer = async () => {
 const batir = async (sc, adminTok, resume) => {
   const email = alias(sc.suffixe);
   const motDePasse = mdp();
-  console.log(`\n══ ${sc.identite.nomCommercial} (${sc.domaine}) — ${email} ══`);
+  console.log(`\n══ ${sc.identite.nomCommercial} (${sc.cle}) — ${email} ══`);
 
-  // 1. Le compte par l'API d'administration (domaine, composants), son identité légale, activation.
-  const domaineId = (await pool.query('SELECT id FROM domaines_activite WHERE slug = $1', [sc.domaine])).rows[0]?.id;
-  if (!domaineId) throw new Error(`domaine ${sc.domaine} absent : migration 187 non appliquée ?`);
-  const cree = await api('POST', '/admin/clients', { nom: sc.contact.nom, email, telephone: sc.contact.telephone, domaineId, composants: sc.composants, montantOnboarding: 0 }, adminTok);
+  // 1. Le compte par l'API d'administration (domaine, composants), son identité légale, activation. Le domaine est
+  // retrouvé par son slug (local : ceramique ; prod : usine), sinon par son nom ; un composant renommé, par son type.
+  const candidats = (await pool.query('SELECT id, slug, nom FROM domaines_activite WHERE slug = ANY($1) OR LOWER(nom) LIKE $2', [sc.domaine, sc.domaineNom])).rows;
+  const domaine = sc.domaine.map((slug) => candidats.find((d) => d.slug === slug)).find(Boolean) || candidats[0];
+  if (!domaine) {
+    const tous = (await pool.query('SELECT slug, nom FROM domaines_activite ORDER BY nom')).rows.map((d) => `${d.nom} (${d.slug})`);
+    throw new Error(`aucun domaine ${sc.domaine.join(' / ')} (ou nommé « ${sc.domaineNom} ») ; domaines présents : ${tous.join(', ')} — créez-le (page Domaines) ou réglez son slug`);
+  }
+  const domaineId = domaine.id;
+  const composantsDomaine = (await pool.query('SELECT * FROM domaine_composants WHERE domaine_id = $1 ORDER BY ordre, id', [domaineId])).rows.filter((c) => c.actif !== false);
+  const composantDe = (code) => composantsDomaine.find((c) => c.code === code) || composantsDomaine.find((c) => c.type_technique === TYPE_PAR_CODE[code]) || null;
+  const composantsCompte = [];
+  for (const c of sc.composants) {
+    const d = composantDe(c.code);
+    if (!d) throw new Error(`domaine ${domaine.nom} : aucun composant pour « ${c.code} » (type ${TYPE_PAR_CODE[c.code]}) — vérifiez la page Domaines`);
+    const deja = composantsCompte.find((x) => x.code === d.code);
+    if (deja) deja.nb += c.nb; else composantsCompte.push({ code: d.code, nb: c.nb });
+  }
+  console.log(`   domaine « ${domaine.nom} » (${domaine.slug}) ; composants : ${composantsCompte.map((c) => `${c.code} × ${c.nb}`).join(', ')}`);
+  const cree = await api('POST', '/admin/clients', { nom: sc.contact.nom, email, telephone: sc.contact.telephone, domaineId, composants: composantsCompte, montantOnboarding: 0 }, adminTok);
   const clientId = cree.id;
   await api('PUT', `/admin/clients/${clientId}/identite`, sc.identite, adminTok);
   await activer(email, motDePasse);
@@ -367,8 +390,7 @@ const batir = async (sc, adminTok, resume) => {
   console.log(`   → connexion : ${email}  /  ${motDePasse}   (notez-le : affiché ici et dans le récapitulatif final)`);
 
   // 2. Les sites (labos puis activités), avec le composant du domaine.
-  const profil = await api('GET', '/api/entreprise', undefined, tok);
-  const composantId = (code) => (profil?.domaine?.composants || []).find((c) => c.code === code)?.id ?? null;
+  const composantId = (code) => composantDe(code)?.id ?? null;
   const sites = {}; // cle → { id, type, ... }
   for (const s of sc.sites.filter((x) => x.type === 'labo')) {
     const r = await api('POST', '/api/labo', { nom: s.nom, refLabo: s.ref, referentTel: sc.contact.telephone, adresse: s.adresse, activityIds: [], composantId: composantId(s.composant) }, tok);
@@ -635,7 +657,7 @@ const batir = async (sc, adminTok, resume) => {
   const etats = await api('GET', `/api/compta/dossiers/${D}/etats`, undefined, tok);
   console.log(`11. États financiers ${ANNEE} : ${etats.pret ? 'contrôles au vert' : 'À VÉRIFIER : ' + etats.controles.filter((c) => !c.ok).map((c) => c.detail).join(' ; ')} — total des actifs ${etats.bilan.actifs.total.n}, résultat ${etats.resultat.net.n}, trésorerie ${etats.flux ? etats.flux.tresorerie.fin.n : '—'}.`);
 
-  resume.push({ compte: sc.identite.nomCommercial, domaine: sc.domaine, email, motDePasse, gerant: `${sc.gerant.nom} — ${gerantEmail}`, gerantMdp, dossierCompta: D, clientId });
+  resume.push({ compte: sc.identite.nomCommercial, domaine: domaine.nom, email, motDePasse, gerant: `${sc.gerant.nom} — ${gerantEmail}`, gerantMdp, dossierCompta: D, clientId });
 };
 
 // ─── Main ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -647,8 +669,9 @@ if (require.main === module) (async () => {
   try {
     const sante = await fetch(`${BASE}/health`).then((r) => r.ok).catch(() => false);
     if (!sante) throw new Error(`le serveur ne répond pas sur ${BASE} (/health)`);
+    if (!CHOISIS.length) throw new Error(`SEED_COMPTES ne désigne aucun compte (resto, hotel, usine) : ${COMPTES.join(', ')}`);
     if (args.includes('--nettoyer')) { await nettoyer(); return; }
-    const existants = (await pool.query('SELECT email FROM utilisateurs WHERE LOWER(email) = ANY($1)', [SCENARIOS.map((sc) => alias(sc.suffixe))])).rows;
+    const existants = (await pool.query('SELECT email FROM utilisateurs WHERE LOWER(email) = ANY($1)', [CHOISIS.map((sc) => alias(sc.suffixe))])).rows;
     if (existants.length && !args.includes('--refaire')) throw new Error(`comptes déjà présents (${existants.map((x) => x.email).join(', ')}) : relancez avec --refaire pour les recréer, ou --nettoyer`);
     if (existants.length) await nettoyer();
     // Le module Compta s'active au tarif en vigueur : il doit être saisi (Tarifs → LabFlow Compta) avant de lancer.
@@ -662,7 +685,7 @@ if (require.main === module) (async () => {
     )).rows[0].id;
     const adminTok = await login(ADMIN_EMAIL, adminMdp);
     const echecs = [];
-    for (const sc of SCENARIOS) {
+    for (const sc of CHOISIS) {
       try {
         await batir(sc, adminTok, resume);
       } catch (err) {
@@ -671,7 +694,7 @@ if (require.main === module) (async () => {
       }
     }
     console.log('\n══════════════════════════════════════════════════════════════════════');
-    console.log(`  ${echecs.length ? '⚠️' : '✅'} ${resume.length} compte(s) de test prêt(s) sur ${SCENARIOS.length} (données fictives). Mots de passe :`);
+    console.log(`  ${echecs.length ? '⚠️' : '✅'} ${resume.length} compte(s) de test prêt(s) sur ${CHOISIS.length} (données fictives). Mots de passe :`);
     for (const r of resume) {
       console.log(`  • ${r.compte} (${r.domaine}) — client ${r.clientId}, dossier Compta ${r.dossierCompta}`);
       console.log(`      ${r.email}  /  ${r.motDePasse}`);
