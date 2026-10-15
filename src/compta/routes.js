@@ -300,9 +300,12 @@ router.get('/dossiers/:dossierId/echeancier/tiers/:tiersId/releve.pdf', authenti
 router.post('/dossiers/:dossierId/echeancier/tiers/:tiersId/relance.pdf', authenticate, limiteDocuments, echeancier.relance);
 
 // Étape E1 : les états financiers d'un exercice (bilan, état de résultat ; NC 01 annexes 1 et 3), calculés à la demande sur
-// les soldes des comptes — lecture : tout accès au dossier ; le PDF sous la limite des documents. Rien n'est écrit.
+// les soldes des comptes — lecture : tout accès au dossier ; le PDF sous la limite des documents. E2 : flux de trésorerie et
+// soldes intermédiaires (calculés, dans la même page), jeu complet en PDF (?complet=1) ; les notes (texte libre d'un
+// exercice) : titulaire ou Complet — droit « configurer », jugé par le contrôleur ; même limite de débit que la saisie.
 router.get('/dossiers/:dossierId/etats', authenticate, etats.lire);
 router.get('/dossiers/:dossierId/etats.pdf', authenticate, limiteDocuments, etats.pdf);
+router.put('/dossiers/:dossierId/etats/:exerciceId/notes', authenticate, limiteEcritures, etats.notes);
 
 // Étape S7b : les taxes du mois (état de TVA, retenues à certifier, certificats, retenues subies, signalements ; lecture :
 // tout accès au dossier ; export sous la limite des livres ; PDF sous celle des documents) et les certificats de retenue
