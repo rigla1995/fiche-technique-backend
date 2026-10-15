@@ -555,7 +555,7 @@ const batir = async (sc, adminTok, resume) => {
   // 8. B2B (usine) : revendeurs, offres, ventes livrées (factures LabFlow).
   const b2bMois = {}; // 'AAAA-MM' → [{ acheteur, ttc }]
   if (sc.acheteurs) {
-    const cree = await api('POST', '/api/acheteurs', { acheteurs: sc.acheteurs.map((a, i) => ({ ...a, email: alias(`${sc.suffixe}-revendeur${i + 1}`) })) }, tok);
+    const cree = await api('POST', '/api/acheteurs', { acheteurs: sc.acheteurs.map((a, i) => ({ type: 'b2b', ...a, email: alias(`${sc.suffixe}-revendeur${i + 1}`) })) }, tok);
     const achIds = cree.acheteurs.map((a) => a.id);
     for (const [nom, prixHT, tva] of sc.offres) await api('POST', '/api/acheteurs/offres', { articleType: 'produit', articleId: prod[nom], prixUnitaireHt: prixHT, tauxTva: tva, actif: true }, tok);
     const usine = labos[0];

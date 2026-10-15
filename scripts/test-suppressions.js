@@ -80,7 +80,7 @@ const approx = (a, b, eps = 0.002) => Math.abs(Number(a) - Number(b)) <= eps;
   r = await fetch(`${BASE}/api/acheteurs`, {
     method: 'POST', headers: H,
     body: JSON.stringify({
-      nom: 'TEST-SUP-Resto', entreprise: 'TEST-SUP Sarl', email: 'test-suppr-acheteur@example.com',
+      type: 'b2b', nom: 'TEST-SUP-Resto', entreprise: 'TEST-SUP Sarl', email: 'test-suppr-acheteur@example.com',
       adresse: '12 rue des tests, Tunis', matriculeFiscal: 'MF-TEST-123', telephone: '20123456', creerCompte: true,
     }),
   });

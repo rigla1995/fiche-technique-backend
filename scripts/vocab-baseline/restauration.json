@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "245_prestataires_par_domaine.sql",
+  "derniereMigration": "247_manuel_acheteurs_type.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -656,9 +656,9 @@
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
-    "acheteurs-carnet": "5e249567bda18011dbba19ffd2a75eb2",
+    "acheteurs-carnet": "437ffcfe3e418bc3f45437a8bb39b6de",
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
-    "acheteurs-ventes": "e104803208c87078ecbe6bcb6244bdc7",
+    "acheteurs-ventes": "f57686927f40137e80d37af329bb60da",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
     "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
@@ -717,9 +717,9 @@
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "rapports-vente": "bf1b1542c1ca0bbeb423041e612f139f",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
-    "acheteurs-carnet": "5e249567bda18011dbba19ffd2a75eb2",
+    "acheteurs-carnet": "437ffcfe3e418bc3f45437a8bb39b6de",
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
-    "acheteurs-ventes": "e104803208c87078ecbe6bcb6244bdc7",
+    "acheteurs-ventes": "f57686927f40137e80d37af329bb60da",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
     "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
@@ -779,9 +779,9 @@
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "rapports-vente": "bf1b1542c1ca0bbeb423041e612f139f",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
-    "acheteurs-carnet": "5e249567bda18011dbba19ffd2a75eb2",
+    "acheteurs-carnet": "437ffcfe3e418bc3f45437a8bb39b6de",
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
-    "acheteurs-ventes": "e104803208c87078ecbe6bcb6244bdc7",
+    "acheteurs-ventes": "f57686927f40137e80d37af329bb60da",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
     "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
@@ -1647,19 +1647,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "10.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.650",
-     "source": "Terrasse du Lac — Salon",
-     "type_appro": "transfert"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "-10.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.650",
      "source": "Bloc chaud",
      "type_appro": "manuel"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "10.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.650",
+     "source": "Terrasse du Lac — Salon",
+     "type_appro": "transfert"
     },
     {
      "ingredient": "Riz basmati",
@@ -3071,7 +3071,7 @@
      "Manuel — Espace Acheteurs › Carnet d'Acheteurs",
      "Manuel — Découvrir LabFlow › Parcours de démarrage",
      "Manuel — Espace Acheteurs › Le module Acheteurs",
-     "Manuel — Gestion › Mon abonnement"
+     "Manuel — Espace Acheteurs › Ventes & commandes acheteurs"
     ],
     "base": []
    },
@@ -4677,8 +4677,10 @@
        "oracle-vocab-restauration-c@example.com  ·  70991300",
        "FACTURÉ À",
        "Épicerie Nour SARL — Épicerie نور",
+       "MF 1234567/A/M/⟨id⟩",
        "oracle-vocab-restauration-acheteur1@example.com",
        "+216 22 000 401",
+       "Route de la Corniche",
        "DÉTAIL",
        "Désignation",
        "Qté",
@@ -4731,7 +4733,7 @@
         "Ajout dynamique des acheteurs B2B : une ligne = un acheteur"
        ],
        [
-        "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Seul le nom est obligatoire."
+        "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Type : Professionnel ou Particulier. Professionnel : Entreprise (raison sociale), Matricule fiscal et Adresse obligatoires ; Particulier : Téléphone obligatoire."
        ],
        [
         "Nom",
@@ -4739,7 +4741,9 @@
         "Email",
         "Téléphone",
         "Adresse",
-        "Matricule fiscal"
+        "Matricule fiscal",
+        "Type",
+        "RNE"
        ],
        [
         "Exemple : Ahmed Ben Salah",
@@ -4747,7 +4751,9 @@
         "ahmed@elamen.tn",
         "98 123 456",
         "Rue de la Liberté, Tunis",
-        "1234567/A/M/⟨id⟩"
+        "1234567/A/M/⟨id⟩",
+        "Professionnel",
+        "B0123452024"
        ]
       ]
      }
@@ -6650,13 +6656,13 @@
       ],
       [
        "Riz basmati",
-       "10",
+       "-10",
        "⟨date⟩",
        "2.65"
       ],
       [
        "Riz basmati",
-       "-10",
+       "10",
        "⟨date⟩",
        "2.65"
       ],
@@ -16290,7 +16296,7 @@
      "icone": "📇",
      "partie": "Espace Acheteurs",
      "ordre": 66,
-     "contenu": "## 📇 Carnet d'Acheteurs\n\nLe carnet regroupe vos clients B2B. Chaque fiche porte : nom, entreprise, email, téléphone, adresse, **matricule fiscal** (repris sur les factures) et des notes.\n\nLa **remise** n'est plus attachée à la fiche : elle se décide **à chaque commande** (vente manuelle ou validation d'une commande portail).\n\n### Ajouter des acheteurs\n\n- **➕ Ajouter un acheteur** — le même formulaire sert à l'ajout et à la modification ; cochez **Créer le compte portail** pour envoyer une invitation par email.\n- **📥 Ajout Dynamique** — import Excel en masse : téléchargez le modèle, remplissez-le (seul le Nom est obligatoire) et uploadez-le. L'option « Créer les comptes portail » invite chaque ligne ayant un email.\n\nLe compteur du haut affiche votre progression vers le **quota** (ex. 12 / 20). Quota atteint : demandez une augmentation à l'administrateur.\n\n### Comptes portail\n\nLe badge de la colonne « Compte portail » indique l'état :\n\n| Badge | Signification |\n| --- | --- |\n| Sans compte | fiche seule, pas d'accès en ligne |\n| ✉️ Invité | invitation envoyée (valable 48 h), compte pas encore activé |\n| ✅ Compte actif | l'acheteur se connecte et commande sur le portail |\n\nLe bouton ✉️ crée le compte (ou renvoie l'invitation si elle a expiré). L'email d'un acheteur **avec compte** ne peut plus être modifié : c'est son identifiant de connexion.\n\n:::attention\nDésactiver un acheteur (interrupteur « Actif ») coupe immédiatement son accès au portail. Supprimer sa fiche supprime aussi son compte de connexion, **annule ses commandes encore en attente** (transition tracée dans l'historique des états) et **conserve ses commandes expédiées ou livrées avec leurs factures fiscales** : elles restent dans l'historique avec la mention « (supprimé) », le stock ne bouge pas, et le filtre « Acheteurs supprimés » de l'écran Commandes permet de les retrouver.\n:::",
+     "contenu": "## 📇 Carnet d'Acheteurs\n\nLe carnet regroupe vos clients, **professionnels (B2B)** ou **particuliers (B2C)**. Chaque fiche porte son type, puis : nom, entreprise (raison sociale), email, téléphone, adresse, **matricule fiscal** et **identifiant RNE** (repris sur les factures) et des notes.\n\nLa **remise** n'est plus attachée à la fiche : elle se décide **à chaque commande** (vente manuelle ou validation d'une commande portail).\n\n### Ajouter des acheteurs\n\n- **➕ Ajouter un acheteur** — choisissez d'abord **Professionnel (B2B)** ou **Particulier (B2C)**.\n  - **Professionnel** : **📄 Lire la patente** (carte d'identification fiscale, extrait RNE, carte auto-entrepreneur — PDF ou photo, lu sur votre ordinateur, rien n'est envoyé) remplit la raison sociale, le matricule fiscal, le RNE et l'adresse ; vous pouvez aussi les saisir à la main. **Raison sociale, matricule fiscal et adresse sont obligatoires** : la facture de vente en dépend.\n  - **Particulier** : **nom et téléphone** suffisent ; la facture porte ces deux mentions.\n  - Le même formulaire sert à la modification (le type se change) ; cochez **Créer le compte portail** pour envoyer une invitation par email.\n- **📥 Ajout Dynamique** — import Excel en masse : téléchargez le modèle, remplissez-le et uploadez-le. Colonnes : Nom, Entreprise, Email, Téléphone, Adresse, Matricule fiscal, **Type** (Professionnel ou Particulier) et RNE ; les champs obligatoires sont ceux du type, une ligne incomplète est refusée avec son motif. L'option « Créer les comptes portail » invite chaque ligne ayant un email.\n\nLe compteur du haut affiche votre progression vers le **quota** (ex. 12 / 20). Quota atteint : demandez une augmentation à l'administrateur.\n\n### Fiches « à préciser »\n\nLes fiches créées avant cette version sont classées **professionnelles** si elles ont un matricule fiscal, sinon **« à préciser »** : un bandeau du carnet les compte, et **aucune facture ne peut leur être émise** tant que leur type n'est pas choisi. Ouvrez la fiche (✏️), choisissez le type et complétez les champs obligatoires.\n\n### Comptes portail\n\nLe badge de la colonne « Compte portail » indique l'état :\n\n| Badge | Signification |\n| --- | --- |\n| Sans compte | fiche seule, pas d'accès en ligne |\n| ✉️ Invité | invitation envoyée (valable 48 h), compte pas encore activé |\n| ✅ Compte actif | l'acheteur se connecte et commande sur le portail |\n\nLe bouton ✉️ crée le compte (ou renvoie l'invitation si elle a expiré). L'email d'un acheteur **avec compte** ne peut plus être modifié : c'est son identifiant de connexion.\n\n:::attention\nDésactiver un acheteur (interrupteur « Actif ») coupe immédiatement son accès au portail. Supprimer sa fiche supprime aussi son compte de connexion, **annule ses commandes encore en attente** (transition tracée dans l'historique des états) et **conserve ses commandes expédiées ou livrées avec leurs factures fiscales** : elles restent dans l'historique avec la mention « (supprimé) », le stock ne bouge pas, et le filtre « Acheteurs supprimés » de l'écran Commandes permet de les retrouver.\n:::\n",
      "motsCles": "carnet, acheteur, ajout, import excel, invitation, compte, remise, matricule fiscal, quota",
      "ecran": "/client/acheteurs",
      "visibleGerant": true,
@@ -16318,7 +16324,7 @@
      "icone": "🧾",
      "partie": "Espace Acheteurs",
      "ordre": 68,
-     "contenu": "## 🧾 Ventes & commandes acheteurs\n\n### Le cycle de vie d'une commande\n\n| État | Ce qui se passe |\n| --- | --- |\n| ⏳ En attente | commande envoyée depuis le portail, rien n'est encore déduit |\n| 🚚 Expédiée | le stock labo est déduit, la facture FA- est générée |\n| ✅ Livrée | jalon logistique : la date de livraison est enregistrée |\n| ✕ Annulée | le stock est réintégré et la facture supprimée |\n\nChaque commande garde l'**historique complet de ses états** (qui, quand, avec quelle date d'effet) — visible dans le détail.\n\n### Vente manuelle (Vente Acheteur)\n\nComme un transfert, mais vers un acheteur : choisissez l'**acheteur**, le **labo source** et la date ; les lignes se pré-remplissent au tarif HT (modifiable ligne à ligne). Saisissez si besoin une **remise %**, activez le **timbre fiscal**, puis choisissez l'état initial : **Expédiée** (date d'expédition) ou directement **Livrée** (avec sa date de livraison).\n\nÀ l'enregistrement, le système :\n\n1. contrôle le stock labo (blocage détaillé si insuffisant) ;\n2. déduit le stock (articles et produits, en unités) ;\n3. fige les coûts matière (PMP TTC) pour vos marges ;\n4. génère la **facture** numérotée (⟨ref⟩ÉE-NNNN) en PDF : HT − remise + TVA + timbre.\n\n### Commandes du portail\n\nQuand un acheteur commande en ligne, vous recevez une **notification 🤝** et la commande apparaît **En attente** (badge 🌐 portail). Vos actions :\n\n- **🚚 Expédier** — choisissez le labo source, **ajustez les quantités** — voire **retirez des lignes** (quantité servie nulle) — si nécessaire, fixez la remise éventuelle et la date d'expédition ; le stock est contrôlé puis déduit et la facture est générée ; l'acheteur suit sa commande et récupère sa facture dans « Mes commandes » sur son portail.\n- **✅ Livrer** — sur une commande expédiée : enregistrez la date de livraison.\n- **↩️ Refuser / Annuler** — avec un motif ; le motif s'affiche à l'acheteur dans « Mes commandes » sur son portail (commandes portail).\n\n### Annulation\n\nUne commande expédiée ou livrée peut être annulée (motif à l'appui) : le **stock est réintégré automatiquement** et la facture est supprimée.\n\n:::attention\nL'annulation supprime la facture : un trou peut apparaître dans la numérotation. Réservez-la aux erreurs de saisie.\n:::\n\nL'historique du Stock Labo affiche ces mouvements avec le badge **Vente**, et l'export Excel de l'écran Commandes reprend la liste filtrée.",
+     "contenu": "## 🧾 Ventes & commandes acheteurs\n\n### Le cycle de vie d'une commande\n\n| État | Ce qui se passe |\n| --- | --- |\n| ⏳ En attente | commande envoyée depuis le portail, rien n'est encore déduit |\n| 🚚 Expédiée | le stock labo est déduit, la facture FA- est générée |\n| ✅ Livrée | jalon logistique : la date de livraison est enregistrée |\n| ✕ Annulée | le stock est réintégré et la facture supprimée |\n\nChaque commande garde l'**historique complet de ses états** (qui, quand, avec quelle date d'effet) — visible dans le détail.\n\n### Vente manuelle (Vente Acheteur)\n\nComme un transfert, mais vers un acheteur : choisissez l'**acheteur**, le **labo source** et la date ; les lignes se pré-remplissent au tarif HT (modifiable ligne à ligne). Saisissez si besoin une **remise %**, activez le **timbre fiscal**, puis choisissez l'état initial : **Expédiée** (date d'expédition) ou directement **Livrée** (avec sa date de livraison).\n\nÀ l'enregistrement, le système :\n\n1. contrôle le stock labo (blocage détaillé si insuffisant) ;\n2. déduit le stock (articles et produits, en unités) ;\n3. fige les coûts matière (PMP TTC) pour vos marges ;\n4. génère la **facture** numérotée (⟨ref⟩ÉE-NNNN) en PDF : HT − remise + TVA + timbre.\n\nLe bloc **« Facturé à »** de la facture suit le type de la fiche : **professionnel (B2B)** — raison sociale et contact, matricule fiscal, identifiant RNE, adresse ; **particulier (B2C)** — nom, mention « Particulier », téléphone.\n\n:::attention\nAucune facture n'est émise à une fiche **« à préciser »** ni à un professionnel **sans matricule fiscal** : complétez la fiche dans le carnet avant la vente manuelle ou l'expédition d'une commande.\n:::\n\n### Commandes du portail\n\nQuand un acheteur commande en ligne, vous recevez une **notification 🤝** et la commande apparaît **En attente** (badge 🌐 portail). Vos actions :\n\n- **🚚 Expédier** — choisissez le labo source, **ajustez les quantités** — voire **retirez des lignes** (quantité servie nulle) — si nécessaire, fixez la remise éventuelle et la date d'expédition ; le stock est contrôlé puis déduit et la facture est générée ; l'acheteur suit sa commande et récupère sa facture dans « Mes commandes » sur son portail.\n- **✅ Livrer** — sur une commande expédiée : enregistrez la date de livraison.\n- **↩️ Refuser / Annuler** — avec un motif ; le motif s'affiche à l'acheteur dans « Mes commandes » sur son portail (commandes portail).\n\n### Annulation\n\nUne commande expédiée ou livrée peut être annulée (motif à l'appui) : le **stock est réintégré automatiquement** et la facture est supprimée.\n\n:::attention\nL'annulation supprime la facture : un trou peut apparaître dans la numérotation. Réservez-la aux erreurs de saisie.\n:::\n\nL'historique du Stock Labo affiche ces mouvements avec le badge **Vente**, et l'export Excel de l'écran Commandes reprend la liste filtrée.\n",
      "motsCles": "vente acheteur, commande, valider, refuser, annuler, facture, timbre, stock labo, notification, portail",
      "ecran": "/client/acheteurs/commandes",
      "visibleGerant": true,

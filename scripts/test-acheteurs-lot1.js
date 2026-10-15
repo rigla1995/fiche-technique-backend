@@ -44,8 +44,8 @@ const check = (name, ok, detail = '') => {
   r = await fetch(`${BASE}/api/acheteurs`, {
     method: 'POST', headers: H,
     body: JSON.stringify({ acheteurs: [
-      { nom: 'TEST-Ahmed', entreprise: 'Superette Test', email: 'test-acheteur-1@example.com', telephone: '98111222', creerCompte: true },
-      { nom: 'TEST-Sami' },
+      { type: 'b2b', nom: 'TEST-Ahmed', entreprise: 'Superette Test', email: 'test-acheteur-1@example.com', telephone: '98111222', adresse: '1 rue des Tests', matriculeFiscal: '1234567A', creerCompte: true },
+      { type: 'b2c', telephone: '98111223', nom: 'TEST-Sami' },
     ] }),
   });
   body = await r.json();
@@ -58,14 +58,14 @@ const check = (name, ok, detail = '') => {
   // ── 4. Doublon email → 409
   r = await fetch(`${BASE}/api/acheteurs`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ nom: 'TEST-Doublon', email: 'test-acheteur-1@example.com' }),
+    body: JSON.stringify({ type: 'b2c', telephone: '98111224', nom: 'TEST-Doublon', email: 'test-acheteur-1@example.com' }),
   });
   check('doublon email 409', r.status === 409);
 
   // ── 5. Quota : 2 existants + 4 > 5 → 403
   r = await fetch(`${BASE}/api/acheteurs`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ acheteurs: [1, 2, 3, 4].map(i => ({ nom: `TEST-Q${i}` })) }),
+    body: JSON.stringify({ acheteurs: [1, 2, 3, 4].map(i => ({ type: 'b2c', telephone: '98111225', nom: `TEST-Q${i}` })) }),
   });
   body = await r.json();
   check('quota dépassé 403', r.status === 403 && body.code === 'QUOTA_ACHETEURS', body.message);

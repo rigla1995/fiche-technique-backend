@@ -356,6 +356,23 @@
           "md5": "f90632650659b2e502f0a68ac03379e3"
         }
       ]
+    },
+    {
+      "numero": 247,
+      "nom": "247_manuel_acheteurs_type.sql",
+      "objet": "Acheteurs professionnels (B2B) et particuliers (B2C) (D2) : type choisi à l’ajout, patente lue pour un professionnel, champs obligatoires selon le type, fiches d’avant « à préciser », facture de vente selon le type.",
+      "manuel": [
+        {
+          "slug": "acheteurs-carnet",
+          "md5Avant": "f425f6bfa8319582c87616d72930ab97",
+          "md5": "9fd8031651acfaea16efa1a20be6a480"
+        },
+        {
+          "slug": "acheteurs-ventes",
+          "md5Avant": "ac8146a16fdba3ae9a8e07505fe5d726",
+          "md5": "dbb0a08b141a4f894d2600ec685923b2"
+        }
+      ]
     }
   ]
 }
