@@ -501,7 +501,7 @@ const CIBLES_191 = [
     }
 
     // ── 4. Acheteur d'un compte Hôtellerie → lexique du vendeur, sans composants ni règles ──────
-    ({ status, body } = await post(H, '/api/acheteurs', { nom: 'TEST-Voc Acheteur', entreprise: 'TEST-Voc Superette', email: ACHETEUR_EMAIL }));
+    ({ status, body } = await post(H, '/api/acheteurs', { type: 'b2c', telephone: '+216 22 000 400', nom: 'TEST-Voc Acheteur', entreprise: 'TEST-Voc Superette', email: ACHETEUR_EMAIL }));
     const fiche = body?.acheteurs?.[0];
     check('POST /api/acheteurs (fiche sans compte : aucune invitation envoyée) → 201', status === 201 && !!fiche?.id && body.invitations === 0, `${status} ${body?.message || ''}`);
     if (fiche?.id) {

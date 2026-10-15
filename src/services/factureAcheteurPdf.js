@@ -29,6 +29,9 @@ const buildFactureAcheteurPdf = (f, lignes) => {
       mf: f.acheteur_mf || null,
       tel: f.acheteur_tel || null,
       email: f.acheteur_email || null,
+      // D2 : type (b2b / b2c / a_preciser) et RNE — absents sur une facture d'avant la migration 246 : rendu inchangé.
+      type: f.acheteur_type || null,
+      rne: f.acheteur_rne || null,
     },
     lignes: (lignes || []).map((l) => ({
       designation: l.designation,

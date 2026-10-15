@@ -5,10 +5,15 @@ const { sendInviteEmail, generateInviteToken } = require('../services/emailServi
 const { vocabDefaut } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
 const { matriculeAcheteur } = require('../utils/matriculeFiscal');
+// D2 (15/10/2026) : professionnel (B2B) ou particulier (B2C), choisi à l'ajout ; champs obligatoires selon le type.
+const AT = require('../utils/acheteurType');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-const HEADERS = ['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal'];
+const HEADERS_AVANT = ['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal'];
+// D2 : deux colonnes de plus (Type : Professionnel ou Particulier ; RNE). Un ancien fichier (6 colonnes) est encore lu,
+// mais chaque ligne y est refusée « Type requis » : le client télécharge le nouveau modèle.
+const HEADERS = [...HEADERS_AVANT, 'Type', 'RNE'];
 const MAX_ROWS = 500;
 
 const clientIdOf = (req) => req.user.gerant_parent_id || req.user.id;
@@ -21,6 +26,9 @@ const mapAcheteur = (row) => ({
   telephone: row.telephone,
   adresse: row.adresse,
   matriculeFiscal: row.matricule_fiscal,
+  // D2 : 'b2b' | 'b2c' | 'a_preciser' (fiche d'avant la migration 246, sans matricule) ; identifiant RNE d'un professionnel.
+  type: row.type || 'a_preciser',
+  rne: row.rne ?? null,
   notes: row.notes,
   actif: row.actif !== false,
   userId: row.user_id,
@@ -104,6 +112,10 @@ const create = async (req, res) => {
     const it = items[i] || {};
     const nom = String(it.nom || '').trim();
     if (!nom) return res.status(400).json({ message: `Ligne ${i + 1} : le nom est requis` });
+    // D2 : type obligatoire ; champs obligatoires du type.
+    const type = AT.typeDe(it.type);
+    if (type === null) return res.status(400).json({ code: 'TYPE_REQUIS', message: `Ligne ${i + 1} : ${AT.MESSAGE_TYPE_REQUIS}` });
+    if (!type) return res.status(400).json({ code: 'TYPE_INCONNU', message: `Ligne ${i + 1} : ${AT.messageTypeInconnu(it.type)}` });
     const email = normEmail(it.email);
     if (email && !emailValide(email)) return res.status(400).json({ message: `Ligne ${i + 1} : email invalide` });
     if (email) {
@@ -112,15 +124,19 @@ const create = async (req, res) => {
     }
     const creerCompte = it.creerCompte === true;
     if (creerCompte && !email) return res.status(400).json({ message: `Ligne ${i + 1} : un email est requis pour créer un compte` });
-    prepared.push({
-      nom, email,
+    const p = {
+      nom, email, type,
       entreprise: String(it.entreprise || '').trim() || null,
       telephone: String(it.telephone || '').trim() || null,
       adresse: String(it.adresse || '').trim() || null,
       matriculeFiscal: matriculeAcheteur(it.matriculeFiscal),
+      rne: AT.rneDe(it.rne),
       notes: String(it.notes || '').trim() || null,
       creerCompte,
-    });
+    };
+    const manquants = AT.champsManquants(type, p);
+    if (manquants.length) return res.status(400).json({ code: 'CHAMPS_REQUIS', message: `Ligne ${i + 1} : ${AT.messageManquants(type, manquants)}` });
+    prepared.push(p);
   }
 
   const db = await pool.connect();
@@ -146,9 +162,9 @@ const create = async (req, res) => {
       let row;
       try {
         const r = await db.query(
-          `INSERT INTO acheteurs (client_id, nom, entreprise, email, telephone, adresse, matricule_fiscal, notes, created_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-          [clientId, p.nom, p.entreprise, p.email, p.telephone, p.adresse, p.matriculeFiscal, p.notes, req.user.id]
+          `INSERT INTO acheteurs (client_id, nom, entreprise, email, telephone, adresse, matricule_fiscal, notes, created_by, type, rne)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+          [clientId, p.nom, p.entreprise, p.email, p.telephone, p.adresse, p.matriculeFiscal, p.notes, req.user.id, p.type, p.rne]
         );
         row = r.rows[0];
       } catch (e) {
@@ -203,15 +219,33 @@ const update = async (req, res) => {
     const actif = req.body.actif !== undefined ? req.body.actif === true : a.actif;
 
     const val = (body, curVal) => (body !== undefined ? (String(body || '').trim() || null) : curVal);
+    // D2 : type (b2b / b2c, jamais remis « à préciser ») et RNE. Les champs obligatoires du type sont contrôlés dès que
+    // l'identité est touchée ; un simple interrupteur « actif » ne l'est pas (fiche d'avant la migration 246, incomplète).
+    let type = a.type || 'a_preciser';
+    if (req.body.type !== undefined) {
+      type = AT.typeDe(req.body.type);
+      if (type === null) return res.status(400).json({ code: 'TYPE_REQUIS', message: AT.Maj(AT.MESSAGE_TYPE_REQUIS) });
+      if (!type) return res.status(400).json({ code: 'TYPE_INCONNU', message: AT.Maj(AT.messageTypeInconnu(req.body.type)) });
+    }
+    const suivant = {
+      entreprise: val(req.body.entreprise, a.entreprise),
+      telephone: val(req.body.telephone, a.telephone),
+      adresse: val(req.body.adresse, a.adresse),
+      matriculeFiscal: req.body.matriculeFiscal !== undefined ? matriculeAcheteur(req.body.matriculeFiscal) : a.matricule_fiscal,
+      rne: req.body.rne !== undefined ? AT.rneDe(req.body.rne) : a.rne,
+    };
+    const toucheIdentite = req.body.type !== undefined || ['entreprise', 'telephone', 'adresse', 'matriculeFiscal', 'rne'].some((k) => req.body[k] !== undefined);
+    if (toucheIdentite) {
+      const manquants = AT.champsManquants(type, suivant);
+      if (manquants.length) return res.status(400).json({ code: 'CHAMPS_REQUIS', message: AT.Maj(AT.messageManquants(type, manquants)) });
+    }
     const r = await pool.query(
       `UPDATE acheteurs SET nom=$1, entreprise=$2, email=$3, telephone=$4, adresse=$5,
-              matricule_fiscal=$6, notes=$7, actif=$8, updated_at=NOW()
-       WHERE id=$9 AND client_id=$10
+              matricule_fiscal=$6, notes=$7, actif=$8, type=$9, rne=$10, updated_at=NOW()
+       WHERE id=$11 AND client_id=$12
        RETURNING *`,
-      [nom, val(req.body.entreprise, a.entreprise), email, val(req.body.telephone, a.telephone),
-       val(req.body.adresse, a.adresse),
-       req.body.matriculeFiscal !== undefined ? matriculeAcheteur(req.body.matriculeFiscal) : a.matricule_fiscal,
-       val(req.body.notes, a.notes), actif, id, clientId]
+      [nom, suivant.entreprise, email, suivant.telephone, suivant.adresse, suivant.matriculeFiscal,
+       val(req.body.notes, a.notes), actif, type, suivant.rne, id, clientId]
     );
     const u = r.rows[0].user_id
       ? await pool.query('SELECT activated_at AS user_activated_at FROM utilisateurs WHERE id = $1', [r.rows[0].user_id])
@@ -371,10 +405,10 @@ const getTemplate = async (req, res) => {
     brandTemplate(wb, ws, {
       titre: `Modèle d'import — Carnet ${voc.de('acheteur', true)}`,
       sousTitre: `Ajout dynamique ${voc.du('acheteur', true)} B2B : une ligne = ${voc.un('acheteur')}`,
-      meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Seul le nom est obligatoire.",
+      meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Type : Professionnel ou Particulier. Professionnel : Entreprise (raison sociale), Matricule fiscal et Adresse obligatoires ; Particulier : Téléphone obligatoire.",
       headers: HEADERS,
-      widths: HEADERS.map((h) => (h === 'Adresse' ? 34 : 22)),
-      exemple: ['Exemple : Ahmed Ben Salah', 'Superette El Amen', 'ahmed@elamen.tn', '98 123 456', 'Rue de la Liberté, Tunis', '1234567/A/M/000'],
+      widths: HEADERS.map((h) => (h === 'Adresse' ? 34 : h === 'Type' ? 16 : 22)),
+      exemple: ['Exemple : Ahmed Ben Salah', 'Superette El Amen', 'ahmed@elamen.tn', '98 123 456', 'Rue de la Liberté, Tunis', '1234567/A/M/000', 'Professionnel', 'B0123452024'],
     });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="modele_acheteurs.xlsx"');
@@ -405,7 +439,7 @@ const importAcheteurs = [
       // (modèle de marque : bandeau au-dessus ; anciens modèles : ligne 1),
       // et la ligne d'exemple grisée du modèle est ignorée.
       const { findHeaderRow, isExampleRow } = require('../services/excelBrandService');
-      const headerRowNum = findHeaderRow(ws, HEADERS) ?? 1;
+      const headerRowNum = findHeaderRow(ws, HEADERS) ?? findHeaderRow(ws, HEADERS_AVANT) ?? 1;
       const lignes = [];
       ws.eachRow((row, rowNumber) => {
         if (rowNumber <= headerRowNum || isExampleRow(row)) return;
@@ -413,7 +447,7 @@ const importAcheteurs = [
         lignes.push({
           row: rowNumber,
           nom: cell(1), entreprise: cell(2), email: cell(3), telephone: cell(4),
-          adresse: cell(5), matriculeFiscal: cell(6),
+          adresse: cell(5), matriculeFiscal: cell(6), type: cell(7), rne: cell(8),
         });
       });
       const nonVides = lignes.filter((l) => l.nom || l.email || l.entreprise);
@@ -426,11 +460,17 @@ const importAcheteurs = [
       const seenEmails = new Set();
       for (const l of nonVides) {
         if (!l.nom) { details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Nom requis' }); continue; }
+        // D2 : type obligatoire (Professionnel / Particulier) et champs obligatoires du type.
+        const type = AT.typeDe(l.type);
+        if (type === null) { details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Type requis : Professionnel ou Particulier' }); continue; }
+        if (!type) { details.push({ row: l.row, nom: l.nom, status: 'error', error: AT.Maj(AT.messageTypeInconnu(l.type)) }); continue; }
+        const manquants = AT.champsManquants(type, l);
+        if (manquants.length) { details.push({ row: l.row, nom: l.nom, status: 'error', error: AT.Maj(AT.messageManquants(type, manquants)) }); continue; }
         const email = normEmail(l.email);
         if (email && !emailValide(email)) { details.push({ row: l.row, nom: l.nom, status: 'error', error: `Email invalide : ${l.email}` }); continue; }
         if (email && seenEmails.has(email)) { details.push({ row: l.row, nom: l.nom, status: 'error', error: 'Email en double dans le fichier' }); continue; }
         if (email) seenEmails.add(email);
-        valides.push({ ...l, email });
+        valides.push({ ...l, email, type, rne: AT.rneDe(l.rne) });
       }
       if (valides.length === 0) {
         return res.status(400).json({ message: 'Aucune ligne valide', processed: 0, errors: details.length, details });
@@ -462,9 +502,9 @@ const importAcheteurs = [
           let row;
           try {
             const r = await db.query(
-              `INSERT INTO acheteurs (client_id, nom, entreprise, email, telephone, adresse, matricule_fiscal, created_by)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-              [clientId, v.nom, v.entreprise || null, v.email, v.telephone || null, v.adresse || null, matriculeAcheteur(v.matriculeFiscal), req.user.id]
+              `INSERT INTO acheteurs (client_id, nom, entreprise, email, telephone, adresse, matricule_fiscal, created_by, type, rne)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+              [clientId, v.nom, v.entreprise || null, v.email, v.telephone || null, v.adresse || null, matriculeAcheteur(v.matriculeFiscal), req.user.id, v.type, v.rne]
             );
             row = r.rows[0];
           } catch (e) {

@@ -554,7 +554,7 @@ async function main() {
 
   // 15. B2B : commandable, acheteurs (sans email), comptes portail SQL, offres
   await api('PUT', `/api/articles/${art['Amandes émondées'].id}`, { commandable: true });
-  const created = await api('POST', '/api/acheteurs', { acheteurs: ACHETEURS });
+  const created = await api('POST', '/api/acheteurs', { acheteurs: ACHETEURS.map((a) => ({ type: 'b2b', ...a })) });
   const achIds = created.acheteurs.map((a) => a.id);
   const pHash = await bcrypt.hash(PORTAIL_PASSWORD, 10);
   const achUserIds = [];

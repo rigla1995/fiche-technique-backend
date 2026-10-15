@@ -198,13 +198,13 @@ const moisPlus = (n) => new Date(Date.UTC(new Date().getUTCFullYear(), new Date(
 
     // ── 1. Matricule des acheteurs : création par lot (remis au format, jamais refusé) ─────────────────────────────
     r = await appel('POST', '/api/acheteurs', c1.tok, { acheteurs: [
-      { nom: 'Sami Fictif', entreprise: 'Epicerie Essai', email: ACHETEURS[0], telephone: '+216 55 000 111', adresse: '3 rue des Tests, Sfax', matriculeFiscal: '1122334cam000', creerCompte: true },
-      { nom: 'Acheteur Deux', email: ACHETEURS[1], matriculeFiscal: 'MF : 7654321 b' },
-      { nom: 'Acheteur Trois', matriculeFiscal: '  B0123452024  ' },
-      { nom: 'Acheteur Quatre', matriculeFiscal: '   ' },
-      { nom: 'Acheteur Cinq' },
-      { nom: 'Acheteur Six', matriculeFiscal: 0 },
-      { nom: 'Acheteur Sept', matriculeFiscal: false },
+      { type: 'b2b', nom: 'Sami Fictif', entreprise: 'Epicerie Essai', email: ACHETEURS[0], telephone: '+216 55 000 111', adresse: '3 rue des Tests, Sfax', matriculeFiscal: '1122334cam000', creerCompte: true },
+      { type: 'b2c', telephone: '+216 55 000 100', nom: 'Acheteur Deux', email: ACHETEURS[1], matriculeFiscal: 'MF : 7654321 b' },
+      { type: 'b2c', telephone: '+216 55 000 100', nom: 'Acheteur Trois', matriculeFiscal: '  B0123452024  ' },
+      { type: 'b2c', telephone: '+216 55 000 100', nom: 'Acheteur Quatre', matriculeFiscal: '   ' },
+      { type: 'b2c', telephone: '+216 55 000 100', nom: 'Acheteur Cinq' },
+      { type: 'b2c', telephone: '+216 55 000 100', nom: 'Acheteur Six', matriculeFiscal: 0 },
+      { type: 'b2c', telephone: '+216 55 000 100', nom: 'Acheteur Sept', matriculeFiscal: false },
     ] });
     const crees = r.body?.acheteurs || [];
     check('acheteurs : création par lot (7 fiches) → 201', r.status === 201 && crees.length === 7, `${r.status} ${r.body?.message || ''}`);
@@ -237,7 +237,7 @@ const moisPlus = (n) => new Date(Date.UTC(new Date().getUTCFullYear(), new Date(
     const importer = async (lignes) => {
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet('Import');
-      ws.addRow(['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal']);
+      ws.addRow(['Nom', 'Entreprise', 'Email', 'Téléphone', 'Adresse', 'Matricule fiscal', 'Type', 'RNE']);
       for (const l of lignes) ws.addRow(l);
       const fd = new FormData();
       fd.append('file', new Blob([await wb.xlsx.writeBuffer()]), 'acheteurs.xlsx');
@@ -247,10 +247,10 @@ const moisPlus = (n) => new Date(Date.UTC(new Date().getUTCFullYear(), new Date(
       return { status: rep.status, body };
     };
     r = await importer([
-      ['Import Un', 'Société Import', ACHETEURS[2], '+216 55 000 222', '8 rue Importée', '1234567-A-A-M-001'],
-      ['Import Deux', '', '', '', '', ' abc 123 '],
-      ['Import Trois', '', '', '', '', ''],
-      ['Import Quatre', '', '', '', '', 7654321],
+      ['Import Un', 'Société Import', ACHETEURS[2], '+216 55 000 222', '8 rue Importée', '1234567-A-A-M-001', 'Professionnel', ''],
+      ['Import Deux', '', '', '+216 55 000 223', '', ' abc 123 ', 'Particulier', ''],
+      ['Import Trois', '', '', '+216 55 000 224', '', '', 'Particulier', ''],
+      ['Import Quatre', '', '', '+216 55 000 225', '', 7654321, 'Particulier', ''],
     ]);
     const importes = (await pool.query(`SELECT nom, matricule_fiscal FROM acheteurs WHERE client_id = $1 AND nom LIKE 'Import %' ORDER BY nom`, [c1.id])).rows;
     check('import Excel : 4 lignes importées → 200', r.status === 200 && importes.length === 4, `${r.status} ${JSON.stringify(r.body).slice(0, 200)}`);
@@ -262,11 +262,11 @@ const moisPlus = (n) => new Date(Date.UTC(new Date().getUTCFullYear(), new Date(
     // Saisie non reconnue de plus de 50 caractères (taille de la colonne) : « jamais refusé ».
     // ⚠ Ces 3 contrôles échouaient déjà avant l'étape 8 (même INSERT / UPDATE sur develop : erreur de base 22001 → 500).
     const LONG = `dossier en cours au bureau de contrôle des impôts n° ${'9'.repeat(12)}`; // 65 caractères
-    r = await appel('POST', '/api/acheteurs', c1.tok, { acheteurs: [{ nom: 'Acheteur Long', matriculeFiscal: LONG }] });
+    r = await appel('POST', '/api/acheteurs', c1.tok, { acheteurs: [{ type: 'b2c', telephone: '+216 55 000 100', nom: 'Acheteur Long', matriculeFiscal: LONG }] });
     check('création : saisie non reconnue de 65 caractères → jamais refusée (pas de 500)', r.status === 201, `${r.status} ${r.body?.message || ''}`);
     r = await appel('PUT', `/api/acheteurs/${ach3?.id}`, c1.tok, { matriculeFiscal: LONG });
     check('modification : saisie non reconnue de 65 caractères → jamais refusée (pas de 500)', r.status === 200, `${r.status} ${r.body?.message || ''}`);
-    r = await importer([['Import Long', '', '', '', '', LONG], ['Import Cinq', '', '', '', '', '7654321B']]);
+    r = await importer([['Import Long', '', '', '+216 55 000 226', '', LONG, 'Particulier', ''], ['Import Cinq', '', '', '+216 55 000 227', '', '7654321B', 'Particulier', '']]);
     const apresLong = (await pool.query(`SELECT nom FROM acheteurs WHERE client_id = $1 AND nom IN ('Import Long', 'Import Cinq') ORDER BY nom`, [c1.id])).rows.map((a) => a.nom);
     check('import : une ligne au matricule de 65 caractères ne fait pas échouer le fichier (pas de 500, l\'autre ligne est importée)',
       r.status === 200 && apresLong.includes('Import Cinq'), `${r.status} ${r.body?.message || ''} — importées : ${JSON.stringify(apresLong)}`);

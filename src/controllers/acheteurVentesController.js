@@ -4,6 +4,8 @@ const { lockStockLabo, mapLockError } = require('../services/transfertService');
 const { gerantAllowsLabo } = require('../middleware/auth');
 const { buildFactureAcheteurPdf } = require('../services/factureAcheteurPdf');
 const { figerVendeurFacture, VENDEUR_FACTURE_SQL } = require('../utils/identiteFacture');
+// D2 (15/10/2026) : pas de facture à une fiche « à préciser » ni à un professionnel sans matricule fiscal (409).
+const { refusFacture } = require('../utils/acheteurType');
 
 const clientIdOf = (req) => req.user.gerant_parent_id || req.user.id;
 const num = (v) => (v === null || v === undefined ? null : Number(v));
@@ -353,6 +355,8 @@ const createVente = async (req, res) => {
     ]);
     if (ach.rows.length === 0) return res.status(404).json({ message: '[[Nom:acheteur]] introuvable' });
     if (ach.rows[0].actif === false) return res.status(400).json({ message: '[[Ce:acheteur]] est [[acc:acheteur:désactivé:désactivée]]' });
+    const refus = refusFacture(ach.rows[0]);
+    if (refus) return res.status(409).json(refus);
     if (labo.rows.length === 0) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
     if (!gerantAllowsLabo(req, laboId)) return res.status(403).json({ message: '[[Nom:labo]] hors de votre périmètre' });
 
@@ -466,10 +470,11 @@ const createVente = async (req, res) => {
       const fact = await db.query(
         `INSERT INTO factures_acheteur
            (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, acheteur_adresse, acheteur_matricule_fiscal, acheteur_telephone, acheteur_email,
+            acheteur_type, acheteur_rne,
             commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
          RETURNING *`,
-        [clientId, acheteurId, a0.nom, a0.entreprise, a0.adresse, a0.matricule_fiscal, a0.telephone, a0.email,
+        [clientId, acheteurId, a0.nom, a0.entreprise, a0.adresse, a0.matricule_fiscal, a0.telephone, a0.email, a0.type, a0.rne,
          commande.id, numero, dateCommande, brutTtc, remisePct, montantHt, montantTva, timbreFiscal, montantTimbre, montantTtc, req.user.id]
       );
       await figerVendeurFacture(db, fact.rows[0].id);
@@ -696,7 +701,8 @@ const expedierCommande = async (req, res) => {
     const c = await db.query(
       `SELECT ca.*, COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom, ach.email AS acheteur_email,
               ach.entreprise AS acheteur_entr, ach.adresse AS acheteur_adr,
-              ach.matricule_fiscal AS acheteur_mf, ach.telephone AS acheteur_tel
+              ach.matricule_fiscal AS acheteur_mf, ach.telephone AS acheteur_tel,
+              ach.type AS acheteur_type, ach.rne AS acheteur_rne, ach.id AS acheteur_existant
        FROM commandes_acheteur ca LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
        WHERE ca.id = $1 AND ca.client_id = $2 FOR UPDATE OF ca`,
       [req.params.id, clientId]
@@ -706,6 +712,11 @@ const expedierCommande = async (req, res) => {
     if (cmd.statut !== 'en_attente') {
       await db.query('ROLLBACK');
       return res.status(409).json({ message: `Cette commande n'est plus en attente (statut : ${cmd.statut})` });
+    }
+    // D2 : la facture naît à l'expédition — fiche « à préciser » ou professionnel sans matricule : refus (fiche vivante seulement).
+    if (cmd.acheteur_existant != null) {
+      const refus = refusFacture({ type: cmd.acheteur_type, matricule_fiscal: cmd.acheteur_mf });
+      if (refus) { await db.query('ROLLBACK'); return res.status(409).json(refus); }
     }
     const labo = await db.query(
       `SELECT l.id, l.nom FROM labos l JOIN profil_entreprise pe ON pe.id = l.entreprise_id
@@ -798,10 +809,12 @@ const expedierCommande = async (req, res) => {
     const fact = await db.query(
       `INSERT INTO factures_acheteur
          (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, acheteur_adresse, acheteur_matricule_fiscal, acheteur_telephone, acheteur_email,
+          acheteur_type, acheteur_rne,
           commande_id, numero, date_facture, montant_brut_ttc, remise_pct, montant_ht, montant_tva, timbre_fiscal, montant_timbre, montant_ttc, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
        RETURNING id`,
       [clientId, cmd.acheteur_id, cmd.acheteur_nom, cmd.acheteur_entr, cmd.acheteur_adr, cmd.acheteur_mf, cmd.acheteur_tel, cmd.acheteur_email,
+       cmd.acheteur_type, cmd.acheteur_rne,
        cmd.id, numero, dateExpedition, totaux.brutTtc, remisePct, totaux.montantHt, totaux.montantTva, timbreFiscal, totaux.montantTimbre, totaux.montantTtc, req.user.id]
     );
     await figerVendeurFacture(db, fact.rows[0].id);
@@ -947,6 +960,8 @@ const downloadFacturePdf = async (req, res) => {
               CASE WHEN ach.id IS NULL THEN fa.acheteur_matricule_fiscal ELSE ach.matricule_fiscal END AS acheteur_mf,
               CASE WHEN ach.id IS NULL THEN fa.acheteur_telephone ELSE ach.telephone END AS acheteur_tel,
               CASE WHEN ach.id IS NULL THEN fa.acheteur_email ELSE ach.email END AS acheteur_email,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_type ELSE ach.type END AS acheteur_type,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_rne ELSE ach.rne END AS acheteur_rne,
               ca.date_commande, ca.remise_pct AS cmd_remise, ca.notes, ca.labo_id AS cmd_labo_id,
               ${VENDEUR_FACTURE_SQL}
        FROM factures_acheteur fa

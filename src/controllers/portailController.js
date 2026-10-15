@@ -327,6 +327,8 @@ const downloadMaFacture = async (req, res) => {
               CASE WHEN ach.id IS NULL THEN fa.acheteur_matricule_fiscal ELSE ach.matricule_fiscal END AS acheteur_mf,
               CASE WHEN ach.id IS NULL THEN fa.acheteur_telephone ELSE ach.telephone END AS acheteur_tel,
               CASE WHEN ach.id IS NULL THEN fa.acheteur_email ELSE ach.email END AS acheteur_email,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_type ELSE ach.type END AS acheteur_type,
+              CASE WHEN ach.id IS NULL THEN fa.acheteur_rne ELSE ach.rne END AS acheteur_rne,
               ca.date_commande, ca.notes,
               ${VENDEUR_FACTURE_SQL}
        FROM factures_acheteur fa

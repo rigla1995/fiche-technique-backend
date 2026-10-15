@@ -22,6 +22,12 @@ Comme [[un:transfert]], mais vers [[un:acheteur]] : choisissez [[det:acheteur:le
 3. fige [[le:cout_matiere:pl]] (PMP TTC) pour [[votre:marge:pl]] ;
 4. génère la **facture** numérotée (FA-ANNÉE-NNNN) en PDF : HT − remise + TVA + timbre.
 
+Le bloc **« Facturé à »** de la facture suit le type de la fiche : **professionnel (B2B)** — raison sociale et contact, matricule fiscal, identifiant RNE, adresse ; **particulier (B2C)** — nom, mention « Particulier », téléphone.
+
+:::attention
+Aucune facture n'est émise à une fiche **« à préciser »** ni à un professionnel **sans matricule fiscal** : complétez la fiche dans le carnet avant [[le:vente]] [[acc:vente:manuel:manuelle]] ou l'expédition d'une commande.
+:::
+
 ### Commandes du portail
 
 Quand [[un:acheteur]] commande en ligne, vous recevez une **notification 🤝** et la commande apparaît **En attente** (badge 🌐 portail). Vos actions :
