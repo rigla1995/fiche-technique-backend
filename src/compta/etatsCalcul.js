@@ -22,10 +22,15 @@ const SIGNE = { actifs: 1n, passifs: -1n };
 const fmtEtat = (n) => (n < 0n ? `(${fmtMillimes(-n)})` : fmtMillimes(n));
 
 // ── L'index d'un bloc `etats` ───────────────────────────────────────────────────────────────────────────────────────
+// Les entrées (préfixe → ligne) d'une liste de lignes à comptes (état de résultat ; E2 : soldes intermédiaires de gestion).
+const indexerLignes = (lignes) => {
+  const entrees = [];
+  for (const l of lignes || []) if (l.comptes) for (const prefixe of l.comptes) entrees.push({ prefixe, ligne: l.code });
+  return entrees;
+};
 // → { bilan: [{ prefixe, cote, poste, sens, moins }], resultat: [{ prefixe, ligne }] }.
 const indexer = (etats) => {
   const bilan = [];
-  const resultat = [];
   for (const cote of COTES) {
     for (const g of etats.bilan[cote]) for (const r of g.rubriques) for (const p of r.postes) {
       if (p.calcul) continue;
@@ -33,8 +38,7 @@ const indexer = (etats) => {
       for (const prefixe of (p.moins && p.moins.comptes) || []) bilan.push({ prefixe, cote, poste: p.code, sens: null, moins: true });
     }
   }
-  for (const l of etats.resultat) if (l.comptes) for (const prefixe of l.comptes) resultat.push({ prefixe, ligne: l.code });
-  return { bilan, resultat };
+  return { bilan, resultat: indexerLignes(etats.resultat) };
 };
 // Les entrées au plus long préfixe de `numero`.
 const candidats = (entrees, numero) => {
@@ -223,10 +227,17 @@ const calculerEtats = (etats, { soldesN, soldesN1 = null, resultatFige = null, m
   const { bilan, totaux } = bilanDe(etats, vN, vN1, vN.resultat, resultatN1);
   const resultat = resultatDe(etats, vN, vN1);
   const controles = controlesDe({ totaux, vN, vN1, resultatFige, millesime, millesimePrecedent });
+  // E2 : les soldes intermédiaires de gestion (annexe 8) — les mêmes soldes, ventilés sur les lignes du bloc `sig`.
+  let sig = null;
+  if (etats.sig) {
+    const indexSig = { bilan: index.bilan, resultat: indexerLignes(etats.sig) };
+    sig = { lignes: resultatDe({ resultat: etats.sig }, ventiler(indexSig, soldesN), soldesN1 ? ventiler(indexSig, soldesN1) : null).lignes };
+  }
   return {
     bilan,
     resultat: { lignes: resultat.lignes, net: { n: t(vN.resultat), n1: t(resultatN1) } },
     resultats: { n: vN.resultat, n1: resultatN1 },
+    sig,
     controles,
     pret: controles.every((c) => c.ok),
     sansPoste: vN.sansPoste.map((x) => ({ id: x.id, numero: x.numero, libelle: x.libelle, solde: t(x.solde) })),
@@ -241,6 +252,6 @@ const mentionArrete = (x, { brouillard = false, precedentOuvert = false } = {}) 
 };
 
 module.exports = {
-  NATURES_GESTION, CLASSES_GESTION, COTES, fmtEtat, indexer, candidats, entreeBilan, entreeResultat, ventiler, bilanDe, resultatDe, controlesDe, calculerEtats, mentionArrete,
+  NATURES_GESTION, CLASSES_GESTION, COTES, fmtEtat, indexerLignes, indexer, candidats, entreeBilan, entreeResultat, ventiler, bilanDe, resultatDe, controlesDe, calculerEtats, mentionArrete,
   versMillimes, texteMillimes, fmtMillimes, fmtJour,
 };

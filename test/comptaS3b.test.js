@@ -53,7 +53,7 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
   // F4 (factures fournisseur) : + 1 (régler un compte d'achat — droit « configurer »).
   // X1 : + 1 (ouvrir l'exercice suivant — droit « configurer »).
   // X2 : + 2 (clôturer l'exercice — titulaire ; préparer l'affectation du résultat — droit « configurer »).
-  assert.equal(ecritures.length, 68, 'routes d\'écriture trouvées');
+  assert.equal(ecritures.length, 69, 'routes d\'écriture trouvées');
   // Contrôleur de chaque préfixe, et la transaction verrouillée (garde comprise) que chaque écriture doit employer.
   // S4a : la création part de la comptabilité de l'adresse ; les autres écritures partent du dossier (sa comptabilité
   // est lue, puis verrouillée, puis le dossier relu sous verrou).
@@ -90,6 +90,8 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     // X2 : la clôture de l'exercice et l'affectation du résultat (transaction : droit « archiver » — titulaire — ou
     // « configurer », dossier non archivé).
     cloture: { fichier: 'cloture.js', transactions: ['await transaction(req,'] },
+    // E2 : les notes aux états financiers (ecritureEtats : droit « configurer », dossier non archivé).
+    etats: { fichier: 'etats.js', transactions: ['await ecritureEtats(req,'] },
   };
   const corps = (fichier, nom) => {
     const ctrl = lire('src', 'compta', fichier);
@@ -124,13 +126,15 @@ test('chaque route d\'écriture de /api/compta porte la garde par comptabilité,
     ['comptesAchat.js', 'const ecritureComptesAchat = (req, travail) =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces).configurer) throw erreur(403, MSG_CONFIGURER, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
     // X2 : la clôture (droit « archiver » : titulaire seul) et l'affectation du résultat (droit « configurer ») aussi.
     ['cloture.js', 'const transaction = (req, droit, message, travail) =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces)[droit]) throw erreur(403, message, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
+    // E2 : les notes aux états financiers aussi.
+    ['etats.js', 'const ecritureEtats = (req, travail) =>', 'dansEspaceDuDossier(req.user, req.params.dossierId, async (db, acces, d) => {\n  if (!droits(acces).configurer) throw erreur(403, MSG_NOTES, \'NIVEAU_INSUFFISANT\');\n  if (d.etat === \'archive\')'],
   ]) {
     const ctrl = lire('src', 'compta', fichier);
     const debut = ctrl.indexOf(fonction);
     assert.ok(debut > 0, fonction);
     const transaction = ctrl.slice(debut, ctrl.indexOf('\n};\n', debut));
     assert.ok(transaction.includes(ouverture), `${fichier} : espace verrouillé puis garde`);
-    const delegue = ['const dansEspaceDuDossier = async', 'const ecriturePlan = (req, travail) =>', 'const ecritureJournaux = (req, travail) =>', 'const ecritureTaxes = (req, travail) =>', 'const ecritureValidation = (req, travail, droit = \'configurer\') =>', 'const ecritureComptesAchat = (req, travail) =>', 'const transaction = (req, droit, message, travail) =>'].includes(fonction);
+    const delegue = ['const dansEspaceDuDossier = async', 'const ecriturePlan = (req, travail) =>', 'const ecritureJournaux = (req, travail) =>', 'const ecritureTaxes = (req, travail) =>', 'const ecritureValidation = (req, travail, droit = \'configurer\') =>', 'const ecritureComptesAchat = (req, travail) =>', 'const transaction = (req, droit, message, travail) =>', 'const ecritureEtats = (req, travail) =>'].includes(fonction);
     if (!delegue) assert.ok(transaction.includes('{ garde = true } = {}'), `${fichier} : garde par défaut`);
   }
   assert.deepEqual(routes.ECRITURES_SANS_GARDE, ['POST /passage', 'POST /confiees/:espaceId/quitter', 'POST /dossiers/:dossierId/echeancier/tiers/:tiersId/relance.pdf']);

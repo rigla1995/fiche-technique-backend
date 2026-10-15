@@ -179,7 +179,7 @@ const AUJOURDHUI = XC.aujourdhuiTunis();
     const e19 = await E(A.id, { journalId: J.OD.id, date: '2025-07-01', reference: 'HORS-1', libelle: 'Compte hors nomenclature', lignes: [{ compteId: k19.id, tiersId: null, debit: '300', credit: '' }, L(K['5321'], '', '300')] });
     r = await G(A.id, '?brouillard=1');
     c = r.body;
-    check('compte 19 (brouillard compris) : contrôle « sans poste » en rouge, bilan déséquilibré de 300 (actifs 14 750, passifs 15 050), résultat cohérent', e19.status === 201 && kos(c) === 'equilibre,sansPoste' && /19 Essai hors nomenclature \(300,000, 2025\)/.test(controle(c, 'sansPoste')?.detail) && /actifs 14 750,000, capitaux propres et passifs 15 050,000/.test(controle(c, 'equilibre')?.detail) && c?.sansPoste?.[0]?.numero === '19' && c?.pret === false, `${e19.status} ${kos(c)} ${controle(c, 'equilibre')?.detail}`);
+    check('compte 19 (brouillard compris) : contrôle « sans poste » en rouge, bilan déséquilibré de 300 (actifs 14 750, passifs 15 050), résultat cohérent', e19.status === 201 && kos(c) === 'equilibre,sansPoste,flux' && /19 Essai hors nomenclature \(300,000, 2025\)/.test(controle(c, 'sansPoste')?.detail) && /actifs 14 750,000, capitaux propres et passifs 15 050,000/.test(controle(c, 'equilibre')?.detail) && c?.sansPoste?.[0]?.numero === '19' && c?.pret === false, `${e19.status} ${kos(c)} ${controle(c, 'equilibre')?.detail}`);
     r = await G(A.id);
     check('validées seulement : le brouillard du 19 ne compte pas, tout au vert', r.body?.pret === true && r.body?.brouillard?.nb === 2);
     r = await appel('DELETE', `/api/compta/dossiers/${A.id}/ecritures/${e19.body?.ecriture?.id}`, cabinet.tok);
