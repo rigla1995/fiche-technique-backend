@@ -22,6 +22,10 @@ const REGLES_DEFAUT = Object.freeze({
   types_perte: Object.freeze(['avarie', 'dechet']),
   supplement_max_composants: 1,
   b2b_depuis_activite: false,
+  // D1 (15/10/2026) : prestataires de livraison proposés aux comptes du domaine (ventes via prestataire, commissions,
+  // prix prestataire) ; à faux, rien n'apparaît chez eux. L'admin peut aussi les couper compte par compte
+  // (abonnement_config.prestataires_actifs) : la règle du domaine reste prioritaire.
+  prestataires: true,
   // Lot 1b §5 — seeds à la création du compte : [] = comportement actuel (rien n'est créé).
   unites_seed: Object.freeze([]),        // unités de MESURE créées pour le nouveau client
   prestataires_seed: Object.freeze([]),  // canaux (prestataires_livraison existants, liés au compte)
@@ -221,6 +225,26 @@ const getReglesForClient = async (clientId) => {
 const getTypesPerteForClient = async (clientId) => typesPerteDuProfil({ regles: await getReglesForClient(clientId) });
 // Seuil coût matière (%) du compte.
 const getSeuilCoutMatiereForClient = async (clientId) => seuilCoutMatiereDuProfil({ regles: await getReglesForClient(clientId) });
+// D1 : les prestataires de livraison sont-ils proposés au compte ? La règle du domaine ET l'interrupteur du compte
+// (abonnement_config.prestataires_actifs du dernier abonnement, actif par défaut ; gérant → compte parent). Ne lève
+// jamais : repli « proposés ».
+const prestatairesActifsPourClient = async (clientId) => {
+  try {
+    const regles = await getReglesForClient(clientId);
+    if (regles.prestataires === false) return false;
+    const r = await pool.query(
+      `SELECT ac.prestataires_actifs
+         FROM abonnements a
+         JOIN abonnement_config ac ON ac.abonnement_id = a.id
+        WHERE a.client_id = (SELECT COALESCE(gerant_parent_id, id) FROM utilisateurs WHERE id = $1)
+        ORDER BY a.id DESC LIMIT 1`,
+      [clientId]
+    );
+    return r.rows[0]?.prestataires_actifs !== false;
+  } catch (_) {
+    return true;
+  }
+};
 
 const getProfilForClientImpl = async (clientId) => {
   const domaineId = await getDomaineIdForClient(clientId);
@@ -249,7 +273,7 @@ const espaceProduitVerrouille = (cfg, regles = REGLES_DEFAUT) => {
 module.exports = {
   LEXIQUE_DEFAUT, LEXIQUE_CLES, REGLES_DEFAUT, REGLES_CLES,
   TYPE_PERTE_RE, normaliserTypesPerte, perteLabel, typesPerteDuProfil, seuilCoutMatiereDuProfil,
-  getReglesForClient, getTypesPerteForClient, getSeuilCoutMatiereForClient,
+  getReglesForClient, getTypesPerteForClient, getSeuilCoutMatiereForClient, prestatairesActifsPourClient,
   TYPES_TECHNIQUES, COMPOSANTS_IDENTITE,
   mapComposant, resolveLexique, resolveRegles, resolveProfil, profilDefaut,
   loadDomaineRows, getProfil, invalidate,

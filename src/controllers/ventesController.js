@@ -1,4 +1,8 @@
 const pool = require('../config/database');
+// D1 (15/10/2026) : les prestataires de livraison se proposent par domaine (règle) et par compte (interrupteur de
+// l'admin) ; un compte qui ne les a pas ne peut ni en activer ni saisir une vente via prestataire (409).
+const { prestatairesActifsPourClient } = require('../services/domaineProfilService');
+const MSG_PRESTATAIRES_DESACTIVES = 'Les [[pl:prestataire]] de livraison ne sont pas proposés à ce compte (règle du domaine ou réglage de l\'administrateur).';
 const { isoDate } = require('../utils/dateUtils');
 const { ptCategorieSql } = require('../utils/stockUtils');
 const ExcelJS = require('exceljs');
@@ -183,6 +187,7 @@ const addActivitePrestataire = async (req, res) => {
       return res.status(400).json({ message: 'activite_id et prestataire_id requis' });
     }
     const cid = clientId(req);
+    if (!(await prestatairesActifsPourClient(cid))) return res.status(409).json({ code: 'PRESTATAIRES_DESACTIVES', message: MSG_PRESTATAIRES_DESACTIVES });
     await assertActiviteOwner(activite_id, cid);
     const conditions = CP.lireConditions(req.body);
     const libelle = await exigerModePaiement(conditions.modePaiementId);
@@ -762,6 +767,7 @@ const createVente = async (req, res) => {
     // commission, mode de paiement). Prestataire non activé ici, ou conditions pas encore renseignées : refus.
     let conditions = { taux_commission: null, taux_tva_commission: null, mode_paiement_id: null };
     if (type_vente === 'prestataire') {
+      if (!(await prestatairesActifsPourClient(cid))) return res.status(409).json({ code: 'PRESTATAIRES_DESACTIVES', message: MSG_PRESTATAIRES_DESACTIVES });
       if (!prestataire_id) return res.status(400).json({ code: 'PRESTATAIRE_REQUIS', message: 'Choisissez [[le:prestataire]] de [[ce:vente]].' });
       const lien = await pool.query(
         `SELECT taux_commission, taux_tva, mode_paiement_id FROM activite_prestataires

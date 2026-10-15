@@ -53,11 +53,11 @@ const getEntreprise = async (req, res) => {
     // compris (lot 2b §5.7 : null pour le vocabulaire par défaut)
     let domaine = null;
     try {
-      const { getProfilForClient } = require('../services/domaineProfilService');
+      const { getProfilForClient, prestatairesActifsPourClient } = require('../services/domaineProfilService');
       const { lexiquePourCompte } = require('./authController');
       const p = await getProfilForClient(clientId);
       domaine = p && p.id != null
-        ? { id: p.id, slug: p.slug, nom: p.nom, lexique: lexiquePourCompte(p), composants: p.composants, regles: p.regles }
+        ? { id: p.id, slug: p.slug, nom: p.nom, lexique: lexiquePourCompte(p), composants: p.composants, regles: p.regles, prestataires: await prestatairesActifsPourClient(clientId) }
         : null;
     } catch (e) {
       console.warn('[entreprise] profil domaine indisponible:', e.message);
