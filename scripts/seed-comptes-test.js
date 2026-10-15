@@ -336,6 +336,8 @@ const nettoyer = async () => {
   await pool.query(`DELETE FROM compta.evenements WHERE auteur_id = ANY($1) OR (details->>'titulaire')::int = ANY($1) OR espace_id = ANY($2)`, [ids, espaces]);
   await pool.query('DELETE FROM compta.espaces WHERE titulaire_id = ANY($1)', [ids]);
   await pool.query('UPDATE ventes SET created_by = NULL WHERE created_by = ANY($1)', [ids]);
+  // Les commandes B2B référencent le labo sans cascade : effacées avant les comptes (lignes, statuts et factures suivent).
+  await pool.query('DELETE FROM commandes_acheteur WHERE client_id = ANY($1)', [ids]);
   await pool.query(`DELETE FROM produit_sous_produits WHERE produit_id IN (SELECT id FROM produits WHERE client_id = ANY($1)) OR sous_produit_id IN (SELECT id FROM produits WHERE client_id = ANY($1))`, [ids]);
   await pool.query('DELETE FROM produits WHERE client_id = ANY($1)', [ids]);
   await pool.query('DELETE FROM notifications WHERE user_id = ANY($1)', [ids]);
