@@ -1,9 +1,13 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
+// D3 (16/10/2026) : code unique des articles, préfixe des catégories (src/utils/codesArticles.js = la règle).
+const CS = require('../services/codesArticlesService');
 
 const mapArticle = (row) => ({
   id: row.id,
   name: row.nom,
+  // D3 : code unique dans le compte (« FAR-0012 »), affiché sous le nom partout où l'article paraît
+  code: row.code || null,
   unitId: row.unite_id,
   unitName: row.unite_nom,
   unit: row.unite_id ? { id: row.unite_id, name: row.unite_nom } : null,
@@ -104,10 +108,19 @@ const create = async (req, res) => {
       }
     }
 
+    // D3 : code unique du compte — saisi (contrôlé) ou proposé d'après le préfixe de la catégorie.
+    let code;
+    try {
+      code = await CS.codePourFiche(client, clientId, { code: req.body.code, categorieId: categorie_id, genre: 'article' });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      if (CS.repondreRefus(res, e)) return;
+      throw e;
+    }
     const inserted = await client.query(
-      `INSERT INTO articles (nom, unite_id, client_id, categorie_id, created_by)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [nom, unite_id, clientId, categorie_id, req.user.id]
+      `INSERT INTO articles (nom, unite_id, client_id, categorie_id, created_by, code)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [nom, unite_id, clientId, categorie_id, req.user.id, code]
     );
     const newId = inserted.rows[0].id;
     await client.query('COMMIT');
@@ -121,6 +134,7 @@ const create = async (req, res) => {
     res.status(201).json(mapArticle(result.rows[0]));
   } catch (err) {
     await client.query('ROLLBACK');
+    if (CS.repondreDoublon(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   } finally {
@@ -144,15 +158,28 @@ const update = async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // D3 : code modifiable (contrôlé, unique dans le compte) ; vide ou absent = inchangé ; un changement de catégorie
+    // garde le code (il identifie l'article dans la comptabilité).
+    let code = null;
+    if (req.body.code != null && String(req.body.code).trim() !== '') {
+      try {
+        code = await CS.verifierCode(client, clientId, req.body.code, { exclureArticleId: Number(req.params.id) });
+      } catch (e) {
+        await client.query('ROLLBACK');
+        if (CS.repondreRefus(res, e)) return;
+        throw e;
+      }
+    }
     const updated = await client.query(
       `UPDATE articles
        SET nom = COALESCE($1, nom),
            unite_id = COALESCE($2, unite_id),
            categorie_id = CASE WHEN $4::boolean THEN $3 ELSE categorie_id END,
            commandable = CASE WHEN $6::boolean THEN $5 ELSE commandable END,
+           code = COALESCE($9, code),
            updated_at = NOW()
        WHERE id = $7 AND client_id = $8 RETURNING id`,
-      [nom, unite_id, categorie_id ?? null, catChanged, commandable ?? false, commandable !== undefined, req.params.id, clientId]
+      [nom, unite_id, categorie_id ?? null, catChanged, commandable ?? false, commandable !== undefined, req.params.id, clientId, code]
     );
     if (updated.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -178,6 +205,7 @@ const update = async (req, res) => {
     res.json(mapArticle(result.rows[0]));
   } catch (err) {
     await client.query('ROLLBACK');
+    if (CS.repondreDoublon(res, err)) return;
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   } finally {
@@ -210,6 +238,18 @@ const remove = async (req, res) => {
   }
 };
 
+// GET /api/articles/code-propose?categorieId= — D3 : le prochain code libre pour cette catégorie ({ prefixe, code }).
+const codePropose = async (req, res) => {
+  try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const categorieId = req.query.categorieId ? Number(req.query.categorieId) : null;
+    res.json(await CS.proposerCode(pool, clientId, { categorieId: Number.isFinite(categorieId) ? categorieId : null, genre: 'article' }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 const hasArticles = async (req, res) => {
   try {
     const clientId = req.user.gerant_parent_id || req.user.id;
@@ -225,4 +265,4 @@ const hasArticles = async (req, res) => {
   }
 };
 
-module.exports = { list, getById, create, update, remove, hasArticles };
+module.exports = { list, getById, create, update, remove, hasArticles, codePropose };

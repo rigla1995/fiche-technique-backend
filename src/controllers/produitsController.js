@@ -1,5 +1,7 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
+// D3 (16/10/2026) : code unique des articles, préfixe des catégories (src/utils/codesArticles.js = la règle).
+const CS = require('../services/codesArticlesService');
 const { vocabDefaut } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
 const UP = require('../utils/uniteProduit');
@@ -364,11 +366,21 @@ const create = async (req, res) => {
     const isStockIngredient = (type === 'utilisable' || origine === 'labo');
     const clientId = req.user.gerant_parent_id || req.user.id;
     const catId = type === 'utilisable' ? null : categorieProduitId;
+    // D3 : référence unique du compte — saisie (contrôlée) ou proposée d'après le préfixe de la catégorie de produits
+    // (PRD sans catégorie), comme le code d'un article.
+    let refFinale;
+    try {
+      refFinale = await CS.codePourFiche(client, clientId, { code: refProduit, categorieId: catId, genre: 'produit' });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      if (CS.repondreRefus(res, e)) return;
+      throw e;
+    }
     const result = await client.query(
       `INSERT INTO produits (nom, description, ref_produit, type, is_supplement, is_stock_ingredient, client_id, activite_id, categorie_produit_id, origine, created_by, unite_id, quantite_produite)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *, (SELECT u.nom FROM unites u WHERE u.id = $12) AS unite_nom`,
-      [nom, description || null, refProduit, type, isSupplement, isStockIngredient, clientId, activitePrincipale, catId, origine, req.user.id, unite.uniteId, unite.quantiteProduite]
+      [nom, description || null, refFinale, type, isSupplement, isStockIngredient, clientId, activitePrincipale, catId, origine, req.user.id, unite.uniteId, unite.quantiteProduite]
     );
     const produitId = result.rows[0].id;
 
@@ -505,7 +517,16 @@ const update = async (req, res) => {
   const { id } = req.params;
   const nom = req.body.name || req.body.nom;
   const { description } = req.body;
-  const refProduit = req.body.refProduit !== undefined ? (req.body.refProduit || null) : req.body.ref_produit !== undefined ? (req.body.ref_produit || null) : undefined;
+  let refProduit = req.body.refProduit !== undefined ? (req.body.refProduit || null) : req.body.ref_produit !== undefined ? (req.body.ref_produit || null) : undefined;
+  // D3 : une référence saisie reste unique dans le compte (articles et produits confondus) et prend sa forme normalisée.
+  if (typeof refProduit === 'string' && refProduit.trim() !== '') {
+    try {
+      refProduit = await CS.verifierCode(pool, req.user.gerant_parent_id || req.user.id, refProduit, { exclureProduitId: Number(id) });
+    } catch (e) {
+      if (CS.repondreRefus(res, e)) return;
+      throw e;
+    }
+  }
   const type = req.body.type === 'utilisable' ? 'utilisable' : req.body.type === 'vendable' ? 'vendable' : undefined;
   const isSupplement = req.body.isSupplement !== undefined ? (req.body.isSupplement === true || req.body.isSupplement === 'true') : undefined;
   const categorieProduitId = req.body.categorieProduitId !== undefined ? req.body.categorieProduitId
@@ -1865,6 +1886,18 @@ const getUtilisablesPerimetre = async (req, res) => {
   }
 };
 
+// GET /api/produits/ref-proposee?categorieProduitId= — D3 : la prochaine référence libre pour cette catégorie ({ prefixe, code }).
+const refProposee = async (req, res) => {
+  try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const categorieId = req.query.categorieProduitId ? Number(req.query.categorieProduitId) : null;
+    res.json(await CS.proposerCode(pool, clientId, { categorieId: Number.isFinite(categorieId) ? categorieId : null, genre: 'produit' }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 module.exports = {
   list, getById, create, update, remove,
   addIngredient, removeIngredient,
@@ -1875,4 +1908,5 @@ module.exports = {
   getStockDates, getStockCheck, getManualPrices, saveManualPrices,
   getFtContextes,
   exportListExcel, getUtilisablesPerimetre,
+  refProposee,
 };

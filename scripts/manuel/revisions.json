@@ -373,6 +373,33 @@
           "md5": "dbb0a08b141a4f894d2600ec685923b2"
         }
       ]
+    },
+    {
+      "numero": 249,
+      "nom": "249_manuel_codes_articles.sql",
+      "objet": "Code des articles par catégorie (D3) : préfixe des catégories (articles et produits), code unique proposé et modifiable, affiché sous le nom, colonne Code du modèle d’import, lignes du pont comptable au code.",
+      "manuel": [
+        {
+          "slug": "referentiel-articles",
+          "md5Avant": "2cb236df04fdacb85f68a5656a5b2cae",
+          "md5": "5c9fe90c39c51e42ff7394e863f9f3bb"
+        },
+        {
+          "slug": "referentiel-categories",
+          "md5Avant": "8d1862a1e81229e5aa1c9aca63ddc63c",
+          "md5": "d0132f4e95ad5256a605de523b0c2a83"
+        },
+        {
+          "slug": "referentiel-import",
+          "md5Avant": "9ce5d9905270675b509286b18ea2f207",
+          "md5": "da01a5dc2af7cadc5a845ee7df8e22fc"
+        },
+        {
+          "slug": "categories-produits",
+          "md5Avant": "d3069122412727e0ccf65884c1a56e32",
+          "md5": "7d0f732e18f633ad40f2974f370e2499"
+        }
+      ]
     }
   ]
 }

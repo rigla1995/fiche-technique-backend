@@ -6,14 +6,14 @@ L'Ajout Dynamique permet d'importer en masse [[votre:article:pl]] — et en mêm
 
 L'écran se présente en étapes numérotées :
 
-- **1️⃣ Téléchargez le modèle** : bouton **📄 Télécharger modele_referentiel.xlsx**, un fichier Excel avec les colonnes **[[Nom:article]] / Unité / Catégorie / Famille**.
+- **1️⃣ Téléchargez le modèle** : bouton **📄 Télécharger modele_referentiel.xlsx**, un fichier Excel avec les colonnes **[[Nom:article]] / Unité / Catégorie / Famille / Code**.
 - **2️⃣ Uploadez votre fichier rempli** : une zone où **glisser-déposer** le fichier (ou cliquer pour le sélectionner), avec une limite de **1 000 lignes par fichier**. Une fois le fichier choisi, son nom et sa taille s'affichent, avec les boutons **Changer de fichier** et **🚀 Lancer l'import**.
 - **Le bilan d'import** : un récapitulatif « Import terminé » avec le nombre de lignes traitées, des compteurs par type (**[[Nom:article:pl]]**, **Auto-[[acc:article:affecté:affectée:pl]]**, **Catégories**, **Familles**, **Unités**, **Erreurs**) et un tableau détaillé ligne par ligne : **Ligne / [[Nom:article]] / Créé / Existant / Affectation / Statut**.
 
 ### Actions pas à pas
 
 1. Cliquez sur **📄 Télécharger modele_referentiel.xlsx** et ouvrez le fichier dans Excel.
-2. Remplissez **une ligne par [[nom:article]]** : nom [[du:article]], unité, catégorie et famille. Les unités, catégories et familles qui n'existent pas encore dans [[votre:referentiel]] seront **créées automatiquement**.
+2. Remplissez **une ligne par [[nom:article]]** : nom [[du:article]], unité, catégorie et famille ; la colonne **Code** est facultative — vide, le code est proposé d'après la catégorie (FAR-0001, FAR-0002…) ; un code déjà pris met la ligne en erreur. Les unités, catégories et familles qui n'existent pas encore dans [[votre:referentiel]] seront **créées automatiquement** (une catégorie créée reçoit son préfixe).
 3. Glissez le fichier rempli dans la zone d'import (format Excel .xlsx) puis cliquez sur **🚀 Lancer l'import**.
 4. Lisez le bilan : la colonne **Créé** liste les éléments ajoutés par la ligne, la colonne **Existant** ceux qui ont été reconnus et réutilisés. Les lignes en erreur sont surlignées ; survolez le symbole ❌ pour lire la cause exacte.
 5. Corrigez si besoin les lignes en erreur dans votre fichier, puis cliquez sur **Importer un autre fichier** pour relancer.
@@ -27,9 +27,9 @@ Respectez l'orthographe des unités, familles et catégories déjà présentes d
 :::
 
 :::attention
-Le fichier doit être au format Excel (.xlsx) et ne pas dépasser **1 000 lignes**. Au-delà, découpez votre catalogue en plusieurs fichiers.
+Le fichier doit être au format Excel (.xlsx) et ne pas dépasser **1 000 lignes**. Au-delà, découpez votre catalogue en plusieurs fichiers. Un ancien modèle à quatre colonnes (sans Code) reste accepté.
 
-Le fichier obtenu par **Exporter (modèle Excel)** (écran [[[Nom:article:pl]]](#referentiel-articles)) est déjà au format du modèle : il se réimporte tel quel. Ce qui manque est créé ; [[un:article]] déjà [[acc:article:présent:présente]] n'est pas [[acc:article:modifié:modifiée]] (ni son unité, ni sa catégorie).
+Le fichier obtenu par **Exporter (modèle Excel)** (écran [[[Nom:article:pl]]](#referentiel-articles)) est déjà au format du modèle, codes compris : il se réimporte tel quel. Ce qui manque est créé ; [[un:article]] déjà [[acc:article:présent:présente]] n'est pas [[acc:article:modifié:modifiée]] (ni son code, ni son unité, ni sa catégorie).
 :::
 
 :::astuce

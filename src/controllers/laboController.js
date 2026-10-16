@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { libelleAvecCode } = require('../utils/codesArticles'); // D3 : « FAR-0012 Farine » dans les exports
 const ExcelJS = require('exceljs');
 const { isoDate, todayStr } = require('../utils/dateUtils');
 const { computeStockCourant, computeStockPTCourant, buildAutoRef, ptCategorie, ptCategorieSql, ptTypeSql, uniteProduitSql } = require('../utils/stockUtils');
@@ -280,7 +281,7 @@ const getLaboIngredients = async (req, res) => {
     if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const result = await pool.query(
-      `SELECT i.id, i.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+      `SELECT i.id, i.nom, i.code, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
               i.categorie_id,
               CASE WHEN lis.ingredient_id IS NOT NULL THEN true ELSE false END as selected
        FROM articles i
@@ -293,6 +294,7 @@ const getLaboIngredients = async (req, res) => {
     res.json(result.rows.map((r) => ({
       id: r.id,
       nom: r.nom,
+      code: r.code ?? null,
       unite: r.unite,
       categorie: r.categorie,
       categorieId: r.categorie_id ?? null,
@@ -372,7 +374,7 @@ const getLaboStock = async (req, res) => {
       : '';
 
     const result = await pool.query(
-      `SELECT sub.ingredient_id, sub.nom, sub.unite_nom, sub.categorie,
+      `SELECT sub.ingredient_id, sub.nom, sub.code, sub.unite_nom, sub.categorie,
               sub.quantite_totale, sub.prix_unitaire, sub.taux_tva, sub.date_appro, sub.seuil_min,
               sub.cout_total, sub.recent_dates, sub.recent_transfer_dates,
               COALESCE(tr.total_transfere, 0) as total_transfere,
@@ -383,7 +385,7 @@ const getLaboStock = async (req, res) => {
                WHERE sld2.labo_id = $1 AND sld2.ingredient_id = sub.ingredient_id AND sld2.type_appro IN ('manuel','transfert') AND sld2.quantite > 0
                ORDER BY sld2.date_appro DESC NULLS LAST LIMIT 1) as last_ref_facture
        FROM (
-         SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
+         SELECT i.id as ingredient_id, i.nom, i.code, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie,
                 SUM(sld.quantite) as quantite_totale,
                 (SELECT sld2.prix_unitaire FROM stock_labo_daily sld2
@@ -412,7 +414,7 @@ const getLaboStock = async (req, res) => {
          LEFT JOIN categories c ON i.categorie_id = c.id
          LEFT JOIN stock_labo_daily sld ON sld.ingredient_id = i.id AND sld.labo_id = $1
          WHERE lis.labo_id = $1 ${assignedFilter}
-         GROUP BY i.id, i.nom, u.nom, c.nom, lis.seuil_min
+         GROUP BY i.id, i.nom, i.code, u.nom, c.nom, lis.seuil_min
        ) sub
        LEFT JOIN (
          SELECT ingredient_id, SUM(quantite) as total_transfere
@@ -445,6 +447,7 @@ const getLaboStock = async (req, res) => {
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
+        code: row.code ?? null,
         unite: row.unite_nom,
         categorie: row.categorie,
         quantite,
@@ -1316,7 +1319,7 @@ const getTransferHistory = async (req, res) => {
               lt.prix_unitaire, lt.taux_tva, lt.prix_unitaire_tva,
               lt.created_by, ub.nom as created_by_nom,
               lt.ingredient_id, lt.produit_id,
-              COALESCE(i.nom, p.nom) as ingredient_nom,
+              COALESCE(i.nom, p.nom) as ingredient_nom, i.code as ingredient_code,
               COALESCE(u.nom, ${uniteProduitSql('p')}) as unite_nom,
               ${destCols},
               COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) as categorie_nom
@@ -1346,6 +1349,7 @@ const getTransferHistory = async (req, res) => {
       prixUnitaireTva: r.prix_unitaire_tva != null ? parseFloat(r.prix_unitaire_tva) : null,
       ingredientId: r.produit_id != null ? -(r.produit_id) : r.ingredient_id,
       ingredientNom: r.ingredient_nom,
+      ingredientCode: r.ingredient_code ?? null,
       uniteNom: r.unite_nom,
       categorieNom: r.categorie_nom,
       ...mapDest(r),
@@ -1437,7 +1441,7 @@ const getLaboHistorique = async (req, res) => {
       SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
              sld.ref_facture, sld.type_appro, sld.updated_at, sld.created_by,
              sld.taux_tva, sld.prix_unitaire_tva,
-             i.nom as ingredient_nom, u.nom as unite_nom,
+             i.nom as ingredient_nom, i.code as ingredient_code, u.nom as unite_nom,
              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
              f.nom as fournisseur_nom, f.id as fournisseur_id,
              NULL::int as activite_id, NULL::text as activite_nom,
@@ -1457,7 +1461,7 @@ const getLaboHistorique = async (req, res) => {
       SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
              sld.ref_facture, 'transfert'::text as type_appro, sld.updated_at, sld.created_by,
              sld.taux_tva, sld.prix_unitaire_tva,
-             i.nom as ingredient_nom, u.nom as unite_nom,
+             i.nom as ingredient_nom, i.code as ingredient_code, u.nom as unite_nom,
              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
              f.nom as fournisseur_nom, f.id as fournisseur_id,
              NULL::int as activite_id, NULL::text as activite_nom,
@@ -1477,7 +1481,7 @@ const getLaboHistorique = async (req, res) => {
       SELECT lt.id, lt.ingredient_id, lt.date_transfert as date_appro, lt.quantite, lt.prix_unitaire,
              lt.ref_facture, 'transfert'::text as type_appro, lt.created_at as updated_at, lt.created_by,
              lt.taux_tva, lt.prix_unitaire_tva,
-             i.nom as ingredient_nom, u.nom as unite_nom,
+             i.nom as ingredient_nom, i.code as ingredient_code, u.nom as unite_nom,
              COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
              NULL::text as fournisseur_nom, NULL::int as fournisseur_id,
              lt.activite_id, a.nom as activite_nom,
@@ -1499,7 +1503,7 @@ const getLaboHistorique = async (req, res) => {
              COALESCE(ca.date_expedition, ca.date_commande) as date_appro, -cal.quantite_unites as quantite, cal.cout_unitaire_ttc as prix_unitaire,
              fa.numero as ref_facture, 'vente'::text as type_appro, ca.created_at as updated_at, ca.created_by,
              cal.taux_tva, cal.cout_unitaire_ttc as prix_unitaire_tva,
-             cal.designation as ingredient_nom, COALESCE(u.nom, ${uniteProduitSql('p')}) as unite_nom,
+             cal.designation as ingredient_nom, i.code as ingredient_code, COALESCE(u.nom, ${uniteProduitSql('p')}) as unite_nom,
              CASE WHEN cal.article_type = 'produit' THEN ${ptCategorieSql('p')}
                   ELSE COALESCE(c.nom, 'Sans catégorie') END as categorie_nom,
              COALESCE(ach.nom, ca.acheteur_nom) as fournisseur_nom, NULL::int as fournisseur_id,
@@ -1535,6 +1539,7 @@ const getLaboHistorique = async (req, res) => {
       id: r.id,
       ingredientId: r.ingredient_id,
       ingredientNom: r.ingredient_nom,
+      ingredientCode: r.ingredient_code ?? null,
       uniteNom: r.unite_nom,
       categorieNom: r.categorie_nom,
       dateAppro: isoDate(r.date_appro),
@@ -1930,7 +1935,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
     const result = await pool.query(
       `SELECT sld.id, sld.ingredient_id, sld.date_appro, sld.quantite, sld.prix_unitaire,
               sld.ref_facture, sld.type_appro, sld.taux_tva, sld.prix_unitaire_tva,
-              i.nom as ingredient_nom, u.nom as unite_nom,
+              i.nom as ingredient_nom, i.code as ingredient_code, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
               CASE WHEN sld.type_appro = 'transfert' THEN COALESCE(lsrc.nom, f.nom) ELSE f.nom END as fournisseur_nom,
               CASE WHEN sld.type_appro = 'transfert' THEN 'entree' ELSE NULL END AS sens,
@@ -1958,7 +1963,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
       const ptRes = await pool.query(
         `SELECT slpt.id, -(slpt.produit_id) as ingredient_id, slpt.date_appro, slpt.quantite, slpt.prix_unitaire,
                 slpt.ref_facture, 'produit_transforme'::text as type_appro, slpt.taux_tva, slpt.prix_unitaire_tva,
-                p.nom as ingredient_nom, ${uniteProduitSql('p')} as unite_nom, ${ptCategorieSql('p')} as categorie_nom,
+                p.nom as ingredient_nom, NULL as ingredient_code, ${uniteProduitSql('p')} as unite_nom, ${ptCategorieSql('p')} as categorie_nom,
                 f.nom as fournisseur_nom, NULL::text as created_by_nom
          FROM stock_labo_pt_daily slpt JOIN produits p ON p.id = slpt.produit_id
          LEFT JOIN fournisseurs f ON f.id = slpt.fournisseur_id
@@ -2009,7 +2014,7 @@ const exportLaboHistoriqueExcel = async (req, res) => {
         return t === 'PT' ? voc.Court('pt') : 'Manuel';
       })();
       const dataRow = sheet.addRow([
-        dateStr, r.ingredient_nom, libelleCategoriePt(voc, r.categorie_nom), typeLabel,
+        dateStr, libelleAvecCode(r.ingredient_code, r.ingredient_nom), libelleCategoriePt(voc, r.categorie_nom), typeLabel,
         qty, r.unite_nom, prix, tva !== null ? tva : '', prixTtc,
         coutHt, coutTtc,
         r.fournisseur_nom || '', r.ref_facture || '', r.created_by_nom || '',
@@ -2383,7 +2388,7 @@ const exportLaboTransferExcel = async (req, res) => {
 
     const result = await pool.query(
       `SELECT lt.id, lt.quantite, lt.date_transfert, lt.note,
-              lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, COALESCE(u.nom, ${uniteProduitSql('p')}) AS unite_nom,
+              lt.ingredient_id, COALESCE(i.nom, p.nom) AS ingredient_nom, i.code AS ingredient_code, COALESCE(u.nom, ${uniteProduitSql('p')}) AS unite_nom,
               COALESCE(c.nom, CASE WHEN lt.produit_id IS NOT NULL THEN (SELECT ${ptCategorieSql('pp')} FROM produits pp WHERE pp.id = lt.produit_id) ELSE 'Sans catégorie' END) AS categorie_nom,
               lt.activite_id, a.nom AS activite_nom,
               CASE WHEN lt.labo_dest_id IS NOT NULL THEN ld.nom ELSE a.nom END AS dest_nom,
@@ -2438,7 +2443,7 @@ const exportLaboTransferExcel = async (req, res) => {
       // Marqueur « (labo) » (spec lot 2b §6.2) : drapeau SQL, assemblage ici.
       const destNom = r.dest_labo && r.dest_nom != null ? `${r.dest_nom} (${voc.court('labo')})` : r.dest_nom;
       const dataRow = sheet.addRow([
-        dateStr, destNom, r.ingredient_nom, libelleCategoriePt(voc, r.categorie_nom),
+        dateStr, destNom, libelleAvecCode(r.ingredient_code, r.ingredient_nom), libelleCategoriePt(voc, r.categorie_nom),
         qty, r.unite_nom,
         prix, tva !== null ? tva : '', prixTtc,
         coutHt, coutTtc,

@@ -70,7 +70,7 @@ const contexte = async (req, res) => {
       ? 'EXISTS (SELECT 1 FROM activite_ingredient_selections s WHERE s.ingredient_id = a.id AND s.activite_id = $2)'
       : 'EXISTS (SELECT 1 FROM labo_ingredient_selections s WHERE s.ingredient_id = a.id AND s.labo_id = $2)';
     const articles = await pool.query(
-      `SELECT a.id, a.nom, u.nom AS unite, c.nom AS categorie, ${selection} AS selectionne
+      `SELECT a.id, a.nom, a.code, u.nom AS unite, c.nom AS categorie, ${selection} AS selectionne
        FROM articles a JOIN unites u ON u.id = a.unite_id LEFT JOIN categories c ON c.id = a.categorie_id
        WHERE a.client_id = $1 OR ${selection}
        ORDER BY a.nom`,
@@ -106,7 +106,7 @@ const contexte = async (req, res) => {
       fournisseurId,
       correspondances,
       achats,
-      articles: articles.rows.map((x) => ({ id: x.id, nom: x.nom, unite: x.unite, categorie: x.categorie, selectionne: x.selectionne === true })),
+      articles: articles.rows.map((x) => ({ id: x.id, nom: x.nom, code: x.code || null, unite: x.unite, categorie: x.categorie, selectionne: x.selectionne === true })),
     });
   } catch (err) {
     console.error('[correspondances, contexte]', err);
