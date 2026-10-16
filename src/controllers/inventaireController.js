@@ -37,7 +37,7 @@ const getLaboInventaireStock = async (req, res) => {
     if (!ok) return res.status(404).json({ message: '[[Nom:labo]] introuvable' });
 
     const ingRes = await pool.query(
-      `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
+      `SELECT i.id as ingredient_id, i.nom, i.code, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie, lis.seuil_min
        FROM labo_ingredient_selections lis
        JOIN articles i ON lis.ingredient_id = i.id
@@ -234,6 +234,7 @@ const getLaboInventaireStock = async (req, res) => {
     const ingRows = ingRes.rows.map((r) => ({
       ingredientId: r.ingredient_id,
       nom: r.nom,
+      code: r.code ?? null,
       unite: r.unite_nom,
       categorie: r.categorie,
       seuilMin: r.seuil_min !== null ? parseFloat(r.seuil_min) : null,
@@ -373,7 +374,7 @@ const getActiviteInventaireStock = async (req, res) => {
       return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const ingRes = await pool.query(
-      `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
+      `SELECT i.id as ingredient_id, i.nom, i.code, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie, ais.seuil_min
        FROM activite_ingredient_selections ais
        JOIN articles i ON ais.ingredient_id = i.id
@@ -553,6 +554,7 @@ const getActiviteInventaireStock = async (req, res) => {
     const ingRows = ingRes.rows.map((r) => ({
       ingredientId: r.ingredient_id,
       nom: r.nom,
+      code: r.code ?? null,
       unite: r.unite_nom,
       categorie: r.categorie,
       seuilMin: r.seuil_min !== null ? parseFloat(r.seuil_min) : null,

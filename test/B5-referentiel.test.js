@@ -70,7 +70,7 @@ const modele = async (voc) => {
 
 const lignesTexte = (ws) => {
   const out = [];
-  ws.eachRow((row, n) => { out.push({ n, cellules: [1, 2, 3, 4].map((i) => String(row.getCell(i).text || '')) }); });
+  ws.eachRow((row, n) => { out.push({ n, cellules: [1, 2, 3, 4, 5].map((i) => String(row.getCell(i).text || '')) }); });
   return out;
 };
 
@@ -108,9 +108,9 @@ test('modèle par défaut : identique à l\'existant (onglet, titre, sous-titre,
   const textes = lignes.map((l) => l.cellules[0]);
   assert.ok(textes.includes("Modèle d'import — Référentiel"));
   assert.ok(textes.includes('Ajout dynamique des articles : une ligne = un article'));
-  const iEnTetes = lignes.findIndex((l) => l.cellules.join('|') === 'Article|Unité|Catégorie|Famille');
-  assert.ok(iEnTetes >= 0, 'en-têtes par défaut');
-  assert.deepEqual(lignes[iEnTetes + 1].cellules, ['Exemple : Poulet rôti', 'kg', 'Viandes', 'Food']);
+  const iEnTetes = lignes.findIndex((l) => l.cellules.join('|') === 'Article|Unité|Catégorie|Famille|Code');
+  assert.ok(iEnTetes >= 0, 'en-têtes par défaut (D3 : colonne Code)');
+  assert.deepEqual(lignes[iEnTetes + 1].cellules, ['Exemple : Poulet rôti', 'kg', 'Viandes', 'Food', 'VIA-0001']);
 });
 
 test('modèle Hôtellerie : terme du domaine, exemples neutres, préfixe « Exemple : » gardé', async () => {
@@ -119,9 +119,9 @@ test('modèle Hôtellerie : terme du domaine, exemples neutres, préfixe « Exem
   const lignes = lignesTexte(wb.worksheets[0]);
   const textes = lignes.map((l) => l.cellules[0]);
   assert.ok(textes.includes('Ajout dynamique des fournitures : une ligne = une fourniture'));
-  const iEnTetes = lignes.findIndex((l) => l.cellules.join('|') === 'Fourniture|Unité|Catégorie|Famille');
+  const iEnTetes = lignes.findIndex((l) => l.cellules.join('|') === 'Fourniture|Unité|Catégorie|Famille|Code');
   assert.ok(iEnTetes >= 0, 'en-têtes du domaine');
-  assert.deepEqual(lignes[iEnTetes + 1].cellules, ['Exemple : Fourniture A', 'kg', 'Catégorie A', 'Famille A']);
+  assert.deepEqual(lignes[iEnTetes + 1].cellules, ['Exemple : Fourniture A', 'kg', 'Catégorie A', 'Famille A', 'CAT-0001']);
 });
 
 test('modèle miroir : onglet et titre au terme du domaine', async () => {

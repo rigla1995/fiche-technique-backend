@@ -6,7 +6,7 @@ const {
   addIngredient, removeIngredient,
   addSousProduit, removeSousProduit,
   getCout, getStockDates, getStockCheck, getManualPrices, saveManualPrices, getFtContextes,
-  exportListExcel, getUtilisablesPerimetre,
+  exportListExcel, getUtilisablesPerimetre, refProposee,
 } = require('../controllers/produitsController');
 const { exportExcel } = require('../controllers/exportController');
 const { authenticate, requireClient, requireClientOwner, requireFormulePremium } = require('../middleware/auth');
@@ -391,6 +391,7 @@ router.get('/', authenticate, requireClient, list);
 router.get('/export-list', authenticate, requireClient, exportListExcel);
 // PU disponibles pour un périmètre (origine + ids) — étape Produits Utilisables du wizard. Refonte Espace Produits.
 router.get('/utilisables-perimetre', authenticate, requireClient, getUtilisablesPerimetre);
+router.get('/ref-proposee', authenticate, requireClient, refProposee);
 router.get('/:id', authenticate, requireClient, getById);
 router.post('/', authenticate, requireClientOwner, requireFormulePremium, [
   body().custom((b) => {

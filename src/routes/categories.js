@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { list, getById, create, update, remove } = require('../controllers/categoriesController');
+const { list, getById, create, update, remove, prefixePropose } = require('../controllers/categoriesController');
 const { authenticate, requireClient } = require('../middleware/auth');
 
 const validateNom = [
@@ -53,6 +53,7 @@ const validateUpdate = [
  *         description: Nom requis
  */
 router.get('/', authenticate, requireClient, list);
+router.get('/prefixe-propose', authenticate, requireClient, prefixePropose);
 
 /**
  * @openapi

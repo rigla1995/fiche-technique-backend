@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { libelleAvecCode } = require('../utils/codesArticles'); // D3 : « FAR-0012 Farine » dans les exports
 const { ptCategorie, ptCategorieSql, ptTypeSql, uniteProduitSql } = require('../utils/stockUtils');
 const ExcelJS = require('exceljs');
 const { scopeGerantActivite } = require('../middleware/auth');
@@ -30,7 +31,7 @@ const getStockEntreprise = async (req, res) => {
       return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const result = await pool.query(
-      `SELECT i.id as ingredient_id, i.nom, u.nom as unite_nom,
+      `SELECT i.id as ingredient_id, i.nom, i.code, u.nom as unite_nom,
               COALESCE(c.nom, 'Sans catégorie') as categorie,
               ais.seuil_min,
               COALESCE(SUM(sed.quantite) FILTER (WHERE date_trunc('month', sed.date_appro) = date_trunc('month', CURRENT_DATE)), 0) as total_quantite,
@@ -57,7 +58,7 @@ const getStockEntreprise = async (req, res) => {
          ORDER BY date_appro DESC, id DESC LIMIT 1
        ) last_sed ON true
        WHERE ais.activite_id = $1
-       GROUP BY i.id, i.nom, u.nom, c.nom, ais.seuil_min,
+       GROUP BY i.id, i.nom, i.code, u.nom, c.nom, ais.seuil_min,
                 last_sed.prix_unitaire, last_sed.taux_tva, last_sed.date_appro, last_sed.fournisseur_id,
                 last_sed.ref_facture, last_sed.type_appro
        ORDER BY categorie NULLS LAST, i.nom`,
@@ -348,6 +349,7 @@ const getStockEntreprise = async (req, res) => {
       return {
         ingredientId: row.ingredient_id,
         nom: row.nom,
+        code: row.code ?? null,
         unite: row.unite_nom,
         categorie: row.categorie,
         seuilMin: row.seuil_min !== null ? parseFloat(row.seuil_min) : null,
@@ -571,7 +573,7 @@ const getHistoriqueAppro = async (req, res) => {
                 sed.ref_facture, sed.fournisseur_id, f.nom as fournisseur_nom, sed.updated_at,
                 sed.created_by, ub.nom as created_by_nom,
                 sed.taux_tva, sed.prix_unitaire_tva,
-                i.id as ingredient_id, i.nom as ingredient_nom, u.nom as unite_nom,
+                i.id as ingredient_id, i.nom as ingredient_nom, i.code as ingredient_code, u.nom as unite_nom,
                 COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
                 (SELECT fv.validee_le IS NOT NULL FROM factures fv WHERE fv.id = sed.facture_id) as facture_validee,
                 EXISTS (SELECT 1 FROM compta.ecritures ce WHERE ce.facture_id = sed.facture_id) as facture_en_compta
@@ -822,6 +824,7 @@ function mapHistoriqueEntry(r) {
     updatedAt: r.updated_at,
     ingredientId: r.ingredient_id,
     ingredientNom: r.ingredient_nom,
+    ingredientCode: r.ingredient_code ?? null,
     uniteNom: r.unite_nom,
     categorieNom: r.categorie_nom,
     createdBy: r.created_by ?? null,
@@ -877,7 +880,7 @@ const exportHistoriqueExcel = async (req, res) => {
       if (refFacture) { params.push(`%${refFacture}%`); extraWhere += ` AND sed.ref_facture ILIKE $${params.length}`; }
       const result = await pool.query(
         `SELECT sed.id, sed.activite_id, sed.date_appro, sed.quantite, sed.prix_unitaire, sed.type_appro,
-                sed.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom,
+                sed.ref_facture, f.nom as fournisseur_nom, i.nom as ingredient_nom, i.code as ingredient_code,
                 u.nom as unite_nom, COALESCE(c.nom, 'Sans catégorie') as categorie_nom,
                 sed.taux_tva, sed.prix_unitaire_tva, ub.nom as created_by_nom
          FROM stock_entreprise_daily sed
@@ -900,7 +903,7 @@ const exportHistoriqueExcel = async (req, res) => {
         `SELECT spt.id, spt.activite_id, spt.date_appro, spt.quantite, spt.prix_calcule AS prix_unitaire,
                 'produit_transforme' AS type_appro,
                 f.nom AS fournisseur_nom, spt.ref_facture,
-                p.nom AS ingredient_nom,
+                p.nom AS ingredient_nom, NULL AS ingredient_code,
                 ${ptCategorieSql('p')} AS categorie_nom,
                 ${uniteProduitSql('p')} AS unite_nom,
                 spt.taux_tva, spt.prix_calcule AS prix_unitaire_tva, NULL AS created_by_nom
@@ -974,7 +977,7 @@ const exportHistoriqueExcel = async (req, res) => {
       const typeLabel = (() => { const t = r.type_appro || 'manuel'; return t === 'produit_transforme' ? voc.Nom('pt_abr') : t === 'transfert' ? voc.Nom('transfert') : t === 'PT' ? voc.Court('pt') : 'Manuel'; })();
       const rowData = [
         dateStr,
-        r.ingredient_nom,
+        libelleAvecCode(r.ingredient_code, r.ingredient_nom),
         libelleCategoriePt(voc, r.categorie_nom),
         qty,
         r.unite_nom,

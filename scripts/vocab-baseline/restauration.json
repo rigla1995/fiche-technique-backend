@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "247_manuel_acheteurs_type.sql",
+  "derniereMigration": "249_manuel_codes_articles.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -494,10 +494,10 @@
     "onboarding-avenants": "00b42bde5b9635dcf1a6bab568d045fd",
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
-    "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
-    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
-    "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
+    "referentiel-categories": "b1d4b6c0abb76823188ac8d6ad5be7f4",
+    "referentiel-articles": "9e33f6de3278aec4f5f7f2b8648ef75c",
+    "referentiel-import": "87a4537c11e4c54deddbc1df51fc0053",
+    "categories-produits": "d46e18b6ac2c136d7f8ddbcef957df02",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "1aeb54c09b33601072fc81efd3b65132",
     "articles-valorises": "758bb2ba83ec23db95aec58dc7bf0416",
@@ -537,10 +537,10 @@
     "onboarding-avenants": "00b42bde5b9635dcf1a6bab568d045fd",
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
-    "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
-    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
-    "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
+    "referentiel-categories": "b1d4b6c0abb76823188ac8d6ad5be7f4",
+    "referentiel-articles": "9e33f6de3278aec4f5f7f2b8648ef75c",
+    "referentiel-import": "87a4537c11e4c54deddbc1df51fc0053",
+    "categories-produits": "d46e18b6ac2c136d7f8ddbcef957df02",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "1aeb54c09b33601072fc81efd3b65132",
     "articles-valorises": "758bb2ba83ec23db95aec58dc7bf0416",
@@ -590,10 +590,10 @@
     "lexique-pt": "45a646663c8c75a02809c3ca092fa5bb",
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
-    "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
-    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
-    "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
+    "referentiel-categories": "b1d4b6c0abb76823188ac8d6ad5be7f4",
+    "referentiel-articles": "9e33f6de3278aec4f5f7f2b8648ef75c",
+    "referentiel-import": "87a4537c11e4c54deddbc1df51fc0053",
+    "categories-produits": "d46e18b6ac2c136d7f8ddbcef957df02",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "1aeb54c09b33601072fc81efd3b65132",
     "articles-valorises": "758bb2ba83ec23db95aec58dc7bf0416",
@@ -640,10 +640,10 @@
     "onboarding-avenants": "00b42bde5b9635dcf1a6bab568d045fd",
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
-    "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
-    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
-    "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
+    "referentiel-categories": "b1d4b6c0abb76823188ac8d6ad5be7f4",
+    "referentiel-articles": "9e33f6de3278aec4f5f7f2b8648ef75c",
+    "referentiel-import": "87a4537c11e4c54deddbc1df51fc0053",
+    "categories-produits": "d46e18b6ac2c136d7f8ddbcef957df02",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "1aeb54c09b33601072fc81efd3b65132",
     "articles-valorises": "758bb2ba83ec23db95aec58dc7bf0416",
@@ -695,10 +695,10 @@
     "onboarding-avenants": "00b42bde5b9635dcf1a6bab568d045fd",
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
-    "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
-    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
-    "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
+    "referentiel-categories": "b1d4b6c0abb76823188ac8d6ad5be7f4",
+    "referentiel-articles": "9e33f6de3278aec4f5f7f2b8648ef75c",
+    "referentiel-import": "87a4537c11e4c54deddbc1df51fc0053",
+    "categories-produits": "d46e18b6ac2c136d7f8ddbcef957df02",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "1aeb54c09b33601072fc81efd3b65132",
     "articles-valorises": "758bb2ba83ec23db95aec58dc7bf0416",
@@ -757,10 +757,10 @@
     "onboarding-avenants": "00b42bde5b9635dcf1a6bab568d045fd",
     "referentiel-unites": "02f150a37664edd992bd25536a738e28",
     "referentiel-familles": "ad5af5f738c490bfba8ad503d09c315e",
-    "referentiel-categories": "34eed15b3ac65470a27cb90f15f4d656",
-    "referentiel-articles": "155da9d83ec010e8dd82dd56ec4f5bf7",
-    "referentiel-import": "547634ccb3e8a8eaa73a57bce9afe5ab",
-    "categories-produits": "aa751b7ceea932e1b925419c11593fbf",
+    "referentiel-categories": "b1d4b6c0abb76823188ac8d6ad5be7f4",
+    "referentiel-articles": "9e33f6de3278aec4f5f7f2b8648ef75c",
+    "referentiel-import": "87a4537c11e4c54deddbc1df51fc0053",
+    "categories-produits": "d46e18b6ac2c136d7f8ddbcef957df02",
     "produits-vendables": "70385bbaeb2628b6630febc9fa45f7dc",
     "produits-utilisables": "1aeb54c09b33601072fc81efd3b65132",
     "articles-valorises": "758bb2ba83ec23db95aec58dc7bf0416",
@@ -2653,8 +2653,8 @@
     "titres": [
      "Manuel — Espace Produit › Produits Utilisables",
      "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
-     "Manuel — Gestion › Fournisseurs",
-     "Manuel — Comprendre les calculs › Qui fixe quel prix"
+     "Manuel — Référentiel › Articles",
+     "Manuel — Gestion › Fournisseurs"
     ],
     "base": []
    },
@@ -2834,8 +2834,8 @@
     "titres": [
      "Manuel — Espace Produit › Produits Utilisables",
      "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
-     "Manuel — Gestion › Fournisseurs",
-     "Manuel — Comprendre les calculs › Qui fixe quel prix"
+     "Manuel — Référentiel › Articles",
+     "Manuel — Gestion › Fournisseurs"
     ],
     "base": []
    },
@@ -3007,8 +3007,8 @@
     "titres": [
      "Manuel — Espace Produit › Produits Utilisables",
      "Manuel — FAQ › Pourquoi mes chiffres ont changé ?",
-     "Manuel — Gestion › Fournisseurs",
-     "Manuel — Comprendre les calculs › Qui fixe quel prix"
+     "Manuel — Référentiel › Articles",
+     "Manuel — Gestion › Fournisseurs"
     ],
     "base": []
    },
@@ -4809,19 +4809,21 @@
         "Ajout dynamique des articles : une ligne = un article"
        ],
        [
-        "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import."
+        "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Code : facultatif, unique dans le compte ; vide, il est proposé d'après la catégorie (VIA-0001, VIA-0002…)."
        ],
        [
         "Article",
         "Unité",
         "Catégorie",
-        "Famille"
+        "Famille",
+        "Code"
        ],
        [
         "Exemple : Poulet rôti",
         "kg",
         "Viandes",
-        "Food"
+        "Food",
+        "VIA-0001"
        ]
       ]
      }
@@ -5305,7 +5307,7 @@
        ],
        [
         "⟨date⟩",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "PT",
         "-2",
@@ -5336,7 +5338,7 @@
        ],
        [
         "⟨date⟩",
-        "Huile de tournesol",
+        "EPI-0002 Huile de tournesol",
         "Épicerie fine",
         "PT",
         "-0.5",
@@ -5367,7 +5369,7 @@
        ],
        [
         "⟨date⟩",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "Manuel",
         "-10",
@@ -5383,7 +5385,7 @@
        ],
        [
         "⟨date⟩",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "Transfert reçu",
         "30",
@@ -5399,7 +5401,7 @@
        ],
        [
         "⟨date⟩",
-        "Drap 240x300",
+        "LIN-0001 Drap 240x300",
         "Lingerie",
         "Manuel",
         "15",
@@ -5415,7 +5417,7 @@
        ],
        [
         "⟨date⟩",
-        "Huile de tournesol",
+        "EPI-0002 Huile de tournesol",
         "Épicerie fine",
         "Manuel",
         "10.5",
@@ -5483,7 +5485,7 @@
        ],
        [
         "⟨date⟩",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "Manuel",
         "-30",
@@ -5499,7 +5501,7 @@
        ],
        [
         "⟨date⟩",
-        "Huile de tournesol",
+        "EPI-0002 Huile de tournesol",
         "Épicerie fine",
         "Manuel",
         "20",
@@ -5515,7 +5517,7 @@
        ],
        [
         "⟨date⟩",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "Manuel",
         "100",
@@ -5582,7 +5584,7 @@
        [
         "⟨date⟩",
         "Terrasse du Lac — Salon",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "10",
         "kg",
@@ -5646,7 +5648,7 @@
        [
         "⟨date⟩",
         "Bloc chaud (labo)",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "30",
         "kg",
@@ -5898,7 +5900,7 @@
        ],
        [
         "⟨date⟩",
-        "Semoule fine",
+        "SEM-0001 Semoule fine",
         "Semoules",
         "PT",
         "-4.8",
@@ -5929,7 +5931,7 @@
        ],
        [
         "⟨date⟩",
-        "Semoule fine",
+        "SEM-0001 Semoule fine",
         "Semoules",
         "Manuel",
         "50",
@@ -6084,7 +6086,7 @@
         "Assiette du jour",
         "Produit vendable",
         "Terrasse du Lac — Salon",
-        "",
+        "CRE-0002",
         "0.398",
         "1",
         "1"
@@ -6093,7 +6095,7 @@
         "Terrine maison",
         "Produit vendable",
         "Terrasse du Lac — Salon",
-        "",
+        "CRE-0001",
         "0.663",
         "1",
         "0"
@@ -6169,7 +6171,7 @@
         "Fond brun",
         "Produit utilisable",
         "Terrasse du Lac — Salon",
-        "",
+        "PRD-0001",
         "0",
         "1",
         "1 recette"
@@ -6219,7 +6221,7 @@
        ],
        [
         "⟨date⟩",
-        "Café moulu",
+        "EPI-0003 Café moulu",
         "Épicerie fine",
         "-4",
         "kg",
@@ -6236,7 +6238,7 @@
        ],
        [
         "⟨date⟩",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "-0.3",
         "kg",
@@ -6253,7 +6255,7 @@
        ],
        [
         "⟨date⟩",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "-0.45",
         "kg",
@@ -6270,7 +6272,7 @@
        ],
        [
         "⟨date⟩",
-        "Riz basmati",
+        "EPI-0001 Riz basmati",
         "Épicerie fine",
         "10",
         "kg",
@@ -6287,7 +6289,7 @@
        ],
        [
         "⟨date⟩",
-        "Savon 30 g",
+        "LIN-0002 Savon 30 g",
         "Lingerie",
         "200",
         "pièce",
@@ -6304,7 +6306,7 @@
        ],
        [
         "⟨date⟩",
-        "Café moulu",
+        "EPI-0003 Café moulu",
         "Épicerie fine",
         "12",
         "kg",
@@ -12861,6 +12863,7 @@
       "updatedAt": "⟨date⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Café moulu",
+      "ingredientCode": "EPI-0003",
       "uniteNom": "kg",
       "categorieNom": "Épicerie fine",
       "createdBy": "⟨id⟩",
@@ -12883,6 +12886,7 @@
       "updatedAt": "⟨date⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Riz basmati",
+      "ingredientCode": "EPI-0001",
       "uniteNom": "kg",
       "categorieNom": "Épicerie fine",
       "createdBy": "⟨id⟩",
@@ -12921,6 +12925,7 @@
       "updatedAt": "⟨date⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Riz basmati",
+      "ingredientCode": "EPI-0001",
       "uniteNom": "kg",
       "categorieNom": "Épicerie fine",
       "createdBy": "⟨id⟩",
@@ -12959,6 +12964,7 @@
       "updatedAt": "⟨date⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Riz basmati",
+      "ingredientCode": "EPI-0001",
       "uniteNom": "kg",
       "categorieNom": "Épicerie fine",
       "createdBy": "⟨id⟩",
@@ -12981,6 +12987,7 @@
       "updatedAt": "⟨date⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Savon 30 g",
+      "ingredientCode": "LIN-0002",
       "uniteNom": "pièce",
       "categorieNom": "Lingerie",
       "createdBy": "⟨id⟩",
@@ -13003,6 +13010,7 @@
       "updatedAt": "⟨date⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Café moulu",
+      "ingredientCode": "EPI-0003",
       "uniteNom": "kg",
       "categorieNom": "Épicerie fine",
       "createdBy": "⟨id⟩",
@@ -13021,6 +13029,7 @@
       "id": "⟨id⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Riz basmati",
+      "ingredientCode": "EPI-0001",
       "uniteNom": "kg",
       "categorieNom": "Épicerie fine",
       "dateAppro": "⟨date⟩",
@@ -13073,6 +13082,7 @@
       "id": "⟨id⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Huile de tournesol",
+      "ingredientCode": "EPI-0002",
       "uniteNom": "L",
       "categorieNom": "Épicerie fine",
       "dateAppro": "⟨date⟩",
@@ -13125,6 +13135,7 @@
       "id": "⟨id⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Riz basmati",
+      "ingredientCode": "EPI-0001",
       "uniteNom": "kg",
       "categorieNom": "Épicerie fine",
       "dateAppro": "⟨date⟩",
@@ -13152,6 +13163,7 @@
       "id": "⟨id⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Riz basmati",
+      "ingredientCode": "EPI-0001",
       "uniteNom": "kg",
       "categorieNom": "Épicerie fine",
       "dateAppro": "⟨date⟩",
@@ -13179,6 +13191,7 @@
       "id": "⟨id⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Drap 240x300",
+      "ingredientCode": "LIN-0001",
       "uniteNom": "pièce",
       "categorieNom": "Lingerie",
       "dateAppro": "⟨date⟩",
@@ -13206,6 +13219,7 @@
       "id": "⟨id⟩",
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Huile de tournesol",
+      "ingredientCode": "EPI-0002",
       "uniteNom": "L",
       "categorieNom": "Épicerie fine",
       "dateAppro": "⟨date⟩",
@@ -13248,6 +13262,7 @@
       "prixUnitaireTva": 2.836,
       "ingredientId": "⟨id⟩",
       "ingredientNom": "Riz basmati",
+      "ingredientCode": "EPI-0001",
       "uniteNom": "kg",
       "categorieNom": "Épicerie fine",
       "activiteId": "⟨id⟩",
@@ -13471,6 +13486,7 @@
      {
       "id": "⟨id⟩",
       "name": "Café moulu",
+      "code": "EPI-0003",
       "unitId": "⟨id⟩",
       "unitName": "kg",
       "unit": {
@@ -13490,6 +13506,7 @@
      {
       "id": "⟨id⟩",
       "name": "Huile de tournesol",
+      "code": "EPI-0002",
       "unitId": "⟨id⟩",
       "unitName": "L",
       "unit": {
@@ -13509,6 +13526,7 @@
      {
       "id": "⟨id⟩",
       "name": "Riz basmati",
+      "code": "EPI-0001",
       "unitId": "⟨id⟩",
       "unitName": "kg",
       "unit": {
@@ -13528,6 +13546,7 @@
      {
       "id": "⟨id⟩",
       "name": "Drap 240x300",
+      "code": "LIN-0001",
       "unitId": "⟨id⟩",
       "unitName": "pièce",
       "unit": {
@@ -13547,6 +13566,7 @@
      {
       "id": "⟨id⟩",
       "name": "Savon 30 g",
+      "code": "LIN-0002",
       "unitId": "⟨id⟩",
       "unitName": "pièce",
       "unit": {
@@ -15694,7 +15714,7 @@
      "icone": "🏷️",
      "partie": "Référentiel",
      "ordre": 32,
-     "contenu": "## 🏷️ Catégories\n\nLes catégories affinent les familles (ex. dans la famille « Viandes » : « Bœuf », « Volaille »…). Elles servent à organiser et filtrer vos articles dans tout LabFlow. Vous les gérez depuis le menu **Référentiel → Catégories**.\n\n### Ce que vous voyez\n\n- Un bandeau d'en-tête avec le **nombre total de catégories**.\n- Une barre de filtres : champ **Recherche**, liste déroulante **Famille** (« Toutes les familles ») pour n'afficher que les catégories d'une famille, compteur de résultats, bouton **Réinitialiser** et bouton **+ Nouvelle catégorie**.\n- Un tableau à trois colonnes : **Nom**, **Famille** (nom de la famille de rattachement, ou — si la catégorie n'en a pas) et **Actions** (✏️ Modifier, corbeille 🗑️).\n\n### Actions pas à pas\n\nCréer une ou plusieurs catégories :\n\n1. Cliquez sur **+ Nouvelle catégorie**.\n2. Sur chaque ligne, saisissez le **nom** (ex. Viandes) et choisissez la **famille** de rattachement dans la liste déroulante — la famille est obligatoire dès lors que des familles existent.\n3. Cliquez sur **+ Ajouter une ligne** pour en créer plusieurs d'un coup, puis sur **Enregistrer** — dès que plusieurs lignes sont remplies, le bouton indique le nombre de catégories à créer.\n\nModifier ou reclasser une catégorie :\n\n1. Cliquez sur **✏️ Modifier**.\n2. Corrigez le nom et/ou changez la famille de rattachement, puis **Enregistrer**.\n\nSupprimer une catégorie :\n\n1. Cliquez sur la corbeille 🗑️ puis confirmez avec **Supprimer**.\n2. Les articles rattachés perdront leur catégorie et apparaîtront en « Sans catégorie » dans l'écran [Articles](#referentiel-articles).\n\n### Points d'attention\n\n:::attention\nLa corbeille est **grisée** lorsque des articles de la catégorie ont des approvisionnements enregistrés : la suppression est bloquée pour protéger vos historiques.\n:::\n\n:::attention\nNe confondez pas les **catégories d'articles** (ce référentiel, pour vos matières premières) avec les [catégories de produits](#categories-produits) de l'Espace Produit, qui classent vos produits pour la vente.\n:::\n\n:::astuce\nCréez d'abord vos [familles](#referentiel-familles) : le formulaire de création exige une famille pour chaque catégorie. Une arborescence claire (famille → catégorie) rend ensuite les filtres et les regroupements beaucoup plus efficaces dans tous les écrans.\n:::\n\n### Voir aussi\n\n- [Familles](#referentiel-familles) — le niveau supérieur du référentiel\n- [Articles](#referentiel-articles) — chaque article se classe dans une catégorie\n- [Catégories de produits](#categories-produits) — à ne pas confondre\n- [Lexique](#lexique)",
+     "contenu": "## 🏷️ Catégories\n\nLes catégories affinent les familles (ex. dans la famille « Viandes » : « Bœuf », « Volaille »…). Elles servent à organiser et filtrer vos articles dans tout LabFlow, et chacune porte le **préfixe** des codes de ses articles. Vous les gérez depuis le menu **Référentiel → Catégories**.\n\n### Ce que vous voyez\n\n- Un bandeau d'en-tête avec le **nombre total de catégories**.\n- Une barre de filtres : champ **Recherche**, liste déroulante **Famille** (« Toutes les familles ») pour n'afficher que les catégories d'une famille, compteur de résultats, bouton **Réinitialiser** et bouton **+ Nouvelle catégorie**.\n- Un tableau à quatre colonnes : **Nom**, **Préfixe** (2 à 4 lettres ou chiffres, ex. FAR : la tête des codes de ses articles, FAR-0001, FAR-0002…), **Famille** (nom de la famille de rattachement, ou — si la catégorie n'en a pas) et **Actions** (✏️ Modifier, corbeille 🗑️).\n\n### Actions pas à pas\n\nCréer une ou plusieurs catégories :\n\n1. Cliquez sur **+ Nouvelle catégorie**.\n2. Sur chaque ligne, saisissez le **nom** (ex. Viandes) et choisissez la **famille** de rattachement dans la liste déroulante — la famille est obligatoire dès lors que des familles existent. Le **préfixe** se propose d'après le nom (VIA) ; vous pouvez le changer.\n3. Cliquez sur **+ Ajouter une ligne** pour en créer plusieurs d'un coup, puis sur **Enregistrer** — dès que plusieurs lignes sont remplies, le bouton indique le nombre de catégories à créer.\n\nModifier ou reclasser une catégorie :\n\n1. Cliquez sur **✏️ Modifier**.\n2. Corrigez le nom, le préfixe et/ou changez la famille de rattachement, puis **Enregistrer**. Un nouveau préfixe ne renumérote pas les articles déjà codés : leur code reste, les prochains prendront le nouveau préfixe.\n\nSupprimer une catégorie :\n\n1. Cliquez sur la corbeille 🗑️ puis confirmez avec **Supprimer**.\n2. Les articles rattachés perdront leur catégorie et apparaîtront en « Sans catégorie » dans l'écran [Articles](#referentiel-articles).\n\n### Points d'attention\n\n:::regle\nLe préfixe est **unique dans votre compte**, catégories d'articles et [catégories de produits](#categories-produits) confondues : deux catégories ne peuvent pas partager le même, pour qu'aucun code ne prête à confusion. ART et PRD sont réservés aux articles et produits sans catégorie.\n:::\n\n:::attention\nLa corbeille est **grisée** lorsque des articles de la catégorie ont des approvisionnements enregistrés : la suppression est bloquée pour protéger vos historiques.\n:::\n\n:::attention\nNe confondez pas les **catégories d'articles** (ce référentiel, pour vos matières premières) avec les [catégories de produits](#categories-produits) de l'Espace Produit, qui classent vos produits pour la vente.\n:::\n\n:::astuce\nCréez d'abord vos [familles](#referentiel-familles) : le formulaire de création exige une famille pour chaque catégorie. Une arborescence claire (famille → catégorie) rend ensuite les filtres et les regroupements beaucoup plus efficaces dans tous les écrans.\n:::\n\n### Voir aussi\n\n- [Familles](#referentiel-familles) — le niveau supérieur du référentiel\n- [Articles](#referentiel-articles) — chaque article se classe dans une catégorie et en tire son code\n- [Catégories de produits](#categories-produits) — à ne pas confondre\n- [Lexique](#lexique)\n",
      "motsCles": "catégories, famille, classement, articles, organisation, rattachement, filtre, référentiel, création, suppression",
      "ecran": "/client/referentiel/categories",
      "visibleGerant": true,
@@ -15708,7 +15728,7 @@
      "icone": "🧂",
      "partie": "Référentiel",
      "ordre": 33,
-     "contenu": "## 🧂 Articles\n\nLes articles sont vos matières premières et ingrédients : c'est le cœur du référentiel, utilisé pour le stock, les approvisionnements et les fiches techniques. Vous les gérez depuis le menu **Référentiel → Articles**.\n\n### Ce que vous voyez\n\n- Un bandeau d'en-tête avec le **nombre total d'articles**.\n- Une barre de filtres : champ **Recherche**, liste **Famille**, liste **Catégorie** (elle se limite aux catégories de la famille choisie), compteur de résultats (ex. « 12 articles sur 87 » quand un filtre est actif) et bouton **Réinitialiser**.\n- Deux boutons d'action : **+ Ajout multiple** et **+ Nouvel article**, et le bouton **Exporter (modèle Excel)** : tout votre référentiel, unités, catégories et familles comprises, dans le fichier du modèle d'import — les filtres ne s'y appliquent pas.\n- Une liste **groupée par famille puis par catégorie** : chaque famille forme une carte avec son nombre de catégories ; chaque catégorie se déplie d'un clic sur la flèche ▶ et affiche son nombre d'articles (les articles non classés apparaissent sous « Sans catégorie »). Chaque ligne d'article affiche son nom, un badge avec son **unité**, et les boutons **✏️ Modifier** et corbeille 🗑️.\n\n### Actions pas à pas\n\nCréer un article (assistant en deux étapes) :\n\n1. Cliquez sur **+ Nouvel article**.\n2. Étape **Informations** : saisissez le **nom**, choisissez l'**unité** et la **catégorie** (présentée sous la forme Famille › Catégorie). Si aucune catégorie n'existe, un message vous invite à en créer d'abord dans le référentiel. Cliquez sur **Suivant →**.\n3. Étape **Affectation** : cochez les activités 📍 et/ou labos 🏭 où l'article sera utilisé — **au moins un est requis**. Le bouton **Tout sélectionner** coche tout d'un coup et un compteur suit votre sélection.\n4. Cliquez sur **Créer l'article**. Le bouton **← Retour** permet de revenir à l'étape 1.\n\nCréer plusieurs articles d'un coup :\n\n1. Cliquez sur **+ Ajout multiple**.\n2. Remplissez chaque ligne : **Nom**, **Unité**, **Catégorie**, puis cliquez sur **+ Affecter** pour cocher les activités 📍 et labos 🏭 de la ligne (le bouton affiche ensuite le nombre d'affectations).\n3. Ajoutez des lignes avec **+ Ajouter une ligne**, puis cliquez sur **Créer**. Chaque ligne doit être complète (affectation comprise) pour valider.\n\nModifier un article et ses affectations :\n\n1. Cliquez sur **✏️ Modifier** : ajustez le nom, l'unité, la catégorie (ou « Sans catégorie »), puis **Enregistrer**.\n2. Dans la section **Affectations** de la même fenêtre, cliquez sur une activité ou un labo pour l'ajouter ou le retirer : chaque clic est **enregistré immédiatement**, sans passer par Enregistrer.\n\nSupprimer un article :\n\n1. Cliquez sur la corbeille 🗑️ puis confirmez avec **Supprimer**. Les stocks et historiques liés sont conservés.\n\n### Points d'attention\n\n:::attention\nLa corbeille est **grisée** si l'article a des approvisionnements enregistrés : la suppression est bloquée.\n:::\n\n:::attention\nUn article non affecté à une activité ou un labo n'y apparaît ni en stock, ni en approvisionnement, ni dans les fiches techniques. L'affectation est la clé qui rend l'article utilisable sur le terrain.\n:::\n\n:::astuce\nPour un gros volume d'articles, préférez l'[Ajout dynamique](#referentiel-import) par fichier Excel, puis affinez les affectations depuis la fiche de chaque article. Le fichier exporté se réimporte tel quel par l'Ajout dynamique, par exemple dans un autre compte.\n:::\n\n### Voir aussi\n\n- [Unités](#referentiel-unites) et [Catégories](#referentiel-categories) — à préparer avant de créer vos articles\n- [Stock des activités](#stock-activites) et [Fiches techniques](#fiches-techniques) — où vos articles sont utilisés",
+     "contenu": "## 🧂 Articles\n\nLes articles sont vos matières premières et ingrédients : c'est le cœur du référentiel, utilisé pour le stock, les approvisionnements et les fiches techniques. Vous les gérez depuis le menu **Référentiel → Articles**.\n\n### Ce que vous voyez\n\n- Un bandeau d'en-tête avec le **nombre total d'articles**.\n- Une barre de filtres : champ **Recherche** (sur le nom ou le code), liste **Famille**, liste **Catégorie** (elle se limite aux catégories de la famille choisie), compteur de résultats (ex. « 12 articles sur 87 » quand un filtre est actif) et bouton **Réinitialiser**.\n- Deux boutons d'action : **+ Ajout multiple** et **+ Nouvel article**, et le bouton **Exporter (modèle Excel)** : tout votre référentiel, codes, unités, catégories et familles compris, dans le fichier du modèle d'import — les filtres ne s'y appliquent pas.\n- Une liste **groupée par famille puis par catégorie** : chaque famille forme une carte avec son nombre de catégories ; chaque catégorie se déplie d'un clic sur la flèche ▶ et affiche son nombre d'articles (les articles non classés apparaissent sous « Sans catégorie »). Chaque ligne d'article affiche son nom, son **code** en dessous (ex. FAR-0012), un badge avec son **unité**, et les boutons **✏️ Modifier** et corbeille 🗑️.\n\n### Le code d'articles\n\nChaque article porte un **code unique** dans votre compte, bâti sur le **préfixe de sa catégorie** (voir [Catégories](#referentiel-categories)) suivi d'un numéro : FAR-0001, FAR-0002… pour « Farines », SUC-0001 pour « Sucres ». Il est **proposé** à la création — gardez-le ou saisissez le vôtre (2 à 20 caractères : lettres, chiffres, tirets) — et se modifie dans la fiche. Un article qui change de catégorie **garde son code**. Le code accompagne le nom partout où l'article paraît (stock, transferts, inventaires, historiques, factures fournisseur, exports) et sert à la comptabilité : les lignes envoyées à LabFlow Compta le portent (« FAR-0012 Farine ») et la page Comptes d'achat l'affiche. Les articles créés avant cette version ont reçu leur code automatiquement, dans l'ordre de création de chaque catégorie.\n\n### Actions pas à pas\n\nCréer un article (assistant en deux étapes) :\n\n1. Cliquez sur **+ Nouvel article**.\n2. Étape **Informations** : saisissez le **nom**, choisissez l'**unité** et la **catégorie** (présentée sous la forme Famille › Catégorie) ; le **code** proposé s'affiche, modifiable. Si aucune catégorie n'existe, un message vous invite à en créer d'abord dans le référentiel. Cliquez sur **Suivant →**.\n3. Étape **Affectation** : cochez les activités 📍 et/ou labos 🏭 où l'article sera utilisé — **au moins un est requis**. Le bouton **Tout sélectionner** coche tout d'un coup et un compteur suit votre sélection.\n4. Cliquez sur **Créer l'article**. Le bouton **← Retour** permet de revenir à l'étape 1.\n\nCréer plusieurs articles d'un coup :\n\n1. Cliquez sur **+ Ajout multiple**.\n2. Remplissez chaque ligne : **Nom**, **Unité**, **Catégorie** (le code de chaque ligne est proposé à la création), puis cliquez sur **+ Affecter** pour cocher les activités 📍 et labos 🏭 de la ligne (le bouton affiche ensuite le nombre d'affectations).\n3. Ajoutez des lignes avec **+ Ajouter une ligne**, puis cliquez sur **Créer**. Chaque ligne doit être complète (affectation comprise) pour valider.\n\nModifier un article et ses affectations :\n\n1. Cliquez sur **✏️ Modifier** : ajustez le nom, le **code**, l'unité, la catégorie (ou « Sans catégorie »), puis **Enregistrer**. Un code déjà pris par un article ou un produit est refusé.\n2. Dans la section **Affectations** de la même fenêtre, cliquez sur une activité ou un labo pour l'ajouter ou le retirer : chaque clic est **enregistré immédiatement**, sans passer par Enregistrer.\n\nSupprimer un article :\n\n1. Cliquez sur la corbeille 🗑️ puis confirmez avec **Supprimer**. Les stocks et historiques liés sont conservés.\n\n### Points d'attention\n\n:::attention\nLa corbeille est **grisée** si l'article a des approvisionnements enregistrés : la suppression est bloquée.\n:::\n\n:::attention\nUn article non affecté à une activité ou un labo n'y apparaît ni en stock, ni en approvisionnement, ni dans les fiches techniques. L'affectation est la clé qui rend l'article utilisable sur le terrain.\n:::\n\n:::astuce\nPour un gros volume d'articles, préférez l'[Ajout dynamique](#referentiel-import) par fichier Excel, puis affinez les affectations depuis la fiche de chaque article. Le fichier exporté se réimporte tel quel par l'Ajout dynamique, par exemple dans un autre compte.\n:::\n\n### Voir aussi\n\n- [Unités](#referentiel-unites) et [Catégories](#referentiel-categories) — à préparer avant de créer vos articles\n- [Stock des activités](#stock-activites) et [Fiches techniques](#fiches-techniques) — où vos articles sont utilisés\n",
      "motsCles": "articles, ingrédients, matières premières, unité, catégorie, affectation, activités, labo, ajout multiple, assistant, référentiel",
      "ecran": "/client/referentiel/articles",
      "visibleGerant": true,
@@ -15722,7 +15742,7 @@
      "icone": "📥",
      "partie": "Référentiel",
      "ordre": 34,
-     "contenu": "## 📥 Ajout dynamique (import Excel)\n\nL'Ajout Dynamique permet d'importer en masse vos articles — et en même temps leurs unités, catégories et familles — depuis un fichier Excel. Vous y accédez depuis le menu **Référentiel → Ajout Dynamique**. C'est le moyen le plus rapide de constituer votre référentiel au démarrage.\n\n### Ce que vous voyez\n\nL'écran se présente en étapes numérotées :\n\n- **1️⃣ Téléchargez le modèle** : bouton **📄 Télécharger modele_referentiel.xlsx**, un fichier Excel avec les colonnes **Article / Unité / Catégorie / Famille**.\n- **2️⃣ Uploadez votre fichier rempli** : une zone où **glisser-déposer** le fichier (ou cliquer pour le sélectionner), avec une limite de **1 000 lignes par fichier**. Une fois le fichier choisi, son nom et sa taille s'affichent, avec les boutons **Changer de fichier** et **🚀 Lancer l'import**.\n- **Le bilan d'import** : un récapitulatif « Import terminé » avec le nombre de lignes traitées, des compteurs par type (**Articles**, **Auto-affectés**, **Catégories**, **Familles**, **Unités**, **Erreurs**) et un tableau détaillé ligne par ligne : **Ligne / Article / Créé / Existant / Affectation / Statut**.\n\n### Actions pas à pas\n\n1. Cliquez sur **📄 Télécharger modele_referentiel.xlsx** et ouvrez le fichier dans Excel.\n2. Remplissez **une ligne par article** : nom de l'article, unité, catégorie et famille. Les unités, catégories et familles qui n'existent pas encore dans votre référentiel seront **créées automatiquement**.\n3. Glissez le fichier rempli dans la zone d'import (format Excel .xlsx) puis cliquez sur **🚀 Lancer l'import**.\n4. Lisez le bilan : la colonne **Créé** liste les éléments ajoutés par la ligne, la colonne **Existant** ceux qui ont été reconnus et réutilisés. Les lignes en erreur sont surlignées ; survolez le symbole ❌ pour lire la cause exacte.\n5. Corrigez si besoin les lignes en erreur dans votre fichier, puis cliquez sur **Importer un autre fichier** pour relancer.\n\nLes articles importés sont **automatiquement affectés** à vos activités et labos : ils sont immédiatement utilisables en stock et en approvisionnement. Si un article existait déjà mais n'était affecté nulle part, il est assigné automatiquement et signalé par le badge **🔗 auto** dans la colonne Affectation.\n\n### Points d'attention\n\n:::attention\nRespectez l'orthographe des unités, familles et catégories déjà présentes dans votre référentiel : toute variante d'écriture (accent, pluriel…) peut créer un doublon. Seules les différences de majuscules/minuscules et les espaces en début ou fin de nom sont tolérées pour les articles, unités et familles.\n:::\n\n:::attention\nLe fichier doit être au format Excel (.xlsx) et ne pas dépasser **1 000 lignes**. Au-delà, découpez votre catalogue en plusieurs fichiers.\n\nLe fichier obtenu par **Exporter (modèle Excel)** (écran [Articles](#referentiel-articles)) est déjà au format du modèle : il se réimporte tel quel. Ce qui manque est créé ; un article déjà présent n'est pas modifié (ni son unité, ni sa catégorie).\n:::\n\n:::astuce\nAprès un import, ajustez finement quelles activités et quels labos utilisent chaque article depuis sa fiche ([Articles](#referentiel-articles)).\n:::\n\n### Voir aussi\n\n- [Articles](#referentiel-articles) — création manuelle à l'unité ou en série\n- [Articles](#referentiel-articles) — ajuster les affectations après import\n- [Unités](#referentiel-unites), [Familles](#referentiel-familles), [Catégories](#referentiel-categories)\n- [Bien démarrer](#demarrage)",
+     "contenu": "## 📥 Ajout dynamique (import Excel)\n\nL'Ajout Dynamique permet d'importer en masse vos articles — et en même temps leurs unités, catégories et familles — depuis un fichier Excel. Vous y accédez depuis le menu **Référentiel → Ajout Dynamique**. C'est le moyen le plus rapide de constituer votre référentiel au démarrage.\n\n### Ce que vous voyez\n\nL'écran se présente en étapes numérotées :\n\n- **1️⃣ Téléchargez le modèle** : bouton **📄 Télécharger modele_referentiel.xlsx**, un fichier Excel avec les colonnes **Article / Unité / Catégorie / Famille / Code**.\n- **2️⃣ Uploadez votre fichier rempli** : une zone où **glisser-déposer** le fichier (ou cliquer pour le sélectionner), avec une limite de **1 000 lignes par fichier**. Une fois le fichier choisi, son nom et sa taille s'affichent, avec les boutons **Changer de fichier** et **🚀 Lancer l'import**.\n- **Le bilan d'import** : un récapitulatif « Import terminé » avec le nombre de lignes traitées, des compteurs par type (**Articles**, **Auto-affectés**, **Catégories**, **Familles**, **Unités**, **Erreurs**) et un tableau détaillé ligne par ligne : **Ligne / Article / Créé / Existant / Affectation / Statut**.\n\n### Actions pas à pas\n\n1. Cliquez sur **📄 Télécharger modele_referentiel.xlsx** et ouvrez le fichier dans Excel.\n2. Remplissez **une ligne par article** : nom de l'article, unité, catégorie et famille ; la colonne **Code** est facultative — vide, le code est proposé d'après la catégorie (FAR-0001, FAR-0002…) ; un code déjà pris met la ligne en erreur. Les unités, catégories et familles qui n'existent pas encore dans votre référentiel seront **créées automatiquement** (une catégorie créée reçoit son préfixe).\n3. Glissez le fichier rempli dans la zone d'import (format Excel .xlsx) puis cliquez sur **🚀 Lancer l'import**.\n4. Lisez le bilan : la colonne **Créé** liste les éléments ajoutés par la ligne, la colonne **Existant** ceux qui ont été reconnus et réutilisés. Les lignes en erreur sont surlignées ; survolez le symbole ❌ pour lire la cause exacte.\n5. Corrigez si besoin les lignes en erreur dans votre fichier, puis cliquez sur **Importer un autre fichier** pour relancer.\n\nLes articles importés sont **automatiquement affectés** à vos activités et labos : ils sont immédiatement utilisables en stock et en approvisionnement. Si un article existait déjà mais n'était affecté nulle part, il est assigné automatiquement et signalé par le badge **🔗 auto** dans la colonne Affectation.\n\n### Points d'attention\n\n:::attention\nRespectez l'orthographe des unités, familles et catégories déjà présentes dans votre référentiel : toute variante d'écriture (accent, pluriel…) peut créer un doublon. Seules les différences de majuscules/minuscules et les espaces en début ou fin de nom sont tolérées pour les articles, unités et familles.\n:::\n\n:::attention\nLe fichier doit être au format Excel (.xlsx) et ne pas dépasser **1 000 lignes**. Au-delà, découpez votre catalogue en plusieurs fichiers. Un ancien modèle à quatre colonnes (sans Code) reste accepté.\n\nLe fichier obtenu par **Exporter (modèle Excel)** (écran [Articles](#referentiel-articles)) est déjà au format du modèle, codes compris : il se réimporte tel quel. Ce qui manque est créé ; un article déjà présent n'est pas modifié (ni son code, ni son unité, ni sa catégorie).\n:::\n\n:::astuce\nAprès un import, ajustez finement quelles activités et quels labos utilisent chaque article depuis sa fiche ([Articles](#referentiel-articles)).\n:::\n\n### Voir aussi\n\n- [Articles](#referentiel-articles) — création manuelle à l'unité ou en série\n- [Articles](#referentiel-articles) — ajuster les affectations après import\n- [Unités](#referentiel-unites), [Familles](#referentiel-familles), [Catégories](#referentiel-categories)\n- [Bien démarrer](#demarrage)\n",
      "motsCles": "import, excel, ajout dynamique, masse, modèle, fichier, xlsx, doublons, auto-affectation, erreurs, référentiel",
      "ecran": "/client/referentiel/import",
      "visibleGerant": true,
@@ -15736,7 +15756,7 @@
      "icone": "🏷️",
      "partie": "Espace Produit",
      "ordre": 40,
-     "contenu": "## 🏷️ Catégories de produit\n\nCet écran vous permet de classer vos produits de vente en catégories (par exemple « Entrées », « Boissons », « Desserts »). Vous le trouvez dans le menu **Espace Produits → Catégories Produits**. Ces catégories structurent ensuite la configuration des prix de vente et la saisie des ventes.\n\n### Ce que vous voyez\n\n- Un bandeau d'en-tête avec le **nombre total de catégories** créées.\n- Une barre de filtres : champ **Recherche** (filtre sur le nom), liste **Type** (tous les types ou un seul), bouton **Réinitialiser** dès qu'un filtre est actif, et le bouton **+ Nouvelle catégorie**.\n- Un tableau à quatre colonnes : **Nom**, **Type** (badge), **Produits** (nombre de produits rattachés à la catégorie) et **Actions** (✏️ Modifier, 🗑️ Supprimer).\n\nChaque catégorie appartient obligatoirement à **un type**, qui détermine où elle sera proposée :\n\n| Type | Sert à classer |\n|---|---|\n| 🍽️ Produit vendable | Les produits finis vendus à la carte (plats, pizzas, formules…) |\n| ➕ Supplément vendable | Les suppléments vendus en complément (sauce, garniture…) |\n| 💎 Article valorisé | Les articles revendus tels quels (boissons en bouteille, produits négoce…) |\n\n### Actions pas à pas\n\n**Créer une ou plusieurs catégories**\n\n1. Cliquez sur **+ Nouvelle catégorie**.\n2. Choisissez le **Type** : il s'appliquera à tous les noms saisis dans cette fenêtre.\n3. Saisissez un nom par ligne. Ajoutez des lignes avec **+ Ajouter une ligne** (la touche Entrée sur la dernière ligne en crée une nouvelle) ; le bouton × retire une ligne.\n4. Cliquez sur **Enregistrer** : toutes les lignes remplies sont créées d'un coup.\n\n**Modifier une catégorie**\n\n1. Cliquez sur **✏️ Modifier** sur la ligne concernée.\n2. Ajustez le type et/ou le nom, puis **Enregistrer**.\n\n**Supprimer une catégorie**\n\n1. Cliquez sur **🗑️**, puis confirmez dans la fenêtre d'avertissement.\n\n### Points d'attention\n\n:::regle\nLors de l'affectation d'une catégorie à un produit, seules les catégories du **bon type** sont proposées : une catégorie « Supplément vendable » n'apparaîtra jamais dans la liste d'un produit vendable, et inversement.\n:::\n\n:::attention\nLa suppression d'une catégorie ne supprime pas les produits : ils **perdent simplement leur catégorie** et devront être reclassés pour rester bien organisés dans la configuration de vente.\n:::\n\n:::astuce\nCréez vos catégories **avant** vos produits : la catégorie est obligatoire à la création d'un produit vendable ou d'un supplément, et nécessaire pour qu'un article valorisé soit proposé à la vente.\n:::\n\n### Voir aussi\n\n- [Produits Vendables](#produits-vendables) — la catégorie y est exigée à la création\n- [Produits Valorisés](#articles-valorises) — assignez une catégorie de type « Article valorisé »\n- [Configuration Vente](#configuration-vente) — les catégories y organisent vos prix\n- [Saisie des ventes](#saisie-ventes) — les produits y sont regroupés par catégorie\n- [Lexique](#lexique)",
+     "contenu": "## 🏷️ Catégories de produit\n\nCet écran vous permet de classer vos produits de vente en catégories (par exemple « Entrées », « Boissons », « Desserts »). Vous le trouvez dans le menu **Espace Produits → Catégories Produits**. Ces catégories structurent ensuite la configuration des prix de vente et la saisie des ventes, et chacune porte le **préfixe** des références de ses produits.\n\n### Ce que vous voyez\n\n- Un bandeau d'en-tête avec le **nombre total de catégories** créées.\n- Une barre de filtres : champ **Recherche** (filtre sur le nom), liste **Type** (tous les types ou un seul), bouton **Réinitialiser** dès qu'un filtre est actif, et le bouton **+ Nouvelle catégorie**.\n- Un tableau à cinq colonnes : **Nom**, **Préfixe** (2 à 4 lettres ou chiffres, ex. DES : la tête des références de ses produits, DES-0001, DES-0002…), **Type** (badge), **Produits** (nombre de produits rattachés à la catégorie) et **Actions** (✏️ Modifier, 🗑️ Supprimer).\n\nChaque catégorie appartient obligatoirement à **un type**, qui détermine où elle sera proposée :\n\n| Type | Sert à classer |\n|---|---|\n| 🍽️ Produit vendable | Les produits finis vendus à la carte (plats, pizzas, formules…) |\n| ➕ Supplément vendable | Les suppléments vendus en complément (sauce, garniture…) |\n| 💎 Article valorisé | Les articles revendus tels quels (boissons en bouteille, produits négoce…) |\n\n### Actions pas à pas\n\n**Créer une ou plusieurs catégories**\n\n1. Cliquez sur **+ Nouvelle catégorie**.\n2. Choisissez le **Type** : il s'appliquera à tous les noms saisis dans cette fenêtre.\n3. Saisissez un nom par ligne ; le **préfixe** se propose d'après le nom, modifiable. Ajoutez des lignes avec **+ Ajouter une ligne** (la touche Entrée sur la dernière ligne en crée une nouvelle) ; le bouton × retire une ligne.\n4. Cliquez sur **Enregistrer** : toutes les lignes remplies sont créées d'un coup.\n\n**Modifier une catégorie**\n\n1. Cliquez sur **✏️ Modifier** sur la ligne concernée.\n2. Ajustez le type, le nom et/ou le préfixe, puis **Enregistrer**. Un nouveau préfixe ne change pas les références déjà posées : les prochains produits le prendront.\n\n**Supprimer une catégorie**\n\n1. Cliquez sur **🗑️**, puis confirmez dans la fenêtre d'avertissement.\n\n### Points d'attention\n\n:::regle\nLors de l'affectation d'une catégorie à un produit, seules les catégories du **bon type** sont proposées : une catégorie « Supplément vendable » n'apparaîtra jamais dans la liste d'un produit vendable, et inversement.\n:::\n\n:::regle\nLe préfixe est **unique dans votre compte**, catégories de produits et [catégories d'articles](#referentiel-categories) confondues : la référence d'un produit (DES-0001) ne peut jamais se confondre avec le code d'un article. Sans catégorie, la référence proposée commence par PRD.\n:::\n\n:::attention\nLa suppression d'une catégorie ne supprime pas les produits : ils **perdent simplement leur catégorie** et devront être reclassés pour rester bien organisés dans la configuration de vente.\n:::\n\n:::astuce\nCréez vos catégories **avant** vos produits : la catégorie est obligatoire à la création d'un produit vendable ou d'un supplément, et nécessaire pour qu'un article valorisé soit proposé à la vente.\n:::\n\n### Voir aussi\n\n- [Produits Vendables](#produits-vendables) — la catégorie y est exigée à la création\n- [Produits Valorisés](#articles-valorises) — assignez une catégorie de type « Article valorisé »\n- [Configuration Vente](#configuration-vente) — les catégories y organisent vos prix\n- [Saisie des ventes](#saisie-ventes) — les produits y sont regroupés par catégorie\n- [Lexique](#lexique)\n",
      "motsCles": "catégorie, catégories produit, classement, type, vendable, supplément, valorisé, carte, menu, boissons, desserts, organisation",
      "ecran": "/client/products/categories",
      "visibleGerant": true,

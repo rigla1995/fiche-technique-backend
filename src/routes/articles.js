@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { list, getById, create, update, remove, hasArticles } = require('../controllers/articlesController');
+const { list, getById, create, update, remove, hasArticles, codePropose } = require('../controllers/articlesController');
 const { authenticate, requireClient } = require('../middleware/auth');
 
 const validateCreate = [
@@ -118,6 +118,7 @@ const validateCreate = [
  */
 router.get('/', authenticate, requireClient, list);
 router.get('/has-articles', authenticate, requireClient, hasArticles);
+router.get('/code-propose', authenticate, requireClient, codePropose);
 router.get('/:id', authenticate, requireClient, getById);
 router.post('/', authenticate, requireClient, validateCreate, create);
 router.put('/:id', authenticate, requireClient, [
