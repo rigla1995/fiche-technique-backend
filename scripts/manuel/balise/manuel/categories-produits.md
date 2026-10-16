@@ -1,12 +1,12 @@
 ## 🏷️ Catégories [[de:produit]]
 
-Cet écran vous permet de classer [[votre:produit:pl]] [[de:vente]] en catégories (par exemple « Entrées », « Boissons », « Desserts »). Vous le trouvez dans le menu **Espace [[Pl:produit]] → Catégories [[Court:produit:pl]]**. Ces catégories structurent ensuite la configuration des prix de vente et la saisie [[du:vente:pl]].
+Cet écran vous permet de classer [[votre:produit:pl]] [[de:vente]] en catégories (par exemple « Entrées », « Boissons », « Desserts »). Vous le trouvez dans le menu **Espace [[Pl:produit]] → Catégories [[Court:produit:pl]]**. Ces catégories structurent ensuite la configuration des prix de vente et la saisie [[du:vente:pl]], et chacune porte le **préfixe** des références de ses [[nom:produit:pl]].
 
 ### Ce que vous voyez
 
 - Un bandeau d'en-tête avec le **nombre total de catégories** créées.
 - Une barre de filtres : champ **Recherche** (filtre sur le nom), liste **Type** (tous les types ou un seul), bouton **Réinitialiser** dès qu'un filtre est actif, et le bouton **+ Nouvelle catégorie**.
-- Un tableau à quatre colonnes : **Nom**, **Type** (badge), **[[Pl:produit]]** (nombre [[de:produit:pl]] [[acc:produit:rattaché:rattachée:pl]] à la catégorie) et **Actions** (✏️ Modifier, 🗑️ Supprimer).
+- Un tableau à cinq colonnes : **Nom**, **Préfixe** (2 à 4 lettres ou chiffres, ex. DES : la tête des références de ses [[nom:produit:pl]], DES-0001, DES-0002…), **Type** (badge), **[[Pl:produit]]** (nombre [[de:produit:pl]] [[acc:produit:rattaché:rattachée:pl]] à la catégorie) et **Actions** (✏️ Modifier, 🗑️ Supprimer).
 
 Chaque catégorie appartient obligatoirement à **un type**, qui détermine où elle sera proposée :
 
@@ -22,13 +22,13 @@ Chaque catégorie appartient obligatoirement à **un type**, qui détermine où 
 
 1. Cliquez sur **+ Nouvelle catégorie**.
 2. Choisissez le **Type** : il s'appliquera à tous les noms saisis dans cette fenêtre.
-3. Saisissez un nom par ligne. Ajoutez des lignes avec **+ Ajouter une ligne** (la touche Entrée sur la dernière ligne en crée une nouvelle) ; le bouton × retire une ligne.
+3. Saisissez un nom par ligne ; le **préfixe** se propose d'après le nom, modifiable. Ajoutez des lignes avec **+ Ajouter une ligne** (la touche Entrée sur la dernière ligne en crée une nouvelle) ; le bouton × retire une ligne.
 4. Cliquez sur **Enregistrer** : toutes les lignes remplies sont créées d'un coup.
 
 **Modifier une catégorie**
 
 1. Cliquez sur **✏️ Modifier** sur la ligne concernée.
-2. Ajustez le type et/ou le nom, puis **Enregistrer**.
+2. Ajustez le type, le nom et/ou le préfixe, puis **Enregistrer**. Un nouveau préfixe ne change pas les références déjà posées : les prochains [[nom:produit:pl]] le prendront.
 
 **Supprimer une catégorie**
 
@@ -38,6 +38,10 @@ Chaque catégorie appartient obligatoirement à **un type**, qui détermine où 
 
 :::regle
 Lors de l'affectation d'une catégorie à [[un:produit]], seules les catégories du **bon type** sont proposées : une catégorie « [[Nom:supplement]] vendable » n'apparaîtra jamais dans la liste d'[[un:produit_vendable]], et inversement.
+:::
+
+:::regle
+Le préfixe est **unique dans votre compte**, catégories [[de:produit:pl]] et [catégories [[de:article:pl]]](#referentiel-categories) confondues : la référence d'[[un:produit]] (DES-0001) ne peut jamais se confondre avec le code d'[[un:article]]. Sans catégorie, la référence proposée commence par PRD.
 :::
 
 :::attention

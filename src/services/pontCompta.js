@@ -117,11 +117,13 @@ const ecritureDeFacture = ({ lignes, remiseGlobale = 0n, fodec = 0n, timbre = 0n
     }
   }
   const groupes = new Map();
-  const ajouter = (sens, compteId, tiersId, taxeId, montant, lib) => {
+  // D3 : chaque groupe retient ses articles (code, nom) pour nommer sa ligne.
+  const ajouter = (sens, compteId, tiersId, taxeId, montant, lib, article = null) => {
     if (montant === 0n) return;
     const cle = `${sens}|${compteId}|${tiersId || ''}|${taxeId || ''}|${lib}`;
-    const g = groupes.get(cle) || { sens, compteId, tiersId: tiersId || null, taxeId: taxeId || null, libelle: lib, montant: 0n };
+    const g = groupes.get(cle) || { sens, compteId, tiersId: tiersId || null, taxeId: taxeId || null, libelle: lib, montant: 0n, articles: new Map() };
     g.montant += montant;
+    if (article) g.articles.set(article.code || article.nom, article);
     groupes.set(cle, g);
   };
   // Les lignes de la facture (HT net de remise ; TTC si la TVA n'est pas récupérable), puis FODEC, TVA par taux, timbre ;
@@ -129,8 +131,8 @@ const ecritureDeFacture = ({ lignes, remiseGlobale = 0n, fodec = 0n, timbre = 0n
   lignes.forEach((l, i) => {
     const code = tvaRecuperable && avecTaux(l) ? codes.tva.get(cleTaux(l.tauxTva)) : null;
     const montant = nets[i] + tvaDesLignes[i];
-    if (montant > 0n) ajouter('D', l.compteId, l.tiersId, code?.taxeId, montant, libelle);
-    else if (montant < 0n) ajouter('C', l.compteId, l.tiersId, code?.taxeId, -montant, libelle);
+    if (montant > 0n) ajouter('D', l.compteId, l.tiersId, code?.taxeId, montant, libelle, l.article || null);
+    else if (montant < 0n) ajouter('C', l.compteId, l.tiersId, code?.taxeId, -montant, libelle, l.article || null);
   });
   if (fodec > 0n) ajouter('D', codes.fodec.compteId, null, codes.fodec.taxeId, fodec, texteCompta(`FODEC — facture ${reference}`, 255));
   if (tvaRecuperable) {
@@ -150,9 +152,15 @@ const ecritureDeFacture = ({ lignes, remiseGlobale = 0n, fodec = 0n, timbre = 0n
     throw refus(409, 'ECART_TTC', `L'écriture donnerait ${E.fmtMillimes(aPayer)} au lieu du TTC de la facture (${E.fmtMillimes(ttcAttendu)}) : elle n'est pas envoyée. Signalez-le au support de LabFlow.`);
   }
   const toutes = [...debits, ...credits, { sens: 'C', compteId: fournisseur.compteId, tiersId: fournisseur.tiersId, taxeId: null, libelle, montant: aPayer }];
+  // D3 (16/10/2026) : une ligne d'achat nomme ses articles par leur code (« FAR-0012 Farine, SUC-0003 Sucre — facture
+  // F-12 ») ; une ligne sans article (nature hors stock, taxes, fournisseur) garde le libellé de la facture. Les lignes
+  // restent regroupées par compte, taux et tiers : le nombre de lignes ne change pas.
+  const libelleDuGroupe = (g) => (g.articles && g.articles.size
+    ? texteCompta(`${[...g.articles.values()].map((a) => (a.code ? `${a.code} ${a.nom}` : a.nom)).join(', ')} — facture ${reference}`, E.LIBELLE_MAX)
+    : g.libelle);
   return {
     lignes: toutes.map((g, i) => ({
-      rang: i + 1, compteId: g.compteId, tiersId: g.tiersId, libelle: g.libelle,
+      rang: i + 1, compteId: g.compteId, tiersId: g.tiersId, libelle: libelleDuGroupe(g),
       debit: g.sens === 'D' ? g.montant : 0n, credit: g.sens === 'C' ? g.montant : 0n, taxeId: g.taxeId, echeance: null,
     })),
     total: totalDebit,
@@ -306,7 +314,7 @@ const lignesSaisies = async (db, f) => {
 const comptesDesLignes = async (db, d, clientId, lignes) => {
   const articleIds = [...new Set(lignes.map((l) => l.articleId).filter(Boolean))];
   const infos = new Map(articleIds.length ? (await db.query(
-    `SELECT a.id, a.nom, a.categorie_id, fa.vendable, fa.consommable
+    `SELECT a.id, a.nom, a.code, a.categorie_id, fa.vendable, fa.consommable
        FROM articles a LEFT JOIN categories c ON c.id = a.categorie_id LEFT JOIN familles fa ON fa.id = c.famille_id
       WHERE a.id = ANY($1) AND a.client_id = $2`, [articleIds, clientId]
   )).rows.map((a) => [a.id, a]) : []);
@@ -318,7 +326,7 @@ const comptesDesLignes = async (db, d, clientId, lignes) => {
     if (l.natureHorsStock) return { id: parNature.get(l.natureHorsStock) || null, numero: compteParDefaut({ natureHorsStock: l.natureHorsStock }), quoi: LIBELLES_NATURES[l.natureHorsStock] };
     const a = infos.get(l.articleId);
     const id = (a && (parArticle.get(a.id) || parCategorie.get(a.categorie_id))) || null;
-    return { id, numero: compteParDefaut({ vendable: a?.vendable, consommable: a?.consommable }), quoi: a ? a.nom : 'ligne de la facture' };
+    return { id, numero: compteParDefaut({ vendable: a?.vendable, consommable: a?.consommable }), quoi: a ? a.nom : 'ligne de la facture', article: a ? { code: a.code || null, nom: a.nom } : null };
   });
   const numeros = [...new Set(choix.filter((c) => !c.id).map((c) => c.numero))];
   const parNumero = new Map(numeros.length ? (await db.query(SQL_COMPTES_NUMEROS, [d.id, numeros])).rows.map((k) => [k.numero, k]) : []);
@@ -330,7 +338,7 @@ const comptesDesLignes = async (db, d, clientId, lignes) => {
     const k = c.id ? parId.get(c.id) : parNumero.get(c.numero);
     if (!k) throw refus(409, 'COMPTE_ABSENT', `Le compte ${c.numero} (${F.sansBalise(c.quoi)}) n'existe pas dans la comptabilité : choisissez son compte (LabFlow Compta, page Comptes d'achat), puis envoyez de nouveau.`);
     if (!k.actif || !k.feuille) throw refus(409, 'COMPTE_NON_IMPUTABLE', `Le compte ${k.numero} (${F.sansBalise(c.quoi)}) est désactivé ou a des sous-comptes : choisissez le compte à imputer (LabFlow Compta, page Comptes d'achat), puis envoyez de nouveau.`);
-    return k.id;
+    return { id: k.id, article: c.article || null };
   });
 };
 
@@ -427,7 +435,7 @@ const envoyerFacture = async ({ clientId, factureId, auteurId }) => {
       if (!metier.length) throw refus(409, 'FACTURE_VIDE', 'Cette facture n\'a aucune ligne : rien à envoyer en comptabilité.');
       const { tiers, cree, collectif } = await tiersDe(db, d, f, auteurId, mod.espaceId);
       const comptes = await comptesDesLignes(db, d, clientId, metier);
-      const natures = new Map((await db.query('SELECT id, nature FROM compta.comptes WHERE dossier_id = $1 AND id = ANY($2)', [d.id, [...new Set(comptes)]])).rows.map((k) => [k.id, k.nature]));
+      const natures = new Map((await db.query('SELECT id, nature FROM compta.comptes WHERE dossier_id = $1 AND id = ANY($2)', [d.id, [...new Set(comptes.map((c) => c.id))]])).rows.map((k) => [k.id, k.nature]));
       const codes = await codesDuDossier(db, d);
       const fodec = enMillimes(f.fodec);
       const timbre = f.timbre_fiscal ? enMillimes(f.timbre) : 0n;
@@ -437,8 +445,8 @@ const envoyerFacture = async ({ clientId, factureId, auteurId }) => {
       const libelle = texteCompta(`Facture ${f.ref_facture || f.id} — ${f.fournisseur_raison_sociale || f.fournisseur_nom || ''}`, E.LIBELLE_MAX);
       const { lignes, total } = ecritureDeFacture({
         lignes: metier.map((l, i) => ({
-          montant: l.montant, tauxTva: l.tauxTva, compteId: comptes[i],
-          tiersId: ['fournisseurs', 'clients'].includes(natures.get(comptes[i])) ? tiers.id : null,
+          montant: l.montant, tauxTva: l.tauxTva, compteId: comptes[i].id, article: comptes[i].article,
+          tiersId: ['fournisseurs', 'clients'].includes(natures.get(comptes[i].id)) ? tiers.id : null,
         })),
         remiseGlobale: enMillimes(f.remise_globale), fodec, timbre, tvaParTaux, codes,
         // Dossier au forfait ou non assujetti : la TVA payée est une charge (elle s'ajoute aux achats), sans code de TVA.

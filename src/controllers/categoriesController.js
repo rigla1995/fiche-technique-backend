@@ -1,9 +1,13 @@
 const { validationResult } = require('express-validator');
 const pool = require('../config/database');
+// D3 (16/10/2026) : code unique des articles, préfixe des catégories (src/utils/codesArticles.js = la règle).
+const CS = require('../services/codesArticlesService');
 
 const mapCategorie = (row) => ({
   id: row.id,
   name: row.nom,
+  // D3 : préfixe des codes de ses articles (« FAR » → FAR-0001), unique dans le compte
+  prefixeCode: row.prefixe_code || null,
   familleId: row.famille_id || null,
   familleName: row.famille_nom || null,
   clientId: row.client_id || null,
@@ -74,9 +78,17 @@ const create = async (req, res) => {
   const famille_id = req.body.familleId || req.body.famille_id || null;
 
   try {
+    // D3 : préfixe saisi (contrôlé) ou proposé d'après le nom, unique entre toutes les catégories du compte.
+    let prefixe;
+    try {
+      prefixe = await CS.prefixePourCategorie(pool, clientId, { prefixe: req.body.prefixeCode, nom });
+    } catch (e) {
+      if (CS.repondreRefus(res, e)) return;
+      throw e;
+    }
     const result = await pool.query(
-      'INSERT INTO categories (nom, client_id, famille_id) VALUES ($1, $2, $3) RETURNING *',
-      [nom, clientId, famille_id]
+      'INSERT INTO categories (nom, client_id, famille_id, prefixe_code) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nom, clientId, famille_id, prefixe]
     );
     const row = result.rows[0];
     if (famille_id) {
@@ -85,6 +97,7 @@ const create = async (req, res) => {
     }
     res.status(201).json(mapCategorie(row));
   } catch (err) {
+    if (CS.repondreDoublon(res, err)) return;
     if (err.code === '23505') return res.status(409).json({ message: 'Cette catégorie existe déjà' });
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -102,12 +115,23 @@ const update = async (req, res) => {
   const familleChanged = famille_id !== undefined;
 
   try {
+    // D3 : préfixe modifiable (contrôlé, unique) ; vide ou absent = inchangé ; les codes déjà posés ne bougent pas.
+    let prefixe = null;
+    if (req.body.prefixeCode != null && String(req.body.prefixeCode).trim() !== '') {
+      try {
+        prefixe = await CS.verifierPrefixe(pool, clientId, req.body.prefixeCode, { table: 'categories', id: req.params.id });
+      } catch (e) {
+        if (CS.repondreRefus(res, e)) return;
+        throw e;
+      }
+    }
     const result = await pool.query(
       `UPDATE categories
        SET nom = COALESCE($1, nom),
-           famille_id = CASE WHEN $3::boolean THEN $2 ELSE famille_id END
+           famille_id = CASE WHEN $3::boolean THEN $2 ELSE famille_id END,
+           prefixe_code = COALESCE($6, prefixe_code)
        WHERE id = $4 AND client_id = $5 RETURNING *`,
-      [nom, famille_id ?? null, familleChanged, req.params.id, clientId]
+      [nom, famille_id ?? null, familleChanged, req.params.id, clientId, prefixe]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Catégorie introuvable' });
     const row = result.rows[0];
@@ -117,7 +141,20 @@ const update = async (req, res) => {
     }
     res.json(mapCategorie(row));
   } catch (err) {
+    if (CS.repondreDoublon(res, err)) return;
     if (err.code === '23505') return res.status(409).json({ message: 'Cette catégorie existe déjà' });
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// GET /api/categories/prefixe-propose?nom=&exclureId= — D3 : le préfixe libre proposé pour ce nom.
+const prefixePropose = async (req, res) => {
+  try {
+    const clientId = req.user.gerant_parent_id || req.user.id;
+    const exclure = req.query.exclureId ? { table: 'categories', id: Number(req.query.exclureId) } : null;
+    res.json({ prefixe: await CS.prefixePourNom(pool, clientId, String(req.query.nom || ''), exclure) });
+  } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
@@ -150,4 +187,4 @@ const remove = async (req, res) => {
   }
 };
 
-module.exports = { list, getById, create, update, remove };
+module.exports = { list, getById, create, update, remove, prefixePropose };

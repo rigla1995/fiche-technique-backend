@@ -43,7 +43,7 @@ const etatComptesAchat = async (db, acces, d) => {
          FROM categories c LEFT JOIN familles fa ON fa.id = c.famille_id
         WHERE c.client_id = $1 ORDER BY fa.nom NULLS LAST, c.nom`, [client]
     ),
-    db.query(`SELECT a.id, a.nom, a.categorie_id, u.nom AS unite FROM articles a LEFT JOIN unites u ON u.id = a.unite_id WHERE a.client_id = $1 ORDER BY a.nom`, [client]),
+    db.query(`SELECT a.id, a.nom, a.code, a.categorie_id, u.nom AS unite FROM articles a LEFT JOIN unites u ON u.id = a.unite_id WHERE a.client_id = $1 ORDER BY a.nom`, [client]),
     db.query(
       `SELECT r.categorie_id, r.article_id, r.nature_hors_stock, k.id, k.numero, k.libelle, k.nature, k.actif, ${SQL_FEUILLE('k')} AS feuille
          FROM compta.comptes_articles r JOIN compta.comptes k ON k.id = r.compte_id WHERE r.dossier_id = $1`, [d.id]
@@ -70,7 +70,7 @@ const etatComptesAchat = async (db, acces, d) => {
       id: c.id, nom: c.nom, famille: c.famille, nbArticles: c.nb_articles,
       defaut: defaut(compteParDefaut({ vendable: c.vendable, consommable: c.consommable })), compte: regle('categorie_id', c.id),
     })),
-    articles: arts.rows.map((a) => ({ id: a.id, nom: a.nom, unite: a.unite, categorieId: a.categorie_id, compte: regle('article_id', a.id) })),
+    articles: arts.rows.map((a) => ({ id: a.id, nom: a.nom, code: a.code || null, unite: a.unite, categorieId: a.categorie_id, compte: regle('article_id', a.id) })),
     natures: NATURES.map((valeur) => ({ valeur, libelle: LIBELLES_NATURES[valeur], defaut: defaut(COMPTES_NATURES[valeur]), compte: regle('nature_hors_stock', valeur) })),
     // Un article sans catégorie : le compte des ingrédients.
     sansCategorie: { defaut: defaut(compteParDefaut({})) },

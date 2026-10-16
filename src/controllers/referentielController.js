@@ -1,21 +1,26 @@
 const pool = require('../config/database');
 const ExcelJS = require('exceljs');
 const multer = require('multer');
-const { vocabDefaut } = require('../utils/vocab');
+const { vocabDefaut, rendre } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
+// D3 (16/10/2026) : code unique des articles, préfixe des catégories (src/utils/codesArticles.js = la règle).
+const CS = require('../services/codesArticlesService');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// En-têtes du modèle : la colonne 1 porte le terme du compte, les colonnes 2 à 4 n'en ont pas.
-const enTetes = (voc) => [voc.Nom('article'), 'Unité', 'Catégorie', 'Famille'];
+// En-têtes du modèle : la colonne 1 porte le terme du compte, les colonnes 2 à 5 n'en ont pas.
+// D3 : colonne 5 « Code » (facultative : vide = proposé d'après la catégorie) ; un modèle à 4 colonnes reste lu.
+const enTetesAvant = (voc) => [voc.Nom('article'), 'Unité', 'Catégorie', 'Famille'];
+const enTetes = (voc) => [...enTetesAvant(voc), 'Code'];
 // En-têtes par défaut : un modèle fait avec le vocabulaire LabFlow reste reconnu dans tout domaine.
+const HEADERS_AVANT = enTetesAvant(vocabDefaut);
 const HEADERS = enTetes(vocabDefaut);
 
 // Ligne (1-based), dans les 15 premières, dont les colonnes 2 à 4 sont les en-têtes « Unité / Catégorie /
 // Famille » (sans casse) et la colonne 1 non vide : modèle fait avec un ancien terme du domaine, ou colonne 1
 // renommée à la main. null si aucune.
 const ligneEnTetesLibre = (ws) => {
-  const suite = HEADERS.slice(1).map((h) => h.toLowerCase());
+  const suite = HEADERS_AVANT.slice(1).map((h) => h.toLowerCase());
   const max = Math.min(ws.rowCount, 15);
   for (let r = 1; r <= max; r++) {
     const row = ws.getRow(r);
@@ -35,11 +40,11 @@ const getTemplate = async (req, res) => {
     brandTemplate(wb, ws, {
       titre: `Modèle d'import — ${voc.Court('referentiel')}`,
       sousTitre: `Ajout dynamique ${voc.du('article', true)} : une ligne = ${voc.un('article')}`,
-      meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import.",
+      meta: "Remplissez vos lignes sous les en-têtes — la ligne d'exemple (grisée) sera ignorée à l'import. Code : facultatif, unique dans le compte ; vide, il est proposé d'après la catégorie (VIA-0001, VIA-0002…).",
       headers: enTetes(voc),
-      widths: [28, 16, 22, 22],
+      widths: [28, 16, 22, 22, 14],
       // Le préfixe « Exemple : » reste hors de voc.ex : isExampleRow reconnaît la ligne à son premier mot.
-      exemple: ['Exemple : ' + voc.ex('Poulet rôti', `${voc.Nom('article')} A`), 'kg', voc.ex('Viandes', 'Catégorie A'), voc.ex('Food', 'Famille A')],
+      exemple: ['Exemple : ' + voc.ex('Poulet rôti', `${voc.Nom('article')} A`), 'kg', voc.ex('Viandes', 'Catégorie A'), voc.ex('Food', 'Famille A'), voc.ex('VIA-0001', 'CAT-0001')],
     });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="modele_referentiel.xlsx"');
@@ -60,7 +65,7 @@ const exportReferentiel = async (req, res) => {
     const { brandModeleRempli, jourExport } = require('../services/excelBrandService');
     const voc = req.voc ?? vocabDefaut;
     const r = await pool.query(
-      `SELECT a.nom, u.nom AS unite, c.nom AS categorie, f.nom AS famille
+      `SELECT a.nom, u.nom AS unite, c.nom AS categorie, f.nom AS famille, a.code
        FROM articles a
        LEFT JOIN unites u ON u.id = a.unite_id
        LEFT JOIN categories c ON c.id = a.categorie_id
@@ -77,8 +82,8 @@ const exportReferentiel = async (req, res) => {
       sousTitre: `${r.rows.length} ligne${r.rows.length > 1 ? 's' : ''} : une ligne = ${voc.un('article')}, au format du modèle d'import`,
       meta: `Réimportable par l'Ajout Dynamique (${MAX_ROWS} lignes au plus par fichier) : ce qui manque est créé, ${voc.un('article')} déjà ${voc.acc('article', 'présent', 'présente')} n'est pas ${voc.acc('article', 'modifié', 'modifiée')}.`,
       headers: enTetes(voc),
-      widths: [32, 16, 24, 24],
-      lignes: r.rows.map((x) => [x.nom, x.unite, x.categorie, x.famille]),
+      widths: [32, 16, 24, 24, 14],
+      lignes: r.rows.map((x) => [x.nom, x.unite, x.categorie, x.famille, x.code || '']),
     });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="referentiel_${jour.iso}.xlsx"`);
@@ -144,7 +149,7 @@ const importReferentiel = [
       // En-têtes du domaine, puis ceux par défaut, puis une colonne 1 renommée ; sinon ligne 1 (ancien modèle).
       const { findHeaderRow, isExampleRow } = require('../services/excelBrandService');
       const voc = req.voc ?? vocabDefaut;
-      const headerRowNum = findHeaderRow(ws, enTetes(voc)) ?? findHeaderRow(ws, HEADERS) ?? ligneEnTetesLibre(ws) ?? 1;
+      const headerRowNum = findHeaderRow(ws, enTetes(voc)) ?? findHeaderRow(ws, HEADERS) ?? findHeaderRow(ws, enTetesAvant(voc)) ?? findHeaderRow(ws, HEADERS_AVANT) ?? ligneEnTetesLibre(ws) ?? 1;
       const rows = [];
       ws.eachRow((row, rowNumber) => {
         if (rowNumber <= headerRowNum || isExampleRow(row)) return;
@@ -152,8 +157,9 @@ const importReferentiel = [
         const unite   = String(row.getCell(2).value || '').trim();
         const categorie = String(row.getCell(3).value || '').trim();
         const famille  = String(row.getCell(4).value || '').trim();
+        const code     = String(row.getCell(5).value || '').trim(); // D3 (vide = proposé)
         if (!article) return;
-        rows.push({ rowNumber, article, unite, categorie, famille });
+        rows.push({ rowNumber, article, unite, categorie, famille, code });
       });
 
       if (rows.length === 0) return res.status(400).json({ message: 'Aucune ligne valide trouvée dans le fichier' });
@@ -210,13 +216,15 @@ const importReferentiel = [
 
           let categorieId = null;
           if (r.categorie) {
+            // D3 : une catégorie créée par l'import reçoit son préfixe (une catégorie existante garde le sien).
+            const prefixe = await CS.prefixePourNom(client, clientId, r.categorie);
             const ins = await client.query(
-              `INSERT INTO categories (nom, client_id, famille_id)
-               VALUES ($1, $2, $3)
+              `INSERT INTO categories (nom, client_id, famille_id, prefixe_code)
+               VALUES ($1, $2, $3, $4)
                ON CONFLICT (nom, client_id) WHERE client_id IS NOT NULL
                DO UPDATE SET famille_id = EXCLUDED.famille_id
                RETURNING id, (xmax = 0) as inserted`,
-              [r.categorie, clientId, familleId]
+              [r.categorie, clientId, familleId, prefixe]
             );
             categorieId = ins.rows[0].id;
             if (ins.rows[0].inserted) {
@@ -281,9 +289,20 @@ const importReferentiel = [
               }
             }
           } else {
+            // D3 : code de la colonne 5 (contrôlé, unique) ou proposé ; un code refusé = ligne en erreur, le reste passe.
+            let code;
+            try {
+              code = await CS.codePourFiche(client, clientId, { code: r.code, categorieId, genre: 'article' });
+            } catch (e) {
+              if (!e.status) throw e;
+              rowResult.status = 'error';
+              rowResult.error = rendre(voc, e.message); // au vocabulaire du compte : le détail des lignes n'est pas rendu par l'écran
+              details.push(rowResult);
+              continue;
+            }
             const newArt = await client.query(
-              'INSERT INTO articles (nom, client_id, unite_id, categorie_id, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-              [r.article, clientId, uniteId, categorieId, req.user.id]
+              'INSERT INTO articles (nom, client_id, unite_id, categorie_id, created_by, code) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+              [r.article, clientId, uniteId, categorieId, req.user.id, code]
             );
             const newArticleId = newArt.rows[0].id;
             stats.articles++;

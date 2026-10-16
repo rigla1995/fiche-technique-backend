@@ -462,7 +462,7 @@ const getActiviteIngredients = async (req, res) => {
     if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const result = await pool.query(
-          `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+          `SELECT a.id, a.nom, a.code, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
                   a.categorie_id,
                   f.id as famille_id, f.nom as famille_nom,
                   ais.prix_unitaire,
@@ -484,6 +484,7 @@ const getActiviteIngredients = async (req, res) => {
       unite: r.unite,
       categorie: r.categorie,
       categorieId: r.categorie_id ?? null,
+      code: r.code ?? null,
       familleId: r.famille_id ?? null,
       familleNom: r.famille_nom ?? null,
       prixUnitaire: r.prix_unitaire ? parseFloat(r.prix_unitaire) : null,
@@ -692,7 +693,7 @@ const getActiviteSelectedIngredients = async (req, res) => {
     if (check.rows.length === 0) return res.status(404).json({ message: '[[Nom:activite]] introuvable' });
 
     const result = await pool.query(
-      `SELECT a.id, a.nom, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
+      `SELECT a.id, a.nom, a.code, u.nom as unite, COALESCE(c.nom, 'Sans catégorie') as categorie,
               a.categorie_id as "categorieId"
        FROM activite_ingredient_selections ais
        JOIN articles a ON a.id = ais.ingredient_id
@@ -755,7 +756,7 @@ const getActivitesArticlesConsommables = async (req, res) => {
     if (ownedIds.length === 0) return res.json([]);
 
     const result = await pool.query(
-      `SELECT a.id, a.nom, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie,
+      `SELECT a.id, a.nom, a.code, u.nom AS unite, COALESCE(c.nom, 'Sans catégorie') AS categorie,
               a.categorie_id, f.id AS famille_id, f.nom AS famille_nom,
               MIN(ais.prix_unitaire) AS prix_unitaire
        FROM articles a
@@ -765,7 +766,7 @@ const getActivitesArticlesConsommables = async (req, res) => {
        JOIN activite_ingredient_selections ais ON ais.ingredient_id = a.id AND ais.activite_id = ANY($2::int[])
        WHERE a.client_id = $1
          AND (f.id IS NULL OR f.consommable = true)
-       GROUP BY a.id, a.nom, u.nom, c.nom, a.categorie_id, f.id, f.nom
+       GROUP BY a.id, a.nom, a.code, u.nom, c.nom, a.categorie_id, f.id, f.nom
        HAVING COUNT(DISTINCT ais.activite_id) = $3
        ORDER BY f.nom NULLS LAST, c.nom NULLS LAST, a.nom`,
       [clientId, ownedIds, ownedIds.length]
@@ -777,6 +778,7 @@ const getActivitesArticlesConsommables = async (req, res) => {
       unite: r.unite,
       categorie: r.categorie,
       categorieId: r.categorie_id ?? null,
+      code: r.code ?? null,
       familleId: r.famille_id ?? null,
       familleNom: r.famille_nom ?? null,
       prixUnitaire: r.prix_unitaire != null ? parseFloat(r.prix_unitaire) : null,
