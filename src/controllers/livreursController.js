@@ -206,6 +206,11 @@ const remove = async (req, res) => {
   try {
     const actuel = await lireLivreur(pool, req.params.id, clientId);
     if (!actuel) return res.status(404).json(INTROUVABLE);
+    // L2 : un livreur déjà confié à des commandes garde sa trace — on le désactive, on ne le supprime pas.
+    const aff = await pool.query('SELECT COUNT(*)::int AS n FROM commandes_acheteur WHERE livreur_id = $1', [actuel.id]);
+    if (aff.rows[0].n > 0) {
+      return res.status(409).json({ code: 'LIVREUR_AFFECTE', message: `${actuel.nom} a ${aff.rows[0].n} livraison${aff.rows[0].n > 1 ? 's' : ''} à son nom : désactivez-le plutôt que de le supprimer` });
+    }
     await pool.query('DELETE FROM utilisateurs WHERE id = $1 AND role = $2', [actuel.user_id, 'livreur']);
     invalidateAuthCache(actuel.user_id);
     res.status(204).send();
@@ -287,4 +292,71 @@ const moi = async (req, res) => {
   }
 };
 
-module.exports = { list, create, update, remove, inviter, motDePasse, moi, mapLivreur };
+// ── Espace livreur (L2) : ses livraisons ──────────────────────────────────────────────────────────────────────────
+// Les commandes EXPÉDIÉES qui lui sont confiées (à livrer), puis ses dernières commandes LIVRÉES (mémoire). Lecture
+// seule à cette étape : les boutons Livrée / Non livrée arrivent avec L3. Pas de prix par ligne : le total TTC de la
+// facture suffit au terrain.
+const SELECT_LIVRAISON = `
+  SELECT ca.id, ca.statut, ca.date_commande, ca.date_expedition, ca.date_livraison, ca.notes, ca.livraison_affectee_at,
+         COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom,
+         CASE WHEN ach.id IS NULL THEN ca.acheteur_entreprise ELSE ach.entreprise END AS acheteur_entreprise,
+         ach.telephone AS acheteur_telephone, ach.adresse AS acheteur_adresse,
+         l.nom AS labo_nom, l.adresse AS labo_adresse,
+         fa.numero AS facture_numero, fa.montant_ttc,
+         (SELECT COUNT(*)::int FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS nb_lignes
+    FROM commandes_acheteur ca
+    LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
+    LEFT JOIN labos l ON l.id = ca.labo_id
+    LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id`;
+const isoDate = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
+const mapLivraison = (c) => ({
+  id: c.id,
+  statut: c.statut,
+  dateCommande: isoDate(c.date_commande),
+  dateExpedition: isoDate(c.date_expedition),
+  dateLivraison: isoDate(c.date_livraison),
+  affecteeLe: c.livraison_affectee_at,
+  acheteurNom: c.acheteur_nom,
+  acheteurEntreprise: c.acheteur_entreprise || null,
+  acheteurTelephone: c.acheteur_telephone || null,
+  acheteurAdresse: c.acheteur_adresse || null,
+  depart: c.labo_nom || null,
+  departAdresse: c.labo_adresse || null,
+  nbLignes: c.nb_lignes,
+  factureNumero: c.facture_numero || null,
+  montantTtc: c.montant_ttc != null ? Number(c.montant_ttc) : null,
+  notes: c.notes || null,
+});
+
+// GET /api/livreur/commandes
+const mesCommandes = async (req, res) => {
+  try {
+    const r = await pool.query(
+      `${SELECT_LIVRAISON}
+        WHERE ca.livreur_id = $1 AND ca.statut IN ('expediee', 'livree')
+        ORDER BY (ca.statut = 'expediee') DESC, ca.date_expedition DESC, ca.created_at DESC
+        LIMIT 100`,
+      [req.user.livreurId]
+    );
+    res.json(r.rows.map(mapLivraison));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+// GET /api/livreur/commandes/:id — détail avec les lignes (désignation, quantité)
+const maCommande = async (req, res) => {
+  try {
+    if (!/^[0-9a-f-]{36}$/i.test(String(req.params.id))) return res.status(404).json({ message: 'Commande introuvable' });
+    const r = await pool.query(`${SELECT_LIVRAISON} WHERE ca.id = $1 AND ca.livreur_id = $2`, [req.params.id, req.user.livreurId]);
+    if (!r.rows.length) return res.status(404).json({ message: 'Commande introuvable' });
+    const lignes = await pool.query('SELECT designation, quantite FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id', [req.params.id]);
+    res.json({ ...mapLivraison(r.rows[0]), lignes: lignes.rows.map((l) => ({ designation: l.designation, quantite: Number(l.quantite) })) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+module.exports = { list, create, update, remove, inviter, motDePasse, moi, mesCommandes, maCommande, mapLivreur };

@@ -400,6 +400,18 @@
           "md5": "7d0f732e18f633ad40f2974f370e2499"
         }
       ]
+    },
+    {
+      "numero": 252,
+      "nom": "252_manuel_livreurs_affectation.sql",
+      "objet": "Module Livreurs (L2) : affectation d’un livreur à l’expédition d’une commande (champ Livreur à « Expédier », action 🏍️ Livreur, colonne et filtre Livreur, « en cours de livraison » sur le portail).",
+      "manuel": [
+        {
+          "slug": "acheteurs-ventes",
+          "md5Avant": "dbb0a08b141a4f894d2600ec685923b2",
+          "md5": "33caae4f08929559d2e45cd87101f648"
+        }
+      ]
     }
   ]
 }

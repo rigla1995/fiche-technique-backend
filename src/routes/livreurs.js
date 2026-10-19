@@ -38,5 +38,8 @@ gestion.post('/:id/mot-de-passe', livreurs.motDePasse);
 const espace = express.Router();
 espace.use(authenticate, requireLivreur);
 espace.get('/moi', livreurs.moi);
+// L2 : ses livraisons (commandes expédiées qui lui sont confiées, puis ses dernières livrées) — lecture seule
+espace.get('/commandes', livreurs.mesCommandes);
+espace.get('/commandes/:id', livreurs.maCommande);
 
 module.exports = { gestion, espace };

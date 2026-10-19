@@ -426,6 +426,10 @@ const createVente = async (req, res) => {
 
     const { brutHt, brutTtc, montantHt, montantTva, montantTtc } = computeTotauxFacture(lignes, remisePct, timbreFiscal, montantTimbre);
 
+    // Module Livreurs (L2) : livreur facultatif, seulement sur une vente EXPÉDIÉE (une vente livrée d'emblée n'a rien à livrer)
+    const { livreur, refus: refusLivreur } = await resoudreLivreur(pool, clientId, statut === 'expediee' ? req.body.livreurId : null);
+    if (refusLivreur) return res.status(refusLivreur.status).json(refusLivreur.body);
+
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
@@ -447,10 +451,12 @@ const createVente = async (req, res) => {
       }
       const cmd = await db.query(
         `INSERT INTO commandes_acheteur
-           (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, labo_id, statut, source, remise_pct, date_commande, date_expedition, date_livraison, notes, traite_le, traite_par, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, 'client', $7, $8, $9, $10, $11, NOW(), $12, $12)
+           (client_id, acheteur_id, acheteur_nom, acheteur_entreprise, labo_id, statut, source, remise_pct, date_commande, date_expedition, date_livraison, notes, traite_le, traite_par, created_by,
+            livreur_id, livraison_affectee_at, livraison_affectee_par)
+         VALUES ($1, $2, $3, $4, $5, $6, 'client', $7, $8, $9, $10, $11, NOW(), $12, $12,
+                 $13, CASE WHEN $13::int IS NULL THEN NULL ELSE NOW() END, CASE WHEN $13::int IS NULL THEN NULL ELSE $12::int END)
          RETURNING *`,
-        [clientId, acheteurId, ach.rows[0].nom, ach.rows[0].entreprise, laboId, statut, remisePct, dateCommande, dateExpedition, dateLivraison, notes || null, req.user.id]
+        [clientId, acheteurId, ach.rows[0].nom, ach.rows[0].entreprise, laboId, statut, remisePct, dateCommande, dateExpedition, dateLivraison, notes || null, req.user.id, livreur ? livreur.id : null]
       );
       const commande = cmd.rows[0];
       // Historique : le stock sort à l'expédition ; la livraison directe trace les deux jalons
@@ -480,7 +486,7 @@ const createVente = async (req, res) => {
       await figerVendeurFacture(db, fact.rows[0].id);
       await db.query('COMMIT');
       res.status(201).json({
-        commande: { id: commande.id, statut, dateCommande, dateExpedition, dateLivraison, remisePct, acheteurNom: ach.rows[0].nom, laboNom: labo.rows[0].nom },
+        commande: { id: commande.id, statut, dateCommande, dateExpedition, dateLivraison, remisePct, acheteurNom: ach.rows[0].nom, laboNom: labo.rows[0].nom, livreurId: livreur ? livreur.id : null, livreurNom: livreur ? livreur.nom : null },
         facture: {
           id: fact.rows[0].id, numero, montantHt, montantTva, montantTimbre, montantTtc, brutHt, brutTtc,
         },
@@ -528,6 +534,13 @@ const listCommandes = async (req, res) => {
     }
     const limit = Math.min(parseInt(req.query.limit, 10) || 200, 500);
 
+    // Module Livreurs (L2) : filtre par livreur affecté ('sans' = commandes sans livreur).
+    if (req.query.livreurId === 'sans') {
+      conds.push('ca.livreur_id IS NULL');
+    } else if (req.query.livreurId && /^\d{1,9}$/.test(String(req.query.livreurId))) {
+      params.push(Number(req.query.livreurId));
+      conds.push(`ca.livreur_id = $${params.length}`);
+    }
     const r = await pool.query(
       `SELECT ca.*, COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom,
               CASE WHEN ach.id IS NULL THEN ca.acheteur_entreprise ELSE ach.entreprise END AS acheteur_entreprise,
@@ -535,12 +548,13 @@ const listCommandes = async (req, res) => {
               fa.id AS facture_id, fa.numero AS facture_numero, fa.montant_ttc AS facture_ttc,
               (SELECT COUNT(*)::int FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS nb_lignes,
               (SELECT COALESCE(SUM(cal.prix_ttc * cal.quantite), 0) FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS total_brut,
-              ub.nom AS created_by_nom
+              ub.nom AS created_by_nom, lv.nom AS livreur_nom
        FROM commandes_acheteur ca
        LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
        LEFT JOIN labos l ON l.id = ca.labo_id
        LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
        LEFT JOIN utilisateurs ub ON ub.id = ca.created_by
+       LEFT JOIN livreurs lv ON lv.id = ca.livreur_id
        WHERE ${conds.join(' AND ')}
        ORDER BY ca.date_commande DESC, ca.created_at DESC
        LIMIT ${limit}`,
@@ -569,11 +583,24 @@ const listCommandes = async (req, res) => {
       factureTtc: num(c.facture_ttc),
       createdByNom: c.created_by_nom,
       createdAt: c.created_at,
+      livreurId: c.livreur_id ?? null,
+      livreurNom: c.livreur_nom ?? null,
     })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
+};
+
+// Module Livreurs (L2) : livreur du compte désigné pour une commande — null si absent, { refus } si inconnu / désactivé.
+// `livreurId` : undefined ou null = pas de livreur ; sinon un entier.
+const resoudreLivreur = async (db, clientId, livreurId) => {
+  if (livreurId == null || livreurId === '') return { livreur: null };
+  if (!/^\d{1,9}$/.test(String(livreurId))) return { refus: { status: 400, body: { code: 'LIVREUR_INVALIDE', message: 'Livreur invalide' } } };
+  const r = await db.query('SELECT id, nom, actif FROM livreurs WHERE id = $1 AND client_id = $2', [Number(livreurId), clientId]);
+  if (!r.rows.length) return { refus: { status: 404, body: { code: 'LIVREUR_INTROUVABLE', message: 'Livreur introuvable sur ce compte' } } };
+  if (r.rows[0].actif === false) return { refus: { status: 409, body: { code: 'LIVREUR_INACTIF', message: `Le livreur ${r.rows[0].nom} est désactivé : réactivez-le ou choisissez-en un autre` } } };
+  return { livreur: r.rows[0] };
 };
 
 // GET /api/acheteurs/commandes/:id — détail + lignes
@@ -584,11 +611,14 @@ const getCommande = async (req, res) => {
       `SELECT ca.*, COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom,
               (ach.id IS NULL) AS acheteur_supprime, l.nom AS labo_nom,
               fa.id AS facture_id, fa.numero AS facture_numero, fa.montant_ht, fa.montant_tva,
-              fa.timbre_fiscal, fa.montant_timbre, fa.montant_ttc, fa.montant_brut_ttc
+              fa.timbre_fiscal, fa.montant_timbre, fa.montant_ttc, fa.montant_brut_ttc,
+              lv.nom AS livreur_nom, ua.nom AS livraison_affectee_par_nom
        FROM commandes_acheteur ca
        LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
        LEFT JOIN labos l ON l.id = ca.labo_id
        LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
+       LEFT JOIN livreurs lv ON lv.id = ca.livreur_id
+       LEFT JOIN utilisateurs ua ON ua.id = ca.livraison_affectee_par
        WHERE ca.id = $1 AND ca.client_id = $2`,
       [req.params.id, clientId]
     );
@@ -624,6 +654,11 @@ const getCommande = async (req, res) => {
       remisePct: num(row.remise_pct) ?? 0,
       notes: row.notes,
       motifAnnulation: row.motif_annulation,
+      // Module Livreurs (L2)
+      livreurId: row.livreur_id ?? null,
+      livreurNom: row.livreur_nom ?? null,
+      livraisonAffecteeAt: row.livraison_affectee_at ?? null,
+      livraisonAffecteeParNom: row.livraison_affectee_par_nom ?? null,
       historique: histo.rows.map((h) => ({
         statut: h.statut, dateEffet: isoDate(h.date_effet), motif: h.motif,
         parNom: h.created_by_nom, le: h.created_at,
@@ -694,6 +729,11 @@ const expedierCommande = async (req, res) => {
     }
     qteMap.set(ligneId, round3(quantite));
   }
+
+  // Module Livreurs (L2) : livreur confié à l'expédition (facultatif ; sans objet si la commande est livrée directement).
+  const livreurIn = statutFinal === 'expediee' ? req.body.livreurId : null;
+  const { livreur, refus: refusLivreur } = await resoudreLivreur(pool, clientId, livreurIn);
+  if (refusLivreur) return res.status(refusLivreur.status).json(refusLivreur.body);
 
   const db = await pool.connect();
   try {
@@ -820,9 +860,11 @@ const expedierCommande = async (req, res) => {
     await figerVendeurFacture(db, fact.rows[0].id);
     await db.query(
       `UPDATE commandes_acheteur
-       SET statut = $1, labo_id = $2, remise_pct = $3, date_expedition = $4, date_livraison = $5, traite_le = NOW(), traite_par = $6
+       SET statut = $1, labo_id = $2, remise_pct = $3, date_expedition = $4, date_livraison = $5, traite_le = NOW(), traite_par = $6,
+           livreur_id = $8, livraison_affectee_at = CASE WHEN $8::int IS NULL THEN NULL ELSE NOW() END,
+           livraison_affectee_par = CASE WHEN $8::int IS NULL THEN NULL ELSE $6::int END
        WHERE id = $7`,
-      [statutFinal, laboId, remisePct, dateExpedition, dateLivraison, req.user.id, cmd.id]
+      [statutFinal, laboId, remisePct, dateExpedition, dateLivraison, req.user.id, cmd.id, livreur ? livreur.id : null]
     );
     await logStatut(db, cmd.id, 'expediee', dateExpedition, null, req.user.id);
     if (statutFinal === 'livree') await logStatut(db, cmd.id, 'livree', dateLivraison, null, req.user.id);
@@ -832,7 +874,7 @@ const expedierCommande = async (req, res) => {
     // 2026-07-20) : il suit sa commande dans « Mes commandes » sur le portail.
 
     res.json({
-      commande: { id: cmd.id, statut: statutFinal, dateExpedition, dateLivraison, laboNom: labo.rows[0].nom },
+      commande: { id: cmd.id, statut: statutFinal, dateExpedition, dateLivraison, laboNom: labo.rows[0].nom, livreurId: livreur ? livreur.id : null, livreurNom: livreur ? livreur.nom : null },
       facture: { id: fact.rows[0].id, numero, ...totaux },
     });
   } catch (err) {
@@ -882,6 +924,42 @@ const livrerCommande = async (req, res) => {
     await logStatut(db, cmd.id, 'livree', dateLivraison, null, req.user.id);
     await db.query('COMMIT');
     res.json({ commande: { id: cmd.id, statut: 'livree', dateLivraison } });
+  } catch (err) {
+    await db.query('ROLLBACK').catch(() => {});
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  } finally {
+    db.release();
+  }
+};
+
+// POST /api/acheteurs/commandes/:id/livreur — Module Livreurs (L2) : confier une commande EXPÉDIÉE à un livreur du
+// compte, en changer, ou la lui retirer ({ livreurId: null }). Sans effet sur le stock ni la facture. Même périmètre
+// labo que la livraison (gérant). La trace tient dans livraison_affectee_at / livraison_affectee_par.
+const affecterLivreur = async (req, res) => {
+  const clientId = clientIdOf(req);
+  const db = await pool.connect();
+  try {
+    const { livreur, refus } = await resoudreLivreur(pool, clientId, req.body?.livreurId);
+    if (refus) return res.status(refus.status).json(refus.body);
+    await db.query('BEGIN');
+    const c = await db.query(`SELECT ca.* FROM commandes_acheteur ca WHERE ca.id = $1 AND ca.client_id = $2 FOR UPDATE`, [req.params.id, clientId]);
+    if (c.rows.length === 0) { await db.query('ROLLBACK'); return res.status(404).json({ message: 'Commande introuvable' }); }
+    const cmd = c.rows[0];
+    if (cmd.statut !== 'expediee') {
+      await db.query('ROLLBACK');
+      return res.status(409).json({ code: 'STATUT_INCOMPATIBLE', message: `Seule une commande expédiée se confie à un livreur (statut : ${cmd.statut})` });
+    }
+    if (!gerantAllowsLabo(req, cmd.labo_id)) { await db.query('ROLLBACK'); return res.status(403).json({ message: '[[Nom:labo]] hors de votre périmètre' }); }
+    await db.query(
+      `UPDATE commandes_acheteur
+          SET livreur_id = $1, livraison_affectee_at = CASE WHEN $1::int IS NULL THEN NULL ELSE NOW() END,
+              livraison_affectee_par = CASE WHEN $1::int IS NULL THEN NULL ELSE $2::int END
+        WHERE id = $3`,
+      [livreur ? livreur.id : null, req.user.id, cmd.id]
+    );
+    await db.query('COMMIT');
+    res.json({ commande: { id: cmd.id, statut: cmd.statut, livreurId: livreur ? livreur.id : null, livreurNom: livreur ? livreur.nom : null } });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
     console.error(err);
@@ -992,5 +1070,5 @@ const downloadFacturePdf = async (req, res) => {
 
 module.exports = {
   listOffres, upsertOffre, getOffreHistorique,
-  createVente, listCommandes, getCommande, expedierCommande, livrerCommande, annulerCommande, downloadFacturePdf,
+  createVente, listCommandes, getCommande, expedierCommande, affecterLivreur, livrerCommande, annulerCommande, downloadFacturePdf,
 };

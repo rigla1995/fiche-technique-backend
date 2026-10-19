@@ -32,7 +32,8 @@ Aucune facture n'est émise à une fiche **« à préciser »** ni à un profess
 
 Quand [[un:acheteur]] commande en ligne, vous recevez une **notification 🤝** et la commande apparaît **En attente** (badge 🌐 portail). Vos actions :
 
-- **🚚 Expédier** — choisissez [[le:labo]] source, **ajustez les quantités** — voire **retirez des lignes** (quantité servie nulle) — si nécessaire, fixez la remise éventuelle et la date d'expédition ; [[le:stock]] est [[acc:stock:contrôlé:contrôlée]] puis [[acc:stock:déduit:déduite]] et la facture est générée ; [[le:acheteur]] suit sa commande et récupère sa facture dans « Mes commandes » sur son portail.
+- **🚚 Expédier** — choisissez [[le:labo]] source, **ajustez les quantités** — voire **retirez des lignes** (quantité servie nulle) — si nécessaire, fixez la remise éventuelle et la date d'expédition ; [[le:stock]] est [[acc:stock:contrôlé:contrôlée]] puis [[acc:stock:déduit:déduite]] et la facture est générée ; [[le:acheteur]] suit sa commande et récupère sa facture dans « Mes commandes » sur son portail. Si vous avez des **livreurs** ([[Nom:espace_acheteurs]] → Livreurs), confiez-lui la commande dans le champ **Livreur** : elle apparaît aussitôt dans son espace sur son téléphone, et [[le:acheteur]] voit « en cours de livraison ».
+- **🏍️ Livreur** — sur une commande expédiée : confiez-la à un livreur, changez de livreur ou retirez-le. La colonne et le filtre **Livreur** de la liste montrent qui livre quoi ; le détail indique qui a fait l'affectation et quand.
 - **✅ Livrer** — sur une commande expédiée : enregistrez la date de livraison.
 - **↩️ Refuser / Annuler** — avec un motif ; le motif s'affiche [[au:acheteur]] dans « Mes commandes » sur son portail (commandes portail).
 
