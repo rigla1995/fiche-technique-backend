@@ -93,7 +93,8 @@ const vocabPourUtilisateur = async (userId) => {
     // compte_id : client vendeur pour un acheteur (acheteurs.user_id), l'utilisateur sinon ;
     // getDomaineIdForClient ramène un gérant à son compte parent.
     const u = (await pool.query(
-      `SELECT u.role, COALESCE((SELECT a.client_id FROM acheteurs a WHERE a.user_id = u.id LIMIT 1), u.id) AS compte_id
+      `SELECT u.role, COALESCE((SELECT a.client_id FROM acheteurs a WHERE a.user_id = u.id LIMIT 1),
+                               (SELECT l.client_id FROM livreurs l WHERE l.user_id = u.id LIMIT 1), u.id) AS compte_id
          FROM utilisateurs u WHERE u.id = $1`,
       [userId]
     )).rows[0];

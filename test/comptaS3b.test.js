@@ -153,7 +153,7 @@ test('saisie d\'un comptable : nom, adresse (minuscules) et niveau contrôlés, 
   }
   assert.deepEqual(comptables.lireSaisie({ niveau: 'consultation' }, true), { niveau: 'consultation' }, 'modification partielle');
   assert.deepEqual(comptables.NIVEAUX, ['consultation', 'saisie', 'complet']);
-  assert.deepEqual(comptables.ROLES_REFUSES, ['super_admin', 'boss', 'acheteur']);
+  assert.deepEqual(comptables.ROLES_REFUSES, ['super_admin', 'boss', 'acheteur', 'livreur']); // + livreur (module Livreurs, L1)
   const res = reponse();
   await comptables.ajouter({ user: { id: 1, role: 'client' }, body: { nom: 'A', email: 'faux' } }, res);
   assert.equal(res.statut, 400);

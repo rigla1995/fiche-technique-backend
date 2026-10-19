@@ -6,6 +6,7 @@ const { sendInviteEmail, sendWelcomeEmail, generateInviteToken, sendPasswordRese
 const { encryptPassword } = require('../services/passwordCryptoService');
 const { invalidateAuthCache } = require('../middleware/auth');
 const { vocabDefaut, vocabDuProfil, vocabPourUtilisateur } = require('../utils/vocabCompte');
+const { normaliserTelephone, telephoneAffiche, estEmailTechnique } = require('../utils/livreurs');
 
 // Mot de passe robuste : ≥8 car., 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial.
 const isStrongPassword = (v) =>
@@ -48,13 +49,17 @@ const lexiquePourCompte = (profil) => {
 // Jamais bloquant : toute erreur ⇒ null + warn.
 const loadDomaineForUser = async (utilisateur, tag, acheteurClientId = null) => {
   const role = utilisateur.role;
-  if (role !== 'client' && role !== 'gerant' && role !== 'acheteur') return null;
+  if (role !== 'client' && role !== 'gerant' && role !== 'acheteur' && role !== 'livreur') return null;
   try {
     const { getProfilForClient, prestatairesActifsPourClient } = require('../services/domaineProfilService');
-    if (role === 'acheteur') {
+    // Livreur (module Livreurs, L1) : même réduction qu'un acheteur, domaine du client qu'il sert.
+    if (role === 'acheteur' || role === 'livreur') {
       let vendeurId = acheteurClientId;
       if (vendeurId == null) {
-        const r = await pool.query('SELECT client_id FROM acheteurs WHERE user_id = $1 LIMIT 1', [utilisateur.id]);
+        const r = await pool.query(
+          role === 'acheteur' ? 'SELECT client_id FROM acheteurs WHERE user_id = $1 LIMIT 1' : 'SELECT client_id FROM livreurs WHERE user_id = $1 LIMIT 1',
+          [utilisateur.id]
+        );
         vendeurId = r.rows[0]?.client_id ?? null;
       }
       if (vendeurId == null) return null;
@@ -81,8 +86,11 @@ const repondreSession = async (res, utilisateur, session = null) => {
   // LabFlow Compta (S3b, réponse du client du 06/10) : une personne « comptable » dont le cabinet est bloqué se connecte
   // encore ; seul son cabinet est bloqué (garde par comptabilité, src/compta/garde.js), les comptabilités que des
   // clients lui ont confiées suivent l'abonnement de chaque client.
+  // Module Livreurs (L1) : fiche du livreur (compte servi, téléphone, entreprise) — le blocage du compte client s'applique.
+  const livreur = utilisateur.role === 'livreur' ? await ficheLivreur(utilisateur.id) : null;
   if (utilisateur.role !== 'super_admin' && utilisateur.role !== 'boss' && utilisateur.role !== 'comptable') {
-    const aboClientId = utilisateur.role === 'gerant' ? utilisateur.gerant_parent_id : utilisateur.id;
+    const aboClientId = utilisateur.role === 'gerant' ? utilisateur.gerant_parent_id
+      : utilisateur.role === 'livreur' ? (livreur?.client_id ?? null) : utilisateur.id;
     if (aboClientId) {
       const aboCheck = await pool.query(
         'SELECT mode_compte FROM abonnements WHERE client_id = $1',
@@ -152,21 +160,53 @@ const repondreSession = async (res, utilisateur, session = null) => {
   }
 
   // Profil du domaine dès le LOGIN (comme /auth/me).
-  const domaine = await loadDomaineForUser(utilisateur, 'auth/login');
+  const domaine = await loadDomaineForUser(utilisateur, 'auth/login', livreur?.client_id ?? null);
 
   res.json({
     token,
     user: {
       id: utilisateur.id,
       name: utilisateur.nom,
-      email: utilisateur.email,
+      // Livreur sans e-mail : l'adresse technique de connexion n'est jamais montrée.
+      email: estEmailTechnique(utilisateur.email) ? null : utilisateur.email,
       role: utilisateur.role,
       onboardingStep,
       ...gerantFields,
       ...clientCounts,
+      ...(livreur ? champsLivreur(livreur, utilisateur) : {}),
       domaine,
     },
   });
+};
+
+// Fiche du livreur connecté (module Livreurs, L1) : compte servi, téléphone, entreprise, mot de passe initial à changer.
+const ficheLivreur = async (userId) => {
+  const r = await pool.query(
+    `SELECT l.id, l.client_id, l.telephone_norm, l.email, pe.nom AS entreprise
+       FROM livreurs l LEFT JOIN profil_entreprise pe ON pe.client_id = l.client_id
+      WHERE l.user_id = $1`,
+    [userId]
+  );
+  return r.rows[0] || null;
+};
+const champsLivreur = (l, utilisateur) => ({
+  activitesCount: 0,
+  labosCount: 0,
+  entrepriseName: l.entreprise || null,
+  doitChangerMdp: utilisateur.doit_changer_mdp === true,
+  livreur: { id: l.id, telephone: telephoneAffiche(l.telephone_norm), entreprise: l.entreprise || null },
+});
+
+// Connexion d'un livreur par son numéro de téléphone (module Livreurs, L1) : les 8 chiffres identifient la fiche.
+const utilisateurParTelephone = async (brut) => {
+  const tel = normaliserTelephone(brut);
+  if (!tel) return null;
+  const r = await pool.query(
+    `SELECT u.* FROM utilisateurs u JOIN livreurs l ON l.user_id = u.id
+      WHERE l.telephone_norm = $1 AND u.actif = true LIMIT 1`,
+    [tel]
+  );
+  return r.rows[0] || null;
 };
 
 const login = async (req, res) => {
@@ -181,16 +221,18 @@ const login = async (req, res) => {
   try {
     // LabFlow Compta, S2b (SPEC-SOCLE D1) : adresse comparée sans la casse ; une adresse identique à la casse près
     // passe en premier (bases qui auraient deux comptes ne différant que par la casse).
-    const result = await pool.query(
-      'SELECT * FROM utilisateurs WHERE LOWER(email) = LOWER($1) AND actif = true ORDER BY (email = $1) DESC, id LIMIT 1',
-      [email]
-    );
+    // Module Livreurs (L1) : un identifiant sans « @ » est un numéro de téléphone de livreur.
+    const parTelephone = !String(email).includes('@');
+    const utilisateur = parTelephone
+      ? await utilisateurParTelephone(email)
+      : (await pool.query(
+        'SELECT * FROM utilisateurs WHERE LOWER(email) = LOWER($1) AND actif = true ORDER BY (email = $1) DESC, id LIMIT 1',
+        [email]
+      )).rows[0];
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+    if (!utilisateur) {
+      return res.status(401).json({ message: parTelephone ? 'Téléphone ou mot de passe incorrect' : 'Email ou mot de passe incorrect' });
     }
-
-    const utilisateur = result.rows[0];
 
     // super_admin and pre-invite accounts (have a password but no activated_at) bypass the invite check
     const needsActivation = !utilisateur.activated_at && utilisateur.role !== 'super_admin' && utilisateur.role !== 'boss' && !utilisateur.mot_de_passe;
@@ -201,7 +243,7 @@ const login = async (req, res) => {
     const isValid = await bcrypt.compare(password, utilisateur.mot_de_passe);
 
     if (!isValid) {
-      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+      return res.status(401).json({ message: parTelephone ? 'Téléphone ou mot de passe incorrect' : 'Email ou mot de passe incorrect' });
     }
 
     // await : une erreur de l'ouverture de session arrive dans le catch (réponse 500, jamais une requête sans réponse).
@@ -253,6 +295,19 @@ const me = async (req, res) => {
       [req.user.id]
     );
     const u = result.rows[0];
+    // Module Livreurs (L1) : profil réduit — fiche, entreprise servie, mode du compte client, domaine du client.
+    if (u.role === 'livreur') {
+      const l = await ficheLivreur(u.id);
+      const abo = l ? await pool.query('SELECT mode_compte, prolongation_jours FROM abonnements WHERE client_id = $1', [l.client_id]) : { rows: [] };
+      const domaine = await loadDomaineForUser(u, 'auth/me', l?.client_id ?? null);
+      return res.json({
+        id: u.id, name: u.nom, email: estEmailTechnique(u.email) ? null : u.email, phone: u.telephone,
+        role: u.role, onboardingStep: 0,
+        modeCompte: abo.rows[0]?.mode_compte || 'actif', prolongationJours: abo.rows[0]?.prolongation_jours || 0,
+        ...(l ? champsLivreur(l, { doit_changer_mdp: req.user.doit_changer_mdp }) : { activitesCount: 0, labosCount: 0, entrepriseName: null, doitChangerMdp: false, livreur: null }),
+        domaine,
+      });
+    }
     const isGerant = u.role === 'gerant';
     // Gérants bypass onboarding entirely — use parent's step if needed but never block them
     let step = isGerant ? 0 : (u.onboarding_step ?? 0);
@@ -390,7 +445,8 @@ const updateProfile = async (req, res) => {
   }
 
   const nom = req.body.name || req.body.nom;
-  const { email } = req.body;
+  // Module Livreurs (L1) : un livreur ne change pas son identifiant de connexion ici (adresse technique possible).
+  const email = req.user.role === 'livreur' ? undefined : req.body.email;
   const telephone = req.body.telephone || req.body.phone;
   const newPassword = req.body.password || req.body.mot_de_passe;
   const currentPassword = req.body.currentPassword || req.body.mot_de_passe_actuel;
@@ -439,9 +495,19 @@ const updateProfile = async (req, res) => {
       [nom || null, email || null, telephone || null, hashToSave, req.user.id, encToSave]
     );
     if (newPassword) invalidateAuthCache(req.user.id); // révocation immédiate des anciens JWT
+    // Module Livreurs (L1) : le mot de passe initial remis par le client est remplacé → l'exigence tombe.
+    if (newPassword && user.role === 'livreur' && user.doit_changer_mdp) {
+      await pool.query('UPDATE utilisateurs SET doit_changer_mdp = false WHERE id = $1', [req.user.id]);
+    }
 
     const u = result.rows[0];
-    res.json({ id: u.id, name: u.nom, email: u.email, phone: u.telephone, role: u.role });
+    // Mot de passe changé : les jetons antérieurs sont révoqués (password_changed_at) — un jeton neuf est renvoyé pour que
+    // la session en cours continue sans reconnexion (module Livreurs, L1 : le livreur remplace son mot de passe initial
+    // avant tout accès à son espace ; sans ce jeton, sa toute première navigation retombait sur la page de connexion).
+    const token = newPassword
+      ? jwt.sign({ userId: u.id, role: u.role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' })
+      : undefined;
+    res.json({ id: u.id, name: u.nom, email: estEmailTechnique(u.email) ? null : u.email, phone: u.telephone, role: u.role, doitChangerMdp: false, ...(token ? { token } : {}) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

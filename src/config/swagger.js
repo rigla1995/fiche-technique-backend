@@ -35,7 +35,7 @@ const options = {
             id: { type: 'integer' },
             name: { type: 'string' },
             email: { type: 'string', format: 'email' },
-            role: { type: 'string', enum: ['super_admin', 'client', 'gerant'] },
+            role: { type: 'string', enum: ['super_admin', 'boss', 'client', 'gerant', 'acheteur', 'comptable', 'livreur'] },
             onboardingStep: { type: 'integer', description: '0=terminé, 1=chgt mdp, 2=créer activités, 3=sélectionner ingrédients' },
             entrepriseName: { type: 'string', nullable: true },
             modeCompte: { type: 'string', enum: ['actif', 'read_only', 'desactive', 'archive', 'bloque'] },
