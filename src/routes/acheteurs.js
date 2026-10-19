@@ -3,7 +3,7 @@ const router = express.Router();
 const { list, create, update, remove, inviter, getTemplate, importAcheteurs } = require('../controllers/acheteursController');
 const {
   listOffres, upsertOffre, getOffreHistorique,
-  createVente, listCommandes, getCommande, expedierCommande, livrerCommande, annulerCommande, downloadFacturePdf,
+  createVente, listCommandes, getCommande, expedierCommande, affecterLivreur, livrerCommande, annulerCommande, downloadFacturePdf,
 } = require('../controllers/acheteurVentesController');
 const { authenticate, requireEntreprise, requireModuleAcheteurs, requireGerantAcheteursAccess } = require('../middleware/auth');
 
@@ -89,6 +89,7 @@ router.get('/commandes/:id', authenticate, requireEntreprise, requireModuleAchet
 router.post('/commandes/:id/expedier', authenticate, requireEntreprise, requireModuleAcheteurs, expedierCommande);
 // Alias historique (ancien nom de l'action, conservé le temps du déploiement front)
 router.post('/commandes/:id/valider', authenticate, requireEntreprise, requireModuleAcheteurs, expedierCommande);
+router.post('/commandes/:id/livreur', authenticate, requireEntreprise, requireModuleAcheteurs, affecterLivreur);
 router.post('/commandes/:id/livrer', authenticate, requireEntreprise, requireModuleAcheteurs, livrerCommande);
 router.post('/commandes/:id/annuler', authenticate, requireEntreprise, requireModuleAcheteurs, annulerCommande);
 router.get('/factures/:id/pdf', authenticate, requireEntreprise, requireModuleAcheteurs, downloadFacturePdf);

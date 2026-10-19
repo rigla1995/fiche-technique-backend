@@ -231,12 +231,13 @@ const listMesCommandes = async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT ca.id, ca.date_commande, ca.date_expedition, ca.date_livraison, ca.statut, ca.source,
-              ca.remise_pct, ca.motif_annulation, ca.created_at,
+              ca.remise_pct, ca.motif_annulation, ca.created_at, ca.livreur_id, lv.nom AS livreur_nom,
               fa.id AS facture_id, fa.numero AS facture_numero, fa.montant_ttc AS facture_ttc,
               (SELECT COUNT(*)::int FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS nb_lignes,
               (SELECT COALESCE(SUM(cal.prix_ttc * cal.quantite), 0) FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS total_brut
        FROM commandes_acheteur ca
        LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
+       LEFT JOIN livreurs lv ON lv.id = ca.livreur_id
        WHERE ca.acheteur_id = $1
        ORDER BY ca.created_at DESC
        LIMIT 200`,
@@ -255,6 +256,9 @@ const listMesCommandes = async (req, res) => {
       factureId: c.facture_id,
       factureNumero: c.facture_numero,
       factureTtc: num(c.facture_ttc),
+      // Module Livreurs (L2) : commande expédiée confiée à un livreur → « en cours de livraison »
+      enLivraison: c.statut === 'expediee' && c.livreur_id != null,
+      livreurNom: c.livreur_nom ?? null,
     })));
   } catch (err) {
     console.error(err);
@@ -268,9 +272,10 @@ const getMaCommande = async (req, res) => {
   try {
     const c = await pool.query(
       `SELECT ca.*, fa.id AS facture_id, fa.numero AS facture_numero, fa.montant_brut_ttc, fa.remise_pct AS fa_remise,
-              fa.montant_ht, fa.montant_tva, fa.timbre_fiscal, fa.montant_timbre, fa.montant_ttc
+              fa.montant_ht, fa.montant_tva, fa.timbre_fiscal, fa.montant_timbre, fa.montant_ttc, lv.nom AS livreur_nom
        FROM commandes_acheteur ca
        LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
+       LEFT JOIN livreurs lv ON lv.id = ca.livreur_id
        WHERE ca.id = $1 AND ca.acheteur_id = $2`,
       [req.params.id, req.user.acheteurId]
     );
@@ -302,6 +307,8 @@ const getMaCommande = async (req, res) => {
         timbreFiscal: row.timbre_fiscal, montantTimbre: num(row.montant_timbre), montantTtc: num(row.montant_ttc),
       } : null,
       factureTtc: num(row.montant_ttc),
+      enLivraison: row.statut === 'expediee' && row.livreur_id != null,
+      livreurNom: row.livreur_nom ?? null,
       historique: histo.rows.map((h) => ({
         statut: h.statut, dateEffet: isoDate(h.date_effet), motif: h.motif, le: h.created_at,
       })),
