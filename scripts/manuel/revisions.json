@@ -412,6 +412,18 @@
           "md5": "33caae4f08929559d2e45cd87101f648"
         }
       ]
+    },
+    {
+      "numero": 254,
+      "nom": "254_manuel_livreurs_livraison.sql",
+      "objet": "Module Livreurs (L3) : état « Non livrée » (échec du livreur, marchandise rapportée ou non), action 🔁 Relancer, facture signée rapportée par le livreur à la livraison.",
+      "manuel": [
+        {
+          "slug": "acheteurs-ventes",
+          "md5Avant": "33caae4f08929559d2e45cd87101f648",
+          "md5": "293668847307330f50c614ccb79eba91"
+        }
+      ]
     }
   ]
 }

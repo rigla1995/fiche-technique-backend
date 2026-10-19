@@ -622,14 +622,14 @@ const getLaboStock = async (req, res) => {
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
          JOIN last_inv li ON li.produit_id = cal.article_id AND COALESCE(ca.date_expedition, ca.date_commande) >= li.date_inventaire
-         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'produit'
+         WHERE ca.labo_id = $1 AND ca.stock_sorti AND cal.article_type = 'produit'
          GROUP BY cal.article_id
        ),
        all_ventes_ach AS (
          SELECT cal.article_id AS produit_id, SUM(cal.quantite_unites) as qty
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'produit'
+         WHERE ca.labo_id = $1 AND ca.stock_sorti AND cal.article_type = 'produit'
          GROUP BY cal.article_id
        )
        SELECT lps.produit_id,
@@ -1061,7 +1061,7 @@ const getLaboStockHistory = async (req, res) => {
            JOIN commandes_acheteur ca ON ca.id = cal.commande_id
            LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
            LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
-           WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
+           WHERE ca.labo_id = $1 AND ca.stock_sorti
              AND cal.article_type = 'produit' AND cal.article_id = $2
          ) h
          ORDER BY d DESC, type LIMIT 15`,
@@ -1111,7 +1111,7 @@ const getLaboStockHistory = async (req, res) => {
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
          LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
          LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
-         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
+         WHERE ca.labo_id = $1 AND ca.stock_sorti
            AND cal.article_type = 'ingredient' AND cal.article_id = $2
        ) h
        ORDER BY date_appro DESC LIMIT 10`,
@@ -1384,7 +1384,7 @@ const getLaboHistorique = async (req, res) => {
     // 'transfert' sont servies par entreesSql (pas par manuelSql) pour porter sens/contrepartie.
     const manuelConds = [`sld.labo_id = $1`, `COALESCE(sld.type_appro,'manuel') <> 'transfert'`, `NOT (COALESCE(sld.type_appro,'manuel') = 'manuel' AND sld.quantite < 0)`];
     const transferConds = [`lt.labo_id = $1`];
-    const venteConds = [`ca.labo_id = $1`, `ca.statut IN ('expediee', 'livree')`];
+    const venteConds = [`ca.labo_id = $1`, `ca.stock_sorti`];
     const params = [laboId];
     let idx = 2;
 

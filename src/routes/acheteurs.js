@@ -5,6 +5,7 @@ const {
   listOffres, upsertOffre, getOffreHistorique,
   createVente, listCommandes, getCommande, expedierCommande, affecterLivreur, livrerCommande, annulerCommande, downloadFacturePdf,
 } = require('../controllers/acheteurVentesController');
+const livraisons = require('../controllers/livraisonsController');
 const { authenticate, requireEntreprise, requireModuleAcheteurs, requireGerantAcheteursAccess } = require('../middleware/auth');
 
 // Module opt-in : TOUTES les routes du carnet exigent le module actif (403 sinon).
@@ -90,6 +91,9 @@ router.post('/commandes/:id/expedier', authenticate, requireEntreprise, requireM
 // Alias historique (ancien nom de l'action, conservé le temps du déploiement front)
 router.post('/commandes/:id/valider', authenticate, requireEntreprise, requireModuleAcheteurs, expedierCommande);
 router.post('/commandes/:id/livreur', authenticate, requireEntreprise, requireModuleAcheteurs, affecterLivreur);
+// Module Livreurs (L3) : nouvelle tentative après un échec de livraison ; la facture signée rapportée par le livreur
+router.post('/commandes/:id/relancer', authenticate, requireEntreprise, requireModuleAcheteurs, livraisons.relancer);
+router.get('/commandes/:id/livraison/piece', authenticate, requireEntreprise, requireModuleAcheteurs, livraisons.pieceVendeur);
 router.post('/commandes/:id/livrer', authenticate, requireEntreprise, requireModuleAcheteurs, livrerCommande);
 router.post('/commandes/:id/annuler', authenticate, requireEntreprise, requireModuleAcheteurs, annulerCommande);
 router.get('/factures/:id/pdf', authenticate, requireEntreprise, requireModuleAcheteurs, downloadFacturePdf);

@@ -34,6 +34,8 @@ router.get('/catalogue', authenticate, requireAcheteur, requireModuleAcheteurs, 
 router.get('/commandes', authenticate, requireAcheteur, requireModuleAcheteurs, listMesCommandes);
 router.post('/commandes', authenticate, requireAcheteur, requireModuleAcheteurs, createCommande);
 router.get('/commandes/:id', authenticate, requireAcheteur, requireModuleAcheteurs, getMaCommande);
+// Module Livreurs (L3) : la facture signée / cachetée rapportée par le livreur
+router.get('/commandes/:id/livraison/piece', authenticate, requireAcheteur, requireModuleAcheteurs, require('../controllers/livraisonsController').piecePortail);
 router.get('/factures/:id/pdf', authenticate, requireAcheteur, requireModuleAcheteurs, downloadMaFacture);
 
 module.exports = router;
