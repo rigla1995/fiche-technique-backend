@@ -350,5 +350,12 @@
    "hotellerie"
   ],
   "justification": "Libellés, pluriels et aides des composants du domaine Hôtellerie et sa description (domaine_composants, domaines_activite, saisis par l'admin), renvoyés tels quels par /auth/login, /auth/me, GET /api/domaines, GET /api/entreprise et mon-abonnement : données du domaine, pas des textes du serveur (§2.5 point 6, mot hors lexique relu)."
+ },
+ {
+  "cle": "tableauxDeBord",
+  "chemin": "^/v2\\.filtres\\.sansFiltre/modes_paiement/\\d+/nom$",
+  "texte": "Carte bancaire",
+  "type": "donnee",
+  "justification": "Mode de paiement « Carte bancaire » du référentiel partagé modes_paiement (migration 253, encaissement par les livreurs — L3) : « carte » au sens bancaire, pas la carte du restaurant (mot hors lexique §2.5 point 6)."
  }
 ]

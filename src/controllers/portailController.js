@@ -1,6 +1,7 @@
 const pool = require('../config/database');
 const { pushTo } = require('../services/sseService');
 const { saveNotification } = require('./notificationController');
+const Livraisons = require('../services/livraisons');
 const { vocabDefaut } = require('../utils/vocab');
 const { nomAffiche } = require('../utils/identite');
 const { VENDEUR_FACTURE_SQL } = require('../utils/identiteFacture');
@@ -232,6 +233,8 @@ const listMesCommandes = async (req, res) => {
     const r = await pool.query(
       `SELECT ca.id, ca.date_commande, ca.date_expedition, ca.date_livraison, ca.statut, ca.source,
               ca.remise_pct, ca.motif_annulation, ca.created_at, ca.livreur_id, lv.nom AS livreur_nom,
+              (SELECT cl.motif FROM commande_livraisons cl WHERE cl.commande_id = ca.id ORDER BY cl.created_at DESC, cl.id DESC LIMIT 1) AS dernier_motif,
+              EXISTS (SELECT 1 FROM commande_livraisons cl WHERE cl.commande_id = ca.id AND cl.piece_cle IS NOT NULL) AS facture_signee,
               fa.id AS facture_id, fa.numero AS facture_numero, fa.montant_ttc AS facture_ttc,
               (SELECT COUNT(*)::int FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS nb_lignes,
               (SELECT COALESCE(SUM(cal.prix_ttc * cal.quantite), 0) FROM commande_acheteur_lignes cal WHERE cal.commande_id = ca.id) AS total_brut
@@ -259,6 +262,9 @@ const listMesCommandes = async (req, res) => {
       // Module Livreurs (L2) : commande expédiée confiée à un livreur → « en cours de livraison »
       enLivraison: c.statut === 'expediee' && c.livreur_id != null,
       livreurNom: c.livreur_nom ?? null,
+      // L3 : motif du dernier échec (libellé), facture signée disponible
+      echecMotif: c.statut === 'livraison_echouee' && c.dernier_motif ? Livraisons.MOTIFS[c.dernier_motif] || c.dernier_motif : null,
+      factureSignee: c.facture_signee === true,
     })));
   } catch (err) {
     console.error(err);
@@ -309,6 +315,8 @@ const getMaCommande = async (req, res) => {
       factureTtc: num(row.montant_ttc),
       enLivraison: row.statut === 'expediee' && row.livreur_id != null,
       livreurNom: row.livreur_nom ?? null,
+      // L3 : dernier passage du livreur (sans la note interne) ; la facture signée se télécharge par /livraison/piece
+      livraison: Livraisons.versApiPortail(await Livraisons.derniereLivraison(pool, row.id)),
       historique: histo.rows.map((h) => ({
         statut: h.statut, dateEffet: isoDate(h.date_effet), motif: h.motif, le: h.created_at,
       })),

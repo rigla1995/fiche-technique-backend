@@ -10,6 +10,7 @@ const { encryptPassword } = require('../services/passwordCryptoService');
 const { invalidateAuthCache } = require('../middleware/auth');
 const { checkQuota } = require('../services/quotaService');
 const { normaliserTelephone, telephoneAffiche, emailTechnique, estEmailTechnique, motDePasseInitial } = require('../utils/livreurs');
+const Livraisons = require('../services/livraisons');
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INTROUVABLE = { message: 'Livreur introuvable' };
@@ -59,11 +60,12 @@ const plafond = async (clientId) => {
 const list = async (req, res) => {
   try {
     const clientId = compteDe(req);
-    const [rows, max] = await Promise.all([
+    const [rows, max, encaissement] = await Promise.all([
       pool.query(`${SELECT_LIVREUR} WHERE l.client_id = $1 ORDER BY l.actif DESC, l.nom`, [clientId]),
       plafond(clientId),
+      Livraisons.encaissementDe(pool, clientId), // L3 : option « les livreurs encaissent à la livraison »
     ]);
-    res.json({ livreurs: rows.rows.map(mapLivreur), max });
+    res.json({ livreurs: rows.rows.map(mapLivreur), max, encaissement });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -285,7 +287,13 @@ const moi = async (req, res) => {
     );
     const l = r.rows[0];
     if (!l) return res.status(404).json(INTROUVABLE);
-    res.json({ id: l.id, nom: l.nom, telephone: telephoneAffiche(l.telephone_norm), email: l.email || null, entreprise: l.entreprise || null, doitChangerMdp: l.doit_changer_mdp === true });
+    // L3 : si le compte fait encaisser ses livreurs, le formulaire « Livrée » demande le montant perçu et le mode
+    const encaissement = await Livraisons.encaissementDe(pool, req.user.livreurClientId);
+    const modesPaiement = encaissement ? await Livraisons.modesActifs(pool) : [];
+    res.json({
+      id: l.id, nom: l.nom, telephone: telephoneAffiche(l.telephone_norm), email: l.email || null, entreprise: l.entreprise || null,
+      doitChangerMdp: l.doit_changer_mdp === true, encaissement, modesPaiement, motifsEchec: Livraisons.MOTIFS,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -333,7 +341,7 @@ const mesCommandes = async (req, res) => {
   try {
     const r = await pool.query(
       `${SELECT_LIVRAISON}
-        WHERE ca.livreur_id = $1 AND ca.statut IN ('expediee', 'livree')
+        WHERE ca.livreur_id = $1 AND ca.statut IN ('expediee', 'livree', 'livraison_echouee')
         ORDER BY (ca.statut = 'expediee') DESC, ca.date_expedition DESC, ca.created_at DESC
         LIMIT 100`,
       [req.user.livreurId]
@@ -351,8 +359,15 @@ const maCommande = async (req, res) => {
     if (!/^[0-9a-f-]{36}$/i.test(String(req.params.id))) return res.status(404).json({ message: 'Commande introuvable' });
     const r = await pool.query(`${SELECT_LIVRAISON} WHERE ca.id = $1 AND ca.livreur_id = $2`, [req.params.id, req.user.livreurId]);
     if (!r.rows.length) return res.status(404).json({ message: 'Commande introuvable' });
-    const lignes = await pool.query('SELECT designation, quantite FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id', [req.params.id]);
-    res.json({ ...mapLivraison(r.rows[0]), lignes: lignes.rows.map((l) => ({ designation: l.designation, quantite: Number(l.quantite) })) });
+    const [lignes, derniere] = await Promise.all([
+      pool.query('SELECT designation, quantite FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id', [req.params.id]),
+      Livraisons.derniereLivraison(pool, req.params.id), // L3 : son dernier passage (livrée ou échec)
+    ]);
+    res.json({
+      ...mapLivraison(r.rows[0]),
+      lignes: lignes.rows.map((l) => ({ designation: l.designation, quantite: Number(l.quantite) })),
+      livraison: Livraisons.versApi(derniere),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

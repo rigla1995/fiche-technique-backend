@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "252_manuel_livreurs_affectation.sql",
+  "derniereMigration": "254_manuel_livreurs_livraison.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -658,10 +658,11 @@
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
     "acheteurs-carnet": "437ffcfe3e418bc3f45437a8bb39b6de",
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
-    "acheteurs-ventes": "72ba1a643afdf6eb5170b9260eda848a",
+    "acheteurs-ventes": "880607db55786061600651a30b2e00a3",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
-    "livreurs": "94870620004863ede99e652a4c1a57dd",
+    "livreurs": "7d161aaf1fcc38c46254e9bb5d6771a8",
     "dashboard": "434ec7a43a3315f52396d4122035eabf",
+    "livreurs-livraison": "ae63e013bd2684181d5c118a0a913c4f",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
@@ -720,10 +721,11 @@
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
     "acheteurs-carnet": "437ffcfe3e418bc3f45437a8bb39b6de",
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
-    "acheteurs-ventes": "72ba1a643afdf6eb5170b9260eda848a",
+    "acheteurs-ventes": "880607db55786061600651a30b2e00a3",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
-    "livreurs": "94870620004863ede99e652a4c1a57dd",
+    "livreurs": "7d161aaf1fcc38c46254e9bb5d6771a8",
     "dashboard": "434ec7a43a3315f52396d4122035eabf",
+    "livreurs-livraison": "ae63e013bd2684181d5c118a0a913c4f",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
@@ -783,10 +785,11 @@
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
     "acheteurs-carnet": "437ffcfe3e418bc3f45437a8bb39b6de",
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
-    "acheteurs-ventes": "72ba1a643afdf6eb5170b9260eda848a",
+    "acheteurs-ventes": "880607db55786061600651a30b2e00a3",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
-    "livreurs": "94870620004863ede99e652a4c1a57dd",
+    "livreurs": "7d161aaf1fcc38c46254e9bb5d6771a8",
     "dashboard": "434ec7a43a3315f52396d4122035eabf",
+    "livreurs-livraison": "ae63e013bd2684181d5c118a0a913c4f",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
     "gerants": "56f58ef8f6f3f3adcd9d3a087536e70a",
@@ -813,9 +816,9 @@
    "client.A": 41,
    "client.B": 56,
    "gerant.B": 43,
-   "client.C": 54,
-   "acheteur.C": 61,
-   "admin": 61
+   "client.C": 55,
+   "acheteur.C": 62,
+   "admin": 62
   },
   "signatures": {
    "outils": "toolsFor(voc)",
@@ -3073,8 +3076,8 @@
     "titres": [
      "Manuel — Espace Acheteurs › Carnet d'Acheteurs",
      "Manuel — Espace Acheteurs › Ventes & commandes acheteurs",
-     "Manuel — Découvrir LabFlow › Parcours de démarrage",
-     "Manuel — Espace Acheteurs › Le module Acheteurs"
+     "Manuel — Espace Acheteurs › Livreurs",
+     "Manuel — Découvrir LabFlow › Parcours de démarrage"
     ],
     "base": []
    },
@@ -3083,7 +3086,7 @@
      "Manuel — Espace Acheteurs › Ventes & commandes acheteurs",
      "Manuel — Espace Acheteurs › Carnet d'Acheteurs",
      "Manuel — Espace Acheteurs › Le portail acheteur",
-     "Manuel — Espace Acheteurs › Le module Acheteurs"
+     "Manuel — Espace Acheteurs › Livrer avec son téléphone"
     ],
     "base": []
    },
@@ -11803,6 +11806,14 @@
      {
       "id": "⟨id⟩",
       "nom": "Virement"
+     },
+     {
+      "id": "⟨id⟩",
+      "nom": "Chèque"
+     },
+     {
+      "id": "⟨id⟩",
+      "nom": "Carte bancaire"
      }
     ],
     "categories_produit": [
@@ -13734,7 +13745,9 @@
      "factureNumero": null,
      "factureTtc": null,
      "enLivraison": false,
-     "livreurNom": null
+     "livreurNom": null,
+     "echecMotif": null,
+     "factureSignee": false
     },
     {
      "id": "⟨uuid⟩",
@@ -13750,7 +13763,9 @@
      "factureNumero": null,
      "factureTtc": null,
      "enLivraison": false,
-     "livreurNom": null
+     "livreurNom": null,
+     "echecMotif": null,
+     "factureSignee": false
     },
     {
      "id": "⟨uuid⟩",
@@ -13766,7 +13781,9 @@
      "factureNumero": "⟨ref⟩",
      "factureTtc": 40.948,
      "enLivraison": false,
-     "livreurNom": null
+     "livreurNom": null,
+     "echecMotif": null,
+     "factureSignee": false
     }
    ],
    "C.commandeAnnuleeParSuppression": {
@@ -13787,6 +13804,10 @@
     "livreurNom": null,
     "livraisonAffecteeAt": null,
     "livraisonAffecteeParNom": null,
+    "livraisonRapportee": false,
+    "stockSorti": false,
+    "livraison": null,
+    "livraisons": [],
     "historique": [
      {
       "statut": "en_attente",
@@ -13849,6 +13870,10 @@
     "livreurNom": null,
     "livraisonAffecteeAt": null,
     "livraisonAffecteeParNom": null,
+    "livraisonRapportee": false,
+    "stockSorti": false,
+    "livraison": null,
+    "livraisons": [],
     "historique": [
      {
       "statut": "en_attente",
@@ -15403,6 +15428,7 @@
      "acheteurs-portail",
      "livreurs",
      "dashboard",
+     "livreurs-livraison",
      "activites",
      "fournisseurs",
      "gerants",
@@ -15465,6 +15491,7 @@
      "acheteurs-portail",
      "livreurs",
      "dashboard",
+     "livreurs-livraison",
      "activites",
      "fournisseurs",
      "gerants",
@@ -15528,6 +15555,7 @@
      "acheteurs-portail",
      "livreurs",
      "dashboard",
+     "livreurs-livraison",
      "activites",
      "fournisseurs",
      "gerants",
@@ -16370,7 +16398,7 @@
      "icone": "🧾",
      "partie": "Espace Acheteurs",
      "ordre": 68,
-     "contenu": "## 🧾 Ventes & commandes acheteurs\n\n### Le cycle de vie d'une commande\n\n| État | Ce qui se passe |\n| --- | --- |\n| ⏳ En attente | commande envoyée depuis le portail, rien n'est encore déduit |\n| 🚚 Expédiée | le stock labo est déduit, la facture FA- est générée |\n| ✅ Livrée | jalon logistique : la date de livraison est enregistrée |\n| ✕ Annulée | le stock est réintégré et la facture supprimée |\n\nChaque commande garde l'**historique complet de ses états** (qui, quand, avec quelle date d'effet) — visible dans le détail.\n\n### Vente manuelle (Vente Acheteur)\n\nComme un transfert, mais vers un acheteur : choisissez l'**acheteur**, le **labo source** et la date ; les lignes se pré-remplissent au tarif HT (modifiable ligne à ligne). Saisissez si besoin une **remise %**, activez le **timbre fiscal**, puis choisissez l'état initial : **Expédiée** (date d'expédition) ou directement **Livrée** (avec sa date de livraison).\n\nÀ l'enregistrement, le système :\n\n1. contrôle le stock labo (blocage détaillé si insuffisant) ;\n2. déduit le stock (articles et produits, en unités) ;\n3. fige les coûts matière (PMP TTC) pour vos marges ;\n4. génère la **facture** numérotée (⟨ref⟩ÉE-NNNN) en PDF : HT − remise + TVA + timbre.\n\nLe bloc **« Facturé à »** de la facture suit le type de la fiche : **professionnel (B2B)** — raison sociale et contact, matricule fiscal, identifiant RNE, adresse ; **particulier (B2C)** — nom, mention « Particulier », téléphone.\n\n:::attention\nAucune facture n'est émise à une fiche **« à préciser »** ni à un professionnel **sans matricule fiscal** : complétez la fiche dans le carnet avant la vente manuelle ou l'expédition d'une commande.\n:::\n\n### Commandes du portail\n\nQuand un acheteur commande en ligne, vous recevez une **notification 🤝** et la commande apparaît **En attente** (badge 🌐 portail). Vos actions :\n\n- **🚚 Expédier** — choisissez le labo source, **ajustez les quantités** — voire **retirez des lignes** (quantité servie nulle) — si nécessaire, fixez la remise éventuelle et la date d'expédition ; le stock est contrôlé puis déduit et la facture est générée ; l'acheteur suit sa commande et récupère sa facture dans « Mes commandes » sur son portail. Si vous avez des **livreurs** (Espace Acheteurs → Livreurs), confiez-lui la commande dans le champ **Livreur** : elle apparaît aussitôt dans son espace sur son téléphone, et l'acheteur voit « en cours de livraison ».\n- **🏍️ Livreur** — sur une commande expédiée : confiez-la à un livreur, changez de livreur ou retirez-le. La colonne et le filtre **Livreur** de la liste montrent qui livre quoi ; le détail indique qui a fait l'affectation et quand.\n- **✅ Livrer** — sur une commande expédiée : enregistrez la date de livraison.\n- **↩️ Refuser / Annuler** — avec un motif ; le motif s'affiche à l'acheteur dans « Mes commandes » sur son portail (commandes portail).\n\n### Annulation\n\nUne commande expédiée ou livrée peut être annulée (motif à l'appui) : le **stock est réintégré automatiquement** et la facture est supprimée.\n\n:::attention\nL'annulation supprime la facture : un trou peut apparaître dans la numérotation. Réservez-la aux erreurs de saisie.\n:::\n\nL'historique du Stock Labo affiche ces mouvements avec le badge **Vente**, et l'export Excel de l'écran Commandes reprend la liste filtrée.\n",
+     "contenu": "## 🧾 Ventes & commandes acheteurs\n\n### Le cycle de vie d'une commande\n\n| État | Ce qui se passe |\n| --- | --- |\n| ⏳ En attente | commande envoyée depuis le portail, rien n'est encore déduit |\n| 🚚 Expédiée | le stock labo est déduit, la facture FA- est générée |\n| ✅ Livrée | jalon logistique : la date de livraison est enregistrée (par vous, ou par le livreur depuis son téléphone avec la facture signée) |\n| ⚠️ Non livrée | le livreur n'a pas pu livrer (motif et note) : le stock revient si la marchandise est rapportée au dépôt ; vous relancez ou annulez |\n| ✕ Annulée | le stock est réintégré et la facture supprimée |\n\nChaque commande garde l'**historique complet de ses états** (qui, quand, avec quelle date d'effet) — visible dans le détail.\n\n### Vente manuelle (Vente Acheteur)\n\nComme un transfert, mais vers un acheteur : choisissez l'**acheteur**, le **labo source** et la date ; les lignes se pré-remplissent au tarif HT (modifiable ligne à ligne). Saisissez si besoin une **remise %**, activez le **timbre fiscal**, puis choisissez l'état initial : **Expédiée** (date d'expédition) ou directement **Livrée** (avec sa date de livraison).\n\nÀ l'enregistrement, le système :\n\n1. contrôle le stock labo (blocage détaillé si insuffisant) ;\n2. déduit le stock (articles et produits, en unités) ;\n3. fige les coûts matière (PMP TTC) pour vos marges ;\n4. génère la **facture** numérotée (⟨ref⟩ÉE-NNNN) en PDF : HT − remise + TVA + timbre.\n\nLe bloc **« Facturé à »** de la facture suit le type de la fiche : **professionnel (B2B)** — raison sociale et contact, matricule fiscal, identifiant RNE, adresse ; **particulier (B2C)** — nom, mention « Particulier », téléphone.\n\n:::attention\nAucune facture n'est émise à une fiche **« à préciser »** ni à un professionnel **sans matricule fiscal** : complétez la fiche dans le carnet avant la vente manuelle ou l'expédition d'une commande.\n:::\n\n### Commandes du portail\n\nQuand un acheteur commande en ligne, vous recevez une **notification 🤝** et la commande apparaît **En attente** (badge 🌐 portail). Vos actions :\n\n- **🚚 Expédier** — choisissez le labo source, **ajustez les quantités** — voire **retirez des lignes** (quantité servie nulle) — si nécessaire, fixez la remise éventuelle et la date d'expédition ; le stock est contrôlé puis déduit et la facture est générée ; l'acheteur suit sa commande et récupère sa facture dans « Mes commandes » sur son portail. Si vous avez des **livreurs** (Espace Acheteurs → Livreurs), confiez-lui la commande dans le champ **Livreur** : elle apparaît aussitôt dans son espace sur son téléphone, et l'acheteur voit « en cours de livraison ».\n- **🏍️ Livreur** — sur une commande expédiée : confiez-la à un livreur, changez de livreur ou retirez-le. La colonne et le filtre **Livreur** de la liste montrent qui livre quoi ; le détail indique qui a fait l'affectation et quand.\n- **✅ Livrer** — sur une commande expédiée : enregistrez la date de livraison (ou laissez le livreur la valider depuis son téléphone : sa **📎 Facture signée** s'ouvre ensuite depuis le détail 👁️).\n- **🔁 Relancer** — sur une commande **⚠️ Non livrée** : nouvelle tentative avec le même livreur, un autre, ou sans ; la facture est conservée et le stock ressort si la marchandise avait été rapportée au dépôt. Le détail montre le motif et la note du livreur. Sinon, **↩️ Annuler** (voir [Livrer avec son téléphone](#livreurs-livraison)).\n- **↩️ Refuser / Annuler** — avec un motif ; le motif s'affiche à l'acheteur dans « Mes commandes » sur son portail (commandes portail).\n\n### Annulation\n\nUne commande expédiée ou livrée peut être annulée (motif à l'appui) : le **stock est réintégré automatiquement** et la facture est supprimée.\n\n:::attention\nL'annulation supprime la facture : un trou peut apparaître dans la numérotation. Réservez-la aux erreurs de saisie.\n:::\n\nL'historique du Stock Labo affiche ces mouvements avec le badge **Vente**, et l'export Excel de l'écran Commandes reprend la liste filtrée.\n",
      "motsCles": "vente acheteur, commande, valider, refuser, annuler, facture, timbre, stock labo, notification, portail",
      "ecran": "/client/acheteurs/commandes",
      "visibleGerant": true,
@@ -16398,9 +16426,23 @@
      "icone": "🏍️",
      "partie": "Espace Acheteurs",
      "ordre": 69,
-     "contenu": "## 🏍️ Livreurs\n\nCet écran vous permet de créer des **comptes livreurs** : les personnes qui livrent vos commandes acheteurs. Depuis son téléphone, un livreur verra les livraisons qu'on lui confie, validera chaque livraison ou signalera qu'elle a échoué (étapes à venir du module). Vous trouvez l'écran dans le menu latéral, partie **Espace Acheteurs**, entrée **Livreurs**. Un livreur ne voit que ses livraisons : jamais le stock, les prix d'achat ni les autres commandes.\n\n### Ce que vous voyez\n\nLe bandeau affiche le compteur **Livreurs** (comptes créés / comptes inclus dans votre abonnement) et le bouton **+ Nouveau livreur**, remplacé par la mention 🔒 *Limite atteinte* quand le quota est plein.\n\nChaque livreur apparaît sous forme de carte avec :\n\n- ses initiales, son nom, son téléphone et, s'il en a une, son adresse e-mail ;\n- son statut : **● Actif** ou **○ Inactif**, plus **⏳ Invitation en attente** tant qu'il n'a pas activé son compte par e-mail, ou **🔑 Mot de passe à changer** tant qu'il n'a pas remplacé le mot de passe initial que vous lui avez remis ;\n- les actions : **✉️ Renvoyer** l'invitation (livreur avec e-mail, compte non activé), **🔑 Nouveau mot de passe**, **✏️ Modifier**, **⏸ Désactiver** / **▶ Activer**, **🗑** supprimer.\n\n### Actions pas à pas\n\n1. Cliquez **+ Nouveau livreur** et renseignez le **nom** et le **téléphone** (8 chiffres, obligatoires). L'adresse **e-mail** est facultative.\n2. **Avec une adresse e-mail** : validez avec **✓ Créer et envoyer l'invitation**. Le livreur reçoit un e-mail, clique sur le lien (valable 48 heures) et choisit son mot de passe.\n3. **Sans adresse e-mail** : validez avec **✓ Créer et obtenir le mot de passe**. Un **mot de passe initial** s'affiche **une seule fois** : notez-le et remettez-le au livreur de vive voix. À sa première connexion, l'application lui demande d'en choisir un nouveau.\n4. Le livreur se connecte sur la page habituelle de LabFlow avec son **numéro de téléphone** (ou son e-mail) et son mot de passe.\n5. Mot de passe perdu : **🔑 Nouveau mot de passe** en génère un autre, affiché une seule fois lui aussi ; les sessions ouvertes du livreur sont fermées.\n6. Pour suspendre temporairement un accès, cliquez **⏸ Désactiver** (réversible avec ▶ Activer). Pour retirer définitivement l'accès, utilisez 🗑 (une confirmation est demandée) ; un livreur qui a déjà des livraisons ne se supprime plus : désactivez-le.\n\n### Points d'attention\n\n:::regle\nVotre abonnement comprend **5 comptes livreurs**. Au-delà, demandez un ajout de capacité à l'équipe LabFlow depuis la page Demandes.\n:::\n\n:::attention\nLe numéro de téléphone sert d'identifiant de connexion : il doit être **unique** dans LabFlow et au format tunisien (8 chiffres). Le mot de passe initial n'est **jamais** envoyé par SMS ni par e-mail : il n'existe qu'à l'écran, au moment où il est généré.\n:::\n\n:::astuce\nCréez un compte par livreur plutôt qu'un compte partagé : les livraisons garderont la trace de qui a livré quoi, et quand.\n:::\n\n### Voir aussi\n\n- [Ventes & commandes acheteurs](#acheteurs-ventes) — les commandes que vos livreurs livreront\n- [Carnet d'Acheteurs](#acheteurs-carnet) · [Comptes gérants](#gerants)\n",
+     "contenu": "## 🏍️ Livreurs\n\nCet écran vous permet de créer des **comptes livreurs** : les personnes qui livrent vos commandes acheteurs. Depuis son téléphone, un livreur verra les livraisons qu'on lui confie, validera chaque livraison ou signalera qu'elle a échoué (étapes à venir du module). Vous trouvez l'écran dans le menu latéral, partie **Espace Acheteurs**, entrée **Livreurs**. Un livreur ne voit que ses livraisons : jamais le stock, les prix d'achat ni les autres commandes.\n\n### Ce que vous voyez\n\nLe bandeau affiche le compteur **Livreurs** (comptes créés / comptes inclus dans votre abonnement) et le bouton **+ Nouveau livreur**, remplacé par la mention 🔒 *Limite atteinte* quand le quota est plein.\n\nChaque livreur apparaît sous forme de carte avec :\n\n- ses initiales, son nom, son téléphone et, s'il en a une, son adresse e-mail ;\n- son statut : **● Actif** ou **○ Inactif**, plus **⏳ Invitation en attente** tant qu'il n'a pas activé son compte par e-mail, ou **🔑 Mot de passe à changer** tant qu'il n'a pas remplacé le mot de passe initial que vous lui avez remis ;\n- les actions : **✉️ Renvoyer** l'invitation (livreur avec e-mail, compte non activé), **🔑 Nouveau mot de passe**, **✏️ Modifier**, **⏸ Désactiver** / **▶ Activer**, **🗑** supprimer.\n\n### Actions pas à pas\n\n1. Cliquez **+ Nouveau livreur** et renseignez le **nom** et le **téléphone** (8 chiffres, obligatoires). L'adresse **e-mail** est facultative.\n2. **Avec une adresse e-mail** : validez avec **✓ Créer et envoyer l'invitation**. Le livreur reçoit un e-mail, clique sur le lien (valable 48 heures) et choisit son mot de passe.\n3. **Sans adresse e-mail** : validez avec **✓ Créer et obtenir le mot de passe**. Un **mot de passe initial** s'affiche **une seule fois** : notez-le et remettez-le au livreur de vive voix. À sa première connexion, l'application lui demande d'en choisir un nouveau.\n4. Le livreur se connecte sur la page habituelle de LabFlow avec son **numéro de téléphone** (ou son e-mail) et son mot de passe.\n5. Mot de passe perdu : **🔑 Nouveau mot de passe** en génère un autre, affiché une seule fois lui aussi ; les sessions ouvertes du livreur sont fermées.\n6. Pour suspendre temporairement un accès, cliquez **⏸ Désactiver** (réversible avec ▶ Activer). Pour retirer définitivement l'accès, utilisez 🗑 (une confirmation est demandée) ; un livreur qui a déjà des livraisons ne se supprime plus : désactivez-le.\n\n### Points d'attention\n\n:::regle\nVotre abonnement comprend **5 comptes livreurs**. Au-delà, demandez un ajout de capacité à l'équipe LabFlow depuis la page Demandes.\n:::\n\n:::attention\nLe numéro de téléphone sert d'identifiant de connexion : il doit être **unique** dans LabFlow et au format tunisien (8 chiffres). Le mot de passe initial n'est **jamais** envoyé par SMS ni par e-mail : il n'existe qu'à l'écran, au moment où il est généré.\n:::\n\n:::astuce\nCréez un compte par livreur plutôt qu'un compte partagé : les livraisons garderont la trace de qui a livré quoi, et quand. Pour que vos livreurs saisissent le **montant perçu** à la livraison, activez l'interrupteur **« Les livreurs encaissent à la livraison »** en haut de la page.\n:::\n\n### Voir aussi\n\n- [Ventes & commandes acheteurs](#acheteurs-ventes) — les commandes que vos livreurs livreront\n- [Livrer avec son téléphone](#livreurs-livraison) — ce que fait le livreur sur place, et vous après un échec\n- [Carnet d'Acheteurs](#acheteurs-carnet) · [Comptes gérants](#gerants)\n",
      "motsCles": "livreur, livreurs, livraison, compte livreur, téléphone, mot de passe initial, invitation, désactiver, quota, cinq livreurs, chauffeur, coursier, expédition, commandes acheteurs",
      "ecran": "/client/livreurs",
+     "visibleGerant": true,
+     "actif": true,
+     "updatedAt": "⟨date⟩"
+    },
+    "livreurs-livraison": {
+     "id": "⟨id⟩",
+     "slug": "livreurs-livraison",
+     "titre": "Livrer avec son téléphone",
+     "icone": "🏍️",
+     "partie": "Espace Acheteurs",
+     "ordre": 70,
+     "contenu": "## 🏍️ Livrer avec son téléphone\n\nLe livreur retrouve dans son espace **Mes livraisons** les commandes expédiées que vous lui avez confiées, avec le client, l'adresse (bouton **🗺️ Itinéraire**), le téléphone (bouton **📞 Appeler**), la consigne, les lignes à livrer et le montant TTC de la facture.\n\n### Sur place, deux issues\n\n- **✅ Livrée** — le livreur **photographie la facture signée ou cachetée** par le client (obligatoire : sans ce document, la livraison ne se valide pas), indique s'il le souhaite le nom de la personne qui a réceptionné et, si vous avez activé l'encaissement, le **montant perçu** et le **mode de paiement**. La commande passe **Livrée**, vous recevez une notification, et la facture signée reste attachée à la commande : vous l'ouvrez depuis le détail (👁️ puis **📎 Facture signée**), l'acheteur aussi depuis son portail.\n- **❌ Non livrée** — le livreur choisit un **motif** (client absent, adresse introuvable, refus, marchandise abîmée, autre), écrit une **note** (obligatoire) et coche **« marchandise rapportée au dépôt »** si elle est revenue. La commande passe **⚠️ Non livrée** ; vous recevez une notification.\n\n### Après un échec, c'est vous qui tranchez\n\nDepuis la liste des commandes (filtre **Non livrées**), sur la commande :\n\n- **🔁 Relancer** — nouvelle tentative : la commande repasse **Expédiée**, avec le même livreur, un autre, ou sans livreur ; la facture est conservée. Si la marchandise avait été rapportée, le stock ressort à ce moment-là (date d'expédition du jour).\n- **↩️ Annuler** — comme toute annulation : facture supprimée, le stock réintégré s'il n'était pas déjà revenu.\n\n:::regle\nMarchandise **rapportée au dépôt** : le stock revient automatiquement (la sortie de la commande est neutralisée tant qu'elle n'est pas relancée). Marchandise **non rapportée** (restée chez le livreur, abîmée, perdue) : le stock reste sorti jusqu'à votre décision.\n:::\n\n### L'encaissement par les livreurs\n\nDans Espace Acheteurs → Livreurs, l'interrupteur **« Les livreurs encaissent à la livraison »** ajoute au formulaire du livreur le montant perçu et le mode de paiement (espèces, chèque, carte bancaire, virement). Sans cette option, le livreur ne saisit rien d'autre que la facture signée.\n\n:::attention\nLa facture signée est une **pièce de la commande** : photo ou PDF, 15 Mo au plus. Elle ne se modifie ni ne se supprime depuis l'application ; une erreur se corrige en annulant puis en refaisant la vente.\n:::\n\n### Voir aussi\n\n- [Livreurs](#livreurs) — créer les comptes, activer l'encaissement\n- [Ventes & commandes acheteurs](#acheteurs-ventes) — expédier, confier, relancer, annuler\n",
+     "motsCles": "livraison, livreur, téléphone, facture signée, facture cachetée, preuve de livraison, non livrée, échec de livraison, motif, rapportée au dépôt, retour en stock, relancer, encaissement, montant perçu, mode de paiement",
+     "ecran": "/client/acheteurs/commandes",
      "visibleGerant": true,
      "actif": true,
      "updatedAt": "⟨date⟩"

@@ -326,7 +326,7 @@ const tabOverview = async (req, ctx, from, to) => {
       `SELECT COALESCE(SUM(fa.montant_ttc), 0) AS ca, COUNT(*) AS nb
        FROM factures_acheteur fa
        JOIN commandes_acheteur cac ON cac.id = fa.commande_id
-       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.stock_sorti
          AND fa.date_facture >= $2 AND fa.date_facture <= $3`,
       [ctx.laboIds, from, to]
     );
@@ -720,7 +720,7 @@ const tabLabo = async (req, ctx, from, to) => {
       `SELECT COALESCE(SUM(fa.montant_ttc), 0) AS ca, COUNT(*) AS nb
        FROM factures_acheteur fa
        JOIN commandes_acheteur cac ON cac.id = fa.commande_id
-       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.stock_sorti
          AND fa.date_facture >= $2 AND fa.date_facture <= $3`,
       [laboIds, from, to]
     ),
@@ -739,7 +739,7 @@ const tabLabo = async (req, ctx, from, to) => {
                 END, 0)), 0) AS valeur
        FROM commande_acheteur_lignes cal
        JOIN commandes_acheteur cac ON cac.id = cal.commande_id
-       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')`,
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.stock_sorti`,
       [laboIds]
     ),
   ]);
@@ -777,7 +777,7 @@ const tabLabo = async (req, ctx, from, to) => {
 };
 
 // ── Onglet Acheteurs (B2B) — visible seulement quand le module est actif ──────
-// Conventions du module : flux = statut IN ('expediee','livree') ; le CA facturé
+// Conventions du module : flux = stock_sorti (expédiée, livrée, ou non livrée sans retour au dépôt — L3) ; le CA facturé
 // est ancré sur fa.date_facture (comme le KPI de l'onglet Labo), les lignes et
 // commandes sur COALESCE(date_expedition, date_commande). Lectures snapshot-aware
 // (acheteur supprimé → colonnes fa.acheteur_* + suffixe « (supprimé) »).
@@ -797,7 +797,7 @@ const tabAcheteurs = async (req, ctx, from, to) => {
   const FACT_FROM = `
     FROM factures_acheteur fa
     JOIN commandes_acheteur cac ON cac.id = fa.commande_id
-    WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
+    WHERE cac.labo_id = ANY($1::int[]) AND cac.stock_sorti
       AND fa.date_facture >= $2 AND fa.date_facture <= $3 ${srcCond}`;
 
   const [aggRes, prevRes, evoRes, topAchRes, topArtRes, statutsRes, attenteRes, carnetRes] = await Promise.all([
@@ -833,7 +833,7 @@ const tabAcheteurs = async (req, ctx, from, to) => {
        FROM factures_acheteur fa
        JOIN commandes_acheteur cac ON cac.id = fa.commande_id
        LEFT JOIN acheteurs ach ON ach.id = fa.acheteur_id
-       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.stock_sorti
          AND fa.date_facture >= $2 AND fa.date_facture <= $3 ${srcCond}
        GROUP BY fa.acheteur_id, 1 ORDER BY valeur DESC LIMIT 10`,
       factParams(from, to)
@@ -849,7 +849,7 @@ const tabAcheteurs = async (req, ctx, from, to) => {
        FROM commande_acheteur_lignes cal
        JOIN commandes_acheteur cac ON cac.id = cal.commande_id
        JOIN factures_acheteur fa ON fa.commande_id = cac.id
-       WHERE cac.labo_id = ANY($1::int[]) AND cac.statut IN ('expediee', 'livree')
+       WHERE cac.labo_id = ANY($1::int[]) AND cac.stock_sorti
          AND fa.date_facture >= $2 AND fa.date_facture <= $3 ${srcCond}
        GROUP BY cal.article_type, cal.article_id, cal.designation
        ORDER BY valeur DESC LIMIT 10`,

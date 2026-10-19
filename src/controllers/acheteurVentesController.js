@@ -6,6 +6,7 @@ const { buildFactureAcheteurPdf } = require('../services/factureAcheteurPdf');
 const { figerVendeurFacture, VENDEUR_FACTURE_SQL } = require('../utils/identiteFacture');
 // D2 (15/10/2026) : pas de facture à une fiche « à préciser » ni à un professionnel sans matricule fiscal (409).
 const { refusFacture } = require('../utils/acheteurType');
+const Livraisons = require('../services/livraisons');
 
 const clientIdOf = (req) => req.user.gerant_parent_id || req.user.id;
 const num = (v) => (v === null || v === undefined ? null : Number(v));
@@ -511,7 +512,7 @@ const listCommandes = async (req, res) => {
     const clientId = clientIdOf(req);
     const conds = ['ca.client_id = $1'];
     const params = [clientId];
-    if (req.query.statut && ['en_attente', 'expediee', 'livree', 'annulee'].includes(req.query.statut)) {
+    if (req.query.statut && ['en_attente', 'expediee', 'livree', 'annulee', 'livraison_echouee'].includes(req.query.statut)) {
       params.push(req.query.statut);
       conds.push(`ca.statut = $${params.length}`);
     }
@@ -628,7 +629,7 @@ const getCommande = async (req, res) => {
     if (c.rows[0].labo_id != null && !gerantAllowsLabo(req, c.rows[0].labo_id)) {
       return res.status(404).json({ message: 'Commande introuvable' });
     }
-    const [lignes, histo] = await Promise.all([
+    const [lignes, histo, livraisons] = await Promise.all([
       pool.query(`SELECT * FROM commande_acheteur_lignes WHERE commande_id = $1 ORDER BY id`, [req.params.id]),
       pool.query(
         `SELECT s.statut, s.date_effet, s.motif, s.created_at, u.nom AS created_by_nom
@@ -637,6 +638,8 @@ const getCommande = async (req, res) => {
          WHERE s.commande_id = $1 ORDER BY s.created_at, s.id`,
         [req.params.id]
       ),
+      // Module Livreurs (L3) : les passages du livreur (livrée avec facture signée, ou échec), le plus récent d'abord
+      Livraisons.livraisonsDe(pool, req.params.id),
     ]);
     const row = c.rows[0];
     const isoDate = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
@@ -659,6 +662,11 @@ const getCommande = async (req, res) => {
       livreurNom: row.livreur_nom ?? null,
       livraisonAffecteeAt: row.livraison_affectee_at ?? null,
       livraisonAffecteeParNom: row.livraison_affectee_par_nom ?? null,
+      // Module Livreurs (L3)
+      livraisonRapportee: row.livraison_rapportee === true,
+      stockSorti: row.stock_sorti === true,
+      livraison: Livraisons.versApi(livraisons[0] || null),
+      livraisons: livraisons.map(Livraisons.versApi),
       historique: histo.rows.map((h) => ({
         statut: h.statut, dateEffet: isoDate(h.date_effet), motif: h.motif,
         parNom: h.created_by_nom, le: h.created_at,
@@ -1016,7 +1024,8 @@ const annulerCommande = async (req, res) => {
     await db.query('COMMIT');
     // Pas d'email à l'acheteur (cf. note dans emailService) : l'annulation et son
     // motif s'affichent dans « Mes commandes » sur le portail.
-    const stockConcerne = cmd.statut === 'expediee' || cmd.statut === 'livree';
+    // L3 : une commande non livrée dont la marchandise est déjà rapportée au dépôt n'a plus rien à réintégrer
+    const stockConcerne = cmd.stock_sorti === true;
     res.json({ message: stockConcerne ? 'Commande annulée — [[le:stock]] a été [[acc:stock:réintégré:réintégrée]]' : 'Commande annulée' });
   } catch (err) {
     await db.query('ROLLBACK').catch(() => {});
@@ -1071,4 +1080,5 @@ const downloadFacturePdf = async (req, res) => {
 module.exports = {
   listOffres, upsertOffre, getOffreHistorique,
   createVente, listCommandes, getCommande, expedierCommande, affecterLivreur, livrerCommande, annulerCommande, downloadFacturePdf,
+  resoudreLivreur,
 };

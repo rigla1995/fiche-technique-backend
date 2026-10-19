@@ -101,7 +101,7 @@ function laboArticlesSql(mode, atDate) {
       FROM commande_acheteur_lignes cal
       JOIN commandes_acheteur ca ON ca.id = cal.commande_id
       JOIN last_inv li ON li.ingredient_id = cal.article_id AND COALESCE(ca.date_expedition, ca.date_commande) >= li.date_inventaire
-      WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'ingredient'
+      WHERE ca.labo_id = $1 AND ca.stock_sorti AND cal.article_type = 'ingredient'
         ${single ? 'AND cal.article_id = $2' : ''}${d('COALESCE(ca.date_expedition, ca.date_commande)')}
       GROUP BY cal.article_id
     ),
@@ -109,7 +109,7 @@ function laboArticlesSql(mode, atDate) {
       SELECT cal.article_id AS ingredient_id, SUM(cal.quantite_unites) as qty
       FROM commande_acheteur_lignes cal
       JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-      WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree') AND cal.article_type = 'ingredient'
+      WHERE ca.labo_id = $1 AND ca.stock_sorti AND cal.article_type = 'ingredient'
         ${single ? 'AND cal.article_id = $2' : ''}${d('COALESCE(ca.date_expedition, ca.date_commande)')}
       GROUP BY cal.article_id
     ),
@@ -572,7 +572,7 @@ async function computeStockPT(db, scope, scopeId, produitId) {
            COALESCE(SUM(cal.quantite_unites), 0) AS all_qty
          FROM commande_acheteur_lignes cal
          JOIN commandes_acheteur ca ON ca.id = cal.commande_id
-         WHERE ca.labo_id = $1 AND ca.statut IN ('expediee', 'livree')
+         WHERE ca.labo_id = $1 AND ca.stock_sorti
            AND cal.article_type = 'produit' AND cal.article_id = $2
        )
        SELECT CASE
