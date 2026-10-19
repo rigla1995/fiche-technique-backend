@@ -26,8 +26,8 @@ const { exigerEcriture, modeTitulaire, etatAbonnement } = require('./garde');
 const NIVEAUX = ['consultation', 'saisie', 'complet'];
 // Adresse simple : ni espace, ni chevrons, virgules, guillemets ou parenthèses (relecture de S3b).
 const RE_EMAIL = /^[^\s@<>,;:"'()[\]\\]+@[^\s@<>,;:"'()[\]\\]+\.[^\s@<>,;:"'()[\]\\]+$/;
-// Adresses qui ne reçoivent jamais d'accès : l'équipe LabFlow et les acheteurs (portail de commande).
-const ROLES_REFUSES = ['super_admin', 'boss', 'acheteur'];
+// Adresses qui ne reçoivent jamais d'accès : l'équipe LabFlow, les acheteurs (portail de commande) et les livreurs (L1).
+const ROLES_REFUSES = ['super_admin', 'boss', 'acheteur', 'livreur'];
 const INVITATION_MS = 48 * 60 * 60 * 1000;
 // Une invitation encore valable plus de 24 h est renvoyée telle quelle (relecture de S3b : un tiers ne doit pas pouvoir
 // périmer sans fin le lien d'un compte non activé en le désignant ou en renvoyant l'invitation).

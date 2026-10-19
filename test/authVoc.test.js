@@ -81,7 +81,8 @@ test('requête unique : domaine_id par sous-requête scalaire (client, gérant �
   assert.equal(suivant, true);
   const select = sql[0];
   assert.match(select, /FROM utilisateurs u/);
-  assert.match(select, /\(SELECT ac\.domaine_id FROM abonnements a2 JOIN abonnement_config ac ON ac\.abonnement_id = a2\.id WHERE a2\.client_id = COALESCE\(u\.gerant_parent_id, ach\.client_id, u\.id\) ORDER BY a2\.id DESC LIMIT 1\) AS domaine_id/);
+  // Module Livreurs (L1) : le compte d'un livreur est celui de sa fiche (liv.client_id), entre l'acheteur et l'utilisateur.
+  assert.match(select, /\(SELECT ac\.domaine_id FROM abonnements a2 JOIN abonnement_config ac ON ac\.abonnement_id = a2\.id WHERE a2\.client_id = COALESCE\(u\.gerant_parent_id, ach\.client_id, liv\.client_id, u\.id\) ORDER BY a2\.id DESC LIMIT 1\) AS domaine_id/);
   assert.equal(req.user.domaine_id, 7, 'domaine_id porté par req.user');
   // 1 requête d'authentification + 2 de chargement du profil (domaine, composants), une fois par domaine et par minute
   assert.equal(sql.length, 3, sql.join('\n'));

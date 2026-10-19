@@ -65,17 +65,19 @@ const authenticate = async (req, res, next) => {
     if (!cached) {
       const result = await pool.query(
         `SELECT u.id, u.nom, u.email, u.role,
-                u.actif, u.password_changed_at,
+                u.actif, u.password_changed_at, u.doit_changer_mdp,
                 u.gerant_parent_id, u.gerant_activite_id, u.gerant_activite_type, u.gerant_acces_acheteurs,
                 ach.id AS acheteur_id, ach.client_id AS acheteur_client_id, ach.actif AS acheteur_actif,
+                liv.id AS livreur_id, liv.client_id AS livreur_client_id, liv.actif AS livreur_actif,
                 a.mode_compte,
                 (SELECT ac.domaine_id
                    FROM abonnements a2 JOIN abonnement_config ac ON ac.abonnement_id = a2.id
-                  WHERE a2.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)
+                  WHERE a2.client_id = COALESCE(u.gerant_parent_id, ach.client_id, liv.client_id, u.id)
                   ORDER BY a2.id DESC LIMIT 1) AS domaine_id
          FROM utilisateurs u
          LEFT JOIN acheteurs ach ON ach.user_id = u.id AND u.role = 'acheteur'
-         LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, ach.client_id, u.id)
+         LEFT JOIN livreurs liv ON liv.user_id = u.id AND u.role = 'livreur'
+         LEFT JOIN abonnements a ON a.client_id = COALESCE(u.gerant_parent_id, ach.client_id, liv.client_id, u.id)
          WHERE u.id = $1`,
         [decoded.userId]
       );
@@ -115,6 +117,10 @@ const authenticate = async (req, res, next) => {
     if (row.role === 'acheteur' && (!row.acheteur_id || row.acheteur_actif === false)) {
       return res.status(401).json({ message: 'Compte [[nom:acheteur]] désactivé' });
     }
+    // Module Livreurs (L1) : même règle — un compte livreur sans fiche, ou dont la fiche est désactivée, est refusé.
+    if (row.role === 'livreur' && (!row.livreur_id || row.livreur_actif === false)) {
+      return res.status(401).json({ message: 'Compte livreur désactivé' });
+    }
 
     // Un JWT émis avant le dernier changement de mot de passe est révoqué
     // (iat en secondes ; comparaison stricte pour tolérer un token émis dans la même seconde).
@@ -133,6 +139,9 @@ const authenticate = async (req, res, next) => {
       // Rôle acheteur : fiche carnet + compte client parent (périmètre du portail).
       acheteurId: row.acheteur_id || null,
       acheteurClientId: row.acheteur_client_id || null,
+      // Rôle livreur (L1) : fiche livreur + compte client qu'il sert.
+      livreurId: row.livreur_id || null,
+      livreurClientId: row.livreur_client_id || null,
     };
     // Vocabulaire du compte : admin / boss (d'après le rôle) et compte sans domaine → défaut,
     // sans requête ; sinon celui du domaine (acheteur : domaine de son client vendeur).
@@ -298,6 +307,14 @@ const requireAcheteur = (req, res, next) => {
   next();
 };
 
+// Module Livreurs (L1) : l'espace /api/livreur est réservé au rôle livreur (« livreur » n'a pas de clé de vocabulaire).
+const requireLivreur = (req, res, next) => {
+  if (req.user.role !== 'livreur') {
+    return res.status(403).json({ message: 'Accès réservé aux livreurs' });
+  }
+  next();
+};
+
 // ─── Helpers de périmètre gérant ──────────────────────────────────────────────
 // Un gérant n'a accès qu'aux activités / labos qui lui sont affectés.
 const gerantAllowsActivite = (req, activiteId) => {
@@ -337,6 +354,6 @@ const scopeGerantActivite = (req, res) => {
 module.exports = {
   authenticate, jetonPresent, invalidateAuthCache, requireSuperAdmin, requireBoss, requireClient, requireEntreprise,
   requireWriteAccess, requireGerant, requireClientOrGerant, requireModuleVente,
-  requireModuleAcheteurs, requireGerantAcheteursAccess, requireAcheteur, requireFormulePremium,
+  requireModuleAcheteurs, requireGerantAcheteursAccess, requireAcheteur, requireLivreur, requireFormulePremium,
   requireClientOwner, gerantAllowsActivite, gerantAllowsLabo, scopeGerantActivite,
 };

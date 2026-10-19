@@ -52,8 +52,15 @@ const loginLimiter = rateLimit({
  *       403:
  *         description: Compte désactivé ou suspendu
  */
+// Module Livreurs (L1) : un livreur se connecte par son numéro de téléphone tunisien (8 chiffres, indicatif toléré) ou
+// par son e-mail ; le champ reste « email » pour les écrans existants.
+const TELEPHONE_TN = /^(\+216|00216|216)?[\s.\-]*[24579](?:[\s.\-]*\d){7}$/;
 router.post('/login', loginLimiter, [
-  body('email').isEmail().withMessage('Email invalide'),
+  body('email').custom((v) => {
+    const s = String(v || '').trim();
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) || TELEPHONE_TN.test(s)) return true;
+    throw new Error('Email ou téléphone invalide');
+  }),
   body('mot_de_passe').optional(),
   body('password').optional(),
   body().custom((body) => {

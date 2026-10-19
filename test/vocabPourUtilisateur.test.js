@@ -40,7 +40,8 @@ const fauxPool = {
     const texte = String(sql).replace(/\s+/g, ' ').trim();
     requetes.push({ texte, params });
     if (panne) throw new Error('base indisponible (test)');
-    if (texte.startsWith('SELECT u.role, COALESCE((SELECT a.client_id FROM acheteurs a WHERE a.user_id = u.id LIMIT 1), u.id) AS compte_id FROM utilisateurs u WHERE u.id = $1')) {
+    // Module Livreurs (L1) : le compte d'un livreur (livreurs.client_id) s'intercale entre l'acheteur et l'utilisateur.
+    if (texte.startsWith('SELECT u.role, COALESCE((SELECT a.client_id FROM acheteurs a WHERE a.user_id = u.id LIMIT 1), (SELECT l.client_id FROM livreurs l WHERE l.user_id = u.id LIMIT 1), u.id) AS compte_id FROM utilisateurs u WHERE u.id = $1')) {
       const id = Number(params[0]);
       const u = UTILISATEURS.get(id);
       return { rows: u ? [{ role: u.role, compte_id: ACHETEURS.get(id) ?? id }] : [] };

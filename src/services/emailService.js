@@ -38,7 +38,8 @@ const sendInviteEmail = async ({ to, nom, token, role, voc: vocRecu }) => {
   const voc = vocDuDestinataire(vocRecu, sendInviteEmail);
   const inviteUrl = `${APP_URL}/invite/${token}`;
 
-  const roleLabel = role === 'gerant' ? voc.nom('gerant') : role === 'acheteur' ? voc.nom('acheteur') : 'client';
+  // Module Livreurs (L1) : « livreur » n'a pas de clé de vocabulaire, libellé fixe.
+  const roleLabel = role === 'gerant' ? voc.nom('gerant') : role === 'acheteur' ? voc.nom('acheteur') : role === 'livreur' ? 'livreur' : 'client';
 
   const html = `
 <!DOCTYPE html>

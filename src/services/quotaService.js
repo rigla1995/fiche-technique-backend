@@ -11,6 +11,8 @@ const LIBELLES = {
   activite: { col: 'nb_activites', sg: '[[nom:activite]]', pl: '[[nom:activite:pl]]' },
   labo: { col: 'nb_labos', sg: '[[nom:labo]]', pl: '[[nom:labo:pl]]' },
   gerant: { col: 'nb_gerants', sg: '[[nom:gerant]]', pl: '[[nom:gerant:pl]]' },
+  // Module Livreurs (L1, migration 250) : 5 par compte par défaut ; « livreur » sans clé de vocabulaire (libellé fixe).
+  livreur: { col: 'nb_livreurs', sg: 'livreur', pl: 'livreurs' },
 };
 
 async function checkQuota(db, clientId, type) {
@@ -18,7 +20,7 @@ async function checkQuota(db, clientId, type) {
   const def = LIBELLES[type];
   if (!def) throw new Error(`quotaService: type inconnu « ${type} »`);
   const cfg = await d.query(
-    `SELECT ac.nb_activites, ac.nb_labos, ac.nb_gerants
+    `SELECT ac.nb_activites, ac.nb_labos, ac.nb_gerants, ac.nb_livreurs
        FROM abonnements a JOIN abonnement_config ac ON ac.abonnement_id = a.id
       WHERE a.client_id = $1
       ORDER BY a.id DESC LIMIT 1`,
@@ -32,6 +34,9 @@ async function checkQuota(db, clientId, type) {
   if (type === 'gerant') {
     // Actifs + inactifs (miroir de GerantsPage : gerants.length >= nbGerants).
     const r = await d.query(`SELECT COUNT(*)::int AS n FROM utilisateurs WHERE role = 'gerant' AND gerant_parent_id = $1`, [clientId]);
+    actuel = r.rows[0].n;
+  } else if (type === 'livreur') {
+    const r = await d.query('SELECT COUNT(*)::int AS n FROM livreurs WHERE client_id = $1', [clientId]);
     actuel = r.rows[0].n;
   } else {
     const table = type === 'activite' ? 'activites' : 'labos';

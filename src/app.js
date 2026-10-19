@@ -51,6 +51,9 @@ const bossRoutes = require('./routes/boss');
 const comptaRoutes = require('./compta/routes');
 const comptaAdminRoutes = require('./compta/adminRoutes');
 const { perimetreComptable } = require('./compta/perimetre');
+// Module Livreurs (L1) : routes de gestion (/api/livreurs), espace du livreur (/api/livreur) et périmètre du rôle.
+const livreursRoutes = require('./routes/livreurs');
+const { perimetreLivreur } = require('./middleware/perimetreLivreur');
 const { verifyWebhook, receiveWebhook } = require('./services/messengerService');
 
 const { authenticate, requireWriteAccess, jetonPresent } = require('./middleware/auth');
@@ -127,6 +130,8 @@ app.use('/api', (req, res, next) => {
 });
 // LabFlow Compta (SPEC-SOCLE D5) : le rôle « comptable » n'atteint sous /api que Compta, le manuel et les notifications.
 app.use('/api', perimetreComptable);
+// Module Livreurs (L1) : le rôle « livreur » n'atteint sous /api que son espace et les notifications.
+app.use('/api', perimetreLivreur);
 
 app.use('/auth', authRoutes);
 app.use('/admin/site', adminSiteRoutes);
@@ -164,6 +169,8 @@ app.use('/api/appros', approsRoutes);
 app.use('/api/correspondances', correspondancesRoutes);
 app.use('/api/acheteurs', acheteursRoutes);
 app.use('/api/portail', portailRoutes);
+app.use('/api/livreurs', livreursRoutes.gestion);
+app.use('/api/livreur', livreursRoutes.espace);
 app.use('/api/manuel', manuelRoutes);
 
 app.use('/api/products', produitsRoutes);

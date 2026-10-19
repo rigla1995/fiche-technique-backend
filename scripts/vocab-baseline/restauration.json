@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-10",
-  "derniereMigration": "249_manuel_codes_articles.sql",
+  "derniereMigration": "250_livreurs.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -660,6 +660,7 @@
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
     "acheteurs-ventes": "f57686927f40137e80d37af329bb60da",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
+    "livreurs": "9119fb7ca32e17edafa91bfac7eb138a",
     "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
@@ -721,6 +722,7 @@
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
     "acheteurs-ventes": "f57686927f40137e80d37af329bb60da",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
+    "livreurs": "9119fb7ca32e17edafa91bfac7eb138a",
     "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
@@ -783,6 +785,7 @@
     "acheteurs-tarifs": "336d12d5635b43b3cefc114cbb437fe2",
     "acheteurs-ventes": "f57686927f40137e80d37af329bb60da",
     "acheteurs-portail": "16737963ac148d821bcd0b9e5ab25cc8",
+    "livreurs": "9119fb7ca32e17edafa91bfac7eb138a",
     "dashboard": "434ec7a43a3315f52396d4122035eabf",
     "activites": "f5985cf9c307b0166ccd207c9ddc398c",
     "fournisseurs": "a1e3d610172471ac961c012a76823463",
@@ -810,9 +813,9 @@
    "client.A": 41,
    "client.B": 56,
    "gerant.B": 43,
-   "client.C": 53,
-   "acheteur.C": 60,
-   "admin": 60
+   "client.C": 54,
+   "acheteur.C": 61,
+   "admin": 61
   },
   "signatures": {
    "outils": "toolsFor(voc)",
@@ -1647,19 +1650,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "-10.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.650",
-     "source": "Bloc chaud",
-     "type_appro": "manuel"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "10.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.650",
      "source": "Terrasse du Lac — Salon",
      "type_appro": "transfert"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "-10.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.650",
+     "source": "Bloc chaud",
+     "type_appro": "manuel"
     },
     {
      "ingredient": "Riz basmati",
@@ -6658,13 +6661,13 @@
       ],
       [
        "Riz basmati",
-       "-10",
+       "10",
        "⟨date⟩",
        "2.65"
       ],
       [
        "Riz basmati",
-       "10",
+       "-10",
        "⟨date⟩",
        "2.65"
       ],
@@ -15378,6 +15381,7 @@
      "acheteurs-tarifs",
      "acheteurs-ventes",
      "acheteurs-portail",
+     "livreurs",
      "dashboard",
      "activites",
      "fournisseurs",
@@ -15439,6 +15443,7 @@
      "acheteurs-tarifs",
      "acheteurs-ventes",
      "acheteurs-portail",
+     "livreurs",
      "dashboard",
      "activites",
      "fournisseurs",
@@ -15501,6 +15506,7 @@
      "acheteurs-tarifs",
      "acheteurs-ventes",
      "acheteurs-portail",
+     "livreurs",
      "dashboard",
      "activites",
      "fournisseurs",
@@ -16361,6 +16367,20 @@
      "contenu": "## 🛍️ Le portail acheteur\n\nLe portail est l'espace en ligne de **vos acheteurs** (adresse `/portail`, accessible après activation de leur compte).\n\n### Ce que voit l'acheteur\n\n- Le **catalogue** de vos offres actives, regroupé **par catégorie** avec recherche, filtre et pagination, et les prix TTC à l'unité. Tout article proposé est **commandable** — l'acheteur ne voit **rien de vos stocks** : c'est vous qui ajustez les quantités, ou retirez des lignes, à l'expédition.\n- **Mes commandes** : le statut de chaque commande (En attente / Expédiée / Livrée / Annulée avec motif), le **détail complet** (lignes, remise appliquée, TVA, timbre, total, référence de facture) et l'**historique des états**, avec les **factures** en PDF.\n\n### Le flux\n\n1. L'acheteur compose son panier et envoie sa commande — **les prix sont figés** au tarif du moment, il ne peut pas les modifier.\n2. Vous recevez la notification et **expédiez** (ou refusez) depuis [Commandes](#acheteurs-ventes) — c'est à l'expédition que vous pouvez **ajuster les quantités** et décider d'une **remise** éventuelle.\n3. Le stock n'est déduit **qu'à l'expédition** — aucune réservation avant.\n4. L'acheteur retrouve le nouveau statut et sa facture sur son portail ; vous clôturez la commande en la passant **Livrée**.\n\n:::astuce\nUne commande n'engage pas votre stock : à l'expédition, vous ajustez les quantités réellement servies, retirez les lignes que vous ne pouvez pas fournir, ou refusez la commande avec un motif.\n:::\n\n### Les emails reçus par un acheteur\n\nUn acheteur ne reçoit **que deux emails** : l'invitation à activer son compte, et la réinitialisation de son mot de passe. Les changements de statut d'une commande (expédiée, livrée, refusée) **ne déclenchent aucun email** : l'acheteur les consulte dans « Mes commandes » sur son portail.",
      "motsCles": "portail, catalogue, panier, disponible, rupture, commande en ligne, facture pdf, statut",
      "ecran": "/portail",
+     "visibleGerant": true,
+     "actif": true,
+     "updatedAt": "⟨date⟩"
+    },
+    "livreurs": {
+     "id": "⟨id⟩",
+     "slug": "livreurs",
+     "titre": "Livreurs",
+     "icone": "🏍️",
+     "partie": "Espace Acheteurs",
+     "ordre": 69,
+     "contenu": "## 🏍️ Livreurs\n\nCet écran vous permet de créer des **comptes livreurs** : les personnes qui livrent vos commandes acheteurs. Depuis son téléphone, un livreur verra les livraisons qu'on lui confie, validera chaque livraison ou signalera qu'elle a échoué (étapes à venir du module). Vous trouvez l'écran dans le menu latéral, partie **Espace Acheteurs**, entrée **Livreurs**. Un livreur ne voit que ses livraisons : jamais le stock, les prix d'achat ni les autres commandes.\n\n### Ce que vous voyez\n\nLe bandeau affiche le compteur **Livreurs** (comptes créés / comptes inclus dans votre abonnement) et le bouton **+ Nouveau livreur**, remplacé par la mention 🔒 *Limite atteinte* quand le quota est plein.\n\nChaque livreur apparaît sous forme de carte avec :\n\n- ses initiales, son nom, son téléphone et, s'il en a une, son adresse e-mail ;\n- son statut : **● Actif** ou **○ Inactif**, plus **⏳ Invitation en attente** tant qu'il n'a pas activé son compte par e-mail, ou **🔑 Mot de passe à changer** tant qu'il n'a pas remplacé le mot de passe initial que vous lui avez remis ;\n- les actions : **✉️ Renvoyer** l'invitation (livreur avec e-mail, compte non activé), **🔑 Nouveau mot de passe**, **✏️ Modifier**, **⏸ Désactiver** / **▶ Activer**, **🗑** supprimer.\n\n### Actions pas à pas\n\n1. Cliquez **+ Nouveau livreur** et renseignez le **nom** et le **téléphone** (8 chiffres, obligatoires). L'adresse **e-mail** est facultative.\n2. **Avec une adresse e-mail** : validez avec **✓ Créer et envoyer l'invitation**. Le livreur reçoit un e-mail, clique sur le lien (valable 48 heures) et choisit son mot de passe.\n3. **Sans adresse e-mail** : validez avec **✓ Créer et obtenir le mot de passe**. Un **mot de passe initial** s'affiche **une seule fois** : notez-le et remettez-le au livreur de vive voix. À sa première connexion, l'application lui demande d'en choisir un nouveau.\n4. Le livreur se connecte sur la page habituelle de LabFlow avec son **numéro de téléphone** (ou son e-mail) et son mot de passe.\n5. Mot de passe perdu : **🔑 Nouveau mot de passe** en génère un autre, affiché une seule fois lui aussi ; les sessions ouvertes du livreur sont fermées.\n6. Pour suspendre temporairement un accès, cliquez **⏸ Désactiver** (réversible avec ▶ Activer). Pour retirer définitivement l'accès, utilisez 🗑 (une confirmation est demandée).\n\n### Points d'attention\n\n:::regle\nVotre abonnement comprend **5 comptes livreurs**. Au-delà, demandez un ajout de capacité à l'équipe LabFlow depuis la page Demandes.\n:::\n\n:::attention\nLe numéro de téléphone sert d'identifiant de connexion : il doit être **unique** dans LabFlow et au format tunisien (8 chiffres). Le mot de passe initial n'est **jamais** envoyé par SMS ni par e-mail : il n'existe qu'à l'écran, au moment où il est généré.\n:::\n\n:::astuce\nCréez un compte par livreur plutôt qu'un compte partagé : les livraisons garderont la trace de qui a livré quoi, et quand.\n:::\n\n### Voir aussi\n\n- [Ventes & commandes acheteurs](#acheteurs-ventes) — les commandes que vos livreurs livreront\n- [Carnet d'Acheteurs](#acheteurs-carnet) · [Comptes gérants](#gerants)\n",
+     "motsCles": "livreur, livreurs, livraison, compte livreur, téléphone, mot de passe initial, invitation, désactiver, quota, cinq livreurs, chauffeur, coursier, expédition, commandes acheteurs",
+     "ecran": "/client/livreurs",
      "visibleGerant": true,
      "actif": true,
      "updatedAt": "⟨date⟩"
