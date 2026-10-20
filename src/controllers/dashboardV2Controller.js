@@ -781,6 +781,7 @@ const tabLabo = async (req, ctx, from, to) => {
 // est ancré sur fa.date_facture (comme le KPI de l'onglet Labo), les lignes et
 // commandes sur COALESCE(date_expedition, date_commande). Lectures snapshot-aware
 // (acheteur supprimé → colonnes fa.acheteur_* + suffixe « (supprimé) »).
+const { MOTIFS: MOTIFS_LIVRAISON } = require('../services/livraisons');
 const tabAcheteurs = async (req, ctx, from, to) => {
   if (!ctx.moduleAcheteurs) return { vide: true };
   const grain = resolveGrain(from, to);
@@ -800,7 +801,7 @@ const tabAcheteurs = async (req, ctx, from, to) => {
     WHERE cac.labo_id = ANY($1::int[]) AND cac.stock_sorti
       AND fa.date_facture >= $2 AND fa.date_facture <= $3 ${srcCond}`;
 
-  const [aggRes, prevRes, evoRes, topAchRes, topArtRes, statutsRes, attenteRes, carnetRes] = await Promise.all([
+  const [aggRes, prevRes, evoRes, topAchRes, topArtRes, statutsRes, attenteRes, carnetRes, livRes] = await Promise.all([
     pool.query(
       `SELECT COALESCE(SUM(fa.montant_ttc), 0) AS ttc,
               COALESCE(SUM(fa.montant_ht), 0) AS ht,
@@ -878,7 +879,47 @@ const tabAcheteurs = async (req, ctx, from, to) => {
       `SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE actif) AS actifs FROM acheteurs WHERE client_id = $1`,
       [ctx.clientId]
     ),
+    // Module Livreurs (L4) : passages des livreurs sur la période (date du passage), commandes des labos filtrés
+    // (celles sans labo restent comptées, comme les états ci-dessus). Délai = jours entre expédition et livraison.
+    pool.query(
+      `SELECT cl.livreur_id, cl.livreur_nom, cl.resultat, cl.motif, cl.montant_percu,
+              CASE WHEN cl.resultat = 'livree' AND cac.date_expedition IS NOT NULL
+                   THEN GREATEST(0, cl.created_at::date - cac.date_expedition) END AS delai
+         FROM commande_livraisons cl
+         JOIN commandes_acheteur cac ON cac.id = cl.commande_id
+        WHERE cl.client_id = $4 AND (cac.labo_id IS NULL OR cac.labo_id = ANY($1::int[]))
+          AND cl.created_at::date >= $2 AND cl.created_at::date <= $3`,
+      [laboIds, from, to, ctx.clientId]
+    ),
   ]);
+
+  // Bloc Livraisons (L4) : null sans aucun passage sur la période (le front ne l'affiche pas)
+  const bilanLiv = (rows) => {
+    const livrees = rows.filter((x) => x.resultat === 'livree');
+    const echecs = rows.length - livrees.length;
+    const delais = livrees.map((x) => x.delai).filter((d) => d != null).map(Number);
+    return {
+      total: rows.length,
+      livrees: livrees.length,
+      echecs,
+      taux_echec_pct: rows.length ? Math.round((echecs / rows.length) * 1000) / 10 : null,
+      delai_moyen_jours: delais.length ? Math.round((delais.reduce((s, d) => s + d, 0) / delais.length) * 10) / 10 : null,
+      encaisse: r3(livrees.reduce((s, x) => s + num(x.montant_percu), 0)),
+    };
+  };
+  const livParLivreur = new Map();
+  for (const x of livRes.rows) {
+    const cle = x.livreur_id ?? `nom:${x.livreur_nom}`;
+    if (!livParLivreur.has(cle)) livParLivreur.set(cle, { livreur: x.livreur_nom, rows: [] });
+    livParLivreur.get(cle).rows.push(x);
+  }
+  const livMotifs = new Map();
+  for (const x of livRes.rows) if (x.resultat === 'echec' && x.motif) livMotifs.set(x.motif, (livMotifs.get(x.motif) || 0) + 1);
+  const livraisons = livRes.rows.length ? {
+    ...bilanLiv(livRes.rows),
+    par_livreur: [...livParLivreur.values()].map((g) => ({ livreur: g.livreur, ...bilanLiv(g.rows) })).sort((a, b) => b.total - a.total),
+    motifs: [...livMotifs.entries()].map(([motif, nb]) => ({ motif, libelle: MOTIFS_LIVRAISON[motif] || motif, nb })).sort((a, b) => b.nb - a.nb),
+  } : null;
 
   const agg = aggRes.rows[0];
   const caCur = num(agg.ttc);
@@ -901,6 +942,7 @@ const tabAcheteurs = async (req, ctx, from, to) => {
     top_acheteurs: topAchRes.rows.map((r) => ({ acheteur: r.acheteur, valeur: r3(num(r.valeur)), nb: parseInt(r.nb, 10) || 0 })),
     top_articles: topArtRes.rows.map((r) => ({ nom: r.nom, qte: r3(num(r.qte)), valeur: r3(num(r.valeur)) })),
     par_statut: statutsRes.rows.map((r) => ({ statut: r.statut, nb: parseInt(r.nb, 10) || 0 })),
+    livraisons,
   };
 };
 

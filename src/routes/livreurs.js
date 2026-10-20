@@ -12,6 +12,17 @@ const gestion = express.Router();
 gestion.use(authenticate, requireClientOrGerant, requireModuleAcheteurs, requireGerantAcheteursAccess);
 // L3 : option du compte « les livreurs encaissent à la livraison » (avant /:id pour ne pas être pris pour un identifiant)
 gestion.put('/options', livraisons.options);
+/**
+ * @openapi
+ * /api/livreurs/livraisons:
+ *   get:
+ *     tags: [Livreurs]
+ *     summary: "L4 — suivi des livraisons : passages des livreurs (?from&to sur la date du passage, ?livreurId, ?resultat=livree|echec, ?acheteurId) + bilan (total, par livreur, motifs) ; gérant : commandes de ses labos"
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "{ lignes: [...], stats: { total, livrees, echecs, tauxEchecPct, delaiMoyenJours, encaisse, parLivreur, motifs } }" }
+ */
+gestion.get('/livraisons', livraisons.suivi);
 
 /**
  * @openapi

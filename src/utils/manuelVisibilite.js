@@ -109,6 +109,7 @@ const REGLES_VISIBILITE = {
   'acheteurs-portail': (c) => c.moduleAcheteurs,
   livreurs: (c) => c.moduleAcheteurs, // module Livreurs (L1) : même porte que la base acheteurs
   'livreurs-livraison': (c) => c.moduleAcheteurs, // module Livreurs (L3) : livrer avec son téléphone
+  'livreurs-suivi': (c) => c.moduleAcheteurs, // module Livreurs (L4) : suivi des livraisons
   // Calculs propres au labo
   'calc-production-pt': (c) => c.hasLabosProduction,
   'calc-transferts': (c) => c.hasLabos && (c.hasActivites || c.hasLabosEnfants),
