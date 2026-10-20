@@ -323,4 +323,108 @@ const options = async (req, res) => {
   } catch (err) { repondre(res, err, 'options'); }
 };
 
-module.exports = { televersement, livree, echec, relancer, pieceVendeur, piecePortail, options };
+// ── GET /api/livreurs/livraisons — L4 : suivi des livraisons (client / gérant ayant l'accès acheteurs) ──────────────
+// Passages des livreurs du compte sur une période (date du passage), filtrables par livreur, résultat et acheteur ;
+// un gérant ne voit que les commandes de ses labos (celles sans labo restent visibles, comme la liste des commandes).
+// Bilan : total, livrées, non livrées, taux d'échec, délai moyen expédition → livraison (jours), encaissé ; par livreur ;
+// motifs d'échec. Le délai ne compte que les livraisons validées.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const r1 = (v) => Math.round(v * 10) / 10;
+const r3 = (v) => Math.round(v * 1000) / 1000;
+const suivi = async (req, res) => {
+  try {
+    const clientId = clientIdOf(req);
+    const params = [clientId];
+    const conds = ['cl.client_id = $1'];
+    if (req.user.role === 'gerant') {
+      params.push(req.user.gerantLaboIds || []);
+      conds.push(`(ca.labo_id IS NULL OR ca.labo_id = ANY($${params.length}::int[]))`);
+    }
+    if (DATE_RE.test(String(req.query.from || ''))) { params.push(req.query.from); conds.push(`cl.created_at::date >= $${params.length}`); }
+    if (DATE_RE.test(String(req.query.to || ''))) { params.push(req.query.to); conds.push(`cl.created_at::date <= $${params.length}`); }
+    if (/^\d{1,9}$/.test(String(req.query.livreurId || ''))) { params.push(Number(req.query.livreurId)); conds.push(`cl.livreur_id = $${params.length}`); }
+    if (['livree', 'echec'].includes(req.query.resultat)) { params.push(req.query.resultat); conds.push(`cl.resultat = $${params.length}`); }
+    if (/^\d{1,9}$/.test(String(req.query.acheteurId || ''))) { params.push(Number(req.query.acheteurId)); conds.push(`ca.acheteur_id = $${params.length}`); }
+    const where = conds.join(' AND ');
+    const r = await pool.query(
+      `SELECT cl.id, cl.created_at, cl.livreur_id, cl.livreur_nom, cl.resultat, cl.motif, cl.note, cl.rapportee_depot,
+              cl.receptionnaire, cl.montant_percu, mp.libelle AS mode_paiement, cl.piece_cle IS NOT NULL AS facture_signee,
+              ca.id AS commande_id, ca.date_commande, ca.date_expedition, ca.statut AS commande_statut, ca.acheteur_id,
+              COALESCE(ach.nom, ca.acheteur_nom) AS acheteur_nom,
+              CASE WHEN ach.id IS NULL THEN ca.acheteur_entreprise ELSE ach.entreprise END AS acheteur_entreprise,
+              l.nom AS labo_nom, fa.numero AS facture_numero, fa.montant_ttc,
+              CASE WHEN cl.resultat = 'livree' AND ca.date_expedition IS NOT NULL
+                   THEN GREATEST(0, (cl.created_at::date - ca.date_expedition)) END AS delai_jours
+         FROM commande_livraisons cl
+         JOIN commandes_acheteur ca ON ca.id = cl.commande_id
+         LEFT JOIN acheteurs ach ON ach.id = ca.acheteur_id
+         LEFT JOIN labos l ON l.id = ca.labo_id
+         LEFT JOIN factures_acheteur fa ON fa.commande_id = ca.id
+         LEFT JOIN modes_paiement mp ON mp.id = cl.mode_paiement_id
+        WHERE ${where}
+        ORDER BY cl.created_at DESC, cl.id DESC
+        LIMIT 2000`,
+      params
+    );
+    const lignes = r.rows.map((x) => ({
+      id: x.id,
+      le: x.created_at,
+      livreurId: x.livreur_id ?? null,
+      livreurNom: x.livreur_nom,
+      commandeId: x.commande_id,
+      commandeStatut: x.commande_statut,
+      dateCommande: x.date_commande instanceof Date ? x.date_commande.toISOString().slice(0, 10) : x.date_commande,
+      dateExpedition: x.date_expedition instanceof Date ? x.date_expedition.toISOString().slice(0, 10) : x.date_expedition,
+      acheteurId: x.acheteur_id ?? null,
+      acheteurNom: x.acheteur_nom,
+      acheteurEntreprise: x.acheteur_entreprise || null,
+      laboNom: x.labo_nom || null,
+      factureNumero: x.facture_numero || null,
+      montantTtc: x.montant_ttc == null ? null : Number(x.montant_ttc),
+      resultat: x.resultat,
+      motif: x.motif || null,
+      motifLibelle: x.motif ? L.MOTIFS[x.motif] || x.motif : null,
+      note: x.note || null,
+      rapporteeDepot: x.rapportee_depot === true,
+      receptionnaire: x.receptionnaire || null,
+      montantPercu: x.montant_percu == null ? null : Number(x.montant_percu),
+      modePaiement: x.mode_paiement || null,
+      delaiJours: x.delai_jours == null ? null : Number(x.delai_jours),
+      factureSignee: x.facture_signee === true,
+    }));
+    // Bilan calculé sur les lignes filtrées (le même périmètre que ce que l'écran affiche)
+    const bilan = (liste) => {
+      const livrees = liste.filter((x) => x.resultat === 'livree');
+      const echecs = liste.length - livrees.length;
+      const delais = livrees.map((x) => x.delaiJours).filter((d) => d != null);
+      return {
+        total: liste.length,
+        livrees: livrees.length,
+        echecs,
+        tauxEchecPct: liste.length ? r1((echecs / liste.length) * 100) : null,
+        delaiMoyenJours: delais.length ? r1(delais.reduce((s, d) => s + d, 0) / delais.length) : null,
+        encaisse: r3(livrees.reduce((s, x) => s + (x.montantPercu || 0), 0)),
+      };
+    };
+    const parLivreur = new Map();
+    for (const x of lignes) {
+      const cle = x.livreurId ?? `nom:${x.livreurNom}`;
+      if (!parLivreur.has(cle)) parLivreur.set(cle, { livreurId: x.livreurId, livreurNom: x.livreurNom, lignes: [] });
+      parLivreur.get(cle).lignes.push(x);
+    }
+    const motifs = new Map();
+    for (const x of lignes) if (x.resultat === 'echec' && x.motif) motifs.set(x.motif, (motifs.get(x.motif) || 0) + 1);
+    res.json({
+      lignes,
+      stats: {
+        ...bilan(lignes),
+        parLivreur: [...parLivreur.values()]
+          .map((g) => ({ livreurId: g.livreurId, livreurNom: g.livreurNom, ...bilan(g.lignes) }))
+          .sort((a, b) => b.total - a.total || a.livreurNom.localeCompare(b.livreurNom)),
+        motifs: [...motifs.entries()].map(([motif, nb]) => ({ motif, libelle: L.MOTIFS[motif] || motif, nb })).sort((a, b) => b.nb - a.nb),
+      },
+    });
+  } catch (err) { repondre(res, err, 'suivi'); }
+};
+
+module.exports = { televersement, livree, echec, relancer, pieceVendeur, piecePortail, options, suivi };
