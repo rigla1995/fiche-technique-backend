@@ -2,6 +2,9 @@ const { validationResult } = require('express-validator');
 const pool = require('../config/database');
 // D3 (16/10/2026) : code unique des articles, préfixe des catégories (src/utils/codesArticles.js = la règle).
 const CS = require('../services/codesArticlesService');
+// C2 : recette propre à un canal — les variantes d'un produit (règles : src/utils/variantesProduit.js).
+const variantes = require('../services/variantesProduit');
+const VP = require('../utils/variantesProduit');
 const { vocabDefaut } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
 const UP = require('../utils/uniteProduit');
@@ -35,6 +38,12 @@ const mapProduit = (row) => ({
   isSupplement: !!row.is_supplement,
   categorieProduitId: row.categorie_produit_id || null,
   categorieProduitName: row.categorie_produit_nom || null,
+  // C2 : variante (recette propre à un canal) — son produit d'origine et son libellé ; pour un produit d'origine,
+  // le nombre de ses variantes (absent des réponses qui ne le comptent pas).
+  varianteDeId: row.variante_de_id || null,
+  varianteDeNom: row.variante_de_id ? (row.variante_de_nom || null) : null,
+  varianteLibelle: row.variante_de_id ? (row.variante_libelle || null) : null,
+  variantesCount: row.variantes_count !== undefined && row.variantes_count !== null ? parseInt(row.variantes_count) : undefined,
   // P1 : unité finale et quantité produite par la recette (null : produit d'avant, compté à la recette). La recette et
   // le coût sont pour 1 unité.
   uniteId: row.unite_id || null,
@@ -190,7 +199,9 @@ const list = async (req, res) => {
          FROM labo_pt_selections lps JOIN labos l ON l.id = lps.labo_id
          WHERE lps.produit_id = p.id) AS labos_list,
         (SELECT cp.nom FROM categories_produit cp WHERE cp.id = p.categorie_produit_id) AS categorie_produit_nom,
-        (SELECT u.nom FROM unites u WHERE u.id = p.unite_id) AS unite_nom
+        (SELECT u.nom FROM unites u WHERE u.id = p.unite_id) AS unite_nom,
+        (SELECT pp.nom FROM produits pp WHERE pp.id = p.variante_de_id) AS variante_de_nom,
+        (SELECT COUNT(*) FROM produits v WHERE v.variante_de_id = p.id) AS variantes_count
        FROM produits p
        WHERE p.client_id = $1${whereExtra}
        ORDER BY p.created_at DESC`,
@@ -207,7 +218,9 @@ const getById = async (req, res) => {
   const { id } = req.params;
   try {
     const produit = await pool.query(
-      `SELECT p.*, (SELECT u.nom FROM unites u WHERE u.id = p.unite_id) AS unite_nom
+      `SELECT p.*, (SELECT u.nom FROM unites u WHERE u.id = p.unite_id) AS unite_nom,
+        (SELECT pp.nom FROM produits pp WHERE pp.id = p.variante_de_id) AS variante_de_nom,
+        (SELECT COUNT(*) FROM produits v WHERE v.variante_de_id = p.id) AS variantes_count
          FROM produits p WHERE p.id = $1 AND p.client_id = $2`,
       [id, req.user.gerant_parent_id || req.user.id]
     );
@@ -619,6 +632,9 @@ const update = async (req, res) => {
       await client.query('UPDATE produits SET unite_id = $2, quantite_produite = $3 WHERE id = $1', [id, unite.uniteId, unite.quantiteProduite]);
     }
 
+    // C2 : le nom d'avant, pour faire suivre les variantes encore nommées « Nom — Libellé ».
+    const nomAvant = (await client.query('SELECT nom FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id])).rows[0]?.nom;
+
     const result = await client.query(
       `UPDATE produits SET nom = COALESCE($1, nom), description = COALESCE($2, description),
        ref_produit = CASE WHEN $3::text IS NOT NULL THEN $3 ELSE ref_produit END,
@@ -634,6 +650,8 @@ const update = async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
     }
+
+    if (nomAvant && nomAvant !== result.rows[0].nom) await variantes.renommerVariantes(client, id, nomAvant, result.rows[0].nom);
 
     if (ingredients !== undefined) {
       await client.query('DELETE FROM produit_ingredients WHERE produit_id = $1', [id]);
@@ -783,6 +801,11 @@ const update = async (req, res) => {
 const remove = async (req, res) => {
   const { id } = req.params;
   try {
+    // C2 : un produit qui a des variantes ne se supprime pas avant elles.
+    const aSoi = await pool.query('SELECT 1 FROM produits WHERE id = $1 AND client_id = $2', [id, req.user.gerant_parent_id || req.user.id]);
+    if (aSoi.rows.length && await variantes.nombreDeVariantes(pool, id) > 0) {
+      return res.status(409).json({ code: 'PRODUIT_A_VARIANTES', message: '[[Ce:produit]] a des variantes : supprimez-les d\'abord.' });
+    }
     const result = await pool.query(
       'DELETE FROM produits WHERE id = $1 AND client_id = $2 RETURNING id',
       [id, req.user.gerant_parent_id || req.user.id]
@@ -1898,8 +1921,37 @@ const refProposee = async (req, res) => {
   }
 };
 
+// C2 — POST /api/produits/:id/variantes { activite_id, libelle, canaux: ['directe' | lien prestataire…] }
+// Crée la variante (copie du produit et de sa recette, liée à l'original) et la met en vente à la place de l'original
+// sur les canaux choisis, au même prix. Tout ou rien.
+const creerVariante = async (req, res) => {
+  const produitId = Number(req.params.id);
+  if (!Number.isInteger(produitId) || produitId <= 0) return res.status(404).json({ message: '[[Nom:produit]] introuvable' });
+  let demande;
+  try {
+    demande = VP.lireDemande(req.body);
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
+    throw e;
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await variantes.creer(client, { clientId: req.user.gerant_parent_id || req.user.id, userId: req.user.id, produitId, ...demande });
+    await client.query('COMMIT');
+    res.status(201).json({ produit: mapProduit(r.variante), canaux: r.canaux });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
+    console.error(e);
+    res.status(500).json({ message: 'Erreur serveur' });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
-  list, getById, create, update, remove,
+  list, getById, create, update, remove, creerVariante,
   addIngredient, removeIngredient,
   addSousProduit, removeSousProduit,
   getCout, calculerCout, calculerCoutAvecPrixMap,

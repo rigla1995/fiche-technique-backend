@@ -263,4 +263,4 @@ async function exigerLignesEnVente(db, { activiteId, typeVente, prestataireId, l
     `${quoi} n'est pas en [[nom:vente]] sur ce canal. Cochez sa case dans Configuration [[Court:vente]], avec un prix.`);
 }
 
-module.exports = { modifierCellules, copier, exigerLignesEnVente, recalculerActif, retirerSansCanal, eteindreSansCanal };
+module.exports = { modifierCellules, copier, exigerLignesEnVente, recalculerActif, retirerSansCanal, eteindreSansCanal, liensDe, exigerLien };

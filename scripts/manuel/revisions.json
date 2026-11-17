@@ -463,6 +463,28 @@
           "md5": "da9dafa2be957e2666fb5478432327f6"
         }
       ]
+    },
+    {
+      "numero": 260,
+      "nom": "260_manuel_recette_par_canal.sql",
+      "objet": "Recette propre à un canal (C2) : variante d'un produit créée depuis Configuration vente, rangée sous son produit, avec sa recette et son coût ; saisie des ventes : le prix de chaque canal sous sa case (la colonne « Prix vente » disparaît).",
+      "manuel": [
+        {
+          "slug": "configuration-vente",
+          "md5Avant": "edf116fec1cc17fcfe38abae661ba441",
+          "md5": "13a16f55cc26e803d45c85821a5a386b"
+        },
+        {
+          "slug": "produits-vendables",
+          "md5Avant": "a7614fe6deba1657a8ffe574b26266c3",
+          "md5": "ba6be778c908533311206790e9d7ce92"
+        },
+        {
+          "slug": "saisie-ventes",
+          "md5Avant": "a7bba071687ab0154ad6f5327136ace2",
+          "md5": "2b4f8704671293504524441ed4e2f560"
+        }
+      ]
     }
   ]
 }

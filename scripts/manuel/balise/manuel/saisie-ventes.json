@@ -50,13 +50,6 @@
       "type": "nom-fige",
       "occurrences": 1,
       "justification": "en-tête de colonne écrit en dur par l'écran, sans voc : « Article » (VentesPage.tsx:280) (R7.1.3)"
-    },
-    {
-      "extrait": "*Prix vente*",
-      "forme": "vente",
-      "type": "nom-fige",
-      "occurrences": 1,
-      "justification": "en-tête de colonne écrit en dur par l'écran, sans voc : « Prix vente » (VentesPage.tsx:281) (R7.1.3)"
     }
   ],
   "baliseur": "L7",

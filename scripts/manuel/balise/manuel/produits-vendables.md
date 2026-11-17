@@ -7,6 +7,7 @@ Cet écran regroupe [[det:produit:votre:pl]]**[[nom:produit:pl]] [[acc:produit:f
 - Deux onglets avec compteurs : **🍽️ [[Pl:produit_vendable]]** et **➕ [[Pl:supplement]] vendables**.
 - Une barre de filtres : **📍 [[Nom:activite]]**, **🏷️ Catégorie**, **🔍 Nom**, bouton **Réinitialiser**, bouton **Exporter XLS** et bouton **+ [[Nom:produit_vendable]]** (ou **+ [[Nom:supplement]] vendable** selon l'onglet).
 - Des **cartes [[nom:produit]]** (9 par page, avec pagination) affichant : le nom, la référence éventuelle, le badge de catégorie, le bouton **👁 Voir composition** (avec un résumé du type « 2 [[nom:article:pl]] · 1 [[court:produit_utilisable]] »), les actions (**Fiche tech.**, **Modifier**, **Supprimer**) et des **pastilles [[de:activite:pl]]** en bas de carte.
+- Une **variante** ([[un:recette]] propre à un canal [[de:vente]]) est rangée juste après [[le:produit]] d'origine, avec le badge **↳ Variante** et son nom (« Livraison ») ; [[le:produit]] d'origine affiche le nombre de ses variantes.
 
 ### L'assistant unique de création et de modification
 
@@ -26,7 +27,9 @@ Un **même assistant en 5 étapes** sert à créer ET à modifier [[un:produit]]
 
 **Exporter** : le bouton **Exporter XLS** génère la liste filtrée ; pour les vendables, une option permet d'inclure aussi l'autre onglet ([[nom:supplement:pl]] ou [[nom:produit:pl]]) dans une feuille séparée du même fichier.
 
-**Supprimer** : bouton **Supprimer**, puis confirmation. L'action est **irréversible**.
+**Préparer [[un:produit]] autrement pour un canal [[de:vente]]** (livraison, emporter…) : la variante se crée dans la [Configuration [[Court:vente]]](#configuration-vente), bouton **＋ [[Nom:recette]] par canal**. Elle se modifie ensuite ici, avec le même assistant : [[son:recette]], son coût et [[son:fiche_technique]] lui sont propres. Renommer [[le:produit]] d'origine renomme ses variantes.
+
+**Supprimer** : bouton **Supprimer**, puis confirmation. L'action est **irréversible**. [[Un:produit]] qui a des variantes ne se supprime qu'après elles.
 
 ### Points d'attention
 
