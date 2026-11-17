@@ -39,6 +39,14 @@ Copier un canal vers un autre (bouton **📋 Copier un canal**) :
 
 Dès que vous activez [[un:prestataire]], LabFlow propose de copier vers lui ce qui se vend en direct.
 
+Préparer [[un:produit]] autrement pour un canal (bouton **＋ [[Nom:recette]] par canal**, sur la ligne [[du:produit]]) :
+
+1. Donnez un nom à la variante (« Livraison » est proposé) et cochez les canaux où elle remplace [[le:produit]] d'origine.
+2. Cliquez sur **Créer la variante** : LabFlow copie [[le:produit]] et [[son:recette]], range la variante juste sous lui et la coche sur ces canaux, au même prix. [[Le:produit]] d'origine y est décoché, son prix gardé. Sur un canal où il n'avait pas de prix, saisissez celui de la variante.
+3. Choisissez **Ajuster [[le:recette]]** : l'assistant [[du:produit:pl]] s'ouvre sur la variante, à l'étape [[du:article:pl]]. Changez les quantités, ajoutez un emballage, puis enregistrez.
+
+La variante est [[un:produit]] à part entière : [[son:fiche_technique]], son coût, sa sortie [[de:stock]] et [[son:marge]] lui sont propres, et elle a sa ligne dans les rapports. Ce bouton est réservé au compte propriétaire.
+
 Gérer les canaux [[nom:prestataire:pl]] (bouton **🛵 [[Pl:prestataire]]**) :
 
 1. Sélectionnez [[le:activite]] [[acc:activite:concerné:concernée]].
@@ -63,6 +71,10 @@ Une case ne se coche qu'avec un **prix supérieur à 0** ; effacer le prix d'une
 
 :::attention
 Sans [[nom:prestataire]] [[acc:prestataire:actif:active]] pour [[le:activite]], les colonnes [[nom:prestataire:pl]] n'apparaissent pas : un bandeau vous propose alors de configurer [[le:prestataire:pl]].
+:::
+
+:::regle
+Une variante ne peut pas avoir de variante, et [[un:produit]] qui en a ne se supprime qu'après elles. [[Le:article:pl]] [[acc:article:valorisé:valorisée:pl]] n'ont pas [[de:recette]] : pour eux, seuls la case et le prix changent d'un canal à l'autre.
 :::
 
 :::astuce

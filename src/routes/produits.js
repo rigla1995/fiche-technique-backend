@@ -6,7 +6,7 @@ const {
   addIngredient, removeIngredient,
   addSousProduit, removeSousProduit,
   getCout, getStockDates, getStockCheck, getManualPrices, saveManualPrices, getFtContextes,
-  exportListExcel, getUtilisablesPerimetre, refProposee,
+  exportListExcel, getUtilisablesPerimetre, refProposee, creerVariante,
 } = require('../controllers/produitsController');
 const { exportExcel } = require('../controllers/exportController');
 const { authenticate, requireClient, requireClientOwner, requireFormulePremium } = require('../middleware/auth');
@@ -408,6 +408,8 @@ router.put('/:id', authenticate, requireClientOwner, requireFormulePremium, [
   body('categorieProduitId').optional({ nullable: true }).isInt({ min: 1 }),
 ], update);
 router.delete('/:id', authenticate, requireClientOwner, requireFormulePremium, remove);
+// C2 : recette propre à un canal — crée une variante du produit et la met en vente à sa place sur les canaux choisis.
+router.post('/:id/variantes', authenticate, requireClientOwner, requireFormulePremium, creerVariante);
 
 router.post('/:id/ingredients', authenticate, requireClientOwner, requireFormulePremium, [
   body().custom((b) => {
