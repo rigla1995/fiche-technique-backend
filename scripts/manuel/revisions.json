@@ -441,6 +441,28 @@
           "md5": "a7bba071687ab0154ad6f5327136ace2"
         }
       ]
+    },
+    {
+      "numero": 258,
+      "nom": "258_manuel_rebalisage.sql",
+      "objet": "Rebalisage : « dépôt » (Ventes & commandes), « inventaires » et « fournisseur » (Articles) étaient écrits en dur, et « de vente » (Carnet des acheteurs) ne suivait pas l'élision ; ils suivent maintenant le vocabulaire du domaine. Aucun changement de texte dans le vocabulaire par défaut.",
+      "manuel": [
+        {
+          "slug": "acheteurs-carnet",
+          "md5Avant": "9fd8031651acfaea16efa1a20be6a480",
+          "md5": "c721cf5d3e5033b3ef8516fad2cd2a87"
+        },
+        {
+          "slug": "acheteurs-ventes",
+          "md5Avant": "293668847307330f50c614ccb79eba91",
+          "md5": "9be67f9c688d0a93f9819017d0281cbe"
+        },
+        {
+          "slug": "referentiel-articles",
+          "md5Avant": "5c9fe90c39c51e42ff7394e863f9f3bb",
+          "md5": "da9dafa2be957e2666fb5478432327f6"
+        }
+      ]
     }
   ]
 }

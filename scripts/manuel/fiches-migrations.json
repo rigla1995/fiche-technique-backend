@@ -1,0 +1,13 @@
+{
+  "_lisezmoi": [
+    "Fiches du manuel créées directement par une migration, donc absentes de balise/manuel/ (leur texte n'est pas contrôlé par controler.mjs).",
+    "Une fiche balisée peut y renvoyer par un lien « #slug » : le point 4 du contrôle admet ces cibles.",
+    "Chaque ligne : slug → migration qui crée la fiche. Le contrôleur vérifie que la migration existe et nomme bien ce slug.",
+    "Les trois fiches du module Livreurs y sont ; en ajouter d'autres quand une fiche balisée doit y renvoyer."
+  ],
+  "slugs": {
+    "livreurs": "250_livreurs.sql",
+    "livreurs-livraison": "253_livreurs_livraison.sql",
+    "livreurs-suivi": "255_livreurs_suivi.sql"
+  }
+}
