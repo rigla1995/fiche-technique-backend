@@ -10,13 +10,6 @@
       "justification": "article vendable au sens générique (produit, supplément ou valorisé : ArticleVendable, article_type produit|ingredient), pas l'article du référentiel : balisé, H et C rangeraient les produits parmi les fournitures (matières premières)"
     },
     {
-      "extrait": "activer les articles",
-      "forme": "articles",
-      "type": "homonyme",
-      "occurrences": 1,
-      "justification": "article vendable au sens générique (produit, supplément ou valorisé : ArticleVendable, article_type produit|ingredient), pas l'article du référentiel : balisé, H et C rangeraient les produits parmi les fournitures (matières premières)"
-    },
-    {
       "extrait": "type d'article",
       "forme": "article",
       "type": "homonyme",
@@ -29,13 +22,6 @@
       "type": "nom-fige",
       "occurrences": 1,
       "justification": "colonne écrite en dur par l'écran : « Article » (VentesPage.tsx:716) (R7.1.3)"
-    },
-    {
-      "extrait": "chaque article",
-      "forme": "article",
-      "type": "homonyme",
-      "occurrences": 1,
-      "justification": "article vendable au sens générique (produit, supplément ou valorisé : ArticleVendable, article_type produit|ingredient), pas l'article du référentiel : balisé, H et C rangeraient les produits parmi les fournitures (matières premières)"
     },
     {
       "extrait": "sous-produits transformés",

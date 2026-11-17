@@ -424,6 +424,23 @@
           "md5": "293668847307330f50c614ccb79eba91"
         }
       ]
+    },
+    {
+      "numero": 257,
+      "nom": "257_manuel_canaux_vente.sql",
+      "objet": "Canaux de vente (C1) : chaque canal (vente directe, prestataires) a sa case et son prix ; produit vendu chez un prestataire seulement ; copie d'un canal avec majoration ; cases de saisie fermées hors canal.",
+      "manuel": [
+        {
+          "slug": "configuration-vente",
+          "md5Avant": "1fead35456e67d9b2dbe1893001ccb8e",
+          "md5": "edf116fec1cc17fcfe38abae661ba441"
+        },
+        {
+          "slug": "saisie-ventes",
+          "md5Avant": "a629d8ffe5c6ce331d2158b5385fc0c8",
+          "md5": "a7bba071687ab0154ad6f5327136ace2"
+        }
+      ]
     }
   ]
 }

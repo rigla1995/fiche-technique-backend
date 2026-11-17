@@ -29,20 +29,6 @@
       "type": "nom-fige",
       "occurrences": 2,
       "justification": "compteur écrit en dur par l'écran : « N article(s) » (ConfigurationVentePage.tsx:292) (R7.1.3)"
-    },
-    {
-      "extrait": "l'article",
-      "forme": "article",
-      "type": "homonyme",
-      "occurrences": 2,
-      "justification": "article vendable au sens générique (produit, supplément ou valorisé : ArticleVendable, article_type produit|ingredient), pas l'article du référentiel : balisé, H et C rangeraient les produits parmi les fournitures (matières premières)"
-    },
-    {
-      "extrait": "un article",
-      "forme": "article",
-      "type": "homonyme",
-      "occurrences": 1,
-      "justification": "article vendable au sens générique (produit, supplément ou valorisé : ArticleVendable, article_type produit|ingredient), pas l'article du référentiel : balisé, H et C rangeraient les produits parmi les fournitures (matières premières)"
     }
   ],
   "baliseur": "L7",

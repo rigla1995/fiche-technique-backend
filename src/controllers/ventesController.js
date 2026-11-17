@@ -12,6 +12,8 @@ const { vocabDefaut, libelleCategoriePt } = require('../utils/vocab');
 const { ongletSur } = require('../utils/excelNoms');
 // P2 : conditions des prestataires (commission, TVA, mode de paiement), figées sur chaque vente ; chiffre net.
 const CP = require('../utils/conditionsPrestataire');
+// C1 : canaux de vente — ce qui est en vente sur chaque canal (vente directe, prestataires).
+const canauxVente = require('../services/canauxVente');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -262,7 +264,9 @@ const removeActivitePrestataire = async (req, res) => {
     // prévient avant. Le nombre de prix effacés est rendu pour le message.
     const prix = await pool.query('SELECT COUNT(*)::int AS n FROM article_prix_prestataire WHERE activite_prestataire_id = $1', [id]);
     await pool.query('DELETE FROM activite_prestataires WHERE id = $1', [id]);
-    res.json({ success: true, prix_effaces: prix.rows[0].n });
+    // C1 : un produit qui n'était en vente que chez ce prestataire n'est plus en vente nulle part.
+    const retires = row.activite_id ? await canauxVente.retirerSansCanal(pool, row.activite_id) : 0;
+    res.json({ success: true, prix_effaces: prix.rows[0].n, produits_retires: retires });
   } catch (e) {
     if (e.status) return res.status(e.status).json({ code: e.code, message: e.message });
     res.status(500).json({ message: e.message });
@@ -315,7 +319,7 @@ const listArticlesVendables = async (req, res) => {
 
     const r = await pool.query(
       `SELECT av.id, av.activite_id, av.labo_id, av.article_type, av.article_id,
-              av.prix_vente, av.portion, av.actif,
+              av.prix_vente, av.portion, av.actif, av.directe,
               p.nom,
               COALESCE(p.is_supplement, FALSE) as is_supplement,
               p.categorie_produit_id,
@@ -363,6 +367,7 @@ const upsertArticleVendable = async (req, res) => {
          SET prix_vente = EXCLUDED.prix_vente,
              portion = EXCLUDED.portion,
              actif = EXCLUDED.actif,
+             directe = CASE WHEN EXCLUDED.actif THEN true ELSE activite_articles_vendables.directe END,
              categorie_produit_id = EXCLUDED.categorie_produit_id
        RETURNING *`,
       [activite_id, article_type, article_id, prix_vente ?? 0, portion ?? null, actif, categorieProduitId, req.user.id]
@@ -410,6 +415,7 @@ const updateArticleVendable = async (req, res) => {
         prix_vente = COALESCE($1, prix_vente),
         portion = COALESCE($2, portion),
         actif = COALESCE($3, actif),
+        directe = CASE WHEN $3::boolean IS TRUE THEN true ELSE directe END,
         categorie_produit_id = CASE WHEN $5::boolean THEN $6 ELSE categorie_produit_id END
        WHERE id = $4 RETURNING *`,
       [prix_vente, portion, actif, id, categorieProvided, categorieProvided ? (categorieProduitId || null) : null]
@@ -512,7 +518,7 @@ const listArticlePrixPrestataire = async (req, res) => {
     const whereVal = activiteId || laboId;
     const r = await pool.query(
       `SELECT app.id, app.article_vendable_id, app.activite_prestataire_id,
-              app.prix_vente, app.updated_at,
+              app.prix_vente, app.en_vente, app.updated_at,
               ap.prestataire_id, ap.taux_commission,
               pl.nom as prestataire_nom,
               av.article_type, av.article_id, av.prix_vente as prix_base, av.portion,
@@ -562,13 +568,16 @@ const upsertArticlePrixPrestataire = async (req, res) => {
     );
     if (!lien.rows.length) return res.status(404).json({ message: '[[Nom:prestataire]] ou [[nom:article]] vendable introuvable' });
     const r = await pool.query(
-      `INSERT INTO article_prix_prestataire (article_vendable_id, activite_prestataire_id, prix_vente, updated_at, created_by)
-       VALUES ($1,$2,$3, NOW(), $4)
+      `INSERT INTO article_prix_prestataire (article_vendable_id, activite_prestataire_id, prix_vente, en_vente, updated_at, created_by)
+       VALUES ($1,$2,$3, $5, NOW(), $4)
        ON CONFLICT (article_vendable_id, activite_prestataire_id) DO UPDATE
-         SET prix_vente = EXCLUDED.prix_vente, updated_at = NOW()
+         SET prix_vente = EXCLUDED.prix_vente, en_vente = EXCLUDED.en_vente, updated_at = NOW()
        RETURNING *`,
-      [article_vendable_id, activite_prestataire_id, prix_vente, req.user.id]
+      // C1 : par cette route (écran d'avant les canaux), un prix > 0 met le produit en vente sur ce canal, un prix
+      // effacé l'en retire ; un produit qui n'était vendu que là n'est alors plus en vente.
+      [article_vendable_id, activite_prestataire_id, prix_vente, req.user.id, prix_vente != null && Number(prix_vente) > 0]
     );
+    await canauxVente.eteindreSansCanal(pool, article_vendable_id);
     res.status(201).json(r.rows[0]);
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -779,6 +788,11 @@ const createVente = async (req, res) => {
         return res.status(400).json({ code: 'CONDITIONS_MANQUANTES', message: 'Renseignez d\'abord la commission, la TVA et le mode de paiement [[du:prestataire]] (Config [[Court:prestataire:pl]]).' });
       }
       conditions = { taux_commission: lien.rows[0].taux_commission, taux_tva_commission: lien.rows[0].taux_tva, mode_paiement_id: lien.rows[0].mode_paiement_id };
+    }
+
+    // C1 : chaque ligne doit être en vente sur le canal de la vente (case cochée dans Configuration vente).
+    if (activite_id) {
+      await canauxVente.exigerLignesEnVente(pool, { activiteId: activite_id, typeVente: type_vente, prestataireId: prestataire_id, lignes });
     }
 
     // Check module_vente_actif for stock deduction
@@ -1653,7 +1667,7 @@ const getArticlesValorisés = async (req, res) => {
     const r = await pool.query(
       `SELECT a.id, a.nom, u.nom as unite_nom,
               c.nom as categorie_nom, f.nom as famille_nom,
-              av.id as av_id, av.prix_vente, av.actif,
+              av.id as av_id, av.prix_vente, av.actif, av.directe,
               a.categorie_produit_id,
               cp.nom as categorie_produit_nom
        FROM articles a
@@ -1687,6 +1701,7 @@ const getArticlesValorisés = async (req, res) => {
         prix_vente: parseFloat(row.prix_vente ?? 0),
         portion: null,
         actif: row.actif,
+        directe: row.directe !== false,
         categorie_produit_id: row.categorie_produit_id ?? null,
       } : null,
     }));
@@ -1695,7 +1710,7 @@ const getArticlesValorisés = async (req, res) => {
     // Vendus tels quels comme valorisés (article_type='produit').
     const rc = await pool.query(
       `SELECT p.id, p.nom, p.categorie_produit_id, cp.nom as categorie_produit_nom,
-              av.id as av_id, av.prix_vente, av.actif
+              av.id as av_id, av.prix_vente, av.actif, av.directe
        FROM produits p
        JOIN produit_activite_stock pas ON pas.produit_id = p.id AND pas.activite_id = $1
        LEFT JOIN activite_articles_vendables av
@@ -1722,6 +1737,7 @@ const getArticlesValorisés = async (req, res) => {
         prix_vente: parseFloat(row.prix_vente ?? 0),
         portion: null,
         actif: row.actif,
+        directe: row.directe !== false,
         categorie_produit_id: row.categorie_produit_id ?? null,
       } : null,
     }));
