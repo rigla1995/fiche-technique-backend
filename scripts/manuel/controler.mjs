@@ -48,8 +48,9 @@
  *      (« sous-[[nom:pt]] » rend « sous-préparation » en H, R3.4.3 : on n'y balise jamais) ; exclusion « rendu »
  *      (`"rendu": true`, étape C) : extrait cherché et compté dans le rendu par défaut (forme formée au rendu, à cheval
  *      sur une balise), absent du texte balisé, pour l'oracle et le contrôle du PDF (voir pointResiduels) ;
- *   4. liens : même suite de cibles que l'origine dans chaque rendu ; chaque cible « #x » est un slug existant ; aucun
- *      libellé de lien rendu vide ;
+ *   4. liens : même suite de cibles que l'origine dans chaque rendu ; chaque cible « #x » est un slug existant — une
+ *      des 61 fiches balisées, ou une fiche créée directement par une migration et déclarée dans fiches-migrations.json
+ *      (Livreurs…) ; aucun libellé de lien rendu vide ;
  *   5. blocs et tableaux : même suite de mots-clés « ::: » que l'origine (texte balisé et chaque rendu) ; même nombre de
  *      lignes ; chaque ligne de tableau garde son nombre de « | » dans chaque rendu ;
  *   6. rendus Hôtellerie, Céramique, miroir écrits dans rendus/<lot>/<domaine>/ ; aucun rendu (défaut compris) ne
@@ -445,6 +446,32 @@ export function formesEnClair(balise, formes) {
   return out;
 }
 
+// ── Fiches créées par migration (hors balisage) ───────────────────────────────────────────────────────────────
+export const FICHES_MIGRATIONS = path.join(C.DOSSIER, 'fiches-migrations.json');
+/**
+ * Fiches du manuel créées directement par une migration (module Livreurs…), absentes de balise/manuel/ : leur texte
+ * n'est pas contrôlé ici, mais une fiche balisée peut y renvoyer (point 4). Fichier : { slugs: { <slug>: <migration> } }.
+ * Chaque déclaration est vérifiée : la migration existe, insère dans le manuel et nomme ce slug ; un slug déjà balisé
+ * n'a rien à faire dans la liste. Rend Map(slug → fichier de migration). Fichier absent : aucune.
+ */
+export function lireFichesMigrations(fichier = FICHES_MIGRATIONS, { migrations = path.join(C.RACINE, 'migrations'), balises = [] } = {}) {
+  if (!fs.existsSync(fichier)) return new Map();
+  const slugs = C.lireJson(fichier).slugs;
+  const refus = (message) => { const e = new Error(`${path.basename(fichier)} : ${message}`); e.code = 2; return e; };
+  if (!slugs || typeof slugs !== 'object' || Array.isArray(slugs)) throw refus('champ « slugs » attendu ({ slug: migration })');
+  const out = new Map();
+  for (const [slug, migration] of Object.entries(slugs)) {
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) throw refus(`slug « ${slug} » mal formé`);
+    if (balises.includes(slug)) throw refus(`« ${slug} » est une fiche balisée : à retirer de la liste`);
+    const chemin = path.join(migrations, String(migration));
+    if (typeof migration !== 'string' || !fs.existsSync(chemin)) throw refus(`migration « ${migration} » introuvable pour « ${slug} »`);
+    const sql = fs.readFileSync(chemin, 'utf8');
+    if (!/INSERT INTO manuel_sections\b/.test(sql) || !sql.includes(`'${slug}'`)) throw refus(`la migration ${migration} ne crée pas la fiche « ${slug} »`);
+    out.set(slug, migration);
+  }
+  return out;
+}
+
 // ── Domaines (lexiques résolus, R3.1.1) ───────────────────────────────────────────────────────────────────────
 export const LECTURE_DEFAUT = path.join(C.DOSSIER, 'lecture-production.json');
 /** Valeur de --lexique / --lexique-ceramique qui lit le lexique de production dans la lecture de production elle-même
@@ -541,6 +568,8 @@ export function creerContexte({ racine = C.DOSSIER, lexique = null, lexiqueCeram
     revisions: revisionsCourantes(path.resolve(racine)),
     ch: C.chemins(path.resolve(racine)),
     fiches: new Map(fiches.map((f) => [f.slug, f])),
+    // Fiches créées par migration (hors balisage) : cibles de liens admises au point 4.
+    fichesMigrations: lireFichesMigrations(FICHES_MIGRATIONS, { balises: fiches.map((f) => f.slug) }),
     entrees: new Map(entrees.map((e) => [e.fichier, e])),
     parties: C.lireParties(),
     lots: C.lireLots(),
@@ -731,7 +760,8 @@ const cibles = (t) => [...String(t || '').matchAll(CIBLE_LIEN)].map((m) => m[1])
 /** Point 4 : cibles de liens (suite identique à la référence), slugs existants, libellés non vides. */
 function pointLiens(ctx, reference, rendus, echecs) {
   const attendues = cibles(reference);
-  for (const c of attendues) if (c.startsWith('#') && !ctx.fiches.has(c.slice(1))) echecs.push({ point: 4, message: `cible « ${c} » : aucun slug de ce nom` });
+  const connu = (slug) => ctx.fiches.has(slug) || Boolean(ctx.fichesMigrations?.has(slug));
+  for (const c of attendues) if (c.startsWith('#') && !connu(c.slice(1))) echecs.push({ point: 4, message: `cible « ${c} » : aucun slug de ce nom` });
   for (const [d, t] of Object.entries(rendus)) {
     const lues = cibles(t);
     if (JSON.stringify(lues) !== JSON.stringify(attendues)) {
