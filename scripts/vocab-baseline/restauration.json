@@ -3,7 +3,7 @@
   "domaine": "restauration",
   "version": 1,
   "moisCapture": "2026-11",
-  "derniereMigration": "260_manuel_recette_par_canal.sql",
+  "derniereMigration": "261_manuel_variante_verrou_canal.sql",
   "domaineNom": "Restauration",
   "lexique": {
    "activite": {
@@ -553,7 +553,7 @@
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
     "factures": "0cb985cf80069e8b472dd8f746c834a3",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
-    "configuration-vente": "076e3cefbeb99d313e88998c9b5d6723",
+    "configuration-vente": "221d83257bd185d81c96514315aa5ae6",
     "charges": "9efe5d7fee8199ccb045647654027267",
     "saisie-ventes": "bb791ca65711559b1c263635f8081c69",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
@@ -606,7 +606,7 @@
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
     "factures": "0cb985cf80069e8b472dd8f746c834a3",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
-    "configuration-vente": "076e3cefbeb99d313e88998c9b5d6723",
+    "configuration-vente": "221d83257bd185d81c96514315aa5ae6",
     "saisie-ventes": "bb791ca65711559b1c263635f8081c69",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
     "acheteurs-module": "a524374ca9332a4c1edf097309c299d5",
@@ -714,7 +714,7 @@
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
     "factures": "0cb985cf80069e8b472dd8f746c834a3",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
-    "configuration-vente": "076e3cefbeb99d313e88998c9b5d6723",
+    "configuration-vente": "221d83257bd185d81c96514315aa5ae6",
     "charges": "9efe5d7fee8199ccb045647654027267",
     "saisie-ventes": "bb791ca65711559b1c263635f8081c69",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
@@ -779,7 +779,7 @@
     "transferts": "da4d1771cb96d3504641f82ecdfd4b32",
     "factures": "0cb985cf80069e8b472dd8f746c834a3",
     "rapports-labo": "bd35d114cd3d8c59a855c7e64edf6481",
-    "configuration-vente": "076e3cefbeb99d313e88998c9b5d6723",
+    "configuration-vente": "221d83257bd185d81c96514315aa5ae6",
     "charges": "9efe5d7fee8199ccb045647654027267",
     "saisie-ventes": "bb791ca65711559b1c263635f8081c69",
     "ventes-labo": "7968ae403b4eda48c181854fa571b36d",
@@ -1672,19 +1672,19 @@
     },
     {
      "ingredient": "Riz basmati",
-     "quantite": "-30.000",
-     "date_appro": "⟨date⟩",
-     "prix_unitaire": "2.550",
-     "source": "Réserve Nord / Est",
-     "type_appro": "manuel"
-    },
-    {
-     "ingredient": "Riz basmati",
      "quantite": "30.000",
      "date_appro": "⟨date⟩",
      "prix_unitaire": "2.550",
      "source": "Bloc chaud",
      "type_appro": "transfert"
+    },
+    {
+     "ingredient": "Riz basmati",
+     "quantite": "-30.000",
+     "date_appro": "⟨date⟩",
+     "prix_unitaire": "2.550",
+     "source": "Réserve Nord / Est",
+     "type_appro": "manuel"
     },
     {
      "ingredient": "Drap 240x300",
@@ -6667,25 +6667,25 @@
       ],
       [
        "Riz basmati",
-       "-10",
-       "⟨date⟩",
-       "2.65"
-      ],
-      [
-       "Riz basmati",
        "10",
        "⟨date⟩",
        "2.65"
       ],
       [
        "Riz basmati",
-       "-30",
+       "-10",
+       "⟨date⟩",
+       "2.65"
+      ],
+      [
+       "Riz basmati",
+       "30",
        "⟨date⟩",
        "2.55"
       ],
       [
        "Riz basmati",
-       "30",
+       "-30",
        "⟨date⟩",
        "2.55"
       ],
@@ -16275,7 +16275,7 @@
      "icone": "💲",
      "partie": "Espace Vente",
      "ordre": 60,
-     "contenu": "## 💲 Configuration Vente\n\nCet écran est le point de départ de l'Espace Vente : vous y choisissez, **canal par canal**, les articles proposés à la vente et leurs prix. La vente directe au comptoir est un canal, chaque prestataire de livraison en est un autre : chacun a sa propre liste et ses propres prix. Vous le trouvez dans le menu **Espace Vente → Configuration Vente**.\n\n### Activer le module Vente\n\nL'Espace Vente est une option de votre abonnement. Tant qu'il n'est pas activé, un écran « Module Vente non activé » s'affiche à la place :\n\n1. Cliquez sur **🚀 Demander l'activation**.\n2. Un message « Demande envoyée — en attente de validation » confirme l'envoi ; l'activation est réalisée par l'administrateur sous 24 h.\n3. Suivez le statut de votre demande dans [Mon Abonnement](#abonnement).\n\n### Ce que vous voyez\n\n- Un **sélecteur d'activité** : chaque activité a sa propre configuration de prix.\n- Deux raccourcis dans l'en-tête : **🛵 Prestataires** et **🏗️ Charges**.\n- Quatre onglets : **🛍️ Vente Produits**, **🧂 Ventes Suppléments** et **💎 Ventes Valorisées** (chacun avec son compteur d'articles), plus **📋 Historique config**.\n- Dans chaque onglet de saisie, un tableau groupé par **catégorie de produit** avec la colonne *Produit*, puis une colonne par **canal** : *🏪 Vente directe* et une colonne *🛵* par prestataire actif. Chaque cellule porte une **case** (la ligne se vend sur ce canal) et un **prix** en DT.\n- Sous le titre de chaque canal, **✓ Tout** coche toutes les lignes qui y ont un prix et **✕ Aucun** les décoche (les prix sont gardés).\n- Une barre d'outils : recherche par nom, filtre par canal (ce qui s'y vend), bouton **✕ Réinitialiser**, compteur d'articles et bouton **💾 Enregistrer** affichant le nombre de modifications en attente.\n- Le bouton **📋 Copier un canal**, dès qu'un prestataire est actif.\n\n### Actions pas à pas\n\nVendre une ligne sur un canal et fixer son prix :\n\n1. Saisissez son **prix** dans la colonne du canal : la case se coche d'elle-même au premier prix.\n2. Pour retirer la ligne d'un canal sans perdre son prix, décochez la case ; recochez-la pour l'y remettre.\n3. Cliquez sur **💾 Enregistrer** : toutes les cellules modifiées partent ensemble. Si l'une est refusée, rien n'est enregistré et un message en donne la raison.\n\nVendre une ligne chez un prestataire seulement : laissez la colonne *🏪 Vente directe* vide ou décochée et renseignez le prix dans la colonne du prestataire. Aucun prix direct n'est demandé.\n\nCopier un canal vers un autre (bouton **📋 Copier un canal**) :\n\n1. Choisissez le canal **Depuis** et le canal **Vers**.\n2. Indiquez si besoin une **majoration** en % (par exemple pour couvrir la commission) et l'**arrondi** du prix : au centième, à 100 millimes, à 500 millimes ou au dinar.\n3. La fenêtre annonce le nombre de lignes à copier et de prix remplacés ; validez avec **📋 Copier**.\n4. L'option « Retirer du canal d'arrivée… » y décoche ce que le canal d'origine ne vend pas (les prix sont gardés).\n\nDès que vous activez un prestataire, LabFlow propose de copier vers lui ce qui se vend en direct.\n\nPréparer un produit autrement pour un canal (bouton **＋ Recette par canal**, sur la ligne du produit) :\n\n1. Donnez un nom à la variante (« Livraison » est proposé) et cochez les canaux où elle remplace le produit d'origine.\n2. Cliquez sur **Créer la variante** : LabFlow copie le produit et sa recette, range la variante juste sous lui et la coche sur ces canaux, au même prix. Le produit d'origine y est décoché, son prix gardé. Sur un canal où il n'avait pas de prix, saisissez celui de la variante.\n3. Choisissez **Ajuster la recette** : l'assistant des produits s'ouvre sur la variante, à l'étape des articles. Changez les quantités, ajoutez un emballage, puis enregistrez.\n\nLa variante est un produit à part entière : sa fiche technique, son coût, sa sortie de stock et sa marge lui sont propres, et elle a sa ligne dans les rapports. Ce bouton est réservé au compte propriétaire.\n\nGérer les canaux prestataires (bouton **🛵 Prestataires**) :\n\n1. Sélectionnez l'activité concernée.\n2. Activez chaque prestataire de livraison avec l'interrupteur : une fenêtre demande ses **conditions** — la **commission** (%), la **TVA** (%) sur cette commission et le **mode de paiement** (Espèces, Virement… liste tenue par l'administrateur). Un exemple sur 100 DT montre le net obtenu.\n3. Les conditions s'affichent sous le nom du prestataire ; **✏️ Modifier les conditions** les change pour les ventes à venir. Les ventes déjà enregistrées gardent les conditions du jour de leur saisie.\n4. Désactiver un prestataire **efface ses conditions et ses prix** pour l'activité : une confirmation le rappelle, avec le nombre de prix concernés. Ce qui ne se vendait que sur ce canal n'est alors plus proposé à la vente.\n5. La liste des prestataires disponibles et celle des modes de paiement sont gérées par l'administrateur : si elles sont vides, contactez le [support](#support).\n\nUn prestataire activé avant l'arrivée des conditions porte la mention **⚠ Conditions à renseigner** : tant qu'elles manquent, la saisie des ventes sur ce canal est refusée.\n\nConsulter l'onglet **📋 Historique config** : chaque enregistrement de prix y est tracé (produit, type, prix enregistré, date, auteur). Vous pouvez filtrer par nom, type et période, actualiser la liste, supprimer une entrée, et exporter en Excel avec **Exporter XLS** — en cochant des lignes au préalable, seules celles-ci sont exportées.\n\n### Points d'attention\n\n:::attention\nLe prix de chaque prestataire est **saisi par vous**, article par article ou d'un coup avec **📋 Copier un canal** : la commission ne calcule aucun prix. Elle sert, avec la TVA, au **chiffre net** du prestataire dans le [tableau de bord](#dashboard) : net = prix de vente − commission − TVA sur la commission.\n:::\n\n:::attention\nUne case ne se coche qu'avec un **prix supérieur à 0** ; effacer le prix d'une case cochée la décoche. Une ligne sans case cochée sur un canal ne s'y vend pas : dans la [saisie des ventes](#saisie-ventes), sa case de quantité est fermée et la vente est refusée.\n:::\n\n:::attention\nSans prestataire actif pour l'activité, les colonnes prestataires n'apparaissent pas : un bandeau vous propose alors de configurer les prestataires.\n:::\n\n:::regle\nUne variante ne peut pas avoir de variante, et un produit qui en a ne se supprime qu'après elles. Les articles valorisés n'ont pas de recette : pour eux, seuls la case et le prix changent d'un canal à l'autre.\n:::\n\n:::astuce\nLe bouton 💾 Enregistrer affiche le nombre de cellules modifiées non sauvegardées : enregistrez avant de changer d'activité ou de copier un canal pour ne rien perdre.\n:::\n\n### Voir aussi\n\n- [Saisie des ventes](#saisie-ventes) — utiliser ces prix au quotidien\n- [Produits vendables](#produits-vendables) et [Articles valorisés](#articles-valorises) — créer les articles à vendre\n- [Charges](#charges) — compléter votre configuration de rentabilité\n- [Comprendre les prix](#calc-prix) et [HT / TTC](#calc-ht-ttc)",
+     "contenu": "## 💲 Configuration Vente\n\nCet écran est le point de départ de l'Espace Vente : vous y choisissez, **canal par canal**, les articles proposés à la vente et leurs prix. La vente directe au comptoir est un canal, chaque prestataire de livraison en est un autre : chacun a sa propre liste et ses propres prix. Vous le trouvez dans le menu **Espace Vente → Configuration Vente**.\n\n### Activer le module Vente\n\nL'Espace Vente est une option de votre abonnement. Tant qu'il n'est pas activé, un écran « Module Vente non activé » s'affiche à la place :\n\n1. Cliquez sur **🚀 Demander l'activation**.\n2. Un message « Demande envoyée — en attente de validation » confirme l'envoi ; l'activation est réalisée par l'administrateur sous 24 h.\n3. Suivez le statut de votre demande dans [Mon Abonnement](#abonnement).\n\n### Ce que vous voyez\n\n- Un **sélecteur d'activité** : chaque activité a sa propre configuration de prix.\n- Deux raccourcis dans l'en-tête : **🛵 Prestataires** et **🏗️ Charges**.\n- Quatre onglets : **🛍️ Vente Produits**, **🧂 Ventes Suppléments** et **💎 Ventes Valorisées** (chacun avec son compteur d'articles), plus **📋 Historique config**.\n- Dans chaque onglet de saisie, un tableau groupé par **catégorie de produit** avec la colonne *Produit*, puis une colonne par **canal** : *🏪 Vente directe* et une colonne *🛵* par prestataire actif. Chaque cellule porte une **case** (la ligne se vend sur ce canal) et un **prix** en DT.\n- Sous le titre de chaque canal, **✓ Tout** coche toutes les lignes qui y ont un prix et **✕ Aucun** les décoche (les prix sont gardés).\n- Une barre d'outils : recherche par nom, filtre par canal (ce qui s'y vend), bouton **✕ Réinitialiser**, compteur d'articles et bouton **💾 Enregistrer** affichant le nombre de modifications en attente.\n- Le bouton **📋 Copier un canal**, dès qu'un prestataire est actif.\n\n### Actions pas à pas\n\nVendre une ligne sur un canal et fixer son prix :\n\n1. Saisissez son **prix** dans la colonne du canal : la case se coche d'elle-même au premier prix.\n2. Pour retirer la ligne d'un canal sans perdre son prix, décochez la case ; recochez-la pour l'y remettre.\n3. Cliquez sur **💾 Enregistrer** : toutes les cellules modifiées partent ensemble. Si l'une est refusée, rien n'est enregistré et un message en donne la raison.\n\nVendre une ligne chez un prestataire seulement : laissez la colonne *🏪 Vente directe* vide ou décochée et renseignez le prix dans la colonne du prestataire. Aucun prix direct n'est demandé.\n\nCopier un canal vers un autre (bouton **📋 Copier un canal**) :\n\n1. Choisissez le canal **Depuis** et le canal **Vers**.\n2. Indiquez si besoin une **majoration** en % (par exemple pour couvrir la commission) et l'**arrondi** du prix : au centième, à 100 millimes, à 500 millimes ou au dinar.\n3. La fenêtre annonce le nombre de lignes à copier et de prix remplacés ; validez avec **📋 Copier**.\n4. L'option « Retirer du canal d'arrivée… » y décoche ce que le canal d'origine ne vend pas (les prix sont gardés).\n5. Un produit et sa variante ne se remplacent pas par copie : si le canal d'arrivée vend déjà l'un des deux, cette ligne y est laissée telle quelle. La fenêtre en annonce le nombre.\n\nDès que vous activez un prestataire, LabFlow propose de copier vers lui ce qui se vend en direct.\n\nPréparer un produit autrement pour un canal (bouton **＋ Recette par canal**, sur la ligne du produit) :\n\n1. Donnez un nom à la variante (« Livraison » est proposé) et cochez les canaux où elle remplace le produit d'origine.\n2. Cliquez sur **Créer la variante** : LabFlow copie le produit et sa recette, range la variante juste sous lui et la coche sur ces canaux, au même prix. Le produit d'origine y est décoché, son prix gardé. Sur un canal où il n'avait pas de prix, saisissez celui de la variante.\n3. Choisissez **Ajuster la recette** : l'assistant des produits s'ouvre sur la variante, à l'étape des articles. Changez les quantités, ajoutez un emballage, puis enregistrez.\n\nLa variante est un produit à part entière : sa fiche technique, son coût, sa sortie de stock et sa marge lui sont propres, et elle a sa ligne dans les rapports. Ce bouton est réservé au compte propriétaire.\n\nSur un canal, c'est le produit d'origine ou sa variante, jamais les deux. Tant que la variante y est cochée, la case et le prix du produit d'origine y sont **verrouillés** (🔒). Cocher la variante sur un autre canal y décoche le produit d'origine. Pour rouvrir la case du produit d'origine, décochez la variante sur ce canal, ou supprimez-la, puis recochez la case.\n\nGérer les canaux prestataires (bouton **🛵 Prestataires**) :\n\n1. Sélectionnez l'activité concernée.\n2. Activez chaque prestataire de livraison avec l'interrupteur : une fenêtre demande ses **conditions** — la **commission** (%), la **TVA** (%) sur cette commission et le **mode de paiement** (Espèces, Virement… liste tenue par l'administrateur). Un exemple sur 100 DT montre le net obtenu.\n3. Les conditions s'affichent sous le nom du prestataire ; **✏️ Modifier les conditions** les change pour les ventes à venir. Les ventes déjà enregistrées gardent les conditions du jour de leur saisie.\n4. Désactiver un prestataire **efface ses conditions et ses prix** pour l'activité : une confirmation le rappelle, avec le nombre de prix concernés. Ce qui ne se vendait que sur ce canal n'est alors plus proposé à la vente.\n5. La liste des prestataires disponibles et celle des modes de paiement sont gérées par l'administrateur : si elles sont vides, contactez le [support](#support).\n\nUn prestataire activé avant l'arrivée des conditions porte la mention **⚠ Conditions à renseigner** : tant qu'elles manquent, la saisie des ventes sur ce canal est refusée.\n\nConsulter l'onglet **📋 Historique config** : chaque enregistrement de prix y est tracé (produit, type, prix enregistré, date, auteur). Vous pouvez filtrer par nom, type et période, actualiser la liste, supprimer une entrée, et exporter en Excel avec **Exporter XLS** — en cochant des lignes au préalable, seules celles-ci sont exportées.\n\n### Points d'attention\n\n:::attention\nLe prix de chaque prestataire est **saisi par vous**, article par article ou d'un coup avec **📋 Copier un canal** : la commission ne calcule aucun prix. Elle sert, avec la TVA, au **chiffre net** du prestataire dans le [tableau de bord](#dashboard) : net = prix de vente − commission − TVA sur la commission.\n:::\n\n:::attention\nUne case ne se coche qu'avec un **prix supérieur à 0** ; effacer le prix d'une case cochée la décoche. Une ligne sans case cochée sur un canal ne s'y vend pas : dans la [saisie des ventes](#saisie-ventes), sa case de quantité est fermée et la vente est refusée.\n:::\n\n:::attention\nSans prestataire actif pour l'activité, les colonnes prestataires n'apparaissent pas : un bandeau vous propose alors de configurer les prestataires.\n:::\n\n:::regle\nUne variante ne peut pas avoir de variante, et un produit qui en a ne se supprime qu'après elles. Les articles valorisés n'ont pas de recette : pour eux, seuls la case et le prix changent d'un canal à l'autre.\n:::\n\n:::astuce\nLe bouton 💾 Enregistrer affiche le nombre de cellules modifiées non sauvegardées : enregistrez avant de changer d'activité ou de copier un canal pour ne rien perdre.\n:::\n\n### Voir aussi\n\n- [Saisie des ventes](#saisie-ventes) — utiliser ces prix au quotidien\n- [Produits vendables](#produits-vendables) et [Articles valorisés](#articles-valorises) — créer les articles à vendre\n- [Charges](#charges) — compléter votre configuration de rentabilité\n- [Comprendre les prix](#calc-prix) et [HT / TTC](#calc-ht-ttc)",
      "motsCles": "configuration vente, prix de vente, prix direct, prestataire, livraison, vendable, activation module, canaux, tarifs, historique des prix, catalogue vente, supplément",
      "ecran": "/client/ventes/configuration",
      "visibleGerant": true,

@@ -86,6 +86,31 @@ test('majorer : pourcentage puis arrondi au pas, jamais sous un centième', () =
   assert.equal(CV.majorer(8.9, 20, 0.3), 10.68); // pas inconnu : au centième
 });
 
+test('planCopie : sans variante, tout ce que la source vend est copié ; les absents ne sont retirés que sur demande', () => {
+  const source = [{ id: 'a', prix: 10 }, { id: 'b', prix: 12 }];
+  const cible = [{ id: 'b' }, { id: 'c' }];
+  const familles = new Map([['a', { produitId: 1, origineId: null }], ['b', { produitId: 2, origineId: null }], ['c', { produitId: 3, origineId: null }]]);
+  assert.deepEqual(CV.planCopie(source, cible, familles, false), { aCopier: source, laisses: 0, aRetirer: [] });
+  assert.deepEqual(CV.planCopie(source, cible, familles, true), { aCopier: source, laisses: 0, aRetirer: ['c'] });
+  // Un article valorisé n'a pas de famille : il se copie comme avant.
+  assert.deepEqual(CV.planCopie([{ id: 'x', prix: 3 }], [], new Map(), true), { aCopier: [{ id: 'x', prix: 3 }], laisses: 0, aRetirer: [] });
+});
+
+test('planCopie : un produit et sa variante ne se remplacent pas (C2)', () => {
+  // p = produit d'origine (1), v = sa variante (2), q = un autre produit (3).
+  const familles = new Map([['p', { produitId: 1, origineId: null }], ['v', { produitId: 2, origineId: 1 }], ['q', { produitId: 3, origineId: null }]]);
+  const p = { id: 'p', prix: 20 }; const v = { id: 'v', prix: 24 }; const q = { id: 'q', prix: 9 };
+  // La source vend l'original, la cible vend déjà la variante : l'original n'est pas copié, la variante n'est pas retirée.
+  assert.deepEqual(CV.planCopie([p, q], [{ id: 'v' }], familles, true), { aCopier: [q], laisses: 1, aRetirer: [] });
+  // Dans l'autre sens : la source vend la variante, la cible vend l'original.
+  assert.deepEqual(CV.planCopie([v, q], [{ id: 'p' }, { id: 'q' }], familles, true), { aCopier: [q], laisses: 1, aRetirer: [] });
+  // La cible ne vend ni l'un ni l'autre : la ligne de la source est copiée telle quelle.
+  assert.deepEqual(CV.planCopie([v], [{ id: 'q' }], familles, true), { aCopier: [v], laisses: 0, aRetirer: ['q'] });
+  // Deux variantes du même produit ne se gênent pas.
+  const deux = new Map([...familles, ['w', { produitId: 4, origineId: 1 }]]);
+  assert.deepEqual(CV.planCopie([v], [{ id: 'w' }], deux, false), { aCopier: [v], laisses: 0, aRetirer: [] });
+});
+
 test('lireCopie : deux canaux différents, majoration et arrondi bornés', () => {
   assert.deepEqual(CV.lireCopie({ source: 'directe', cible: LIEN }),
     { source: { directe: true, lienId: null }, cible: { directe: false, lienId: LIEN }, pct: 0, pas: 0.01, retirerAbsents: false });
@@ -119,6 +144,10 @@ test('contrôleurs : la saisie refuse une ligne hors canal ; les listes servent 
   assert.match(service, /'PAS_EN_VENTE'/);
   assert.match(service, /av\.activite_id = \$1 AND av\.actif AND av\.directe`/);
   assert.match(service, /av\.actif AND app\.en_vente AND app\.prix_vente > 0`/);
+  // C2 : un envoi ne laisse pas un produit et sa variante en vente sur le même canal ; la copie suit planCopie.
+  assert.match(service, /await recalculerActif\(db, \[\.\.\.touches\]\);\n  await exigerSansDoublon\(db, activiteId, cellules\);/);
+  assert.match(service, /'REMPLACE_PAR_VARIANTE'/);
+  assert.match(service, /for \(const ligne of plan\.aCopier\)/);
   const routes = lire('src', 'routes', 'ventes.js');
   assert.match(routes, /router\.put\('\/canaux-vente', authenticate, requireEntreprise, cv\.modifier\)/);
   assert.match(routes, /router\.post\('\/canaux-vente\/copier', authenticate, requireEntreprise, cv\.copier\)/);

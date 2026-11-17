@@ -108,7 +108,44 @@ function lireCopie(body = {}) {
   return { source, cible, pct, pas, retirerAbsents: body.retirer_absents === true };
 }
 
+/**
+ * Copie d'un canal vers un autre : ce qu'il faut écrire. `source` et `cible` = lignes vendables en vente sur chaque
+ * canal ([{ id, prix }]) ; `familles` = Map id de ligne → { produitId, origineId } pour les lignes « produit »
+ * (origineId = le produit d'origine d'une variante, sinon null).
+ * Recette propre à un canal (C2) : un produit et sa variante ne se remplacent pas par copie. Si le canal d'arrivée vend
+ * déjà l'autre, la ligne est laissée telle quelle : ni copiée, ni retirée.
+ * Rend { aCopier: [lignes de la source], laisses, aRetirer: [id de lignes de la cible] }.
+ */
+function planCopie(source, cible, familles, retirerAbsents) {
+  const enCible = new Set(cible.map((x) => x.id));
+  const ligneDuProduit = new Map();
+  const variantesDe = new Map();
+  for (const [id, f] of familles) {
+    ligneDuProduit.set(f.produitId, id);
+    if (f.origineId != null) variantesDe.set(f.origineId, [...(variantesDe.get(f.origineId) || []), id]);
+  }
+  const proches = (id) => {
+    const moi = familles.get(id);
+    if (!moi) return [];
+    if (moi.origineId == null) return variantesDe.get(moi.produitId) || [];
+    return ligneDuProduit.has(moi.origineId) ? [ligneDuProduit.get(moi.origineId)] : [];
+  };
+
+  const aCopier = [];
+  const gardees = new Set();
+  let laisses = 0;
+  for (const ligne of source) {
+    const enPlace = proches(ligne.id).filter((id) => enCible.has(id));
+    if (!enPlace.length) { aCopier.push(ligne); continue; }
+    laisses++;
+    for (const id of enPlace) gardees.add(id);
+  }
+  const vendues = new Set(source.map((x) => x.id));
+  const aRetirer = retirerAbsents ? cible.map((x) => x.id).filter((id) => !vendues.has(id) && !gardees.has(id)) : [];
+  return { aCopier, laisses, aRetirer };
+}
+
 module.exports = {
   CANAL_DIRECT, PAS_ARRONDI, MAJORATION_MIN, MAJORATION_MAX, CELLULES_MAX, ErreurCanal,
-  lirePrix, lireCanal, lireCellule, lireCellules, appliquer, majorer, lireCopie,
+  lirePrix, lireCanal, lireCellule, lireCellules, appliquer, majorer, lireCopie, planCopie,
 };

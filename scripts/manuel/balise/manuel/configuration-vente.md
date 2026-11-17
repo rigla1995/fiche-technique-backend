@@ -36,6 +36,7 @@ Copier un canal vers un autre (bouton **📋 Copier un canal**) :
 2. Indiquez si besoin une **majoration** en % (par exemple pour couvrir la commission) et l'**arrondi** du prix : au centième, à 100 millimes, à 500 millimes ou au dinar.
 3. La fenêtre annonce le nombre de lignes à copier et de prix remplacés ; validez avec **📋 Copier**.
 4. L'option « Retirer du canal d'arrivée… » y décoche ce que le canal d'origine ne vend pas (les prix sont gardés).
+5. [[Un:produit]] et sa variante ne se remplacent pas par copie : si le canal d'arrivée vend déjà l'un des deux, cette ligne y est laissée telle quelle. La fenêtre en annonce le nombre.
 
 Dès que vous activez [[un:prestataire]], LabFlow propose de copier vers lui ce qui se vend en direct.
 
@@ -46,6 +47,8 @@ Préparer [[un:produit]] autrement pour un canal (bouton **＋ [[Nom:recette]] p
 3. Choisissez **Ajuster [[le:recette]]** : l'assistant [[du:produit:pl]] s'ouvre sur la variante, à l'étape [[du:article:pl]]. Changez les quantités, ajoutez un emballage, puis enregistrez.
 
 La variante est [[un:produit]] à part entière : [[son:fiche_technique]], son coût, sa sortie [[de:stock]] et [[son:marge]] lui sont propres, et elle a sa ligne dans les rapports. Ce bouton est réservé au compte propriétaire.
+
+Sur un canal, c'est [[le:produit]] d'origine ou sa variante, jamais les deux. Tant que la variante y est cochée, la case et le prix [[du:produit]] d'origine y sont **verrouillés** (🔒). Cocher la variante sur un autre canal y décoche [[le:produit]] d'origine. Pour rouvrir la case [[du:produit]] d'origine, décochez la variante sur ce canal, ou supprimez-la, puis recochez la case.
 
 Gérer les canaux [[nom:prestataire:pl]] (bouton **🛵 [[Pl:prestataire]]**) :
 

@@ -164,6 +164,41 @@ const today = new Date().toISOString().slice(0, 10);
     r = await C('GET', `/api/produits/${V.id}/cout`);
     check('coût de la variante calculé comme celui d\'un produit', r.status === 200, String(r.status));
 
+    // ── 4 bis. Sur un canal, c'est l'original ou sa variante ──
+    r = await PUT([cel(P.id, lienA, { en_vente: true })]);
+    check('recocher l\'original là où sa variante se vend → 409 REMPLACE_PAR_VARIANTE, rien d\'écrit',
+      r.status === 409 && r.body?.code === 'REMPLACE_PAR_VARIANTE' && (await prixPresta(P.id, lienA)).en_vente === false, `${r.status} ${r.body?.code} ${r.body?.message || ''}`);
+    r = await PUT([cel(V.id, 'directe', { prix: 21, en_vente: true })]);
+    vV = await vendable(V.id);
+    check('mettre la variante en vente directe à côté de l\'original → 409, rien d\'écrit',
+      r.status === 409 && r.body?.code === 'REMPLACE_PAR_VARIANTE' && vV.directe === false && vV.prix === 0, `${r.status} ${r.body?.code} ${JSON.stringify(vV)}`);
+    r = await PUT([cel(P.id, lienA, { en_vente: true }), cel(V.id, lienA, { en_vente: false })]);
+    check('même envoi : l\'original recoché et la variante décochée → 200 (l\'ordre des cellules ne compte pas)',
+      r.status === 200 && (await prixPresta(P.id, lienA)).en_vente === true && (await prixPresta(V.id, lienA)).en_vente === false, `${r.status} ${r.body?.message || ''}`);
+    r = await PUT([cel(V.id, lienA, { en_vente: true }), cel(P.id, lienA, { en_vente: false })]);
+    check('retour : la variante reprend sa place chez le prestataire A',
+      r.status === 200 && (await prixPresta(V.id, lienA)).en_vente === true && (await prixPresta(P.id, lienA)).en_vente === false, `${r.status} ${r.body?.message || ''}`);
+    r = await PUT([cel(P.id, 'directe', { prix: 20.5 })]);
+    check('un prix de l\'original sur un autre canal que sa variante reste modifiable', r.status === 200 && (await vendable(P.id)).prix === 20.5, `${r.status} ${r.body?.message || ''}`);
+    await PUT([cel(P.id, 'directe', { prix: 20 })]);
+
+    // Copie d'un canal : la variante garde sa place, dans les deux sens.
+    const COPIER = (corps) => C('POST', '/api/canaux-vente/copier', { activite_id: act.id, ...corps });
+    r = await COPIER({ source: 'directe', cible: lienA, retirer_absents: true });
+    let cA = { P: await prixPresta(P.id, lienA), V: await prixPresta(V.id, lienA), P2: await prixPresta(P2.id, lienA) };
+    check('copie directe → prestataire A (avec retrait des absents) : l\'original laissé, la variante gardée, le reste copié',
+      r.status === 200 && r.body?.copies === 1 && r.body.laisses === 1 && r.body.retires === 0 && r.body.prix_remplaces === 0
+        && cA.P.en_vente === false && cA.P.prix === 24 && cA.V.en_vente === true && cA.V.prix === 24 && cA.P2?.en_vente === true && cA.P2.prix === 9,
+      `${JSON.stringify(r.body)} ${JSON.stringify(cA)}`);
+    r = await COPIER({ source: lienA, cible: 'directe', retirer_absents: true });
+    vV = await vendable(V.id); vP = await vendable(P.id);
+    check('copie prestataire A → directe : la variante n\'y remplace pas l\'original',
+      r.status === 200 && r.body?.copies === 1 && r.body.laisses === 1 && r.body.retires === 0 && vV.directe === false && vP.directe === true && vP.prix === 20,
+      `${JSON.stringify(r.body)} ${JSON.stringify(vV)} ${JSON.stringify(vP)}`);
+    r = await PUT([cel(P2.id, lienA, { prix: null })]);
+    cA = await prixPresta(P2.id, lienA);
+    check('remise en état : le second produit n\'a plus de prix chez le prestataire A', r.status === 200 && cA.prix === null && cA.en_vente === false, `${r.status} ${JSON.stringify(cA)}`);
+
     // ── 5. Liste ──
     r = await C('GET', `/api/produits?activiteId=${act.id}&type=vendable`);
     const lV = r.body?.find?.((x) => x.id === V.id); const lP = r.body?.find?.((x) => x.id === P.id);
