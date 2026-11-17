@@ -726,7 +726,9 @@ async function principal() {
   const prestas = exiger(await BA.get('/api/prestataires'), 200, 'prestataires');
   const presta = prestas.find((p) => p.nom === 'Glovo') || prestas[0];
   const modes = exiger(await BA.get('/api/modes-paiement'), 200, 'modes de paiement');
-  exiger(await BA.post('/api/activite-prestataires', { activite_id: A1.id, prestataire_id: presta.id, taux_commission: 20, taux_tva: 19, mode_paiement_id: modes[0].id }), 201, 'activation prestataire');
+  const lienPresta = exiger(await BA.post('/api/activite-prestataires', { activite_id: A1.id, prestataire_id: presta.id, taux_commission: 20, taux_tva: 19, mode_paiement_id: modes[0].id }), 201, 'activation prestataire');
+  // C1 (migration 256) : une vente par prestataire n'accepte que les produits en vente sur ce canal (prix et case).
+  exiger(await BA.put('/api/canaux-vente', { activite_id: A1.id, cellules: [{ article_type: 'produit', article_id: compose.id, canal: lienPresta.id, prix: 27, en_vente: true }] }), 200, 'produit en vente chez le prestataire');
   exiger(await BA.post('/api/ventes', { activite_id: A1.id, date_vente: D(13), type_vente: 'prestataire', prestataire_id: presta.id, lignes: [{ article_type: 'produit', article_id: compose.id, quantite: 2, prix_unitaire: 27 }] }), [200, 201], 'vente prestataire');
   // Article valorisé vendu seul, à une autre date : deux déductions du même jour seraient ex aequo
   // dans les listes triées par date seule (get_stock, feuille Stock du rapport).

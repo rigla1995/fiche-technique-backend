@@ -398,4 +398,9 @@ router.get('/labo-ventes/export-excel', authenticate, requireEntreprise, c.expor
  */
 router.get('/labo-ventes/stats', authenticate, requireEntreprise, c.laboVentesStats);
 
+// ── C1 : canaux de vente (ce qui est en vente sur chaque canal : vente directe, prestataires) ─────────────────
+const cv = require('../controllers/canauxVenteController');
+router.put('/canaux-vente', authenticate, requireEntreprise, cv.modifier);
+router.post('/canaux-vente/copier', authenticate, requireEntreprise, cv.copier);
+
 module.exports = router;
