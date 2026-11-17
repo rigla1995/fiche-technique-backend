@@ -485,6 +485,18 @@
           "md5": "2b4f8704671293504524441ed4e2f560"
         }
       ]
+    },
+    {
+      "numero": 261,
+      "nom": "261_manuel_variante_verrou_canal.sql",
+      "objet": "Recette propre à un canal, retouches : sur un canal, le produit d'origine ou sa variante, jamais les deux — la case et le prix du produit d'origine y sont verrouillés tant que la variante y est cochée ; la copie d'un canal ne remplace pas l'un par l'autre.",
+      "manuel": [
+        {
+          "slug": "configuration-vente",
+          "md5Avant": "13a16f55cc26e803d45c85821a5a386b",
+          "md5": "c01cd8598fb86ab3802cde3c2abc0623"
+        }
+      ]
     }
   ]
 }
