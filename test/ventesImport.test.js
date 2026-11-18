@@ -135,7 +135,7 @@ test('migration 262 : prix à 6 décimales, une journée et un fichier une seule
 
 test('câblage : l\'import crée ses ventes par le service de la saisie ; routes avant /ventes/:id ; règle de domaine', () => {
   const service = lire('src', 'services', 'ventesImport.js');
-  assert.match(service, /const \{ verifierVente, ecrireVente \} = require\('\.\/ventesEcriture'\);/);
+  assert.match(service, /const \{ verifierVente, ecrireVente, effacerVente \} = require\('\.\/ventesEcriture'\);/);
   assert.match(service, /const \{ conditions, moduleVenteActif \} = await verifierVente\(db, vente\);\s+const ecrite = await ecrireVente\(db, \{ \.\.\.vente, userId, conditions, moduleVenteActif, importId: importe\.id \}\);/);
   for (const code of ['FICHIER_DEJA_IMPORTE', 'JOUR_DEJA_IMPORTE', 'ARTICLE_INTROUVABLE', 'CANAL_INTROUVABLE']) assert.ok(service.includes(`'${code}'`), code);
   const ecriture = lire('src', 'services', 'ventesEcriture.js');
@@ -149,10 +149,112 @@ test('câblage : l\'import crée ses ventes par le service de la saisie ; routes
 
   const ctrl = lire('src', 'controllers', 'ventesImportController.js');
   assert.match(ctrl, /if \(regles\.caisse === false\) \{\s+throw new VI\.ErreurImport\(403, 'CAISSE_DESACTIVEE'/);
-  assert.match(ctrl, /await db\.query\('BEGIN'\);\s+const resultat = await ventesImport\.enregistrer\(db, \{ clientId, userId: req\.user\.id, activiteId, donnees \}\);\s+await db\.query\('COMMIT'\);/);
+  assert.match(ctrl, /await db\.query\('BEGIN'\);\s+const \{ documentsAEffacer, \.\.\.resultat \} = await ventesImport\.enregistrer\(db, \{ clientId, user: userOf\(req\), activiteId, donnees \}\);\s+await db\.query\('COMMIT'\);/);
   const P = require('../src/services/domaineProfilService');
   assert.equal(P.REGLES_DEFAUT.caisse, true);
   assert.ok(P.REGLES_CLES.includes('caisse'));
   assert.equal(P.resolveRegles({ caisse: false }).caisse, false);
   assert.ok(lire('src', 'controllers', 'domainesController.js').includes("'prestataires', 'caisse'].includes(k) && typeof v !== 'boolean'"));
+});
+
+// ── V1b : tout fichier, journées et documents ────────────────────────────────────────────────────────────────────────
+
+test('V1b — corps : la source CSV, le remplacement et le modèle de colonnes', () => {
+  const d = VI.lireImport(corps({ source: 'csv' }), '2026-11-18');
+  assert.equal(d.source, 'csv');
+  assert.equal(d.remplacer, false, 'sans « remplacer », une journée déjà importée reste refusée');
+  assert.equal(d.modeleColonnes, null);
+  assert.equal(VI.lireImport(corps({ remplacer: true }), '2026-11-18').remplacer, true);
+  assert.equal(VI.lireImport(corps({ remplacer: 'oui' }), '2026-11-18').remplacer, false, 'seul le booléen vrai remplace');
+  assert.throws(() => VI.lireImport(corps({ source: 'ods' }), '2026-11-18'), (e) => e.code === 'SOURCE_INVALIDE' && e.status === 400);
+
+  const m = VI.lireImport(corps({ colonnes: { signature: '  produit |  qte | total ', colonnes: { designation: 1, quantite: 2, montant: 3, categorie: 5, inconnue: 9 } } }), '2026-11-18').modeleColonnes;
+  assert.deepEqual(m, { signature: 'produit | qte | total', colonnes: { designation: 1, quantite: 2, montant: 3, categorie: 5 } });
+  assert.deepEqual(VI.lireModeleColonnes({ signature: 's', colonnes: { designation: 2, quantite: 3, prixUnitaire: 4 } }).colonnes, { designation: 2, quantite: 3, prixUnitaire: 4 },
+    'le prix unitaire suffit quand le fichier ne donne pas le montant de la ligne');
+  const refuse = (v) => assert.throws(() => VI.lireModeleColonnes(v), (e) => e.code === 'MODELE_INVALIDE' && e.status === 400, JSON.stringify(v));
+  refuse({ signature: '', colonnes: { designation: 1, quantite: 2, montant: 3 } });
+  refuse({ signature: 's', colonnes: { designation: 1, quantite: 2 } });
+  refuse({ signature: 's', colonnes: { designation: 1, quantite: 1, montant: 3 } });
+  refuse({ signature: 's', colonnes: { designation: 0, quantite: 2, montant: 3 } });
+  refuse({ signature: 's', colonnes: { designation: 1.5, quantite: 2, montant: 3 } });
+  refuse({ signature: 's', colonnes: { quantite: 2, montant: 3 } });
+  refuse([]);
+  refuse('modele');
+  assert.ok(VI.SOURCES.includes('csv'));
+});
+
+test('V1b — annuler un import : un gérant n\'annule que ses imports ; les ventes passent par effacerVente', async () => {
+  const VS = require('../src/services/ventesImport');
+  const requetes = [];
+  const base = (lignes) => ({
+    query: async (sql, params) => {
+      requetes.push({ sql: sql.replace(/\s+/g, ' ').trim(), params });
+      if (/FROM ventes_imports/.test(sql) && /FOR UPDATE/.test(sql)) return { rows: lignes };
+      if (/^\s*SELECT \* FROM ventes WHERE import_id/.test(sql)) return { rows: [] };
+      return { rows: [], rowCount: 1 };
+    },
+  });
+  const imp = { id: 41, created_by: 7, document_cle: 'clients/7/pieces/2026/11/x-caisse.csv', date_vente: '2026-11-05' };
+
+  await assert.rejects(() => VS.annuler(base([imp]), { activiteId: 3, user: { id: 9, role: 'gerant' }, importId: 41 }),
+    (e) => e.code === 'IMPORT_D_UN_AUTRE' && e.status === 403 && /05\/11\/2026/.test(e.message));
+  assert.ok(!requetes.some((q) => /^UPDATE ventes_imports/.test(q.sql)), 'rien n\'est écrit quand l\'annulation est refusée');
+
+  requetes.length = 0;
+  const fait = await VS.annuler(base([imp]), { activiteId: 3, user: { id: 7, role: 'gerant' }, importId: 41 });
+  assert.deepEqual(fait, { id: 41, date_vente: '2026-11-05', ventes: 0, documentCle: imp.document_cle });
+  assert.match(requetes[0].sql, /WHERE activite_id = \$1 AND statut = 'enregistre' AND id = \$2 FOR UPDATE$/);
+  const maj = requetes.find((q) => /^UPDATE ventes_imports/.test(q.sql));
+  assert.match(maj.sql, /SET statut = 'annule', annule_le = NOW\(\), annule_par = \$2, remplace_par = \$3, document_cle = NULL/);
+  assert.deepEqual(maj.params, [41, 7, null]);
+
+  requetes.length = 0;
+  const parDate = await VS.annuler(base([imp]), { activiteId: 3, user: { id: 1, role: 'client' }, date: '2026-11-05' });
+  assert.equal(parDate.id, 41, 'le compte annule l\'import d\'un gérant');
+  assert.match(requetes[0].sql, /AND date_vente = \$2::date FOR UPDATE$/);
+  assert.equal(await VS.annuler(base([]), { activiteId: 3, user: { id: 1, role: 'client' }, date: '2026-11-06' }), null, 'rien à annuler');
+});
+
+test('V1b — câblage : migration 264, service partagé de l\'annulation, routes, document', () => {
+  const sql = lire('migrations', '264_ventes_imports_v1b.sql');
+  assert.match(sql, /DROP CONSTRAINT IF EXISTS ventes_imports_source_check;\s+ALTER TABLE ventes_imports ADD CONSTRAINT ventes_imports_source_check CHECK \(source IN \('excel', 'pdf', 'csv'\)\);/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS caisse_modeles \([\s\S]*UNIQUE \(activite_id, signature\)/);
+  for (const colonne of ['annule_le', 'annule_par', 'remplace_par', 'document_cle', 'document_type', 'document_taille']) assert.match(sql, new RegExp(`ADD COLUMN IF NOT EXISTS ${colonne}\\s`), colonne);
+  // Une seconde clé « ON DELETE SET NULL » sur ventes_imports fait échouer la suppression d'un compte.
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS annule_par\s+INTEGER,\s+ADD COLUMN IF NOT EXISTS remplace_par\s+INTEGER,/);
+  assert.ok(!/(annule_par|remplace_par)\s+INTEGER REFERENCES/.test(sql));
+
+  const ecriture = lire('src', 'services', 'ventesEcriture.js');
+  assert.match(ecriture, /async function effacerVente\(client, vente\) \{/);
+  assert.match(ecriture, /module\.exports = \{ verifierVente, ecrireVente, effacerVente, MSG_PRESTATAIRES_DESACTIVES \};/);
+  const corpsEffacer = ecriture.slice(ecriture.indexOf('async function effacerVente'));
+  assert.ok(!/\bpool\./.test(corpsEffacer), 'tout se fait dans la transaction de l\'appelant');
+  const ventes = lire('src', 'controllers', 'ventesController.js');
+  assert.match(ventes, /await client\.query\('BEGIN'\);\s+await effacerVente\(client, vente\);\s+await client\.query\('COMMIT'\);/);
+  assert.ok(!ventes.includes('DELETE FROM vente_lignes'), 'le contrôleur ne porte plus de copie de l\'annulation');
+
+  const service = lire('src', 'services', 'ventesImport.js');
+  assert.match(service, /const remplace = donnees\.remplacer \? await annuler\(db, \{ activiteId, user, date: donnees\.dateVente \}\) : null;\s+await exigerNouveau\(db, activiteId, donnees\);/);
+  assert.match(service, /for \(const v of ventes\.rows\) await effacerVente\(db, v\);/);
+  assert.match(service, /if \(empreinte !== String\(imp\.empreinte\)\.trim\(\) \|\| !contenuConforme\(imp\.source, octets\)\) \{\s+throw new VI\.ErreurImport\(400, 'DOCUMENT_DIFFERENT'/);
+  assert.match(service, /const cle = stockage\.nouvelleCle\(clientId, ext, '-caisse'\);/);
+  assert.match(service, /INSERT INTO caisse_modeles \(activite_id, signature, colonnes, updated_at\)/);
+
+  const routes = lire('src', 'routes', 'ventes.js');
+  const avantId = routes.indexOf("router.get('/ventes/:id'");
+  for (const route of [
+    "router.get('/ventes/imports/jour', authenticate, requireEntreprise, vi.jour);",
+    "router.get('/ventes/imports', authenticate, requireEntreprise, vi.lister);",
+    "router.delete('/ventes/imports/:id', authenticate, requireEntreprise, vi.annuler);",
+    "router.post('/ventes/imports/:id/document', authenticate, requireEntreprise, vi.corpsDocument, vi.deposerDocument);",
+    "router.get('/ventes/imports/:id/document', authenticate, requireEntreprise, vi.document);",
+  ]) assert.ok(routes.indexOf(route) > 0 && routes.indexOf(route) < avantId, route);
+
+  const ctrl = lire('src', 'controllers', 'ventesImportController.js');
+  // Le document de l'import remplacé ou annulé ne sort du stockage qu'APRÈS la validation de la transaction.
+  assert.match(ctrl, /await db\.query\('COMMIT'\);\s+\/\/[^\n]*\n\s+await ventesImport\.effacerDocuments\(documentsAEffacer\);/);
+  assert.match(ctrl, /await db\.query\('COMMIT'\);\s+await ventesImport\.effacerDocuments\(\[fait\.documentCle\]\);/);
+  assert.match(ctrl, /res\.setHeader\('Content-Disposition', `attachment; filename=/);
+  assert.match(ctrl, /res\.setHeader\('X-Content-Type-Options', 'nosniff'\);/);
 });

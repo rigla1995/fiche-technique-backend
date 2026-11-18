@@ -315,6 +315,12 @@ router.post('/ventes', authenticate, requireEntreprise, c.createVente);
 // V1a — import d'un fichier de caisse (avant /ventes/:id). Droits : ceux de la saisie des ventes.
 router.get('/ventes/imports/contexte', authenticate, requireEntreprise, vi.contexte);
 router.post('/ventes/imports', authenticate, requireEntreprise, vi.creer);
+// V1b — journées importées, annulation (ventes effacées, stock rendu), document d'origine conservé.
+router.get('/ventes/imports/jour', authenticate, requireEntreprise, vi.jour);
+router.get('/ventes/imports', authenticate, requireEntreprise, vi.lister);
+router.delete('/ventes/imports/:id', authenticate, requireEntreprise, vi.annuler);
+router.post('/ventes/imports/:id/document', authenticate, requireEntreprise, vi.corpsDocument, vi.deposerDocument);
+router.get('/ventes/imports/:id/document', authenticate, requireEntreprise, vi.document);
 
 /**
  * @swagger
