@@ -20,7 +20,7 @@ test('règle du domaine « prestataires » : vraie par défaut, clé connue, ré
   assert.equal(P.resolveRegles(null).prestataires, true);
   assert.equal(typeof P.prestatairesActifsPourClient, 'function');
   const ctrl = lire('src', 'controllers', 'domainesController.js');
-  assert.ok(ctrl.includes("'b2b_depuis_activite', 'prestataires'].includes(k) && typeof v !== 'boolean'"), 'booléen contrôlé par la page Domaines');
+  assert.ok(ctrl.includes("'b2b_depuis_activite', 'prestataires', 'caisse'].includes(k) && typeof v !== 'boolean'"), 'booléen contrôlé par la page Domaines');
 });
 
 test('migration 245 : interrupteur du compte (vrai par défaut), règle à faux pour l\'hôtellerie et l\'industrie, idempotente', () => {
@@ -44,11 +44,13 @@ test('les écrans reçoivent domaine.prestataires : login et /auth/me (même fon
 test('gardes du serveur : activer un prestataire et saisir une vente via prestataire répondent 409 PRESTATAIRES_DESACTIVES', () => {
   const v = lire('src', 'controllers', 'ventesController.js');
   assert.ok(v.includes("const { prestatairesActifsPourClient } = require('../services/domaineProfilService');"));
-  assert.equal((v.match(/code: .PRESTATAIRES_DESACTIVES./g) || []).length, 2, 'deux gardes (activation, vente)');
+  assert.equal((v.match(/code: .PRESTATAIRES_DESACTIVES./g) || []).length, 1, 'la garde de l\'activation (celle de la vente est dans ventesEcriture.js)');
   const activation = v.slice(v.indexOf('const addActivitePrestataire = async'), v.indexOf('const addActivitePrestataire = async') + 900);
   assert.ok(activation.includes("if (!(await prestatairesActifsPourClient(cid))) return res.status(409).json({ code: 'PRESTATAIRES_DESACTIVES'"));
-  const vente = v.slice(v.indexOf('const createVente = async'), v.indexOf('const createVente = async') + 1800);
-  assert.ok(vente.includes("if (type_vente === 'prestataire') {\n      if (!(await prestatairesActifsPourClient(cid)))"), 'la garde avant le contrôle du prestataire');
+  // V1a : la garde de la vente est dans le service partagé avec l'import d'un fichier de caisse.
+  const vente = lire('src', 'services', 'ventesEcriture.js');
+  assert.ok(vente.includes("if (type_vente === 'prestataire') {\n      if (!(await prestatairesActifsPourClient(clientId))) throw refus(409, 'PRESTATAIRES_DESACTIVES', MSG_PRESTATAIRES_DESACTIVES);"), 'la garde avant le contrôle du prestataire');
+  assert.ok(v.includes('await verifierVente(pool, { clientId: cid,'), 'la saisie passe par le service');
   assert.ok(v.includes('[[pl:prestataire]] de livraison ne sont pas proposés à ce compte'), 'message au vocabulaire du compte');
 });
 

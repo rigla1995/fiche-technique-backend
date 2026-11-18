@@ -26,6 +26,10 @@ const REGLES_DEFAUT = Object.freeze({
   // prix prestataire) ; à faux, rien n'apparaît chez eux. L'admin peut aussi les couper compte par compte
   // (abonnement_config.prestataires_actifs) : la règle du domaine reste prioritaire.
   prestataires: true,
+  // V1a (18/11/2026) : import d'un fichier de caisse dans la saisie des ventes (Excel, PDF) ; à faux, le bouton
+  // n'apparaît pas et le serveur refuse (403 CAISSE_DESACTIVEE). Allumée en restauration, éteinte ailleurs tant que
+  // la vente des autres domaines n'est pas définie (migration 262).
+  caisse: true,
   // Lot 1b §5 — seeds à la création du compte : [] = comportement actuel (rien n'est créé).
   unites_seed: Object.freeze([]),        // unités de MESURE créées pour le nouveau client
   prestataires_seed: Object.freeze([]),  // canaux (prestataires_livraison existants, liés au compte)

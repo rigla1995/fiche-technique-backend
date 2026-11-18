@@ -5,6 +5,7 @@ Cet écran vous permet d'enregistrer [[le:vente:pl]] [[acc:vente:quotidien:quoti
 ### Ce que vous voyez
 
 - Un **sélecteur [[de:activite]]** et deux raccourcis : **⚙️ Configuration** et **📊 Rapport**.
+- Le bouton **📥 Importer la caisse** : il crée [[le:vente:pl]] d'une journée depuis le fichier exporté de la caisse (Excel ou PDF).
 - Quatre onglets : **📝 Saisie [[du:vente:pl]] [[court:produit:pl]]**, **🧂 Saisie [[du:vente:pl]] [[court:supplement:pl]]**, **💎 Saisie [[du:vente:pl]] [[acc:vente:valorisés:valorisées]]** et **📋 Historique**.
 - Dans chaque onglet de saisie, un tableau groupé par **catégorie** avec les colonnes *Article* (et son unité), *🏪 Qté directe*, puis une colonne *🛵* par [[nom:prestataire]] [[acc:prestataire:actif:active]]. Sous chaque case de quantité s'affiche le **prix du canal** : le prix direct, ou le prix [[du:prestataire]]. Une case n'est ouverte que sur les canaux où la ligne se vend ; ailleurs un tiret la remplace.
 - Une barre d'outils : recherche par nom, champ **Date [[de:vente]]** et bouton **✓ Confirmer [[le:vente:pl]]**.
@@ -19,6 +20,15 @@ Enregistrer [[le:vente:pl]] d'une journée :
 3. Saisissez les quantités vendues dans la colonne **🏪 Qté directe** et/ou dans la colonne de chaque [[nom:prestataire]], là où la case est ouverte.
 4. Contrôlez le **CA total** en bas de tableau.
 5. Cliquez sur **✓ Confirmer [[le:vente:pl]]** : une fenêtre rappelle que [[le:vente]] déduira directement [[le:stock]] [[du:activite]] ; validez avec **✓ Confirmer**.
+
+Importer [[le:vente:pl]] d'une journée depuis la caisse (bouton **📥 Importer la caisse**) :
+
+1. Exportez de la caisse le fichier de la journée, détaillé par [[nom:produit]] (désignation, quantité, chiffre), en **Excel (.xlsx)** ou en **PDF**. Un fichier vaut **une journée**.
+2. Cliquez sur **📥 Importer la caisse** et choisissez le fichier : LabFlow le lit sur votre poste, retrouve la journée et vérifie les sommes imprimées dans le fichier.
+3. Pour chaque ligne, vérifiez [[le:produit]] de la carte : **✓ Reconnue** (déjà apprise), **≈ Proposée** (d'après le nom, à vérifier) ou **? À choisir**. Cochez **Ignorer** pour une ligne qui n'est pas à importer (un pourboire, des frais).
+4. Répartissez la quantité par canal : saisissez la part de chaque [[nom:prestataire]] ; **le reste est [[du:vente]] [[acc:vente:direct:directe]]**. Sans rien saisir, toute la ligne est en [[nom:vente]] [[acc:vente:direct:directe]].
+5. Pour une catégorie du fichier qui n'est que de la livraison (« DELIVERY »), cochez **Livraison** : sa quantité se répartit entre [[le:prestataire:pl]] seulement. LabFlow le propose d'après le nom de la catégorie, puis s'en souvient. [[Le:prestataire]] [[acc:prestataire:laissé:laissée]] vide reçoit le reste.
+6. Cliquez sur **💾 Enregistrer [[le:vente:pl]]** : LabFlow crée [[un:vente]] par canal, avec les règles de la saisie ([[nom:stock]], coût, commission [[du:prestataire]]), et retient vos choix. La fois suivante, les mêmes lignes arrivent reconnues.
 
 Consulter et gérer l'historique (onglet 📋) :
 
@@ -49,6 +59,10 @@ Une ligne ne se saisit que sur les canaux où elle se vend : dans Configuration 
 
 :::attention
 La confirmation déduit immédiatement [[le:stock]]. En cas d'erreur, utilisez le bouton **Annuler** dans l'historique : [[le:vente]] est [[acc:vente:supprimé:supprimée]] et [[le:stock]] [[acc:stock:réintégré:réintégrée]]. [[Un:gerant]] ne peut annuler que [[le:vente:pl]] qu'[[acc:gerant:il:elle]] a [[acc:gerant:lui-même:elle-même]] [[acc:vente:saisi:saisie:pl]].
+:::
+
+:::regle
+Une journée ne s'importe **qu'une fois** par [[nom:activite]], et un fichier aussi. Un fichier qui porte du chiffre sur plusieurs jours est refusé : exportez un fichier par jour. Le prix [[du:vente]] [[acc:vente:importé:importée]] est le montant de la ligne divisé par sa quantité : le chiffre de LabFlow égale celui de la caisse, remises comprises.
 :::
 
 :::astuce
