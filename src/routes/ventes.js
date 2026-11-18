@@ -3,6 +3,8 @@ const router = express.Router();
 const { authenticate, requireSuperAdmin, requireEntreprise, requireClient } = require('../middleware/auth');
 const c = require('../controllers/ventesController');
 const mp = require('../controllers/modesPaiementController');
+// V1a : import d'un fichier de caisse (Excel, PDF) — les ventes d'une journée, vérifiées à l'écran.
+const vi = require('../controllers/ventesImportController');
 
 // ── Admin routes ─────────────────────────────────────────────────────────────
 
@@ -309,6 +311,10 @@ router.post('/charges-fixes', authenticate, requireEntreprise, c.upsertChargesFi
 router.get('/ventes', authenticate, requireEntreprise, c.listVentes);
 router.get('/ventes/export-excel', authenticate, requireEntreprise, c.exportVentesExcel);
 router.post('/ventes', authenticate, requireEntreprise, c.createVente);
+
+// V1a — import d'un fichier de caisse (avant /ventes/:id). Droits : ceux de la saisie des ventes.
+router.get('/ventes/imports/contexte', authenticate, requireEntreprise, vi.contexte);
+router.post('/ventes/imports', authenticate, requireEntreprise, vi.creer);
 
 /**
  * @swagger

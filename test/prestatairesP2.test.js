@@ -81,8 +81,11 @@ test('contrôleur des ventes : conditions exigées à l\'activation, figées sur
   assert.match(src, /INSERT INTO activite_prestataires \(activite_id, prestataire_id, taux_commission, taux_tva, mode_paiement_id, conditions_le, conditions_par, created_by\)/);
   assert.match(src, /CP\.lireConditions\(req\.body, \{ complet: false \}\)/);
   // Vente : taux et mode figés, prestataire activé et conditions renseignées.
-  assert.match(src, /INSERT INTO ventes \(activite_id, labo_id, date_vente, type_vente, prestataire_id, statut, notes, created_by,\s+taux_commission, taux_tva_commission, mode_paiement_id\)/);
-  for (const code of ['PRESTATAIRE_REQUIS', 'PRESTATAIRE_NON_ACTIVE', 'CONDITIONS_MANQUANTES']) assert.ok(src.includes(`code: '${code}'`), code);
+  // (V1a : l'écriture de la vente est dans le service partagé avec l'import d'un fichier de caisse.)
+  const ecriture = lire('src', 'services', 'ventesEcriture.js');
+  assert.match(ecriture, /INSERT INTO ventes \(activite_id, labo_id, date_vente, type_vente, prestataire_id, statut, notes, created_by,\s+taux_commission, taux_tva_commission, mode_paiement_id, import_id\)/);
+  for (const code of ['PRESTATAIRE_REQUIS', 'PRESTATAIRE_NON_ACTIVE', 'CONDITIONS_MANQUANTES']) assert.ok(ecriture.includes(`, '${code}', `), code);
+  assert.match(src, /await verifierVente\(pool, \{ clientId: cid, activite_id, labo_id, type_vente, prestataire_id, lignes \}\)/);
   // Désactiver efface les prix (cascade) et le dit.
   assert.match(src, /SELECT COUNT\(\*\)::int AS n FROM article_prix_prestataire WHERE activite_prestataire_id = \$1/);
   assert.match(src, /prix_effaces: prix\.rows\[0\]\.n/);

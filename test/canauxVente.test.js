@@ -134,8 +134,11 @@ test('migration 256 : deux colonnes, reprise des prix prestataire, rejouable', (
 
 test('contrôleurs : la saisie refuse une ligne hors canal ; les listes servent les cases', () => {
   const ventes = lire('src', 'controllers', 'ventesController.js');
-  assert.match(ventes, /canauxVente\.exigerLignesEnVente\(pool, \{ activiteId: activite_id, typeVente: type_vente, prestataireId: prestataire_id, lignes \}\)/);
-  assert.ok(ventes.indexOf('exigerLignesEnVente') < ventes.indexOf("await client.query('BEGIN');\n\n    const vRes"), 'contrôle avant la transaction de la vente');
+  // V1a : le contrôle vit dans le service partagé avec l'import d'un fichier de caisse ; la saisie l'appelle avant sa transaction.
+  const ecriture = lire('src', 'services', 'ventesEcriture.js');
+  assert.match(ecriture, /canauxVente\.exigerLignesEnVente\(db, \{ activiteId: activite_id, typeVente: type_vente, prestataireId: prestataire_id, lignes \}\)/);
+  const controle = ventes.indexOf('await verifierVente(pool,');
+  assert.ok(controle > 0 && controle < ventes.indexOf("await client.query('BEGIN');\n\n    const vente = await ecrireVente(client,"), 'contrôle avant la transaction de la vente');
   assert.match(ventes, /av\.prix_vente, av\.portion, av\.actif, av\.directe,/);
   assert.match(ventes, /app\.prix_vente, app\.en_vente, app\.updated_at,/);
   assert.equal(ventes.split('directe: row.directe !== false,').length - 1, 2, 'valorisés : articles et composés');

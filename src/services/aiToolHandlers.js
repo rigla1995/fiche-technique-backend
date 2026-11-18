@@ -435,11 +435,12 @@ async function toolGetVentes(clientId, { activite_id, labo_id, date_from, date_t
   // Repli du canal (spec lot 2b §6.1) : paramètre PROPRE à cette requête, jamais dans `params`
   // (partagé avec totRes, où un paramètre en trop ferait échouer la requête).
   const pCanal = [...params, voc.Nom('prestataire')];
+  // V1a : le prix d'une ligne de vente a 6 décimales (import de caisse) ; le chiffre par canal garde l'écriture d'avant.
   const canalRes = await pool.query(
     `${CLIENT_SCOPE_CTE}
      SELECT CASE WHEN v.type_vente = 'directe' THEN 'Direct' ELSE COALESCE(pl.nom, $${pCanal.length}) END AS canal,
             COUNT(DISTINCT v.id) AS nb_ventes,
-            COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0) AS ca_ttc
+            ROUND(COALESCE(SUM(vl.quantite * vl.prix_unitaire), 0), 5) AS ca_ttc
      FROM ventes v JOIN vente_lignes vl ON vl.vente_id = v.id
      LEFT JOIN prestataires_livraison pl ON pl.id = v.prestataire_id
      WHERE ${where}

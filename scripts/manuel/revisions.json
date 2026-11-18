@@ -497,6 +497,18 @@
           "md5": "c01cd8598fb86ab3802cde3c2abc0623"
         }
       ]
+    },
+    {
+      "numero": 263,
+      "nom": "263_manuel_importer_la_caisse.sql",
+      "objet": "Importer un fichier de caisse (V1a) : bouton « Importer la caisse » de la saisie des ventes, vérification des lignes (produit de la carte, quantité par canal, catégorie de livraison), une journée par import.",
+      "manuel": [
+        {
+          "slug": "saisie-ventes",
+          "md5Avant": "2b4f8704671293504524441ed4e2f560",
+          "md5": "8ba56256dccb810e325b6d0921f0c120"
+        }
+      ]
     }
   ]
 }
