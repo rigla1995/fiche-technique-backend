@@ -509,6 +509,18 @@
           "md5": "8ba56256dccb810e325b6d0921f0c120"
         }
       ]
+    },
+    {
+      "numero": 265,
+      "nom": "265_manuel_tout_fichier_de_caisse.sql",
+      "objet": "Tout fichier de caisse (V1b) : Excel, CSV ou PDF, colonnes à désigner quand elles ne se reconnaissent pas seules (modèle retenu), plusieurs fichiers à la fois, journée remplacée ou annulée, ventes saisies à la main signalées, document d'origine conservé.",
+      "manuel": [
+        {
+          "slug": "saisie-ventes",
+          "md5Avant": "8ba56256dccb810e325b6d0921f0c120",
+          "md5": "6d03938d378f481a78e4a31433c835f2"
+        }
+      ]
     }
   ]
 }

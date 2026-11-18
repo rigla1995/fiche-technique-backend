@@ -2,7 +2,8 @@
 // d'un fichier de caisse (V1a — labflow-reprise/ventes-cartes/PLAN-VENTES-CARTES.md §5 bis) crée ses ventes avec
 // EXACTEMENT les mêmes règles : conditions du prestataire figées, coût de chaque ligne, sorties de stock.
 //   verifierVente  contrôles avant écriture (prestataire activé et réglé, lignes en vente sur le canal) ;
-//   ecrireVente    la vente, ses lignes et les sorties de stock, dans la transaction de l'appelant.
+//   ecrireVente    la vente, ses lignes et les sorties de stock, dans la transaction de l'appelant ;
+//   effacerVente   l'annulation : la vente effacée, son stock rendu (V1b : annuler ou remplacer un import).
 // Un refus est une erreur portant `status` et `code`.
 const { prestatairesActifsPourClient } = require('./domaineProfilService');
 const canauxVente = require('./canauxVente');
@@ -264,4 +265,104 @@ async function ecrireVente(client, { activite_id, labo_id, date_vente, type_vent
     return vente;
 }
 
-module.exports = { verifierVente, ecrireVente, MSG_PRESTATAIRES_DESACTIVES };
+/**
+ * Efface une vente et rend son stock : le cœur de l'annulation (DELETE /api/ventes/:id), extrait tel quel du contrôleur
+ * pour que l'annulation d'un import de caisse (V1b) suive les mêmes règles. `vente` = la ligne de `ventes`. Dans la
+ * transaction de l'appelant ; les droits (compte, gérant) sont vérifiés par l'appelant.
+ */
+async function effacerVente(client, vente) {
+  const lignesRes = await client.query('SELECT * FROM vente_lignes WHERE vente_id = $1', [vente.id]);
+
+  // Hard delete the vente (lignes deleted first to avoid FK constraint)
+  await client.query('DELETE FROM vente_lignes WHERE vente_id = $1', [vente.id]);
+  await client.query('DELETE FROM ventes WHERE id = $1', [vente.id]);
+
+  // Subtract this vente's stock contribution from the existing 'vente' row
+  if (vente.activite_id) {
+    const mvRes = await client.query(
+      `SELECT pe.module_vente_actif FROM profil_entreprise pe
+       JOIN activites a ON a.entreprise_id = pe.id WHERE a.id = $1`,
+      [vente.activite_id]
+    );
+    const mvActif = mvRes.rows[0]?.module_vente_actif === true;
+    if (mvActif) {
+      const ingredientTotals = new Map();
+      const ptTotals = new Map();
+      // Pré-chargement en lot des compositions (mêmes accumulations qu'avant)
+      const annulProdIds = [...new Set(lignesRes.rows.filter((l) => l.article_type === 'produit').map((l) => Number(l.article_id)))];
+      const annulIngMap = new Map();
+      const annulSpMap = new Map();
+      if (annulProdIds.length > 0) {
+        const ir = await client.query(
+          'SELECT produit_id, ingredient_id, portion FROM produit_ingredients WHERE produit_id = ANY($1::int[])',
+          [annulProdIds]
+        );
+        for (const row of ir.rows) {
+          if (!annulIngMap.has(row.produit_id)) annulIngMap.set(row.produit_id, []);
+          annulIngMap.get(row.produit_id).push(row);
+        }
+        const sr = await client.query(
+          'SELECT produit_id, sous_produit_id, portion FROM produit_sous_produits WHERE produit_id = ANY($1::int[])',
+          [annulProdIds]
+        );
+        for (const row of sr.rows) {
+          if (!annulSpMap.has(row.produit_id)) annulSpMap.set(row.produit_id, []);
+          annulSpMap.get(row.produit_id).push(row);
+        }
+      }
+      // Origine des produits (refonte) : un produit labo se réintègre comme PT de l'activité.
+      const annulOrigineMap = new Map();
+      if (annulProdIds.length > 0) {
+        const or = await client.query('SELECT id, origine FROM produits WHERE id = ANY($1::int[])', [annulProdIds]);
+        for (const row of or.rows) annulOrigineMap.set(row.id, row.origine || 'activite');
+      }
+      for (const ligne of lignesRes.rows) {
+        if (ligne.article_type === 'produit') {
+          if (annulOrigineMap.get(Number(ligne.article_id)) === 'labo') {
+            ptTotals.set(Number(ligne.article_id),
+              (ptTotals.get(Number(ligne.article_id)) || 0) + parseFloat(ligne.quantite));
+          } else {
+            for (const pi of (annulIngMap.get(Number(ligne.article_id)) || [])) {
+              ingredientTotals.set(pi.ingredient_id,
+                (ingredientTotals.get(pi.ingredient_id) || 0) + parseFloat(pi.portion) * parseFloat(ligne.quantite));
+            }
+            for (const sp of (annulSpMap.get(Number(ligne.article_id)) || [])) {
+              ptTotals.set(sp.sous_produit_id,
+                (ptTotals.get(sp.sous_produit_id) || 0) + parseFloat(sp.portion) * parseFloat(ligne.quantite));
+            }
+          }
+        }
+        if (ligne.article_type === 'ingredient') {
+          ingredientTotals.set(ligne.article_id,
+            (ingredientTotals.get(ligne.article_id) || 0) + parseFloat(ligne.quantite));
+        }
+      }
+      for (const [ingredientId, total] of ingredientTotals) {
+        // Subtract this vente's portion from the accumulated 'vente' stock entry
+        await client.query(
+          `UPDATE stock_entreprise_daily
+           SET quantite = quantite + $1, updated_at = NOW()
+           WHERE activite_id = $2 AND ingredient_id = $3 AND date_appro = $4 AND type_appro = 'vente'`,
+          [total, vente.activite_id, ingredientId, vente.date_vente]
+        );
+        // Clean up the row if net quantity reached 0 (all ventes for this ingredient/day cancelled)
+        await client.query(
+          `DELETE FROM stock_entreprise_daily
+           WHERE activite_id = $1 AND ingredient_id = $2 AND date_appro = $3 AND type_appro = 'vente' AND quantite >= 0`,
+          [vente.activite_id, ingredientId, vente.date_vente]
+        );
+      }
+      for (const [sousProduitId, total] of ptTotals) {
+        await client.query(
+          `UPDATE stock_produits_transformes
+           SET quantite = quantite + $1
+           WHERE produit_id = $2 AND activite_id = $3 AND date_appro = $4 AND quantite < 0 AND prix_calcule IS NULL
+             AND type_appro IS DISTINCT FROM 'PT'`,
+          [total, sousProduitId, vente.activite_id, vente.date_vente]
+        );
+      }
+    }
+  }
+}
+
+module.exports = { verifierVente, ecrireVente, effacerVente, MSG_PRESTATAIRES_DESACTIVES };

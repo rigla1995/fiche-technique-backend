@@ -5,13 +5,16 @@
 //   - sa quantité est répartie par canal : la vente directe et les prestataires. Le reste est de la vente directe ;
 //     dans une catégorie de LIVRAISON, rien ne va en vente directe ;
 //   - le prix d'une vente importée = montant ÷ quantité (6 décimales) : le chiffre égale celui de la caisse.
+// V1b : la source CSV, le remplacement d'une journée (`remplacer`) et le modèle de fichier à retenir (`colonnes`).
 // Tests : test/ventesImport.test.js.
 const { normaliserDesignation } = require('../services/facturesValidees');
 
 const CANAL_DIRECT = 'directe';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LIGNES_MAX = 1000;
-const SOURCES = Object.freeze(['excel', 'pdf']);
+const SOURCES = Object.freeze(['excel', 'pdf', 'csv']);
+// Colonnes qu'un utilisateur désigne dans un fichier dont les titres ne se reconnaissent pas seuls (V1b).
+const ROLES_COLONNES = Object.freeze(['designation', 'quantite', 'montant', 'prixUnitaire', 'categorie']);
 
 class ErreurImport extends Error {
   constructor(status, code, message) {
@@ -85,6 +88,30 @@ function lireLigne(l, rang, livraisons) {
   return ligne;
 }
 
+/**
+ * Le modèle de fichier à retenir (V1b) : la ligne de titres du fichier (`signature`) et les colonnes désignées par
+ * l'utilisateur. Rend null si le corps n'en porte pas (colonnes reconnues seules).
+ */
+function lireModeleColonnes(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== 'object' || Array.isArray(v)) throw refus('MODELE_INVALIDE', 'Modèle de fichier invalide.');
+  const signature = texte(v.signature, 400);
+  if (!signature) throw refus('MODELE_INVALIDE', 'Modèle de fichier invalide.');
+  const colonnes = {};
+  const vues = new Set();
+  for (const role of ROLES_COLONNES) {
+    const n = v.colonnes?.[role];
+    if (n === null || n === undefined) continue;
+    if (!Number.isInteger(n) || n < 1 || n > 200 || vues.has(n)) throw refus('MODELE_INVALIDE', 'Modèle de fichier invalide : colonnes.');
+    vues.add(n);
+    colonnes[role] = n;
+  }
+  if (!colonnes.designation || !colonnes.quantite || !(colonnes.montant || colonnes.prixUnitaire)) {
+    throw refus('MODELE_INVALIDE', 'Modèle de fichier invalide : désignation, quantité et montant (ou prix) requis.');
+  }
+  return { signature, colonnes };
+}
+
 /** Le corps de POST /api/ventes/imports, contrôlé. `aujourdHui` (AAAA-MM-JJ) borne la date. */
 function lireImport(body, aujourdHui = new Date().toISOString().slice(0, 10)) {
   const b = body && typeof body === 'object' ? body : {};
@@ -95,7 +122,7 @@ function lireImport(body, aujourdHui = new Date().toISOString().slice(0, 10)) {
   // Un jour d'avance toléré (fuseau du navigateur) ; au-delà, la journée n'a pas encore eu lieu.
   const demain = new Date(Date.parse(`${aujourdHui}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
   if (date > demain) throw refus('DATE_FUTURE', 'Cette journée n\'a pas encore eu lieu.');
-  if (!SOURCES.includes(b.source)) throw refus('SOURCE_INVALIDE', 'Type de fichier inconnu (Excel ou PDF attendu).');
+  if (!SOURCES.includes(b.source)) throw refus('SOURCE_INVALIDE', 'Type de fichier inconnu (Excel, PDF ou CSV attendu).');
   const empreinte = String(b.empreinte ?? '').toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(empreinte)) throw refus('EMPREINTE_INVALIDE', 'Empreinte du fichier manquante.');
 
@@ -117,7 +144,7 @@ function lireImport(body, aujourdHui = new Date().toISOString().slice(0, 10)) {
 
   const totalLu = b.total_lu === null || b.total_lu === undefined || b.total_lu === '' ? null : lireNombre(b.total_lu, { code: 'TOTAL_INVALIDE', quoi: 'Total du fichier' });
   return {
-    dateVente: date, source: b.source, empreinte, fichierNom: texte(b.fichier_nom, 255) || null, modele: texte(b.modele, 80) || null,
+    dateVente: date, source: b.source, empreinte, remplacer: b.remplacer === true, modeleColonnes: lireModeleColonnes(b.colonnes), fichierNom: texte(b.fichier_nom, 255) || null, modele: texte(b.modele, 80) || null,
     totalLu, totalEnregistre: millime(lignes.filter((l) => !l.ignoree).reduce((s, l) => s + l.montant, 0)), categories, lignes,
   };
 }
@@ -143,5 +170,5 @@ function ventesParCanal(lignes) {
 }
 
 module.exports = {
-  CANAL_DIRECT, LIGNES_MAX, SOURCES, ErreurImport, millime, cleCategorie, cleCorrespondance, lireCanal, lireLigne, lireImport, prixUnitaire, ventesParCanal,
+  CANAL_DIRECT, LIGNES_MAX, SOURCES, ROLES_COLONNES, ErreurImport, lireModeleColonnes, millime, cleCategorie, cleCorrespondance, lireCanal, lireLigne, lireImport, prixUnitaire, ventesParCanal,
 };
