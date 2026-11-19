@@ -45,9 +45,9 @@ test('lireImport : un corps juste ; le total enregistré ne compte pas les ligne
   assert.equal(d.totalLu, 663.1);
   assert.equal(d.totalEnregistre, 600);
   assert.equal(d.lignes.length, 3);
-  assert.deepEqual(d.lignes[1], { rang: 2, categorie: 'DELIVERY', designation: 'Pizza reine', quantite: 16, montant: 400, ignoree: false, articleType: 'produit', articleId: 7,
-    repartition: [{ canal: LIEN_A, quantite: 12 }, { canal: LIEN_B, quantite: 4 }] });
-  assert.deepEqual(d.lignes[2], { rang: 3, categorie: 'MENU PRINCIPAL', designation: 'Service', quantite: 1, montant: 2, ignoree: true, articleType: null, articleId: null, repartition: [] });
+  assert.deepEqual(d.lignes[1], { rang: 2, categorie: 'DELIVERY', designation: 'Pizza reine', quantite: 16, montant: 400, ignoree: false, toujours: false, articleType: 'produit', articleId: 7,
+    cibles: [{ articleType: 'produit', articleId: 7, quantite: 1, montant: 400 }], repartition: [{ canal: LIEN_A, quantite: 12 }, { canal: LIEN_B, quantite: 4 }] });
+  assert.deepEqual(d.lignes[2], { rang: 3, categorie: 'MENU PRINCIPAL', designation: 'Service', quantite: 1, montant: 2, ignoree: true, toujours: false, articleType: null, articleId: null, cibles: [], repartition: [] });
   assert.deepEqual(d.categories, [{ cle: 'menu principal', nom: 'MENU PRINCIPAL', livraison: false }, { cle: 'delivery', nom: 'DELIVERY', livraison: true }]);
   // Sans catégorie, sans total lu : accepté (un fichier peut n'avoir ni l'un ni l'autre).
   const simple = lu({ categories: undefined, lignes: [ligne({ categorie: null })] });
@@ -257,4 +257,64 @@ test('V1b — câblage : migration 264, service partagé de l\'annulation, route
   assert.match(ctrl, /await db\.query\('COMMIT'\);\s+await ventesImport\.effacerDocuments\(\[fait\.documentCle\]\);/);
   assert.match(ctrl, /res\.setHeader\('Content-Disposition', `attachment; filename=/);
   assert.match(ctrl, /res\.setHeader\('X-Content-Type-Options', 'nosniff'\);/);
+});
+
+// ── V1c : menus, formules et lots ────────────────────────────────────────────────────────────────────────────────────
+
+test('V1c — menus et lots : une ligne vaut plusieurs produits, chacun avec sa quantité et sa part du montant', () => {
+  const cible = (id, quantite, montant) => ({ article_type: 'produit', article_id: id, quantite, montant });
+  const d = VI.lireImport(corps({ categories: [], lignes: [
+    { designation: 'MENU DUO', quantite: 10, montant: 150, cibles: [cible(7, 1, 120), cible(8, 1, 30)], repartition: [{ canal: 'directe', quantite: 6 }, { canal: LIEN_A, quantite: 4 }] },
+    { designation: 'LOT 6 BRIKS', quantite: 2, montant: 20, cibles: [cible(9, 6, 20)], repartition: [{ canal: 'directe', quantite: 2 }] },
+    { designation: 'DEMI', quantite: 3, montant: 9, cibles: [cible(7, 0.5, 9)], repartition: [{ canal: 'directe', quantite: 3 }] },
+    ligne({ designation: 'SIMPLE', quantite: 7, montant: 61.1, repartition: [{ canal: 'directe', quantite: 7 }] }),
+  ] }), '2026-11-18');
+  assert.deepEqual(d.lignes[0].cibles, [{ articleType: 'produit', articleId: 7, quantite: 1, montant: 120 }, { articleType: 'produit', articleId: 8, quantite: 1, montant: 30 }]);
+  assert.deepEqual([d.lignes[0].articleType, d.lignes[0].articleId], [null, null], 'plusieurs produits : aucun n\'est porté par la ligne');
+  assert.deepEqual([d.lignes[1].articleType, d.lignes[1].articleId], ['produit', 9], 'un lot reste rattaché à son produit');
+  assert.deepEqual(d.lignes[3].cibles, [{ articleType: 'produit', articleId: 7, quantite: 1, montant: 61.1 }], 'une ligne simple = un produit, une unité, tout le montant');
+  assert.equal(d.totalEnregistre, 240.1);
+
+  const parCanal = VI.ventesParCanal(d.lignes);
+  assert.deepEqual([...parCanal.keys()], ['directe', LIEN_A]);
+  assert.deepEqual(parCanal.get('directe'), [
+    { article_type: 'produit', article_id: 7, quantite: 6, prix_unitaire: 12 },
+    { article_type: 'produit', article_id: 8, quantite: 6, prix_unitaire: 3 },
+    { article_type: 'produit', article_id: 9, quantite: 12, prix_unitaire: 1.666667 },
+    { article_type: 'produit', article_id: 7, quantite: 1.5, prix_unitaire: 6 },
+    { article_type: 'produit', article_id: 7, quantite: 7, prix_unitaire: 8.728571 },
+  ]);
+  assert.deepEqual(parCanal.get(LIEN_A), [{ article_type: 'produit', article_id: 7, quantite: 4, prix_unitaire: 12 }, { article_type: 'produit', article_id: 8, quantite: 4, prix_unitaire: 3 }]);
+  // Le chiffre de tous les canaux retombe sur celui du fichier.
+  const chiffre = [...parCanal.values()].flat().reduce((s, l) => s + l.quantite * l.prix_unitaire, 0);
+  assert.ok(Math.abs(chiffre - 240.1) < 0.001, String(chiffre));
+
+  const refuse = (l, code) => assert.throws(() => VI.lireImport(corps({ categories: [], lignes: [{ designation: 'MENU', quantite: 2, montant: 50, repartition: [{ canal: 'directe', quantite: 2 }], ...l }] }), '2026-11-18'),
+    (e) => e.code === code && e.status === 400, `${code} ${JSON.stringify(l)}`);
+  refuse({ cibles: [] }, 'PRODUIT_REQUIS');
+  refuse({ cibles: 'pizza' }, 'PRODUIT_REQUIS');
+  refuse({ cibles: [cible(7, 1, 40), { article_type: 'menu', article_id: 8, quantite: 1, montant: 10 }] }, 'PRODUIT_REQUIS');
+  refuse({ cibles: [cible(7, 1, 40), cible(7, 2, 10)] }, 'CIBLES_INVALIDES');
+  refuse({ cibles: [cible(7, 1, 40), cible(8, 1, 9)] }, 'CIBLES_INVALIDES');
+  refuse({ cibles: [cible(7, 0, 40), cible(8, 1, 10)] }, 'CIBLES_INVALIDES');
+  refuse({ cibles: [cible(7, 1, 60), cible(8, 1, -10)] }, 'CIBLES_INVALIDES');
+  refuse({ cibles: Array.from({ length: VI.CIBLES_MAX + 1 }, (_, i) => cible(7 + i, 1, i === 0 ? 50 : 0)) }, 'CIBLES_INVALIDES');
+  refuse({ quantite: 0.002, repartition: [{ canal: 'directe', quantite: 0.002 }], cibles: [cible(7, 0.1, 50)] }, 'CIBLES_INVALIDES');
+  assert.equal(VI.lireImport(corps({ categories: [], lignes: [{ designation: 'MENU', quantite: 2, montant: 50, repartition: [{ canal: 'directe', quantite: 2 }],
+    cibles: Array.from({ length: VI.CIBLES_MAX }, (_, i) => cible(7 + i, 1, i === 0 ? 50 : 0)) }] }), '2026-11-18').lignes[0].cibles.length, 8);
+});
+
+test('V1c — « ignorer toujours » ne vaut que pour une ligne ignorée ; câblage de ce qui est appris', () => {
+  const d = VI.lireImport(corps({ lignes: [ligne(), ligne({ designation: 'Pourboire', quantite: 1, montant: 2, ignoree: true, toujours: true }),
+    ligne({ designation: 'Divers', quantite: 1, montant: 1, ignoree: true }), ligne({ designation: 'Autre', toujours: true })] }), '2026-11-18');
+  assert.deepEqual(d.lignes.map((l) => [l.ignoree, l.toujours]), [[false, false], [true, true], [true, false], [false, false]]);
+
+  const sql = lire('migrations', '266_ventes_imports_v1c.sql');
+  assert.match(sql, /ALTER TABLE ventes_imports_lignes ADD COLUMN IF NOT EXISTS cibles JSONB;/);
+  const service = lire('src', 'services', 'ventesImport.js');
+  assert.match(service, /const cibles = lignes\.flatMap\(\(l\) => l\.cibles\);/);
+  assert.match(service, /INSERT INTO correspondances_ventes_cibles \(correspondance_id, article_type, article_id, quantite\) VALUES \(\$1, \$2, \$3, \$4\)',\s+\[c\.rows\[0\]\.id, cible\.articleType, cible\.articleId, cible\.quantite\]/);
+  assert.match(service, /VALUES \(\$1, \$2, \$3, \$4, true, \$5, NOW\(\)\)/, 'une ligne ignorée « toujours » est apprise');
+  assert.match(service, /DELETE FROM correspondances_ventes WHERE activite_id = \$1 AND cle = \$2 AND ignoree = true/, 'ignorée sans « toujours » : l\'ancien « toujours » est oublié');
+  assert.match(service, /l\.ignoree \? null : JSON\.stringify\(l\.cibles\.map\(/);
 });

@@ -6,12 +6,17 @@
 //     dans une catégorie de LIVRAISON, rien ne va en vente directe ;
 //   - le prix d'une vente importée = montant ÷ quantité (6 décimales) : le chiffre égale celui de la caisse.
 // V1b : la source CSV, le remplacement d'une journée (`remplacer`) et le modèle de fichier à retenir (`colonnes`).
+// V1c : une ligne peut valoir PLUSIEURS produits (`cibles` : un menu, une formule) ou plusieurs unités d'un produit (un
+//   lot) ; chaque cible porte sa quantité pour UNE ligne vendue et sa part du montant de la ligne. Une ligne ignorée
+//   peut l'être « toujours » (`toujours`).
 // Tests : test/ventesImport.test.js.
 const { normaliserDesignation } = require('../services/facturesValidees');
 
 const CANAL_DIRECT = 'directe';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LIGNES_MAX = 1000;
+// Produits d'une même ligne de caisse (menu, formule) : 8 au plus.
+const CIBLES_MAX = 8;
 const SOURCES = Object.freeze(['excel', 'pdf', 'csv']);
 // Colonnes qu'un utilisateur désigne dans un fichier dont les titres ne se reconnaissent pas seuls (V1b).
 const ROLES_COLONNES = Object.freeze(['designation', 'quantite', 'montant', 'prixUnitaire', 'categorie']);
@@ -52,6 +57,44 @@ function lireCanal(v) {
   throw refus('CANAL_INVALIDE', 'Canal de [[nom:vente]] inconnu.');
 }
 
+/**
+ * Ce qu'une ligne a valu : un produit (cas courant, `article_type` et `article_id` sur la ligne) ou plusieurs — un
+ * menu, une formule, un lot (`cibles`, V1c). Rend [{ articleType, articleId, quantite, montant }] : `quantite` = unités
+ * du produit pour UNE ligne vendue ; `montant` = sa part du montant de la ligne (la somme des parts égale ce montant).
+ */
+function lireCibles(l, rang, designation, montant) {
+  const requis = () => refus('PRODUIT_REQUIS', `Ligne ${rang} (« ${designation} ») : choisissez ce qui a été vendu, ou ignorez la ligne.`);
+  const invalide = (quoi) => refus('CIBLES_INVALIDES', `Ligne ${rang} (« ${designation} ») : ${quoi}`);
+  const lireProduit = (c) => {
+    if (!c || (c.article_type !== 'produit' && c.article_type !== 'ingredient')) throw requis();
+    const articleId = Number(c.article_id);
+    if (!Number.isInteger(articleId) || articleId <= 0) throw requis();
+    return { articleType: c.article_type, articleId };
+  };
+  if (l.cibles === undefined || l.cibles === null) return [{ ...lireProduit(l), quantite: 1, montant }];
+  if (!Array.isArray(l.cibles) || !l.cibles.length) throw requis();
+  if (l.cibles.length > CIBLES_MAX) throw invalide(`${CIBLES_MAX} éléments au plus par ligne.`);
+  const vus = new Set();
+  const cibles = l.cibles.map((c) => {
+    const produit = lireProduit(c);
+    const cle = `${produit.articleType}:${produit.articleId}`;
+    if (vus.has(cle)) throw invalide('le même élément y figure deux fois.');
+    vus.add(cle);
+    let quantite; let part;
+    try {
+      quantite = lireNombre(c.quantite, { code: 'CIBLES_INVALIDES', quoi: 'quantité', strict: true });
+      part = lireNombre(c.montant, { code: 'CIBLES_INVALIDES', quoi: 'montant' });
+    } catch (e) {
+      throw invalide('quantité ou montant d\'un élément invalide.');
+    }
+    return { ...produit, quantite, montant: part };
+  });
+  if (Math.abs(millime(cibles.reduce((s, c) => s + c.montant, 0)) - montant) > 0.0005) {
+    throw invalide('le montant réparti entre les éléments ne retombe pas sur celui de la ligne.');
+  }
+  return cibles;
+}
+
 /** Une ligne du fichier, telle que vérifiée à l'écran. `livraisons` = clés des catégories de livraison. */
 function lireLigne(l, rang, livraisons) {
   if (!l || typeof l !== 'object') throw refus('LIGNE_INVALIDE', `Ligne ${rang} invalide.`);
@@ -60,14 +103,13 @@ function lireLigne(l, rang, livraisons) {
   const categorie = texte(l.categorie, 120) || null;
   const quantite = lireNombre(l.quantite, { code: 'LIGNE_INVALIDE', quoi: `Ligne ${rang} (« ${designation} ») : quantité`, strict: true });
   const montant = lireNombre(l.montant, { code: 'LIGNE_INVALIDE', quoi: `Ligne ${rang} (« ${designation} ») : montant` });
-  const ligne = { rang, categorie, designation, quantite, montant, ignoree: l.ignoree === true, articleType: null, articleId: null, repartition: [] };
-  if (ligne.ignoree) return ligne;
+  const ligne = { rang, categorie, designation, quantite, montant, ignoree: l.ignoree === true, toujours: false, articleType: null, articleId: null, cibles: [], repartition: [] };
+  // Ignorée « toujours » : la ligne arrivera ignorée aux prochains imports (apprise).
+  if (ligne.ignoree) { ligne.toujours = l.toujours === true; return ligne; }
 
-  if (l.article_type !== 'produit' && l.article_type !== 'ingredient') throw refus('PRODUIT_REQUIS', `Ligne ${rang} (« ${designation} ») : choisissez ce qui a été vendu, ou ignorez la ligne.`);
-  const articleId = Number(l.article_id);
-  if (!Number.isInteger(articleId) || articleId <= 0) throw refus('PRODUIT_REQUIS', `Ligne ${rang} (« ${designation} ») : choisissez ce qui a été vendu, ou ignorez la ligne.`);
-  ligne.articleType = l.article_type;
-  ligne.articleId = articleId;
+  ligne.cibles = lireCibles(l, rang, designation, montant);
+  // Un seul produit : il reste porté par la ligne (colonnes d'avant V1c) ; plusieurs : seulement dans `cibles`.
+  if (ligne.cibles.length === 1) { ligne.articleType = ligne.cibles[0].articleType; ligne.articleId = ligne.cibles[0].articleId; }
 
   if (!Array.isArray(l.repartition) || !l.repartition.length) throw refus('REPARTITION_INVALIDE', `Ligne ${rang} (« ${designation} ») : répartition par canal manquante.`);
   const vus = new Set();
@@ -81,6 +123,10 @@ function lireLigne(l, rang, livraisons) {
   const reparti = millime(ligne.repartition.reduce((s, p) => s + p.quantite, 0));
   if (Math.abs(reparti - quantite) > 0.0005) {
     throw refus('REPARTITION_INVALIDE', `Ligne ${rang} (« ${designation} ») : ${reparti} réparti pour ${quantite} dans le fichier.`);
+  }
+  // Chaque canal reçoit au moins un millième de chaque élément (une quantité de vente n'est jamais nulle).
+  for (const part of ligne.repartition) for (const c of ligne.cibles) {
+    if (millime(part.quantite * c.quantite) <= 0) throw refus('CIBLES_INVALIDES', `Ligne ${rang} (« ${designation} ») : quantité trop petite pour un canal.`);
   }
   if (categorie && livraisons.has(cleCategorie(categorie)) && vus.has(CANAL_DIRECT)) {
     throw refus('LIVRAISON_SANS_DIRECTE', `Ligne ${rang} (« ${designation} ») : la catégorie « ${categorie} » est de la livraison, sa quantité se répartit entre les [[nom:prestataire:pl]] seulement.`);
@@ -160,15 +206,20 @@ function ventesParCanal(lignes) {
   const parCanal = new Map();
   for (const l of lignes) {
     if (l.ignoree) continue;
-    const prix = prixUnitaire(l.montant, l.quantite);
     for (const part of l.repartition) {
       if (!parCanal.has(part.canal)) parCanal.set(part.canal, []);
-      parCanal.get(part.canal).push({ article_type: l.articleType, article_id: l.articleId, quantite: part.quantite, prix_unitaire: prix });
+      // Un produit : montant ÷ quantité. Menu, formule, lot : la part du montant de chaque élément ÷ ses unités.
+      for (const c of l.cibles) {
+        parCanal.get(part.canal).push({
+          article_type: c.articleType, article_id: c.articleId, quantite: millime(part.quantite * c.quantite),
+          prix_unitaire: prixUnitaire(c.montant, l.quantite * c.quantite),
+        });
+      }
     }
   }
   return new Map([...parCanal.entries()].sort((a, b) => (a[0] === CANAL_DIRECT ? -1 : b[0] === CANAL_DIRECT ? 1 : a[0].localeCompare(b[0]))));
 }
 
 module.exports = {
-  CANAL_DIRECT, LIGNES_MAX, SOURCES, ROLES_COLONNES, ErreurImport, lireModeleColonnes, millime, cleCategorie, cleCorrespondance, lireCanal, lireLigne, lireImport, prixUnitaire, ventesParCanal,
+  CANAL_DIRECT, LIGNES_MAX, CIBLES_MAX, SOURCES, ROLES_COLONNES, ErreurImport, lireModeleColonnes, lireCibles, millime, cleCategorie, cleCorrespondance, lireCanal, lireLigne, lireImport, prixUnitaire, ventesParCanal,
 };

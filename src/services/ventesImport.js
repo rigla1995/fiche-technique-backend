@@ -14,6 +14,8 @@
 //   • le modèle d'un fichier dont l'utilisateur a désigné les colonnes est retenu (`caisse_modeles`) ;
 //   • le document d'origine est conservé avec l'import (stockage des fichiers, privé), s'il est bien le fichier lu
 //     (même empreinte SHA-256).
+// V1c : une ligne vaut un ou PLUSIEURS produits (`cibles` : menu, formule, lot) — chaque élément devient une ligne de
+//   vente sur chaque canal de la ligne, avec les mêmes contrôles ; une ligne ignorée « toujours » est apprise.
 const crypto = require('crypto');
 const VI = require('../utils/ventesImport');
 const stockage = require('./stockageFichiers');
@@ -112,7 +114,8 @@ async function exigerNouveau(db, activiteId, { dateVente, empreinte }) {
 
 /** Les produits et articles choisis sont-ils du compte ? */
 async function exigerArticlesDuCompte(db, clientId, lignes) {
-  const ids = (type) => [...new Set(lignes.filter((l) => l.articleType === type).map((l) => l.articleId))];
+  const cibles = lignes.flatMap((l) => l.cibles);
+  const ids = (type) => [...new Set(cibles.filter((c) => c.articleType === type).map((c) => c.articleId))];
   const produits = ids('produit');
   const articles = ids('ingredient');
   if (produits.length) {
@@ -128,7 +131,31 @@ async function exigerArticlesDuCompte(db, clientId, lignes) {
 /** Ce qui a été décidé pour chaque ligne est appris : la prochaine fois, la ligne se reconnaît seule. */
 async function apprendre(db, activiteId, userId, donnees) {
   const parCle = new Map();
-  for (const l of donnees.lignes) if (!l.ignoree) parCle.set(VI.cleCorrespondance(l.categorie, l.designation), l);
+  // Lignes ignorées : « toujours » s'apprend ; sans « toujours », un ancien « toujours » est oublié.
+  const toujours = new Map();
+  const oubliees = new Set();
+  for (const l of donnees.lignes) {
+    const cle = VI.cleCorrespondance(l.categorie, l.designation);
+    if (!l.ignoree) parCle.set(cle, l);
+    else if (l.toujours) toujours.set(cle, l);
+    else oubliees.add(cle);
+  }
+  for (const [cle, l] of toujours) {
+    if (parCle.has(cle)) continue;
+    const c = await db.query(
+      `INSERT INTO correspondances_ventes (activite_id, cle, categorie, designation, ignoree, created_by, updated_at)
+       VALUES ($1, $2, $3, $4, true, $5, NOW())
+       ON CONFLICT (activite_id, cle) DO UPDATE
+         SET categorie = EXCLUDED.categorie, designation = EXCLUDED.designation, ignoree = true, updated_at = NOW()
+       RETURNING id`,
+      [activiteId, cle, l.categorie, l.designation, userId]
+    );
+    await db.query('DELETE FROM correspondances_ventes_cibles WHERE correspondance_id = $1', [c.rows[0].id]);
+  }
+  for (const cle of oubliees) {
+    if (parCle.has(cle) || toujours.has(cle)) continue;
+    await db.query('DELETE FROM correspondances_ventes WHERE activite_id = $1 AND cle = $2 AND ignoree = true', [activiteId, cle]);
+  }
   for (const [cle, l] of parCle) {
     const c = await db.query(
       `INSERT INTO correspondances_ventes (activite_id, cle, categorie, designation, ignoree, created_by, updated_at)
@@ -139,10 +166,12 @@ async function apprendre(db, activiteId, userId, donnees) {
       [activiteId, cle, l.categorie, l.designation, userId]
     );
     await db.query('DELETE FROM correspondances_ventes_cibles WHERE correspondance_id = $1', [c.rows[0].id]);
-    await db.query(
-      'INSERT INTO correspondances_ventes_cibles (correspondance_id, article_type, article_id, quantite) VALUES ($1, $2, $3, 1)',
-      [c.rows[0].id, l.articleType, l.articleId]
-    );
+    for (const cible of l.cibles) {
+      await db.query(
+        'INSERT INTO correspondances_ventes_cibles (correspondance_id, article_type, article_id, quantite) VALUES ($1, $2, $3, $4)',
+        [c.rows[0].id, cible.articleType, cible.articleId, cible.quantite]
+      );
+    }
   }
   for (const c of donnees.categories) {
     await db.query(
@@ -249,9 +278,10 @@ async function enregistrer(db, { clientId, user, activiteId, donnees }) {
 
   for (const l of donnees.lignes) {
     await db.query(
-      `INSERT INTO ventes_imports_lignes (import_id, rang, categorie, designation, quantite, montant, ignoree, article_type, article_id, repartition)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)`,
-      [importe.id, l.rang, l.categorie, l.designation, l.quantite, l.montant, l.ignoree, l.articleType, l.articleId, JSON.stringify(l.repartition)]
+      `INSERT INTO ventes_imports_lignes (import_id, rang, categorie, designation, quantite, montant, ignoree, article_type, article_id, repartition, cibles)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb)`,
+      [importe.id, l.rang, l.categorie, l.designation, l.quantite, l.montant, l.ignoree, l.articleType, l.articleId, JSON.stringify(l.repartition),
+        l.ignoree ? null : JSON.stringify(l.cibles.map((c) => ({ article_type: c.articleType, article_id: c.articleId, quantite: c.quantite, montant: c.montant })))]
     );
   }
   const apprises = await apprendre(db, activiteId, userId, donnees);

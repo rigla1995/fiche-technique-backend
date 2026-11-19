@@ -521,6 +521,18 @@
           "md5": "6d03938d378f481a78e4a31433c835f2"
         }
       ]
+    },
+    {
+      "numero": 267,
+      "nom": "267_manuel_menus_formules_lots.sql",
+      "objet": "Menus, formules et lots (V1c) : une ligne de caisse vaut plusieurs produits ou plusieurs unités d'un produit, montant partagé d'après les prix de la carte, lot proposé d'après le nom, ligne ignorée « toujours ».",
+      "manuel": [
+        {
+          "slug": "saisie-ventes",
+          "md5Avant": "6d03938d378f481a78e4a31433c835f2",
+          "md5": "16b25f40ece30ccf8b4b278a3b282ee0"
+        }
+      ]
     }
   ]
 }
